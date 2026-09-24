@@ -55,6 +55,122 @@ test('no component hardcodes a title, aria-label or placeholder', () => {
         'these render to a person and cannot be translated — see lib/bw-i18n.js');
 });
 
+/**
+ * THE SHAPE THE ATTRIBUTE RULE ABOVE CANNOT SEE, and the directory it does not
+ * walk.
+ *
+ * That rule matches JSX attributes (title=, aria-label=, placeholder=) under
+ * components/ and containers/. A user-facing sentence written as an OBJECT
+ * FIELD — `hint: 'Swipe the reactor to slide every tile.'` — in lib/ is invisible
+ * to it twice over. That is how the whole gate-builder palette stayed
+ * English-only while the surface around it was bilingual: 19 labels in
+ * lib/bw-fpga/palette-catalog.js, a file the walk never reached and a shape the
+ * regex never matched (#305).
+ *
+ * PROPER NOUNS ARE NOT TRANSLATED, and the exemption is by file with a reason
+ * rather than by a clever regex: device names (STC12, Arduino Uno), gate names
+ * (AND, XOR — GATE_DEFS names them the way a schematic does, in every
+ * language), language names (Python, BASIC), opcode mnemonics, and example
+ * titles, which are content rather than UI.
+ */
+const PROPER_NOUN_FILES = [
+    'lib/device-labels.js',              // STC12, Arduino Uno — product names
+    'lib/bw-matrix/capabilities.js',     // Python, BASIC — language names
+    'lib/bw-fpga/gate-builder.js',       // AND, XOR — schematic names, every language
+    'lib/bw-debug/opcodes.js',           // mnemonics
+    'lib/bw-debug/riscv-programs.js',    // program names, content not UI
+    'lib/bw-fpga/builtins.js',           // block names, content not UI
+    'lib/bw-asm/examples.js',            // example titles, content not UI
+    'lib/bw-asm/examples-i8086.js',      // example titles, content not UI
+    'lib/bw-fpga/examples.js'            // example titles, content not UI
+];
+
+/**
+ * The population that exists today, per file. A RATCHET, not a blessing: it may
+ * only shrink. Each of these renders an English sentence to a reader whose
+ * surface is otherwise translated; fixing one means moving its strings into a
+ * locale table and lowering the number here in the same commit.
+ */
+const KNOWN_UNTRANSLATED = {
+    'lib/game-touch-controls.js': 46,        // per-game play hints
+    'lib/bw-debug/dos-toolchain-routes.js': 5,
+    'lib/scratchlink-transport.js': 4,
+    'lib/native-web-bluetooth.js': 2,
+    'lib/bw-fpga/backends.js': 2,
+    'lib/bw-debug/condition-editor.js': 2,
+    'lib/bw-debug/target-kinds.js': 1
+};
+
+/** A user-facing sentence written as an object field, not a JSX attribute. */
+const FIELD = /(?:hint|label|title|placeholder|summary):\s*'([A-Z][^']{8,})'/g;
+
+const libFiles = () => {
+    const out = [];
+    const walkJs = dir => {
+        for (const entry of readdirSync(dir, {withFileTypes: true})) {
+            const full = resolve(dir, entry.name);
+            if (entry.isDirectory()) walkJs(full);
+            else if (entry.name.endsWith('.js')) out.push(relative(root, full));
+        }
+    };
+    walkJs(resolve(root, 'overlay/scratch-gui/src/lib'));
+    return out;
+};
+
+test('no lib module hardcodes a user-facing sentence, beyond the known population', () => {
+    const counts = {};
+    // THE SKIPPED SET IS COLLECTED, not silently dropped. A curated exemption
+    // that names a file which no longer exists would otherwise sit here forever
+    // looking like coverage, and the whole point of this rule is that an
+    // unexamined file is a fact, not an absence of one.
+    const exempted = [];
+    const translating = [];
+    for (const rel of libFiles()) {
+        const short = rel.replace('overlay/scratch-gui/src/', '');
+        if (PROPER_NOUN_FILES.includes(short)) {
+            exempted.push(short);
+            continue;
+        }
+        const text = readFileSync(resolve(root, rel), 'utf8');
+        if (/bw-i18n\.js|bw-fpga\/l10n\.js/.test(text)) {
+            translating.push(short);   // it translates; the other rules cover it
+            continue;
+        }
+        const n = [...text.matchAll(FIELD)].length;
+        if (n) counts[short] = n;
+    }
+    const goneExemptions = PROPER_NOUN_FILES.filter(f => !exempted.includes(f));
+    assert.deepEqual(goneExemptions, [],
+        'PROPER_NOUN_FILES names file(s) the walk never saw — delete them, or the exemption is '
+        + 'protecting nothing: ' + goneExemptions.join(', '));
+    assert.ok(translating.length > 0,
+        'no lib file was found to translate at all — the helper check is broken, and every file '
+        + 'is being measured as if it had no locale table');
+    const grown = Object.entries(counts)
+        .filter(([f, n]) => n > (KNOWN_UNTRANSLATED[f] || 0))
+        .map(([f, n]) => `${f}: ${n} (known ${KNOWN_UNTRANSLATED[f] || 0})`);
+    assert.deepEqual(grown, [],
+        'new hardcoded user-facing sentence(s) in lib/ — put them in a locale table '
+        + '(lib/bw-fpga/l10n.js or lib/bw-i18n.js), or if they are proper nouns add the file to '
+        + 'PROPER_NOUN_FILES with the reason:\n  ' + grown.join('\n  '));
+    // The ratchet must also not rot the other way: a file that was fixed should
+    // leave the list, so a stale entry is reported rather than silently kept.
+    const stale = Object.keys(KNOWN_UNTRANSLATED).filter(f => !(f in counts));
+    assert.deepEqual(stale, [],
+        'these are in KNOWN_UNTRANSLATED but no longer hardcode anything — delete them from the list: '
+        + stale.join(', '));
+});
+
+test('THE RULE CAN FAIL: the palette shape and the lib directory are both covered', () => {
+    // The two halves of the blind spot, asserted on synthetic text so this
+    // cannot pass by accident when the real tree happens to be clean.
+    const sample = "sections.push({id: 'mem', label: 'Memory bank for the canvas'});";
+    assert.equal([...sample.matchAll(FIELD)].length, 1, 'an object-field sentence must match');
+    assert.ok(libFiles().some(f => f.includes('lib/bw-fpga/')),
+        'the lib walk must actually reach lib/bw-fpga — an empty walk would make this vacuous');
+    assert.ok(libFiles().length > 20, `the lib walk found only ${libFiles().length} files`);
+});
+
 test('the audit actually walks the tree', () => {
     // A guard that scanned nothing would pass. The count is a floor, not a
     // fixture: it only has to prove the walk happened.
