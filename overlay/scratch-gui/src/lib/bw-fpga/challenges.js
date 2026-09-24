@@ -204,7 +204,23 @@ export const CHALLENGES = Object.freeze([
         }
     },
     {
-        id: 'register_real', requires: ['register', 'adder_chip_real'], realise: true, circuit: 'dff', rungs: ['ic'],
+        // Bought, not built, like the adder chip before it — and the first
+        // board whose SELECTED output is the dark one. The ladder is a line,
+        // so the register now follows this rather than the adder chip.
+        id: 'decoder_real', requires: ['adder_chip_real'], realise: true, circuit: 'decoder3to8', rungs: ['ic'],
+        inputs: io(['a', 'b', 'c']),
+        outputs: io(['y0', 'y1', 'y2', 'y3', 'y4', 'y5', 'y6', 'y7']),
+        // ACTIVE LOW: the addressed line goes to 0 and every other stays at 1.
+        // Writing it the other way round would grade a part that does not exist.
+        expect: i => {
+            const n = i.a + (i.b << 1) + (i.c << 2);
+            const out = {};
+            for (let k = 0; k < 8; k++) out[`y${k}`] = k === n ? 0 : 1;
+            return out;
+        }
+    },
+    {
+        id: 'register_real', requires: ['register', 'decoder_real'], realise: true, circuit: 'dff', rungs: ['ic'],
         sequential: true,
         inputs: io(['d', 'clk']), outputs: io(['q']),
         stimulus: {d: [1, 0, 1, 1, 0, 0, 1]},

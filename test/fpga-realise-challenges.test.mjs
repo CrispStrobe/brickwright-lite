@@ -218,7 +218,7 @@ test('each realise challenge is gated behind designing that gate on the canvas',
     }
 });
 
-test('the challenges with no same-named canvas lesson are exactly the six expected', () => {
+test('the challenges with no same-named canvas lesson are exactly the seven expected', () => {
     // Pins the exceptions, so a future challenge cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
     //   nor            — the canvas ladder goes straight from OR to NAND
@@ -233,8 +233,12 @@ test('the challenges with no same-named canvas lesson are exactly the six expect
     //   counter2       — two toggles chained; the canvas ladder stops at one.
     //   counter4       — four of them, across two packages; the canvas ladder
     //                    stops at one toggle, and it is gated behind counter2.
+    //   decoder3to8    — a 74HC138, bought not built. Eight 3-input ANDs and
+    //                    three inverters is past what the canvas ladder draws,
+    //                    and it is gated behind adder_chip_real, which is the
+    //                    same "buy the part" lesson one step earlier.
     assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf),
-        ['nor', 'ripple_adder_4', 'adder_chip_4', 'dff', 'counter2', 'counter4']);
+        ['nor', 'ripple_adder_4', 'adder_chip_4', 'decoder3to8', 'dff', 'counter2', 'counter4']);
 });
 
 test('a realise challenge with no canvas lesson is gated behind a realise one', () => {
