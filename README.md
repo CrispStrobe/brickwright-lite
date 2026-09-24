@@ -11,7 +11,8 @@ and follow guided lessons — in a browser or the native app.
 **For retro-computer builders** wiring Z80 and 6502 machines on virtual
 breadboards before soldering the real thing.
 
-**Live (web):** <https://brickwright-lite.vercel.app> — auto-deploys from `main`.
+**Live (web):** <https://brickwright-lite.vercel.app> and
+<https://crispstrobe.github.io/brickwright-lite> — both auto-deploy from `main`.
 **Native binaries:** built by CI for macOS, Windows, Linux, iOS and Android
 (see **Actions** / **Releases**).
 
