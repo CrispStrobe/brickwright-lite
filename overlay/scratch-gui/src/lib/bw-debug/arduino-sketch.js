@@ -39,6 +39,9 @@ export const ARDUINO_SKETCH_BOARDS = Object.freeze({
     // its first RET).
     'arduino-mega': {target: 'arduino-mega', kind: 'atmega2560', clockHz: 16000000},
     atmega2560: {target: 'atmega2560', kind: 'atmega2560', clockHz: 16000000},
+    // The Arduboy's engine is its CONSOLE (bw-arduboy), not the debugger: the
+    // image goes where a picked Arduboy .hex goes, with its screen and pad.
+    arduboy: {target: 'arduboy', kind: 'arduboy', clockHz: 16000000},
     attiny85: {target: 'attiny85', kind: 'attiny85', clockHz: 8000000},
     attiny88: {target: 'attiny88', kind: 'attiny88', clockHz: 8000000}
 });
@@ -87,7 +90,11 @@ export async function requestSketchBuild ({source, device, compile}) {
         // debugger's variables view reads them. The service compiles the
         // sketch without LTO for such a build, so the image and its table
         // always come from the same request -- never pair them otherwise.
-        out = await compile(source, board.target, 'hex', 'arduino', {symbols: true});
+        // Not for the Arduboy: its image goes to the console, which has no
+        // variables view, and a symbols build (the sketch without LTO) is
+        // larger -- on a part with 28 KB for the sketch that is a real cost.
+        out = await compile(source, board.target, 'hex', 'arduino',
+            board.kind === 'arduboy' ? {} : {symbols: true});
     } catch (e) {
         const message = e && e.message ? e.message : String(e);
         // hostedCompileC throws the SERVICE's message when it refused the

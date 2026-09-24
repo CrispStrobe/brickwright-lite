@@ -299,6 +299,9 @@ const L10N = {
         runSketchRefused: (m) => `The Arduino compiler refused this sketch: ${m}`,
         runSketchUnavailable: (m) => `The Arduino compiler is unavailable (it runs on the hosted service): ${m}`,
         runSketchEmpty: 'Write a sketch first — setup() and loop().',
+        runSketchBuiltArduboy: (n, libs) => `Built a ${n}-byte Arduboy sketch`
+            + (libs.length ? ` with ${libs.join(', ')}` : '')
+            + ' — running it on the Arduboy console. Arrow keys move, Z is A, X is B.',
         runSketchClockMismatch: (built, board) =>
             ` Note: the image was built for ${built} Hz but this board runs at ${board} Hz, so its timing will be off.`,
         // reference section headers
@@ -537,6 +540,9 @@ const L10N = {
         runSketchRefused: (m) => `Der Arduino-Compiler hat diesen Sketch abgelehnt: ${m}`,
         runSketchUnavailable: (m) => `Der Arduino-Compiler ist nicht erreichbar (er läuft auf dem gehosteten Dienst): ${m}`,
         runSketchEmpty: 'Schreibe zuerst einen Sketch — setup() und loop().',
+        runSketchBuiltArduboy: (n, libs) => `Arduboy-Sketch mit ${n} Byte gebaut`
+            + (libs.length ? ` mit ${libs.join(', ')}` : '')
+            + ' — er läuft jetzt auf der Arduboy-Konsole. Pfeiltasten bewegen, Z ist A, X ist B.',
         runSketchClockMismatch: (built, board) =>
             ` Hinweis: Das Abbild wurde für ${built} Hz gebaut, dieses Board läuft aber mit ${board} Hz — das Timing stimmt daher nicht.`,
         // reference section headers
@@ -714,7 +720,7 @@ const DEVICE_HELP = {
     pybadge: 'Runs the Arcade game on a PyBadge-shaped 160×128 console with A/B, D-pad, NeoPixels, light and tilt controls.',
     'pybadge-lc': 'Runs the Arcade game on the compact PyBadge LC console. Its virtual GPIO keeps code runnable without inventing physical breakout pins.',
     samd51: 'Targets the generic ATSAMD51J19 pin vocabulary. It has no invented board peripherals; choose PyBadge for its screen, controls and sensors.',
-    arduboy: 'Loads and runs an existing ATmega32U4 .hex in the Arduboy console. Brickwright does not claim to compile Arduboy firmware.',
+    arduboy: 'Runs games on the Arduboy console: open an existing ATmega32U4 .hex, or write an Arduboy2 sketch in the C tab and press ▶ Run sketch (compiled as C++ on the hosted service).',
     pico: 'Compiles bare-metal RP2040 code for the emulator, or deploys MicroPython main.py to a mounted Pico.',
     eater6502: 'Builds for the breadboard 6502 workstation: W65C22 VIA, ACIA serial, keyboard, OLED or VGA circuits and debugger.',
     z80: 'Builds for the Z80 bench with OUT0–OUT7 and IN0–IN7 latch/buffer pins and its machine debugger.',
@@ -2399,6 +2405,14 @@ class PseudocodeImporter extends React.Component {
                 status: e && e.reason === 'source'
                     ? this.L.runSketchRefused(e.message)
                     : this.L.runSketchUnavailable(e && e.message ? e.message : String(e))});
+            return;
+        }
+        if (built.kind === 'arduboy') {
+            // The Arduboy's engine is its console: the same hand-off a picked
+            // Arduboy .hex takes, screen and buttons included.
+            this.runArduboyProgram(built.hex, 'sketch.hex');
+            this.setState({busy: false, output: null,
+                status: this.L.runSketchBuiltArduboy(built.bytes, built.libraries)});
             return;
         }
         const detail = {format: 'avr-sketch', target: built.target, kind: built.kind,

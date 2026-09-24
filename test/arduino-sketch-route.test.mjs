@@ -58,6 +58,7 @@ test('the route serves the Uno/Nano family, the Mega and the ATtinys, each on it
         atmega168p: 'atmega168p|avr8js|16000000',
         'arduino-mega': 'arduino-mega|atmega2560|16000000',
         atmega2560: 'atmega2560|atmega2560|16000000',
+        arduboy: 'arduboy|arduboy|16000000',
         attiny85: 'attiny85|attiny85|8000000',
         attiny88: 'attiny88|attiny88|8000000'
     });
@@ -73,6 +74,7 @@ test('the engine for each board is the one the debug panel picks for that device
     // the same board would, not on whatever the panel was last left on.
     const panel = read('components/tw-pseudocode/debug-panel.jsx');
     for (const [id, b] of Object.entries(route.ARDUINO_SKETCH_BOARDS)) {
+        if (b.kind === 'arduboy') continue;          // the console, not the debugger
         const specific = new RegExp(`['"]?${id}['"]?: '([a-z0-9]+)'`).exec(
             panel.slice(panel.indexOf('const DEVICE_TO_KIND'), panel.indexOf('const CORE_TO_KIND')));
         assert.equal(b.kind, specific ? specific[1] : 'avr8js', `${id}: route and panel disagree`);
@@ -335,4 +337,35 @@ test('the runner offers serial input only where the chip can receive', () => {
         src.indexOf('async function attachRp2040js('));
     assert.match(attach, /avrAdapter\.chip && avrAdapter\.chip\.usart\) \{\s*runner\.sendSerial = /,
         'an ATtiny (no USART) must get no input line rather than a dead one');
+});
+
+test('an Arduboy sketch goes to the console, and the console runs it: picture and D-pad', async () => {
+    const src = read('components/tw-pseudocode/pseudocode-importer.jsx');
+    const handler = src.slice(src.indexOf('async runSketchOnAvr ()'));
+    const body = handler.slice(0, handler.indexOf('\n    /**'));
+    assert.match(body, /if \(built\.kind === 'arduboy'\) \{\s*[^]*?this\.runArduboyProgram\(built\.hex, 'sketch\.hex'\);/,
+        'the Arduboy image must take the console hand-off, not the debugger');
+    const fx = fixtures['arduboy-hello'];
+    assert.equal(fx.source, arduinoSketchExamplesFor('arduboy')[0].source,
+        'the Arduboy starter changed: rebuild its fixture');
+    const arduboy = await import(pathToFileURL(path.join(SRC, 'lib/bw-arduboy/index.js')).href);
+    const game = arduboy.createArduboy(fx.hex);
+    game.advance(500);
+    assert.ok(game.display.displayOn, 'the display never came on');
+    const px = () => arduboy.framebufferToPixels(game.framebuffer);
+    const lit = px().reduce((n, v) => n + (v ? 1 : 0), 0);
+    assert.ok(lit > 100 && lit < 4000, `${lit} pixels lit: expected text and a square`);
+    // The square's left edge, on a row it covers (y 28..35 at start).
+    const left = () => { const p = px(); for (let x = 0; x < 128; x++) if (p[30 * 128 + x]) return x; return -1; };
+    const before = left();
+    game.press('right'); game.advance(500); game.release('right'); game.advance(100);
+    const after = left();
+    assert.ok(after - before >= 10, `RIGHT moved the square from x=${before} to x=${after}`);
+});
+
+test('the Arduboy asks for no symbols (its 28 KB is tight, and the console has no variables view)', async () => {
+    let extra = null;
+    await route.requestSketchBuild({source: 'x', device: 'arduboy',
+        compile: async (c, t, f, l, e) => { extra = e; return {base64: b64(':00000001FF\n')}; }});
+    assert.deepEqual(extra, {});
 });

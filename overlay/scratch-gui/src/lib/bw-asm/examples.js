@@ -594,6 +594,43 @@ void loop() {}
     }
 ];
 
+/** Arduboy2 starters: the console shows the screen and takes the pad. */
+const ARDUBOY_SKETCHES = [
+    {
+        id: 'ino-arduboy-hello', label: 'Arduboy: move a square', labelDe: 'Arduboy: ein Quadrat bewegen',
+        serial: false,
+        source: `// An Arduboy2 sketch: text, a square, and the D-pad moving it.
+// Arrow keys move; A (Z) makes the square bigger, B (X) smaller.
+#include <Arduboy2.h>
+
+Arduboy2 arduboy;
+int x = 60, y = 28, size = 8;
+
+void setup() {
+  arduboy.begin();
+  arduboy.setFrameRate(30);
+}
+
+void loop() {
+  if (!arduboy.nextFrame()) return;
+  arduboy.pollButtons();
+  if (arduboy.pressed(RIGHT_BUTTON) && x < WIDTH - size) x++;
+  if (arduboy.pressed(LEFT_BUTTON) && x > 0) x--;
+  if (arduboy.pressed(DOWN_BUTTON) && y < HEIGHT - size) y++;
+  if (arduboy.pressed(UP_BUTTON) && y > 10) y--;
+  if (arduboy.justPressed(A_BUTTON) && size < 24) size += 2;
+  if (arduboy.justPressed(B_BUTTON) && size > 2) size -= 2;
+
+  arduboy.clear();
+  arduboy.setCursor(0, 0);
+  arduboy.print(F("Hello, Arduboy!"));
+  arduboy.fillRect(x, y, size, size, WHITE);
+  arduboy.display();
+}
+`
+    }
+];
+
 /** Devices whose sketches have a hardware USART for Serial. */
 const NO_USART = new Set(['attiny85', 'attiny88']);
 
@@ -604,6 +641,7 @@ const NO_USART = new Set(['attiny85', 'attiny88']);
  */
 export function arduinoSketchExamplesFor (device) {
     if (!sketchBoardFor(device)) return [];
+    if (String(device).toLowerCase() === 'arduboy') return ARDUBOY_SKETCHES;
     return NO_USART.has(String(device).toLowerCase())
         ? ARDUINO_SKETCHES.filter(ex => !ex.serial) : ARDUINO_SKETCHES;
 }
