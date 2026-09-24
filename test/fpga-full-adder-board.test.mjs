@@ -144,7 +144,7 @@ test('the full adder is in the registry the UI and tests share', () => {
     assert.equal(IC_CIRCUITS.full_adder, FULL_ADDER);
     assert.deepEqual(Object.keys(IC_CIRCUITS),
         ['mux2', 'half_adder', 'full_adder', 'ripple_adder_4', 'adder_chip_4', 'decoder3to8',
-            'dff', 'toggle', 'counter2', 'counter4'],
+            'dff', 'toggle', 'counter2', 'counter4', 'shift8'],
         'simplest first — the picker shows them in this order');
 });
 

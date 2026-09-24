@@ -171,11 +171,26 @@ test('a combinational realise challenge is graded by enumeration, a sequential o
     }
 });
 
+test('EVERY realise challenge names its inputs in the circuit\'s own order', () => {
+    // The grader pairs challenge.inputs with the built circuit's switches BY
+    // POSITION. A challenge that lists them in a different order from its spec
+    // drives the wrong switch — and the symptom is a board that fails at cycle
+    // 0 with a plausible-sounding message about the wrong output, not anything
+    // that points at the ordering. Cost: one debugging round on shift_real.
+    for (const c of REALISE) {
+        const spec = c.circuit ? IC_CIRCUITS[c.circuit] : null;
+        if (!spec || !Array.isArray(spec.inputs)) continue;   // single-gate rungs have no circuit spec
+        assert.deepEqual(c.inputs.map(i => i.name), spec.inputs,
+            `${c.id}: challenge inputs [${c.inputs.map(i => i.name)}] must match ` +
+            `${c.circuit}.inputs [${spec.inputs}] exactly — the grader pairs them by position`);
+    }
+});
+
 test('the sequential realise challenges are exactly the ones that need a clock', () => {
     // Pins the split, so a combinational challenge cannot quietly acquire a
     // stimulus, nor a sequential one lose its clock.
     assert.deepEqual(REALISE.filter(c => c.sequential).map(c => c.id),
-        ['register_real', 'toggle_real', 'counter_real', 'counter4_real']);
+        ['register_real', 'toggle_real', 'counter_real', 'counter4_real', 'shift_real']);
 });
 
 test('every registry spec has a translated label and hint in every locale', () => {
@@ -218,7 +233,7 @@ test('each realise challenge is gated behind designing that gate on the canvas',
     }
 });
 
-test('the challenges with no same-named canvas lesson are exactly the seven expected', () => {
+test('the challenges with no same-named canvas lesson are exactly the eight expected', () => {
     // Pins the exceptions, so a future challenge cannot quietly skip the
     // "design it before you build it" rule by having no canvas lesson.
     //   nor            — the canvas ladder goes straight from OR to NAND
@@ -238,7 +253,10 @@ test('the challenges with no same-named canvas lesson are exactly the seven expe
     //                    and it is gated behind adder_chip_real, which is the
     //                    same "buy the part" lesson one step earlier.
     assert.deepEqual(REALISE.filter(c => !canvasIds.has(subjectOf(c))).map(subjectOf),
-        ['nor', 'ripple_adder_4', 'adder_chip_4', 'decoder3to8', 'dff', 'counter2', 'counter4']);
+    //   shift8         — a 74HC595, bought not built; eight flip-flops in a row
+    //                    is past the canvas ladder, and it is gated behind the
+    //                    4-bit counter.
+        ['nor', 'ripple_adder_4', 'adder_chip_4', 'decoder3to8', 'dff', 'counter2', 'counter4', 'shift8']);
 });
 
 test('a realise challenge with no canvas lesson is gated behind a realise one', () => {
