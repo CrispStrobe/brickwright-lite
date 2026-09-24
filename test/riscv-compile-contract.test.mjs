@@ -43,6 +43,23 @@ test('the request carries the contract version and the source', async () => {
     assert.equal(sent.source, HELLO);
 });
 
+test('the request ALSO carries the stc-compiler shape (code/language/target, list options)', async () => {
+    let sent = null;
+    const fetchImpl = async (u, opts) => { sent = JSON.parse(opts.body); return {status: 200, json: async () => okBody()}; };
+    await compileRiscvC({source: HELLO, endpoint: 'https://x/api', fetchImpl});
+    assert.equal(sent.code, HELLO, 'stc-compiler needs `code`');
+    assert.equal(sent.language, 'c');
+    assert.equal(sent.target, 'riscv32-gcc', 'defaults to the full-C native target');
+    assert.ok(Array.isArray(sent.options), 'stc-compiler options is a LIST, not a dict');
+});
+
+test('the target selects the compiler (riscv32 = shecc, riscv32-gcc = full C)', async () => {
+    let sent = null;
+    const fetchImpl = async (u, opts) => { sent = JSON.parse(opts.body); return {status: 200, json: async () => okBody()}; };
+    await compileRiscvC({source: HELLO, endpoint: 'https://x/api', target: 'riscv32', fetchImpl});
+    assert.equal(sent.target, 'riscv32', 'the chosen target is forwarded verbatim');
+});
+
 test('a well-formed reply is accepted and its base64 segments decode to bytes', async () => {
     const fetchImpl = async () => ({status: 200, json: async () => okBody()});
     const r = await compileRiscvC({source: HELLO, endpoint: 'https://x/api', fetchImpl});
