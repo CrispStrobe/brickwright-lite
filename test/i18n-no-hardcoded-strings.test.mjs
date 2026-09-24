@@ -119,14 +119,33 @@ const libFiles = () => {
 
 test('no lib module hardcodes a user-facing sentence, beyond the known population', () => {
     const counts = {};
+    // THE SKIPPED SET IS COLLECTED, not silently dropped. A curated exemption
+    // that names a file which no longer exists would otherwise sit here forever
+    // looking like coverage, and the whole point of this rule is that an
+    // unexamined file is a fact, not an absence of one.
+    const exempted = [];
+    const translating = [];
     for (const rel of libFiles()) {
         const short = rel.replace('overlay/scratch-gui/src/', '');
-        if (PROPER_NOUN_FILES.includes(short)) continue;
+        if (PROPER_NOUN_FILES.includes(short)) {
+            exempted.push(short);
+            continue;
+        }
         const text = readFileSync(resolve(root, rel), 'utf8');
-        if (/bw-i18n\.js|bw-fpga\/l10n\.js/.test(text)) continue;   // it translates; the other rules cover it
+        if (/bw-i18n\.js|bw-fpga\/l10n\.js/.test(text)) {
+            translating.push(short);   // it translates; the other rules cover it
+            continue;
+        }
         const n = [...text.matchAll(FIELD)].length;
         if (n) counts[short] = n;
     }
+    const goneExemptions = PROPER_NOUN_FILES.filter(f => !exempted.includes(f));
+    assert.deepEqual(goneExemptions, [],
+        'PROPER_NOUN_FILES names file(s) the walk never saw — delete them, or the exemption is '
+        + 'protecting nothing: ' + goneExemptions.join(', '));
+    assert.ok(translating.length > 0,
+        'no lib file was found to translate at all — the helper check is broken, and every file '
+        + 'is being measured as if it had no locale table');
     const grown = Object.entries(counts)
         .filter(([f, n]) => n > (KNOWN_UNTRANSLATED[f] || 0))
         .map(([f, n]) => `${f}: ${n} (known ${KNOWN_UNTRANSLATED[f] || 0})`);
