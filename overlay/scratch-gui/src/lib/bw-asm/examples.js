@@ -454,6 +454,39 @@ void loop() {
 `
     },
     {
+        id: 'ino-echo', label: 'Serial echo: type to the board', labelDe: 'Serielles Echo: dem Board schreiben',
+        serial: true,
+        source: `// Serial INPUT: type a line in the debugger's serial console and
+// press Enter; the board answers with it in capitals and its length.
+String line = "";
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println(F("Type something and press Enter."));
+}
+
+void loop() {
+  while (Serial.available() > 0) {
+    char c = Serial.read();
+    if (c == '\\r' || c == '\\n') {
+      if (line.length() > 0) {
+        String shout = line;
+        shout.toUpperCase();
+        Serial.print(F("You said: "));
+        Serial.print(shout);
+        Serial.print(F(" ("));
+        Serial.print(line.length());
+        Serial.println(F(" characters)"));
+        line = "";
+      }
+    } else {
+      line += c;
+    }
+  }
+}
+`
+    },
+    {
         id: 'ino-string', label: 'String functions', labelDe: 'String-Funktionen',
         serial: true,
         source: `// The String class: everything the block version of the

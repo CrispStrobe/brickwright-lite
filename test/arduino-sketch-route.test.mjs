@@ -90,12 +90,13 @@ test('a build asks the one hosted compile for an arduino-language hex', async ()
                 prototypes: ['void setup();', 'void loop();'], libraries: ['Wire'], log: ''};
         }
     });
-    assert.deepEqual(calls, [['void setup(){}\nvoid loop(){}\n', 'arduino-nano', 'hex', 'arduino']]);
+    assert.deepEqual(calls, [['void setup(){}\nvoid loop(){}\n', 'arduino-nano', 'hex', 'arduino',
+        {symbols: true}]]);
     assert.equal(built.kind, 'avr8js');
     assert.equal(built.bytes, 2, 'bytes counts data records, not text');
     assert.deepEqual(built.libraries, ['Wire']);
     assert.deepEqual(route.sketchFirmware(built),
-        {name: 'sketch.hex', bytes: null, text: built.hex, fCpu: 16000000});
+        {name: 'sketch.hex', bytes: null, text: built.hex, fCpu: 16000000, symbols: null});
 });
 
 test('the board\'s crystal wins over the clock the image reports, and a mismatch is kept', async () => {
@@ -224,13 +225,14 @@ test('the C tab ▶ is gated by the route table and uses the one hosted compile'
     assert.match(src, /data-testid="bw-arduino-sketch-examples"/);
     const handler = src.slice(src.indexOf('async runSketchOnAvr ()'));
     const body = handler.slice(0, handler.indexOf('\n    /**'));
-    assert.match(body, /await this\.hostedCompileC\(code, target, format, language\)/,
+    assert.match(body, /await this\.hostedCompileC\(code, target, format, language, extra\)/,
         'the sketch must compile through hostedCompileC, not a fetch of its own');
     assert.doesNotMatch(body, /fetch\(/);
     assert.match(body, /format: 'avr-sketch'/);
     assert.match(body, /firmware: sketchFirmware\(built\)/);
     assert.match(body, /kind: built\.kind/);
-    assert.match(src, /async hostedCompileC \(code, target, format, language = 'c'\)/);
+    assert.match(src, /async hostedCompileC \(code, target, format, language = 'c', extra = \{\}\)/);
+    assert.match(src, /body: JSON\.stringify\(\{code, language, target, format, \.\.\.extra\}\)/);
     for (const key of ['runSketch', 'runSketchTitle', 'runSketchBuilding', 'runSketchBuilt',
         'runSketchRefused', 'runSketchUnavailable', 'runSketchEmpty', 'runSketchClockMismatch']) {
         assert.equal(src.split(`${key}:`).length - 1, 2, `${key} is not in both locales`);
@@ -281,4 +283,34 @@ test('the way back from a running image is a labelled button, in both locales', 
     for (const key of ['firmwareRunning', 'firmwareBack', 'firmwareBackTitle']) {
         assert.equal(src.split(`${key}:`).length - 1, 2, `${key} is not in both locales`);
     }
+});
+
+test('a sketch\'s symbol table travels with its image into the debugger', async () => {
+    const table = {source: 'main.ino', variables: [{name: 'ticks', space: 'sram', addr: 0x10b, size: 2}],
+        functions: [{name: 'loop', addr: 0x200, size: 20}], lines: [{line: 6, addr: 0x204}]};
+    const built = await route.requestSketchBuild({source: 'x', device: 'arduino-uno',
+        compile: async () => ({base64: b64(':00000001FF\n'), f_cpu: 16000000, symbols: table})});
+    assert.equal(route.sketchFirmware(built).symbols, table, 'the firmware must carry its own table');
+    const runner = read('lib/bw-debug/debug-runner.js');
+    assert.match(runner, /symbols: fw\.symbols \|\| null, c: null,/,
+        'builtFromUserFirmware must pass the firmware\'s table to the engine');
+});
+
+test('with its table loaded, the engine reads a sketch global where the table says', async () => {
+    // What the variables view does: target.readMem at each variable's
+    // address. From 1000, `ticks++; delay(10)` for 200 ms is about 1019.
+    const fx = fixtures['arduino-uno-symbols'];
+    const ticks = fx.symbols.variables.find(v => v.name === 'ticks');
+    assert.ok(ticks, 'the fixture table no longer lists ticks');
+    const board = new bw.BoardImpl();
+    board.setNetlist([{id: 'u1', kind: 'mcu', terminals: ['gnd']}, {id: 'g1', kind: 'gnd', terminals: ['gnd']}],
+        [{id: 'n1', terminals: [{part: 'u1', terminal: 'gnd'}, {part: 'g1', terminal: 'gnd'}]}]);
+    board.setPower(true);
+    const {target, adapter} = await bw.createDebugTarget('avr8js',
+        {board, hex: fx.hex, symbols: fx.symbols, clockHz: 16000000});
+    bw.createDebugSession(target, {onChange: () => {}}).start();
+    for (let i = 0; i < 20; i++) adapter.advanceNs(10_000_000);
+    const bytes = target.readMem(ticks.space, ticks.addr, ticks.size);
+    const value = bytes[0] | (bytes[1] << 8);
+    assert.ok(value >= 1010 && value <= 1025, `read ${value} at 0x${ticks.addr.toString(16)}`);
 });

@@ -2387,8 +2387,8 @@ class PseudocodeImporter extends React.Component {
         try {
             built = await requestSketchBuild({
                 source, device,
-                compile: async (code, target, format, language) =>
-                    await this.hostedCompileC(code, target, format, language)
+                compile: async (code, target, format, language, extra) =>
+                    await this.hostedCompileC(code, target, format, language, extra)
             });
         } catch (e) {
             // A refusal is the sketch's, and the compiler's own words name
@@ -2891,12 +2891,13 @@ class PseudocodeImporter extends React.Component {
      * @param {string} format 'ihx' | 'hex' | 'bin'
      * @param {string} [language] 'c' (the default), or 'arduino' for a sketch
      *     compiled as C++ against the Arduino core (runSketchOnAvr)
+     * @param {object} [extra] further request fields, e.g. {symbols: true}
      * @returns {Promise<object>} the service's successful response
      */
-    async hostedCompileC (code, target, format, language = 'c') {
+    async hostedCompileC (code, target, format, language = 'c', extra = {}) {
         const res = await fetch('https://stc-compiler.vercel.app/compile', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({code, language, target, format})
+            body: JSON.stringify({code, language, target, format, ...extra})
         });
         const out = await res.json();
         if (!out.success) {

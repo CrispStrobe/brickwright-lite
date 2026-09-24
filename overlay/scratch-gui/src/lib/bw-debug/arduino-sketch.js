@@ -74,7 +74,7 @@ export class SketchBuildError extends Error {
  * @returns {Promise<{hex: string, bytes: number, clockHz: number,
  *   builtForHz: number|null, kind: string,
  *   target: string, prototypes: string[], libraries: string[], log: string,
- *   memory: string}>}
+ *   memory: string, symbols: object|null}>}
  */
 export async function requestSketchBuild ({source, device, compile}) {
     const board = sketchBoardFor(device);
@@ -83,7 +83,11 @@ export async function requestSketchBuild ({source, device, compile}) {
     }
     let out;
     try {
-        out = await compile(source, board.target, 'hex', 'arduino');
+        // symbols: the sketch's globals, functions and main.ino lines, so the
+        // debugger's variables view reads them. The service compiles the
+        // sketch without LTO for such a build, so the image and its table
+        // always come from the same request -- never pair them otherwise.
+        out = await compile(source, board.target, 'hex', 'arduino', {symbols: true});
     } catch (e) {
         const message = e && e.message ? e.message : String(e);
         // hostedCompileC throws the SERVICE's message when it refused the
@@ -112,13 +116,18 @@ export async function requestSketchBuild ({source, device, compile}) {
         prototypes: Array.isArray(out.prototypes) ? out.prototypes : [],
         libraries: Array.isArray(out.libraries) ? out.libraries : [],
         log: out.log || '',
-        memory: out.memory || ''
+        memory: out.memory || '',
+        // null when the service returned none (an older deployment, or a
+        // table it could not build): the image still runs, the variables
+        // view just has nothing to show.
+        symbols: out.symbols || null
     };
 }
 
 /** The firmware object debug-runner's setFirmware takes, for a built sketch. */
 export function sketchFirmware (built, name = 'sketch.hex') {
-    return {name, bytes: null, text: built.hex, fCpu: built.clockHz};
+    return {name, bytes: null, text: built.hex, fCpu: built.clockHz,
+        symbols: built.symbols || null};
 }
 
 /** Bytes of program an Intel HEX text describes (data records only). */
