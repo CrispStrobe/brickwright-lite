@@ -127,11 +127,14 @@ visible to an eye rather than a black circle.
 
 ## Where it sits in the GUI
 
-`Arduboy (run .hex)` in the Code tab's device dropdown, `compile: false` —
-see [CHOOSING-HARDWARE.md](CHOOSING-HARDWARE.md) for why that flag is the
-important half. Choosing it puts an **Arduboy Console** button in the
-stage header, which opens the pane; opening a compiled `.hex` from 📂 Open
-goes straight there without choosing anything first.
+`Arduboy` in the Code tab's device dropdown, `compile: false` for BLOCKS —
+see [CHOOSING-HARDWARE.md](CHOOSING-HARDWARE.md) for why. Choosing it puts
+an **Arduboy Console** button in the stage header, which opens the pane;
+opening a compiled `.hex` from 📂 Open goes straight there without choosing
+anything first. And since 2026-09-24 the C tab builds an **Arduboy2 sketch**:
+▶ Run sketch compiles it as C++ on the hosted service (stc-compiler's
+`arduboy` target) and hands the image to the same console. There is a
+starter ("Arduboy: move a square").
 
 It is **not** a Circuits surface. The console has its own display and
 buttons; the circuit solver is a different pane with a different job. What
@@ -140,7 +143,8 @@ circuit is possible on that contract — nothing does it yet.
 
 ## What is not here
 
-**Anything to do with source.** Arduboy games *are* published with source —
+**Blocks for the Arduboy.** A sketch compiles (above); blocks do not. Arduboy
+games *are* published with source —
 ArduboyWorks is MIT — but that source is C++ using immediate-mode drawing
 (`clear()`, `drawBitmap()`, `display()`, sixty times a second) with no
 scene graph. MakeCode Arcade mapped onto Scratch sprites because it *has*

@@ -252,7 +252,7 @@ export const DEVICES = Object.freeze([
     // (no emitter writes Arduboy2 code). What it does take is an existing .hex, or an Arduboy2
     // SKETCH from the C tab, compiled as C++ by the hosted service (avr-gcc is GPL and runs
     // there, never here) and run on this console.
-    dev('arduboy', 'Arduboy (run .hex)', AVR, 'arduboy', {
+    dev('arduboy', 'Arduboy', AVR, 'arduboy', {
         programmable: false,
         pickerCompile: false,
         pickerEmulator: 'arduboy',
