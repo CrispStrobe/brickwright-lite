@@ -259,3 +259,26 @@ test('the AVR attach survives firmware with no symbols and a project with no pin
         'symbols.variables threw on every firmware image');
     assert.doesNotMatch(attach, /\(symbols\.variables \|\| \[\]\)/);
 });
+
+test('a sketch on the bare chip gets a calm note, not the red improvised-board alert', () => {
+    const src = read('components/tw-pseudocode/debug-panel.jsx');
+    // The alert is for a BLOCKS program whose example circuit the inferred
+    // bench could be mistaken for; firmware has no example to be mistaken for.
+    assert.match(src, /const inferredBoard = this\.state\.boardSource === 'inferred' && !this\.state\.firmwareName;/);
+    assert.match(src, /const bareChipFirmware = this\.state\.boardSource === 'inferred' && !!this\.state\.firmwareName;/);
+    assert.match(src, /\{bareChipFirmware \? \(\s*<div data-bare-chip-note role="note"/);
+    assert.equal(src.split('firmwareBareChip:').length - 1, 2, 'the note is not in both locales');
+});
+
+test('the way back from a running image is a labelled button, in both locales', () => {
+    const src = read('components/tw-pseudocode/debug-panel.jsx');
+    const chip = src.slice(src.indexOf('<span data-firmware-chip'));
+    const block = chip.slice(0, chip.indexOf('</span>'));
+    assert.match(block, /data-firmware-back/);
+    assert.match(block, /onClick=\{\(\) => this\.onFirmwareClear\(\)\}/);
+    assert.match(block, /\{this\.tx\('firmwareBack'\)\}/, 'the button says where it goes, not just ✕');
+    assert.doesNotMatch(block, /title=\{'/, 'no hard-coded English tooltip');
+    for (const key of ['firmwareRunning', 'firmwareBack', 'firmwareBackTitle']) {
+        assert.equal(src.split(`${key}:`).length - 1, 2, `${key} is not in both locales`);
+    }
+});
