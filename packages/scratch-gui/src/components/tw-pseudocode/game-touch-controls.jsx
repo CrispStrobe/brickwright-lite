@@ -64,7 +64,10 @@ TouchButton.propTypes = {
 };
 
 const GameTouchControls = ({gameKey, vm}) => {
-    const profile = React.useMemo(() => gameTouchProfileFor(gameKey), [gameKey]);
+    // This pane has no locale prop — bw-i18n.js lists it among those — so the
+    // reader's language is the browser's, and the hint is looked up with it.
+    const locale = browserLocale();
+    const profile = React.useMemo(() => gameTouchProfileFor(gameKey, locale), [gameKey, locale]);
     const touchCapable = typeof navigator !== 'undefined' &&
         (navigator.maxTouchPoints > 0 ||
             (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches));
