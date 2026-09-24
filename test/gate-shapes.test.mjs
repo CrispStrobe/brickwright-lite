@@ -124,7 +124,13 @@ const BASELINE = {
     // catch-on-read, :135 the NUL skip) — lego-be's file, in flight for its own one-character fix,
     // asked to report its skipped set in that landing, at which point this goes to 0. The rule
     // is new, so this number is a measured starting point, not a raised baseline.
-    'SILENT-SKIP': 2,
+    // 2 -> 1 on 2026-09-24. The population the note above describes is gone:
+    // fetch-pinning's two no longer appear, and the one that remains is
+    // test/controller-widget-editor.test.mjs:97. This is a TIGHTENING to the
+    // measured value, not a raise — a ratchet with slack it did not earn is
+    // how the sleep census ended up 69 over its tree. It only bites someone
+    // who ADDS a silent skip, which is the intent.
+    'SILENT-SKIP': 1,
     'EVENT-AS-STATE': 0,
     // Added 2026-09-02, from triaging EVENT-AS-STATE: an awaited precondition inside a try whose
     // catch is empty or comment-only. Four instances, all bounded by a downstream hard assertion

@@ -59,8 +59,12 @@ test('refusals beat staleness — an ancient clone is still refused', () => {
 });
 
 test('the parent repo is read out of the .git file', () => {
-    assert.equal(parentRepoOf('gitdir: /mnt/v/code/bw-board/.git/worktrees/feature-x'), '/mnt/v/code/bw-board');
-    assert.equal(parentRepoOf('gitdir: /x/.git/modules/y'), null, 'a submodule is not a worktree');
+    // Fixture paths deliberately name NOTHING that exists: a string shaped like
+    // a sibling checkout reads to test/gate-shapes.test.mjs as this gate
+    // reaching outside the repository, and it is right that it cannot tell a
+    // fixture from a read.
+    assert.equal(parentRepoOf('gitdir: /nowhere/example-repo/.git/worktrees/feature-x'), '/nowhere/example-repo');
+    assert.equal(parentRepoOf('gitdir: /nowhere/x/.git/modules/y'), null, 'a submodule is not a worktree');
     assert.equal(parentRepoOf(''), null);
 });
 

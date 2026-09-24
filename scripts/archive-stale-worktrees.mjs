@@ -140,10 +140,20 @@ if (RUN) {
     const now = Date.now();
 
     const report = [];
+    const unreadable = [];
     for (const name of readdirSync(dir).sort()) {
         const full = path.join(dir, name);
         let st;
-        try { st = statSync(full); } catch { continue; }
+        try {
+            st = statSync(full);
+        } catch (e) {
+            // REPORTED, not skipped in silence. An entry we cannot stat is a
+            // fact about the tree — it may be a dangling symlink, or a
+            // permission we do not have — and a tool that deletes things must
+            // not quietly narrow its own field of view.
+            unreadable.push({name, error: String(e.code || e.message)});
+            continue;
+        }
         if (!st.isDirectory()) continue;
         const gitPath = path.join(full, '.git');
         const gitKind = existsSync(gitPath)
@@ -155,6 +165,10 @@ if (RUN) {
     }
 
     const toArchive = report.filter(r => r.action === 'archive');
+    if (unreadable.length && !flag('json')) {
+        console.log(`\n  UNREADABLE (${unreadable.length}) — not examined, and therefore not archived`);
+        for (const u of unreadable.slice(0, 8)) console.log(`    ${u.name} — ${u.error}`);
+    }
     if (!flag('json')) {
         console.log(`${report.length} director(ies) under ${dir}`);
         for (const g of ['archive', 'skip', 'refuse']) {
