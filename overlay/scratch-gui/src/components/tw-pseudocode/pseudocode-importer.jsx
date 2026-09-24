@@ -11,7 +11,7 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // splitting.
 import {asmExamplesFor} from '../../lib/bw-asm/examples.js';
 import {
-    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS,
+    requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestRiscvCBuild, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS,
     runDosToolchain
 } from '../../lib/bw-asm/assemble-route.js';
 import {
@@ -272,6 +272,13 @@ const L10N = {
         runC8086Failed: (r, m) => `The 8086 C route (${r}) could not run: ${m}`,
         runC8086Empty: 'Write some C first.',
         runC8086Route: 'in this browser',
+        runCRiscv: '▶ Run C on RISC-V',
+        runCRiscvTitle: 'Compile this C on the hosted RISC-V compiler and run it on the RV32IMA console. Needs a configured compile endpoint; assembly runs in the browser with no service.',
+        runCRiscvBuilding: 'Compiling C for RISC-V on the hosted service…',
+        runCRiscvBuilt: (n) => `Built a ${n}-byte RISC-V image — booting the RV32IMA console…`,
+        runCRiscvRefused: (m) => `The RISC-V C compiler refused this program: ${m}`,
+        runCRiscvUnavailable: (m) => `The hosted RISC-V C compiler is unavailable: ${m}`,
+        runCRiscvEmpty: 'Write some C first.',
         // reference section headers
         h: {
             Structure: 'Structure', EventsHats: 'Events (hats)', Control: 'Control',
@@ -483,6 +490,13 @@ const L10N = {
         runC8086Failed: (r, m) => `Die 8086-C-Route (${r}) lief nicht: ${m}`,
         runC8086Empty: 'Schreibe zuerst C.',
         runC8086Route: 'in diesem Browser',
+        runCRiscv: '▶ C auf RISC-V ausführen',
+        runCRiscvTitle: 'Dieses C auf dem gehosteten RISC-V-Compiler übersetzen und auf der RV32IMA-Konsole ausführen. Benötigt einen konfigurierten Compile-Endpunkt; Assembler läuft im Browser ohne Dienst.',
+        runCRiscvBuilding: 'Übersetze C für RISC-V auf dem gehosteten Dienst…',
+        runCRiscvBuilt: (n) => `${n}-Byte-RISC-V-Abbild erzeugt — starte die RV32IMA-Konsole…`,
+        runCRiscvRefused: (m) => `Der RISC-V-C-Compiler hat dieses Programm abgelehnt: ${m}`,
+        runCRiscvUnavailable: (m) => `Der gehostete RISC-V-C-Compiler ist nicht verfügbar: ${m}`,
+        runCRiscvEmpty: 'Schreibe zuerst C.',
         // reference section headers
         h: {
             Structure: 'Struktur', EventsHats: 'Events (Hats)', Control: 'Steuerung',
@@ -933,6 +947,7 @@ class PseudocodeImporter extends React.Component {
         this.flashMicrobitViaSwd = this.flashMicrobitViaSwd.bind(this);
         this.runPseudocodeOn8086 = this.runPseudocodeOn8086.bind(this);
         this.runCOn8086 = this.runCOn8086.bind(this);
+        this.runCOnRiscv = this.runCOnRiscv.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
         this.saveCodeFile = this.saveCodeFile.bind(this);
         this._autosaveTimer = null;
@@ -2228,6 +2243,42 @@ class PseudocodeImporter extends React.Component {
             buffers: {...st.buffers, asm: out.asm || st.buffers.asm},
             status: this.L.runC8086Built(out.bytes.length, routeName) + warn
         }));
+    }
+
+    /**
+     * ▶ Run C on RISC-V — the C counterpart of the RV32IM assembler's ▶.
+     *
+     * C for rv32 needs a real cross-compiler, too heavy for the browser, so this
+     * posts the C to the HOSTED compile service (assemble-route's
+     * `requestRiscvCBuild`, client lib/bw-debug/riscv-compile.js). The service
+     * returns the SAME {entry, segments} image the local assembler produces, so
+     * it boots the SAME `bw-asm-rom-ready` → debug-panel → attachRiscV32 path (a
+     * `format: 'riscv'` detail). With no BW_RISCV_CC_ENDPOINT configured the
+     * route REFUSES by name — the status says so honestly, assembly still runs.
+     */
+    async runCOnRiscv () {
+        const source = this.state.buffers.c || '';
+        if (!source.trim()) { this.setState({status: this.L.runCRiscvEmpty}); return; }
+        this.setState({busy: true, status: this.L.runCRiscvBuilding, output: null});
+        let out;
+        try {
+            out = await requestRiscvCBuild({source});
+        } catch (e) {
+            // 'transport' is the missing/unreachable service (not the user's
+            // fault); 'source' is a compile error naming the line.
+            this.setState({busy: false, status: e.reason === 'source'
+                ? this.L.runCRiscvRefused(e.message)
+                : this.L.runCRiscvUnavailable(e.message)});
+            return;
+        }
+        const detail = {rom: null, image: out.image, listing: null, target: 'riscv32',
+            slotId: 'riscv', profile: 'riscv', format: 'riscv'};
+        try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        const bytes = out.image.segments.reduce((n, s) => n + s.bytes.length, 0);
+        this.setState({busy: false, status: this.L.runCRiscvBuilt(bytes)});
     }
 
     /**
@@ -4640,6 +4691,19 @@ class PseudocodeImporter extends React.Component {
                                 title={this.L.runC8086Title}
                                 style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                 {this.L.runC8086}
+                            </button>
+                        ) : null}
+                    {/* The RISC-V C ▶. Unlike the 8086 (local) route, C for rv32
+                        compiles on the HOSTED service — the button is offered so
+                        the route is reachable, and it refuses honestly in the
+                        status line until BW_RISCV_CC_ENDPOINT is configured. */}
+                    {this.state.lang === 'c'
+                     && asmTargetForDevice(this.currentDevice()) === 'riscv32' ? (
+                            <button onClick={this.runCOnRiscv} disabled={this.state.busy}
+                                data-testid="bw-run-c-riscv"
+                                title={this.L.runCRiscvTitle}
+                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                {this.L.runCRiscv}
                             </button>
                         ) : null}
                     {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (
