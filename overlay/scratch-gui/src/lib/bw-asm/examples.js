@@ -35,6 +35,7 @@
 // written here (the 8255 pin panel, the keyboard, mode 13h). Importing the
 // named export meant those shipped in the file and were offered NOWHERE --
 // the ASM tab, the gate and the local-assembly list all read this.
+import {sketchBoardFor} from '../bw-debug/arduino-sketch.js';
 import I8086_ALL, {I8086_EXAMPLES} from './examples-i8086.js';
 
 /**
@@ -419,6 +420,159 @@ int main(void) {
 export function riscvCExamplesFor (device) {
     const d = String(device || '').toLowerCase();
     return (/^riscv(32)?$/.test(d) || /rv32/.test(d)) ? RISCV_C : [];
+}
+
+/**
+ * Arduino C++ starter sketches for the C tab's ▶ Run sketch on the AVR boards.
+ * Each one uses something the blocks reader cannot represent -- that is why
+ * the sketch route exists -- and prints what it did over Serial, so the
+ * debugger's serial console shows it working. `serial: true` sketches need a
+ * hardware USART, which the ATtiny85/88 do not have; those boards get only
+ * the sketches that show their work on a pin.
+ */
+const ARDUINO_SKETCHES = [
+    {
+        id: 'ino-hello', label: 'Hello, Serial', labelDe: 'Hallo, Serial',
+        serial: true,
+        source: `// Serial, F() and a counter: the Arduino "hello world".
+// Open the debugger's serial console to see the output.
+unsigned long count = 0;
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println(F("Hello from an Arduino sketch!"));
+  pinMode(LED_BUILTIN, OUTPUT);
+}
+
+void loop() {
+  count++;
+  Serial.print("loop ");
+  Serial.println(count);
+  digitalWrite(LED_BUILTIN, count % 2);   // blink along
+  delay(500);
+}
+`
+    },
+    {
+        id: 'ino-string', label: 'String functions', labelDe: 'String-Funktionen',
+        serial: true,
+        source: `// The String class: everything the block version of the
+// string lessons could not do -- case, search, substring, toInt.
+void setup() {
+  Serial.begin(9600);
+  String text = "Hello, Arduino";
+  Serial.println(text.length());               // 14
+  Serial.println(text.indexOf("Arduino"));     // 7
+  Serial.println(text.substring(7));           // Arduino
+  String shout = text;
+  shout.toUpperCase();
+  Serial.println(shout);                       // HELLO, ARDUINO
+  Serial.println(text.startsWith("Hell") ? "starts with Hell" : "no");
+  String number = "123";
+  Serial.println(number.toInt() + 1);          // 124
+  Serial.println(String(3.14159, 3));          // 3.142
+  text.replace("Arduino", "world");
+  Serial.println(text);                        // Hello, world
+}
+
+void loop() {}
+`
+    },
+    {
+        id: 'ino-class', label: 'A class: two blinkers, no delay()', labelDe: 'Eine Klasse: zwei Blinker ohne delay()',
+        serial: false,
+        source: `// A class with its own state, and millis() instead of delay(),
+// so two LEDs blink at different rates at the same time.
+class Blinker {
+ public:
+  Blinker(uint8_t pin, unsigned long period) : pin_(pin), period_(period) {}
+  void begin() { pinMode(pin_, OUTPUT); }
+  void update(unsigned long now) {
+    if (now - last_ >= period_) {
+      last_ = now;
+      state_ = !state_;
+      digitalWrite(pin_, state_);
+    }
+  }
+ private:
+  uint8_t pin_;
+  unsigned long period_;
+  unsigned long last_ = 0;
+  bool state_ = false;
+};
+
+Blinker fast(LED_BUILTIN, 200);
+Blinker slow(3, 700);
+
+void setup() {
+  fast.begin();
+  slow.begin();
+}
+
+void loop() {
+  unsigned long now = millis();
+  fast.update(now);
+  slow.update(now);
+}
+`
+    },
+    {
+        id: 'ino-template', label: 'Templates and a helper defined later', labelDe: 'Templates und eine später definierte Hilfsfunktion',
+        serial: true,
+        source: `// A template, and report() called before it is defined: the
+// Arduino build writes its prototype for you, as the IDE does.
+template <typename T>
+T largest(T a, T b) { return a > b ? a : b; }
+
+void setup() {
+  Serial.begin(9600);
+  report("int", largest(3, 9));
+  report("long", largest(100000L, 7L));
+}
+
+void loop() {}
+
+void report(const char *what, long value) {
+  Serial.print(what);
+  Serial.print(": ");
+  Serial.println(value);
+}
+`
+    },
+    {
+        id: 'ino-eeprom', label: 'EEPROM: count the resets', labelDe: 'EEPROM: Neustarts zählen',
+        serial: true,
+        source: `// The EEPROM library keeps a byte across resets.
+#include <EEPROM.h>
+
+void setup() {
+  Serial.begin(9600);
+  byte boots = EEPROM.read(0);
+  if (boots == 255) boots = 0;      // a fresh chip reads 0xFF
+  boots++;
+  EEPROM.write(0, boots);
+  Serial.print("This sketch has started ");
+  Serial.print(boots);
+  Serial.println(" time(s).");
+}
+
+void loop() {}
+`
+    }
+];
+
+/** Devices whose sketches have a hardware USART for Serial. */
+const NO_USART = new Set(['attiny85', 'attiny88']);
+
+/**
+ * Arduino C++ starters for an AVR device, or [] for any other device. Which
+ * devices is the sketch route's own table (sketchBoardFor), not a second list
+ * here; this only drops the Serial sketches on parts without a USART.
+ */
+export function arduinoSketchExamplesFor (device) {
+    if (!sketchBoardFor(device)) return [];
+    return NO_USART.has(String(device).toLowerCase())
+        ? ARDUINO_SKETCHES.filter(ex => !ex.serial) : ARDUINO_SKETCHES;
 }
 
 export default asmExamplesFor;

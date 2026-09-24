@@ -1615,7 +1615,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
-        const stc = projectStc(null);
+        // A compiled sketch can run in a project that declares no pins at all
+        // (nothing in the C tab writes PIN lines), and inferNetlist reads
+        // `stc.pins` unguarded. An empty declaration is the honest input: the
+        // inferred bench is then the bare MCU, and the pins panel still shows
+        // every level the sketch drives.
+        const declared = projectStc(null);
+        const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
 
         // F_CPU from the compile response, never hard-coded. The compile
         // endpoint owns the clock and echoes it so the simulator does not
@@ -1667,9 +1673,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // Same value-resolver and variable wiring as the emu8051 path.
         setValueResolver((blockId) => runner.valuesAtBlock(blockId));
         if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
+        // Firmware with no symbol table (a picked .hex, a compiled sketch) and
+        // a project with no pin declarations are both legitimate here: the
+        // image runs, pins/board/serial/stepping work, and only the
+        // block-level views have nothing to say. `symbols.variables` on a
+        // null table threw before the first instruction ran.
         symbols = built.symbols;
-        variableTable = (symbols.variables || []).filter((v) => v.space);
-        pinTable = stc.pins || [];
+        variableTable = (symbols && symbols.variables || []).filter((v) => v.space);
+        pinTable = (stc && stc.pins) || [];
 
         target = avrTarget;
         session = createDebugSession(target, {
@@ -2995,8 +3006,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 throw new Error(`${fw.name}: this engine takes Intel HEX (a text file of ':' records) — ` +
                     'a raw .bin cannot say where its bytes live');
             }
+            // f_cpu from the firmware when it says (a compiled sketch knows
+            // its board's crystal: 8 MHz on the ATtinys), else the engine's
+            // default. A picked .hex file says nothing and keeps the default.
             return { hex: text, image: null, symbols: null, c: null,
-                bytes: text.length, f_cpu: null, format: 'ihx' };
+                bytes: text.length, f_cpu: fw.fCpu || null, format: 'ihx' };
         }
         if (kind === 'rp2040js' || kind === 'stm32f0') {
             const bytes = fw.bytes || new TextEncoder().encode(fw.text || '');
