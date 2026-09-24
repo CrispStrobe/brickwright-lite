@@ -108,7 +108,12 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),
         // The hosted RISC-V C-compile endpoint (services/riscv-cc/). Null unless a
         // deployment is configured, which keeps the C route an honest refusal.
-        'process.env.BW_RISCV_CC_ENDPOINT': JSON.stringify(process.env.BW_RISCV_CC_ENDPOINT || null),
+        // RISC-V C compiles IN THE BROWSER (bw-board's riscv-cc-wasm) — no
+        // endpoint needed. This is only the FALLBACK the C route uses if the
+        // in-browser compiler cannot load: stc-compiler's hosted /compile, which
+        // riscv-compile.js tolerates. Override with BW_RISCV_CC_ENDPOINT.
+        'process.env.BW_RISCV_CC_ENDPOINT':
+            JSON.stringify(process.env.BW_RISCV_CC_ENDPOINT || 'https://stc-compiler.vercel.app'),
         'process.env.BW_VERSION': JSON.stringify(buildVersion()),
         'process.env.BW_BUILD_TIME': JSON.stringify(new Date().toISOString()),
         'process.env.DEBUG': Boolean(process.env.DEBUG),
