@@ -349,7 +349,9 @@ export const DEVICES = Object.freeze([
         // (requestRiscvCBuild compiles in-browser). Plus running a pre-linked
         // demo or a dropped ELF. `pickerCompile` stays false because that flag
         // means the HOSTED sb3/stc C road, which is not this device's path.
-        programmable: false,
+        // Programmable (its own matrix column) since 2026-09-25: it was marked a
+        // console while both roads shipped, so the matrix had no RISC-V column.
+        programmable: true,
         pickerCompile: false,
         pickerEmulator: 'riscv32',
         sim: [eng('riscv32', ['elf', 'bin'], {
@@ -755,6 +757,33 @@ export const CELLS = Object.freeze({
             lowered: [via('asm')]
         },
         micropython: {native: no('no-port', 'no MicroPython for the 8086'), lowered: [via('asm'), via('c')]}
+    },
+    // RISC-V: two local roads, both measured in bw-board (riscv-asm.test.mjs
+    // runs assembled programs on the core; riscv-cc-wasm.test.mjs compiles C
+    // with shecc in wasm and runs it), no network. Nothing lowers to it YET:
+    // sb3-creator's generateC has no RISC-V core, so the dialect (and every
+    // language read into it) has no road here. N12 is that road -- a RISC-V
+    // console profile in generateC whose C the same shecc compiles.
+    riscv32: {
+        pseudocode: {native: AST, lowered: [viaOpen('c', 'N12')]},
+        python: {native: no('no-port', 'no Python port wired for this RV32IMA SoC'), lowered: [viaOpen('c', 'N12')]},
+        javascript: {native: no('no-port', 'no JavaScript engine wired for this RV32IMA SoC'), lowered: [viaOpen('c', 'N12')]},
+        c: {
+            native: shipped('elf', 'shecc (wasm) in the browser; hosted gcc fallback', 'local', {
+                note: 'shecc (BSD-2-Clause) compiles the C subset it supports, straight to an RV32IM '
+                    + 'ELF over the write/exit syscalls this SoC services; the ▶ Run C on RISC-V button, '
+                    + 'bw-board riscv-cc-wasm.test.mjs'
+            }),
+            lowered: []
+        },
+        basic: {native: no('no-port', 'no BASIC interpreter wired for this RV32IMA SoC'), lowered: [viaOpen('c', 'N12')]},
+        asm: {
+            native: shipped('elf', 'riscv-asm.js (RV32IM, local)', 'local', {
+                note: 'bw-board riscv-asm.test.mjs checks encodings against the ISA layout and runs programs'
+            }),
+            lowered: []
+        },
+        micropython: {native: no('no-port', 'no MicroPython port wired for this RV32IMA SoC'), lowered: [viaOpen('c', 'N12')]}
     },
     samd51: {
         pseudocode: {

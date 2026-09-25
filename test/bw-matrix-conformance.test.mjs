@@ -240,10 +240,22 @@ test('the local C compilers and the C row agree', () => {
         if (isNativeNull(c) || c.status !== STATUS.SHIPPED) continue;
         const viaRoute = localC.has(asmTargetForDevice(d.id));
         const viaSdcc = sdccTargets.includes(d.id);
-        assert.equal(c.where === 'local', viaRoute || viaSdcc,
+        // RISC-V's C has its own road, not LOCAL_C_TARGETS (which picks the
+        // SmallerC/NASM chain): requestRiscvCBuild, in-browser by default.
+        const viaRiscv = asmTargetForDevice(d.id) === 'riscv32' && riscvLocalC;
+        assert.equal(c.where === 'local', viaRoute || viaSdcc || viaRiscv,
             `${d.id}: matrix says C is ${c.where}; LOCAL_C_TARGETS ${viaRoute ? 'has' : 'lacks'} it, sdcc-wasm ${viaSdcc ? 'has' : 'lacks'} it`);
     }
 });
+
+// requestRiscvCBuild compiles in the browser unless told otherwise: its default
+// route is 'browser' and that branch imports the shecc wasm compiler.
+const riscvLocalC = (() => {
+    const start = assembleRoute.indexOf('export async function requestRiscvCBuild (');
+    if (start < 0) return false;
+    const head = assembleRoute.slice(start, assembleRoute.indexOf('\n}\n', start));
+    return /route = 'browser'/.test(head) && /import\(\s*\/\* webpackChunkName: "riscv-cc-wasm" \*\/ 'bw-board\/riscv-cc-wasm\.js'\)/.test(head);
+})();
 
 // ---- the C emitter ----------------------------------------------------------
 
