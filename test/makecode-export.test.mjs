@@ -293,3 +293,36 @@ test('every committed Calliope fixture survives the whole loop', {skip: canCompi
         assert.doesNotMatch(exported.ts, /unsupported/, file);
     }
 });
+
+// Census findings, 2026-09-25 (scripts/makecode-census.mjs): the dialect's truth
+// is a number (1/0), MakeCode's is a boolean, and Static TypeScript will not mix
+// them — `input.buttonIsPressed(Button.A) > 0` and `A = "false"` were refused.
+const tsOfProgram = body => projectToMakeCodeTs(new SB3Creator().parse(`DEVICE MICROBIT\nWHEN flag clicked:\n${body}`)).ts;
+
+test('"read button_a > 0" asks the boolean directly; "= 0" negates it', {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+    const ts = tsOfProgram('  FOREVER:\n    IF read button_a > 0 THEN:\n      show number 1\n    IF read button_b = 0 THEN:\n      show number 2\n');
+    assert.match(ts, /if \(input\.buttonIsPressed\(Button\.A\)\) \{/);
+    assert.match(ts, /if \(\(!input\.buttonIsPressed\(Button\.B\)\)\) \{/);
+    assert.doesNotMatch(ts, /buttonIsPressed\([^)]*\)\s*[<>=]/, 'a boolean compared with a number');
+});
+
+test('a boolean stored in a variable is stored as the dialect\'s 1/0', {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+    const ts = tsOfProgram('  set A to read button_a\n  set B to false\n  set C to true\n');
+    assert.match(ts, /A = \(input\.buttonIsPressed\(Button\.A\) \? 1 : 0\)/);
+    assert.match(ts, /\bB = 0\b/);
+    assert.match(ts, /\bC = 1\b/);
+    assert.doesNotMatch(ts, /"(true|false)"/, 'a boolean became a string');
+});
+
+test('MakeCode\'s `let A = false` imports as the number 0, and survives the way back', () => {
+    const {code} = microbitToPseudocode('let A = false\nlet B = true\nbasic.forever(function () {\n    A = input.buttonIsPressed(Button.A)\n})\n');
+    assert.match(code, /set A to 0/);
+    assert.match(code, /set B to 1/);
+    assert.doesNotMatch(code, /set [AB] to (true|false)/);
+});
+
+test('a scroll interval survives both ways (it was dropped without a word)', {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+    assert.match(tsOfProgram('  scroll text "BW" delay 80 ms\n'), /basic\.showString\("BW", 80\)/);
+    assert.match(tsOfProgram('  scroll text "BW" delay 150 ms\n'), /basic\.showString\("BW"\)/, '150 is MakeCode\'s default');
+    assert.match(microbitToPseudocode('basic.showString("Hi", 60)\n').code, /scroll text "Hi" delay 60 ms/);
+});
