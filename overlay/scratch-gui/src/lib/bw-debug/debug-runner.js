@@ -76,6 +76,7 @@ import {
     LOCAL_8051_TARGETS, compileTargetFor, compileFormatFor,
     shippedImageFor, provenanceSentence
 } from './shipped-images.js';
+import { t as cpmSystemT } from './cpm-system-l10n.js';
 import { localCompilerRequest, localToolchainEnabled } from '../sdcc-wasm/toolchain-source.js';
 
 /**
@@ -1094,7 +1095,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         };
     }
 
-    /** The document language, for the one sentence this module says in words. */
+    /** The document language, for the sentences this module says in words
+     *  (the provenance line and the CP/M-system status strings). */
     function uiLang() {
         try {
             const html = typeof document !== 'undefined' && document.documentElement;
@@ -2335,7 +2337,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const isCpmSystem = bootMedia && bootMedia.profile === 'cpm-system';
         const isCom = !isCpmSystem && bootMedia && (bootMedia.slot === 'com' || bootMedia.profile === 'cpm');
         if (isCpmSystem) {
-            setStatus('attaching', 'booting CP/M 2.2…');
+            setStatus('attaching', cpmSystemT(uiLang(), 'cpm-system.booting'));
             const fetchRom = async (p) => {
                 const r = await fetch(new URL(p, document.baseURI).href);
                 if (!r.ok) throw new Error(`Failed to load ${p}: HTTP ${r.status}`);
@@ -2357,7 +2359,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 files[cpmFileName(bootMedia.name)] = (await resolveMediaImage(bootMedia)).bytes;
             }
             targetOpts.cpmSystem = { ccpBdos, bios, files };
-            readyMsg = `CP/M 2.2 — DIR at the A> prompt${files['BBCBASIC.COM'] ? ', or run BBCBASIC' : ''}`;
+            readyMsg = cpmSystemT(uiLang(), 'cpm-system.ready') +
+                (files['BBCBASIC.COM'] ? cpmSystemT(uiLang(), 'cpm-system.ready.bbcbasic') : '');
         } else if (isCom) {
             setStatus('attaching', `booting ${bootMedia.name || '.com'} over the CP/M shim…`);
             targetOpts.cpm = { com: (await resolveMediaImage(bootMedia)).bytes };
