@@ -46,13 +46,15 @@ import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
  * it cannot: Arcade builds a .uf2 only for a chosen board (`hwVariant`, see
  * ARCADE_HARDWARE), and the importer's download has no board picker yet, so a
  * board-less native Arcade build stays refused by name (NO_BASE_HEX).
+ * `name` is the product's own name (a proper noun, the same in every language),
+ * which is why it is not a `label` for the i18n rule to count.
  */
 export const MAKECODE_BOARDS = Object.freeze({
-    microbit: {label: 'micro:bit', firmware: 'hex'},
-    calliopemini: {label: 'Calliope mini', firmware: 'hex'},
-    ev3: {label: 'LEGO MINDSTORMS EV3', firmware: 'uf2'},
-    adafruit: {label: 'Circuit Playground Express', firmware: 'uf2'},
-    arcade: {label: 'Arcade', firmware: null}
+    microbit: {name: 'micro:bit', firmware: 'hex'},
+    calliopemini: {name: 'Calliope mini', firmware: 'hex'},
+    ev3: {name: 'LEGO MINDSTORMS EV3', firmware: 'uf2'},
+    adafruit: {name: 'Circuit Playground Express', firmware: 'uf2'},
+    arcade: {name: 'Arcade', firmware: null}
 });
 export const MAKECODE_TARGETS = Object.freeze(Object.keys(MAKECODE_BOARDS));
 
