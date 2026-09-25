@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import {
     runCpmProgram, runAckCpmOutput
 } from '../overlay/scratch-gui/src/lib/bw-debug/cpm-compile.js';
-import {createCpm80, BDOS} from '../overlay/scratch-gui/src/lib/bw-debug/cpm-z80.js';
+import {createCpm80, BDOS, cpmFileName} from '../overlay/scratch-gui/src/lib/bw-debug/cpm-z80.js';
 import {
     CPM_TOOLCHAINS, runCpmToolchain, DOS_TOOLCHAINS
 } from '../overlay/scratch-gui/src/lib/bw-debug/dos-toolchain-routes.js';
@@ -338,4 +338,41 @@ test('runCpmToolchain runs a produced .COM through the CP/M bench', async () => 
     // an unknown route, or non-bytes, is refused
     await assert.rejects(() => runCpmToolchain('nope', com), /unknown CP\/M toolchain/);
     await assert.rejects(() => runCpmToolchain('sdcc-z80-cpm', 'notbytes'), /produced \.COM bytes/);
+});
+
+// ---------------------------------------------------------------------------
+// The 8.3 name a human title becomes.
+//
+// Found by driving the GUI, not by reading the code: importing a machine titled
+// "CP/M 2.2 live" from the Machine Manager and clicking Run produced
+//   error  not a valid 8.3 CP/M filename: CPM2.2LI.COM
+// and the machine never booted. The old derivation stripped illegal characters
+// but KEPT every dot, then appended '.COM' to the first eight of what was left
+// — so any title carrying a dot of its own produced two.
+test('a human title becomes a legal CP/M 8.3 name, dots and all', () => {
+    // The case that broke the boot.
+    assert.equal(cpmFileName('CP/M 2.2 live'), 'CPM22LIV.COM');
+
+    // One dot, at most 8 before it and 3 after, uppercase A-Z0-9 only — for
+    // every input, which is the property the inline version did not have.
+    const legal = /^[A-Z0-9]{1,8}\.[A-Z0-9]{1,3}$/;
+    for (const name of [
+        'CP/M 2.2 live', 'bbcbasic.com', '', null, undefined, 'FOO', '.profile',
+        'trailing.', 'my prog.dat', 'x.toolongext', 'v1.2.3 build', '...',
+        'a'.repeat(40), '  ', '____', 'ünïcödé.cöm'
+    ]) {
+        assert.match(cpmFileName(name), legal, `${JSON.stringify(name)} is not 8.3`);
+    }
+
+    // A real extension survives; a tail too long to be one is part of the name.
+    assert.equal(cpmFileName('bbcbasic.com'), 'BBCBASIC.COM');
+    assert.equal(cpmFileName('my prog.dat'), 'MYPROG.DAT');
+    assert.equal(cpmFileName('x.toolongext'), 'XTOOLONG.COM');
+    assert.equal(cpmFileName('data', 'DAT'), 'DATA.DAT');
+    // Nothing usable left → a name, never an empty one.
+    assert.equal(cpmFileName('...'), 'PROG.COM');
+
+    // What the FCB reader in this same module would read back is the same
+    // shape it writes, which is why the two live together.
+    assert.equal(cpmFileName('BBCBASIC.COM'), 'BBCBASIC.COM'.toUpperCase());
 });
