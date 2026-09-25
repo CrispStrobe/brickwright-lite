@@ -39,6 +39,7 @@ import {
     setCondition, conditionOf, allConditions
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
+import {cpmFileName} from './cpm-z80.js';
 import { canRecordDebugInput } from 'bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
 import {createDebugFoundation, subscribeDebugTargetEvents} from './debug-foundation.js';
@@ -2348,10 +2349,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const bbc = await fetchRom('static/roms/bbcbasic.com').catch(() => null);
             if (bbc) files['BBCBASIC.COM'] = bbc;
             if (bootMedia.bytes || bootMedia.url) {
-                // 8.3, uppercase, no path — CP/M's own name shape.
-                const raw = (bootMedia.name || 'PROG.COM').toUpperCase().replace(/[^A-Z0-9.]/g, '');
-                const name = /\.[A-Z0-9]{1,3}$/.test(raw) ? raw : `${raw.slice(0, 8) || 'PROG'}.COM`;
-                files[name] = (await resolveMediaImage(bootMedia)).bytes;
+                // 8.3, uppercase, no path — CP/M's own name shape. The
+                // derivation lives in cpm-z80.js beside the FCB reader that has
+                // to match it; doing it inline here produced `CPM2.2LI.COM`
+                // from the title "CP/M 2.2 live" — two dots, rejected by the
+                // boot, and the machine never started.
+                files[cpmFileName(bootMedia.name)] = (await resolveMediaImage(bootMedia)).bytes;
             }
             targetOpts.cpmSystem = { ccpBdos, bios, files };
             readyMsg = `CP/M 2.2 — DIR at the A> prompt${files['BBCBASIC.COM'] ? ', or run BBCBASIC' : ''}`;
