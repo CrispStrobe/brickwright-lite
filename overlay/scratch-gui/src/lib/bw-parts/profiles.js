@@ -217,7 +217,10 @@ export const REFUSED = Object.freeze({
     host: [
         'arduino_mega', 'arduino_nano', 'arduino_uno', 'attiny85', 'attiny88',
         'eater6502', 'pi_pico', 'stc15_mcu', 'stm32f030', 'w65c02', 'z80',
-        'i8086', 'i8088', 'mcu'
+        'i8086', 'i8088', 'mcu',
+        // The MakeCode boards (bw-board #44): a MakeCode program drives them
+        // from the MakeCode pane's runtime bridge, not from the Code tab.
+        'calliopemini', 'circuit_playground_express', 'pybadge'
     ],
     'dip-surface': [
         'i8251', 'i8253', 'i8254', 'i8255', 'i8259', 'i8284', 'm6532', 'mc6850',
