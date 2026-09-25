@@ -350,6 +350,22 @@ export class BaseTranslator {
             // emits — becomes an explicit counter, because our REPEAT
             // takes a count and not a condition-with-a-variable.
             const counter = st.init && st.init.type === 'Declaration' ? st.init.decls[0] : null;
+            // `for (let i = 0; i < N; i++)` whose body never reads i IS our
+            // `REPEAT N` — and it is what the export writes for REPEAT, so reading
+            // it back as REPEAT keeps a round trip a fixed point (it drifted into
+            // a manual counter with a double negation before).
+            const isCount = counter && counter.init && counter.init.type === 'Number' && Number(counter.init.value) === 0 &&
+                st.test && st.test.type === 'Binary' && st.test.op === '<' &&
+                st.test.left && st.test.left.type === 'Identifier' && st.test.left.name === counter.name &&
+                st.update && st.update.type === 'Update' && st.update.op === '++' &&
+                st.update.argument && st.update.argument.name === counter.name &&
+                !JSON.stringify(st.body).includes(`"name":${JSON.stringify(counter.name)}`) &&
+                !JSON.stringify(st.test.right).includes(`"name":${JSON.stringify(counter.name)}`);
+            if (isCount) {
+                push(`REPEAT ${this.expr(st.test.right)}:`);
+                this.block(st.body, indent + 1, out);
+                return;
+            }
             if (counter) {
                 this.declared.add(counter.name);
                 push(`set ${this.varName(counter.name)} to ${counter.init ? this.expr(counter.init) : '0'}`);

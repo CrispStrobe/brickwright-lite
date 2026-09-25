@@ -76,7 +76,7 @@ test('blocks become idiomatic MakeCode, not a transcript', {skip: canCompile ? f
     assert.match(ts, /radio\.setGroup\(5\)/);
     assert.match(ts, /basic\.forever\(function \(\) \{/);
     assert.match(ts, /input\.acceleration\(Dimension\.X\)/);
-    assert.match(ts, /basic\.pause\(1 \* 1000\)/, 'our seconds are MakeCode\'s milliseconds');
+    assert.match(ts, /basic\.pause\(1000\)/, 'our seconds are MakeCode\'s milliseconds');
 });
 
 test('every shipped micro:bit example survives the round trip', {skip: canCompile ? false :
@@ -325,4 +325,43 @@ test('a scroll interval survives both ways (it was dropped without a word)', {sk
     assert.match(tsOfProgram('  scroll text "BW" delay 80 ms\n'), /basic\.showString\("BW", 80\)/);
     assert.match(tsOfProgram('  scroll text "BW" delay 150 ms\n'), /basic\.showString\("BW"\)/, '150 is MakeCode\'s default');
     assert.match(microbitToPseudocode('basic.showString("Hi", 60)\n').code, /scroll text "Hi" delay 60 ms/);
+});
+
+test('a round trip is a fixed point: exporting what was imported gives the same MakeCode, for every micro:bit example',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        // Two drifts the CLI's full-circle test found (2026-09-25): `let x = 0`
+        // gained a `x = 0` line per trip, and pause(1 * 1000) nested one more
+        // `/ 1000 * 1000` per trip. A fixed point rules out the whole class.
+        const dir = join(REPO, 'overlay', 'scratch-gui', 'examples');
+        const ids = readdirSync(dir).filter(d => existsSync(join(dir, d, 'program.bw')) &&
+            /^DEVICE\s+MICROBIT\b/im.test(readFileSync(join(dir, d, 'program.bw'), 'utf8')));
+        assert.ok(ids.length >= 10);
+        const drifted = [];
+        for (const id of ids) {
+            const ts1 = projectToMakeCodeTs(new SB3Creator().parse(example(id))).ts;
+            const ts2 = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(ts1).code)).ts;
+            if (ts2 !== ts1) drifted.push(id);
+        }
+        assert.deepEqual(drifted, []);
+    });
+
+test('radio group and power: one MakeCode call never resets the other (a program landed on the wrong channel)', () => {
+    // setGroup(5); setTransmitPower(3) used to import as "group 5 power 6" then
+    // "group 1 power 3" — the program ended on radio group 1.
+    const pair = microbitToPseudocode('radio.setGroup(5)\nradio.setTransmitPower(3)\n').code;
+    assert.match(pair, /radio on group 5 power 3/);
+    assert.doesNotMatch(pair, /group 1\b/);
+    assert.equal((pair.match(/radio on group/g) || []).length, 1, 'an adjacent pair is one statement');
+    // Apart, the later call carries the earlier value.
+    const apart = microbitToPseudocode('radio.setGroup(7)\nbasic.pause(10)\nradio.setTransmitPower(2)\n').code;
+    assert.match(apart, /radio on group 7 power 6[\s\S]*radio on group 7 power 2/);
+});
+
+test('a counted loop that never reads its counter is REPEAT; analog percent reads back as the percent', () => {
+    assert.match(microbitToPseudocode('for (let i = 0; i < 20; i++) {\n    basic.pause(50)\n}\n').code, /REPEAT 20:/);
+    assert.match(microbitToPseudocode('for (let i = 0; i < 5; i++) {\n    basic.showNumber(i)\n}\n').code, /set i to 0/,
+        'a loop that uses its counter keeps it');
+    const pct = microbitToPseudocode('pins.analogWritePin(AnalogPin.P2, Math.round(50 * 1023 / 100))\n').code;
+    assert.match(pct, /set pin P2 analog 50 %/);
+    assert.doesNotMatch(pct, /_mc/);
 });
