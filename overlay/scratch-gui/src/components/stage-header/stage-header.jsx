@@ -101,6 +101,7 @@ const viewForDock = dock => {
     if (dock === 'microbit') return 'microbit';
     if (dock === 'arcade') return 'arcade';
     if (dock === 'arduboy') return 'arduboy';
+    if (dock === 'makecode') return 'makecode';
     if (dock === 'controller') return 'controller';
     // 'top' and any other value default to scratch stage
     return 'scratch';

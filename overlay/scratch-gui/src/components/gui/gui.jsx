@@ -29,6 +29,8 @@ const GameTouchControls = React.lazy(() =>
 );
 const ArduboyPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-arduboy" */ '../tw-pseudocode/arduboy-pane.jsx'));
+const MakeCodeSimPane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-makecode-sim" */ '../tw-pseudocode/makecode-sim-pane.jsx'));
 const ControllerPanelView = React.lazy(() =>
     import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
 );
@@ -289,6 +291,9 @@ const GUIComponent = props => {
             // leave, so it opens only when the device says so.
             if (dock === 'arduboy' && props.vm?.runtime?.bwDeviceId !== 'arduboy' &&
                 !window.__bwArduboyPending) return 'top';
+            // The MakeCode simulator holds no program of its own across a
+            // reload: restoring its dock would show an empty pane.
+            if (dock === 'makecode' && !window.__bwMakeCodePending) return 'top';
             if (dock === 'arcade' && !['arcade', 'pybadge', 'pybadge-lc', 'samd51']
                 .includes(props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device)) return 'top';
             return dock;
@@ -319,7 +324,7 @@ const GUIComponent = props => {
                 // collapsed pane is indistinguishable from nothing loading
                 // (measured: the calculator's shipped layout, present in
                 // the DOM, invisible on screen).
-                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade') {
+                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade' || detail.value === 'makecode') {
                     setStagePaneVisible(true);
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                 }
@@ -774,7 +779,7 @@ const GUIComponent = props => {
         // controller/micro:bit (which paint their own 100vw overlay), hide the
         // editor and let the right pane fill the window.
         const stageFullScreen = isFullScreen && dockMode !== 'controller' && dockMode !== 'microbit' &&
-            dockMode !== 'arcade' && dockMode !== 'arduboy';
+            dockMode !== 'arcade' && dockMode !== 'arduboy' && dockMode !== 'makecode';
 
         return isPlayerOnly ? (
             <StageWrapper
@@ -1122,7 +1127,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
+                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' || dockMode === 'makecode' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -1142,6 +1147,12 @@ const GUIComponent = props => {
                                 }>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
                                         <MicrobitSimPane />
+                                    </div>
+                                </React.Suspense>
+                            ) : dockMode === 'makecode' ? (
+                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading MakeCode simulator…</div>}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
+                                        <MakeCodeSimPane />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'arduboy' ? (

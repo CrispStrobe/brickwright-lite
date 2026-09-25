@@ -49,11 +49,26 @@ test('an artefact is read as bytes, not as text', () => {
     assert.match(method, /new Uint8Array\(reader\.result\)/);
 });
 
-test('all three entry points share one lazily-loaded chunk', () => {
+test('all four entry points share one lazily-loaded chunk', () => {
     const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/index\.js'/g)]
         .map(m => m[1]);
-    assert.equal(chunks.length, 3, 'file import, share import and export');
-    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not three');
+    assert.equal(chunks.length, 4,
+        'file import, share import, export, and the ▶/⤓ MakeCode subject (blocks exported for pxt)');
+    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not four');
+});
+
+test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and ⤓ actions only', () => {
+    // pxt-runtime.js is small, but what it drives (the compiler worker and the
+    // target bundle, several MB) must not ride on the importer's chunk.
+    assert.doesNotMatch(source, /^import .*bw-makecode\/pxt-runtime\.js/m);
+    const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/pxt-runtime\.js'/g)]
+        .map(m => m[1]);
+    assert.equal(chunks.length, 2, 'run in the simulator, and build the firmware');
+    assert.deepEqual([...new Set(chunks)], ['bw-makecode-pxt']);
+    for (const [method, testid] of [['runInMakeCode ()', 'bw-makecode-run'], ['downloadMakeCodeFirmware ()', 'bw-makecode-firmware']]) {
+        assert.ok(scopeAfter(source, `async ${method} {`).includes('compileMakeCode('), `${method} does not compile`);
+        assert.match(source, new RegExp(`data-testid="${testid}"`), `no ${testid} button`);
+    }
 });
 
 test('costumes are handed over under the names compile() reads', () => {

@@ -619,7 +619,10 @@ export function exportToMakeCode (project, opts = {}) {
         'pxt.json': `${JSON.stringify({
             name,
             description: 'Exported from BrickWright',
-            dependencies: {core: '*', radio: '*'},
+            // MakeCode's own new-project set (its blocksprj template). It is also
+            // the set pxt-microbit ships a precompiled firmware base for, so the
+            // same files build a real .hex here (pxt-runtime.js) with no cloud.
+            dependencies: {core: '*', radio: '*', microphone: '*'},
             files: ['main.ts', 'main.blocks', 'pxt.json'],
             preferredEditor: 'tsprj'
         }, null, 4)}\n`,

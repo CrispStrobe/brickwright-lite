@@ -499,6 +499,20 @@ jobs:
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         timeout-minutes: 3
         run: npm run sync:picomicropython || echo "::warning::pico firmware sync failed — the twelve firmware-gated unit tests will skip by name"
+      # MakeCode's compiler + simulators (MIT, ~48 MB of sha256-pinned npm tarballs,
+      # never committed). Served under static/makecode by the editor build below, and
+      # needed by test/makecode-pxt-runtime (which SKIPS BY NAME without it).
+      - name: Restore the sha256-pinned MakeCode runtime tarballs from cache
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/makecode
+          # The four TARBALLS sha256s in scripts/sync-makecode-runtime.mjs; new bytes are a new key.
+          key: makecode-b0885ffb-d403926d-049331a7-e2c4c2a3
+      - name: Fetch the pinned MakeCode runtime (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 5
+        run: npm run sync:makecode || echo "::warning::MakeCode runtime sync failed — the MakeCode compile tests skip by name and the build will not offer it"
 
       # THE FPGA PACKER GATE NEEDS A PYTHON RUNTIME, AND IT IS NOT A DEPENDENCY.
       # test/fpga-pyodide-packer.test.mjs asserts that Apicula's gowin_pack,
@@ -889,6 +903,16 @@ jobs:
       - name: Fetch the Pico MicroPython firmware for the sim gate (tolerated absent)
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         run: npm run sync:picomicropython || echo "pico firmware sync failed — the execute gate will skip; the absent gate still runs"
+      - name: Restore the sha256-pinned MakeCode runtime tarballs from cache (browser)
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/makecode
+          key: makecode-b0885ffb-d403926d-049331a7-e2c4c2a3
+      - name: Fetch the pinned MakeCode runtime for the browser gates (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
+        timeout-minutes: 5
+        run: npm run sync:makecode || echo "MakeCode runtime sync failed — its browser checks will skip"
       - name: Build the editor
         id: build_editor_browser
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' && steps.browser_package_provenance.outcome == 'success' }}

@@ -1477,6 +1477,35 @@ MicroPython contributors.
 - **Source:** https://github.com/micropython/micropython
 - **Usage:** the Pico ▶ Run simulator (plan N3c).
 
+## Microsoft MakeCode (pxt-core, pxt-microbit, pxt-arcade) — MIT
+
+**Microsoft MakeCode** — its compiler (`pxt-core`), the micro:bit target
+(`pxt-microbit`) and the Arcade target (`pxt-arcade`) — compiles imported and
+exported MakeCode projects and runs them in MakeCode's own simulators, with no
+makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
+
+- **What ships:** from the pinned npm tarballs pxt-microbit 9.1.1, pxt-arcade 4.2.1,
+  pxt-core 13.0.1 and pxt-core 13.2.1, fetched at build time by
+  `scripts/sync-makecode-runtime.mjs` and verified against their SHA-256 before
+  anything is extracted: each target's `target.json`, the compiler worker
+  `pxtworker.js`, the simulator (`pxtsim.js`, `sim.js`, pxt-microbit's
+  `sim/public/`), and pxt-microbit's precompiled CODAL firmware bases
+  (`built/hexcache/`). Written under `packages/scratch-gui/static/makecode/`
+  (gitignored) with each package's own LICENSE file beside it, and copied into the
+  app by webpack — served, never committed. The Arcade simulator page
+  (`scripts/makecode/arcade-simulator.html`) is ours: pxt-arcade ships none.
+- **Licence:** MIT
+- **Source:** https://github.com/microsoft/pxt, https://github.com/microsoft/pxt-microbit,
+  https://github.com/microsoft/pxt-arcade
+- **Usage:** `lib/bw-makecode/pxt-runtime.js` — MakeCode projects compiled and
+  simulated as MakeCode wrote them, and real micro:bit firmware (.hex) built in the
+  browser. The CODAL firmware inside the micro:bit bases is itself MIT (Lancaster
+  University / micro:bit Educational Foundation) and is shipped unmodified, as
+  pxt-microbit ships it.
+- "Microsoft" and "MakeCode" are trademarks of Microsoft Corporation, used here only
+  to say whose files these are; this project is not affiliated with or endorsed by
+  Microsoft.
+
 ## BBC BASIC interpreter attribution — zlib
 
 The BASIC tab's "BBC BASIC" profile generates code for, and the reader
