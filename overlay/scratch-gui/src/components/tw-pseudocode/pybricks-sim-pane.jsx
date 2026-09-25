@@ -1,4 +1,5 @@
 import React from 'react';
+import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 
 import {createPybricksHost, PORTS} from '../../lib/pybricks-sim/pybricks-hub-host.js';
 import {applyHubStateToSim, mirrorSimToHubState} from '../../lib/pybricks-sim/pybricks-hub-bridge.js';
@@ -43,7 +44,6 @@ const L10N = {
             color: 'Farbsensor', distance: 'Abstandssensor', force: 'Kraftsensor'}
     }
 };
-const pickLocale = () => { try { return /^de/i.test(navigator.language) ? 'de' : 'en'; } catch { return 'en'; } };
 
 const ASSET_BASE = 'static/pybricks-sim/';
 let factoryPromise = null;
@@ -69,7 +69,7 @@ const virtualSpike = () => (typeof window !== 'undefined' && window.__brickwrigh
 class PybricksSimPane extends React.Component {
     constructor (props) {
         super(props);
-        this.L = L10N[pickLocale()];
+        this.L = L10N[pickLocale(props.locale || browserLocale(), L10N)];
         this.host = null;
         this.state = {
             status: 'loading', output: '', snapshot: null, program: null,
