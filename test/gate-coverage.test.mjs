@@ -36,10 +36,6 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    'verify-machine-manager-ui.mjs': 'manual/local: the Machine Manager library modal (code-tab device '
-        + 'dropdown → "Manage machines…" → import a manifest → row → Run/Close). Runs against a served '
-        + 'production build and was verified live locally (zero page errors); left unwired to keep the '
-        + 'browser-gate budget census stable. Run `PROOF_URL=<served build>/ node scripts/verify-machine-manager-ui.mjs`.',
     'verify-machine-video-boot.mjs': 'manual/local: boots a real OS from the manager and watches its screen '
         + 'render into a Widgets simplevga widget. NEEDS a local bootable image (ELKS_IMG) and self-skips '
         + '(exit 0) without one, so it cannot run in CI. Run `ELKS_IMG=/path/to/fd1440-fat.img node scripts/verify-machine-video-boot.mjs`.',
