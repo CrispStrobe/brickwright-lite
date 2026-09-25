@@ -230,6 +230,36 @@ try {
         check('the imported Arcade game draws in MakeCode\'s Arcade simulator', lit > 50, `${lit} lit pixels`);
     }
 
+    // ── 2c. the imported art edits AS pixels (costume tab → ▦ Pixel editor) ──
+    {
+        const costumesTab = page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first();
+        if (await costumesTab.count()) {
+            await costumesTab.click();
+            // Select a sprite that carries imported art (the stage has backdrops only).
+            const sprite = page.locator('[class*="sprite-selector-item"]').first();
+            if (await sprite.count()) await sprite.click().catch(() => {});
+            await page.locator('[data-testid="bw-pixel-toggle"]').click({timeout: 20000}).catch(() => {});
+            const canvas = page.locator('[data-testid="bw-pixel-canvas"]');
+            await canvas.waitFor({state: 'visible', timeout: 20000}).catch(() => {});
+            const cells = await canvas.evaluate(c => {
+                if (!c.width) return 0;
+                const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                let coloured = 0;
+                for (let i = 0; i < d.length; i += 4) {
+                    const grey = Math.abs(d[i] - d[i + 1]) < 8 && Math.abs(d[i + 1] - d[i + 2]) < 8;
+                    if (!grey) coloured++;
+                }
+                return coloured;
+            }).catch(() => 0);
+            check('the costume tab\'s pixel editor opens an imported Arcade costume as palette pixels', cells > 0, `${cells} coloured canvas pixels`);
+            const converted = await page.locator('text=/was not pixel art|keine Pixelgrafik/').count();
+            check('and reads it exactly, not by conversion', converted === 0);
+            await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
+        } else {
+            check('a Costumes tab exists', false);
+        }
+    }
+
     // ── 3. a file with nothing in it says so, rather than failing ─────
     await input.setInputFiles(join(fixtures, 'README.md'));
     text = await waitFor(paneText, t => /README/.test(t), 15000);
