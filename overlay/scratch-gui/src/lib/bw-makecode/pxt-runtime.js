@@ -33,8 +33,20 @@
  * @module
  */
 
-/** The MakeCode targets whose runtime sync-makecode-runtime serves. */
-export const MAKECODE_TARGETS = Object.freeze(['microbit', 'arcade']);
+/**
+ * The MakeCode targets whose runtime sync-makecode-runtime serves, by pxt
+ * target id (the `pxtTarget` a MakeCode file names), and what each builds.
+ * `firmware` is the file a native build produces, or null where no firmware
+ * base ships yet (Arcade: simulator only; native is refused by name).
+ */
+export const MAKECODE_BOARDS = Object.freeze({
+    microbit: {label: 'micro:bit', firmware: 'hex'},
+    calliopemini: {label: 'Calliope mini', firmware: 'hex'},
+    ev3: {label: 'LEGO MINDSTORMS EV3', firmware: 'uf2'},
+    adafruit: {label: 'Circuit Playground Express', firmware: 'uf2'},
+    arcade: {label: 'Arcade', firmware: null}
+});
+export const MAKECODE_TARGETS = Object.freeze(Object.keys(MAKECODE_BOARDS));
 
 /** Where a target's runtime is served, relative to the app. */
 export const runtimeBase = target => `static/makecode/${target}/`;

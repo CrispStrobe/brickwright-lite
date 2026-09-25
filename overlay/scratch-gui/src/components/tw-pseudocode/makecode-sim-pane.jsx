@@ -12,6 +12,14 @@
  * header for why a host page), which this pane frames and talks to by
  * postMessage. Keyboard input goes to the simulator frame when it has focus,
  * the way MakeCode's editor does it.
+ *
+ * THE CIRCUIT. The host page reports the program's pin changes (named by the
+ * target's own DigitalPin enum: p0, p1, … c16). With a circuit open
+ * (vm.runtime.circuitBoard), an output pin drives the board part's terminal of
+ * that name — the same setPin the micro:bit+ extension uses — and every pin the
+ * program reads is sampled from the circuit and written back, so a button on
+ * the breadboard reaches `pins.digitalReadPin`. bw-board has no PWM duty on
+ * setPin, so an ANALOG output is driven on/off at half scale for now.
  */
 import PropTypes from 'prop-types';
 import React from 'react';
@@ -21,6 +29,9 @@ const L10N = {
     en: {
         'mc.title.microbit': 'MakeCode micro:bit',
         'mc.title.arcade': 'MakeCode Arcade',
+        'mc.title.calliopemini': 'MakeCode Calliope mini',
+        'mc.title.ev3': 'MakeCode LEGO MINDSTORMS EV3',
+        'mc.title.adafruit': 'MakeCode Circuit Playground Express',
         'mc.stop': '■ Stop',
         'mc.restart': '↻ Restart',
         'mc.empty': 'Run a MakeCode project from the Code tab: ⋯ → ▶ Run in MakeCode simulator.',
@@ -34,6 +45,9 @@ const L10N = {
     de: {
         'mc.title.microbit': 'MakeCode micro:bit',
         'mc.title.arcade': 'MakeCode Arcade',
+        'mc.title.calliopemini': 'MakeCode Calliope mini',
+        'mc.title.ev3': 'MakeCode LEGO MINDSTORMS EV3',
+        'mc.title.adafruit': 'MakeCode Circuit Playground Express',
         'mc.stop': '■ Stopp',
         'mc.restart': '↻ Neu starten',
         'mc.empty': 'Starte ein MakeCode-Projekt im Code-Tab: ⋯ → ▶ Im MakeCode-Simulator ausführen.',
@@ -50,7 +64,8 @@ const t = makeT(L10N);
 class MakeCodeSimPane extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {program: null, hostReady: false, running: false, serial: '', error: null, runId: 0};
+        this.state = {program: null, hostReady: false, running: false, serial: '', error: null, runId: 0, pins: 0};
+        this.inputs = new Map();        // pin name -> analog?  (pins the program reads)
         this._frame = React.createRef();
         this.onLoad = this.onLoad.bind(this);
         this.onMessage = this.onMessage.bind(this);
@@ -61,6 +76,7 @@ class MakeCodeSimPane extends React.Component {
     componentDidMount () {
         window.addEventListener('bw-makecode-load', this.onLoad);
         window.addEventListener('message', this.onMessage);
+        this.inputTimer = setInterval(() => this.sampleInputs(), 50);
         const pending = window.__bwMakeCodePending;
         if (pending) this.take(pending);
     }
@@ -68,6 +84,7 @@ class MakeCodeSimPane extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('bw-makecode-load', this.onLoad);
         window.removeEventListener('message', this.onMessage);
+        clearInterval(this.inputTimer);
     }
 
     onLoad (event) {
@@ -106,7 +123,51 @@ class MakeCodeSimPane extends React.Component {
             this.setState(state => ({serial: (state.serial + m.data).slice(-8000)}));
         } else if (m.type === 'bw-makecode-error') {
             this.setState({error: m.message});
+        } else if (m.type === 'bw-makecode-pins') {
+            this.drivePins(m.pins || {});
         }
+    }
+
+    board () {
+        const vm = this.props.vm;
+        return (vm && vm.runtime && vm.runtime.circuitBoard) || null;
+    }
+
+    /** The program's pin changes onto the circuit's board part. */
+    drivePins (pins) {
+        const board = this.board();
+        let driven = 0;
+        for (const [name, p] of Object.entries(pins)) {
+            if (p.out) {
+                this.inputs.delete(name);
+                if (!board) continue;
+                try {
+                    board.setPin(name, 'pushpull', p.value >= 512);
+                    driven++;
+                } catch (e) { /* no such terminal on this circuit's board part */ }
+            } else {
+                this.inputs.set(name, !!p.analog);
+                if (board) {
+                    try { board.setPin(name, 'input', false); } catch (e) { /* not wired */ }
+                }
+            }
+        }
+        if (driven) this.setState(state => ({pins: state.pins + driven}));
+    }
+
+    /** What the circuit puts on the pins the program reads, back into the simulator. */
+    sampleInputs () {
+        const board = this.board();
+        if (!board || !this.inputs.size) return;
+        const values = {};
+        for (const [name, analog] of this.inputs) {
+            try {
+                values[name] = analog ?
+                    Math.max(0, Math.min(1023, Math.round((board.readAnalog(name) / 3.3) * 1023))) :
+                    (board.readPin(name) ? 1023 : 0);
+            } catch (e) { /* not wired */ }
+        }
+        if (Object.keys(values).length) this.post({type: 'bw-makecode-pin-in', pins: values});
     }
 
     restart () {
@@ -173,7 +234,8 @@ class MakeCodeSimPane extends React.Component {
 }
 
 MakeCodeSimPane.propTypes = {
-    locale: PropTypes.string
+    locale: PropTypes.string,
+    vm: PropTypes.shape({runtime: PropTypes.object})
 };
 
 export default MakeCodeSimPane;

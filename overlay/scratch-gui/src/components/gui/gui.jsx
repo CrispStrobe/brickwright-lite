@@ -1152,7 +1152,7 @@ const GUIComponent = props => {
                             ) : dockMode === 'makecode' ? (
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading MakeCode simulator…</div>}>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
-                                        <MakeCodeSimPane />
+                                        <MakeCodeSimPane vm={vm} />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'arduboy' ? (

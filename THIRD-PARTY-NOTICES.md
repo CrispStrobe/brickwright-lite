@@ -1477,7 +1477,7 @@ MicroPython contributors.
 - **Source:** https://github.com/micropython/micropython
 - **Usage:** the Pico ▶ Run simulator (plan N3c).
 
-## Microsoft MakeCode (pxt-core, pxt-microbit, pxt-arcade) — MIT
+## Microsoft MakeCode (pxt-core, pxt-microbit, pxt-arcade, pxt-calliope, pxt-ev3, pxt-adafruit) — MIT
 
 **Microsoft MakeCode** — its compiler (`pxt-core`), the micro:bit target
 (`pxt-microbit`) and the Arcade target (`pxt-arcade`) — compiles imported and
@@ -1485,12 +1485,17 @@ exported MakeCode projects and runs them in MakeCode's own simulators, with no
 makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
 
 - **What ships:** from the pinned npm tarballs pxt-microbit 9.1.1, pxt-arcade 4.2.1,
-  pxt-core 13.0.1 and pxt-core 13.2.1, fetched at build time by
+  pxt-calliope 3.0.30 (Calliope mini; Calliope gGmbH, MIT), pxt-ev3 1.4.41 (LEGO
+  MINDSTORMS EV3), pxt-adafruit 1.6.8 (Circuit Playground Express), and the pxt-core
+  each was built against (13.0.1, 13.2.1, 6.0.23, 9.3.19, 6.2.6), fetched at build time by
   `scripts/sync-makecode-runtime.mjs` and verified against their SHA-256 before
   anything is extracted: each target's `target.json`, the compiler worker
   `pxtworker.js`, the simulator (`pxtsim.js`, `sim.js`, pxt-microbit's
-  `sim/public/`), and pxt-microbit's precompiled CODAL firmware bases
-  (`built/hexcache/`). Written under `packages/scratch-gui/static/makecode/`
+  `sim/public/`), pxt-microbit's and pxt-calliope's precompiled firmware bases
+  (`built/hexcache/`), and — for EV3 and Circuit Playground Express, whose npm
+  packages ship none — the two firmware bases MakeCode's own CDN serves for their
+  default package sets (`cdn.makecode.com/compile/<sha>.hex`, content-addressed by
+  the package set, pinned here by sha256; the request names no user program). Written under `packages/scratch-gui/static/makecode/`
   (gitignored) with each package's own LICENSE file beside it, and copied into the
   app by webpack — served, never committed. The Arcade simulator page
   (`scripts/makecode/arcade-simulator.html`) is ours: pxt-arcade ships none.
@@ -1501,7 +1506,9 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   simulated as MakeCode wrote them, and real micro:bit firmware (.hex) built in the
   browser. The CODAL firmware inside the micro:bit bases is itself MIT (Lancaster
   University / micro:bit Educational Foundation) and is shipped unmodified, as
-  pxt-microbit ships it.
+  pxt-microbit ships it. "LEGO" and "MINDSTORMS" are trademarks of the LEGO Group,
+  "Calliope" of Calliope gGmbH, "Circuit Playground" of Adafruit Industries — named
+  here only to say which board a file is for.
 - "Microsoft" and "MakeCode" are trademarks of Microsoft Corporation, used here only
   to say whose files these are; this project is not affiliated with or endorsed by
   Microsoft.
