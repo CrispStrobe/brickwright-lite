@@ -12,7 +12,7 @@ left the architecture open.
 | **TN1** `gate-level` semantics | **landed** — `bw-board` PR #6, in lite via the pin move |
 | pins moved into lite | **landed** — lite PR #112 (`bw-board` 76877a2, `bw-circuit-ui` 1c8e827) |
 | **TN2** HDL surface behind `BW_ENABLE_FPGA` | **landed** — lite PR #113 |
-| **TN2b** the pin bridge | **in review** — lite PR #114 |
+| **TN2b** the pin bridge | **landed** — lite PR #114 (merged 2026-09-15, `1b49723e9`; status corrected 2026-09-25) |
 | inert-rail DRC rule (a TN0 follow-up) | **in review** — `bw-circuit-ui` PR #25 |
 | **TN3** client half | **landed** — lite PRs #124, #125 |
 | **TN3** service | **runs on a real host** — hardened container, differential proven; TLS/DNS pending — [`CrispStrobe/bw-synth`](https://github.com/CrispStrobe/bw-synth), §5.2 |

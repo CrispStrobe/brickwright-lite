@@ -205,8 +205,11 @@ tables from the module, marks declared-only facts, and lists the open tasks
 per cell by id. `CHOOSING-HARDWARE.md` and `device-matrix.md` replace their
 hand tables with a link and keep only the prose.
 DoD:
-- [ ] `npm run gen:matrix:check` green; editing the module without
-      regenerating makes it red.
+- [x] `npm run gen:matrix:check` green; editing the module without
+      regenerating makes it red. (Ticked 2026-09-25: held in unit tests by
+      `test/bw-matrix-doc.test.mjs` "the generated matrix document matches the
+      table"; checked by hand the same day: `--check` green at `3228b02e9`, and a
+      one-string edit to `overlay/scratch-gui/src/lib/bw-matrix/capabilities.js` made it exit 1 "is stale".)
 - [ ] No hand-written capability table remains in `docs/*.md` (grep gate for
       the old table headers).
 
@@ -499,7 +502,7 @@ up from 3** (gained: arduino-02-blink-without-delay, arduino-02-debounce — bot
 the int-16 model**: no gallery program stores a literal past 16 bits. The worker's 8-of-33 / 177-of-300 figures
 were over a property-based corpus and stand as the reach as the choke lifts.
 
-**N2c. Literal `wait` on the single-script 8086 C route. CANDIDATE 2026-09-07** (bwcx; upstream
+**N2c. Literal `wait` on the single-script 8086 C route. DONE 2026-09-07 (landed `3d5676c3a`; status corrected 2026-09-25, see LANES.md N2c row)** (bwcx; upstream
 promoted through `2a0280e`, exact-head CI `34111516415`). Measurement corrected both premises in the old task.
 Single-script ASM does **not** use the PIT: `pseudocode-8086.js` emits `INT 15h/AH=86h` with `CX:DX`
 microseconds, and the DOS bench advances exact machine time without spending one instruction per elapsed
@@ -530,7 +533,7 @@ Current honest pre-print reach is therefore **42**, not 44; the old receipt rema
 rather than rewritten. Separately, the wait differential compares the added 50 ms in
 emulated cycles (not PIT ticks); removing the DOS interrupt or helper is mutation-proven red.
 
-**N2d. Narrow 8086 C numeric output. CANDIDATE 2026-09-07.** The deterministic post-production v4 census
+**N2d. Narrow 8086 C numeric output. DONE 2026-09-07 (landed `cc1dd0a43`; status corrected 2026-09-25, see LANES.md N2d row).** The deterministic post-production v4 census
 (`scripts/measure-i8086-print-reach.mjs`) keeps source occurrence, parsed opcode and current emitted output
 separate. Across
 the exact 280-program gallery it finds **83 output operations in 41 programs**: 27 literal-text operations
@@ -552,13 +555,13 @@ refusals, one computed-wait refusal and **46 emitted**. The safety correction is
 **42 → 46**; all 46 must compile on hosted Node 22. `say for seconds` remains refused because it has no corpus
 evidence and couples output with scheduler semantics.
 
-**N2e. Bounded numeric lists on the 8086 C route. UNCLAIMED.** `arduino-03-smoothing` is the first measured
+**N2e. Bounded numeric lists on the 8086 C route. DONE 2026-09-08 (landed `dec11a41f`, run `34206351591`; see PLAN.md "N2e" and the LANES.md N2e row; status corrected 2026-09-25). The text below is the original task statement.** `arduino-03-smoothing` is the first measured
 candidate. This is not a print-helper patch: it needs prefix-safe per-list declarations and storage, a proved
 capacity/memory ceiling, numeric initial/write provenance, delete/add/replace/item semantics with Scratch's
 one-based bounds, SmallerC compilation, `.COM` size/stack evidence, live C-vs-ASM behavior, and unchanged
 other-family goldens. No silent saturation, dropped write, or commented-zero read may count as support.
 
-**N2f. Random-dependent literal output on the 8086 C route. UNCLAIMED.** Literal DOS output by itself has zero
+**N2f. Random-dependent literal output on the 8086 C route. DONE 2026-09-08 (landed `c77563dbf`, run `34224675820`; see ROADMAP.md Track 1 and the LANES.md "N2f production" row; status corrected 2026-09-25). The text below is the original task statement.** Literal DOS output by itself has zero
 honest corpus reach: the crystal-ball candidate routes every print through control flow fed by unsupported
 `pick random`. A future lane must define bounded random semantics and prove its branch/output differential before
 adding the text helper; warned zero is not a random implementation.
