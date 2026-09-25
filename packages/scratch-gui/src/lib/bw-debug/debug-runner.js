@@ -1095,7 +1095,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         };
     }
 
-    /** The document language, for the one sentence this module says in words. */
+    /** The document language, for the sentences this module says in words
+     *  (the provenance line and the CP/M-system status strings). */
     function uiLang() {
         try {
             const html = typeof document !== 'undefined' && document.documentElement;
