@@ -105,7 +105,17 @@ const KNOWN_UNTRANSLATED = {
     // ratchet stays for the next one; it may still only shrink.
 };
 
-/** A user-facing sentence written as an object field, not a JSX attribute. */
+/**
+ * A user-facing sentence written as an object field, not a JSX attribute.
+ *
+ * THIS SHAPE IS NOT THE ONLY ONE. A rule built around one syntax is blind to
+ * the same defect in another: status text is a POSITIONAL ARGUMENT in lowercase
+ * prose (`setStatus('ready', 'compiling…')`), which neither the field name nor
+ * the leading capital below will ever match. 68 such strings lived in
+ * lib/bw-debug/debug-runner.js, 52 of them English, while this rule's ratchet
+ * stood at zero. They have their own census and ratchet — see
+ * scripts/measure-status-strings.mjs and test/runner-status-l10n.test.mjs.
+ */
 const FIELD = /(?:hint|label|title|placeholder|summary):\s*'([A-Z][^']{8,})'/g;
 
 const libFiles = () => {

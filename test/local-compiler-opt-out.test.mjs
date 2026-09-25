@@ -113,15 +113,28 @@ test('the rule is CONSULTED, and it guards the install — in both trees', () =>
             `${tree}: an explicit off must still be distinguishable — it earns its own message`);
         assert.match(guarded, /installWasmCompilerRouting\(setStatus\)/,
             `${tree}: the enabled path must still install it`);
-        assert.match(guarded, /setStatus\([^)]*'building'[\s\S]*?off by request/,
+        // THE SENTENCES MOVED, THE CLAIM DID NOT. These used to grep the
+        // English out of debug-runner.js. The status line is translated now
+        // (lib/bw-debug/runner-status-l10n.js), so the runner carries the KEY
+        // and the table carries the words — and both halves are asserted, in
+        // this tree, because a key pointing at nothing says just as little as
+        // a silent fallback.
+        assert.match(guarded, /setStatus\([^)]*'building'[\s\S]*?compile\.inpageOff/,
             `${tree}: opting out must SAY so — the header's objection is to a silent fallback`);
 
         // THE STATE THAT DID NOT EXIST BEFORE: off by default, not by request.
         // It must announce the route AND the way back, or an offline learner
         // gets a failure with no explanation and no exit.
-        assert.match(guarded, /not installed[\s\S]*?compiler service/,
+        assert.match(guarded, /setStatus\([^)]*'building'[\s\S]*?compile\.inpageMissing/,
             `${tree}: the default-off path must name the route it took`);
-        assert.match(guarded, /Settings[\s\S]*?C Compiler[\s\S]*?Download compiler/,
+
+        const strings = readFileSync(
+            path.join(ROOT, tree, 'scratch-gui/src/lib/bw-debug/runner-status-l10n.js'), 'utf8');
+        assert.match(strings, /'compile\.inpageOff':[\s\S]{0,200}?off by request/,
+            `${tree}: compile.inpageOff no longer says the compiler is off by request`);
+        assert.match(strings, /'compile\.inpageMissing':[\s\S]{0,400}?not installed[\s\S]{0,200}?compiler service/,
+            `${tree}: compile.inpageMissing no longer names the route it took`);
+        assert.match(strings, /'compile\.inpageMissing':[\s\S]{0,600}?Settings[\s\S]{0,120}?C Compiler[\s\S]{0,160}?Download compiler/,
             `${tree}: and must name the working settings route back`);
 
         // The predicate must be consulted BEFORE the install, not after it.
