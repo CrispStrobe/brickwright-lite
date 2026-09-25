@@ -128,6 +128,20 @@ try {
 
     const paneText = () => page.evaluate(() => document.body.innerText || '');
 
+    // MakeCode's own compiler + simulator (lib/bw-makecode/pxt-runtime.js) ride
+    // on a runtime the build FETCHES (scripts/sync-makecode-runtime.mjs,
+    // tolerated absent). Absent, those checks say so by name and do not run.
+    const runtime = await page.evaluate(async () =>
+        (await fetch('static/makecode/VERSIONS.json').catch(() => null))?.ok === true);
+    if (!runtime) console.log('SKIP MakeCode runtime checks: static/makecode is not in this build (npm run sync:makecode did not run)');
+    const clickAction = async testid => {
+        await openCodeActions(page);
+        await page.locator(`[data-testid="${testid}"]`).click({timeout: 20000});
+    };
+    /** The simulator frame inside the pane's host frame, once pxtsim created it. */
+    const simFrame = target => waitFor(async () =>
+        page.frames().find(f => f.url().includes(`makecode/${target}/sim/simulator.html`)) || null, f => !!f, 60000);
+
     // ── 1. a micro:bit project, translated all the way to pseudocode ──
     await input.setInputFiles(join(fixtures, 'microbit-blocks.hex'));
     let text = await waitFor(paneText, t => /pins test 1/.test(t), 30000);
@@ -146,6 +160,33 @@ try {
         code.split('\n').slice(0, 4).join(' / '));
     check('and it is the program that was in the hex',
         /analog value of pin P0/.test(code), code.replace(/\s+/g, ' ').slice(0, 120));
+
+    // ── 1b. …and runs AS MAKECODE WROTE IT, in MakeCode's simulator ──
+    if (runtime) {
+        await clickAction('bw-makecode-run');
+        const pane = page.locator('[data-testid="bw-makecode-pane"][data-target="microbit"]');
+        await pane.waitFor({state: 'visible', timeout: 60000}).catch(() => {});
+        check('▶ Run in MakeCode simulator opens the MakeCode pane', await pane.count() > 0);
+        const frame = await simFrame('microbit');
+        const lit = frame ? await waitFor(() => frame.evaluate(() =>
+            [...document.querySelectorAll('.sim-led')].filter(l => parseFloat(getComputedStyle(l).opacity) > 0.5).length)
+            .catch(() => 0), n => n >= 3, 30000) : 0;
+        // The program shows analogReadPin(P0) as a number: a digit lights LEDs.
+        check('the imported program runs on MakeCode\'s micro:bit board (LEDs lit)', lit >= 3, `${lit} LEDs lit`);
+        const state = await waitFor(() => page.locator('[data-testid="bw-makecode-state"]').innerText().catch(() => ''),
+            t => /Running|Läuft/.test(t), 20000);
+        check('the pane says the simulator is running', /Running|Läuft/.test(state), state);
+
+        const download = page.waitForEvent('download', {timeout: 120000});
+        await clickAction('bw-makecode-firmware');
+        const file = await download.then(d => d.path()).catch(() => null);
+        const hex = file ? await readFile(file, 'utf8') : '';
+        check('⤓ firmware downloads a real universal .hex (V1 + V2 images, > 600 KB)',
+            hex.length > 600000 && hex.startsWith(':'), `${hex.length} bytes`);
+        // pxt packs the project 16-byte aligned, so its magic sits in one record.
+        check('with the project embedded, so MakeCode reopens it',
+            /41140E2FB82FA2BB/i.test(hex), '');
+    }
 
     // ── 2. an Arcade game brings its sprites ──────────────────────────
     await input.setInputFiles(join(fixtures, 'arcade-assets.hex'));
@@ -173,6 +214,21 @@ try {
     check('with the sprite sections the game names',
         /SPRITE background:/.test(arcadeCode) && /SPRITE mySprite:/.test(arcadeCode),
         arcadeCode.split('\n').slice(0, 6).join(' / '));
+
+    // ── 2b. …and plays in MakeCode's Arcade simulator ─────────────────
+    if (runtime) {
+        await clickAction('bw-makecode-run');
+        const frame = await simFrame('arcade');
+        const lit = frame ? await waitFor(() => frame.evaluate(() => {
+            const c = document.querySelector('canvas');
+            if (!c || !c.width) return 0;
+            const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+            let n = 0;
+            for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) n++;
+            return n;
+        }).catch(() => 0), n => n > 50, 60000) : 0;
+        check('the imported Arcade game draws in MakeCode\'s Arcade simulator', lit > 50, `${lit} lit pixels`);
+    }
 
     // ── 3. a file with nothing in it says so, rather than failing ─────
     await input.setInputFiles(join(fixtures, 'README.md'));

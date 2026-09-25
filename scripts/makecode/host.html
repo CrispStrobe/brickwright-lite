@@ -1,0 +1,90 @@
+<!doctype html>
+<!--
+  The MakeCode simulator host, served by scripts/sync-makecode-runtime.mjs as
+  static/makecode/<target>/sim/host.html beside that target's pxtsim.js.
+
+  Why a host page and not the driver in the app: each target's simulator speaks
+  to a driver from ITS pxt-core (micro:bit 13.0.1, Arcade 13.2.1), and both
+  define the same global `pxsim`. Loading the driver here, one page per target,
+  keeps the versions paired and out of the app's globals. The app talks to this
+  page by postMessage:
+
+    app  -> host  {type: 'bw-makecode-run', js}       run a compiled program
+    app  -> host  {type: 'bw-makecode-stop'}           stop it
+    host -> app   {type: 'bw-makecode-host-ready'}     loaded, send a program
+    host -> app   {type: 'bw-makecode-state', state}   simulator state changes
+    host -> app   {type: 'bw-makecode-serial', data}   what the program printed
+    host -> app   {type: 'bw-makecode-error', message}
+
+  config.json (written by the sync from target.json's `simulator` block) carries
+  the board definition and aspect ratio the driver needs.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MakeCode simulator</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; }
+  #sim { width: 100%; height: 100%; }
+  #sim iframe { border: 0; width: 100%; height: 100%; }
+</style>
+<script src="pxtsim.js"></script>
+</head>
+<body>
+<div id="sim"></div>
+<script>
+(function () {
+  var parentWin = window.parent;
+  var say = function (msg) { try { parentWin.postMessage(msg, '*'); } catch (e) { /* detached */ } };
+  var config = null;
+  var driver = null;
+  function ensureDriver () {
+    if (driver) return driver;
+    driver = new pxsim.SimulatorDriver(document.getElementById('sim'), {
+      // Absolute: pxtsim resolves a relative simUrl against the ORIGIN, not this
+      // page (measured: 'simulator.html' loaded /simulator.html, a 404).
+      simUrl: new URL('simulator.html', location.href).href,
+      onStateChanged: function (state) { say({type: 'bw-makecode-state', state: String(state)}); },
+      onSimulatorCommand: function (msg) {
+        if (msg && msg.command) say({type: 'bw-makecode-command', command: String(msg.command)});
+      }
+    });
+    return driver;
+  }
+  // Serial from the program reaches the host as the simulator's own messages.
+  window.addEventListener('message', function (e) {
+    var m = e.data || {};
+    if (e.source === parentWin) {
+      if (m.type === 'bw-makecode-run') run(m.js);
+      else if (m.type === 'bw-makecode-stop' && driver) driver.stop();
+      return;
+    }
+    if (m.type === 'serial' && typeof m.data === 'string') say({type: 'bw-makecode-serial', data: m.data});
+    else if (m.type === 'bulkserial' && Array.isArray(m.data)) {
+      m.data.forEach(function (d) { if (d && typeof d.data === 'string') say({type: 'bw-makecode-serial', data: d.data}); });
+    }
+  });
+  function run (js) {
+    if (!config) { say({type: 'bw-makecode-error', message: 'simulator config not loaded'}); return; }
+    try {
+      ensureDriver().run(js, {
+        boardDefinition: config.boardDefinition || undefined,
+        parts: [],
+        fnArgs: {},
+        aspectRatio: config.aspectRatio || 1,
+        version: 'bw-local'
+      });
+    } catch (err) {
+      say({type: 'bw-makecode-error', message: String(err && err.message || err)});
+    }
+  }
+  fetch('config.json').then(function (r) { return r.json(); }).then(function (c) {
+    config = c;
+    say({type: 'bw-makecode-host-ready'});
+  }).catch(function (err) {
+    say({type: 'bw-makecode-error', message: 'config.json: ' + (err && err.message || err)});
+  });
+})();
+</script>
+</body>
+</html>
