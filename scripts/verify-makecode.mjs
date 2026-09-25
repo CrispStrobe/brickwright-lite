@@ -230,6 +230,21 @@ try {
         check('the imported Arcade game draws in MakeCode\'s Arcade simulator', lit > 50, `${lit} lit pixels`);
     }
 
+    // ── 2b'. …and the Scratch project it became goes BACK to Arcade and plays ──
+    if (runtime) {
+        await clickAction('bw-makecode-arcade-run');
+        const frame = await simFrame('arcade');
+        const lit = frame ? await waitFor(() => frame.evaluate(() => {
+            const c = document.querySelector('canvas');
+            if (!c || !c.width) return 0;
+            const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+            let n = 0;
+            for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) n++;
+            return n;
+        }).catch(() => 0), n => n > 20, 60000) : 0;
+        check('▶ Run as MakeCode Arcade: the live Scratch project exports, compiles and draws', lit > 20, `${lit} lit pixels`);
+    }
+
     // ── 2c. the imported art edits AS pixels (costume tab → ▦ Pixel editor) ──
     {
         const costumesTab = page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first();

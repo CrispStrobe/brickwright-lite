@@ -123,6 +123,12 @@ const L10N = {
         mcUnsupportedTarget: t => `MakeCode ${t} projects are not something this build can compile (micro:bit and Arcade are).`,
         mcCompileErrors: (n, first) => `MakeCode found ${n} error(s): ${first}`,
         mcNothingToRun: 'Nothing to run — import a MakeCode project, or write blocks for a micro:bit.',
+        arcRun: '▶ Run as MakeCode Arcade',
+        arcRunTitle: 'Turn this Scratch project into a MakeCode Arcade game (sprites from their costumes, scripts as code) and run it in MakeCode\'s Arcade simulator',
+        arcExport: '⬆ To MakeCode Arcade',
+        arcExportTitle: 'Save this project as a MakeCode Arcade game that arcade.makecode.com opens',
+        arcDone: (f, u, w) => `Saved ${f} — drop it on arcade.makecode.com.${u ? ` ${u} block kind(s) have no Arcade counterpart (commented where they stood).` : ''}${w ? ` ${w} costume(s) were matched to Arcade's 16 colours.` : ''}`,
+        arcStarted: (u, w) => `Running as a MakeCode Arcade game.${u ? ` ${u} block kind(s) have no Arcade counterpart.` : ''}${w ? ` ${w} costume(s) were matched to Arcade's 16 colours.` : ''}`,
         saveEmpty: 'Nothing to save — this tab is empty.',
         restored: t => `Restored your unsaved ${t}.`,
         loadCatalogTitle: 'Load a catalog example for this device',
@@ -394,6 +400,12 @@ const L10N = {
         mcUnsupportedTarget: t => `MakeCode-${t}-Projekte kann dieser Build nicht übersetzen (micro:bit und Arcade schon).`,
         mcCompileErrors: (n, first) => `MakeCode meldet ${n} Fehler: ${first}`,
         mcNothingToRun: 'Nichts auszuführen — ein MakeCode-Projekt importieren oder Blöcke für einen micro:bit schreiben.',
+        arcRun: '▶ Als MakeCode Arcade ausführen',
+        arcRunTitle: 'Dieses Scratch-Projekt in ein MakeCode-Arcade-Spiel umwandeln (Figuren aus ihren Kostümen, Skripte als Code) und im MakeCode-Arcade-Simulator ausführen',
+        arcExport: '⬆ Zu MakeCode Arcade',
+        arcExportTitle: 'Dieses Projekt als MakeCode-Arcade-Spiel speichern, das arcade.makecode.com öffnet',
+        arcDone: (f, u, w) => `${f} gespeichert — auf arcade.makecode.com ablegen.${u ? ` Für ${u} Blockart(en) gibt es in Arcade keine Entsprechung (als Kommentar markiert).` : ''}${w ? ` ${w} Kostüm(e) wurden an die 16 Arcade-Farben angepasst.` : ''}`,
+        arcStarted: (u, w) => `Läuft als MakeCode-Arcade-Spiel.${u ? ` Für ${u} Blockart(en) gibt es in Arcade keine Entsprechung.` : ''}${w ? ` ${w} Kostüm(e) wurden an die 16 Arcade-Farben angepasst.` : ''}`,
         saveEmpty: 'Nichts zu speichern — dieser Tab ist leer.',
         restored: t => `Nicht gespeicherter ${t} wiederhergestellt.`,
         loadCatalogTitle: 'Ein Katalog-Beispiel für dieses Gerät laden',
@@ -1873,6 +1885,95 @@ class PseudocodeImporter extends React.Component {
             this.setState({busy: false, status: this.L.mcFirmwareDone(filename)});
         } catch (err) {
             this.setState({busy: false, status: this.makeCodeFailure(err)});
+        }
+    }
+
+    /**
+     * This Scratch project as a MakeCode Arcade game (lib/bw-makecode/export-arcade.js),
+     * read from the LIVE project so costume edits count. Every costume is drawn
+     * once up front: pixel-art costumes are read exactly from their SVG, anything
+     * else is palette-matched from these pixels.
+     */
+    async arcadeFromStage () {
+        const vm = this.props.vm;
+        const project = JSON.parse(vm.toJSON());
+        const draw = asset => new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                const width = Math.max(1, img.naturalWidth);
+                const height = Math.max(1, img.naturalHeight);
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve({rgba: ctx.getImageData(0, 0, width, height).data, width, height});
+            };
+            img.onerror = () => resolve(null);
+            img.src = asset.encodeDataURI();
+        });
+        const svgs = new Map();
+        const rasters = new Map();
+        for (const target of vm.runtime.targets) {
+            if (!target.isOriginal) continue;
+            for (const costume of target.sprite.costumes) {
+                if (costume.asset.dataFormat === 'svg') svgs.set(costume.assetId, costume.asset.decodeText());
+                rasters.set(costume.assetId, await draw(costume.asset));
+            }
+        }
+        const {projectToArcade} = await import(
+            /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/export-arcade.js');
+        return projectToArcade(project, {
+            name: 'brickwright-game',
+            costumeSvg: (t, c) => svgs.get(c.assetId) || null,
+            costumeRgba: (t, c) => rasters.get(c.assetId) || null
+        });
+    }
+
+    async runAsArcade () {
+        this.setState({busy: true, status: this.L.mcRunCompiling('Arcade')});
+        try {
+            const out = await this.arcadeFromStage();
+            const {compileMakeCode} = await import(
+                /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
+            const built = await compileMakeCode({target: 'arcade', files: out.files});
+            if (!built.success) {
+                const d = built.diagnostics[0] || {};
+                this.setState({busy: false, status: this.L.mcCompileErrors(built.diagnostics.length, `${d.file}:${(d.line || 0) + 1} ${d.message || ''}`)});
+                return;
+            }
+            const program = {target: 'arcade', js: built.outfiles['binary.js'], name: 'Arcade'};
+            window.__bwMakeCodePending = program;
+            localStorage.setItem('bw-stage-circuit', '1');
+            localStorage.setItem('bw-debug-dock', 'makecode');
+            localStorage.setItem('bw-right-pane-hidden', '0');
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'makecode'}}));
+            window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
+            this.setState({busy: false, status: this.L.arcStarted(out.unsupported.length, out.warnings.length)});
+        } catch (err) {
+            this.setState({busy: false, status: this.makeCodeFailure(err)});
+        }
+    }
+
+    async exportArcade () {
+        this.setState({busy: true});
+        try {
+            const out = await this.arcadeFromStage();
+            const {makeCodeSourceHex} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+            const name = JSON.parse(out.files['pxt.json']).name;
+            const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.hex`;
+            const hex = makeCodeSourceHex(out.files, {name, target: 'arcade', editorUrl: 'https://arcade.makecode.com/'});
+            const url = URL.createObjectURL(new Blob([hex], {type: 'application/octet-stream'}));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            this.setState({busy: false, status: this.L.arcDone(filename, out.unsupported.length, out.warnings.length)});
+        } catch (err) {
+            this.setState({busy: false, status: this.L.mcFailed('MakeCode Arcade', (err && err.message) || String(err))});
         }
     }
 
@@ -4387,6 +4488,12 @@ class PseudocodeImporter extends React.Component {
                                 title={this.L.mcFirmwareTitle} disabled={this.state.busy}
                                 data-testid="bw-makecode-firmware">{this.L.mcFirmware}</button>
                         ) : null}
+                    <button type="button" onClick={() => this.runAsArcade()} style={item}
+                        title={this.L.arcRunTitle} disabled={this.state.busy}
+                        data-testid="bw-makecode-arcade-run">{this.L.arcRun}</button>
+                    <button type="button" onClick={() => this.exportArcade()} style={item}
+                        title={this.L.arcExportTitle} disabled={this.state.busy}
+                        data-testid="bw-makecode-arcade-export">{this.L.arcExport}</button>
                     <div style={{borderTop: '1px solid #e2e8f0', margin: '3px 0'}} />
                     {this.currentDevice() ? this.renderCatalogControl(item) :
                         this.state.bundledExamplesStatus === 'error' ? (
