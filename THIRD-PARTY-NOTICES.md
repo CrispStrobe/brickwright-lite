@@ -972,6 +972,33 @@ migration consumes the pinned upstream package without application-local source
 patches; the source links identify that exact version. Other components retain
 their respective licenses.
 
+### Format knowledge, not code
+
+bw-circuit-ui's importers and exporters read and write file formats nobody in
+this project designed (KiCad, EasyEDA, SPICE, LTspice ASC). Its source cites
+`THIRD-PARTY.md` for where those facts came from — e.g.
+`src/importers/kicad-common.js`: "see THIRD-PARTY.md. The code is ours." That
+file ships inside the installed package (`node_modules/bw-circuit-ui/THIRD-PARTY.md`);
+its format-knowledge table is reproduced here so the pointer resolves from this
+repository too. Facts about a format are not copyrightable and no third-party
+implementation was copied; GPL/LGPL/AGPL projects named below were read for
+facts only. `test/notices-format-knowledge.test.mjs` fails when upstream's
+table gains or changes a row this copy lacks.
+
+| Source | Licence | What was taken |
+|---|---|---|
+| KiCad file-format documentation (dev-docs.kicad.org) | CC-BY-SA 4.0 (docs) | the `.kicad_sch` and legacy EESchema grammars |
+| [KiCadFiles](https://github.com/ImpulseAdventure/KiCadFiles) | MIT | schema knowledge for `.kicad_sch` tokens |
+| KiCad dev-docs, EasyEDA import format (dev-docs.kicad.org/en/import-formats/easyeda) | CC-BY-SA 4.0 (docs) | the `docType` MAP only (1 sheet, 2 symbol, 3 PCB, 4 footprint, 5 container, 14 module) — a fact table, no code read |
+| EasyEDA Pro file-format docs (github.com/easyeda/easyeda-pro-file-format, prodocs.easyeda.com) | none stated (docs quoted as facts, not vendored) | the record vocabulary of both Pro generations; several fields were found WRONG vs real files and re-decoded by measurement |
+| KiCad source `pcbnew/pcb_io/easyedapro` | GPL-3.0 (read for FACTS only, no code ported) | three load-bearing facts cross-checked: 1 unit = 1 mil, POURED fills at 1/10 scale, the fixed Pro layer table |
+| EasyEDA Standard PCB `.json` (docType 3) | — | the PCB half of the tilde DSL, decoded by MEASURING three real boards (2026-08-25); no reader's source was read while writing `src/importers/easyeda-pcb.js` |
+| EasyEDA Standard `.json` documents | — | the tilde-delimited shape DSL, decoded by MEASURING published schematics; no reader's source was read while writing `src/importers/easyeda.js` |
+| SPICE netlist language (ngspice manual, and every SPICE textbook) | the language is a published format, not a work | element letters and their node counts, node 0 as the reference, `.model`/`.subckt`/`.control`, and the scale factors. The suffix table was CHECKED against ngspice 42 rather than trusted: a deck of six resistors read back out of its own device table gives `1M` = 1e-3, `1MEG` = 1e6, `1MIL` = 2.54e-5, `1F` = 1e-15. No simulator's source was read while writing `src/importers/spice.js` or `src/model/exporters/spice.js` |
+| [asc_viewer](https://github.com/ahaensler/asc_viewer) | MIT | Cross-check of ASC instance-record ownership, ASY `SpiceOrder`, attribute defaults and mirror-before-rotation behavior. No Python source was copied. |
+| [Weave](https://github.com/senolgulgonul/weave) | MIT for Weave code; bundled elkjs is EPL-2.0 | Its independent ASC connectivity verifier was used as a differential oracle for endpoint-on-segment and crossing behavior, and its generated companion-ASY approach was reviewed. No embedded/vendor-derived symbol table or implementation code was copied. |
+| [ltspice2kicad](https://github.com/LBurnsUF/ltspice2kicad) | MIT | Cross-format ASC record vocabulary and generated-KiCad behavior were reviewed. Its known detached-pin output was treated as a counterexample, not an oracle; no Zig source was copied. |
+
 ## bw-board — MIT
 
 **Installed location:** `node_modules/bw-board/` (root tooling) and

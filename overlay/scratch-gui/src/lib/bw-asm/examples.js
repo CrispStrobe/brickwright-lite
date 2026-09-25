@@ -591,6 +591,33 @@ void setup() {
 
 void loop() {}
 `
+    },
+    {
+        id: 'ino-i2c-scan', label: 'Wire: find the I2C parts', labelDe: 'Wire: I2C-Bauteile finden',
+        serial: true,
+        source: `// Which I2C parts answer on A4 (SDA) and A5 (SCL)?
+// Put one on the board and wire it up -- an SSD1306 OLED answers at 0x3C.
+#include <Wire.h>
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+  byte found = 0;
+  for (byte addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {   // 0 = the part acknowledged
+      Serial.print("I2C part at 0x");
+      if (addr < 16) Serial.print('0');
+      Serial.println(addr, HEX);
+      found++;
+    }
+  }
+  Serial.print(found);
+  Serial.println(" part(s) found.");
+}
+
+void loop() {}
+`
     }
 ];
 

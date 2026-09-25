@@ -108,7 +108,9 @@ editors, circuit engine, simulations, debuggers, lessons, device runtimes, and
 native shell. It is not a TurboWarp fork.
 
 Brickwright is not affiliated with or endorsed by Scratch, MIT, LEGO, STC,
-Arduino, or Raspberry Pi. All trademarks belong to their owners.
+Arduino, or Raspberry Pi, nor by the makers of the circuit file formats it
+imports and exports (KiCad, EasyEDA, EAGLE, LTspice). All trademarks belong to
+their owners.
 
 ## App Store description — de-DE
 
@@ -155,8 +157,10 @@ Schaltungsengine, Simulationen, Debuggern, Lernpfaden, Gerätelaufzeiten und
 nativer App-Hülle. Es ist kein TurboWarp-Fork.
 
 Brickwright steht in keiner Verbindung zu Scratch, MIT, LEGO, STC, Arduino oder
-Raspberry Pi und wird von diesen nicht unterstützt. Alle Marken gehören ihren
-jeweiligen Inhabern.
+Raspberry Pi und wird von diesen nicht unterstützt, ebenso wenig von den
+Herstellern der Schaltungs-Dateiformate, die es importiert und exportiert
+(KiCad, EasyEDA, EAGLE, LTspice). Alle Marken gehören ihren jeweiligen
+Inhabern.
 
 ## What to Test — 0.1.5 en-US
 
