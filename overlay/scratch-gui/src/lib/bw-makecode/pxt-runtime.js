@@ -37,6 +37,8 @@
  * @module
  */
 
+import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
+
 /** The MakeCode targets whose runtime sync-makecode-runtime serves. */
 export const MAKECODE_TARGETS = Object.freeze(['microbit', 'arcade']);
 
@@ -68,6 +70,22 @@ var bwMakeCode = {
         pxt.setupWebConfig({cdnUrl: 'https://offline.invalid'});
         bwMakeCode.configured = true;
     },
+    // The EMULATOR's base check, inside the worker: the served bytes' sha256
+    // must be one of the bases base-licences.js classifies 'clean' (the list
+    // comes with the request). Anything else — an official base with Nordic's
+    // SoftDevice in it, unknown bytes — is refused BEFORE pxt links onto it;
+    // the page names the reason (emulatorBaseVerdict).
+    emulatorBase: async function (text, cleanSha256s) {
+        var digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        var hex = Array.prototype.map.call(new Uint8Array(digest), function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join('');
+        if ((cleanSha256s || []).indexOf(hex) < 0) {
+            var e = new Error('firmware base ' + hex + ' is not a clean emulator base');
+            e.code = 'BASE_REFUSED';
+            e.baseSha256 = hex;
+            throw e;
+        }
+        return text;
+    },
     compile: async function (files, opts) {
         opts = opts || {};
         bwMakeCode.configure();
@@ -80,6 +98,11 @@ var bwMakeCode = {
         // Arcade hardware: 'rp2040', 'samd51'... selects the hw---<variant> package
         // (and with it the C++ runtime and the firmware base). '' = the default.
         pxt.setHwVariant(opts.hwVariant || '');
+        // A multi-variant target (micro:bit: mbdal = V1, mbcodal = V2) builds
+        // EVERY variant into one universal .hex by default; 'mbcodal' builds only
+        // that one — the emulator runs a V2 image, on a Bluetooth-free base
+        // (compileMakeCodeForEmulator), and has no use for the V1 half. null = all.
+        pxt.setAppTargetVariant(opts.appVariant || null);
         var copts = await pxt.simpleGetCompileOptionsAsync(files, {native: !!opts.native});
         if (opts.native && copts.extinfo && copts.extinfo.sha) {
             var infos = [copts.extinfo].concat((copts.otherMultiVariants || []).map(function (v) { return v.extinfo; }));
@@ -146,21 +169,30 @@ var bwOnMessage = async function (e) {
                 native: m.native,
                 embedSource: m.embedSource,
                 hwVariant: m.hwVariant,
+                appVariant: m.appVariant,
                 getBaseHex: async function (sha) {
-                    var h = await fetch(m.base + 'hexcache/' + sha + '.hex');
-                    return h.ok ? h.text() : null;
+                    // The emulator links onto its own bases (hexcache-emu/), and
+                    // only onto bytes proven clean; a download, onto the official ones.
+                    var h = await fetch(m.base + (m.emulator ? 'hexcache-emu/' : 'hexcache/') + sha + '.hex');
+                    if (!h.ok) return null;
+                    var text = await h.text();
+                    return m.emulator ? bwMakeCode.emulatorBase(text, m.cleanBases) : text;
                 }
             });
             postMessage({id: m.id, ok: true, result: out});
         }
     } catch (err) {
-        postMessage({id: m.id, ok: false, error: {message: String(err && err.message || err), code: err && err.code, sha: err && err.sha}});
+        postMessage({id: m.id, ok: false, error: {message: String(err && err.message || err), code: err && err.code, sha: err && err.sha, baseSha256: err && err.baseSha256}});
     }
 };
 self.onmessage = bwOnMessage;
 `;
 
-/** A MakeCode failure, with a code the UI can name: NO_RUNTIME, NO_BASE_HEX, UNSUPPORTED_TARGET, COMPILE. */
+/**
+ * A MakeCode failure, with a code the UI can name: NO_RUNTIME, NO_BASE_HEX,
+ * UNSUPPORTED_TARGET, COMPILE — and, for the emulator, CHIP_RESTRICTED_BASE,
+ * UNAUDITED_BASE, UNKNOWN_BASE (base-licences.js emulatorBaseVerdict).
+ */
 export class MakeCodeError extends Error {
     constructor (message, code, extra = {}) {
         super(message);
@@ -184,7 +216,7 @@ function workerFor (target, base) {
         if (!p) return;
         pending.delete(e.data.id);
         if (e.data.ok) p.resolve(e.data.result);
-        else p.reject(new MakeCodeError(e.data.error.message, e.data.error.code || 'COMPILE', {sha: e.data.error.sha}));
+        else p.reject(new MakeCodeError(e.data.error.message, e.data.error.code || 'COMPILE', {sha: e.data.error.sha, baseSha256: e.data.error.baseSha256}));
     };
     const call = msg => new Promise((resolve, reject) => {
         const id = ++next;
@@ -220,6 +252,47 @@ export async function compileMakeCode ({target, files, native = false, embedSour
     const w = workerFor(target, base);
     await w.ready;
     return w.call({op: 'compile', files, native, embedSource, hwVariant});
+}
+
+/**
+ * Refuse, by name, a firmware base the emulator must not run. The one check
+ * every emulator path goes through (the worker's emulatorBase only sends back
+ * the sha256 of what it refused). Throws MakeCodeError with the verdict's code.
+ * @param {string} sha256 of the base's .hex bytes
+ * @returns {object} the base's licence record, when it is clean
+ */
+export function assertEmulatorBase (sha256) {
+    const v = emulatorBaseVerdict(sha256);
+    if (!v.ok) throw new MakeCodeError(v.reason, v.code, {baseSha256: sha256});
+    return v.licence;
+}
+
+/** The sha256s of the bases the emulator may run (base-licences.js: classification 'clean'). */
+export const EMULATOR_CLEAN_BASES = Object.freeze(Object.keys(BASE_LICENCES).filter(k => emulatorBaseVerdict(k).ok));
+
+/**
+ * Compile a micro:bit project for the EMULATOR: the V2 variant only ('mbcodal'),
+ * linked onto a Bluetooth-free base from static/makecode/microbit/hexcache-emu/
+ * (scripts/build-makecode-emu-bases.mjs) — never onto the official bases, whose
+ * Nordic SoftDevice may only run on a Nordic chip. A base that is not clean is
+ * refused by name (assertEmulatorBase); a package set with no emulator base is
+ * NO_BASE_HEX, as for a download. The result's outfiles['binary.hex'] is a plain
+ * (not universal) V2 image with its vector table at 0.
+ */
+export async function compileMakeCodeForEmulator ({target = 'microbit', files, baseUrl} = {}) {
+    if (target !== 'microbit') {
+        throw new MakeCodeError(`MakeCode ${target} has no emulator firmware bases (only the micro:bit V2 does)`, 'UNSUPPORTED_TARGET');
+    }
+    if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
+    const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
+    const w = workerFor(target, base);
+    await w.ready;
+    try {
+        return await w.call({op: 'compile', files, native: true, appVariant: 'mbcodal', emulator: true, cleanBases: EMULATOR_CLEAN_BASES});
+    } catch (e) {
+        if (e && e.code === 'BASE_REFUSED') assertEmulatorBase(e.baseSha256);
+        throw e;
+    }
 }
 
 /**
