@@ -50,6 +50,7 @@
         "verify:broker-assets": "node scripts/verify-native-broker-assets.mjs",
         "sync:microbitsim": "node scripts/sync-microbit-sim.mjs",
         "sync:microbitsim:check": "node scripts/sync-microbit-sim.mjs --check",
+        "makecode": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/makecode.mjs",
         "sync:makecode": "node scripts/sync-makecode-runtime.mjs",
         "sync:makecode:check": "node scripts/sync-makecode-runtime.mjs --check",
         "build:makecode-bases": "node scripts/build-makecode-arcade-bases.mjs",

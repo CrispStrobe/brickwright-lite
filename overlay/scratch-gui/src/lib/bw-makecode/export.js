@@ -404,9 +404,17 @@ class Emitter {
             out.push(...this.substack(b, 'SUBSTACK2', indent + 1));
             push('}');
             return;
-        case 'control_wait':
-            push(`basic.pause(${v('DURATION')} * 1000)`);
+        case 'control_wait': {
+            // A literal duration is written as milliseconds, the way MakeCode's
+            // own blocks write it — and the way the importer reads it back to the
+            // same seconds, so a round trip is a fixed point.
+            const d = v('DURATION');
+            const n = Number(d);
+            push(d.trim() !== '' && Number.isFinite(n) ?
+                `basic.pause(${Math.round(n * 1000 * 1000) / 1000})` :
+                `basic.pause(${d} * 1000)`);
             return;
+        }
         case 'control_wait_until':
             push(`pauseUntil(() => ${this.condition(b, 'CONDITION')})`);
             return;
@@ -630,6 +638,17 @@ export function projectToMakeCodeTs (project) {
             }
             body.push(...emitter.stack(block.next, 0));
             void id;
+        }
+        // The importer turns MakeCode's `let x = 5` into a leading `set x to 5`
+        // (a Scratch project must re-initialise on every run). Fold such leading
+        // literal assignments back into the declaration, so the way back does
+        // not add a line per round trip (the CLI's full-circle test found it).
+        while (body.length) {
+            const m = /^([A-Za-z_][A-Za-z0-9_]*) = (-?\d+(?:\.\d+)?|"[^"\\]*")$/.exec(body[0]);
+            const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0`);
+            if (!m || decl < 0) break;
+            lines[decl] = `let ${m[1]} = ${m[2]}`;
+            body.shift();
         }
         lines.push(...definitions);
         for (const name of emitter.arrays) {

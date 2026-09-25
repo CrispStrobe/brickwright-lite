@@ -363,12 +363,23 @@ class MicrobitTranslator extends BaseTranslator {
             return;
 
         // ── radio ──────────────────────────────────────────────────
+        // Our one statement sets BOTH group and power; MakeCode sets each alone.
+        // A lone call used to reset the other to a default — `setGroup(5)` then
+        // `setTransmitPower(3)` came out as group 5, then GROUP 1 — a program on
+        // the wrong radio channel. So the last-set values are carried, and a pair
+        // of adjacent calls folds into one statement (what the export writes).
         case 'radio.setGroup':
-            push(`radio on group ${this.single(a[0], out, pad)} power 6`);
+        case 'radio.setTransmitPower': {
+            const value = this.single(a[0], out, pad);
+            if (name === 'radio.setGroup') this.radioGroup = value;
+            else this.radioPower = value;
+            const line = `${pad}radio on group ${this.radioGroup || '1'} power ${this.radioPower || '6'}`;
+            const last = this.radioLine;
+            if (last && last.out === out && last.index === out.length - 1 && last.pad === pad) out[last.index] = line;
+            else out.push(line);
+            this.radioLine = {out, index: out.length - 1, pad};
             return;
-        case 'radio.setTransmitPower':
-            push(`radio on group 1 power ${this.single(a[0], out, pad)}`);
-            return;
+        }
         case 'radio.sendNumber':
         case 'radio.sendValue':
             push(`radio send number ${this.single(a[a.length - 1], out, pad)}`);
@@ -441,6 +452,12 @@ const CALLIOPE_ONLY = {
 /** ms → seconds, computed when it is a literal so the output reads naturally. */
 function seconds (node, translator) {
     if (node && node.type === 'Number') return num(Number(node.value) / 1000);
+    // `pause(x * 1000)` is x seconds — read it as x, not (x * 1000) / 1000, or
+    // every round trip nests one more pair (the CLI's full-circle test found it).
+    if (node && node.type === 'Binary' && node.op === '*') {
+        if (node.right && node.right.type === 'Number' && Number(node.right.value) === 1000) return translator.expr(node.left);
+        if (node.left && node.left.type === 'Number' && Number(node.left.value) === 1000) return translator.expr(node.right);
+    }
     return `(${translator.expr(node)}) / 1000`;
 }
 
@@ -452,6 +469,14 @@ function seconds (node, translator) {
  */
 function percentSlot (node, translator, out, pad) {
     if (node && node.type === 'Number') return num((Number(node.value) * 100) / 1023);
+    // `Math.round(P * 1023 / 100)` is how the export writes `analog P %`:
+    // read it back as P, not as a hoisted inverse (a round trip drifted here).
+    const inner = node && node.type === 'Call' && node.callee && node.callee.type === 'Member' &&
+        node.callee.object && node.callee.object.name === 'Math' && node.callee.name === 'round' && node.args[0];
+    if (inner && inner.type === 'Binary' && inner.op === '/' && inner.right.type === 'Number' && Number(inner.right.value) === 100 &&
+        inner.left.type === 'Binary' && inner.left.op === '*' && inner.left.right.type === 'Number' && Number(inner.left.right.value) === 1023) {
+        return translator.single(inner.left.left, out, pad);
+    }
     const name = `_mc${++translator.temps}`;
     out.push(`${pad}set ${name} to (${translator.expr(node)}) * 100 / 1023`);
     translator.declared.add(name);
