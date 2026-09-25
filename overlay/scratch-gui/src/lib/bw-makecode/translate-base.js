@@ -152,7 +152,12 @@ export class BaseTranslator {
             return v;
         }
         case 'String': return `"${node.value.replace(/\\n/g, ' ')}"`;
-        case 'Boolean': return node.value ? 'true' : 'false';
+        // A VALUE: the dialect's truth is 1 and 0 (its conditions read a
+        // variable as `not (v = 0)`), so `let A = false` is `set A to 0`.
+        // The word `false` here became the string "false" on the way back out,
+        // which MakeCode refuses to assign to a number (census 2026-09-25).
+        // In a condition, condition() below keeps true/false.
+        case 'Boolean': return node.value ? '1' : '0';
         case 'Null': return '0';
         case 'Identifier': return this.varName(node.name);
         case 'Unary':
