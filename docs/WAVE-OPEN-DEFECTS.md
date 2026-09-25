@@ -16,7 +16,7 @@ verification-debt ledger, against lite `7ce24a619`.
 > | D-EMU-BP3 | `readMem('code', 0, 0x10000)` silently short-reads at 256 bytes | **REAL, FIXED** — and then fixed AGAIN, upstream, because the first fix was in a vendored copy (bw-board `a577476`) |
 > | D-CORPUS1 | the corpus differential had never run, and the first run failed | **RUNS AND IS TRIAGED** — AGREE 94, SKEW 5, DIFF 11, SKIP 66, ERROR 0; all 11 DIFFs explained |
 > | D-METHOD1 | conceding a correct number to a confident correction, then inventing a mechanism for the error not made | **RECORDED** — a method defect, not a code one; the rule is in `ROADMAP.md`'s working rules |
-> | D-FIRSTLOAD1 | 3.41 MB of first paint is 26 extension bodies that only LOOK lazy | **OPEN** — characterised, deliberately not landed |
+> | D-FIRSTLOAD1 | 3.41 MB of first paint is 26 extension bodies that only LOOK lazy | **SUPERSEDED 2026-09-05** (status corrected 2026-09-25) — lego-b9's `cd370f80a` split the registry into `builtinExtensions` + `import()`-based `lazyBuiltinExtensions` (planetemaths, all LEGO/EV3/SPIKE/NXT, music, …; the sync remainder is a deliberate choice), and `e0bebbf43` awaits the pre-load that used to break; see `ROADMAP.md` §2.4 and `test/boot-payload.test.mjs` |
 >
 > Three of these produced new entries in `docs/GATES-THAT-CANNOT-FAIL.md` (species 16, 17, and
 > 18–20), which is the general form; this file is the incident record.
@@ -1217,3 +1217,10 @@ loader is not in the entry bundle; nothing asserted that the 26 extension bodies
 are. The measurement that finds it is a live network read, not a static scan.
 
 Scoped as a day's work with a PR of its own, not an end-of-session edit. Owner: unassigned.
+
+**SUPERSEDED 2026-09-05 (recorded 2026-09-25).** Landed as lego-b9's `cd370f80a` ("perf(boot): load
+extensions, fonts and library data on demand"): `extension-manager.js` now has a synchronous
+`builtinExtensions` map and an `import()`-based `lazyBuiltinExtensions` map, one chunk per extension,
+and `e0bebbf43` makes `deserializeProject` AWAIT the pre-load — the synchronous-registration assumption
+that broke bw-ci's attempt. Eager scripts 4,238 KB -> 1,309 KB gzipped. See `ROADMAP.md` §2.4 and the
+D-FIRSTLOAD1 row in `LANES.md`.

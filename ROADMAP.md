@@ -117,7 +117,13 @@ non-no-op production-source buzzer-to-LED mutation each fail by name. Active-low
 wiring, other MCU surfaces, authored benches and the rest of the corpus remain
 outside this oracle.
 
-### Track 4 — converge vendored sources without losing downstream behavior
+### Track 4 — converge vendored sources without losing downstream behavior — SUPERSEDED
+
+**SUPERSEDED 2026-09-12 (status corrected 2026-09-25):** `bw-board` and `bw-circuit-ui` became npm
+dependencies pinned to exact Git SHAs (`package.json`, `vendor-pins.json`; `test/pinned-packages.test.mjs`),
+so there are no tracked Lite source trees left to converge. See `PLAN.md` "Next-session priorities" and
+`docs/VENDORING-REGIME.md` "THE POPULATION CHANGED ON 2026-09-12". `sb3-creator` is the one vendored
+tree left. The text below is the copy-era record, kept as history.
 
 **Measured start:** at Lite `37f41c6da`, the executable inventories contained 20
 declared source forks: 18 in `bw-board`, one in `bw-circuit-ui`, and one in
@@ -142,7 +148,13 @@ and make the executable divergence inventory reject the retired declaration.
 Lite-owned helpers with no upstream consumer move beside their Lite consumers;
 sync artefacts remain in the sync layer.
 
-### Owner decision — sinking-asymmetry lesson eligibility
+### Owner decision — sinking-asymmetry lesson eligibility — CLOSED
+
+**CLOSED (status corrected 2026-09-25):** decided upstream at sb3-creator `c593574`, inside Lite's
+current pin `44d23f8`. The three lessons stay on their STC12 architecture (each ships one
+`circuit-flat.json`, no per-target variants), and `56-logical-on-pin-level` carries the portable
+cross-family comparison with eleven device benches. See `PLAN.md` "Next-session priorities".
+The original question, kept as history:
 
 `06-active-low-high`, `32-source-vs-sink`, and `46-port-overcurrent` are wired
 correctly on every generated target. A push-pull target still cannot demonstrate
@@ -771,7 +783,7 @@ chipset. Those are dependency-complete follow-ons, not acceptance shortcuts for
 the SBC.
 
 
-#### Tang Nano 20K — FPGA execution tiers — TN0/TN1/TN2 LANDED 2026-09-15, TN2b in review
+#### Tang Nano 20K — FPGA execution tiers — TN0/TN1/TN2/TN2b LANDED 2026-09-15
 
 Full decisions, rationale, phase plan and CURRENT STATUS in
 [`docs/TANG-NANO.md`](docs/TANG-NANO.md) — which carries the status table, not
@@ -779,8 +791,8 @@ this entry, so the two cannot disagree.
 
 **Built so far:** the board part and its 3.3 V rule (bw-circuit-ui #24), the
 `gate-level` machine semantics (bw-board #6), both pins moved into lite (#112),
-the HDL surface behind `BW_ENABLE_FPGA` (#113), and the pin bridge (#114, in
-review) — which reads a Gowin `.cst` against the real part and drives an output
+the HDL surface behind `BW_ENABLE_FPGA` (#113), and the pin bridge (#114, merged
+2026-09-15 as `1b49723e9`; status corrected 2026-09-25) — which reads a Gowin `.cst` against the real part and drives an output
 port to light a real LED through the real solver. Synthesis, any model of the
 fabric, flashing and every SoC remain unbuilt, and the surface says so. Summary and evidence here so the
 roadmap is not missing a hardware track that exists only in another file.
@@ -967,7 +979,10 @@ Lite-side items (ours, this repo):
    SPICE artifact in each view, requires exactly three download events, compares the
    three SHA-256s and fails on any page error. Lite's pinned consumer contract and
    `verify-circuit-export-completeness.mjs` carry the same boundary into the product.
-6. **Define the eleven `devices_oled*`/`devices_tft*` opcodes** the emitter emits but
+6. **DONE (lite `802fc1050`, 2026-08-23; ported from sb3-creator `652a777`; status corrected 2026-09-25).**
+   `KNOWN_MISSING_OPCODES` in `test/example-vm-execution.test.mjs` is now empty and the three
+   `KNOWN_INERT` entries named below came off with it (see that file's comments).
+   Original item: **Define the eleven `devices_oled*`/`devices_tft*` opcodes** the emitter emits but
    no extension copy defines (measured in §5.1a — not a vendoring lag; there is
    nothing upstream to vendor). Fix at the source of truth first
    (sb3-creator `reference/extensions/devices.js`, wrapping the display device state
@@ -1951,9 +1966,10 @@ present. Full detail: `docs/EXAMPLE-CORPUS-FINDINGS.md`.
   re-vendoring, which stops an exemption outliving its cause. One `skip` remains in that file
   and it is the opposite shape: `…: vendored snapshot matches the live sibling checkout` adds a
   drift check where a sibling happens to be on disk, and its own comment says "it adds a check,
-  it is not the check". Both halves of the gap this section names are therefore closed; only the
-  §3.5 item 6 work (the eleven `devices_oled*`/`devices_tft*` opcodes) is still open, and that
-  was never a skipping-gate problem.
+  it is not the check". Both halves of the gap this section names are therefore closed. The
+  §3.5 item 6 work (the eleven `devices_oled*`/`devices_tft*` opcodes), which was never a
+  skipping-gate problem, is also DONE since lite `802fc1050` (`KNOWN_MISSING_OPCODES` in
+  `test/example-vm-execution.test.mjs` is empty; corrected 2026-09-25).
 
 **Why CI never saw it** (history — the mechanism described here was removed by sb3-creator
 `517c146`; kept because the failure mode is the lesson). `test/stc12-conformance.test.mjs` USED TO
