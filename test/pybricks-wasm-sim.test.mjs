@@ -94,6 +94,10 @@ test('licence gate: refuses share-alike files and the replaced upstream header',
         const run = deps => {
             rmSync(build, {recursive: true, force: true});
             file(resolve(build, 'x.d'), `x.o: ${deps.join(' ')}\n`);
+            // python3 from PATH is the binding the subject has in production (build-pybricks-wasm.sh
+            // runs this gate with python3 from PATH). A missing python3 gives status null, which
+            // fails the precondition below, never a silent pass.
+            // gate-shapes-allow: same interpreter binding as the build that runs the gate
             return spawnSync('python3', [gate, build, pbtop, wasm], {encoding: 'utf8'});
         };
 
