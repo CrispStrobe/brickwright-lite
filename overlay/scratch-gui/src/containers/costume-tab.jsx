@@ -345,6 +345,15 @@ class CostumeTab extends React.Component {
                             </button>
                         </div>
                         <div style={{flex: 1, minHeight: 0}}>
+                            {/* The paint editor stays MOUNTED and is only hidden: unmounting
+                                it while scratch-paint is still importing a costume leaves a
+                                pending paper.js callback reading a destroyed project
+                                ("reading 'layers'"), which crashes the whole tab. */}
+                            <div style={{display: this.state.pixelMode ? 'none' : 'contents'}}>
+                                <PaintEditorWrapper
+                                    selectedCostumeIndex={this.state.selectedCostumeIndex}
+                                />
+                            </div>
                             {this.state.pixelMode ? (
                                 <React.Suspense fallback={null}>
                                     <PixelArtEditor
@@ -352,11 +361,7 @@ class CostumeTab extends React.Component {
                                         vm={vm}
                                     />
                                 </React.Suspense>
-                            ) : (
-                                <PaintEditorWrapper
-                                    selectedCostumeIndex={this.state.selectedCostumeIndex}
-                                />
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 ) : null}

@@ -77,6 +77,8 @@ if (!url) {
 }
 
 const failures = [];
+// Every console error, in order, so a check can say WHICH step produced one.
+const browserErrors = [];
 const check = (name, ok, detail = '') => {
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
     if (!ok) failures.push(name);
@@ -99,7 +101,10 @@ try {
     const page = await browser.newPage({viewport: {width: 1600, height: 1000}});
     page.on('dialog', d => d.dismiss());
     page.on('console', message => {
-        if (message.type() === 'error') console.log(`  browser error: ${message.text().slice(0, 160)}`);
+        if (message.type() === 'error') {
+            console.log(`  browser error: ${message.text().slice(0, 160)}`);
+            browserErrors.push(message.text());
+        }
     });
     await page.addInitScript(() => {
         localStorage.clear();
@@ -238,6 +243,10 @@ try {
             // Select a sprite that carries imported art (the stage has backdrops only).
             const sprite = page.locator('[class*="sprite-selector-item"]').first();
             if (await sprite.count()) await sprite.click().catch(() => {});
+            // A crash here would be the paint editor itself on the imported costume, not the toggle.
+            const tabErrors = browserErrors.filter(e => /Costume Tab/.test(e)).length;
+            check('the costume tab opens on an imported Arcade sprite without crashing', tabErrors === 0,
+                tabErrors ? browserErrors.filter(e => /Costume Tab/.test(e))[0].slice(0, 140) : '');
             await page.locator('[data-testid="bw-pixel-toggle"]').click({timeout: 20000}).catch(() => {});
             const canvas = page.locator('[data-testid="bw-pixel-canvas"]');
             await canvas.waitFor({state: 'visible', timeout: 20000}).catch(() => {});
@@ -252,6 +261,9 @@ try {
                 return coloured;
             }).catch(() => 0);
             check('the costume tab\'s pixel editor opens an imported Arcade costume as palette pixels', cells > 0, `${cells} coloured canvas pixels`);
+            const toggleErrors = browserErrors.filter(e => /Costume Tab/.test(e)).length - tabErrors;
+            check('switching to the pixel editor does not crash the tab', toggleErrors === 0,
+                toggleErrors ? 'the paint editor was torn down mid-import' : '');
             const converted = await page.locator('text=/was not pixel art|keine Pixelgrafik/').count();
             check('and reads it exactly, not by conversion', converted === 0);
             await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
