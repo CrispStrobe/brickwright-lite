@@ -1504,14 +1504,120 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   https://github.com/microsoft/pxt-arcade
 - **Usage:** `lib/bw-makecode/pxt-runtime.js` — MakeCode projects compiled and
   simulated as MakeCode wrote them, and real micro:bit firmware (.hex) built in the
-  browser. The CODAL firmware inside the micro:bit bases is itself MIT (Lancaster
-  University / micro:bit Educational Foundation) and is shipped unmodified, as
-  pxt-microbit ships it. "LEGO" and "MINDSTORMS" are trademarks of the LEGO Group,
-  "Calliope" of Calliope gGmbH, "Circuit Playground" of Adafruit Industries — named
-  here only to say which board a file is for.
+  browser, shipped unmodified, as pxt-microbit ships it.
+- **The micro:bit firmware bases are NOT all MIT.** The CODAL / DAL runtime in
+  them is MIT (Lancaster University / Micro:bit Educational Foundation), but each
+  is a Bluetooth-enabled build that also carries **Nordic Semiconductor's
+  SoftDevice, MBR and bootloader** as binaries: the V2 bases the **S113
+  SoftDevice** (0x1000-0x1B3FF), the MBR (0x0-0xAFF) and a bootloader
+  (0x77000); the V1 bases, and the Calliope mini bases (nRF51822), the **S110 v8 SoftDevice** (0x1000-0x16917), the MBR
+  (0x0-0x7BF) and a bootloader (0x3C000). Their terms:
+  - S113 / MBR / bootloader (V2), under the nRF5 SDK licence, Copyright (c)
+    Nordic Semiconductor ASA: "2. Redistributions in binary form, except as
+    embedded into a Nordic Semiconductor ASA integrated circuit in a product or
+    a software update for such product, must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution. …
+    4. This software, with or without modification, must only be used with a
+    Nordic Semiconductor ASA integrated circuit. 5. Any software provided in
+    binary form under this license must not be reverse engineered, decompiled,
+    modified and/or disassembled."
+  - S110 v8 (V1), under the S110 SoftDevice Licence Agreement, Copyright (c)
+    Nordic Semiconductor ASA: a licence "(a) to use the SoftDevice solely in
+    connection with a Nordic integrated circuit, and (b) to distribute the
+    SoftDevice solely as integrated in Licensee Product", and "Licensee shall
+    not, modify, reverse engineer, disassemble, decompile or otherwise attempt
+    to discover the source code of any non-source code parts of the SoftDevice".
+  These bases are served for ONE use, the one those terms allow: a .hex
+  downloaded to and run on a micro:bit (a Nordic chip). lite's emulator never
+  runs them: `lib/bw-makecode/base-licences.js` classifies every base by the
+  sha256 of its bytes and refuses a chip-restricted one by name
+  (CHIP_RESTRICTED_BASE); the emulator links onto the Bluetooth-free bases below.
+  "LEGO" and "MINDSTORMS" are trademarks of the LEGO Group, "Calliope" of
+  Calliope gGmbH, "Circuit Playground" of Adafruit Industries — named here only to
+  say which board a file is for.
 - "Microsoft" and "MakeCode" are trademarks of Microsoft Corporation, used here only
   to say whose files these are; this project is not affiliated with or endorsed by
   Microsoft.
+
+### micro:bit emulator firmware bases (built from source) — MIT, Apache-2.0, newlib
+
+Bluetooth-free CODAL V2 builds of pxt-microbit's {core, radio} and
+{core, radio, microphone} package sets, which `lib/bw-makecode/pxt-runtime.js`
+(`compileMakeCodeForEmulator`) links a program onto for lite's EMULATOR only.
+Built by `scripts/build-makecode-emu-bases.mjs` (codal-microbit-v2 with
+DEVICE_BLE 0, Nordic's SoftDevice/MBR/bootloader objects removed before the
+link), pinned by sha256 in `scripts/sync-makecode-runtime.mjs`
+(MICROBIT_EMU_BASES), served under
+`packages/scratch-gui/static/makecode/microbit/hexcache-emu/`, never committed.
+The build refuses to write a base whose linker map places a byte of the
+Nordic nRF5 SDK or of a SoftDevice/MBR/bootloader/UICR section in the image.
+Measured on the pinned builds, the image holds, by component: codal-core,
+codal-nrf52, codal-microbit-v2 (MIT, Copyright (c) Lancaster University; the
+last also the Micro:bit Educational Foundation); pxt-microbit's C++ (MIT,
+Microsoft Corporation); the nrfx MDK startup and system files
+`gcc_startup_nrf52833.S` / `system_nrf52833.c` (Apache-2.0, Copyright (c) ARM
+Limited, modified by Nordic Semiconductor ASA); newlib-nano, libgcc and libstdc++
+from the build host's gcc-arm-none-eabi (newlib's BSD-style licences; the GCC
+Runtime Library Exception). No nRF5 SDK member and no Nordic binary: 0 bytes.
+- **Source:** https://github.com/lancaster-university/codal-microbit-v2,
+  https://github.com/lancaster-university/microbit-v2-samples,
+  https://github.com/microsoft/pxt-microbit
+
+### MakeCode Arcade firmware bases (built from source) — MIT, BSD-3-Clause, Apache-2.0
+
+Precompiled C++ runtimes that `lib/bw-makecode/pxt-runtime.js` links an Arcade
+game onto for real hardware (one per board: RP2040, SAMD51, STM32F401, nRF52833,
+nRF52840). pxt-arcade ships none. `scripts/sync-makecode-runtime.mjs` fetches
+MakeCode's own cloud build of each (cdn.makecode.com/compile/<sha>.hex, the file
+MakeCode's editor downloads, Microsoft Corporation) and serves it under
+`packages/scratch-gui/static/makecode/arcade/hexcache/` only when its bytes match
+the sha256 pinned there; alternatively our own from-source builds
+(`scripts/build-makecode-arcade-bases.mjs`, proved in
+`.github/workflows/makecode-arcade-bases.yml`), pinned the same way. Never
+committed. Either way each image contains, compiled and unmodified:
+
+- **pxt-common-packages** (the C++ of core, screen, mixer, game…, carried inside
+  pxt-arcade's target.json) — MIT, Copyright (c) Microsoft Corporation.
+- **CODAL** (`lancaster-university/codal`, `codal-core`, and the device targets
+  `codal-pi-pico`, `codal-rp2040`, `codal-itsybitsy-m4`, `codal-samd`,
+  `codal-big-brainpad`, `codal-stm32`, `microbit-v2-samples`, `codal-microbit-v2`,
+  `codal-nrf52`, at the tags and target-locked commits the build manifest records)
+  — MIT, Copyright (c) Lancaster University and contributors (codal-microbit-v2 also
+  the Micro:bit Educational Foundation).
+- **Raspberry Pi Pico SDK** (rp2040 base, via codal-rp2040) — BSD-3-Clause,
+  Copyright 2020 (c) Raspberry Pi (Trading) Ltd.
+- **Vendor HAL code, NOT MIT** — each image carries its chip vendor's support
+  library, under that vendor's licence:
+  - samd51 / samd51adafruit: **Microchip/Atmel ASF4** (via codal-samd) —
+    Atmel's BSD-style licence with the condition "may only be redistributed and
+    used in connection with an Atmel microcontroller product", and Apache-2.0
+    device headers; plus **samd-peripherals**, MIT, Copyright (c) 2018 Scott
+    Shawcroft for Adafruit Industries LLC.
+  - stm32f401: **STM32Cube HAL** (via codal-stm32, MIT, Copyright (c) 2018
+    Michał Moskal) — BSD-3-Clause, Copyright (c) 2017 STMicroelectronics.
+  - n3 / gdk (nRF52833): the Nordic nRF5 SDK (via codal-microbit-nrf5sdk) is
+    COMPILED but, measured on the linker maps of our builds, none of its
+    members is linked; what the images carry from Nordic's side is the nrfx MDK
+    startup and system files (Apache-2.0, ARM Limited, modified by Nordic) and
+    an 8-byte UICR record (0x10001014: the bootloader and MBR-params addresses)
+    from codal-microbit-v2's `lib/uicr.o`, which was converted from Nordic's
+    bootloader hex. The SoftDevice, MBR and bootloader objects are offered to
+    the linker and discarded.
+  - rp2040: the Pico SDK is BSD-3-Clause, Copyright 2020 (c) Raspberry Pi
+    (Trading) Ltd., except `pico_double/double_v1_rom_shim.S` (Copyright (c)
+    2020 Mark Owen), linked into the image: "a non-exclusive license to use the
+    software solely on a Raspberry Pi Pico device … also available from the
+    copyright owner under GPLv2" (BSD-3-Clause upstream since pico-sdk
+    73e71969; codal-rp2040's pin predates it).
+  Each condition is met by what the file is FOR — firmware flashed onto that
+  vendor's chip — but none of them is MIT. `lib/bw-makecode/base-licences.js`
+  records each base's classification; the emulator runs none of these.
+- **newlib / newlib-nano and libgcc** (from the build host's gcc-arm-none-eabi) —
+  newlib's BSD-style licences (Red Hat and contributors); libgcc under the GCC
+  Runtime Library Exception.
+- **Source:** https://github.com/lancaster-university, https://github.com/microsoft/pxt-common-packages,
+  https://github.com/raspberrypi/pico-sdk
 
 ## BBC BASIC interpreter attribution — zlib
 
