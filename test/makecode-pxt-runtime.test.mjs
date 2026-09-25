@@ -11,9 +11,11 @@
  *     the shipped CODAL base below the program region and differs inside it — a
  *     .hex that merely equalled the base, or merely existed, would pass a weaker
  *     check and flash a board that does nothing;
- *   - Arcade compiles for the simulator, and a native Arcade build is REFUSED by
- *     name (NO_BASE_HEX), as is a micro:bit project with a C++ package outside
- *     the shipped base set — never sent to the network;
+ *   - Arcade compiles for the simulator, and a native Arcade build that names no
+ *     hardware is REFUSED by name (NO_BASE_HEX: the generic default has no C++
+ *     runtime, so no base — per-hardware bases are test/makecode-arcade-bases),
+ *     as is a micro:bit project with a C++ package outside the shipped base set —
+ *     never sent to the network;
  *   - a program with a type error returns success:false with the error, not a
  *     throw and not a silent empty build;
  *   - zero network attempts across every compile — "offline" measured, not assumed.
@@ -122,7 +124,7 @@ test('a native micro:bit build links the program onto the shipped CODAL firmware
     assert.match(r.outfiles['mbcodal-binary.asm'] || '', /analogReadPin|showNumber/, 'the listing does not contain the program');
 });
 
-test('an Arcade game compiles for the simulator; a native Arcade build is refused by name', {skip}, async () => {
+test('an Arcade game compiles for the simulator; a native Arcade build naming no hardware is refused by name', {skip}, async () => {
     const files = {
         'pxt.json': JSON.stringify({name: 'bw-test', dependencies: {device: '*'}, files: ['main.ts']}),
         'main.ts': 'let hero = sprites.create(img`\n. 5 .\n5 5 5\n`, SpriteKind.Player)\ncontroller.moveSprite(hero)\ninfo.setScore(3)\n'
