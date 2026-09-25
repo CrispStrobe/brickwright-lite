@@ -90,9 +90,14 @@ export const DEFAULT_PROJECT = Object.freeze({
 
 /**
  * pxt's C++ build request for `variant`, from the served runtime.
+ *
+ * `variant` is an Arcade hardware variant (hw---<variant>), or '' for none.
+ * `appVariant` selects one of a multi-variant target's app variants — the
+ * micro:bit's 'mbcodal' (V2) — so the request is that variant's alone
+ * (scripts/build-makecode-emu-bases.mjs builds the micro:bit V2 bases this way).
  * @returns {Promise<{sha: string, request: {config: string, tag: string, replaceFiles: Object<string,string>}, compileService: object}>}
  */
-export async function buildRequest (variant, {staticDir = ARCADE_STATIC, files = DEFAULT_PROJECT} = {}) {
+export async function buildRequest (variant, {staticDir = ARCADE_STATIC, files = DEFAULT_PROJECT, appVariant = null} = {}) {
     const bundle = JSON.parse(fs.readFileSync(path.join(staticDir, 'target.json'), 'utf8'));
     bundle.compile.keepCppFiles = true;
     const quiet = () => {};
@@ -108,6 +113,7 @@ export async function buildRequest (variant, {staticDir = ARCADE_STATIC, files =
     vm.createContext(sb);
     vm.runInContext(fs.readFileSync(path.join(staticDir, 'pxtworker.js'), 'utf8'), sb, {filename: 'pxtworker.js'});
     sb.__variant = variant;
+    sb.__appVariant = appVariant;
     sb.__files = files;
     const json = await vm.runInContext(`(async () => {
         pxt.setupSimpleCompile({
@@ -118,29 +124,31 @@ export async function buildRequest (variant, {staticDir = ARCADE_STATIC, files =
         pxt.packagesConfigAsync = () => Promise.resolve({});
         pxt.setupWebConfig({cdnUrl: 'https://offline.invalid'});
         pxt.setHwVariant(__variant);
+        pxt.setAppTargetVariant(__appVariant);
         const copts = await pxt.simpleGetCompileOptionsAsync(__files, {native: true});
         return JSON.stringify(copts.extinfo);
     })()`, sb);
     const extinfo = JSON.parse(json);
     // The variant's compile service: target.json's base one, overlaid by
     // variants[<compileServiceVariant of hw---<variant>>] — what pxt applies.
-    const hw = JSON.parse(bundle.bundledpkgs[`hw---${variant}`]['pxt.json']);
-    const compileService = {...bundle.compileService, ...((bundle.variants[hw.compileServiceVariant] || {}).compileService || {})};
-    if (!extinfo || !extinfo.compileData) throw new Error(`${variant}: pxt formed no C++ build request`);
+    const hw = variant ? JSON.parse(bundle.bundledpkgs[`hw---${variant}`]['pxt.json']) : {};
+    const serviceVariant = appVariant || hw.compileServiceVariant;
+    const compileService = {...bundle.compileService, ...(((bundle.variants || {})[serviceVariant] || {}).compileService || {})};
+    if (!extinfo || !extinfo.compileData) throw new Error(`${variant || appVariant}: pxt formed no C++ build request`);
     const data = Buffer.from(extinfo.compileData, 'base64').toString('utf8');
     // The request must hash to pxt's own sha, or the file we produce is keyed wrong.
     if (sha256(data) !== extinfo.sha) throw new Error(`${variant}: sha256(request) ${sha256(data)} is not pxt's extinfo.sha ${extinfo.sha}`);
     return {sha: extinfo.sha, request: JSON.parse(data), compileService};
 }
 
-function run (cmd, args, opts = {}) {
+export function run (cmd, args, opts = {}) {
     const r = spawnSync(cmd, args, {stdio: opts.quiet ? 'pipe' : 'inherit', encoding: 'utf8', maxBuffer: 1 << 28, ...opts});
     if (r.status !== 0) throw new Error(`${cmd} ${args.join(' ')} (in ${opts.cwd || '.'}): exit ${r.status}${r.stderr ? '\n' + r.stderr.slice(-2000) : ''}`);
     return (r.stdout || '').trim();
 }
 
 /** Every git checkout under dir (the build root, the codal target, its libraries, their submodules). */
-function gitCommits (dir) {
+export function gitCommits (dir) {
     const out = {};
     const walk = (d, depth) => {
         if (depth > 4 || !fs.existsSync(d)) return;

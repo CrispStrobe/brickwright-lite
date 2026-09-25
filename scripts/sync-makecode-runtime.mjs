@@ -42,6 +42,7 @@
  *   npm run sync:makecode:check     # verify the cache and the served files; never fetch
  *   npm run sync:makecode -- --strict-bases   # and fail unless every pinned Arcade base is served
  *   npm run sync:makecode -- --built-bases    # serve ONLY our from-source builds, all of them, or fail
+ *   npm run sync:makecode -- --emu-bases      # and fail unless every pinned micro:bit emulator base is served
  */
 // WHAT THIS SHIPS, for THIRD-PARTY-NOTICES.md: test/notices-drift.test.mjs reads this
 // declaration (strict JSON) from every sync script that places an artifact under static/,
@@ -160,6 +161,57 @@ export const ARCADE_BASES = {
         url: `${MAKECODE_CDN}6dec95e447be3440084b2e3ee685da90bbb87fe2d3115f0160ca168262a730d4.hex`, sha256: 'b5d63295e30ad891835adfcb7b7b381c8905aab39d3f6b9916bcf34fbff4756c', bytes: 305251,
         built: null}
 };
+
+/**
+ * micro:bit EMULATOR bases: Bluetooth-free CODAL V2 builds of pxt-microbit's
+ * default package sets (scripts/build-makecode-emu-bases.mjs), for linking a
+ * program the EMULATOR runs — the official hexcache carries Nordic's
+ * SoftDevice, whose licence allows it to run only on a Nordic chip
+ * (lib/bw-makecode/base-licences.js). Keyed by the same pxt sha as the official
+ * base for that package set (the request is the same; the bytes are ours), and
+ * served beside it under microbit/hexcache-emu/, never in hexcache/.
+ *   sha     pxt's extinfo.sha for the V2 ('mbcodal') variant.
+ *   sha256  of our build (gcc-arm-none-eabi 15:13.2.rel1-2, Ubuntu 24.04);
+ *           byte-identical across three build directories (measured 2026-09-25).
+ * NOT FETCHED: nothing hosts them. Built locally or by the makecode-arcade-bases
+ * workflow's emu job into artifacts/makecode/emu-bases/; served only when the
+ * bytes match. Absent, the emulator's compile is refused (NO_BASE_HEX) — the
+ * official bases are never substituted.
+ */
+export const EMU_BASES_DIR = path.join(ROOT, 'artifacts', 'makecode', 'emu-bases');
+export const MICROBIT_EMU_BASES = {
+    'v2-radio': {sha: '137d8c972fe969dae4c15a314658e85c8910206d5f45c741c535ee616e3961a1',
+        sha256: '93892ba327fc49240cdbad3cc3b53358765467fb1d06f47a98a32fb0242a910e', bytes: 398847},
+    'v2-radio-microphone': {sha: '354b97da4696027afdaa3977420ec181bfc88a2faa2d2c0174842767718551e7',
+        sha256: '9c5e1cc82148ebe4d825ce7134a61a81fe577a46b64eefb6dc8d3b798f683e53', bytes: 400242}
+};
+
+/**
+ * The emulator bases that can be served: {rel -> bytes}. Only a local file whose
+ * sha256 is the pin; anything else is refused by name. `strict` makes a missing
+ * or refused base fatal (the workflow's --emu-bases).
+ */
+export function emuBases ({strict = false, dir = EMU_BASES_DIR, log = console.log} = {}) {
+    const files = new Map();
+    const missing = [];
+    const refused = [];
+    for (const [set, pin] of Object.entries(MICROBIT_EMU_BASES)) {
+        const local = path.join(dir, `${pin.sha}.hex`);
+        if (!fs.existsSync(local)) { missing.push(set); continue; }
+        const b = fs.readFileSync(local);
+        const got = sha256(b);
+        if (got !== pin.sha256) { refused.push(`${set} (${local}: sha256 ${got}, pinned ${pin.sha256})`); continue; }
+        files.set(`microbit/hexcache-emu/${pin.sha}.hex`, b);
+    }
+    if (refused.length) log(`[sync:makecode] REFUSED micro:bit emulator base(s) whose bytes are not pinned: ${refused.join('; ')}`);
+    if (missing.length) {
+        log(`[sync:makecode] micro:bit emulator bases not built: ${missing.join(', ')} — emulating those package sets is refused ` +
+            '(NO_BASE_HEX); build them with `npm run build:makecode-emu-bases`');
+    }
+    if (files.size) log(`[sync:makecode] micro:bit emulator bases: ${files.size} served (Bluetooth-free, built from source)`);
+    if (strict && (missing.length || refused.length)) throw new Error('--emu-bases: every pinned micro:bit emulator base must be present and match its pin');
+    return files;
+}
 
 const tgzPath = id => path.join(CACHE_DIR, id.replace('@', '-') + '.tgz');
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -318,6 +370,7 @@ async function main () {
     const files = plan(entries);
     const strict = process.argv.includes('--strict-bases') || process.argv.includes('--built-bases');
     for (const [rel, bytes] of await arcadeBases({offline: check, strict, requireBuilt: process.argv.includes('--built-bases')})) files.set(rel, bytes);
+    for (const [rel, bytes] of emuBases({strict: process.argv.includes('--emu-bases')})) files.set(rel, bytes);
     if (check) {
         const wrong = [...files].filter(([rel, bytes]) => {
             const p = path.join(STATIC_DIR, rel);
