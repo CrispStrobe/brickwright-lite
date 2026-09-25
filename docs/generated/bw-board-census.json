@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "8c0c85661ca238e64a58951894c4b13a717d3505",
-    "read": "2026-09-24"
+    "sha": "e8b927bad30e71f27a9b3f52d0d3ad65243f235e",
+    "read": "2026-09-25"
   },
   "rows": [
     {
@@ -226,10 +226,10 @@
     {
       "id": "amey-corpus",
       "kind": "fixture",
-      "present": true,
+      "present": false,
       "ciAvailable": true,
       "ci": "yes — the `corpus` job (ci.yml:287) checks out Amey-Thakur/…, asserts all 525 are present (ci.yml:304), and assembles and runs each per push on VERDICT COUNTS rather than a text diff. The unit test reads a local /tmp/amey copy and its corpus subtests skip without it, but the claim is standing via that job.",
-      "via": "/tmp/amey/Source Code (under /tmp: shared and cleared on reboot)",
+      "via": "tried /tmp/amey/Source Code",
       "gates": [
         "test/i8086-asm.test.mjs"
       ],

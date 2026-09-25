@@ -922,17 +922,28 @@ Lite-side items (ours, this repo):
 1. **Re-vendor after each upstream landing** — `npm run sync:bwboard && npm run
    sync:circuitui`, then the bundle-grep invariant for one distinctive new symbol per
    landing (a green build does not prove the feature is in the bundle).
-2. **Vendor the format-knowledge attribution** — the vendored
+2. **DONE 2026-09-25.** `THIRD-PARTY-NOTICES.md` §bw-circuit-ui now carries the
+   package's format-knowledge table, held row-for-row to the installed
+   `bw-circuit-ui/THIRD-PARTY.md` by `test/notices-format-knowledge.test.mjs`.
+   Was: **Vendor the format-knowledge attribution** — the vendored
    `bw-circuit-ui/importers/kicad-common.js` cites "THIRD-PARTY.md", which exists
    upstream but not here: copy the format-schema attribution rows (incl. the MIT
    schema-knowledge source for `.kicad_sch` tokens) into `THIRD-PARTY-NOTICES.md`'s
    bw-circuit-ui section so the vendored pointer resolves.
-3. **Extend the trademark disclaimer** — README §"Not affiliated" names Scratch/MIT,
+3. **DONE 2026-09-25.** README and both store descriptions name KiCad, EasyEDA,
+   EAGLE and LTspice; `test/format-name-disclaimer.test.mjs` DERIVES the brands
+   from the importer list and exporter registry the menus render, so a new
+   format reds until it is named (Fritzing and Wokwi are not named in the UI,
+   which says "Breadboard document" and "Diagram"). Was: **Extend the trademark disclaimer** — README §"Not affiliated" names Scratch/MIT,
    STC, Arduino, Raspberry Pi but none of the EDA format names the import/export UI
    shows; add them (and mirror in `docs/app-store-metadata.md`). Rule stays: format
    names in import/export UI are nominative use; competing products are never named
    in committed content (bw-board `PLAN.md` standing rule).
-4. **Licence tripwire** — extend the dependency check so the LGPL sparse-solver
+4. **DONE 2026-09-25.** `scripts/lib/lgpl-sparse-tripwire.mjs`: no lockfile may
+   resolve the family, no shipped source may carry its fingerprints
+   (`test/lgpl-sparse-tripwire.test.mjs`), and `verify-no-gpl-in-build.mjs`
+   scans the built bundles too — proven on mathjs 13.2.3's real `math.js`,
+   whose sparse factory names survive minification. Was: **Licence tripwire** — extend the dependency check so the LGPL sparse-solver
    family (KLU/CSparse derivatives, including the sparse module inside mathjs) can
    never enter the shipped graph; the full ruling table is in
    `bw-board/ROADMAP.md` §"Backends and licence policy". The oracle policy is
@@ -1752,7 +1763,7 @@ hardware features the planning docs could not see.
 
 | file | the feature | what it would take | blocked on |
 |---|---|---|---|
-| `avr-peripherals.js` | SPI/I2C peripheral models on the AVR debug path | a boundary-D AVR debug target that exposes bus traffic, then registering these models with the device registry and asserting a consumer (producer-must-assert-consumer) | the boundary-D debugger port for avr8js — the next coordinator piece named in `bw-setup.md`, not started |
+| `avr-peripherals.js` | SPI/I2C/EEPROM on the AVR debug path | **nothing — SUPERSEDED 2026-09-25.** The avr8js debug target exists (`avr8js-debug.js`) and the adapter itself now owns all three: I2C through `twi-bridge.js` to the board's I2C parts (measured: a Wire sketch draws an exact checkerboard on an SSD1306), internal EEPROM and hardware SPI on the pins (bw-board #43, `e8b927b`: `EEPROM.write()` hung and `SPI.transfer()` read `0xFF` before). `test/arduino-sketch-route.test.mjs` holds the EEPROM and Wire starters on the pinned engine. The file stays a leaf; its `wirePeripherals()` now defers to the adapter's EEPROM | nothing |
 | `face-live.js` | resolving a board face against **tethered** hardware instead of the simulated board | a live-hardware transport (ScratchLink/WebSerial is present; a board-identity handshake is not) and a decision about what happens when the tethered board disagrees with the designed one | tethered-hardware mode, which has no design yet. `§3.4` long-horizon |
 | `m6507-machine.js` | Atari 2600 / SBC6507 as a device target | a device-selector entry, an example set, and a display path — the 6502 workstation shape already exists (`test/6502-workstation.test.mjs`), so this is mostly wiring plus content | nothing technical. Unscheduled: no example corpus, and a device with no lessons is a device nobody uses |
 | `m74c922.js` | **LANDED 2026-08-30:** physical 4×4 keypad encoder IC | `tier2-parts.js` now registers the model; Lite acceptance covers all 16 codes, release, rollover, true-Z `/OE`, broken matrix wires and scheduler chunking | unblocked and removed from `KNOWN_DEAD`; the existing sidecar/art and designer palette make it placeable |

@@ -16,8 +16,9 @@
  * ways a file can arrive — a stray `static/` commit, a plugin, or a future copy
  * rule would all be invisible to a source-level assertion.
  */
-import {existsSync, readdirSync, statSync} from 'node:fs';
+import {existsSync, readdirSync, readFileSync, statSync} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
+import {contentOffences} from './lib/lgpl-sparse-tripwire.mjs';
 
 const build = resolve(process.argv[2] || 'packages/scratch-gui/build');
 if (!existsSync(build)) {
@@ -51,6 +52,12 @@ const walk = dir => {
             walk(full);
         } else if (FORBIDDEN_FILES.has(entry.name)) {
             offences.push(`${relative(build, full)} — ${FORBIDDEN_FILES.get(entry.name)}`);
+        } else if (/\.(m?js|cjs)$/.test(entry.name)) {
+            // The LGPL sparse-solver family (KLU/CSparse, mathjs's sparse
+            // module) arrives as JavaScript, so it is looked for in the bundles.
+            for (const why of contentOffences(readFileSync(full, 'utf8'))) {
+                offences.push(`${relative(build, full)} — ${why} (LGPL sparse-solver family; see scripts/lib/lgpl-sparse-tripwire.mjs)`);
+            }
         }
     }
 };
@@ -63,11 +70,18 @@ if (offences.length) {
     console.error(`GPL payload in the build output at ${build}:`);
     for (const line of offences) console.error(`  ${line}`);
     console.error('\nThis build directory is bundled into the .app by tauri.conf.json,');
-    console.error('so this would ship GPL binaries inside a BSD-3-Clause application.');
-    console.error('The toolchain belongs at https://github.com/CrispStrobe/sdcc-wasm');
-    console.error('and is fetched on request — see src/lib/sdcc-wasm/toolchain-source.js.');
+    console.error('so this would ship (L)GPL code inside a BSD-3-Clause application.');
+    if (offences.some(o => /sparse-solver/.test(o))) {
+        console.error('The LGPL sparse-solver family (KLU, CSparse, mathjs\'s sparse module) must not be');
+        console.error('used, ported or bundled — bw-board ROADMAP §"Backends and licence policy".');
+        console.error('Find what imports it (the bundle\'s source map names the module) and remove it.');
+    }
+    if (offences.some(o => !/sparse-solver/.test(o))) {
+        console.error('The SDCC toolchain belongs at https://github.com/CrispStrobe/sdcc-wasm');
+        console.error('and is fetched on request — see src/lib/sdcc-wasm/toolchain-source.js.');
+    }
     process.exit(1);
 }
 
 const total = countFiles(build);
-console.log(`No GPL payload in the build output: ${total} files checked under ${relative(process.cwd(), build) || '.'}.`);
+console.log(`No GPL payload and no LGPL sparse solver in the build output: ${total} files checked under ${relative(process.cwd(), build) || '.'}.`);
