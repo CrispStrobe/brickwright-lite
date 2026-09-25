@@ -220,3 +220,46 @@ test('every lite micro:bit example compiles, through the MakeCode export, to rea
     }
     assert.deepEqual(failed, []);
 });
+
+test('census batch 1: a program using every call comes back from lite and MakeCode compiles it', {skip}, async () => {
+    // MakeCode's led/game/Math calls the census found refused or silently lost
+    // (2026-09-25). The loop is the census's own: import -> pseudocode ->
+    // blocks -> export -> pxt. MakeCode compiling the ORIGINAL is the control:
+    // the program is valid MakeCode before lite touches it.
+    const {default: SB3Creator} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
+    const {microbitToPseudocode} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/microbit-translate.js'));
+    const {projectToMakeCodeTs} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/export.js'));
+    const original = [
+        'let v = 0',
+        'basic.forever(function () {',
+        '    led.plotBarGraph(input.lightLevel(), 255)',
+        '    led.toggle(1, 2)',
+        '    led.setBrightness(v * 2)',
+        '    led.stopAnimation()',
+        '    game.addScore(1)',
+        '    game.setScore(4)',
+        '    game.removeLife(1)',
+        '    basic.showNumber(game.score())',
+        '    v = Math.min(v, Math.max(v - 1, 0))',
+        '    v = Math.idiv(v, 4)',
+        '    v = pins.map(pins.analogReadPin(AnalogPin.P0), 0, 1023, 0, 4)',
+        '    if (Math.randomBoolean()) {',
+        '        game.gameOver()',
+        '    }',
+        '})'
+    ].join('\n');
+    const control = await compile('microbit', tinyMicrobit(original));
+    assert.equal(control.success, true, `the original is not valid MakeCode: ${JSON.stringify(control.diagnostics.slice(0, 2))}`);
+
+    const imported = microbitToPseudocode(original);
+    assert.deepEqual(imported.unsupported, [], 'the import refused something');
+    const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(imported.code));
+    assert.deepEqual(unsupported, [], 'the export refused something');
+    for (const call of ['led.plotBarGraph', 'led.toggle', 'led.setBrightness', 'led.stopAnimation', 'game.addScore',
+        'game.setScore', 'game.removeLife', 'game.score', 'game.gameOver', 'Math.min', 'Math.max', 'Math.idiv',
+        'pins.map', 'Math.randomBoolean']) {
+        assert.ok(ts.includes(`${call}(`), `${call} did not come back:\n${ts}`);
+    }
+    const r = await compile('microbit', tinyMicrobit(ts));
+    assert.equal(r.success, true, `MakeCode refused the re-export: ${JSON.stringify(r.diagnostics.slice(0, 2))}\n${ts}`);
+});
