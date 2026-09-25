@@ -834,6 +834,19 @@ behind it and still wants its own lane.
 
 ### Lane L — lowered halves to add or complete
 
+**N12. RISC-V from the dialect. OPEN 2026-09-25, unclaimed.** The riscv32
+column joined the matrix on 2026-09-25 (it had been listed as a console while
+two local roads shipped: `riscv-asm.js` assembles RV32IM and shecc-in-wasm
+compiles C, both in the browser, both run on the RV32IMA SoC). Its other five
+rows are open on one road: sb3-creator's `generateC` has no RISC-V core, so the
+dialect -- and every language read into it -- cannot reach this device. N12 is a
+RISC-V *console* profile in `generateC` (print/say, variables, loops, waits;
+no pins, the SoC has none) whose C the same shecc compiles, so the ▶ Run C on
+RISC-V path carries it. Upstream first: sb3-creator is vendored.
+DoD: a dialect program round-trips to C that shecc compiles and the SoC runs,
+printing the expected console output; the five cells flip `viaOpen('c','N12')`
+→ `via('c')`.
+
 **L1. ASM reader with named refusals.** Owner: lego-ac. **v1 LANDED 2026-09-05** (`ea305f40f`) (`lib/bw-asm/asm-8086-to-pseudocode.js`, `test/asm-8086-to-pseudocode.test.mjs`): the emitter's own shapes for the 8086 — the DX:AX stack-machine expression stream, the three comparison templates, and/or/not, set/change/say/print/wait/wait until/repeat/repeat until/if/if-else/forever/stop — read back and re-lower to byte-identical assembly over a five-program corpus; hand-written assembly (every fixture in `examples-i8086.js`) refused as foreign, the scheduler form refused with its script count, pins/ports/displays/tone/PWM/keypad/broadcast/say-for-secs refused by feature name; census (after the scheduler form and the pin family landed on the same branch) 29 lifted / 1 refused / 10 unprobed of 40 anchors, and the lifted set may only grow. Pins and ports read back with declarations synthesised from their use; ACTIVE LOW is not recoverable from the bytes and is warned about (the bytes are identical either way); an INPUT nothing reads is a named refusal because the 8255 control word could not be re-derived. The scheduler form reads back one WHEN per task. The ASM tab's To blocks is wired for the 8086 in source mode. Four mutations proven red. Not yet: keypad, displays, tone, PWM, broadcast, say-for-secs. **Re-scoped:** the 8051 half of L1 is not needed — the only 8051 assembly Brickwright produces is a compiler listing of C that the C tab already reads back; hand-written 8051 assembly is foreign by the same rule as hand-written 8086 assembly.
 Lifting, not decompilation: recognise (a) the shapes our own lowering emits
 (8086 from `pseudocode-8086.js`, 8051 from SDCC listings of `generateC`

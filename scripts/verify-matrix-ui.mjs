@@ -114,7 +114,7 @@ try {
     const rows = await panel.locator('tbody tr').count();
     const cols = await panel.locator('thead th').count() - 1;
     check('one row per language', rows === 7, `${rows}`);
-    check('one column per chip family', cols === 9, `${cols}`);
+    check('one column per chip family', cols === 10, `${cols}`);   // riscv32 joined 2026-09-25
 
     const kind = async (lang, dev) => page.getByTestId(`bw-matrix-cell-${lang}-${dev}`).getAttribute('data-kind');
     const text = async (lang, dev) => (await page.getByTestId(`bw-matrix-cell-${lang}-${dev}`).textContent()) || '';
@@ -133,7 +133,7 @@ try {
     const c89cell = page.getByTestId('bw-matrix-cell-c-stc89c52');
     await c89cell.waitFor({state: 'visible', timeout: 10000});
     const cols2 = await panel.locator('thead th').count() - 1;
-    check('a non-representative device gets its own column', cols2 === 10, `${cols2}`);
+    check('a non-representative device gets its own column', cols2 === 11, `${cols2}`);
     const c89 = (await c89cell.getAttribute('title')) || '';
     check('the STC89C52 override reaches the panel', /hosted compiler/.test(c89), c89.slice(0, 120));
     const c60 = (await page.getByTestId('bw-matrix-cell-c-stc12c5a60s2').getAttribute('title')) || '';
