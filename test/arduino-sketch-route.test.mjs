@@ -243,7 +243,8 @@ test('the C tab ▶ is gated by the route table and uses the one hosted compile'
 
 test('the debug panel boots a sketch as firmware, on the engine the route named', () => {
     const src = read('components/tw-pseudocode/debug-panel.jsx');
-    assert.match(src, /if \(format === 'avr-sketch'\) return this\._runSketch\(e\.detail\);/);
+    // N4 routes an assembled ARM image ('firmware') through the same boot.
+    assert.match(src, /if \(format === 'avr-sketch' \|\| format === 'firmware'\) return this\._runSketch\(e\.detail\);/);
     const body = src.slice(src.indexOf('    _runSketch (detail) {'));
     const fn = body.slice(0, body.indexOf('\n    }\n') + 6);
     assert.match(fn, /this\._userFirmware = firmware;/);

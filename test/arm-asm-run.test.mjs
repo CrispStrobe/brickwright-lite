@@ -86,8 +86,20 @@ test('the ASM ▶ hands an ARM image to the debug panel as firmware', () => {
     assert.match(panel, /if \(format === 'avr-sketch' \|\| format === 'firmware'\) return this\._runSketch\(e\.detail\);/);
     const runner = read('lib/bw-debug/debug-runner.js');
     for (const fn2 of ['attachRp2040js(built)', 'attachStm32F0Target(built)']) {
-        const seg = runner.slice(runner.indexOf(`async function ${fn2}`));
-        assert.match(seg.slice(0, 2500), /pins: \(declared && declared\.pins\) \|\| \[\]/,
+        const start = runner.indexOf(`async function ${fn2}`);
+        assert.ok(start >= 0, `${fn2} moved`);
+        assert.match(functionBody(runner, start), /pins: \(declared && declared\.pins\) \|\| \[\]/,
             `${fn2} must survive a project with no pins`);
     }
 });
+
+/** The function starting at `start`, through its matching closing brace. */
+function functionBody (src, start) {
+    const open = src.indexOf('{', src.indexOf(')', start));
+    let depth = 0;
+    for (let i = open; i < src.length; i++) {
+        if (src[i] === '{') depth++;
+        else if (src[i] === '}' && --depth === 0) return src.slice(start, i + 1);
+    }
+    throw new Error('unbalanced braces after ' + src.slice(start, start + 40));
+}

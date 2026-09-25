@@ -650,8 +650,8 @@ export const CELLS = Object.freeze({
             lowered: [via('micropython')]
         },
         basic: {native: no('no-port', 'no BASIC interpreter for the nRF52833 found'), lowered: [via('micropython')]},
-        // The hosted /assemble knows nrf52833, but asmTargetForDevice passes
-        // 'microbit' through unmapped, so the ASM tab cannot reach it. N4.
+        // N4: asmTargetForDevice maps microbit/calliopemini to the hosted
+        // nrf52833 target.
         asm: {
             native: shipped('hex', 'arm-none-eabi-as', 'hosted', {
                 note: 'assembles for nrf52833 (N4); nothing runs ARM code here -- the '
