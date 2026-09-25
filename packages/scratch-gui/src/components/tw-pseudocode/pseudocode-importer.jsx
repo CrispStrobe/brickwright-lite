@@ -62,6 +62,7 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 // functions for interpolation. To add a language, add its column.
 import {lowerableLines} from '../../lib/bw-fpga/pseudocode-expr.js';
 import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
+import {isPybricksProgram} from '../../lib/pybricks-sim/pybricks-hub-host.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
 // handoff has to name a tab index and a wrong one silently switches to Sounds.
@@ -261,6 +262,8 @@ const L10N = {
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
         micropythonImported: 'Imported from a .hex — the simulator runs this as it is.',
         runOnSimulator: '▶ Run on Simulator',
+        runOnSpike: '▶ Run on SPIKE (Pybricks)',
+        runOnSpikeTitle: 'Run this Pybricks program on a simulated SPIKE Prime hub: Pybricks MicroPython itself, compiled to WebAssembly, with simulated motors and sensors',
         debugOnSimulator: '🐞 Debug',
         debugLevelBlock: 'Block',
         debugLevelLine: 'Line',
@@ -526,6 +529,8 @@ const L10N = {
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
         micropythonImported: 'Aus einer .hex importiert — der Simulator führt das direkt aus.',
         runOnSimulator: '▶ Im Simulator ausführen',
+        runOnSpike: '▶ Auf SPIKE ausführen (Pybricks)',
+        runOnSpikeTitle: 'Dieses Pybricks-Programm auf einem simulierten SPIKE-Prime-Hub ausführen: Pybricks-MicroPython selbst, nach WebAssembly übersetzt, mit simulierten Motoren und Sensoren',
         debugOnSimulator: '🐞 Debuggen',
         debugLevelBlock: 'Block',
         debugLevelLine: 'Zeile',
@@ -3535,6 +3540,25 @@ class PseudocodeImporter extends React.Component {
     // Flash the micro:bit simulator with the current MicroPython code.
     // Activates the simulator pane (stage-header dock='microbit') and posts
     // the code via the CustomEvent bus; the MicrobitSimPane picks it up.
+    // Run a Pybricks program on the SPIKE Prime simulator (pybricks-sim-pane.jsx):
+    // dock the pane, then hand it the code. Same latch as the micro:bit pane,
+    // because opening the dock mounts the pane in this very tick.
+    runOnPybricksSim () {
+        const code = this.activeCode();
+        if (!isPybricksProgram(code)) return;
+        const values = {
+            'bw-right-pane-hidden': '0',
+            'bw-debug-dock': 'pybricks'
+        };
+        const detail = {code};
+        try { window.__bwPybricksPending = detail; } catch { /* noop */ }
+        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
+        Object.entries(values).forEach(([k, v]) => {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
+        });
+        window.dispatchEvent(new CustomEvent('bw-pybricks-run', {detail}));
+    }
+
     flashMicrobitSim () {
         const code = this.state.buffers.micropython;
         if (!code || !code.trim() || /^# ===/.test(code)) return;
@@ -5196,6 +5220,13 @@ class PseudocodeImporter extends React.Component {
                         <button onClick={this.run} disabled={this.state.running}
                             style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                             ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JavaScript'}
+                        </button>
+                    ) : null}
+                    {this.state.lang === 'python' && isPybricksProgram(this.activeCode()) ? (
+                        <button onClick={() => this.runOnPybricksSim()} title={this.L.runOnSpikeTitle}
+                            style={{...btn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
+                            data-testid="bw-pybricks-run-on-spike">
+                            {this.L.runOnSpike}
                         </button>
                     ) : null}
                     {this.state.picoSimRunning ? (

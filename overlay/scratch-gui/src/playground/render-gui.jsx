@@ -73,6 +73,9 @@ export default appTarget => {
         setImu: value => virtualSpikeState.setImu(value),
         setFirmwareTarget: value => virtualSpikeState.setFirmwareTarget(value),
         snapshot: () => virtualSpikeState.snapshot(),
+        // The live state object, for the Pybricks simulator pane, which reads
+        // its ports and writes back the light matrix and motor positions.
+        get hubState () { return virtualSpikeState; },
         get blePeripheral () { return virtualSpikeBle.peripheral; }
     };
     initVirtualSpikePanel(virtualSpikeState);

@@ -273,6 +273,16 @@ const CENSUS = [
         why: 'CI-only build of ACK\'s z80/cpm platform to PROVE a real Z80 CP/M .COM (NOT the browser bundle, NOT a deployable): clones ACK then fetches+checks out the pinned ACK_COMMIT=7afa32a0a0f13e865fa2e8104e442689005cd627 (the same 40-hex commit services/pascal-ack-compiler pins) and asserts HEAD equals it before building. The SHA checkout is the immutable reference; nothing fetched is written into the tree — the step only compiles a Pascal .COM and runs it through cpm-z80.js.'
     },
     {
+        file: 'build-pybricks-wasm.sh',
+        kind: 'git',
+        text: 'git clone --filter=blob:none --no-checkout "$PYBRICKS_REPO" "$SRC_DIR"',
+        class: 'sha-const',
+        pin: 'PYBRICKS_SHA',
+        why: 'the clone is checked out to PYBRICKS_SHA and the script refuses to build unless '
+           + 'HEAD equals it, the tag resolves to it, and the micropython submodule equals '
+           + 'MICROPYTHON_SHA; the built wasm is recorded with its sha256 in PROVENANCE.json.'
+    },
+    {
         file: 'overlay/scratch-gui/src/lib/smallerc-wasm/build.sh',
         kind: 'git',
         text: 'git clone --quiet "$SMALLERC_REPO" "$SRC"',

@@ -1,0 +1,57 @@
+{
+  "what": "Pybricks MicroPython (SPIKE Prime hub API) compiled to WebAssembly on the Brickwright wasm HAL",
+  "recipe": "build-pybricks-wasm.sh",
+  "upstream": {
+    "pybricks-micropython": {
+      "repo": "https://github.com/pybricks/pybricks-micropython.git",
+      "tag": "v4.0.1",
+      "commit": "4104553405decb0384bcfb030fbfcb4b5a9854cc",
+      "license": "MIT"
+    },
+    "micropython": {
+      "repo": "https://github.com/pybricks/micropython",
+      "commit": "13580b6ad057173f62e8b2363e01d6851bcc6699",
+      "license": "MIT"
+    }
+  },
+  "toolchain": {
+    "emsdk": "6.0.6",
+    "emcc": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.6 (ce75e06884093bcefb86a6b8fd56a5d62a4cc245)"
+  },
+  "brickwright_sources": "firmware/pybricks-wasm (HAL, platform, Makefile)",
+  "not_included": [
+    "lib/btstack",
+    "lib/ble5stack",
+    "lib/BlueNRG-MS",
+    "lib/STM32_USB_Device_Library",
+    "lib/umm_malloc",
+    "lib/lsm6ds3tr_c_STdC",
+    "lib/tiam1808",
+    "LEGO firmware",
+    "TI Bluetooth patch"
+  ],
+  "licence_gate": {
+    "by_licence": {
+      "Apache-2.0": 1,
+      "BSD-3-Clause": 1,
+      "BSD-3-Clause AND MIT": 29,
+      "CC-BY-SA-4.0 AND MIT": 1,
+      "MIT": 274,
+      "no per-file marker (repository LICENSE: MIT)": 11,
+      "permissive (licence text, no SPDX tag)": 264
+    },
+    "files": 581,
+    "outside_tree": 55,
+    "reviewed": [
+      "pybricks/util_mp/pb_kwarg_helper.h: CC-BY-SA-4.0 AND MIT"
+    ]
+  },
+  "assets": {
+    "pybricks-hub.js": {
+      "sha256": "39e99375b65f1a07a70f8a1afd482d10c60014c1753f78dbab9fccb091539e67"
+    },
+    "pybricks-hub.wasm": {
+      "sha256": "f6fa95c210434ca1073ad175c680f3e7448e2d150731d2f7c9d0cc154834c53b"
+    }
+  }
+}
