@@ -77,39 +77,121 @@ export const TARBALLS = {
     'pxt-core@13.2.1': {
         url: 'https://registry.npmjs.org/pxt-core/-/pxt-core-13.2.1.tgz',
         sha256: 'e2c4c2a3f353f02abff1eff98ad066eab28e643311d0688961fb8b0388578033'
+    },
+    'pxt-calliope@3.0.30': {
+        url: 'https://registry.npmjs.org/pxt-calliope/-/pxt-calliope-3.0.30.tgz',
+        sha256: '3bd1964d2294b4a893b0406dcf1511bbe944d49d73dea9aff2773d02d09c5470'
+    },
+    'pxt-core@6.0.23': {
+        url: 'https://registry.npmjs.org/pxt-core/-/pxt-core-6.0.23.tgz',
+        sha256: '0c2eb6f4205769d2d67073944b3ee1cec43344642f2c15c263b7def919745b3b'
+    },
+    'pxt-ev3@1.4.41': {
+        url: 'https://registry.npmjs.org/pxt-ev3/-/pxt-ev3-1.4.41.tgz',
+        sha256: '6a47621dce07d4f3a5146c1458bbe14ce540f14ff1bb56d5b096d1a8fec62b16'
+    },
+    'pxt-core@9.3.19': {
+        url: 'https://registry.npmjs.org/pxt-core/-/pxt-core-9.3.19.tgz',
+        sha256: '382eef0801733feeaac2f4ea3639c05c816d1b0869f70ac0527d2b5f33cef159'
+    },
+    'pxt-adafruit@1.6.8': {
+        url: 'https://registry.npmjs.org/pxt-adafruit/-/pxt-adafruit-1.6.8.tgz',
+        sha256: 'f083c49fc0da9e4cac75ca48d09d48d2d637385e0d13fba7f07eac04b3da1769'
+    },
+    'pxt-core@6.2.6': {
+        url: 'https://registry.npmjs.org/pxt-core/-/pxt-core-6.2.6.tgz',
+        sha256: '8f49c0f44838a0e9a29e6f383923d3f2ebe9295f50390843a72c168eafcd9ac7'
     }
 };
 
 /**
- * What each served target is made of: [tarball, path inside it (under package/),
- * path under static/makecode/<target>/]. A trailing '/' copies a directory.
+ * Firmware bases the npm packages do not ship but MakeCode's own CDN serves,
+ * content-addressed by the extinfo sha pxt computes for a package set (the URL
+ * names the C++ package set, not a user program — nothing of anyone's code is
+ * sent). Measured 2026-09-25 for each target's default set; pinned by sha256
+ * of the bytes like every tarball above.
  */
+export const BASES = {
+    ev3: [{sha: '9630f4e8f6dff8f47ffc38e86e2d44fa2ac463f7e91e9bc15f5d8f8b279d0d68',
+        sha256: '39cd6ff7e0b2b1db2018470f881053e8f13bc05148ffb1b7c9178c74b22e5fec'}],
+    adafruit: [{sha: '1a8dde8af2ff6661af42bf0b22638f633ede578627092cc35377f628bcd09056',
+        sha256: 'a3fa24bbf0c37ffce26e3e62713fc24517cb0d99c8e15e11e713ba2f20740297'}]
+};
+const baseUrl = sha => `https://cdn.makecode.com/compile/${sha}.hex`;
+
+/**
+ * What each served target is made of: its target tarball, the pxt-core it was
+ * built against, and which of their files are served under
+ * static/makecode/<target>/ (the directory name is the pxt target id, the
+ * `pxtTarget` a MakeCode file names). `sim` is the simulator page's source: the
+ * target's own sim/public (its page loads /cdn/*.js and /sim/*.js by absolute
+ * path, rewritten to sit side by side) or ours (Arcade ships none).
+ */
+const coreFiles = core => [
+    [core, 'built/web/pxtworker.js', 'pxtworker.js'],
+    [core, 'built/web/pxtsim.js', 'sim/pxtsim.js'],
+    [core, 'LICENSE', 'LICENSE-pxt-core.txt']
+];
 export const TARGETS = {
     microbit: {
-        target: 'pxt-microbit@9.1.1',
-        core: 'pxt-core@13.0.1',
+        target: 'pxt-microbit@9.1.1', core: 'pxt-core@13.0.1', sim: 'public',
         files: [
             ['pxt-microbit@9.1.1', 'built/target.json', 'target.json'],
             ['pxt-microbit@9.1.1', 'built/sim.js', 'sim/sim.js'],
             ['pxt-microbit@9.1.1', 'built/hexcache/', 'hexcache/'],
             ['pxt-microbit@9.1.1', 'sim/public/', 'sim/'],
             ['pxt-microbit@9.1.1', 'LICENSE.txt', 'LICENSE-pxt-microbit.txt'],
-            ['pxt-core@13.0.1', 'built/web/pxtworker.js', 'pxtworker.js'],
-            ['pxt-core@13.0.1', 'built/web/pxtsim.js', 'sim/pxtsim.js'],
-            ['pxt-core@13.0.1', 'LICENSE', 'LICENSE-pxt-core.txt']
+            ...coreFiles('pxt-core@13.0.1')
         ]
     },
     arcade: {
-        target: 'pxt-arcade@4.2.1',
-        core: 'pxt-core@13.2.1',
+        target: 'pxt-arcade@4.2.1', core: 'pxt-core@13.2.1', sim: 'ours',
         files: [
             ['pxt-arcade@4.2.1', 'built/target.json', 'target.json'],
             ['pxt-arcade@4.2.1', 'built/sim.js', 'sim/sim.js'],
             ['pxt-arcade@4.2.1', 'built/common-sim.js', 'sim/common-sim.js'],
             ['pxt-arcade@4.2.1', 'LICENSE', 'LICENSE-pxt-arcade.txt'],
-            ['pxt-core@13.2.1', 'built/web/pxtworker.js', 'pxtworker.js'],
-            ['pxt-core@13.2.1', 'built/web/pxtsim.js', 'sim/pxtsim.js'],
-            ['pxt-core@13.2.1', 'LICENSE', 'LICENSE-pxt-core.txt']
+            ...coreFiles('pxt-core@13.2.1')
+        ]
+    },
+    // Calliope mini: its npm package ships its own firmware bases (hexcache).
+    // 3.0.30 is the last npm release — older than makecode.calliope.cc's editor.
+    calliopemini: {
+        target: 'pxt-calliope@3.0.30', core: 'pxt-core@6.0.23', sim: 'public',
+        files: [
+            ['pxt-calliope@3.0.30', 'built/target.json', 'target.json'],
+            ['pxt-calliope@3.0.30', 'built/sim.js', 'sim/sim.js'],
+            ['pxt-calliope@3.0.30', 'built/hexcache/', 'hexcache/'],
+            ['pxt-calliope@3.0.30', 'sim/public/', 'sim/'],
+            ['pxt-calliope@3.0.30', 'LICENSE.txt', 'LICENSE-pxt-calliope.txt'],
+            ['pxt-core@6.0.23', 'built/web/bluebird.min.js', 'sim/bluebird.min.js'],
+            ...coreFiles('pxt-core@6.0.23')
+        ]
+    },
+    // LEGO MINDSTORMS EV3: programs are ARM Linux ELFs in a file-container
+    // UF2; the base comes from BASES.
+    ev3: {
+        target: 'pxt-ev3@1.4.41', core: 'pxt-core@9.3.19', sim: 'public',
+        files: [
+            ['pxt-ev3@1.4.41', 'built/target.json', 'target.json'],
+            ['pxt-ev3@1.4.41', 'built/sim.js', 'sim/sim.js'],
+            ['pxt-ev3@1.4.41', 'built/common-sim.js', 'sim/common-sim.js'],
+            ['pxt-ev3@1.4.41', 'sim/public/', 'sim/'],
+            ['pxt-ev3@1.4.41', 'LICENSE', 'LICENSE-pxt-ev3.txt'],
+            ...coreFiles('pxt-core@9.3.19')
+        ]
+    },
+    // Adafruit Circuit Playground Express (SAMD21); the base comes from BASES.
+    adafruit: {
+        target: 'pxt-adafruit@1.6.8', core: 'pxt-core@6.2.6', sim: 'public',
+        files: [
+            ['pxt-adafruit@1.6.8', 'built/target.json', 'target.json'],
+            ['pxt-adafruit@1.6.8', 'built/sim.js', 'sim/sim.js'],
+            ['pxt-adafruit@1.6.8', 'built/common-sim.js', 'sim/common-sim.js'],
+            ['pxt-adafruit@1.6.8', 'sim/public/', 'sim/'],
+            ['pxt-adafruit@1.6.8', 'LICENSE', 'LICENSE-pxt-adafruit.txt'],
+            ['pxt-core@6.2.6', 'built/web/bluebird.min.js', 'sim/bluebird.min.js'],
+            ...coreFiles('pxt-core@6.2.6')
         ]
     }
 };
@@ -265,11 +347,55 @@ export function untar (tgz) {
     return out;
 }
 
-/** The simulator pages load their scripts by ABSOLUTE path (/cdn/pxtsim.js); served here they sit side by side. */
+/**
+ * The simulator pages load their scripts by ABSOLUTE path (/cdn/pxtsim.js,
+ * /sim/common-sim.js, /cdn/bluebird.min.js); served here they sit side by side.
+ */
 function relativisePage (html) {
-    return html
-        .replace(/src="\/cdn\/pxtsim\.js"/g, 'src="pxtsim.js"')
-        .replace(/src="\/sim\/sim\.js"/g, 'src="sim.js"');
+    return html.replace(/(src|href)="\/(cdn|sim)\/([A-Za-z0-9_.-]+)"/g, '$1="$3"');
+}
+
+/**
+ * The simulator's pin ids by the name the circuit uses ('p0', 'c4', …), read
+ * from the target's own `enum DigitalPin` — the ids are the target's, not an
+ * index: on the micro:bit P1 is 101, on the Calliope P1 is 100 and P0 is 112
+ * (measured). A target without that enum (the Circuit Playground's pins are
+ * objects) gets none, and the host page bridges no pins for it.
+ */
+function pinNames (bundle) {
+    const out = {};
+    const texts = Object.values(bundle.bundledpkgs || {}).flatMap(files => Object.values(files)).map(String);
+    const text = texts.find(t => /enum DigitalPin\s*\{/.test(t));
+    if (!text) return out;                          // no such enum: this target has no edge pins to bridge
+    const open = text.indexOf('{', text.search(/enum DigitalPin\s*\{/));
+    let depth = 0;
+    let end = open;
+    for (; end < text.length; end++) {             // brace-matched, not a lazy capture
+        if (text[end] === '{') depth++;
+        else if (text[end] === '}' && --depth === 0) break;
+    }
+    const body = text.slice(open + 1, end).replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\//g, '');
+    for (const [, name, id] of body.matchAll(/([A-Za-z][A-Za-z0-9]*)\s*=\s*(\d+)/g)) out[id] = name.toLowerCase();
+    return out;
+}
+
+/** A CDN firmware base: from the cache (re-verified) or fetched (verified before written). */
+async function base (target, pin, {offline}) {
+    const file = path.join(CACHE_DIR, `base-${target}-${pin.sha}.hex`);
+    if (fs.existsSync(file)) {
+        const bytes = fs.readFileSync(file);
+        if (sha256(bytes) === pin.sha256) return bytes;
+        if (offline) throw new Error(`${target} base ${pin.sha}: cached copy does not match its sha256`);
+    }
+    if (offline) throw new Error(`${target} base ${pin.sha}: not cached — run \`npm run sync:makecode\``);
+    const res = await fetch(baseUrl(pin.sha));
+    if (!res.ok) throw new Error(`${target} base: ${baseUrl(pin.sha)} -> HTTP ${res.status}`);
+    const bytes = Buffer.from(await res.arrayBuffer());
+    const got = sha256(bytes);
+    if (got !== pin.sha256) throw new Error(`${target} base ${pin.sha}: sha256 ${got} is not the pinned ${pin.sha256} — refusing it`);
+    fs.mkdirSync(CACHE_DIR, {recursive: true});
+    fs.writeFileSync(file, bytes);
+    return bytes;
 }
 
 /** Every file the served runtime must hold, relative to STATIC_DIR. */
@@ -288,21 +414,28 @@ function plan (entries) {
             }
         }
     }
-    const mbPage = files.get('microbit/sim/simulator.html');
-    if (!mbPage) throw new Error('pxt-microbit: sim/public/simulator.html is missing');
-    files.set('microbit/sim/simulator.html', Buffer.from(relativisePage(mbPage.toString('utf8'))));
-    // pxt-arcade ships no simulator page (MakeCode generates it inside its own
-    // build); ours is committed beside this script — see its header.
-    files.set('arcade/sim/simulator.html', fs.readFileSync(ARCADE_PAGE));
+    for (const [target, spec] of Object.entries(TARGETS)) {
+        if (spec.sim === 'ours') {
+            // pxt-arcade ships no simulator page (MakeCode generates it inside
+            // its own build); ours is committed beside this script.
+            files.set(`${target}/sim/simulator.html`, fs.readFileSync(ARCADE_PAGE));
+            continue;
+        }
+        const page = files.get(`${target}/sim/simulator.html`);
+        if (!page) throw new Error(`${spec.target}: sim/public/simulator.html is missing`);
+        files.set(`${target}/sim/simulator.html`, Buffer.from(relativisePage(page.toString('utf8'))));
+    }
     // The app's side: one host page per target, beside that target's pxtsim.js
     // (see its header), and the simulator block of target.json it needs —
     // a few hundred bytes instead of the multi-MB bundle.
     for (const target of Object.keys(TARGETS)) {
         files.set(`${target}/sim/host.html`, fs.readFileSync(HOST_PAGE));
-        const sim = JSON.parse(files.get(`${target}/target.json`).toString('utf8')).simulator || {};
+        const bundle = JSON.parse(files.get(`${target}/target.json`).toString('utf8'));
+        const sim = bundle.simulator || {};
         files.set(`${target}/sim/config.json`, Buffer.from(JSON.stringify({
             boardDefinition: sim.boardDefinition || null,
-            aspectRatio: sim.aspectRatio || 1
+            aspectRatio: sim.aspectRatio || 1,
+            pinNames: pinNames(bundle)
         }) + '\n'));
     }
     files.set('VERSIONS.json', Buffer.from(JSON.stringify(Object.fromEntries(
@@ -368,6 +501,9 @@ async function main () {
     const entries = new Map();
     for (const id of Object.keys(TARBALLS)) entries.set(id, untar(await tarball(id, {offline: check})));
     const files = plan(entries);
+    for (const [target, pins] of Object.entries(BASES)) {
+        for (const pin of pins) files.set(`${target}/hexcache/${pin.sha}.hex`, await base(target, pin, {offline: check}));
+    }
     const strict = process.argv.includes('--strict-bases') || process.argv.includes('--built-bases');
     for (const [rel, bytes] of await arcadeBases({offline: check, strict, requireBuilt: process.argv.includes('--built-bases')})) files.set(rel, bytes);
     for (const [rel, bytes] of emuBases({strict: process.argv.includes('--emu-bases')})) files.set(rel, bytes);
@@ -393,7 +529,7 @@ async function main () {
         bytes += data.length;
     }
     console.log(`[sync:makecode] ${files.size} files, ${(bytes / 1048576).toFixed(1)} MB under ` +
-        `${path.relative(ROOT, STATIC_DIR)} (microbit + arcade)`);
+        `${path.relative(ROOT, STATIC_DIR)} (${Object.keys(TARGETS).join(', ')})`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

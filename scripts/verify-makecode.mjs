@@ -304,6 +304,20 @@ try {
         check('▶ Run as MakeCode Arcade: the live Scratch project exports, compiles and draws', lit > 20, `${lit} lit pixels`);
     }
 
+    // ── 2e. a LEGO MINDSTORMS EV3 program runs in MakeCode's EV3 simulator ──
+    if (runtime) {
+        await input.setInputFiles(join(fixtures, 'ev3-button-events.uf2'));
+        await waitFor(paneText, t => /ev3|EV3/.test(t), 30000);
+        await clickAction('bw-makecode-run');
+        const pane = page.locator('[data-testid="bw-makecode-pane"][data-target="ev3"]');
+        await pane.waitFor({state: 'visible', timeout: 60000}).catch(() => {});
+        check('an imported EV3 program opens MakeCode\'s EV3 simulator', await pane.count() > 0);
+        const frame = await simFrame('ev3');
+        const drawn = frame ? await waitFor(() => frame.evaluate(() => document.querySelectorAll('svg *').length).catch(() => 0),
+            n => n > 20, 60000) : 0;
+        check('and the brick is drawn', drawn > 20, `${drawn} svg elements`);
+    }
+
     // ── 3. a file with nothing in it says so, rather than failing ─────
     await input.setInputFiles(join(fixtures, 'README.md'));
     text = await waitFor(paneText, t => /README/.test(t), 15000);

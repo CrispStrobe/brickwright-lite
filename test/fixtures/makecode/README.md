@@ -15,6 +15,8 @@ what the editors wrote.
 | `arcade-umlaut.hex` | arcade.makecode.com, micro:bit V2 + shield | "SpriteBewegungHöhle1 - Copy" | a 1.0 MB .hex download |
 | `calliope-images.hex` | makecode.calliope.cc, Calliope mini | "Stoppuhr" (06stop) | a 578 KB .hex download |
 | `calliope-radio.hex` | makecode.calliope.cc, Calliope mini | "Fernbedienung" (20remote) | a 589 KB .hex download |
+| `ev3-button-events.uf2` | makecode.mindstorms.com (LEGO MINDSTORMS EV3) | brick-button events | untrimmed, from AlexGustafsson/ev3-emulator-toolkit `examples/` (The Unlicense) |
+| `ev3-line-follower.uf2` | makecode.mindstorms.com (LEGO MINDSTORMS EV3) | a line follower (motors + colour sensor) | untrimmed, same source |
 
 `arcade-umlaut.hex` is here for its NAME. A single non-ASCII character
 makes the container's `headerSize + textSize` shorter than the byte count
@@ -66,3 +68,10 @@ paths are covered by round-trip tests against the writers in
 To regenerate after a format change, take a fresh download and keep the
 records from the one whose data begins `41140E2FB82FA2BB` until
 `metaLen + textLen` bytes have been collected.
+
+The two EV3 files are whole MakeCode EV3 downloads: a UF2 *file container* (the
+brick's program is an ARM Linux ELF inside it) whose project source the importer
+recovers. They come from Alex Gustafsson's
+[ev3-emulator-toolkit](https://github.com/AlexGustafsson/ev3-emulator-toolkit)
+(`examples/`, released under The Unlicense) and are here so the EV3 runtime is
+tested on programs the real editor wrote, not on ones written for the test.

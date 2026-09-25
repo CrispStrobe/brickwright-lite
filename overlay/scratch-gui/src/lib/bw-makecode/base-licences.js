@@ -65,6 +65,13 @@ export const BASE_LICENCES = Object.freeze({
     // Calliope mini — pxt-calliope 3.0.30 built/hexcache (DAL on nRF51822; served on the makecode-boards lane).
     '9b17c978b6bf230e5fcc0ecbc521c757eedf4ec09610a4869c9ee7fab720cb36': {target: 'calliopemini', base: '02a9349f…', source: 'pxt-calliope 3.0.30 hexcache', classification: 'chip-restricted', component: NORDIC_V1, licence: S110_LICENCE},
     'c209b8cebbdaddab759654707957a58dfd721963794788c5c68ca0db6446943d': {target: 'calliopemini', base: 'bd5886ba…', source: 'pxt-calliope 3.0.30 hexcache', classification: 'chip-restricted', component: NORDIC_V1, licence: S110_LICENCE},
+    // LEGO EV3 — MakeCode's cloud build (cdn.makecode.com/compile/9630f4e8….hex), an ARM Linux ELF
+    // for the brick. Its sources and the decoded ELF were inspected 2026-09-25 (pxt MIT, glibc start
+    // files under their linking exception, no vendor code) but no LINKER MAP was, so: unaudited.
+    '39cd6ff7e0b2b1db2018470f881053e8f13bc05148ffb1b7c9178c74b22e5fec': {target: 'ev3', base: '{ev3}', source: 'MakeCode CDN (9630f4e8…)', classification: 'unaudited'},
+    // Circuit Playground Express — MakeCode's cloud build (1a8dde8a…), codal-samd on SAMD21: its source
+    // set (codal-circuit-playground v2.0.4, codal-samd 5bd6b93) links 14 ASF4 samd21 files.
+    'a3fa24bbf0c37ffce26e3e62713fc24517cb0d99c8e15e11e713ba2f20740297': {target: 'adafruit', base: '{circuit-playground}', source: 'MakeCode CDN (1a8dde8a…)', classification: 'chip-restricted', component: ASF4, licence: ASF4_LICENCE},
     // Arcade — MakeCode's cloud builds (cdn.makecode.com/compile/<sha>.hex).
     '9055c740a7282afe5ecf1b151a0f1cc4d0cb48c09d4e9e32472c056b889c0daf': {target: 'arcade', base: 'rp2040', source: 'MakeCode CDN', classification: 'chip-restricted', component: PICO_SHIM, licence: PICO_SHIM_LICENCE},
     'e07518572d4c43f77d90eef6c7c76878daf3940ec16201319aab8b013f890166': {target: 'arcade', base: 'samd51', source: 'MakeCode CDN', classification: 'chip-restricted', component: ASF4, licence: ASF4_LICENCE},

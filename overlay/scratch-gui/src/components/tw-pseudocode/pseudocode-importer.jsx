@@ -113,11 +113,11 @@ const L10N = {
         mcRun: '▶ Run in MakeCode simulator',
         mcRunTitle: 'Compile this MakeCode project with MakeCode\'s own compiler and run it in MakeCode\'s simulator — nothing is translated, so nothing is lost',
         mcRunCompiling: n => `Compiling ${n} with MakeCode…`,
-        mcRunStarted: (n, t) => `${n} is running in the MakeCode ${t === 'arcade' ? 'Arcade' : 'micro:bit'} simulator.`,
-        mcFirmware: '⤓ micro:bit firmware (.hex)',
-        mcFirmwareTitle: 'Build the real micro:bit firmware for this project (V1 + V2 universal .hex), with the project inside so MakeCode can reopen it',
-        mcFirmwareBuilding: n => `Building micro:bit firmware for ${n}…`,
-        mcFirmwareDone: f => `Saved ${f} — copy it onto the MICROBIT drive to flash the board. MakeCode also opens it as a project.`,
+        mcRunStarted: (n, t) => `${n} is running in MakeCode's ${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'} simulator.`,
+        mcFirmware: '⤓ Firmware for the board',
+        mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3 or Circuit Playground .uf2), with the project inside so MakeCode can reopen it',
+        mcFirmwareBuilding: n => `Building firmware for ${n}…`,
+        mcFirmwareDone: f => `Saved ${f} — copy it onto the board's USB drive (MICROBIT, MINI, CPLAYBOOT, EV3) to flash it. MakeCode also opens it as a project.`,
         mcNoRuntime: 'This build does not carry the MakeCode runtime (npm run sync:makecode was not run), so MakeCode projects cannot be compiled here.',
         mcNoBase: 'This project uses a C++ extension outside MakeCode\'s default set, and building its firmware needs MakeCode\'s cloud compiler. It still runs in the simulator; to flash it, open it on makecode.microbit.org.',
         mcUnsupportedTarget: t => `MakeCode ${t} projects are not something this build can compile (micro:bit and Arcade are).`,
@@ -390,11 +390,11 @@ const L10N = {
         mcRun: '▶ Im MakeCode-Simulator ausführen',
         mcRunTitle: 'Dieses MakeCode-Projekt mit dem MakeCode-eigenen Compiler übersetzen und im MakeCode-Simulator ausführen — es wird nichts umgewandelt, also geht nichts verloren',
         mcRunCompiling: n => `${n} wird mit MakeCode übersetzt…`,
-        mcRunStarted: (n, t) => `${n} läuft im MakeCode-${t === 'arcade' ? 'Arcade' : 'micro:bit'}-Simulator.`,
-        mcFirmware: '⤓ micro:bit-Firmware (.hex)',
-        mcFirmwareTitle: 'Die echte micro:bit-Firmware für dieses Projekt bauen (V1 + V2, universelle .hex), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
-        mcFirmwareBuilding: n => `micro:bit-Firmware für ${n} wird gebaut…`,
-        mcFirmwareDone: f => `${f} gespeichert — auf das Laufwerk MICROBIT kopieren, um den Chip zu flashen. MakeCode öffnet die Datei auch als Projekt.`,
+        mcRunStarted: (n, t) => `${n} läuft im MakeCode-Simulator (${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'}).`,
+        mcFirmware: '⤓ Firmware für das Board',
+        mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3 oder Circuit Playground .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
+        mcFirmwareBuilding: n => `Firmware für ${n} wird gebaut…`,
+        mcFirmwareDone: f => `${f} gespeichert — auf das USB-Laufwerk des Boards kopieren (MICROBIT, MINI, CPLAYBOOT, EV3), um es zu flashen. MakeCode öffnet die Datei auch als Projekt.`,
         mcNoRuntime: 'Dieser Build enthält die MakeCode-Laufzeit nicht (npm run sync:makecode lief nicht), daher können MakeCode-Projekte hier nicht übersetzt werden.',
         mcNoBase: 'Dieses Projekt nutzt eine C++-Erweiterung außerhalb des MakeCode-Standardsatzes; seine Firmware braucht den Cloud-Compiler von MakeCode. Im Simulator läuft es trotzdem; zum Flashen auf makecode.microbit.org öffnen.',
         mcUnsupportedTarget: t => `MakeCode-${t}-Projekte kann dieser Build nicht übersetzen (micro:bit und Arcade schon).`,
@@ -738,6 +738,18 @@ const SYNTAX = [
 // disk, so each needs an extension, a MIME type and a default basename.
 // `.py` is claimed by two tabs; openBwFile resolves that in favour of the tab
 // you are already on, else the first match here (python).
+/**
+ * The MakeCode boards this build runs (their runtime is served under
+ * static/makecode/<pxt target id>/ by sync-makecode-runtime), and the firmware a
+ * native build writes. Kept here rather than imported, because the runtime
+ * module is loaded on demand only (test/makecode-ui-contract); the lists must
+ * agree with pxt-runtime.js MAKECODE_BOARDS, which a test checks.
+ */
+const MAKECODE_RUNNABLE = ['microbit', 'calliopemini', 'ev3', 'adafruit', 'arcade'];
+const MAKECODE_FIRMWARE = {microbit: 'hex', calliopemini: 'hex', ev3: 'uf2', adafruit: 'uf2'};
+const MAKECODE_EDITOR = {microbit: 'https://makecode.microbit.org/', calliopemini: 'https://makecode.calliope.cc/',
+    ev3: 'https://makecode.mindstorms.com/', adafruit: 'https://makecode.adafruit.com/', arcade: 'https://arcade.makecode.com/'};
+
 const CODE_FILES = {
     pseudocode:  {ext: 'bw',  mime: 'text/plain',      base: 'program'},
     python:      {ext: 'py',  mime: 'text/x-python',   base: 'program'},
@@ -1806,7 +1818,15 @@ class PseudocodeImporter extends React.Component {
         const {exportToMakeCode} = await import(
             /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
         const name = ((source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright').trim().slice(0, 40);
-        return {files: exportToMakeCode(project, {name}).files, name, target: 'microbit'};
+        const files = exportToMakeCode(project, {name}).files;
+        if (this.currentDevice() === 'calliopemini') {
+            // The Calliope's API is the micro:bit's for everything the export
+            // writes; its firmware base is for MakeCode's Calliope default set.
+            const cfg = JSON.parse(files['pxt.json']);
+            cfg.dependencies = {core: '*', radio: '*'};
+            return {files: {...files, 'pxt.json': `${JSON.stringify(cfg, null, 4)}\n`}, name, target: 'calliopemini'};
+        }
+        return {files, name, target: 'microbit'};
     }
 
     /** A MakeCode failure in words: the runtime, the firmware base, or the program. */
@@ -1860,23 +1880,28 @@ class PseudocodeImporter extends React.Component {
      */
     async downloadMakeCodeFirmware () {
         const subject = await this.makeCodeSubject().catch(() => null);
-        if (!subject || !['microbit', 'calliopemini'].includes(subject.target)) {
-            this.setState({status: this.L.mcNothingToRun});
+        const ext = subject && MAKECODE_FIRMWARE[subject.target];
+        if (!ext) {
+            this.setState({status: subject && subject.target === 'arcade' ? this.L.mcNoBase : this.L.mcNothingToRun});
             return;
         }
         this.setState({busy: true, status: this.L.mcFirmwareBuilding(subject.name)});
         try {
             const {compileMakeCode} = await import(
                 /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
-            const out = await compileMakeCode({target: 'microbit', files: subject.files, native: true,
-                embedSource: {files: subject.files, name: subject.name, editorUrl: 'https://makecode.microbit.org/'}});
-            if (!out.success || !out.outfiles['binary.hex']) {
+            const out = await compileMakeCode({target: subject.target, files: subject.files, native: true,
+                embedSource: {files: subject.files, name: subject.name, editorUrl: MAKECODE_EDITOR[subject.target]}});
+            if (!out.success || !out.outfiles[`binary.${ext}`]) {
                 const first = (out.diagnostics[0] && `${out.diagnostics[0].file}:${out.diagnostics[0].line + 1} ${out.diagnostics[0].message}`) || '';
                 this.setState({busy: false, status: this.L.mcCompileErrors(out.diagnostics.length, first)});
                 return;
             }
-            const filename = `microbit-${String(subject.name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase() || 'program'}.hex`;
-            const url = URL.createObjectURL(new Blob([out.outfiles['binary.hex']], {type: 'application/octet-stream'}));
+            const filename = `${subject.target}-${String(subject.name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase() || 'program'}.${ext}`;
+            // pxt returns a .uf2 as BASE64 (measured: 'VUYyCl…' = "UF2\n"), a .hex as
+            // text. Decoding it as a binary string would write a corrupt file.
+            const data = ext === 'uf2' ?
+                Uint8Array.from(atob(out.outfiles[`binary.${ext}`]), c => c.charCodeAt(0)) : out.outfiles[`binary.${ext}`];
+            const url = URL.createObjectURL(new Blob([data], {type: 'application/octet-stream'}));
             const a = document.createElement('a');
             a.href = url;
             a.download = filename;
@@ -4476,13 +4501,13 @@ class PseudocodeImporter extends React.Component {
                             {this.L.exportMakeCode}
                         </button>
                     ) : null}
-                    {(this._makeCodeProject && ['microbit', 'arcade'].includes(this._makeCodeProject.target)) ||
+                    {(this._makeCodeProject && MAKECODE_RUNNABLE.includes(this._makeCodeProject.target)) ||
                         ['microbit', 'calliopemini'].includes(this.currentDevice()) ? (
                             <button type="button" onClick={() => this.runInMakeCode()} style={item}
                                 title={this.L.mcRunTitle} disabled={this.state.busy}
                                 data-testid="bw-makecode-run">{this.L.mcRun}</button>
                         ) : null}
-                    {(this._makeCodeProject && this._makeCodeProject.target === 'microbit') ||
+                    {(this._makeCodeProject && MAKECODE_FIRMWARE[this._makeCodeProject.target]) ||
                         (!this._makeCodeProject && ['microbit', 'calliopemini'].includes(this.currentDevice())) ? (
                             <button type="button" onClick={() => this.downloadMakeCodeFirmware()} style={item}
                                 title={this.L.mcFirmwareTitle} disabled={this.state.busy}

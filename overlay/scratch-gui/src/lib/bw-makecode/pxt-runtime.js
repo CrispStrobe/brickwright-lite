@@ -39,8 +39,24 @@
 
 import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
 
-/** The MakeCode targets whose runtime sync-makecode-runtime serves. */
-export const MAKECODE_TARGETS = Object.freeze(['microbit', 'arcade']);
+/**
+ * The MakeCode targets whose runtime sync-makecode-runtime serves, by pxt
+ * target id (the `pxtTarget` a MakeCode file names), and what each builds.
+ * `firmware` is the file the generic firmware download produces, or null where
+ * it cannot: Arcade builds a .uf2 only for a chosen board (`hwVariant`, see
+ * ARCADE_HARDWARE), and the importer's download has no board picker yet, so a
+ * board-less native Arcade build stays refused by name (NO_BASE_HEX).
+ * `name` is the product's own name (a proper noun, the same in every language),
+ * which is why it is not a `label` for the i18n rule to count.
+ */
+export const MAKECODE_BOARDS = Object.freeze({
+    microbit: {name: 'micro:bit', firmware: 'hex'},
+    calliopemini: {name: 'Calliope mini', firmware: 'hex'},
+    ev3: {name: 'LEGO MINDSTORMS EV3', firmware: 'uf2'},
+    adafruit: {name: 'Circuit Playground Express', firmware: 'uf2'},
+    arcade: {name: 'Arcade', firmware: null}
+});
+export const MAKECODE_TARGETS = Object.freeze(Object.keys(MAKECODE_BOARDS));
 
 /** Where a target's runtime is served, relative to the app. */
 export const runtimeBase = target => `static/makecode/${target}/`;
