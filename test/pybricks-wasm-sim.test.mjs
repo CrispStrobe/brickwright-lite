@@ -14,7 +14,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -48,7 +50,70 @@ test('shipped assets match their provenance record', () => {
     }
     assert.equal(provenance.upstream['pybricks-micropython'].commit, '4104553405decb0384bcfb030fbfcb4b5a9854cc');
     assert.ok(provenance.licence_gate.files > 400, 'licence gate must have judged the compiled file set');
-    assert.deepEqual(provenance.licence_gate.reviewed, ['pybricks/util_mp/pb_kwarg_helper.h: CC-BY-SA-4.0 AND MIT']);
+    // The two upstream pieces adapted from Stack Overflow (CC BY-SA 4.0) are
+    // not compiled: pb_kwarg_helper.h is shadowed by a clean-room MIT header,
+    // and int_math.c is compiled with mult_then_div swapped for a stand-in.
+    assert.deepEqual(provenance.licence_gate.replaced, [
+        'lib/pbio/src/int_math.c -> brickwright:upstream-overlay/lib/pbio/src/int_math_mult_then_div.c',
+        'pybricks/util_mp/pb_kwarg_helper.h -> brickwright:upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h'
+    ]);
+    assert.equal(provenance.licence_gate.reviewed, undefined, 'no licence exceptions remain');
+    assert.ok(!Object.keys(provenance.licence_gate.by_licence).some(k => /CC-BY-SA/i.test(k)),
+        `no CC-BY-SA file in the compiled set: ${Object.keys(provenance.licence_gate.by_licence)}`);
+    assert.deepEqual(Object.keys(provenance.upstream_overlay).sort(),
+        ['lib/pbio/src/int_math.c', 'pybricks/util_mp/pb_kwarg_helper.h']);
+    for (const [upstream, overlay] of Object.entries(provenance.upstream_overlay)) {
+        const sha = createHash('sha256').update(readFileSync(resolve(here, '..', overlay.path))).digest('hex');
+        assert.equal(sha, overlay.sha256, `the stand-in for ${upstream} is the one the assets were built from`);
+    }
+});
+
+test('licence gate: refuses share-alike files and the replaced upstream header', () => {
+    // Drive the real gate over a constructed dependency set. The clean case
+    // must pass first, so the two failures below are caused by what each adds.
+    const gate = resolve(here, '../firmware/pybricks-wasm/licence_gate.py');
+    const root = mkdtempSync(resolve(tmpdir(), 'pb-gate-'));
+    try {
+        const build = resolve(root, 'build');
+        const pbtop = resolve(root, 'pbtop');
+        const wasm = resolve(root, 'wasm');
+        const file = (path, text) => {
+            mkdirSync(dirname(path), {recursive: true});
+            writeFileSync(path, text);
+            return path;
+        };
+        const ok = file(resolve(pbtop, 'pybricks/ok.h'), '// SPDX-License-Identifier: MIT\n');
+        const standin = file(resolve(wasm, 'upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h'),
+            '// SPDX-License-Identifier: MIT\n');
+        const standin2 = file(resolve(wasm, 'upstream-overlay/lib/pbio/src/int_math_mult_then_div.c'),
+            '// SPDX-License-Identifier: BSD-3-Clause\n');
+        const upstream = file(resolve(pbtop, 'pybricks/util_mp/pb_kwarg_helper.h'),
+            '// SPDX-License-Identifier: MIT\n');
+        const prose = file(resolve(pbtop, 'pybricks/sa.h'),
+            '// SPDX-License-Identifier: MIT\n// A macro adapted from an answer licensed CC BY-SA 4.0.\n');
+        const run = deps => {
+            rmSync(build, {recursive: true, force: true});
+            file(resolve(build, 'x.d'), `x.o: ${deps.join(' ')}\n`);
+            return spawnSync('python3', [gate, build, pbtop, wasm], {encoding: 'utf8'});
+        };
+
+        const clean = run([ok, standin, standin2]);
+        assert.equal(clean.status, 0, `precondition: the clean set passes\n${clean.stderr}`);
+
+        const shareAlike = run([ok, standin, standin2, prose]);
+        assert.equal(shareAlike.status, 1);
+        assert.match(shareAlike.stderr, /pybricks\/sa\.h: share-alike \(CC-BY-SA\)/);
+
+        const replaced = run([ok, standin, standin2, upstream]);
+        assert.equal(replaced.status, 1);
+        assert.match(replaced.stderr, /pybricks\/util_mp\/pb_kwarg_helper\.h: replaced upstream file was compiled/);
+
+        const missing = run([ok]);
+        assert.equal(missing.status, 1);
+        assert.match(missing.stderr, /stand-in for pybricks\/util_mp\/pb_kwarg_helper\.h was not compiled/);
+    } finally {
+        rmSync(root, {recursive: true, force: true});
+    }
 });
 
 test('a program prints through the hub stdout', async () => {

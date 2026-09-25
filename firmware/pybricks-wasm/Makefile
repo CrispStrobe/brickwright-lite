@@ -46,6 +46,9 @@ SRC_QSTR := $(filter-out $(UNUSED_EXTMOD_SRC_C), $(SRC_QSTR))
 INC += -I.
 INC += -I$(WASM_DIR)/platform
 INC += -I$(WASM_DIR)/compat
+# Clean-room MIT replacements for upstream Pybricks headers, found before
+# $(PBTOP) so the upstream copy is never opened. Pinned in build-pybricks-wasm.sh.
+INC += -I$(WASM_DIR)/upstream-overlay
 INC += -I$(TOP)
 INC += -I$(PBTOP)/lib/lego
 INC += -I$(PBTOP)/lib/lwrb/src/include
@@ -95,6 +98,15 @@ PBIO_DRV_KEEP = $(addprefix lib/pbio/drv/,\
 PBIO_SRC_C := $(filter-out $(NON_PERMISSIVE_SRC) lib/pbio/platform/%,$(PBIO_SRC_C))
 PBIO_SRC_C := $(filter-out lib/pbio/drv/%,$(PBIO_SRC_C)) $(PBIO_DRV_KEEP)
 
+# No share-alike code. lib/pbio/src/int_math.c is MIT, except that the body
+# of pbio_int_math_mult_then_div() is adapted from a Stack Overflow answer
+# (CC BY-SA 4.0). Compile a copy with that one function removed, and a
+# Brickwright stand-in for it. The licence gate checks the upstream file was
+# not read and the stand-in was.
+PBIO_SRC_C := $(filter-out lib/pbio/src/int_math.c,$(PBIO_SRC_C))
+INT_MATH_STRIPPED = $(BUILD)/stripped/int_math.c
+WASM_SRC_C_OVERLAY = upstream-overlay/lib/pbio/src/int_math_mult_then_div.c
+
 WASM_SRC_C = \
 	platform/platform.c \
 	hal/block_device_wasm.c \
@@ -127,6 +139,16 @@ OBJ += $(addprefix $(BUILD)/, $(LWRB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(PBIO_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(LEGO_SPEC_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(WASM_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(WASM_SRC_C_OVERLAY:.c=.o))
+OBJ += $(INT_MATH_STRIPPED:.c=.o)
+
+$(INT_MATH_STRIPPED): $(PBTOP)/lib/pbio/src/int_math.c strip_function.py
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)python3 strip_function.py $< $@ pbio_int_math_mult_then_div stackoverflow.com/a/57727180
+
+$(INT_MATH_STRIPPED:.c=.o): $(INT_MATH_STRIPPED) | $(BUILD)/pbio_version_hash.h
+	$(ECHO) "CC $<"
+	$(Q)$(CC) $(CFLAGS) -c -MD -MF $(@:.o=.d) -o $@ $<
 
 SRC_QSTR += $(PY_EXTRA_SRC_C) $(PYBRICKS_PYBRICKS_SRC_C) $(WASM_SRC_C)
 SRC_QSTR_AUTO_DEPS +=

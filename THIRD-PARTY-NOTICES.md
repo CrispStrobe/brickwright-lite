@@ -1320,11 +1320,19 @@ WebAssembly on Brickwright's own hardware layer. Self-hosted under
   `firmware/pybricks-wasm/licence_gate.py` checks the licence of every file
   the compiler read and fails the build on anything non-permissive; it
   drops Pybricks' GPL-2.0/MPL-1.0 NXT/EV3 drivers before compiling.
-- **One reviewed exception:** `pybricks/util_mp/pb_kwarg_helper.h` is tagged
-  `MIT AND CC-BY-SA-4.0`: a few argument-counting preprocessor macros
-  adapted from Stack Overflow answers (https://stackoverflow.com/a/50371430,
-  https://stackoverflow.com/a/11994395), CC BY-SA 4.0. Attributed here and
-  in the shipped licence file.
+- **No share-alike code:** two pieces of upstream Pybricks are adapted
+  from Stack Overflow answers (CC BY-SA 4.0), and this build compiles
+  neither of them. Upstream's `pybricks/util_mp/pb_kwarg_helper.h` (tagged
+  `MIT AND CC-BY-SA-4.0`) is shadowed on the include path by a clean-room
+  MIT rewrite (Copyright (c) 2026 The Pybricks Authors). It was written
+  without reading the upstream file and is being prepared as an upstream
+  contribution. `lib/pbio/src/int_math.c` is compiled from a copy with
+  `pbio_int_math_mult_then_div()` removed; a BSD-3-Clause Brickwright
+  stand-in, written from its documented contract and Pybricks' own test,
+  replaces it. Both stand-ins live in `firmware/pybricks-wasm/upstream-overlay/`
+  and are pinned by sha256 in `build-pybricks-wasm.sh`. The licence gate
+  fails the build if either upstream original, or any file carrying
+  CC-BY-SA text, is compiled.
 - **Toolchain runtime:** the emscripten glue (`pybricks-hub.js`) and the
   musl libc / compiler-rt parts linked into the wasm are emscripten's
   (MIT / University of Illinois NCSA; compiler-rt Apache-2.0 WITH

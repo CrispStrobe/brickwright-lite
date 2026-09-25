@@ -33,12 +33,20 @@ FORBIDDEN_DIRS = (
     "micropython/lib/btstack/",
 )
 
-# Files whose SPDX line names a licence outside PERMISSIVE, reviewed one by
-# one. pb_kwarg_helper.h is dual-tagged: a handful of argument-counting
-# preprocessor macros copied from Stack Overflow answers (CC-BY-SA-4.0),
-# attributed in THIRD-PARTY-NOTICES.md. Nothing copyleft in the GPL sense.
-REVIEWED = {
-    "pybricks/util_mp/pb_kwarg_helper.h": {"MIT", "CC-BY-SA-4.0"},
+# Share-alike licences are refused outright, not reviewed case by case: a
+# CC-BY-SA file in the compiled set fails the build whether it says so in an
+# SPDX line or only in prose. Pybricks' pb_kwarg_helper.h was the one such
+# file (MIT AND CC-BY-SA-4.0); it is replaced below and must not come back.
+SHARE_ALIKE = re.compile(r"CC[- ]BY[- ]SA|creativecommons\.org/licenses/by-sa", re.IGNORECASE)
+
+# Upstream files that must NOT be compiled, each with the Brickwright file
+# that stands in for it (found first on the include path, see the Makefile).
+# Both halves are checked: the upstream file absent, the stand-in present.
+REPLACED = {
+    "pybricks/util_mp/pb_kwarg_helper.h": "brickwright:upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h",
+    # int_math.c is compiled from a copy with one function removed (see the
+    # Makefile); the copy is in the build directory and scanned below.
+    "lib/pbio/src/int_math.c": "brickwright:upstream-overlay/lib/pbio/src/int_math_mult_then_div.c",
 }
 
 PERMISSIVE_TEXT = (
@@ -99,10 +107,16 @@ def main():
                 seen[path] = True
 
     failures = []
-    summary = {"files": 0, "by_licence": {}, "reviewed": [], "outside_tree": 0}
+    summary = {"files": 0, "by_licence": {}, "replaced": [], "outside_tree": 0}
+    read = set()
     for path in sorted(seen):
         if path.startswith(build + os.sep):
-            continue  # generated during the build from the files below
+            # Generated during the build from the files below, so not counted,
+            # but derived copies must not carry share-alike text either.
+            with open(path, encoding="utf-8", errors="replace") as f:
+                if SHARE_ALIKE.search(f.read()):
+                    failures.append(f"build:{os.path.relpath(path, build)}: share-alike (CC-BY-SA) material is not allowed in this build")
+            continue
         if path.startswith(pbtop + os.sep):
             rel = os.path.relpath(path, pbtop)
         elif path.startswith(wasm_dir + os.sep):
@@ -111,19 +125,20 @@ def main():
             summary["outside_tree"] += 1  # toolchain sysroot (emscripten libc)
             continue
         summary["files"] += 1
+        read.add(rel)
         for bad in FORBIDDEN_DIRS:
             if rel.startswith(bad):
                 failures.append(f"{rel}: forbidden directory {bad}")
         with open(path, encoding="utf-8", errors="replace") as f:
-            text = f.read(8192)
+            whole = f.read()
+        text = whole[:8192]
         ids = spdx_ids(text)
+        if SHARE_ALIKE.search(whole) or any(i.upper().startswith("CC-BY-SA") for i in ids):
+            failures.append(f"{rel}: share-alike (CC-BY-SA) material is not allowed in this build")
         if ids:
             key = " AND ".join(sorted(ids))
             if not ids <= PERMISSIVE:
-                if REVIEWED.get(rel) == ids:
-                    summary["reviewed"].append(f"{rel}: {key}")
-                else:
-                    failures.append(f"{rel}: {key}")
+                failures.append(f"{rel}: {key}")
         elif any(p.search(text) for p in PERMISSIVE_TEXT):
             key = "permissive (licence text, no SPDX tag)"
         else:
@@ -134,6 +149,14 @@ def main():
             if rel.startswith("brickwright:"):
                 failures.append(f"{rel}: no licence marker")
         summary["by_licence"][key] = summary["by_licence"].get(key, 0) + 1
+
+    for upstream, standin in sorted(REPLACED.items()):
+        if upstream in read:
+            failures.append(f"{upstream}: replaced upstream file was compiled; {standin} must shadow it")
+        if standin not in read:
+            failures.append(f"{standin}: stand-in for {upstream} was not compiled")
+        if upstream not in read and standin in read:
+            summary["replaced"].append(f"{upstream} -> {standin}")
 
     if out_json:
         with open(out_json, "w") as f:

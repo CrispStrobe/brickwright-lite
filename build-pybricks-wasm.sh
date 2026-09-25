@@ -33,6 +33,21 @@ PYBRICKS_SHA="4104553405decb0384bcfb030fbfcb4b5a9854cc"
 # The only submodule the build reads: Pybricks' MicroPython fork.
 MICROPYTHON_SHA="13580b6ad057173f62e8b2363e01d6851bcc6699"
 EMSDK_VERSION="6.0.6"
+# Clean-room, MIT-only replacement for pybricks/util_mp/pb_kwarg_helper.h,
+# whose upstream copy is tagged MIT AND CC-BY-SA-4.0 (macros adapted from
+# Stack Overflow). Written without reading that file, from its MIT call sites
+# and MicroPython's mp_arg_parse_all API, and offered to Pybricks upstream.
+# The Makefile puts upstream-overlay/ ahead of the Pybricks tree, so the
+# compiler never opens the upstream header; the licence gate checks that.
+# Drop this once a pinned Pybricks release ships an MIT-only header.
+KWARG_OVERLAY_REL="upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h"
+KWARG_OVERLAY_SHA256="3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10"
+# The other Stack Overflow (CC BY-SA 4.0) piece: the body of
+# pbio_int_math_mult_then_div() in lib/pbio/src/int_math.c. The Makefile
+# compiles int_math.c with that function removed (strip_function.py) and this
+# stand-in, written from the documented contract and Pybricks' own test.
+INTMATH_OVERLAY_REL="upstream-overlay/lib/pbio/src/int_math_mult_then_div.c"
+INTMATH_OVERLAY_SHA256="16774c6fb7b901cec9e1949a9adf73277669c8cf2a57a95c044d2692d677ac34"
 
 SRC_DIR="${PYBRICKS_SRC_DIR:-$SCRIPT_DIR/out/pybricks-micropython}"
 BUILD_DIR="${PYBRICKS_BUILD_DIR:-$SCRIPT_DIR/out/pybricks-wasm-build}"
@@ -71,6 +86,12 @@ tag_sha=$(git -C "$SRC_DIR" rev-parse "refs/tags/$PYBRICKS_TAG^{commit}" 2>/dev/
 grep -q "^MIT License" "$SRC_DIR/LICENSE" || die "pybricks-micropython LICENSE is not MIT"
 grep -q "The MIT License (MIT)" "$SRC_DIR/micropython/LICENSE" || die "micropython LICENSE is not MIT"
 info "Source verified: pybricks-micropython $PYBRICKS_TAG ($head_sha), micropython $mp_sha"
+for pair in "$KWARG_OVERLAY_REL=$KWARG_OVERLAY_SHA256" "$INTMATH_OVERLAY_REL=$INTMATH_OVERLAY_SHA256"; do
+  rel=${pair%%=*}; want=${pair#*=}
+  got=$(sha256sum "$WASM_DIR/$rel" | awk '{print $1}')
+  [[ "$got" == "$want" ]] || die "$rel sha256 $got != pinned $want"
+  info "Overlay verified: $rel ($got)"
+done
 
 # ---------- toolchain --------------------------------------------------------
 
@@ -109,6 +130,20 @@ json.dump({
     },
     "toolchain": {"emsdk": "$EMSDK_VERSION", "emcc": "$emcc_version"},
     "brickwright_sources": "firmware/pybricks-wasm (HAL, platform, Makefile)",
+    "upstream_overlay": {
+        "pybricks/util_mp/pb_kwarg_helper.h": {
+            "path": "firmware/pybricks-wasm/$KWARG_OVERLAY_REL",
+            "sha256": "$KWARG_OVERLAY_SHA256",
+            "license": "MIT",
+            "why": "clean-room replacement for the upstream header tagged MIT AND CC-BY-SA-4.0; the upstream copy is not compiled",
+        },
+        "lib/pbio/src/int_math.c": {
+            "path": "firmware/pybricks-wasm/$INTMATH_OVERLAY_REL",
+            "sha256": "$INTMATH_OVERLAY_SHA256",
+            "license": "BSD-3-Clause",
+            "why": "int_math.c is compiled with pbio_int_math_mult_then_div() removed (its body is adapted from a CC BY-SA 4.0 Stack Overflow answer) and this stand-in in its place",
+        },
+    },
     "not_included": ["lib/btstack", "lib/ble5stack", "lib/BlueNRG-MS", "lib/STM32_USB_Device_Library",
                      "lib/umm_malloc", "lib/lsm6ds3tr_c_STdC", "lib/tiam1808", "LEGO firmware", "TI Bluetooth patch"],
     "licence_gate": gate,

@@ -6,6 +6,12 @@ commit 13580b6ad057173f62e8b2363e01d6851bcc6699. Recipe: build-pybricks-wasm.sh.
 This build contains NO BTstack, no other Bluetooth stack, no vendor HAL and no
 file from MicroPython's lib/ directory; build-pybricks-wasm.sh checks the licence
 of every file the compiler read (firmware/pybricks-wasm/licence_gate.py).
+No file compiled into this build carries share-alike terms. Upstream's
+pybricks/util_mp/pb_kwarg_helper.h (tagged MIT AND CC-BY-SA-4.0) is replaced
+by a clean-room MIT rewrite by The Pybricks Authors. The one function of
+lib/pbio/src/int_math.c adapted from a share-alike source,
+pbio_int_math_mult_then_div(), is replaced by a Brickwright stand-in
+(BSD-3-Clause, Copyright (c) 2026 Brickwright contributors).
 
 === pybricks-micropython ===
 
@@ -67,13 +73,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
-
---------------------------------------------------------------------------------
-
-=== pybricks/util_mp/pb_kwarg_helper.h ===
-
-A few argument-counting preprocessor macros in this Pybricks header are
-adapted from Stack Overflow answers https://stackoverflow.com/a/50371430
-and https://stackoverflow.com/a/11994395, licensed CC BY-SA 4.0
-(https://creativecommons.org/licenses/by-sa/4.0/). The header is tagged
-MIT AND CC-BY-SA-4.0 upstream.

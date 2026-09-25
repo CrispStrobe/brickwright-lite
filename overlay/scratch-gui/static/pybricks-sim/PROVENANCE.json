@@ -19,6 +19,20 @@
     "emcc": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.6 (ce75e06884093bcefb86a6b8fd56a5d62a4cc245)"
   },
   "brickwright_sources": "firmware/pybricks-wasm (HAL, platform, Makefile)",
+  "upstream_overlay": {
+    "pybricks/util_mp/pb_kwarg_helper.h": {
+      "path": "firmware/pybricks-wasm/upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h",
+      "sha256": "3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10",
+      "license": "MIT",
+      "why": "clean-room replacement for the upstream header tagged MIT AND CC-BY-SA-4.0; the upstream copy is not compiled"
+    },
+    "lib/pbio/src/int_math.c": {
+      "path": "firmware/pybricks-wasm/upstream-overlay/lib/pbio/src/int_math_mult_then_div.c",
+      "sha256": "16774c6fb7b901cec9e1949a9adf73277669c8cf2a57a95c044d2692d677ac34",
+      "license": "BSD-3-Clause",
+      "why": "int_math.c is compiled with pbio_int_math_mult_then_div() removed (its body is adapted from a CC BY-SA 4.0 Stack Overflow answer) and this stand-in in its place"
+    }
+  },
   "not_included": [
     "lib/btstack",
     "lib/ble5stack",
@@ -33,17 +47,17 @@
   "licence_gate": {
     "by_licence": {
       "Apache-2.0": 1,
-      "BSD-3-Clause": 1,
-      "BSD-3-Clause AND MIT": 29,
-      "CC-BY-SA-4.0 AND MIT": 1,
-      "MIT": 274,
+      "BSD-3-Clause": 2,
+      "BSD-3-Clause AND MIT": 28,
+      "MIT": 275,
       "no per-file marker (repository LICENSE: MIT)": 11,
       "permissive (licence text, no SPDX tag)": 264
     },
     "files": 581,
     "outside_tree": 55,
-    "reviewed": [
-      "pybricks/util_mp/pb_kwarg_helper.h: CC-BY-SA-4.0 AND MIT"
+    "replaced": [
+      "lib/pbio/src/int_math.c -> brickwright:upstream-overlay/lib/pbio/src/int_math_mult_then_div.c",
+      "pybricks/util_mp/pb_kwarg_helper.h -> brickwright:upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h"
     ]
   },
   "assets": {
@@ -51,7 +65,7 @@
       "sha256": "39e99375b65f1a07a70f8a1afd482d10c60014c1753f78dbab9fccb091539e67"
     },
     "pybricks-hub.wasm": {
-      "sha256": "f6fa95c210434ca1073ad175c680f3e7448e2d150731d2f7c9d0cc154834c53b"
+      "sha256": "fbc52f192127de2ecee41fbcbfef61dd6715ad5cb6dbfa9081f2ba31d36ae3ff"
     }
   }
 }
