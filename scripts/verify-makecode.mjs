@@ -252,11 +252,20 @@ try {
 
     // ── 2c. the imported art edits AS pixels (costume tab → ▦ Pixel editor) ──
     {
+        // The import only WRITES the program; its sprites and costumes exist in the
+        // project once ⇦ To blocks builds it. Without this the Costumes tab shows the
+        // default sprite, and "reads it exactly" would be a question about the cat.
+        await page.locator('button', {hasText: /To blocks|Zu Blöcken/i}).first().click({force: true}).catch(() => {});
+        const built = await waitFor(() => page.evaluate(() => {
+            const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
+            return vm ? vm.runtime.targets.filter(t => !t.isStage).map(t => t.getName()) : [];
+        }).catch(() => []), names => names.includes('mySprite'), 30000);
+        check('⇦ To blocks builds the imported Arcade sprites', built.includes('mySprite'), built.join(', '));
         const costumesTab = page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first();
         if (await costumesTab.count()) {
             await costumesTab.click();
-            // Select a sprite that carries imported art (the stage has backdrops only).
-            const sprite = page.locator('[class*="sprite-selector-item"]').first();
+            // Select the imported sprite by name: it carries the Arcade art.
+            const sprite = page.locator('[class*="sprite-selector-item"]', {hasText: 'mySprite'}).first();
             if (await sprite.count()) await sprite.click().catch(() => {});
             // A crash here would be the paint editor itself on the imported costume, not the toggle.
             const tabErrors = browserErrors.filter(e => /Costume Tab/.test(e)).length;

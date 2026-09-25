@@ -459,3 +459,31 @@ Checked via the GitHub API on 2026-08-27:
   and that is what this implementation follows.
 - The LZMA decoder is written from the specification. The LZMA SDK the
   algorithm comes from is public domain.
+
+### The firmware a MakeCode program is linked onto (added 2026-09-25)
+
+The list above covers MakeCode's *source*. The precompiled micro:bit bases
+pxt-microbit ships (`built/hexcache`, the image a program is linked onto) are
+a different matter: each is a Bluetooth build that carries **Nordic's
+SoftDevice** — S113, the MBR and a bootloader on V2; S110 v8 on V1 and on the
+Calliope mini — whose licences allow it to run only on a Nordic chip and forbid
+disassembling it (quoted in THIRD-PARTY-NOTICES.md). Downloading such a .hex to
+a real micro:bit is exactly its licensed use. Running it in lite's emulator, or
+stepping through it in the debugger, is not.
+
+So the emulator has its own bases. `scripts/build-makecode-emu-bases.mjs`
+builds pxt-microbit's own V2 request with `DEVICE_BLE 0` and Nordic's binary
+objects removed; the build refuses to write a base whose linker map shows an
+nRF5 SDK member or a SoftDevice/MBR/bootloader/UICR section
+(`scripts/makecode/firmware-licence-gate.mjs`). `lib/bw-makecode/base-licences.js`
+classifies every base lite can serve by the sha256 of its bytes —
+`clean`, `chip-restricted` (naming the component) or `unaudited` — and
+`compileMakeCodeForEmulator` links only onto a clean one, refusing anything
+else by name. The official bases stay the download path.
+
+What this does NOT cover: micro:bit V1 and the Calliope mini 1/2 (nRF51,
+microbit-dal). The DAL makes SoftDevice supervisor calls even with Bluetooth
+off — `MicroBitThermometer` asks `sd_softdevice_is_enabled` unconditionally, and
+`ble_running()` does whenever pxt's `pairing_mode` is set — and it builds with
+yotta. A SoftDevice-free V1 base needs a DAL change or an SVC stub, not a
+switch; measured and not attempted.
