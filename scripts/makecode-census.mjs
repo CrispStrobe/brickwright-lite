@@ -89,13 +89,22 @@ const NAMESPACES = ['basic', 'input', 'led', 'music', 'radio', 'pins', 'game', '
 const TRANSFORMS = {
     'input.onButtonPressed': 'input.buttonIsPressed',
     'input.onGesture': 'input.isGesture',
-    'input.onPinPressed': 'input.pinIsPressed'
+    'input.onPinPressed': 'input.pinIsPressed',
+    // The same function under two names (pxt-microbit: Math.map is pins.map);
+    // the dialect has one `map … from low … high …` block, which goes back as pins.map.
+    'Math.map': 'pins.map',
+    // Used as a VALUE (not a condition), a coin toss is the dialect's number
+    // truth, `pick random 0 to 1`, and goes back as randint(0, 1) — the same
+    // 0/1 the dialect stores. As a condition it round-trips by name.
+    'Math.randomBoolean': 'randint'
 };
 /** ts with the argument list of every call named in `unsupported` removed (paren-matched). */
 function withoutNamedCalls (ts, unsupported) {
     let out = ts;
     for (const u of unsupported) {
-        const m = String(u).match(/^([A-Za-z_]+\.[A-Za-z_]+)\(\)/);
+        // Any dotted path: `client.sprite.setBrightness()` is named as a whole,
+        // and a call inside ITS arguments is covered by that name too.
+        const m = String(u).match(/^([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+)\(\)/);
         if (!m) continue;
         let from = 0;
         for (;;) {

@@ -326,3 +326,45 @@ test('a scroll interval survives both ways (it was dropped without a word)', {sk
     assert.match(tsOfProgram('  scroll text "BW" delay 150 ms\n'), /basic\.showString\("BW"\)/, '150 is MakeCode\'s default');
     assert.match(microbitToPseudocode('basic.showString("Hi", 60)\n').code, /scroll text "Hi" delay 60 ms/);
 });
+
+// Batch 1 of the MakeCode census: each spelling the importer now writes for
+// a MakeCode led/game/Math call has to go back out as THAT call. A mapping
+// on one side only is a program that imports cleanly and then loses the
+// call on its way back to MakeCode — which the census counts as silent.
+const BATCH_1_WAY_BACK = [
+    ['plot bar graph of read light up to 255', 'led.plotBarGraph(input.lightLevel(), 255)'],
+    ['toggle x 1 y 2', 'led.toggle(1, 2)'],
+    ['set display brightness to 128', 'led.setBrightness(128)'],
+    ['stop animation', 'led.stopAnimation()'],
+    ['change game score by 1', 'game.addScore(1)'],
+    ['set game score to 4', 'game.setScore(4)'],
+    ['remove game life 1', 'game.removeLife(1)'],
+    ['game over', 'game.gameOver()'],
+    ['display game score', 'basic.showNumber(game.score())'],
+    ['set v to map v from low 0 high 1023 to low 0 high 4', 'v = pins.map(v, 0, 1023, 0, 4)'],
+    ['set v to min of v and 3', 'v = Math.min(v, 3)'],
+    ['set v to max of v and 3', 'v = Math.max(v, 3)'],
+    ['set v to ((v / 4) bitor 0)', 'v = Math.idiv(v, 4)'],
+    ['IF (pick random 0 to 1) = 1 THEN:\n    clear display', 'if (Math.randomBoolean()) {']
+];
+
+for (const [line, call] of BATCH_1_WAY_BACK) {
+    test(`census batch 1: \`${line.split('\n')[0]}\` exports as \`${call}\``, {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(`DEVICE MICROBIT\nWHEN flag clicked:\n  ${line}\n`));
+        assert.deepEqual(unsupported, []);
+        assert.ok(ts.includes(call), `\`${call}\` not in:\n${ts}`);
+    });
+}
+
+test('a bitor that is not (a / b) | 0 stays a bitwise or', {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+    const ts = tsOfProgram('  set v to (v bitor 0)\n  set w to ((v / 4) bitor 1)\n');
+    assert.match(ts, /v = \(v \| 0\)/, ts);
+    assert.match(ts, /w = \(\(v \/ 4\) \| 1\)/, ts);
+    assert.doesNotMatch(ts, /Math\.idiv/);
+});
+
+test('a random number compared with something other than 1 is still a comparison', {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+    const ts = tsOfProgram('  IF (pick random 0 to 2) = 1 THEN:\n    clear display\n  IF (pick random 0 to 1) = 0 THEN:\n    clear display\n');
+    assert.doesNotMatch(ts, /randomBoolean/, ts);
+    assert.match(ts, /\(randint\(0, 2\) == 1\)/, ts);
+});
