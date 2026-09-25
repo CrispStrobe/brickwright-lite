@@ -32,6 +32,16 @@ test('the snapshot carries the structure the conformance gate reads', () => {
     for (const id of [...Object.values(doc.compile).flat(), ...Object.values(doc.assemble).flat()]) {
         assert.match(id, /^[a-z0-9]+$/, `hosted target id "${id}" is not a plain id`);
     }
+    // The absent notes are carried forward by hand, so nothing regenerates
+    // them when a target ships -- "z80 (plan N1)" outlived N1. A note whose
+    // leading id the snapshot now lists is false.
+    for (const kind of ['compile', 'assemble']) {
+        const have = new Set(Object.values(doc[kind]).flat());
+        for (const note of doc.absent[kind] || []) {
+            const id = note.split(/[\s(]/)[0];
+            assert.ok(!have.has(id), `absent.${kind} says "${note}", but the snapshot ${kind}s ${id} -- drop the note`);
+        }
+    }
 });
 
 test('the snapshot is current against the stc-compiler checkout, when one is present', (t) => {
