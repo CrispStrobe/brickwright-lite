@@ -76,7 +76,27 @@ import {
     LOCAL_8051_TARGETS, compileTargetFor, compileFormatFor,
     shippedImageFor, provenanceSentence
 } from './shipped-images.js';
-import { t as cpmSystemT } from './cpm-system-l10n.js';
+import { t as statusT } from './runner-status-l10n.js';
+
+/**
+ * The document language, for everything this module says in words.
+ *
+ * Module scope, not the createDebugRunner closure it used to live in: the very
+ * first status string (the 8051 compiler loader) is written from a function
+ * ABOVE that closure, so a locale reachable only from inside it would have left
+ * that one English forever.
+ */
+function uiLang () {
+    try {
+        const html = typeof document !== 'undefined' && document.documentElement;
+        const lang = (html && html.lang) ||
+            (typeof navigator !== 'undefined' && navigator.language) || 'en';
+        return /^de/i.test(lang) ? 'de' : 'en';
+    } catch { return 'en'; }
+}
+
+/** Status text in the reader's language. `S('boot.media', {name})`. */
+const S = (key, vars) => statusT(uiLang(), key, vars);
 import { localCompilerRequest, localToolchainEnabled } from '../sdcc-wasm/toolchain-source.js';
 
 /**
@@ -402,7 +422,7 @@ async function installWasmCompilerRouting (setStatus) {
             window.__bwRecoverFromStaleBuild &&
             window.__bwRecoverFromStaleBuild(e && e.message);
         if (!recovering) {
-            setStatus('building', 'local 8051 compiler unavailable');
+            setStatus('building', S('compile.no8051'));
             console.warn('[brickwright] local 8051 compiler failed to load:', e);
         }
         throw new Error(`local 8051 compiler unavailable: ${e && e.message ? e.message : e}`);
@@ -1095,17 +1115,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         };
     }
 
-    /** The document language, for the sentences this module says in words
-     *  (the provenance line and the CP/M-system status strings). */
-    function uiLang() {
-        try {
-            const html = typeof document !== 'undefined' && document.documentElement;
-            const lang = (html && html.lang) ||
-                (typeof navigator !== 'undefined' && navigator.language) || 'en';
-            return /^de/i.test(lang) ? 'de' : 'en';
-        } catch { return 'en'; }
-    }
-
     const snapshotEmitter = createDebugSnapshotEmitter({snapshot, onChange});
     const replayOutputGate = createHistoricalOutputGate({publishState: state => onChange(state)});
 
@@ -1194,7 +1203,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * needs, or throws with a message meant to be shown to a person.
      */
     async function build() {
-        setStatus('building', 'reading the project…');
+        setStatus('building', S('compile.reading'));
         const project = projectForEmit();
         const stc = project.stc;
         if (!stc || !(stc.pins || []).length) {
@@ -1221,7 +1230,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             );
         }
 
-        setStatus('building', 'compiling…');
+        setStatus('building', S('compile.compiling'));
         // The compiler accepts chip names (atmega328p, stc12c5a60s2), not board
         // names (arduino-nano). The map lives in shipped-images.js so the build
         // script that produces the prebuilt images and the runner that looks
@@ -1271,17 +1280,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 } else if (localCompilerOptedOut()) {
                     // Said out loud, because the header's objection is to a SILENT
                     // fallback, not to this one.
-                    setStatus('building',
-                        'in-page 8051 compiler off by request — using the compiler service');
+                    setStatus('building', S('compile.inpageOff'));
                 } else {
                     // The 2026-09-07 default. SDCC is GPL-2+ and no longer ships inside
                     // this BSD-3 app, so the in-page compiler is opt-in. Name the route
                     // AND the way back: without both this is a failure with no
                     // explanation and no exit.
-                    setStatus('building',
-                        'in-page 8051 compiler not installed — using the compiler service. ' +
-                        'To compile offline, open Menu → Settings → C Compiler, choose ' +
-                        'Build in this page, then Download compiler.');
+                    setStatus('building', S('compile.inpageMissing'));
                 }
             }
             // The compile is a pure function of (code, target, format), and the
@@ -1292,7 +1297,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const cacheKey = JSON.stringify([c, compileTarget, compileFormat]);
             out = compileCacheGet(cacheKey);
             if (out) {
-                setStatus('building', 'compiled (cached)');
+                setStatus('building', S('compile.cached'));
             } else {
                 let res;
                 try {
@@ -1470,7 +1475,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachAvr8js(built, selectedTargetKind);
         }
 
-        setStatus('attaching', 'starting the emulator…');
+        setStatus('attaching', S('attach.emulator'));
         const [{ createEmu8051DebugTarget, createDebugSession, createEmu8051Adapter,
             BoardImpl, inferNetlist }, createEmu8051] = await Promise.all([
             import(/* webpackChunkName: "bw-board" */ 'bw-board'),
@@ -1604,7 +1609,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         });
 
-        setStatus('ready', `${built.bytes} bytes, ${blockOf.size} yield points`);
+        setStatus('ready', S('built.plain', {bytes: built.bytes, points: blockOf.size}));
         return session;
     }
 
@@ -1614,7 +1619,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // Boundary D currently supports run/pause/resume and instruction stepping.
     // It does not claim block-level positions until AVR symbols are mapped.
     async function attachAvr8js(built, avrKind = 'avr8js') {
-        setStatus('attaching', 'starting the AVR emulator…');
+        setStatus('attaching', S('attach.avr'));
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
@@ -1710,7 +1715,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         });
 
-        setStatus('ready', `${built.bytes} bytes (AVR), ${blockOf.size} yield points`);
+        setStatus('ready', S('built.device', {bytes: built.bytes, device: 'AVR', points: blockOf.size}));
 
         return session;
     }
@@ -1719,7 +1724,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // rp2040js is pure JS — same pattern as avr8js. The program is raw
     // Thumb halfwords into SRAM, not Intel HEX or UF2.
     async function attachRp2040js(built) {
-        setStatus('attaching', 'starting the Pico emulator…');
+        setStatus('attaching', S('attach.pico'));
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
@@ -1787,7 +1792,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         });
 
-        setStatus('ready', `${built.bytes} bytes (Pico), ${blockOf.size} yield points`);
+        setStatus('ready', S('built.device', {bytes: built.bytes, device: 'Pico', points: blockOf.size}));
         return session;
     }
 
@@ -1811,7 +1816,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *     there are none in a .bin, so no source lines and no yield points.
      */
     async function attachLabwiredTarget (built) {
-        setStatus('attaching', 'starting the labwired engine…');
+        setStatus('attaching', S('attach.labwired'));
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist, STM32F0 } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
         const { loadLabwired } = await import(
@@ -1919,7 +1924,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
         // Said in the status line rather than left for the user to infer from a
         // greyed-out button.
-        setStatus('ready', `${program.length} bytes on labwired — instruction stepping only (no symbols)`);
+        setStatus('ready', S('built.labwired', {bytes: program.length}));
         return session;
     }
 
@@ -1930,7 +1935,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *  underneath is the SAME rp2040js one, driven through the F0
      *  adapter's facade. */
     async function attachStm32F0Target(built) {
-        setStatus('attaching', 'starting the STM32F030 emulator…');
+        setStatus('attaching', S('attach.stm32'));
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
@@ -2008,7 +2013,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
         });
 
-        setStatus('ready', `${built.bytes} bytes (STM32F030), ${blockOf.size} yield points`);
+        setStatus('ready', S('built.device', {bytes: built.bytes, device: 'STM32F030', points: blockOf.size}));
         return session;
     }
 
@@ -2081,7 +2086,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             ...(targetKind === 'i8086' ? {wallBudgetMs: 8, maxQuantumNs: 1_000_000} : {}),
             onHalt: (snapshot) => {
                 recordNativeHaltOccurrence(snapshot);
-                setStatus('paused', `PC=$${snapshot.pc.toString(16).padStart(4, '0')}`);
+                setStatus('paused', S('run.pc', {pc: snapshot.pc.toString(16).padStart(4, '0')}));
             },
             onRun: () => setStatus('running'),
         });
@@ -2258,30 +2263,33 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const targetOpts = {};
         let readyMsg;
         if (bootMedia) {
-            setStatus('attaching', `booting ${bootMedia.name || 'image'}…`);
+            setStatus('attaching', S('boot.media', {name: bootMedia.name || S('noun.image')}));
             const img = await resolveMediaImage(bootMedia);
             targetOpts.rom = img.bytes;
             if (img.origin != null) targetOpts.romAt = img.origin;
             if (bootMedia.profile === 'py65mon') {
                 targetOpts.py65mon = true;
-                readyMsg = `${bootMedia.name || 'image'} on the py65mon console map`;
+                readyMsg = S('ready.py65mon', {name: bootMedia.name || S('noun.image')});
             } else if (machineConfig && bootMedia.profile !== 'eater') {
                 targetOpts.config = benchConfig6502();
-                readyMsg = `${bootMedia.name || 'image'} on the extracted machine (${(machineConfig.chips || []).map(c => c.kind).join(', ') || 'ram/rom'})`;
+                readyMsg = S('ready.extracted', {
+                    name: bootMedia.name || S('noun.image'),
+                    chips: (machineConfig.chips || []).map(c => c.kind).join(', ') || S('noun.ramRom')
+                });
             } else {
-                readyMsg = `${bootMedia.name || 'image'} on the Eater map (VIA $6000, ACIA $5000)`;
+                readyMsg = S('ready.eater', {name: bootMedia.name || S('noun.image')});
             }
         } else if (machineConfig) {
-            setStatus('attaching', 'booting extracted 6502 machine…');
+            setStatus('attaching', S('boot.extracted6502'));
             targetOpts.config = benchConfig6502();
-            readyMsg = 'extracted machine booted with an empty ROM — load a program (presets, file, or ASM tab)';
+            readyMsg = S('ready.emptyRom');
         } else {
-            setStatus('attaching', 'loading Tali Forth 2…');
+            setStatus('attaching', S('boot.tali'));
             const res = await fetch(new URL('static/roms/taliforth-py65mon.bin', document.baseURI).href);
             if (!res.ok) throw new Error(`Failed to load taliforth-py65mon.bin: HTTP ${res.status}`);
             targetOpts.rom = new Uint8Array(await res.arrayBuffer());
             targetOpts.py65mon = true;
-            readyMsg = 'Tali Forth 2 — type at the ok prompt';
+            readyMsg = S('ready.tali');
         }
 
         const db = designerBoard();
@@ -2337,7 +2345,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const isCpmSystem = bootMedia && bootMedia.profile === 'cpm-system';
         const isCom = !isCpmSystem && bootMedia && (bootMedia.slot === 'com' || bootMedia.profile === 'cpm');
         if (isCpmSystem) {
-            setStatus('attaching', cpmSystemT(uiLang(), 'cpm-system.booting'));
+            setStatus('attaching', S('cpm-system.booting'));
             const fetchRom = async (p) => {
                 const r = await fetch(new URL(p, document.baseURI).href);
                 if (!r.ok) throw new Error(`Failed to load ${p}: HTTP ${r.status}`);
@@ -2359,29 +2367,32 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 files[cpmFileName(bootMedia.name)] = (await resolveMediaImage(bootMedia)).bytes;
             }
             targetOpts.cpmSystem = { ccpBdos, bios, files };
-            readyMsg = cpmSystemT(uiLang(), 'cpm-system.ready') +
-                (files['BBCBASIC.COM'] ? cpmSystemT(uiLang(), 'cpm-system.ready.bbcbasic') : '');
+            readyMsg = S('cpm-system.ready') +
+                (files['BBCBASIC.COM'] ? S('cpm-system.ready.bbcbasic') : '');
         } else if (isCom) {
-            setStatus('attaching', `booting ${bootMedia.name || '.com'} over the CP/M shim…`);
+            setStatus('attaching', S('boot.cpmShim', {name: bootMedia.name || S('noun.com')}));
             targetOpts.cpm = { com: (await resolveMediaImage(bootMedia)).bytes };
-            readyMsg = `${bootMedia.name || 'CP/M program'} — type at the prompt`;
+            readyMsg = S('ready.cpmShim', {name: bootMedia.name || S('noun.cpmProgram')});
         } else if (bootMedia) {
-            setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
+            setStatus('attaching', S('boot.media', {name: bootMedia.name || S('noun.rom')}));
             const img = await resolveMediaImage(bootMedia);
             targetOpts.rom = img.bytes;
             if (img.origin != null) targetOpts.romAt = img.origin;
             if (machineConfig) targetOpts.config = benchConfigZ80();
-            readyMsg = `${bootMedia.name || 'ROM'} on ${machineConfig ? 'the extracted machine' : 'the Searle map'}`;
+            readyMsg = S('ready.romOnMap', {
+                name: bootMedia.name || S('noun.rom'),
+                map: S(machineConfig ? 'map.extracted' : 'map.searle')
+            });
         } else if (machineConfig) {
-            setStatus('attaching', 'booting extracted Z80 machine…');
+            setStatus('attaching', S('boot.extractedZ80'));
             targetOpts.config = benchConfigZ80();
-            readyMsg = 'extracted machine booted with an empty ROM — load a program (presets, file, or ASM tab)';
+            readyMsg = S('ready.emptyRom');
         } else {
-            setStatus('attaching', 'loading BBC BASIC…');
+            setStatus('attaching', S('boot.bbcbasic'));
             const res = await fetch(new URL('static/roms/bbcbasic.com', document.baseURI).href);
             if (!res.ok) throw new Error(`Failed to load bbcbasic.com: HTTP ${res.status}`);
             targetOpts.cpm = { com: new Uint8Array(await res.arrayBuffer()) };
-            readyMsg = 'BBC BASIC (Z80) — type at the > prompt';
+            readyMsg = S('ready.bbcbasic');
         }
 
         const db = designerBoard();
@@ -2429,10 +2440,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             ecallTraps = prog.ecallTraps;
             label = prog.label;
         }
-        setStatus('attaching', `booting ${label} on RISC-V…`);
+        setStatus('attaching', S('boot.riscv', {label}));
         const result = await createDebugTarget('riscv32', { image, config: { ecallTraps } });
         wireMachineBench(result, createDebugSession);
-        setStatus('ready', `RISC-V (RV32IMA) — ${label} running`);
+        setStatus('ready', S('ready.riscv', {label}));
         return session;
     }
 
@@ -2473,7 +2484,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // branch below is untouched. What arrives here is what the ASM tab's
         // local 8086 assembler emits, and what a preset could hand over.
         if (isDosProgram) {
-            setStatus('attaching', `loading ${bootMedia.name || 'the program'} into the DOS bench…`);
+            setStatus('attaching', S('boot.dosBench', {name: bootMedia.name || S('noun.theProgram')}));
             // Do not import bw-board's barrel for this path. It re-exports the
             // circuit solver, device catalogue, controllers and every other
             // CPU family, while a DOS program needs only the session and its
@@ -2516,7 +2527,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 // saying so is the difference between "finished" and "hung".
                 onExit: (code) => {
                     exited = code;
-                    setStatus('ready', `program exited with code ${code}`);
+                    setStatus('ready', S('run.exited', {code}));
                 }
             });
             i8086ExecutionResult = bench;
@@ -2548,9 +2559,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     ? String.fromCharCode(data & 0xff) : String(data));
             };
             if (exited === null) {
-                setStatus('ready',
-                    `${bootMedia.name || 'program'} loaded as a .${format} on the DOS bench ` +
-                    '— output is the CGA screen and the console');
+                setStatus('ready', S('ready.dosBench', {
+                    name: bootMedia.name || S('noun.program'), format
+                }));
             }
             return session;
         }
@@ -2571,7 +2582,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // change, exactly as bw-board's own ELKS scripts do it.)
         let floppyBoot = null;
         if (bootMedia && (bootMedia.slot === 'floppy' || bootMedia.profile === 'floppy-os')) {
-            setStatus('attaching', `booting ${bootMedia.name || 'floppy'}…`);
+            setStatus('attaching', S('boot.media', {name: bootMedia.name || S('noun.floppy')}));
             const { PCXT8086 } =
                 await import(/* webpackChunkName: "bw-board" */ 'bw-board/i8086-machine.js');
             const img = await resolveMediaImage(bootMedia);
@@ -2583,8 +2594,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             targetOpts.romAt = 0x100000 - bios.length;
             floppyBoot = { bytes: img.bytes,
                 geom: bootMedia.geometry || { cylinders: 80, heads: 2, sectors: 18, bytesPerSector: 512 } };
-            readyMsg = `${bootMedia.name || 'floppy'} booting — the video is the CGA screen, `
-                + 'the keyboard steers it (it takes ~40M instructions to reach a login prompt)';
+            readyMsg = S('ready.floppyBoot', {name: bootMedia.name || S('noun.floppy')});
         }
 
         // Hardware machines still use the target factory. Keep its broad
@@ -2596,7 +2606,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // targetOpts.config/rom/romAt and readyMsg were set above; a floppy
             // is not a ROM, so skip the ROM-as-image branches entirely.
         } else if (bootMedia) {
-            setStatus('attaching', `booting ${bootMedia.name || 'ROM'}…`);
+            setStatus('attaching', S('boot.media', {name: bootMedia.name || S('noun.rom')}));
             const img = await resolveMediaImage(bootMedia);
             targetOpts.rom = img.bytes;
             // Three sources for the load address, most specific first. Intel
@@ -2609,11 +2619,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             if (img.origin != null) targetOpts.romAt = img.origin;
             else if (typeof bootMedia.romAt === 'number') targetOpts.romAt = bootMedia.romAt;
             if (machineConfig) targetOpts.config = benchConfigI8086();
-            readyMsg = `${bootMedia.name || 'ROM'} on ${machineConfig ? 'the extracted machine' : 'the default 8086 map'}`;
+            readyMsg = S('ready.romOnMap', {
+                name: bootMedia.name || S('noun.rom'),
+                map: S(machineConfig ? 'map.extracted' : 'map.default8086')
+            });
         } else if (machineConfig) {
-            setStatus('attaching', 'booting extracted 8086 machine…');
+            setStatus('attaching', S('boot.extracted8086'));
             targetOpts.config = benchConfigI8086();
-            readyMsg = 'extracted machine booted with an empty ROM — load a program (presets, file, or ASM tab)';
+            readyMsg = S('ready.emptyRom');
         } else {
             // The shipped BIOS is a 64K image whose RESET VECTOR is its last
             // sixteen bytes. `romAt` is the LOAD address, so it is 0xF0000 and
@@ -2621,7 +2634,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // the address of the vector rather than of the image — puts the
             // ROM 64K high, and the machine then executes open bus from the
             // first instruction while reporting that it started fine.
-            setStatus('attaching', 'loading the XT BIOS…');
+            setStatus('attaching', S('boot.xtBios'));
             // THIS FILENAME WAS WRONG AND NOTHING NOTICED. It read
             // `bios8086.bin`, which has never existed in static/roms, so the
             // no-media path 404ed on every run since it was written. Nothing
@@ -2644,7 +2657,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // INT 14h is a stub and the BIOS equipment word reports no COM
             // port, because the XT config has no 8250. Output is the CGA text
             // page at B800:0000, which reaches the screen through video().
-            readyMsg = 'XT BIOS — output is the CGA screen, not the serial console';
+            readyMsg = S('ready.xtBios');
         }
 
         const db = designerBoard();
@@ -2732,7 +2745,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * network clone and never the private $AT_BIOS_ROM.
      */
     async function attachI80386() {
-        setStatus('attaching', `booting the free-386${bootMedia && bootMedia.name ? ` — ${bootMedia.name}` : ''}…`);
+        setStatus('attaching', bootMedia && bootMedia.name
+            ? S('boot.free386Named', {name: bootMedia.name})
+            : S('boot.free386'));
 
         // The 386 core + AT-device catalogue via the barrel's factory, and the
         // machine module directly for the FreeDOS-VGA config the qualification uses.
@@ -2836,7 +2851,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         machine.loadRom(bios, 0xff0000);
         machine.loadRom(vga, 0xc0000);
 
-        let readyMsg = 'free-386 (LGPL Bochs BIOS + VGABios) — no boot media, load a disk';
+        let readyMsg = S('ready.free386NoMedia');
         if (isFloppy) {
             // A bootable OS floppy (FreeDOS, …) goes into the µPD765, not a ROM
             // region. The FreeDOS-VGA fdc accepts a 1.2MB image (80/2/15); the
@@ -2848,11 +2863,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const geom = bootMedia.geometry ||
                 { cylinders: 80, heads: 2, sectors: 15, bytesPerSector: 512 };
             fdc.insert(0, bootImg.bytes, geom);
-            readyMsg = `${bootMedia.name || 'floppy'} on the free-386 (A:) — the video is the VGA screen, `
-                + 'the keyboard steers it (a full FreeDOS boot takes tens of millions of instructions)';
+            readyMsg = S('ready.free386Floppy', {name: bootMedia.name || S('noun.floppy')});
         } else if (isHdd) {
-            readyMsg = `${bootMedia.name || 'hard disk'} on the free-386 (C:) — the video is the VGA screen, `
-                + 'the keyboard steers it (a full FreeDOS boot takes tens of millions of instructions)';
+            readyMsg = S('ready.free386Disk', {name: bootMedia.name || S('noun.hardDisk')});
         }
         machine.reset();
 
@@ -2935,8 +2948,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 return;
             }
             activeRunTo = null;
-            setStatus('paused', result.accepted ?
-                `Reached 0x${result.address.toString(16)}` : result.reason);
+            setStatus('paused', result.accepted
+                ? S('run.reached', {address: result.address.toString(16)})
+                : result.reason);
             return;
         }
         // Opt-in production-bundle telemetry for the browser/mobile benchmark.
@@ -3123,7 +3137,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 const recovering = typeof window !== 'undefined' &&
                     window.__bwRecoverFromStaleBuild &&
                     window.__bwRecoverFromStaleBuild(e && e.message);
-                if (recovering) setStatus('attaching', 'app updated — reloading the new build…');
+                if (recovering) setStatus('attaching', S('app.updated'));
                 else setStatus('error', e.message);
             }
         },
@@ -4129,7 +4143,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             activeRunTo = {generation: result.generation, address};
             reverseCursor = null;
             reverseContinue.reset();
-            setStatus('running', `Running to 0x${address.toString(16)}`);
+            setStatus('running', S('run.runningTo', {address: address.toString(16)}));
             schedule();
             return result;
         },
