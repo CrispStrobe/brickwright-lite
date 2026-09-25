@@ -33,6 +33,7 @@
  */
 
 import {detectWasmCapabilities, localToolchainRefusal} from './wasm-capabilities.js';
+import {t} from './l10n.js';
 
 export const BACKEND_KINDS = Object.freeze(['hosted', 'local']);
 
@@ -40,27 +41,29 @@ export const BACKEND_KINDS = Object.freeze(['hosted', 'local']);
  * The reviewed catalog. `endpoint: null` means "declared but not configured",
  * which is different from "unavailable" and reported differently.
  */
-export function defaultCatalog ({hostedEndpoint = null} = {}) {
+/**
+ * @param {{hostedEndpoint?: string|null, locale?: string}} [opts] `locale` is the
+ *   reader's; the FPGA tab has it as a prop and passes it. Absent, the shared
+ *   table falls back to English rather than rendering an empty label.
+ */
+export function defaultCatalog ({hostedEndpoint = null, locale} = {}) {
     return Object.freeze([
         Object.freeze({
             id: 'hosted',
             kind: 'hosted',
-            label: 'Hosted synthesis',
+            label: t(locale, 'backend.hosted.label'),
             rank: 0,
             endpoint: hostedEndpoint,
-            description: 'Runs on a server. Nothing to download. '
-                + 'Cannot build copyleft sources — see the licence check.',
+            description: t(locale, 'backend.hosted.description'),
             capabilities: Object.freeze(['permissive-sources'])
         }),
         Object.freeze({
             id: 'local',
             kind: 'local',
-            label: 'Local synthesis (downloads the toolchain)',
+            label: t(locale, 'backend.local.label'),
             rank: 1,
             endpoint: null,
-            description: 'Runs in this browser. Downloads ~261 MB once. '
-                + 'The only route for copyleft sources, because building for yourself '
-                + 'conveys nothing to anyone.',
+            description: t(locale, 'backend.local.description'),
             capabilities: Object.freeze(['permissive-sources', 'copyleft-sources'])
         })
     ]);

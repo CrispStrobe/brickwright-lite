@@ -11,6 +11,8 @@
  * nobody has tested yet, so the user gets to say.
  */
 
+import {browserLocale, makeT} from './bw-i18n.js';
+
 const KEY = 'bw-scratchlink-transport';
 
 /**
@@ -18,40 +20,91 @@ const KEY = 'bw-scratchlink-transport';
  * `available()` decides whether an entry can be picked HERE — a greyed entry
  * with a reason beats a working-looking one that cannot run.
  */
-export const TRANSPORTS = [
+
+/**
+ * The transport chooser's own words. This module builds its panel directly
+ * (see openPanel below), so these render to a person and are translated.
+ *
+ * `WebSocket`, `Scratch Link`, `Brickwright`, `Apple` and the ws:// address are
+ * names and stay as they are in every language.
+ */
+const L10N = Object.freeze({
+    en: Object.freeze({
+        autoLabel: 'Automatic (recommended)',
+        autoDetail: 'Try the in-app service first, fall back to the native channel if it does not answer.',
+        socketLabel: 'In-app service (WebSocket)',
+        socketDetail: 'Talk to Brickwright’s built-in Scratch Link over ws://127.0.0.1:20111. The only carrier in a web browser, where it reaches a desktop Scratch Link.',
+        nativeLabel: 'Native channel (no socket)',
+        nativeDetail: 'Carry the same messages through the app itself, opening no socket at all. For webviews that refuse one.',
+        originalLabel: 'Original Scratch Link (Apple)',
+        originalDetail: 'The reference implementation from the Scratch Foundation, vendored unmodified. Where the others and this disagree, this one is right.',
+        nativeWhy: 'only inside the installed app',
+        originalWhy: 'only on iPhone, iPad and Mac',
+        panelTitle: 'How Scratch Link connects',
+        panelIntro: 'This is how the Scratch Link messages reach the radio. It does not change ' +
+            'which connection an extension uses — that stays in the extension’s own blocks.',
+        panelNote: 'Reconnect the extension for a change to take effect.',
+        panelDone: 'Done',
+    }),
+    de: Object.freeze({
+        autoLabel: 'Automatisch (empfohlen)',
+        autoDetail: 'Zuerst den In-App-Dienst versuchen und auf den nativen Kanal zurückfallen, wenn er nicht antwortet.',
+        socketLabel: 'In-App-Dienst (WebSocket)',
+        socketDetail: 'Mit Brickwrights eingebautem Scratch Link über ws://127.0.0.1:20111 sprechen. In einem Webbrowser der einzige Weg, und dort erreicht er ein Scratch Link auf dem Rechner.',
+        nativeLabel: 'Nativer Kanal (ohne Socket)',
+        nativeDetail: 'Dieselben Nachrichten durch die App selbst tragen, ganz ohne Socket. Für Webviews, die keinen zulassen.',
+        originalLabel: 'Original Scratch Link (Apple)',
+        originalDetail: 'Die Referenz-Implementierung der Scratch Foundation, unverändert eingebunden. Wo die anderen und diese sich widersprechen, hat diese recht.',
+        nativeWhy: 'nur in der installierten App',
+        originalWhy: 'nur auf iPhone, iPad und Mac',
+        panelTitle: 'Wie Scratch Link verbindet',
+        panelIntro: 'So erreichen die Scratch-Link-Nachrichten das Funkmodul. Es ändert nicht, ' +
+            'welche Verbindung eine Erweiterung nutzt — das bleibt in ihren eigenen Blöcken.',
+        panelNote: 'Verbinde die Erweiterung neu, damit eine Änderung wirkt.',
+        panelDone: 'Fertig',
+    })
+});
+
+const t = makeT(L10N);
+
+export const transportsFor = locale => [
     {
         id: 'auto',
-        label: 'Automatic (recommended)',
-        detail: 'Try the in-app service first, fall back to the native channel if it does not answer.',
+        label: t(locale, 'autoLabel'),
+        detail: t(locale, 'autoDetail'),
         available: () => true,
     },
     {
         id: 'socket',
-        label: 'In-app service (WebSocket)',
-        detail: 'Talk to Brickwright’s built-in Scratch Link over ws://127.0.0.1:20111. ' +
-            'The only carrier in a web browser, where it reaches a desktop Scratch Link.',
+        label: t(locale, 'socketLabel'),
+        detail: t(locale, 'socketDetail'),
         available: () => true,
     },
     {
         id: 'native',
-        label: 'Native channel (no socket)',
-        detail: 'Carry the same messages through the app itself, opening no socket at all. ' +
-            'For webviews that refuse one.',
+        label: t(locale, 'nativeLabel'),
+        detail: t(locale, 'nativeDetail'),
         available: () => isNativeApp(),
-        why: 'only inside the installed app',
+        why: t(locale, 'nativeWhy'),
     },
     {
         id: 'original',
-        label: 'Original Scratch Link (Apple)',
-        detail: 'The reference implementation from the Scratch Foundation, vendored unmodified. ' +
-            'Where the others and this disagree, this one is right.',
+        label: t(locale, 'originalLabel'),
+        detail: t(locale, 'originalDetail'),
         // Wired now, through a Tauri plugin carrying the vendored Swift
         // (plugins/scratchlink-original). Apple-only because the reference is
         // Swift/CoreBluetooth; Android keeps our Rust routes.
         available: () => isNativeApp() && isApple(),
-        why: 'only on iPhone, iPad and Mac',
+        why: t(locale, 'originalWhy'),
     },
 ];
+
+/**
+ * The carriers in English — the ids are what `getTransport`/`setTransport`
+ * validate against, and no locale changes those. Anything that SHOWS a carrier
+ * must call `transportsFor(locale)` instead.
+ */
+export const TRANSPORTS = transportsFor('en');
 
 /** @returns {boolean} true inside the Tauri shell. */
 export const isNativeApp = () =>
@@ -122,7 +175,10 @@ export const closePanel = () => {
  * diagnostics panel is: it has to work when the app around it does not.
  * @returns {object} the panel element.
  */
-export const openPanel = () => {
+export const openPanel = arg => {
+    // Also wired straight to addEventListener below, which calls it with an
+    // Event — so only a string counts as a locale.
+    const locale = typeof arg === 'string' ? arg : browserLocale();
     closePanel();
     const overlay = el('div', 'position:fixed;inset:0;z-index:2147483500;background:rgba(12,16,22,.72);' +
         'display:flex;align-items:center;justify-content:center;' +
@@ -132,15 +188,14 @@ export const openPanel = () => {
         'max-height:min(80vh,680px);display:flex;flex-direction:column;overflow:hidden;' +
         'box-shadow:0 18px 48px rgba(0,0,0,.35);');
     card.appendChild(el('div', 'padding:16px 18px 4px;font-weight:600;font-size:16px;',
-        'How Scratch Link connects'));
+        t(locale, 'panelTitle')));
     card.appendChild(el('div', 'padding:0 18px 10px;color:#5a6673;font-size:13px;',
-        'This is how the Scratch Link messages reach the radio. It does not change ' +
-        'which connection an extension uses — that stays in the extension’s own blocks.'));
+        t(locale, 'panelIntro')));
 
     const list = el('div', 'flex:1 1 auto;overflow:auto;border-top:1px solid #e6eaee;' +
         '-webkit-overflow-scrolling:touch;');
     const current = getTransport();
-    TRANSPORTS.forEach(t => {
+    transportsFor(locale).forEach(t => {
         const ok = t.available();
         const row = el('button', 'display:block;width:100%;text-align:left;background:none;' +
             `border:0;border-bottom:1px solid #f0f3f6;padding:12px 18px;font:inherit;` +
@@ -153,7 +208,7 @@ export const openPanel = () => {
         if (ok) {
             row.addEventListener('click', () => {
                 setTransport(t.id);
-                openPanel();          // redraw so the selection is visible
+                openPanel(locale);    // redraw so the selection is visible
             });
         }
         row.disabled = !ok;
@@ -164,9 +219,9 @@ export const openPanel = () => {
     const footer = el('div', 'padding:12px 18px;display:flex;gap:10px;justify-content:space-between;' +
         'align-items:center;border-top:1px solid #e6eaee;');
     footer.appendChild(el('div', 'color:#6b7785;font-size:12px;',
-        'Reconnect the extension for a change to take effect.'));
+        t(locale, 'panelNote')));
     const close = el('button', 'background:#e9edf1;border:0;border-radius:8px;padding:9px 16px;' +
-        'font:inherit;cursor:pointer;', 'Done');
+        'font:inherit;cursor:pointer;', t(locale, 'panelDone'));
     close.addEventListener('click', closePanel);
     footer.appendChild(close);
     card.appendChild(footer);
