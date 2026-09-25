@@ -217,8 +217,12 @@ test('the debugger compiles supported 8051 targets locally and names hosted fami
     assert.doesNotMatch(optedOut, /installWasmCompilerRouting/,
         'opting OUT of the in-page compiler must not install it: the branch has ' +
         'been inverted and the local compiler is now behind a flag again');
-    assert.match(optedOut, /off by request/,
+    // Translated now: the branch carries the key, the table carries the words.
+    assert.match(optedOut, /compile\.inpageOff/,
         'and opting out has to SAY so — the objection is to a silent fallback');
+    assert.match(readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-debug/runner-status-l10n.js'), 'utf8'),
+        /'compile\.inpageOff':[\s\S]{0,200}?off by request/,
+        'compile.inpageOff no longer says the compiler is off by request');
 
     // And the default has not moved: `localCompilerOptedOut` returns false for an
     // absent, empty, unrelated or unreadable preference, which is what most of
