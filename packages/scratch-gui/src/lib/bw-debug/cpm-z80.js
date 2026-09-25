@@ -44,6 +44,41 @@ export const BDOS = 0xfe00;
 export const TPA = 0x0100;
 /** Default DMA (disk transfer) address CP/M sets at cold start. */
 export const DEFAULT_DMA = 0x0080;
+/**
+ * A human name — a machine title, an upload's filename — as a CP/M 8.3 key.
+ *
+ * CP/M has ONE dot, at most 8 characters before it and 3 after, uppercase, and
+ * nothing outside [A-Z0-9]. The naive sanitiser (strip the illegal characters,
+ * then append `.COM` if what is left has no extension) is wrong for any name
+ * carrying a dot of its own: "CP/M 2.2 live" survives as `CPM2.2LIVE`, whose
+ * tail `.2LIVE` is not an extension, so `.COM` is appended to the first eight
+ * characters — `CPM2.2LI.COM`, TWO dots, which the boot rejects by name and the
+ * machine never starts. That is a title a person would plausibly type.
+ *
+ * So split on the LAST dot first, then sanitise each half on its own: the base
+ * can no longer smuggle a dot into the result, and the extension is whatever
+ * followed the final dot, capped at three.
+ *
+ * @param {string} name any human name (may be empty)
+ * @param {string} [defaultExt='COM'] the extension when the name carries none
+ * @returns {string} a valid uppercase 8.3 CP/M filename, always
+ */
+export function cpmFileName (name, defaultExt = 'COM') {
+    const clean = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const raw = String(name == null ? '' : name);
+    const dot = raw.lastIndexOf('.');
+    // A leading dot is not an extension separator ('.PROFILE' has no base), a
+    // trailing one leaves nothing after it, and a tail longer than three
+    // characters is not an extension at all — it is part of the name, which is
+    // what "2 live" in "CP/M 2.2 live" is. Reading it as one would turn a
+    // sentence into `CPM2.2LI`: legal, but not what anyone typed.
+    const tail = dot > 0 && dot < raw.length - 1 ? raw.slice(dot + 1) : null;
+    const hasExt = tail !== null && tail.length <= 3 && clean(tail).length > 0;
+    const base = (clean(hasExt ? raw.slice(0, dot) : raw) || 'PROG').slice(0, 8);
+    const ext = (clean(hasExt ? tail : defaultExt) || 'COM').slice(0, 3);
+    return `${base}.${ext}`;
+}
+
 /** The trap stub placed at BDOS: `JR $` — the Z80 twin of 8086 `jmp $`. */
 const JR_SELF = [0x18, 0xfe];
 /** How much captured console output is retained (see i8086-dos.js for why a cap). */

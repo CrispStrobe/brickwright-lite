@@ -36,18 +36,9 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    'verify-machine-manager-ui.mjs': 'manual/local: the Machine Manager library modal (code-tab device '
-        + 'dropdown → "Manage machines…" → import a manifest → row → Run/Close). Runs against a served '
-        + 'production build and was verified live locally (zero page errors); left unwired to keep the '
-        + 'browser-gate budget census stable. Run `PROOF_URL=<served build>/ node scripts/verify-machine-manager-ui.mjs`.',
     'verify-machine-video-boot.mjs': 'manual/local: boots a real OS from the manager and watches its screen '
         + 'render into a Widgets simplevga widget. NEEDS a local bootable image (ELKS_IMG) and self-skips '
         + '(exit 0) without one, so it cannot run in CI. Run `ELKS_IMG=/path/to/fd1440-fat.img node scripts/verify-machine-video-boot.mjs`.',
-    'verify-cpm-system.mjs': 'manual/local: imports a z80 machine with a cpmsys boot slot from the Machine '
-        + 'Manager, clicks Run, and asserts the real CP/M 2.2 A> prompt reaches the serial console — with a '
-        + 'page-error collector asserted as its own check so "A> present" means "A> produced". Needs a served '
-        + 'build (self-skips exit 0 without one), left unwired to keep the browser-gate budget census stable. '
-        + 'Run `node scripts/verify-cpm-system.mjs` against a build under packages/scratch-gui/build.',
     'verify-soft-core-synth.mjs': 'manual/local + network: sends the PicoRV32 soft-core example through the '
         + 'LIVE hosted Gowin flow (Yosys -> nextpnr -> gowin_pack) and asserts a real Tang Nano 20K bitstream '
         + 'comes back — ~170s of place-and-route against synth.crispstro.be, which routine CI must not depend '

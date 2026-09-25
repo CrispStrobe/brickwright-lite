@@ -25,7 +25,7 @@ define('localStorage', {
 define('navigator', {userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'});
 define('window', {__TAURI__: {}, addEventListener: () => {}});
 
-const {TRANSPORTS, getTransport, setTransport, isApple, isNativeApp} =
+const {TRANSPORTS, transportsFor, getTransport, setTransport, isApple, isNativeApp} =
     await import(`${LIB}/scratchlink-transport.js`);
 
 beforeEach(() => store.clear());
@@ -41,6 +41,25 @@ describe('the carriers on offer', () => {
         for (const t of TRANSPORTS) {
             assert.ok(t.label && t.label.length > 3, `${t.id} has no label`);
             assert.ok(t.detail && t.detail.length > 20, `${t.id} does not say what it does`);
+        }
+    });
+
+    test('the chooser speaks German too, labels and reasons alike', () => {
+        // The panel builds its own DOM and has no locale prop, so it asks
+        // browserLocale(). This asserts the table behind that actually carries
+        // a second language rather than falling back to English silently.
+        const de = transportsFor('de-DE');
+        assert.deepEqual(de.map(t => t.id), TRANSPORTS.map(t => t.id));
+        for (const [i, t] of de.entries()) {
+            const en = TRANSPORTS[i];
+            assert.ok(t.detail.length > 20, `${t.id} has no German detail`);
+            assert.notEqual(t.detail, en.detail, `${t.id}'s detail is still English`);
+            // 'Original Scratch Link (Apple)' is a name and stays put; the
+            // other three labels are sentences and must move.
+            if (t.id !== 'original') {
+                assert.notEqual(t.label, en.label, `${t.id}'s label is still English`);
+            }
+            if (en.why) assert.notEqual(t.why, en.why, `${t.id}'s reason is still English`);
         }
     });
 

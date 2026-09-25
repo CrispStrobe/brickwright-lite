@@ -414,8 +414,9 @@ const FpgaTab = (props) => {
     // backend is shown WITH ITS REASON rather than omitted — "no synthesis
     // service is configured" is more useful to a reader than an empty list.
     const catalog = React.useMemo(() => defaultCatalog({
-        hostedEndpoint: process.env.BW_SYNTHESIS_ENDPOINT || null
-    }), []);
+        hostedEndpoint: process.env.BW_SYNTHESIS_ENDPOINT || null,
+        locale: props.locale
+    }), [props.locale]);
     // One client for the life of the tab: it owns the worker, and the worker
     // owns whether 78 MB is already here. A new one per render would forget.
     const localClient = React.useMemo(() => createLocalClient({
