@@ -282,4 +282,6 @@ fork.
 ### Affiliation
 
 Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or
-Raspberry Pi. Trademarks belong to their owners.
+Raspberry Pi, nor by the makers of the circuit file formats the Circuit tab
+imports and exports (KiCad, EasyEDA, EAGLE, LTspice). Those names describe
+file formats only. Trademarks belong to their owners.

@@ -369,3 +369,44 @@ test('the Arduboy asks for no symbols (its 28 KB is tight, and the console has n
         compile: async (c, t, f, l, e) => { extra = e; return {base64: b64(':00000001FF\n')}; }});
     assert.deepEqual(extra, {});
 });
+
+test('the EEPROM starter completes: a write finishes and the count prints', async () => {
+    // Before bw-board e8b927b the engine had no EEPROM peripheral: EEPE never
+    // cleared, EEPROM.write() waited forever and this printed nothing at all.
+    const fx = fixtures['arduino-uno-eeprom'];
+    assert.equal(fx.source, arduinoSketchExamplesFor('arduino-uno').find(e => e.id === 'ino-eeprom').source,
+        'the EEPROM starter changed: rebuild its fixture');
+    const {adapter, serial} = await boot('arduino-uno-eeprom', 'avr8js', 16000000);
+    for (let i = 0; i < 30; i++) adapter.advanceNs(10_000_000);
+    assert.equal(serial(), 'This sketch has started 1 time(s).\r\n', JSON.stringify(serial()));
+    assert.equal(adapter.eepromBackend.memory[0], 1, 'the count is not in EEPROM cell 0');
+});
+
+test('the Wire starter finds an SSD1306 on A4/A5, and nothing on an empty board', async () => {
+    const fx = fixtures['arduino-uno-i2c-scan'];
+    assert.equal(fx.source, arduinoSketchExamplesFor('arduino-uno').find(e => e.id === 'ino-i2c-scan').source,
+        'the Wire starter changed: rebuild its fixture');
+    const scan = async (withOled) => {
+        const n = (id, ...t) => ({id, terminals: t.map(([part, terminal]) => ({part, terminal}))});
+        const parts = [{id: 'GND', kind: 'gnd', terminals: ['gnd']}, {id: 'u1', kind: 'mcu', terminals: ['A4', 'A5', 'gnd']}];
+        const nets = [n('gnd', ['GND', 'gnd'], ['u1', 'gnd'])];
+        if (withOled) {
+            parts.push({id: 'VCC', kind: 'vcc', terminals: ['vcc']},
+                {id: 'OLED', kind: 'ssd1306', terminals: ['vcc', 'gnd', 'sda', 'scl']});
+            nets[0].terminals.push({part: 'OLED', terminal: 'gnd'});
+            nets.push(n('vcc', ['VCC', 'vcc'], ['OLED', 'vcc']), n('sda', ['u1', 'A4'], ['OLED', 'sda']),
+                n('scl', ['u1', 'A5'], ['OLED', 'scl']));
+        }
+        const board = new bw.BoardImpl(5.0);
+        board.setNetlist(parts, nets);
+        board.setPower(true);
+        const {target, adapter} = await bw.createDebugTarget('avr8js', {board, hex: fx.hex, symbols: null, clockHz: 16000000});
+        let out = '';
+        adapter.onSerial(byte => { out += String.fromCharCode(byte); });
+        bw.createDebugSession(target, {onChange: () => {}}).start();
+        for (let i = 0; i < 100 && !out.includes('found.'); i++) adapter.advanceNs(10_000_000);
+        return out;
+    };
+    assert.equal(await scan(true), 'I2C part at 0x3C\r\n1 part(s) found.\r\n');
+    assert.equal(await scan(false), '0 part(s) found.\r\n');
+});
