@@ -91,6 +91,28 @@ const TRANSFORMS = {
     'input.onGesture': 'input.isGesture',
     'input.onPinPressed': 'input.pinIsPressed'
 };
+/** ts with the argument list of every call named in `unsupported` removed (paren-matched). */
+function withoutNamedCalls (ts, unsupported) {
+    let out = ts;
+    for (const u of unsupported) {
+        const m = String(u).match(/^([A-Za-z_]+\.[A-Za-z_]+)\(\)/);
+        if (!m) continue;
+        let from = 0;
+        for (;;) {
+            const at = out.indexOf(`${m[1]}(`, from);
+            if (at < 0) break;
+            let depth = 0;
+            let i = at + m[1].length;
+            for (; i < out.length; i++) {
+                if (out[i] === '(') depth++;
+                else if (out[i] === ')' && --depth === 0) break;
+            }
+            out = `${out.slice(0, at + m[1].length)}()${out.slice(i + 1)}`;
+            from = at + m[1].length + 2;
+        }
+    }
+    return out;
+}
 function calls (ts) {
     const out = new Set();
     for (const m of ts.matchAll(/\b([a-zA-Z_]+)\.([a-zA-Z_]+)\s*\(/g)) if (NAMESPACES.includes(m[1])) out.add(`${m[1]}.${m[2]}`);
@@ -166,7 +188,10 @@ if (ONLY !== 'lite') {
         const re = await pxtCompile(ex.ts);
         row.recompiles = re.ok;
         if (!re.ok) row.recompileError = re.error;
-        const before = calls(p.ts);
+        // A call nested INSIDE a call the import already named unsupported
+        // (input.acceleration as led.plotBarGraph's argument) is covered by that
+        // name: cut each named call's argument list out before counting.
+        const before = calls(withoutNamedCalls(p.ts, row.unsupported));
         const after = calls(ex.ts);
         const said = [...row.unsupported, ...row.exportUnsupported].join(' ');
         row.lost = [...before].filter(c => !after.has(c));
