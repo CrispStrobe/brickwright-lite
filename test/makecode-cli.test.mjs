@@ -47,10 +47,15 @@ test('--source writes the project file MakeCode opens, and it reads back', async
     assert.match(back.files['main.ts'], /basic\.showString\("Hello"\)/);
 });
 
-test('bad usage and an Arcade firmware request are exit codes, not crashes', () => {
+test('bad usage is an exit code, not a crash', () => {
     assert.equal(run('to-hex').status, 2);
     assert.equal(run('frobnicate', 'x').status, 2);
-    if (!synced) return;
+});
+
+// Gated with skip, not an early return: an early return is a PASS, and would
+// hide that the Arcade half never ran on a box without the synced runtime.
+test('a board-less Arcade firmware request is refused as exit code 1, by name',
+    {skip: !synced && 'MakeCode runtime not synced (npm run sync:makecode)'}, () => {
     const sb3 = path.join(tmp, 'game.sb3');
     if (!fs.existsSync(sb3)) run('to-sb3', path.join(ROOT, 'test/fixtures/makecode/arcade-assets.hex'), '-o', sb3);
     const r = run('to-hex', sb3, '--target', 'arcade', '-o', path.join(tmp, 'game.hex'));
