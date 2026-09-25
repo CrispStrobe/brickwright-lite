@@ -473,7 +473,7 @@ class DebugPanel extends React.Component {
                 // "Simulated (STC12 / 8051)". See lib/bw-debug/target-kinds.js
                 // — the merge is idempotent, so the upstream fix costs
                 // nothing here.
-                const kinds = mergeTargetKinds(m.getTargetKinds());
+                const kinds = mergeTargetKinds(m.getTargetKinds(), this.props.locale);
                 // The heavy tier is offered only if its engine is actually
                 // here. It is a 20 MB artifact fetched at deploy time and
                 // loaded on demand, so unlike every other kind it can be
