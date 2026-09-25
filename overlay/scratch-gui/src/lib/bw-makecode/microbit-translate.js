@@ -184,7 +184,9 @@ class MicrobitTranslator extends BaseTranslator {
                 push(`scroll ${this.expr(a[0])}`);
                 return;
             }
-            push(`scroll text "${literal}" delay 150 ms`);
+            // The interval (ms per scroll step) is MakeCode's optional second
+            // argument; 150 is its default. Always writing 150 lost a chosen one.
+            push(`scroll text "${literal}" delay ${a[1] ? this.expr(a[1]) : '150'} ms`);
             return;
         }
         case 'basic.showIcon':

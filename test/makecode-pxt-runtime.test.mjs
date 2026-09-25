@@ -199,3 +199,24 @@ test('a real Arcade game with tilemaps and animation — what the translation dr
     assert.equal(r.success, true, JSON.stringify(r.diagnostics.slice(0, 3)));
     assert.deepEqual(r.netAttempts, []);
 });
+
+test('every lite micro:bit example compiles, through the MakeCode export, to real firmware', {skip}, async () => {
+    // pseudocode -> MakeCode TypeScript (export.js) -> pxt -> universal .hex.
+    // Two of ten failed here before the export learned the dialect's 1/0 truth
+    // (census 2026-09-25: `input.buttonIsPressed(Button.A) > 0`).
+    const {default: SB3Creator} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
+    const {exportToMakeCode} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/export.js'));
+    const dir = path.join(ROOT, 'overlay/scratch-gui/examples');
+    const examples = fs.readdirSync(dir).filter(d => {
+        const p = path.join(dir, d, 'program.bw');
+        return fs.existsSync(p) && /^DEVICE\s+MICROBIT\b/im.test(fs.readFileSync(p, 'utf8'));
+    });
+    assert.ok(examples.length >= 10, `only ${examples.length} micro:bit examples found`);
+    const failed = [];
+    for (const id of examples) {
+        const ex = exportToMakeCode(new SB3Creator().parse(fs.readFileSync(path.join(dir, id, 'program.bw'), 'utf8')), {name: id});
+        const r = await compile('microbit', ex.files, true);
+        if (!r.success || !r.outfiles['binary.hex']) failed.push(`${id}: ${(r.diagnostics[0] || {}).message || r.error}`);
+    }
+    assert.deepEqual(failed, []);
+});
