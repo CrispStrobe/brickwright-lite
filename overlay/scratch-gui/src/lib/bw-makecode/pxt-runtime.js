@@ -26,9 +26,13 @@
  *
  * THE ONE HARD LIMIT. A native build needs a precompiled firmware base for the
  * project's exact set of C++ packages. pxt-microbit ships those for its default
- * set (core + radio + microphone); pxt-arcade ships none. Anything else would
- * need MakeCode's cloud C++ compiler — refused here by name (NO_BASE_HEX) rather
- * than sent to the network. Simulation has no such limit.
+ * set (core + radio + microphone); pxt-arcade ships none, so its bases are BUILT
+ * from source by scripts/build-makecode-arcade-bases.mjs (one per hardware
+ * variant, default package set) and served by the sync when their sha256 is
+ * pinned. Anything else would need MakeCode's cloud C++ compiler — refused here
+ * by name (NO_BASE_HEX) rather than sent to the network. Simulation has no such
+ * limit. An Arcade native build must name its hardware (`hwVariant`): the
+ * generic default has no C++ runtime of its own, so it has no base either.
  *
  * @module
  */
@@ -73,7 +77,9 @@ var bwMakeCode = {
         files = Object.assign({}, files, {'pxt.json': JSON.stringify(cfg, null, 4)});
         if (files['main.ts'] === undefined) files['main.ts'] = '';
         if (pxt.simpleInstallPackagesAsync) await pxt.simpleInstallPackagesAsync(files);
-        pxt.setHwVariant('');
+        // Arcade hardware: 'rp2040', 'samd51'... selects the hw---<variant> package
+        // (and with it the C++ runtime and the firmware base). '' = the default.
+        pxt.setHwVariant(opts.hwVariant || '');
         var copts = await pxt.simpleGetCompileOptionsAsync(files, {native: !!opts.native});
         if (opts.native && copts.extinfo && copts.extinfo.sha) {
             var infos = [copts.extinfo].concat((copts.otherMultiVariants || []).map(function (v) { return v.extinfo; }));
@@ -139,6 +145,7 @@ var bwOnMessage = async function (e) {
             var out = await bwMakeCode.compile(m.files, {
                 native: m.native,
                 embedSource: m.embedSource,
+                hwVariant: m.hwVariant,
                 getBaseHex: async function (sha) {
                     var h = await fetch(m.base + 'hexcache/' + sha + '.hex');
                     return h.ok ? h.text() : null;
@@ -199,10 +206,11 @@ function workerFor (target, base) {
  * @param {boolean} [args.native] build the firmware (.hex) instead of simulator JS
  * @param {{files: object, name: string, editorUrl?: string}} [args.embedSource] embed the
  *   project in the .hex, as MakeCode's editor does, so MakeCode opens it as a project
+ * @param {string} [args.hwVariant] Arcade hardware for a native build (ARCADE_HARDWARE)
  * @param {string} [args.baseUrl] where static/ is served from (default: the page's base)
  * @returns {Promise<{success: boolean, outfiles: object, diagnostics: object[], netAttempts: string[]}>}
  */
-export async function compileMakeCode ({target, files, native = false, embedSource = null, baseUrl} = {}) {
+export async function compileMakeCode ({target, files, native = false, embedSource = null, hwVariant = '', baseUrl} = {}) {
     if (!MAKECODE_TARGETS.includes(target)) {
         throw new MakeCodeError(`MakeCode ${target || 'unknown'} is not a target this build carries ` +
             `(${MAKECODE_TARGETS.join(', ')})`, 'UNSUPPORTED_TARGET');
@@ -211,7 +219,40 @@ export async function compileMakeCode ({target, files, native = false, embedSour
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
     const w = workerFor(target, base);
     await w.ready;
-    return w.call({op: 'compile', files, native, embedSource});
+    return w.call({op: 'compile', files, native, embedSource, hwVariant});
+}
+
+/**
+ * The Arcade hardware a native build can target: pxt-arcade's hw---<variant>
+ * packages built by pxt's CODAL engine (hw---rpi and hw---vm are Linux builds,
+ * not here). `family` is the UF2 family id pxt writes (null: the build is an
+ * Intel HEX, not a UF2 — the nRF52833 boards).
+ */
+export const ARCADE_HARDWARE = Object.freeze({
+    rp2040: {name: 'Raspberry Pi Pico (RP2040)', family: 0xe48bff56},
+    samd51: {name: 'SAMD51 (Adafruit PyBadge and similar, "D5")', family: 0x55114460},
+    samd51adafruit: {name: 'SAMD51, Adafruit bootloader layout', family: 0x55114460},
+    stm32f401: {name: 'STM32F401 ("F4", Meowbit and similar)', family: 0x57755a57},
+    n3: {name: 'nRF52833 ("N3")', family: null},
+    gdk: {name: 'nRF52833 Game Designer\'s Kit', family: null},
+    n4: {name: 'nRF52840 ("N4", experimental)', family: 0xada52840}
+});
+
+/**
+ * The flashable file in a native build's outfiles. pxt returns a UF2 as BASE64
+ * text (outfiles['binary.uf2']) and a .hex as text; this gives the bytes a
+ * download writes, so the caller never has to know which.
+ * @returns {{name: string, bytes: Uint8Array}|null}
+ */
+export function firmwareFile (outfiles = {}) {
+    if (outfiles['binary.uf2']) {
+        const bin = atob(outfiles['binary.uf2']);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return {name: 'binary.uf2', bytes};
+    }
+    if (outfiles['binary.hex']) return {name: 'binary.hex', bytes: new TextEncoder().encode(outfiles['binary.hex'])};
+    return null;
 }
 
 /**

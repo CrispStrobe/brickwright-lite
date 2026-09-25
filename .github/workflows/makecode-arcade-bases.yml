@@ -1,0 +1,84 @@
+# Build MakeCode Arcade's firmware bases FROM SOURCE — then PROVE a game links onto each.
+#
+# pxt links a MakeCode program onto a precompiled C++ runtime image ("base"),
+# named by the sha256 of the C++ build request (lib/bw-makecode/pxt-runtime.js).
+# pxt-arcade ships none; MakeCode's CDN holds its cloud build of each default
+# request (what the sync fetches by default, pinned by sha256). This workflow
+# proves the route that needs no Microsoft service at all:
+# scripts/build-makecode-arcade-bases.mjs does what pxt's own `codal`
+# build engine does, without Docker: the CODAL repo at the variant's tag, the
+# request's files over it, `python3 build.py` with arm-none-eabi-gcc.
+#
+# What makes this a gate and not just a build:
+#   1. `--built-bases`: the sync serves ONLY our builds, and only when their bytes
+#      equal the `built` sha256 PINNED in scripts/sync-makecode-runtime.mjs
+#      (ARCADE_BASES) — measured on a box with the same Ubuntu 24.04
+#      gcc-arm-none-eabi — so this job fails the moment the from-source build
+#      stops being reproducible;
+#   2. test/makecode-arcade-bases.test.mjs runs with BW_REQUIRE_ARCADE_BASES=built:
+#      a game links onto every served base into a valid UF2 (magics, family id,
+#      block numbering) whose image is the base plus the program — and the step
+#      fails if any test SKIPS (node --test exits 0 on a skip; the TAP is read).
+# The build job's unit step runs the same file on MakeCode's own cloud-built
+# bases (the default the sync fetches by sha, pinned by sha256); this workflow is
+# where OUR route — no Microsoft service at all — is proven.
+#
+# The bases are uploaded as this run's artifact. They are NOT published: hosting
+# our builds (proposed: release assets, tag makecode-arcade-bases-4.2.1) in place
+# of the CDN is a decision for the owner.
+name: makecode-arcade-bases
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/build-makecode-arcade-bases.mjs'
+      - 'scripts/sync-makecode-runtime.mjs'
+      - 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'
+      - 'test/makecode-arcade-bases.test.mjs'
+      - '.github/workflows/makecode-arcade-bases.yml'
+
+concurrency:
+  group: makecode-arcade-bases-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-bases:
+    # Pinned to 24.04: the pinned sha256s are gcc-arm-none-eabi 15:13.2.rel1-2's bytes.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Install the ARM toolchain CODAL builds with
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib cmake
+          arm-none-eabi-gcc --version | head -1
+          dpkg -s gcc-arm-none-eabi | grep '^Version'
+      - name: Fetch the pinned MakeCode runtime
+        timeout-minutes: 5
+        run: npm run sync:makecode
+      - name: Build the Arcade firmware bases from source
+        timeout-minutes: 45
+        run: node scripts/build-makecode-arcade-bases.mjs --variant rp2040,samd51,samd51adafruit,stm32f401,n3,gdk --work "$RUNNER_TEMP/codal"
+      - name: Serve OUR bases — every buildable pin present and byte-identical to its built pin
+        run: npm run sync:makecode -- --built-bases
+      - name: A game links onto every served base (fails if the test skips)
+        env:
+          BW_REQUIRE_ARCADE_BASES: built
+        run: |
+          node --test --test-reporter=tap test/makecode-arcade-bases.test.mjs | tee "$RUNNER_TEMP/bases.tap"
+          test "${PIPESTATUS[0]}" = 0
+          grep -Eq '^# skip(ped)? 0$' "$RUNNER_TEMP/bases.tap" || { echo "::error::test/makecode-arcade-bases.test.mjs skipped a case — there is no elsewhere for it"; exit 1; }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: makecode-arcade-bases
+          path: artifacts/makecode/arcade-bases/
+          if-no-files-found: error
