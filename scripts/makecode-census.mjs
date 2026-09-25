@@ -208,7 +208,7 @@ if (ONLY !== 'lite') {
         // event handlers into polling scripts (microbit-translate.js, EVENT
         // HANDLERS), so the way back asks the matching question instead.
         row.transformed = row.lost.filter(c => TRANSFORMS[c] && after.has(TRANSFORMS[c]));
-        row.silent = row.lost.filter(c => !row.transformed.includes(c) && !said.includes(c.split('.').pop()));
+        row.silent = row.lost.filter(c => !row.transformed.includes(c) && !said.includes(c));   // the QUALIFIED name: led.plotBarGraph, not any plotBarGraph
         row.stage = !row.sim ? 'sim' : !re.ok ? 'recompile' : row.silent.length ? 'silent-loss' : (row.unsupported.length ? 'partial' : 'full');
         results.makecode.push(row);
         if (++n % 25 === 0) console.error(`  makecode ${n}/${programs.length} (${Math.round((Date.now() - t0) / 1000)} s)`);
