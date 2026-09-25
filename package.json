@@ -52,6 +52,7 @@
         "sync:microbitsim:check": "node scripts/sync-microbit-sim.mjs --check",
         "sync:makecode": "node scripts/sync-makecode-runtime.mjs",
         "sync:makecode:check": "node scripts/sync-makecode-runtime.mjs --check",
+        "build:makecode-bases": "node scripts/build-makecode-arcade-bases.mjs",
         "sync:picomicropython": "node scripts/sync-pico-micropython.mjs",
         "sync:picomicropython:check": "node scripts/sync-pico-micropython.mjs --check",
         "smoke:debugger": "node scripts/smoke-debugger.mjs",

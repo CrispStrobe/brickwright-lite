@@ -1506,6 +1506,52 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   to say whose files these are; this project is not affiliated with or endorsed by
   Microsoft.
 
+### MakeCode Arcade firmware bases (built from source) — MIT, BSD-3-Clause, Apache-2.0
+
+Precompiled C++ runtimes that `lib/bw-makecode/pxt-runtime.js` links an Arcade
+game onto for real hardware (one per board: RP2040, SAMD51, STM32F401, nRF52833,
+nRF52840). pxt-arcade ships none. `scripts/sync-makecode-runtime.mjs` fetches
+MakeCode's own cloud build of each (cdn.makecode.com/compile/<sha>.hex, the file
+MakeCode's editor downloads, Microsoft Corporation) and serves it under
+`packages/scratch-gui/static/makecode/arcade/hexcache/` only when its bytes match
+the sha256 pinned there; alternatively our own from-source builds
+(`scripts/build-makecode-arcade-bases.mjs`, proved in
+`.github/workflows/makecode-arcade-bases.yml`), pinned the same way. Never
+committed. Either way each image contains, compiled and unmodified:
+
+- **pxt-common-packages** (the C++ of core, screen, mixer, game…, carried inside
+  pxt-arcade's target.json) — MIT, Copyright (c) Microsoft Corporation.
+- **CODAL** (`lancaster-university/codal`, `codal-core`, and the device targets
+  `codal-pi-pico`, `codal-rp2040`, `codal-itsybitsy-m4`, `codal-samd`,
+  `codal-big-brainpad`, `codal-stm32`, `microbit-v2-samples`, `codal-microbit-v2`,
+  `codal-nrf52`, at the tags and target-locked commits the build manifest records)
+  — MIT, Copyright (c) Lancaster University and contributors (codal-microbit-v2 also
+  the Micro:bit Educational Foundation).
+- **Raspberry Pi Pico SDK** (rp2040 base, via codal-rp2040) — BSD-3-Clause,
+  Copyright 2020 (c) Raspberry Pi (Trading) Ltd.
+- **Vendor HAL code, NOT MIT** — each image carries its chip vendor's support
+  library, under that vendor's licence:
+  - samd51 / samd51adafruit: **Microchip/Atmel ASF4** (via codal-samd) —
+    Atmel's BSD-style licence with the condition "may only be redistributed and
+    used in connection with an Atmel microcontroller product", and Apache-2.0
+    device headers; plus **samd-peripherals**, MIT, Copyright (c) 2018 Scott
+    Shawcroft for Adafruit Industries LLC.
+  - stm32f401: **STM32Cube HAL** (via codal-stm32, MIT, Copyright (c) 2018
+    Michał Moskal) — BSD-3-Clause, Copyright (c) 2017 STMicroelectronics.
+  - n3 / gdk (nRF52833): **Nordic nRF5 SDK** (via codal-microbit-nrf5sdk) and
+    **nrfx** — the Nordic 5-clause licence ("must only be used with a Nordic
+    Semiconductor ASA integrated circuit"; binaries must not be reverse
+    engineered) and BSD-3-Clause, Copyright (c) Nordic Semiconductor ASA. The
+    same code is inside the micro:bit V2 bases pxt-microbit ships.
+  Each condition is met by what the file is FOR — firmware flashed onto that
+  vendor's chip — but none of them is MIT, and the rp2040 base (Pico SDK,
+  BSD-3-Clause) is the only one free of a use-with-our-chip clause.
+- **newlib / newlib-nano and libgcc** (from the build host's gcc-arm-none-eabi) —
+  newlib's BSD-style licences (Red Hat and contributors); libgcc under the GCC
+  Runtime Library Exception.
+- **Source:** https://github.com/lancaster-university, https://github.com/microsoft/pxt-common-packages,
+  https://github.com/raspberrypi/pico-sdk
+
 ## BBC BASIC interpreter attribution — zlib
 
 The BASIC tab's "BBC BASIC" profile generates code for, and the reader
