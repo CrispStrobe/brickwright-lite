@@ -472,7 +472,14 @@ test('D7 CLOSED for the two 6502 benches: they ship an image and the example loa
     // arm (2026-09-04); the 6502 arm is unchanged.
     assert.match(runner, /selectedKind === 'z80' \|\| selectedKind === 'eater6502' \|\|\n\s*\(selectedKind === 'i8086' && bootMedia\)\) \? null\n\s*: userFirmware \? builtFromUserFirmware\(selectedKind\)\n\s*: await build\(\)/,
         'the machine path now builds an image -- re-measure Wave 7');
-    assert.match(runner, /extracted machine booted with an empty ROM — load a program \(presets, file, or ASM tab\)/,
+    // The sentence moved into lib/bw-debug/runner-status-l10n.js when the
+    // status line was translated, so the runner carries the KEY and the table
+    // carries the words. Both halves are read: a key pointing at nothing would
+    // pass a check on either one alone.
+    assert.match(runner, /S\('ready\.emptyRom'\)/,
+        'the empty-ROM status line is no longer written here -- re-measure Wave 7');
+    assert.match(readFileSync(path.join(GUI, 'lib/bw-debug/runner-status-l10n.js'), 'utf8'),
+        /'ready\.emptyRom':[\s\S]{0,200}?extracted machine booted with an empty ROM/,
         'the empty-ROM status line changed -- re-measure Wave 7');
 
     // 5. AND D37 IS CLOSED TOO, by moving the lesson rather than the wiring.
@@ -607,9 +614,13 @@ test('z80-bench still extracts as the machine it draws, and keeps its BBC BASIC 
     assert.deepEqual([rom.start, rom.end], [0x0000, 0x7fff], 'z80-bench ROM range');
     assert.deepEqual([ram.start, ram.end], [0x8000, 0xffff], 'z80-bench RAM range');
     const runner = readFileSync(path.join(GUI, 'lib/bw-debug/debug-runner.js'), 'utf8');
-    assert.match(runner, /loading BBC BASIC/,
+    assert.match(runner, /S\('boot\.bbcbasic'\)/,
+        'the Z80 fallback is no longer taken here — re-measure Wave 7');
+    assert.match(readFileSync(path.join(GUI, 'lib/bw-debug/runner-status-l10n.js'), 'utf8'),
+        /'boot\.bbcbasic':[\s\S]{0,120}?BBC BASIC/,
         'the Z80 fallback changed — re-measure Wave 7');
-    assert.match(runner, /booting extracted Z80 machine/);
+    assert.match(runner, /S\('boot\.extractedZ80'\)/,
+        'the extracted-Z80 boot no longer announces itself — re-measure Wave 7');
 });
 
 // ── The lesson copy this review wrote, in both languages ───────────────────

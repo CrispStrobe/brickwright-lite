@@ -95,12 +95,69 @@ class Emitter {
         const slot = input[1];
         if (Array.isArray(slot)) {
             const [type, text] = slot;
+            // The dialect has no boolean type: truth is 1 and 0 (its own
+            // conditions read `A = 0`). A bare true/false in a value slot is
+            // that number, not the string MakeCode would refuse to assign to
+            // a number (census: four logic-lab programs, 2026-09-25).
+            if ((type === 10 || type === 11) && /^(true|false)$/.test(String(text))) return String(text) === 'true' ? '1' : '0';
             if (type === 10 || type === 11) return JSON.stringify(String(text));
             if (type === 12 || type === 13) return this.variableName(text);
             return String(text);
         }
-        if (typeof slot === 'string') return this.reporter(this.block(slot));
+        if (typeof slot === 'string') {
+            const b = this.block(slot);
+            // A boolean reporter in a VALUE slot (set A to <button A pressed>)
+            // is a number here, as in the dialect; Static TypeScript will not
+            // assign a boolean to a number variable or compare it with one.
+            if (b && BOOLEAN_REPORTERS.has(b.opcode)) return `(${this.reporter(b)} ? 1 : 0)`;
+            return this.reporter(b);
+        }
         return fallback;
+    }
+
+    /** The reporter's TypeScript when this input is a boolean reporter, else null. */
+    booleanInput (b, name) {
+        const input = b.inputs && b.inputs[name];
+        const slot = input && input[1];
+        const r = typeof slot === 'string' ? this.block(slot) : null;
+        return r && BOOLEAN_REPORTERS.has(r.opcode) ? this.reporter(r) : null;
+    }
+
+    /** The block plugged into this input, or null for a literal/empty slot. */
+    inputBlock (b, name) {
+        const input = b.inputs && b.inputs[name];
+        const slot = input && input[1];
+        return typeof slot === 'string' ? this.block(slot) : null;
+    }
+
+    /** `operator_equals(operator_random(0, 1), 1)` — a coin toss. */
+    isCoinToss (b) {
+        const random = this.inputBlock(b, 'OPERAND1');
+        return !!random && random.opcode === 'operator_random' &&
+            this.numberInput(random, 'FROM') === 0 && this.numberInput(random, 'TO') === 1 &&
+            this.numberInput(b, 'OPERAND2') === 1;
+    }
+
+    /** The numeric literal in this input, or null. */
+    numberInput (b, name) {
+        const input = b.inputs && b.inputs[name];
+        const slot = input && input[1];
+        if (!Array.isArray(slot)) return null;
+        const n = Number(slot[1]);
+        return String(slot[1]).trim() !== '' && Number.isFinite(n) ? n : null;
+    }
+
+    /**
+     * `<boolean> > 0`, `<boolean> = 1`, `<boolean> = 0` — how the dialect asks
+     * "is it pressed" (read button_a > 0) — as the boolean itself.
+     */
+    booleanCompare (b, op) {
+        const bool = this.booleanInput(b, 'OPERAND1');
+        const n = this.numberInput(b, 'OPERAND2');
+        if (bool === null || n === null) return null;
+        if ((op === '>' && n === 0) || (op === '==' && n === 1)) return bool;
+        if ((op === '==' && n === 0) || (op === '<' && n === 1)) return `(!${bool})`;
+        return null;
     }
 
     variableName (name) {
@@ -206,8 +263,8 @@ class Emitter {
         case 'operator_round': return `Math.round(${v('NUM')})`;
         case 'operator_random': return `randint(${v('FROM')}, ${v('TO')})`;
         case 'operator_join': return `("" + ${v('STRING1')} + ${v('STRING2')})`;
-        case 'operator_gt': return `(${v('OPERAND1')} > ${v('OPERAND2')})`;
-        case 'operator_lt': return `(${v('OPERAND1')} < ${v('OPERAND2')})`;
+        case 'operator_gt': return this.booleanCompare(b, '>') || `(${v('OPERAND1')} > ${v('OPERAND2')})`;
+        case 'operator_lt': return this.booleanCompare(b, '<') || `(${v('OPERAND1')} < ${v('OPERAND2')})`;
         case 'operator_equals': {
             // `equals(<boolean reporter>, "true")` is how the compiler puts a
             // boolean reporter into a Scratch boolean slot. Rendering it
@@ -216,7 +273,12 @@ class Emitter {
             // reporter alone says the same thing and typechecks.
             const bare = this.booleanOperand(b);
             if (bare !== null) return bare;
-            return `(${v('OPERAND1')} == ${v('OPERAND2')})`;
+            // `(pick random 0 to 1) = 1` is how the importer says
+            // Math.randomBoolean() in a dialect without booleans; read back,
+            // it is that call again rather than a comparison MakeCode would
+            // show as a different block.
+            if (this.isCoinToss(b)) return 'Math.randomBoolean()';
+            return this.booleanCompare(b, '==') || `(${v('OPERAND1')} == ${v('OPERAND2')})`;
         }
         case 'operator_and': return `(${this.condition(b, 'OPERAND1')} && ${this.condition(b, 'OPERAND2')})`;
         case 'operator_or': return `(${this.condition(b, 'OPERAND1')} || ${this.condition(b, 'OPERAND2')})`;
@@ -248,6 +310,12 @@ class Emitter {
         // Added to the importer in sb3-creator#3 and never to this table,
         // which is exactly the asymmetry the round-trip gate exists to
         // catch — twelve of them in the Calliope corpus.
+        // Planète Maths' min/max: the importer's spelling for Math.min/max.
+        case 'planetemaths_min': return `Math.min(${v('NUM1')}, ${v('NUM2')})`;
+        case 'planetemaths_max': return `Math.max(${v('NUM1')}, ${v('NUM2')})`;
+        case 'microbitplus_score': return 'game.score()';
+        case 'microbitplus_map':
+            return `pins.map(${v('VALUE')}, ${v('FROMLOW')}, ${v('FROMHIGH')}, ${v('TOLOW')}, ${v('TOHIGH')})`;
         case 'microbitplus_isgesture':
             return `input.isGesture(${GESTURE[String(f('GESTURE')).toLowerCase()] || 'Gesture.Shake'})`;
         case 'microbitplus_istouch':
@@ -266,7 +334,15 @@ class Emitter {
         // MakeCode's TypeScript has the operators the pseudocode had to
         // borrow an extension for, so these go back as themselves.
         case 'bitops_and': return `(${v('NUM1')} & ${v('NUM2')})`;
-        case 'bitops_or': return `(${v('NUM1')} | ${v('NUM2')})`;
+        // `(a / b) bitor 0` is Math.idiv's own definition, which is how the
+        // importer writes it; the way back names the call.
+        case 'bitops_or': {
+            const quotient = this.numberInput(b, 'NUM2') === 0 ? this.inputBlock(b, 'NUM1') : null;
+            if (quotient && quotient.opcode === 'operator_divide') {
+                return `Math.idiv(${this.value(quotient, 'NUM1')}, ${this.value(quotient, 'NUM2')})`;
+            }
+            return `(${v('NUM1')} | ${v('NUM2')})`;
+        }
         case 'bitops_xor': return `(${v('NUM1')} ^ ${v('NUM2')})`;
         case 'bitops_shl': return `(${v('NUM1')} << ${v('NUM2')})`;
         case 'bitops_shr': return `(${v('NUM1')} >> ${v('NUM2')})`;
@@ -403,9 +479,15 @@ class Emitter {
         case 'microbitplus_showtext':
             push(`basic.showString(${v('TEXT', '""')})`);
             return;
-        case 'microbitplus_scrolltext':
-            push(`basic.showString(${v('TEXT', '""')})`);
+        case 'microbitplus_scrolltext': {
+            // MakeCode's second argument is ms per scroll step — the same
+            // quantity as our `delay … ms` (MicroPython's display.scroll(delay=)).
+            // It was dropped here without a word (census 2026-09-25). 150 is
+            // MakeCode's own default, so it is left implicit.
+            const ms = v('MS', '150');
+            push(ms === '150' ? `basic.showString(${v('TEXT', '""')})` : `basic.showString(${v('TEXT', '""')}, ${ms})`);
             return;
+        }
         case 'microbit_display':
             push(f('MODE') === 'text' ?
                 `basic.showString(${v('VALUE', '""')})` :
@@ -416,6 +498,32 @@ class Emitter {
             return;
         case 'microbitplus_plot':
             push(`led.${f('STATE') === 'off' ? 'unplot' : 'plot'}(${v('X')}, ${v('Y')})`);
+            return;
+
+        // MakeCode's led and game calls, which the importer reads into these.
+        case 'microbitplus_plotbargraph':
+            push(`led.plotBarGraph(${v('VALUE')}, ${v('HIGH')})`);
+            return;
+        case 'microbitplus_toggle':
+            push(`led.toggle(${v('X')}, ${v('Y')})`);
+            return;
+        case 'microbitplus_setbrightness':
+            push(`led.setBrightness(${v('BRIGHTNESS')})`);
+            return;
+        case 'microbitplus_stopanimation':
+            push('led.stopAnimation()');
+            return;
+        case 'microbitplus_addscore':
+            push(`game.addScore(${v('POINTS')})`);
+            return;
+        case 'microbitplus_setscore':
+            push(`game.setScore(${v('VALUE')})`);
+            return;
+        case 'microbitplus_removelife':
+            push(`game.removeLife(${v('LIFE')})`);
+            return;
+        case 'microbitplus_gameover':
+            push('game.gameOver()');
             return;
 
         case 'microbitplus_digitalwrite':
