@@ -307,7 +307,7 @@ export const DEVICES = Object.freeze([
         silicon: [tx('eeprom-programmer-webserial', ['hex', 'bin'], 'eeprom')]
     }),
     dev('z80', 'Z80 bench', 'Z80', 'z80', {
-        pickerCompile: false,
+        pickerCompile: true,
         pickerEmulator: 'z80',
         sim: [
             eng('z80', ['hex', 'bin', 'bas'], {
@@ -627,7 +627,7 @@ export const CELLS = Object.freeze({
             native: no('licence', 'MMBasic (PicoMite) is not permissively licensed; no other Pico BASIC found'),
             lowered: [via('micropython'), via('c')]
         },
-        asm: {native: open('bin', 'arm-none-eabi-as', 'hosted', 'N4'), lowered: [LISTING]},
+        asm: {native: shipped('hex', 'arm-none-eabi-as', 'hosted', {note: 'runs on rp2040js (N4)'}), lowered: [LISTING]},
         micropython: {native: MPY, lowered: [via('micropython')]}
     },
     stm32: {
@@ -636,7 +636,7 @@ export const CELLS = Object.freeze({
         javascript: {native: no('flash', `${F030}; ${JS_MIN}`), lowered: [via('c')]},
         c: {native: shipped('bin', 'arm-none-eabi-gcc bare-metal', 'hosted'), lowered: [via('c')]},
         basic: {native: no('flash', `${F030}; no BASIC fits beside a program`), lowered: [via('c')]},
-        asm: {native: open('bin', 'arm-none-eabi-as', 'hosted', 'N4'), lowered: [LISTING]},
+        asm: {native: shipped('hex', 'arm-none-eabi-as', 'hosted', {note: 'runs on the STM32F030 light tier (N4)'}), lowered: [LISTING]},
         micropython: {native: no('flash', `${F030}; ${MPY_MIN}`), lowered: [via('c')]}
     },
     microbit: {
@@ -650,11 +650,12 @@ export const CELLS = Object.freeze({
             lowered: [via('micropython')]
         },
         basic: {native: no('no-port', 'no BASIC interpreter for the nRF52833 found'), lowered: [via('micropython')]},
-        // The hosted /assemble knows nrf52833, but asmTargetForDevice passes
-        // 'microbit' through unmapped, so the ASM tab cannot reach it. N4.
+        // N4: asmTargetForDevice maps microbit/calliopemini to the hosted
+        // nrf52833 target.
         asm: {
-            native: open('hex', 'arm-none-eabi-as', 'hosted', 'N4', {
-                note: 'hosted chain exists for nrf52833; lite does not route to it'
+            native: shipped('hex', 'arm-none-eabi-as', 'hosted', {
+                note: 'assembles for nrf52833 (N4); nothing runs ARM code here -- the '
+                    + 'micro:bit simulator runs MicroPython -- so the .hex is for the board'
             }),
             lowered: []
         },
@@ -678,33 +679,31 @@ export const CELLS = Object.freeze({
         micropython: {native: no('no-port', 'no MicroPython for the 6502'), lowered: [via('c'), via('basic')]}
     },
     z80: {
-        pseudocode: {native: AST, lowered: [via('basic'), viaOpen('c', 'N1')]},
+        pseudocode: {native: AST, lowered: [via('basic'), via('c')]},
         python: {
             native: no('no-port', 'no MicroPython or other Python for the Z80'),
-            lowered: [via('basic'), viaOpen('c', 'N1')]
+            lowered: [via('basic'), via('c')]
         },
         javascript: {
             native: no('no-port', 'no JavaScript engine for the Z80'),
-            lowered: [via('basic'), viaOpen('c', 'N1')]
+            lowered: [via('basic'), via('c')]
         },
         c: {
-            // The RUNTIME half now exists: a Z80 CP/M .COM runs on the CP/M-80
-            // service layer (the `cpm-z80` engine above), proven on a real
-            // SDCC-compiled program (test/cpm-z80.test.mjs). What is still OPEN
-            // is the COMPILE half — a hosted `sdcc -mz80` / `ack -mcpm` endpoint
-            // that returns a .COM; no such server is stood up, so this is not
-            // yet a one-click code-tab button (CPM_TOOLCHAINS carries the routes
-            // with endpoint: null). ACK's z80/cpm backend gives libre Pascal/C/
-            // Modula-2 the same way.
-            native: open('cpm', 'SDCC -mz80 / ACK -mcpm → CP/M .COM', 'hosted', 'N1', {
-                note: 'runtime proven (CP/M-80 service layer runs a real cross-compiled Z80 CP/M .COM, '
-                    + 'test/cpm-z80.test.mjs); open half is a hosted compile endpoint returning the .COM'
+            // N1 (2026-09-25): the BENCH route ships -- the hosted service runs
+            // `sdcc -mz80` for the bench's measured map (ROM $0000-$7FFF, RAM
+            // $8000-$FFFF) and the C tab's ▶ Run C on Z80 boots the ROM
+            // (test/z80-c-bench.test.mjs: the z80-pd-bench program, emitted as
+            // C and compiled, walks its light across latch1). A separate,
+            // still-open route is a CP/M .COM for the CP/M-80 service layer.
+            native: shipped('bin', 'SDCC -mz80 (bench ROM)', 'hosted', {
+                note: 'bench ROM via /compile target z80; a CP/M .COM route (sdcc/ACK -mcpm) '
+                    + 'is still open -- the CP/M-80 runtime is proven (test/cpm-z80.test.mjs)'
             }),
-            lowered: [viaOpen('c', 'N1')]
+            lowered: [via('c')]
         },
         basic: {native: shipped('bas', 'BBC BASIC (`bbc` profile)', 'none'), lowered: [via('basic')]},
         asm: {native: shipped('hex', 'sdasz80 + sdldz80', 'hosted'), lowered: [viaOpen('c', 'N1', {form: 'listing'})]},
-        micropython: {native: no('no-port', 'no MicroPython for the Z80'), lowered: [via('basic'), viaOpen('c', 'N1')]}
+        micropython: {native: no('no-port', 'no MicroPython for the Z80'), lowered: [via('basic'), via('c')]}
     },
     i8086: {
         pseudocode: {

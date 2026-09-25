@@ -317,11 +317,10 @@ test('hosted facts in the matrix match the pinned stc-compiler snapshot, through
     }
     assert.deepEqual(unrouted, KNOWN_UNROUTED_ASM,
         'hosted-ASM devices whose target the service does not know changed — if the list shrank, T5 landed: shrink KNOWN_UNROUTED_ASM to match');
-    // micro:bit: the service assembles nrf52833 but lite does not route to it — the cell is open for that reason
-    assert.ok(assemble.has('nrf52833'));
-    assert.equal(CELLS.microbit.asm.native.status, STATUS.OPEN);
-    assert.ok(!assemble.has(asmTargetForDevice('microbit')),
-        'asmTargetForDevice now maps the micro:bit to a hosted target — N4 landed; flip the cell to shipped');
+    // micro:bit: N4 routed it (it was open while lite sent an id the service
+    // did not know). The loop above holds the route; this holds the flip.
+    assert.equal(asmTargetForDevice('microbit'), 'nrf52833');
+    assert.equal(CELLS.microbit.asm.native.status, STATUS.SHIPPED);
     assert.match(hosted.source.sha, /^[0-9a-f]{40}$/);
 });
 

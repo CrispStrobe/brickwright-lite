@@ -117,6 +117,11 @@ export function asmTargetForDevice (device) {
     if (/^riscv(32)?$/.test(d) || /rv32/.test(d)) return 'riscv32';
     if (/6502|eater/.test(d)) return 'eater6502';
     if (/^(z80|zx48|zx128)$/.test(d)) return 'z80';
+    // N4: the three ARM devices /assemble serves. The Pico's chip is the
+    // rp2040 and the micro:bit's the nrf52833 (the Calliope mini carries the
+    // same); the STM32F030 already is its own chip id.
+    if (d === 'pico' || d === 'rp2040') return 'rp2040';
+    if (/^(microbit|micro-bit|calliopemini)$/.test(d)) return 'nrf52833';
     // Arduino boards are not MCU ids; /assemble knows the chip. Mirror the C
     // tab's COMPILE_TARGET (bw-debug/shipped-images.js): uno/nano -> atmega328p,
     // mega -> atmega2560. Without this the ASM tab posted 'arduino-uno' and the

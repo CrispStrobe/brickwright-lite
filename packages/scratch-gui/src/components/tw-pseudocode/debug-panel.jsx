@@ -380,7 +380,10 @@ class DebugPanel extends React.Component {
         // A compiled Arduino sketch (the C tab's ▶ Run sketch) is an Intel HEX
         // image with no symbol table: exactly what "Load firmware" takes. It
         // goes through that same path, on the board's own engine.
-        if (format === 'avr-sketch') return this._runSketch(e.detail);
+        // 'firmware' is the same hand-off for any engine that runs an image
+        // the page built elsewhere (N4: hosted ARM assembly on the STM32F030
+        // light tier or rp2040js).
+        if (format === 'avr-sketch' || format === 'firmware') return this._runSketch(e.detail);
         if (!rom) return;
         return this._onMediaLoad({detail: {
             slotId: slotId || 'rom', bytes: rom,

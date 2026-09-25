@@ -11,6 +11,7 @@ import {IMPORT_ACCEPT, isImportableArtefact} from '../../lib/bw-makecode/accept.
 // splitting.
 import {asmExamplesFor, riscvCExamplesFor, arduinoSketchExamplesFor} from '../../lib/bw-asm/examples.js';
 import {requestSketchBuild, sketchBoardFor, sketchFirmware} from '../../lib/bw-debug/arduino-sketch.js';
+import {armRunFor, imageFromIntelHex} from '../../lib/bw-asm/arm-image.js';
 import {
     requestAssembly, requestCBuild, asmRouteFor, cRouteFor, requestRiscvCBuild, requestBasicBuild, asmTargetForDevice, ASM_DIALECTS,
     RISCV_CC_ENDPOINT,
@@ -228,6 +229,13 @@ const L10N = {
         asmAssembling: r => `Assembling ${r}…`,
         asmBuiltBench: (n, r, m) => `Assembled ${n} bytes ${r} — booting the ${m} bench…`,
         asmBuiltOnly: (n, r, t) => `Assembled OK (${n} bytes, ${r}). Auto-run from ASM is wired for the 6502/Z80/8086 benches; for ${t} use the compile path.`,
+        asmBuiltArm: (n, r, t) => `Assembled ${n} bytes of Intel HEX ${r} — running it on the ${t} simulator.`,
+        runCZ80: '▶ Run C on Z80',
+        runCZ80Title: 'Compile this C for the Z80 bench (sdcc -mz80 on the hosted service) and boot it: ROM at $0000, RAM at $8000, the OUT latch and IN buffer on port 0.',
+        runCZ80Building: 'Compiling C for the Z80 (hosted sdcc -mz80)…',
+        runCZ80Built: (n) => `Built a ${n}-byte Z80 ROM — booting the Z80 bench…`,
+        runCZ80Refused: (m) => `The Z80 C compiler refused this program: ${m}`,
+        runCZ80Unavailable: (m) => `The Z80 C compiler is unavailable (it runs on the hosted service): ${m}`,
         asmSourceError: (r, m) => `Assembly errors (${r}): ${m}`,
         asmTransportError: (r, m) => `Assembler unreachable (${r}): ${m}`,
         asmWarnings: w => ` — ${w.length} warning(s): ${w.join('; ')}`,
@@ -475,6 +483,13 @@ const L10N = {
         asmAssembling: r => `Assembliere ${r}…`,
         asmBuiltBench: (n, r, m) => `${n} Bytes assembliert ${r} — starte die ${m}-Werkbank…`,
         asmBuiltOnly: (n, r, t) => `Assembliert (${n} Bytes, ${r}). Auto-Start aus ASM ist für die 6502-/Z80-/8086-Werkbänke verdrahtet; für ${t} den Compile-Pfad nutzen.`,
+        asmBuiltArm: (n, r, t) => `${n} Bytes Intel-HEX assembliert ${r} — läuft jetzt auf dem ${t}-Simulator.`,
+        runCZ80: '▶ C auf Z80 ausführen',
+        runCZ80Title: 'Dieses C für die Z80-Werkbank übersetzen (sdcc -mz80 auf dem gehosteten Dienst) und starten: ROM ab $0000, RAM ab $8000, OUT-Latch und IN-Puffer auf Port 0.',
+        runCZ80Building: 'C wird für den Z80 übersetzt (gehosteter sdcc -mz80)…',
+        runCZ80Built: (n) => `Z80-ROM mit ${n} Byte gebaut — starte die Z80-Werkbank…`,
+        runCZ80Refused: (m) => `Der Z80-C-Compiler hat dieses Programm abgelehnt: ${m}`,
+        runCZ80Unavailable: (m) => `Der Z80-C-Compiler ist nicht erreichbar (er läuft auf dem gehosteten Dienst): ${m}`,
         asmSourceError: (r, m) => `Assembler-Fehler (${r}): ${m}`,
         asmTransportError: (r, m) => `Assembler nicht erreichbar (${r}): ${m}`,
         asmWarnings: w => ` — ${w.length} Warnung(en): ${w.join('; ')}`,
@@ -1004,6 +1019,7 @@ class PseudocodeImporter extends React.Component {
         this.runCOn8086 = this.runCOn8086.bind(this);
         this.runCOnRiscv = this.runCOnRiscv.bind(this);
         this.runSketchOnAvr = this.runSketchOnAvr.bind(this);
+        this.runCOnZ80 = this.runCOnZ80.bind(this);
         this.openCodeFile = this.openCodeFile.bind(this);
         this.saveCodeFile = this.saveCodeFile.bind(this);
         this._autosaveTimer = null;
@@ -2112,6 +2128,29 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
             this.setState({busy: false,
                 status: this.L.asmBuiltBench(builtLen, routeName, bench) + warn});
+        } else if (armRunFor(out.target)) {
+            // N4: the hosted ARM chain returns Intel HEX; the STM32F030 light
+            // tier and rp2040js take a flash/SRAM image. Same firmware hand-off
+            // a compiled sketch takes, on the device's own engine.
+            const run = armRunFor(out.target);
+            let image;
+            try {
+                image = imageFromIntelHex(new TextDecoder().decode(out.bytes), run.origin);
+            } catch (e) {
+                this.setState({busy: false, status: this.L.asmTransportError(routeName, e.message)});
+                return;
+            }
+            const detail = {format: 'firmware', kind: run.kind, target: out.target,
+                firmware: {name: 'program.hex', bytes: image, text: null, fCpu: null},
+                rom: null, image: null, listing: null};
+            try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-right-pane-hidden', value: '0'}
+            }));
+            window.__bwPendingMedia = {type: 'asm', detail};
+            window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+            this.setState({busy: false,
+                status: this.L.asmBuiltArm(out.bytes.length, routeName, out.target) + warn});
         } else {
             this.setState({busy: false,
                 status: this.L.asmBuiltOnly(out.bytes.length, routeName, target) + warn});
@@ -2366,6 +2405,39 @@ class PseudocodeImporter extends React.Component {
             status: this.L.asmExampleLoaded(
                 pickLocale(this.props.locale) === 'de' ? ex.labelDe : ex.label)
         }));
+    }
+
+    /**
+     * ▶ Run C on Z80 (N1) — the C tab's route onto the Z80 bench.
+     *
+     * The hosted service compiles `sdcc -mz80` for the bench's measured map
+     * (ROM $0000-$7FFF, RAM $8000-$FFFF; stock crt0 puts `jp init` at the
+     * reset vector) and returns the 32 KB ROM. It boots through the SAME
+     * bw-asm-rom-ready → debug-panel path an assembled Z80 program takes, so
+     * the bench, the latch LEDs and the debugger are the ones it already has.
+     * Hosted, and says so: SDCC is GPL and does not ship in the page.
+     */
+    async runCOnZ80 () {
+        const source = this.state.buffers.c || '';
+        if (!source.trim()) { this.setState({status: this.L.runCRiscvEmpty}); return; }
+        this.setState({busy: true, status: this.L.runCZ80Building, output: null});
+        let out;
+        try {
+            out = await this.hostedCompileC(source, 'z80', 'bin');
+        } catch (e) {
+            const message = e && e.message ? e.message : String(e);
+            const transport = (e && e.name === 'TypeError') || /failed to fetch|network/i.test(message);
+            this.setState({busy: false, output: (e && e.log) || null,
+                status: transport ? this.L.runCZ80Unavailable(message) : this.L.runCZ80Refused(message)});
+            return;
+        }
+        const rom = Uint8Array.from(atob(out.base64), c => c.charCodeAt(0));
+        const detail = {rom, image: null, listing: null, target: 'z80', slotId: 'rom', profile: null, format: 'rom'};
+        try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+        window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+        window.__bwPendingMedia = {type: 'asm', detail};
+        window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+        this.setState({busy: false, status: this.L.runCZ80Built(rom.length)});
     }
 
     /**
@@ -4944,6 +5016,16 @@ class PseudocodeImporter extends React.Component {
                                     {this.L.runSketch}
                                 </button>
                             </span>
+                        ) : null}
+                    {/* N1: the Z80 bench's C ▶, gated by the route function that
+                        decides what a Z80 is (asmTargetForDevice). */}
+                    {this.state.lang === 'c' && asmTargetForDevice(this.currentDevice()) === 'z80' ? (
+                            <button onClick={this.runCOnZ80} disabled={this.state.busy}
+                                data-testid="bw-run-c-z80"
+                                title={this.L.runCZ80Title}
+                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                {this.L.runCZ80}
+                            </button>
                         ) : null}
                     {this.currentDevice() === 'stm32f030' && this.state.lang === 'pseudocode' ? (
                         <button onClick={this.flashStm32ViaSwd} disabled={this.state.busy}

@@ -120,8 +120,11 @@ try {
     const text = async (lang, dev) => (await page.getByTestId(`bw-matrix-cell-${lang}-${dev}`).textContent()) || '';
     check('python x pico is both native and lowered', (await kind('python', 'pico')) === 'both', await text('python', 'pico'));
     check('python x stm32f030 is lowered only', (await kind('python', 'stm32f030')) === 'lowered', await text('python', 'stm32f030'));
-    check('asm x microbit has no path yet and names its task', (await kind('asm', 'microbit')) === 'none' && /N4/.test(await text('asm', 'microbit')),
-        await text('asm', 'microbit'));
+    // N4 closed the last cell with no path at all (asm x micro:bit, now hosted
+    // nrf52833); an open native path still names its task, in the title.
+    check('asm x microbit is native since N4', (await kind('asm', 'microbit')) === 'native', await text('asm', 'microbit'));
+    const cMicrobit = (await page.getByTestId('bw-matrix-cell-c-microbit').getAttribute('title')) || '';
+    check('an open path names its task (c x microbit: N7)', /open · task N7/.test(cMicrobit), cMicrobit.slice(0, 160));
     check('c x i8086 is native (SmallerC + NASM front end)', /native/.test(await text('c', 'i8086')), await text('c', 'i8086'));
 
     // Choosing a device that is not its family's first adds a column for it,
