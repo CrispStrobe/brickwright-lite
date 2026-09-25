@@ -96,6 +96,29 @@ class MicrobitTranslator extends BaseTranslator {
             value === 'false';
     }
 
+    /**
+     * An argument in a slot bounded by the next keyword: bare when it is
+     * one token, parenthesised otherwise, so `map a + 1 from low …` cannot
+     * be read as `(map a) + 1` and `max of a and b or c` keeps its shape.
+     */
+    operand (node) {
+        const value = this.expr(node);
+        return /^[^\s()]+$/.test(value) ? value : `(${value})`;
+    }
+
+    /**
+     * A coin toss as a CONDITION is asked as a comparison, which the export
+     * reads back as Math.randomBoolean(). Parenthesised because `pick
+     * random` is read before operators and would otherwise take `1 = 1` as
+     * its upper bound.
+     */
+    condition (node) {
+        if (node && node.type === 'Call' && this.path(node.callee) === 'Math.randomBoolean') {
+            return '(pick random 0 to 1) = 1';
+        }
+        return super.condition(node);
+    }
+
     /** Reporter calls: MakeCode's sensors and maths in our spelling. */
     callExpression (node) {
         const name = this.path(node.callee);
@@ -128,15 +151,41 @@ class MicrobitTranslator extends BaseTranslator {
         case 'Math.randomRange':
         case 'randint': return `pick random ${arg(0)} to ${arg(1)}`;
         case 'Math.random': return 'pick random 0 to 1';
-        case 'Math.abs': return `abs of ${arg(0)}`;
-        case 'Math.floor': return `floor of ${arg(0)}`;
-        case 'Math.ceil': return `ceiling of ${arg(0)}`;
-        case 'Math.sqrt': return `sqrt of ${arg(0)}`;
-        case 'Math.round': return `round ${arg(0)}`;
-        case 'Math.min': return `${arg(0)}`;             // no min/max reporter; keep the first
-        case 'Math.max': return `${arg(0)}`;
-        case 'Math.map': return `${arg(0)}`;
-        case 'game.score': return 'score';
+        // `abs of` and friends bind TIGHTER than the operators (the grammar
+        // keeps `abs of vx * -1` as `(abs of vx) * -1`), so a compound
+        // argument has to be parenthesised: Math.abs(a - b) written as
+        // `abs of a - b` computed |a| - b.
+        case 'Math.abs': return `abs of ${this.operand(a[0])}`;
+        case 'Math.floor': return `floor of ${this.operand(a[0])}`;
+        case 'Math.ceil': return `ceiling of ${this.operand(a[0])}`;
+        case 'Math.sqrt': return `sqrt of ${this.operand(a[0])}`;
+        case 'Math.round': return `round ${this.operand(a[0])}`;
+        // Planète Maths' min/max, which the dialect already reads and every
+        // backend already lowers. These kept only the FIRST argument, which
+        // runs and is wrong — the census found it in 10 of MakeCode's apps.
+        case 'Math.min': return `min of ${this.operand(a[0])} and ${this.operand(a[1])}`;
+        case 'Math.max': return `max of ${this.operand(a[0])} and ${this.operand(a[1])}`;
+        // pins.map and Math.map are the same function; the block is MakeCode's
+        // pins.map, word for word.
+        case 'pins.map':
+        case 'Math.map':
+            return `map ${this.operand(a[0])} from low ${this.operand(a[1])} high ${this.operand(a[2])} ` +
+                `to low ${this.operand(a[3])} high ${this.operand(a[4])}`;
+        // Math.idiv(a, b) is DEFINED as (a / b) | 0 — truncation toward zero,
+        // which `floor of` is not for a negative quotient. The bitwise-or
+        // with 0 is the definition, so that is what is written, and the
+        // export reads the same shape back as Math.idiv.
+        case 'Math.idiv':
+            this.usesBitops = true;
+            return `((${this.operand(a[0])} / ${this.operand(a[1])}) bitor 0)`;
+        // A coin toss AS A VALUE: the dialect's truth is the number 1 or 0,
+        // so it is `pick random 0 to 1` itself. Not the comparison
+        // condition() writes: `set b to (pick random 0 to 1) = 1` does not
+        // parse as a comparison at all — it stores that TEXT, silently.
+        case 'Math.randomBoolean': return 'pick random 0 to 1';
+        // MakeCode's game score, not a variable called `score`: that
+        // variable was never set by addScore, so every score read 0.
+        case 'game.score': return 'game score';
         // An image is a value here, and the only thing our display can be
         // handed is a pattern, so that is what it becomes: `"0101…"`. It
         // survives being stored in an array, which is how these programs
@@ -209,6 +258,39 @@ class MicrobitTranslator extends BaseTranslator {
             return;
         case 'basic.clearScreen':
             push('clear display');
+            return;
+        // The rest of `led` and `game` that MakeCode's own apps use (census
+        // 2026-09-25: plotBarGraph 15 apps, addScore 11, setBrightness 9,
+        // stopAnimation 6, gameOver 5, toggle 3, removeLife 2). The spellings
+        // are sb3-creator's; the MicroPython behind them is written from
+        // MakeCode's source (bar graph centred and auto-scaling, score
+        // clamped at 0, the third life lost is game over).
+        //
+        // plotBarGraph's optional third argument only echoes the value to
+        // the serial console; the display is the same either way.
+        case 'led.plotBarGraph':
+            push(`plot bar graph of ${this.operand(a[0])} up to ${a[1] ? this.operand(a[1]) : '0'}`);
+            return;
+        case 'led.toggle':
+            push(`toggle x ${this.operand(a[0])} y ${this.operand(a[1])}`);
+            return;
+        case 'led.setBrightness':
+            push(`set display brightness to ${this.operand(a[0])}`);
+            return;
+        case 'led.stopAnimation':
+            push('stop animation');
+            return;
+        case 'game.addScore':
+            push(`change game score by ${this.operand(a[0])}`);
+            return;
+        case 'game.setScore':
+            push(`set game score to ${this.operand(a[0])}`);
+            return;
+        case 'game.removeLife':
+            push(`remove game life ${this.operand(a[0])}`);
+            return;
+        case 'game.gameOver':
+            push('game over');
             return;
         case 'basic.pause':
             push(`wait ${seconds(a[0], this)} seconds`);

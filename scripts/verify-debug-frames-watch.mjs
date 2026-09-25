@@ -505,6 +505,9 @@ WHEN flag clicked:
     // Keep every distinct (phase, status line) the panel passes through, not
     // only the value at the deadline. setStatus() narrates the whole build —
     // 'reading the project…', 'compiling…', 'local 8051 compiler unavailable'
+    // (those words live in lib/bw-debug/runner-status-l10n.js now and follow
+    // the reader's language; nothing here MATCHES on them — the trace is read
+    // by a person when a run goes red)
     // — and five red CI runs reported none of it, because a poll that keeps
     // only its last read throws the narration away. The trace is the answer to
     // "where did this stop?", and it is free: the poll was happening anyway.

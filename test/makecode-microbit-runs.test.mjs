@@ -110,3 +110,39 @@ test('a translated bitwise program reaches the bitops extension', {skip: SKIP}, 
     assert.ok(run.calls.get('bitops_and') > 0, 'the mask never reached the extension');
     assert.ok(run.calls.get('bitops_shl') > 0, 'the shift never reached the extension');
 });
+
+test('an imported game keeps score in the real extension, and pins.map computes', {skip: SKIP}, async () => {
+    // Census batch 1: game.addScore/score and pins.map were refused or lost
+    // on import. The display calls are the simulator's to draw, but a score
+    // and a mapped number are plain values the editor can show — so they
+    // have to be RIGHT here, not just reached.
+    const {code, unsupported} = microbitToPseudocode(`
+        let shown = 0
+        let mapped = 0
+        game.addScore(2)
+        game.addScore(3)
+        game.setScore(game.score() + 1)
+        shown = game.score()
+        mapped = pins.map(512, 0, 1024, 0, 4)
+        led.plotBarGraph(shown, 10)
+        led.toggle(1, 1)
+        led.setBrightness(128)
+        led.stopAnimation()
+    `);
+    assert.deepEqual(unsupported, []);
+
+    const run = await runProgram(code, {frames: 10});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    for (const opcode of ['microbitplus_addscore', 'microbitplus_setscore', 'microbitplus_score', 'microbitplus_map',
+        'microbitplus_plotbargraph', 'microbitplus_toggle', 'microbitplus_setbrightness', 'microbitplus_stopanimation']) {
+        assert.ok(run.calls.get(opcode) > 0, `${opcode} never reached the extension`);
+    }
+    const value = name => {
+        for (const target of run.vm.runtime.targets) {
+            for (const variable of Object.values(target.variables || {})) if (variable.name === name) return Number(variable.value);
+        }
+        return null;
+    };
+    assert.equal(value('shown'), 6, 'the score the extension kept');
+    assert.equal(value('mapped'), 2, 'pins.map(512, 0, 1024, 0, 4)');
+});
