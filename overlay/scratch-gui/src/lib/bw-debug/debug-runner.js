@@ -1720,7 +1720,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
-        const stc = projectStc(null);
+        // Firmware (a hosted ARM assembly result) can run in a project that
+        // declares no pins; inferNetlist and the pin table read stc.pins.
+        const declared = projectStc(null);
+        const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
         const clockHz = built.f_cpu || built.clockHz || 125_000_000;
 
         // Board — one-board-one-truth, same as AVR.
@@ -1928,7 +1931,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
 
-        const stc = projectStc(null);
+        // Firmware (a hosted ARM assembly result) can run in a project that
+        // declares no pins; inferNetlist and the pin table read stc.pins.
+        const declared = projectStc(null);
+        const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
         const clockHz = built.f_cpu || built.clockHz || 48_000_000;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);

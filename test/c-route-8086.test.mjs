@@ -173,13 +173,13 @@ test('the C tab decides the route through this module, and in one place', async 
         'the button must be gated by the route function, not by a device id compared in the JSX');
     // The C 8086 path must not have added a hosted POST anywhere. Every
     // hosted /compile in this component goes through ONE helper, and the
-    // four callers (flashToBoard, the STM32 SWD path, the Pico UF2 deploy,
-    // and the AVR boards' ▶ Run sketch, which compiles an Arduino sketch and
-    // has no local route to take) call it by name — so a new hosted route
-    // shows up as a fifth caller, and a second URL literal as a second literal.
+    // five callers (flashToBoard, the STM32 SWD path, the Pico UF2 deploy,
+    // the AVR boards' ▶ Run sketch, and the Z80 bench's ▶ Run C on Z80 --
+    // neither has a local route to take) call it by name — so a new hosted
+    // route shows up as a sixth caller, and a second URL literal as a second.
     assert.equal(src.split('stc-compiler.vercel.app/compile').length - 1, 1,
         'the hosted /compile URL must appear exactly once, inside hostedCompileC()');
-    assert.equal(src.split('await this.hostedCompileC(').length - 1, 4,
+    assert.equal(src.split('await this.hostedCompileC(').length - 1, 5,
         'the hosted compile has a new or missing caller; the 8086 C route must not be one');
     const sketch = src.slice(src.indexOf('async runSketchOnAvr ()'));
     assert.match(sketch.slice(0, sketch.indexOf('\n    /**')), /await this\.hostedCompileC\(/,
