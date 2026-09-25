@@ -91,6 +91,10 @@ const TABLE = {
         'challenge.register_real.brief': 'Everything you have built so far forgets instantly: the LEDs follow the switches and that is all. A 74HC74 flip-flop HOLDS. Pick "D flip-flop" and press ⚙, then set d, flick the clock switch, and q takes the value — then change d and watch q stay put until the next clock edge. Check drives the clock for you, and it checks both halves: that q takes the value, and that q does NOT move when d moves without a clock. A wire passes the first and fails the second.',
 
         // ── circuits the ⚙ picker offers ──────────────────────────────────
+        'backend.hosted.label': 'Hosted synthesis',
+        'backend.hosted.description': 'Runs on a server. Nothing to download. Cannot build copyleft sources — see the licence check.',
+        'backend.local.label': 'Local synthesis (downloads the toolchain)',
+        'backend.local.description': 'Runs in this browser. Downloads ~261 MB once. The only route for copyleft sources, because building for yourself conveys nothing to anyone.',
         'palette.io': 'In / Out',
         'palette.in': 'Input',
         'palette.out': 'Output',
@@ -284,6 +288,10 @@ const TABLE = {
         'challenge.register_real.title': 'Ein Register — das erste Bauteil, das sich erinnert',
         'challenge.register_real.brief': 'Alles, was du bisher gebaut hast, vergisst sofort: Die LEDs folgen den Schaltern, mehr nicht. Ein 74HC74-Flipflop HÄLT seinen Wert. Wähle „D-Flipflop“, drücke ⚙, setze dann d, betätige den Taktschalter, und q übernimmt den Wert — ändere danach d und sieh zu, wie q bis zur nächsten Taktflanke stehen bleibt. Prüfen taktet für dich und prüft beide Hälften: dass q den Wert übernimmt, und dass q sich NICHT bewegt, wenn d sich ohne Takt ändert. Ein Draht besteht die erste und scheitert an der zweiten.',
 
+        'backend.hosted.label': 'Synthese auf dem Server',
+        'backend.hosted.description': 'Läuft auf einem Server. Nichts herunterzuladen. Kann keine Copyleft-Quellen bauen — siehe die Lizenzprüfung.',
+        'backend.local.label': 'Synthese im Browser (lädt die Toolchain herunter)',
+        'backend.local.description': 'Läuft in diesem Browser. Lädt einmalig ca. 261 MB. Der einzige Weg für Copyleft-Quellen, denn wer nur für sich selbst baut, gibt nichts an andere weiter.',
         'palette.io': 'Ein / Aus',
         'palette.in': 'Eingang',
         'palette.out': 'Ausgang',

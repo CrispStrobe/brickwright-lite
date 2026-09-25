@@ -82,7 +82,13 @@ const PROPER_NOUN_FILES = [
     'lib/bw-fpga/builtins.js',           // block names, content not UI
     'lib/bw-asm/examples.js',            // example titles, content not UI
     'lib/bw-asm/examples-i8086.js',      // example titles, content not UI
-    'lib/bw-fpga/examples.js'            // example titles, content not UI
+    'lib/bw-fpga/examples.js',           // example titles, content not UI
+    // Five route descriptors, each a language-and-compiler name: 'GW-BASIC (on
+    // DOS)', 'Pascal / C / Modula-2 (ACK, via CP/M)'. Nothing renders them —
+    // no component reads .label off DOS_/CPM_/HOSTED_TOOLCHAINS; they reach
+    // only tests and bw-asm/assemble-route.js, which re-exports them. If a
+    // route picker is ever built, delete this line: it will then be a surface.
+    'lib/bw-debug/dos-toolchain-routes.js'
 ];
 
 /**
@@ -92,12 +98,11 @@ const PROPER_NOUN_FILES = [
  * locale table and lowering the number here in the same commit.
  */
 const KNOWN_UNTRANSLATED = {
-    'lib/bw-debug/dos-toolchain-routes.js': 5,
-    'lib/scratchlink-transport.js': 4,
-    'lib/native-web-bluetooth.js': 2,
-    'lib/bw-fpga/backends.js': 2,
-    'lib/bw-debug/condition-editor.js': 2,
-    'lib/bw-debug/target-kinds.js': 1
+    // EMPTY, and it got here by shrinking: backends.js and target-kinds.js
+    // moved to locale tables, scratchlink-transport.js grew one of its own
+    // (its whole panel, not only the four fields this rule counts), and
+    // dos-toolchain-routes.js turned out to be names nothing renders. The
+    // ratchet stays for the next one; it may still only shrink.
 };
 
 /** A user-facing sentence written as an object field, not a JSX attribute. */
@@ -131,7 +136,14 @@ test('no lib module hardcodes a user-facing sentence, beyond the known populatio
             continue;
         }
         const text = readFileSync(resolve(root, rel), 'utf8');
-        if (/bw-i18n\.js|bw-fpga\/l10n\.js/.test(text)) {
+        // A file translates if it imports the shared helpers OR carries its own
+        // locale table. THE SECOND HALF WAS MISSING and the count was wrong for
+        // it: lib/native-web-bluetooth.js and lib/bw-debug/condition-editor.js
+        // each hold an inline {en, de} table, so the regex was matching strings
+        // INSIDE a translation and reporting them as untranslated — four of the
+        // sixteen this list claimed. A population that counts the cure as the
+        // disease sends someone to "fix" finished work.
+        if (/bw-i18n\.js|bw-fpga\/l10n\.js/.test(text) || /^\s+de:\s*[{O]/m.test(text)) {
             translating.push(short);   // it translates; the other rules cover it
             continue;
         }
