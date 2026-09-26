@@ -55,6 +55,7 @@ tauri-plugin-share = "2"
 # scratchlink/ble.rs and bt_android.rs.
 [target.'cfg(target_os = "ios")'.dependencies]
 tauri-plugin-scratchlink-original = { path = "plugins/scratchlink-original" }
+tauri-plugin-depth-capture = { path = "plugins/depth-capture" }
 
 # Desktop-only: USB-CDC serial to a MicroPython Pico (src/pico.rs). Phones
 # have no USB host serial we can reach, and the crate does not build there.

@@ -22,6 +22,8 @@
        strings, so both must be present or the app is killed on first access. -->
   <key>NSCameraUsageDescription</key>
   <string>Brickwright uses the camera for Video Sensing, photo projects such as LEGO scanners, and photographing costumes.</string>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Brickwright can temporarily share a selected project, code file, photo, or scan archive with a computer on your local network.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Brickwright uses the microphone for the loudness/sound blocks and to record sounds.</string>
   <key>NSSpeechRecognitionUsageDescription</key>

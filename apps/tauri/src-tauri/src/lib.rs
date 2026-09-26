@@ -23,6 +23,7 @@ mod native_broker_transport;
 mod native_policy;
 mod pico;
 mod scratchlink;
+mod share_server;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -69,10 +70,13 @@ pub fn run() {
     // route — nothing reaches it until the user picks that transport.
     #[cfg(target_os = "ios")]
     let builder = builder.plugin(tauri_plugin_scratchlink_original::init());
+    #[cfg(target_os = "ios")]
+    let builder = builder.plugin(tauri_plugin_depth_capture::init());
 
     // Pico USB serial state — desktop only (the mobile pico commands are stubs).
     #[cfg(desktop)]
     let builder = builder.manage(pico::PicoSerial(std::sync::Mutex::new(None)));
+    let builder = builder.manage(share_server::ShareServerState::default());
 
     #[cfg(desktop)]
     let native_policy = native_policy::NativePolicyState::new();
@@ -86,6 +90,10 @@ pub fn run() {
             fileio::save_project,
             fileio::write_temp_project,
             fileio::is_mobile,
+            fileio::share_file_native,
+            share_server::start_share_server,
+            share_server::stop_share_server,
+            share_server::share_server_status,
             downloads::download_pack,
             downloads::download_pack_zip,
             downloads::pack_present,
