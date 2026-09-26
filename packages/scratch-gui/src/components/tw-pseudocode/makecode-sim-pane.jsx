@@ -14,7 +14,9 @@
  * the way MakeCode's editor does it.
  *
  * THE CIRCUIT. The host page reports the program's pin changes (named by the
- * target's own DigitalPin enum: p0, p1, … c16). With a circuit open
+ * target's own DigitalPin enum: p0, p1, … c16; on the Circuit Playground, which
+ * has none, by the simulator's CPlayPinName: a0 … a7). Those are the board
+ * parts' pad names (test/makecode-pin-bridge.test.mjs). With a circuit open
  * (vm.runtime.circuitBoard), an output pin drives the board part's terminal of
  * that name — the same setPin the micro:bit+ extension uses — and every pin the
  * program reads is sampled from the circuit and written back, so a button on

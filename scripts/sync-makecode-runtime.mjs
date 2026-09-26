@@ -359,14 +359,16 @@ function relativisePage (html) {
  * The simulator's pin ids by the name the circuit uses ('p0', 'c4', …), read
  * from the target's own `enum DigitalPin` — the ids are the target's, not an
  * index: on the micro:bit P1 is 101, on the Calliope P1 is 100 and P0 is 112
- * (measured). A target without that enum (the Circuit Playground's pins are
- * objects) gets none, and the host page bridges no pins for it.
+ * (measured). A target without that enum gets none here: the EV3 has no edge
+ * pins, and the Circuit Playground's pins are objects whose ids come from the
+ * program's config at run time, so the host page names those from the running
+ * simulator's pxsim.CPlayPinName instead (test/makecode-pin-bridge.test.mjs).
  */
 function pinNames (bundle) {
     const out = {};
     const texts = Object.values(bundle.bundledpkgs || {}).flatMap(files => Object.values(files)).map(String);
     const text = texts.find(t => /enum DigitalPin\s*\{/.test(t));
-    if (!text) return out;                          // no such enum: this target has no edge pins to bridge
+    if (!text) return out;                          // no such enum: no static names (see above)
     const open = text.indexOf('{', text.search(/enum DigitalPin\s*\{/));
     let depth = 0;
     let end = open;
