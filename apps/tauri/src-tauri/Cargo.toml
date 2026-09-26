@@ -1,6 +1,6 @@
 [package]
 name = "brickwright-tauri"
-version = "0.1.16"
+version = "0.1.17"
 description = "Brickwright native app (Tauri 2, all platforms)"
 authors = ["CrispStrobe"]
 edition = "2021"

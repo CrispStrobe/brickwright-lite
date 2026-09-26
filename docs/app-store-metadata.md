@@ -203,6 +203,66 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.17 en-US
+
+This is a broad hardware-and-formats build. It adds several complete paths from
+an idea or imported project to something that runs, while keeping the work local
+where the target permits it.
+
+Please focus on:
+1. **MakeCode micro:bit:** import or create a project, compile it offline to a
+   real micro:bit V2 firmware image, run it in the simulator, and round-trip it
+   through blocks and `.hex`. Try LEDs, buttons, sensor code, and the new
+   math/game blocks.
+2. **MakeCode Arcade:** draw or import pixel-art costumes, use controller events,
+   export the project, and run it in Arcade's simulator. Check that sprite art,
+   palette colours and controls survive the trip.
+3. **Arduino and RISC-V:** run an Arduino sketch from the C tab on supported AVR
+   boards, and try both the local and hosted RISC-V C routes. Serial output and
+   compiler errors should identify the selected target clearly.
+4. **FPGA learning path:** build and grade the adder, multiplexer, decoder,
+   counter and shift-register exercises. Sequential circuits should reset and
+   advance without freezing the editor.
+5. **LEGO and boards:** connect a SPIKE, EV3, Boost, WeDo or Powered Up hub if
+   available. Calliope mini and Circuit Playground Express projects should show
+   the correct board and pin behaviour.
+
+Also included are CP/M and disk-OS improvements, ARM/Z80 code paths, many German
+translations, and fixes across the circuit simulator and project import/export.
+Please report the exact project, board or hub, OS version, and the last successful
+step when something fails.
+
+## What to Test — 0.1.17 de-DE
+
+Dieser Build erweitert viele Hardware- und Dateiformat-Wege. Mehrere Abläufe
+führen nun vollständig von einer Idee oder einem importierten Projekt bis zu
+einem laufenden Ergebnis und bleiben lokal, soweit das Ziel dies erlaubt.
+
+Bitte besonders testen:
+1. **MakeCode micro:bit:** Ein Projekt importieren oder erstellen, offline zu
+   echter micro:bit-V2-Firmware kompilieren, im Simulator ausführen und über
+   Blöcke und `.hex` hin- und zurückwandeln. LEDs, Tasten, Sensorcode sowie die
+   neuen Mathematik- und Spielblöcke ausprobieren.
+2. **MakeCode Arcade:** Pixelgrafik-Kostüme zeichnen oder importieren,
+   Controller-Ereignisse verwenden, das Projekt exportieren und im
+   Arcade-Simulator starten. Sprite-Grafik, Palettenfarben und Steuerung müssen
+   erhalten bleiben.
+3. **Arduino und RISC-V:** Ein Arduino-Sketch aus dem C-Tab auf unterstützten
+   AVR-Boards starten und sowohl den lokalen als auch den gehosteten RISC-V-C-Weg
+   testen. Serielle Ausgabe und Compilerfehler sollen das gewählte Ziel nennen.
+4. **FPGA-Lernpfad:** Addierer, Multiplexer, Decoder, Zähler und Schieberegister
+   aufbauen und prüfen lassen. Sequentielle Schaltungen sollen zurückgesetzt und
+   weitergeschaltet werden können, ohne den Editor einzufrieren.
+5. **LEGO und Boards:** Falls vorhanden SPIKE, EV3, Boost, WeDo oder Powered Up
+   verbinden. Projekte für Calliope mini und Circuit Playground Express sollen
+   das richtige Board- und Pin-Verhalten zeigen.
+
+Zusätzlich enthalten sind Verbesserungen für CP/M und Disketten-Betriebssysteme,
+ARM- und Z80-Codewege, viele deutsche Übersetzungen sowie Korrekturen am
+Schaltungssimulator und Projektimport/-export. Bitte bei Fehlern das genaue
+Projekt, Board oder Hub, die Betriebssystemversion und den letzten erfolgreichen
+Schritt melden.
+
 ## What to Test — 0.1.16 en-US
 
 This build is almost entirely about the recorded debugger, and the honest summary
