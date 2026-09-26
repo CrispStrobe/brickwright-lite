@@ -203,6 +203,41 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.20 en-US
+
+This rebuild fixes the native iOS and Android compilation issues found in
+0.1.19. Please repeat the camera, RGB-D scanning, archive, costume, AirDrop /
+LocalSend, and local-network sharing checks below. Pay particular attention to
+LiDAR frame capture on a physical device and USB-camera fallback on macOS.
+
+Confirm that camera permission is requested only when capture begins and that
+denial is handled without a crash. Select every available camera, request a
+resolution and frame rate, capture several RGB frames, and export and reopen the
+resulting `.bwscan.zip`. On LiDAR hardware, verify that depth, confidence,
+intrinsics, pose and timestamps accompany RGB. Share photos, scans, projects,
+source code and firmware through the system share sheet, then test a short-lived
+LAN link and confirm it stops serving after expiry. Brickwright must not request
+Photos-library permission. Please include the device, OS and camera model in
+reports.
+
+## What to Test — 0.1.20 de-DE
+
+Dieser Neubau behebt die in 0.1.19 gefundenen nativen iOS- und
+Android-Kompilierfehler. Bitte die folgenden Kamera-, RGB-D-Scan-, Archiv-,
+Kostüm-, AirDrop-/LocalSend- und lokalen Netzwerkfreigabetests wiederholen.
+Besonders wichtig sind LiDAR-Aufnahmen auf einem echten Gerät und der
+USB-Kamera-Rückfall unter macOS.
+
+Prüfen, dass die Kameraberechtigung erst beim Aufnahmestart erfragt und eine
+Ablehnung ohne Absturz behandelt wird. Jede verfügbare Kamera auswählen,
+Auflösung und Bildrate anfordern, mehrere RGB-Bilder aufnehmen und das erzeugte
+`.bwscan.zip` exportieren und erneut öffnen. Auf LiDAR-Geräten müssen Tiefe,
+Konfidenz, Intrinsik, Pose und Zeitstempel zusammen mit RGB gespeichert werden.
+Fotos, Scans, Projekte, Quelltext und Firmware über das System-Teilen-Menü
+freigeben; danach einen kurzlebigen LAN-Link testen und sicherstellen, dass er
+nach Ablauf nicht mehr funktioniert. Brickwright darf keinen Zugriff auf die
+Fotomediathek verlangen. Bitte Gerät, Betriebssystem und Kameramodell melden.
+
 ## What to Test — 0.1.19 en-US
 
 This build turns Camera Capture into a complete scanner and sharing workflow.

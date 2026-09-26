@@ -1,6 +1,6 @@
 [package]
 name = "brickwright-tauri"
-version = "0.1.19"
+version = "0.1.20"
 description = "Brickwright native app (Tauri 2, all platforms)"
 authors = ["CrispStrobe"]
 edition = "2021"
@@ -35,7 +35,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "net", "macros", "sync"]
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
 log = "0.4"
-uuid = "1"
+uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
 getrandom = "0.2"
 # On-demand asset/model downloads. rustls to stay OpenSSL-free / permissive

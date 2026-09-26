@@ -92,7 +92,9 @@ final class DepthCapturePlugin: Plugin {
         let packedRowBytes = CVPixelBufferGetWidth(buffer) * bytesPerPixel
         var result = Data(capacity: height * packedRowBytes)
         for row in 0..<height {
-            result.append(base.advanced(by: row * sourceRowBytes), count: packedRowBytes)
+            let rowBytes = base.advanced(by: row * sourceRowBytes)
+                .assumingMemoryBound(to: UInt8.self)
+            result.append(rowBytes, count: packedRowBytes)
         }
         return result
     }
