@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /** Browser regressions for physical Circuit Designer rendering and placement. */
 import {chromium} from 'playwright';
+import {readFileSync} from 'node:fs';
+
+const lm324Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lm324-quad-follower.json', import.meta.url), 'utf8'));
 
 const url = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 const browser = await chromium.launch();
@@ -155,6 +159,41 @@ try {
     await designer.locator('[data-board-face="pi_pico"]').waitFor({state: 'visible', timeout: 10000});
     check('Motor speed Pico bench renders its controller face',
         await designer.locator('[data-board-face="pi_pico"]:visible').count() === 1);
+
+    // The LM324 crosses both package boundaries this gate is meant to exercise:
+    // CUI must bundle the truthful 14-pin face, and its injected Board must solve
+    // four independent channels. Node tests can read an unbundled parts-data
+    // directory, so this exact browser assertion is what catches a stale static
+    // index or a GUI install resolving a different engine.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lm324Fixture);
+    const lm324Face = designer.locator('[data-dip-body="lm324"][data-dip-label="LM324"]');
+    await lm324Face.waitFor({state: 'visible', timeout: 10000});
+    const lm324FaceText = await lm324Face.textContent();
+    check('LM324 renders as the truthful labelled PDIP-14 face',
+        await lm324Face.count() === 1 && /DIP-14/.test(lm324FaceText) &&
+        ['1_out', '2_out', '3_out', '4_out', 'vcc', 'gnd'].every(name => lm324FaceText.includes(name)),
+        lm324FaceText.replace(/\s+/g, ' ').trim());
+    const lm324 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LM324 board'};
+        board.advanceTo(board.timeNs + 1n);
+        const values = [];
+        for (let channel = 1; channel <= 4; channel++) {
+            const terminal = `${channel}_out`;
+            const net = board.nets.find(item => item.terminals.some(endpoint =>
+                endpoint.part === 'u1' && endpoint.terminal === terminal));
+            values.push(net ? board.nodeVoltage(net.id) : null);
+        }
+        return {values, terminals: circuit.getPart('u1')?.terminals?.length || 0};
+    });
+    check('browser bundle solves all four physical LM324 channels independently',
+        lm324.terminals === 14 && Array.isArray(lm324.values) &&
+        lm324.values.every((value, index) =>
+            typeof value === 'number' && Math.abs(value - [0.5, 1, 2, 3][index]) < 0.02),
+        JSON.stringify(lm324));
 } finally {
     await browser.close();
 }
