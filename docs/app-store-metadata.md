@@ -203,6 +203,59 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.18 en-US
+
+This build adds Camera Capture for projects that need reusable still images,
+including LEGO-built 3D scanners that hold and position an iPhone.
+
+Please focus on:
+1. Add **Camera Capture** from the extensions gallery. Confirm that merely adding
+   it does not request camera access; the prompt should appear only when the
+   start-camera block runs.
+2. Start the rear camera, then the front camera. The preview should follow the
+   selected camera and the ready/status blocks should report the change.
+3. Take JPEG, PNG, and WebP photos at different quality settings. Confirm the
+   last-photo reporter returns a reusable data URL and that width and height are
+   non-zero and match the image.
+4. Use the phone in a LEGO scanner rig while a SPIKE Prime project moves the
+   mechanism. Repeated captures should update cleanly without opening a second
+   camera stream or mirroring rear-camera images.
+5. Stop the camera and stop the project. The preview and camera indicator should
+   turn off and another camera app should be able to use the camera immediately.
+6. Deny camera permission once and confirm the project reports a useful status
+   instead of hanging or crashing. Brickwright does not request Photos-library
+   access because captures stay inside the project unless you export them.
+
+Please report the iPhone model, iOS version, selected camera and image format,
+plus the last successful block when anything fails.
+
+## What to Test — 0.1.18 de-DE
+
+Dieser Build fügt **Kameraaufnahme** für Projekte mit wiederverwendbaren
+Standbildern hinzu, darunter aus LEGO gebaute 3D-Scanner, die ein iPhone halten
+und bewegen.
+
+Bitte besonders testen:
+1. **Kameraaufnahme** aus der Erweiterungsgalerie hinzufügen. Allein das
+   Hinzufügen darf noch nicht nach Kamerazugriff fragen; die Abfrage soll erst
+   beim Ausführen des Kamera-Startblocks erscheinen.
+2. Zuerst die Rück-, dann die Frontkamera starten. Vorschau sowie
+   Bereit-/Statusblöcke sollen der gewählten Kamera folgen.
+3. Fotos als JPEG, PNG und WebP mit verschiedenen Qualitätswerten aufnehmen. Der
+   Reporter für das letzte Foto soll eine wiederverwendbare Data-URL liefern;
+   Breite und Höhe sollen größer als null sein und zum Bild passen.
+4. Das iPhone in einem LEGO-Scanner verwenden, während ein SPIKE-Prime-Projekt
+   den Mechanismus bewegt. Wiederholte Aufnahmen sollen ohne zweiten Kamerastream
+   funktionieren; Bilder der Rückkamera dürfen nicht gespiegelt sein.
+5. Kamera und Projekt stoppen. Vorschau und Kameraanzeige sollen ausgehen und
+   eine andere Kamera-App soll die Kamera sofort verwenden können.
+6. Kamerazugriff einmal ablehnen. Das Projekt soll einen verständlichen Status
+   melden, statt zu hängen oder abzustürzen. Brickwright fragt nicht nach Zugriff
+   auf die Fotomediathek, da Aufnahmen bis zu einem Export im Projekt bleiben.
+
+Bitte iPhone-Modell, iOS-Version, gewählte Kamera und Bildformat sowie den letzten
+erfolgreichen Block melden, wenn etwas fehlschlägt.
+
 ## What to Test — 0.1.17 en-US
 
 This is a broad hardware-and-formats build. It adds several complete paths from
