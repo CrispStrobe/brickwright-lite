@@ -67,7 +67,16 @@ test('every display type the listing uploads maps to a platform', () => {
     assert.equal(PLATFORM.APP_DESKTOP, 'MAC_OS');
 });
 
-test('a dry run reads but refuses every write', async () => {
+test('a dry run reads but refuses every write', async t => {
+    // THE DRY RUN NARRATES, and the TAP stream is not the place for it: the
+    // unit runner fails a file that writes raw bytes to stdout, because a test
+    // talking outside the protocol is how a failure goes unnoticed in 4,500
+    // lines of output. The narration is the tool's, not this test's, so it is
+    // captured here and handed to the runner through t.diagnostic().
+    const said = [];
+    const realLog = console.log;
+    console.log = (...args) => said.push(args.join(' '));
+    t.after(() => { console.log = realLog; });
     const calls = [];
     const fetchImpl = async (url, opts) => {
         calls.push(`${opts.method} ${url}`);
@@ -79,6 +88,10 @@ test('a dry run reads but refuses every write', async () => {
     await c.request('DELETE', '/v1/appScreenshotSets/2');
     assert.deepEqual(calls, ['GET https://api.appstoreconnect.apple.com/v1/apps/1'],
         'a dry run performed a write');
+    // And it must SAY what it skipped — a silent dry run teaches nothing.
+    assert.equal(said.filter(l => l.includes('[dry-run]')).length, 2,
+        `expected both writes to be narrated; saw ${JSON.stringify(said)}`);
+    for (const line of said) t.diagnostic(line.trim());
 });
 
 test('a paged listing follows links.next rather than stopping at one page', async () => {
