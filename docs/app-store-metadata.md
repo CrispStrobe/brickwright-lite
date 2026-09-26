@@ -1154,15 +1154,26 @@ re-reads the PNGs afterwards for real dimensions and a file size a blank render
 cannot reach. A scene whose selectors have drifted fails the run instead of
 quietly producing a photograph of an empty editor.
 
-### Known limitation
+### Known limitation — and it is bigger than one button
 
-At iPhone 6.7" the Machine Manager's import button **cannot be clicked at all**:
-the locator resolves and the click times out, and `scrollIntoViewIfNeeded()`
-does not rescue it. Measured over three capture runs on 2026-09-26, against the
-shipping build. So `04-machine` declares `skipDevices: ['iphone']` and the
-iPhone set is the other four scenes.
+`body` has **`min-width: 1024px`**. The app does not lay out below that width,
+so on a 440 pt iPhone the layout viewport becomes 1024 x 2225 while the visual
+viewport stays 440 x 956: the phone shows a panned, zoomed-out desktop UI rather
+than a phone UI. Measured 2026-09-26 against the shipping build
+(`docWidth: 1024`, `bodyMinWidth: "1024px"`).
 
-That is a defect in the app, not in the capture — the iOS build is the one
-TestFlight ships, and a phone user cannot import a machine. When it is fixed,
-delete the `skipDevices` line and this paragraph; the gate in
-`test/appstore-screenshots.test.mjs` requires the two to agree.
+Two consequences for this listing:
+
+1. **Every iPhone screenshot is a scaled desktop UI**, because that is genuinely
+   what an iPhone user sees. Nothing in the capture can change that; only making
+   the app responsive below 1024 px would.
+2. **`04-machine` cannot be captured on iPhone.** The Machine Manager modal is
+   `position: fixed; inset: 0`, so it is pinned to the 1024-wide layout viewport
+   and its buttons fall outside the visual viewport. Playwright cannot pan to a
+   fixed element (`scrollIntoViewIfNeeded()` is a no-op on `position: fixed`),
+   so the click times out. Hence `skipDevices: ['iphone']` on that scene.
+
+**A person CAN reach that button by panning.** An earlier version of this note
+said a phone user could not import a machine at all; that was wrong, and the
+correction matters — the work implied is "make the app responsive", not "fix a
+modal".

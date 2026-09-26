@@ -90,13 +90,22 @@ export const SCENES = Object.freeze([
         id: '04-machine',
         needsFpga: false,
         settle: 3000,
-        // MEASURED, NOT ASSUMED (2026-09-26, three capture runs): at iPhone
-        // 6.7" the Machine Manager's import button sits below the fold of its
-        // own modal and cannot be clicked — the locator resolves and the click
-        // times out, and scrollIntoViewIfNeeded does not rescue it. That is a
-        // control a phone user cannot reach, which is a defect in the app and
-        // is recorded as one in docs/app-store-metadata.md. Until it is fixed
-        // this scene is honestly unavailable on iPhone rather than forced.
+        // MEASURED (2026-09-26), and the first reading of it was WRONG, so the
+        // mechanism is written down rather than the symptom.
+        //
+        // `body` has `min-width: 1024px`: the app does not lay out below that
+        // at all. On a 440pt phone the LAYOUT viewport becomes 1024x2225 while
+        // the VISUAL viewport stays 440x956, and this modal is
+        // `position: fixed; inset: 0` — pinned to the layout viewport, so its
+        // buttons sit outside the visible area until the user pans. Playwright
+        // cannot pan a visual viewport to a fixed element (scrollIntoViewIfNeeded
+        // is a no-op on `position: fixed`), so the click times out.
+        //
+        // A PERSON CAN reach it, by panning. This is an automation limit, not
+        // proof of an unusable control — the earlier note here claimed the
+        // latter and was wrong. The real finding is the min-width, which is
+        // recorded in docs/app-store-metadata.md because it decides what every
+        // iPhone screenshot of this app can possibly show.
         skipDevices: ['iphone'],
         caption: {
             'en-US': 'Boot a real operating system — CP/M 2.2, in the browser',
