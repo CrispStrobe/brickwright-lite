@@ -25,10 +25,23 @@
  */
 export const DEVICES = Object.freeze([
     {
+        // RENDERED AT THE APP'S REAL LAYOUT WIDTH, not at 440pt, and the
+        // reason is the app: `body` has `min-width: 1024px`, so it never lays
+        // out as a phone. At 440x956 the LAYOUT viewport becomes 1024x2225
+        // while the VISUAL viewport stays 440 wide — the page is panned, and
+        // Playwright cannot pan to a `position: fixed` overlay, which sank
+        // every iPhone capture of the Machine Manager scene.
+        //
+        // Safari on a real iPhone zooms the 1024-wide layout out to fit, so
+        // what a person SEES is the whole UI, small. Rendering at 1024 with
+        // the iPhone's aspect ratio and letting the scale factor reach Apple's
+        // pixels reproduces exactly that — and makes every scene reachable,
+        // because layout and visual viewport are then the same box.
+        // Measured: 1024x2225 at 1320/1024 produces a 1320x2868 PNG.
         suffix: 'iphone',
         displayType: 'APP_IPHONE_67',
-        viewport: {width: 440, height: 956},
-        scale: 3,
+        viewport: {width: 1024, height: 2225},
+        scale: 1320 / 1024,
         pixels: [1320, 2868]
     },
     {
@@ -90,23 +103,6 @@ export const SCENES = Object.freeze([
         id: '04-machine',
         needsFpga: false,
         settle: 3000,
-        // MEASURED (2026-09-26), and the first reading of it was WRONG, so the
-        // mechanism is written down rather than the symptom.
-        //
-        // `body` has `min-width: 1024px`: the app does not lay out below that
-        // at all. On a 440pt phone the LAYOUT viewport becomes 1024x2225 while
-        // the VISUAL viewport stays 440x956, and this modal is
-        // `position: fixed; inset: 0` — pinned to the layout viewport, so its
-        // buttons sit outside the visible area until the user pans. Playwright
-        // cannot pan a visual viewport to a fixed element (scrollIntoViewIfNeeded
-        // is a no-op on `position: fixed`), so the click times out.
-        //
-        // A PERSON CAN reach it, by panning. This is an automation limit, not
-        // proof of an unusable control — the earlier note here claimed the
-        // latter and was wrong. The real finding is the min-width, which is
-        // recorded in docs/app-store-metadata.md because it decides what every
-        // iPhone screenshot of this app can possibly show.
-        skipDevices: ['iphone'],
         caption: {
             'en-US': 'Boot a real operating system — CP/M 2.2, in the browser',
             'de-DE': 'Ein echtes Betriebssystem starten — CP/M 2.2, im Browser'

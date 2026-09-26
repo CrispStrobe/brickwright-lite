@@ -40,7 +40,12 @@ test('every device is a display type Apple accepts, at the pixel size it require
         // The capture sets a POINT viewport and a scale factor; the product is
         // what lands in the PNG. A mismatch here is a screenshot Apple rejects
         // after the build has already been uploaded.
-        assert.deepEqual([d.viewport.width * d.scale, d.viewport.height * d.scale], d.pixels,
+        // Rounded, because a device may be rendered at the app's own layout
+        // width with the device's ASPECT ratio — iPhone is (see scenes.mjs) —
+        // and that does not divide into whole points.
+        assert.deepEqual(
+            [Math.round(d.viewport.width * d.scale), Math.round(d.viewport.height * d.scale)],
+            d.pixels,
             `${d.suffix}: viewport x scale does not produce ${d.pixels.join('x')}`);
     }
 });

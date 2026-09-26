@@ -1154,26 +1154,23 @@ re-reads the PNGs afterwards for real dimensions and a file size a blank render
 cannot reach. A scene whose selectors have drifted fails the run instead of
 quietly producing a photograph of an empty editor.
 
-### Known limitation — and it is bigger than one button
+### The iPhone set, and why it is rendered at 1024 px
 
-`body` has **`min-width: 1024px`**. The app does not lay out below that width,
-so on a 440 pt iPhone the layout viewport becomes 1024 x 2225 while the visual
-viewport stays 440 x 956: the phone shows a panned, zoomed-out desktop UI rather
-than a phone UI. Measured 2026-09-26 against the shipping build
-(`docWidth: 1024`, `bodyMinWidth: "1024px"`).
+`body` has **`min-width: 1024px`**: the app never lays out as a phone. At a
+440 pt viewport the *layout* viewport becomes 1024 x 2225 while the *visual*
+viewport stays 440 wide — the page is panned — and Playwright cannot pan to a
+`position: fixed` overlay, which sank every iPhone capture of `04-machine`.
 
-Two consequences for this listing:
+Safari on a real iPhone zooms that 1024-wide layout out to fit, so what a
+person actually sees is the whole UI, small. The capture reproduces exactly
+that: it renders at 1024 with the iPhone's aspect ratio and lets the scale
+factor reach Apple's pixels (1024 x 2225 at 1320/1024 -> a 1320 x 2868 PNG).
+Every scene is then reachable, because layout and visual viewport are the same
+box.
 
-1. **Every iPhone screenshot is a scaled desktop UI**, because that is genuinely
-   what an iPhone user sees. Nothing in the capture can change that; only making
-   the app responsive below 1024 px would.
-2. **`04-machine` cannot be captured on iPhone.** The Machine Manager modal is
-   `position: fixed; inset: 0`, so it is pinned to the 1024-wide layout viewport
-   and its buttons fall outside the visual viewport. Playwright cannot pan to a
-   fixed element (`scrollIntoViewIfNeeded()` is a no-op on `position: fixed`),
-   so the click times out. Hence `skipDevices: ['iphone']` on that scene.
+So the iPhone screenshots show a scaled desktop UI — not because the capture
+is wrong, but because that is the app on a phone. Changing it means making the
+editor responsive below 1024 px, which is app work, not listing work.
 
-**A person CAN reach that button by panning.** An earlier version of this note
-said a phone user could not import a machine at all; that was wrong, and the
-correction matters — the work implied is "make the app responsive", not "fix a
-modal".
+An earlier note here claimed a phone user could not import a machine at all.
+That was wrong: a person can pan and tap. The timeout was an automation limit.
