@@ -75,7 +75,6 @@ export const SCENES = Object.freeze([
     {
         id: '01-blocks',
         needsFpga: false,
-        settle: 2500,
         caption: {
             'en-US': 'Blocks that drive real hardware',
             'de-DE': 'Blöcke, die echte Hardware steuern'
@@ -84,7 +83,6 @@ export const SCENES = Object.freeze([
     {
         id: '02-circuit',
         needsFpga: false,
-        settle: 3000,
         caption: {
             'en-US': 'A breadboard that simulates, wire by wire',
             'de-DE': 'Ein Steckbrett, das Draht für Draht simuliert'
@@ -93,7 +91,6 @@ export const SCENES = Object.freeze([
     {
         id: '03-code',
         needsFpga: false,
-        settle: 2000,
         caption: {
             'en-US': 'The same program as readable code',
             'de-DE': 'Dasselbe Programm als lesbarer Code'
@@ -102,7 +99,6 @@ export const SCENES = Object.freeze([
     {
         id: '04-machine',
         needsFpga: false,
-        settle: 3000,
         caption: {
             'en-US': 'Boot a real operating system — CP/M 2.2, in the browser',
             'de-DE': 'Ein echtes Betriebssystem starten — CP/M 2.2, im Browser'
@@ -111,7 +107,6 @@ export const SCENES = Object.freeze([
     {
         id: '05-fpga',
         needsFpga: true,
-        settle: 3000,
         caption: {
             'en-US': 'Build a circuit from gates and watch it settle',
             'de-DE': 'Eine Schaltung aus Gattern bauen und ihr beim Einschwingen zusehen'

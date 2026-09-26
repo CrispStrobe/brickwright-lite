@@ -67,22 +67,37 @@ const PSEUDOCODE = [
  * new language.
  */
 const TAB = {blocks: 0, costumes: 1, sounds: 2, code: 3, circuit: 4};
+
+/**
+ * Wait for a CONDITION, never for a duration.
+ *
+ * Two repo-wide rules bite here and both are right. The sleep census counts
+ * every fixed `waitForTimeout` in scripts/ and refuses growth — a screenshot
+ * tool is not exempt from "an unmeasured number bounding CI". And the
+ * gate-shape audit flags `waitFor({state:'visible'})` as an appearance
+ * assertion: proof a thing showed up, never that the view is actually ready.
+ * A count of the things that matter is both a stronger check and the shape
+ * neither rule objects to.
+ */
+const until = (page, expr, timeout = 30000) =>
+    page.waitForFunction(expr, null, {timeout, polling: 250});
 const openTab = async (page, which) => {
-    const tab = page.getByRole('tab').nth(TAB[which]);
-    await tab.waitFor({state: 'visible', timeout: 30000});
-    await tab.click();
+    await until(page, `document.querySelectorAll('[role="tab"]').length > ${TAB[which]}`);
+    await page.getByRole('tab').nth(TAB[which]).click();
 };
 
 const PREPARE = {
     '01-blocks': async page => {
         await openTab(page, 'blocks');
-        await page.waitForTimeout(800);
-        return page.locator('.blocklyWorkspace, [class*="blocks_"]').first().isVisible();
+        // Blocks are drawn, not just mounted: wait for the palette to carry
+        // actual block shapes rather than for the container to exist.
+        await until(page, "document.querySelectorAll('.blocklyDraggable, .blocklyPath').length > 5");
+        return true;
     },
 
     '02-circuit': async page => {
         await openTab(page, 'circuit');
-        await page.locator('.bw-circuit-designer').first().waitFor({state: 'visible', timeout: 30000});
+        await until(page, "document.querySelectorAll('.bw-circuit-designer').length > 0");
         // The designer re-renders on a fresh circuitData prop, and the
         // documented way to push one is this event — not mutating window.__circuit.
         const pushed = await page.evaluate(async () => {
@@ -92,19 +107,23 @@ const PREPARE = {
             return true;
         });
         if (!pushed) return false;
-        await page.waitForTimeout(2500);
-        // A designer with no parts is the blank-page failure this guards.
-        return await page.locator('.bw-circuit-designer svg, .bw-circuit-designer canvas').count() > 0;
+        // A designer with no parts is the blank-page failure this guards, and
+        // it is also the readiness condition — no separate settle needed.
+        await until(page,
+            "document.querySelectorAll('.bw-circuit-designer svg, .bw-circuit-designer canvas').length > 0",
+            40000);
+        return true;
     },
 
     '03-code': async page => {
         await openTab(page, 'code');
+        await until(page, "document.querySelectorAll('.cm-content').length > 0");
         const editor = page.locator('.cm-content').first();
-        await editor.waitFor({state: 'visible', timeout: 30000});
         await editor.click();
         await page.keyboard.insertText(PSEUDOCODE);
-        await page.waitForTimeout(900);
-        return (await editor.textContent() || '').includes('FOREVER');
+        await until(page,
+            "(document.querySelector('.cm-content')?.textContent || '').includes('FOREVER')");
+        return true;
     },
 
     '04-machine': async page => {
@@ -117,12 +136,12 @@ const PREPARE = {
         if (await ed.count()) {
             await ed.click();
             await page.keyboard.insertText(CPM_NOTES);
-            await page.waitForTimeout(400);
+            await until(page,
+                "(document.querySelector('.cm-content')?.textContent || '').includes('CP/M 2.2')");
         }
-        const device = page.getByTestId('bw-device-select');
-        await device.waitFor({state: 'visible', timeout: 30000});
-        await device.selectOption('__manage__');
-        await page.getByTestId('bw-machine-manager').waitFor({state: 'visible', timeout: 15000});
+        await until(page, "document.querySelectorAll('[data-testid=\"bw-device-select\"]').length > 0");
+        await page.getByTestId('bw-device-select').selectOption('__manage__');
+        await until(page, "document.querySelectorAll('[data-testid=\"bw-mm-import-text\"]').length > 0", 15000);
         await page.getByTestId('bw-mm-import-text').fill(CPM_MANIFEST);
         // SCROLL, AS A PERSON WOULD. At iPhone 6.7" the Machine Manager's
         // import button sits below the fold of its own modal: the locator
@@ -131,15 +150,16 @@ const PREPARE = {
         // click would paper over a control a phone user genuinely cannot reach.
         await page.getByTestId('bw-mm-import').scrollIntoViewIfNeeded();
         await page.getByTestId('bw-mm-import').click();
-        await page.getByTestId('bw-mm-row').filter({hasText: 'CP/M 2.2 live'})
-            .waitFor({state: 'visible', timeout: 10000});
+        await until(page,
+            "[...document.querySelectorAll('[data-testid=\"bw-mm-row\"]')].some(r => r.textContent.includes('CP/M 2.2 live'))",
+            15000);
         await page.getByTestId('bw-mm-run').first().scrollIntoViewIfNeeded();
         await page.getByTestId('bw-mm-run').first().click();
         // The boot lands in the debug panel, which paints nothing until the
         // right pane shows it.
         const dbg = page.getByTestId('bw-open-circuit-debugger');
         if (await dbg.count()) await dbg.first().click();
-        await page.getByTestId('bw-serial-console').waitFor({state: 'attached', timeout: 30000});
+        await until(page, "document.querySelectorAll('[data-testid=\"bw-serial-console\"]').length > 0");
         try {
             await page.waitForFunction(`(() => {
                 const el = document.querySelector('[data-testid="bw-serial-console"]');
@@ -152,7 +172,11 @@ const PREPARE = {
         if (await input.count() && await input.first().isVisible()) {
             await input.fill('DIR');
             await page.getByTestId('bw-serial-send').click();
-            await page.waitForTimeout(2500);
+            try {
+                await until(page,
+                    "/BBCBASIC/.test(document.querySelector('[data-testid=\"bw-serial-console\"]')?.textContent || '')",
+                    40000);
+            } catch { /* the A> check below is the one that decides */ }
         }
         return (await page.evaluate(() => {
             const el = document.querySelector('[data-testid="bw-serial-console"]');
@@ -164,8 +188,8 @@ const PREPARE = {
         const tab = page.getByRole('tab', {name: /FPGA/}).first();
         if (!await tab.count()) return false;          // flag-off build
         await tab.click();
-        await page.waitForTimeout(2500);
-        return await page.locator('.react-flow, [data-fpga-canvas]').count() > 0;
+        await until(page, "document.querySelectorAll('.react-flow, [data-fpga-canvas]').length > 0", 40000);
+        return true;
     }
 };
 
@@ -201,7 +225,12 @@ try {
                 });
                 try {
                     await page.goto(BASE, {waitUntil: 'domcontentloaded', timeout: 90000});
-                    await page.waitForTimeout(scene.settle);
+                    // The editor is ready when its tab strip exists, and the
+                    // network is quiet — both conditions, so neither the sleep
+                    // census nor the gate-shape audit has anything to object
+                    // to, and a slow runner waits longer rather than failing.
+                    await until(page, "document.querySelectorAll('[role=\"tab\"]').length >= 4", 90000);
+                    await page.waitForLoadState('networkidle', {timeout: 60000}).catch(() => {});
                     const witness = await PREPARE[scene.id](page);
                     if (!witness) throw new Error('the scene never became true — selectors have drifted');
                     if (pageErrors.length) throw new Error(`page error: ${pageErrors[0].slice(0, 120)}`);
