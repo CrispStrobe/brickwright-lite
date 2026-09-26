@@ -207,9 +207,20 @@ const PREPARE = {
         }
         for (let attempt = 0; attempt < 8; attempt++) {
             try {
-                await until(page,
-                    "document.querySelectorAll('[data-testid=\"bw-fpga-ic-gate\"]').length > 0",
-                    5000);
+                // VISIBLE, not merely PRESENT. The FPGA panel is
+                // forceRenderTabPanel — drive-fpga.mjs says so — which means
+                // its controls sit in the DOM while a DIFFERENT tab is on
+                // screen. A count-based check therefore matched on attempt
+                // zero, before any click, and six "successful" FPGA shots were
+                // photographs of the Blocks palette. Right size, valid PNG,
+                // over the byte floor: every automated check passed and the
+                // picture was of the wrong thing.
+                await until(page, `(() => {
+                    const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+                    if (!el || el.getBoundingClientRect().width === 0) return false;
+                    const tabs = [...document.querySelectorAll('[role="tab"]')];
+                    return tabs[5]?.getAttribute('aria-selected') === 'true';
+                })()`, 5000);
                 return true;
             } catch { /* not up yet — nudge it and look again */ }
             if (attempt % 2 === 0) {
@@ -219,8 +230,9 @@ const PREPARE = {
                     new CustomEvent('bw-activate-tab', {detail: {index: idx}})), FPGA_TAB);
             }
         }
-        return 'the FPGA tab exists but its panel never mounted '
-            + '(no [data-testid="bw-fpga-ic-gate"] after 8 attempts)';
+        return 'the FPGA tab exists but never became the VISIBLE, selected panel '
+            + 'after 8 attempts (its controls are in the DOM either way — '
+            + 'forceRenderTabPanel)';
     }
 };
 

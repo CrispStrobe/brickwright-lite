@@ -12,6 +12,7 @@
  *   node scripts/appstore/verify-shots.mjs <dir>
  */
 import {readFileSync, statSync, existsSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {DEVICES, LOCALES, SCENES} from './scenes.mjs';
 
@@ -66,6 +67,28 @@ for (const scene of scenes) {
                 r.displayType === device.displayType);
             if (!has) problems.push(`missing: ${scene} / ${device.suffix} / ${locale}`);
         }
+    }
+}
+
+// DIFFERENT SCENES MUST LOOK DIFFERENT, and until this existed they did not
+// have to. Six FPGA shots were photographs of the Blocks palette — the witness
+// matched a panel that is in the DOM while another tab is on screen
+// (forceRenderTabPanel). Every check above passed them: right size, valid PNG,
+// over the byte floor. Only "this is the same picture as another scene" catches
+// that, and it is cheap: identical content hashes to the same digest.
+const byShape = new Map();
+for (const row of rows) {
+    const file = path.join(dir, row.name);
+    if (!existsSync(file)) continue;
+    const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
+    const key = `${row.displayType} ${row.locale}`;
+    if (!byShape.has(key)) byShape.set(key, new Map());
+    const seen = byShape.get(key);
+    if (seen.has(digest)) {
+        problems.push(`${row.name} is byte-identical to ${seen.get(digest)} — `
+            + 'two scenes captured the same view');
+    } else {
+        seen.set(digest, row.name);
     }
 }
 
