@@ -15,7 +15,10 @@ class CameraCapture {
         this._height = 0;
         this._status = 'off';
         this._ownsCamera = false;
-        if (runtime && runtime.on) runtime.on(Runtime.PROJECT_STOP_ALL, () => this.stopCamera());
+        if (runtime && typeof runtime.on === 'function') {
+            const subscribe = runtime.on.bind(runtime);
+            subscribe(Runtime.PROJECT_STOP_ALL, () => this.stopCamera());
+        }
     }
 
     getInfo () {
