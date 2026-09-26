@@ -67,6 +67,8 @@ const PSEUDOCODE = [
  * new language.
  */
 const TAB = {blocks: 0, costumes: 1, sounds: 2, code: 3, circuit: 4};
+/** FPGA follows Circuit in gui.jsx's tab list (drive-fpga.mjs names it too). */
+const FPGA_TAB = 5;
 
 /**
  * Wait for a CONDITION, never for a duration.
@@ -185,11 +187,33 @@ const PREPARE = {
     },
 
     '05-fpga': async page => {
-        const tab = page.getByRole('tab', {name: /FPGA/}).first();
-        if (!await tab.count()) return false;          // flag-off build
-        await tab.click();
-        await until(page, "document.querySelectorAll('.react-flow, [data-fpga-canvas]').length > 0", 40000);
-        return true;
+        // MEASURED IN CI (run 36255451532): all six FPGA shots failed while
+        // the other 24 passed, because this scene guessed. Two things were
+        // wrong and scripts/drive-fpga.mjs already knew both:
+        //
+        //   the readiness marker is [data-testid="bw-fpga-ic-gate"], not
+        //   `.react-flow` — the canvas library is an implementation detail;
+        //
+        //   and clicking the tab strip is not reliably enough after the app
+        //   settles. The tab's own activation event is what it uses
+        //   internally, so the two are alternated until the panel is really
+        //   there. (FPGA is tab index 5, after Circuit.)
+        if (!await page.getByRole('tab').nth(FPGA_TAB).count()) return false;   // flag-off build
+        for (let attempt = 0; attempt < 8; attempt++) {
+            try {
+                await until(page,
+                    "document.querySelectorAll('[data-testid=\"bw-fpga-ic-gate\"]').length > 0",
+                    5000);
+                return true;
+            } catch { /* not up yet — nudge it and look again */ }
+            if (attempt % 2 === 0) {
+                await page.getByRole('tab').nth(FPGA_TAB).click().catch(() => {});
+            } else {
+                await page.evaluate(idx => window.dispatchEvent(
+                    new CustomEvent('bw-activate-tab', {detail: {index: idx}})), FPGA_TAB);
+            }
+        }
+        return false;
     }
 };
 
