@@ -121,6 +121,8 @@ export const sourceOf = function (id, pins) {
 export const LITE_ONLY = {
     arcade: 'Lite-native. Reads the GUI console\'s runtime state, so upstreaming it ' +
         'would mean upstreaming that contract too.',
+    cameracapture: 'Lite-native. Integrates with the app\'s shared Video Sensing provider and preview ' +
+        'to capture still images without opening a competing camera stream.',
 };
 
 /**

@@ -62,7 +62,7 @@
        WKWebView UI delegate grants the in-page request, but iOS still requires
        these strings or it terminates the app on first access. -->
   <key>NSCameraUsageDescription</key>
-  <string>Brickwright uses the camera for the Video Sensing blocks and to let you photograph costumes.</string>
+  <string>Brickwright uses the camera for Video Sensing, photo projects such as LEGO scanners, and photographing costumes.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Brickwright uses the microphone for the loudness/sound blocks and to record sounds.</string>
   <key>NSSpeechRecognitionUsageDescription</key>

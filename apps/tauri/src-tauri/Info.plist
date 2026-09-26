@@ -21,7 +21,7 @@
        the in-page request; macOS still shows the system TCC prompt gated by these
        strings, so both must be present or the app is killed on first access. -->
   <key>NSCameraUsageDescription</key>
-  <string>Brickwright uses the camera for the Video Sensing blocks and to let you photograph costumes.</string>
+  <string>Brickwright uses the camera for Video Sensing, photo projects such as LEGO scanners, and photographing costumes.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Brickwright uses the microphone for the loudness/sound blocks and to record sounds.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
