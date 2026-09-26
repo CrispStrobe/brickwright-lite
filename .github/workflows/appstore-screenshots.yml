@@ -16,9 +16,13 @@ on:
   workflow_dispatch:
     inputs:
       upload:
-        description: "(not implemented yet — fails loudly; see the step's comment)"
+        description: Replace the App Store screenshot sets after capture
         type: boolean
         default: false
+      dry_run:
+        description: With upload — read everything, write nothing (do this first)
+        type: boolean
+        default: true
       flag_on:
         description: Build flag-on, so the FPGA scene is captured too
         type: boolean
@@ -99,23 +103,22 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # UPLOADING IS DELIBERATELY NOT WIRED YET, and this step says so rather
-      # than pretending. Replacing the live sets is destructive — it removes
-      # what is on the store page now — and the App Store Connect upload dance
-      # (reserve, chunked PUT, commit with an MD5 per part) cannot be exercised
-      # from here at all: there is no way to test it short of running it
-      # against the real listing. Shipping an untested implementation of a
-      # destructive operation is worse than shipping none.
+      # Replacing the sets is a WRITE to the store listing, so it is opt-in
+      # twice: `upload` must be ticked, and `dry_run` decides whether anything
+      # is actually sent. Apple's own API is the third guard — every write here
+      # targets an appStoreVersion in an EDITABLE state, so a live or
+      # in-review version has no localisation this can find and the run fails
+      # by name instead of touching it.
       #
-      # The reference implementation to port is CrispDeck's
-      # `tools/asc/screenshots.py`, which already does this against this same
-      # team's credentials. Until it is ported and someone has watched it run
-      # once, the artifact above is the deliverable and the sets are replaced
-      # by hand from it.
+      # The first use should be `upload: true, dry_run: true`: it performs
+      # every read, prints what it would replace, and writes nothing.
       - name: Replace the App Store screenshot sets
         if: inputs.upload
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
         run: |
-          echo "::error::`upload` is not implemented yet — download the"
-          echo "::error::brickwright-appstore-screenshots artifact and replace the sets by hand."
-          echo "::error::Port CrispDeck tools/asc/screenshots.py to wire this up."
-          exit 1
+          node scripts/appstore/upload-shots.mjs appstore-shots --replace \
+            ${{ inputs.dry_run && '--dry-run' || '' }}

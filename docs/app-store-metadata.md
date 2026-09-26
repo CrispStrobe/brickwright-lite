@@ -1216,9 +1216,17 @@ is the plan — devices, locales, scenes and captions — and
 having copy in every locale captured.
 
 `upload` defaults to **false**. The artifact is for a person to look at first;
-replacing the live sets is a second, explicit act, because a screenshot is
-editorial and a correctly-sized picture of the wrong thing still passes every
-automated check.
+replacing the sets is a second, explicit act, because a screenshot is editorial
+and a correctly-sized picture of the wrong thing still passes every automated
+check.
+
+When you do upload, `dry_run` defaults to **true**: it performs every read,
+prints what it would replace, and writes nothing. Do that once before trusting
+it. Three guards sit in front of a write — `upload` must be ticked, `dry_run`
+must be cleared, and Apple's own API only exposes a localisation for a version
+in an **editable** state (`PREPARE_FOR_SUBMISSION`, `REJECTED`,
+`DEVELOPER_REJECTED`, `METADATA_REJECTED`). A live or in-review version has
+none, so the run fails by name rather than rewriting the page customers see.
 
 | device | display type | pixels |
 |---|---|---|
