@@ -203,6 +203,61 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.19 en-US
+
+This build turns Camera Capture into a complete scanner and sharing workflow.
+
+Please focus on:
+1. After granting camera access, refresh the camera list on iPhone/iPad or Mac.
+   Select a built-in or USB webcam with a requested resolution and frame rate.
+   Disconnect the selected USB camera and confirm Brickwright falls back cleanly.
+2. Try zoom, focus distance, exposure and torch controls. Unsupported controls
+   should report that honestly; they must not crash or pretend to work.
+3. Begin a scan, take and save several frames, then export and reopen the
+   `.bwscan.zip`. Add the last photo as a costume and confirm it appears on the
+   current sprite. Sessions are limited to 500 frames / 512 MiB.
+4. On a LiDAR-equipped iPhone or iPad, start the depth camera and save frames.
+   The archive should contain RGB, depth and confidence data. Other devices and
+   ordinary USB webcams should explicitly report `RGB only`.
+5. Share a project, source file, firmware, photo and scan. Test the iOS/macOS
+   share sheet with AirDrop or LocalSend if installed. Also start local-network
+   scan sharing, download the exact file from the reported URL, stop it, and
+   confirm the URL no longer works.
+6. Confirm camera and local-network permission prompts explain their purpose.
+   Brickwright should not request Photos-library access.
+
+Please report the device/OS, camera model, requested and actual capture settings,
+and whether the app, AirDrop, LocalSend or LAN URL was used.
+
+## What to Test — 0.1.19 de-DE
+
+Dieser Build macht aus **Kameraaufnahme** einen vollständigen Scanner- und
+Freigabeablauf.
+
+Bitte besonders testen:
+1. Nach erteiltem Kamerazugriff die Kameraliste auf iPhone/iPad oder Mac
+   aktualisieren. Eine eingebaute oder USB-Webcam mit gewünschter Auflösung und
+   Bildrate wählen. Die gewählte USB-Kamera trennen; Brickwright soll sauber auf
+   die Standardkamera zurückfallen.
+2. Zoom, Fokusabstand, Belichtung und Taschenlampe ausprobieren. Nicht
+   unterstützte Regler müssen dies ehrlich melden und dürfen weder abstürzen noch
+   eine Wirkung vortäuschen.
+3. Eine Scan-Sitzung beginnen, mehrere Bilder speichern, `.bwscan.zip`
+   exportieren und wieder öffnen. Das letzte Foto als Kostüm hinzufügen und am
+   aktuellen Objekt prüfen. Sitzungen sind auf 500 Bilder / 512 MiB begrenzt.
+4. Auf einem iPhone oder iPad mit LiDAR die Tiefenkamera starten und Bilder
+   speichern. Das Archiv soll RGB-, Tiefen- und Konfidenzdaten enthalten. Andere
+   Geräte und normale USB-Webcams müssen ausdrücklich `nur RGB` melden.
+5. Projekt, Quelltext, Firmware, Foto und Scan teilen. Auf iOS/macOS AirDrop oder
+   LocalSend (falls installiert) testen. Außerdem die lokale Netzwerkfreigabe
+   starten, genau die gemeldete Datei laden, die Freigabe stoppen und prüfen,
+   dass die Adresse danach nicht mehr funktioniert.
+6. Die Zwecktexte der Kamera- und lokalen Netzwerkabfragen prüfen. Zugriff auf
+   die Fotomediathek darf nicht angefordert werden.
+
+Bitte Gerät/OS, Kameramodell, gewünschte und tatsächliche Aufnahmewerte sowie den
+verwendeten Weg (App, AirDrop, LocalSend oder LAN-Adresse) melden.
+
 ## What to Test — 0.1.18 en-US
 
 This build adds Camera Capture for projects that need reusable still images,
