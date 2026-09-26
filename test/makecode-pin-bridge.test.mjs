@@ -32,10 +32,12 @@ const PARTS = path.join(ROOT, 'node_modules/bw-circuit-ui/src/parts-data');
 
 /** simPinNames, exactly as host.html defines it. */
 function hostSimPinNames () {
-    const m = /\/\/ bw-pin-names:begin[^\n]*\n([\s\S]*?)\/\/ bw-pin-names:end/.exec(HOST);
-    assert.ok(m, 'host.html lost its bw-pin-names markers');
+    const begin = HOST.indexOf('// bw-pin-names:begin');
+    const end = HOST.indexOf('// bw-pin-names:end');
+    assert.ok(begin >= 0 && end > begin, 'host.html lost its bw-pin-names markers');
+    assert.equal(HOST.indexOf('// bw-pin-names:begin', begin + 1), -1, 'one bw-pin-names block, not two');
     const sb = {};
-    vm.runInNewContext(`${m[1]}\nthis.simPinNames = simPinNames;`, sb);
+    vm.runInNewContext(`${HOST.slice(begin, end)}\nthis.simPinNames = simPinNames;`, sb);
     return sb.simPinNames;
 }
 
@@ -97,8 +99,15 @@ const skip = synced ? false : 'MakeCode runtime not synced (npm run sync:makecod
 test('against the synced runtime: the real CPlayPinName and the real Calliope names reach the pads', {skip}, () => {
     const simPinNames = hostSimPinNames();
     const src = fs.readFileSync(cpxSim, 'utf8');
-    const m = /var CPlayPinName;\s*\(function \(CPlayPinName\) \{[\s\S]*?\}\)\(CPlayPinName = pxsim\.CPlayPinName \|\| \(pxsim\.CPlayPinName = \{\}\)\);/.exec(src);
-    assert.ok(m, 'pxt-adafruit sim.js no longer declares CPlayPinName the way the host page reads it');
+    // The CPlayPinName namespace block, cut by its own opening and closing
+    // statements (both exact literals, each asserted to occur once).
+    const OPEN = 'var CPlayPinName;';
+    const CLOSE = '})(CPlayPinName = pxsim.CPlayPinName || (pxsim.CPlayPinName = {}));';
+    const from = src.indexOf(OPEN);
+    const to = src.indexOf(CLOSE, from);
+    assert.ok(from >= 0 && to > from, 'pxt-adafruit sim.js no longer declares CPlayPinName the way the host page reads it');
+    assert.equal(src.indexOf(OPEN, from + 1), -1, 'one CPlayPinName declaration');
+    const m = [src.slice(from, to + CLOSE.length)];
     const pxsim = {
         getConfigKey: k => (CPLAY_KEYS.includes(k.slice(4)) ? k : null),
         getConfig: k => cpxConfigId(k.slice(4))
