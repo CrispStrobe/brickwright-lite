@@ -507,8 +507,8 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: artifacts/makecode
-          # The four TARBALLS sha256s in scripts/sync-makecode-runtime.mjs; new bytes are a new key.
-          key: makecode-b0885ffb-d403926d-049331a7-e2c4c2a3
+          # The pin tables (TARBALLS, BASES) live in the sync script: a changed pin is a new key.
+          key: makecode-${{ hashFiles('scripts/sync-makecode-runtime.mjs') }}
       - name: Fetch the pinned MakeCode runtime (tolerated absent)
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
         timeout-minutes: 5
@@ -908,7 +908,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: artifacts/makecode
-          key: makecode-b0885ffb-d403926d-049331a7-e2c4c2a3
+          key: makecode-${{ hashFiles('scripts/sync-makecode-runtime.mjs') }}
       - name: Fetch the pinned MakeCode runtime for the browser gates (tolerated absent)
         if: ${{ !cancelled() && steps.overlays_browser.outcome == 'success' }}
         timeout-minutes: 5

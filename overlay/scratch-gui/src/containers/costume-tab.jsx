@@ -6,6 +6,10 @@ import VM from 'scratch-vm';
 
 import AssetPanel from '../components/asset-panel/asset-panel.jsx';
 import PaintEditorWrapper from './paint-editor-wrapper.jsx';
+
+// The palette pixel editor (Arcade-style sprites): loaded on first use only.
+const PixelArtEditor = React.lazy(() =>
+    import(/* webpackChunkName: "bw-pixel-editor" */ '../components/tw-pseudocode/pixel-art-editor.jsx'));
 import getFonts from '../lib/lazy-render-fonts.js';
 import {connect} from 'react-redux';
 import {handleFileUpload, costumeUpload} from '../lib/file-uploader.js';
@@ -95,9 +99,9 @@ class CostumeTab extends React.Component {
         } = props;
         const target = editingTarget && sprites[editingTarget] ? sprites[editingTarget] : stage;
         if (target && target.currentCostume) {
-            this.state = {selectedCostumeIndex: target.currentCostume};
+            this.state = {selectedCostumeIndex: target.currentCostume, pixelMode: false};
         } else {
-            this.state = {selectedCostumeIndex: 0};
+            this.state = {selectedCostumeIndex: 0, pixelMode: false};
         }
     }
     componentDidMount () {
@@ -326,12 +330,41 @@ class CostumeTab extends React.Component {
                 onExportClick={this.handleExportCostume}
                 onItemClick={this.handleSelectCostume}
             >
-                {target.costumes ?
-                    <PaintEditorWrapper
-                        selectedCostumeIndex={this.state.selectedCostumeIndex}
-                    /> :
-                    null
-                }
+                {target.costumes ? (
+                    <div style={{display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0}}>
+                        {/* scratch-paint has no grid and no palette lock; Arcade
+                            art is edited AS pixels in the palette editor. */}
+                        <div style={{display: 'flex', justifyContent: 'flex-end', padding: '4px 8px 0'}}>
+                            <button type="button" data-testid="bw-pixel-toggle"
+                                onClick={() => this.setState(state => ({pixelMode: !state.pixelMode}))}
+                                style={{fontSize: 12, padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
+                                    border: '1px solid #cbd5e1', background: this.state.pixelMode ? '#e0edff' : '#fff'}}>
+                                {this.state.pixelMode ?
+                                    (/^de/i.test(navigator.language) ? '✎ Malprogramm' : '✎ Paint editor') :
+                                    (/^de/i.test(navigator.language) ? '▦ Pixel-Editor' : '▦ Pixel editor')}
+                            </button>
+                        </div>
+                        <div style={{flex: 1, minHeight: 0}}>
+                            {/* The paint editor stays MOUNTED and is only hidden: unmounting
+                                it while scratch-paint is still importing a costume leaves a
+                                pending paper.js callback reading a destroyed project
+                                ("reading 'layers'"), which crashes the whole tab. */}
+                            <div style={{display: this.state.pixelMode ? 'none' : 'contents'}}>
+                                <PaintEditorWrapper
+                                    selectedCostumeIndex={this.state.selectedCostumeIndex}
+                                />
+                            </div>
+                            {this.state.pixelMode ? (
+                                <React.Suspense fallback={null}>
+                                    <PixelArtEditor
+                                        costumeIndex={this.state.selectedCostumeIndex}
+                                        vm={vm}
+                                    />
+                                </React.Suspense>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : null}
             </AssetPanel>
         );
     }

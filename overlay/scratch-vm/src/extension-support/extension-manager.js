@@ -128,6 +128,7 @@ const lazyBuiltinExtensions = {
     text2speech: () => import(/* webpackChunkName: "ext-text2speech" */ '../extensions/scratch3_text2speech/index.js'),
     translate: () => import(/* webpackChunkName: "ext-translate" */ '../extensions/scratch3_translate/index.js'),
     videoSensing: () => import(/* webpackChunkName: "ext-videosensing" */ '../extensions/scratch3_video_sensing/index.js'),
+    cameracapture: () => import(/* webpackChunkName: "ext-cameracapture" */ '../extensions/crispstrobe/cameracapture/index.js'),
     ev3: () => import(/* webpackChunkName: "ext-ev3" */ '../extensions/scratch3_ev3/index.js'),
     boost: () => import(/* webpackChunkName: "ext-boost" */ '../extensions/scratch3_boost/index.js'),
     gdxfor: () => import(/* webpackChunkName: "ext-gdxfor" */ '../extensions/scratch3_gdx_for/index.js')

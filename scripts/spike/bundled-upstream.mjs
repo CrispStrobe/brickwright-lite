@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = 'fb7ce5f5da2c058938dbf76567233d0bacd567b7';
+export const UPSTREAM_COMMIT = '6dccbff0708c5e2c2904558b8eb83f06e8572b44';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**
@@ -121,6 +121,8 @@ export const sourceOf = function (id, pins) {
 export const LITE_ONLY = {
     arcade: 'Lite-native. Reads the GUI console\'s runtime state, so upstreaming it ' +
         'would mean upstreaming that contract too.',
+    cameracapture: 'Lite-native. Integrates with the app\'s shared Video Sensing provider and preview ' +
+        'to capture still images without opening a competing camera stream.',
 };
 
 /**

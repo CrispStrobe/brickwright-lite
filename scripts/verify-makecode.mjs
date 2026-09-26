@@ -77,6 +77,8 @@ if (!url) {
 }
 
 const failures = [];
+// Every console error, in order, so a check can say WHICH step produced one.
+const browserErrors = [];
 const check = (name, ok, detail = '') => {
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
     if (!ok) failures.push(name);
@@ -99,7 +101,10 @@ try {
     const page = await browser.newPage({viewport: {width: 1600, height: 1000}});
     page.on('dialog', d => d.dismiss());
     page.on('console', message => {
-        if (message.type() === 'error') console.log(`  browser error: ${message.text().slice(0, 160)}`);
+        if (message.type() === 'error') {
+            console.log(`  browser error: ${message.text().slice(0, 160)}`);
+            browserErrors.push(message.text());
+        }
     });
     await page.addInitScript(() => {
         localStorage.clear();
@@ -228,6 +233,89 @@ try {
             return n;
         }).catch(() => 0), n => n > 50, 60000) : 0;
         check('the imported Arcade game draws in MakeCode\'s Arcade simulator', lit > 50, `${lit} lit pixels`);
+    }
+
+    // ── 2c. the imported art edits AS pixels (costume tab → ▦ Pixel editor) ──
+    {
+        // The import only WRITES the program; its sprites and costumes exist in the
+        // project once ⇦ To blocks builds it. Without this the Costumes tab shows the
+        // default sprite, and "reads it exactly" would be a question about the cat.
+        // The ⋯ actions menu is a <details> that stays open after an item is chosen
+        // (zIndex 70, over the editor toolbar). With the Arcade items it now reaches
+        // over ⇦ To blocks, and a forced click lands on a menu item; close it first.
+        await page.evaluate(() => {
+            for (const d of document.querySelectorAll('[data-testid="bw-code-actions"]')) d.open = false;
+        });
+        await page.locator('button', {hasText: /To blocks|Zu Blöcken/i}).first().click({force: true}).catch(() => {});
+        const built = await waitFor(() => page.evaluate(() => {
+            const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
+            return vm ? vm.runtime.targets.filter(t => !t.isStage).map(t => t.getName()) : [];
+        }).catch(() => []), names => names.includes('mySprite'), 30000);
+        check('⇦ To blocks builds the imported Arcade sprites', built.includes('mySprite'), built.join(', '));
+        const costumesTab = page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first();
+        if (await costumesTab.count()) {
+            await costumesTab.click();
+            // Select the imported sprite by name: it carries the Arcade art.
+            const sprite = page.locator('[class*="sprite-selector-item"]', {hasText: 'mySprite'}).first();
+            if (await sprite.count()) await sprite.click().catch(() => {});
+            // A crash here would be the paint editor itself on the imported costume, not the toggle.
+            const tabErrors = browserErrors.filter(e => /Costume Tab/.test(e)).length;
+            check('the costume tab opens on an imported Arcade sprite without crashing', tabErrors === 0,
+                tabErrors ? browserErrors.filter(e => /Costume Tab/.test(e))[0].slice(0, 140) : '');
+            await page.locator('[data-testid="bw-pixel-toggle"]').click({timeout: 20000}).catch(() => {});
+            const canvas = page.locator('[data-testid="bw-pixel-canvas"]');
+            await canvas.waitFor({state: 'visible', timeout: 20000}).catch(() => {});
+            const cells = await canvas.evaluate(c => {
+                if (!c.width) return 0;
+                const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+                let coloured = 0;
+                for (let i = 0; i < d.length; i += 4) {
+                    const grey = Math.abs(d[i] - d[i + 1]) < 8 && Math.abs(d[i + 1] - d[i + 2]) < 8;
+                    if (!grey) coloured++;
+                }
+                return coloured;
+            }).catch(() => 0);
+            check('the costume tab\'s pixel editor opens an imported Arcade costume as palette pixels', cells > 0, `${cells} coloured canvas pixels`);
+            const toggleErrors = browserErrors.filter(e => /Costume Tab/.test(e)).length - tabErrors;
+            check('switching to the pixel editor does not crash the tab', toggleErrors === 0,
+                toggleErrors ? 'the paint editor was torn down mid-import' : '');
+            const converted = await page.locator('text=/was not pixel art|keine Pixelgrafik/').count();
+            check('and reads it exactly, not by conversion', converted === 0);
+            await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
+        } else {
+            check('a Costumes tab exists', false);
+        }
+    }
+
+    // ── 2d. …and the Scratch project it became goes BACK to Arcade and plays ──
+    // After 2c pressed ⇦ To blocks, so this exports the IMPORTED game's sprites;
+    // run before it, it exported the default project and passed for the wrong reason.
+    if (runtime) {
+        await clickAction('bw-makecode-arcade-run');
+        const frame = await simFrame('arcade');
+        const lit = frame ? await waitFor(() => frame.evaluate(() => {
+            const c = document.querySelector('canvas');
+            if (!c || !c.width) return 0;
+            const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+            let n = 0;
+            for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 30) n++;
+            return n;
+        }).catch(() => 0), n => n > 20, 60000) : 0;
+        check('▶ Run as MakeCode Arcade: the live Scratch project exports, compiles and draws', lit > 20, `${lit} lit pixels`);
+    }
+
+    // ── 2e. a LEGO MINDSTORMS EV3 program runs in MakeCode's EV3 simulator ──
+    if (runtime) {
+        await input.setInputFiles(join(fixtures, 'ev3-button-events.uf2'));
+        await waitFor(paneText, t => /ev3|EV3/.test(t), 30000);
+        await clickAction('bw-makecode-run');
+        const pane = page.locator('[data-testid="bw-makecode-pane"][data-target="ev3"]');
+        await pane.waitFor({state: 'visible', timeout: 60000}).catch(() => {});
+        check('an imported EV3 program opens MakeCode\'s EV3 simulator', await pane.count() > 0);
+        const frame = await simFrame('ev3');
+        const drawn = frame ? await waitFor(() => frame.evaluate(() => document.querySelectorAll('svg *').length).catch(() => 0),
+            n => n > 20, 60000) : 0;
+        check('and the brick is drawn', drawn > 20, `${drawn} svg elements`);
     }
 
     // ── 3. a file with nothing in it says so, rather than failing ─────

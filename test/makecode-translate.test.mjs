@@ -259,3 +259,100 @@ test('every icon in the table is a well-formed 5x5 pattern', () => {
     const blank = Object.entries(all).filter(([, p]) => !/[1-9]/.test(p));
     assert.deepEqual(blank, [], 'no icon should be empty');
 });
+
+// ── Batch 1 of the MakeCode census (2026-09-25) ────────────────────────────
+//
+// The calls MakeCode's own 215 micro:bit apps most often made the import
+// REFUSE (plotBarGraph 15 apps, addScore 11, setBrightness 9, stopAnimation
+// 6, gameOver 5, randomBoolean 3, toggle 3, removeLife 2, pins.map 2,
+// idiv 2) or LOSE without a word (Math.max/min 10, game.score 5). Each now
+// has a spelling the dialect parses to a real block (sb3-creator) and a
+// MicroPython lowering the simulator runs.
+
+const BATCH_1 = [
+    // [MakeCode, the line it imports to, the opcode that line compiles to]
+    ['led.plotBarGraph(input.lightLevel(), 255)', 'plot bar graph of (read light) up to 255', 'microbitplus_plotbargraph'],
+    ['led.toggle(1, 2)', 'toggle x 1 y 2', 'microbitplus_toggle'],
+    ['led.setBrightness(v * 2)', 'set display brightness to (v * 2)', 'microbitplus_setbrightness'],
+    ['led.stopAnimation()', 'stop animation', 'microbitplus_stopanimation'],
+    ['game.addScore(1)', 'change game score by 1', 'microbitplus_addscore'],
+    ['game.setScore(4)', 'set game score to 4', 'microbitplus_setscore'],
+    ['game.removeLife(1)', 'remove game life 1', 'microbitplus_removelife'],
+    ['game.gameOver()', 'game over', 'microbitplus_gameover'],
+    ['basic.showNumber(game.score())', 'display game score', 'microbitplus_score'],
+    ['v = pins.map(v, 0, 1023, 0, 4)', 'set v to map v from low 0 high 1023 to low 0 high 4', 'microbitplus_map'],
+    ['v = Math.map(v, 0, 10, 0, 100)', 'set v to map v from low 0 high 10 to low 0 high 100', 'microbitplus_map'],
+    ['v = Math.min(v, 3)', 'set v to min of v and 3', 'planetemaths_min'],
+    ['v = Math.max(v - 1, 0)', 'set v to max of (v - 1) and 0', 'planetemaths_max'],
+    ['v = Math.idiv(v, 4)', 'set v to ((v / 4) bitor 0)', 'bitops_or'],
+    ['if (Math.randomBoolean()) { basic.clearScreen() }', 'IF (pick random 0 to 1) = 1 THEN:', 'operator_random']
+];
+
+for (const [ts, line, opcode] of BATCH_1) {
+    test(`census batch 1: \`${ts}\` imports as \`${line}\` → ${opcode}`, {skip: canCompile ? false :
+        'packages/scratch-gui not integrated'}, () => {
+        const out = microbitToPseudocode(`let v = 0\nbasic.forever(function () {\n    ${ts}\n})\n`);
+        assert.deepEqual(out.unsupported, [], 'nothing refused');
+        assert.ok(out.code.includes(line), `\`${line}\` not in:\n${out.code}`);
+        assert.ok(opcodesOf(out.code).has(opcode), `${opcode} missing: the line parsed to nothing`);
+    });
+}
+
+test('Math.min and Math.max keep BOTH arguments (they kept only the first)', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // `Math.max(0, x)` came in as `0` — a program that clamps a position
+    // came in as one that pins it to the edge, and nothing said so.
+    const {code} = microbitToPseudocode('let x = 0\nx = Math.max(0, x - 1)\nx = Math.min(4, x + 1)\n');
+    assert.match(code, /set x_ to max of 0 and \(x_ - 1\)/);
+    assert.match(code, /set x_ to min of 4 and \(x_ \+ 1\)/);
+});
+
+test('a compound argument to abs/floor/sqrt is parenthesised (abs of a - b is |a| - b)', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const {code} = microbitToPseudocode('let a = 0\nlet b = 0\na = Math.abs(a - b)\nb = Math.floor(a / 2)\n');
+    assert.match(code, /set a to abs of \(a - b\)/);
+    assert.match(code, /set b to floor of \(a \/ 2\)/);
+    const creator = new SB3Creator();
+    creator.parse(code);
+    // the whole difference is inside the abs, not subtracted after it
+    assert.match(creator.decompile(), /abs of \(a - b\)/);
+});
+
+test('Math.idiv truncates toward zero, as its definition (a / b) | 0 does', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // `floor of (a / b)` would be -4 for -7 / 2; MakeCode's idiv is -3.
+    const {code} = microbitToPseudocode('let q = 0\nq = Math.idiv(0 - 7, 2)\nbasic.showNumber(q)\n');
+    const creator = new SB3Creator();
+    creator.parse(code);
+    const mp = creator.generateMicroPython();
+    assert.ok(mp.ok, JSON.stringify(mp.reasons));
+    assert.match(mp.py, /q = \(int\(\(\(0 - 7\) \/ 2\)\) \| int\(0\)\)/, mp.py);
+});
+
+test('game.score() is the game\'s score, not a variable nothing ever set', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const {code} = microbitToPseudocode('game.addScore(2)\nbasic.showNumber(game.score())\n');
+    assert.doesNotMatch(code, /display score$/m, 'the old spelling read a variable called score');
+    const creator = new SB3Creator();
+    creator.parse(code);
+    const mp = creator.generateMicroPython();
+    assert.ok(mp.ok, JSON.stringify(mp.reasons));
+    assert.match(mp.py, /_bw_add_score\(2\)/);
+    assert.match(mp.py, /display\.scroll\(str\(_bw_score\)/);
+});
+
+test('Math.randomBoolean as a VALUE is the dialect\'s 0/1, not a comparison stored as text', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // `set b to (pick random 0 to 1) = 1` does not parse as a comparison:
+    // the set rule stores the TEXT "(pick random 0 to 1) = 1". So the
+    // comparison is only written where a condition is expected.
+    const {code} = microbitToPseudocode('let b = false\nb = Math.randomBoolean()\nif (Math.randomBoolean()) { b = true }\n');
+    assert.match(code, /set b to pick random 0 to 1$/m);
+    assert.match(code, /IF \(pick random 0 to 1\) = 1 THEN:/);
+    const creator = new SB3Creator();
+    creator.parse(code);
+    const mp = creator.generateMicroPython();
+    assert.ok(mp.ok, JSON.stringify(mp.reasons));
+    assert.match(mp.py, /b = random\.randint\(0, 1\)/, mp.py);
+    assert.doesNotMatch(mp.py, /b = "/, 'the coin toss became a string');
+});

@@ -324,6 +324,14 @@ export default [
         featured: true
     },
     {
+        name: 'Camera Capture',
+        extensionId: 'cameracapture',
+        iconURL: videoSensingIconURL,
+        insetIconURL: videoSensingInsetIconURL,
+        description: 'Take photos for scanners and camera projects.',
+        featured: true
+    },
+    {
         name: (
             <FormattedMessage
                 defaultMessage="Text to Speech"

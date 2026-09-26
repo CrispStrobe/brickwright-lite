@@ -49,12 +49,12 @@ test('an artefact is read as bytes, not as text', () => {
     assert.match(method, /new Uint8Array\(reader\.result\)/);
 });
 
-test('all four entry points share one lazily-loaded chunk', () => {
-    const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/index\.js'/g)]
+test('all five entry points share one lazily-loaded chunk', () => {
+    const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/(index|export-arcade)\.js'/g)]
         .map(m => m[1]);
-    assert.equal(chunks.length, 4,
-        'file import, share import, export, and the ▶/⤓ MakeCode subject (blocks exported for pxt)');
-    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not four');
+    assert.equal(chunks.length, 6,
+        'file import, share import, export, the ▶/⤓ MakeCode subject, the Arcade export (+ its hex container)');
+    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not six');
 });
 
 test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and ⤓ actions only', () => {
@@ -63,9 +63,10 @@ test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and
     assert.doesNotMatch(source, /^import .*bw-makecode\/pxt-runtime\.js/m);
     const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/pxt-runtime\.js'/g)]
         .map(m => m[1]);
-    assert.equal(chunks.length, 2, 'run in the simulator, and build the firmware');
+    assert.equal(chunks.length, 3, 'run in the simulator, build the firmware, run this project as Arcade');
     assert.deepEqual([...new Set(chunks)], ['bw-makecode-pxt']);
-    for (const [method, testid] of [['runInMakeCode ()', 'bw-makecode-run'], ['downloadMakeCodeFirmware ()', 'bw-makecode-firmware']]) {
+    for (const [method, testid] of [['runInMakeCode ()', 'bw-makecode-run'], ['downloadMakeCodeFirmware ()', 'bw-makecode-firmware'],
+        ['runAsArcade ()', 'bw-makecode-arcade-run']]) {
         assert.ok(scopeAfter(source, `async ${method} {`).includes('compileMakeCode('), `${method} does not compile`);
         assert.match(source, new RegExp(`data-testid="${testid}"`), `no ${testid} button`);
     }

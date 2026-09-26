@@ -123,6 +123,21 @@ class Emitter {
         return r && BOOLEAN_REPORTERS.has(r.opcode) ? this.reporter(r) : null;
     }
 
+    /** The block plugged into this input, or null for a literal/empty slot. */
+    inputBlock (b, name) {
+        const input = b.inputs && b.inputs[name];
+        const slot = input && input[1];
+        return typeof slot === 'string' ? this.block(slot) : null;
+    }
+
+    /** `operator_equals(operator_random(0, 1), 1)` — a coin toss. */
+    isCoinToss (b) {
+        const random = this.inputBlock(b, 'OPERAND1');
+        return !!random && random.opcode === 'operator_random' &&
+            this.numberInput(random, 'FROM') === 0 && this.numberInput(random, 'TO') === 1 &&
+            this.numberInput(b, 'OPERAND2') === 1;
+    }
+
     /** The numeric literal in this input, or null. */
     numberInput (b, name) {
         const input = b.inputs && b.inputs[name];
@@ -258,6 +273,11 @@ class Emitter {
             // reporter alone says the same thing and typechecks.
             const bare = this.booleanOperand(b);
             if (bare !== null) return bare;
+            // `(pick random 0 to 1) = 1` is how the importer says
+            // Math.randomBoolean() in a dialect without booleans; read back,
+            // it is that call again rather than a comparison MakeCode would
+            // show as a different block.
+            if (this.isCoinToss(b)) return 'Math.randomBoolean()';
             return this.booleanCompare(b, '==') || `(${v('OPERAND1')} == ${v('OPERAND2')})`;
         }
         case 'operator_and': return `(${this.condition(b, 'OPERAND1')} && ${this.condition(b, 'OPERAND2')})`;
@@ -290,6 +310,12 @@ class Emitter {
         // Added to the importer in sb3-creator#3 and never to this table,
         // which is exactly the asymmetry the round-trip gate exists to
         // catch — twelve of them in the Calliope corpus.
+        // Planète Maths' min/max: the importer's spelling for Math.min/max.
+        case 'planetemaths_min': return `Math.min(${v('NUM1')}, ${v('NUM2')})`;
+        case 'planetemaths_max': return `Math.max(${v('NUM1')}, ${v('NUM2')})`;
+        case 'microbitplus_score': return 'game.score()';
+        case 'microbitplus_map':
+            return `pins.map(${v('VALUE')}, ${v('FROMLOW')}, ${v('FROMHIGH')}, ${v('TOLOW')}, ${v('TOHIGH')})`;
         case 'microbitplus_isgesture':
             return `input.isGesture(${GESTURE[String(f('GESTURE')).toLowerCase()] || 'Gesture.Shake'})`;
         case 'microbitplus_istouch':
@@ -308,7 +334,15 @@ class Emitter {
         // MakeCode's TypeScript has the operators the pseudocode had to
         // borrow an extension for, so these go back as themselves.
         case 'bitops_and': return `(${v('NUM1')} & ${v('NUM2')})`;
-        case 'bitops_or': return `(${v('NUM1')} | ${v('NUM2')})`;
+        // `(a / b) bitor 0` is Math.idiv's own definition, which is how the
+        // importer writes it; the way back names the call.
+        case 'bitops_or': {
+            const quotient = this.numberInput(b, 'NUM2') === 0 ? this.inputBlock(b, 'NUM1') : null;
+            if (quotient && quotient.opcode === 'operator_divide') {
+                return `Math.idiv(${this.value(quotient, 'NUM1')}, ${this.value(quotient, 'NUM2')})`;
+            }
+            return `(${v('NUM1')} | ${v('NUM2')})`;
+        }
         case 'bitops_xor': return `(${v('NUM1')} ^ ${v('NUM2')})`;
         case 'bitops_shl': return `(${v('NUM1')} << ${v('NUM2')})`;
         case 'bitops_shr': return `(${v('NUM1')} >> ${v('NUM2')})`;
@@ -370,9 +404,17 @@ class Emitter {
             out.push(...this.substack(b, 'SUBSTACK2', indent + 1));
             push('}');
             return;
-        case 'control_wait':
-            push(`basic.pause(${v('DURATION')} * 1000)`);
+        case 'control_wait': {
+            // A literal duration is written as milliseconds, the way MakeCode's
+            // own blocks write it — and the way the importer reads it back to the
+            // same seconds, so a round trip is a fixed point.
+            const d = v('DURATION');
+            const n = Number(d);
+            push(d.trim() !== '' && Number.isFinite(n) ?
+                `basic.pause(${Math.round(n * 1000 * 1000) / 1000})` :
+                `basic.pause(${d} * 1000)`);
             return;
+        }
         case 'control_wait_until':
             push(`pauseUntil(() => ${this.condition(b, 'CONDITION')})`);
             return;
@@ -464,6 +506,32 @@ class Emitter {
             return;
         case 'microbitplus_plot':
             push(`led.${f('STATE') === 'off' ? 'unplot' : 'plot'}(${v('X')}, ${v('Y')})`);
+            return;
+
+        // MakeCode's led and game calls, which the importer reads into these.
+        case 'microbitplus_plotbargraph':
+            push(`led.plotBarGraph(${v('VALUE')}, ${v('HIGH')})`);
+            return;
+        case 'microbitplus_toggle':
+            push(`led.toggle(${v('X')}, ${v('Y')})`);
+            return;
+        case 'microbitplus_setbrightness':
+            push(`led.setBrightness(${v('BRIGHTNESS')})`);
+            return;
+        case 'microbitplus_stopanimation':
+            push('led.stopAnimation()');
+            return;
+        case 'microbitplus_addscore':
+            push(`game.addScore(${v('POINTS')})`);
+            return;
+        case 'microbitplus_setscore':
+            push(`game.setScore(${v('VALUE')})`);
+            return;
+        case 'microbitplus_removelife':
+            push(`game.removeLife(${v('LIFE')})`);
+            return;
+        case 'microbitplus_gameover':
+            push('game.gameOver()');
             return;
 
         case 'microbitplus_digitalwrite':
@@ -570,6 +638,17 @@ export function projectToMakeCodeTs (project) {
             }
             body.push(...emitter.stack(block.next, 0));
             void id;
+        }
+        // The importer turns MakeCode's `let x = 5` into a leading `set x to 5`
+        // (a Scratch project must re-initialise on every run). Fold such leading
+        // literal assignments back into the declaration, so the way back does
+        // not add a line per round trip (the CLI's full-circle test found it).
+        while (body.length) {
+            const m = /^([A-Za-z_][A-Za-z0-9_]*) = (-?\d+(?:\.\d+)?|"[^"\\]*")$/.exec(body[0]);
+            const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0`);
+            if (!m || decl < 0) break;
+            lines[decl] = `let ${m[1]} = ${m[2]}`;
+            body.shift();
         }
         lines.push(...definitions);
         for (const name of emitter.arrays) {

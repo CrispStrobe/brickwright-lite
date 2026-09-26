@@ -26,15 +26,37 @@
  *
  * THE ONE HARD LIMIT. A native build needs a precompiled firmware base for the
  * project's exact set of C++ packages. pxt-microbit ships those for its default
- * set (core + radio + microphone); pxt-arcade ships none. Anything else would
- * need MakeCode's cloud C++ compiler — refused here by name (NO_BASE_HEX) rather
- * than sent to the network. Simulation has no such limit.
+ * set (core + radio + microphone); pxt-arcade ships none, so its bases are BUILT
+ * from source by scripts/build-makecode-arcade-bases.mjs (one per hardware
+ * variant, default package set) and served by the sync when their sha256 is
+ * pinned. Anything else would need MakeCode's cloud C++ compiler — refused here
+ * by name (NO_BASE_HEX) rather than sent to the network. Simulation has no such
+ * limit. An Arcade native build must name its hardware (`hwVariant`): the
+ * generic default has no C++ runtime of its own, so it has no base either.
  *
  * @module
  */
 
-/** The MakeCode targets whose runtime sync-makecode-runtime serves. */
-export const MAKECODE_TARGETS = Object.freeze(['microbit', 'arcade']);
+import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
+
+/**
+ * The MakeCode targets whose runtime sync-makecode-runtime serves, by pxt
+ * target id (the `pxtTarget` a MakeCode file names), and what each builds.
+ * `firmware` is the file the generic firmware download produces, or null where
+ * it cannot: Arcade builds a .uf2 only for a chosen board (`hwVariant`, see
+ * ARCADE_HARDWARE), and the importer's download has no board picker yet, so a
+ * board-less native Arcade build stays refused by name (NO_BASE_HEX).
+ * `name` is the product's own name (a proper noun, the same in every language),
+ * which is why it is not a `label` for the i18n rule to count.
+ */
+export const MAKECODE_BOARDS = Object.freeze({
+    microbit: {name: 'micro:bit', firmware: 'hex'},
+    calliopemini: {name: 'Calliope mini', firmware: 'hex'},
+    ev3: {name: 'LEGO MINDSTORMS EV3', firmware: 'uf2'},
+    adafruit: {name: 'Circuit Playground Express', firmware: 'uf2'},
+    arcade: {name: 'Arcade', firmware: null}
+});
+export const MAKECODE_TARGETS = Object.freeze(Object.keys(MAKECODE_BOARDS));
 
 /** Where a target's runtime is served, relative to the app. */
 export const runtimeBase = target => `static/makecode/${target}/`;
@@ -64,6 +86,22 @@ var bwMakeCode = {
         pxt.setupWebConfig({cdnUrl: 'https://offline.invalid'});
         bwMakeCode.configured = true;
     },
+    // The EMULATOR's base check, inside the worker: the served bytes' sha256
+    // must be one of the bases base-licences.js classifies 'clean' (the list
+    // comes with the request). Anything else — an official base with Nordic's
+    // SoftDevice in it, unknown bytes — is refused BEFORE pxt links onto it;
+    // the page names the reason (emulatorBaseVerdict).
+    emulatorBase: async function (text, cleanSha256s) {
+        var digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+        var hex = Array.prototype.map.call(new Uint8Array(digest), function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join('');
+        if ((cleanSha256s || []).indexOf(hex) < 0) {
+            var e = new Error('firmware base ' + hex + ' is not a clean emulator base');
+            e.code = 'BASE_REFUSED';
+            e.baseSha256 = hex;
+            throw e;
+        }
+        return text;
+    },
     compile: async function (files, opts) {
         opts = opts || {};
         bwMakeCode.configure();
@@ -73,7 +111,14 @@ var bwMakeCode = {
         files = Object.assign({}, files, {'pxt.json': JSON.stringify(cfg, null, 4)});
         if (files['main.ts'] === undefined) files['main.ts'] = '';
         if (pxt.simpleInstallPackagesAsync) await pxt.simpleInstallPackagesAsync(files);
-        pxt.setHwVariant('');
+        // Arcade hardware: 'rp2040', 'samd51'... selects the hw---<variant> package
+        // (and with it the C++ runtime and the firmware base). '' = the default.
+        pxt.setHwVariant(opts.hwVariant || '');
+        // A multi-variant target (micro:bit: mbdal = V1, mbcodal = V2) builds
+        // EVERY variant into one universal .hex by default; 'mbcodal' builds only
+        // that one — the emulator runs a V2 image, on a Bluetooth-free base
+        // (compileMakeCodeForEmulator), and has no use for the V1 half. null = all.
+        pxt.setAppTargetVariant(opts.appVariant || null);
         var copts = await pxt.simpleGetCompileOptionsAsync(files, {native: !!opts.native});
         if (opts.native && copts.extinfo && copts.extinfo.sha) {
             var infos = [copts.extinfo].concat((copts.otherMultiVariants || []).map(function (v) { return v.extinfo; }));
@@ -139,21 +184,31 @@ var bwOnMessage = async function (e) {
             var out = await bwMakeCode.compile(m.files, {
                 native: m.native,
                 embedSource: m.embedSource,
+                hwVariant: m.hwVariant,
+                appVariant: m.appVariant,
                 getBaseHex: async function (sha) {
-                    var h = await fetch(m.base + 'hexcache/' + sha + '.hex');
-                    return h.ok ? h.text() : null;
+                    // The emulator links onto its own bases (hexcache-emu/), and
+                    // only onto bytes proven clean; a download, onto the official ones.
+                    var h = await fetch(m.base + (m.emulator ? 'hexcache-emu/' : 'hexcache/') + sha + '.hex');
+                    if (!h.ok) return null;
+                    var text = await h.text();
+                    return m.emulator ? bwMakeCode.emulatorBase(text, m.cleanBases) : text;
                 }
             });
             postMessage({id: m.id, ok: true, result: out});
         }
     } catch (err) {
-        postMessage({id: m.id, ok: false, error: {message: String(err && err.message || err), code: err && err.code, sha: err && err.sha}});
+        postMessage({id: m.id, ok: false, error: {message: String(err && err.message || err), code: err && err.code, sha: err && err.sha, baseSha256: err && err.baseSha256}});
     }
 };
 self.onmessage = bwOnMessage;
 `;
 
-/** A MakeCode failure, with a code the UI can name: NO_RUNTIME, NO_BASE_HEX, UNSUPPORTED_TARGET, COMPILE. */
+/**
+ * A MakeCode failure, with a code the UI can name: NO_RUNTIME, NO_BASE_HEX,
+ * UNSUPPORTED_TARGET, COMPILE — and, for the emulator, CHIP_RESTRICTED_BASE,
+ * UNAUDITED_BASE, UNKNOWN_BASE (base-licences.js emulatorBaseVerdict).
+ */
 export class MakeCodeError extends Error {
     constructor (message, code, extra = {}) {
         super(message);
@@ -177,7 +232,7 @@ function workerFor (target, base) {
         if (!p) return;
         pending.delete(e.data.id);
         if (e.data.ok) p.resolve(e.data.result);
-        else p.reject(new MakeCodeError(e.data.error.message, e.data.error.code || 'COMPILE', {sha: e.data.error.sha}));
+        else p.reject(new MakeCodeError(e.data.error.message, e.data.error.code || 'COMPILE', {sha: e.data.error.sha, baseSha256: e.data.error.baseSha256}));
     };
     const call = msg => new Promise((resolve, reject) => {
         const id = ++next;
@@ -199,10 +254,11 @@ function workerFor (target, base) {
  * @param {boolean} [args.native] build the firmware (.hex) instead of simulator JS
  * @param {{files: object, name: string, editorUrl?: string}} [args.embedSource] embed the
  *   project in the .hex, as MakeCode's editor does, so MakeCode opens it as a project
+ * @param {string} [args.hwVariant] Arcade hardware for a native build (ARCADE_HARDWARE)
  * @param {string} [args.baseUrl] where static/ is served from (default: the page's base)
  * @returns {Promise<{success: boolean, outfiles: object, diagnostics: object[], netAttempts: string[]}>}
  */
-export async function compileMakeCode ({target, files, native = false, embedSource = null, baseUrl} = {}) {
+export async function compileMakeCode ({target, files, native = false, embedSource = null, hwVariant = '', baseUrl} = {}) {
     if (!MAKECODE_TARGETS.includes(target)) {
         throw new MakeCodeError(`MakeCode ${target || 'unknown'} is not a target this build carries ` +
             `(${MAKECODE_TARGETS.join(', ')})`, 'UNSUPPORTED_TARGET');
@@ -211,7 +267,81 @@ export async function compileMakeCode ({target, files, native = false, embedSour
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
     const w = workerFor(target, base);
     await w.ready;
-    return w.call({op: 'compile', files, native, embedSource});
+    return w.call({op: 'compile', files, native, embedSource, hwVariant});
+}
+
+/**
+ * Refuse, by name, a firmware base the emulator must not run. The one check
+ * every emulator path goes through (the worker's emulatorBase only sends back
+ * the sha256 of what it refused). Throws MakeCodeError with the verdict's code.
+ * @param {string} sha256 of the base's .hex bytes
+ * @returns {object} the base's licence record, when it is clean
+ */
+export function assertEmulatorBase (sha256) {
+    const v = emulatorBaseVerdict(sha256);
+    if (!v.ok) throw new MakeCodeError(v.reason, v.code, {baseSha256: sha256});
+    return v.licence;
+}
+
+/** The sha256s of the bases the emulator may run (base-licences.js: classification 'clean'). */
+export const EMULATOR_CLEAN_BASES = Object.freeze(Object.keys(BASE_LICENCES).filter(k => emulatorBaseVerdict(k).ok));
+
+/**
+ * Compile a micro:bit project for the EMULATOR: the V2 variant only ('mbcodal'),
+ * linked onto a Bluetooth-free base from static/makecode/microbit/hexcache-emu/
+ * (scripts/build-makecode-emu-bases.mjs) — never onto the official bases, whose
+ * Nordic SoftDevice may only run on a Nordic chip. A base that is not clean is
+ * refused by name (assertEmulatorBase); a package set with no emulator base is
+ * NO_BASE_HEX, as for a download. The result's outfiles['binary.hex'] is a plain
+ * (not universal) V2 image with its vector table at 0.
+ */
+export async function compileMakeCodeForEmulator ({target = 'microbit', files, baseUrl} = {}) {
+    if (target !== 'microbit') {
+        throw new MakeCodeError(`MakeCode ${target} has no emulator firmware bases (only the micro:bit V2 does)`, 'UNSUPPORTED_TARGET');
+    }
+    if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
+    const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
+    const w = workerFor(target, base);
+    await w.ready;
+    try {
+        return await w.call({op: 'compile', files, native: true, appVariant: 'mbcodal', emulator: true, cleanBases: EMULATOR_CLEAN_BASES});
+    } catch (e) {
+        if (e && e.code === 'BASE_REFUSED') assertEmulatorBase(e.baseSha256);
+        throw e;
+    }
+}
+
+/**
+ * The Arcade hardware a native build can target: pxt-arcade's hw---<variant>
+ * packages built by pxt's CODAL engine (hw---rpi and hw---vm are Linux builds,
+ * not here). `family` is the UF2 family id pxt writes (null: the build is an
+ * Intel HEX, not a UF2 — the nRF52833 boards).
+ */
+export const ARCADE_HARDWARE = Object.freeze({
+    rp2040: {name: 'Raspberry Pi Pico (RP2040)', family: 0xe48bff56},
+    samd51: {name: 'SAMD51 (Adafruit PyBadge and similar, "D5")', family: 0x55114460},
+    samd51adafruit: {name: 'SAMD51, Adafruit bootloader layout', family: 0x55114460},
+    stm32f401: {name: 'STM32F401 ("F4", Meowbit and similar)', family: 0x57755a57},
+    n3: {name: 'nRF52833 ("N3")', family: null},
+    gdk: {name: 'nRF52833 Game Designer\'s Kit', family: null},
+    n4: {name: 'nRF52840 ("N4", experimental)', family: 0xada52840}
+});
+
+/**
+ * The flashable file in a native build's outfiles. pxt returns a UF2 as BASE64
+ * text (outfiles['binary.uf2']) and a .hex as text; this gives the bytes a
+ * download writes, so the caller never has to know which.
+ * @returns {{name: string, bytes: Uint8Array}|null}
+ */
+export function firmwareFile (outfiles = {}) {
+    if (outfiles['binary.uf2']) {
+        const bin = atob(outfiles['binary.uf2']);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return {name: 'binary.uf2', bytes};
+    }
+    if (outfiles['binary.hex']) return {name: 'binary.hex', bytes: new TextEncoder().encode(outfiles['binary.hex'])};
+    return null;
 }
 
 /**

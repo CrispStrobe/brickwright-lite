@@ -116,8 +116,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // controls). NO src/ FILE CHANGED, so the vendored sb3Creator.js is
     // byte-identical across the range and nothing the round trip reads can
     // have moved. The assertions below were still executed at the new pin.
+    // PIN MOVED 44d23f88 -> 4a3996b9 (2026-09-25, sb3-creator#24): src/ DID
+    // change this time — MakeCode's led/game helpers for generateMicroPython,
+    // each emitted only when a microbitplus block uses it. None of the SPIKE
+    // paths this round trip reads are touched; the assertions re-ran at it.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '44d23f88fc99a70ab273beb65adca3ceaab39524');
+        '4a3996b9d6d1fa2860cfcef78d430336c06225f3');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

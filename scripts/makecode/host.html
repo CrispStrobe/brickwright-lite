@@ -15,6 +15,21 @@
     host -> app   {type: 'bw-makecode-state', state}   simulator state changes
     host -> app   {type: 'bw-makecode-serial', data}   what the program printed
     host -> app   {type: 'bw-makecode-error', message}
+    host -> app   {type: 'bw-makecode-pins', pins: {p0: {out, value}, …}}  pin changes
+    app  -> host  {type: 'bw-makecode-pin-in', pins: {p1: value, …}}      circuit -> program
+
+  THE PIN BRIDGE. The simulator's board keeps every edge pin's mode (digital /
+  analog, input / output) and value (0..1023). This page (same origin as the
+  simulator frame) reads them ~30 times a second and reports CHANGES, named by
+  the target's own DigitalPin enum (config.json pinNames: on the Calliope P1 is
+  id 100, on the micro:bit 101). The Circuit Playground Express has no such
+  enum — its pins are objects whose ids come from the PROGRAM's config at run
+  time — so for it the names are read from the running simulator's own
+  pxsim.CPlayPinName (A0 -> 'a0', …), the same spelling as the circuit part's
+  pads. The app drives its circuit with them, and
+  writes back the levels the circuit puts on the pins the program reads — so a
+  MakeCode program, with MakeCode's own semantics, blinks an LED on the
+  breadboard and reads a button wired to a pad.
 
   config.json (written by the sync from target.json's `simulator` block) carries
   the board definition and aspect ratio the driver needs.
@@ -55,8 +70,11 @@
   window.addEventListener('message', function (e) {
     var m = e.data || {};
     if (e.source === parentWin) {
-      if (m.type === 'bw-makecode-run') run(m.js);
+      if (m.type === 'bw-makecode-run') { run(m.js); startPins(); }
       else if (m.type === 'bw-makecode-stop' && driver) driver.stop();
+      else if (m.type === 'bw-makecode-pin-in' && m.pins) {
+        for (var k in m.pins) pendingIn[k] = Number(m.pins[k]) || 0;
+      }
       return;
     }
     if (m.type === 'serial' && typeof m.data === 'string') say({type: 'bw-makecode-serial', data: m.data});
@@ -64,6 +82,65 @@
       m.data.forEach(function (d) { if (d && typeof d.data === 'string') say({type: 'bw-makecode-serial', data: d.data}); });
     }
   });
+  // ── the pin bridge ─────────────────────────────────────────────────────
+  var lastPins = {};
+  var pollTimer = null;
+  var pendingIn = {};
+  function simWindow () {
+    var f = document.querySelector('#sim iframe');
+    return (f && f.contentWindow) || null;
+  }
+  function simBoard (w) {
+    try { return w && w.pxsim && w.pxsim.board && w.pxsim.board(); } catch (e) { return null; }
+  }
+  // bw-pin-names:begin (test/makecode-pin-bridge.test.mjs runs this function)
+  // Pin id -> the circuit terminal it drives. A target with a DigitalPin enum
+  // names its pins statically (config.pinNames, from the sync). One without it
+  // — the Circuit Playground Express — fills pxsim.CPlayPinName from the
+  // program's config when its board is built (CPlayPinName.init: PIN_A0 -> the
+  // DAL pin id, -1 when the config has none), so the names are read from the
+  // running simulator. First name wins: TX/RX alias A7/A6 and stay 'a7'/'a6'.
+  function simPinNames (staticNames, pxsim) {
+    for (var k in staticNames) return staticNames;
+    var out = {};
+    var e = pxsim && pxsim.CPlayPinName;
+    if (!e) return out;
+    for (var n in e) {
+      var id = e[n];
+      if (typeof id === 'number' && id >= 0 && out[id] === undefined) out[id] = n.toLowerCase();
+    }
+    return out;
+  }
+  // bw-pin-names:end
+  function poll () {
+    var w = simWindow();
+    var b = simBoard(w);
+    var ec = b && b.edgeConnectorState;
+    if (!ec || !ec.pins) return;
+    var names = simPinNames((config && config.pinNames) || {}, w.pxsim);
+    var changed = {};
+    var any = false;
+    for (var i = 0; i < ec.pins.length; i++) {
+      var p = ec.pins[i];
+      var name = p && names[p.id];
+      if (!name) continue;
+      // PinFlags: 1 Digital, 2 Analog, 4 Input, 8 Output.
+      if (pendingIn[name] !== undefined && (p.mode & 4 || !p.mode)) p.value = pendingIn[name];
+      var out = !!(p.mode & 8);
+      var key = (out ? 'o' : 'i') + (p.mode & 2 ? 'a' : 'd') + p.value;
+      if (lastPins[name] !== key) {
+        lastPins[name] = key;
+        changed[name] = {out: out, analog: !!(p.mode & 2), value: p.value};
+        any = true;
+      }
+    }
+    if (any) say({type: 'bw-makecode-pins', pins: changed});
+  }
+  function startPins () {
+    lastPins = {};
+    if (!pollTimer) pollTimer = setInterval(poll, 33);
+  }
+
   function run (js) {
     if (!config) { say({type: 'bw-makecode-error', message: 'simulator config not loaded'}); return; }
     try {

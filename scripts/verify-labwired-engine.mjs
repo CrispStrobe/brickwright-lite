@@ -204,7 +204,11 @@ try {
     for (const t of ['\u2039', '\u2303']) {
         try { await page.locator(`button:text-is("${t}")`).first().click({timeout: 2500, force: true}); await page.waitForTimeout(1500); break; } catch {}
     }
-    check('the Run control is reachable', await page.locator('button:has-text("Run")').first().isVisible().catch(() => false));
+    // Only a VISIBLE button counts: the Code tab's actions menu holds hidden
+    // items such as "▶ Run as MakeCode Arcade", and a bare has-text("Run")
+    // .first() picked that closed-menu item and reported the debugger's Run as
+    // unreachable.
+    check('the Run control is reachable', await page.locator('button:text-is("▶ Run"):visible, button:has-text("Run"):visible').first().isVisible().catch(() => false));
 
     // The picker only lists the heavy tier once its engine has answered; the
     // probe is async, so this is a wait, not an assertion about first paint.
@@ -280,7 +284,7 @@ try {
     // Run. The F030 image is compiled remotely, so this is where "no network"
     // shows up — as a skip below, not as a failed check.
     let pressed = false;
-    for (const sel of ['button:text-is("▶ Run")', 'button:has-text("Run")']) {
+    for (const sel of ['button:text-is("▶ Run")', 'button:has-text("Run"):visible']) {
         try { await page.locator(sel).first().click({timeout: 3000, force: true}); pressed = true; break; } catch {}
     }
     check('Run was actually pressed', pressed);
