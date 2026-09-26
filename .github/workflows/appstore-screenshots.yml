@@ -92,11 +92,20 @@ jobs:
       - name: Verify the manifest
         run: node scripts/appstore/verify-shots.mjs appstore-shots
 
+      # ALWAYS, and that is not tidiness. Run 36255451532 captured 24 of 30
+      # shots and failed on the six FPGA ones; because this step was
+      # conditional on the capture succeeding, all 24 were thrown away and
+      # there was nothing to look at while diagnosing. A partial set is
+      # exactly what a person needs in order to see WHICH scene drifted.
+      # `warn` rather than `error`: when the capture dies before writing
+      # anything, its own failure is the signal, and a second red step saying
+      # "no files" only obscures it.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
         with:
           name: brickwright-appstore-screenshots
           path: appstore-shots
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
       # UPLOADING IS DELIBERATELY NOT WIRED YET, and this step says so rather
