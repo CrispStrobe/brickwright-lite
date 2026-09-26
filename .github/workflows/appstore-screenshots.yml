@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       upload:
-        description: Replace the App Store screenshot sets after capture
+        description: "(not implemented yet — fails loudly; see the step's comment)"
         type: boolean
         default: false
       flag_on:
@@ -99,11 +99,23 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # UPLOADING IS DELIBERATELY NOT WIRED YET, and this step says so rather
+      # than pretending. Replacing the live sets is destructive — it removes
+      # what is on the store page now — and the App Store Connect upload dance
+      # (reserve, chunked PUT, commit with an MD5 per part) cannot be exercised
+      # from here at all: there is no way to test it short of running it
+      # against the real listing. Shipping an untested implementation of a
+      # destructive operation is worse than shipping none.
+      #
+      # The reference implementation to port is CrispDeck's
+      # `tools/asc/screenshots.py`, which already does this against this same
+      # team's credentials. Until it is ported and someone has watched it run
+      # once, the artifact above is the deliverable and the sets are replaced
+      # by hand from it.
       - name: Replace the App Store screenshot sets
         if: inputs.upload
-        env:
-          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
-          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
-          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
-          APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
-        run: node scripts/appstore/upload-shots.mjs appstore-shots --replace
+        run: |
+          echo "::error::`upload` is not implemented yet — download the"
+          echo "::error::brickwright-appstore-screenshots artifact and replace the sets by hand."
+          echo "::error::Port CrispDeck tools/asc/screenshots.py to wire this up."
+          exit 1
