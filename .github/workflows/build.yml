@@ -1389,6 +1389,9 @@ jobs:
         timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 36105493498; max 9 s in run 34060543504 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
+      # Also the Pybricks SPIKE simulator pane (second half of the same script):
+      # Code tab -> Run on SPIKE -> hub face matrix lit, port-A motor at 90 deg, Stop.
+      # Folded in here rather than a new verify script, so it runs in this one shard.
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36105493498; max 3 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
