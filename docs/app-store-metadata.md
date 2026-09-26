@@ -203,6 +203,56 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.21 en-US
+
+**SPIKE Prime simulator — Pybricks MicroPython, in the browser**
+
+This build runs real Pybricks MicroPython (v4.0.1) compiled to WebAssembly,
+one layer above the chip: no chip emulation, no Bluetooth, no LEGO firmware.
+
+- Open the Code tab, choose Python, and write a program that imports
+  `pybricks`. "Run on SPIKE" appears; run it and watch the SPIKE pane in the
+  right column.
+- Ports A–F speak the real LUMP protocol from the device side, so motors and
+  the colour, distance and force sensors behave as Pybricks' own drivers
+  expect. Motor movement uses Pybricks' own motor model.
+- The light matrix, status light, buttons, speaker beeps and `print()` output
+  all work. Check that the Scratch (Virtual SPIKE hub) and Python views agree
+  about which ports hold what.
+- No hardware is needed. If you do have a SPIKE hub, the simulated and real
+  behaviour should not contradict each other — tell us where they do.
+
+Everything else in this build is tooling: App Store screenshots are now
+rendered from the shipping app by CI in English and German, and the Android
+job builds again after Google removed a package its setup action asked for.
+
+## What to Test — 0.1.21 de-DE
+
+**SPIKE-Prime-Simulator — Pybricks MicroPython, im Browser**
+
+Dieser Build führt echtes Pybricks MicroPython (v4.0.1) aus, nach
+WebAssembly übersetzt und eine Schicht über dem Chip: keine Chip-Emulation,
+kein Bluetooth, keine LEGO-Firmware.
+
+- Öffne den Code-Reiter, wähle Python und schreibe ein Programm, das
+  `pybricks` importiert. „Auf SPIKE ausführen" erscheint; starte es und sieh
+  dir den SPIKE-Bereich in der rechten Spalte an.
+- Die Anschlüsse A–F sprechen das echte LUMP-Protokoll von der Geräteseite
+  her, sodass Motoren und die Farb-, Abstands- und Kraftsensoren sich so
+  verhalten, wie Pybricks' eigene Treiber es erwarten. Die Motorbewegung nutzt
+  Pybricks' eigenes Motormodell.
+- Lichtmatrix, Statuslicht, Knöpfe, Lautsprechertöne und `print()`-Ausgaben
+  funktionieren. Prüfe, ob die Scratch-Ansicht (virtueller SPIKE-Hub) und die
+  Python-Ansicht sich einig sind, welcher Anschluss was trägt.
+- Es wird keine Hardware gebraucht. Wenn du einen echten SPIKE-Hub hast,
+  sollten simuliertes und echtes Verhalten einander nicht widersprechen — sag
+  uns, wo sie es doch tun.
+
+Alles Übrige in diesem Build ist Werkzeug: App-Store-Screenshots werden jetzt
+von der CI aus der ausgelieferten App auf Englisch und Deutsch gerendert, und
+der Android-Job baut wieder, nachdem Google ein Paket entfernt hatte, das
+seine Setup-Action angefordert hat.
+
 ## What to Test — 0.1.20 en-US
 
 This rebuild fixes the native iOS and Android compilation issues found in
