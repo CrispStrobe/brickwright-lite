@@ -56,6 +56,7 @@ on:
     # KNOWN_DEAD reason, and that entry went when the module got a caller.
     # The list tracks what code NAMES, so it shrinks as well as grows.
     # 2026-09-20: 16 — SPIKE-CONSOLIDATION.md, named by the spikeprime bundle.
+    # 2026-09-26: 17 — LEGO-ARCHITECTURE.md gained an executable status contract.
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
     # app is byte-identical, and deploy-daily republishes regardless.
@@ -83,6 +84,7 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-5.md'
       - 'docs/LESSON-REVIEW-WAVE-6.md'
       - 'docs/LESSON-REVIEW-WAVE-7.md'
+      - 'docs/LEGO-ARCHITECTURE.md'
       - 'docs/PICO-KALUMA-BOOT.md'
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'

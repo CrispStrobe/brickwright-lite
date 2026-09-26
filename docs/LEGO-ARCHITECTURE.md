@@ -76,8 +76,21 @@ The **faceplate campaign** (bw-circuit-ui widgets + bw-board faces + the LCD/RGB
 flight) adds the **offline visual face** for these hubs — what a learner sees when no hardware
 is connected.
 
-That is the ground truth. One useful SPIKE Prime slice now crosses the first gap, but the
-generic multi-hub architecture remains open.
+That is the ground truth. One useful SPIKE Prime slice crosses the first gap, and SPIKE now
+also has a real virtual-hub slice. The generic multi-hub architecture remains open. The
+dated status matrix below is the concise current inventory; the older gap narratives remain
+because they explain the design and the measured boundaries.
+
+## Current status by hub (re-measured 2026-09-26)
+
+| Hub family | Pseudocode ⇄ extension blocks | Virtual brick/world | Deliverable editor |
+|---|---|---|---|
+| SPIKE Prime / Robot Inventor | **PARTIAL:** 30 of the pinned 84-opcode compiler surface are bidirectional; 21 host controls and 4 hats are deliberately classified; 29 learner operations remain. The shipped consolidated extension has 101 opcodes, so refreshing that pinned census is itself open work. | **PARTIAL:** shared six-port state, motor/display outputs, editable sensor/IMU/battery inputs, BLE and classic adapters, panel, and extension E2E tests exist under `lib/virtual-hub/`. Motor position is stored but not integrated with time. | Python is editable through the existing `.py` mode; no SPIKE-API completion or lint. |
+| EV3 stock firmware | **OPEN:** the extension is consolidated and live-complete, but has no BrickWright forward/reverse block map. | **OPEN:** no virtual EV3 transport, state or world model. | LMS bytecode is intentionally not a hand-editable format. |
+| EV3 on ev3dev | **OPEN:** on-brick transpilation exists, but no BrickWright forward/reverse block map. | **OPEN.** | Python is editable; no ev3dev2 API awareness. |
+| NXT | **OPEN:** extension/transpiler exists; no BrickWright map. | **OPEN.** | NXC has no first-class language mode. |
+| Boost / WeDo 2.0 / Powered Up | **OPEN:** extensions/transpilers exist; no BrickWright maps. | **OPEN:** no shared LPF2 virtual transport/state despite their common protocol family. | Their generated deliverables have no hub-aware mode. |
+| RCX | **DEFERRED BY DESIGN:** direct extension → NQC is the useful route; a sprite-wide pseudocode map is not currently justified. | **BLOCKED FOR A DEFAULT:** emulation needs user-supplied proprietary ROM/firmware. | **DONE:** NQC is available in the Code tab. |
 
 ---
 
@@ -167,12 +180,18 @@ pseudocode matters more than hand-editing the generated hub code.
 
 ---
 
-## Gap 3 — a stateful brick + world model behind the faces
+## Gap 3 — a stateful brick + world model behind the faces (partial for SPIKE)
 
-The faces today are a **view**, not a **simulation**. `bw-board/src/face.js` (129 lines) is a
-render binding (`matrix | lcd | level | needle`) that reads existing circuit-device state
-(`board.getDeviceState`) or a Scratch variable. There is no LEGO brick model, and nothing
-tracks what the hub is actually doing.
+The generic faces remain a **view**, not a family-wide simulation. But the earlier blanket
+statement that there is no LEGO brick model is obsolete: SPIKE has one under
+`overlay/scratch-gui/src/lib/virtual-hub/`. `VirtualSpikeHubState` holds display, six motors,
+six sensor ports, IMU, buttons, battery and connection state. The panel edits the world;
+the BLE and classic adapters expose that same state to the real bundled extension; commands
+write motor/display state; focused and extension-level tests exercise both directions.
+
+The honest remaining boundary is breadth and dynamics. No other hub family uses this model,
+and SPIKE motor position does not advance as time passes. The generic `bw-board/src/face.js`
+render binding (`matrix | lcd | level | needle`) is also not yet a view over the virtual hub.
 
 The pattern to follow already exists on the STC12 side: `stc12SimulatorDriver` in
 `sb3Creator.js` turns the emitted program into a **simulated board** ("boundary A"), attached
@@ -199,13 +218,12 @@ via `bw_board`. A LEGO brick sim is the same idea with a richer model.
    integrates to a rotation the encoder/position sensor then reports; a servo's angle is its own
    readback. Outputs are not write-only.
 
-**Proposed shape:** a `legoSimulatorDriver` per hub runtime, analogous to
-`stc12SimulatorDriver` — a brick-model object `{ ports[], display, actuators, sensors }` plus a
-`world` object the sim reads sensors from. Input widgets (button, colour picker, distance
-slider, IR) **write** the world; display/gauge widgets **read** the brick model. The face
-becomes the view over this model instead of over raw variables. Each hub's port count, sensor
-kinds, and value ranges come from the matching extension's device model (see Gap 1's
-block-map) so the sim, the blocks, and the real hardware agree.
+**Next shape:** extract a small protocol-neutral hub-state contract from the proven SPIKE
+implementation rather than designing a second model from scratch. Keep protocol adapters
+hub-specific. Add deterministic time advancement for actuator feedback, then adopt EV3 as
+the first second-family proof and the LPF2 family as the first shared-protocol proof. Input
+widgets write the world; display/gauge widgets read the brick model. Port counts, sensor
+kinds and ranges must be derived from the same device descriptors used by Gap 1.
 
 **Lives in:** `lite` faces + `bw-circuit-ui` widgets + `bw-board` device model, following
 `sb3-creator`'s simulator-driver pattern.
@@ -215,7 +233,7 @@ block-map) so the sim, the blocks, and the real hardware agree.
 ## Priority order
 
 1. **Gap 1** — the pseudocode ⇄ LEGO-blocks joint (connects the whole stack).
-2. **Gap 3** — the stateful brick + world sim (makes the offline face actually *run*).
+2. **Gap 3** — finish SPIKE dynamics, extract the contract, then add EV3 and LPF2 family sims.
 3. **Gap 2** — the NXC / hub-API editor (nice-to-have; `.py` already covers the Python
    deliverables).
 
