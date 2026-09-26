@@ -1116,3 +1116,53 @@ runtimes, and native-app code; it is not a TurboWarp fork.
 | Keywords | electronics,circuits,coding,blocks,debugger,LEGO,simulation,oscilloscope,STEM | Elektronik,Schaltungen,Code,Bloecke,Debugger,LEGO,Simulation,Oszilloskop,MINT |
 | Support URL | https://github.com/CrispStrobe/brickwright-lite | https://github.com/CrispStrobe/brickwright-lite |
 | Privacy policy URL | https://crispstrobe.github.io/brickwright/privacy.html | https://crispstrobe.github.io/brickwright/privacy.html |
+
+## Screenshots
+
+Rendered from the shipping build by `.github/workflows/appstore-screenshots.yml`
+(`workflow_dispatch`), never drawn or composited. `scripts/appstore/scenes.mjs`
+is the plan — devices, locales, scenes and captions — and
+`test/appstore-screenshots.test.mjs` holds it to Apple's sizes and to this file
+having copy in every locale captured.
+
+`upload` defaults to **false**. The artifact is for a person to look at first;
+replacing the live sets is a second, explicit act, because a screenshot is
+editorial and a correctly-sized picture of the wrong thing still passes every
+automated check.
+
+| device | display type | pixels |
+|---|---|---|
+| iPhone 6.7" | `APP_IPHONE_67` | 1320 × 2868 |
+| iPad Pro 13" | `APP_IPAD_PRO_3GEN_129` | 2064 × 2752 |
+| Mac | `APP_DESKTOP` | 2880 × 1800 |
+
+Locales: `en-US`, `de-DE` — the two this file carries descriptions for.
+
+### Scenes
+
+| id | shows | needs |
+|---|---|---|
+| `01-blocks` | the blocks workspace | — |
+| `02-circuit` | a breadboard with a loaded example circuit | — |
+| `03-code` | the same program as readable pseudocode | — |
+| `04-machine` | CP/M 2.2 booted from the Machine Manager, `DIR` at the `A>` prompt | — |
+| `05-fpga` | the gate builder canvas | a flag-on build (`BW_ENABLE_FPGA=1`) |
+
+Every scene asserts a **witness** before the shutter — a string that can only be
+on screen if the thing actually happened — and `scripts/appstore/verify-shots.mjs`
+re-reads the PNGs afterwards for real dimensions and a file size a blank render
+cannot reach. A scene whose selectors have drifted fails the run instead of
+quietly producing a photograph of an empty editor.
+
+### Known limitation
+
+At iPhone 6.7" the Machine Manager's import button **cannot be clicked at all**:
+the locator resolves and the click times out, and `scrollIntoViewIfNeeded()`
+does not rescue it. Measured over three capture runs on 2026-09-26, against the
+shipping build. So `04-machine` declares `skipDevices: ['iphone']` and the
+iPhone set is the other four scenes.
+
+That is a defect in the app, not in the capture — the iOS build is the one
+TestFlight ships, and a phone user cannot import a machine. When it is fixed,
+delete the `skipDevices` line and this paragraph; the gate in
+`test/appstore-screenshots.test.mjs` requires the two to agree.
