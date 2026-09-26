@@ -752,6 +752,7 @@ takes a permissive option: specifically, `unescaper` declares
 - tauri-plugin 2.6.3 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/tauri
 - tauri-plugin-blec 0.5.3 (MIT OR Apache-2.0) -- https://github.com/MnlPhlp/tauri-plugin-blec
 - tauri-plugin-deep-link 2.4.9 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/plugins-workspace
+- tauri-plugin-depth-capture 0.1.0 (MIT)
 - tauri-plugin-dialog 2.7.1 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/plugins-workspace
 - tauri-plugin-fs 2.5.1 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/plugins-workspace
 - tauri-plugin-log 2.8.0 (Apache-2.0 OR MIT) -- https://github.com/tauri-apps/plugins-workspace

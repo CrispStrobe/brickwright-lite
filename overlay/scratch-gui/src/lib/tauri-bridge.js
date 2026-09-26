@@ -1,10 +1,84 @@
-// Brickwright: bridge native (Tauri) file-open events into the web VM. When the
-// app is launched by opening an .sb3 (file association / share "open with") or a
-// deep link, the Rust side reads the file and emits a `load-project` event; here
-// we feed it into `window.vm.loadProject`. No-op outside Tauri.
+import downloadBlob from './download-blob';
+
+/**
+ * Bridge native Tauri events and capabilities into the web editor. No-op in a
+ * normal browser apart from installing the common artifact/costume handlers.
+ * @returns {void}
+ */
 export default function initTauriBridge () {
     const tauri = typeof window !== 'undefined' && window.__TAURI__;
+
+    // One export route for extension-generated photos/scan archives and future
+    // code/firmware artifacts. In a browser downloadBlob downloads; in Tauri it
+    // uses Save As or the mobile OS share sheet.
+    if (typeof window !== 'undefined' && !window.__brickwrightArtifactExportInstalled) {
+        window.__brickwrightArtifactExportInstalled = true;
+        window.addEventListener('bw-export-artifact', event => {
+            const {filename, blob} = event.detail || {};
+            if (filename && blob instanceof Blob) downloadBlob(filename, blob);
+        });
+        window.addEventListener('bw-camera-add-costume', async event => {
+            const {dataUrl, name = 'camera photo', dataFormat = 'jpg'} = event.detail || {};
+            if (!dataUrl) return;
+            try {
+                const vm = window.__brickwrightStore.getState().scratchGui.vm;
+                const targetId = vm.editingTarget && vm.editingTarget.id;
+                const match = /^data:[^;,]+;base64,(.*)$/.exec(dataUrl);
+                if (!match) throw new Error('camera photo is not a base64 data URL');
+                const binary = window.atob(match[1]);
+                const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+                const storage = vm.runtime.storage;
+                const asset = storage.createAsset(
+                    storage.AssetType.ImageBitmap,
+                    dataFormat,
+                    bytes,
+                    null,
+                    true
+                );
+                const md5 = `${asset.assetId}.${dataFormat}`;
+                await vm.addCostume(md5, {
+                    name,
+                    dataFormat,
+                    bitmapResolution: 1,
+                    asset,
+                    assetId: asset.assetId,
+                    md5
+                }, targetId);
+            } catch (e) {
+                // eslint-disable-next-line no-console
+                console.error('[brickwright] add camera costume failed', e);
+            }
+        });
+    }
+
     if (!tauri) return;
+
+    if (tauri.core && typeof tauri.core.invoke === 'function') {
+        const invoke = tauri.core.invoke;
+        const depth = {
+            available: false,
+            running: false,
+            label: 'RGB only',
+            async refresh () {
+                const status = await invoke('plugin:depth-capture|status').catch(() => null);
+                if (status) Object.assign(this, status);
+                return this;
+            },
+            async start () {
+                await invoke('plugin:depth-capture|start');
+                this.running = true;
+            },
+            capture (quality = 0.92) {
+                return invoke('plugin:depth-capture|capture', {quality});
+            },
+            async stop () {
+                await invoke('plugin:depth-capture|stop');
+                this.running = false;
+            }
+        };
+        window.__BRICKWRIGHT_DEPTH__ = depth;
+        depth.refresh();
+    }
 
     // Open external links (help pages, credits, "report a bug", extension docs)
     // in the system browser. Without this, clicking such a link navigates the
