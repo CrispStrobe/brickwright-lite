@@ -1296,6 +1296,53 @@ Self-hosted under `static/microbit-sim/` (built from source with emscripten).
   device is selected. The built assets (firmware.js, firmware.wasm,
   simulator.js) are vendored; the source repo provides the build recipe.
 
+## Pybricks MicroPython (SPIKE Prime simulator) — MIT
+
+**pybricks-micropython**, Copyright (c) 2018-2026 The Pybricks Authors
+(MIT License, https://github.com/pybricks/pybricks-micropython), with its
+**MicroPython** submodule, Copyright (c) 2013-2025 Damien P. George and MicroPython contributors
+(MIT License, https://github.com/pybricks/micropython), compiled to
+WebAssembly on Brickwright's own hardware layer. Self-hosted under
+`static/pybricks-sim/`.
+
+- **Version:** pybricks-micropython v4.0.1, commit
+  `4104553405decb0384bcfb030fbfcb4b5a9854cc`; micropython submodule
+  `13580b6ad057173f62e8b2363e01d6851bcc6699`
+- **Licence:** MIT (both). Full texts ship offline in
+  `static/licenses/pybricks-micropython.MIT.txt`.
+- **Build:** `build-pybricks-wasm.sh` (emsdk 6.0.6, pinned shas verified).
+  The Brickwright HAL, platform and Makefile are in `firmware/pybricks-wasm/`.
+  Asset sha256s are in `static/pybricks-sim/PROVENANCE.json`.
+- **What is not included:** Pybricks' LICENSE notes that its firmware builds
+  pull in code under other terms, naming BTstack. This build compiles in
+  none of it: no BTstack or other Bluetooth stack, no ST/TI vendor HAL,
+  no umm_malloc, no LEGO firmware, no TI Bluetooth patch, and no file from
+  MicroPython's `lib/` (emscripten's libc provides libm).
+  `firmware/pybricks-wasm/licence_gate.py` checks the licence of every file
+  the compiler read and fails the build on anything non-permissive; it
+  drops Pybricks' GPL-2.0/MPL-1.0 NXT/EV3 drivers before compiling.
+- **No share-alike code:** two pieces of upstream Pybricks are adapted
+  from Stack Overflow answers (CC BY-SA 4.0), and this build compiles
+  neither of them. Upstream's `pybricks/util_mp/pb_kwarg_helper.h` (tagged
+  `MIT AND CC-BY-SA-4.0`) is shadowed on the include path by a clean-room
+  MIT rewrite (Copyright (c) 2026 The Pybricks Authors). It was written
+  without reading the upstream file and is being prepared as an upstream
+  contribution. `lib/pbio/src/int_math.c` is compiled from a copy with
+  `pbio_int_math_mult_then_div()` removed; a BSD-3-Clause Brickwright
+  stand-in, written from its documented contract and Pybricks' own test,
+  replaces it. Both stand-ins live in `firmware/pybricks-wasm/upstream-overlay/`
+  and are pinned by sha256 in `build-pybricks-wasm.sh`. The licence gate
+  fails the build if either upstream original, or any file carrying
+  CC-BY-SA text, is compiled.
+- **Toolchain runtime:** the emscripten glue (`pybricks-hub.js`) and the
+  musl libc / compiler-rt parts linked into the wasm are emscripten's
+  (MIT / University of Illinois NCSA; compiler-rt Apache-2.0 WITH
+  LLVM-exception).
+- **Usage:** the SPIKE Prime pane runs Pybricks Python programs from the
+  Code tab on a simulated hub: 5x5 light matrix, status light, buttons,
+  IMU, speaker and ports A–F with simulated motors and colour, distance
+  and force sensors.
+
 ## avr8js — MIT
 
 **avr8js** (MIT License, https://github.com/wokwi/avr8js) provides

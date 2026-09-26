@@ -31,6 +31,9 @@ const ArduboyPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-arduboy" */ '../tw-pseudocode/arduboy-pane.jsx'));
 const MakeCodeSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-makecode-sim" */ '../tw-pseudocode/makecode-sim-pane.jsx'));
+// SPIKE Prime running Pybricks MicroPython compiled to wasm (build-pybricks-wasm.sh).
+const PybricksSimPane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-pybricks-sim" */ '../tw-pseudocode/pybricks-sim-pane.jsx'));
 const ControllerPanelView = React.lazy(() =>
     import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
 );
@@ -294,6 +297,9 @@ const GUIComponent = props => {
             // The MakeCode simulator holds no program of its own across a
             // reload: restoring its dock would show an empty pane.
             if (dock === 'makecode' && !window.__bwMakeCodePending) return 'top';
+            // Same for the Pybricks SPIKE simulator: it holds no program of
+            // its own across a reload, so it opens only when one is pending.
+            if (dock === 'pybricks' && !window.__bwPybricksPending) return 'top';
             if (dock === 'arcade' && !['arcade', 'pybadge', 'pybadge-lc', 'samd51']
                 .includes(props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device)) return 'top';
             return dock;
@@ -324,7 +330,7 @@ const GUIComponent = props => {
                 // collapsed pane is indistinguishable from nothing loading
                 // (measured: the calculator's shipped layout, present in
                 // the DOM, invisible on screen).
-                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade' || detail.value === 'makecode') {
+                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade' || detail.value === 'makecode' || detail.value === 'pybricks') {
                     setStagePaneVisible(true);
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                 }
@@ -1127,7 +1133,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' || dockMode === 'makecode' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
+                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' || dockMode === 'makecode' || dockMode === 'pybricks' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -1147,6 +1153,12 @@ const GUIComponent = props => {
                                 }>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
                                         <MicrobitSimPane />
+                                    </div>
+                                </React.Suspense>
+                            ) : dockMode === 'pybricks' ? (
+                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'SPIKE-Simulator wird geladen…' : 'Loading SPIKE simulator…'}</div>}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
+                                        <PybricksSimPane />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'makecode' ? (
