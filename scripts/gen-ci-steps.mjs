@@ -112,8 +112,21 @@ const fetchAll = () => {
     const wfs = readdirSync(path.join(ROOT, '.github/workflows')).filter(f => f.endsWith('.yml'));
     const runs = [];
     for (const wf of wfs) {
-        const list = JSON.parse(gh(['run', 'list', '--repo', repo, '--workflow', wf, '--limit', String(wf === 'build.yml' ? 60 : RUNS_PER_WORKFLOW), '--json', 'databaseId,headSha,headBranch,status,conclusion,createdAt']))
-            .filter(r => r.status === 'completed' && r.conclusion !== 'cancelled');
+        // A WORKFLOW THAT HAS NEVER RUN IS A NORMAL STATE, and until this was
+        // handled a new one could not be added at all: `gh run list` answers
+        // 404 for a workflow GitHub has not registered (it registers on the
+        // default branch), so --fetch died, so the census could not cover the
+        // file, so the ci-step-census gate was red on every PR that added a
+        // workflow — including the one that would have put it on the default
+        // branch. Chicken and egg, with the tooling holding both.
+        let list = [];
+        try {
+            list = JSON.parse(gh(['run', 'list', '--repo', repo, '--workflow', wf, '--limit', String(wf === 'build.yml' ? 60 : RUNS_PER_WORKFLOW), '--json', 'databaseId,headSha,headBranch,status,conclusion,createdAt']))
+                .filter(r => r.status === 'completed' && r.conclusion !== 'cancelled');
+        } catch (e) {
+            if (!/404|not found/i.test(String(e.stderr || e.message || e))) throw e;
+            console.warn(`${wf}: no runs yet (not on the default branch) — declared steps only`);
+        }
         // build.yml: the last GREEN_MAIN green main runs plus every branch dispatch in the window
         const picked = wf === 'build.yml' ? [...list.filter(r => r.headBranch === 'main' && r.conclusion === 'success').slice(0, GREEN_MAIN), ...list.filter(r => r.headBranch !== 'main')] : list;
         for (const r of picked) {
@@ -129,7 +142,19 @@ const fetchAll = () => {
         const source = workflowSource(runs, wf, newestMain);
         if (!source) throw new Error(`No completed run can supply ${wf}`);
         sourceShas[wf] = source.sha;
-        yamlAtSha[wf] = execFileSync('git', ['show', `${source.sha}:.github/workflows/${wf}`], {cwd: ROOT, encoding: 'utf8'});
+        try {
+            yamlAtSha[wf] = execFileSync('git', ['show', `${source.sha}:.github/workflows/${wf}`],
+                {cwd: ROOT, encoding: 'utf8'});
+        } catch (e) {
+            // The same new-workflow case: no run carries it, so the fallback
+            // source is a main commit that does not have the file. Read the
+            // working tree instead and say so — the declared steps are still a
+            // fact, they simply have no observations behind them yet.
+            if (!/exists on disk, but not in|does not exist|fatal: path/i.test(String(e.stderr || e.message || e))) throw e;
+            yamlAtSha[wf] = readFileSync(path.join(ROOT, '.github/workflows', wf), 'utf8');
+            sourceShas[wf] = 'working-tree';
+            console.warn(`${wf}: not present at ${source.sha} — sourced from the working tree`);
+        }
     }
     return {repo, runs, newestMain, yamlAtSha, sourceShas, wfs};
 };

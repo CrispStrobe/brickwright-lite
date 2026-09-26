@@ -1,0 +1,121 @@
+# App Store screenshots, photographed from the shipping build.
+#
+# WHY THIS EXISTS. docs/app-store-metadata.md carries the listing copy in two
+# locales and a gate holds it to Apple's limits — but the listing had NO
+# SCREENSHOTS under management at all, so the one part of the page a person
+# actually looks at was whatever had been dragged into App Store Connect by
+# hand, at some unknown version. This renders them from the real build, in both
+# locales, at Apple's current sizes, and refuses to produce a blank one.
+#
+# `upload` DEFAULTS TO FALSE and that is deliberate: a screenshot is editorial.
+# The artifact is for a person to look at first; replacing the live sets is a
+# second, explicit act.
+name: App Store screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "(not implemented yet — fails loudly; see the step's comment)"
+        type: boolean
+        default: false
+      flag_on:
+        description: Build flag-on, so the FPGA scene is captured too
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: appstore-screenshots
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+
+      - name: Install root package inputs
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the Code tab
+        run: node scripts/integrate.mjs
+      - name: Install the GUI package inputs
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      # Flag-on webpack leaves @yowasp/yosys aliased to the REAL package, so it
+      # must resolve even though the screenshot never synthesises anything.
+      - name: Install the local FPGA toolchain
+        if: inputs.flag_on
+        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+      - name: Apply the scratch-vm overlay
+        run: node scripts/apply-vm-overlay.mjs
+      - name: Apply the scratch-paint overlay
+        run: node scripts/apply-paint-overlay.mjs
+      - name: Apply the scratch-render overlay
+        run: node scripts/apply-render-overlay.mjs
+
+      - name: Build the editor
+        run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=${{ inputs.flag_on && '1' || '' }} npm run build
+
+      - name: Install Playwright chromium
+        run: |
+          npm install --no-save playwright
+          ok=0
+          for i in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
+            echo "playwright chromium install attempt $i failed; retrying"
+            sleep 5
+          done
+          [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed"; exit 1; }
+
+      - name: Serve the build
+        run: |
+          python3 -m http.server 8619 --directory packages/scratch-gui/build &
+          for i in $(seq 1 30); do curl -sf http://localhost:8619/ >/dev/null && break; sleep 1; done
+
+      - name: Capture
+        env:
+          BASE_URL: http://localhost:8619/
+          BW_SHOTS_FPGA: ${{ inputs.flag_on && '1' || '' }}
+        run: node scripts/appstore/capture.mjs appstore-shots
+
+      # A scene whose selectors drifted still produces a PNG — of an empty
+      # editor. Check the PIXELS, not the file count. capture.mjs already
+      # asserts a witness per scene; this is the independent second reading,
+      # and it is the one that runs even if the witness logic itself rots.
+      - name: Verify the manifest
+        run: node scripts/appstore/verify-shots.mjs appstore-shots
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-appstore-screenshots
+          path: appstore-shots
+          if-no-files-found: error
+          retention-days: 30
+
+      # UPLOADING IS DELIBERATELY NOT WIRED YET, and this step says so rather
+      # than pretending. Replacing the live sets is destructive — it removes
+      # what is on the store page now — and the App Store Connect upload dance
+      # (reserve, chunked PUT, commit with an MD5 per part) cannot be exercised
+      # from here at all: there is no way to test it short of running it
+      # against the real listing. Shipping an untested implementation of a
+      # destructive operation is worse than shipping none.
+      #
+      # The reference implementation to port is CrispDeck's
+      # `tools/asc/screenshots.py`, which already does this against this same
+      # team's credentials. Until it is ported and someone has watched it run
+      # once, the artifact above is the deliverable and the sets are replaced
+      # by hand from it.
+      - name: Replace the App Store screenshot sets
+        if: inputs.upload
+        run: |
+          echo "::error::`upload` is not implemented yet — download the"
+          echo "::error::brickwright-appstore-screenshots artifact and replace the sets by hand."
+          echo "::error::Port CrispDeck tools/asc/screenshots.py to wire this up."
+          exit 1

@@ -1206,3 +1206,61 @@ runtimes, and native-app code; it is not a TurboWarp fork.
 | Keywords | electronics,circuits,coding,blocks,debugger,LEGO,simulation,oscilloscope,STEM | Elektronik,Schaltungen,Code,Bloecke,Debugger,LEGO,Simulation,Oszilloskop,MINT |
 | Support URL | https://github.com/CrispStrobe/brickwright-lite | https://github.com/CrispStrobe/brickwright-lite |
 | Privacy policy URL | https://crispstrobe.github.io/brickwright/privacy.html | https://crispstrobe.github.io/brickwright/privacy.html |
+
+## Screenshots
+
+Rendered from the shipping build by `.github/workflows/appstore-screenshots.yml`
+(`workflow_dispatch`), never drawn or composited. `scripts/appstore/scenes.mjs`
+is the plan — devices, locales, scenes and captions — and
+`test/appstore-screenshots.test.mjs` holds it to Apple's sizes and to this file
+having copy in every locale captured.
+
+`upload` defaults to **false**. The artifact is for a person to look at first;
+replacing the live sets is a second, explicit act, because a screenshot is
+editorial and a correctly-sized picture of the wrong thing still passes every
+automated check.
+
+| device | display type | pixels |
+|---|---|---|
+| iPhone 6.7" | `APP_IPHONE_67` | 1320 × 2868 |
+| iPad Pro 13" | `APP_IPAD_PRO_3GEN_129` | 2064 × 2752 |
+| Mac | `APP_DESKTOP` | 2880 × 1800 |
+
+Locales: `en-US`, `de-DE` — the two this file carries descriptions for.
+
+### Scenes
+
+| id | shows | needs |
+|---|---|---|
+| `01-blocks` | the blocks workspace | — |
+| `02-circuit` | a breadboard with a loaded example circuit | — |
+| `03-code` | the same program as readable pseudocode | — |
+| `04-machine` | CP/M 2.2 booted from the Machine Manager, `DIR` at the `A>` prompt | — |
+| `05-fpga` | the gate builder canvas | a flag-on build (`BW_ENABLE_FPGA=1`) |
+
+Every scene asserts a **witness** before the shutter — a string that can only be
+on screen if the thing actually happened — and `scripts/appstore/verify-shots.mjs`
+re-reads the PNGs afterwards for real dimensions and a file size a blank render
+cannot reach. A scene whose selectors have drifted fails the run instead of
+quietly producing a photograph of an empty editor.
+
+### The iPhone set, and why it is rendered at 1024 px
+
+`body` has **`min-width: 1024px`**: the app never lays out as a phone. At a
+440 pt viewport the *layout* viewport becomes 1024 x 2225 while the *visual*
+viewport stays 440 wide — the page is panned — and Playwright cannot pan to a
+`position: fixed` overlay, which sank every iPhone capture of `04-machine`.
+
+Safari on a real iPhone zooms that 1024-wide layout out to fit, so what a
+person actually sees is the whole UI, small. The capture reproduces exactly
+that: it renders at 1024 with the iPhone's aspect ratio and lets the scale
+factor reach Apple's pixels (1024 x 2225 at 1320/1024 -> a 1320 x 2868 PNG).
+Every scene is then reachable, because layout and visual viewport are the same
+box.
+
+So the iPhone screenshots show a scaled desktop UI — not because the capture
+is wrong, but because that is the app on a phone. Changing it means making the
+editor responsive below 1024 px, which is app work, not listing work.
+
+An earlier note here claimed a phone user could not import a machine at all.
+That was wrong: a person can pan and tap. The timeout was an automation limit.
