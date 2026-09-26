@@ -108,7 +108,7 @@
         "node": ">=22"
     },
     "devDependencies": {
-        "bw-board": "github:CrispStrobe/bw-board#e8b73038997ea92ec5b1eb6f95feabb19522ec31",
+        "bw-board": "github:CrispStrobe/bw-board#a04610183eb3f2d8675d6c95c47489939a3b82af",
         "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#d28845ee2dac6890d2e7dbaa4f8a97d3dad07fe5",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
