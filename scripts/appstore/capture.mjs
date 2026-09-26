@@ -108,7 +108,7 @@ const PREPARE = {
             window.dispatchEvent(new CustomEvent('bw-load-circuit-data', {detail: {data: await res.json()}}));
             return true;
         });
-        if (!pushed) return false;
+        if (!pushed) return 'examples/01-blink/circuit.pico.json did not load';
         // A designer with no parts is the blank-page failure this guards, and
         // it is also the readiness condition — no separate settle needed.
         await until(page,
@@ -198,7 +198,13 @@ const PREPARE = {
         //   settles. The tab's own activation event is what it uses
         //   internally, so the two are alternated until the panel is really
         //   there. (FPGA is tab index 5, after Circuit.)
-        if (!await page.getByRole('tab').nth(FPGA_TAB).count()) return false;   // flag-off build
+        // Absent means the surface is neither built nor switched on — both are
+        // required, and the init script above sets the preference.
+        if (!await page.getByRole('tab').nth(FPGA_TAB).count()) {
+            const tabs = await page.getByRole('tab').allTextContents().catch(() => []);
+            return `no FPGA tab — the build must carry BW_ENABLE_FPGA AND the run must set `
+                + `localStorage['bw-fpga-enabled']='1'. Tabs present: ${JSON.stringify(tabs)}`;
+        }
         for (let attempt = 0; attempt < 8; attempt++) {
             try {
                 await until(page,
@@ -213,7 +219,8 @@ const PREPARE = {
                     new CustomEvent('bw-activate-tab', {detail: {index: idx}})), FPGA_TAB);
             }
         }
-        return false;
+        return 'the FPGA tab exists but its panel never mounted '
+            + '(no [data-testid="bw-fpga-ic-gate"] after 8 attempts)';
     }
 };
 
@@ -244,6 +251,15 @@ try {
                 await page.addInitScript(() => {
                     try {
                         localStorage.setItem('bw-starter-v1-complete', '1');
+                        // THE FPGA TAB IS TWO OPT-INS, NOT ONE. gui.jsx:
+                        // `showFpga = FPGA_BUILT && fpgaEnabled` — a build with
+                        // BW_ENABLE_FPGA=1 still SHIPS IT HIDDEN until the user
+                        // turns it on under Settings ▸ FPGA lab, which is this
+                        // key. Two CI runs lost all six FPGA shots to that:
+                        // the build was flag-on, the preference was not, and
+                        // the scene reported "flag-off build" — a comment that
+                        // was simply wrong about why the tab was missing.
+                        localStorage.setItem('bw-fpga-enabled', '1');
                         indexedDB.deleteDatabase('bw-machines');
                     } catch { /* private mode */ }
                 });
@@ -255,8 +271,17 @@ try {
                     // to, and a slow runner waits longer rather than failing.
                     await until(page, "document.querySelectorAll('[role=\"tab\"]').length >= 4", 90000);
                     await page.waitForLoadState('networkidle', {timeout: 60000}).catch(() => {});
+                    // A witness may return `true`, or a STRING saying what was
+                    // missing. Two runs lost all six FPGA shots to a bare
+                    // "selectors have drifted", which is true of so many things
+                    // that it pointed nowhere; the reason is the whole value of
+                    // failing loudly.
                     const witness = await PREPARE[scene.id](page);
-                    if (!witness) throw new Error('the scene never became true — selectors have drifted');
+                    if (witness !== true) {
+                        throw new Error(typeof witness === 'string'
+                            ? witness
+                            : 'the scene never became true — selectors have drifted');
+                    }
                     if (pageErrors.length) throw new Error(`page error: ${pageErrors[0].slice(0, 120)}`);
                     await mkdir(OUT, {recursive: true});
                     await page.screenshot({path: path.join(OUT, name)});
