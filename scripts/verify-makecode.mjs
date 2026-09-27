@@ -233,6 +233,41 @@ try {
             return n;
         }).catch(() => 0), n => n > 50, 60000) : 0;
         check('the imported Arcade game draws in MakeCode\'s Arcade simulator', lit > 50, `${lit} lit pixels`);
+
+        // ── 2b'. …and downloads as firmware for the board picked from pxt-arcade's own list ──
+        // The picker is filled from static/makecode/arcade/hardware.json when the Arcade
+        // project arrives; wait for it to be filled, never for a fixed time.
+        await openCodeActions(page);
+        const picker = page.locator('[data-testid="bw-makecode-arcade-board"]');
+        const filled = await page.waitForFunction(
+            () => Number(document.querySelector('[data-testid="bw-makecode-arcade-board"]')?.dataset.boards || 0) > 0,
+            null, {timeout: 30000}).then(() => true).catch(() => false);
+        check('an Arcade project offers a board picker, filled from pxt-arcade\'s hardware list', filled,
+            filled ? '' : `${await picker.count()} picker(s), no boards`);
+        if (filled) {
+            // Adafruit PyBadge = pxt's hw---samd51adafruit, UF2 family 0x55114460 (SAMD51).
+            await picker.selectOption({label: 'Adafruit PyBadge'});
+            await page.waitForFunction(
+                () => /samd51adafruit:/.test(document.querySelector('[data-testid="bw-makecode-arcade-board"]')?.value || ''),
+                null, {timeout: 10000});
+            const download = page.waitForEvent('download', {timeout: 120000});
+            await clickAction('bw-makecode-firmware');
+            const dl = await download.catch(() => null);
+            const file = dl ? await dl.path().catch(() => null) : null;
+            const uf2 = file ? await readFile(file) : Buffer.alloc(0);
+            const blocks = uf2.length / 512;
+            let magic = uf2.length > 0 && uf2.length % 512 === 0;
+            let family = magic;
+            for (let o = 0; magic && o < uf2.length; o += 512) {
+                magic = uf2.readUInt32LE(o) === 0x0A324655 && uf2.readUInt32LE(o + 4) === 0x9E5D5157 && uf2.readUInt32LE(o + 508) === 0x0AB16F30;
+                family = family && (uf2.readUInt32LE(o + 8) & 0x2000) !== 0 && uf2.readUInt32LE(o + 28) === 0x55114460;
+            }
+            check('⤓ firmware for the picked Arcade board downloads a .uf2', !!dl && /\.uf2$/.test(dl.suggestedFilename()),
+                dl ? dl.suggestedFilename() : 'no download');
+            check('every block carries the UF2 magics', magic, `${blocks} blocks`);
+            check('and the picked board\'s UF2 family id (SAMD51, 0x55114460)', family,
+                uf2.length >= 32 ? `family 0x${uf2.readUInt32LE(28).toString(16)}` : '');
+        }
     }
 
     // ── 2c. the imported art edits AS pixels (costume tab → ▦ Pixel editor) ──
