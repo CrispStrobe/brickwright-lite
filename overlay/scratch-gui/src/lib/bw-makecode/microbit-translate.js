@@ -44,17 +44,28 @@ const ENUM_VALUES = {
         ThreeG: '3g', SixG: '6g', EightG: '8g'
     },
     PinPullMode: {PullUp: 'up', PullDown: 'down', PullNone: 'none'},
+    // `beat quarter` and friends: the dialect's words for MakeCode's fractions.
     BeatFraction: {
-        Whole: 'Whole', Half: 'Half', Quarter: 'Quarter', Eighth: 'Eighth',
-        Sixteenth: 'Sixteenth', Double: 'Double', Breve: 'Breve'
-    }
+        Whole: 'whole', Half: 'half', Quarter: 'quarter', Eighth: 'eighth',
+        Sixteenth: 'sixteenth', Double: 'double', Breve: 'breve'
+    },
+    PlaybackMode: {UntilDone: 'until done', InBackground: 'in background', LoopingInBackground: 'looping in background'}
 };
 
-/** BeatFraction → milliseconds at MakeCode's default 120 bpm. */
-const BEAT_MS = {
-    Whole: 500, Half: 250, Quarter: 125, Eighth: 62, Sixteenth: 31,
-    Double: 1000, Breve: 2000
-};
+/**
+ * MakeCode's Note enum by member name — the dialect's `frequency of note X`
+ * takes the member itself (Note.FSharp5 is `frequency of note FSharp5`), so
+ * nothing is renamed on the way in or out. The list is pxt-microbit 9.1.1's.
+ */
+export const MAKECODE_NOTES = [
+    'C', 'CSharp', 'D', 'Eb', 'E', 'F', 'FSharp', 'G', 'GSharp', 'A', 'Bb', 'B',
+    ...['3', '4', '5'].flatMap(o => ['C', 'CSharp', 'D', 'Eb', 'E', 'F', 'FSharp', 'G', 'GSharp', 'A', 'Bb', 'B'].map(n => n + o))
+];
+/** MakeCode's built-in Melodies (libs/core/melodies.ts). */
+export const MAKECODE_MELODIES = [
+    'Dadadadum', 'Entertainer', 'Prelude', 'Ode', 'Nyan', 'Ringtone', 'Funk', 'Blues', 'Birthday', 'Wedding',
+    'Funeral', 'Punchline', 'Baddy', 'Chase', 'BaDing', 'Wawawawaa', 'JumpUp', 'JumpDown', 'PowerUp', 'PowerDown'
+];
 
 const isPinEnum = name => /^(DigitalPin|AnalogPin|TouchPin|PwmPin)$/.test(name);
 
@@ -68,6 +79,22 @@ class MicrobitTranslator extends BaseTranslator {
         if (table && table[node.name] !== undefined) return table[node.name];
         if (isPinEnum(owner.name)) return node.name.toUpperCase();
         return super.enumToken(node);
+    }
+
+    /** `Note.C` wherever a value is read: its frequency, by name. */
+    expr (node) {
+        if (node && node.type === 'Member' && node.object && node.object.type === 'Identifier' &&
+            node.object.name === 'Note' && MAKECODE_NOTES.includes(node.name)) {
+            return `frequency of note ${node.name}`;
+        }
+        return super.expr(node);
+    }
+
+    /** `music.builtInPlayableMelody(Melodies.X)`'s X, or null. */
+    melody (node) {
+        const inner = node && node.type === 'Call' && /^music\.builtIn(Playable)?Melody$/.test(this.path(node.callee) || '') ?
+            node.args[0] : null;
+        return inner && inner.type === 'Member' && MAKECODE_MELODIES.includes(inner.name) ? inner.name : null;
     }
 
     pin (node) {
@@ -97,16 +124,6 @@ class MicrobitTranslator extends BaseTranslator {
     }
 
     /**
-     * An argument in a slot bounded by the next keyword: bare when it is
-     * one token, parenthesised otherwise, so `map a + 1 from low …` cannot
-     * be read as `(map a) + 1` and `max of a and b or c` keeps its shape.
-     */
-    operand (node) {
-        const value = this.expr(node);
-        return /^[^\s()]+$/.test(value) ? value : `(${value})`;
-    }
-
-    /**
      * A coin toss as a CONDITION is asked as a comparison, which the export
      * reads back as Math.randomBoolean(). Parenthesised because `pick
      * random` is read before operators and would otherwise take `1 = 1` as
@@ -128,7 +145,13 @@ class MicrobitTranslator extends BaseTranslator {
         case 'input.buttonIsPressed': return `read button_${this.enumToken(a[0]) || 'a'}`;
         case 'input.acceleration': return `read accel ${this.enumToken(a[0]) || 'x'}`;
         case 'input.rotation': return `read ${this.enumToken(a[0]) || 'pitch'}`;
-        case 'input.magneticForce': return `read magforce ${this.enumToken(a[0]) || 'x'}`;
+        // The block's menu word for the total field is `absolute`; MakeCode's
+        // is Dimension.Strength. `read magforce strength` matched no rule and
+        // became a VARIABLE of that name.
+        case 'input.magneticForce': {
+            const axis = this.enumToken(a[0]) || 'x';
+            return `read magforce ${axis === 'strength' ? 'absolute' : axis}`;
+        }
         case 'input.compassHeading': return 'read compass';
         case 'input.lightLevel': return 'read light';
         case 'input.temperature': return 'read temperature';
@@ -143,11 +166,18 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
         case 'radio.receivedString': return 'read last radio text';
-        // `music.beat(BeatFraction.Whole)` is a DURATION in milliseconds,
-        // not an opaque object: at MakeCode's default 120 bpm a beat is
-        // 500 ms and the fractions divide it. Reading it as one lets
-        // playTone keep the length the program wrote.
-        case 'music.beat': return String(BEAT_MS[this.enumToken(a[0]) || 'Whole'] || 500);
+        // MakeCode's music reporters, as the blocks they are. music.beat was
+        // read as its 120 bpm length (a number), which ran — until the program
+        // changed the tempo — and then went back to MakeCode as that number,
+        // losing the call (census 2026-09-27: twelve apps).
+        case 'music.beat': return `beat ${this.enumToken(a[0]) || 'whole'}`;
+        case 'music.tempo': return 'music tempo';
+        case 'music.noteFrequency': {
+            const note = a[0] && a[0].type === 'Member' && a[0].object && a[0].object.name === 'Note' ? a[0].name : null;
+            if (note && MAKECODE_NOTES.includes(note)) return `frequency of note ${note}`;
+            // A computed "note" is already a frequency: noteFrequency is the identity.
+            return this.expr(a[0]);
+        }
         case 'Math.randomRange':
         case 'randint': return `pick random ${arg(0)} to ${arg(1)}`;
         case 'Math.random': return 'pick random 0 to 1';
@@ -230,7 +260,11 @@ class MicrobitTranslator extends BaseTranslator {
         case 'basic.showString': {
             const literal = this.literalString(a[0]);
             if (literal === null) {
-                push(`scroll ${this.expr(a[0])}`);
+                // `show text`, which takes any expression and goes back as
+                // showString. `scroll X` is the NUMBER display and went back as
+                // showNumber, which MakeCode refuses for a string (census:
+                // three apps did not recompile).
+                push(`show text ${this.expr(a[0])}`);
                 return;
             }
             // The interval (ms per scroll step) is MakeCode's optional second
@@ -259,6 +293,15 @@ class MicrobitTranslator extends BaseTranslator {
         case 'basic.clearScreen':
             push('clear display');
             return;
+        // The serial console. `print` is the dialect's serial line on every
+        // board (MicroPython's print() on the micro:bit), and it goes back as
+        // serial.writeLine — the census found it refused in two apps, and
+        // lite's own STC programs' `print` unexportable in 41.
+        case 'serial.writeLine': {
+            const literal = a[0] && a[0].type === 'String' ? this.literalString(a[0]) : null;
+            push(literal !== null ? `print "${literal}"` : `print ${this.expr(a[0])}`);
+            return;
+        }
         // The rest of `led` and `game` that MakeCode's own apps use (census
         // 2026-09-25: plotBarGraph 15 apps, addScore 11, setBrightness 9,
         // stopAnimation 6, gameOver 5, toggle 3, removeLife 2). The spellings
@@ -338,26 +381,40 @@ class MicrobitTranslator extends BaseTranslator {
             return;
 
         // ── sound ──────────────────────────────────────────────────
+        // Both slots of `play tone` take an expression, so the frequency and
+        // the length go across as written: noteFrequency(Note.C) and
+        // beat(Quarter), not 262 and a length frozen at 120 bpm. ringTone is
+        // the tone with no length — it rings until the next one (it was held
+        // at 500 ms, which cut every held note short).
         case 'music.playTone':
-        case 'music.ringTone': {
-            const freq = this.single(a[0], out, pad);
-            // `music.beat(BeatFraction.Whole)` is a call that evaluates to a
-            // number, and the MS slot takes a literal — so ask what it
-            // became rather than what shape it arrived in.
-            const evaluated = a[1] ? this.expr(a[1]) : null;
-            const ms = name === 'music.ringTone' ? '500' :
-                (this.literalNumber(a[1]) ?? (/^\d+$/.test(evaluated || '') ? evaluated : null));
-            if (ms === null) {
-                this.unsupported.push('music.playTone() with a computed duration — held at 500 ms');
-                push(`play tone ${freq} hz for 500 ms`);
+            push(`play tone ${this.operand(a[0])} hz for ${this.operand(a[1])} ms`);
+            return;
+        case 'music.ringTone':
+            push(`play tone ${this.operand(a[0])} hz`);
+            return;
+        // A rest is silence, not only a wait: whatever rings stops.
+        case 'music.rest':
+            push(`rest for ${this.operand(a[0])} ms`);
+            return;
+        case 'music.setTempo':
+            push(`set music tempo to ${this.operand(a[0])}`);
+            return;
+        case 'music.changeTempoBy':
+            push(`change music tempo by ${this.operand(a[0])}`);
+            return;
+        // What MakeCode's "play melody … until done / in background" block
+        // writes, and the older music.play() form of the same thing.
+        case 'music._playDefaultBackground':
+        case 'music.play': {
+            const tune = this.melody(a[0]);
+            const mode = this.enumToken(a[1] && a[1].type === 'Member' ? {...a[1], object: {type: 'Identifier', name: 'PlaybackMode'}} : null);
+            if (tune) {
+                push(`play melody ${tune} ${mode || 'until done'}`);
                 return;
             }
-            push(`play tone ${freq} hz for ${ms} ms`);
+            push(this.note(`${name}() — only MakeCode's built-in melodies have a block here`));
             return;
         }
-        case 'music.rest':
-            push(`wait ${seconds(a[0], this)} seconds`);
-            return;
         case 'music.stopAllSounds':
             push('stop buzzer');
             return;
@@ -381,7 +438,13 @@ class MicrobitTranslator extends BaseTranslator {
             return;
         }
         case 'radio.sendNumber':
+            push(`radio send number ${this.single(a[0], out, pad)}`);
+            return;
+        // The number goes; the NAME cannot — the radio blocks send a number or
+        // a text, not a pair. Said, rather than sending the bare number as if
+        // that were the same packet.
         case 'radio.sendValue':
+            this.unsupported.push('radio.sendValue() — the name is not sent; the radio block sends the number alone');
             push(`radio send number ${this.single(a[a.length - 1], out, pad)}`);
             return;
         case 'radio.sendString': {
@@ -500,6 +563,25 @@ export function ledPattern (node) {
     return rows.map(r => [...r].map(c => (c === '#' ? '9' : '0')).join('')).join(':');
 }
 
+/** Does this statement list assign `name` anywhere? */
+function writes (body, name) {
+    let found = false;
+    const walk = node => {
+        if (found || !node || typeof node !== 'object') return;
+        if ((node.type === 'Assignment' && node.left && node.left.type === 'Identifier' && node.left.name === name) ||
+            (node.type === 'Update' && node.argument && node.argument.type === 'Identifier' && node.argument.name === name)) {
+            found = true;
+            return;
+        }
+        for (const v of Object.values(node)) {
+            if (Array.isArray(v)) v.forEach(walk);
+            else if (v && typeof v === 'object') walk(v);
+        }
+    };
+    walk(body);
+    return found;
+}
+
 /**
  * Handlers MakeCode delivers by event, and the polling shape each
  * becomes. `test` is the condition; `release` is what we wait for so the
@@ -545,6 +627,7 @@ const UNPOLLABLE_HANDLERS = {
 export function microbitToPseudocode (source, opts = {}) {
     const ast = parseMakeCodeTs(source);
     const t = new MicrobitTranslator();
+    t.aliases = new Map();
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
@@ -596,17 +679,23 @@ export function microbitToPseudocode (source, opts = {}) {
             continue;
         }
 
+        // A radio handler is a HAT here, as it is in MakeCode. It used to be
+        // polled — a FOREVER that ran the body on every pass whether or not a
+        // packet came — so `clock += 1` per packet counted the loop instead
+        // (census 2026-09-27: twenty apps, and the call was then lost on the
+        // way back). The handler's parameter is the packet's value, which is
+        // what `read last radio number` means inside the hat.
         if (callName === 'radio.onReceivedNumber' || callName === 'radio.onReceivedString') {
-            const isNumber = callName.endsWith('Number');
+            const kind = callName.endsWith('Number') ? 'number' : 'text';
             const fn = call.args[call.args.length - 1];
-            const param = (fn && fn.params && fn.params[0]) || 'receivedNumber';
-            const lines = [
-                `# ${callName} — polled here; MakeCode delivered it as an event.`,
-                'WHEN flag clicked:',
-                '  FOREVER:',
-                `    set ${param} to read last radio ${isNumber ? 'number' : 'text'}`
-            ];
-            t.block(bodyOf(fn), 2, lines);
+            const param = fn && fn.params && fn.params[0];
+            const reporter = `read last radio ${kind}`;
+            const lines = [`WHEN radio receives ${kind}:`];
+            // A body that assigns its parameter needs a variable to assign.
+            if (param && writes(bodyOf(fn), param)) lines.push(`  set ${t.varName(param)} to ${reporter}`);
+            else if (param) t.aliases.set(param, reporter);
+            t.block(bodyOf(fn), 1, lines);
+            if (param) t.aliases.delete(param);
             scripts.push(lines);
             continue;
         }

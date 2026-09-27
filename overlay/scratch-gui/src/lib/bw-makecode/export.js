@@ -72,6 +72,29 @@ const GESTURE = {
     '6g': 'Gesture.SixG', '8g': 'Gesture.EightG'
 };
 const PULL = {up: 'PinPullMode.PullUp', down: 'PinPullMode.PullDown', none: 'PinPullMode.PullNone'};
+/** `beat quarter` → BeatFraction.Quarter; `play melody … in background` → PlaybackMode.InBackground. */
+const BEAT_FRACTION = {whole: 'Whole', half: 'Half', quarter: 'Quarter', eighth: 'Eighth',
+    sixteenth: 'Sixteenth', double: 'Double', breve: 'Breve'};
+const PLAYBACK = {'until done': 'UntilDone', 'in background': 'InBackground', 'looping in background': 'LoopingInBackground'};
+/** The radio hats, and the parameter MakeCode names their packet. */
+const RADIO_HATS = {
+    microbitplus_whenradionum: {call: 'radio.onReceivedNumber', param: 'receivedNumber'},
+    microbitplus_whenradiostr: {call: 'radio.onReceivedString', param: 'receivedString'}
+};
+
+/**
+ * Names MakeCode already declares at the top level. A program variable with
+ * one of these names is a redeclaration MakeCode refuses (`let light = 0`
+ * against pxt-microbit's `light` namespace — census 2026-09-27), so it goes
+ * across with a trailing underscore, which the importer reads back as is.
+ */
+const MAKECODE_GLOBALS = new Set([
+    'basic', 'input', 'led', 'music', 'radio', 'pins', 'game', 'images', 'serial', 'control', 'light',
+    'console', 'Math', 'power', 'loops', 'logic', 'text', 'String', 'Array', 'Number', 'Boolean', 'Object',
+    'Buffer', 'Image', 'Note', 'Melodies', 'BeatFraction', 'Button', 'Gesture', 'Dimension', 'Rotation',
+    'DigitalPin', 'AnalogPin', 'TouchPin', 'PinPullMode', 'IconNames', 'ArrowNames', 'randint', 'pause',
+    'pauseUntil', 'parseInt', 'parseFloat', 'convertToText'
+]);
 
 class Emitter {
     constructor (blocks) {
@@ -161,7 +184,8 @@ class Emitter {
     }
 
     variableName (name) {
-        return String(name).replace(/[^A-Za-z0-9_]/g, '_') || 'v';
+        const id = String(name).replace(/[^A-Za-z0-9_]/g, '_') || 'v';
+        return MAKECODE_GLOBALS.has(id) ? `${id}_` : id;
     }
 
     /**
@@ -262,7 +286,10 @@ class Emitter {
         case 'operator_mod': return `(${v('NUM1')} % ${v('NUM2')})`;
         case 'operator_round': return `Math.round(${v('NUM')})`;
         case 'operator_random': return `randint(${v('FROM')}, ${v('TO')})`;
-        case 'operator_join': return `("" + ${v('STRING1')} + ${v('STRING2')})`;
+        // `"" + …` makes it text whatever the operands are; a join whose first
+        // operand is already "" needs only the one.
+        case 'operator_join':
+            return v('STRING1') === '""' ? `("" + ${v('STRING2')})` : `("" + ${v('STRING1')} + ${v('STRING2')})`;
         case 'operator_gt': return this.booleanCompare(b, '>') || `(${v('OPERAND1')} > ${v('OPERAND2')})`;
         case 'operator_lt': return this.booleanCompare(b, '<') || `(${v('OPERAND1')} < ${v('OPERAND2')})`;
         case 'operator_equals': {
@@ -294,15 +321,23 @@ class Emitter {
         case 'microbitplus_pitch': return 'input.rotation(Rotation.Pitch)';
         case 'microbitplus_roll': return 'input.rotation(Rotation.Roll)';
         case 'microbitplus_compass': return 'input.compassHeading()';
-        case 'microbitplus_magforce': return `input.magneticForce(${AXIS[f('AXIS')] || 'Dimension.X'})`;
+        // `absolute` is the block's word for the total field, MakeCode's Strength.
+        case 'microbitplus_magforce':
+            return `input.magneticForce(${f('AXIS') === 'absolute' ? 'Dimension.Strength' : AXIS[f('AXIS')] || 'Dimension.X'})`;
         case 'microbitplus_light': return 'input.lightLevel()';
         case 'microbitplus_temp': return 'input.temperature()';
         case 'microbitplus_sound': return 'input.soundLevel()';
-        case 'microbitplus_isbutton': return `input.buttonIsPressed(${BUTTON[f('BTN')] || 'Button.A'})`;
+        case 'microbitplus_isbutton': return `input.buttonIsPressed(${BUTTON[String(f('BTN')).toLowerCase()] || 'Button.A'})`;
         case 'microbitplus_digitalread': return `pins.digitalReadPin(DigitalPin.${PIN(f('PIN'))})`;
         case 'microbitplus_analogread': return `pins.analogReadPin(AnalogPin.${PIN(f('PIN'))})`;
-        case 'microbitplus_radiolastnum': return 'receivedNumber';
-        case 'microbitplus_radiolaststr': return 'receivedString';
+        // Inside its hat the packet is the handler's parameter; anywhere else
+        // it is the last packet, which MakeCode still reads with these calls.
+        case 'microbitplus_radiolastnum': return this.radioHat === 'microbitplus_whenradionum' ? 'receivedNumber' : 'radio.receivedNumber()';
+        case 'microbitplus_radiolaststr': return this.radioHat === 'microbitplus_whenradiostr' ? 'receivedString' : 'radio.receivedString()';
+        case 'microbitplus_beat': return `music.beat(BeatFraction.${BEAT_FRACTION[f('FRACTION')] || 'Whole'})`;
+        case 'microbitplus_notefreq': return `music.noteFrequency(Note.${f('NOTE') || 'C'})`;
+        case 'microbitplus_tempo': return 'music.tempo()';
+        case 'planetemaths_pow': return `Math.pow(${v('NUM1')}, ${v('NUM2')})`;
         case 'sensing_timer': return '(input.runningTime() / 1000)';
         // Inside a DEFINE, a parameter is read through one of these.
         case 'argument_reporter_string_number':
@@ -504,6 +539,16 @@ class Emitter {
         case 'microbitplus_cleardisplay':
             push('basic.clearScreen()');
             return;
+        // `print` is the serial line (MicroPython's print() on the micro:bit).
+        // writeLine takes text, so anything that is not already text is made
+        // text the way a join is written — which is also how it reads back.
+        case 'stc12_print': {
+            const value = v('VALUE');
+            const input = this.inputBlock(b, 'VALUE');
+            const isText = /^"/.test(value) || (input && input.opcode === 'operator_join');
+            push(`serial.writeLine(${isText ? value : `("" + ${value})`})`);
+            return;
+        }
         case 'microbitplus_plot':
             push(`led.${f('STATE') === 'off' ? 'unplot' : 'plot'}(${v('X')}, ${v('Y')})`);
             return;
@@ -548,8 +593,25 @@ class Emitter {
             push(`pins.servoWritePin(AnalogPin.${PIN(f('PIN'))}, ${v('DEG')})`);
             return;
 
-        case 'microbitplus_playtone':
-            push(`music.playTone(${v('FREQ', '440')}, ${v('MS', '500')})`);
+        // A tone with no length (-1) rings until the next one: MakeCode's ringTone.
+        case 'microbitplus_playtone': {
+            const ms = v('MS', '500');
+            push(ms === '-1' ? `music.ringTone(${v('FREQ', '440')})` : `music.playTone(${v('FREQ', '440')}, ${ms})`);
+            return;
+        }
+        case 'microbitplus_rest':
+            push(`music.rest(${v('MS')})`);
+            return;
+        case 'microbitplus_settempo':
+            push(`music.setTempo(${v('BPM')})`);
+            return;
+        case 'microbitplus_changetempo':
+            push(`music.changeTempoBy(${v('BPM')})`);
+            return;
+        // What MakeCode's own "play melody" block writes.
+        case 'microbitplus_playmelody':
+            push(`music._playDefaultBackground(music.builtInPlayableMelody(Melodies.${f('MELODY') || 'Dadadadum'}), ` +
+                `music.PlaybackMode.${PLAYBACK[f('MODE')] || 'UntilDone'})`);
             return;
         case 'microbitplus_stoptone':
             push('music.stopAllSounds()');
@@ -571,6 +633,68 @@ class Emitter {
             push(`// unsupported: ${b.opcode}`);
         }
     }
+}
+
+/** Reporters whose value is text. */
+const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr']);
+
+/**
+ * The variables this target only ever sets to TEXT (a quoted literal or a
+ * text reporter), and never changes by a number. Anything mixed stays a
+ * number, as before.
+ */
+function textVariables (blocks, emitter, textArrays = new Set()) {
+    const kinds = new Map();
+    const mark = (name, kind) => {
+        const k = kinds.get(name) || new Set();
+        k.add(kind);
+        kinds.set(name, k);
+    };
+    for (const b of Object.values(blocks)) {
+        if (!b || !b.fields || !b.fields.VARIABLE) continue;
+        const name = emitter.variableName(b.fields.VARIABLE[0]);
+        if (b.opcode === 'data_changevariableby') mark(name, 'number');
+        if (b.opcode !== 'data_setvariableto') continue;
+        const slot = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
+        if (Array.isArray(slot)) {
+            const isText = (slot[0] === 10 || slot[0] === 11) && !/^(true|false)$/.test(String(slot[1]));
+            mark(name, isText ? 'text' : 'number');
+        } else {
+            const r = typeof slot === 'string' ? blocks[slot] : null;
+            const fromTextArray = r && r.opcode === 'arrays_get' && textArrays.has(arrayNameOf(r, blocks, emitter));
+            mark(name, r && (TEXT_REPORTERS.has(r.opcode) || fromTextArray) ? 'text' : 'number');
+        }
+    }
+    return new Set([...kinds].filter(([, k]) => k.size === 1 && k.has('text')).map(([name]) => name));
+}
+
+/** An `arrays` block's array name, sanitised as the emitter does, without recording it. */
+function arrayNameOf (b, blocks, emitter) {
+    const slot = b.inputs && b.inputs.NAME && b.inputs.NAME[1];
+    const raw = Array.isArray(slot) ? String(slot[1]) : 'liste';
+    return emitter.variableName(raw.replace(/^["']|["']$/g, ''));
+}
+
+/** Arrays that are only ever filled with TEXT: MakeCode types them string[]. */
+function textArrayNames (blocks, emitter) {
+    const kinds = new Map();
+    for (const b of Object.values(blocks)) {
+        if (!b || !/^arrays_(push|set|insert|create1D)$/.test(b.opcode)) continue;
+        const name = arrayNameOf(b, blocks, emitter);
+        const k = kinds.get(name) || new Set();
+        if (b.opcode === 'arrays_create1D') {
+            const slot = b.inputs && b.inputs.JSON && b.inputs.JSON[1];
+            let items = [];
+            try { items = JSON.parse(Array.isArray(slot) ? String(slot[1]) : '[]'); } catch (e) { items = []; }
+            for (const item of items) k.add(typeof item === 'string' ? 'text' : 'number');
+        } else {
+            const slot = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
+            k.add(Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
+                !/^-?\d+(\.\d+)?$/.test(String(slot[1])) ? 'text' : 'number');
+        }
+        kinds.set(name, k);
+    }
+    return new Set([...kinds].filter(([, k]) => k.size === 1 && k.has('text')).map(([name]) => name));
 }
 
 /** `09900:…` → MakeCode's `# . #` grid, one row per line. */
@@ -600,12 +724,16 @@ export function projectToMakeCodeTs (project) {
         const emitter = new Emitter(blocks);
 
         // Variables first: MakeCode is TypeScript, and TypeScript wants
-        // them declared before the code that assigns them.
+        // them declared before the code that assigns them — with a TYPE. A
+        // variable that only ever holds text is declared as text: `let t = 0`
+        // then `t = "COLD"` is a program MakeCode refuses (census 2026-09-27).
+        const textArrays = textArrayNames(blocks, emitter);
+        const text = textVariables(blocks, emitter, textArrays);
         for (const entry of Object.values(target.variables || {})) {
             const name = emitter.variableName(Array.isArray(entry) ? entry[0] : entry);
             if (declared.has(name)) continue;
             declared.add(name);
-            lines.push(`let ${name} = 0`);
+            lines.push(`let ${name} = ${text.has(name) ? '""' : '0'}`);
         }
 
         // The body is emitted first because an array's name is only met
@@ -630,6 +758,15 @@ export function projectToMakeCodeTs (project) {
                 void args;
                 continue;
             }
+            // A radio hat is MakeCode's handler, registered where it stands:
+            // the importer reads each handler back into a hat in the same order.
+            if (RADIO_HATS[block.opcode]) {
+                const {call, param} = RADIO_HATS[block.opcode];
+                emitter.radioHat = block.opcode;
+                body.push(`${call}(function (${param}) {`, ...emitter.stack(block.next, 1), '})');
+                emitter.radioHat = null;
+                continue;
+            }
             if (block.opcode !== 'event_whenflagclicked') {
                 if (/^event_|^control_start_as_clone/.test(block.opcode)) {
                     unsupported.push(`${block.opcode} — MakeCode has no equivalent hat`);
@@ -645,7 +782,7 @@ export function projectToMakeCodeTs (project) {
         // not add a line per round trip (the CLI's full-circle test found it).
         while (body.length) {
             const m = /^([A-Za-z_][A-Za-z0-9_]*) = (-?\d+(?:\.\d+)?|"[^"\\]*")$/.exec(body[0]);
-            const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0`);
+            const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0` || l === `let ${m[1]} = ""`);
             if (!m || decl < 0) break;
             lines[decl] = `let ${m[1]} = ${m[2]}`;
             body.shift();
@@ -654,7 +791,7 @@ export function projectToMakeCodeTs (project) {
         for (const name of emitter.arrays) {
             if (declared.has(name)) continue;
             declared.add(name);
-            lines.push(`let ${name}: number[] = []`);
+            lines.push(`let ${name}: ${textArrays.has(name) ? 'string' : 'number'}[] = []`);
         }
         lines.push(...body);
         unsupported.push(...emitter.unsupported);

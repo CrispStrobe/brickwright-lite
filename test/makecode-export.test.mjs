@@ -407,3 +407,137 @@ test('a random number compared with something other than 1 is still a comparison
     assert.doesNotMatch(ts, /randomBoolean/, ts);
     assert.match(ts, /\(randint\(0, 2\) == 1\)/, ts);
 });
+
+// Batch 2 of the MakeCode census (2026-09-27): the way back for every
+// spelling the importer now writes. A mapping on one side only is a program
+// that imports and runs and then loses the call on its way back to MakeCode —
+// which is how radio.onReceivedNumber (20 apps) and music.beat (12) were lost.
+const BATCH_2_WAY_BACK = [
+    ['play tone (frequency of note C) hz for (beat quarter) ms',
+        'music.playTone(music.noteFrequency(Note.C), music.beat(BeatFraction.Quarter))'],
+    ['play tone 440 hz', 'music.ringTone(440)'],
+    ['play tone 880 hz for 200 ms', 'music.playTone(880, 200)'],
+    ['rest for (beat half) ms', 'music.rest(music.beat(BeatFraction.Half))'],
+    ['set music tempo to 90', 'music.setTempo(90)'],
+    ['change music tempo by 20', 'music.changeTempoBy(20)'],
+    ['set v to music tempo', 'v = music.tempo()'],
+    ['play melody Dadadadum in background',
+        'music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Dadadadum), music.PlaybackMode.InBackground)'],
+    ['play melody PowerUp looping in background',
+        'music._playDefaultBackground(music.builtInPlayableMelody(Melodies.PowerUp), music.PlaybackMode.LoopingInBackground)'],
+    ['IF read button_ab THEN:\n    clear display', 'if (input.buttonIsPressed(Button.AB)) {'],
+    ['set v to read magforce absolute', 'v = input.magneticForce(Dimension.Strength)'],
+    ['set v to 2 to the power of v', 'v = Math.pow(2, v)'],
+    ['set v to read last radio number', 'v = radio.receivedNumber()'],
+    ['print "hi"', 'serial.writeLine("hi")'],
+    ['print v + 1', 'serial.writeLine(("" + (v + 1)))']
+];
+
+for (const [line, call] of BATCH_2_WAY_BACK) {
+    test(`census batch 2: \`${line.split('\n')[0]}\` exports as \`${call.slice(0, 50)}\``, {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(`DEVICE MICROBIT\nWHEN flag clicked:\n  ${line}\n`));
+        assert.deepEqual(unsupported, []);
+        assert.ok(ts.includes(call), `\`${call}\` not in:\n${ts}`);
+    });
+}
+
+test('a radio hat goes back as MakeCode\'s handler, reading its own parameter', {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+    const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse([
+        'DEVICE MICROBIT', 'WHEN flag clicked:', '  radio on group 1 power 7', '',
+        'WHEN radio receives number:', '  change clock by read last radio number', '',
+        'WHEN radio receives text:', '  show text read last radio text', ''
+    ].join('\n')));
+    assert.deepEqual(unsupported, []);
+    assert.match(ts, /radio\.onReceivedNumber\(function \(receivedNumber\) \{\n {4}clock \+= receivedNumber\n\}\)/);
+    assert.match(ts, /radio\.onReceivedString\(function \(receivedString\) \{\n {4}basic\.showString\(receivedString\)\n\}\)/);
+});
+
+test('a program variable named like a MakeCode namespace is renamed (let light redeclared pxt\'s `light`)',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const ts = tsOfProgram('  set light to read light\n  display light\n');
+        assert.match(ts, /let light_ = 0/);
+        assert.match(ts, /light_ = input\.lightLevel\(\)/);
+        assert.match(microbitToPseudocode(ts).code, /set light_ to read light/, 'the new name reads back as itself');
+    });
+
+test('a variable or array that only holds text is declared as text (MakeCode refused `t = "COLD"` into a number)',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const ts = tsOfProgram(['  set heat to "COLD"', '  set msg to ("a" join heat)', '  set n to 1',
+            '  new array "words"', '  push "cat" to array "words"', '  set w to item 0 of array "words"',
+            '  new array "nums"', '  push 3 to array "nums"', ''].join('\n'));
+        assert.match(ts, /let heat = "COLD"/);
+        assert.match(ts, /let msg = ""/);
+        assert.match(ts, /let n = 0/, 'a number stays a number');
+        assert.match(ts, /let w = ""/);
+        assert.match(ts, /let words: string\[\] = \[\]/);
+        assert.match(ts, /let nums: number\[\] = \[\]/);
+    });
+
+/**
+ * One program that says every batch-2 construct, for the fixed-point test
+ * below: export, import, export again must give the same MakeCode.
+ */
+const BATCH_2_PROGRAM = [
+    'DEVICE MICROBIT', '',
+    'WHEN flag clicked:',
+    '  radio on group 3 power 7',
+    '  set word to "cat"',
+    '  set light to read light',
+    '  set music tempo to 100',
+    '  play tone (frequency of note C) hz for (beat quarter) ms',
+    '  play tone (frequency of note GSharp5) hz',
+    '  rest for (beat half) ms',
+    '  change music tempo by 10',
+    '  play melody BaDing in background',
+    '  show text ("n=" join (music tempo))',
+    '  set word to ("" join light)',
+    '  IF read button_ab THEN:',
+    '    set v to read magforce absolute',
+    '  IF light > 100 THEN:',
+    '    set bright to 1',
+    '  ELSE:',
+    '    set bright to 0',
+    '  set v to 2 to the power of v',
+    '  print "done"',
+    '  print v', '',
+    'WHEN radio receives number:',
+    '  change v by read last radio number',
+    '  display read last radio number', '',
+    'WHEN radio receives text:',
+    '  show text ("got " join (read last radio text))', ''
+].join('\n');
+
+test('batch 2: a round trip is a fixed point — export, import, export gives the same MakeCode',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const ts1 = projectToMakeCodeTs(new SB3Creator().parse(BATCH_2_PROGRAM));
+        assert.deepEqual(ts1.unsupported, []);
+        const back = microbitToPseudocode(ts1.ts);
+        assert.deepEqual(back.unsupported, []);
+        const ts2 = projectToMakeCodeTs(new SB3Creator().parse(back.code));
+        assert.equal(ts2.ts, ts1.ts);
+    });
+
+test('batch 2: a MakeCode program settles after one trip — the second trip changes nothing',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        // MakeCode's own program is not byte-for-byte what we write back
+        // (a truth value becomes the choice it is), but it must settle.
+        const original = [
+            'let clock = 0',
+            'let isSwitched = false',
+            'let heat = input.temperature() < 10 ? "COLD" : "WARM"',
+            'radio.onReceivedNumber(function (receivedNumber) {',
+            '    clock += receivedNumber',
+            '    music.playTone(music.noteFrequency(Note.E), music.beat(BeatFraction.Eighth))',
+            '})',
+            'basic.forever(function () {',
+            '    isSwitched = Math.abs(input.magneticForce(Dimension.Strength)) > 100',
+            '    basic.showString("" + clock + heat)',
+            '    music.rest(music.beat(BeatFraction.Whole))',
+            '})'
+        ].join('\n');
+        const once = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(original).code)).ts;
+        const twice = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(once).code)).ts;
+        assert.equal(twice, once);
+        for (const call of ['radio.onReceivedNumber', 'music.noteFrequency(Note.E)', 'music.beat(BeatFraction.Eighth)',
+            'input.magneticForce(Dimension.Strength)', 'music.rest(']) assert.ok(once.includes(call), `${call} lost:\n${once}`);
+    });

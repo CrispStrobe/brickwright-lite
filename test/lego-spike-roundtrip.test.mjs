@@ -124,8 +124,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // ATtiny88 GPIO/ADC metadata, generated benches, and the Blinkenrocket
     // QFN32 circuit/licence boundary changed. The SPIKE compiler path is
     // unchanged, and this complete artifact round trip was re-run at the pin.
+    // PIN MOVED 5546e6fb -> 48e2f174 (2026-09-27, sb3-creator#27): MakeCode
+    // radio hats, music, the yield-less task guard, the json fallback and
+    // off-grid plots in generateMicroPython — all micro:bit-only, none on the
+    // SPIKE path this round trip reads. The assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '5546e6fb980994456407f492b6ee4ce9a150c39f');
+        '48e2f174aba6c5a37aeab7c8df4a54a46ecc5032');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

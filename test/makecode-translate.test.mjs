@@ -101,9 +101,10 @@ test('event handlers become polling scripts of their own', () => {
 });
 
 test('a call with no mapping is reported, not swallowed', () => {
-    const out = microbitToPseudocode('serial.writeLine("hello")\nbasic.clearScreen()');
-    assert.match(out.code, /# unsupported: serial\.writeLine\(\)/);
-    assert.ok(out.unsupported.some(u => /serial\.writeLine/.test(u)));
+    // (serial.writeLine was the example here until it got a mapping — `print`.)
+    const out = microbitToPseudocode('serial.writeValue("x", 1)\nbasic.clearScreen()');
+    assert.match(out.code, /# unsupported: serial\.writeValue\(\)/);
+    assert.ok(out.unsupported.some(u => /serial\.writeValue/.test(u)));
     assert.match(out.code, /clear display/, 'the rest of the program still translates');
 });
 
@@ -355,4 +356,138 @@ test('Math.randomBoolean as a VALUE is the dialect\'s 0/1, not a comparison stor
     assert.ok(mp.ok, JSON.stringify(mp.reasons));
     assert.match(mp.py, /b = random\.randint\(0, 1\)/, mp.py);
     assert.doesNotMatch(mp.py, /b = "/, 'the coin toss became a string');
+});
+
+// Batch 2 of the MakeCode census (2026-09-27): the calls lost most often
+// WITHOUT a word — radio handlers (20 apps), music.beat (12) — then music,
+// A+B, the total magnetic field, text, and truth values stored in variables.
+// Each MakeCode call imports to a line that compiles to the block that means it.
+const BATCH_2 = [
+    // [MakeCode, the line it imports to, the opcode that line compiles to]
+    ['music.playTone(music.noteFrequency(Note.C), music.beat(BeatFraction.Quarter))',
+        'play tone (frequency of note C) hz for (beat quarter) ms', 'microbitplus_beat'],
+    ['music.playTone(Note.FSharp5, 200)', 'play tone (frequency of note FSharp5) hz for 200 ms', 'microbitplus_notefreq'],
+    ['music.ringTone(440)', 'play tone 440 hz', 'microbitplus_playtone'],
+    ['music.rest(music.beat(BeatFraction.Half))', 'rest for (beat half) ms', 'microbitplus_rest'],
+    ['music.setTempo(90)', 'set music tempo to 90', 'microbitplus_settempo'],
+    ['music.changeTempoBy(-20)', 'change music tempo by (0 - 20)', 'microbitplus_changetempo'],
+    ['v = music.tempo()', 'set v to music tempo', 'microbitplus_tempo'],
+    ['music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Dadadadum), music.PlaybackMode.InBackground)',
+        'play melody Dadadadum in background', 'microbitplus_playmelody'],
+    ['music.play(music.builtInPlayableMelody(Melodies.JumpUp), music.PlaybackMode.UntilDone)',
+        'play melody JumpUp until done', 'microbitplus_playmelody'],
+    ['if (input.buttonIsPressed(Button.AB)) { basic.clearScreen() }', 'IF read button_ab THEN:', 'microbitplus_isbutton'],
+    ['v = input.magneticForce(Dimension.Strength)', 'set v to read magforce absolute', 'microbitplus_magforce'],
+    ['basic.showString("n=" + v)', 'show text ("n=" join v)', 'operator_join'],
+    ['v = Math.pow(2, v)', 'set v to 2 to the power of v', 'planetemaths_pow'],
+    ['serial.writeLine("hi")', 'print "hi"', 'stc12_print'],
+    ['serial.writeLine("n=" + v)', 'print ("n=" join v)', 'stc12_print']
+];
+
+for (const [ts, line, opcode] of BATCH_2) {
+    test(`census batch 2: \`${ts.slice(0, 60)}\` imports as \`${line}\` → ${opcode}`, {skip: canCompile ? false :
+        'packages/scratch-gui not integrated'}, () => {
+        const out = microbitToPseudocode(`let v = 0\nbasic.forever(function () {\n    ${ts}\n})\n`);
+        assert.deepEqual(out.unsupported, [], 'nothing refused');
+        assert.ok(out.code.includes(line), `\`${line}\` not in:\n${out.code}`);
+        assert.ok(opcodesOf(out.code).has(opcode), `${opcode} missing: the line parsed to nothing`);
+    });
+}
+
+test('a radio handler is a HAT, and its parameter IS the packet (it was a polling loop)', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    // The polled version ran the body on every pass whether or not a packet
+    // came, so `clock += 1` per packet counted the loop instead.
+    const {code, unsupported} = microbitToPseudocode([
+        'let clock = 0',
+        'radio.onReceivedNumber(function (receivedNumber) {',
+        '    clock += receivedNumber',
+        '})',
+        'radio.onReceivedString(function (s) {',
+        '    basic.showString(s)',
+        '})'
+    ].join('\n'));
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /WHEN radio receives number:\n {2}change clock by read last radio number/);
+    assert.match(code, /WHEN radio receives text:\n {2}show text read last radio text/);
+    assert.doesNotMatch(code, /FOREVER/, 'still polled');
+    const ops = opcodesOf(code);
+    for (const op of ['microbitplus_whenradionum', 'microbitplus_whenradiostr', 'microbitplus_radiolastnum',
+        'microbitplus_radiolaststr']) assert.ok(ops.has(op), op);
+});
+
+test('a handler that assigns its parameter gets a variable to assign', () => {
+    const {code} = microbitToPseudocode('radio.onReceivedNumber(function (n) {\n    n += 1\n    basic.showNumber(n)\n})\n');
+    assert.match(code, /WHEN radio receives number:\n {2}set n to read last radio number\n {2}change n by 1\n {2}display n/);
+});
+
+test('a truth value stored in a variable is stored as the choice it is (it was the TEXT of the comparison)',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        // `set isSwitched to force > 100` parses as the string "force > 100",
+        // which is never 0 — the trick always thought it was switched.
+        const {code, unsupported} = microbitToPseudocode([
+            'let force = 0',
+            'let isSwitched = false',
+            'isSwitched = force > 100',
+            'let heat = input.temperature() < 10 ? "COLD" : "WARM"',
+            'let both = force > 1 && !isSwitched'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, / {2}IF force > 100 THEN:\n {4}set isSwitched to 1\n {2}ELSE:\n {4}set isSwitched to 0/);
+        assert.match(code, / {2}IF read temperature < 10 THEN:\n {4}set heat to "COLD"\n {2}ELSE:\n {4}set heat to "WARM"/);
+        assert.match(code, /IF \(force > 1\) and \(not \(not \(isSwitched = 0\)\)\) THEN:/);
+        const creator = new SB3Creator();
+        creator.parse(`DEVICE MICROBIT\nWHEN flag clicked:\n${code.split('\n').filter(l => l.startsWith('  ')).join('\n')}\n`);
+        assert.deepEqual(creator.warnings.filter(w => /COMPARISON/.test(String(w.message || w))), [],
+            'a comparison was still stored as text');
+    });
+
+test('a truth value passed to a function is hoisted as a choice, not as text', () => {
+    const {code} = microbitToPseudocode('function f(on: boolean) {\n    basic.showNumber(1)\n}\nlet i = 0\nf(i < 3)\n');
+    assert.match(code, /IF i < 3 THEN:\n {4}set _mc1 to 1\n {2}ELSE:\n {4}set _mc1 to 0\n {2}f _mc1/);
+});
+
+test('`+` on text is join; a variable that holds text joins too (it was operator_add)', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const {code} = microbitToPseudocode([
+        'let time = ""',
+        'let minutes = 5',
+        'time = "" + minutes',
+        'time = time + ":"',
+        'time = time + minutes',
+        'basic.showString(time)'
+    ].join('\n'));
+    assert.match(code, /set time to \("" join minutes\)/);
+    assert.match(code, /set time to \(time join ":"\)/);
+    assert.match(code, /set time to \(time join minutes\)/);
+    assert.match(code, /show text time/);
+    assert.ok(!opcodesOf(code).has('operator_add'), 'a text + was still an addition');
+});
+
+test('radio.sendValue says the name is not sent (it sent the bare number as if that were the same packet)', () => {
+    const {code, unsupported} = microbitToPseudocode('radio.sendValue("x", 5)\n');
+    assert.match(code, /radio send number 5/);
+    assert.ok(unsupported.some(u => /radio\.sendValue\(\) — the name is not sent/.test(u)), unsupported.join('\n'));
+});
+
+test('a class and an object literal are refused by name, with the calls inside them', () => {
+    const {unsupported} = microbitToPseudocode([
+        'class Message {',
+        '    constructor() { this.d = control.createBuffer(13) }',
+        '    send() { radio.sendBuffer(this.d) }',
+        '}',
+        'let c = { sprite: game.createSprite(0, 0) }'
+    ].join('\n'));
+    assert.ok(unsupported.some(u => /class Message.*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
+        unsupported.join('\n'));
+    assert.ok(!unsupported.some(u => /constructor\(\)|send\(\),/.test(u)), 'a method definition was read as a call');
+    assert.ok(unsupported.some(u => /object literal.*game\.createSprite\(\)/.test(u)), unsupported.join('\n'));
+});
+
+test('a MakeCode `? :` parses (it stopped the parser, and the rest came out as stray statements)', () => {
+    const ast = parseMakeCodeTs('let m = a < 10 ? "COLD" : b ? 1 : 2\n');
+    assert.equal(ast.body.length, 1);
+    const init = ast.body[0].decls[0].init;
+    assert.equal(init.type, 'Conditional');
+    assert.equal(init.alternate.type, 'Conditional', 'right-associative');
 });

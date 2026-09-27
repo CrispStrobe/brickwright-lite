@@ -65,6 +65,33 @@ export const num = value => String(Math.round(value * 1000) / 1000);
 /** The statements inside a function-expression argument. */
 export const bodyOf = node => (node && node.type === 'FunctionExpression' ? node.body : []);
 
+const isEmptyString = node => !!node && node.type === 'String' && node.value === '';
+
+/** `(…)` whose first parenthesis closes at the very end: already one operand. */
+const wrapped = value => {
+    if (!value.startsWith('(') || !value.endsWith(')')) return false;
+    let depth = 0;
+    for (let i = 0; i < value.length; i++) {
+        if (value[i] === '(') depth++;
+        else if (value[i] === ')' && --depth === 0) return i === value.length - 1;
+    }
+    return false;
+};
+
+/** ` — it calls a.b(), c()` for a construct refused whole, or '' when it calls nothing. */
+const callList = calls => (calls && calls.length ? ` — not translated; it calls ${calls.map(c => `${c}()`).join(', ')}` : '');
+
+/** `c ? 1 : 0` (or true/false) — a truth value written as a number. */
+const isOneZero = node => {
+    const lit = (n, v) => n && ((n.type === 'Number' && Number(n.value) === v) || (n.type === 'Boolean' && n.value === !!v));
+    return lit(node.consequent, 1) && lit(node.alternate, 0);
+};
+
+/** An expression whose value is true/false: a comparison, a logical, a negation. */
+const isTruthValue = node => !!node && (
+    (node.type === 'Binary' && ['==', '===', '!=', '!==', '<', '>', '<=', '>=', '&&', '||'].includes(node.op)) ||
+    (node.type === 'Unary' && node.op === '!'));
+
 export class BaseTranslator {
     constructor () {
         this.enums = new Map();          // user `enum X {}` → {member: value}
@@ -86,6 +113,13 @@ export class BaseTranslator {
         seen.add(node);
         if (!this.taken) this.taken = new Set();
         if (typeof node.name === 'string') this.taken.add(node.name);
+        // Variables that hold TEXT, so `+` on them joins: `time = time +
+        // minutes` after `let time = ""` is a string, and as operator_add it
+        // added "12:" to a number. Known text on the right makes the name text.
+        if (!this.textVars) this.textVars = new Set();
+        const holds = (name, value) => { if (name && this.isText(value)) this.textVars.add(name); };
+        if (node.type === 'Declaration') for (const d of node.decls || []) holds(d.name, d.init);
+        if (node.type === 'Assignment' && node.op === '=' && node.left && node.left.type === 'Identifier') holds(node.left.name, node.right);
         for (const value of Object.values(node)) {
             if (Array.isArray(value)) value.forEach(v => this.claimNames(v, seen));
             else if (value && typeof value === 'object') this.claimNames(value, seen);
@@ -159,7 +193,11 @@ export class BaseTranslator {
         // In a condition, condition() below keeps true/false.
         case 'Boolean': return node.value ? '1' : '0';
         case 'Null': return '0';
-        case 'Identifier': return this.varName(node.name);
+        case 'Identifier':
+            // A handler's parameter that IS a reporter here (radio's
+            // receivedNumber inside onReceivedNumber) reads as that reporter.
+            if (this.aliases && this.aliases.has(node.name)) return this.aliases.get(node.name);
+            return this.varName(node.name);
         case 'Unary':
             if (node.op === '!') return `not (${this.condition(node.argument)})`;
             // Parenthesised, and not optionally: `maxSpeed * -cos(a)` written
@@ -180,6 +218,19 @@ export class BaseTranslator {
             if (op === '<=') return `not (${this.expr(node.left)} > ${this.expr(node.right)})`;
             if (op === '>=') return `not (${this.expr(node.left)} < ${this.expr(node.right)})`;
             if (op === '%') return `${this.expr(node.left)} mod ${this.expr(node.right)}`;
+            // `+` with text on either side is concatenation, and the dialect
+            // spells that `join`: written as `+` it became operator_add, which
+            // adds " " + pi as NUMBERS. `("" + a + b)` is how the export writes
+            // `a join b`, so that shape reads back as exactly that join (a
+            // round trip stays a fixed point); a lone `"" + x` keeps its "",
+            // because it is what makes x text.
+            if (op === '+' && (this.isText(node.left) || this.isText(node.right))) {
+                const l = node.left;
+                if (l.type === 'Binary' && l.op === '+' && isEmptyString(l.left)) {
+                    return `(${this.joinOperand(l.right)} join ${this.joinOperand(node.right)})`;
+                }
+                return `(${this.joinOperand(l)} join ${this.joinOperand(node.right)})`;
+            }
             if (BITWISE[op]) {
                 this.usesBitops = true;
                 if (op === '>>>') this.needsBitopsNote = true;
@@ -210,12 +261,30 @@ export class BaseTranslator {
         case 'Index': {
             const name = this.arrayName(node.object);
             if (name) return `item ${this.expr(node.index)} of ${this.arrayRef(name)}`;
-            this.unsupported.push('indexing something that is not an array');
+            // The index is dropped with the indexing, so the calls in it are named too.
+            this.unsupported.push(`indexing something that is not an array${callList(this.callsIn(node.index))}`);
             return this.expr(node.object);
         }
         case 'Call': return this.callExpression(node);
+        // `c ? 1 : 0` of a reporter that is already a truth value is that
+        // reporter (the export writes a boolean reporter in a value slot that
+        // way). Any other `? :` in the middle of an expression has no value
+        // form here; a whole assignment of one is lowered by assign().
+        case 'Conditional':
+            if (isOneZero(node)) {
+                const bool = this.condition(node.test);
+                if (this.isBooleanValue(bool) && !/^not /.test(bool)) return bool;
+            }
+            this.unsupported.push('a ? b : c inside an expression');
+            return this.expr(node.consequent);
         case 'Template': return '"(image)"';
-        default: return '0';
+        // An object literal is opaque here; say so, with the calls it made.
+        case 'Object':
+            this.unsupported.push(`an object literal${callList(node.calls)}`);
+            return '0';
+        default:
+            this.unsupported.push(`${node.type || 'an expression'} as a value`);
+            return '0';
         }
     }
 
@@ -229,6 +298,77 @@ export class BaseTranslator {
         if (/^(not |\()|( = | > | < | and | or )/.test(value)) return value;
         // A bare number or variable in a condition means "non-zero".
         return `not (${value} = 0)`;
+    }
+
+    /**
+     * `set target to value`, when value HAS a value form. A truth value does
+     * not: `set b to x > 100` parses as the TEXT "x > 100", and the program
+     * then tests a string that is never 0 (census 2026-09-27: five of
+     * MakeCode's apps). The dialect's truth is 1 and 0, so a comparison or a
+     * `? :` is written as the choice it is — the same lowering
+     * `pins.digitalWritePin(p, <computed>)` already gets.
+     */
+    assign (target, value, indent, out) {
+        const pad = '  '.repeat(indent);
+        const node = value && value.type === 'Conditional' && isOneZero(value) &&
+            this.isBooleanValue(this.condition(value.test)) && !/^not /.test(this.condition(value.test)) ? null : value;
+        if (node && node.type === 'Conditional') {
+            out.push(`${pad}IF ${this.condition(node.test)} THEN:`);
+            this.assign(target, node.consequent, indent + 1, out);
+            out.push(`${pad}ELSE:`);
+            this.assign(target, node.alternate, indent + 1, out);
+            return;
+        }
+        if (node && isTruthValue(node)) {
+            out.push(`${pad}IF ${this.condition(node)} THEN:`, `${pad}  set ${target} to 1`,
+                `${pad}ELSE:`, `${pad}  set ${target} to 0`);
+            return;
+        }
+        out.push(`${pad}set ${target} to ${this.expr(value)}`);
+    }
+
+    /**
+     * An argument in a slot bounded by the next keyword: bare when it is
+     * one token, parenthesised otherwise, so `map a + 1 from low …` cannot
+     * be read as `(map a) + 1` and `abs of (a - b)` is not |a| - b.
+     */
+    operand (node) {
+        const value = this.expr(node);
+        return /^[^\s()]+$/.test(value) || wrapped(value) ? value : `(${value})`;
+    }
+
+    /** The dotted names of every call inside an expression. */
+    callsIn (node, out = new Set()) {
+        if (!node || typeof node !== 'object') return [...out];
+        if (node.type === 'Call') {
+            const name = this.path(node.callee);
+            if (name) out.add(name);
+        }
+        for (const v of Object.values(node)) {
+            if (Array.isArray(v)) v.forEach(x => this.callsIn(x, out));
+            else if (v && typeof v === 'object') this.callsIn(v, out);
+        }
+        return [...out];
+    }
+
+    /** Is this expression text (so `+` on it concatenates)? */
+    isText (node) {
+        if (!node) return false;
+        if (node.type === 'String' || node.type === 'Template') return true;
+        if (node.type === 'Identifier') return !!(this.textVars && this.textVars.has(node.name));
+        if (node.type === 'Binary' && node.op === '+') return this.isText(node.left) || this.isText(node.right);
+        if (node.type === 'Call') {
+            const name = this.path(node.callee);
+            return /(^|\.)(convertToText|toString|substr|charAt|join)$/.test(name || '') ||
+                /^(radio\.receivedString|control\.deviceName)$/.test(name || '');
+        }
+        return false;
+    }
+
+    /** One side of a join: a nested join or a literal stays bare, anything else is parenthesised. */
+    joinOperand (node) {
+        if (node && node.type === 'String') return this.expr(node);
+        return this.operand(node);
     }
 
     // ── argument slots ──────────────────────────────────────────────────
@@ -248,10 +388,12 @@ export class BaseTranslator {
 
     /** A slot that takes one token: hoist anything with a space in it. */
     single (node, out, pad) {
-        const value = this.expr(node);
-        if (/^\S+$/.test(value)) return value;
+        // A truth value has no value form, so it is hoisted as the choice it
+        // is (see assign()) — `set _mc2 to i < n` stored the TEXT "i < n".
+        const value = isTruthValue(node) ? null : this.expr(node);
+        if (value !== null && /^\S+$/.test(value)) return value;
         const name = `_mc${++this.temps}`;
-        out.push(`${pad}set ${name} to ${value}`);
+        this.assign(name, node, pad.length / 2, out);
         this.declared.add(name);
         return name;
     }
@@ -318,7 +460,8 @@ export class BaseTranslator {
                     this.declareArray(d.name, d.init, push);
                     continue;
                 }
-                push(`set ${this.varName(d.name)} to ${d.init ? this.expr(d.init) : '0'}`);
+                if (d.init) this.assign(this.varName(d.name), d.init, indent, out);
+                else push(`set ${this.varName(d.name)} to 0`);
             }
             return;
 
@@ -394,6 +537,12 @@ export class BaseTranslator {
             this.block(st.body, indent, out);
             return;
 
+        // A class has behaviour we cannot express; it is refused BY NAME, with
+        // the MakeCode calls inside it, so none of them disappears unsaid.
+        case 'Class':
+            push(this.note(`class ${st.name || ''}${callList(st.calls)}`.replace(/ +/g, ' ')));
+            return;
+
         case 'Return':
             push(this.note('return from a function'));
             return;
@@ -428,7 +577,7 @@ export class BaseTranslator {
             const target = expr.left.type === 'Identifier' ?
                 this.varName(expr.left.name) : this.expr(expr.left);
             this.declared.add(target);
-            if (expr.op === '=') push(`set ${target} to ${this.expr(expr.right)}`);
+            if (expr.op === '=') this.assign(target, expr.right, indent, out);
             else if (expr.op === '+=') push(`change ${target} by ${this.expr(expr.right)}`);
             else if (expr.op === '-=') push(`change ${target} by 0 - ${this.expr(expr.right)}`);
             else push(`set ${target} to ${target} ${expr.op[0]} ${this.expr(expr.right)}`);
@@ -565,11 +714,13 @@ export class BaseTranslator {
         case 'Math.randomRange':
         case 'randint': return `pick random ${arg(0)} to ${arg(1)}`;
         case 'Math.random': return 'pick random 0 to 1';
-        case 'Math.abs': return `abs of ${arg(0)}`;
-        case 'Math.floor': return `floor of ${arg(0)}`;
-        case 'Math.ceil': return `ceiling of ${arg(0)}`;
-        case 'Math.sqrt': return `sqrt of ${arg(0)}`;
-        case 'Math.round': return `round ${arg(0)}`;
+        // `abs of` and friends bind TIGHTER than the operators, so a compound
+        // argument is parenthesised: `abs of a - b` is |a| - b.
+        case 'Math.abs': return `abs of ${this.operand(a[0])}`;
+        case 'Math.floor': return `floor of ${this.operand(a[0])}`;
+        case 'Math.ceil': return `ceiling of ${this.operand(a[0])}`;
+        case 'Math.sqrt': return `sqrt of ${this.operand(a[0])}`;
+        case 'Math.round': return `round ${this.operand(a[0])}`;
         // Trigonometry, with the unit change spelled out: MakeCode's
         // Math.cos takes RADIANS and the block takes DEGREES, so the
         // argument is converted rather than quietly reinterpreted — a
@@ -584,10 +735,20 @@ export class BaseTranslator {
         case 'Math.log': return `ln of ${arg(0)}`;
         case 'Math.log10': return `log of ${arg(0)}`;
         case 'Math.exp': return `e ^ of ${arg(0)}`;
-        case 'Math.pow': return `${arg(0)}`;  // no power reporter; keep the base
-        case 'Math.min':
-        case 'Math.max':
-        case 'Math.map': return arg(0);       // no reporter for these; keep the first term
+        // Planète Maths' reporters, which the dialect reads on every device.
+        // These used to keep only their FIRST argument — Math.max(0, x - 1)
+        // was 0 and Math.pow(2, n) was 2 — which runs and is wrong.
+        case 'Math.pow': return `${this.operand(a[0])} to the power of ${this.operand(a[1])}`;
+        case 'Math.min': return `min of ${this.operand(a[0])} and ${this.operand(a[1])}`;
+        case 'Math.max': return `max of ${this.operand(a[0])} and ${this.operand(a[1])}`;
+        // No map reporter off the micro:bit: written out as its definition,
+        // which computes the same number, and named, because the way back is
+        // arithmetic rather than Math.map.
+        case 'Math.map': {
+            this.unsupported.push('Math.map() — written out as its formula; it goes back to MakeCode as arithmetic');
+            const [v, a0, b0, c0, d0] = [0, 1, 2, 3, 4].map(i => this.operand(a[i]));
+            return `((${v} - ${a0}) * (${d0} - ${c0}) / (${b0} - ${a0}) + ${c0})`;
+        }
         default:
             this.unsupported.push(`${name || 'call'}() as a value`);
             return '0';

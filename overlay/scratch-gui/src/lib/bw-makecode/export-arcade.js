@@ -165,7 +165,13 @@ class ArcadeEmitter {
         case 'operator_mod': return `(${v('NUM1')} % ${v('NUM2')})`;
         case 'operator_round': return `Math.round(${v('NUM')})`;
         case 'operator_random': return `randint(${v('FROM')}, ${v('TO')})`;
-        case 'operator_join': return `("" + ${v('STRING1')} + ${v('STRING2')})`;
+        // Planète Maths: the importer's spelling of Math.min/max/pow (they
+        // kept only their first argument before, on the way in).
+        case 'planetemaths_min': return `Math.min(${v('NUM1')}, ${v('NUM2')})`;
+        case 'planetemaths_max': return `Math.max(${v('NUM1')}, ${v('NUM2')})`;
+        case 'planetemaths_pow': return `Math.pow(${v('NUM1')}, ${v('NUM2')})`;
+        case 'operator_join':
+            return v('STRING1') === '""' ? `("" + ${v('STRING2')})` : `("" + ${v('STRING1')} + ${v('STRING2')})`;
         case 'operator_length': return `("" + ${v('STRING')}).length`;
         case 'operator_gt': return `(${v('OPERAND1')} > ${v('OPERAND2')})`;
         case 'operator_lt': return `(${v('OPERAND1')} < ${v('OPERAND2')})`;

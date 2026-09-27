@@ -146,3 +146,42 @@ test('an imported game keeps score in the real extension, and pins.map computes'
     assert.equal(value('shown'), 6, 'the score the extension kept');
     assert.equal(value('mapped'), 2, 'pins.map(512, 0, 1024, 0, 4)');
 });
+
+test('imported music keeps MakeCode\'s time in the real extension; the new blocks all reach it', {skip: SKIP}, async () => {
+    // Census batch 2: music.beat was frozen to its 120 bpm length on import,
+    // so a program that changed the tempo kept the old beat. A beat and a
+    // note frequency are plain numbers, so the editor has to get them RIGHT.
+    const {code, unsupported} = microbitToPseudocode(`
+        let quarter = 0
+        let slow = 0
+        let tempo = 0
+        let a = 0
+        quarter = music.beat(BeatFraction.Quarter)
+        music.setTempo(60)
+        slow = music.beat(BeatFraction.Whole)
+        music.changeTempoBy(40)
+        tempo = music.tempo()
+        a = music.noteFrequency(Note.A)
+        music.rest(10)
+        music._playDefaultBackground(music.builtInPlayableMelody(Melodies.JumpUp), music.PlaybackMode.InBackground)
+    `);
+    assert.deepEqual(unsupported, []);
+
+    const run = await runProgram(code, {frames: 10});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    for (const opcode of ['microbitplus_beat', 'microbitplus_settempo', 'microbitplus_changetempo', 'microbitplus_tempo',
+        'microbitplus_notefreq', 'microbitplus_rest', 'microbitplus_playmelody']) {
+        assert.ok(run.calls.get(opcode) > 0, `${opcode} never reached the extension`);
+    }
+    const value = name => {
+        for (const target of run.vm.runtime.targets) {
+            for (const variable of Object.values(target.variables || {})) if (variable.name === name) return Number(variable.value);
+        }
+        return null;
+    };
+    assert.equal(value('quarter'), 125, 'a quarter beat at 120 bpm');
+    assert.equal(value('slow'), 1000, 'a whole beat at 60 bpm');
+    // `tempo` is a word the pseudocode keeps for Scratch, so it arrives renamed.
+    assert.equal(value('tempo_'), 100, 'changeTempoBy(40) from 60');
+    assert.equal(value('a'), 440, 'Note.A');
+});
