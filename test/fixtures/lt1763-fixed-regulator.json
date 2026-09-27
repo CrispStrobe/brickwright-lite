@@ -1,0 +1,22 @@
+{
+  "vcc": 8,
+  "parts": [
+    {"id": "vin", "kind": "vsource", "params": {"volts": 8}, "x": 150, "y": 180},
+    {"id": "shdn", "kind": "vsource", "params": {"volts": 3.3}, "x": 150, "y": 340},
+    {"id": "gnd", "kind": "gnd", "params": {}, "x": 330, "y": 480},
+    {"id": "u1", "kind": "lt1763", "params": {"vOut": 5}, "x": 540, "y": 270},
+    {"id": "load", "kind": "resistor", "params": {"ohms": 10000}, "x": 790, "y": 310}
+  ],
+  "wires": [
+    {"from": "vin", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "vin", "fromTerminal": "pos", "to": "u1", "toTerminal": "in"},
+    {"from": "shdn", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "shdn", "fromTerminal": "pos", "to": "u1", "toTerminal": "shdn"},
+    {"from": "u1", "fromTerminal": "gnd_3", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "u1", "fromTerminal": "gnd_6", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "u1", "fromTerminal": "gnd_7", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "u1", "fromTerminal": "out", "to": "load", "toTerminal": "a"},
+    {"from": "u1", "fromTerminal": "sense_adj", "to": "load", "toTerminal": "a"},
+    {"from": "load", "fromTerminal": "b", "to": "gnd", "toTerminal": "gnd"}
+  ]
+}

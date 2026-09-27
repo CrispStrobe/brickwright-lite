@@ -203,6 +203,201 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.22 en-US
+
+**SPIKE Prime extension — German palette crash fixed**
+
+This build fixes the crash that appeared when the editor was used in German
+and LEGO SPIKE Prime / Robot Inventor was added. Blockly incorrectly read the
+digit at the start of the translated 3x3 light-matrix label as part of an
+internal message index and showed “Message index 823 out of range”. The block
+has not been removed; its German label now starts with a word and the complete
+SPIKE palette should render normally.
+
+- Set the app language to German, open the extension gallery, and choose
+  “LEGO SPIKE Prime / Robot Inventor”. Confirm that the palette opens without
+  an error dialog or dismissible error overlay.
+- Find “Setze 3x3-Matrix … Helligkeit …%”. Drag it into the workspace, edit
+  port, x, y, and brightness, save the project, reopen it, and confirm the
+  block and all four values survive.
+- Repeat the gallery check in English and French. Their labels should render
+  normally and no SPIKE block should disappear.
+- If a hub is available, connect through the usual Bluetooth or bridge route
+  and exercise the block. The fix is presentation-only, so connection and
+  light-matrix behavior should be unchanged.
+
+Please report the selected language, device and OS version, whether the error
+appeared while opening the extension or later, and attach the project if a
+saved block fails to reopen.
+
+## What to Test — 0.1.22 de-DE
+
+**SPIKE-Prime-Erweiterung — Absturz der deutschen Palette behoben**
+
+Dieser Build behebt den Absturz, der bei deutscher Oberfläche nach dem
+Hinzufügen von LEGO SPIKE Prime / Robot Inventor auftrat. Blockly las die
+Ziffer am Anfang der übersetzten Beschriftung für die 3x3-Lichtmatrix
+fälschlich als Teil eines internen Nachrichtenindex und zeigte „Message index
+823 out of range“. Der Block wurde nicht entfernt: Seine deutsche
+Beschriftung beginnt jetzt mit einem Wort, und die vollständige SPIKE-Palette
+soll normal erscheinen.
+
+- Stelle die App auf Deutsch, öffne die Erweiterungsgalerie und wähle „LEGO
+  SPIKE Prime / Robot Inventor“. Die Palette muss ohne Fehlerdialog oder
+  wegklickbare Fehlermeldung geöffnet werden.
+- Suche „Setze 3x3-Matrix … Helligkeit …%“. Ziehe den Block in den
+  Arbeitsbereich, ändere Anschluss, x, y und Helligkeit, speichere das Projekt
+  und öffne es erneut. Block und alle vier Werte müssen erhalten bleiben.
+- Wiederhole den Galerietest auf Englisch und Französisch. Die Beschriftungen
+  müssen normal erscheinen; kein SPIKE-Block darf fehlen.
+- Falls ein Hub verfügbar ist, verbinde ihn wie gewohnt per Bluetooth oder
+  Bridge und probiere den Block aus. Die Korrektur betrifft nur die Anzeige;
+  Verbindung und Lichtmatrix-Verhalten sollen unverändert sein.
+
+Bitte ausgewählte Sprache, Gerät und Betriebssystemversion nennen, angeben,
+ob der Fehler beim Öffnen der Erweiterung oder später erschien, und das
+Projekt anhängen, falls ein gespeicherter Block nicht wieder geöffnet wird.
+
+## What to Test — 0.1.21 en-US
+
+**SPIKE Prime simulator — Pybricks MicroPython, in the browser**
+
+This build runs real Pybricks MicroPython (v4.0.1) compiled to WebAssembly,
+one layer above the chip: no chip emulation, no Bluetooth, no LEGO firmware.
+
+- Open the Code tab, choose Python, and write a program that imports
+  `pybricks`. "Run on SPIKE" appears; run it and watch the SPIKE pane in the
+  right column.
+- Ports A–F speak the real LUMP protocol from the device side, so motors and
+  the colour, distance and force sensors behave as Pybricks' own drivers
+  expect. Motor movement uses Pybricks' own motor model.
+- The light matrix, status light, buttons, speaker beeps and `print()` output
+  all work. Check that the Scratch (Virtual SPIKE hub) and Python views agree
+  about which ports hold what.
+- No hardware is needed. If you do have a SPIKE hub, the simulated and real
+  behaviour should not contradict each other — tell us where they do.
+
+Everything else in this build is tooling: App Store screenshots are now
+rendered from the shipping app by CI in English and German, and the Android
+job builds again after Google removed a package its setup action asked for.
+
+## What to Test — 0.1.21 de-DE
+
+**SPIKE-Prime-Simulator — Pybricks MicroPython, im Browser**
+
+Dieser Build führt echtes Pybricks MicroPython (v4.0.1) aus, nach
+WebAssembly übersetzt und eine Schicht über dem Chip: keine Chip-Emulation,
+kein Bluetooth, keine LEGO-Firmware.
+
+- Öffne den Code-Reiter, wähle Python und schreibe ein Programm, das
+  `pybricks` importiert. „Auf SPIKE ausführen" erscheint; starte es und sieh
+  dir den SPIKE-Bereich in der rechten Spalte an.
+- Die Anschlüsse A–F sprechen das echte LUMP-Protokoll von der Geräteseite
+  her, sodass Motoren und die Farb-, Abstands- und Kraftsensoren sich so
+  verhalten, wie Pybricks' eigene Treiber es erwarten. Die Motorbewegung nutzt
+  Pybricks' eigenes Motormodell.
+- Lichtmatrix, Statuslicht, Knöpfe, Lautsprechertöne und `print()`-Ausgaben
+  funktionieren. Prüfe, ob die Scratch-Ansicht (virtueller SPIKE-Hub) und die
+  Python-Ansicht sich einig sind, welcher Anschluss was trägt.
+- Es wird keine Hardware gebraucht. Wenn du einen echten SPIKE-Hub hast,
+  sollten simuliertes und echtes Verhalten einander nicht widersprechen — sag
+  uns, wo sie es doch tun.
+
+Alles Übrige in diesem Build ist Werkzeug: App-Store-Screenshots werden jetzt
+von der CI aus der ausgelieferten App auf Englisch und Deutsch gerendert, und
+der Android-Job baut wieder, nachdem Google ein Paket entfernt hatte, das
+seine Setup-Action angefordert hat.
+
+## What to Test — 0.1.20 en-US
+
+This rebuild fixes the native iOS and Android compilation issues found in
+0.1.19. Please repeat the camera, RGB-D scanning, archive, costume, AirDrop /
+LocalSend, and local-network sharing checks below. Pay particular attention to
+LiDAR frame capture on a physical device and USB-camera fallback on macOS.
+
+Confirm that camera permission is requested only when capture begins and that
+denial is handled without a crash. Select every available camera, request a
+resolution and frame rate, capture several RGB frames, and export and reopen the
+resulting `.bwscan.zip`. On LiDAR hardware, verify that depth, confidence,
+intrinsics, pose and timestamps accompany RGB. Share photos, scans, projects,
+source code and firmware through the system share sheet, then test a short-lived
+LAN link and confirm it stops serving after expiry. Brickwright must not request
+Photos-library permission. Please include the device, OS and camera model in
+reports.
+
+## What to Test — 0.1.20 de-DE
+
+Dieser Neubau behebt die in 0.1.19 gefundenen nativen iOS- und
+Android-Kompilierfehler. Bitte die folgenden Kamera-, RGB-D-Scan-, Archiv-,
+Kostüm-, AirDrop-/LocalSend- und lokalen Netzwerkfreigabetests wiederholen.
+Besonders wichtig sind LiDAR-Aufnahmen auf einem echten Gerät und der
+USB-Kamera-Rückfall unter macOS.
+
+Prüfen, dass die Kameraberechtigung erst beim Aufnahmestart erfragt und eine
+Ablehnung ohne Absturz behandelt wird. Jede verfügbare Kamera auswählen,
+Auflösung und Bildrate anfordern, mehrere RGB-Bilder aufnehmen und das erzeugte
+`.bwscan.zip` exportieren und erneut öffnen. Auf LiDAR-Geräten müssen Tiefe,
+Konfidenz, Intrinsik, Pose und Zeitstempel zusammen mit RGB gespeichert werden.
+Fotos, Scans, Projekte, Quelltext und Firmware über das System-Teilen-Menü
+freigeben; danach einen kurzlebigen LAN-Link testen und sicherstellen, dass er
+nach Ablauf nicht mehr funktioniert. Brickwright darf keinen Zugriff auf die
+Fotomediathek verlangen. Bitte Gerät, Betriebssystem und Kameramodell melden.
+
+## What to Test — 0.1.19 en-US
+
+This build turns Camera Capture into a complete scanner and sharing workflow.
+
+Please focus on:
+1. After granting camera access, refresh the camera list on iPhone/iPad or Mac.
+   Select a built-in or USB webcam with a requested resolution and frame rate.
+   Disconnect the selected USB camera and confirm Brickwright falls back cleanly.
+2. Try zoom, focus distance, exposure and torch controls. Unsupported controls
+   should report that honestly; they must not crash or pretend to work.
+3. Begin a scan, take and save several frames, then export and reopen the
+   `.bwscan.zip`. Add the last photo as a costume and confirm it appears on the
+   current sprite. Sessions are limited to 500 frames / 512 MiB.
+4. On a LiDAR-equipped iPhone or iPad, start the depth camera and save frames.
+   The archive should contain RGB, depth and confidence data. Other devices and
+   ordinary USB webcams should explicitly report `RGB only`.
+5. Share a project, source file, firmware, photo and scan. Test the iOS/macOS
+   share sheet with AirDrop or LocalSend if installed. Also start local-network
+   scan sharing, download the exact file from the reported URL, stop it, and
+   confirm the URL no longer works.
+6. Confirm camera and local-network permission prompts explain their purpose.
+   Brickwright should not request Photos-library access.
+
+Please report the device/OS, camera model, requested and actual capture settings,
+and whether the app, AirDrop, LocalSend or LAN URL was used.
+
+## What to Test — 0.1.19 de-DE
+
+Dieser Build macht aus **Kameraaufnahme** einen vollständigen Scanner- und
+Freigabeablauf.
+
+Bitte besonders testen:
+1. Nach erteiltem Kamerazugriff die Kameraliste auf iPhone/iPad oder Mac
+   aktualisieren. Eine eingebaute oder USB-Webcam mit gewünschter Auflösung und
+   Bildrate wählen. Die gewählte USB-Kamera trennen; Brickwright soll sauber auf
+   die Standardkamera zurückfallen.
+2. Zoom, Fokusabstand, Belichtung und Taschenlampe ausprobieren. Nicht
+   unterstützte Regler müssen dies ehrlich melden und dürfen weder abstürzen noch
+   eine Wirkung vortäuschen.
+3. Eine Scan-Sitzung beginnen, mehrere Bilder speichern, `.bwscan.zip`
+   exportieren und wieder öffnen. Das letzte Foto als Kostüm hinzufügen und am
+   aktuellen Objekt prüfen. Sitzungen sind auf 500 Bilder / 512 MiB begrenzt.
+4. Auf einem iPhone oder iPad mit LiDAR die Tiefenkamera starten und Bilder
+   speichern. Das Archiv soll RGB-, Tiefen- und Konfidenzdaten enthalten. Andere
+   Geräte und normale USB-Webcams müssen ausdrücklich `nur RGB` melden.
+5. Projekt, Quelltext, Firmware, Foto und Scan teilen. Auf iOS/macOS AirDrop oder
+   LocalSend (falls installiert) testen. Außerdem die lokale Netzwerkfreigabe
+   starten, genau die gemeldete Datei laden, die Freigabe stoppen und prüfen,
+   dass die Adresse danach nicht mehr funktioniert.
+6. Die Zwecktexte der Kamera- und lokalen Netzwerkabfragen prüfen. Zugriff auf
+   die Fotomediathek darf nicht angefordert werden.
+
+Bitte Gerät/OS, Kameramodell, gewünschte und tatsächliche Aufnahmewerte sowie den
+verwendeten Weg (App, AirDrop, LocalSend oder LAN-Adresse) melden.
+
 ## What to Test — 0.1.18 en-US
 
 This build adds Camera Capture for projects that need reusable still images,
@@ -1116,3 +1311,69 @@ runtimes, and native-app code; it is not a TurboWarp fork.
 | Keywords | electronics,circuits,coding,blocks,debugger,LEGO,simulation,oscilloscope,STEM | Elektronik,Schaltungen,Code,Bloecke,Debugger,LEGO,Simulation,Oszilloskop,MINT |
 | Support URL | https://github.com/CrispStrobe/brickwright-lite | https://github.com/CrispStrobe/brickwright-lite |
 | Privacy policy URL | https://crispstrobe.github.io/brickwright/privacy.html | https://crispstrobe.github.io/brickwright/privacy.html |
+
+## Screenshots
+
+Rendered from the shipping build by `.github/workflows/appstore-screenshots.yml`
+(`workflow_dispatch`), never drawn or composited. `scripts/appstore/scenes.mjs`
+is the plan — devices, locales, scenes and captions — and
+`test/appstore-screenshots.test.mjs` holds it to Apple's sizes and to this file
+having copy in every locale captured.
+
+`upload` defaults to **false**. The artifact is for a person to look at first;
+replacing the sets is a second, explicit act, because a screenshot is editorial
+and a correctly-sized picture of the wrong thing still passes every automated
+check.
+
+When you do upload, `dry_run` defaults to **true**: it performs every read,
+prints what it would replace, and writes nothing. Do that once before trusting
+it. Three guards sit in front of a write — `upload` must be ticked, `dry_run`
+must be cleared, and Apple's own API only exposes a localisation for a version
+in an **editable** state (`PREPARE_FOR_SUBMISSION`, `REJECTED`,
+`DEVELOPER_REJECTED`, `METADATA_REJECTED`). A live or in-review version has
+none, so the run fails by name rather than rewriting the page customers see.
+
+| device | display type | pixels |
+|---|---|---|
+| iPhone 6.7" | `APP_IPHONE_67` | 1320 × 2868 |
+| iPad Pro 13" | `APP_IPAD_PRO_3GEN_129` | 2064 × 2752 |
+| Mac | `APP_DESKTOP` | 2880 × 1800 |
+
+Locales: `en-US`, `de-DE` — the two this file carries descriptions for.
+
+### Scenes
+
+| id | shows | needs |
+|---|---|---|
+| `01-blocks` | the blocks workspace | — |
+| `02-circuit` | a breadboard with a loaded example circuit | — |
+| `03-code` | the same program as readable pseudocode | — |
+| `04-machine` | CP/M 2.2 booted from the Machine Manager, `DIR` at the `A>` prompt | — |
+| `05-fpga` | the gate builder canvas | a flag-on build (`BW_ENABLE_FPGA=1`) |
+
+Every scene asserts a **witness** before the shutter — a string that can only be
+on screen if the thing actually happened — and `scripts/appstore/verify-shots.mjs`
+re-reads the PNGs afterwards for real dimensions and a file size a blank render
+cannot reach. A scene whose selectors have drifted fails the run instead of
+quietly producing a photograph of an empty editor.
+
+### The iPhone set, and why it is rendered at 1024 px
+
+`body` has **`min-width: 1024px`**: the app never lays out as a phone. At a
+440 pt viewport the *layout* viewport becomes 1024 x 2225 while the *visual*
+viewport stays 440 wide — the page is panned — and Playwright cannot pan to a
+`position: fixed` overlay, which sank every iPhone capture of `04-machine`.
+
+Safari on a real iPhone zooms that 1024-wide layout out to fit, so what a
+person actually sees is the whole UI, small. The capture reproduces exactly
+that: it renders at 1024 with the iPhone's aspect ratio and lets the scale
+factor reach Apple's pixels (1024 x 2225 at 1320/1024 -> a 1320 x 2868 PNG).
+Every scene is then reachable, because layout and visual viewport are the same
+box.
+
+So the iPhone screenshots show a scaled desktop UI — not because the capture
+is wrong, but because that is the app on a phone. Changing it means making the
+editor responsive below 1024 px, which is app work, not listing work.
+
+An earlier note here claimed a phone user could not import a machine at all.
+That was wrong: a person can pan and tap. The timeout was an automation limit.

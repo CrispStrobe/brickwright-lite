@@ -22,6 +22,7 @@ import {
     DEVICES, DEVICE_GROUPS, cell as matrixCell
 } from '../../lib/bw-matrix/capabilities.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
+import downloadBlob from '../../lib/download-blob.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -62,6 +63,7 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 // functions for interpolation. To add a language, add its column.
 import {lowerableLines} from '../../lib/bw-fpga/pseudocode-expr.js';
 import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
+import {isPybricksProgram} from '../../lib/pybricks-sim/pybricks-hub-host.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
 // handoff has to name a tab index and a wrong one silently switches to Sounds.
@@ -267,6 +269,8 @@ const L10N = {
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
         micropythonImported: 'Imported from a .hex — the simulator runs this as it is.',
         runOnSimulator: '▶ Run on Simulator',
+        runOnSpike: '▶ Run on SPIKE (Pybricks)',
+        runOnSpikeTitle: 'Run this Pybricks program on a simulated SPIKE Prime hub: Pybricks MicroPython itself, compiled to WebAssembly, with simulated motors and sensors',
         debugOnSimulator: '🐞 Debug',
         debugLevelBlock: 'Block',
         debugLevelLine: 'Line',
@@ -538,6 +542,8 @@ const L10N = {
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
         micropythonImported: 'Aus einer .hex importiert — der Simulator führt das direkt aus.',
         runOnSimulator: '▶ Im Simulator ausführen',
+        runOnSpike: '▶ Auf SPIKE ausführen (Pybricks)',
+        runOnSpikeTitle: 'Dieses Pybricks-Programm auf einem simulierten SPIKE-Prime-Hub ausführen: Pybricks-MicroPython selbst, nach WebAssembly übersetzt, mit simulierten Motoren und Sensoren',
         debugOnSimulator: '🐞 Debuggen',
         debugLevelBlock: 'Block',
         debugLevelLine: 'Zeile',
@@ -1545,14 +1551,7 @@ class PseudocodeImporter extends React.Component {
 
     /** Hand the browser a file. */
     _download (name, text, type) {
-        const url = URL.createObjectURL(new Blob([text], {type: type || 'text/plain'}));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return downloadBlob(name, new Blob([text], {type: type || 'text/plain'}));
     }
 
     /**
@@ -1763,12 +1762,7 @@ class PseudocodeImporter extends React.Component {
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = (source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright';
             const out = exportToMakeCode(project, {name: name.trim().slice(0, 40)});
-            const url = URL.createObjectURL(new Blob([out.hex], {type: 'application/octet-stream'}));
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = out.filename;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            await downloadBlob(out.filename, new Blob([out.hex], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.mcExportDone(out.filename, out.unsupported.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode export', (err && err.message) || String(err))});
@@ -1795,12 +1789,7 @@ class PseudocodeImporter extends React.Component {
         if (!code.trim()) { this.setState({status: this.L.saveEmpty}); return; }
         const name = this.saveFileName();
         const mime = (CODE_FILES[this.state.lang] || CODE_FILES.pseudocode).mime;
-        const url = URL.createObjectURL(new Blob([code], {type: mime}));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        return downloadBlob(name, new Blob([code], {type: mime}));
     }
 
     /**
@@ -1901,12 +1890,7 @@ class PseudocodeImporter extends React.Component {
             // text. Decoding it as a binary string would write a corrupt file.
             const data = ext === 'uf2' ?
                 Uint8Array.from(atob(out.outfiles[`binary.${ext}`]), c => c.charCodeAt(0)) : out.outfiles[`binary.${ext}`];
-            const url = URL.createObjectURL(new Blob([data], {type: 'application/octet-stream'}));
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            await downloadBlob(filename, new Blob([data], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.mcFirmwareDone(filename)});
         } catch (err) {
             this.setState({busy: false, status: this.makeCodeFailure(err)});
@@ -1990,12 +1974,7 @@ class PseudocodeImporter extends React.Component {
             const name = JSON.parse(out.files['pxt.json']).name;
             const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.hex`;
             const hex = makeCodeSourceHex(out.files, {name, target: 'arcade', editorUrl: 'https://arcade.makecode.com/'});
-            const url = URL.createObjectURL(new Blob([hex], {type: 'application/octet-stream'}));
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            await downloadBlob(filename, new Blob([hex], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.arcDone(filename, out.unsupported.length, out.warnings.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode Arcade', (err && err.message) || String(err))});
@@ -2017,12 +1996,7 @@ class PseudocodeImporter extends React.Component {
             'These are the original files, not a reverse translation of later BrickWright edits.\n' +
             'Open the folder with the MakeCode Asset Explorer/PXT toolchain and compile for your exact board.\n');
         const blob = await zip.generateAsync({type: 'blob'});
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = `${String(project.name || 'makecode-project').replace(/[^a-z0-9_-]+/gi, '-')}.zip`;
-        anchor.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        await downloadBlob(`${String(project.name || 'makecode-project').replace(/[^a-z0-9_-]+/gi, '-')}.zip`, blob);
     }
 
     componentWillUnmount () {
@@ -3137,12 +3111,7 @@ class PseudocodeImporter extends React.Component {
                 }
             } else {
                 // Safari & friends: hand over main.py and say why.
-                const url = URL.createObjectURL(new Blob([r.py], {type: 'text/x-python'}));
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'main.py';
-                a.click();
-                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                await downloadBlob('main.py', new Blob([r.py], {type: 'text/x-python'}));
                 this.setState({busy: false, status: this.L.deployPicoSaved});
             }
         } catch (e) {
@@ -3256,10 +3225,8 @@ class PseudocodeImporter extends React.Component {
             const uout = await ures.json();
             if (!uout.success) throw new Error(uout.error || 'UF2 conversion failed');
             const uf2 = Uint8Array.from(atob(uout.base64), c => c.charCodeAt(0));
-            const url = URL.createObjectURL(new Blob([uf2], {type: 'application/octet-stream'}));
-            const a = document.createElement('a');
-            a.href = url; a.download = uout.filename || 'firmware.uf2'; a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            await downloadBlob(uout.filename || 'firmware.uf2',
+                new Blob([uf2], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.deployPicoUf2Done});
         } catch (e) {
             this.setState({busy: false, status: this.L.deployPicoUf2Fail(e.message)});
@@ -3288,12 +3255,8 @@ class PseudocodeImporter extends React.Component {
         if (!src.trim()) return;
 
         const noSerial = typeof navigator === 'undefined' || !navigator.serial;
-        const downloadImage = (bytes, name) => {
-            const url = URL.createObjectURL(new Blob([bytes], {type: 'application/octet-stream'}));
-            const a = document.createElement('a');
-            a.href = url; a.download = name; a.click();
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-        };
+        const downloadImage = (bytes, name) =>
+            downloadBlob(name, new Blob([bytes], {type: 'application/octet-stream'}));
 
         this.setState({busy: true, status: this.L.flashCompiling});
         try {
@@ -3661,6 +3624,25 @@ class PseudocodeImporter extends React.Component {
     // Flash the micro:bit simulator with the current MicroPython code.
     // Activates the simulator pane (stage-header dock='microbit') and posts
     // the code via the CustomEvent bus; the MicrobitSimPane picks it up.
+    // Run a Pybricks program on the SPIKE Prime simulator (pybricks-sim-pane.jsx):
+    // dock the pane, then hand it the code. Same latch as the micro:bit pane,
+    // because opening the dock mounts the pane in this very tick.
+    runOnPybricksSim () {
+        const code = this.activeCode();
+        if (!isPybricksProgram(code)) return;
+        const values = {
+            'bw-right-pane-hidden': '0',
+            'bw-debug-dock': 'pybricks'
+        };
+        const detail = {code};
+        try { window.__bwPybricksPending = detail; } catch { /* noop */ }
+        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
+        Object.entries(values).forEach(([k, v]) => {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
+        });
+        window.dispatchEvent(new CustomEvent('bw-pybricks-run', {detail}));
+    }
+
     flashMicrobitSim () {
         const code = this.state.buffers.micropython;
         if (!code || !code.trim() || /^# ===/.test(code)) return;
@@ -3765,12 +3747,7 @@ class PseudocodeImporter extends React.Component {
      * CODE_FILES, and an .rcx is neither.
      */
     saveBlob (bytes, name, mime) {
-        const url = URL.createObjectURL(new Blob([bytes], {type: mime}));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        return downloadBlob(name, new Blob([bytes], {type: mime}));
     }
 
     async _compileNqc () {
@@ -4989,6 +4966,7 @@ class PseudocodeImporter extends React.Component {
                             onChange={text => this.setActiveCode(text)}
                             readOnly={!TWO_WAY.has(this.state.lang) && !EDITABLE_ONE_WAY(this.state.lang, this.state.asmMode)}
                             lang={this.state.lang}
+                            isVisible={this.props.isVisible}
                         />
                     </React.Suspense>
                 ) : (
@@ -5328,6 +5306,13 @@ class PseudocodeImporter extends React.Component {
                         <button onClick={this.run} disabled={this.state.running}
                             style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                             ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JavaScript'}
+                        </button>
+                    ) : null}
+                    {this.state.lang === 'python' && isPybricksProgram(this.activeCode()) ? (
+                        <button onClick={() => this.runOnPybricksSim()} title={this.L.runOnSpikeTitle}
+                            style={{...btn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
+                            data-testid="bw-pybricks-run-on-spike">
+                            {this.L.runOnSpike}
                         </button>
                     ) : null}
                     {this.state.picoSimRunning ? (

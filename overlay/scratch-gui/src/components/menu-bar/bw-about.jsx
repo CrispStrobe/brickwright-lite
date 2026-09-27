@@ -24,6 +24,7 @@ const BUNDLED_LICENCES = [
     ['labwired-core (MIT)', 'static/licenses/labwired-core.MIT.txt'],
     ['8086 example programs (MIT)', 'static/licenses/amey-thakur-8086.MIT.txt'],
     ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
+    ['Pybricks + MicroPython (MIT)', 'static/licenses/pybricks-micropython.MIT.txt'],
 ];
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
 const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
@@ -73,7 +74,9 @@ const L10N = {
             'avr8js and rp2040js (MIT, Wokwi) are the AVR and Cortex-M0 cores; emu8051 (MIT) ' +
             'the 8051. The ASM tab\'s 8086 example programs are carried verbatim from the ' +
             '8086 Assembly Language Programs collection, Copyright (c) 2021 Amey Thakur and ' +
-            'Mega Satish, MIT.',
+            'Mega Satish, MIT. The SPIKE Prime simulator is Pybricks MicroPython, Copyright (c) ' +
+            '2018-2026 The Pybricks Authors, and MicroPython, Copyright (c) 2013-2025 Damien P. ' +
+            'George, both MIT, compiled to WebAssembly.',
         thanksTexts: 'Licence texts (offline):',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
@@ -117,7 +120,9 @@ const L10N = {
             'Simulator mit voller Genauigkeit. avr8js und rp2040js (MIT, Wokwi) sind die AVR- ' +
             'und Cortex-M0-Kerne; emu8051 (MIT) der 8051. Die 8086-Beispielprogramme im ' +
             'ASM-Tab stammen unveraendert aus der Sammlung 8086 Assembly Language Programs, ' +
-            'Copyright (c) 2021 Amey Thakur und Mega Satish, MIT.',
+            'Copyright (c) 2021 Amey Thakur und Mega Satish, MIT. Der SPIKE-Prime-Simulator ist ' +
+            'Pybricks MicroPython, Copyright (c) 2018-2026 The Pybricks Authors, und MicroPython, ' +
+            'Copyright (c) 2013-2025 Damien P. George, beide MIT, nach WebAssembly uebersetzt.',
         thanksTexts: 'Lizenztexte (offline):',
         licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT und MPL-2.0. Brickwright nutzt ' +
             'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',

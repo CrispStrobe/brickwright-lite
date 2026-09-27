@@ -1,6 +1,18 @@
 #!/usr/bin/env node
 /** Browser regressions for physical Circuit Designer rendering and placement. */
 import {chromium} from 'playwright';
+import {readFileSync} from 'node:fs';
+
+const lm324Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lm324-quad-follower.json', import.meta.url), 'utf8'));
+const lm741Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lm741-voltage-follower.json', import.meta.url), 'utf8'));
+const adp7118Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/adp7118-fixed-regulator.json', import.meta.url), 'utf8'));
+const lt1763Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lt1763-fixed-regulator.json', import.meta.url), 'utf8'));
+const lt1001Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lt1001-precision-follower.json', import.meta.url), 'utf8'));
 
 const url = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 const browser = await chromium.launch();
@@ -155,6 +167,163 @@ try {
     await designer.locator('[data-board-face="pi_pico"]').waitFor({state: 'visible', timeout: 10000});
     check('Motor speed Pico bench renders its controller face',
         await designer.locator('[data-board-face="pi_pico"]:visible').count() === 1);
+
+    // The LM324 crosses both package boundaries this gate is meant to exercise:
+    // CUI must bundle the truthful 14-pin face, and its injected Board must solve
+    // four independent channels. Node tests can read an unbundled parts-data
+    // directory, so this exact browser assertion is what catches a stale static
+    // index or a GUI install resolving a different engine.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lm324Fixture);
+    const lm324Face = designer.locator('[data-dip-body="lm324"][data-dip-label="LM324"]');
+    await lm324Face.waitFor({state: 'visible', timeout: 10000});
+    const lm324FaceText = await lm324Face.textContent();
+    check('LM324 renders as the truthful labelled PDIP-14 face',
+        await lm324Face.count() === 1 && /DIP-14/.test(lm324FaceText) &&
+        ['1_out', '2_out', '3_out', '4_out', 'vcc', 'gnd'].every(name => lm324FaceText.includes(name)),
+        lm324FaceText.replace(/\s+/g, ' ').trim());
+    const lm324 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LM324 board'};
+        board.advanceTo(board.timeNs + 1n);
+        const values = [];
+        for (let channel = 1; channel <= 4; channel++) {
+            const terminal = `${channel}_out`;
+            const net = board.nets.find(item => item.terminals.some(endpoint =>
+                endpoint.part === 'u1' && endpoint.terminal === terminal));
+            values.push(net ? board.nodeVoltage(net.id) : null);
+        }
+        return {values, terminals: circuit.getPart('u1')?.terminals?.length || 0};
+    });
+    check('browser bundle solves all four physical LM324 channels independently',
+        lm324.terminals === 14 && Array.isArray(lm324.values) &&
+        lm324.values.every((value, index) =>
+            typeof value === 'number' && Math.abs(value - [0.5, 1, 2, 3][index]) < 0.02),
+        JSON.stringify(lm324));
+
+    // The LM741 proof is deliberately a dual-supply follower, not merely a
+    // palette lookup: it crosses the pinned CUI face and Board behavior through
+    // the same production bundle a user loads.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lm741Fixture);
+    const lm741Face = designer.locator('[data-dip-body="lm741"][data-dip-label="LM741"]');
+    await lm741Face.waitFor({state: 'visible', timeout: 10000});
+    const lm741FaceText = await lm741Face.textContent();
+    check('LM741 renders as the truthful labelled PDIP-8 face',
+        await lm741Face.count() === 1 && /DIP-8/.test(lm741FaceText) &&
+        ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc']
+            .every(name => lm741FaceText.includes(name)),
+        lm741FaceText.replace(/\s+/g, ' ').trim());
+    const lm741 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LM741 board'};
+        board.advanceTo(board.timeNs + 10_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'out'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical dual-supply LM741 follower',
+        lm741.terminals === 8 && typeof lm741.output === 'number' &&
+        Math.abs(lm741.output - 1.001) < 0.02,
+        JSON.stringify(lm741));
+
+    // This is the complete package chain: the Lite production bundle loads
+    // CUI's physical SOIC-8 face and Board's named regulator model from the
+    // same fixture, then reads the settled output rather than a static label.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), adp7118Fixture);
+    const adpFace = designer.locator('[data-part-face="adp7118"][data-soic-body="adp7118"]');
+    await adpFace.waitFor({state: 'visible', timeout: 10000});
+    const adpFaceText = await adpFace.textContent();
+    check('ADP7118 renders as the truthful labelled SOIC-8 face',
+        await adpFace.count() === 1 && /200mA LDO/.test(adpFaceText) &&
+        ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8']
+            .every(name => adpFaceText.includes(name)),
+        adpFaceText.replace(/\s+/g, ' ').trim());
+    const adp7118 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the ADP7118 board'};
+        board.advanceTo(board.timeNs + 10_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'vout_1'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical fixed-output ADP7118 regulator',
+        adp7118.terminals === 8 && typeof adp7118.output === 'number' &&
+        Math.abs(adp7118.output - 5) < 0.002,
+        JSON.stringify(adp7118));
+
+    // The final vertical slice: Lite's bundled CUI face and Board model must
+    // meet in one real browser circuit, not merely coexist as package files.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lt1763Fixture);
+    const ltFace = designer.locator('[data-part-face="lt1763"][data-soic-body="lt1763"]');
+    await ltFace.waitFor({state: 'visible', timeout: 10000});
+    const ltFaceText = await ltFace.textContent();
+    check('LT1763 renders as the truthful labelled SO-8 face',
+        await ltFace.count() === 1 && /500mA LDO/.test(ltFaceText) &&
+        ['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'gnd_6', 'gnd_7', 'in']
+            .every(name => ltFaceText.includes(name)),
+        ltFaceText.replace(/\s+/g, ' ').trim());
+    const lt1763 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LT1763 board'};
+        board.advanceTo(board.timeNs + 10_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'out'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical fixed-output LT1763 regulator',
+        lt1763.terminals === 8 && typeof lt1763.output === 'number' &&
+        Math.abs(lt1763.output - 5) < 0.003,
+        JSON.stringify(lt1763));
+
+    // The precision-amplifier vertical slice must also meet in the production
+    // browser bundle: physical face, all package pins and the real Board model.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lt1001Fixture);
+    const lt1001Face = designer.locator('[data-part-face="lt1001"][data-dip-body="lt1001"]');
+    await lt1001Face.waitFor({state: 'visible', timeout: 10000});
+    const lt1001FaceText = await lt1001Face.textContent();
+    check('LT1001 renders as the truthful labelled PDIP-8 face',
+        await lt1001Face.count() === 1 && /LT1001/.test(lt1001FaceText) &&
+        ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc']
+            .every(name => lt1001FaceText.includes(name)),
+        lt1001FaceText.replace(/\s+/g, ' ').trim());
+    const lt1001 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LT1001 board'};
+        board.advanceTo(board.timeNs + 40_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'out'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical LT1001 precision follower',
+        lt1001.terminals === 8 && typeof lt1001.output === 'number' &&
+        Math.abs(lt1001.output - 1.00001) < 0.00001,
+        JSON.stringify(lt1001));
 } finally {
     await browser.close();
 }

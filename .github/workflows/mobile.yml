@@ -57,7 +57,22 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+      # v3.2.2's `packages` default was 'tools platform-tools', and Google has
+      # REMOVED the legacy `tools` package from the SDK repository — so
+      # sdkmanager exits 1 with `Warning: Failed to find package 'tools'` and
+      # the whole android job dies before it builds anything. Nothing in this
+      # repo changed; the remote repository did. It took out v0.1.17 and
+      # v0.1.18 (runs 36234004552 and 36237451888), while ios-signed succeeded
+      # on both — so tagging released iOS and silently released no Android.
+      #
+      # v4.0.4 dropped `tools` from the default (and moves to node24, which
+      # also clears the Node 20 deprecation warning this step was emitting).
+      # `packages` is ALSO named explicitly rather than left to the default:
+      # the default is what broke us, and a default we did not choose can
+      # change again without notice.
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: platform-tools
       - name: Install Android NDK
         run: |
           sdkmanager "ndk;27.0.12077973"

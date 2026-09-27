@@ -117,6 +117,25 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/smallerc.BSD-2-Clause.txt',
     },
     {
+        // Pybricks MicroPython compiled to wasm by build-pybricks-wasm.sh. Two
+        // copyright holders in one binary: the Pybricks Authors and, for the
+        // MicroPython core, Damien P. George. Both notices are in the one file.
+        name: 'Pybricks',
+        licence: 'MIT',
+        holder: 'The Pybricks Authors',
+        evidence: 'overlay/scratch-gui/static/pybricks-sim/pybricks-hub.wasm',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/pybricks-micropython.MIT.txt',
+    },
+    {
+        name: 'MicroPython',
+        licence: 'MIT',
+        holder: 'Damien P. George',
+        evidence: 'overlay/scratch-gui/static/pybricks-sim/pybricks-hub.wasm',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/pybricks-micropython.MIT.txt',
+    },
+    {
         name: 'rp2040js',
         licence: 'MIT',
         holder: 'Uri Shaked',

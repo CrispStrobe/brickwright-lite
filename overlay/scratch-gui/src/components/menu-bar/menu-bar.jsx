@@ -78,6 +78,7 @@ import {
 import collectMetadata from '../../lib/collect-metadata';
 
 import styles from './menu-bar.css';
+import {activateUndoSurface, subscribeUndoState, undoActiveSurface} from '../../lib/global-undo.js';
 
 import mystuffIcon from './icon--mystuff.png';
 import profileIcon from './icon--profile.png';
@@ -186,17 +187,33 @@ class MenuBar extends React.Component {
             'getSaveToComputerHandler',
             'restoreOptionMessage',
             'handleOpenOfflineLibrary',
-            'handleCloseOfflineLibrary'
+            'handleCloseOfflineLibrary',
+            'handleGlobalUndo'
         ]);
         // Local UI state for the Brickwright offline-library dialog (native app
         // only). Kept out of Redux — it's app-specific and self-contained.
-        this.state = {offlineLibraryOpen: false};
+        this.state = {offlineLibraryOpen: false, globalCanUndo: false, undoSurface: 'blocks'};
     }
     componentDidMount () {
         document.addEventListener('keydown', this.handleKeyPress);
+        this._unsubscribeUndo = subscribeUndoState(({canUndo, surface}) => {
+            this.setState({globalCanUndo: canUndo, undoSurface: surface});
+        });
+        this.activateTabUndoSurface();
     }
     componentWillUnmount () {
         document.removeEventListener('keydown', this.handleKeyPress);
+        if (this._unsubscribeUndo) this._unsubscribeUndo();
+    }
+    componentDidUpdate (prevProps) {
+        if (prevProps.activeTabIndex !== this.props.activeTabIndex) this.activateTabUndoSurface();
+    }
+    activateTabUndoSurface () {
+        const surface = {0: 'blocks', 3: 'code', 4: 'circuit'}[this.props.activeTabIndex];
+        if (surface) activateUndoSurface(surface);
+    }
+    handleGlobalUndo () {
+        undoActiveSurface();
     }
     handleClickNew () {
         // if the project is dirty, and user owns the project, we will autosave.
@@ -692,6 +709,15 @@ class MenuBar extends React.Component {
                             </div>
                         )}
                     </div>
+                    <button
+                        type="button"
+                        className={classNames(styles.menuBarItem, styles.globalUndoButton)}
+                        data-testid="bw-global-undo"
+                        disabled={!this.state.globalCanUndo}
+                        aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.undo', defaultMessage: 'Undo'})}
+                        title={`${this.props.intl.formatMessage({id: 'gui.menuBar.undo', defaultMessage: 'Undo'})} (${this.state.undoSurface})`}
+                        onClick={this.handleGlobalUndo}
+                    >{'↶'}</button>
                     {this.props.canEditTitle ? (
                         <div className={classNames(styles.menuBarItem, styles.growable)}>
                             <MenuBarItemTooltip
@@ -911,6 +937,7 @@ class MenuBar extends React.Component {
 
 MenuBar.propTypes = {
     aboutMenuOpen: PropTypes.bool,
+    activeTabIndex: PropTypes.number,
     accountMenuOpen: PropTypes.bool,
     authorId: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
     authorThumbnailUrl: PropTypes.string,
@@ -1004,6 +1031,7 @@ const mapStateToProps = (state, ownProps) => {
     const user = state.session && state.session.session && state.session.session.user;
     return {
         aboutMenuOpen: aboutMenuOpen(state),
+        activeTabIndex: state.scratchGui.editorTab.activeTabIndex,
         accountMenuOpen: accountMenuOpen(state),
         currentLocale: state.locales.locale,
         fileMenuOpen: fileMenuOpen(state),

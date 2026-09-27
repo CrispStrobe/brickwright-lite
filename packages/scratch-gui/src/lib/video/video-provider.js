@@ -68,6 +68,82 @@ class VideoProvider {
         return this._video;
     }
 
+    /** Enumerate video inputs after permission has been requested. Browsers hide
+     * labels before consent; callers must not use this as an eager permission
+     * probe. */
+    async listVideoDevices () {
+        const media = typeof navigator !== 'undefined' && navigator.mediaDevices;
+        if (!media || typeof media.enumerateDevices !== 'function') return [];
+        return (await media.enumerateDevices())
+            .filter(device => device.kind === 'videoinput')
+            .map((device, index) => ({
+                deviceId: device.deviceId,
+                groupId: device.groupId,
+                label: device.label || `Camera ${index + 1}`
+            }));
+    }
+
+    watchVideoDevices (callback) {
+        const media = typeof navigator !== 'undefined' && navigator.mediaDevices;
+        if (!media || typeof media.addEventListener !== 'function') return () => {};
+        media.addEventListener('devicechange', callback);
+        return () => media.removeEventListener('devicechange', callback);
+    }
+
+    /** Replace the shared stream with a selected built-in/UVC camera. This is
+     * intentionally provider-owned: consumers never reach into _track, and the
+     * preview plus every video extension continue to share one stream. */
+    async selectVideoDevice ({deviceId, facingMode, width, height, frameRate} = {}) {
+        const media = typeof navigator !== 'undefined' && navigator.mediaDevices;
+        if (!media || typeof media.getUserMedia !== 'function') {
+            throw new Error('camera selection is unavailable');
+        }
+        const constraints = {};
+        if (deviceId) constraints.deviceId = {exact: deviceId};
+        else if (facingMode) constraints.facingMode = {ideal: facingMode};
+        if (Number(width) > 0) constraints.width = {ideal: Number(width)};
+        if (Number(height) > 0) constraints.height = {ideal: Number(height)};
+        if (Number(frameRate) > 0) constraints.frameRate = {ideal: Number(frameRate)};
+        const stream = await media.getUserMedia({audio: false, video: constraints});
+        const nextTrack = stream.getVideoTracks()[0];
+        if (!nextTrack) throw new Error('selected camera returned no video track');
+        const previous = this._track;
+        this._track = nextTrack;
+        this._singleSetup = Promise.resolve(this);
+        if (!this._video) this._video = document.createElement('video');
+        this._video.srcObject = stream;
+        await this._video.play();
+        if (previous && previous !== nextTrack) previous.stop();
+        this.enabled = true;
+        this._workspace = [];
+        return this.cameraInfo();
+    }
+
+    cameraInfo () {
+        if (!this._track) return {ready: false, settings: {}, capabilities: {}};
+        return {
+            ready: this.videoReady,
+            settings: typeof this._track.getSettings === 'function' ? this._track.getSettings() : {},
+            capabilities: typeof this._track.getCapabilities === 'function' ? this._track.getCapabilities() : {}
+        };
+    }
+
+    async applyCameraSettings (settings) {
+        if (!this._track || typeof this._track.applyConstraints !== 'function') {
+            throw new Error('camera controls are unavailable');
+        }
+        const capabilities = typeof this._track.getCapabilities === 'function' ?
+            this._track.getCapabilities() : {};
+        const advanced = {};
+        for (const key of ['zoom', 'focusDistance', 'exposureCompensation', 'torch']) {
+            if (Object.prototype.hasOwnProperty.call(settings || {}, key) &&
+                Object.prototype.hasOwnProperty.call(capabilities, key)) advanced[key] = settings[key];
+        }
+        if (!Object.keys(advanced).length) throw new Error('requested camera control is unsupported');
+        await this._track.applyConstraints({advanced: [advanced]});
+        return this.cameraInfo();
+    }
+
     /**
      * Request video be enabled.  Sets up video, creates video skin and enables preview.
      *

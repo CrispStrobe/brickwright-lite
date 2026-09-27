@@ -1,0 +1,12 @@
+[package]
+name = "tauri-plugin-depth-capture"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+links = "tauri-plugin-depth-capture"
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

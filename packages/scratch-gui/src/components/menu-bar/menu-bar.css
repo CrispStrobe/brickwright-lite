@@ -78,6 +78,29 @@
     flex: 1;
 }
 
+.global-undo-button {
+    width: 2.4rem;
+    min-width: 2.4rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: white;
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.global-undo-button:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.global-undo-button:disabled {
+    cursor: default;
+    opacity: 0.4;
+}
+
 .title-field-growable {
     flex-grow: 1;
     width: 2rem;

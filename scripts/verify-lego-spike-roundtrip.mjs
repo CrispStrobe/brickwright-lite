@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-/** Real-browser acceptance for the shipped LEGO SPIKE SB3 round trip. */
+/**
+ * Real-browser acceptance for the shipped LEGO SPIKE surfaces:
+ *  1. the SB3 round trip (archive -> Code tab -> blocks -> saved archive);
+ *  2. the Pybricks simulator pane: a Python program from the Code tab, run by
+ *     Pybricks MicroPython compiled to wasm, lights the hub face's matrix and
+ *     turns the port-A motor to 90 degrees, then stops.
+ * Both halves are SPIKE, so they share this gate and its one CI shard.
+ */
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {createRequire} from 'node:module';
@@ -27,6 +34,115 @@ const creator = new SB3Creator();
 creator.parse(program);
 const fixture = resolve(artifacts, 'spike-roundtrip-input.sb3');
 await writeFile(fixture, Buffer.from(await (await creator.generateSB3()).arrayBuffer()));
+
+// The Pybricks half. Three pixels on a diagonal, and a motor turned to a
+// target: both are things the program must DO (the matrix starts dark, the
+// motor starts at 0), so a pane that mounts but never runs cannot pass. The
+// program then waits forever, so the lit matrix and the held angle are read
+// while it runs (Pybricks clears the display when a program ends), and the
+// gate stops it with the pane's own Stop button.
+const pybricksProgram = `from pybricks.hubs import PrimeHub
+from pybricks.pupdevices import Motor
+from pybricks.parameters import Port
+from pybricks.tools import wait
+
+hub = PrimeHub()
+hub.display.off()
+hub.display.pixel(0, 0, 100)
+hub.display.pixel(2, 2, 100)
+hub.display.pixel(4, 4, 100)
+motor = Motor(Port.A)
+motor.run_target(500, 90)
+print("target reached", motor.angle())
+while True:
+    wait(100)
+`;
+const LIT = [0, 12, 24];
+
+async function pybricksPane () {
+    const pane = await browser.newPage({viewport: {width: 1600, height: 1000}});
+    const errors = [];
+    pane.on('pageerror', error => errors.push(error.message));
+    pane.on('dialog', dialog => dialog.accept());
+    await pane.addInitScript(source => {
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        // The Code tab restores its last buffer from this key: the program is
+        // in the Code tab exactly as if the learner had typed it.
+        localStorage.setItem('bw-code-autosave', JSON.stringify({lang: 'python', code: source}));
+    }, pybricksProgram);
+    try {
+        await pane.goto(url, {waitUntil: 'domcontentloaded', timeout: 60000});
+        // A SPIKE with a motor on port A, set the way the Virtual SPIKE Prime
+        // panel sets it; the Pybricks pane takes its ports from that hub.
+        await pane.waitForFunction(() => Boolean(window.__brickwrightVirtualSpike?.hubState), null, {timeout: 30000});
+        await pane.evaluate(() => window.__brickwrightVirtualSpike.setPort('A', 'motor'));
+        await pane.getByRole('tab', {name: 'Code', exact: true}).click();
+        // Derived from the program, not restated: a precondition that repeats a
+        // literal from the subject goes red first when the subject changes.
+        const targetLine = pybricksProgram.trim().split('\n').filter(line => line.includes('run_target'))[0];
+        await pane.waitForFunction(line => (document.querySelector('.cm-content')?.textContent || '')
+            .includes(line), targetLine, {timeout: 30000});
+        if (await pane.locator('[data-testid="bw-pybricks-sim-pane"]').count()) {
+            throw new Error('precondition: the Pybricks pane must not be mounted before Run on SPIKE');
+        }
+        await pane.getByRole('button', {name: '▶ Run on SPIKE (Pybricks)'}).click();
+        await pane.locator('[data-testid="bw-pybricks-sim-pane"]').waitFor({timeout: 30000});
+        console.log('  ok: Run on SPIKE mounted the Pybricks pane');
+
+        // The hub face: exactly the three pixels the program lit.
+        try {
+            await pane.waitForFunction(lit => {
+                const cells = [...document.querySelectorAll('[data-testid="bw-pybricks-matrix"] > div')];
+                const on = cells.map((c, i) => (Number(c.dataset.brightness) > 0 ? i : -1)).filter(i => i >= 0);
+                return cells.length === 25 && on.length === lit.length && lit.every(i => on.includes(i));
+            }, LIT, {timeout: 45000});
+        } catch (error) {
+            const state = await pane.evaluate(() => ({
+                status: document.querySelector('[data-testid="bw-pybricks-status"]')?.textContent,
+                output: document.querySelector('[data-testid="bw-pybricks-output"]')?.textContent,
+                pixels: [...document.querySelectorAll('[data-testid="bw-pybricks-matrix"] > div')].map(c => c.dataset.brightness)
+            }));
+            await pane.screenshot({path: resolve(artifacts, 'pybricks-matrix-failure.png'), fullPage: true});
+            throw new Error(`hub face matrix never showed pixels ${LIT}: ${JSON.stringify(state)}`, {cause: error});
+        }
+        console.log(`  ok: hub face matrix lit exactly pixels ${LIT.join(', ')}`);
+
+        // Port A: the motor row reads about 90 degrees, and the program says
+        // run_target returned (the angle is where it ended, not passing by).
+        const angleOf = () => pane.evaluate(() => {
+            const text = document.querySelector('[data-testid="bw-pybricks-port-A"]')?.textContent || '';
+            const m = text.match(/(-?\d+)°/);
+            return m ? Number(m[1]) : null;
+        });
+        try {
+            await pane.waitForFunction(() => {
+                const out = document.querySelector('[data-testid="bw-pybricks-output"]')?.textContent || '';
+                const row = document.querySelector('[data-testid="bw-pybricks-port-A"]')?.textContent || '';
+                const m = row.match(/(-?\d+)°/);
+                return out.includes('target reached') && m && Math.abs(Number(m[1]) - 90) <= 3;
+            }, null, {timeout: 45000});
+        } catch (error) {
+            const output = await pane.locator('[data-testid="bw-pybricks-output"]').textContent().catch(() => '');
+            await pane.screenshot({path: resolve(artifacts, 'pybricks-motor-failure.png'), fullPage: true});
+            throw new Error(`port-A motor did not settle at ~90°: row reads ${await angleOf()}°, output ${JSON.stringify(output)}`,
+                {cause: error});
+        }
+        console.log(`  ok: port-A motor reads ${await angleOf()}° (target 90)`);
+        await pane.screenshot({path: resolve(artifacts, 'pybricks-pane-running.png'), fullPage: true});
+
+        // Stop, with the pane's own button; the run must actually end.
+        await pane.locator('[data-testid="bw-pybricks-run"]').click();
+        await pane.waitForFunction(() =>
+            document.querySelector('[data-testid="bw-pybricks-status"]')?.textContent === 'Ready', null, {timeout: 30000});
+        console.log('  ok: Stop ended the program');
+        if (errors.length) throw new Error(`Pybricks pane page errors: ${errors.join(' | ')}`);
+        console.log('Pybricks SPIKE simulator pane passed.');
+    } finally {
+        await pane.close();
+    }
+}
 
 const expected = ['event_whenflagclicked', 'spikeprime_motorStart', 'control_wait',
     'data_setvariableto', 'spikeprime_getDistance', 'spikeprime_displayText', 'spikeprime_motorStop'];
@@ -130,6 +246,8 @@ try {
     assertOpcodes(savedOpcodes, 'downloaded SB3');
     if (pageErrors.length) throw new Error(`page errors: ${pageErrors.join(' | ')}`);
     console.log('LEGO SPIKE browser round trip passed.');
+
+    await pybricksPane();
 } finally {
     await browser.close();
 }

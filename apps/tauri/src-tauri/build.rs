@@ -7,10 +7,13 @@ fn main() {
     if target_os == "macos" {
         cc::Build::new()
             .file("src/scratchlink/bt_macos.m")
+            .file("src/macos_share.m")
             .flag("-fobjc-arc")
             .compile("bt_macos");
         println!("cargo:rerun-if-changed=src/scratchlink/bt_macos.m");
+        println!("cargo:rerun-if-changed=src/macos_share.m");
         println!("cargo:rustc-link-lib=framework=IOBluetooth");
+        println!("cargo:rustc-link-lib=framework=AppKit");
         println!("cargo:rustc-link-lib=framework=Foundation");
         println!("cargo:rustc-link-lib=framework=CoreBluetooth");
     } else if target_os == "ios" {
@@ -46,6 +49,10 @@ fn main() {
         "save_project",
         "write_temp_project",
         "is_mobile",
+        "share_file_native",
+        "start_share_server",
+        "stop_share_server",
+        "share_server_status",
         "download_pack",
         "download_pack_zip",
         "pack_present",

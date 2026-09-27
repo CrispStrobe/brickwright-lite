@@ -18,10 +18,38 @@ pub fn is_mobile() -> bool {
     cfg!(mobile)
 }
 
+/// Present the native macOS share picker for a prepared file. Other desktop
+/// platforms return false so the web layer falls back to Save As.
+#[tauri::command]
+pub fn share_file_native(path: String) -> Result<bool, String> {
+    let path = Path::new(&path);
+    if !path.is_file() {
+        return Err("share file does not exist".into());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        use std::ffi::CString;
+        extern "C" {
+            fn brickwright_share_file(path: *const std::os::raw::c_char);
+        }
+        let value = CString::new(path.to_string_lossy().as_bytes()).map_err(|e| e.to_string())?;
+        unsafe {
+            brickwright_share_file(value.as_ptr());
+        }
+        return Ok(true);
+    }
+    #[cfg(not(target_os = "macos"))]
+    Ok(false)
+}
+
 /// Write project bytes to a temp file in the app cache dir and return its path,
 /// so the web layer can hand it to the OS share sheet (mobile share plugin).
 #[tauri::command]
-pub fn write_temp_project(app: AppHandle, filename: String, bytes: Vec<u8>) -> Result<String, String> {
+pub fn write_temp_project(
+    app: AppHandle,
+    filename: String,
+    bytes: Vec<u8>,
+) -> Result<String, String> {
     let dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     // Keep the extension; sanitise the stem so it can't escape the cache dir.
