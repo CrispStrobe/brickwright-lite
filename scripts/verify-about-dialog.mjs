@@ -69,6 +69,26 @@ async function verify() {
         await groups.waitFor({state: 'visible', timeout: 10000});
         pass('About dialog opened');
 
+        const manifest = await page.evaluate(async () => {
+            const response = await fetch('brickwright-build.json', {cache: 'no-store'});
+            if (!response.ok) throw new Error(`build manifest HTTP ${response.status}`);
+            return response.json();
+        });
+        const policyRows = [
+            ['remoteExtensions', 'about-remote-code-policy'],
+            ['executableToolchains', 'about-toolchain-policy'],
+            ['machineImages', 'about-machine-image-policy']
+        ];
+        for (const [name, testId] of policyRows) {
+            const policyText = await page.getByTestId(testId).innerText();
+            const policy = manifest?.distributionPolicy?.[name];
+            if ((policy === 'allow' || policy === 'deny') && policyText.includes(`(${policy})`)) {
+                pass(`About ${name} policy matches emitted manifest: ${policy}`);
+            } else {
+                fail(`About/manifest ${name} policy mismatch: ${JSON.stringify({policy, policyText})}`);
+            }
+        }
+
         // Get the full text content of the dialog
         const text = await groups.innerText();
 

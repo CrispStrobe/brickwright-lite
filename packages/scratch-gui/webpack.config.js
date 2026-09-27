@@ -5,6 +5,11 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const reactProfiling = process.env.BW_REACT_PROFILE === '1';
+const remoteCodePolicy = process.env.BW_REMOTE_CODE_POLICY || 'allow';
+
+if (!['allow', 'deny'].includes(remoteCodePolicy)) {
+    throw new Error(`BW_REMOTE_CODE_POLICY must be "allow" or "deny", got ${JSON.stringify(remoteCodePolicy)}`);
+}
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
 
@@ -38,6 +43,19 @@ const buildVersion = () => {
         return 'unknown';
     }
 };
+
+// One identity shared by DefinePlugin, the About dialog and the emitted manifest. Calling either
+// producer twice would allow a build straddling a second (or a moving checkout) to describe itself
+// with two different values.
+const buildCommit = buildVersion();
+const buildTime = new Date().toISOString();
+const buildManifest = `${JSON.stringify({
+    schema: 1,
+    product: 'Brickwright',
+    commit: buildCommit,
+    builtAt: buildTime,
+    distributionPolicy: {remoteCode: remoteCodePolicy}
+}, null, 2)}\n`;
 
 // const STATIC_PATH = process.env.STATIC_PATH || '/static';
 
@@ -109,6 +127,12 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // runtime toggle could not promise. Enabling it by DEFAULT is a separate,
         // later decision that may never be taken -- see docs/TANG-NANO.md.
         'process.env.BW_ENABLE_FPGA': JSON.stringify(process.env.BW_ENABLE_FPGA === '1'),
+        // Distribution policy, selected at BUILD TIME. This is intentionally not inferred from
+        // Tauri: Android, Windows and direct-download desktop builds have different store rules,
+        // and even Apple's educational-code exception is a submission decision rather than a
+        // property of the runtime. Use `BW_REMOTE_CODE_POLICY=deny` only for a deliberately
+        // self-contained artifact; the normal web and native profile is `allow`.
+        'process.env.BW_REMOTE_CODE_POLICY': JSON.stringify(remoteCodePolicy),
         // Where hosted synthesis lives, when it exists. Null means "not configured",
         // which the backend probe reports as a REASON rather than an empty picker.
         'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),
@@ -120,8 +144,8 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // riscv-compile.js tolerates. Override with BW_RISCV_CC_ENDPOINT.
         'process.env.BW_RISCV_CC_ENDPOINT':
             JSON.stringify(process.env.BW_RISCV_CC_ENDPOINT || 'https://stc-compiler.vercel.app'),
-        'process.env.BW_VERSION': JSON.stringify(buildVersion()),
-        'process.env.BW_BUILD_TIME': JSON.stringify(new Date().toISOString()),
+        'process.env.BW_VERSION': JSON.stringify(buildCommit),
+        'process.env.BW_BUILD_TIME': JSON.stringify(buildTime),
         'process.env.DEBUG': Boolean(process.env.DEBUG),
         'process.env.GA_ID': `"${process.env.GA_ID || 'UA-000000-01'}"`,
         'process.env.GTM_ENV_AUTH': `"${process.env.GTM_ENV_AUTH || ''}"`,
@@ -129,6 +153,10 @@ const baseConfig = new ScratchWebpackConfigBuilder(
     }))
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
+            {
+                from: Buffer.from(buildManifest),
+                to: 'brickwright-build.json'
+            },
             {
                 from: 'node_modules/scratch-blocks/media',
                 to: 'static/blocks-media/default'
