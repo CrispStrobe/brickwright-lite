@@ -16,6 +16,9 @@ test('native download proof launches a real Tauri binary and requires native IPC
 });
 
 test('native proof exercises extension, toolchain and pinned machine media', () => {
+    assert.match(proof, /remoteExtensionsPolicy: 'allow'/);
+    assert.match(proof, /executableToolchainsPolicy: 'allow'/);
+    assert.match(proof, /machineImagesPolicy: 'allow'/);
     assert.match(proof, /extensionManager\.loadExtensionURL/);
     assert.match(proof, /sdcc-wasm\/runtime\.json/);
     assert.match(proof, /riscv32-linux\/Image/);
