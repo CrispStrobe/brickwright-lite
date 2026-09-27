@@ -3010,7 +3010,11 @@ class PseudocodeImporter extends React.Component {
                     return;
                 }
                 this.setState({
-                    buffers: {...this.state.buffers, pseudocode: result.pseudocode},
+                    // Generated MicroPython belongs to the old device/source.
+                    // Clear it atomically with the retarget so an immediate
+                    // tab switch derives the newly rewritten example instead
+                    // of reusing a stale (or failed) prior build.
+                    buffers: {...this.state.buffers, pseudocode: result.pseudocode, micropython: ''},
                     status: result.warnings.length
                         ? `Retargeted to ${info.label}: ${result.warnings.join('; ')}`
                         : `Retargeted to ${info.label}.`
@@ -3035,7 +3039,8 @@ class PseudocodeImporter extends React.Component {
             }
         } else {
             const line = `DEVICE ${deviceId.toUpperCase()}`;
-            this.setState(s => {
+            let nextSource = '';
+            await new Promise(resolve => this.setState(s => {
                 const buf = s.buffers.pseudocode || '';
                 let next;
                 if (/^DEVICE\s+[\w-]+/im.test(buf)) {
@@ -3043,8 +3048,23 @@ class PseudocodeImporter extends React.Component {
                 } else {
                     next = line + '\n' + buf;
                 }
-                return { buffers: { ...s.buffers, pseudocode: next } };
-            });
+                nextSource = next;
+                return { buffers: { ...s.buffers, pseudocode: next, micropython: '' } };
+            }, resolve));
+            // A sensor/display-only example has no PIN/PART declaration, but
+            // it is still a runnable program. The old no-pins route rewrote
+            // only the editor text, leaving the VM and generated MicroPython
+            // on the previous device. Compile this route too, and await it so
+            // the Calliope tab cannot open onto an empty/stale derivation.
+            await this.compile();
+            if (['microbit', 'calliopemini'].includes(deviceId)) {
+                const generated = await this.deriveBuffer(nextSource, 'pseudocode', 'micropython');
+                if (!generated.error) {
+                    await new Promise(resolve => this.setState(s => ({
+                        buffers: {...s.buffers, micropython: generated.code}
+                    }), resolve));
+                }
+            }
         }
         // Publish core on the runtime so the debug panel can pick the right emulator
         if (this.props.vm && this.props.vm.runtime) {
@@ -4632,8 +4652,9 @@ class PseudocodeImporter extends React.Component {
                         // MicroPython program was imported from a .hex: there
                         // is no pseudocode then, and hiding the tab would hide
                         // the Run button of the one program we can run as-is.
-                        ...(this.currentDevice() === 'microbit' || (this.state.buffers.micropython || '').trim() ?
-                            [['micropython', '🤖 micro:bit']] : []),
+                        ...(['microbit', 'calliopemini'].includes(this.currentDevice()) ||
+                            (this.state.buffers.micropython || '').trim() ?
+                            [['micropython', this.currentDevice() === 'calliopemini' ? '🤖 Calliope' : '🤖 micro:bit']] : []),
                         // NQC appears for people who have an RCX and stays out
                         // of everyone else's way. The RCX is not a DEVICE line
                         // — it is reached through an extension — so the test

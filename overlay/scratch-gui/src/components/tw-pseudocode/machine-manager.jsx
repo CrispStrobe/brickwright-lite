@@ -11,6 +11,7 @@
 // app. Inline styles, matching the rest of tw-pseudocode.
 
 import React from 'react';
+import {currentBox, overlayStyleFor, subscribeVisualViewport} from '../../lib/visual-viewport.js';
 import {
     fromMediaManifest, fromDosboxConf
 } from '../../lib/bw-machines/importers.js';
@@ -36,6 +37,16 @@ const tr = (locale, k) => (T[(locale || 'en').slice(0, 2)] || T.en)[k] || T.en[k
 const modeBadge = m => (m === 'wired' ? '🔌 wired' : m === 'auto' ? '◐ auto' : '⚙ functional');
 
 export default function MachineManager({store, onRun, onClose, locale}) {
+    // WHERE THE SCREEN IS, not where the page is. `inset: 0` covers the LAYOUT
+    // viewport, which this app floors at 1024px wide — so on a 430pt phone the
+    // modal centred at x=512 and its buttons sat off the side of the screen.
+    // Reported from iOS as "cannot import a machine"; Playwright could not
+    // click them either, because a fixed element cannot be scrolled into a
+    // visual viewport. On a desktop the two boxes agree and this is inert.
+    const [vvBox, setVvBox] = React.useState(currentBox);
+    React.useEffect(() => subscribeVisualViewport(setVvBox), []);
+    const overlayBox = overlayStyleFor(vvBox,
+        typeof window === 'undefined' ? 0 : window.innerWidth);
     const [machines, setMachines] = React.useState([]);
     const [status, setStatus] = React.useState('');
     const [text, setText] = React.useState('');
@@ -121,7 +132,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
 
     return (
         <div onClick={onClose} data-testid="bw-machine-manager"
-            style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000,
+            style={{...overlayBox, background: 'rgba(0,0,0,0.4)', zIndex: 1000,
                 display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
             <div onClick={stop} style={{background: '#fff', borderRadius: 10, width: 'min(680px, 92vw)',
                 maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',

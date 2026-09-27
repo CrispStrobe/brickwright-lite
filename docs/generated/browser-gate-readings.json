@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-27T13:02:19.470Z",
+ "generatedAt": "2026-09-27T14:45:22.358Z",
  "repo": "CrispStrobe/brickwright-lite",
  "branch": "main",
- "newestRun": 36320241654,
+ "newestRun": 36324084932,
  "runsScanned": 75,
  "keepPerStep": 20,
  "factor": 3,
@@ -19,6 +19,21 @@
     "sha": "4f914e3f1"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 1
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 1
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -103,21 +118,6 @@
      "run": 36257760475,
      "sha": "eb0df7966",
      "seconds": 0
-    },
-    {
-     "run": 36257082544,
-     "sha": "2f37bbad2",
-     "seconds": 1
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 0
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 0
     }
    ]
   },
@@ -130,6 +130,21 @@
     "sha": "9d8e54319"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 12
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 11
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 11
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -214,33 +229,33 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 11
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 11
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 10
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 11
     }
    ]
   },
   "Browser gate — debugger recording, reverse and fork history": {
    "n": 20,
-   "p95": 41,
+   "p95": 42,
    "max": {
     "seconds": 45,
     "run": 34171220427,
     "sha": "2c75b8fcc"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 40
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 42
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 42
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -325,21 +340,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 36
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 23
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 36
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 41
     }
    ]
   },
@@ -352,6 +352,21 @@
     "sha": "4fec893ba"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 4
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 4
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 4
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -435,21 +450,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 4
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 4
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 4
     }
    ]
@@ -464,6 +464,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 8
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 8
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 8
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 9
@@ -547,21 +562,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 9
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 8
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 9
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 8
     }
    ]
   },
@@ -575,6 +575,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 3
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 4
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 4
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 4
@@ -658,21 +673,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 3
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 4
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 4
     }
    ]
   },
@@ -686,6 +686,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 5
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 5
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 6
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 6
@@ -769,21 +784,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 5
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 4
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 5
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 6
     }
    ]
   },
@@ -797,6 +797,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 2
@@ -880,23 +895,14 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 1
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 1
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 3
     }
    ]
+  },
+  "Browser gate — a modal is reachable on a phone-sized screen": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   },
   "Browser gate — CP/M 2.2 boots from the Machine Manager to A>": {
    "n": 20,
@@ -908,6 +914,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 4
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 3
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 4
@@ -990,21 +1011,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 3
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 3
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 3
     }
    ]
@@ -1019,6 +1025,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 4
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 3
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 4
@@ -1101,21 +1122,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 3
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 3
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 3
     }
    ]
@@ -1130,6 +1136,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 24
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 25
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 25
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 24
@@ -1212,21 +1233,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 25
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 24
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 25
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 25
     }
    ]
@@ -1241,6 +1247,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 22
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 20
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 21
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 22
@@ -1323,21 +1344,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 20
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 19
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 20
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 20
     }
    ]
@@ -1352,6 +1358,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 3
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 3
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 3
@@ -1435,21 +1456,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 4
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 3
     }
    ]
   },
@@ -1463,6 +1469,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 6
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 6
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 6
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 7
@@ -1546,21 +1567,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 6
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 5
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 6
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 5
     }
    ]
   },
@@ -1574,6 +1580,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 4
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 4
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 3
@@ -1657,21 +1678,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 3
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 3
     }
    ]
   },
@@ -1684,6 +1690,21 @@
     "sha": "9d8e54319"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 3
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -1768,21 +1789,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 3
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 2
     }
    ]
   },
@@ -1795,6 +1801,21 @@
     "sha": "ef376fd66"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 15
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 15
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 16
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -1879,33 +1900,33 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 15
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 15
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 14
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 15
     }
    ]
   },
   "Browser gate — editor": {
    "n": 20,
-   "p95": 19,
+   "p95": 20,
    "max": {
     "seconds": 24,
     "run": 35791932891,
     "sha": "fbb526535"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 20
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 19
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 19
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -1990,21 +2011,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 20
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 18
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 19
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 18
     }
    ]
   },
@@ -2018,6 +2024,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 1
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 1
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 1
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 2
@@ -2101,21 +2122,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 1
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 1
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 1
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 2
     }
    ]
   },
@@ -2129,6 +2135,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 6
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 5
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 5
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 5
@@ -2212,21 +2233,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 6
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 4
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 5
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 4
     }
    ]
   },
@@ -2240,6 +2246,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 3
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 3
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 3
@@ -2323,21 +2344,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 3
     }
    ]
   },
@@ -2351,6 +2357,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 9
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 7
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 7
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 8
@@ -2434,26 +2455,11 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 7
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 6
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 7
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 7
     }
    ]
   },
   "Browser gate — 386 local DOSBox HDD boot in Widgets": {
-   "n": 1,
+   "n": 4,
    "p95": 7,
    "max": {
     "seconds": 7,
@@ -2462,6 +2468,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 7
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 7
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 7
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 7
@@ -2469,7 +2490,7 @@
    ]
   },
   "Browser gate — machine Widgets keyboard, mouse and fullscreen": {
-   "n": 1,
+   "n": 4,
    "p95": 2,
    "max": {
     "seconds": 2,
@@ -2477,6 +2498,21 @@
     "sha": "8c942997b"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -2494,6 +2530,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 2
@@ -2577,21 +2628,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 2
     }
    ]
   },
@@ -2604,6 +2640,21 @@
     "sha": "920e5ff14"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 4
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 4
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 4
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -2688,21 +2739,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 4
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 3
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 4
     }
    ]
   },
@@ -2715,6 +2751,21 @@
     "sha": "c2433273a"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 189
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 193
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 194
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -2799,21 +2850,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 182
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 140
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 187
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 191
     }
    ]
   },
@@ -2826,6 +2862,21 @@
     "sha": "c60f827b9"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -2909,21 +2960,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 2
     }
    ]
@@ -2938,6 +2974,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 9
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 7
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 8
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 9
@@ -3021,21 +3072,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 8
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 5
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 6
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 6
     }
    ]
   },
@@ -3049,6 +3085,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 5
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 5
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 5
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 5
@@ -3132,26 +3183,11 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 5
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 4
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 4
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 5
     }
    ]
   },
   "Browser gate — SPIKE Prime German palette renders without a Blockly index error": {
-   "n": 6,
+   "n": 9,
    "p95": 3,
    "max": {
     "seconds": 3,
@@ -3159,6 +3195,21 @@
     "sha": "8c942997b"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 3
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -3201,6 +3252,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 6
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 6
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 7
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 7
@@ -3284,21 +3350,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 7
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 5
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 6
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 5
     }
    ]
   },
@@ -3312,6 +3363,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 5
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 4
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 4
@@ -3394,21 +3460,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 4
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 3
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 4
     }
    ]
@@ -3423,6 +3474,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 2
@@ -3506,21 +3572,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 1
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 2
     }
    ]
   },
@@ -3533,6 +3584,21 @@
     "sha": "920e5ff14"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 12
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 11
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 12
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -3617,21 +3683,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 12
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 8
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 9
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 10
     }
    ]
   },
@@ -3645,6 +3696,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 1
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 2
@@ -3728,21 +3794,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 1
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 1
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 1
     }
    ]
   },
@@ -3756,6 +3807,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 4
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 4
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 4
@@ -3838,21 +3904,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 4
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 3
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 4
     }
    ]
@@ -3867,6 +3918,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 19
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 18
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 19
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 19
@@ -3950,21 +4016,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 19
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 16
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 17
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 17
     }
    ]
   },
@@ -3977,6 +4028,21 @@
     "sha": "b910ef07a"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 25
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 22
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 25
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -4061,33 +4127,33 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 23
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 16
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 17
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 16
     }
    ]
   },
   "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
    "n": 20,
-   "p95": 9,
+   "p95": 10,
    "max": {
     "seconds": 10,
     "run": 36099957738,
     "sha": "4fec893ba"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 10
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 8
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 9
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -4172,21 +4238,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 9
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 6
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 7
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 8
     }
    ]
   },
@@ -4200,6 +4251,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 27
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 28
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 28
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 28
@@ -4282,21 +4348,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 27
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 27
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 27
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 27
     }
    ]
@@ -4305,11 +4356,26 @@
    "n": 20,
    "p95": 2,
    "max": {
-    "seconds": 2,
-    "run": 34119648099,
-    "sha": "9d8e54319"
+    "seconds": 3,
+    "run": 36324084932,
+    "sha": "bbf06abed"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 3
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 1
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -4394,21 +4460,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 1
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 1
     }
    ]
   },
@@ -4422,6 +4473,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 2
@@ -4505,21 +4571,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 2
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 1
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 2
     }
    ]
   },
@@ -4532,6 +4583,21 @@
     "sha": "68a726c35"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 91
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 92
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 91
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -4616,21 +4682,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 88
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 83
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 88
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 92
     }
    ]
   },
@@ -4643,6 +4694,21 @@
     "sha": "9d8e54319"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 44
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 45
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 44
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -4727,21 +4793,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 44
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 44
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 44
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 44
     }
    ]
   },
@@ -4754,6 +4805,21 @@
     "sha": "57c13adc3"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 6
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 6
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 6
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -4837,21 +4903,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 5
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 4
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 5
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 5
     }
    ]
@@ -4866,6 +4917,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 5
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 4
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 4
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 4
@@ -4948,21 +5014,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 4
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 4
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 4
     }
    ]
@@ -4977,6 +5028,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 7
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 6
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 6
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 7
@@ -5060,21 +5126,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 7
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 6
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 6
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 6
     }
    ]
   },
@@ -5087,6 +5138,21 @@
     "sha": "2a32b48a9"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 35
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 35
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 35
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -5171,21 +5237,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 34
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 34
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 35
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 35
     }
    ]
   },
@@ -5199,6 +5250,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 2
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 1
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 1
@@ -5282,21 +5348,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 1
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 2
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 1
     }
    ]
   },
@@ -5310,6 +5361,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 2
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 1
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 2
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 2
@@ -5392,21 +5458,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 2
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 1
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 5
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 2
     }
    ]
@@ -5421,6 +5472,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 10
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 8
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 10
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 10
@@ -5504,21 +5570,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 9
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 7
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 8
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 8
     }
    ]
   },
@@ -5532,6 +5583,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 18
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 18
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 17
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 18
@@ -5615,21 +5681,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 18
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 17
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 17
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 17
     }
    ]
   },
@@ -5643,6 +5694,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 11
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 10
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 10
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 10
@@ -5726,21 +5792,6 @@
      "run": 36257082544,
      "sha": "2f37bbad2",
      "seconds": 10
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 8
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 9
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 9
     }
    ]
   },
@@ -5753,6 +5804,21 @@
     "sha": "c60f827b9"
    },
    "readings": [
+    {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 3
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 3
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 3
+    },
     {
      "run": 36320241654,
      "sha": "8c942997b",
@@ -5836,21 +5902,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 3
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 3
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 3
     }
    ]
@@ -5865,6 +5916,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 18
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 17
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 18
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 17
@@ -5947,21 +6013,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 18
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 17
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 17
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 18
     }
    ]
@@ -5976,6 +6027,21 @@
    },
    "readings": [
     {
+     "run": 36324084932,
+     "sha": "bbf06abed",
+     "seconds": 6
+    },
+    {
+     "run": 36323346724,
+     "sha": "dd65ebc07",
+     "seconds": 6
+    },
+    {
+     "run": 36321069529,
+     "sha": "da131214f",
+     "seconds": 6
+    },
+    {
      "run": 36320241654,
      "sha": "8c942997b",
      "seconds": 6
@@ -6058,21 +6124,6 @@
     {
      "run": 36257082544,
      "sha": "2f37bbad2",
-     "seconds": 5
-    },
-    {
-     "run": 36256610457,
-     "sha": "0ad0e8942",
-     "seconds": 3
-    },
-    {
-     "run": 36255443250,
-     "sha": "97bf98117",
-     "seconds": 5
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
      "seconds": 5
     }
    ]
