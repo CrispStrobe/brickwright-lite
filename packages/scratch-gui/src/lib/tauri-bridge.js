@@ -1,4 +1,5 @@
 import downloadBlob from './download-blob';
+import {inspectArtwork, applyArtwork} from './bw-artwork-bundle';
 
 /**
  * Bridge native Tauri events and capabilities into the web editor. No-op in a
@@ -145,7 +146,10 @@ export default function initTauriBridge () {
             const {name, bytes} = event.payload || {};
             if (!bytes) return;
             const vm = await waitForVm();
-            await vm.loadProject(new Uint8Array(bytes).buffer);
+            const project = new Uint8Array(bytes).buffer;
+            const artwork = await inspectArtwork(project);
+            await vm.loadProject(project);
+            applyArtwork(artwork, vm);
             if (window.ReduxStore && name) {
                 try {
                     window.ReduxStore.dispatch({

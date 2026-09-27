@@ -9,6 +9,7 @@ import {
     applyBrickwrightInspection,
     rollbackBrickwrightInspection
 } from './bw-project-bundle';
+import {inspectArtwork, applyArtwork} from './bw-artwork-bundle';
 import {unpackLms, setActiveLms, clearActiveLms} from './mindstorms-lms';
 import sharedMessages from './shared-messages';
 
@@ -158,12 +159,14 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 let rawFile = this.fileReader.result;
                 let lms = null;
                 let bundle;
+                let artwork;
                 Promise.resolve()
                     .then(async () => {
                         if (filename && /\.lms$/i.test(filename)) {
                             lms = await unpackLms(rawFile);
                             rawFile = lms.scratch;
                         }
+                        artwork = await inspectArtwork(rawFile);
                         return inspectBrickwrightState(rawFile);
                     })
                     .then(inspection => {
@@ -190,6 +193,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                         });
                     })
                     .then(() => {
+                        applyArtwork(artwork, this.props.vm);
                         if (lms) setActiveLms(lms);
                         else clearActiveLms();
                         // A project that spans four tabs is only really loaded
