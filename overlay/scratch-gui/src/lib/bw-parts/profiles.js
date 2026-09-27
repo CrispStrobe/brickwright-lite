@@ -230,7 +230,7 @@ export const REFUSED = Object.freeze({
     passive: [
         'battery', 'battery_9v', 'battery_aa', 'battery_coin', 'solar_cell',
         'fuse', 'header', 'usb_a', 'crystal', 'osc_can', 'light_bulb',
-        'polarized_cap', 'rnet_sip', 'level_shifter4', 'vreg', 'lm7805',
+        'polarized_cap', 'rnet_sip', 'level_shifter4', 'vreg', 'adp7118', 'lm7805',
         'lm7809', 'lm7812', 'ld1117v33', 'ams1117_33', 'ams1117_50',
         'vcc', 'gnd', 'resistor', 'capacitor', 'inductor', 'transformer',
         'diode', 'zener', 'potentiometer', 'ntc', 'ldr', 'vsource', 'isource'

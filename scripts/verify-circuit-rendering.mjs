@@ -7,6 +7,8 @@ const lm324Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/lm324-quad-follower.json', import.meta.url), 'utf8'));
 const lm741Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/lm741-voltage-follower.json', import.meta.url), 'utf8'));
+const adp7118Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/adp7118-fixed-regulator.json', import.meta.url), 'utf8'));
 
 const url = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 const browser = await chromium.launch();
@@ -227,6 +229,37 @@ try {
         lm741.terminals === 8 && typeof lm741.output === 'number' &&
         Math.abs(lm741.output - 1.001) < 0.02,
         JSON.stringify(lm741));
+
+    // This is the complete package chain: the Lite production bundle loads
+    // CUI's physical SOIC-8 face and Board's named regulator model from the
+    // same fixture, then reads the settled output rather than a static label.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), adp7118Fixture);
+    const adpFace = designer.locator('[data-part-face="adp7118"][data-soic-body="adp7118"]');
+    await adpFace.waitFor({state: 'visible', timeout: 10000});
+    const adpFaceText = await adpFace.textContent();
+    check('ADP7118 renders as the truthful labelled SOIC-8 face',
+        await adpFace.count() === 1 && /200mA LDO/.test(adpFaceText) &&
+        ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8']
+            .every(name => adpFaceText.includes(name)),
+        adpFaceText.replace(/\s+/g, ' ').trim());
+    const adp7118 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the ADP7118 board'};
+        board.advanceTo(board.timeNs + 10_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'vout_1'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical fixed-output ADP7118 regulator',
+        adp7118.terminals === 8 && typeof adp7118.output === 'number' &&
+        Math.abs(adp7118.output - 5) < 0.002,
+        JSON.stringify(adp7118));
 } finally {
     await browser.close();
 }
