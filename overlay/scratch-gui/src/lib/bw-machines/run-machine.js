@@ -55,6 +55,7 @@ export async function runMachineConfig(config, opts = {}) {
         kind: activated.targetKind,
         profile: bm.profile || null,
         name: bm.name || null,
+        nativeBlocks: bm.nativeBlocks === true,
         // The declared screen widget rides here so debug-panel mirrors video
         // into the Widgets pane; an empty array simply means no screen (video
         // stays in the Debug instrument).

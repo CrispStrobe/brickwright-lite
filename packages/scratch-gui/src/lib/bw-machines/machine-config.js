@@ -153,6 +153,7 @@ export function normalizeMachineConfig(cfg) {
         executionMode,
         machine,
         cpu,
+        nativeBlocks: c.nativeBlocks === undefined ? false : c.nativeBlocks,
         ram: isObj(c.ram) ? {...c.ram} : {},
         bios: isObj(c.bios) ? {...c.bios} : null,
         video: isObj(c.video) ? {...c.video} : null,
@@ -208,6 +209,11 @@ export function validateMachineConfig(cfg) {
     }
     if (cfg.title != null && typeof cfg.title !== 'string') {
         errors.push('title must be a string');
+    }
+    if (cfg.nativeBlocks !== undefined && typeof cfg.nativeBlocks !== 'boolean') {
+        errors.push('nativeBlocks must be a boolean');
+    } else if (cfg.nativeBlocks === true && cfg.machine !== 'i80386') {
+        errors.push('nativeBlocks is available only for i80386 machines');
     }
 
     const mode = cfg.executionMode;
