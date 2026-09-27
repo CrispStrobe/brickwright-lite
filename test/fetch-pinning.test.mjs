@@ -511,6 +511,19 @@ const CENSUS = [
            + 'and sync-labwired-wasm. Deliberately NOT in REMOTE_SYNCS below: there is no git branch to '
            + 'resolve — the version literal IS the immutable name, the hash is the gate. Only CI fetches '
            + 'it; locally the box gcc is used and the executed-C leg skips by name when neither is present.'
+    },
+    {
+        file: 'overlay/scratch-gui/src/lib/bw-machines/lessons.js',
+        kind: 'raw',
+        text: 'raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/${LINUX_MEDIA_COMMIT}/riscv32-linux',
+        class: 'sha-const',
+        why: 'The Linux-on-RISC-V lesson media (kernel Image + BusyBox initramfs, GPL-2.0/LGPL-2.1), '
+           + 'fetched at RUN TIME in the learner\'s browser from brickwright-media-lab and never part of '
+           + 'this build (verify-no-gpl-in-build). LINUX_MEDIA_COMMIT is a 40-hex constant in the same '
+           + 'file (SHA_CONSTANTS below), so the URL names an immutable commit of the media branch; the '
+           + 'raw CDN, not the release download, because only it serves CORS. The bytes are ALSO '
+           + 'sha256-checked against the per-slot pins before anything boots (activate.js '
+           + 'defaultImageFetcher; a mismatch is refused by slot name, test/linux-riscv-lesson.test.mjs).'
     }
 ];
 
@@ -521,7 +534,8 @@ const SHA_CONSTANTS = [
     ['scripts/vendor.mjs', /const GUI_COMMIT = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-emu8051-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
-    ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m]
+    ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m],
+    ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/]
 ];
 
 const key = (h) => `${h.file} ${h.kind} ${h.text}`;

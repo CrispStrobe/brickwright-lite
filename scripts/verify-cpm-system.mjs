@@ -176,6 +176,81 @@ try {
     await page.screenshot({path: join(ARTIFACTS, 'cpm-system.png'), fullPage: true});
 } catch (e) {
     check(false, 'the CP/M boot flow ran without throwing', String(e.message || e).slice(0, 160));
+}
+
+// ─── LINUX ON RISC-V — the Machine Manager's lesson row ─────────────────────
+// Same surface, second machine: a fresh page (no CP/M state), the built-in
+// "Linux on RISC-V" row, its GPL licence line and source link, Run. The kernel
+// and initramfs are fetched from brickwright-media-lab (raw CDN at a pinned
+// commit) and sha256-checked by the app before anything boots — nothing GPL is
+// in this build. Then the real Linux 6.1 boots to the `bwb# ` prompt, `uname
+// -a` is typed into the serial input and "Linux … riscv32" is read back. Every
+// wait is a condition (waitForFunction), none a sleep. The boot time printed
+// here is the one a learner sees: Run click → prompt, fetch included.
+const LINUX_ARTIFACTS = join(root, 'artifacts', 'linux-riscv');
+try {
+    const page = await browser.newPage({viewport: {width: 1440, height: 960}});
+    const linuxErrors = [];
+    page.on('dialog', d => d.accept());
+    page.on('pageerror', e => linuxErrors.push(`pageerror: ${e.stack || e.message}`));
+    await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('bw-starter-v1-complete', '1'); indexedDB.deleteDatabase('bw-machines'); } catch { /* */ } });
+    await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const device = page.getByTestId('bw-device-select');
+    await device.waitFor({state: 'visible', timeout: 60000});
+    await device.selectOption('__manage__');
+    const row = page.getByTestId('bw-mm-lesson').filter({hasText: 'Linux on RISC-V'});
+    await row.waitFor({state: 'visible', timeout: 15000});
+    const licence = await row.getByTestId('bw-mm-lesson-licence').textContent();
+    check(/GPL-2\.0/.test(licence) && /LGPL-2\.1/.test(licence) && /brickwright-media-lab/.test(licence),
+        'the Linux lesson row carries its GPL/LGPL licence line and names where the media come from',
+        licence.replace(/\s+/g, ' ').slice(0, 160));
+    const href = await row.getByTestId('bw-mm-lesson-source').getAttribute('href');
+    check(href === 'https://github.com/CrispStrobe/brickwright-media-lab/releases/tag/riscv32-linux-v1',
+        'the source link points at the release that carries the corresponding source', href || '(none)');
+
+    const t0 = Date.now();
+    await row.getByTestId('bw-mm-lesson-run').click();
+    // The modal closes once the media are fetched and verified; a refusal
+    // (a sha256 mismatch names the slot) keeps it open with the reason.
+    await page.getByTestId('bw-machine-manager').waitFor({state: 'detached', timeout: 60000}).catch(async () => {
+        const why = await page.getByTestId('bw-mm-status').textContent().catch(() => '');
+        throw new Error(`the Linux lesson did not start: ${why}`);
+    });
+    const fetched = (Date.now() - t0) / 1000;
+    const openDebugger = page.getByTestId('bw-open-circuit-debugger');
+    if (await openDebugger.count()) await openDebugger.first().click();
+    await page.getByTestId('bw-serial-console').waitFor({state: 'attached', timeout: 30000});
+    await page.waitForFunction(`(() => {
+        const el = document.querySelector('[data-testid="bw-serial-console"]');
+        const now = el ? el.textContent : '';
+        return now.includes('BWB-LINUX-USERSPACE-UP') && /bwb# $/.test(now);
+    })()`, null, {timeout: 120000, polling: 100});
+    const booted = (Date.now() - t0) / 1000;
+    check(true, `Linux booted to the bwb# prompt in the browser — ${booted.toFixed(1)} s from Run (media fetched + verified in ${fetched.toFixed(1)} s)`);
+
+    const input = page.getByTestId('bw-serial-input');
+    await input.fill('uname -a');
+    await page.getByTestId('bw-serial-send').click();
+    let unameText = '';
+    try {
+        await page.waitForFunction(`(() => {
+            const el = document.querySelector('[data-testid="bw-serial-console"]');
+            const now = el ? el.textContent : '';
+            return /Linux \\S+ 6\\.1\\.\\d+ .*riscv32 GNU\\/Linux[\\s\\S]*bwb# $/.test(now);
+        })()`, null, {timeout: 60000, polling: 100});
+    } catch { /* checked below on whatever arrived */ }
+    unameText = await page.evaluate(SERIAL);
+    check(/Linux \S+ 6\.1\.\d+ .*riscv32 GNU\/Linux/.test(unameText),
+        'uname -a typed into the serial console answers "Linux … riscv32 GNU/Linux"',
+        unameText.split('\n').filter(l => /Linux/.test(l)).slice(-1)[0] || unameText.slice(-160));
+    check(!linuxErrors.length, 'no page errors during the Linux boot', linuxErrors.slice(0, 2).join(' | '));
+    await mkdir(LINUX_ARTIFACTS, {recursive: true});
+    await writeFile(join(LINUX_ARTIFACTS, 'serial.txt'), unameText || '(no serial output)');
+    await writeFile(join(LINUX_ARTIFACTS, 'timing.json'), JSON.stringify({fetchedSeconds: fetched, promptSeconds: booted}, null, 2));
+    await page.screenshot({path: join(LINUX_ARTIFACTS, 'linux-riscv.png'), fullPage: true});
+} catch (e) {
+    check(false, 'the Linux lesson flow ran without throwing', String(e.message || e).slice(0, 200));
 } finally {
     await browser.close();
     server.close();
@@ -183,4 +258,4 @@ try {
 
 if (diagnostics.length) console.log('\n--- diagnostics ---\n' + diagnostics.slice(0, 8).join('\n'));
 if (failures.length) { console.error(`\n${failures.length} check(s) failed`); process.exit(1); }
-console.log('\nCP/M 2.2 boots to A> in the browser.');
+console.log('\nCP/M 2.2 boots to A>, and Linux on RISC-V to a shell that answers uname -a, in the browser.');

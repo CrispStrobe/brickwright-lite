@@ -19,6 +19,7 @@ import {
 } from '../../lib/bw-machines/machine-config.js';
 import {localDosboxMachine} from '../../lib/bw-machines/local-dosbox.js';
 import {defaultImageFetcher} from '../../lib/bw-machines/activate.js';
+import {lessonMachines, lessonT} from '../../lib/bw-machines/lessons.js';
 
 const T = {
     en: {
@@ -64,6 +65,25 @@ export default function MachineManager({store, onRun, onClose, locale}) {
             await run(cfg, {fetcher: ref => ref.url === 'local-media:disk'
                 ? Promise.resolve({bytes}) : defaultImageFetcher(ref)});
         } catch (e) { setStatus(e.message); }
+    };
+    // A LESSON fetches its media on Run (megabytes, SHA-256-checked), so it is
+    // AWAITED: the modal stays open saying what it is fetching, and a refusal
+    // (a hash mismatch names the slot) is shown here instead of vanishing into
+    // an unhandled rejection behind a closed modal.
+    const lessons = React.useMemo(() => lessonMachines(locale), [locale]);
+    const [lessonBusy, setLessonBusy] = React.useState(null);
+    const runLesson = async lesson => {
+        const title = lesson.config.title;
+        setLessonBusy(lesson.config.id);
+        setStatus(lessonT(locale, 'lessons.fetching', {title, size: lesson.size}));
+        try {
+            if (onRun) await onRun(lesson.config);
+            setLessonBusy(null);
+            if (onClose) onClose();
+        } catch (e) {
+            setLessonBusy(null);
+            setStatus(lessonT(locale, 'lessons.failed', {title, reason: (e && e.message) || String(e)}));
+        }
     };
     const dup = async id => { try { await store.duplicate(id); setStatus(t('duped')); await refresh(); } catch (e) { setStatus(e.message); } };
     const del = async id => { try { await store.remove(id); setStatus(t('removed')); await refresh(); } catch (e) { setStatus(e.message); } };
@@ -113,6 +133,28 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                 </div>
 
                 <div style={{overflowY: 'auto', padding: '8px 16px', flex: 1}}>
+                    <div style={{fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase',
+                        letterSpacing: 0.4, margin: '4px 0'}}>{lessonT(locale, 'lessons.heading')}</div>
+                    {lessons.map(lesson => (
+                        <div key={lesson.config.id} data-testid="bw-mm-lesson"
+                            data-lesson-id={lesson.config.id}
+                            style={{display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 0',
+                                borderBottom: '1px solid #f1f5f9'}}>
+                            <div style={{flex: 1, minWidth: 0}}>
+                                <div style={{fontWeight: 600, fontSize: 13}}>{lesson.config.title}</div>
+                                <div style={{fontSize: 12, color: '#334155', marginTop: 2}}>{lesson.summary}</div>
+                                <div style={{fontSize: 11, color: '#64748b', marginTop: 4}}
+                                    data-testid="bw-mm-lesson-licence">
+                                    {lesson.licence}{' '}
+                                    <a href={lesson.source} target="_blank" rel="noopener noreferrer"
+                                        data-testid="bw-mm-lesson-source">{lesson.sourceLabel}</a>
+                                </div>
+                            </div>
+                            <button onClick={() => runLesson(lesson)} style={primary}
+                                disabled={lessonBusy === lesson.config.id}
+                                data-testid="bw-mm-lesson-run">{lessonT(locale, 'lessons.run')}</button>
+                        </div>
+                    ))}
                     {machines.length === 0 ? (
                         <div style={{color: '#64748b', padding: '18px 4px'}}>{t('empty')}</div>
                     ) : machines.map(m => (
