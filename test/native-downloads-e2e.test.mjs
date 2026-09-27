@@ -35,12 +35,13 @@ test('native proof is bounded and reports the stage that stalled', () => {
     assert.match(proof, /startupWatchdog = setTimeout/);
     assert.match(proof, /driver\.kill\('SIGTERM'\)[\s\S]*30000/);
     assert.match(proof, /call\('GET', '\/status', undefined, null\)/);
+    assert.match(proof, /attempt < 240 && !editor/);
     assert.match(proof, /DELETE[\s\S]*5000/);
     assert.match(proof, /\{script: 120000\}/);
     assert.match(proof, /native download probe timed out during/);
     assert.match(proof, /extension manager load/);
     assert.match(proof, /machine image digest/);
-    assert.match(workflow, /timeout --signal=TERM --kill-after=15s 240s/);
+    assert.match(workflow, /timeout --signal=TERM --kill-after=15s 360s/);
 });
 
 test('Tauri e2e embeds the real frontend and retains its downloadable evidence', () => {
