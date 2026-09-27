@@ -358,12 +358,16 @@ class DebugPanel extends React.Component {
         // instrument, exactly as before — this only adds a surface, never removes
         // one. The video-widget declaration rides the media-load event's
         // `widgets` field (the machine-manager activate action supplies it).
-        const screen = Array.isArray(widgets)
-            ? widgets.find(w => w && w.source === 'video') : null;
+        const screen = (Array.isArray(widgets)
+            ? widgets.find(w => w && w.source === 'video') : null) ||
+            (nextKind === 'i80386' ? {name: 'AT VGA', type: 'simplevga', source: 'video',
+                config: {width: 640, height: 480}} : null);
         if (screen && typeof runner.video === 'function' &&
             typeof window !== 'undefined' &&
             typeof window.bwMirrorMachineVideo === 'function') {
-            window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: screen});
+            window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: screen,
+                keyInFn: typeof runner.keyIn === 'function' ? sc => runner.keyIn(sc) : null,
+                mouseInFn: typeof runner.mouseIn === 'function' ? event => runner.mouseIn(event) : null});
         }
         // A declared keyboard widget (source:'keyIn') steers the machine: its
         // keys are drained and fed runner.keyIn (design §4.5, the input side of

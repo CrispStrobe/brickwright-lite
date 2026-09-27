@@ -61,6 +61,7 @@ export async function runMachineConfig(config, opts = {}) {
         widgets: Array.isArray(activated.widgets) ? activated.widgets : []
     };
     if (typeof bm.romAt === 'number') detail.romAt = bm.romAt;
+    if (bm.geometry) detail.geometry = {...bm.geometry};
     // An inline machineConfig ({regions,chips}) — the Eater 6502 case — carries
     // the program's hardware as `chips`; a string preset (PCXT8086) is built by
     // the boot path itself and needs nothing here.

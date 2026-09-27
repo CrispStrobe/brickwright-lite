@@ -2804,6 +2804,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const hdCmosIdx = new Set(hdCmos.map(([i]) => i));
         const config = {
             ...base,
+            a20: {...base.a20, mouse: true},
             functionalInstructionCycles: 6,
             regions: [
                 ...base.regions.filter(r => !(r.kind === 'rom' && r.start === 0xc0000)),
@@ -2870,6 +2871,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         machine.reset();
 
         wireMachineBench(result, createDebugSession);
+        // The optional PS/2 auxiliary port is present only on this 386 AT
+        // profile. Keep pointer input on the same live adapter as VGA and keys.
+        if (typeof result.adapter?.mouseIn === 'function' &&
+            machine.canTakeMouse?.()) {
+            runner.mouseIn = event => result.adapter.mouseIn(event);
+        }
         setStatus('ready', readyMsg);
         return session;
     }

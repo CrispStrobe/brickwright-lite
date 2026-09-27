@@ -343,6 +343,7 @@ const GUIComponent = props => {
     const controllerPanelRef = React.useRef(null);
     if (!controllerPanelRef.current) controllerPanelRef.current = new ControllerPanel();
     const controllerPanel = controllerPanelRef.current;
+    const [machineConsole, setMachineConsole] = React.useState(null);
     // Expose on vm.runtime so ControllerExtension can find it, and wire the
     // LIVE variable binding: input widgets write program variables, display
     // widgets show them (bindPanelToVariables polls via requestAnimationFrame).
@@ -501,7 +502,10 @@ const GUIComponent = props => {
         let mirror = null;
         let steer = null;
         let speaker = null;
-        const stop = () => { if (mirror) { mirror.stop(); mirror = null; } };
+        const stop = () => {
+            if (mirror) { mirror.stop(); mirror = null; }
+            setMachineConsole(null);
+        };
         const stopKbd = () => { if (steer) { steer.stop(); steer = null; } };
         const stopAudio = () => { if (speaker) { speaker.stop(); speaker = null; } };
         // Play a machine's audio() (an array of {hz,on} voices) through Web Audio
@@ -558,6 +562,9 @@ const GUIComponent = props => {
             stop();                                 // replace any prior machine mirror
             mirror = createMachineVideoMirror({panel: controllerPanel, videoFn, widget});
             mirror.start();
+            setMachineConsole({name: widget.name,
+                keyIn: typeof p.keyInFn === 'function' ? p.keyInFn : null,
+                mouseIn: typeof p.mouseInFn === 'function' ? p.mouseInFn : null});
             // Make the screen actually visible: dock the Widgets pane, play
             // mode, and surface the code tab where the dock renders — exactly as
             // the FPGA mirror does for its LEDs.
@@ -741,7 +748,7 @@ const GUIComponent = props => {
     const machineManagerModal = showMachines ? (
         <React.Suspense fallback={null}>
             <MachineManager store={getMachineStore()} locale={props.locale}
-                onRun={cfg => runMachineConfig(cfg)}
+                onRun={(cfg, opts) => runMachineConfig(cfg, opts)}
                 onClose={() => setShowMachines(false)} />
         </React.Suspense>
     ) : null;
@@ -1176,6 +1183,7 @@ const GUIComponent = props => {
                                             panel={controllerPanel}
                                             board={board}
                                             vm={vm}
+                                            machineConsole={machineConsole}
                                         />
                                     </div>
                                 </React.Suspense>

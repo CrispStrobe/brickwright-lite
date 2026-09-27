@@ -395,6 +395,16 @@ test('activate: functional 386 → hdd bootMedia + resolved BIOS/VGA media', asy
     assert.equal(seen.length, 3);
 });
 
+test('DOSBox imgmount imports an AT disk with its explicit CHS and free BIOS', () => {
+    const cfg = fromDosboxConf('[cpu]\ncputype=386\n[autoexec]\nimgmount c "win311.img" -t hdd -size 512,17,4,1000');
+    assert.equal(cfg.machine, 'i80386');
+    assert.equal(cfg.slots.hdd.url, 'win311.img');
+    assert.deepEqual(cfg.slots.hdd.geometry, {sectors: 17, heads: 4, cylinders: 1000});
+    assert.equal(cfg.bios.kind, 'bochs-lgpl');
+    assert.equal(cfg.widgets[0].source, 'video');
+    assert.equal(validateMachineConfig(cfg).ok, true);
+});
+
 test('activate: an inline machineConfig passes straight through to createDebugRunner', async () => {
     const {fetcher} = stubFetcher();
     const cfg = newMachineConfig({

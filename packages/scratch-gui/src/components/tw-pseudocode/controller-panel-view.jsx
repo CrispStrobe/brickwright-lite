@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
 import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from 'bw-board/controller.js';
 import { bindPanelToBoard } from 'bw-board/controller-binding.js';
+import MachineConsole from './machine-console.jsx';
 
 const L10N = {
     en: {
@@ -1609,6 +1610,9 @@ class ControllerPanelView extends React.Component {
         const panel = this._getPanel();
         const mode = panel.mode;
         const widgets = panel.getWidgets();
+        const machineWidget = mode === 'play' && this.props.machineConsole
+            ? widgets.find(w => w.name === this.props.machineConsole.name && w.type === 'simplevga')
+            : null;
 
         return (
             <div style={{
@@ -1752,7 +1756,11 @@ class ControllerPanelView extends React.Component {
                             {t('noWidgets')}
                         </div>
                     )}
-                    {widgets.map(w => (
+                    {machineWidget ? (
+                        <MachineConsole widget={machineWidget}
+                            keyIn={this.props.machineConsole.keyIn}
+                            mouseIn={this.props.machineConsole.mouseIn} />
+                    ) : widgets.map(w => (
                         <PositionedWidget
                             key={w.name}
                             widget={w}
