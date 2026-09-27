@@ -65,3 +65,34 @@ test('Machine Manager checkbox persists and runs the 386 native opt-in', async (
     assert.equal(selected.nativeBlocks, true, 'Run receives the persisted setting');
     renderer.unmount();
 });
+
+test('local DOSBox disk boot passes its native opt-in to the 386 run', async () => {
+    const MachineManager = await loadManager();
+    const store = createMemoryMachineStore();
+    const runs = [];
+    let renderer;
+    await act(async () => {
+        renderer = create(React.createElement(MachineManager, {
+            store, onRun: (cfg, opts) => { runs.push({cfg, opts}); }, onClose() {}
+        }));
+    });
+    const disk = {name: 'disk.img', size: 306 * 4 * 17 * 512,
+        arrayBuffer: async () => new ArrayBuffer(512)};
+    await act(async () => {
+        renderer.root.findByProps({'data-testid': 'bw-mm-local-disk'}).props
+            .onChange({target: {files: [disk]}});
+    });
+    const toggle = renderer.root.findByProps({'data-testid': 'bw-mm-local-native-blocks'});
+    assert.equal(toggle.props.checked, false);
+    await act(async () => {
+        await renderer.root.findByProps({'data-testid': 'bw-mm-local-run'}).props.onClick();
+    });
+    assert.equal(runs[0].cfg.nativeBlocks, false);
+    await act(async () => { toggle.props.onChange({target: {checked: true}}); });
+    await act(async () => {
+        await renderer.root.findByProps({'data-testid': 'bw-mm-local-run'}).props.onClick();
+    });
+    assert.equal(runs[1].cfg.nativeBlocks, true);
+    assert.equal(typeof runs[1].opts.fetcher, 'function');
+    renderer.unmount();
+});

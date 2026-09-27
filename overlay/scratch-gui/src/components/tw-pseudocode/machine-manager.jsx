@@ -52,6 +52,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     const [status, setStatus] = React.useState('');
     const [text, setText] = React.useState('');
     const [localDisk, setLocalDisk] = React.useState(null);
+    const [localNativeBlocks, setLocalNativeBlocks] = React.useState(false);
     const t = k => tr(locale, k);
 
     const refresh = React.useCallback(async () => {
@@ -72,7 +73,8 @@ export default function MachineManager({store, onRun, onClose, locale}) {
             if (!localDisk) throw new Error('select a raw hard-disk image first');
             const confText = /\[(dosbox|cpu|autoexec)\]/i.test(text) ? text : '';
             const cfg = localDosboxMachine({confText,
-                fileName: localDisk.name, byteLength: localDisk.size});
+                fileName: localDisk.name, byteLength: localDisk.size,
+                nativeBlocks: localNativeBlocks});
             const bytes = new Uint8Array(await localDisk.arrayBuffer());
             await run(cfg, {fetcher: ref => ref.url === 'local-media:disk'
                 ? Promise.resolve({bytes}) : defaultImageFetcher(ref)});
@@ -218,6 +220,12 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                 }} />
                         </label>
                         <button onClick={runLocal} style={primary} data-testid="bw-mm-local-run">Boot disk</button>
+                        <label style={{fontSize: 11, color: '#475569'}}>
+                            <input type="checkbox" data-testid="bw-mm-local-native-blocks"
+                                checked={localNativeBlocks}
+                                onChange={e => setLocalNativeBlocks(e.target.checked)} />
+                            {t('nativeBlocks')}
+                        </label>
                     </div>
                     <label style={{fontSize: 12, color: '#475569'}}>{t('importL')}</label>
                     <textarea value={text} onChange={e => setText(e.target.value)}
