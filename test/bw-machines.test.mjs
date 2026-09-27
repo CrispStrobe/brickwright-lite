@@ -628,6 +628,18 @@ test('runMachineConfig on a config with no screen carries an empty widgets list'
     assert.deepEqual(dispatched[0].widgets, []);
 });
 
+test('386 hard-disk geometry survives activation and media dispatch', async () => {
+    const {fetcher} = stubFetcher();
+    const config = freedos386Config();
+    config.slots.hdd.geometry = {cylinders: 1000, heads: 4, sectors: 17};
+    const dispatched = [];
+    await runMachineConfig(config, {fetcher, dispatch: detail => dispatched.push(detail)});
+    assert.equal(dispatched.length, 1);
+    assert.equal(dispatched[0].kind, 'i80386');
+    assert.equal(dispatched[0].slotId, 'hdd');
+    assert.deepEqual(dispatched[0].geometry, {cylinders: 1000, heads: 4, sectors: 17});
+});
+
 test('runMachineConfig returns a wired descriptor and dispatches nothing', async () => {
     const {fetcher} = stubFetcher();
     let dispatched = 0;

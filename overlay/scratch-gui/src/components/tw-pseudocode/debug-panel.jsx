@@ -12,6 +12,7 @@ import DebugDivergenceBisection from './debug-divergence-bisection.jsx';
 import DebugCorrelatedTargets from './debug-correlated-targets.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
+import {ps2ButtonBit, ps2Delta} from '../../lib/bw-machines/ps2-pointer.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const PortLeds = React.lazy(() =>
@@ -239,6 +240,36 @@ class DebugPanel extends React.Component {
             const r = this.state.runner;
             return r && typeof r.video === 'function' ? r.video() : null;
         };
+        this._mousePoint = null;
+        this._mouseButtons = 0;
+        this._mouseMove = e => {
+            const point = {x: e.clientX, y: e.clientY};
+            const previous = this._mousePoint;
+            this._mousePoint = point;
+            if (!previous) return;
+            const dx = ps2Delta(point.x - previous.x);
+            const dy = ps2Delta(point.y - previous.y);
+            if (dx || dy) this._mouseFn({dx, dy, buttons: this._mouseButtons});
+        };
+        this._mouseDown = e => {
+            e.preventDefault();
+            e.currentTarget.querySelector('[data-vdp-screen]')?.focus();
+            this._mousePoint = {x: e.clientX, y: e.clientY};
+            this._mouseButtons |= ps2ButtonBit(e.button);
+            this._mouseFn({dx: 0, dy: 0, buttons: this._mouseButtons});
+        };
+        this._mouseUp = e => {
+            this._mouseButtons &= ~ps2ButtonBit(e.button);
+            this._mouseFn({dx: 0, dy: 0, buttons: this._mouseButtons});
+        };
+        this._mouseLeave = () => {
+            this._mousePoint = null;
+            if (this._mouseButtons) {
+                this._mouseButtons = 0;
+                this._mouseFn({dx: 0, dy: 0, buttons: 0});
+            }
+        };
+        this._mouseFn = event => this.state.runner?.mouseIn?.(event) ?? false;
     }
 
     /** Build Machine succeeded: the bus extractor's {regions, chips}.
@@ -269,7 +300,7 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
-        const {slotId, bytes, kind, profile, name, romAt, chips, widgets} = e.detail || {};
+        const {slotId, bytes, kind, profile, name, romAt, chips, widgets, geometry} = e.detail || {};
         // A RISC-V program from the local RV32IM assembler carries a loadable
         // {entry, segments} image, not a flat ROM — the one media that is not
         // `bytes`. Read on their own line so the fixed field-list gate above
@@ -290,6 +321,7 @@ class DebugPanel extends React.Component {
             // both places. An ANALOG pin's converter and a scheduled
             // program's interrupt controller both arrive this way.
             chips: chips || null,
+            geometry: geometry || null,
             // WHERE the image is mapped, when the sender knows and we cannot
             // infer it. A raw .bin carries no origin, so without this the
             // runner falls back to the machine's default ROM base — and for
@@ -627,6 +659,7 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
+        this._mouseLeave();
         // Stop mirroring the old machine's video / draining its keyboard into the
         // Widgets pane before it is destroyed; the next boot starts its own.
         if (typeof window !== 'undefined' && typeof window.bwStopMachineVideo === 'function') {
@@ -1495,6 +1528,12 @@ class DebugPanel extends React.Component {
                     when video() returns non-null (the machine has a VDP). */}
                 {this.state.runner && typeof this.state.runner.video === 'function' ? (
                     <React.Suspense fallback={null}>
+                      <div onMouseMove={this.state.runner.mouseIn ? this._mouseMove : undefined}
+                          onMouseDown={this.state.runner.mouseIn ? this._mouseDown : undefined}
+                          onMouseUp={this.state.runner.mouseIn ? this._mouseUp : undefined}
+                          onMouseLeave={this.state.runner.mouseIn ? this._mouseLeave : undefined}
+                          onContextMenu={this.state.runner.mouseIn ? e => e.preventDefault() : undefined}
+                          style={{width: 'fit-content'}}>
                         <VdpScreen
                             videoFn={this._videoFn}
                             {...(this.state.runner && typeof this.state.runner.keyIn === 'function'
@@ -1502,6 +1541,7 @@ class DebugPanel extends React.Component {
                             lang={this.props.locale}
                             data-testid="bw-vdp-screen"
                         />
+                      </div>
                     </React.Suspense>
                 ) : null}
 
