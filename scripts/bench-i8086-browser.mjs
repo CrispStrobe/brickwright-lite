@@ -37,6 +37,12 @@ if (evidenceIssues.length) {
 const workloadId = 'i8086-cpu-bound-v1';
 const heartbeatOffset = 0x110;
 const maximumSimulatedMsPerPump = 50;
+// Loading the lazy assembly editor is setup, outside every measured window.
+// Shared CI runners can spend more than 15 s compiling/painting this chunk
+// while the other browser and unit jobs are busy, and the minimum-device
+// profile deliberately adds 4x CPU throttling. Give setup enough time without
+// weakening any benchmark duration or performance threshold.
+const assemblySetupTimeoutMs = 60000;
 const workloadSource = `; BW-I8086-CPU-BOUND-V1
     ORG 100H
 
@@ -132,37 +138,72 @@ try {
         await mark('dom-ready');
         await page.getByRole('tab', {name: 'Code', exact: true}).click();
         const device = page.getByTestId('bw-device-select');
-        await device.waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: synchronization before `device.selectOption` three lines below -- the detector looks at the IMMEDIATELY following statement and sees `mark()`, which is a timestamp rather than a use
+        await device.waitFor({state: 'visible', timeout: 30000});
         await mark('device-ready');
+        // The home starter is a GPIO program. Selecting another MCU while it is
+        // present is a real retarget request and correctly loads sb3-creator;
+        // that would make this DOS-only journey falsely accuse the app of a
+        // speculative compiler fetch. Start from an empty author buffer, as a
+        // user creating a new 8086 program would, before selecting the CPU.
+        const initialEditor = page.locator('.cm-content:visible').first();
+        await initialEditor.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
+        await initialEditor.click();
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+        await page.keyboard.press('Backspace');
+        await page.waitForFunction(() => [...document.querySelectorAll('.cm-content')]
+            .filter(node => node.getClientRects().length > 0)
+            .every(node => !(node.textContent || '').trim()),
+        null, {timeout: assemblySetupTimeoutMs});
+        // CodeMirror changes immediately; React's controlled DEVICE picker is
+        // the acknowledgement that importer state committed the empty document.
+        await page.waitForFunction(() =>
+            document.querySelector('[data-testid="bw-device-select"]')?.value === '',
+        null, {timeout: assemblySetupTimeoutMs});
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
-        await device.selectOption('i8086');
+        // This is deliberately authored as a fresh DEVICE directive, not a
+        // picker change. Picker selection on an existing hardware program is a
+        // real retarget request and is therefore allowed to load sb3-creator;
+        // this benchmark's pre-Circuit policy window promises that no retarget,
+        // conversion, compile or export was requested.
+        await initialEditor.click();
+        await page.keyboard.insertText('DEVICE i8086\n');
         await page.waitForFunction(() =>
             document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
-        null, {timeout: 15000});
+        null, {timeout: assemblySetupTimeoutMs});
         await mark('i8086-selected');
-        // The minimum-width language row overlaps sibling controls visually;
-        // dispatch the enabled production control just as the assemble step
-        // below does. Setup interaction is outside the measured window.
-        await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click({force: true});
-        await page.getByTestId('bw-asm-examples').waitFor({state: 'visible', timeout: 15000});
+        // Device selection briefly marks the language row busy. A forced click
+        // on its disabled ASM button is silently discarded by the browser, so
+        // first wait for the actual production control to become enabled. The
+        // minimum-width row can overlap siblings visually; dispatching the
+        // click after that readiness check avoids charging layout quirks to a
+        // benchmark whose measured window has not started yet.
+        const asmTab = page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/});
+        await page.waitForFunction(() => [...document.querySelectorAll(
+            '[data-testid="bw-lang-row"] button'
+        )].some(button => /ASM/.test(button.textContent || '') && !button.disabled),
+        null, {timeout: assemblySetupTimeoutMs});
+        await asmTab.dispatchEvent('click');
+        await page.getByTestId('bw-asm-examples').waitFor({
+            state: 'visible', timeout: assemblySetupTimeoutMs
+        });
         const dialect = page.getByTestId('bw-asm-dialect');
-        await dialect.waitFor({state: 'visible', timeout: 15000});
+        await dialect.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
         await dialect.selectOption('masm');
         await mark('asm-ready');
         const editor = page.locator('.cm-content:visible').first();
-        await editor.waitFor({state: 'visible', timeout: 15000});
+        await editor.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
         await editor.click();
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
         await page.keyboard.press('Backspace');
         await page.keyboard.insertText(workloadSource);
         await page.waitForFunction(marker => [...document.querySelectorAll('.cm-content')].some(node =>
             node.getClientRects().length > 0 && (node.textContent || '').includes(marker)),
-        'BW-I8086-CPU-BOUND-V1', {timeout: 15000});
+        'BW-I8086-CPU-BOUND-V1', {timeout: assemblySetupTimeoutMs});
         await page.waitForFunction(() => {
             const button = document.querySelector('[data-testid="bw-asm-assemble"]');
             return button && !button.disabled;
-        }, null, {timeout: 15000});
+        }, null, {timeout: assemblySetupTimeoutMs});
         await mark('example-ready');
         // On the phone layout the example picker can overlap this control.
         // Setup is not the subject of this benchmark; dispatch the enabled

@@ -52,20 +52,26 @@ try {
 
   // Visible AND selected: the panel is forceRenderTabPanel, so its controls sit
   // in the DOM while another tab is on screen. Presence proves nothing.
+  const fpgaIsUp = () => page.evaluate(() => {
+    const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+    if (!el || el.getBoundingClientRect().width === 0) return false;
+    const t = [...document.querySelectorAll('[role="tab"]')];
+    return t[5] && t[5].getAttribute('aria-selected') === 'true';
+  });
   for (let i = 0; i < 8; i++) {
-    const up = await page.evaluate(() => {
-      const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
-      if (!el || el.getBoundingClientRect().width === 0) return false;
-      const t = [...document.querySelectorAll('[role="tab"]')];
-      return t[5] && t[5].getAttribute('aria-selected') === 'true';
-    });
-    if (up) break;
+    if (await fpgaIsUp()) break;
     if (i % 2 === 0) await page.getByRole('tab').nth(5).click().catch(() => {});
     else {
       await page.evaluate(() => window.dispatchEvent(
         new CustomEvent('bw-activate-tab', { detail: { index: 5 } })));
     }
-    await page.waitForTimeout(1200);
+    const ready = await page.waitForFunction(() => {
+      const el = document.querySelector('[data-testid="bw-fpga-ic-gate"]');
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      return Boolean(el && el.getBoundingClientRect().width > 0 &&
+        tabs[5] && tabs[5].getAttribute('aria-selected') === 'true');
+    }, null, { timeout: 2000, polling: 'raf' }).then(() => true).catch(() => false);
+    if (ready) break;
   }
 
   const canvas = page.getByTestId('bw-fpga-rf-canvas');
@@ -122,21 +128,26 @@ try {
   // zoom, so the first version of this gate reported "the canvas does not
   // pinch" while measuring a clamp. Zoom out, then back in: both directions
   // are then free to move.
-  const pinch = async (halves) => {
+  const pinch = async (halves, from, direction) => {
     await touch('touchStart', [[cx - halves[0], cy], [cx + halves[0], cy]]);
     for (const half of halves.slice(1)) {
       await touch('touchMove', [[cx - half, cy], [cx + half, cy]]);
-      await page.waitForTimeout(60);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
     }
     await touch('touchEnd', []);
-    await page.waitForTimeout(500);
+    await page.waitForFunction(({ baseline, sign }) => {
+      const el = document.querySelector('.react-flow__viewport');
+      if (!el) return false;
+      const current = new DOMMatrixReadOnly(getComputedStyle(el).transform).a;
+      return sign < 0 ? current < baseline : current > baseline;
+    }, { baseline: from, sign: direction }, { timeout: 5000, polling: 'raf' });
     return zoom();
   };
 
-  const out = await pinch([180, 140, 100, 70, 50]);
+  const out = await pinch([180, 140, 100, 70, 50], before, -1);
   check(out < before, 'pinching in zooms the gate canvas out', `x${before} -> x${out}`);
 
-  const back = await pinch([50, 80, 120, 160, 200]);
+  const back = await pinch([50, 80, 120, 160, 200], out, 1);
   check(back > out, 'and pinching out zooms it back in', `x${out} -> x${back}`);
 
   // The clamp is real and worth naming, so the next reader does not re-derive

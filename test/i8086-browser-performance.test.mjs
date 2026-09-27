@@ -17,7 +17,7 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
     const script = readFileSync(new URL('../scripts/bench-i8086-browser.mjs', import.meta.url), 'utf8');
     for (const fact of [
         "name: 'desktop'", "name: 'mobile'", "name: 'minimum-device-4x'", '__BW_I8086_PERF__',
-        "selectOption('i8086')", 'i8086-cpu-bound-v1', 'BW-I8086-CPU-BOUND-V1',
+        "insertText('DEVICE i8086\\n')", 'i8086-cpu-bound-v1', 'BW-I8086-CPU-BOUND-V1',
         "locator('.cm-content:visible')", 'workloadSourceSha256', 'heartbeatDelta',
         'heartbeatSegment', 'heartbeatAddress', 'cycleDelta', "selectOption('masm')", 'simulatedMsPerPump',
         'maximumSimulatedMsPerPump = 50',
@@ -42,8 +42,10 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'the CPU-bound workload must not advance through a service, halt or wait');
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');
-    assert.match(script, /getByRole\('button', \{name: \/ASM\/\}\)\.click\(\{force: true\}\)/,
-        'the minimum-width profile must dispatch the overlapped but enabled ASM control');
+    assert.match(script, /!button\.disabled[\s\S]*asmTab\.dispatchEvent\('click'\)/,
+        'the minimum-width profile must wait for and dispatch the overlapped enabled ASM control');
+    assert.doesNotMatch(script, /device\.selectOption\(['"]i8086['"]\)/,
+        'the DOS-only journey must not turn an existing GPIO starter into a retarget request');
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);

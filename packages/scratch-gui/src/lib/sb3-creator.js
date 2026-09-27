@@ -3246,7 +3246,8 @@ class SB3Creator {
                 this.warn(lineIndex, `ANALOG on the Pico means GP26, GP27 or GP28 (ADC0-2), not ${where.toUpperCase()}`);
                 return true;
             }
-            if (core === 'arduino' && /^analog$/i.test(direction) && !/^A/i.test(where)) {
+            const avrAnalogPin = cfg.device === 'attiny88' && /^PC[0-5]$/i.test(where);
+            if (core === 'arduino' && /^analog$/i.test(direction) && !/^A/i.test(where) && !avrAnalogPin) {
                 this.warn(lineIndex, `ANALOG needs an analog input (A0 and up), not ${where.toUpperCase()}`);
                 return true;
             }
@@ -8532,7 +8533,7 @@ class SB3Creator {
 
     /** {reg, bit} for an AVR pin record, or null (A6/A7 and unknowns).
      *  Device-aware: the Mega speaks ports A–L, the 328/168 B–D,
-     *  the ATtiny88 speaks PB0-PB7/PC0-PC7/PD0-PD7/PA0-PA3. */
+     *  and the 28-pin ATtiny88 speaks PB0-PB7/PC0-PC5/PC7/PD0-PD7. */
     avrHw(pin) {
         // ATtiny88 pins are port/bit names directly (PB0, PC3, PD7, PA2)
         const where = String(pin.where || '').toUpperCase();
