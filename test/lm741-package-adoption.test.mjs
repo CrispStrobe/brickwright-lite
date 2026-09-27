@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {loadCircuitModel} from '../scripts/lib/polarity-oracle.mjs';
+import {REFUSED} from '../overlay/scratch-gui/src/lib/bw-parts/profiles.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const fixture = JSON.parse(readFileSync(
@@ -20,6 +21,8 @@ test('the exact installed packages expose and solve the physical LM741', async (
     assert.deepEqual(sidecar.terminals.map(pin => pin.name), terminals);
     assert.deepEqual(sidecar.footprint.leads.out, {dRow: 5, dCol: 2});
     assert.deepEqual(sidecar.footprint.leads.vpos, {dRow: 5, dCol: 1});
+    assert.ok(REFUSED['analog-only'].includes('lm741'),
+        'the real analog IC must be catalogued without inventing a programmable-part profile');
 
     const {Circuit} = await loadCircuitModel(root);
     const circuit = Circuit.fromJSON(structuredClone(fixture));
