@@ -12,28 +12,34 @@ const {chromium} = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
-if (!existsSync(join(build, 'index.html'))) throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
     '.png': 'image/png', '.json': 'application/json', '.wasm': 'application/wasm'};
-const server = createServer(async (req, res) => {
-    try {
-        let path = decodeURIComponent(req.url.split('?')[0]);
-        if (path.endsWith('/')) path += 'index.html';
-        const file = join(build, normalize(path));
-        if (!file.startsWith(build)) throw new Error('path escape');
-        const body = await readFile(file);
-        res.writeHead(200, {'content-type': types[extname(file)] || 'application/octet-stream'});
-        res.end(body);
-    } catch {
-        if (!res.headersSent) res.writeHead(404);
-        res.end('not found');
+let server = null;
+let url = process.env.PROOF_URL || null;
+if (!url) {
+    if (!existsSync(join(build, 'index.html'))) {
+        throw new Error('Build first: packages/scratch-gui/build/index.html is missing');
     }
-});
-await new Promise((resolveListen, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolveListen);
-});
-const {port} = server.address();
+    server = createServer(async (req, res) => {
+        try {
+            let path = decodeURIComponent(req.url.split('?')[0]);
+            if (path.endsWith('/')) path += 'index.html';
+            const file = join(build, normalize(path));
+            if (!file.startsWith(build)) throw new Error('path escape');
+            const body = await readFile(file);
+            res.writeHead(200, {'content-type': types[extname(file)] || 'application/octet-stream'});
+            res.end(body);
+        } catch {
+            if (!res.headersSent) res.writeHead(404);
+            res.end('not found');
+        }
+    });
+    await new Promise((resolveListen, reject) => {
+        server.once('error', reject);
+        server.listen(0, '127.0.0.1', resolveListen);
+    });
+    url = `http://127.0.0.1:${server.address().port}/`;
+}
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1440, height: 900}, locale: 'de-DE'});
 const failures = [];
@@ -45,7 +51,7 @@ page.on('dialog', async dialog => {
 await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
 
 try {
-    await page.goto(`http://127.0.0.1:${port}/?locale=de`, {waitUntil: 'domcontentloaded'});
+    await page.goto(`${url}${url.includes('?') ? '&' : '?'}locale=de`, {waitUntil: 'domcontentloaded'});
     await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm, null, {timeout: 60000});
     const add = page.locator('button[title="Erweiterung hinzufügen"], button[title="Add Extension"]').first();
     await add.click({timeout: 30000});
@@ -67,7 +73,7 @@ try {
     if (!/Setze\s*3x3-Matrix/.test(body)) failures.push('the German 3x3 light-matrix block was not rendered');
 } finally {
     await browser.close();
-    server.close();
+    if (server) server.close();
 }
 
 if (failures.length) {

@@ -13,9 +13,12 @@ const loadInfo = locale => {
     globalThis.window = globalThis;
     globalThis.ReduxStore = {getState: () => ({locales: {locale}})};
     globalThis.localStorage = {getItem: () => null};
-    globalThis.navigator = {language: locale};
+    Object.defineProperty(globalThis, 'navigator', {
+        value: {language: locale}, configurable: true, writable: true
+    });
     globalThis.document = {documentElement: {lang: locale}};
     globalThis.addEventListener = () => {};
+    globalThis.setInterval = () => 0;
     const runtime = {
         getLocale: () => locale, on: () => {}, emit: () => {}, registerPeripheralExtension: () => {},
         constructor: {

@@ -1398,6 +1398,10 @@ jobs:
         timeout-minutes: 3  # derived: p95 3 s × 3 → 3 min over 20 green runs to 36105493498; max 3 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-lego-spike-roundtrip.mjs
+      - name: Browser gate — SPIKE Prime German palette renders without a Blockly index error
+        timeout-minutes: 3
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-spikeprime-palette.mjs
       - name: Browser gate — four-surface project save, reopen and vanilla replacement
         timeout-minutes: 3  # derived: p95 7 s × 3 → 3 min over 20 green runs to 36105493498; max 7 s in run 34111028136 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
