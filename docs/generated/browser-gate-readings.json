@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-09-27T07:28:58.230Z",
+ "generatedAt": "2026-09-27T13:02:19.470Z",
  "repo": "CrispStrobe/brickwright-lite",
  "branch": "main",
- "newestRun": 36295223555,
+ "newestRun": 36320241654,
  "runsScanned": 75,
  "keepPerStep": 20,
  "factor": 3,
@@ -20,6 +20,41 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 1
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 1
+    },
+    {
+     "run": 36316316124,
+     "sha": "3ba99a124",
+     "seconds": 1
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 1
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 1
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 1
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 1
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 2
@@ -83,41 +118,6 @@
      "run": 36255443250,
      "sha": "97bf98117",
      "seconds": 0
-    },
-    {
-     "run": 36254753283,
-     "sha": "50445efea",
-     "seconds": 0
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 0
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 1
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 1
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 1
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 3
     }
    ]
   },
@@ -131,6 +131,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 12
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 11
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 11
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 12
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 11
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 11
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 11
@@ -199,48 +229,48 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 11
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 12
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 11
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 11
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 11
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 12
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 11
     }
    ]
   },
   "Browser gate — debugger recording, reverse and fork history": {
    "n": 20,
-   "p95": 42,
+   "p95": 41,
    "max": {
     "seconds": 45,
     "run": 34171220427,
     "sha": "2c75b8fcc"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 41
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 20
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 36
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 36
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 34
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 29
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -310,48 +340,48 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 41
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 41
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 26
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 42
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 41
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 28
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 20
     }
    ]
   },
   "Browser gate — the example journey (Lane U)": {
    "n": 20,
-   "p95": 5,
+   "p95": 4,
    "max": {
     "seconds": 5,
     "run": 36099957738,
     "sha": "4fec893ba"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 4
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -421,36 +451,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 4
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 4
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 5
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 5
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 4
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 4
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 4
     }
    ]
   },
@@ -463,6 +463,36 @@
     "sha": "b910ef07a"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 9
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 9
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 9
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 9
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 9
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 9
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -532,36 +562,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 8
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 9
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 9
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 9
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 8
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 9
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 9
     }
    ]
   },
@@ -575,6 +575,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 4
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 3
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 3
@@ -643,36 +673,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 4
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 3
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 4
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 4
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 3
     }
    ]
   },
@@ -686,6 +686,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 6
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 3
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 6
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 5
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 5
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 6
@@ -754,36 +784,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 6
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 6
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 5
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 6
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 5
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 5
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 4
     }
    ]
   },
@@ -797,6 +797,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 2
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 1
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 1
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 2
@@ -865,36 +895,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 3
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 2
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 2
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 2
     }
    ]
   },
@@ -908,6 +908,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 3
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 4
@@ -975,36 +1005,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 3
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 3
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 3
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 3
     }
    ]
@@ -1019,6 +1019,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 3
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 3
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 3
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 3
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 3
@@ -1086,36 +1116,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 3
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 3
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 3
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 3
     }
    ]
@@ -1130,6 +1130,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 24
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 25
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 24
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 25
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 25
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 25
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 25
@@ -1198,48 +1228,48 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 25
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 25
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 25
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 25
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 25
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 25
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 25
     }
    ]
   },
   "Browser gate — circuit UX": {
    "n": 20,
-   "p95": 21,
+   "p95": 22,
    "max": {
     "seconds": 22,
     "run": 34050397009,
     "sha": "72a01c3f0"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 22
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 21
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 21
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 20
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 21
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 20
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -1309,36 +1339,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 20
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 20
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 21
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 21
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 21
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 21
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 21
     }
    ]
   },
@@ -1352,6 +1352,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 3
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 4
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 3
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 4
@@ -1420,48 +1450,48 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 3
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 4
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 4
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 4
     }
    ]
   },
   "Browser gate — circuit rendering and placement": {
    "n": 20,
-   "p95": 6,
+   "p95": 7,
    "max": {
-    "seconds": 6,
-    "run": 34119648099,
-    "sha": "9d8e54319"
+    "seconds": 7,
+    "run": 36320241654,
+    "sha": "8c942997b"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 7
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 6
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 6
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 6
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 7
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 6
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -1531,36 +1561,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 5
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 5
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 6
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 5
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 6
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 6
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 6
     }
    ]
   },
@@ -1574,6 +1574,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 3
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 3
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 3
@@ -1642,36 +1672,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 3
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 4
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 4
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 4
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 4
     }
    ]
   },
@@ -1684,6 +1684,36 @@
     "sha": "9d8e54319"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 3
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 3
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 3
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 3
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -1753,36 +1783,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 2
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 3
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 3
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 3
     }
    ]
   },
@@ -1795,6 +1795,36 @@
     "sha": "ef376fd66"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 16
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 15
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 15
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 15
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 15
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 15
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -1863,36 +1893,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 15
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 16
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 16
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 16
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 16
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 16
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 15
     }
    ]
@@ -1907,6 +1907,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 19
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 19
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 19
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 19
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 19
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 19
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 19
@@ -1975,36 +2005,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 18
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 18
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 19
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 19
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 19
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 19
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 19
     }
    ]
   },
@@ -2017,6 +2017,36 @@
     "sha": "c60f827b9"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 1
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 1
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 2
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 1
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -2085,36 +2115,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 2
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 1
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 1
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 1
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 1
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 2
     }
    ]
@@ -2129,6 +2129,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 5
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 6
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 6
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 5
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 5
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 6
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 5
@@ -2197,36 +2227,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 4
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 5
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 6
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 6
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 5
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 5
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 6
     }
    ]
   },
@@ -2240,6 +2240,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 3
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 2
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 3
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 3
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 3
@@ -2307,36 +2337,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 3
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 3
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 3
     }
    ]
@@ -2351,6 +2351,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 8
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 8
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 7
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 8
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 8
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 7
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 8
@@ -2419,36 +2449,38 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 7
-    },
+    }
+   ]
+  },
+  "Browser gate — 386 local DOSBox HDD boot in Widgets": {
+   "n": 1,
+   "p95": 7,
+   "max": {
+    "seconds": 7,
+    "run": 36320241654,
+    "sha": "8c942997b"
+   },
+   "readings": [
     {
-     "run": 36242502896,
-     "sha": "02724e1a0",
+     "run": 36320241654,
+     "sha": "8c942997b",
      "seconds": 7
-    },
+    }
+   ]
+  },
+  "Browser gate — machine Widgets keyboard, mouse and fullscreen": {
+   "n": 1,
+   "p95": 2,
+   "max": {
+    "seconds": 2,
+    "run": 36320241654,
+    "sha": "8c942997b"
+   },
+   "readings": [
     {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 7
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 7
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 7
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 7
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 8
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
     }
    ]
   },
@@ -2461,6 +2493,36 @@
     "sha": "ac15b8295"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 3
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 2
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 2
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -2530,36 +2592,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 2
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 3
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 2
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 2
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 2
     }
    ]
   },
@@ -2572,6 +2604,36 @@
     "sha": "920e5ff14"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 4
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -2641,48 +2703,48 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 4
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 4
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 4
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 4
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 4
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 4
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 4
     }
    ]
   },
   "Browser benchmark — 8086 desktop and mobile": {
    "n": 20,
-   "p95": 197,
+   "p95": 202,
    "max": {
     "seconds": 207,
     "run": 36271522563,
     "sha": "c2433273a"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 195
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 137
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 202
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 184
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 174
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 149
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -2752,36 +2814,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 191
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 195
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 147
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 194
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 186
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 153
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 124
     }
    ]
   },
@@ -2795,6 +2827,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 3
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 2
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 3
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 3
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 2
@@ -2863,36 +2925,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 2
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 2
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 3
     }
    ]
   },
@@ -2906,6 +2938,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 9
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 8
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 8
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 8
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 9
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 9
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 8
@@ -2974,36 +3036,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 6
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 7
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 8
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 8
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 8
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 8
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 9
     }
    ]
   },
@@ -3011,11 +3043,41 @@
    "n": 20,
    "p95": 5,
    "max": {
-    "seconds": 5,
-    "run": 36295223555,
-    "sha": "3c4e3f161"
+    "seconds": 6,
+    "run": 36318949314,
+    "sha": "eaa02e3a0"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 5
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 6
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 5
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 5
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 5
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 5
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -3085,44 +3147,49 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 5
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 3
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 3
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 3
     }
    ]
   },
   "Browser gate — SPIKE Prime German palette renders without a Blockly index error": {
-   "n": 0,
-   "p95": null,
-   "max": null,
-   "readings": []
+   "n": 6,
+   "p95": 3,
+   "max": {
+    "seconds": 3,
+    "run": 36320241654,
+    "sha": "8c942997b"
+   },
+   "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 3
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 3
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    }
+   ]
   },
   "Browser gate — four-surface project save, reopen and vanilla replacement": {
    "n": 20,
@@ -3134,6 +3201,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 7
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 7
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 6
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 6
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 7
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 7
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 7
@@ -3202,36 +3299,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 5
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 6
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 7
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 6
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 7
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 6
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 7
     }
    ]
   },
@@ -3245,6 +3312,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 5
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 4
@@ -3312,36 +3409,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 4
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 4
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 4
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 5
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 4
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 5
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 4
     }
    ]
@@ -3356,6 +3423,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 1
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 2
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 2
@@ -3424,42 +3521,12 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 2
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 1
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 2
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 1
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 2
     }
    ]
   },
   "Browser gate — P21 Code importer activation, retry and state": {
    "n": 20,
-   "p95": 13,
+   "p95": 12,
    "max": {
     "seconds": 13,
     "run": 34097534401,
@@ -3467,6 +3534,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 12
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 12
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 12
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 12
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 12
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 12
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 12
@@ -3535,36 +3632,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 10
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 12
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 12
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 12
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 12
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 12
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 13
     }
    ]
   },
@@ -3578,6 +3645,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 1
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 2
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 2
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 1
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 1
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 2
@@ -3646,36 +3743,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 1
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 1
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 1
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 2
     }
    ]
   },
@@ -3689,6 +3756,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 4
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 4
@@ -3756,36 +3853,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 4
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 4
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 4
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 4
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 4
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 4
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 4
     }
    ]
@@ -3800,6 +3867,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 19
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 19
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 19
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 19
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 18
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 19
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 18
@@ -3868,42 +3965,12 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 17
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 18
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 18
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 18
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 18
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 18
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 19
     }
    ]
   },
   "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
    "n": 20,
-   "p95": 24,
+   "p95": 27,
    "max": {
     "seconds": 27,
     "run": 35792185639,
@@ -3911,6 +3978,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 27
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 27
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 24
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 24
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 25
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 23
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 24
@@ -3979,48 +4076,48 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 16
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 23
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 23
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 18
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 22
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 24
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 26
     }
    ]
   },
   "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
    "n": 20,
-   "p95": 10,
+   "p95": 9,
    "max": {
     "seconds": 10,
     "run": 36099957738,
     "sha": "4fec893ba"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 9
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 9
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 9
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 9
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 10
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 9
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -4090,36 +4187,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 8
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 8
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 9
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 10
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 9
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 9
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 10
     }
    ]
   },
@@ -4133,6 +4200,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 28
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 27
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 27
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 27
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 27
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 28
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 28
@@ -4201,36 +4298,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 27
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 28
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 28
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 27
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 27
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 27
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 28
     }
    ]
   },
@@ -4244,6 +4311,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 2
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 2
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 1
@@ -4312,36 +4409,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 1
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 2
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 2
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 2
     }
    ]
   },
@@ -4355,6 +4422,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 3
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 3
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 3
@@ -4423,36 +4520,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 2
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 2
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 2
     }
    ]
   },
@@ -4465,6 +4532,36 @@
     "sha": "68a726c35"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 90
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 84
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 92
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 88
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 88
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 85
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -4534,36 +4631,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 92
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 90
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 86
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 92
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 90
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 87
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 83
     }
    ]
   },
@@ -4577,6 +4644,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 44
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 43
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 44
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 44
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 44
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 44
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 44
@@ -4645,36 +4742,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 44
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 45
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 44
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 45
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 45
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 44
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 43
     }
    ]
   },
@@ -4688,6 +4755,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 5
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 6
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 5
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 6
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 5
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 6
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 6
@@ -4756,36 +4853,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 5
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 6
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 5
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 6
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 5
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 6
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 6
     }
    ]
   },
@@ -4799,6 +4866,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 4
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 5
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 4
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 4
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 4
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 4
@@ -4867,36 +4964,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 4
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 4
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 4
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 4
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 4
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 4
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 5
     }
    ]
   },
@@ -4910,6 +4977,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 7
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 7
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 6
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 7
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 7
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 6
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 7
@@ -4978,36 +5075,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 6
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 7
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 7
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 7
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 7
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 6
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 7
     }
    ]
   },
@@ -5020,6 +5087,36 @@
     "sha": "2a32b48a9"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 35
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 35
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 35
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 35
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 34
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 34
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -5089,36 +5186,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 35
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 35
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 34
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 35
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 35
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 34
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 34
     }
    ]
   },
@@ -5131,6 +5198,36 @@
     "sha": "9d8e54319"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 1
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 1
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 1
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -5200,36 +5297,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 1
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 2
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 1
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 2
     }
    ]
   },
@@ -5242,6 +5309,36 @@
     "sha": "97bf98117"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 2
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 2
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 2
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 2
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 2
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 2
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -5310,36 +5407,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 2
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 2
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 2
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 2
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 2
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 2
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 2
     }
    ]
@@ -5354,6 +5421,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 10
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 9
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 10
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 10
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 9
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 10
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 9
@@ -5422,36 +5519,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 8
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 10
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 10
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 10
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 9
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 9
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 10
     }
    ]
   },
@@ -5465,6 +5532,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 18
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 18
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 17
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 17
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 18
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 17
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 17
@@ -5533,36 +5630,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 17
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 17
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 18
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 17
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 18
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 18
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 18
     }
    ]
   },
@@ -5575,6 +5642,36 @@
     "sha": "dc9e44951"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 10
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 11
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 10
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 10
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 10
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 10
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -5644,36 +5741,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 9
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 10
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 10
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 11
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 10
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 10
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 12
     }
    ]
   },
@@ -5686,6 +5753,36 @@
     "sha": "c60f827b9"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 4
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 3
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 3
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 3
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 3
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 3
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -5754,36 +5851,6 @@
     {
      "run": 36254753283,
      "sha": "50445efea",
-     "seconds": 3
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 3
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 3
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 3
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 3
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 3
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
      "seconds": 3
     }
    ]
@@ -5798,6 +5865,36 @@
    },
    "readings": [
     {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 17
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 18
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 18
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 18
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 18
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 18
+    },
+    {
      "run": 36295223555,
      "sha": "3c4e3f161",
      "seconds": 17
@@ -5866,36 +5963,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 18
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 17
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 18
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 17
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 17
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 18
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 18
     }
    ]
   },
@@ -5908,6 +5975,36 @@
     "sha": "4fec893ba"
    },
    "readings": [
+    {
+     "run": 36320241654,
+     "sha": "8c942997b",
+     "seconds": 6
+    },
+    {
+     "run": 36318949314,
+     "sha": "eaa02e3a0",
+     "seconds": 6
+    },
+    {
+     "run": 36310731492,
+     "sha": "f76821a0c",
+     "seconds": 5
+    },
+    {
+     "run": 36307059255,
+     "sha": "02dd0f99e",
+     "seconds": 6
+    },
+    {
+     "run": 36304436821,
+     "sha": "c4e12f7ba",
+     "seconds": 5
+    },
+    {
+     "run": 36303847342,
+     "sha": "6f545fe04",
+     "seconds": 6
+    },
     {
      "run": 36295223555,
      "sha": "3c4e3f161",
@@ -5977,36 +6074,6 @@
      "run": 36254753283,
      "sha": "50445efea",
      "seconds": 5
-    },
-    {
-     "run": 36242502896,
-     "sha": "02724e1a0",
-     "seconds": 6
-    },
-    {
-     "run": 36241194086,
-     "sha": "3038dfc8d",
-     "seconds": 6
-    },
-    {
-     "run": 36240733466,
-     "sha": "8fb65d9a9",
-     "seconds": 6
-    },
-    {
-     "run": 36237444407,
-     "sha": "d7e07b515",
-     "seconds": 6
-    },
-    {
-     "run": 36236677192,
-     "sha": "47216bb0c",
-     "seconds": 5
-    },
-    {
-     "run": 36233993094,
-     "sha": "ca336f6df",
-     "seconds": 6
     }
    ]
   }
