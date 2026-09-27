@@ -140,6 +140,20 @@ try {
         const device = page.getByTestId('bw-device-select');
         await device.waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: synchronization before `device.selectOption` three lines below -- the detector looks at the IMMEDIATELY following statement and sees `mark()`, which is a timestamp rather than a use
         await mark('device-ready');
+        // The home starter is a GPIO program. Selecting another MCU while it is
+        // present is a real retarget request and correctly loads sb3-creator;
+        // that would make this DOS-only journey falsely accuse the app of a
+        // speculative compiler fetch. Start from an empty author buffer, as a
+        // user creating a new 8086 program would, before selecting the CPU.
+        const initialEditor = page.locator('.cm-content:visible').first();
+        await initialEditor.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
+        await initialEditor.click();
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+        await page.keyboard.press('Backspace');
+        await page.waitForFunction(() => [...document.querySelectorAll('.cm-content')]
+            .filter(node => node.getClientRects().length > 0)
+            .every(node => !(node.textContent || '').trim()),
+        null, {timeout: assemblySetupTimeoutMs});
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
         await device.selectOption('i8086');

@@ -44,6 +44,8 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'the statistical gate must not accept fewer than three repetitions');
     assert.match(script, /!button\.disabled[\s\S]*asmTab\.dispatchEvent\('click'\)/,
         'the minimum-width profile must wait for and dispatch the overlapped enabled ASM control');
+    assert.ok(script.indexOf('const initialEditor') < script.indexOf("device.selectOption('i8086')"),
+        'the DOS-only journey must clear the GPIO starter before device selection can request a retarget');
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);

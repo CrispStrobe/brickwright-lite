@@ -103,21 +103,30 @@ async function openToMicropythonBar (present) {
     await waitFor(() => deviceSelect.count(), c => c > 0, 60000);
     await deviceSelect.selectOption('microbit');
 
-    // Switching to the micro:bit tab is what flips lang → micropython and reveals
-    // the bar the flash button lives in. Edit only after that transition so the
-    // text lands in the MicroPython buffer, not whichever CodeMirror buffer was
-    // visible for the previous language while React was changing tabs.
+    // setDevice is asynchronous: it may retarget the starter before committing
+    // DEVICE MICROBIT. Wait until that operation has released the language row
+    // before editing, or its late commit can overwrite the program typed here.
     const microbitTab = page.locator('button', {hasText: 'micro:bit'}).first();
     await waitFor(() => microbitTab.count(), c => c > 0, 60000);
-    await microbitTab.click();
-    const bar = page.locator('[data-testid="bw-micropython-bar"]').first();
-    await waitFor(() => bar.count(), c => c > 0, 60000);
+    const deviceReady = await waitFor(() => microbitTab.isEnabled().catch(() => false), v => v === true, 60000);
+    if (deviceReady !== true) throw new Error('micro:bit device selection never released the language row');
     const cm = page.locator('.cm-content:visible, textarea:visible').first();
     await waitFor(() => cm.isVisible().catch(() => false), v => v === true, 60000);
     await cm.click();
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
     await page.keyboard.press('Delete');
-    await page.keyboard.insertText('from microbit import *\n\ndisplay.show(Image.HEART)\n');
+    await page.keyboard.insertText('DEVICE MICROBIT\nPIN led = P0 OUTPUT\n\nWHEN flag clicked:\n  turn on led\n  print "hi"\n');
+    const sourceReady = await waitFor(() => cm.innerText().catch(() => ''),
+        text => /DEVICE MICROBIT/.test(text) && /print "hi"/.test(text), 60000);
+    if (!/DEVICE MICROBIT/.test(sourceReady || '') || !/print "hi"/.test(sourceReady || '')) {
+        throw new Error('the pseudocode editor did not commit the micro:bit fixture');
+    }
+
+    // The tab conversion produces the read-only MicroPython preview; that is
+    // the buffer the flash controls consume. Do not type into that preview.
+    await microbitTab.click();
+    const bar = page.locator('[data-testid="bw-micropython-bar"]').first();
+    await waitFor(() => bar.count(), c => c > 0, 60000);
     return {page, pageErrors};
 }
 
@@ -130,7 +139,8 @@ try {
     check('the "flash the micro:bit" button appears when WebUSB is available', shown === true);
 
     if (shown === true) {
-        await waitFor(() => flashBtn.isEnabled().catch(() => false), v => v === true, 60000);
+        const enabled = await waitFor(() => flashBtn.isEnabled().catch(() => false), v => v === true, 60000);
+        if (enabled !== true) throw new Error('generated MicroPython never enabled the WebUSB flash control');
         await flashBtn.click();
         const status = page.locator('[data-testid="bw-code-status"]').first();
         // The device-first handler maps a rejected requestDevice straight to the
