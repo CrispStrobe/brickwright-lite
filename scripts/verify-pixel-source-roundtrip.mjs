@@ -264,6 +264,20 @@ try {
     const after = await saveProject(page);
     const restored = after.costumes.find(record => record.document.layers[0].type === 'pixel');
     assert.deepEqual(restored.document, pixel.document);
+    console.log('checking exact Arcade img exchange');
+    await page.getByTestId('bw-pixel-show-img').click();
+    const exportedLiteral = await page.getByTestId('bw-pixel-img-literal').inputValue();
+    assert.match(exportedLiteral, /^img`\n/);
+    await page.getByRole('button', {name: 'Close', exact: true}).click();
+    await page.getByTestId('bw-pixel-import-img').click();
+    await page.getByTestId('bw-pixel-img-literal').fill('img`\n1 2\n. f\n`');
+    await page.getByTestId('bw-pixel-apply-img').click();
+    await page.getByTestId('bw-pixel-save').click();
+    const imported = (await saveProject(page)).costumes.find(record => record.document.layers[0].type === 'pixel');
+    assert.equal(imported.document.layers.length, 3, 'literal import must add a layer without discarding artwork');
+    const importedPixels = imported.document.layers[2].content.value.pixels;
+    assert.deepEqual(importedPixels.slice(0, 2), [1, 2]);
+    assert.deepEqual(importedPixels.slice(width, width + 2), [0, 15]);
     assert.deepEqual(errors, []);
     console.log('PASS: moved pixels and layers survive SB3 save/reopen; zoom and pinch preserve artwork');
 } finally {

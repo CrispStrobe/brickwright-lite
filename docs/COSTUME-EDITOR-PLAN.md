@@ -94,10 +94,13 @@ missing data or export behavior.
 | Foreground/background colours, swap, colour replace and outline | Foreground colour only | Add secondary colour and index-preserving replace/outline operations |
 | Palette presets and 15 editable colours | Default palette only | Introduce a versioned palette source with migration; render and Arcade export must use the same palette |
 | Animation timeline, frame order, interval, onion skin | Not yet available | Preserve frames in editable source and export them as costumes or sprite sheets |
-| Sprite-sheet and `img` import/export | PNG export and Arcade project conversion exist | Add direct literal/sprite-sheet controls, exact index round trip, and slicing preview |
+| Sprite-sheet and `img` import/export | Exact `img` literal paste/export and PNG export exist; pasted images become new layers | Add sprite-sheet slicing preview and sheet export |
 | Tile and tilemap asset editing | Imported tilemaps are rendered as costumes | Add editable tile set/map source and Arcade-compatible export |
 
 Palette and frame data need a source-format migration. Adding these fields to
 the v1 document without changing its version would let older Brickwright
 silently reinterpret edited colours or frames, even though Scratch itself
 would still render the saved SVG or PNG correctly.
+An Arcade `img` literal has only palette indices and transparent pixels, so
+literal export is refused while a visible layer has partial opacity. This
+prevents a flattened approximation from silently changing the artwork.

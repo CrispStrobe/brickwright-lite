@@ -21,8 +21,9 @@ import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundl
 import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
     moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill
+    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral
 } from '../../lib/bw-makecode/pixel-image.js';
+import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
 
 const L10N = {
     en: {
@@ -39,7 +40,14 @@ const L10N = {
         'px.deselect': 'Deselect', 'px.opacity': 'Opacity', 'px.renameLayer': 'Rename layer',
         'px.exportPng': 'Export transparent PNG', 'px.circle': 'Circle',
         'px.flipH': 'Flip horizontally', 'px.flipV': 'Flip vertically',
-        'px.rotateCW': 'Rotate clockwise', 'px.rotateCCW': 'Rotate counterclockwise'
+        'px.rotateCW': 'Rotate clockwise', 'px.rotateCCW': 'Rotate counterclockwise',
+        'px.showLiteral': 'Show Arcade img', 'px.importLiteral': 'Import Arcade img',
+        'px.applyLiteral': 'Add as layer', 'px.closeLiteral': 'Close',
+        'px.invalidLiteral': 'Paste one complete Arcade img literal with equal-length rows and valid colours.',
+        'px.largeLiteral': 'Arcade image exceeds the 128×128 pixel-editor limit.',
+        'px.translucentLiteral': 'Arcade img cannot represent partly transparent layers. Set their opacity to 0% or 100% first.',
+        'px.literalHint': 'The imported image becomes a new editable layer. Existing layers are kept.',
+        'px.copyLiteral': 'Copy'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -56,7 +64,14 @@ const L10N = {
         'px.deselect': 'Auswahl aufheben', 'px.opacity': 'Deckkraft',
         'px.renameLayer': 'Ebene umbenennen', 'px.exportPng': 'Transparentes PNG exportieren',
         'px.circle': 'Kreis', 'px.flipH': 'Horizontal spiegeln', 'px.flipV': 'Vertikal spiegeln',
-        'px.rotateCW': 'Im Uhrzeigersinn drehen', 'px.rotateCCW': 'Gegen den Uhrzeigersinn drehen'
+        'px.rotateCW': 'Im Uhrzeigersinn drehen', 'px.rotateCCW': 'Gegen den Uhrzeigersinn drehen',
+        'px.showLiteral': 'Arcade-img anzeigen', 'px.importLiteral': 'Arcade-img importieren',
+        'px.applyLiteral': 'Als Ebene hinzufügen', 'px.closeLiteral': 'Schließen',
+        'px.invalidLiteral': 'Ein vollständiges Arcade-img mit gleich langen Zeilen und gültigen Farben einfügen.',
+        'px.largeLiteral': 'Das Arcade-Bild überschreitet die Grenze von 128×128 Pixeln.',
+        'px.translucentLiteral': 'Arcade-img unterstützt keine teilweise transparenten Ebenen. Deckkraft zuerst auf 0 % oder 100 % setzen.',
+        'px.literalHint': 'Das importierte Bild wird eine neue bearbeitbare Ebene. Bestehende Ebenen bleiben erhalten.',
+        'px.copyLiteral': 'Kopieren'
     }
 };
 const t = makeT(L10N);
@@ -84,7 +99,8 @@ class PixelArtEditor extends React.Component {
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             scale: 4, zoom: 1, colour: 2, tool: 'pencil',
             mirror: false, converted: false, selection: null,
-            status: '', w: 16, h: 16, renamingLayerId: null, renameValue: ''};
+            status: '', w: 16, h: 16, renamingLayerId: null, renameValue: '',
+            literalMode: null, literalText: '', literalError: ''};
         this.canvas = React.createRef();
         this.viewport = React.createRef();
         this.root = React.createRef();
@@ -165,6 +181,7 @@ class PixelArtEditor extends React.Component {
         this.undoStack = [];
         this.redoStack = [];
         this.setState({image, layers, activeLayerId, selection: null, renamingLayerId: null, renameValue: '',
+            literalMode: null, literalText: '', literalError: '',
             original: {layers, activeLayerId, selection: null, w: image.width, h: image.height},
             scale, zoom: 1, converted, status: '',
             w: image.width, h: image.height});
@@ -568,6 +585,54 @@ class PixelArtEditor extends React.Component {
             w: transformed.width, h: transformed.height, selection: transformed.selection, status: ''});
     }
 
+    showLiteral () {
+        const {layers, w, h} = this.state;
+        const locale = this.props.locale || browserLocale();
+        if (layers.some(layer => layer.visible && layer.opacity > 0 && layer.opacity < 1)) {
+            this.setState({literalMode: 'export', literalText: '',
+                literalError: t(locale, 'px.translucentLiteral')});
+            return;
+        }
+        this.setState({literalMode: 'export', literalText: toImgLiteral(composeLayers(layers, w, h)),
+            literalError: ''});
+    }
+
+    importLiteral () {
+        const locale = this.props.locale || browserLocale();
+        const parsed = parseExactImgLiteral(this.state.literalText);
+        if (!parsed) {
+            this.setState({literalError: t(locale, 'px.invalidLiteral')});
+            return;
+        }
+        if (parsed.width > 128 || parsed.height > 128) {
+            this.setState({literalError: t(locale, 'px.largeLiteral')});
+            return;
+        }
+        this.remember();
+        const id = `pixels-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        this.setState(state => {
+            const w = Math.max(state.w, parsed.width);
+            const h = Math.max(state.h, parsed.height);
+            const pixels = new Uint8Array(w * h);
+            for (let y = 0; y < parsed.height; y++) {
+                pixels.set(parsed.pixels.subarray(y * parsed.width, (y + 1) * parsed.width), y * w);
+            }
+            const layers = [...resizeLayers(state.layers, state.w, state.h, w, h),
+                {...blankLayer(id, 'Arcade img', w, h), pixels}];
+            return {layers, activeLayerId: id, image: composeLayers(layers, w, h), w, h,
+                selection: null, status: '', literalMode: null, literalText: '', literalError: ''};
+        });
+    }
+
+    async copyLiteral () {
+        try {
+            if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
+            await navigator.clipboard.writeText(this.state.literalText);
+        } catch (error) {
+            this.root.current?.querySelector('[data-testid="bw-pixel-img-literal"]')?.select();
+        }
+    }
+
     addLayer () {
         const {w, h, layers} = this.state;
         this.remember();
@@ -674,7 +739,7 @@ class PixelArtEditor extends React.Component {
     render () {
         const locale = this.props.locale || browserLocale();
         const {image, layers, activeLayerId, selection, colour, tool, mirror, converted, status, w, h, zoom,
-            renamingLayerId, renameValue} =
+            renamingLayerId, renameValue, literalMode, literalText, literalError} =
             this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
         const activeLayer = layers.find(layer => layer.id === activeLayerId);
@@ -723,7 +788,33 @@ class PixelArtEditor extends React.Component {
                                 (selection.height > w || selection.width > h))}
                             onClick={() => this.transform(operation)}>{symbol}</button>)}
                     <span style={{fontSize: 12}}>{t(locale, 'px.zoom')} {Math.round(zoom * 100)}%</span>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-show-img"
+                        onClick={() => this.showLiteral()}>{t(locale, 'px.showLiteral')}</button>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-import-img"
+                        onClick={() => this.setState({literalMode: 'import', literalText: '', literalError: ''})}>
+                        {t(locale, 'px.importLiteral')}</button>
                 </div>
+                {literalMode ? <div style={{display: 'flex', flexDirection: 'column', gap: 6,
+                    padding: 8, border: '1px solid #cbd5e1', borderRadius: 6}}>
+                    {literalMode === 'import' ? <span style={{fontSize: 12}}>{t(locale, 'px.literalHint')}</span> : null}
+                    <textarea value={literalText} rows={7} spellCheck={false}
+                        data-testid="bw-pixel-img-literal" aria-label="Arcade img"
+                        readOnly={literalMode === 'export'}
+                        onChange={event => this.setState({literalText: event.target.value, literalError: ''})}
+                        style={{width: '100%', boxSizing: 'border-box', fontFamily: 'monospace'}} />
+                    {literalError ? <span role="alert" style={{color: '#b91c1c'}}>{literalError}</span> : null}
+                    <div style={{display: 'flex', gap: 6}}>
+                        {literalMode === 'import' ? <button type="button" style={btn(true)}
+                            data-testid="bw-pixel-apply-img" onClick={() => this.importLiteral()}>
+                            {t(locale, 'px.applyLiteral')}</button> :
+                            <button type="button" style={btn(false)} disabled={!literalText}
+                                onClick={() => this.copyLiteral()}>
+                                {t(locale, 'px.copyLiteral')}</button>}
+                        <button type="button" style={btn(false)}
+                            onClick={() => this.setState({literalMode: null, literalError: ''})}>
+                            {t(locale, 'px.closeLiteral')}</button>
+                    </div>
+                </div> : null}
                 <div style={{display: 'flex', gap: 4, flexWrap: 'wrap'}} role="radiogroup">
                     {ARCADE_PALETTE.map((c, i) => (
                         <button key={i} type="button" role="radio" aria-checked={colour === i}
