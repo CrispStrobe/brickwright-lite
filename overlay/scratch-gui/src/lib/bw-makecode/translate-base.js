@@ -519,6 +519,26 @@ export class BaseTranslator {
             return;
         }
 
+        // `for (let x of list)` over a known array: an index that walks it,
+        // re-reading its length each pass as MakeCode's own loop does (the
+        // body may push onto it). Anything else it could iterate is named.
+        case 'ForOf': {
+            const array = this.arrayName(st.iterable);
+            if (!array) {
+                push(this.note(`for … of something that is not an array${callList(this.callsIn(st.iterable))}`));
+                return;
+            }
+            const index = `_mc${++this.temps}`;
+            this.declared.add(index);
+            this.declared.add(st.name);
+            push(`set ${index} to 0`);
+            push(`REPEAT UNTIL not (${index} < length of ${this.arrayRef(array)}):`);
+            out.push(`${pad}  set ${this.varName(st.name)} to item ${index} of ${this.arrayRef(array)}`);
+            this.block(st.body, indent + 1, out);
+            out.push(`${pad}  change ${index} by 1`);
+            return;
+        }
+
         case 'FunctionDeclaration':
             this.functions.push({name: st.name, params: st.params, body: st.body});
             return;

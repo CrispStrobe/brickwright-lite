@@ -256,6 +256,9 @@ class Parser {
      * variable, and `let a: number[] = []` carries the fact nowhere else.
      */
     skipTypeAnnotation () {
+        // The type's text rides along (`lastType`): `let bird: game.LedSprite = null`
+        // says it holds a sprite, and nothing else in the declaration does.
+        this.lastType = '';
         if (!this.eat('punct', ':')) return false;
         let depth = 0;
         let isArray = false;
@@ -273,7 +276,7 @@ class Parser {
             }
             if (depth === 0 && t.type === 'punct' && (t.value === '=' || t.value === ';' || t.value === ',')) return isArray;
             if (depth === 0 && t.type === 'punct' && t.value === ')') return isArray;
-            this.next();
+            this.lastType += this.next().value;
         }
     }
 
@@ -379,9 +382,10 @@ class Parser {
         do {
             const name = this.expect('ident').value;
             const isArray = this.skipTypeAnnotation();
+            const typeName = this.lastType;
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            decls.push({name, init, isArray});
+            decls.push({name, init, isArray, typeName});
         } while (this.eat('punct', ','));
         this.eat('punct', ';');
         return {type: 'Declaration', kind, decls};
@@ -456,6 +460,18 @@ class Parser {
     parseFor () {
         this.expect('for');
         this.expect('punct', '(');
+        // `for (let x of list)` — what MakeCode writes for "for element x of
+        // list". It read as a three-part for and came out as `of = 0` tests
+        // and stray Identifier statements (census: crashy-bird).
+        if ((this.at('let') || this.at('const') || this.at('var')) &&
+            this.peek(1).type === 'ident' && this.peek(2).type === 'ident' && this.peek(2).value === 'of') {
+            this.next();
+            const name = this.next().value;
+            this.next();
+            const iterable = this.parseExpression();
+            this.expect('punct', ')');
+            return {type: 'ForOf', name, iterable, body: this.parseBlockOrStatement()};
+        }
         let init = null;
         if (!this.at('punct', ';')) {
             init = (this.at('let') || this.at('const') || this.at('var')) ?

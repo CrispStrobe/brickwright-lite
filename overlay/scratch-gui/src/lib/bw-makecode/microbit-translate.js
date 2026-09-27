@@ -67,6 +67,19 @@ export const MAKECODE_MELODIES = [
     'Funeral', 'Punchline', 'Baddy', 'Chase', 'BaDing', 'Wawawawaa', 'JumpUp', 'JumpDown', 'PowerUp', 'PowerDown'
 ];
 
+/** LedSpriteProperty member -> the dialect's property word. */
+const SPRITE_PROPERTY = {X: 'x', Y: 'y', Direction: 'direction', Brightness: 'brightness', Blink: 'blink'};
+/** The methods only a sprite has, so a call of one on an object field IS a sprite call. */
+const SPRITE_ONLY = new Set(['isTouchingEdge', 'ifOnEdgeBounce', 'isDeleted', 'setBlink', 'changeBlinkBy',
+    'changeXBy', 'changeYBy', 'turnRight', 'turnLeft', 'changeDirectionBy', 'changeBrightnessBy']);
+/** game.LedSprite's methods (pxt-microbit 9.1.1 libs/core/game.ts). */
+const SPRITE_METHODS = new Set([
+    'get', 'set', 'change', 'x', 'y', 'direction', 'brightness', 'blink', 'isTouching', 'isTouchingEdge', 'isDeleted',
+    'setX', 'setY', 'setDirection', 'setBrightness', 'setBlink', 'on', 'off', 'changeXBy', 'changeYBy',
+    'changeDirectionBy', 'changeBrightnessBy', 'changeBlinkBy', 'goTo', 'move', 'turn', 'turnRight', 'turnLeft',
+    'ifOnEdgeBounce', 'delete'
+]);
+
 const isPinEnum = name => /^(DigitalPin|AnalogPin|TouchPin|PwmPin)$/.test(name);
 
 class MicrobitTranslator extends BaseTranslator {
@@ -120,6 +133,8 @@ class MicrobitTranslator extends BaseTranslator {
             /^read button_/.test(value) ||
             / happening$/.test(value) ||
             / touched$/.test(value) ||
+            /^sprite .+ (touching sprite .+|touching edge|deleted)$/.test(value) ||
+            /^game is (over|running|paused)$/.test(value) ||
             value === 'false';
     }
 
@@ -136,8 +151,158 @@ class MicrobitTranslator extends BaseTranslator {
         return super.condition(node);
     }
 
+    // ── LED sprites ─────────────────────────────────────────────────
+    //
+    // A sprite is a numbered handle in a variable or an array (sb3-creator's
+    // micro:bit+ sprite words), so what has to be known is which expressions
+    // HOLD one: a name assigned game.createSprite() or declared LedSprite, an
+    // array filled with them, an element of such an array, a loop variable
+    // over one. claimSprites() finds them before the walk.
+
+    /** Record every name that holds a sprite, and every array of them. */
+    claimSprites (ast) {
+        this.sprites = new Set();
+        this.spriteArrays = new Set();
+        const isCreate = n => n && n.type === 'Call' && this.path(n.callee) === 'game.createSprite';
+        const isProperty = n => n && n.type === 'Member' && n.object && n.object.type === 'Identifier' &&
+            n.object.name === 'LedSpriteProperty';
+        const holds = (name, value) => {
+            if (!name || !value) return;
+            if (isCreate(value)) this.sprites.add(name);
+            else if (value.type === 'Index' && value.object.type === 'Identifier' && this.spriteArrays.has(value.object.name)) {
+                this.sprites.add(name);
+            }
+        };
+        const walk = node => {
+            if (!node || typeof node !== 'object') return;
+            if (Array.isArray(node)) {
+                node.forEach(walk);
+                return;
+            }
+            if (node.type === 'Declaration') {
+                for (const d of node.decls || []) {
+                    if (/LedSprite/.test(d.typeName || '')) (/\[\]|Array/.test(d.typeName) ? this.spriteArrays : this.sprites).add(d.name);
+                    if (d.init && d.init.type === 'Array' && d.init.items.some(isCreate)) this.spriteArrays.add(d.name);
+                    holds(d.name, d.init);
+                }
+            }
+            if (node.type === 'Assignment' && node.op === '=' && node.left.type === 'Identifier') holds(node.left.name, node.right);
+            if (node.type === 'ForOf' && node.iterable && node.iterable.type === 'Identifier' &&
+                this.spriteArrays.has(node.iterable.name)) this.sprites.add(node.name);
+            if (node.type === 'Call' && node.callee && node.callee.type === 'Member') {
+                const receiver = node.callee.object;
+                // `obstacles.push(game.createSprite(4, y))`
+                if (node.callee.name === 'push' && receiver.type === 'Identifier' && isCreate(node.args[0])) {
+                    this.spriteArrays.add(receiver.name);
+                }
+                // `hero.get(LedSpriteProperty.X)`: only a sprite has these.
+                if (/^(get|set|change)$/.test(node.callee.name) && isProperty(node.args[0])) {
+                    if (receiver.type === 'Identifier') this.sprites.add(receiver.name);
+                    if (receiver.type === 'Index' && receiver.object.type === 'Identifier') this.spriteArrays.add(receiver.object.name);
+                }
+            }
+            for (const v of Object.values(node)) if (v && typeof v === 'object') walk(v);
+        };
+        // Twice: a loop variable is only known once its array is.
+        walk(ast);
+        walk(ast);
+    }
+
+    /** Does this expression hold a sprite (a handle)? */
+    isSprite (node) {
+        if (!node || !this.sprites) return false;
+        if (node.type === 'Identifier') return this.sprites.has(node.name);
+        if (node.type === 'Index') return node.object.type === 'Identifier' && this.spriteArrays.has(node.object.name);
+        if (node.type === 'Call') {
+            if (this.path(node.callee) === 'game.createSprite') return true;
+            const c = node.callee;
+            return c && c.type === 'Member' && /^(removeAt|pop|shift)$/.test(c.name) &&
+                c.object.type === 'Identifier' && this.spriteArrays.has(c.object.name);
+        }
+        return false;
+    }
+
+    /** A sprite as the dialect's sprite slot takes it: one token or parenthesised. */
+    spriteRef (node) {
+        return this.operand(node);
+    }
+
+    /**
+     * A method call on a sprite as the dialect's words, or null when it is not
+     * one. `asValue` picks the reporters; the commands go to `push`.
+     */
+    spriteCall (node, push) {
+        const callee = node.callee;
+        if (!callee || callee.type !== 'Member' || !SPRITE_METHODS.has(callee.name)) return null;
+        const receiver = callee.object;
+        if (!this.isSprite(receiver)) {
+            // A sprite kept in an object's field (`client.sprite.setBlink(0)`):
+            // the handles live in variables and arrays, and an object has no
+            // form here, so the call is named with that reason.
+            if (receiver && receiver.type === 'Member' && (/sprite/i.test(receiver.name) || SPRITE_ONLY.has(callee.name))) {
+                const what = `${this.path(callee) || callee.name}() — a sprite kept in an object field; ` +
+                    'sprites are handles in variables and arrays here, and objects have no form';
+                return push ? push(this.note(what)) || true : (this.unsupported.push(what), '0');
+            }
+            return null;
+        }
+        const a = node.args || [];
+        // `obstacles.removeAt(0).delete()`: delete the element, then remove it.
+        const removal = push && receiver.type === 'Call' && receiver.callee.name === 'removeAt' ? receiver : null;
+        const s = removal ? `(item ${this.expr(removal.args[0])} of ${this.arrayRef(removal.callee.object.name)})` :
+            this.spriteRef(receiver);
+        const prop = n => (n && n.type === 'Member' && SPRITE_PROPERTY[n.name]) || null;
+        const val = i => this.operand(a[i]);
+        if (!push) {
+            switch (callee.name) {
+            case 'get': return prop(a[0]) ? `${prop(a[0])} of sprite ${s}` : null;
+            case 'x': case 'y': case 'direction': case 'brightness': case 'blink':
+                return `${callee.name} of sprite ${s}`;
+            case 'isTouching': return this.isSprite(a[0]) || a[0] ? `sprite ${s} touching sprite ${this.spriteRef(a[0])}` : null;
+            case 'isTouchingEdge': return `sprite ${s} touching edge`;
+            case 'isDeleted': return `sprite ${s} deleted`;
+            default: return null;
+            }
+        }
+        const target = s;
+        const set = (p, v) => push(`set sprite ${target} ${p} to ${v}`);
+        const change = (p, v) => push(`change sprite ${target} ${p} by ${v}`);
+        switch (callee.name) {
+        case 'set': if (!prop(a[0])) return null; set(prop(a[0]), val(1)); break;
+        case 'change': if (!prop(a[0])) return null; change(prop(a[0]), val(1)); break;
+        case 'setX': set('x', val(0)); break;
+        case 'setY': set('y', val(0)); break;
+        case 'setDirection': set('direction', val(0)); break;
+        case 'setBrightness': set('brightness', val(0)); break;
+        case 'setBlink': set('blink', val(0)); break;
+        case 'on': set('brightness', '255'); break;
+        case 'off': set('brightness', '0'); break;
+        case 'changeXBy': change('x', val(0)); break;
+        case 'changeYBy': change('y', val(0)); break;
+        case 'changeDirectionBy': change('direction', val(0)); break;
+        case 'changeBrightnessBy': change('brightness', val(0)); break;
+        case 'changeBlinkBy': change('blink', val(0)); break;
+        case 'goTo': set('x', val(0)); set('y', val(1)); break;
+        case 'move': push(`move sprite ${target} by ${val(0)}`); break;
+        case 'turn': {
+            const dir = a[0] && a[0].type === 'Member' && a[0].name === 'Left' ? 'left' : 'right';
+            push(`turn sprite ${target} ${dir} by ${val(1)} degrees`);
+            break;
+        }
+        case 'turnRight': push(`turn sprite ${target} right by ${val(0)} degrees`); break;
+        case 'turnLeft': push(`turn sprite ${target} left by ${val(0)} degrees`); break;
+        case 'ifOnEdgeBounce': push(`bounce sprite ${target} if on edge`); break;
+        case 'delete': push(`delete sprite ${target}`); break;
+        default: return null;
+        }
+        if (removal) push(`remove item ${this.expr(removal.args[0])} of ${this.arrayRef(removal.callee.object.name)}`);
+        return true;
+    }
+
     /** Reporter calls: MakeCode's sensors and maths in our spelling. */
     callExpression (node) {
+        const sprite = this.spriteCall(node, null);
+        if (sprite) return sprite;
         const name = this.path(node.callee);
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
@@ -216,6 +381,12 @@ class MicrobitTranslator extends BaseTranslator {
         // MakeCode's game score, not a variable called `score`: that
         // variable was never set by addScore, so every score read 0.
         case 'game.score': return 'game score';
+        // LED sprites: a new sprite is its handle.
+        case 'game.createSprite': return `create sprite at x ${this.operand(a[0])} y ${this.operand(a[1])}`;
+        case 'game.isGameOver': return 'game is over';
+        case 'game.isRunning': return 'game is running';
+        case 'game.isPaused': return 'game is paused';
+        case 'game.life': return 'game life';
         // An image is a value here, and the only thing our display can be
         // handed is a pattern, so that is what it becomes: `"0101…"`. It
         // survives being stored in an array, which is how these programs
@@ -244,6 +415,7 @@ class MicrobitTranslator extends BaseTranslator {
     command (node, indent, out) {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
+        if (this.spriteCall(node, push)) return;
         const name = this.path(node.callee);
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
@@ -337,6 +509,28 @@ class MicrobitTranslator extends BaseTranslator {
         case 'game.gameOver':
             push('game over');
             return;
+        case 'game.startCountdown':
+            push(`start countdown ${this.operand(a[0])} ms`);
+            return;
+        case 'game.pause':
+            push('pause game');
+            return;
+        case 'game.resume':
+            push('resume game');
+            return;
+        case 'game.setLife':
+            push(`set game life to ${this.operand(a[0])}`);
+            return;
+        case 'game.addLife':
+            push(`add game life ${this.operand(a[0])}`);
+            return;
+        // A sprite made and not kept is still made (it is drawn).
+        case 'game.createSprite': {
+            const temp = `_mc${++this.temps}`;
+            this.declared.add(temp);
+            push(`set ${temp} to create sprite at x ${this.operand(a[0])} y ${this.operand(a[1])}`);
+            return;
+        }
         case 'basic.pause':
             push(`wait ${seconds(a[0], this)} seconds`);
             return;
@@ -633,6 +827,7 @@ export function microbitToPseudocode (source, opts = {}) {
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
+    t.claimSprites(ast);
 
     // Enums and functions first: a call can precede its definition, and
     // an enum member can be referenced before the enum is declared.
