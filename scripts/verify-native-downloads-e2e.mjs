@@ -50,8 +50,16 @@ const fail = async message => {
 try {
     mark(`waiting for tauri-driver on ${base}`);
     let ready = false;
-    for (let attempt = 0; attempt < 60 && !ready; attempt++) {
-        try { await call('GET', '/status', undefined, 2000); ready = true; } catch { await sleep(500); }
+    const readyDeadline = Date.now() + 30000;
+    while (Date.now() < readyDeadline && !ready) {
+        // Once tauri-driver has accepted the socket its /status response can take more than two
+        // seconds while WebKitWebDriver starts. Aborting that accepted request makes Hyper report
+        // IncompleteMessage and starting another request repeats the damage indefinitely. Give
+        // the accepted request the remainder of the startup window, as the working broker proof
+        // does, while retaining a hard overall deadline.
+        const remaining = readyDeadline - Date.now();
+        try { await call('GET', '/status', undefined, Math.max(1000, remaining)); ready = true; }
+        catch { if (!ready) await sleep(500); }
         if (driver.exitCode !== null) await fail(`tauri-driver exited ${driver.exitCode}`);
     }
     if (!ready) await fail('tauri-driver did not become ready');
