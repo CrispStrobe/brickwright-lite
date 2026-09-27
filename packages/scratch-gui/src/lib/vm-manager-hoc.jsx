@@ -5,6 +5,7 @@ import {connect} from 'react-redux';
 
 import VM from 'scratch-vm';
 import AudioEngine from 'scratch-audio';
+import {inspectArtwork, applyArtwork} from './bw-artwork-bundle';
 import unblockAudio from './audio-context-unblock.js';
 import installSpikeProjectMigration from './spike-project-migration.js';
 import installEv3ProjectMigration from './ev3-project-migration.js';
@@ -73,7 +74,11 @@ const vmManagerHOC = function (WrappedComponent) {
             }
         }
         loadProject () {
-            return this.props.vm.loadProject(this.props.projectData)
+            const projectData = this.props.projectData;
+            const artwork = projectData instanceof ArrayBuffer || ArrayBuffer.isView(projectData) ?
+                inspectArtwork(projectData) : Promise.resolve({outcome: 'legacy'});
+            return artwork.then(inspection => this.props.vm.loadProject(projectData)
+                .then(() => applyArtwork(inspection, this.props.vm)))
                 .then(() => {
                     this.props.onLoadedProject(this.props.loadingState, this.props.canSave);
                     // Wrap in a setTimeout because skin loading in

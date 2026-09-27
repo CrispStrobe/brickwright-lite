@@ -18,6 +18,7 @@ import {BLOCKS_DEFAULT_SCALE} from '../lib/layout-constants';
 import {handleFileUpload, spriteUpload} from '../lib/file-uploader.js';
 import sharedMessages from '../lib/shared-messages';
 import {emptySprite} from '../lib/empty-assets';
+import {copyCostumeDocument} from '../lib/bw-artwork-bundle';
 import {highlightTarget} from '../reducers/targets';
 import {fetchSprite, fetchCode} from '../lib/backpack-api';
 import randomizeSpritePosition from '../lib/randomize-sprite-position';
@@ -87,7 +88,12 @@ class TargetPane extends React.Component {
 
     }
     handleDuplicateSprite (id) {
-        this.props.vm.duplicateSprite(id);
+        const vm = this.props.vm;
+        const originals = vm.runtime.getTargetById(id)?.sprite?.costumes || [];
+        return vm.duplicateSprite(id).then(() => {
+            const copies = vm.editingTarget?.sprite?.costumes || [];
+            originals.forEach((costume, index) => copyCostumeDocument(costume, copies[index]));
+        });
     }
     handleExportSprite (id) {
         const spriteName = this.props.vm.runtime.getTargetById(id).getName();
