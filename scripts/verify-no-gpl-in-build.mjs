@@ -79,6 +79,8 @@ const walk = dir => {
             walk(full);
         } else if (FORBIDDEN_FILES.has(entry.name)) {
             offences.push(`${relative(build, full)} — ${FORBIDDEN_FILES.get(entry.name)}`);
+        } else if (/blinkenrocket.*\.(?:hex|elf|eep|bin)$/i.test(entry.name)) {
+            offences.push(`${relative(build, full)} — Blinkenrocket firmware images are GPL-3.0 and must remain external/user-supplied`);
         } else if (bootMediaOffence(headOf(full))) {
             offences.push(`${relative(build, full)} — ${bootMediaOffence(headOf(full))}`);
         } else if (/\.(m?js|cjs)$/.test(entry.name)) {
