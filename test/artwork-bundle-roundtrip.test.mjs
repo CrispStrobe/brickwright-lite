@@ -42,6 +42,26 @@ test('SB3 retains Scratch rendering and opens its editable pixel source', async 
     assert.equal(artwork.getCostumeDocument(reopened.costume).layers[0].content.kind, 'asset');
 });
 
+test('SB3 keeps ordered, hidden pixel layers while Scratch keeps its flattened asset', async () => {
+    const {vm, costume, blob, id} = await fixture();
+    const source = {version: 1, pixelScale: 4, activeLayerId: 'top', layers: [
+        {id: 'bottom', type: 'pixel', name: 'Background', visible: true, locked: false,
+            opacity: 1, content: {kind: 'pixels', value: {width: 2, height: 1, pixels: [2, 3]}}},
+        {id: 'top', type: 'pixel', name: 'Hidden', visible: false, locked: false,
+            opacity: 1, content: {kind: 'pixels', value: {width: 2, height: 1, pixels: [10, 0]}}}
+    ]};
+    artwork.setCostumeDocument(costume, source);
+    const saved = await artwork.attachArtwork(blob, vm);
+    const zip = await JSZip.loadAsync(await saved.arrayBuffer());
+    assert.ok(zip.file(id), 'the original Scratch costume asset remains present');
+    assert.deepEqual(JSON.parse(await zip.file(artwork.ARTWORK_PATH).async('text')).costumes[0].document,
+        source);
+    const inspected = await artwork.inspectArtwork(await saved.arrayBuffer());
+    const reopened = await fixture();
+    assert.equal(artwork.applyArtwork(inspected, reopened.vm).count, 1);
+    assert.deepEqual(artwork.getCostumeDocument(reopened.costume), source);
+});
+
 test('stale source is ignored if another editor changed the Scratch asset', async () => {
     const {vm, costume, blob} = await fixture();
     const saved = await artwork.attachArtwork(blob, vm);
@@ -61,14 +81,21 @@ test('stale source is ignored if another editor changed the Scratch asset', asyn
 
 test('an edited costume uses the new asset ID even when VM leaves md5ext stale', async () => {
     const {vm, costume, blob} = await fixture();
-    costume.asset = {assetId: 'f0000000000000000000000000000000'};
+    const newId = 'a0000000000000000000000000000000.svg';
+    costume.asset = {assetId: newId.slice(0, -4)};
     const source = {version: 1, layers: [{id: 'base', type: 'vector', name: 'New',
         visible: true, locked: false, opacity: 1,
         content: {kind: 'svg', value: '<svg><circle r="1"/></svg>'}}]};
     artwork.setCostumeDocument(costume, source);
-    const saved = await artwork.attachArtwork(blob, vm);
+    const rendered = await JSZip.loadAsync(await blob.arrayBuffer());
+    const project = JSON.parse(await rendered.file('project.json').async('text'));
+    project.targets[0].costumes[0].md5ext = newId;
+    rendered.file('project.json', JSON.stringify(project));
+    rendered.file(newId, '<svg><circle r="1"/></svg>');
+    const saved = await artwork.attachArtwork(await rendered.generateAsync({type: 'blob'}), vm);
     const zip = await JSZip.loadAsync(await saved.arrayBuffer());
     const record = JSON.parse(await zip.file(artwork.ARTWORK_PATH).async('text')).costumes[0];
+    assert.equal(record.renderedMd5ext, newId);
     assert.deepEqual(record.document, source);
 });
 

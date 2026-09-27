@@ -15,8 +15,8 @@ let documents = new WeakMap();
 let preservedFuture = null;
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const byteLength = value => new TextEncoder().encode(value).byteLength;
-const assetName = costume => costume && (costume.md5ext ||
-    (costume.asset && `${costume.asset.assetId}.${costume.dataFormat}`));
+const assetName = costume => costume && (costume.asset?.assetId ?
+    `${costume.asset.assetId}.${costume.dataFormat}` : costume.md5ext || costume.md5);
 const originals = vm => (vm?.runtime?.targets || []).filter(target => target.isOriginal !== false);
 const costumeSignature = project => JSON.stringify((project.targets || []).map(target =>
     [target.isStage, target.name, (target.costumes || []).map(costume => costume.md5ext)]));
@@ -31,7 +31,11 @@ const validateDocument = doc => {
     }
     if (Object.prototype.hasOwnProperty.call(doc, 'pixelScale') && (!Number.isInteger(doc.pixelScale) ||
         doc.pixelScale < 1 || doc.pixelScale > 64)) throw new Error('invalid pixel scale');
+    if (Object.prototype.hasOwnProperty.call(doc, 'activeLayerId') &&
+        !doc.layers.some(layer => layer.id === doc.activeLayerId)) throw new Error('invalid active layer');
     if (byteLength(JSON.stringify(doc)) > MAX_DOCUMENT_BYTES) throw new Error('artwork document is too large');
+    const ids = new Set();
+    let pixelSize = null;
     for (const layer of doc.layers) {
         if (!isObject(layer) || typeof layer.id !== 'string' || !['vector', 'bitmap', 'pixel'].includes(layer.type) ||
             typeof layer.name !== 'string' || typeof layer.visible !== 'boolean' ||
@@ -40,6 +44,8 @@ const validateDocument = doc => {
             !['asset', 'svg', 'data-uri', 'pixels'].includes(layer.content.kind)) {
             throw new Error('invalid artwork layer');
         }
+        if (ids.has(layer.id)) throw new Error('duplicate artwork layer');
+        ids.add(layer.id);
         if (layer.content.kind === 'pixels') {
             const value = layer.content.value;
             if (layer.type !== 'pixel' || !isObject(value) || !Number.isInteger(value.width) ||
@@ -49,6 +55,9 @@ const validateDocument = doc => {
                 !value.pixels.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 15)) {
                 throw new Error('invalid pixel source');
             }
+            const size = `${value.width}x${value.height}`;
+            if (pixelSize && pixelSize !== size) throw new Error('mismatched pixel layer size');
+            pixelSize = size;
         } else if (typeof layer.content.value !== 'string') {
             throw new Error('invalid artwork content');
         }

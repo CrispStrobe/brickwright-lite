@@ -24,6 +24,11 @@ const open = async () => {
     await page.getByTestId('bw-pixel-toggle').waitFor();
     await page.getByTestId('bw-pixel-toggle').click();
     await page.getByTestId('bw-pixel-canvas').waitFor();
+    await page.locator('[role="tab"]', {hasText: /Code|Skripte/}).first().click();
+    await page.getByTestId('bw-pixel-canvas').waitFor({state: 'hidden'});
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await page.getByTestId('bw-pixel-toggle').click();
+    await page.getByTestId('bw-pixel-canvas').waitFor();
     return page;
 };
 
@@ -100,10 +105,27 @@ try {
     console.log('checking archive round trip');
     assert.equal(await canvas.evaluate(element => element.toDataURL()), pixelsBeforeGesture,
         'pinching must not leave a painted pixel');
+    console.log('checking editable layers');
+    const beforeLayer = await canvas.evaluate(element => element.toDataURL());
+    await page.getByTestId('bw-pixel-add-layer').click();
+    const newLayer = page.locator('[data-testid^="bw-pixel-layer-pixels-"]');
+    await newLayer.waitFor();
+    await page.getByTestId('bw-pixel-colour-11').click();
+    await page.mouse.click(touchBox.x + touchBox.width * 0.85, touchBox.y + touchBox.height * 0.85);
+    const paintedLayer = await canvas.evaluate(element => element.toDataURL());
+    assert.notEqual(paintedLayer, beforeLayer, 'the new layer must paint above the base');
+    const layerId = (await newLayer.getAttribute('data-testid')).replace('bw-pixel-layer-', '');
+    await page.getByTestId(`bw-pixel-visibility-${layerId}`).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeLayer,
+        'hiding the new layer must remove it from the Scratch rendering');
     await page.getByTestId('bw-pixel-save').click();
     const before = await saveProject(page);
     const pixel = before.costumes.find(record => record.document.layers[0].type === 'pixel');
     assert.ok(pixel, 'the saved SB3 must contain indexed pixel source');
+    assert.equal(pixel.document.layers.length, 2);
+    assert.equal(pixel.document.layers[1].visible, false);
+    assert.ok(pixel.document.layers[1].content.value.pixels.includes(11),
+        'the hidden layer must retain its editable pixels');
     assert.ok(pixel.document.layers[0].content.value.pixels.includes(10), 'the painted colour must persist');
     const {width, height, pixels} = pixel.document.layers[0].content.value;
     const mirrorX = Math.floor(width * 0.20);
@@ -117,12 +139,20 @@ try {
     await page.getByText('File', {exact: true}).click();
     await page.getByText('Load from your computer', {exact: true}).click();
     await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(file);
-    await page.getByTestId('bw-pixel-canvas').waitFor();
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await page.getByTestId('bw-pixel-toggle').click();
+    await page.getByTestId(`bw-pixel-visibility-${layerId}`).waitFor();
+    const reopenedCanvas = page.getByTestId('bw-pixel-canvas');
+    const reopenedBefore = await reopenedCanvas.evaluate(element => element.toDataURL());
+    await page.getByTestId(`bw-pixel-visibility-${layerId}`).click();
+    assert.notEqual(await reopenedCanvas.evaluate(element => element.toDataURL()), reopenedBefore,
+        'revealing the restored layer must show its pixels');
+    await page.getByTestId(`bw-pixel-visibility-${layerId}`).click();
     const after = await saveProject(page);
     const restored = after.costumes.find(record => record.document.layers[0].type === 'pixel');
     assert.deepEqual(restored.document, pixel.document);
     assert.deepEqual(errors, []);
-    console.log('PASS: indexed pixels survive SB3 save/reopen; trackpad zoom and touch pinch preserve artwork');
+    console.log('PASS: editable pixel layers survive SB3 save/reopen; zoom and pinch preserve artwork');
 } finally {
     await browser.close();
 }

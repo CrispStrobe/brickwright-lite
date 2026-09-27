@@ -1450,6 +1450,10 @@ jobs:
         timeout-minutes: 3  # derived: p95 5 s × 3 → 3 min over 20 green runs to 36324084932; max 5 s in run 34119648099 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+      - name: Browser gate — editable pixel source survives save and reopen
+        timeout-minutes: 3  # provisional until five green CI readings are available
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-source-roundtrip.mjs
       - name: Browser gate — first Sounds-tab interactivity
         timeout-minutes: 3  # derived: p95 2 s × 3 → 3 min over 20 green runs to 36324084932; max 2 s in run 34118997841 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}

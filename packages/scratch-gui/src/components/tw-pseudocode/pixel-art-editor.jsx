@@ -17,8 +17,9 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
+import {blankLayer, composeLayers, layersDocument, resizeLayers, sourceLayers} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, svgToPixels, pixelsToSvg, quantizeRgba, floodFill, resizeCanvas, blankImage
+    ARCADE_PALETTE, svgToPixels, pixelsToSvg, quantizeRgba, floodFill
 } from '../../lib/bw-makecode/pixel-image.js';
 
 const L10N = {
@@ -28,7 +29,10 @@ const L10N = {
         'px.converted': 'This costume was not pixel art: it was converted to {w}×{h} palette pixels. Saving replaces it.',
         'px.reconvert': 'Convert at this size', 'px.none': 'Select a costume to edit.',
         'px.transparent': 'Transparent', 'px.hand': 'Pan', 'px.undo': 'Undo', 'px.redo': 'Redo',
-        'px.zoom': 'Zoom', 'px.line': 'Line', 'px.rect': 'Rectangle', 'px.mirror': 'Mirror'
+        'px.zoom': 'Zoom', 'px.line': 'Line', 'px.rect': 'Rectangle', 'px.mirror': 'Mirror',
+        'px.layers': 'Layers', 'px.addLayer': 'Add layer', 'px.deleteLayer': 'Delete layer',
+        'px.showLayer': 'Show layer', 'px.hideLayer': 'Hide layer', 'px.layerUp': 'Move up',
+        'px.layerDown': 'Move down', 'px.lockLayer': 'Lock layer', 'px.unlockLayer': 'Unlock layer'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -37,7 +41,10 @@ const L10N = {
         'px.reconvert': 'In dieser Größe umwandeln', 'px.none': 'Ein Kostüm zum Bearbeiten auswählen.',
         'px.transparent': 'Transparent', 'px.hand': 'Verschieben', 'px.undo': 'Rückgängig',
         'px.redo': 'Wiederholen', 'px.zoom': 'Zoom', 'px.line': 'Linie', 'px.rect': 'Rechteck',
-        'px.mirror': 'Spiegeln'
+        'px.mirror': 'Spiegeln', 'px.layers': 'Ebenen', 'px.addLayer': 'Ebene hinzufügen',
+        'px.deleteLayer': 'Ebene löschen', 'px.showLayer': 'Ebene zeigen', 'px.hideLayer': 'Ebene ausblenden',
+        'px.layerUp': 'Nach oben', 'px.layerDown': 'Nach unten', 'px.lockLayer': 'Ebene sperren',
+        'px.unlockLayer': 'Ebene entsperren'
     }
 };
 const t = makeT(L10N);
@@ -62,7 +69,8 @@ const rasterize = costume => new Promise((resolve, reject) => {
 class PixelArtEditor extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {image: null, original: null, scale: 4, zoom: 1, colour: 2, tool: 'pencil',
+        this.state = {image: null, layers: [], activeLayerId: null, original: null,
+            scale: 4, zoom: 1, colour: 2, tool: 'pencil',
             mirror: false, converted: false,
             status: '', w: 16, h: 16};
         this.canvas = React.createRef();
@@ -86,12 +94,13 @@ class PixelArtEditor extends React.Component {
         this.redo = this.redo.bind(this);
         this.save = this.save.bind(this);
         this.revert = this.revert.bind(this);
+        this.addLayer = this.addLayer.bind(this);
     }
 
     componentDidMount () { this.load(); }
 
     componentDidUpdate (prev, prevState) {
-        if (prev.costumeIndex !== this.props.costumeIndex) this.load();
+        if (prev.costumeIndex !== this.props.costumeIndex || this.loadedCostume !== this.costume()) this.load();
         else if (prevState.image !== this.state.image) this.paint();
     }
 
@@ -102,17 +111,20 @@ class PixelArtEditor extends React.Component {
 
     async load (size) {
         const costume = this.costume();
+        this.loadedCostume = costume;
         if (!costume) { this.setState({image: null}); return; }
         let image = null;
+        let layers = null;
         let scale = 4;
         const document = getCostumeDocument(costume);
-        const pixelLayer = !size && document && document.layers.length === 1 &&
-            document.layers[0].type === 'pixel' && document.layers[0].content.kind === 'pixels' ?
-            document.layers[0] : null;
-        if (pixelLayer) {
-            const value = pixelLayer.content.value;
-            image = {width: value.width, height: value.height, pixels: Uint8Array.from(value.pixels)};
-            scale = document.pixelScale || 4;
+        const first = document?.layers?.[0];
+        if (!size && first?.type === 'pixel' && first.content.kind === 'pixels') {
+            const {width, height} = first.content.value;
+            layers = sourceLayers(document, width, height);
+            if (layers) {
+                image = composeLayers(layers, width, height);
+                scale = document.pixelScale || 4;
+            }
         }
         if (!image && !size && costume.asset.dataFormat === 'svg') {
             const px = svgToPixels(costume.asset.decodeText());
@@ -129,9 +141,15 @@ class PixelArtEditor extends React.Component {
             image = quantizeRgba(rgba, w, h, tw, th);
             converted = true;
         }
+        if (!layers) layers = [{...blankLayer('pixels', 'Pixels', image.width, image.height),
+            pixels: image.pixels}];
+        const activeLayerId = layers.some(layer => layer.id === document?.activeLayerId) ?
+            document.activeLayerId : layers[layers.length - 1].id;
         this.undoStack = [];
         this.redoStack = [];
-        this.setState({image, original: image, scale, zoom: 1, converted, status: '',
+        this.setState({image, layers, activeLayerId, original: {layers, activeLayerId,
+            w: image.width, h: image.height},
+            scale, zoom: 1, converted, status: '',
             w: image.width, h: image.height});
     }
 
@@ -172,21 +190,39 @@ class PixelArtEditor extends React.Component {
 
     remember () {
         if (!this.state.image) return;
-        this.undoStack.push(this.state.image);
+        this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+            w: this.state.w, h: this.state.h});
         if (this.undoStack.length > 80) this.undoStack.shift();
         this.redoStack = [];
     }
 
     undo () {
         if (!this.undoStack.length) return;
-        this.redoStack.push(this.state.image);
-        this.setState({image: this.undoStack.pop(), status: ''});
+        this.redoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+            w: this.state.w, h: this.state.h});
+        this.restore(this.undoStack.pop());
     }
 
     redo () {
         if (!this.redoStack.length) return;
-        this.undoStack.push(this.state.image);
-        this.setState({image: this.redoStack.pop(), status: ''});
+        this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+            w: this.state.w, h: this.state.h});
+        this.restore(this.redoStack.pop());
+    }
+
+    restore (snapshot) {
+        this.setState({...snapshot, image: composeLayers(snapshot.layers, snapshot.w, snapshot.h), status: ''});
+    }
+
+    activeLayer () {
+        return this.state.layers.find(layer => layer.id === this.state.activeLayerId);
+    }
+
+    updateActive (pixels) {
+        this.setState(state => {
+            const layers = state.layers.map(layer => layer.id === state.activeLayerId ? {...layer, pixels} : layer);
+            return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
+        });
     }
 
     apply (event) {
@@ -196,22 +232,27 @@ class PixelArtEditor extends React.Component {
         const {image, tool, colour, mirror} = this.state;
         const k = (y * image.width) + x;
         if (tool === 'pick') { this.setState({colour: image.pixels[k], tool: 'pencil'}); return; }
+        const active = this.activeLayer();
+        if (!active || active.locked || !active.visible) return;
         if (tool === 'fill') {
             this.setState(state => {
-                let filled = floodFill(state.image, x, y, colour);
+                let filled = floodFill({width: state.w, height: state.h, pixels: active.pixels}, x, y, colour);
                 if (mirror) filled = floodFill(filled, filled.width - 1 - x, y, colour);
-                return {image: filled, status: ''};
+                const layers = state.layers.map(layer => layer.id === state.activeLayerId ?
+                    {...layer, pixels: filled.pixels} : layer);
+                return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
             });
             return;
         }
         const value = tool === 'erase' ? 0 : colour;
         const previous = this.lastCell || cell;
         this.setState(state => {
-            const current = state.image;
+            const current = state.layers.find(layer => layer.id === state.activeLayerId);
+            if (!current || current.locked || !current.visible) return null;
             const pixels = new Uint8Array(current.pixels);
             const plot = (px, py) => {
-                pixels[(py * current.width) + px] = value;
-                if (mirror) pixels[(py * current.width) + current.width - 1 - px] = value;
+                pixels[(py * state.w) + px] = value;
+                if (mirror) pixels[(py * state.w) + state.w - 1 - px] = value;
             };
             let x0 = previous[0];
             let y0 = previous[1];
@@ -227,7 +268,8 @@ class PixelArtEditor extends React.Component {
                 if (doubled >= dy) { error += dy; x0 += sx; }
                 if (doubled <= dx) { error += dx; y0 += sy; }
             }
-            return {image: {...current, pixels}, status: ''};
+            const layers = state.layers.map(layer => layer.id === state.activeLayerId ? {...layer, pixels} : layer);
+            return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
         });
         this.lastCell = cell;
     }
@@ -268,7 +310,7 @@ class PixelArtEditor extends React.Component {
                 if (doubled <= dx) { error += dx; y += sy; }
             }
         }
-        this.setState({image: {...this.shapeBase, pixels}, status: ''});
+        this.updateActive(pixels);
     }
 
     midpoint () {
@@ -285,7 +327,7 @@ class PixelArtEditor extends React.Component {
         if (this.pointers.size === 2) {
             // A second finger turns the stroke into navigation. Remove the initial dot.
             if (this.drawing && this.strokeRecorded && this.undoStack.length) {
-                this.setState({image: this.undoStack.pop()});
+                this.restore(this.undoStack.pop());
             }
             this.drawing = false;
             this.strokeRecorded = false;
@@ -305,13 +347,15 @@ class PixelArtEditor extends React.Component {
                 scrollLeft: this.viewport.current.scrollLeft, scrollTop: this.viewport.current.scrollTop};
             return;
         }
+        const active = this.activeLayer();
+        if (this.state.tool !== 'pick' && (!active || active.locked || !active.visible)) return;
         this.strokeRecorded = this.state.tool !== 'pick';
         if (this.strokeRecorded) this.remember();
         this.drawing = true;
         this.lastCell = null;
         if (['line', 'rect'].includes(this.state.tool)) {
             this.shapeStart = this.cellAt(event);
-            this.shapeBase = this.state.image;
+            this.shapeBase = {width: this.state.w, height: this.state.h, pixels: active.pixels};
             this.applyShape(event);
         } else this.apply(event);
     }
@@ -374,29 +418,76 @@ class PixelArtEditor extends React.Component {
     resize (w, h) {
         const W = Math.max(1, Math.min(128, w | 0));
         const H = Math.max(1, Math.min(128, h | 0));
+        if (W === this.state.w && H === this.state.h) return;
         this.remember();
-        this.setState(state => ({image: resizeCanvas(state.image || blankImage(W, H), W, H), w: W, h: H}));
+        this.setState(state => {
+            const layers = resizeLayers(state.layers, state.w, state.h, W, H);
+            return {layers, image: composeLayers(layers, W, H), w: W, h: H, status: ''};
+        });
+    }
+
+    addLayer () {
+        const {w, h, layers} = this.state;
+        this.remember();
+        const id = `pixels-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const layer = blankLayer(id, `${t(this.props.locale || browserLocale(), 'px.layers')} ${layers.length + 1}`, w, h);
+        this.setState(state => {
+            const index = state.layers.findIndex(item => item.id === state.activeLayerId);
+            const next = state.layers.slice();
+            next.splice(index + 1, 0, layer);
+            return {layers: next, activeLayerId: id, image: composeLayers(next, w, h), status: ''};
+        });
+    }
+
+    changeLayer (id, change) {
+        this.remember();
+        this.setState(state => {
+            const layers = state.layers.map(layer => layer.id === id ? {...layer, ...change} : layer);
+            return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
+        });
+    }
+
+    moveLayer (id, offset) {
+        const index = this.state.layers.findIndex(layer => layer.id === id);
+        const target = index + offset;
+        if (index < 0 || target < 0 || target >= this.state.layers.length) return;
+        this.remember();
+        this.setState(state => {
+            const layers = state.layers.slice();
+            [layers[index], layers[target]] = [layers[target], layers[index]];
+            return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
+        });
+    }
+
+    deleteLayer (id) {
+        if (this.state.layers.length <= 1) return;
+        this.remember();
+        this.setState(state => {
+            const layers = state.layers.filter(layer => layer.id !== id);
+            const activeLayerId = state.activeLayerId === id ? layers[layers.length - 1].id : state.activeLayerId;
+            return {layers, activeLayerId, image: composeLayers(layers, state.w, state.h), status: ''};
+        });
     }
 
     save () {
-        const {image, scale} = this.state;
+        const {image, scale, layers, activeLayerId} = this.state;
         const vm = this.props.vm;
         if (!image || !vm) return;
         const svg = pixelsToSvg(image, {scale});
         vm.updateSvg(this.props.costumeIndex, svg, (image.width * scale) / 2, (image.height * scale) / 2);
-        setCostumeDocument(this.costume(), {version: 1, pixelScale: scale, layers: [{
-            id: 'pixels', type: 'pixel', name: 'Pixels', visible: true, locked: false,
-            opacity: 1, content: {kind: 'pixels', value: {width: image.width, height: image.height,
-                pixels: Array.from(image.pixels)}}
-        }]});
-        this.setState({original: image, converted: false, status: 'saved'});
+        setCostumeDocument(this.costume(), layersDocument(layers, image.width, image.height, scale, activeLayerId));
+        this.setState({original: {layers, activeLayerId, w: image.width, h: image.height},
+            converted: false, status: 'saved'});
     }
 
-    revert () { this.setState(state => ({image: state.original, status: ''})); }
+    revert () {
+        const {original} = this.state;
+        if (original) this.restore(original);
+    }
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, colour, tool, mirror, converted, status, w, h, zoom} = this.state;
+        const {image, layers, activeLayerId, colour, tool, mirror, converted, status, w, h, zoom} = this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
         const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12, cursor: 'pointer',
             border: `1px solid ${active ? '#4c97ff' : '#cbd5e1'}`, background: active ? '#e0edff' : '#fff'});
@@ -442,6 +533,37 @@ class PixelArtEditor extends React.Component {
                     <div style={{fontSize: 12, color: '#92400e', background: '#fffbeb', padding: '4px 8px', borderRadius: 6}}>
                         {t(locale, 'px.converted', {w: image.width, h: image.height})}</div>
                 ) : null}
+                <div data-testid="bw-pixel-layers" style={{display: 'flex', flexWrap: 'wrap', gap: 6,
+                    alignItems: 'center'}}>
+                    <strong style={{fontSize: 12}}>{t(locale, 'px.layers')}</strong>
+                    <button type="button" style={btn(false)} onClick={this.addLayer}
+                        data-testid="bw-pixel-add-layer">+ {t(locale, 'px.addLayer')}</button>
+                    {layers.slice().reverse().map(layer => {
+                        const index = layers.findIndex(item => item.id === layer.id);
+                        return <div key={layer.id} style={{display: 'flex', alignItems: 'center', gap: 2,
+                            padding: 2, borderRadius: 6,
+                            border: layer.id === activeLayerId ? '2px solid #4c97ff' : '1px solid #cbd5e1'}}>
+                            <button type="button" style={btn(layer.id === activeLayerId)}
+                                data-testid={`bw-pixel-layer-${layer.id}`}
+                                onClick={() => this.setState({activeLayerId: layer.id})}>{layer.name}</button>
+                            <button type="button" style={btn(false)} aria-label={t(locale,
+                                layer.visible ? 'px.hideLayer' : 'px.showLayer')}
+                            data-testid={`bw-pixel-visibility-${layer.id}`}
+                            onClick={() => this.changeLayer(layer.id, {visible: !layer.visible})}>
+                                {layer.visible ? '◉' : '◌'}</button>
+                            <button type="button" style={btn(false)} aria-label={t(locale,
+                                layer.locked ? 'px.unlockLayer' : 'px.lockLayer')}
+                            onClick={() => this.changeLayer(layer.id, {locked: !layer.locked})}>
+                                {layer.locked ? '🔒' : '🔓'}</button>
+                            <button type="button" style={btn(false)} aria-label={t(locale, 'px.layerUp')}
+                                disabled={index === layers.length - 1} onClick={() => this.moveLayer(layer.id, 1)}>↑</button>
+                            <button type="button" style={btn(false)} aria-label={t(locale, 'px.layerDown')}
+                                disabled={index === 0} onClick={() => this.moveLayer(layer.id, -1)}>↓</button>
+                            <button type="button" style={btn(false)} aria-label={t(locale, 'px.deleteLayer')}
+                                disabled={layers.length === 1} onClick={() => this.deleteLayer(layer.id)}>×</button>
+                        </div>;
+                    })}
+                </div>
                 <div ref={this.viewport} onWheel={this.onWheel}
                     style={{flex: '1 1 auto', minHeight: 180, overflow: 'auto', background: '#f1f5f9'}}>
                     <canvas ref={this.canvas} data-testid="bw-pixel-canvas"

@@ -26,11 +26,15 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   individual palette indices; on reopen it reads those pixels from the source.
   Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
-  line and rectangle tools, mirrored drawing, larger colour targets, a pan
-  tool and two-pointer/pinch navigation. The
+  line and rectangle tools, mirrored drawing, ordered pixel layers with
+  visibility, locking, reordering and deletion, larger colour targets, a pan
+  tool and two-pointer/pinch navigation. It flattens visible layers into the
+  Scratch SVG while retaining hidden layers in editable source. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
 - Archive tests cover round-trip preservation, stale source rejection and
-  future-version pass-through. The GUI build is the integration gate.
+  future-version pass-through. A browser gate checks layer visibility and
+  persistence across SB3 save/reopen, plus mouse, keyboard, trackpad and touch
+  interactions. The GUI build is the integration gate.
 
 ## Next delivery slices
 
@@ -58,8 +62,8 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
-5. **Pixel and animation.** Add select/move, line/rectangle, mirror drawing,
-   palette editing, frames and onion-skin preview. Export frames as costumes or
+5. **Pixel and animation.** Add select/move, palette editing, frames and
+   onion-skin preview. Export frames as costumes or
    a sprite sheet without hiding animation-only data in Scratch's render asset.
 6. **Parity gate.** Run the same task corpus on desktop mouse, trackpad, iPad
    touch and Pencil: trace/edit curves, compose vector over paint, draw a
