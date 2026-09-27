@@ -81,5 +81,37 @@ const moveSelectedPixels = (pixels, width, height, selection, requestedDx, reque
     return {pixels: next, selection: {...selection, x: selection.x + dx, y: selection.y + dy}};
 };
 
+// Transform palette indices rather than a rendered image. A selection affects
+// only its rectangle; a whole-canvas quarter turn swaps canvas dimensions.
+const transformPixels = (pixels, width, height, selection, operation) => {
+    const region = selection || {x: 0, y: 0, width, height};
+    const turn = operation === 'rotate-cw' || operation === 'rotate-ccw';
+    if (!['flip-h', 'flip-v', 'rotate-cw', 'rotate-ccw'].includes(operation)) return null;
+    const regionWidth = turn ? region.height : region.width;
+    const regionHeight = turn ? region.width : region.height;
+    const outWidth = turn && !selection ? height : width;
+    const outHeight = turn && !selection ? width : height;
+    if (regionWidth > outWidth || regionHeight > outHeight) return null;
+    const left = selection ? Math.min(region.x, outWidth - regionWidth) : 0;
+    const top = selection ? Math.min(region.y, outHeight - regionHeight) : 0;
+    const out = selection ? clearSelectedPixels(pixels, width, region) : null;
+    const next = selection ? out : new Uint8Array(outWidth * outHeight);
+    for (let y = 0; y < region.height; y++) {
+        for (let x = 0; x < region.width; x++) {
+            let tx; let ty;
+            switch (operation) {
+            case 'flip-h': tx = region.width - 1 - x; ty = y; break;
+            case 'flip-v': tx = x; ty = region.height - 1 - y; break;
+            case 'rotate-cw': tx = region.height - 1 - y; ty = x; break;
+            default: tx = y; ty = region.width - 1 - x;
+            }
+            next[((top + ty) * outWidth) + left + tx] =
+                pixels[((region.y + y) * width) + region.x + x];
+        }
+    }
+    return {pixels: next, width: outWidth, height: outHeight,
+        selection: selection ? {x: left, y: top, width: regionWidth, height: regionHeight} : null};
+};
+
 export {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers};
+    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels};

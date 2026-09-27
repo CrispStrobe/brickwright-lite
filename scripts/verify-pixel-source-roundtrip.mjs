@@ -48,6 +48,28 @@ try {
     const canvas = page.getByTestId('bw-pixel-canvas');
     const box = await canvas.boundingBox();
     assert.ok(box);
+    console.log('checking Arcade drawing and transforms');
+    const beforeArcadeTools = await canvas.evaluate(element => element.toDataURL());
+    await page.getByTestId('bw-pixel-tool-circle').click();
+    await page.mouse.move(box.x + box.width * 0.08, box.y + box.height * 0.08);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.28, box.y + box.height * 0.28, {steps: 8});
+    await page.mouse.up();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools,
+        'the circle tool must draw an outline');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-flip-h').click();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools,
+        'flipping must change the editable costume');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-rotate-cw').click();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools,
+        'rotating must change the editable costume');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-tool-pencil').click();
     const beforeStroke = await canvas.evaluate(element => element.toDataURL());
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
     console.log('checking keyboard history');

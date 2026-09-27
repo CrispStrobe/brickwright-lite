@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
 const {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers} =
+    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels} =
     await import('../overlay/scratch-gui/src/lib/bw-pixel-layers.js');
 
 test('pixel layers compose in order and keep hidden edits in source', () => {
@@ -49,4 +49,31 @@ test('selection moves only its active-layer pixels and clamps at canvas edges', 
         'the undo snapshot must remain unchanged');
     assert.deepEqual([...clearSelectedPixels(pixels, 4, selected)],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+});
+
+test('Arcade flips and turns preserve indices and transform only the selected region', () => {
+    const pixels = Uint8Array.from([1, 2, 3, 4, 5, 6]);
+    const selection = {x: 1, y: 0, width: 2, height: 2};
+    const flipped = transformPixels(pixels, 3, 2, selection, 'flip-h');
+    assert.deepEqual([...flipped.pixels], [1, 3, 2, 4, 6, 5]);
+    assert.deepEqual(flipped.selection, selection);
+    const rotated = transformPixels(pixels, 3, 2, selection, 'rotate-cw');
+    assert.deepEqual([...rotated.pixels], [1, 5, 2, 4, 6, 3]);
+    assert.deepEqual(rotated.selection, selection);
+    const whole = transformPixels(pixels, 3, 2, null, 'rotate-cw');
+    assert.deepEqual({width: whole.width, height: whole.height}, {width: 2, height: 3});
+    assert.deepEqual([...whole.pixels], [4, 1, 5, 2, 6, 3]);
+    assert.deepEqual([...transformPixels(whole.pixels, 2, 3, null, 'rotate-ccw').pixels], [...pixels]);
+    assert.deepEqual([...pixels], [1, 2, 3, 4, 5, 6], 'undo snapshots keep original indices');
+});
+
+test('a selected quarter turn stays inside the canvas and refuses an impossible footprint', () => {
+    const pixels = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    const turned = transformPixels(pixels, 4, 3, {x: 2, y: 0, width: 2, height: 3}, 'rotate-cw');
+    assert.deepEqual(turned.selection, {x: 1, y: 0, width: 3, height: 2});
+    assert.equal(turned.pixels.length, pixels.length);
+    assert.equal(transformPixels(pixels, 4, 3, {x: 1, y: 0, width: 3, height: 2}, 'rotate-cw') === null,
+        false, 'a fitting rotated footprint is allowed');
+    assert.equal(transformPixels(pixels, 4, 3, {x: 0, y: 0, width: 4, height: 1}, 'rotate-cw'), null,
+        'a four-cell-high selection cannot fit in a three-cell-high canvas');
 });

@@ -26,10 +26,12 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   individual palette indices; on reopen it reads those pixels from the source.
   Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
-  line and rectangle tools, a rectangular selection that can move or clear
+  line, rectangle and circle tools, a rectangular selection that can move or clear
   pixels on the active layer, mirrored drawing, ordered pixel layers with
   visibility, locking, renaming, reordering, deletion and opacity, larger colour targets,
-  a pan tool and two-pointer/pinch navigation. It renders translucent layers
+  selection-aware horizontal and vertical flips and quarter turns, a pan tool
+  and two-pointer/pinch navigation. Whole-canvas rotation preserves all layers;
+  a selected transform affects only the active layer. It renders translucent layers
   into the Scratch SVG while retaining each layer's palette indices in editable
   source. It also exports a transparent PNG from the current layer stack. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
@@ -76,3 +78,26 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 The source schema is versioned. Changes to its meaning require a new version
 and migration; broadening the editor must not make older `.sb3` projects
 unreadable or silently discard source data from a newer Brickwright.
+
+## MakeCode Arcade pixel-art parity
+
+The target is the [MakeCode asset-editor shortcut contract](https://github.com/Microsoft/pxt/blob/master/docs/asset-editor-shortcuts.md)
+and its [image, palette and sprite-sheet model](https://arcade.makecode.com/developer/images),
+in addition to Brickwright's editable layers and `.sb3` compatibility. Track
+these as separate capabilities so a familiar-looking toolbar does not conceal
+missing data or export behavior.
+
+| Capability | Brickwright status | Next work |
+| --- | --- | --- |
+| Pen, eraser, fill, line, rectangle, circle, eyedropper, marquee, pan | Available in the palette pixel editor | Add brush sizes, filled shapes, marquee copy/paste and keyboard tool shortcuts |
+| Flip and quarter-turn, with selection scope | Available, with touch buttons and undo | Test on iPad and expose arrow-key selection moves |
+| Foreground/background colours, swap, colour replace and outline | Foreground colour only | Add secondary colour and index-preserving replace/outline operations |
+| Palette presets and 15 editable colours | Default palette only | Introduce a versioned palette source with migration; render and Arcade export must use the same palette |
+| Animation timeline, frame order, interval, onion skin | Not yet available | Preserve frames in editable source and export them as costumes or sprite sheets |
+| Sprite-sheet and `img` import/export | PNG export and Arcade project conversion exist | Add direct literal/sprite-sheet controls, exact index round trip, and slicing preview |
+| Tile and tilemap asset editing | Imported tilemaps are rendered as costumes | Add editable tile set/map source and Arcade-compatible export |
+
+Palette and frame data need a source-format migration. Adding these fields to
+the v1 document without changing its version would let older Brickwright
+silently reinterpret edited colours or frames, even though Scratch itself
+would still render the saved SVG or PNG correctly.

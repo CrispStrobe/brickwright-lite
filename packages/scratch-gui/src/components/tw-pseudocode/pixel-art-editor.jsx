@@ -19,7 +19,7 @@ import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
 import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers} from '../../lib/bw-pixel-layers.js';
+    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels} from '../../lib/bw-pixel-layers.js';
 import {
     ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill
 } from '../../lib/bw-makecode/pixel-image.js';
@@ -37,7 +37,9 @@ const L10N = {
         'px.layerDown': 'Move down', 'px.lockLayer': 'Lock layer', 'px.unlockLayer': 'Unlock layer',
         'px.select': 'Select', 'px.move': 'Move selection', 'px.clearSelection': 'Clear selection',
         'px.deselect': 'Deselect', 'px.opacity': 'Opacity', 'px.renameLayer': 'Rename layer',
-        'px.exportPng': 'Export transparent PNG'
+        'px.exportPng': 'Export transparent PNG', 'px.circle': 'Circle',
+        'px.flipH': 'Flip horizontally', 'px.flipV': 'Flip vertically',
+        'px.rotateCW': 'Rotate clockwise', 'px.rotateCCW': 'Rotate counterclockwise'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -52,7 +54,9 @@ const L10N = {
         'px.unlockLayer': 'Ebene entsperren', 'px.select': 'Auswählen',
         'px.move': 'Auswahl verschieben', 'px.clearSelection': 'Auswahl löschen',
         'px.deselect': 'Auswahl aufheben', 'px.opacity': 'Deckkraft',
-        'px.renameLayer': 'Ebene umbenennen', 'px.exportPng': 'Transparentes PNG exportieren'
+        'px.renameLayer': 'Ebene umbenennen', 'px.exportPng': 'Transparentes PNG exportieren',
+        'px.circle': 'Kreis', 'px.flipH': 'Horizontal spiegeln', 'px.flipV': 'Vertikal spiegeln',
+        'px.rotateCW': 'Im Uhrzeigersinn drehen', 'px.rotateCCW': 'Gegen den Uhrzeigersinn drehen'
     }
 };
 const t = makeT(L10N);
@@ -107,6 +111,7 @@ class PixelArtEditor extends React.Component {
         this.exportPng = this.exportPng.bind(this);
         this.revert = this.revert.bind(this);
         this.addLayer = this.addLayer.bind(this);
+        this.transform = this.transform.bind(this);
     }
 
     componentDidMount () { this.load(); }
@@ -358,6 +363,18 @@ class PixelArtEditor extends React.Component {
             const bottom = Math.max(startY, y1);
             for (let x = left; x <= right; x++) { plot(x, top); plot(x, bottom); }
             for (let y = top; y <= bottom; y++) { plot(left, y); plot(right, y); }
+        } else if (this.state.tool === 'circle') {
+            const cx = (startX + x1) / 2;
+            const cy = (startY + y1) / 2;
+            const rx = Math.abs(x1 - startX) / 2;
+            const ry = Math.abs(y1 - startY) / 2;
+            // Dense sampling gives an unbroken one-pixel outline even for
+            // small and narrow circles, including a one-cell drag.
+            const steps = Math.max(1, 16 * Math.max(Math.abs(x1 - startX), Math.abs(y1 - startY)));
+            for (let step = 0; step < steps; step++) {
+                const angle = (step * 2 * Math.PI) / steps;
+                plot(Math.round(cx + rx * Math.cos(angle)), Math.round(cy + ry * Math.sin(angle)));
+            }
         } else {
             let x = startX;
             let y = startY;
@@ -435,7 +452,7 @@ class PixelArtEditor extends React.Component {
             this.shapeStart = cell;
             this.shapeBase = {pixels: active.pixels};
             this.selectionBeforeGesture = this.state.selection;
-        } else if (['line', 'rect'].includes(this.state.tool)) {
+        } else if (['line', 'rect', 'circle'].includes(this.state.tool)) {
             this.shapeStart = cell;
             this.shapeBase = {width: this.state.w, height: this.state.h, pixels: active.pixels};
             this.applyShape(event);
@@ -459,7 +476,7 @@ class PixelArtEditor extends React.Component {
             viewport.scrollLeft = this.gesture.scrollLeft + this.gesture.x - event.clientX;
             viewport.scrollTop = this.gesture.scrollTop + this.gesture.y - event.clientY;
         } else if (this.drawing && ['pencil', 'erase'].includes(this.state.tool)) this.apply(event);
-        else if (this.drawing && ['line', 'rect'].includes(this.state.tool)) this.applyShape(event);
+        else if (this.drawing && ['line', 'rect', 'circle'].includes(this.state.tool)) this.applyShape(event);
         else if (this.drawing && this.shapeBase && this.state.tool === 'move') this.updateMove(event);
         else if (this.drawing && this.shapeStart) this.updateSelection(event);
     }
@@ -501,6 +518,15 @@ class PixelArtEditor extends React.Component {
             this.clearSelection();
             return;
         }
+        if (!event.metaKey && !event.ctrlKey && !event.altKey) {
+            const shortcuts = {h: 'flip-h', v: 'flip-v', ']': 'rotate-cw', '[': 'rotate-ccw'};
+            const operation = shortcuts[event.key.toLowerCase()];
+            if (operation) {
+                event.preventDefault();
+                this.transform(operation);
+            } else if (event.key.toLowerCase() === 'c') this.setState({tool: 'circle'});
+            return;
+        }
         if (!(event.metaKey || event.ctrlKey)) return;
         const key = event.key.toLowerCase();
         if (key !== 'z' && key !== 'y') return;
@@ -520,6 +546,26 @@ class PixelArtEditor extends React.Component {
             return {layers, image: composeLayers(layers, W, H), w: W, h: H,
                 selection: null, status: ''};
         });
+    }
+
+    transform (operation) {
+        const {layers, activeLayerId, selection, w, h} = this.state;
+        const active = layers.find(layer => layer.id === activeLayerId);
+        if (!active || active.locked || !active.visible) return;
+        const turn = operation === 'rotate-cw' || operation === 'rotate-ccw';
+        if (turn && !selection && layers.some(layer => layer.locked)) return;
+        const transformed = transformPixels(active.pixels, w, h, selection, operation);
+        if (!transformed) return;
+        this.remember();
+        const next = layers.map(layer => {
+            if (selection && layer.id !== activeLayerId) return layer;
+            if (!selection && !turn && layer.id !== activeLayerId) return layer;
+            const result = layer.id === activeLayerId ? transformed :
+                transformPixels(layer.pixels, w, h, null, operation);
+            return {...layer, pixels: result.pixels};
+        });
+        this.setState({layers: next, image: composeLayers(next, transformed.width, transformed.height),
+            w: transformed.width, h: transformed.height, selection: transformed.selection, status: ''});
     }
 
     addLayer () {
@@ -641,7 +687,7 @@ class PixelArtEditor extends React.Component {
                     height: '100%', boxSizing: 'border-box', overflow: 'auto'}}>
                 <div style={{display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center'}}>
                     {this.props.editorTools}
-                    {['pencil', 'line', 'rect', 'select', 'move', 'fill', 'erase', 'pick', 'hand'].map(k => (
+                    {['pencil', 'line', 'rect', 'circle', 'select', 'move', 'fill', 'erase', 'pick', 'hand'].map(k => (
                         <button key={k} type="button" style={btn(tool === k)} data-testid={`bw-pixel-tool-${k}`}
                             onClick={() => this.setState({tool: k})}>{t(locale, `px.${k}`)}</button>
                     ))}
@@ -664,6 +710,18 @@ class PixelArtEditor extends React.Component {
                         data-testid="bw-pixel-clear-selection">{t(locale, 'px.clearSelection')}</button> : null}
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.setState({selection: null})}>
                         {t(locale, 'px.deselect')}</button> : null}
+                    {[
+                        ['flip-h', 'px.flipH', '↔'], ['flip-v', 'px.flipV', '↕'],
+                        ['rotate-ccw', 'px.rotateCCW', '↶'], ['rotate-cw', 'px.rotateCW', '↷']
+                    ].map(([operation, label, symbol]) =>
+                        <button key={operation} type="button" style={btn(false)}
+                            data-testid={`bw-pixel-${operation}`} aria-label={t(locale, label)}
+                            title={t(locale, label)}
+                            disabled={!activeLayer || activeLayer.locked || !activeLayer.visible ||
+                                (operation.startsWith('rotate') && !selection && layers.some(layer => layer.locked)) ||
+                                (operation.startsWith('rotate') && selection &&
+                                (selection.height > w || selection.width > h))}
+                            onClick={() => this.transform(operation)}>{symbol}</button>)}
                     <span style={{fontSize: 12}}>{t(locale, 'px.zoom')} {Math.round(zoom * 100)}%</span>
                 </div>
                 <div style={{display: 'flex', gap: 4, flexWrap: 'wrap'}} role="radiogroup">
