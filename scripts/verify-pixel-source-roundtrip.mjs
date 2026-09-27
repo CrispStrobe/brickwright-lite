@@ -143,10 +143,57 @@ try {
     await page.getByTestId('bw-pixel-add-layer').click();
     const newLayer = page.locator('[data-testid^="bw-pixel-layer-pixels-"]');
     await newLayer.waitFor();
+    await page.getByRole('button', {name: 'Mirror', exact: true}).click();
     await page.getByTestId('bw-pixel-colour-11').click();
-    await page.mouse.click(touchBox.x + touchBox.width * 0.85, touchBox.y + touchBox.height * 0.85);
+    const paintBox = await canvas.boundingBox();
+    const gridHeight = Number(await page.getByTestId('bw-pixel-h').inputValue());
+    const paintCellX = Math.floor((700 - paintBox.x) / paintBox.width * gridWidth);
+    const paintCellY = Math.floor((650 - paintBox.y) / paintBox.height * gridHeight);
+    const paintX = paintBox.x + (paintCellX + 0.5) * paintBox.width / gridWidth;
+    const paintY = paintBox.y + (paintCellY + 0.5) * paintBox.height / gridHeight;
+    await page.mouse.click(paintX, paintY);
     const paintedLayer = await canvas.evaluate(element => element.toDataURL());
     assert.notEqual(paintedLayer, beforeLayer, 'the new layer must paint above the base');
+    console.log('checking wand and lasso selection');
+    await page.getByTestId('bw-pixel-tool-wand').click();
+    const tolerance = page.getByTestId('bw-pixel-wand-tolerance');
+    assert.equal(await tolerance.inputValue(), '0');
+    await tolerance.fill('120');
+    assert.equal(await tolerance.inputValue(), '120');
+    await tolerance.fill('0');
+    await canvas.scrollIntoViewIfNeeded();
+    const wandBox = await canvas.boundingBox();
+    const wandX = wandBox.x + (paintCellX + 0.5) * wandBox.width / gridWidth;
+    const wandY = wandBox.y + (paintCellY + 0.5) * wandBox.height / gridHeight;
+    await page.mouse.click(wandX, wandY);
+    await page.getByTestId('bw-pixel-clear-selection').click();
+    await page.keyboard.press('Escape');
+    assert.ok((await canvas.evaluate(element => element.toDataURL())) === beforeLayer,
+        'the wand must clear the connected colour on the active layer');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    await page.keyboard.press('Escape');
+    assert.ok((await canvas.evaluate(element => element.toDataURL())) === paintedLayer,
+        'Undo must restore pixels cleared with the wand');
+    await page.getByTestId('bw-pixel-tool-lasso').click();
+    await canvas.scrollIntoViewIfNeeded();
+    const lassoBox = await canvas.boundingBox();
+    const lassoCell = lassoBox.width / gridWidth;
+    const lassoX = lassoBox.x + (paintCellX + 0.5) * lassoCell;
+    const lassoY = lassoBox.y + (paintCellY + 0.5) * lassoBox.height / gridHeight;
+    await page.mouse.move(lassoX - lassoCell, lassoY - lassoCell);
+    await page.mouse.down();
+    await page.mouse.move(lassoX + lassoCell, lassoY - lassoCell, {steps: 8});
+    await page.mouse.move(lassoX + lassoCell, lassoY + lassoCell, {steps: 8});
+    await page.mouse.move(lassoX - lassoCell, lassoY + lassoCell, {steps: 8});
+    await page.mouse.up();
+    await page.getByTestId('bw-pixel-clear-selection').click();
+    await page.keyboard.press('Escape');
+    assert.ok((await canvas.evaluate(element => element.toDataURL())) === beforeLayer,
+        'the lasso must clear the traced area on the active layer');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    await page.keyboard.press('Escape');
+    assert.ok((await canvas.evaluate(element => element.toDataURL())) === paintedLayer,
+        'Undo must restore pixels cleared with the lasso');
     const layerId = (await newLayer.getAttribute('data-testid')).replace('bw-pixel-layer-', '');
     await page.getByTestId(`bw-pixel-visibility-${layerId}`).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeLayer,
