@@ -67,6 +67,20 @@ const buildManifest = `${JSON.stringify({
     distributionPolicy
 }, null, 2)}\n`;
 
+/** Emit generated build identity without pretending in-memory bytes are a CopyPlugin path. */
+class BuildManifestPlugin {
+    apply (compiler) {
+        compiler.hooks.thisCompilation.tap('BrickwrightBuildManifest', compilation => {
+            compilation.hooks.processAssets.tap({
+                name: 'BrickwrightBuildManifest',
+                stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL
+            }, () => {
+                compilation.emitAsset('brickwright-build.json', new webpack.sources.RawSource(buildManifest));
+            });
+        });
+    }
+}
+
 // const STATIC_PATH = process.env.STATIC_PATH || '/static';
 
 const baseConfig = new ScratchWebpackConfigBuilder(
@@ -164,12 +178,9 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         'process.env.GTM_ENV_AUTH': `"${process.env.GTM_ENV_AUTH || ''}"`,
         'process.env.GTM_ID': process.env.GTM_ID ? `"${process.env.GTM_ID}"` : null
     }))
+    .addPlugin(new BuildManifestPlugin())
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
-            {
-                from: Buffer.from(buildManifest),
-                to: 'brickwright-build.json'
-            },
             {
                 from: 'node_modules/scratch-blocks/media',
                 to: 'static/blocks-media/default'
