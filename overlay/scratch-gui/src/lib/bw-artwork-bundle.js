@@ -165,19 +165,17 @@ const applyArtwork = (inspection, vm) => {
 };
 
 /**
- * Add edit sources to a normal SB3. project.json and all Scratch assets stay byte-identical.
- * @param {Blob} blob Scratch VM's SB3
+ * Write artwork into an already-open SB3 ZIP, sharing its compression pass.
+ * @param {object} zip Loaded JSZip archive
  * @param {object} vm Loaded Scratch VM
- * @returns {Promise<Blob>} SB3 with optional source entry
+ * @returns {Promise<boolean>} Whether the entry was written
  */
-const attachArtwork = async (blob, vm) => {
+const writeArtworkToZip = async (zip, vm) => {
     try {
-        const JSZip = await loadZip();
-        const zip = await JSZip.loadAsync(await blob.arrayBuffer());
         const project = JSON.parse(await zip.file('project.json').async('text'));
         if (preservedFuture && preservedFuture.signature === costumeSignature(project)) {
             zip.file(ARTWORK_PATH, preservedFuture.raw);
-            return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
+            return true;
         }
         const targets = originals(vm);
         const costumes = [];
@@ -197,14 +195,33 @@ const attachArtwork = async (blob, vm) => {
             }
         }
         zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT, version: ARTWORK_VERSION, costumes}));
-        return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
+        return true;
     } catch (error) {
         // A source failure may not turn a valid Scratch project into an unsaveable one.
         // eslint-disable-next-line no-console
         console.warn('[brickwright] could not attach artwork source', error);
+        return false;
+    }
+};
+
+/**
+ * Standalone helper for callers that have not opened the SB3 ZIP already.
+ * @param {Blob} blob Scratch VM's SB3
+ * @param {object} vm Loaded Scratch VM
+ * @returns {Promise<Blob>} SB3 with optional source entry
+ */
+const attachArtwork = async (blob, vm) => {
+    try {
+        const JSZip = await loadZip();
+        const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+        if (!await writeArtworkToZip(zip, vm)) return blob;
+        return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
+    } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[brickwright] could not repack artwork source', error);
         return blob;
     }
 };
 
 export {ARTWORK_PATH, ARTWORK_FORMAT, ARTWORK_VERSION, inspectArtwork, applyArtwork,
-    attachArtwork, getCostumeDocument, setCostumeDocument, resetCostumeDocument};
+    attachArtwork, writeArtworkToZip, getCostumeDocument, setCostumeDocument, resetCostumeDocument};

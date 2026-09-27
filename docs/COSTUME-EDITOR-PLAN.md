@@ -20,6 +20,7 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 
 - Save and load paths in the browser and native project importer read/write the
   source entry. They leave `project.json` and the Scratch costume assets intact.
+  The browser save writes artwork and other Brickwright state in one ZIP pass.
 - Existing costumes acquire a one-layer source document. Vector edits store an
   editable SVG layer. The palette pixel editor stores dimensions, scale and
   individual palette indices; on reopen it reads those pixels from the source.

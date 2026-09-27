@@ -6,7 +6,7 @@ import {projectTitleInitialState} from '../reducers/project-title';
 import {showStandardAlertWithMessage} from '../reducers/alerts';
 import downloadBlob from '../lib/download-blob';
 import {attachBrickwrightState} from '../lib/bw-project-bundle';
-import {attachArtwork} from '../lib/bw-artwork-bundle';
+import {writeArtworkToZip} from '../lib/bw-artwork-bundle';
 import {packActiveLms} from '../lib/mindstorms-lms';
 /**
  * Project saver component passes a downloadProject function to its child.
@@ -46,8 +46,9 @@ class SB3Downloader extends React.Component {
             // one format serves both directions — see lib/bw-project-bundle.js.
             // It returns the original blob if anything goes wrong: saving the
             // Scratch half beats saving nothing.
-            .then(content => attachBrickwrightState(content))
-            .then(content => attachArtwork(content, this.props.vm))
+            .then(content => attachBrickwrightState(content, {
+                mutateZip: zip => writeArtworkToZip(zip, this.props.vm)
+            }))
             .then(content => (this.props.format === 'lms' ?
                 packActiveLms(content, this.props.projectFilename.replace(/\.sb3$/i, ''),
                     {unchanged: !this.props.projectChanged}) : content))

@@ -53,7 +53,8 @@ const record = (name, ok, detail = '') => {
 
 await mkdir(SHOTS, {recursive: true});
 const {chromium} = await import('playwright');
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.BW_BROWSER ?
+    {executablePath: process.env.BW_BROWSER} : {});
 const errors = [];
 
 const open = async () => {

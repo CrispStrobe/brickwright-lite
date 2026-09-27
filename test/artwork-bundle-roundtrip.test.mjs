@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import JSZip from 'jszip';
 
 const artwork = await import('../overlay/scratch-gui/src/lib/bw-artwork-bundle.js');
+const projectBundle = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
 
 const fixture = async () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="2" height="2"/></svg>';
@@ -100,4 +101,21 @@ test('a malformed artwork source does not replace the usable Scratch rendering',
     const saved = await JSZip.loadAsync(await output.arrayBuffer());
     assert.equal(await saved.file(costume.md5ext).async('text'),
         await zip.file(costume.md5ext).async('text'));
+});
+
+test('one ZIP pass carries both Brickwright state and artwork source', async () => {
+    const {vm, blob, svg, id} = await fixture();
+    const code = JSON.stringify({lang: 'pseudocode', code: 'say hello'});
+    global.localStorage = {length: 1, key: () => 'bw-code-autosave', getItem: () => code};
+    try {
+        const saved = await projectBundle.attachBrickwrightState(blob, {
+            mutateZip: zip => artwork.writeArtworkToZip(zip, vm)
+        });
+        const zip = await JSZip.loadAsync(await saved.arrayBuffer());
+        assert.ok(zip.file(projectBundle.BUNDLE_PATH));
+        assert.ok(zip.file(artwork.ARTWORK_PATH));
+        assert.equal(await zip.file(id).async('text'), svg);
+    } finally {
+        delete global.localStorage;
+    }
 });

@@ -276,7 +276,7 @@ const loadJSZip = async () => {
  * @param {object} options - injectable clock for deterministic archive tests
  * @returns {Promise<Blob>} the blob to hand to the download
  */
-const attachBrickwrightState = async (blob, {now = () => new Date()} = {}) => {
+const attachBrickwrightState = async (blob, {now = () => new Date(), mutateZip = null} = {}) => {
     // Save-what-you-SEE, not what the debounced autosaves last wrote: the
     // circuit autosave only updates on an EDIT, so a loaded-but-untouched
     // example saved the PREVIOUS bench (measured: the screen showed the
@@ -290,14 +290,14 @@ const attachBrickwrightState = async (blob, {now = () => new Date()} = {}) => {
         }
     } catch (e) { /* a listener throwing must never break the save */ }
     const state = collectState();
-    if (Object.keys(state).length === 0 && !preservedBundle) return blob;
+    if (Object.keys(state).length === 0 && !preservedBundle && !mutateZip) return blob;
     try {
         const JSZip = await loadJSZip();
         const zip = await JSZip.loadAsync(await blob.arrayBuffer());
         let document;
         if (preservedBundle?.outcome === 'future') {
             zip.file(BUNDLE_PATH, preservedBundle.text);
-        } else {
+        } else if (Object.keys(state).length || preservedBundle) {
             const previous = preservedBundle?.outcome === 'loaded' ? preservedBundle.document : {};
             const priorState = isRecord(previous.state) ? previous.state : {};
             const unknown = Object.fromEntries(Object.entries(priorState)
@@ -306,6 +306,7 @@ const attachBrickwrightState = async (blob, {now = () => new Date()} = {}) => {
                 savedAt: now().toISOString(), state: {...unknown, ...encodeProjectState(state)}};
         }
         if (document) zip.file(BUNDLE_PATH, JSON.stringify(document));
+        if (mutateZip) await mutateZip(zip);
         return await zip.generateAsync({type: 'blob', compression: 'DEFLATE'});
     } catch (e) {
         // eslint-disable-next-line no-console
