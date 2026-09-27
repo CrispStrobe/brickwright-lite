@@ -31,6 +31,8 @@ test('native proof is bounded and reports the stage that stalled', () => {
     assert.match(proof, /creating Tauri WebDriver session/);
     assert.match(proof, /discovering the editor WebView/);
     assert.match(proof, /starting remote download probe/);
+    assert.match(proof, /readyDeadline = Date\.now\(\) \+ 30000/);
+    assert.match(proof, /Math\.max\(1000, remaining\)/);
     assert.match(proof, /DELETE[\s\S]*5000/);
     assert.match(proof, /\{script: 120000\}/);
     assert.match(proof, /native download probe timed out during/);
