@@ -1827,7 +1827,7 @@ class ControllerPanelView extends React.Component {
                     )}
                 </div>
 
-                <SpikePortMonitor vm={this.props.vm} />
+                <SpikePortMonitor vm={this.props.vm} locale={this.props.locale} />
 
                 {/* Widget canvas: absolute placement from layout.{x,y}, size from
                     layout.{w,h}, rotation + colour + label applied. In EDIT mode

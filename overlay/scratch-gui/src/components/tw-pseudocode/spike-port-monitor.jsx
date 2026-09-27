@@ -1,11 +1,9 @@
 import React from 'react';
-import {useSelector} from 'react-redux';
 import snapshotSpikePorts, {isSpikeExtensionLoaded, spikeText} from '../../lib/spike-port-snapshot.js';
 
 const EMPTY = {mode: 'offline', connected: false, ports: []};
 
-const SpikePortMonitor = ({vm}) => {
-    const locale = useSelector(state => state.locales.locale);
+const SpikePortMonitor = ({vm, locale}) => {
     const [snapshot, setSnapshot] = React.useState(EMPTY);
     const [expanded, setExpanded] = React.useState(false);
     const [loaded, setLoaded] = React.useState(() => isSpikeExtensionLoaded(vm));

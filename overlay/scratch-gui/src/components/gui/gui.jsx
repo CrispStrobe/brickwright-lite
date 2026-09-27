@@ -1197,6 +1197,7 @@ const GUIComponent = props => {
                                             board={board}
                                             vm={vm}
                                             machineConsole={machineConsole}
+                                            locale={intl.locale}
                                             isFullScreen={isFullScreen}
                                             onExitFullScreen={props.onExitFullScreen}
                                         />
