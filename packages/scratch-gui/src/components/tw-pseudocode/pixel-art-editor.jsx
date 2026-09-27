@@ -186,6 +186,7 @@ class PixelArtEditor extends React.Component {
         return (
             <div data-testid="bw-pixel-editor" style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 12, height: '100%', boxSizing: 'border-box', overflow: 'auto'}}>
                 <div style={{display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center'}}>
+                    {this.props.editorTools}
                     {['pencil', 'fill', 'erase', 'pick'].map(k => (
                         <button key={k} type="button" style={btn(tool === k)} data-testid={`bw-pixel-tool-${k}`}
                             onClick={() => this.setState({tool: k})}>{t(locale, `px.${k}`)}</button>
@@ -230,6 +231,7 @@ class PixelArtEditor extends React.Component {
 
 PixelArtEditor.propTypes = {
     costumeIndex: PropTypes.number,
+    editorTools: PropTypes.node,
     locale: PropTypes.string,
     vm: PropTypes.shape({editingTarget: PropTypes.object, updateSvg: PropTypes.func})
 };

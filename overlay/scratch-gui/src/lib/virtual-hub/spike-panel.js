@@ -14,11 +14,24 @@ const element = (tag, attributes = {}, text = '') => {
 export const applyVirtualPortInput = (hubState, port, kind, value) => {
     const number = Number(value);
     if (kind === 'motor') hubState.setPort(port, kind, {speed: number, position: 0});
+    else if (kind === 'boostMotor') hubState.setPort(port, kind, {deviceId: 38, duty: number});
+    else if (kind === 'boostColorDistance') hubState.setPort(port, kind, {deviceId: 37, color: number});
     else if (kind === 'distance') hubState.setPort(port, kind, {distance: number});
     else if (kind === 'color') hubState.setPort(port, kind, {color: number, red: 0, green: 0, blue: 0});
     else if (kind === 'force') hubState.setPort(port, kind, {force: number, pressed: number > 0});
     else if (kind === 'matrix3') hubState.setPort(port, kind, {pixels: Array(9).fill(number)});
     else hubState.setPort(port, 'none');
+};
+
+export const loadSpikeTestRig = hubState => {
+    hubState.setFirmwareTarget('official-v3');
+    hubState.setPort('A', 'boostMotor', {deviceId: 38, duty: 0});
+    hubState.setPort('B', 'force', {deviceId: 63, force: 0, pressed: false});
+    hubState.setPort('C', 'color', {deviceId: 61, color: -1, red: 0, green: 0, blue: 0});
+    hubState.setPort('D', 'motor', {deviceId: 75, speed: 0, position: 0});
+    hubState.setPort('E', 'motor', {deviceId: 65, speed: 0, position: 0});
+    hubState.setPort('F', 'boostColorDistance', {deviceId: 37, color: -1});
+    hubState.setSimulationEnabled(true);
 };
 
 export const closeVirtualSpikePanel = () => {
@@ -87,6 +100,8 @@ export const openVirtualSpikePanel = hubState => {
     const refreshBrick = () => hubState.data.sensors.forEach((sensor, index) => {
         if (!sensor) portLabels[index].textContent = 'empty';
         else if (sensor.kind === 'motor') portLabels[index].textContent = `motor ${hubState.data.motors[index].speed}%`;
+        else if (sensor.kind === 'boostMotor') portLabels[index].textContent = 'Boost motor';
+        else if (sensor.kind === 'boostColorDistance') portLabels[index].textContent = 'Boost sensor';
         else if (sensor.kind === 'distance') portLabels[index].textContent = `${sensor.distance ?? -1} mm`;
         else if (sensor.kind === 'force') portLabels[index].textContent = `force ${sensor.force ?? 0}%`;
         else portLabels[index].textContent = sensor.kind;
@@ -95,9 +110,11 @@ export const openVirtualSpikePanel = hubState => {
     const unsubscribe = hubState.subscribe(refreshBrick);
 
     const grid = element('div', {style: 'display:grid;grid-template-columns:40px 140px 1fr;gap:8px;margin-top:14px'});
-    for (const port of 'ABCDEF') {
+    const portControls = [];
+    for (const [index, port] of [...'ABCDEF'].entries()) {
         const kind = element('select', {'aria-label': `Port ${port} device type`});
-        for (const name of ['none', 'motor', 'distance', 'color', 'force', 'matrix3']) {
+        for (const name of ['none', 'motor', 'boostMotor', 'distance', 'color', 'force',
+            'matrix3', 'boostColorDistance']) {
             kind.appendChild(element('option', {value: name}, name));
         }
         const value = element('input', {type: 'number', value: '0', min: '-1000', max: '1000',
@@ -106,9 +123,24 @@ export const openVirtualSpikePanel = hubState => {
         kind.addEventListener('change', apply);
         value.addEventListener('input', apply);
         focusable.push(kind, value);
+        portControls.push({kind, value, index});
         grid.append(element('strong', {}, port), kind, value);
     }
     card.appendChild(grid);
+    const preset = element('button', {type: 'button', style: 'margin-top:10px;padding:7px 12px'},
+        'Load A–F test setup');
+    preset.addEventListener('click', () => {
+        loadSpikeTestRig(hubState);
+        enabled.checked = true;
+        profile.value = 'official-v3';
+        for (const {kind, value, index} of portControls) {
+            const sensor = hubState.data.sensors[index];
+            kind.value = sensor?.kind || 'none';
+            value.value = String(sensor?.speed ?? sensor?.force ?? sensor?.color ?? sensor?.duty ?? 0);
+        }
+    });
+    focusable.push(preset);
+    card.appendChild(preset);
 
     const imu = element('div', {style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px'});
     for (const axis of ['yaw', 'pitch', 'roll']) {

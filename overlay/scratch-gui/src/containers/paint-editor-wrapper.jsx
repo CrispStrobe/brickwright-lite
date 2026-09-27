@@ -150,6 +150,7 @@ class PaintEditorWrapper extends React.Component {
 PaintEditorWrapper.propTypes = {
     imageFormat: PropTypes.string.isRequired,
     imageId: PropTypes.string.isRequired,
+    editorTools: PropTypes.node,
     installReducer: PropTypes.func,
     name: PropTypes.string,
     rotationCenterX: PropTypes.number,

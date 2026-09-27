@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = '../overlay/scratch-gui/src/lib/virtual-hub/';
 const {default: HubState} = await import(resolve(here, `${root}spike-hub-state.js`));
-const {applyVirtualPortInput, openVirtualSpikePanel, closeVirtualSpikePanel} =
+const {applyVirtualPortInput, loadSpikeTestRig, openVirtualSpikePanel, closeVirtualSpikePanel} =
     await import(resolve(here, `${root}spike-panel.js`));
 
 test('dashboard inputs update the shared neutral state', () => {
@@ -20,6 +20,19 @@ test('dashboard inputs update the shared neutral state', () => {
     state.setFirmwareTarget('legacy-v2');
     assert.equal(state.data.firmwareTarget, 'legacy-v2');
     assert.equal(state.data.simulationEnabled, false);
+});
+
+test('the A-F test rig is simulated without claiming unsupported Boost devices are SPIKE devices', () => {
+    const state = new HubState();
+    loadSpikeTestRig(state);
+    assert.equal(state.data.simulationEnabled, true);
+    assert.equal(state.data.firmwareTarget, 'official-v3');
+    assert.deepEqual(state.data.sensors.map(sensor => sensor.kind),
+        ['boostMotor', 'force', 'color', 'motor', 'motor', 'boostColorDistance']);
+    assert.equal(state.data.sensors[0].deviceId, 38);
+    assert.equal(state.data.sensors[5].deviceId, 37);
+    assert.equal(state.data.sensors[3].deviceId, 75);
+    assert.equal(state.data.sensors[4].deviceId, 65);
 });
 
 test('reopening and closing the dashboard releases its state subscription', () => {

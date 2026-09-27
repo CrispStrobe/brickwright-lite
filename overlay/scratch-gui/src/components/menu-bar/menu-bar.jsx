@@ -27,6 +27,7 @@ import AuthorInfo from './author-info.jsx';
 import AccountNav from '../../containers/account-nav.jsx';
 import LoginDropdown from './login-dropdown.jsx';
 import SB3Downloader from '../../containers/sb3-downloader.jsx';
+import {clearActiveLms, hasActiveLms} from '../../lib/mindstorms-lms';
 import DeletionRestorer from '../../containers/deletion-restorer.jsx';
 import TurboMode from '../../containers/turbo-mode.jsx';
 import MenuBarHOC from '../../containers/menu-bar-hoc.jsx';
@@ -226,6 +227,7 @@ class MenuBar extends React.Component {
         );
         this.props.onRequestCloseFile();
         if (readyToReplaceProject) {
+            clearActiveLms();
             this.props.onClickNew(this.props.canSave && this.props.canCreateNew);
         }
         this.props.onRequestCloseFile();
@@ -564,6 +566,17 @@ class MenuBar extends React.Component {
                                                 />
                                             </MenuItem>
                                         )}</SB3Downloader>
+                                        {hasActiveLms() && (
+                                            <SB3Downloader format="lms">{(className, downloadProjectCallback) => (
+                                                <MenuItem className={className}
+                                                    onClick={this.getSaveToComputerHandler(downloadProjectCallback)}>
+                                                    <FormattedMessage
+                                                        defaultMessage="Save as LEGO MINDSTORMS (.lms)"
+                                                        id="gui.menuBar.downloadMindstormsLms"
+                                                    />
+                                                </MenuItem>
+                                            )}</SB3Downloader>
+                                        )}
                                         {isNativeApp() && (
                                             <MenuItem onClick={this.handleOpenOfflineLibrary}>
                                                 <FormattedMessage

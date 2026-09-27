@@ -270,7 +270,7 @@ try {
     page = await open();
     await page.getByText('File', {exact: true}).click();
     await page.getByText('Load from your computer', {exact: true}).click();
-    await page.locator('body > input[type="file"][accept=".sb,.sb2,.sb3"]').setInputFiles(saved);
+    await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(saved);
     // The load is done when the costumes are back and carry their asset bytes —
     // which is precisely what the checks below read.
     await page.waitForFunction(n => {

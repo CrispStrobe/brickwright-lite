@@ -63,6 +63,7 @@ import PaneDivider from './pane-divider.jsx';
 import PaneStrip from './pane-strip.jsx';
 import {computePaneStyles, isCollapsed} from '../../lib/pane-sizes.js';
 import {setPaneSize} from '../../reducers/pane-layout';
+import {setFullScreen} from '../../reducers/mode';
 import CostumeLibrary from '../../containers/costume-library.jsx';
 import BackdropLibrary from '../../containers/backdrop-library.jsx';
 import Watermark from '../../containers/watermark.jsx';
@@ -1196,6 +1197,9 @@ const GUIComponent = props => {
                                             board={board}
                                             vm={vm}
                                             machineConsole={machineConsole}
+                                            locale={intl.locale}
+                                            isFullScreen={isFullScreen}
+                                            onExitFullScreen={props.onExitFullScreen}
                                         />
                                     </div>
                                 </React.Suspense>
@@ -1259,6 +1263,7 @@ GUIComponent.propTypes = {
     onClickLogo: PropTypes.func,
     onCloseAccountNav: PropTypes.func,
     onExtensionButtonClick: PropTypes.func,
+    onExitFullScreen: PropTypes.func,
     onLogOut: PropTypes.func,
     onOpenRegistration: PropTypes.func,
     onRequestCloseBackdropLibrary: PropTypes.func,
@@ -1315,7 +1320,8 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-    onSetPaneSize: (column, size) => dispatch(setPaneSize(column, size))
+    onSetPaneSize: (column, size) => dispatch(setPaneSize(column, size)),
+    onExitFullScreen: () => dispatch(setFullScreen(false))
 });
 
 export default injectIntl(connect(

@@ -5,6 +5,7 @@ import VM from 'scratch-vm';
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
 
 import extensionLibraryContent from '../lib/libraries/extensions/index.jsx';
+import {getLegacySpikeVisible, LEGACY_SPIKE_CHANGE_EVENT} from '../lib/spike-legacy-debug';
 
 import LibraryComponent from '../components/library/library.jsx';
 import extensionIcon from '../components/action-menu/icon--sprite.svg';
@@ -133,14 +134,22 @@ class ExtensionLibrary extends React.PureComponent {
     constructor (props) {
         super(props);
         bindAll(this, [
-            'handleItemSelect'
+            'handleItemSelect',
+            'handleLegacySpikeChange'
         ]);
-        this.state = {gallery: [], galleryError: null};
+        this.state = {gallery: [], galleryError: null, showLegacySpike: getLegacySpikeVisible()};
     }
     componentDidMount () {
+        window.addEventListener(LEGACY_SPIKE_CHANGE_EVENT, this.handleLegacySpikeChange);
         fetchGallery()
             .then(gallery => this.setState({gallery}))
             .catch(err => this.setState({galleryError: err.message}));
+    }
+    componentWillUnmount () {
+        window.removeEventListener(LEGACY_SPIKE_CHANGE_EVENT, this.handleLegacySpikeChange);
+    }
+    handleLegacySpikeChange () {
+        this.setState({showLegacySpike: getLegacySpikeVisible()});
     }
     // Locale-aware message: German from DE_MESSAGES when the editor is set to Deutsch, else the
     // react-intl (English defaultMessage) string. Handles simple {placeholder} interpolation.
@@ -153,6 +162,7 @@ class ExtensionLibrary extends React.PureComponent {
     }
     handleItemSelect (item) {
         if (item.disabled) return;
+        if (item.legacySpikeDebug && !getLegacySpikeVisible()) return;
         const em = this.props.vm.extensionManager;
         const id = item.extensionId;
         let url = item.extensionURL || id;
@@ -174,7 +184,7 @@ class ExtensionLibrary extends React.PureComponent {
         }
         const done = () => (id ? this.props.onCategorySelected(id) : this.props.onRequestClose());
         if (em.isExtensionLoaded(url)) { done(); return; }
-        em.loadExtensionURL(url).then(done).catch(e => {
+        em.loadExtensionURL(url, item.legacySpikeDebug ? {legacySpikeDebug: true} : undefined).then(done).catch(e => {
             // eslint-disable-next-line no-alert
             alert(this.msg(messages.loadFailed, {url, error: String((e && e.message) || e)}));
         });
@@ -183,6 +193,7 @@ class ExtensionLibrary extends React.PureComponent {
         // bundled built-ins first, then the fetched gallery — minus any gallery entry whose id we
         // already bundle (e.g. planetemaths, arrays), so they don't appear twice.
         const bundledIds = new Set(extensionLibraryContent.map(e => e.extensionId).filter(Boolean));
+        const bundled = extensionLibraryContent.filter(e => !e.legacySpikeDebug || this.state.showLegacySpike);
         const gallery = this.state.gallery.filter(e => !bundledIds.has(e.extensionId));
         // "Extension from URL" action tile (TurboWarp/Xcratch-style direct load), first in the list.
         const customEntry = {
@@ -194,7 +205,7 @@ class ExtensionLibrary extends React.PureComponent {
             tags: ['gallery'],
             featured: true
         };
-        const allExtensions = [customEntry].concat(extensionLibraryContent, gallery);
+        const allExtensions = [customEntry].concat(bundled, gallery);
         const extensionLibraryThumbnailData = allExtensions.map(extension => ({
             rawURL: extension.iconURL || extensionIcon,
             ...extension

@@ -102,32 +102,35 @@ test('the manager resolves a legacy id before it looks anything up', () => {
     }
 });
 
-test('the four retired ids no longer name a loadable module', () => {
+test('the four retired ids have opt-in loadable modules', () => {
     for (const legacyId of migration.LEGACY_IDS) {
         assert.ok(
-            !managerSource.includes(`extensions/crispstrobe/${legacyId}/index.js`),
-            `${legacyId} is still imported; it should resolve to spikeprime instead`);
+            managerSource.includes(`extensions/crispstrobe/${legacyId}/index.js`),
+            `${legacyId} has no opt-in lazy import`);
     }
     assert.ok(managerSource.includes('extensions/crispstrobe/spikeprime/index.js'),
         'the unified extension must still be imported');
 });
 
-test('the retired bundles are gone from the tree', () => {
+test('the retired bundles are pinned in the tree for opt-in diagnosis', () => {
     for (const legacyId of migration.LEGACY_IDS) {
         const path = resolve(root, `overlay/scratch-vm/src/extensions/crispstrobe/${legacyId}`);
-        assert.throws(() => readFileSync(resolve(path, 'index.js')),
-            `${legacyId} still has a bundle; two extensions would answer to one hub`);
+        assert.match(readFileSync(resolve(path, 'index.js'), 'utf8'), /module\.exports = makeExt\(/);
     }
 });
 
-test('the picker offers one SPIKE entry, not five', () => {
+test('the picker offers archived SPIKE drivers only through the debug toggle', () => {
     const library = readFileSync(
         resolve(root, 'overlay/scratch-gui/src/lib/libraries/extensions/index.jsx'), 'utf8');
+    const picker = readFileSync(
+        resolve(root, 'overlay/scratch-gui/src/containers/extension-library.jsx'), 'utf8');
     const entries = [...library.matchAll(/extensionId: '([^']+)'/g)].map(m => m[1]);
     const spike = entries.filter(id =>
         id === migration.UNIFIED_ID || migration.LEGACY_IDS.includes(id));
-    assert.deepEqual(spike, [migration.UNIFIED_ID],
-        'the library should list the unified extension and none of the retired ids');
+    assert.deepEqual(new Set(spike), new Set([migration.UNIFIED_ID, ...migration.LEGACY_IDS]));
+    assert.match(picker, /!e\.legacySpikeDebug \|\| this\.state\.showLegacySpike/);
+    assert.match(picker, /legacySpikeDebug: true/);
+    assert.match(managerSource, /options\.legacySpikeDebug === true/);
 });
 
 test('the load-time migration is installed on the VM, not at each call site', () => {

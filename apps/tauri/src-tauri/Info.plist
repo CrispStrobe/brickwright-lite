@@ -23,7 +23,7 @@
   <key>NSCameraUsageDescription</key>
   <string>Brickwright uses the camera for Video Sensing, photo projects such as LEGO scanners, and photographing costumes.</string>
   <key>NSLocalNetworkUsageDescription</key>
-  <string>Brickwright can temporarily share a selected project, code file, photo, or scan archive with a computer on your local network.</string>
+  <string>Brickwright connects to a Mac on your local network to control a USB LEGO hub and to share selected projects and files.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Brickwright uses the microphone for the loudness/sound blocks and to record sounds.</string>
   <key>NSSpeechRecognitionUsageDescription</key>

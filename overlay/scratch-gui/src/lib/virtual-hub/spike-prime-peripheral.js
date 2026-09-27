@@ -172,7 +172,8 @@ export class VirtualSpikePrimePeripheral {
     setPort (port, kind, value = {}) {
         const index = typeof port === 'string' ? 'ABCDEF'.indexOf(port.toUpperCase()) : Number(port);
         if (!Number.isInteger(index) || index < 0 || index > 5) throw new RangeError('SPIKE port must be A-F or 0-5');
-        const allowed = new Set(['motor', 'color', 'distance', 'force', 'matrix3', 'none']);
+        const allowed = new Set(['motor', 'boostMotor', 'color', 'distance', 'force',
+            'matrix3', 'boostColorDistance', 'none']);
         if (!allowed.has(kind)) throw new TypeError(`unsupported virtual SPIKE port kind: ${kind}`);
         this.hubState.setPort(index, kind, value);
     }

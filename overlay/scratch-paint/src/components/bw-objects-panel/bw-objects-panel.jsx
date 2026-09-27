@@ -7,6 +7,18 @@ import {Eye, Padlock} from '../bw-properties-panel/bw-icons.jsx';
 
 import styles from './bw-objects-panel.css';
 
+const objectLabel = (object, locale) => {
+    if (object.name) return object.name;
+    const labels = {'Rounded rectangle': 'roundedRectangle', Rectangle: 'rectangle', Triangle: 'triangle',
+        Ellipse: 'ellipse', Line: 'line', Polygon: 'polygon', Star: 'star', Shape: 'shapeObject',
+        Group: 'groupObject', Image: 'imageObject', 'Compound path': 'compoundPath', Text: 'textObject',
+        Object: 'object'};
+    const match = /^(.*?)(?: \((\d+) (sides|points)\))?$/.exec(object.label);
+    if (!match || !labels[match[1]]) return object.label;
+    const label = tx(locale, labels[match[1]]);
+    return match[2] ? `${label} (${match[2]} ${tx(locale, match[3])})` : label;
+};
+
 /**
  * Brickwright: the objects tree.
  *
@@ -17,6 +29,7 @@ import styles from './bw-objects-panel.css';
 const ObjectRow = props => {
     const {locale, object} = props;
     const t = key => tx(locale, key);
+    const label = objectLabel(object, locale);
 
     return (
         <li
@@ -53,7 +66,7 @@ const ObjectRow = props => {
                     autoFocus
                     className={styles.rowInput}
                     defaultValue={object.name}
-                    placeholder={object.label}
+                    placeholder={label}
                     onBlur={event => props.onRename(event.target.value)}
                     onKeyDown={event => {
                         if (event.key === 'Enter') event.target.blur();
@@ -68,7 +81,7 @@ const ObjectRow = props => {
                     onClick={props.onSelect}
                     onDoubleClick={props.onStartRename}
                 >
-                    {object.label}
+                    {label}
                 </button>
             }
         </li>

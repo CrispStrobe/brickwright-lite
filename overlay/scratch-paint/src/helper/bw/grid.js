@@ -44,6 +44,9 @@ const getGridSettings = function () {
 
 /** Remove the drawn grid, if any. */
 const clearGrid = function () {
+    // Paper tears the project down before React unmounts this layer when the
+    // user leaves Costumes. There is no guide layer left to clean in that case.
+    if (!paper.project) return;
     const layer = getGuideLayer();
     for (const child of layer.children.slice()) {
         if (child.data && child.data[GRID_TAG]) child.remove();
