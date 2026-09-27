@@ -60,6 +60,10 @@ const L10N = {
         stepHint: 'Run to the next block boundary',
         serialHint: 'type a line, Enter sends it',
         serialSend: 'Send this line to the machine (ends with CR)',
+        modem: 'Blinkenrocket audio modem',
+        modemHint: 'message for the badge',
+        modemSend: 'Encode and transmit this message on PA0/ADC6',
+        modemSent: 'transmitted',
         firmwareRunning: 'running',
         firmwareBack: 'Blocks',
         firmwareBackTitle: 'Stop running this image and go back to debugging the blocks program',
@@ -104,6 +108,10 @@ const L10N = {
         stepHint: 'Bis zur nächsten Blockgrenze laufen',
         serialHint: 'Zeile eingeben, Enter sendet',
         serialSend: 'Diese Zeile an die Maschine senden (endet mit CR)',
+        modem: 'Blinkenrocket-Audiomodem',
+        modemHint: 'Nachricht für das Badge',
+        modemSend: 'Diese Nachricht kodieren und an PA0/ADC6 senden',
+        modemSent: 'gesendet',
         firmwareRunning: 'läuft',
         firmwareBack: 'Blöcke',
         firmwareBackTitle: 'Dieses Abbild beenden und wieder das Blockprogramm debuggen',
@@ -156,7 +164,8 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
-            machineConfig: null, serialInput: '', firmwareName: null,
+            machineConfig: null, serialInput: '', modemInput: '', modemStatus: null,
+            firmwareName: null,
             recordingStatus: null, reverseStatus: null, timelineStatus: null,
             sessionTransferStatus: null};
         this.onStart = this.onStart.bind(this);
@@ -170,6 +179,9 @@ class DebugPanel extends React.Component {
         this.onSerialInput = this.onSerialInput.bind(this);
         this.onSerialKeyDown = this.onSerialKeyDown.bind(this);
         this.onSerialSend = this.onSerialSend.bind(this);
+        this.onModemInput = this.onModemInput.bind(this);
+        this.onModemKeyDown = this.onModemKeyDown.bind(this);
+        this.onModemSend = this.onModemSend.bind(this);
         this.onRecord = this.onRecord.bind(this);
         this.onCheckpoint = this.onCheckpoint.bind(this);
         this.onRestoreLast = this.onRestoreLast.bind(this);
@@ -758,6 +770,26 @@ class DebugPanel extends React.Component {
         this.setState({serialInput: ''});
     }
 
+    onModemInput (e) { this.setState({modemInput: e.target.value, modemStatus: null}); }
+
+    onModemKeyDown (e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        this.onModemSend();
+    }
+
+    async onModemSend () {
+        const runner = this.state.runner;
+        const message = this.state.modemInput;
+        if (!runner || typeof runner.sendBlinkenrocket !== 'function' || !message) return;
+        try {
+            const result = await runner.sendBlinkenrocket(message);
+            this.setState({modemInput: '', modemStatus: result});
+        } catch (error) {
+            this.setState({modemStatus: {accepted: false, reason: error.message}});
+        }
+    }
+
     onPause () { if (this.state.runner) this.state.runner.pause(); }
     onStop () { if (this.state.runner) this.state.runner.stop(); }
     async onStep () { (await this.runner()).step('block'); }
@@ -983,6 +1015,8 @@ class DebugPanel extends React.Component {
         // input line rather than a dead one.
         const canSendSerial = !!(this.state.runner &&
             typeof this.state.runner.sendSerial === 'function');
+        const canSendBlinkenrocket = !!(this.state.runner &&
+            typeof this.state.runner.sendBlinkenrocket === 'function');
         const recording = this.state.runner && this.state.runner.debugRecordingStatus();
         const recordingCaps = caps && (caps.recording || []);
         const canCheckpoint = !!(recordingCaps && recordingCaps.includes('checkpoint'));
@@ -1655,6 +1689,50 @@ class DebugPanel extends React.Component {
                                     onClick={this.onSerialSend}
                                     title={this.tx('serialSend')}
                                 >{'⏎'}</button>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {/* Blinkenrocket has no command UART. Its phone/web editor
+                    sends an FSK audio packet to PA0/ADC6, so present that
+                    hardware input as its own debugger capability. */}
+                {canSendBlinkenrocket ? (
+                    <div data-testid="bw-blinkenrocket-modem"
+                        style={{borderTop: '1px solid #2c3e50', paddingTop: 8}}>
+                        <div style={{color: '#7f8c8d', marginBottom: 4}}>
+                            {this.tx('modem')}
+                        </div>
+                        <div style={{display: 'flex', gap: 6, alignItems: 'center'}}>
+                            <input
+                                data-testid="bw-blinkenrocket-modem-input"
+                                type="text"
+                                value={this.state.modemInput}
+                                onChange={this.onModemInput}
+                                onKeyDown={this.onModemKeyDown}
+                                placeholder={this.tx('modemHint')}
+                                aria-label={this.tx('modemSend')}
+                                style={{
+                                    flex: '1 1 auto', minWidth: 0, padding: '4px 6px',
+                                    background: '#0d1117', color: '#f1c40f',
+                                    border: '1px solid #2c3e50', borderRadius: 4,
+                                    fontFamily: 'monospace', fontSize: 11
+                                }}
+                            />
+                            <button
+                                data-testid="bw-blinkenrocket-modem-send"
+                                style={{...BTN, padding: '3px 10px'}}
+                                disabled={!this.state.modemInput}
+                                onClick={this.onModemSend}
+                                title={this.tx('modemSend')}
+                            >{'▶'}</button>
+                        </div>
+                        {this.state.modemStatus ? (
+                            <div data-testid="bw-blinkenrocket-modem-status"
+                                style={{fontSize: 10, color: this.state.modemStatus.accepted ? '#2ecc71' : '#e74c3c'}}>
+                                {this.state.modemStatus.accepted ?
+                                    `${this.tx('modemSent')} (${this.state.modemStatus.samples} samples)` :
+                                    this.state.modemStatus.reason}
                             </div>
                         ) : null}
                     </div>

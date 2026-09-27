@@ -9,7 +9,7 @@ const bwb = path.join(root, 'node_modules/bw-board/src');
 const examples = path.join(root, 'overlay/scratch-gui/examples');
 const structuralKinds = new Set(['breadboard', 'vcc', 'gnd']);
 const mcuKinds = new Set(['mcu', 'stc_mcu', 'stc15_mcu', 'arduino_uno', 'arduino_nano',
-    'arduino_mega', 'pi_pico', 'attiny85', 'attiny88']);
+    'arduino_mega', 'pi_pico', 'attiny85', 'attiny88', 'attiny88_qfn32']);
 
 const circuitFiles = () => {
     const result = [];

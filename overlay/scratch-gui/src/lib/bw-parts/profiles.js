@@ -215,7 +215,7 @@ export const PROGRAMMABLE = Object.freeze([
  */
 export const REFUSED = Object.freeze({
     host: [
-        'arduino_mega', 'arduino_nano', 'arduino_uno', 'attiny85', 'attiny88',
+        'arduino_mega', 'arduino_nano', 'arduino_uno', 'attiny85', 'attiny88', 'attiny88_qfn32',
         'eater6502', 'pi_pico', 'stc15_mcu', 'stm32f030', 'w65c02', 'z80',
         'i8086', 'i8088', 'mcu',
         // The MakeCode boards (bw-board #44): a MakeCode program drives them

@@ -1690,6 +1690,33 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff));
         }
 
+        // The real Blinkenrocket receives messages as audio on PA0/ADC6, not
+        // through a UART. Keep the modem encoder lazy with the AVR engine and
+        // expose it only when the loaded circuit contains the named PCM source.
+        // The firmware itself remains user-supplied; this is merely the MIT
+        // waveform encoder feeding our permissively licensed circuit engine.
+        const modemSource = avrKind === 'attiny88' &&
+            board.getParts().find(part => part.id === 'modemIn' &&
+                part.kind === 'vsource' && part.params?.wave === 'pcm');
+        if (modemSource) {
+            runner.sendBlinkenrocket = async (text) => {
+                const {encodeTextMessage, MODEM_RATE} = await import(
+                    /* webpackChunkName: "bw-blinkenrocket-modem" */
+                    'bw-board/blinkenrocket-modem.js');
+                const samples = encodeTextMessage(String(text), {sync: 200});
+                const start = (Number(board.getTime()) / 1e9) + 0.002;
+                board.setPartParam('modemIn', 'rate', MODEM_RATE);
+                board.setPartParam('modemIn', 'gain', 2);
+                board.setPartParam('modemIn', 'offset', 2.5);
+                board.setPartParam('modemIn', 'start', start);
+                // Set samples last: that single update makes a repeated message
+                // observable immediately with the new board-time start.
+                board.setPartParam('modemIn', 'samples', samples);
+                return {accepted: true, samples: samples.length,
+                    durationSeconds: samples.length / MODEM_RATE};
+            };
+        }
+
         // Same value-resolver and variable wiring as the emu8051 path.
         setValueResolver((blockId) => runner.valuesAtBlock(blockId));
         if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
