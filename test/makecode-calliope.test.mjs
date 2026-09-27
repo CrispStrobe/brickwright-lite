@@ -159,13 +159,15 @@ test('Calliope-only hardware is named, not merely refused', () => {
 });
 
 test('music.beat is a duration the tone block accepts', () => {
-    // `music.playTone(440, music.beat(BeatFraction.Half))` — the MS slot
-    // takes a literal, and beat() is a Call, so the check has to ask what
-    // the expression BECAME rather than what shape it arrived in.
+    // `music.playTone(440, music.beat(BeatFraction.Half))`. The MS slot used
+    // to take a literal, so beat() was frozen to its 120 bpm length (250) —
+    // right until the program changed the tempo, and lost on the way back to
+    // MakeCode. Since sb3-creator's MakeCode batch 2 the slot takes an
+    // expression and `beat half` is MakeCode's music.beat itself.
     const {code, unsupported} = microbitToPseudocode(
         forever('  music.playTone(440, music.beat(BeatFraction.Half))'));
     assert.deepEqual(unsupported, []);
-    assert.match(code, /play tone 440 hz for 250 ms/);
+    assert.match(code, /play tone 440 hz for \(beat half\) ms/);
 });
 
 // ── the TypeScript the Calliope editor emits ────────────────────────────

@@ -179,6 +179,43 @@ function taggedName (node) {
     return parts.join('.');
 }
 
+/** Collects `a.b(` and `f(` call names from a token stream the parser is skipping. */
+class CallSpotter {
+    constructor () {
+        this.tokens = [];
+    }
+
+    push (t) {
+        this.tokens.push(t);
+    }
+
+    calls () {
+        const out = new Set();
+        const tk = this.tokens;
+        for (let i = 0; i < tk.length; i++) {
+            if (!(tk[i].type === 'punct' && tk[i].value === '(')) continue;
+            let j = i - 1;
+            const parts = [];
+            while (j >= 0 && tk[j].type === 'ident') {
+                parts.unshift(tk[j].value);
+                if (j >= 1 && tk[j - 1].type === 'punct' && tk[j - 1].value === '.') j -= 2;
+                else break;
+            }
+            // A method DEFINITION (`show() {`, `get kind(): number {`) is not a call.
+            let depth = 0;
+            let k = i;
+            for (; k < tk.length; k++) {
+                if (tk[k].type === 'punct' && tk[k].value === '(') depth++;
+                if (tk[k].type === 'punct' && tk[k].value === ')' && --depth === 0) break;
+            }
+            const after = tk[k + 1];
+            const isDefinition = parts.length === 1 && after && after.type === 'punct' && (after.value === '{' || after.value === ':');
+            if (parts.length && !isDefinition) out.add(parts.join('.'));
+        }
+        return [...out];
+    }
+}
+
 class Parser {
     constructor (tokens) {
         this.toks = tokens;
@@ -279,11 +316,21 @@ class Parser {
         if (this.at('for')) return this.parseFor();
         if (this.at('enum')) return this.parseEnum();
         if (this.at('namespace')) return this.parseNamespace();
-        if (this.at('interface') || this.at('type') || this.at('class')) {
-            // Declarations with no runtime behaviour we can express.
+        if (this.at('interface') || this.at('type')) {
+            // Declarations with no runtime behaviour.
             this.next();
             this.skipBalanced();
             return null;
+        }
+        if (this.at('class')) {
+            // A class HAS behaviour, which we cannot express — so it is kept
+            // as a node the translator names, with the calls inside it, rather
+            // than dropped in silence (census 2026-09-27: control.createBuffer
+            // and radio.sendBuffer vanished inside one).
+            this.next();
+            const name = this.at('ident') ? this.peek().value : '';
+            const calls = this.skipBalanced();
+            return {type: 'Class', name, calls};
         }
         if (this.at('return')) {
             this.next();
@@ -310,16 +357,20 @@ class Parser {
     }
 
     /** Step over a `{...}` (or `(...)`) group whose contents we ignore. */
+    /** Skip to the end of a braced body; returns the dotted calls (`a.b(`) seen in it. */
     skipBalanced () {
-        while (!this.at('punct', '{') && !this.at('eof') && !this.at('punct', ';')) this.next();
-        if (this.eat('punct', ';')) return;
+        const seen = new CallSpotter();
+        while (!this.at('punct', '{') && !this.at('eof') && !this.at('punct', ';')) seen.push(this.next());
+        if (this.eat('punct', ';')) return seen.calls();
         let depth = 0;
         do {
             const t = this.next();
+            seen.push(t);
             if (t.type === 'punct' && t.value === '{') depth++;
             if (t.type === 'punct' && t.value === '}') depth--;
-            if (t.type === 'eof') return;
+            if (t.type === 'eof') return seen.calls();
         } while (depth > 0);
+        return seen.calls();
     }
 
     parseDeclaration () {
@@ -454,7 +505,7 @@ class Parser {
     }
 
     parseAssignment () {
-        const left = this.parseBinary(0);
+        const left = this.parseConditional();
         for (const op of ['=', '+=', '-=', '*=', '/=']) {
             if (this.at('punct', op)) {
                 this.next();
@@ -463,6 +514,21 @@ class Parser {
             }
         }
         return left;
+    }
+
+    /**
+     * `test ? a : b`. It was not read at all: the parse stopped at the `?`
+     * and what followed came out as stray statements (`let m = t < 10 ?
+     * "COLD" : "WARM"` stored the COMPARISON). Right-associative, below `||`.
+     */
+    parseConditional () {
+        const test = this.parseBinary(0);
+        if (!this.at('punct', '?')) return test;
+        this.next();
+        const consequent = this.parseAssignment();
+        this.expect('punct', ':');
+        const alternate = this.parseAssignment();
+        return {type: 'Conditional', test, consequent, alternate};
     }
 
     parseBinary (minPrec) {
@@ -612,14 +678,17 @@ class Parser {
         }
         if (this.eat('punct', '{')) {
             // Object literals appear in a few library calls; their shape
-            // is never something we translate, so they become opaque.
+            // is never something we translate, so they become opaque — but
+            // the calls inside are kept, so the refusal can name them.
+            const seen = new CallSpotter();
             let depth = 1;
             while (depth > 0 && !this.at('eof')) {
                 const tok = this.next();
+                seen.push(tok);
                 if (tok.type === 'punct' && tok.value === '{') depth++;
                 if (tok.type === 'punct' && tok.value === '}') depth--;
             }
-            return {type: 'Object'};
+            return {type: 'Object', calls: seen.calls()};
         }
         this.next();
         return {type: 'Unknown', token: t.value};

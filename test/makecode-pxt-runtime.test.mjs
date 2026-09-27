@@ -265,3 +265,52 @@ test('census batch 1: a program using every call comes back from lite and MakeCo
     const r = await compile('microbit', tinyMicrobit(ts));
     assert.equal(r.success, true, `MakeCode refused the re-export: ${JSON.stringify(r.diagnostics.slice(0, 2))}\n${ts}`);
 });
+
+test('census batch 2: radio handlers, music, A+B and stored truth values come back from lite and MakeCode compiles them', {skip}, async () => {
+    // The calls the census found lost WITHOUT a word (2026-09-27) — radio
+    // handlers in 20 apps, music.beat in 12 — and the recompile failures: a
+    // comparison stored in a variable, a string shown with showNumber, `let
+    // light` against pxt's `light`. Same loop as batch 1; the original
+    // compiling is the control.
+    const {default: SB3Creator} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
+    const {microbitToPseudocode} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/microbit-translate.js'));
+    const {projectToMakeCodeTs} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/export.js'));
+    const original = [
+        'let clock = 0',
+        'let isSwitched = false',
+        'let word = ""',
+        'radio.onReceivedNumber(function (receivedNumber) {',
+        '    clock += receivedNumber',
+        '    music.playTone(music.noteFrequency(Note.C), music.beat(BeatFraction.Quarter))',
+        '})',
+        'radio.onReceivedString(function (receivedString) {',
+        '    word = receivedString',
+        '})',
+        'input.onButtonPressed(Button.AB, function () {',
+        '    music._playDefaultBackground(music.builtInPlayableMelody(Melodies.Dadadadum), music.PlaybackMode.InBackground)',
+        '})',
+        'basic.forever(function () {',
+        '    let light = input.lightLevel()',
+        '    isSwitched = Math.abs(input.magneticForce(Dimension.Strength)) > 100',
+        '    music.setTempo(100)',
+        '    music.ringTone(262)',
+        '    music.rest(music.beat(BeatFraction.Half))',
+        '    basic.showString(word + light)',
+        '})'
+    ].join('\n');
+    const control = await compile('microbit', tinyMicrobit(original));
+    assert.equal(control.success, true, `the original is not valid MakeCode: ${JSON.stringify(control.diagnostics.slice(0, 2))}`);
+
+    const imported = microbitToPseudocode(original);
+    assert.deepEqual(imported.unsupported, [], 'the import refused something');
+    const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(imported.code));
+    assert.deepEqual(unsupported, [], 'the export refused something');
+    for (const call of ['radio.onReceivedNumber', 'radio.onReceivedString', 'music.playTone', 'music.noteFrequency',
+        'music.beat', 'music._playDefaultBackground', 'music.builtInPlayableMelody', 'input.buttonIsPressed',
+        'input.magneticForce', 'music.setTempo', 'music.ringTone', 'music.rest', 'basic.showString']) {
+        assert.ok(ts.includes(`${call}(`), `${call} did not come back:\n${ts}`);
+    }
+    assert.match(ts, /Button\.AB/);
+    const r = await compile('microbit', tinyMicrobit(ts));
+    assert.equal(r.success, true, `MakeCode refused the re-export: ${JSON.stringify(r.diagnostics.slice(0, 2))}\n${ts}`);
+});

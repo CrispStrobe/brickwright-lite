@@ -99,3 +99,29 @@ test('every lite game and every imported Arcade game exports to TypeScript MakeC
     }
     assert.deepEqual(failed, []);
 });
+
+test('Arcade maths keeps every argument both ways (min/max/pow kept only the first; abs of a - b was |a| - b)', async () => {
+    const {arcadeToPseudocode} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js'));
+    const {code, unsupported} = arcadeToPseudocode([
+        'let a = 0',
+        'let b = 0',
+        'a = Math.max(0, b - 1)',
+        'b = Math.min(a, 10)',
+        'a = Math.pow(2, b)',
+        'b = Math.abs(a - b)',
+        'a = Math.map(b, 0, 10, 0, 100)'
+    ].join('\n'));
+    assert.match(code, /set a to max of 0 and \(b - 1\)/);
+    assert.match(code, /set b to min of a and 10/);
+    assert.match(code, /set a to 2 to the power of b/);
+    assert.match(code, /set b to abs of \(a - b\)/);
+    // No map reporter off the micro:bit: its definition, and said.
+    assert.match(code, /set a to \(\(b - 0\) \* \(100 - 0\) \/ \(10 - 0\) \+ 0\)/);
+    assert.ok(unsupported.some(u => /Math\.map\(\) — written out as its formula/.test(u)), unsupported.join('\n'));
+    const {ts} = exportOf(`SPRITE s:\nWHEN flag clicked:\n${code.split('\n').filter(l => /^\s+set /.test(l)).map(l => `  ${l.trim()}`).join('\n')}\n`);
+    // (the export prefixes a sprite's variables with its name)
+    for (const call of [/Math\.max\(0, \(\w*b - 1\)\)/, /Math\.min\(\w*a, 10\)/, /Math\.pow\(2, \w*b\)/,
+        /Math\.abs\(\(\w*a - \w*b\)\)/]) {
+        assert.match(ts, call);
+    }
+});

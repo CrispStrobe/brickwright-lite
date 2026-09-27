@@ -20,7 +20,11 @@
  *                snippet that is not a whole program — excluded from the rest)
  *     import     microbitToPseudocode: how many calls were named unsupported
  *     parse      the pseudocode parses (SB3Creator)
- *     sim        generateMicroPython succeeds — the program runs in our simulator
+ *     sim        generateMicroPython succeeds AND the program runs: five virtual
+ *                seconds in lite's own micro:bit simulator firmware (scripts/lib/
+ *                microbit-firmware.mjs), with three radio packets arriving, and
+ *                no Python error. Generation alone said "runs" of 111 programs
+ *                that stopped at their first step (2026-09-27).
  *     export     pseudocode -> MakeCode TypeScript (export.js)
  *     recompile  pxt compiles the re-export (simulator build)
  *     SILENT     a MakeCode call in the original that is in neither the
@@ -48,6 +52,9 @@ const {microbitToPseudocode} = await imp('bw-makecode/microbit-translate.js');
 const {exportToMakeCode} = await imp('bw-makecode/export.js');
 const {default: SB3Creator} = await imp('sb3-creator.js');
 const {untar, CACHE_DIR} = await import(pathToFileURL(path.join(ROOT, 'scripts/sync-makecode-runtime.mjs')).href);
+const {runOnMicrobitFirmware} = await import(pathToFileURL(path.join(ROOT, 'scripts/lib/microbit-firmware.mjs')).href);
+/** What arrives on the radio while a program runs, so a radio handler is exercised. */
+const RADIO_PACKETS = [[300, '1'], [900, 'hi'], [1500, '2']];
 
 const arg = name => process.argv.includes(name);
 const argVal = (name, dflt) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : dflt; };
@@ -122,7 +129,19 @@ function withoutNamedCalls (ts, unsupported) {
     }
     return out;
 }
-function calls (ts) {
+/**
+ * The source with its comments blanked. A call named in a COMMENT is not a
+ * call the program makes: examples/radio-dashboard documents
+ * `radio.setTransmitSerialNumber(true)` in a doc comment and never calls it,
+ * and was counted as losing it. Strings are kept (a `//` inside one is not a
+ * comment).
+ */
+function withoutComments (ts) {
+    return ts.replace(/("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`[^`]*`)|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+        (m, str) => (str !== undefined ? str : m.replace(/[^\n]/g, ' ')));
+}
+function calls (source) {
+    const ts = withoutComments(source);
     const out = new Set();
     for (const m of ts.matchAll(/\b([a-zA-Z_]+)\.([a-zA-Z_]+)\s*\(/g)) if (NAMESPACES.includes(m[1])) out.add(`${m[1]}.${m[2]}`);
     for (const m of ts.matchAll(/\b(randint)\s*\(/g)) out.add(m[1]);
@@ -190,6 +209,14 @@ if (ONLY !== 'lite') {
             const mp = creator.generateMicroPython();
             row.sim = !!mp.ok;
             if (!mp.ok) row.simReasons = (mp.reasons || []).slice(0, 3);
+            else {
+                const run = await runOnMicrobitFirmware(mp.py, {ms: 5000, radio: RADIO_PACKETS});
+                const stopped = run.traceback || (run.panic !== null ? `panic ${run.panic}` : run.error);
+                if (stopped) {
+                    row.sim = false;
+                    row.simReasons = [String(stopped).split('\n').filter(Boolean).pop()];
+                }
+            }
         } catch (e) { row.sim = false; row.simReasons = [e.message]; }
         let ex;
         try { ex = exportToMakeCode(project, {name: 'rt'}); } catch (e) { row.stage = 'export-threw'; row.detail = e.message; results.makecode.push(row); continue; }
