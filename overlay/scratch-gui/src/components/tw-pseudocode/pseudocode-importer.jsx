@@ -4966,6 +4966,7 @@ class PseudocodeImporter extends React.Component {
                             onChange={text => this.setActiveCode(text)}
                             readOnly={!TWO_WAY.has(this.state.lang) && !EDITABLE_ONE_WAY(this.state.lang, this.state.asmMode)}
                             lang={this.state.lang}
+                            isVisible={this.props.isVisible}
                         />
                     </React.Suspense>
                 ) : (

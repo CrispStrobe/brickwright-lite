@@ -1516,6 +1516,7 @@ jobs:
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-chrome-sweep.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-controller-panel.mjs
+          PROOF_URL=http://localhost:8617/ node scripts/verify-global-editor-undo.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-faceplate-matrix.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-instruments-scroll.mjs
           PROOF_URL=http://localhost:8617/ node scripts/verify-circuit-export-completeness.mjs
