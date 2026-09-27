@@ -48,10 +48,14 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'assembly must click the enabled control and prove the durable running state');
     assert.doesNotMatch(script, /waitForFunction\([\s\S]{0,200}booting the 8086 bench/,
         'a transient booting message is an event, not proof that the benchmark is running');
-    const emptyBufferAck = script.indexOf("?.value === ''");
+    const emptyAuthorBuffer = script.indexOf("page.keyboard.press('Backspace')");
+    const retargetBoundary = script.indexOf("mark('retarget-request')");
     const freshDeviceSelection = script.indexOf("device.selectOption('i8086')");
-    assert.ok(emptyBufferAck >= 0 && freshDeviceSelection > emptyBufferAck,
-        'the DOS journey may select i8086 only after the app acknowledges an empty starter buffer');
+    assert.ok(emptyAuthorBuffer >= 0 && retargetBoundary > emptyAuthorBuffer &&
+        freshDeviceSelection > retargetBoundary,
+    'the DOS journey must clear the starter and close the speculative-load window before retargeting');
+    assert.match(script, /preRetargetResources[\s\S]*speculativeCompilerAssets = \(preRetargetResources/,
+        'the compiler gate must end before the benchmark deliberately requests a retarget');
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);

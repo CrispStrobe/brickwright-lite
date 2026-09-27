@@ -142,11 +142,9 @@ try {
         // gate-shapes-allow
         await device.waitFor({state: 'visible', timeout: 30000});
         await mark('device-ready');
-        // The home starter is a GPIO program. Selecting another MCU while it is
-        // present is a real retarget request and correctly loads sb3-creator;
-        // that would make this DOS-only journey falsely accuse the app of a
-        // speculative compiler fetch. Start from an empty author buffer, as a
-        // user creating a new 8086 program would, before selecting the CPU.
+        // Clear the home GPIO starter before requesting a different device. The
+        // picker request below is still a real retarget operation (and may load
+        // sb3-creator), but it must not inherit pins from the starter program.
         const initialEditor = page.locator('.cm-content:visible').first();
         await initialEditor.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
         await initialEditor.click();
@@ -156,17 +154,15 @@ try {
             .filter(node => node.getClientRects().length > 0)
             .every(node => !(node.textContent || '').trim()),
         null, {timeout: assemblySetupTimeoutMs});
-        // CodeMirror changes immediately; React's controlled DEVICE picker is
-        // the acknowledgement that importer state committed the empty document.
         await page.waitForFunction(() =>
             document.querySelector('[data-testid="bw-device-select"]')?.value === '',
         null, {timeout: assemblySetupTimeoutMs});
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
-        // The empty-buffer acknowledgement above makes this a fresh device
-        // selection, not a retarget. Selecting while the GPIO starter still
-        // exists legitimately loads sb3-creator; the pre-Circuit receipt below
-        // continues to reject that speculative compiler fetch here.
+        // The resource window before this mark proves that merely revealing
+        // Code did not fetch the compiler. The retarget request after it is a
+        // legitimate compiler consumer.
+        await mark('retarget-request');
         await device.selectOption('i8086');
         await page.waitForFunction(() =>
             document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
@@ -306,6 +302,11 @@ try {
             throw new Error(`${name} #${repetition} lost the pre-Circuit resource boundary`);
         }
         const circuitOpenAt = circuitOpenMilestone.at;
+        const retargetMilestone = raw.milestones.find(mark => mark.name === 'retarget-request');
+        if (!retargetMilestone) {
+            throw new Error(`${name} #${repetition} lost the pre-retarget resource boundary`);
+        }
+        const retargetAt = retargetMilestone.at;
         const dosLoadAt = raw.milestones.find(mark => mark.name === 'dos-load-start')?.at ?? 0;
         const runnerRunningAt = raw.milestones.find(mark => mark.name === 'runner-running')?.at ?? sampleStart;
         const dosLoadResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
@@ -329,6 +330,11 @@ try {
         const preCircuitResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
             from: 0,
             to: circuitOpenAt,
+            origin: new URL(url).origin
+        }) : null;
+        const preRetargetResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
+            from: 0,
+            to: retargetAt,
             origin: new URL(url).origin
         }) : null;
         const startupAttribution = attributeReactCommits(
@@ -382,6 +388,7 @@ try {
             dosLoadResources,
             dosJourneyResources,
             preCircuitResources,
+            preRetargetResources,
             heapBytes: raw.heapBytes,
             userAgent: raw.userAgent,
         };
@@ -447,7 +454,7 @@ try {
         if (preCircuitResources) {
             const eagerCircuitAssets = preCircuitResources.assets.filter(asset =>
                 /(?:^|\/)bw-(?:board|circuit-ui)\.js$/.test(asset));
-            const speculativeCompilerAssets = preCircuitResources.assets.filter(asset =>
+            const speculativeCompilerAssets = (preRetargetResources?.assets || []).filter(asset =>
                 /(?:^|\/)sb3-creator\.js$/.test(asset));
             const speculativeExampleAssets = preCircuitResources.assets.filter(asset =>
                 /(?:^|\/)pseudocode-examples\.js$/.test(asset));
@@ -456,7 +463,7 @@ try {
             const eagerPaintAssets = preCircuitResources.assets.filter(asset => lazyPaintAssets.has(asset));
             console.log(`  pre-Circuit: ${(preCircuitResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
                 `encoded, ${eagerCircuitAssets.length} deferred circuit asset(s) and ` +
-                `${speculativeCompilerAssets.length} speculative compiler asset(s), ` +
+                `${speculativeCompilerAssets.length} pre-retarget compiler asset(s), ` +
                 `${speculativeExampleAssets.length} speculative examples asset(s), and ` +
                 `${eagerGrammarAssets.length} optional grammar asset(s), and ` +
                 `${eagerPaintAssets.length} paint asset(s) fetched early`);
