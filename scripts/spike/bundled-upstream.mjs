@@ -138,7 +138,11 @@ export const LITE_ONLY = {
  * has been argued for in review rather than one that arrived unannounced —
  * which is the only difference between this and the situation the audit found.
  */
-export const ALLOWED_DIVERGENCE = {};
+export const ALLOWED_DIVERGENCE = {
+    spikeprime: '2026-09-27: Parse SPIKE 3 matrix notifications for the live A-F Widgets view; ' +
+        'the pinned upstream parser stopped at type 0x0e, hiding port F and all later records. ' +
+        'Upstream this parser case before moving the bundle pin.'
+};
 
 /**
  * The extension source a bundle holds, or null if it is not a bundle at all.

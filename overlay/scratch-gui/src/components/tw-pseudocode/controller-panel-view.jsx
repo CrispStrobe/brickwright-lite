@@ -3,6 +3,7 @@ import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from 'bw-board/control
 import { bindPanelToBoard } from 'bw-board/controller-binding.js';
 import MachineConsole from './machine-console.jsx';
 import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import SpikePortMonitor from './spike-port-monitor.jsx';
 
 const L10N = {
     en: {
@@ -1811,6 +1812,8 @@ class ControllerPanelView extends React.Component {
                         </div>
                     )}
                 </div>
+
+                <SpikePortMonitor vm={this.props.vm} />
 
                 {/* Widget canvas: absolute placement from layout.{x,y}, size from
                     layout.{w,h}, rotation + colour + label applied. In EDIT mode

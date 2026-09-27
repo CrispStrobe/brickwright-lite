@@ -59,6 +59,9 @@ export default class VirtualSpikeHubState {
         else if (kind === 'color') this.data.classicPorts[index] = [61, [value.color ?? -1, value.reflection ?? 0,
             value.ambient ?? 0, value.red ?? 0, value.green ?? 0, value.blue ?? 0]];
         else if (kind === 'force') this.data.classicPorts[index] = [63, [value.force ?? 0, value.pressed ? 1 : 0]];
+        else if (kind === 'boostMotor' || kind === 'boostColorDistance') {
+            this.data.classicPorts[index] = [value.deviceId || 0, []];
+        }
         else if (kind === 'none') this.data.classicPorts[index] = [0, []];
         this.changed();
     }
@@ -66,8 +69,9 @@ export default class VirtualSpikeHubState {
         const index = indexOf(port);
         const speed = Math.max(-100, Math.min(100, Number(value) || 0));
         this.data.motors[index].speed = speed;
-        this.data.sensors[index] = {kind: 'motor'};
-        this.data.classicPorts[index] = [48, [speed, this.data.motors[index].position, 0, speed]];
+        this.data.sensors[index] = {...this.data.sensors[index], kind: 'motor'};
+        this.data.classicPorts[index] = [this.data.sensors[index].deviceId || 48,
+            [speed, this.data.motors[index].position, 0, speed]];
         this.changed();
     }
     setDisplay (pixels) { this.data.display = Array.from(pixels).slice(0, 25); while (this.data.display.length < 25) this.data.display.push(0); this.changed(); }
