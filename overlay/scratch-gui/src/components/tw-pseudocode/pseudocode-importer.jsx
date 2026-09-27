@@ -117,11 +117,16 @@ const L10N = {
         mcRunCompiling: n => `Compiling ${n} with MakeCode…`,
         mcRunStarted: (n, t) => `${n} is running in MakeCode's ${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'} simulator.`,
         mcFirmware: '⤓ Firmware for the board',
-        mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3 or Circuit Playground .uf2), with the project inside so MakeCode can reopen it',
+        mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3, Circuit Playground or the chosen Arcade board .uf2), with the project inside so MakeCode can reopen it',
         mcFirmwareBuilding: n => `Building firmware for ${n}…`,
         mcFirmwareDone: f => `Saved ${f} — copy it onto the board's USB drive (MICROBIT, MINI, CPLAYBOOT, EV3) to flash it. MakeCode also opens it as a project.`,
         mcNoRuntime: 'This build does not carry the MakeCode runtime (npm run sync:makecode was not run), so MakeCode projects cannot be compiled here.',
-        mcNoBase: 'This project uses a C++ extension outside MakeCode\'s default set, and building its firmware needs MakeCode\'s cloud compiler. It still runs in the simulator; to flash it, open it on makecode.microbit.org.',
+        mcNoBase: u => `This project uses a C++ extension outside MakeCode's default set, and building its firmware needs MakeCode's cloud compiler. It still runs in the simulator; to flash it, open it on ${u}.`,
+        mcBoardPick: 'Arcade board…',
+        mcBoardTitle: 'The board to build this Arcade game\'s firmware for — MakeCode Arcade\'s own list of boards',
+        mcBoardByChip: 'Other boards, by chip',
+        mcBoardNone: 'Choose the Arcade board first: MakeCode Arcade builds firmware for one board at a time, and there is no firmware for "no board".',
+        mcBoardFirmwareDone: (f, b) => `Saved ${f} for ${b} — put the board into its bootloader (usually: press reset twice) and copy the file onto the USB drive that appears. MakeCode also opens it as a project.`,
         mcUnsupportedTarget: t => `MakeCode ${t} projects are not something this build can compile (micro:bit and Arcade are).`,
         mcCompileErrors: (n, first) => `MakeCode found ${n} error(s): ${first}`,
         mcNothingToRun: 'Nothing to run — import a MakeCode project, or write blocks for a micro:bit.',
@@ -396,11 +401,16 @@ const L10N = {
         mcRunCompiling: n => `${n} wird mit MakeCode übersetzt…`,
         mcRunStarted: (n, t) => `${n} läuft im MakeCode-Simulator (${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'}).`,
         mcFirmware: '⤓ Firmware für das Board',
-        mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3 oder Circuit Playground .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
+        mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3, Circuit Playground oder das gewählte Arcade-Board .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
         mcFirmwareBuilding: n => `Firmware für ${n} wird gebaut…`,
         mcFirmwareDone: f => `${f} gespeichert — auf das USB-Laufwerk des Boards kopieren (MICROBIT, MINI, CPLAYBOOT, EV3), um es zu flashen. MakeCode öffnet die Datei auch als Projekt.`,
         mcNoRuntime: 'Dieser Build enthält die MakeCode-Laufzeit nicht (npm run sync:makecode lief nicht), daher können MakeCode-Projekte hier nicht übersetzt werden.',
-        mcNoBase: 'Dieses Projekt nutzt eine C++-Erweiterung außerhalb des MakeCode-Standardsatzes; seine Firmware braucht den Cloud-Compiler von MakeCode. Im Simulator läuft es trotzdem; zum Flashen auf makecode.microbit.org öffnen.',
+        mcNoBase: u => `Dieses Projekt nutzt eine C++-Erweiterung außerhalb des MakeCode-Standardsatzes; seine Firmware braucht den Cloud-Compiler von MakeCode. Im Simulator läuft es trotzdem; zum Flashen auf ${u} öffnen.`,
+        mcBoardPick: 'Arcade-Board…',
+        mcBoardTitle: 'Das Board, für das die Firmware dieses Arcade-Spiels gebaut wird — die Board-Liste von MakeCode Arcade selbst',
+        mcBoardByChip: 'Andere Boards, nach Chip',
+        mcBoardNone: 'Zuerst das Arcade-Board wählen: MakeCode Arcade baut Firmware immer für ein bestimmtes Board, und für „kein Board“ gibt es keine Firmware.',
+        mcBoardFirmwareDone: (f, b) => `${f} für ${b} gespeichert — das Board in seinen Bootloader bringen (meist: zweimal Reset drücken) und die Datei auf das erscheinende USB-Laufwerk kopieren. MakeCode öffnet die Datei auch als Projekt.`,
         mcUnsupportedTarget: t => `MakeCode-${t}-Projekte kann dieser Build nicht übersetzen (micro:bit und Arcade schon).`,
         mcCompileErrors: (n, first) => `MakeCode meldet ${n} Fehler: ${first}`,
         mcNothingToRun: 'Nichts auszuführen — ein MakeCode-Projekt importieren oder Blöcke für einen micro:bit schreiben.',
@@ -752,7 +762,9 @@ const SYNTAX = [
  * agree with pxt-runtime.js MAKECODE_BOARDS, which a test checks.
  */
 const MAKECODE_RUNNABLE = ['microbit', 'calliopemini', 'ev3', 'adafruit', 'arcade'];
-const MAKECODE_FIRMWARE = {microbit: 'hex', calliopemini: 'hex', ev3: 'uf2', adafruit: 'uf2'};
+const MAKECODE_FIRMWARE = {microbit: 'hex', calliopemini: 'hex', ev3: 'uf2', adafruit: 'uf2', arcade: 'uf2'};
+// Arcade firmware is per BOARD (pxt-runtime.js arcadeBoards): the picker's value.
+const arcadeBoardKey = b => `${b.variant}:${b.name}`;
 const MAKECODE_EDITOR = {microbit: 'https://makecode.microbit.org/', calliopemini: 'https://makecode.calliope.cc/',
     ev3: 'https://makecode.mindstorms.com/', adafruit: 'https://makecode.adafruit.com/', arcade: 'https://arcade.makecode.com/'};
 
@@ -1018,6 +1030,8 @@ class PseudocodeImporter extends React.Component {
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
         this.state = {revealed: props.isVisible !== false, lang: 'pseudocode', importedPython: false,
+            // The Arcade board picker: the boards (null until loaded) and the one chosen.
+            arcadeBoards: null, arcadeBoard: '',
             buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
@@ -1682,6 +1696,7 @@ class PseudocodeImporter extends React.Component {
         } : null;
         const unsupported = (res.unsupported || []).length;
         const arcade = res.project.target === 'arcade';
+        if (arcade && res.kind === 'makecode') this.loadArcadeBoards();
         let status;
         if (res.kind === 'micropython') {
             status = this.L.mcPython(label, Object.keys(res.files).join(', '));
@@ -1821,10 +1836,10 @@ class PseudocodeImporter extends React.Component {
     }
 
     /** A MakeCode failure in words: the runtime, the firmware base, or the program. */
-    makeCodeFailure (err) {
+    makeCodeFailure (err, target) {
         const code = err && err.code;
         if (code === 'NO_RUNTIME' || /target\.json: HTTP 404/.test(String(err && err.message))) return this.L.mcNoRuntime;
-        if (code === 'NO_BASE_HEX') return this.L.mcNoBase;
+        if (code === 'NO_BASE_HEX') return this.L.mcNoBase(MAKECODE_EDITOR[target] || MAKECODE_EDITOR.microbit);
         if (code === 'UNSUPPORTED_TARGET') return err.message;
         return this.L.mcFailed('MakeCode', (err && err.message) || String(err));
     }
@@ -1860,42 +1875,64 @@ class PseudocodeImporter extends React.Component {
             this.setState({busy: false, status: this.L.mcRunStarted(subject.name, target)});
         } catch (err) {
             this.setState({busy: false, status: err && err.code === 'UNSUPPORTED_TARGET' ?
-                this.L.mcUnsupportedTarget(target) : this.makeCodeFailure(err)});
+                this.L.mcUnsupportedTarget(target) : this.makeCodeFailure(err, target)});
         }
     }
 
     /**
-     * The real micro:bit firmware: MakeCode's compiler links the program onto
-     * the precompiled CODAL base and embeds the project, so the .hex both
-     * flashes a board and opens in MakeCode as this project.
+     * The Arcade boards the firmware download can build for: pxt-arcade's own
+     * list, as the sync served it (pxt-runtime.js arcadeBoards). Loaded once,
+     * when an Arcade project arrives; absent runtime, an empty list.
+     */
+    async loadArcadeBoards () {
+        if (this.state.arcadeBoards && this.state.arcadeBoards.length) return;
+        const {arcadeBoards} = await import(
+            /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
+        const boards = await arcadeBoards().catch(() => []);
+        this.setState({arcadeBoards: boards});
+    }
+
+    /**
+     * The real firmware: MakeCode's compiler links the program onto the
+     * precompiled base and embeds the project, so the file both flashes a board
+     * and opens in MakeCode as this project. An Arcade game is built for the
+     * board chosen in the picker; with none chosen there is no base to link onto,
+     * and the download says so rather than building (NO_BASE_HEX by name).
      */
     async downloadMakeCodeFirmware () {
         const subject = await this.makeCodeSubject().catch(() => null);
-        const ext = subject && MAKECODE_FIRMWARE[subject.target];
+        let board = null;
+        if (subject && subject.target === 'arcade') {
+            board = (this.state.arcadeBoards || []).find(b => arcadeBoardKey(b) === this.state.arcadeBoard) || null;
+            if (!board) { this.setState({status: this.L.mcBoardNone}); return; }
+        }
+        const ext = board ? board.ext : subject && MAKECODE_FIRMWARE[subject.target];
         if (!ext) {
-            this.setState({status: subject && subject.target === 'arcade' ? this.L.mcNoBase : this.L.mcNothingToRun});
+            this.setState({status: this.L.mcNothingToRun});
             return;
         }
         this.setState({busy: true, status: this.L.mcFirmwareBuilding(subject.name)});
         try {
-            const {compileMakeCode} = await import(
+            const {compileMakeCode, firmwareFile} = await import(
                 /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
             const out = await compileMakeCode({target: subject.target, files: subject.files, native: true,
+                hwVariant: board ? board.variant : '',
                 embedSource: {files: subject.files, name: subject.name, editorUrl: MAKECODE_EDITOR[subject.target]}});
-            if (!out.success || !out.outfiles[`binary.${ext}`]) {
+            // pxt returns a .uf2 as BASE64 (measured: 'VUYyCl…' = "UF2\n"), a .hex as
+            // text; firmwareFile gives the bytes either way. Decoding a .uf2 as a
+            // binary string would write a corrupt file.
+            const fw = out.success ? firmwareFile({[`binary.${ext}`]: out.outfiles[`binary.${ext}`]}) : null;
+            if (!fw) {
                 const first = (out.diagnostics[0] && `${out.diagnostics[0].file}:${out.diagnostics[0].line + 1} ${out.diagnostics[0].message}`) || '';
                 this.setState({busy: false, status: this.L.mcCompileErrors(out.diagnostics.length, first)});
                 return;
             }
-            const filename = `${subject.target}-${String(subject.name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase() || 'program'}.${ext}`;
-            // pxt returns a .uf2 as BASE64 (measured: 'VUYyCl…' = "UF2\n"), a .hex as
-            // text. Decoding it as a binary string would write a corrupt file.
-            const data = ext === 'uf2' ?
-                Uint8Array.from(atob(out.outfiles[`binary.${ext}`]), c => c.charCodeAt(0)) : out.outfiles[`binary.${ext}`];
-            await downloadBlob(filename, new Blob([data], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: this.L.mcFirmwareDone(filename)});
+            const slug = t => String(t).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+            const filename = `${[subject.target, slug(subject.name) || 'program', board && slug(board.name)].filter(Boolean).join('-')}.${ext}`;
+            await downloadBlob(filename, new Blob([fw.bytes], {type: 'application/octet-stream'}));
+            this.setState({busy: false, status: board ? this.L.mcBoardFirmwareDone(filename, board.name) : this.L.mcFirmwareDone(filename)});
         } catch (err) {
-            this.setState({busy: false, status: this.makeCodeFailure(err)});
+            this.setState({busy: false, status: this.makeCodeFailure(err, subject.target)});
         }
     }
 
@@ -1963,7 +2000,7 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
             this.setState({busy: false, status: this.L.arcStarted(out.unsupported.length, out.warnings.length)});
         } catch (err) {
-            this.setState({busy: false, status: this.makeCodeFailure(err)});
+            this.setState({busy: false, status: this.makeCodeFailure(err, 'arcade')});
         }
     }
 
@@ -4511,6 +4548,22 @@ class PseudocodeImporter extends React.Component {
                                 title={this.L.mcRunTitle} disabled={this.state.busy}
                                 data-testid="bw-makecode-run">{this.L.mcRun}</button>
                         ) : null}
+                    {this._makeCodeProject && this._makeCodeProject.target === 'arcade' ? (
+                        <select value={this.state.arcadeBoard} style={item} disabled={this.state.busy}
+                            title={this.L.mcBoardTitle} data-testid="bw-makecode-arcade-board"
+                            data-boards={(this.state.arcadeBoards || []).length}
+                            onChange={e => this.setState({arcadeBoard: e.target.value})}>
+                            <option value="">{this.L.mcBoardPick}</option>
+                            {(this.state.arcadeBoards || []).filter(b => !b.card).map(b => (
+                                <option key={arcadeBoardKey(b)} value={arcadeBoardKey(b)}>{b.name}</option>
+                            ))}
+                            <optgroup label={this.L.mcBoardByChip}>
+                                {(this.state.arcadeBoards || []).filter(b => b.card).map(b => (
+                                    <option key={arcadeBoardKey(b)} value={arcadeBoardKey(b)}>{`${b.name} (${b.chip})`}</option>
+                                ))}
+                            </optgroup>
+                        </select>
+                    ) : null}
                     {(this._makeCodeProject && MAKECODE_FIRMWARE[this._makeCodeProject.target]) ||
                         (!this._makeCodeProject && ['microbit', 'calliopemini'].includes(this.currentDevice())) ? (
                             <button type="button" onClick={() => this.downloadMakeCodeFirmware()} style={item}

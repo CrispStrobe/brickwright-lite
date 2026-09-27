@@ -112,6 +112,21 @@ export const TARBALLS = {
  * of the bytes like every tarball above.
  */
 export const BASES = {
+    // micro:bit {core, radio} — the set a project gets when its author removed
+    // the microphone package (a pre-V2 project, or a Calliope-style one). The npm
+    // package's hexcache has only {core, radio|bluetooth, microphone}, so without
+    // these the download was refused (NO_BASE_HEX). MakeCode's CDN has BOTH halves
+    // of the universal .hex for it (measured 2026-09-27): V1 (mbdal, f7b3cfda…,
+    // DAL on nRF51822 with the S110 SoftDevice) and V2 (mbcodal, 137d8c97…, CODAL
+    // on nRF52833 with S113) — Microsoft's own cloud builds, the files
+    // makecode.microbit.org links such a project onto; the MBR and SoftDevice
+    // regions are byte-identical to the npm bases'. Official bases exist, so the
+    // download uses them, never our Bluetooth-free build (hexcache-emu/, keyed by
+    // the same 137d8c97 sha): that one is V2-only and is the EMULATOR's.
+    microbit: [{sha: 'f7b3cfda4bfc7f05c13b9cd0f45fab78e2d3101beb1fafd1b86905b8636ea119',
+        sha256: '7a60b592d945a831ba4e3c04e754dd6bd21aad1aa6319aecc03e0a0f8843ef98'},
+    {sha: '137d8c972fe969dae4c15a314658e85c8910206d5f45c741c535ee616e3961a1',
+        sha256: '710f7746bc5124c50d87e7a2817ce870d9d084f0ac238f3e27c443fa9801c7ee'}],
     ev3: [{sha: '9630f4e8f6dff8f47ffc38e86e2d44fa2ac463f7e91e9bc15f5d8f8b279d0d68',
         sha256: '39cd6ff7e0b2b1db2018470f881053e8f13bc05148ffb1b7c9178c74b22e5fec'}],
     adafruit: [{sha: '1a8dde8af2ff6661af42bf0b22638f633ede578627092cc35377f628bcd09056',
@@ -223,7 +238,7 @@ export const ARCADE_BASES_DIR = path.join(ROOT, 'artifacts', 'makecode', 'arcade
 export const ARCADE_BASES = {
     rp2040: {sha: 'a62909b15aac9c857b6fd620f3679a7f5e05a41ab27915d9427cc4b74ee626a5',
         url: `${MAKECODE_CDN}a62909b15aac9c857b6fd620f3679a7f5e05a41ab27915d9427cc4b74ee626a5.hex`, sha256: '9055c740a7282afe5ecf1b151a0f1cc4d0cb48c09d4e9e32472c056b889c0daf', bytes: 288515,
-        built: {sha256: 'ac1e891bd6d451ca83e97f452f97050cb07322ba6c7d75af88ab761bd323fd2f', bytes: 310152}},
+        built: {sha256: '369643c3d8309e77f4d6158898832ae48d41e85e0813b1a3f8f6e244705f7423', bytes: 310152}},
     samd51: {sha: 'c160106c8559347801cd81c14bb4569af0ea0d946fac0fe5408f22a39af497de',
         url: `${MAKECODE_CDN}c160106c8559347801cd81c14bb4569af0ea0d946fac0fe5408f22a39af497de.hex`, sha256: 'e07518572d4c43f77d90eef6c7c76878daf3940ec16201319aab8b013f890166', bytes: 359398,
         built: {sha256: '5d617fdaa6d88466c23ef8e9c708ecf2495df165b6a23bbf53c658bb08c6357f', bytes: 374931}},
@@ -293,6 +308,43 @@ export function emuBases ({strict = false, dir = EMU_BASES_DIR, log = console.lo
     if (files.size) log(`[sync:makecode] micro:bit emulator bases: ${files.size} served (Bluetooth-free, built from source)`);
     if (strict && (missing.length || refused.length)) throw new Error('--emu-bases: every pinned micro:bit emulator base must be present and match its pin');
     return files;
+}
+
+/**
+ * The Arcade boards a firmware download can be built for, as pxt-arcade names
+ * them — the picker's list, served as arcade/hardware.json. Two lists of pxt's
+ * own, in this order:
+ *   - targetconfig.json `hardwareOptions`: the products MakeCode Arcade's
+ *     hardware page shows ("Adafruit PyBadge", "Meowbit"…), each naming its
+ *     `hw---<variant>` package;
+ *   - the `card` of each hw---<variant> package in target.json — the editor's
+ *     "choose your hardware" cards ("R2", "D5", "Game Designer's Kit"…), one
+ *     per chip family, for a board no product names (a bare Raspberry Pi Pico
+ *     is an R2). Marked `card`.
+ * An entry is kept only when its variant's firmware base is SERVED
+ * (`servedVariants`): a board the picker offers always builds. Pi0 (hw---rpi,
+ * a Linux image) and VM have no base and never appear.
+ * @returns {{name: string, variant: string, card?: true}[]}
+ */
+export function arcadeHardwareList (targetconfig, bundle, servedVariants) {
+    const served = new Set(servedVariants);
+    const out = [];
+    const seen = new Set();
+    const add = (name, pkg, card) => {
+        const variant = String(pkg || '').replace(/^hw---/, '');
+        const key = `${name}\u0000${variant}`;
+        if (!name || !served.has(variant) || seen.has(key)) return;
+        seen.add(key);
+        out.push(card ? {name, variant, card: true} : {name, variant});
+    };
+    for (const b of (targetconfig && targetconfig.hardwareOptions) || []) add(String(b.name || '').trim(), b.variant, false);
+    for (const [pkg, files] of Object.entries((bundle && bundle.bundledpkgs) || {})) {
+        if (!/^hw---/.test(pkg)) continue;
+        let card = null;
+        try { card = JSON.parse(files['pxt.json']).card; } catch { /* no card: not offered */ }
+        if (card && card.name) add(String(card.name).trim(), pkg, true);
+    }
+    return out;
 }
 
 const tgzPath = id => path.join(CACHE_DIR, id.replace('@', '-') + '.tgz');
@@ -507,7 +559,14 @@ async function main () {
         for (const pin of pins) files.set(`${target}/hexcache/${pin.sha}.hex`, await base(target, pin, {offline: check}));
     }
     const strict = process.argv.includes('--strict-bases') || process.argv.includes('--built-bases');
-    for (const [rel, bytes] of await arcadeBases({offline: check, strict, requireBuilt: process.argv.includes('--built-bases')})) files.set(rel, bytes);
+    const arcade = await arcadeBases({offline: check, strict, requireBuilt: process.argv.includes('--built-bases')});
+    for (const [rel, bytes] of arcade) files.set(rel, bytes);
+    // The Arcade board picker's list: pxt-arcade's own names, only for boards whose base is served.
+    const servedVariants = Object.entries(ARCADE_BASES).filter(([, pin]) => arcade.has(`arcade/hexcache/${pin.sha}.hex`)).map(([v]) => v);
+    const tconf = entries.get(TARGETS.arcade.target).get('targetconfig.json');
+    if (!tconf) throw new Error(`${TARGETS.arcade.target}: no targetconfig.json in the tarball`);
+    files.set('arcade/hardware.json', Buffer.from(JSON.stringify(arcadeHardwareList(JSON.parse(tconf.toString('utf8')),
+        JSON.parse(files.get('arcade/target.json').toString('utf8')), servedVariants), null, 1) + '\n'));
     for (const [rel, bytes] of emuBases({strict: process.argv.includes('--emu-bases')})) files.set(rel, bytes);
     if (check) {
         const wrong = [...files].filter(([rel, bytes]) => {

@@ -57,19 +57,34 @@ test('all five entry points share one lazily-loaded chunk', () => {
     assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not six');
 });
 
-test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and ⤓ actions only', () => {
+test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and ⤓ actions and the Arcade board list only', () => {
     // pxt-runtime.js is small, but what it drives (the compiler worker and the
     // target bundle, several MB) must not ride on the importer's chunk.
     assert.doesNotMatch(source, /^import .*bw-makecode\/pxt-runtime\.js/m);
     const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/pxt-runtime\.js'/g)]
         .map(m => m[1]);
-    assert.equal(chunks.length, 3, 'run in the simulator, build the firmware, run this project as Arcade');
+    // Four, deliberately: the Arcade board picker's list (loadArcadeBoards) is the
+    // fourth, and it rides the same chunk — it reads pxt-arcade's served hardware
+    // list through pxt-runtime.js, so the importer's own chunk stays compiler-free.
+    assert.equal(chunks.length, 4, 'run in the simulator, build the firmware, run this project as Arcade, list the Arcade boards');
     assert.deepEqual([...new Set(chunks)], ['bw-makecode-pxt']);
     for (const [method, testid] of [['runInMakeCode ()', 'bw-makecode-run'], ['downloadMakeCodeFirmware ()', 'bw-makecode-firmware'],
         ['runAsArcade ()', 'bw-makecode-arcade-run']]) {
         assert.ok(scopeAfter(source, `async ${method} {`).includes('compileMakeCode('), `${method} does not compile`);
         assert.match(source, new RegExp(`data-testid="${testid}"`), `no ${testid} button`);
-    }
+    }    assert.ok(scopeAfter(source, 'async loadArcadeBoards () {').includes('arcadeBoards('), 'loadArcadeBoards does not read the served board list');
+});
+
+test('an Arcade download builds for the board the picker chose, and refuses "no board" by name', () => {
+    // The picker exists for an Arcade project and is the source of hwVariant:
+    // a download that ignored it would build the board-less default, which has
+    // no firmware base (NO_BASE_HEX) — or, worse, build for the wrong board.
+    assert.match(source, /data-testid="bw-makecode-arcade-board"/, 'no Arcade board picker');
+    const method = scopeAfter(source, 'async downloadMakeCodeFirmware () {');
+    assert.match(method, /hwVariant: board \? board\.variant : ''/, 'the chosen board is not what the compile is told');
+    assert.match(method, /if \(!board\) \{ this\.setState\(\{status: this\.L\.mcBoardNone\}\); return; \}/,
+        'an Arcade download with no board chosen must be refused in words, before compiling');
+    assert.match(method, /firmwareFile\(/, 'a .uf2 must be decoded from pxt\'s base64, not written as text');
 });
 
 test('costumes are handed over under the names compile() reads', () => {

@@ -1543,7 +1543,14 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   (`built/hexcache/`), and — for EV3 and Circuit Playground Express, whose npm
   packages ship none — the two firmware bases MakeCode's own CDN serves for their
   default package sets (`cdn.makecode.com/compile/<sha>.hex`, content-addressed by
-  the package set, pinned here by sha256; the request names no user program). Written under `packages/scratch-gui/static/makecode/`
+  the package set, pinned here by sha256; the request names no user program).
+  From the same CDN, the two micro:bit bases for the {core, radio} package set,
+  which pxt-microbit's hexcache lacks: the V1 {core, radio} base (f7b3cfda…, DAL on
+  nRF51822, with Nordic's S110 v8 SoftDevice) and the V2 {core, radio} base
+  (137d8c97…, CODAL on nRF52833, with Nordic's S113 SoftDevice) — Microsoft's own
+  cloud builds, the halves of the universal .hex a {core, radio} project downloads
+  as. Their MBR and SoftDevice regions are byte-identical to the npm bases', and
+  the Nordic terms below apply to them as to those. Written under `packages/scratch-gui/static/makecode/`
   (gitignored) with each package's own LICENSE file beside it, and copied into the
   app by webpack — served, never committed. The Arcade simulator page
   (`scripts/makecode/arcade-simulator.html`) is ours: pxt-arcade ships none.

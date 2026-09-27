@@ -481,6 +481,26 @@ classifies every base lite can serve by the sha256 of its bytes —
 `compileMakeCodeForEmulator` links only onto a clean one, refusing anything
 else by name. The official bases stay the download path.
 
+**Which base a DOWNLOAD uses (2026-09-27).** Microsoft's official base wherever
+one exists; ours only where none does. For {core, radio} — a project without the
+microphone package — pxt-microbit's npm hexcache has none, but MakeCode's CDN has
+both halves, content-addressed by pxt's own sha: V1 `f7b3cfda…` (S110 inside) and
+V2 `137d8c97…` (S113 inside; MBR and SoftDevice byte-identical to the npm bases').
+They are pinned in `BASES.microbit` of the sync script, so such a project
+downloads a full universal .hex (V1 + V2) on the official bases. Our
+Bluetooth-free build of the same V2 request stays in `hexcache-emu/`, for the
+emulator only; the V1 half has no from-source build, so the official route is
+also the only one that gives a V1 board a file at all.
+
+**Arcade firmware** is built per board: the ⤓ firmware action on an Arcade
+project asks for the board first, from pxt-arcade's own hardware list
+(`targetconfig.json` `hardwareOptions` — "Adafruit PyBadge", "Meowbit"… — plus
+the per-chip `hw---<variant>` cards "R2", "D5"…), which the sync serves as
+`arcade/hardware.json`, keeping only boards whose base it served. The build is
+compiled with that `hwVariant`; a .uf2 for most boards, an Intel .hex for the
+nRF52833 ones (micro:bit shields). With no board chosen there is no base, and
+the download says so instead of building.
+
 What this does NOT cover: micro:bit V1 and the Calliope mini 1/2 (nRF51,
 microbit-dal). The DAL makes SoftDevice supervisor calls even with Bluetooth
 off — `MicroBitThermometer` asks `sd_softdevice_is_enabled` unconditionally, and
