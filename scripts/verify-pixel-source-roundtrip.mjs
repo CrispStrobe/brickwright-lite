@@ -143,11 +143,67 @@ try {
     await page.getByTestId('bw-pixel-add-layer').click();
     const newLayer = page.locator('[data-testid^="bw-pixel-layer-pixels-"]');
     await newLayer.waitFor();
+    const layerId = (await newLayer.getAttribute('data-testid')).replace('bw-pixel-layer-', '');
+    await page.getByTestId(`bw-pixel-rename-${layerId}`).click();
+    await page.getByTestId('bw-pixel-rename-input').fill('Highlights');
+    await page.getByTestId('bw-pixel-rename-input').press('Enter');
+    assert.equal(await newLayer.textContent(), 'Highlights');
     await page.getByTestId('bw-pixel-colour-11').click();
     await page.mouse.click(touchBox.x + touchBox.width * 0.85, touchBox.y + touchBox.height * 0.85);
     const paintedLayer = await canvas.evaluate(element => element.toDataURL());
     assert.notEqual(paintedLayer, beforeLayer, 'the new layer must paint above the base');
-    const layerId = (await newLayer.getAttribute('data-testid')).replace('bw-pixel-layer-', '');
+    console.log('checking layer opacity and history');
+    const opacity = page.getByTestId('bw-pixel-layer-opacity');
+    await opacity.fill('50');
+    assert.equal(await opacity.inputValue(), '50');
+    const translucentLayer = await canvas.evaluate(element => element.toDataURL());
+    assert.notEqual(translucentLayer, paintedLayer, 'layer opacity must change the editor preview');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await opacity.inputValue(), '100', 'Undo must restore the prior layer opacity');
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), paintedLayer);
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Redo', exact: true}).click();
+    assert.equal(await opacity.inputValue(), '50');
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), translucentLayer);
+    await page.getByTestId('bw-pixel-save').click();
+    const renderedSvg = await page.evaluate(() =>
+        window.__brickwrightStore.getState().scratchGui.vm.editingTarget.sprite.costumes[0].asset.decodeText());
+    assert.match(renderedSvg, /<g opacity="0\.5">/, 'Scratch must render the same translucent layer');
+    await page.getByTestId('bw-pixel-layer-pixels').click();
+    await opacity.fill('50');
+    // Headless Chrome advertises the native share sheet for PNG but cannot show it.
+    await page.evaluate(() => Object.defineProperty(navigator, 'canShare',
+        {configurable: true, value: () => false}));
+    const pngDownload = page.waitForEvent('download');
+    await page.getByTestId('bw-pixel-export-png').click();
+    const png = await pngDownload;
+    assert.match(png.suggestedFilename(), /\.png$/);
+    const pngBytes = await readFile(await png.path());
+    assert.equal(pngBytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    const pngPixels = await page.evaluate(async dataUrl => {
+        const picture = new Image();
+        picture.src = dataUrl;
+        await picture.decode();
+        const output = document.createElement('canvas');
+        output.width = picture.width;
+        output.height = picture.height;
+        const context = output.getContext('2d');
+        context.drawImage(picture, 0, 0);
+        const rgba = context.getImageData(0, 0, output.width, output.height).data;
+        let transparent = 0;
+        let painted = 0;
+        let translucent = 0;
+        for (let i = 3; i < rgba.length; i += 4) {
+            if (rgba[i] === 0) transparent++;
+            else painted++;
+            if (rgba[i] > 0 && rgba[i] < 255) translucent++;
+        }
+        return {width: output.width, height: output.height, transparent, painted, translucent};
+    }, `data:image/png;base64,${pngBytes.toString('base64')}`);
+    assert.ok(pngPixels.transparent > 0 && pngPixels.painted > 0,
+        'PNG export must preserve transparent and painted pixels without the editor grid');
+    assert.ok(pngPixels.translucent > 0, 'PNG export must include partially transparent layer pixels');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    await newLayer.click();
     await page.getByTestId(`bw-pixel-visibility-${layerId}`).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeLayer,
         'hiding the new layer must remove it from the Scratch rendering');
@@ -157,6 +213,8 @@ try {
     assert.ok(pixel, 'the saved SB3 must contain indexed pixel source');
     assert.equal(pixel.document.layers.length, 2);
     assert.equal(pixel.document.layers[1].visible, false);
+    assert.equal(pixel.document.layers[1].opacity, 0.5);
+    assert.equal(pixel.document.layers[1].name, 'Highlights');
     assert.ok(pixel.document.layers[1].content.value.pixels.includes(11),
         'the hidden layer must retain its editable pixels');
     assert.ok(pixel.document.layers[0].content.value.pixels.includes(10), 'the painted colour must persist');

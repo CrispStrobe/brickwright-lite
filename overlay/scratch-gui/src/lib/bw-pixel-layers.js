@@ -1,4 +1,4 @@
-import {blankImage, resizeCanvas} from './bw-makecode/pixel-image.js';
+import {blankImage, pixelsToSvg, resizeCanvas} from './bw-makecode/pixel-image.js';
 
 const makeLayer = (id, name, image) => ({id, name, visible: true, locked: false,
     opacity: 1, type: 'pixel', pixels: image.pixels});
@@ -6,12 +6,28 @@ const makeLayer = (id, name, image) => ({id, name, visible: true, locked: false,
 const composeLayers = (layers, width, height) => {
     const pixels = new Uint8Array(width * height);
     for (const layer of layers) {
-        if (!layer.visible) continue;
+        if (!layer.visible || layer.opacity <= 0) continue;
         for (let i = 0; i < pixels.length; i++) {
             if (layer.pixels[i]) pixels[i] = layer.pixels[i];
         }
     }
     return {width, height, pixels};
+};
+
+// Preserve the historical single-layer SVG byte format for fully opaque art.
+// Opacity needs separate SVG groups because palette indices cannot represent
+// blended colours without losing the independently editable layer pixels.
+const layersToSvg = (layers, width, height, scale) => {
+    if (layers.every(layer => !layer.visible || layer.opacity === 0 || layer.opacity === 1)) {
+        return pixelsToSvg(composeLayers(layers, width, height), {scale});
+    }
+    const groups = layers.filter(layer => layer.visible && layer.opacity > 0).map(layer => {
+        const svg = pixelsToSvg({width, height, pixels: layer.pixels}, {scale});
+        const rects = svg.slice(svg.indexOf('>') + 1, -'</svg>'.length);
+        return `<g opacity="${layer.opacity}">${rects}</g>`;
+    });
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" ` +
+        `viewBox="0 0 ${width * scale} ${height * scale}" shape-rendering="crispEdges">${groups.join('')}</svg>`;
 };
 
 const sourceLayers = (document, width, height) => {
@@ -65,5 +81,5 @@ const moveSelectedPixels = (pixels, width, height, selection, requestedDx, reque
     return {pixels: next, selection: {...selection, x: selection.x + dx, y: selection.y + dy}};
 };
 
-export {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument,
+export {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
     moveSelectedPixels, resizeLayers, selectionRect, sourceLayers};
