@@ -1302,13 +1302,19 @@ uses those features. Brickwright Lite is based on permissively licensed Scratch
 components plus original editors, circuit simulation, debugging, lessons, device
 runtimes, and native-app code; it is not a TurboWarp fork.
 
-The submitted native app is self-contained. It does not download extension
-JavaScript, executable compiler toolchains, kernels, firmware, or other machine
-images. The extension picker contains only extensions bundled in the reviewed
-binary. Learner-authored source may be sent to the compilation service and the
-result returned to that learner's emulator or device; the source remains visible
-and editable in the app. The separately hosted web edition has additional optional
-downloads which are intentionally unavailable in this native build.
+Brickwright is an educational programming environment: downloading, importing,
+executing, inspecting and debugging learner programs is its disclosed core purpose.
+Learner-authored source remains visible and editable in the app, and downloaded
+machine programs execute inside the bundled emulators rather than as native host
+applications. Optional extension, compiler-toolchain and machine-media downloads
+are user initiated and cannot replace or update the Brickwright application.
+
+The normal web, macOS, Windows, Linux, Android and iOS bundles are built with
+`BW_REMOTE_CODE_POLICY=allow`. If a particular review channel requires a completely
+self-contained artifact, build the same source with `BW_REMOTE_CODE_POLICY=deny`;
+that compile-time profile removes the remote extension choices and refuses remote
+toolchain and executable machine-image downloads. It is not inferred from Tauri or
+selected at runtime.
 
 ## Listing fields
 
