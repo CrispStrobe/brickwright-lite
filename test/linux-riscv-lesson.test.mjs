@@ -64,9 +64,12 @@ test('the offer travels with the binary: GPL/LGPL licence line and the source li
 
 test('activate hands the kernel and the initramfs to the boot path', async () => {
     const seen = [];
+    // Keyed by the WHOLE url: a final-segment match would accept an Image from
+    // any repository at any commit.
+    const NAME = {[LINUX_RISCV_MEDIA.kernel.url]: 'Image', [LINUX_RISCV_MEDIA.initrd.url]: 'initramfs.cpio'};
     const fetcher = async ref => {
-        seen.push(ref.url.split('/').pop());
-        return {bytes: new TextEncoder().encode(`bytes:${ref.url.split('/').pop()}`)};
+        seen.push(NAME[ref.url] || ref.url);
+        return {bytes: new TextEncoder().encode(`bytes:${NAME[ref.url] || ref.url}`)};
     };
     const events = [];
     const {activated, detail} = await runMachineConfig(lesson().config, {fetcher, dispatch: d => events.push(d)});
