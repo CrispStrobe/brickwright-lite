@@ -5,6 +5,8 @@ import {readFileSync} from 'node:fs';
 
 const lm324Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/lm324-quad-follower.json', import.meta.url), 'utf8'));
+const lm741Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lm741-voltage-follower.json', import.meta.url), 'utf8'));
 
 const url = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 const browser = await chromium.launch();
@@ -194,6 +196,37 @@ try {
         lm324.values.every((value, index) =>
             typeof value === 'number' && Math.abs(value - [0.5, 1, 2, 3][index]) < 0.02),
         JSON.stringify(lm324));
+
+    // The LM741 proof is deliberately a dual-supply follower, not merely a
+    // palette lookup: it crosses the pinned CUI face and Board behavior through
+    // the same production bundle a user loads.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lm741Fixture);
+    const lm741Face = designer.locator('[data-dip-body="lm741"][data-dip-label="LM741"]');
+    await lm741Face.waitFor({state: 'visible', timeout: 10000});
+    const lm741FaceText = await lm741Face.textContent();
+    check('LM741 renders as the truthful labelled PDIP-8 face',
+        await lm741Face.count() === 1 && /DIP-8/.test(lm741FaceText) &&
+        ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc']
+            .every(name => lm741FaceText.includes(name)),
+        lm741FaceText.replace(/\s+/g, ' ').trim());
+    const lm741 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LM741 board'};
+        board.advanceTo(board.timeNs + 10_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'out'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical dual-supply LM741 follower',
+        lm741.terminals === 8 && typeof lm741.output === 'number' &&
+        Math.abs(lm741.output - 1.001) < 0.02,
+        JSON.stringify(lm741));
 } finally {
     await browser.close();
 }
