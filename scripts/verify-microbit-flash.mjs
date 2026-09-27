@@ -103,20 +103,21 @@ async function openToMicropythonBar (present) {
     await waitFor(() => deviceSelect.count(), c => c > 0, 60000);
     await deviceSelect.selectOption('microbit');
 
-    const cm = page.locator('.cm-content, textarea').first();
-    await waitFor(() => cm.isVisible().catch(() => false), v => v === true, 60000);
-    await cm.click();
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
-    await page.keyboard.press('Delete');
-    await page.keyboard.insertText('DEVICE MICROBIT\nPIN led = P0 OUTPUT\n\nWHEN flag clicked:\n  turn on led\n  print "hi"\n');
-
     // Switching to the micro:bit tab is what flips lang → micropython and reveals
-    // the bar the flash button lives in.
+    // the bar the flash button lives in. Edit only after that transition so the
+    // text lands in the MicroPython buffer, not whichever CodeMirror buffer was
+    // visible for the previous language while React was changing tabs.
     const microbitTab = page.locator('button', {hasText: 'micro:bit'}).first();
     await waitFor(() => microbitTab.count(), c => c > 0, 60000);
     await microbitTab.click();
     const bar = page.locator('[data-testid="bw-micropython-bar"]').first();
     await waitFor(() => bar.count(), c => c > 0, 60000);
+    const cm = page.locator('.cm-content:visible, textarea:visible').first();
+    await waitFor(() => cm.isVisible().catch(() => false), v => v === true, 60000);
+    await cm.click();
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+    await page.keyboard.press('Delete');
+    await page.keyboard.insertText('from microbit import *\n\ndisplay.show(Image.HEART)\n');
     return {page, pageErrors};
 }
 
@@ -129,6 +130,7 @@ try {
     check('the "flash the micro:bit" button appears when WebUSB is available', shown === true);
 
     if (shown === true) {
+        await waitFor(() => flashBtn.isEnabled().catch(() => false), v => v === true, 60000);
         await flashBtn.click();
         const status = page.locator('[data-testid="bw-code-status"]').first();
         // The device-first handler maps a rejected requestDevice straight to the

@@ -42,8 +42,8 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'the CPU-bound workload must not advance through a service, halt or wait');
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');
-    assert.match(script, /getByRole\('button', \{name: \/ASM\/\}\)\.click\(\{force: true\}\)/,
-        'the minimum-width profile must dispatch the overlapped but enabled ASM control');
+    assert.match(script, /!button\.disabled[\s\S]*asmTab\.dispatchEvent\('click'\)/,
+        'the minimum-width profile must wait for and dispatch the overlapped enabled ASM control');
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);

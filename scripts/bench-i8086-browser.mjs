@@ -147,10 +147,18 @@ try {
             document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
         null, {timeout: 15000});
         await mark('i8086-selected');
-        // The minimum-width language row overlaps sibling controls visually;
-        // dispatch the enabled production control just as the assemble step
-        // below does. Setup interaction is outside the measured window.
-        await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click({force: true});
+        // Device selection briefly marks the language row busy. A forced click
+        // on its disabled ASM button is silently discarded by the browser, so
+        // first wait for the actual production control to become enabled. The
+        // minimum-width row can overlap siblings visually; dispatching the
+        // click after that readiness check avoids charging layout quirks to a
+        // benchmark whose measured window has not started yet.
+        const asmTab = page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/});
+        await page.waitForFunction(() => [...document.querySelectorAll(
+            '[data-testid="bw-lang-row"] button'
+        )].some(button => /ASM/.test(button.textContent || '') && !button.disabled),
+        null, {timeout: assemblySetupTimeoutMs});
+        await asmTab.dispatchEvent('click');
         await page.getByTestId('bw-asm-examples').waitFor({
             state: 'visible', timeout: assemblySetupTimeoutMs
         });
