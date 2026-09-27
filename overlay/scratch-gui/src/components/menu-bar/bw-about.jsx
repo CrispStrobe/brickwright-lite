@@ -8,7 +8,13 @@ import ABOUT_GROUPS from './about-data.js';
 
 const VERSION = (typeof process.env.BW_VERSION === 'string' && process.env.BW_VERSION) || 'unknown';
 const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env.BW_BUILD_TIME) || '';
-const REMOTE_CODE_POLICY = process.env.BW_REMOTE_CODE_POLICY === 'deny' ? 'deny' : 'allow';
+const POLICY = Object.freeze({
+    extensions: process.env.BW_REMOTE_EXTENSIONS_POLICY === 'deny' ? 'deny' : 'allow',
+    toolchains: process.env.BW_REMOTE_TOOLCHAINS_POLICY === 'deny' ? 'deny' : 'allow',
+    machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY === 'deny' ? 'deny' : 'allow'
+});
+const POLICY_RECEIPT = `remote-extensions=${POLICY.extensions} ` +
+    `toolchains=${POLICY.toolchains} machine-images=${POLICY.machineImages}`;
 
 const REPO_URL = 'https://github.com/CrispStrobe/brickwright-lite';
 const NOTICES_URL = `${REPO_URL}/blob/main/THIRD-PARTY-NOTICES.md`;
@@ -46,6 +52,9 @@ const L10N = {
         version: 'Version',
         built: 'Built',
         remoteDownloads: 'Remote downloads',
+        remoteExtensions: 'URL extensions',
+        remoteToolchains: 'Executable toolchains',
+        remoteMachineImages: 'Machine images',
         policyAllow: 'Allowed',
         policyDeny: 'Restricted',
         source: 'Source code',
@@ -98,6 +107,9 @@ const L10N = {
         version: 'Version',
         built: 'Erstellt',
         remoteDownloads: 'Remote-Downloads',
+        remoteExtensions: 'URL-Erweiterungen',
+        remoteToolchains: 'Ausfuhrbare Toolchains',
+        remoteMachineImages: 'Maschinenabbilder',
         policyAllow: 'Erlaubt',
         policyDeny: 'Eingeschrankt',
         source: 'Quellcode',
@@ -253,7 +265,7 @@ class BwAbout extends React.Component {
     }
     handleCopy () {
         const text = `Brickwright ${VERSION}${BUILD_TIME ? ` (built ${BUILD_TIME})` : ''}` +
-            ` [remote-code=${REMOTE_CODE_POLICY}]\n` +
+            ` [${POLICY_RECEIPT}]\n` +
             `${navigator.userAgent}`;
         const done = () => this.setState({copied: true});
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -297,13 +309,23 @@ class BwAbout extends React.Component {
                                     <dt key="built-label">{t('built')}</dt>,
                                     <dd key="built-value">{buildTime}</dd>
                                 ] : null}
-                                <dt>{t('remoteDownloads')}</dt>
+                                <dt>{t('remoteExtensions')}</dt>
                                 <dd
                                     className={styles.mono}
                                     data-testid="about-remote-code-policy"
                                 >
-                                    {REMOTE_CODE_POLICY === 'allow' ? t('policyAllow') : t('policyDeny')}
-                                    {` (${REMOTE_CODE_POLICY})`}
+                                    {POLICY.extensions === 'allow' ? t('policyAllow') : t('policyDeny')}
+                                    {` (${POLICY.extensions})`}
+                                </dd>
+                                <dt>{t('remoteToolchains')}</dt>
+                                <dd className={styles.mono} data-testid="about-toolchain-policy">
+                                    {POLICY.toolchains === 'allow' ? t('policyAllow') : t('policyDeny')}
+                                    {` (${POLICY.toolchains})`}
+                                </dd>
+                                <dt>{t('remoteMachineImages')}</dt>
+                                <dd className={styles.mono} data-testid="about-machine-image-policy">
+                                    {POLICY.machineImages === 'allow' ? t('policyAllow') : t('policyDeny')}
+                                    {` (${POLICY.machineImages})`}
                                 </dd>
                             </dl>
 

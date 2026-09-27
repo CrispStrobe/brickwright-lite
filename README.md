@@ -51,7 +51,8 @@ human coordination and qualification process.
 - 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
   surface) plus 150 reviewed gallery extensions. Web and native builds allow
   the gallery by default; a deliberately self-contained artifact can be built
-  with `BW_REMOTE_CODE_POLICY=deny`.
+  with `BW_REMOTE_CODE_POLICY=deny`, or only URL extensions can be removed with
+  `BW_REMOTE_EXTENSIONS_POLICY=deny`.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
 
@@ -291,7 +292,10 @@ distributed GPL tools or media, with their licence and corresponding source
 shown at the point of download. These user-initiated downloads remain separate
 from the BSD-3 application. A review-specific, self-contained build can disable
 remote toolchains, machine images and extension JavaScript at compile time with
-`BW_REMOTE_CODE_POLICY=deny`; the normal build policy is `allow`.
+`BW_REMOTE_CODE_POLICY=deny`; the normal build policy is `allow`. The narrower
+`BW_REMOTE_EXTENSIONS_POLICY`, `BW_REMOTE_TOOLCHAINS_POLICY`, and
+`BW_REMOTE_MACHINE_IMAGES_POLICY` variables independently override the umbrella,
+so review-channel restrictions do not unnecessarily disable unrelated features.
 
 ### The bundled extensions
 

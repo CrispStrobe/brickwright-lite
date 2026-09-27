@@ -74,12 +74,19 @@ async function verify() {
             if (!response.ok) throw new Error(`build manifest HTTP ${response.status}`);
             return response.json();
         });
-        const policyText = await page.getByTestId('about-remote-code-policy').innerText();
-        const policy = manifest?.distributionPolicy?.remoteCode;
-        if ((policy === 'allow' || policy === 'deny') && policyText.includes(`(${policy})`)) {
-            pass(`About policy matches emitted manifest: ${policy}`);
-        } else {
-            fail(`About/manifest policy mismatch: ${JSON.stringify({policy, policyText})}`);
+        const policyRows = [
+            ['remoteExtensions', 'about-remote-code-policy'],
+            ['executableToolchains', 'about-toolchain-policy'],
+            ['machineImages', 'about-machine-image-policy']
+        ];
+        for (const [name, testId] of policyRows) {
+            const policyText = await page.getByTestId(testId).innerText();
+            const policy = manifest?.distributionPolicy?.[name];
+            if ((policy === 'allow' || policy === 'deny') && policyText.includes(`(${policy})`)) {
+                pass(`About ${name} policy matches emitted manifest: ${policy}`);
+            } else {
+                fail(`About/manifest ${name} policy mismatch: ${JSON.stringify({policy, policyText})}`);
+            }
         }
 
         // Get the full text content of the dialog
