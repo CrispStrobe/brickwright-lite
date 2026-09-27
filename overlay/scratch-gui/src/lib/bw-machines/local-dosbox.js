@@ -3,7 +3,8 @@ import {newMachineConfig} from './machine-config.js';
 
 /** One-shot local HDD boot. Bytes stay in the browser tab and never enter the
  * saved Machine Manager store. A DOSBox conf may supply -size geometry. */
-export function localDosboxMachine({confText = '', fileName, byteLength}) {
+export function localDosboxMachine({confText = '', fileName, byteLength,
+    nativeBlocks = false}) {
     if (!fileName || !Number.isSafeInteger(byteLength) || byteLength <= 0 || byteLength % 512) {
         throw new Error('select a non-empty raw disk image whose size is a multiple of 512 bytes');
     }
@@ -28,6 +29,7 @@ export function localDosboxMachine({confText = '', fileName, byteLength}) {
     }
     return newMachineConfig({
         title: fileName, machine: 'i80386', executionMode: 'functional',
+        nativeBlocks,
         bios: {kind: 'bochs-lgpl'}, video: {kind: 'vga', optionRom: 'seavgabios-lgpl'},
         slots: {hdd: {url: 'local-media:disk', geometry}}, bootOrder: ['hdd'],
         widgets: [{name: 'AT VGA', type: 'simplevga', source: 'video',
