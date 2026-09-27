@@ -7,21 +7,21 @@ import {REFUSED} from '../overlay/scratch-gui/src/lib/bw-parts/profiles.js';
 
 const root = path.resolve(import.meta.dirname, '..');
 const fixture = JSON.parse(readFileSync(
-    path.join(root, 'test/fixtures/adp7118-fixed-regulator.json'), 'utf8'));
-const terminals = ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'];
+    path.join(root, 'test/fixtures/lt1763-fixed-regulator.json'), 'utf8'));
+const terminals = ['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'gnd_6', 'gnd_7', 'in'];
 
-test('the exact installed packages expose and solve the physical ADP7118', async () => {
+test('the exact installed packages expose and solve the physical LT1763', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
     assert.equal(pins['bw-board'], 'f64370b8d85bb49110508bc32f635319daf1412d');
     assert.equal(pins['bw-circuit-ui'], 'acacd3ce6d02bcb192b756061c78a701bd44715e');
 
     const sidecar = JSON.parse(readFileSync(
-        path.join(root, 'node_modules/bw-circuit-ui/src/parts-data/adp7118.json'), 'utf8'));
-    assert.equal(sidecar.kind, 'adp7118');
+        path.join(root, 'node_modules/bw-circuit-ui/src/parts-data/lt1763.json'), 'utf8'));
+    assert.equal(sidecar.kind, 'lt1763');
     assert.deepEqual(sidecar.terminals.map(pin => pin.name), terminals);
     assert.equal(Object.hasOwn(sidecar, 'footprint'), false,
-        'the SMT-only package must not acquire an invented breadboard seating');
-    assert.ok(REFUSED.passive.includes('adp7118'),
+        'the SMT-only package must not acquire invented breadboard seating');
+    assert.ok(REFUSED.passive.includes('lt1763'),
         'the circuit-driven regulator must not be presented as a programmable Code-tab part');
 
     const {Circuit} = await loadCircuitModel(root);
@@ -29,15 +29,15 @@ test('the exact installed packages expose and solve the physical ADP7118', async
     assert.equal(circuit.netlistError, null);
     circuit.board.advanceTo(10_000n);
     const output = circuit.board.nets.find(item => item.terminals.some(endpoint =>
-        endpoint.part === 'u1' && endpoint.terminal === 'vout_1'));
-    assert.ok(output, 'ADP7118 output must belong to a solved net');
-    assert.ok(Math.abs(circuit.board.nodeVoltage(output.id) - 5) < 0.002,
-        `physical ADP7118 output was ${circuit.board.nodeVoltage(output.id)} V`);
+        endpoint.part === 'u1' && endpoint.terminal === 'out'));
+    assert.ok(output, 'LT1763 output must belong to a solved net');
+    assert.ok(Math.abs(circuit.board.nodeVoltage(output.id) - 5) < 0.003,
+        `physical LT1763 output was ${circuit.board.nodeVoltage(output.id)} V`);
 });
 
-test('the production browser gate requires the ADP7118 face, pins and live solve', () => {
+test('the production browser gate requires the LT1763 face, pins and live solve', () => {
     const source = readFileSync(path.join(root, 'scripts/verify-circuit-rendering.mjs'), 'utf8');
-    assert.match(source, /data-part-face="adp7118"/);
-    assert.match(source, /adp7118\.terminals === 8/);
-    assert.match(source, /Math\.abs\(adp7118\.output - 5\) < 0\.002/);
+    assert.match(source, /data-part-face="lt1763"/);
+    assert.match(source, /lt1763\.terminals === 8/);
+    assert.match(source, /Math\.abs\(lt1763\.output - 5\) < 0\.003/);
 });

@@ -9,6 +9,8 @@ const lm741Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/lm741-voltage-follower.json', import.meta.url), 'utf8'));
 const adp7118Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/adp7118-fixed-regulator.json', import.meta.url), 'utf8'));
+const lt1763Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lt1763-fixed-regulator.json', import.meta.url), 'utf8'));
 
 const url = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 const browser = await chromium.launch();
@@ -260,6 +262,36 @@ try {
         adp7118.terminals === 8 && typeof adp7118.output === 'number' &&
         Math.abs(adp7118.output - 5) < 0.002,
         JSON.stringify(adp7118));
+
+    // The final vertical slice: Lite's bundled CUI face and Board model must
+    // meet in one real browser circuit, not merely coexist as package files.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lt1763Fixture);
+    const ltFace = designer.locator('[data-part-face="lt1763"][data-soic-body="lt1763"]');
+    await ltFace.waitFor({state: 'visible', timeout: 10000});
+    const ltFaceText = await ltFace.textContent();
+    check('LT1763 renders as the truthful labelled SO-8 face',
+        await ltFace.count() === 1 && /500mA LDO/.test(ltFaceText) &&
+        ['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'gnd_6', 'gnd_7', 'in']
+            .every(name => ltFaceText.includes(name)),
+        ltFaceText.replace(/\s+/g, ' ').trim());
+    const lt1763 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LT1763 board'};
+        board.advanceTo(board.timeNs + 10_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'out'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical fixed-output LT1763 regulator',
+        lt1763.terminals === 8 && typeof lt1763.output === 'number' &&
+        Math.abs(lt1763.output - 5) < 0.003,
+        JSON.stringify(lt1763));
 } finally {
     await browser.close();
 }

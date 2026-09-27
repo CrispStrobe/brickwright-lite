@@ -106,7 +106,7 @@ The six stored families are the emitter's own `this._core` branch strings. `rp20
 
 By category (the closed `REASON` vocabulary). These carry no verbs.
 
-- **passive** (35): adp7118, ams1117_33, ams1117_50, battery, battery_9v, battery_aa, battery_coin, capacitor, crystal, diode, fuse, gnd, header, inductor, isource, ld1117v33, ldr, level_shifter4, light_bulb, lm7805, lm7809, lm7812, ntc, osc_can, polarized_cap, potentiometer, resistor, rnet_sip, solar_cell, transformer, usb_a, vcc, vreg, vsource, zener
+- **passive** (36): adp7118, ams1117_33, ams1117_50, battery, battery_9v, battery_aa, battery_coin, capacitor, crystal, diode, fuse, gnd, header, inductor, isource, ld1117v33, ldr, level_shifter4, light_bulb, lm7805, lm7809, lm7812, lt1763, ntc, osc_can, polarized_cap, potentiometer, resistor, rnet_sip, solar_cell, transformer, usb_a, vcc, vreg, vsource, zener
 - **instrument** (4): ammeter, analog_meter, logic_probe, voltmeter
 - **host** (17): arduino_mega, arduino_nano, arduino_uno, attiny85, attiny88, calliopemini, circuit_playground_express, eater6502, i8086, i8088, mcu, pi_pico, pybadge, stc15_mcu, stm32f030, w65c02, z80
 - **dip-surface** (20): ay8912, i8251, i8253, i8254, i8255, i8259, i8284, isd1820, kd9561, m6532, mc6850, ns16c550, ps2, ps2mouse, simplevga_card, tms9918, um245r, um66t, w65c22, w65c51
