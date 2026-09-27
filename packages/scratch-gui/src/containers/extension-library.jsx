@@ -141,9 +141,14 @@ class ExtensionLibrary extends React.PureComponent {
     }
     componentDidMount () {
         window.addEventListener(LEGACY_SPIKE_CHANGE_EVENT, this.handleLegacySpikeChange);
-        fetchGallery()
-            .then(gallery => this.setState({gallery}))
-            .catch(err => this.setState({galleryError: err.message}));
+        // Native store builds expose only extensions already reviewed and bundled with the app.
+        // Downloading JavaScript which adds functionality is an App Store boundary even when a
+        // worker is an effective security boundary, so do not fetch or advertise the remote gallery.
+        if (!window.__TAURI__) {
+            fetchGallery()
+                .then(gallery => this.setState({gallery}))
+                .catch(err => this.setState({galleryError: err.message}));
+        }
     }
     componentWillUnmount () {
         window.removeEventListener(LEGACY_SPIKE_CHANGE_EVENT, this.handleLegacySpikeChange);
@@ -205,7 +210,7 @@ class ExtensionLibrary extends React.PureComponent {
             tags: ['gallery'],
             featured: true
         };
-        const allExtensions = [customEntry].concat(bundled, gallery);
+        const allExtensions = (window.__TAURI__ ? [] : [customEntry]).concat(bundled, gallery);
         const extensionLibraryThumbnailData = allExtensions.map(extension => ({
             rawURL: extension.iconURL || extensionIcon,
             ...extension

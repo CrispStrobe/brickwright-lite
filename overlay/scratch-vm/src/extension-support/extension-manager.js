@@ -345,6 +345,16 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
+        // Tauri store builds are self-contained. Worker isolation limits privileges, but it does
+        // not change downloaded JavaScript into non-code for store-review purposes. Apply this at
+        // the VM boundary as well as the picker so projects, deep links and direct API callers all
+        // fail closed. Bundled IDs have already returned above and remain fully available offline.
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+            return Promise.reject(new Error(
+                'The native app can load only bundled extensions; open this project in the web app to use URL extensions.'
+            ));
+        }
+
         // Brickwright: a BARE ID that is not a builtin is a missing implementation,
         // not a URL. Treating it as one spawned a sandbox worker whose
         // importScripts('<id>') 404'd as a page error on every project load
