@@ -19,12 +19,13 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 const mark = stage => console.log(`[native-downloads] ${stage}`);
 const call = async (method, route, body, timeout = 10000) => {
     try {
-        const response = await fetch(base + route, {
+        const options = {
             method,
             headers: {'content-type': 'application/json'},
-            body: body === undefined ? undefined : JSON.stringify(body),
-            signal: AbortSignal.timeout(timeout)
-        });
+            body: body === undefined ? undefined : JSON.stringify(body)
+        };
+        if (timeout !== null) options.signal = AbortSignal.timeout(timeout);
+        const response = await fetch(base + route, options);
         const text = await response.text();
         return {status: response.status, body: text ? JSON.parse(text) : null};
     } catch (error) {
@@ -50,18 +51,21 @@ const fail = async message => {
 try {
     mark(`waiting for tauri-driver on ${base}`);
     let ready = false;
-    const readyDeadline = Date.now() + 30000;
-    while (Date.now() < readyDeadline && !ready) {
-        // Once tauri-driver has accepted the socket its /status response can take more than two
-        // seconds while WebKitWebDriver starts. Aborting that accepted request makes Hyper report
-        // IncompleteMessage and starting another request repeats the damage indefinitely. Give
-        // the accepted request the remainder of the startup window, as the working broker proof
-        // does, while retaining a hard overall deadline.
-        const remaining = readyDeadline - Date.now();
-        try { await call('GET', '/status', undefined, Math.max(1000, remaining)); ready = true; }
+    let startupExpired = false;
+    const startupWatchdog = setTimeout(() => {
+        startupExpired = true;
+        driver.kill('SIGTERM');
+    }, 30000);
+    while (!startupExpired && !ready) {
+        // Match the working broker harness exactly here. Passing even a long AbortSignal makes
+        // this tauri-driver/Hyper version immediately close each accepted request as
+        // IncompleteMessage. The separate watchdog preserves the deadline by terminating the
+        // server, which also breaks a genuinely stuck unsigned fetch.
+        try { await call('GET', '/status', undefined, null); ready = true; }
         catch { if (!ready) await sleep(500); }
         if (driver.exitCode !== null) await fail(`tauri-driver exited ${driver.exitCode}`);
     }
+    clearTimeout(startupWatchdog);
     if (!ready) await fail('tauri-driver did not become ready');
     mark('creating Tauri WebDriver session');
     const created = await call('POST', '/session', {
