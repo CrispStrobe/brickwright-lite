@@ -82,7 +82,7 @@ test('the 8086 browser proof closes the local assembly, display, key and port jo
         'mount-time auto-run must wait for retained media to finish loading');
     const runner = readFileSync(path.join(root,
         'overlay/scratch-gui/src/lib/bw-debug/debug-runner.js'), 'utf8');
-    assert.match(runner, /selectedKind === 'i8086' && bootMedia/,
+    assert.match(runner, /\(\(selectedKind === 'i8086' \|\| selectedKind === 'i80386'\) && bootMedia\)/,
         'an 8086 media image must bypass unrelated Scratch pin compilation');
 });
 

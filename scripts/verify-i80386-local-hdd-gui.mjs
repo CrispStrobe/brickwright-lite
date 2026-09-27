@@ -44,6 +44,7 @@ try {
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-mm-import-text"]')
         ?.value.includes('cputype=auto'));
     await page.getByTestId('bw-mm-local-run').click();
+    await page.getByTestId('bw-machine-manager').waitFor({state: 'hidden'});
     await page.waitForFunction(() => {
         const regs = window.__benchTarget?.regs?.();
         const canvas = document.querySelector('[data-testid="bw-machine-canvas"]');

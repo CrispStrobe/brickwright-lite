@@ -470,7 +470,7 @@ test('D7 CLOSED for the two 6502 benches: they ship an image and the example loa
     // the `null` arm and never call build(). The line grew a user-firmware
     // branch (2026-08-25 — arbitrary .bin/.hex loading) and an 8086 boot-media
     // arm (2026-09-04); the 6502 arm is unchanged.
-    assert.match(runner, /selectedKind === 'z80' \|\| selectedKind === 'eater6502' \|\|\n\s*\(selectedKind === 'i8086' && bootMedia\)\) \? null\n\s*: userFirmware \? builtFromUserFirmware\(selectedKind\)\n\s*: await build\(\)/,
+    assert.match(runner, /selectedKind === 'z80' \|\| selectedKind === 'eater6502' \|\|\n\s*\(\(selectedKind === 'i8086' \|\| selectedKind === 'i80386'\) && bootMedia\)\) \? null\n\s*: userFirmware \? builtFromUserFirmware\(selectedKind\)\n\s*: await build\(\)/,
         'the machine path now builds an image -- re-measure Wave 7');
     // The sentence moved into lib/bw-debug/runner-status-l10n.js when the
     // status line was translated, so the runner carries the KEY and the table

@@ -1281,6 +1281,14 @@ jobs:
         timeout-minutes: 3  # derived: p95 8 s × 3 → 3 min over 20 green runs to 36295223555; max 9 s in run 36154379521 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-i8086-browser.mjs
+      - name: Browser gate — 386 local DOSBox HDD boot in Widgets
+        timeout-minutes: 3
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-i80386-local-hdd-gui.mjs
+      - name: Browser gate — machine Widgets keyboard, mouse and fullscreen
+        timeout-minutes: 3
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-machine-widgets.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
         with:
