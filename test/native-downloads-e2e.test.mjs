@@ -26,6 +26,15 @@ test('native proof exercises extension, toolchain and pinned machine media', () 
     assert.match(proof, /kernelBytes: 4876836/);
 });
 
+test('native proof is bounded and reports the stage that stalled', () => {
+    assert.match(proof, /AbortSignal\.timeout\(125000\)/);
+    assert.match(proof, /\{script: 120000\}/);
+    assert.match(proof, /native download probe timed out during/);
+    assert.match(proof, /extension manager load/);
+    assert.match(proof, /machine image digest/);
+    assert.match(workflow, /timeout --signal=TERM --kill-after=15s 240s/);
+});
+
 test('Tauri e2e embeds the real frontend and retains its downloadable evidence', () => {
     const webpack = readFileSync(path.join(ROOT, 'overlay/scratch-gui/webpack.config.js'), 'utf8');
     assert.match(webpack, /from: 'static\/capability-broker\.html',[\s\S]*to: 'capability-broker\.html'/);

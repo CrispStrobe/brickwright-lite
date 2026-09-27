@@ -20,10 +20,11 @@ const call = async (method, route, body) => {
     const response = await fetch(base + route, {
         method,
         headers: {'content-type': 'application/json'},
-        body: body === undefined ? undefined : JSON.stringify(body)
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(125000)
     });
     const text = await response.text();
-    return {status: response.status, body: JSON.parse(text)};
+    return {status: response.status, body: text ? JSON.parse(text) : null};
 };
 
 const logs = [];
@@ -53,6 +54,8 @@ try {
     });
     session = created.body?.value?.sessionId;
     if (!session) await fail(`no WebDriver session: ${JSON.stringify(created.body)}`);
+    const timeouts = await call('POST', `/session/${session}/timeouts`, {script: 120000});
+    if (timeouts.status >= 400) await fail(`could not set WebDriver script timeout: ${JSON.stringify(timeouts.body)}`);
 
     let editor;
     for (let attempt = 0; attempt < 120 && !editor; attempt++) {
@@ -78,30 +81,64 @@ try {
     const result = await call('POST', `/session/${session}/execute/async`, {
         script: `
             const done = arguments[arguments.length - 1];
+            let stage = 'starting';
+            let finished = false;
+            const finishProbe = value => {
+                if (finished) return;
+                finished = true;
+                clearTimeout(watchdog);
+                done(value);
+            };
+            const watchdog = setTimeout(() => finishProbe({
+                fatal: 'native download probe timed out during ' + stage
+            }), 110000);
+            const within = (operation, label, milliseconds = 30000) => {
+                stage = label;
+                return Promise.race([
+                    operation,
+                    new Promise((_, reject) => setTimeout(
+                        () => reject(new Error(label + ' timed out after ' + milliseconds + 'ms')),
+                        milliseconds))
+                ]);
+            };
+            const download = async (url, label, milliseconds = 30000) => {
+                const response = await within(fetch(url, {cache:'no-store'}), label + ' fetch', milliseconds);
+                const bytes = await within(response.arrayBuffer(), label + ' body', milliseconds);
+                return {response, bytes};
+            };
             const sha256 = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)))
                 .map(x => x.toString(16).padStart(2, '0')).join('');
             (async () => {
-                const manifestResponse = await fetch('brickwright-build.json', {cache:'no-store'});
-                const manifest = await manifestResponse.json();
-                const galleryResponse = await fetch(
-                    'https://crispstrobe.github.io/extensions/generated-metadata/extensions-v0.json', {cache:'no-store'});
-                const gallery = await galleryResponse.json();
+                stage = 'build manifest';
+                const manifestResponse = await within(fetch('brickwright-build.json', {cache:'no-store'}),
+                    'build manifest fetch');
+                const manifest = await within(manifestResponse.json(), 'build manifest body');
+                stage = 'extension gallery';
+                const galleryResponse = await within(fetch(
+                    'https://crispstrobe.github.io/extensions/generated-metadata/extensions-v0.json',
+                    {cache:'no-store'}), 'extension gallery fetch');
+                const gallery = await within(galleryResponse.json(), 'extension gallery body');
                 const extensionURL = 'https://crispstrobe.github.io/extensions/true-fantom/math.js';
-                const extensionResponse = await fetch(extensionURL, {cache:'no-store'});
-                const extensionBytes = (await extensionResponse.arrayBuffer()).byteLength;
+                const extensionDownload = await download(extensionURL, 'extension source');
+                const extensionResponse = extensionDownload.response;
+                const extensionBytes = extensionDownload.bytes.byteLength;
                 let extensionLoaded = false, extensionError = null;
                 try {
-                    await globalThis.__vm.extensionManager.loadExtensionURL(extensionURL);
+                    await within(globalThis.__vm.extensionManager.loadExtensionURL(extensionURL),
+                        'extension manager load', 40000);
                     extensionLoaded = globalThis.__vm.extensionManager.isExtensionLoaded(extensionURL);
                 } catch (error) { extensionError = String(error && error.message || error); }
-                const toolchainResponse = await fetch(
-                    'https://crispstrobe.github.io/sdcc-wasm/runtime.json', {cache:'no-store'});
-                const toolchainBytes = (await toolchainResponse.arrayBuffer()).byteLength;
-                const kernelResponse = await fetch(
+                const toolchainDownload = await download(
+                    'https://crispstrobe.github.io/sdcc-wasm/runtime.json', 'toolchain runtime');
+                const toolchainResponse = toolchainDownload.response;
+                const toolchainBytes = toolchainDownload.bytes.byteLength;
+                const kernelDownload = await download(
                     'https://raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/' +
-                    '5b257a33fb748885bd952d8b8b281c76f0b36516/riscv32-linux/Image', {cache:'no-store'});
-                const kernel = await kernelResponse.arrayBuffer();
-                done({
+                    '5b257a33fb748885bd952d8b8b281c76f0b36516/riscv32-linux/Image', 'machine image', 40000);
+                const kernelResponse = kernelDownload.response;
+                const kernel = kernelDownload.bytes;
+                stage = 'machine image digest';
+                finishProbe({
                     manifestStatus: manifestResponse.status,
                     remoteExtensionsPolicy: manifest?.distributionPolicy?.remoteExtensions,
                     executableToolchainsPolicy: manifest?.distributionPolicy?.executableToolchains,
@@ -119,7 +156,9 @@ try {
                     kernelSha256: await sha256(kernel),
                     nativeInvoke: typeof globalThis.__TAURI_INTERNALS__.invoke
                 });
-            })().catch(error => done({fatal:String(error && error.stack || error)}));`,
+            })().catch(error => finishProbe({
+                fatal: stage + ': ' + String(error && error.stack || error)
+            }));`,
         args: []
     });
     const proof = result.body?.value;
