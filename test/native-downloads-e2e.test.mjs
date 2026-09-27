@@ -27,8 +27,11 @@ test('native proof exercises extension, toolchain and pinned machine media', () 
 });
 
 test('Tauri e2e embeds the real frontend and retains its downloadable evidence', () => {
+    const webpack = readFileSync(path.join(ROOT, 'overlay/scratch-gui/webpack.config.js'), 'utf8');
+    assert.match(webpack, /from: 'static\/capability-broker\.html',[\s\S]*to: 'capability-broker\.html'/);
     assert.match(workflow, /name: Build the real allow-profile frontend[\s\S]*bash scripts\/vercel-build\.sh/);
     assert.match(workflow, /name: Drive remote downloads through the real native WebView/);
     assert.match(workflow, /verify-native-downloads-e2e\.mjs/);
     assert.match(workflow, /native-downloads\.log/);
+    assert.match(workflow, /e2e-evidence\/frontend-dist\.log/);
 });
