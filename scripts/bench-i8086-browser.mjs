@@ -163,13 +163,11 @@ try {
         null, {timeout: assemblySetupTimeoutMs});
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
-        // This is deliberately authored as a fresh DEVICE directive, not a
-        // picker change. Picker selection on an existing hardware program is a
-        // real retarget request and is therefore allowed to load sb3-creator;
-        // this benchmark's pre-Circuit policy window promises that no retarget,
-        // conversion, compile or export was requested.
-        await initialEditor.click();
-        await page.keyboard.insertText('DEVICE i8086\n');
+        // The empty-buffer acknowledgement above makes this a fresh device
+        // selection, not a retarget. Selecting while the GPIO starter still
+        // exists legitimately loads sb3-creator; the pre-Circuit receipt below
+        // continues to reject that speculative compiler fetch here.
+        await device.selectOption('i8086');
         await page.waitForFunction(() =>
             document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
         null, {timeout: assemblySetupTimeoutMs});
@@ -212,8 +210,21 @@ try {
         // production button and measure only the resulting machine pump.
         await page.getByTestId('bw-asm-assemble').click({force: true});
         await mark('assemble-clicked');
-        await page.locator('[data-debug-panel][data-debug-phase="running"]')
-            .waitFor({state: 'attached', timeout: 30000});
+        try {
+            await page.locator('[data-debug-panel][data-debug-phase="running"]')
+                .waitFor({state: 'attached', timeout: 30000});
+        } catch (cause) {
+            const state = await page.evaluate(() => ({
+                codeStatus: document.querySelector('[data-testid="bw-code-status"]')?.textContent || '',
+                debugPhase: document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase') || '',
+                device: document.querySelector('[data-testid="bw-device-select"]')?.value || '',
+                assembleDisabled: document.querySelector('[data-testid="bw-asm-assemble"]')?.disabled ?? null,
+                visibleEditor: [...document.querySelectorAll('.cm-content')]
+                    .find(node => node.getClientRects().length > 0)?.textContent || ''
+            }));
+            throw new Error(`the assembled 8086 benchmark did not reach running: ${JSON.stringify(state)}`,
+                {cause});
+        }
         await mark('bench-booted');
         await mark('runner-running');
         await mark('circuit-open-request');

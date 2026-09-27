@@ -17,7 +17,7 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
     const script = readFileSync(new URL('../scripts/bench-i8086-browser.mjs', import.meta.url), 'utf8');
     for (const fact of [
         "name: 'desktop'", "name: 'mobile'", "name: 'minimum-device-4x'", '__BW_I8086_PERF__',
-        "insertText('DEVICE i8086\\n')", 'i8086-cpu-bound-v1', 'BW-I8086-CPU-BOUND-V1',
+        "device.selectOption('i8086')", 'i8086-cpu-bound-v1', 'BW-I8086-CPU-BOUND-V1',
         "locator('.cm-content:visible')", 'workloadSourceSha256', 'heartbeatDelta',
         'heartbeatSegment', 'heartbeatAddress', 'cycleDelta', "selectOption('masm')", 'simulatedMsPerPump',
         'maximumSimulatedMsPerPump = 50',
@@ -48,8 +48,10 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'assembly must click the enabled control and prove the durable running state');
     assert.doesNotMatch(script, /waitForFunction\([\s\S]{0,200}booting the 8086 bench/,
         'a transient booting message is an event, not proof that the benchmark is running');
-    assert.doesNotMatch(script, /device\.selectOption\(['"]i8086['"]\)/,
-        'the DOS-only journey must not turn an existing GPIO starter into a retarget request');
+    const emptyBufferAck = script.indexOf("?.value === ''");
+    const freshDeviceSelection = script.indexOf("device.selectOption('i8086')");
+    assert.ok(emptyBufferAck >= 0 && freshDeviceSelection > emptyBufferAck,
+        'the DOS journey may select i8086 only after the app acknowledges an empty starter buffer');
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);
