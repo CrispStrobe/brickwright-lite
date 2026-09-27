@@ -310,6 +310,12 @@ const buildConfig = baseConfig.clone()
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
             {
+                // The native broker validates this exact origin-root pathname. The general
+                // static copy below intentionally nests everything else under /static/.
+                from: 'static/capability-broker.html',
+                to: 'capability-broker.html'
+            },
+            {
                 from: 'static',
                 to: 'static',
                 info: preserveProofAssetInfo

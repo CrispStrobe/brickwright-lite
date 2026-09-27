@@ -188,11 +188,12 @@ jobs:
       - name: The frontend the config points at must contain the broker document
         run: |
           set -eu
+          mkdir -p e2e-evidence
           dist=$(python3 -c "import json;print(json.load(open('apps/tauri/src-tauri/tauri.conf.json'))['build']['frontendDist'])")
           root=apps/tauri/src-tauri
           resolved=$(cd "$root" && cd "$dist" && pwd)
-          echo "frontendDist resolves to: $resolved"
-          ls -la "$resolved"
+          { echo "frontendDist resolves to: $resolved"; ls -la "$resolved"; } \
+            | tee e2e-evidence/frontend-dist.log
           test -f "$resolved/capability-broker.html" \
             || { echo "::error::capability-broker.html is absent from the frontend the app will embed"; exit 1; }
 
