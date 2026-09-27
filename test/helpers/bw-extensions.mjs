@@ -41,6 +41,7 @@ let adapterCache = null;
 function shimRequire (spec) {
     const base = path.basename(spec);
     if (base === 'adapter') return loadAdapter();
+    if (spec === 'format-message') return nodeRequire(path.join(INTEGRATED, 'node_modules', spec));
     if (SUPPORT[base]) return nodeRequire(path.join(VM_SRC, SUPPORT[base]));
     throw new Error(`bw-extensions: unresolved require(${spec})`);
 }
