@@ -17,7 +17,8 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
-import {blankLayer, composeLayers, layersDocument, resizeLayers, sourceLayers} from '../../lib/bw-pixel-layers.js';
+import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument,
+    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers} from '../../lib/bw-pixel-layers.js';
 import {
     ARCADE_PALETTE, svgToPixels, pixelsToSvg, quantizeRgba, floodFill
 } from '../../lib/bw-makecode/pixel-image.js';
@@ -32,7 +33,9 @@ const L10N = {
         'px.zoom': 'Zoom', 'px.line': 'Line', 'px.rect': 'Rectangle', 'px.mirror': 'Mirror',
         'px.layers': 'Layers', 'px.addLayer': 'Add layer', 'px.deleteLayer': 'Delete layer',
         'px.showLayer': 'Show layer', 'px.hideLayer': 'Hide layer', 'px.layerUp': 'Move up',
-        'px.layerDown': 'Move down', 'px.lockLayer': 'Lock layer', 'px.unlockLayer': 'Unlock layer'
+        'px.layerDown': 'Move down', 'px.lockLayer': 'Lock layer', 'px.unlockLayer': 'Unlock layer',
+        'px.select': 'Select', 'px.move': 'Move selection', 'px.clearSelection': 'Clear selection',
+        'px.deselect': 'Deselect'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -44,7 +47,9 @@ const L10N = {
         'px.mirror': 'Spiegeln', 'px.layers': 'Ebenen', 'px.addLayer': 'Ebene hinzufügen',
         'px.deleteLayer': 'Ebene löschen', 'px.showLayer': 'Ebene zeigen', 'px.hideLayer': 'Ebene ausblenden',
         'px.layerUp': 'Nach oben', 'px.layerDown': 'Nach unten', 'px.lockLayer': 'Ebene sperren',
-        'px.unlockLayer': 'Ebene entsperren'
+        'px.unlockLayer': 'Ebene entsperren', 'px.select': 'Auswählen',
+        'px.move': 'Auswahl verschieben', 'px.clearSelection': 'Auswahl löschen',
+        'px.deselect': 'Auswahl aufheben'
     }
 };
 const t = makeT(L10N);
@@ -71,7 +76,7 @@ class PixelArtEditor extends React.Component {
         super(props);
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             scale: 4, zoom: 1, colour: 2, tool: 'pencil',
-            mirror: false, converted: false,
+            mirror: false, converted: false, selection: null,
             status: '', w: 16, h: 16};
         this.canvas = React.createRef();
         this.viewport = React.createRef();
@@ -84,6 +89,7 @@ class PixelArtEditor extends React.Component {
         this.lastCell = null;
         this.shapeStart = null;
         this.shapeBase = null;
+        this.selectionBeforeGesture = null;
         this.gesture = null;
         this.onPointerDown = this.onPointerDown.bind(this);
         this.onPointerMove = this.onPointerMove.bind(this);
@@ -101,7 +107,7 @@ class PixelArtEditor extends React.Component {
 
     componentDidUpdate (prev, prevState) {
         if (prev.costumeIndex !== this.props.costumeIndex || this.loadedCostume !== this.costume()) this.load();
-        else if (prevState.image !== this.state.image) this.paint();
+        else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection) this.paint();
     }
 
     costume () {
@@ -147,7 +153,8 @@ class PixelArtEditor extends React.Component {
             document.activeLayerId : layers[layers.length - 1].id;
         this.undoStack = [];
         this.redoStack = [];
-        this.setState({image, layers, activeLayerId, original: {layers, activeLayerId,
+        this.setState({image, layers, activeLayerId, selection: null, original: {layers, activeLayerId,
+            selection: null,
             w: image.width, h: image.height},
             scale, zoom: 1, converted, status: '',
             w: image.width, h: image.height});
@@ -177,6 +184,16 @@ class PixelArtEditor extends React.Component {
         ctx.strokeStyle = 'rgba(15,23,42,0.12)';
         for (let x = 0; x <= image.width; x++) { ctx.beginPath(); ctx.moveTo(x * c + 0.5, 0); ctx.lineTo(x * c + 0.5, canvas.height); ctx.stroke(); }
         for (let y = 0; y <= image.height; y++) { ctx.beginPath(); ctx.moveTo(0, y * c + 0.5); ctx.lineTo(canvas.width, y * c + 0.5); ctx.stroke(); }
+        const {selection} = this.state;
+        if (selection) {
+            ctx.save();
+            ctx.setLineDash([Math.max(2, c / 3), Math.max(2, c / 3)]);
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 2;
+            ctx.strokeRect((selection.x * c) + 1, (selection.y * c) + 1,
+                (selection.width * c) - 2, (selection.height * c) - 2);
+            ctx.restore();
+        }
     }
 
     cellAt (event) {
@@ -191,6 +208,7 @@ class PixelArtEditor extends React.Component {
     remember () {
         if (!this.state.image) return;
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+            selection: this.state.selection,
             w: this.state.w, h: this.state.h});
         if (this.undoStack.length > 80) this.undoStack.shift();
         this.redoStack = [];
@@ -199,6 +217,7 @@ class PixelArtEditor extends React.Component {
     undo () {
         if (!this.undoStack.length) return;
         this.redoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+            selection: this.state.selection,
             w: this.state.w, h: this.state.h});
         this.restore(this.undoStack.pop());
     }
@@ -206,6 +225,7 @@ class PixelArtEditor extends React.Component {
     redo () {
         if (!this.redoStack.length) return;
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
+            selection: this.state.selection,
             w: this.state.w, h: this.state.h});
         this.restore(this.redoStack.pop());
     }
@@ -223,6 +243,29 @@ class PixelArtEditor extends React.Component {
             const layers = state.layers.map(layer => layer.id === state.activeLayerId ? {...layer, pixels} : layer);
             return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
         });
+    }
+
+    clearSelection () {
+        const {selection, w} = this.state;
+        const active = this.activeLayer();
+        if (!selection || !active || !active.visible || active.locked) return;
+        this.remember();
+        this.updateActive(clearSelectedPixels(active.pixels, w, selection));
+    }
+
+    updateSelection (event) {
+        const end = this.cellAt(event);
+        if (end && this.shapeStart) this.setState({selection: selectionRect(this.shapeStart, end)});
+    }
+
+    updateMove (event) {
+        const end = this.cellAt(event);
+        if (!end || !this.shapeStart || !this.shapeBase || !this.selectionBeforeGesture) return;
+        const {w, h} = this.state;
+        const moved = moveSelectedPixels(this.shapeBase.pixels, w, h, this.selectionBeforeGesture,
+            end[0] - this.shapeStart[0], end[1] - this.shapeStart[1]);
+        this.setState({selection: moved.selection});
+        this.updateActive(moved.pixels);
     }
 
     apply (event) {
@@ -328,11 +371,14 @@ class PixelArtEditor extends React.Component {
             // A second finger turns the stroke into navigation. Remove the initial dot.
             if (this.drawing && this.strokeRecorded && this.undoStack.length) {
                 this.restore(this.undoStack.pop());
+            } else if (this.drawing && this.shapeStart) {
+                this.setState({selection: this.selectionBeforeGesture});
             }
             this.drawing = false;
             this.strokeRecorded = false;
             this.shapeStart = null;
             this.shapeBase = null;
+            this.selectionBeforeGesture = null;
             const point = this.midpoint();
             const viewport = this.viewport.current;
             const rect = viewport.getBoundingClientRect();
@@ -348,13 +394,28 @@ class PixelArtEditor extends React.Component {
             return;
         }
         const active = this.activeLayer();
+        const cell = this.cellAt(event);
+        if (!cell) return;
+        if (this.state.tool === 'select' || (this.state.tool === 'move' &&
+            !containsCell(this.state.selection, cell[0], cell[1]))) {
+            this.drawing = true;
+            this.strokeRecorded = false;
+            this.selectionBeforeGesture = this.state.selection;
+            this.shapeStart = cell;
+            this.setState({selection: selectionRect(cell, cell)});
+            return;
+        }
         if (this.state.tool !== 'pick' && (!active || active.locked || !active.visible)) return;
         this.strokeRecorded = this.state.tool !== 'pick';
         if (this.strokeRecorded) this.remember();
         this.drawing = true;
         this.lastCell = null;
-        if (['line', 'rect'].includes(this.state.tool)) {
-            this.shapeStart = this.cellAt(event);
+        if (this.state.tool === 'move') {
+            this.shapeStart = cell;
+            this.shapeBase = {pixels: active.pixels};
+            this.selectionBeforeGesture = this.state.selection;
+        } else if (['line', 'rect'].includes(this.state.tool)) {
+            this.shapeStart = cell;
             this.shapeBase = {width: this.state.w, height: this.state.h, pixels: active.pixels};
             this.applyShape(event);
         } else this.apply(event);
@@ -378,6 +439,8 @@ class PixelArtEditor extends React.Component {
             viewport.scrollTop = this.gesture.scrollTop + this.gesture.y - event.clientY;
         } else if (this.drawing && ['pencil', 'erase'].includes(this.state.tool)) this.apply(event);
         else if (this.drawing && ['line', 'rect'].includes(this.state.tool)) this.applyShape(event);
+        else if (this.drawing && this.shapeBase && this.state.tool === 'move') this.updateMove(event);
+        else if (this.drawing && this.shapeStart) this.updateSelection(event);
     }
 
     onPointerUp (event) {
@@ -387,6 +450,7 @@ class PixelArtEditor extends React.Component {
         this.lastCell = null;
         this.shapeStart = null;
         this.shapeBase = null;
+        this.selectionBeforeGesture = null;
         this.gesture = null;
     }
 
@@ -406,6 +470,16 @@ class PixelArtEditor extends React.Component {
 
     handleKeyDown (event) {
         if (event.target.closest('input, textarea, [contenteditable]')) return;
+        if (event.key === 'Escape' && this.state.selection) {
+            event.preventDefault();
+            this.setState({selection: null});
+            return;
+        }
+        if ((event.key === 'Delete' || event.key === 'Backspace') && this.state.selection) {
+            event.preventDefault();
+            this.clearSelection();
+            return;
+        }
         if (!(event.metaKey || event.ctrlKey)) return;
         const key = event.key.toLowerCase();
         if (key !== 'z' && key !== 'y') return;
@@ -422,7 +496,8 @@ class PixelArtEditor extends React.Component {
         this.remember();
         this.setState(state => {
             const layers = resizeLayers(state.layers, state.w, state.h, W, H);
-            return {layers, image: composeLayers(layers, W, H), w: W, h: H, status: ''};
+            return {layers, image: composeLayers(layers, W, H), w: W, h: H,
+                selection: null, status: ''};
         });
     }
 
@@ -435,7 +510,8 @@ class PixelArtEditor extends React.Component {
             const index = state.layers.findIndex(item => item.id === state.activeLayerId);
             const next = state.layers.slice();
             next.splice(index + 1, 0, layer);
-            return {layers: next, activeLayerId: id, image: composeLayers(next, w, h), status: ''};
+            return {layers: next, activeLayerId: id, selection: null,
+                image: composeLayers(next, w, h), status: ''};
         });
     }
 
@@ -465,7 +541,8 @@ class PixelArtEditor extends React.Component {
         this.setState(state => {
             const layers = state.layers.filter(layer => layer.id !== id);
             const activeLayerId = state.activeLayerId === id ? layers[layers.length - 1].id : state.activeLayerId;
-            return {layers, activeLayerId, image: composeLayers(layers, state.w, state.h), status: ''};
+            return {layers, activeLayerId, selection: null,
+                image: composeLayers(layers, state.w, state.h), status: ''};
         });
     }
 
@@ -476,7 +553,8 @@ class PixelArtEditor extends React.Component {
         const svg = pixelsToSvg(image, {scale});
         vm.updateSvg(this.props.costumeIndex, svg, (image.width * scale) / 2, (image.height * scale) / 2);
         setCostumeDocument(this.costume(), layersDocument(layers, image.width, image.height, scale, activeLayerId));
-        this.setState({original: {layers, activeLayerId, w: image.width, h: image.height},
+        this.setState({original: {layers, activeLayerId, selection: null,
+            w: image.width, h: image.height},
             converted: false, status: 'saved'});
     }
 
@@ -487,7 +565,8 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, layers, activeLayerId, colour, tool, mirror, converted, status, w, h, zoom} = this.state;
+        const {image, layers, activeLayerId, selection, colour, tool, mirror, converted, status, w, h, zoom} =
+            this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
         const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12, cursor: 'pointer',
             border: `1px solid ${active ? '#4c97ff' : '#cbd5e1'}`, background: active ? '#e0edff' : '#fff'});
@@ -498,7 +577,7 @@ class PixelArtEditor extends React.Component {
                     height: '100%', boxSizing: 'border-box', overflow: 'auto'}}>
                 <div style={{display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center'}}>
                     {this.props.editorTools}
-                    {['pencil', 'line', 'rect', 'fill', 'erase', 'pick', 'hand'].map(k => (
+                    {['pencil', 'line', 'rect', 'select', 'move', 'fill', 'erase', 'pick', 'hand'].map(k => (
                         <button key={k} type="button" style={btn(tool === k)} data-testid={`bw-pixel-tool-${k}`}
                             onClick={() => this.setState({tool: k})}>{t(locale, `px.${k}`)}</button>
                     ))}
@@ -517,6 +596,10 @@ class PixelArtEditor extends React.Component {
                         onClick={this.undo}>{t(locale, 'px.undo')}</button>
                     <button type="button" style={btn(false)} disabled={!this.redoStack.length}
                         onClick={this.redo}>{t(locale, 'px.redo')}</button>
+                    {selection ? <button type="button" style={btn(false)} onClick={() => this.clearSelection()}
+                        data-testid="bw-pixel-clear-selection">{t(locale, 'px.clearSelection')}</button> : null}
+                    {selection ? <button type="button" style={btn(false)} onClick={() => this.setState({selection: null})}>
+                        {t(locale, 'px.deselect')}</button> : null}
                     <span style={{fontSize: 12}}>{t(locale, 'px.zoom')} {Math.round(zoom * 100)}%</span>
                 </div>
                 <div style={{display: 'flex', gap: 4, flexWrap: 'wrap'}} role="radiogroup">
@@ -545,7 +628,8 @@ class PixelArtEditor extends React.Component {
                             border: layer.id === activeLayerId ? '2px solid #4c97ff' : '1px solid #cbd5e1'}}>
                             <button type="button" style={btn(layer.id === activeLayerId)}
                                 data-testid={`bw-pixel-layer-${layer.id}`}
-                                onClick={() => this.setState({activeLayerId: layer.id})}>{layer.name}</button>
+                                onClick={() => this.setState({activeLayerId: layer.id, selection: null})}>
+                                {layer.name}</button>
                             <button type="button" style={btn(false)} aria-label={t(locale,
                                 layer.visible ? 'px.hideLayer' : 'px.showLayer')}
                             data-testid={`bw-pixel-visibility-${layer.id}`}

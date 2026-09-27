@@ -59,6 +59,27 @@ try {
     await page.keyboard.press('Control+Shift+z');
     assert.equal(await canvas.evaluate(element => element.toDataURL()), afterStroke,
         'desktop Redo must restore the stroke');
+    console.log('checking selection and movement');
+    const gridWidth = Number(await page.getByTestId('bw-pixel-w').inputValue());
+    const cellWidth = box.width / gridWidth;
+    await page.getByTestId('bw-pixel-tool-select').click();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.getByTestId('bw-pixel-tool-move').click();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + cellWidth, box.y + box.height / 2, {steps: 5});
+    await page.mouse.up();
+    await page.keyboard.press('Escape');
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), afterStroke,
+        'moving a selected pixel must change the artwork');
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Escape');
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), afterStroke,
+        'Undo must restore pixels moved by the selection tool');
+    await page.keyboard.press('Control+Shift+z');
+    await page.keyboard.press('Escape');
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), afterStroke,
+        'the moved pixels must be present when this artwork is saved');
     await page.getByTestId('bw-pixel-tool-line').click();
     const beforeLine = await canvas.evaluate(element => element.toDataURL());
     await page.mouse.move(box.x + box.width * 0.20, box.y + box.height * 0.20);
@@ -105,6 +126,18 @@ try {
     console.log('checking archive round trip');
     assert.equal(await canvas.evaluate(element => element.toDataURL()), pixelsBeforeGesture,
         'pinching must not leave a painted pixel');
+    await page.getByTestId('bw-pixel-tool-select').click();
+    const beforeInterruptedSelection = await canvas.evaluate(element => element.toDataURL());
+    await cdp.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [
+        {x: touchX, y: touchY, id: 3}
+    ]});
+    await cdp.send('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [
+        {x: touchX, y: touchY, id: 3}, {x: touchX + 30, y: touchY, id: 4}
+    ]});
+    await cdp.send('Input.dispatchTouchEvent', {type: 'touchEnd', touchPoints: []});
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeInterruptedSelection,
+        'a second finger must cancel a partial selection');
+    await page.getByTestId('bw-pixel-tool-pencil').click();
     console.log('checking editable layers');
     const beforeLayer = await canvas.evaluate(element => element.toDataURL());
     await page.getByTestId('bw-pixel-add-layer').click();
@@ -152,7 +185,7 @@ try {
     const restored = after.costumes.find(record => record.document.layers[0].type === 'pixel');
     assert.deepEqual(restored.document, pixel.document);
     assert.deepEqual(errors, []);
-    console.log('PASS: editable pixel layers survive SB3 save/reopen; zoom and pinch preserve artwork');
+    console.log('PASS: moved pixels and layers survive SB3 save/reopen; zoom and pinch preserve artwork');
 } finally {
     await browser.close();
 }

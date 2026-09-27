@@ -1,7 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-const {blankLayer, composeLayers, layersDocument, resizeLayers, sourceLayers} =
+const {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument,
+    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers} =
     await import('../overlay/scratch-gui/src/lib/bw-pixel-layers.js');
 
 test('pixel layers compose in order and keep hidden edits in source', () => {
@@ -16,4 +17,19 @@ test('pixel layers compose in order and keep hidden edits in source', () => {
     assert.equal(sourceLayers(doc, 3, 1), null);
     assert.deepEqual([...composeLayers(resizeLayers([bottom, hidden], 2, 1, 3, 1), 3, 1).pixels],
         [2, 3, 0]);
+});
+
+test('selection moves only its active-layer pixels and clamps at canvas edges', () => {
+    const selected = selectionRect([2, 1], [1, 0]);
+    assert.deepEqual(selected, {x: 1, y: 0, width: 2, height: 2});
+    assert.ok(containsCell(selected, 2, 1));
+    assert.equal(containsCell(selected, 0, 1), false);
+    const pixels = Uint8Array.from([0, 2, 3, 0, 0, 4, 0, 0, 0, 0, 0, 0]);
+    const moved = moveSelectedPixels(pixels, 4, 3, selected, 10, 10);
+    assert.deepEqual(moved.selection, {x: 2, y: 1, width: 2, height: 2});
+    assert.deepEqual([...moved.pixels], [0, 0, 0, 0, 0, 0, 2, 3, 0, 0, 4, 0]);
+    assert.deepEqual([...pixels], [0, 2, 3, 0, 0, 4, 0, 0, 0, 0, 0, 0],
+        'the undo snapshot must remain unchanged');
+    assert.deepEqual([...clearSelectedPixels(pixels, 4, selected)],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 });

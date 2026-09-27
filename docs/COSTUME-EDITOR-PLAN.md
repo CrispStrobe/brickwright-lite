@@ -26,7 +26,8 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   individual palette indices; on reopen it reads those pixels from the source.
   Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
-  line and rectangle tools, mirrored drawing, ordered pixel layers with
+  line and rectangle tools, a rectangular selection that can move or clear
+  pixels on the active layer, mirrored drawing, ordered pixel layers with
   visibility, locking, reordering and deletion, larger colour targets, a pan
   tool and two-pointer/pinch navigation. It flattens visible layers into the
   Scratch SVG while retaining hidden layers in editable source. The
@@ -62,7 +63,7 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
-5. **Pixel and animation.** Add select/move, palette editing, frames and
+5. **Pixel and animation.** Add palette editing, frames and
    onion-skin preview. Export frames as costumes or
    a sprite sheet without hiding animation-only data in Scratch's render asset.
 6. **Parity gate.** Run the same task corpus on desktop mouse, trackpad, iPad
