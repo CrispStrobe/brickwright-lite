@@ -4,6 +4,9 @@
 .wrapper {
     display: flex;
     flex-grow: 1;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
     border: 1px solid $ui-black-transparent;
     background: white;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -22,9 +25,9 @@
 
 .detail-area {
     display: flex;
-    flex-grow: 1;
-    flex-shrink: 1;
-    overflow: visible;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
 }
 
 [dir="ltr"] .detail-area {
