@@ -43,6 +43,17 @@ human coordination and qualification process.
   Instruction-level emulation, debugger run/pause/step/reset, register and
   memory inspection.
 
+ATtiny88 (including the QFN-32 Blinkenrocket board) deliberately uses the
+permissively licensed avr8js path, extended in `bw-board` with the ATtiny88
+memory map, ports, timers, EEPROM and analog comparator. That target supplies
+instruction/block/over/out stepping, code/yield/write breakpoints, writable
+SRAM, symbols and instruction/memory/device events. LabWired's native AVR core
+is fast (the `bw-board` receipt records a 21.43x median on its AVR loop), but
+the shipped LabWired WASM bridge currently has no AVR board descriptor and its
+debug surface is narrower: instruction step, code breakpoints and read-only
+memory. It remains the right heavy tier for STM32/RISC-V/Xtensa, not a better
+ATtiny88 backend today.
+
 ### Block and code editor
 
 - **Scratch-based block editor** with a "Code" tab for Brickwright Code,
