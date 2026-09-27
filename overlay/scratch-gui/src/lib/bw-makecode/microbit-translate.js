@@ -284,11 +284,13 @@ class MicrobitTranslator extends BaseTranslator {
                 push(this.note(`${name}(${member || '…'}) — not an icon we have a pattern for`));
                 return;
             }
-            push(`show pattern ${pattern}`);
+            // `show icon`, not `show pattern`: showIcon pauses 600 ms after
+            // drawing and showLeds 400, and the way back has to know which.
+            push(`show icon ${pattern}`);
             return;
         }
         case 'basic.showLeds':
-            push(`show pattern ${ledPattern(a[0])}`);
+            push(`show leds ${ledPattern(a[0])}`);
             return;
         case 'basic.clearScreen':
             push('clear display');

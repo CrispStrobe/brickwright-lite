@@ -519,6 +519,23 @@ class Emitter {
             push(`basic.showLeds(\`${ledsOf(f('MATRIX'))}\n${pad}    \`)`);
             return;
         }
+        // MakeCode's two picture calls, each as itself (they pause 400 / 600 ms).
+        // A picture that is none of MakeCode's icons cannot be a showIcon; it
+        // goes back as the LED grid, and says so.
+        case 'microbitplus_showleds':
+            push(`basic.showLeds(\`${ledsOf(f('MATRIX'))}\n${pad}    \`)`);
+            return;
+        case 'microbitplus_showicon': {
+            const digits = String(f('MATRIX')).replace(/[^0-9]/g, '');
+            const named = ICON_BY_PATTERN.get((digits.match(/.{5}/g) || []).join(':'));
+            if (named) {
+                push(`basic.${named.startsWith('Arrow') ? 'showArrow' : 'showIcon'}(${named})`);
+                return;
+            }
+            this.unsupported.push('show icon with a picture that is not one of MakeCode\'s icons — sent as showLeds');
+            push(`basic.showLeds(\`${ledsOf(f('MATRIX'))}\n${pad}    \`)`);
+            return;
+        }
         case 'microbitplus_showtext':
             push(`basic.showString(${v('TEXT', '""')})`);
             return;

@@ -97,9 +97,12 @@ test('every shipped micro:bit example survives the round trip', {skip: canCompil
         // showtext is the one legitimate normalisation: MakeCode has no
         // non-scrolling string block, so `show text` leaves as
         // basic.showString and returns as `scroll text`.
-        const equivalent = {microbitplus_showtext: 'microbitplus_scrolltext'};
+        // And `show pattern` leaves as showIcon or showLeds, which return as
+        // themselves (`show icon` / `show leds`) — the same picture.
+        const equivalent = {microbitplus_showtext: ['microbitplus_scrolltext'],
+            microbitplus_showmatrix: ['microbitplus_showicon', 'microbitplus_showleds']};
         const lost = [...before].filter(op =>
-            /^microbit/.test(op) && !after.has(op) && !after.has(equivalent[op]));
+            /^microbit/.test(op) && !after.has(op) && !(equivalent[op] || []).some(e => after.has(e)));
         assert.deepEqual(lost, [], `${id}: these device blocks did not come back`);
     }
 });
@@ -540,4 +543,42 @@ test('batch 2: a MakeCode program settles after one trip — the second trip cha
         assert.equal(twice, once);
         for (const call of ['radio.onReceivedNumber', 'music.noteFrequency(Note.E)', 'music.beat(BeatFraction.Eighth)',
             'input.magneticForce(Dimension.Strength)', 'music.rest(']) assert.ok(once.includes(call), `${call} lost:\n${once}`);
+    });
+
+// The owner's decision (2026-09-27): basic.showLeds and basic.showIcon each
+// round-trip as THEMSELVES. They draw the same picture and differ in the pause
+// after it (400 / 600 ms), which is exactly what `show pattern` could not say —
+// the census found showLeds lost in two apps, exported back as showIcon.
+test('showLeds and showIcon each come back as themselves, even when the picture is an icon',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const original = [
+            'basic.showLeds(`',
+            '    . # . # .',
+            '    # # # # #',
+            '    # # # # #',
+            '    . # # # .',
+            '    . . # . .',
+            '    `)',
+            'basic.showIcon(IconNames.Heart)',
+            'basic.showArrow(ArrowNames.North)'
+        ].join('\n');
+        const imported = microbitToPseudocode(original);
+        assert.deepEqual(imported.unsupported, []);
+        assert.match(imported.code, /show leds 09090:99999:99999:09990:00900/);
+        assert.match(imported.code, /show icon 09090:99999:99999:09990:00900/);
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(imported.code));
+        assert.deepEqual(unsupported, []);
+        assert.match(ts, /basic\.showLeds\(`/);
+        assert.match(ts, /basic\.showIcon\(IconNames\.Heart\)/);
+        assert.match(ts, /basic\.showArrow\(ArrowNames\.North\)/);
+        const again = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(ts).code)).ts;
+        assert.equal(again, ts, 'a fixed point');
+    });
+
+test('show icon with a picture that is not an icon goes back as showLeds, and says so',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(
+            'DEVICE MICROBIT\nWHEN flag clicked:\n  show icon 90000:00000:00000:00000:00001\n'));
+        assert.match(ts, /basic\.showLeds\(`/);
+        assert.ok(unsupported.some(u => /not one of MakeCode's icons/.test(u)), unsupported.join('\n'));
     });
