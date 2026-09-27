@@ -5,6 +5,9 @@ import test from 'node:test';
 const extensionSource = readFileSync(new URL(
     '../overlay/scratch-vm/src/extensions/crispstrobe/cameracapture/index.js', import.meta.url), 'utf8');
 const extensionModule = {exports: {}};
+let locale = 'en';
+const fakeFormatMessage = () => '';
+fakeFormatMessage.setup = () => ({locale});
 class FakeScannerStore {
     begin () {}
     async addRgbDataUrl (photo, metadata) { this.lastFrame = {photo, metadata}; }
@@ -18,11 +21,37 @@ const dependencies = new Map([
     ['../../../extension-support/block-type', {COMMAND: 'command', BOOLEAN: 'Boolean', REPORTER: 'reporter'}],
     ['../../../util/cast', {toNumber: value => Number(value) || 0}],
     ['../../../io/video', {FORMAT_CANVAS: 'canvas'}],
+    ['format-message', fakeFormatMessage],
     ['./scanner-store', {ScannerStore: FakeScannerStore}]
 ]);
 new Function('require', 'module', 'exports', extensionSource)(
     id => dependencies.get(id), extensionModule, extensionModule.exports);
 const CameraCapture = extensionModule.exports;
+
+test.beforeEach(() => { locale = 'en'; });
+
+test('all camera metadata is bilingual and uses consistent front/rear camera labels', () => {
+    const extension = new CameraCapture(makeRuntime({ready: false}).runtime);
+    locale = 'en';
+    const english = extension.getInfo();
+    assert.deepEqual(english.menus.facing.items, [
+        {text: 'rear camera', value: 'environment'},
+        {text: 'front camera', value: 'user'}
+    ]);
+    assert.equal(english.blocks.find(block => block.opcode === 'startCamera').text, 'start [FACING]');
+
+    locale = 'de-DE';
+    const german = extension.getInfo();
+    assert.equal(german.name, 'Kameraaufnahme');
+    assert.deepEqual(german.menus.facing.items, [
+        {text: 'Rückkamera', value: 'environment'},
+        {text: 'Frontkamera', value: 'user'}
+    ]);
+    assert.equal(german.blocks.find(block => block.opcode === 'takePhoto').text,
+        'Foto als [FORMAT] mit Qualität [QUALITY] % aufnehmen');
+    extension._status = 'permission denied';
+    assert.equal(extension.cameraStatus(), 'Berechtigung verweigert');
+});
 
 const makeRuntime = ({ready = true, enableError = null, noVideoElement = false} = {}) => {
     const calls = [];
@@ -194,6 +223,9 @@ test('picker registration and iOS privacy strings describe the feature without P
     const gallery = readFileSync(new URL('../overlay/scratch-gui/src/lib/libraries/extensions/index.jsx', import.meta.url), 'utf8');
     assert.match(manager, /cameracapture:.*ext-cameracapture/);
     assert.match(gallery, /extensionId: 'cameracapture'/);
+    assert.match(gallery, /gui\.extension\.cameracapture\.name/);
+    assert.match(gallery, /gui\.extension\.cameracapture\.description/);
+    assert.doesNotMatch(gallery, /name: 'Camera Capture'/);
 
     for (const name of ['Info.plist', 'Info.ios.plist']) {
         const plist = readFileSync(new URL(`../apps/tauri/src-tauri/${name}`, import.meta.url), 'utf8');
