@@ -19,7 +19,7 @@ import PropTypes from 'prop-types';
 import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightSpecialChars,
     drawSelection, rectangularSelection} from '@codemirror/view';
 import {EditorState, Compartment} from '@codemirror/state';
-import {defaultKeymap, indentWithTab, history, historyKeymap, undo, redo, selectAll} from '@codemirror/commands';
+import {defaultKeymap, indentWithTab, history, historyKeymap, undo, redo, selectAll, undoDepth} from '@codemirror/commands';
 import {searchKeymap, openSearchPanel} from '@codemirror/search';
 import {bracketMatching} from '@codemirror/language';
 import {closeBrackets, closeBracketsKeymap} from '@codemirror/autocomplete';
@@ -35,6 +35,7 @@ import {
 } from './codemirror-languages.js';
 import {Decoration, ViewPlugin} from '@codemirror/view';
 import {StateField, StateEffect} from '@codemirror/state';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from './global-undo.js';
 
 // ── Highlighted-line decoration (for debugger) ─────────────────────
 const setHighlightEffect = StateEffect.define();
@@ -178,6 +179,7 @@ class CodeMirrorEditor extends React.Component {
                     this.props.onChange(update.state.doc.toString());
                     this._updating = false;
                 }
+                if (update.docChanged) notifyUndoState();
             }),
             EditorView.lineWrapping
         ];
@@ -189,6 +191,11 @@ class CodeMirrorEditor extends React.Component {
             }),
             parent: this._ref.current
         });
+        this._unregisterUndo = registerUndoSurface('code', {
+            canUndo: () => !!this._view && undoDepth(this._view.state) > 0,
+            undo: () => !!this._view && undo(this._view)
+        });
+        if (this.props.isVisible) activateUndoSurface('code');
 
         if (initialLanguage === undefined) {
             this._languageRequest.select(this.props.lang);
@@ -199,6 +206,7 @@ class CodeMirrorEditor extends React.Component {
 
     componentDidUpdate (prevProps) {
         if (!this._view) return;
+        if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('code');
 
         // External value change (tab switch, example load, from-blocks, etc.)
         if (this.props.value !== prevProps.value && !this._updating) {
@@ -230,6 +238,7 @@ class CodeMirrorEditor extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('bw-settings-change', this._onSettingsChange);
         this._languageRequest.dispose();
+        if (this._unregisterUndo) this._unregisterUndo();
         if (this._view) {
             this._view.destroy();
             this._view = null;
@@ -283,7 +292,8 @@ class CodeMirrorEditor extends React.Component {
             borderRadius: 8,
             overflow: 'hidden'
         };
-        return <div ref={this._ref} style={style} data-testid="bw-codemirror" />;
+        return <div ref={this._ref} style={style} data-testid="bw-codemirror"
+            onPointerDown={() => activateUndoSurface('code')} />;
     }
 }
 
@@ -291,7 +301,8 @@ CodeMirrorEditor.propTypes = {
     value: PropTypes.string,
     onChange: PropTypes.func,
     readOnly: PropTypes.bool,
-    lang: PropTypes.string
+    lang: PropTypes.string,
+    isVisible: PropTypes.bool
 };
 
 export default CodeMirrorEditor;

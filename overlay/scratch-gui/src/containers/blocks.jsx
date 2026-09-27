@@ -29,6 +29,7 @@ import {activateCustomProcedures, deactivateCustomProcedures} from '../reducers/
 import {setConnectionModalExtensionId} from '../reducers/connection-modal';
 import {updateMetrics} from '../reducers/workspace-metrics';
 import LazyScratchBlocks from '../lib/lazy-scratch-blocks';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../lib/global-undo.js';
 
 import {
     activateTab,
@@ -127,6 +128,17 @@ class Blocks extends React.Component {
             {rtl: this.props.isRtl, toolbox: toolboxXML, colours: getColorsForTheme(this.props.theme)}
         );
         this.workspace = this.ScratchBlocks.inject(this.blocks, workspaceConfig);
+        this._undoStateListener = () => notifyUndoState();
+        this.workspace.addChangeListener(this._undoStateListener);
+        this._unregisterUndo = registerUndoSurface('blocks', {
+            canUndo: () => !!(this.workspace && this.workspace.undoStack_ && this.workspace.undoStack_.length),
+            undo: () => {
+                if (!this.workspace) return false;
+                this.workspace.undo(false);
+                return true;
+            }
+        });
+        if (this.props.isVisible) activateUndoSurface('blocks');
 
         // Register buttons under new callback keys for creating variables,
         // lists, and procedures from extensions.
@@ -230,6 +242,7 @@ class Blocks extends React.Component {
         // @todo hack to resize blockly manually in case resize happened while hidden
         // @todo hack to reload the workspace due to gui bug #413
         if (this.props.isVisible) { // Scripts tab
+            activateUndoSurface('blocks');
             this.workspace.setVisible(true);
             if (prevProps.locale !== this.props.locale || this.props.locale !== this.props.vm.getLocale()) {
                 // call setLocale if the locale has changed, or changed while the blocks were hidden.
@@ -251,6 +264,8 @@ class Blocks extends React.Component {
             this.breakpointMenu.uninstall();
             this.breakpointMenu = null;
         }
+        if (this._undoStateListener) this.workspace.removeChangeListener(this._undoStateListener);
+        if (this._unregisterUndo) this._unregisterUndo();
         this.workspace.dispose();
         clearTimeout(this.toolboxUpdateTimeout);
 
