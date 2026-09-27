@@ -198,7 +198,7 @@ test('every mapped API reaches a block — the anti-silence gate', {skip: canCom
     assert.deepEqual(out.unsupported, [], 'nothing in this program should need an excuse');
     const ops = opcodesOf(out.code);
     for (const expected of [
-        'microbitplus_showmatrix', 'microbit_display', 'microbitplus_scrolltext',
+        'microbitplus_showleds', 'microbit_display', 'microbitplus_scrolltext',
         'microbitplus_cleardisplay', 'control_wait', 'microbitplus_plot',
         'microbitplus_digitalwrite', 'microbitplus_analogwrite', 'microbitplus_servo',
         'microbitplus_setpull', 'microbitplus_playtone', 'microbitplus_stoptone',
@@ -241,8 +241,8 @@ test('icons are the same bitmaps on both sides, not an approximation', () => {
     const out = microbitToPseudocode(
         'basic.showIcon(IconNames.Heart)\nbasic.showArrow(ArrowNames.North)');
     assert.deepEqual(out.unsupported, []);
-    assert.match(out.code, /show pattern 09090:99999:99999:09990:00900/, 'the heart');
-    assert.match(out.code, /show pattern 00900:09990:90909:00900:00900/, 'the north arrow');
+    assert.match(out.code, /show icon 09090:99999:99999:09990:00900/, 'the heart');
+    assert.match(out.code, /show icon 00900:09990:90909:00900:00900/, 'the north arrow');
 
     // An icon we have no pattern for is named, not silently blanked.
     const unknown = microbitToPseudocode('basic.showIcon(IconNames.Nonexistent)');
