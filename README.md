@@ -49,7 +49,8 @@ human coordination and qualification process.
   Python and JavaScript representations. Conversion and generated-view limits
   are kept explicit instead of promising that every construct round-trips.
 - 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
-  surface) plus 150 gallery extensions loadable at runtime.
+  surface). The web edition can additionally load 150 reviewed gallery
+  extensions; native store builds stay self-contained and show bundled entries only.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
 
@@ -180,7 +181,7 @@ CI does this for all platforms: `.github/workflows/release.yml` (desktop) and
 - [x] Permissive base pinned and verified (BSD-3 / Apache-2.0 / MIT).
 - [x] Code tab — blocks / pseudocode / Python / JS.
 - [x] SoundFX creator; German i18n.
-- [x] 23 built-in + 150 gallery extensions.
+- [x] 23 built-in extensions everywhere; 150 additional gallery extensions on the web.
 - [x] Tauri native app for all five platforms.
 - [x] Native ScratchLink — BLE + Bluetooth Classic + WiFi bridge.
 - [x] Native save/load/share, offline library, camera + microphone.
@@ -284,8 +285,11 @@ Scratch Foundation relicensed the whole stack BSD-3-Clause -> AGPL-3.0 on
 > **Do not** swap in `scratch-blocks@2.x` — it is a ground-up Blockly rewrite
 > incompatible with the v4 GUI.
 
-Anything GPL (e.g. gallery extensions) is *fetched at runtime from a URL*,
-never bundled — so it never contaminates the distributed app.
+No GPL code is bundled. The web edition can opt into separately distributed GPL
+tools or media, with their licence and corresponding source shown at the point
+of download. Store-distributed native builds do not download executable
+toolchains, machine images, or extension JavaScript: they use the bundled
+permissive/MPL/LGPL components and hosted compilation of learner-authored source.
 
 ### The bundled extensions
 
