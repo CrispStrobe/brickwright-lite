@@ -322,6 +322,7 @@ class DebugPanel extends React.Component {
         // `kernel` + `initrd` slots, both sha256-checked by activateConfig).
         // Its own line, for the same fixed-field-list reason as above.
         const {linuxInitrd} = e.detail || {};
+        const {nativeBlocks} = e.detail || {};
         if (!bytes && !riscvImage) return;
         this._teardownRunner();
         this._bootMedia = {
@@ -333,6 +334,7 @@ class DebugPanel extends React.Component {
                 ? (linuxInitrd instanceof Uint8Array ? linuxInitrd : new Uint8Array(linuxInitrd)) : null,
             profile: profile || null,
             name: name || null,
+            nativeBlocks: kind === 'i80386' && nativeBlocks === true,
             // HARDWARE THE PROGRAM ASKED FOR, and it has to be listed here
             // explicitly: this destructure is a fixed field list, so a new
             // field on the event is silently dropped unless it is named in
