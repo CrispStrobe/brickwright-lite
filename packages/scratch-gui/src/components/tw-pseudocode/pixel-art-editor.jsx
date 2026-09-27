@@ -28,7 +28,7 @@ const L10N = {
         'px.converted': 'This costume was not pixel art: it was converted to {w}×{h} palette pixels. Saving replaces it.',
         'px.reconvert': 'Convert at this size', 'px.none': 'Select a costume to edit.',
         'px.transparent': 'Transparent', 'px.hand': 'Pan', 'px.undo': 'Undo', 'px.redo': 'Redo',
-        'px.zoom': 'Zoom'
+        'px.zoom': 'Zoom', 'px.line': 'Line', 'px.rect': 'Rectangle', 'px.mirror': 'Mirror'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -36,7 +36,8 @@ const L10N = {
         'px.converted': 'Dieses Kostüm war keine Pixelgrafik: Es wurde in {w}×{h} Palettenpixel umgewandelt. Speichern ersetzt es.',
         'px.reconvert': 'In dieser Größe umwandeln', 'px.none': 'Ein Kostüm zum Bearbeiten auswählen.',
         'px.transparent': 'Transparent', 'px.hand': 'Verschieben', 'px.undo': 'Rückgängig',
-        'px.redo': 'Wiederholen', 'px.zoom': 'Zoom'
+        'px.redo': 'Wiederholen', 'px.zoom': 'Zoom', 'px.line': 'Linie', 'px.rect': 'Rechteck',
+        'px.mirror': 'Spiegeln'
     }
 };
 const t = makeT(L10N);
@@ -61,7 +62,8 @@ const rasterize = costume => new Promise((resolve, reject) => {
 class PixelArtEditor extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {image: null, original: null, scale: 4, zoom: 1, colour: 2, tool: 'pencil', converted: false,
+        this.state = {image: null, original: null, scale: 4, zoom: 1, colour: 2, tool: 'pencil',
+            mirror: false, converted: false,
             status: '', w: 16, h: 16};
         this.canvas = React.createRef();
         this.viewport = React.createRef();
@@ -72,6 +74,8 @@ class PixelArtEditor extends React.Component {
         this.undoStack = [];
         this.redoStack = [];
         this.lastCell = null;
+        this.shapeStart = null;
+        this.shapeBase = null;
         this.gesture = null;
         this.onPointerDown = this.onPointerDown.bind(this);
         this.onPointerMove = this.onPointerMove.bind(this);
@@ -189,11 +193,15 @@ class PixelArtEditor extends React.Component {
         const cell = this.cellAt(event);
         if (!cell) return;
         const [x, y] = cell;
-        const {image, tool, colour} = this.state;
+        const {image, tool, colour, mirror} = this.state;
         const k = (y * image.width) + x;
         if (tool === 'pick') { this.setState({colour: image.pixels[k], tool: 'pencil'}); return; }
         if (tool === 'fill') {
-            this.setState(state => ({image: floodFill(state.image, x, y, colour), status: ''}));
+            this.setState(state => {
+                let filled = floodFill(state.image, x, y, colour);
+                if (mirror) filled = floodFill(filled, filled.width - 1 - x, y, colour);
+                return {image: filled, status: ''};
+            });
             return;
         }
         const value = tool === 'erase' ? 0 : colour;
@@ -201,6 +209,10 @@ class PixelArtEditor extends React.Component {
         this.setState(state => {
             const current = state.image;
             const pixels = new Uint8Array(current.pixels);
+            const plot = (px, py) => {
+                pixels[(py * current.width) + px] = value;
+                if (mirror) pixels[(py * current.width) + current.width - 1 - px] = value;
+            };
             let x0 = previous[0];
             let y0 = previous[1];
             const dx = Math.abs(x - x0);
@@ -209,7 +221,7 @@ class PixelArtEditor extends React.Component {
             const sy = y0 < y ? 1 : -1;
             let error = dx + dy;
             while (true) {
-                pixels[(y0 * current.width) + x0] = value;
+                plot(x0, y0);
                 if (x0 === x && y0 === y) break;
                 const doubled = 2 * error;
                 if (doubled >= dy) { error += dy; x0 += sx; }
@@ -218,6 +230,45 @@ class PixelArtEditor extends React.Component {
             return {image: {...current, pixels}, status: ''};
         });
         this.lastCell = cell;
+    }
+
+    applyShape (event) {
+        const end = this.cellAt(event);
+        if (!end || !this.shapeStart || !this.shapeBase) return;
+        const {width, height} = this.shapeBase;
+        const pixels = new Uint8Array(this.shapeBase.pixels);
+        const value = this.state.colour;
+        const plot = (x, y) => {
+            if (x < 0 || y < 0 || x >= width || y >= height) return;
+            pixels[(y * width) + x] = value;
+            if (this.state.mirror) pixels[(y * width) + width - 1 - x] = value;
+        };
+        const [x1, y1] = end;
+        const [startX, startY] = this.shapeStart;
+        if (this.state.tool === 'rect') {
+            const left = Math.min(startX, x1);
+            const right = Math.max(startX, x1);
+            const top = Math.min(startY, y1);
+            const bottom = Math.max(startY, y1);
+            for (let x = left; x <= right; x++) { plot(x, top); plot(x, bottom); }
+            for (let y = top; y <= bottom; y++) { plot(left, y); plot(right, y); }
+        } else {
+            let x = startX;
+            let y = startY;
+            const dx = Math.abs(x1 - x);
+            const dy = -Math.abs(y1 - y);
+            const sx = x < x1 ? 1 : -1;
+            const sy = y < y1 ? 1 : -1;
+            let error = dx + dy;
+            while (true) {
+                plot(x, y);
+                if (x === x1 && y === y1) break;
+                const doubled = 2 * error;
+                if (doubled >= dy) { error += dy; x += sx; }
+                if (doubled <= dx) { error += dx; y += sy; }
+            }
+        }
+        this.setState({image: {...this.shapeBase, pixels}, status: ''});
     }
 
     midpoint () {
@@ -238,6 +289,8 @@ class PixelArtEditor extends React.Component {
             }
             this.drawing = false;
             this.strokeRecorded = false;
+            this.shapeStart = null;
+            this.shapeBase = null;
             const point = this.midpoint();
             const viewport = this.viewport.current;
             const rect = viewport.getBoundingClientRect();
@@ -256,7 +309,11 @@ class PixelArtEditor extends React.Component {
         if (this.strokeRecorded) this.remember();
         this.drawing = true;
         this.lastCell = null;
-        this.apply(event);
+        if (['line', 'rect'].includes(this.state.tool)) {
+            this.shapeStart = this.cellAt(event);
+            this.shapeBase = this.state.image;
+            this.applyShape(event);
+        } else this.apply(event);
     }
 
     onPointerMove (event) {
@@ -276,6 +333,7 @@ class PixelArtEditor extends React.Component {
             viewport.scrollLeft = this.gesture.scrollLeft + this.gesture.x - event.clientX;
             viewport.scrollTop = this.gesture.scrollTop + this.gesture.y - event.clientY;
         } else if (this.drawing && ['pencil', 'erase'].includes(this.state.tool)) this.apply(event);
+        else if (this.drawing && ['line', 'rect'].includes(this.state.tool)) this.applyShape(event);
     }
 
     onPointerUp (event) {
@@ -283,6 +341,8 @@ class PixelArtEditor extends React.Component {
         this.drawing = false;
         this.strokeRecorded = false;
         this.lastCell = null;
+        this.shapeStart = null;
+        this.shapeBase = null;
         this.gesture = null;
     }
 
@@ -336,9 +396,9 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, colour, tool, converted, status, w, h, zoom} = this.state;
+        const {image, colour, tool, mirror, converted, status, w, h, zoom} = this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
-        const btn = active => ({padding: '8px 10px', minHeight: 40, borderRadius: 6, fontSize: 12, cursor: 'pointer',
+        const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12, cursor: 'pointer',
             border: `1px solid ${active ? '#4c97ff' : '#cbd5e1'}`, background: active ? '#e0edff' : '#fff'});
         return (
             <div ref={this.root} data-testid="bw-pixel-editor" tabIndex={0}
@@ -347,10 +407,12 @@ class PixelArtEditor extends React.Component {
                     height: '100%', boxSizing: 'border-box', overflow: 'auto'}}>
                 <div style={{display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center'}}>
                     {this.props.editorTools}
-                    {['pencil', 'fill', 'erase', 'pick', 'hand'].map(k => (
+                    {['pencil', 'line', 'rect', 'fill', 'erase', 'pick', 'hand'].map(k => (
                         <button key={k} type="button" style={btn(tool === k)} data-testid={`bw-pixel-tool-${k}`}
                             onClick={() => this.setState({tool: k})}>{t(locale, `px.${k}`)}</button>
                     ))}
+                    <button type="button" style={btn(mirror)} aria-pressed={mirror}
+                        onClick={() => this.setState({mirror: !mirror})}>{t(locale, 'px.mirror')}</button>
                     <span style={{fontSize: 12, marginLeft: 8}}>{t(locale, 'px.size')}</span>
                     <input type="number" min="1" max="128" value={w} style={{width: 52}} data-testid="bw-pixel-w"
                         onChange={e => this.resize(Number(e.target.value), h)} />
@@ -371,7 +433,7 @@ class PixelArtEditor extends React.Component {
                         <button key={i} type="button" role="radio" aria-checked={colour === i}
                             title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
                             onClick={() => this.setState({colour: i, tool: tool === 'pick' ? 'pencil' : tool})}
-                            style={{width: 36, height: 36, borderRadius: 4, cursor: 'pointer',
+                            style={{width: 44, height: 44, borderRadius: 4, cursor: 'pointer',
                                 border: colour === i ? '3px solid #0f172a' : '1px solid #94a3b8',
                                 background: c || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
                     ))}

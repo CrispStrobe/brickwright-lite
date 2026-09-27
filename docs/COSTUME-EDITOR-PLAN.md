@@ -26,7 +26,8 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   individual palette indices; on reopen it reads those pixels from the source.
   Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
-  larger colour targets, a pan tool and two-pointer/pinch navigation. The
+  line and rectangle tools, mirrored drawing, larger colour targets, a pan
+  tool and two-pointer/pinch navigation. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
 - Archive tests cover round-trip preservation, stale source rejection and
   future-version pass-through. The GUI build is the integration gate.

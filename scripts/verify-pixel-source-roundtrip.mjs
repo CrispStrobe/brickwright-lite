@@ -54,6 +54,25 @@ try {
     await page.keyboard.press('Control+Shift+z');
     assert.equal(await canvas.evaluate(element => element.toDataURL()), afterStroke,
         'desktop Redo must restore the stroke');
+    await page.getByTestId('bw-pixel-tool-line').click();
+    const beforeLine = await canvas.evaluate(element => element.toDataURL());
+    await page.mouse.move(box.x + box.width * 0.20, box.y + box.height * 0.20);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.30, {steps: 8});
+    await page.mouse.up();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeLine,
+        'the line tool must draw a continuous stroke');
+    await page.getByTestId('bw-pixel-tool-rect').click();
+    const beforeRect = await canvas.evaluate(element => element.toDataURL());
+    await page.mouse.move(box.x + box.width * 0.62, box.y + box.height * 0.18);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.30, {steps: 8});
+    await page.mouse.up();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeRect,
+        'the rectangle tool must draw its outline');
+    await page.getByRole('button', {name: 'Mirror', exact: true}).click();
+    await page.getByTestId('bw-pixel-tool-pencil').click();
+    await page.mouse.click(box.x + box.width * 0.20, box.y + box.height * 0.55);
     const widthBeforeZoom = await canvas.evaluate(element => element.getBoundingClientRect().width);
     await page.keyboard.down('Control');
     await page.mouse.wheel(0, -120);
@@ -86,6 +105,12 @@ try {
     const pixel = before.costumes.find(record => record.document.layers[0].type === 'pixel');
     assert.ok(pixel, 'the saved SB3 must contain indexed pixel source');
     assert.ok(pixel.document.layers[0].content.value.pixels.includes(10), 'the painted colour must persist');
+    const {width, height, pixels} = pixel.document.layers[0].content.value;
+    const mirrorX = Math.floor(width * 0.20);
+    const mirrorY = Math.floor(height * 0.55);
+    assert.equal(pixels[(mirrorY * width) + mirrorX], 10);
+    assert.equal(pixels[(mirrorY * width) + width - 1 - mirrorX], 10,
+        'mirrored strokes must persist on both sides');
     await page.close();
 
     page = await open();
