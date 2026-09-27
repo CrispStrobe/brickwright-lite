@@ -3116,7 +3116,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     const selectedKind = selectDebugTargetKind(device, targetKind);
                     // Z80/6502 interactive interpreters: no compile step
                     const built = (selectedKind === 'z80' || selectedKind === 'eater6502' ||
-                        (selectedKind === 'i8086' && bootMedia)) ? null
+                        ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia)) ? null
                         : userFirmware ? builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);

@@ -27,7 +27,8 @@ test('gui.jsx renders the manager, wired to the store and the run bridge', () =>
     assert.match(src, /addEventListener\('bw-open-machine-manager'/, 'gui listens for the open event');
     assert.match(src, /<MachineManager\b/, 'gui renders the MachineManager');
     assert.match(src, /getMachineStore\(\)/, 'it passes the shared store');
-    assert.match(src, /onRun=\{cfg => runMachineConfig\(cfg\)\}/, 'Run boots via runMachineConfig');
+    assert.match(src, /onRun=\{\(cfg, opts\) => runMachineConfig\(cfg, opts\)\}/,
+        'Run boots via runMachineConfig with imported media options');
 });
 
 test('the modal uses the store + importers and runs a machine', () => {
