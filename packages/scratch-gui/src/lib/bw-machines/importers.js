@@ -58,7 +58,18 @@ export function fromDosboxConf(text, opts = {}) {
     // directory mounts are recorded as provenance only — no host command runs
     // (design §6; run-dos likewise refuses host-directory mounts).
     let program = null, programDrive = null;
+    let diskImage = null, diskGeometry = null;
     for (const cmd of autoexec) {
+        const img = cmd.match(/^imgmount\s+(?:c|2)\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i);
+        if (img) {
+            diskImage = img[1] || img[2] || img[3];
+            const size = cmd.match(/-size\s+(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+            if (size && Number(size[1]) === 512) {
+                diskGeometry = {sectors: Number(size[2]), heads: Number(size[3]),
+                    cylinders: Number(size[4])};
+            }
+            continue;
+        }
         const mount = cmd.match(/^mount\s+([a-z])\s+(.+)$/i);
         if (mount) { mounts.set(mount[1].toLowerCase(), mount[2].replace(/["']/g, '').trim()); continue; }
         const prog = cmd.match(/^(?:([a-z]):[\\/]?)?([\w.\\/-]+\.(?:com|exe))\b/i);
@@ -76,6 +87,7 @@ export function fromDosboxConf(text, opts = {}) {
 
     // The launched program becomes the boot slot: .exe → exe, .com → com.
     const slots = {};
+    if (diskImage) slots.hdd = {url: diskImage, sha256: null, geometry: diskGeometry};
     if (program) {
         const isExe = /\.exe$/i.test(program);
         slots[isExe ? 'exe' : 'com'] = {url: program, sha256: null, geometry: null};
@@ -85,6 +97,12 @@ export function fromDosboxConf(text, opts = {}) {
         title: opts.title || (program ? `DOSBox: ${program}` : 'DOSBox profile'),
         executionMode: 'functional',
         machine,
+        ...(is386 ? {
+            bios: {kind: 'bochs-lgpl'},
+            video: {kind: 'vga', optionRom: 'seavgabios-lgpl'},
+            widgets: [{name: 'AT VGA', type: 'simplevga', source: 'video',
+                config: {width: 640, height: 480}}],
+        } : {}),
         cpu: {variant: is386 ? '80386' : '8086'},
         slots,
         provenance: {

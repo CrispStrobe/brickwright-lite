@@ -7,6 +7,7 @@ import {createMicrobitDebugController} from '../../lib/bw-debug/microbit-debug.j
 const L10N = {
     en: {
         simTitle: 'micro:bit simulator',
+        calliopeTitle: 'Calliope mini simulator',
         stop: '⏹ Stop', reset: '🔄 Reset', clear: '🗑 Clear',
         running: 'Running', ready: 'Ready', loading: 'Loading…',
         serialPlaceholder: '(serial output appears here)',
@@ -21,6 +22,7 @@ const L10N = {
     },
     de: {
         simTitle: 'micro:bit-Simulator',
+        calliopeTitle: 'Calliope-mini-Simulator',
         stop: '⏹ Stopp', reset: '🔄 Zurücksetzen', clear: '🗑 Leeren',
         running: 'Läuft', ready: 'Bereit', loading: 'Wird geladen…',
         serialPlaceholder: '(serielle Ausgabe erscheint hier)',
@@ -135,6 +137,7 @@ class MicrobitSimPane extends React.Component {
             // enum. Empty until the first `ready` frame arrives.
             sensors: {},
             sensorsOpen: true,
+            device: props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device || 'microbit',
             // Mirror of the debug controller, for the render.
             dbg: {active: false, running: false, halted: false, block: null, index: null,
                 vars: null, board: null, trace: [], stack: []}
@@ -147,8 +150,10 @@ class MicrobitSimPane extends React.Component {
         this._iframeRef = React.createRef();
         this._pendingCode = null;
         this._pendingDebug = null;   // {positions} when the pending flash is a debug run
+        this._autostart = false;
         this._onMessage = this._onMessage.bind(this);
         this._onFlashEvent = this._onFlashEvent.bind(this);
+        this._onSettingsChange = this._onSettingsChange.bind(this);
 
         // The debug controller. Its highlight sink is vm.runtime.glowBlock —
         // read at call time so it survives a late-arriving vm — and its
@@ -169,6 +174,7 @@ class MicrobitSimPane extends React.Component {
     componentDidMount () {
         window.addEventListener('message', this._onMessage);
         window.addEventListener('bw-microbit-flash', this._onFlashEvent);
+        window.addEventListener('bw-settings-change', this._onSettingsChange);
         // Mount race: the importer opens the dock (mounting THIS pane) and
         // dispatches the flash in the SAME tick — before this listener exists,
         // so the event is lost and only a second Debug click worked. The
@@ -182,11 +188,19 @@ class MicrobitSimPane extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('message', this._onMessage);
         window.removeEventListener('bw-microbit-flash', this._onFlashEvent);
+        window.removeEventListener('bw-settings-change', this._onSettingsChange);
         // Clear any lingering block highlight when the pane goes away.
         this._dbg.stop();
     }
 
     _onFlashEvent (e) { this._handleFlash((e && e.detail) || {}); }
+
+    _onSettingsChange (event) {
+        const detail = (event && event.detail) || {};
+        if (detail.key === 'bw-device-id' && ['microbit', 'calliopemini'].includes(detail.value)) {
+            this.setState({device: detail.value});
+        }
+    }
 
     _handleFlash (detail) {
         try { window.__bwMicrobitPendingFlash = null; } catch { /* noop */ }
@@ -209,6 +223,13 @@ class MicrobitSimPane extends React.Component {
         // audio guard, for BOTH firmwares. The play button is that gesture.
         this._pendingCode = code;
         this._pendingDebug = debug;
+        this._autostart = Boolean(detail.autostart);
+        if (this._autostart && this.state.simReady) {
+            this._flash(this._pendingCode, this._pendingDebug);
+            this._pendingCode = null;
+            this._pendingDebug = null;
+            this._autostart = false;
+        }
     }
 
     _onMessage (e) {
@@ -229,14 +250,34 @@ class MicrobitSimPane extends React.Component {
                     Object.entries(sensors).map(([id, s]) => [id, s.value]));
             }
             this.setState({simReady: true, sensors});
+            if (this._autostart && this._pendingCode) {
+                // A global green-flag click may have opened this pane from an
+                // unmounted state. The simulator can start with a suspended
+                // (muted) audio context and unlock sound on its own later
+                // play gesture, so do not turn that first Run into a no-op.
+                this._flash(this._pendingCode, this._pendingDebug);
+                this._pendingCode = null;
+                this._pendingDebug = null;
+                this._autostart = false;
+            }
             break;
         }
         case 'request_flash':
             // User clicked the play button inside the sim
+            if (!this._pendingCode) {
+                // Opening the pane directly used to leave Play with nothing to
+                // run. Ask the mounted editor for its current generated code;
+                // DOM event dispatch is synchronous, so its flash event stages
+                // the program before this same click continues.
+                window.dispatchEvent(new CustomEvent('bw-microbit-run-request', {
+                    detail: {source: 'simulator-play'}
+                }));
+            }
             if (this._pendingCode) {
                 this._flash(this._pendingCode, this._pendingDebug);
                 this._pendingCode = null;
                 this._pendingDebug = null;
+                this._autostart = false;
             }
             break;
         case 'serial_output':
@@ -367,6 +408,7 @@ class MicrobitSimPane extends React.Component {
 
     render () {
         const t = L10N[pickLocale()];
+        const simTitle = this.state.device === 'calliopemini' ? t.calliopeTitle : t.simTitle;
         const {dbg} = this.state;
         const btn = {
             padding: '4px 12px', borderRadius: 6, border: 'none',
@@ -391,7 +433,7 @@ class MicrobitSimPane extends React.Component {
                     <iframe
                         ref={this._iframeRef}
                         src={this.state.simUrl}
-                        title={t.simTitle}
+                        title={simTitle}
                         data-testid="bw-microbit-iframe"
                         style={{
                             width: '100%', height: '100%', border: 'none',

@@ -11,6 +11,8 @@ const adp7118Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/adp7118-fixed-regulator.json', import.meta.url), 'utf8'));
 const lt1763Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/lt1763-fixed-regulator.json', import.meta.url), 'utf8'));
+const lt1001Fixture = JSON.parse(readFileSync(
+    new URL('../test/fixtures/lt1001-precision-follower.json', import.meta.url), 'utf8'));
 
 const url = process.env.PROOF_URL || 'https://crispstrobe.github.io/brickwright-lite/';
 const browser = await chromium.launch();
@@ -292,6 +294,36 @@ try {
         lt1763.terminals === 8 && typeof lt1763.output === 'number' &&
         Math.abs(lt1763.output - 5) < 0.003,
         JSON.stringify(lt1763));
+
+    // The precision-amplifier vertical slice must also meet in the production
+    // browser bundle: physical face, all package pins and the real Board model.
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), lt1001Fixture);
+    const lt1001Face = designer.locator('[data-part-face="lt1001"][data-dip-body="lt1001"]');
+    await lt1001Face.waitFor({state: 'visible', timeout: 10000});
+    const lt1001FaceText = await lt1001Face.textContent();
+    check('LT1001 renders as the truthful labelled PDIP-8 face',
+        await lt1001Face.count() === 1 && /LT1001/.test(lt1001FaceText) &&
+        ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 'nc']
+            .every(name => lt1001FaceText.includes(name)),
+        lt1001FaceText.replace(/\s+/g, ' ').trim());
+    const lt1001 = await page.evaluate(() => {
+        const circuit = window.__circuit;
+        const board = circuit?.board;
+        if (!board) return {error: 'CircuitTab did not publish the LT1001 board'};
+        board.advanceTo(board.timeNs + 40_000n);
+        const net = board.nets.find(item => item.terminals.some(endpoint =>
+            endpoint.part === 'u1' && endpoint.terminal === 'out'));
+        return {
+            output: net ? board.nodeVoltage(net.id) : null,
+            terminals: circuit.getPart('u1')?.terminals?.length || 0
+        };
+    });
+    check('browser bundle solves the physical LT1001 precision follower',
+        lt1001.terminals === 8 && typeof lt1001.output === 'number' &&
+        Math.abs(lt1001.output - 1.00001) < 0.00001,
+        JSON.stringify(lt1001));
 } finally {
     await browser.close();
 }

@@ -61,6 +61,7 @@ export async function runMachineConfig(config, opts = {}) {
         widgets: Array.isArray(activated.widgets) ? activated.widgets : []
     };
     if (typeof bm.romAt === 'number') detail.romAt = bm.romAt;
+    if (bm.geometry) detail.geometry = {...bm.geometry};
     // A Linux kernel boots WITH its initramfs: both were fetched and
     // sha256-checked by activateConfig; the kernel is `bytes`, this is the rest.
     if (activated.media && activated.media.initrd && activated.media.initrd.bytes) {

@@ -31,6 +31,32 @@ test('pseudocode-importer has micropython buffer and tab', () => {
     assert.ok(src.includes('bw-microbit-flash'), 'bw-microbit-flash event not found');
 });
 
+test('global Run and simulator Play both request the current MicroPython program', () => {
+    const importer = readFileSync(
+        resolve(overlay, 'src/components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8');
+    const pane = readFileSync(
+        resolve(overlay, 'src/components/tw-pseudocode/microbit-sim-pane.jsx'), 'utf8');
+    const controls = readFileSync(resolve(overlay, 'src/containers/controls.jsx'), 'utf8');
+    assert.match(controls, /bw-microbit-run-request[\s\S]{0,100}autostart: true/);
+    assert.match(importer, /addEventListener\('bw-microbit-run-request'/);
+    assert.match(pane, /case 'request_flash':[\s\S]{0,500}bw-microbit-run-request/);
+    const readyCase = pane.slice(pane.indexOf("case 'ready':"), pane.indexOf("case 'request_flash':"));
+    assert.match(readyCase, /this\._autostart[\s\S]*this\._flash/);
+});
+
+test('host Run can start muted before the simulator audio gesture', () => {
+    const sim = readFileSync(resolve(overlay, 'static/microbit-sim/build/simulator.js'), 'utf8');
+    assert.match(sim, /case "flash":[\s\S]{0,700}if \(!board2\.audio\.context\)[\s\S]{0,300}board2\.flash/);
+});
+
+test('shared simulator presents the selected board identity', () => {
+    const pane = readFileSync(
+        resolve(overlay, 'src/components/tw-pseudocode/microbit-sim-pane.jsx'), 'utf8');
+    assert.match(pane, /this\.state\.device === 'calliopemini' \? t\.calliopeTitle : t\.simTitle/);
+    assert.match(pane, /detail\.key === 'bw-device-id'/);
+    assert.match(pane, /Calliope mini simulator/);
+});
+
 test('gui.jsx lazy-loads MicrobitSimPane', () => {
     const src = readFileSync(
         resolve(overlay, 'src/components/gui/gui.jsx'), 'utf8'

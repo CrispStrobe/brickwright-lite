@@ -395,6 +395,16 @@ test('activate: functional 386 → hdd bootMedia + resolved BIOS/VGA media', asy
     assert.equal(seen.length, 3);
 });
 
+test('DOSBox imgmount imports an AT disk with its explicit CHS and free BIOS', () => {
+    const cfg = fromDosboxConf('[cpu]\ncputype=386\n[autoexec]\nimgmount c "win311.img" -t hdd -size 512,17,4,1000');
+    assert.equal(cfg.machine, 'i80386');
+    assert.equal(cfg.slots.hdd.url, 'win311.img');
+    assert.deepEqual(cfg.slots.hdd.geometry, {sectors: 17, heads: 4, cylinders: 1000});
+    assert.equal(cfg.bios.kind, 'bochs-lgpl');
+    assert.equal(cfg.widgets[0].source, 'video');
+    assert.equal(validateMachineConfig(cfg).ok, true);
+});
+
 test('activate: an inline machineConfig passes straight through to createDebugRunner', async () => {
     const {fetcher} = stubFetcher();
     const cfg = newMachineConfig({
@@ -626,6 +636,18 @@ test('runMachineConfig on a config with no screen carries an empty widgets list'
     const dispatched = [];
     await runMachineConfig(elksConfig(), {fetcher, dispatch: d => dispatched.push(d)});
     assert.deepEqual(dispatched[0].widgets, []);
+});
+
+test('386 hard-disk geometry survives activation and media dispatch', async () => {
+    const {fetcher} = stubFetcher();
+    const config = freedos386Config();
+    config.slots.hdd.geometry = {cylinders: 1000, heads: 4, sectors: 17};
+    const dispatched = [];
+    await runMachineConfig(config, {fetcher, dispatch: detail => dispatched.push(detail)});
+    assert.equal(dispatched.length, 1);
+    assert.equal(dispatched[0].kind, 'i80386');
+    assert.equal(dispatched[0].slotId, 'hdd');
+    assert.deepEqual(dispatched[0].geometry, {cylinders: 1000, heads: 4, sectors: 17});
 });
 
 test('runMachineConfig returns a wired descriptor and dispatches nothing', async () => {

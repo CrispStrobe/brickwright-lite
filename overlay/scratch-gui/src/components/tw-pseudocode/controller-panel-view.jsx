@@ -1,6 +1,8 @@
 import React, {useEffect, useRef} from 'react';
 import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from 'bw-board/controller.js';
 import { bindPanelToBoard } from 'bw-board/controller-binding.js';
+import MachineConsole from './machine-console.jsx';
+import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
 
 const L10N = {
     en: {
@@ -1378,6 +1380,8 @@ class ControllerPanelView extends React.Component {
         };
         this._onPanelEvent = this._onPanelEvent.bind(this);
         this._binding = null;
+        this._undoStack = [];
+        this._layoutSnapshot = null;
     }
 
     componentDidMount() {
@@ -1389,11 +1393,16 @@ class ControllerPanelView extends React.Component {
         if (panel.mode === 'play' && this.props.board) {
             this._bindToBoard(panel);
         }
+        this._unregisterUndo = registerUndoSurface('widgets', {
+            canUndo: () => this._undoStack.length > 0,
+            undo: () => this._undo()
+        });
     }
 
     componentWillUnmount() {
         const panel = this._getPanel();
         panel.removeListener(this._onPanelEvent);
+        if (this._unregisterUndo) this._unregisterUndo();
         this._unbind();
     }
 
@@ -1419,6 +1428,38 @@ class ControllerPanelView extends React.Component {
 
     _onPanelEvent() {
         this.setState(s => ({ revision: s.revision + 1 }));
+        notifyUndoState();
+    }
+
+    _snapshot() {
+        return JSON.parse(JSON.stringify(this._getPanel().toJSON()));
+    }
+
+    _recordUndo(snapshot) {
+        this._undoStack.push(snapshot || this._snapshot());
+        if (this._undoStack.length > 100) this._undoStack.shift();
+        notifyUndoState();
+    }
+
+    _restoreSnapshot(snapshot) {
+        const panel = this._getPanel();
+        for (const name of panel.getWidgetNames()) panel.removeWidget(name);
+        for (const widget of snapshot.widgets || []) {
+            const added = panel.addWidget(widget.name, widget.type,
+                widget.config || {}, widget.layout || {});
+            if (widget.binding) added.binding = JSON.parse(JSON.stringify(widget.binding));
+        }
+        if (typeof panel.setHideBindings === 'function') panel.setHideBindings(!!snapshot.hideBindings);
+        if (snapshot.mode) panel.setMode(snapshot.mode);
+        this._persist();
+        this.setState(s => ({selected: null, revision: s.revision + 1}));
+    }
+
+    _undo() {
+        if (!this._undoStack.length) return false;
+        this._restoreSnapshot(this._undoStack.pop());
+        notifyUndoState();
+        return true;
     }
 
     _bindToBoard(panel) {
@@ -1448,6 +1489,7 @@ class ControllerPanelView extends React.Component {
 
     _addWidget(type) {
         const panel = this._getPanel();
+        const before = this._snapshot();
         // Generate a unique name
         const existing = panel.getWidgetNames();
         const typeLabels = { joystick: 'joy', button: 'btn', slider: 'slider', dpad: 'dpad', dial: 'dial' };
@@ -1461,11 +1503,14 @@ class ControllerPanelView extends React.Component {
         this.setState({ addMenuOpen: false });
         // Persist immediately
         this._persist();
+        this._recordUndo(before);
     }
 
     _removeWidget(name) {
+        const before = this._snapshot();
         this._getPanel().removeWidget(name);
         this._persist();
+        this._recordUndo(before);
     }
 
     _persist() {
@@ -1485,13 +1530,20 @@ class ControllerPanelView extends React.Component {
     }
 
     _layout(name, patch, persist) {
+        if (!this._layoutSnapshot) this._layoutSnapshot = this._snapshot();
         this._getPanel().setWidgetLayout(name, patch);
-        if (persist) this._persist();
+        if (persist) {
+            this._persist();
+            this._recordUndo(this._layoutSnapshot);
+            this._layoutSnapshot = null;
+        }
     }
 
     _config(name, patch) {
+        const before = this._snapshot();
         this._getPanel().setWidgetConfig(name, patch);
         this._persist();
+        this._recordUndo(before);
     }
 
     /**
@@ -1512,6 +1564,7 @@ class ControllerPanelView extends React.Component {
     _bind(name, target, value, param) {
         const panel = this._getPanel();
         if (!name || !panel.getWidget(name)) return;
+        const before = this._snapshot();
         switch (target) {
         case 'variable': panel.bindToVariable(name, String(value ?? '')); break;
         case 'part': panel.bindToPart(name, String(value ?? ''), param || null); break;
@@ -1525,6 +1578,7 @@ class ControllerPanelView extends React.Component {
         // move. The board binding is rebuilt for the same reason.
         if (panel.mode === 'play' && this.props.board) this._bindToBoard(panel);
         this._persist();
+        this._recordUndo(before);
     }
 
     /** Stage variable names, for the binding field's suggestions. */
@@ -1550,6 +1604,7 @@ class ControllerPanelView extends React.Component {
     }
 
     _rename(oldName, newName) {
+        const before = this._snapshot();
         try {
             this._getPanel().renameWidget(oldName, newName);
             // Keep the inspector's revert snapshot attached across the
@@ -1558,6 +1613,7 @@ class ControllerPanelView extends React.Component {
             if (this._snapFor === oldName) this._snapFor = newName;
             this.setState({ selected: newName });
             this._persist();
+            this._recordUndo(before);
             return true;
         } catch (e) {
             return false;   // collision/empty: the inspector keeps the old name
@@ -1566,6 +1622,7 @@ class ControllerPanelView extends React.Component {
 
     /** Revert a widget to the snapshot taken when its inspector opened (✕). */
     _restoreWidget(currentName, snap) {
+        const before = this._snapshot();
         try {
             const panel = this._getPanel();
             if (!snap || !panel.getWidget(currentName)) {
@@ -1582,6 +1639,7 @@ class ControllerPanelView extends React.Component {
                 w.binding = snap.binding ? JSON.parse(JSON.stringify(snap.binding)) : null;
             }
             this._persist();
+            this._recordUndo(before);
         } catch (e) { /* a failed revert must still close the inspector */ }
         this._snapFor = null;
         this.setState(s => ({ selected: null, revision: s.revision + 1 }));
@@ -1609,6 +1667,9 @@ class ControllerPanelView extends React.Component {
         const panel = this._getPanel();
         const mode = panel.mode;
         const widgets = panel.getWidgets();
+        const machineWidget = mode === 'play' && this.props.machineConsole
+            ? widgets.find(w => w.name === this.props.machineConsole.name && w.type === 'simplevga')
+            : null;
 
         return (
             <div style={{
@@ -1618,7 +1679,7 @@ class ControllerPanelView extends React.Component {
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                 overflow: 'hidden',
                 zIndex: 10,
-            }}>
+            }} onPointerDown={() => activateUndoSurface('widgets')}>
                 {/* Toolbar */}
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 8,
@@ -1637,26 +1698,36 @@ class ControllerPanelView extends React.Component {
                         border: '1px solid #cbd5e1', overflow: 'hidden'
                     }}>
                         <button
+                            type="button"
+                            data-testid="bw-ctl-mode-edit"
+                            aria-label={t('edit')}
+                            aria-pressed={mode === 'edit'}
+                            title={t('edit')}
                             onClick={() => this._setMode('edit')}
                             style={{
-                                padding: '4px 12px', fontSize: 12, border: 'none',
+                                width: 34, height: 30, padding: 0, fontSize: 16, border: 'none',
                                 cursor: 'pointer', fontWeight: 600,
                                 background: mode === 'edit' ? '#7C3AED' : '#f1f5f9',
                                 color: mode === 'edit' ? '#fff' : '#64748b',
                             }}
                         >
-                            {t('edit')}
+                            {'✎'}
                         </button>
                         <button
+                            type="button"
+                            data-testid="bw-ctl-mode-play"
+                            aria-label={t('play')}
+                            aria-pressed={mode === 'play'}
+                            title={t('play')}
                             onClick={() => this._setMode('play')}
                             style={{
-                                padding: '4px 12px', fontSize: 12, border: 'none',
+                                width: 34, height: 30, padding: 0, fontSize: 16, border: 'none',
                                 cursor: 'pointer', fontWeight: 600,
                                 background: mode === 'play' ? '#7C3AED' : '#f1f5f9',
                                 color: mode === 'play' ? '#fff' : '#64748b',
                             }}
                         >
-                            {t('play')}
+                            {'▶'}
                         </button>
                     </div>
                     {/* Grid snap toggle (edit mode only) */}
@@ -1688,7 +1759,13 @@ class ControllerPanelView extends React.Component {
                                 fontSize: 12, color: '#475569', cursor: 'pointer' }}>
                             <input type="checkbox"
                                 checked={!!panel.hideBindings}
-                                onChange={e => { panel.setHideBindings(e.target.checked); this.forceUpdate(); }} />
+                                onChange={e => {
+                                    const before = this._snapshot();
+                                    panel.setHideBindings(e.target.checked);
+                                    this._persist();
+                                    this._recordUndo(before);
+                                    this.forceUpdate();
+                                }} />
                             {t('hideBindings')}
                         </label>
                     )}
@@ -1752,7 +1829,11 @@ class ControllerPanelView extends React.Component {
                             {t('noWidgets')}
                         </div>
                     )}
-                    {widgets.map(w => (
+                    {machineWidget ? (
+                        <MachineConsole widget={machineWidget}
+                            keyIn={this.props.machineConsole.keyIn}
+                            mouseIn={this.props.machineConsole.mouseIn} />
+                    ) : widgets.map(w => (
                         <PositionedWidget
                             key={w.name}
                             widget={w}

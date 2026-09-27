@@ -221,6 +221,16 @@ const PREPARE = {
                     const tabs = [...document.querySelectorAll('[role="tab"]')];
                     return tabs[5]?.getAttribute('aria-selected') === 'true';
                 })()`, 5000);
+                // THE CANVAS IS THE SUBJECT, so put it in frame. It lives
+                // below the prose on a long scrolling tab, and a shot of the
+                // top of that tab is a shot of paragraphs.
+                const canvas = page.getByTestId('bw-fpga-rf-canvas');
+                if (await canvas.count()) {
+                    await canvas.first().scrollIntoViewIfNeeded().catch(() => {});
+                    await until(page,
+                        "(document.querySelector('[data-testid=\"bw-fpga-rf-canvas\"]')?.getBoundingClientRect().top ?? 1e9) < innerHeight * 0.6",
+                        8000).catch(() => {});
+                }
                 return true;
             } catch { /* not up yet — nudge it and look again */ }
             if (attempt % 2 === 0) {
@@ -272,6 +282,11 @@ try {
                         // the scene reported "flag-off build" — a comment that
                         // was simply wrong about why the tab was missing.
                         localStorage.setItem('bw-fpga-enabled', '1');
+                        // The FPGA tab opens on a four-step onboarding banner.
+                        // Useful the first time, and it filled most of the
+                        // frame in run 36258855868 — the caption promised a
+                        // gate canvas and the picture showed help text.
+                        localStorage.setItem('bw-fpga-guide-done', '1');
                         indexedDB.deleteDatabase('bw-machines');
                     } catch { /* private mode */ }
                 });

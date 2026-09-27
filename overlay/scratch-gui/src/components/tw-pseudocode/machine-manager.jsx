@@ -17,6 +17,8 @@ import {
 import {
     newMachineConfig, validateMachineConfig
 } from '../../lib/bw-machines/machine-config.js';
+import {localDosboxMachine} from '../../lib/bw-machines/local-dosbox.js';
+import {defaultImageFetcher} from '../../lib/bw-machines/activate.js';
 import {lessonMachines, lessonT} from '../../lib/bw-machines/lessons.js';
 
 const T = {
@@ -37,6 +39,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     const [machines, setMachines] = React.useState([]);
     const [status, setStatus] = React.useState('');
     const [text, setText] = React.useState('');
+    const [localDisk, setLocalDisk] = React.useState(null);
     const t = k => tr(locale, k);
 
     const refresh = React.useCallback(async () => {
@@ -46,7 +49,23 @@ export default function MachineManager({store, onRun, onClose, locale}) {
 
     React.useEffect(() => { refresh(); }, [refresh]);
 
-    const run = cfg => { try { if (onRun) onRun(cfg); } finally { if (onClose) onClose(); } };
+    const run = async (cfg, opts) => {
+        try {
+            if (onRun) await onRun(cfg, opts);
+            if (onClose) onClose();
+        } catch (e) { setStatus(e.message); }
+    };
+    const runLocal = async () => {
+        try {
+            if (!localDisk) throw new Error('select a raw hard-disk image first');
+            const confText = /\[(dosbox|cpu|autoexec)\]/i.test(text) ? text : '';
+            const cfg = localDosboxMachine({confText,
+                fileName: localDisk.name, byteLength: localDisk.size});
+            const bytes = new Uint8Array(await localDisk.arrayBuffer());
+            await run(cfg, {fetcher: ref => ref.url === 'local-media:disk'
+                ? Promise.resolve({bytes}) : defaultImageFetcher(ref)});
+        } catch (e) { setStatus(e.message); }
+    };
     // A LESSON fetches its media on Run (megabytes, SHA-256-checked), so it is
     // AWAITED: the modal stays open saying what it is fetching, and a refusal
     // (a hash mismatch names the slot) is shown here instead of vanishing into
@@ -158,6 +177,23 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                 </div>
 
                 <div style={{borderTop: '1px solid #e2e8f0', padding: '10px 16px'}}>
+                    <div style={{fontSize: 12, fontWeight: 600, marginBottom: 4}}>Boot a local DOSBox HDD</div>
+                    <div style={{fontSize: 11, color: '#64748b', marginBottom: 6}}>
+                        Select a raw .img disk. Optionally load a DOSBox .conf with 386 CPU and
+                        imgmount -size geometry. The image stays in this browser tab.
+                    </div>
+                    <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10}}>
+                        <input type="file" accept=".img,.ima,.bin" data-testid="bw-mm-local-disk"
+                            onChange={e => setLocalDisk(e.target.files?.[0] || null)} />
+                        <label style={{fontSize: 11}}>DOSBox .conf
+                            <input type="file" accept=".conf,.txt" data-testid="bw-mm-local-conf"
+                                onChange={async e => {
+                                    const file = e.target.files?.[0];
+                                    if (file) setText(await file.text());
+                                }} />
+                        </label>
+                        <button onClick={runLocal} style={primary} data-testid="bw-mm-local-run">Boot disk</button>
+                    </div>
                     <label style={{fontSize: 12, color: '#475569'}}>{t('importL')}</label>
                     <textarea value={text} onChange={e => setText(e.target.value)}
                         placeholder={t('paste')} data-testid="bw-mm-import-text"

@@ -1065,6 +1065,7 @@ class PseudocodeImporter extends React.Component {
         this.run = this.run.bind(this);
         this.switchTab = this.switchTab.bind(this);
         this.flashMicrobitSim = this.flashMicrobitSim.bind(this);
+        this._onMicrobitRunRequest = this._onMicrobitRunRequest.bind(this);
         this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
         this.deployPicoUf2 = this.deployPicoUf2.bind(this);
@@ -1083,6 +1084,7 @@ class PseudocodeImporter extends React.Component {
 
     componentDidMount () {
         this._unmounted = false;
+        window.addEventListener('bw-microbit-run-request', this._onMicrobitRunRequest);
         // CodeMirror arrives when the tab is first shown (_reveal), not now:
         // every TabPanel is force-rendered, so "mounted" is every first paint.
         // Bundled examples wait for the no-device Tools menu or a real source
@@ -2008,6 +2010,7 @@ class PseudocodeImporter extends React.Component {
         window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
         window.removeEventListener('bw-example-loaded', this._onExampleLoaded);
         window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
+        window.removeEventListener('bw-microbit-run-request', this._onMicrobitRunRequest);
         // A pending debounce would otherwise lose the last edits on unmount.
         if (this._autosaveTimer) {
             clearTimeout(this._autosaveTimer);
@@ -3643,7 +3646,11 @@ class PseudocodeImporter extends React.Component {
         window.dispatchEvent(new CustomEvent('bw-pybricks-run', {detail}));
     }
 
-    flashMicrobitSim () {
+    _onMicrobitRunRequest (event) {
+        this.flashMicrobitSim(event && event.detail);
+    }
+
+    flashMicrobitSim (options = {}) {
         const code = this.state.buffers.micropython;
         if (!code || !code.trim() || /^# ===/.test(code)) return;
         // Switch the right pane to the micro:bit simulator view
@@ -3662,7 +3669,7 @@ class PseudocodeImporter extends React.Component {
             // Park on a module latch too: opening the dock mounts the sim pane
             // in the same tick, so its window listener may not exist yet — the
             // pane reads this latch on mount (first-click fix).
-            const detail = {code};
+            const detail = {code, autostart: Boolean(options.autostart)};
             try { window.__bwMicrobitPendingFlash = detail; } catch { /* noop */ }
             window.dispatchEvent(new CustomEvent('bw-microbit-flash', {detail}));
         }
@@ -4966,6 +4973,7 @@ class PseudocodeImporter extends React.Component {
                             onChange={text => this.setActiveCode(text)}
                             readOnly={!TWO_WAY.has(this.state.lang) && !EDITABLE_ONE_WAY(this.state.lang, this.state.asmMode)}
                             lang={this.state.lang}
+                            isVisible={this.props.isVisible}
                         />
                     </React.Suspense>
                 ) : (

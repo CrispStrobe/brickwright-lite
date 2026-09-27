@@ -953,6 +953,12 @@ const FpgaTab = (props) => {
                     >{ex.label}</button>
                 ))}
             </p>
+        </div>
+        {/* THE BUILDER LEAVES THE PROSE COLUMN. Everything on this tab sat
+            inside one maxWidth: 52rem wrapper — right for paragraphs, wrong
+            for a canvas: on a 2880px screen the gate graph got under a third
+            of the width and the rest was empty. The measure is what makes the
+            text readable, so it stays; the canvas is simply not text. */}
             <details style={{margin: '0 0 0.75rem'}} open>
                 <summary style={{cursor: 'pointer'}}>
                     {L10N[pickLocale(props.locale)].orOnFullCanvas}
@@ -963,6 +969,7 @@ const FpgaTab = (props) => {
                     </React.Suspense>
                 </div>
             </details>
+        <div style={{maxWidth: '52rem'}}>
             <p style={{margin: '0 0 0.75rem'}}>
                 <button
                     type="button"

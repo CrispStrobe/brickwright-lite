@@ -11,6 +11,7 @@ import {shouldRefreshDesignerDebugState} from '../../lib/bw-debug/debug-ui-refre
 import {setProjectTitle} from '../../reducers/project-title';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
+import {activateUndoSurface, registerUndoSurface} from '../../lib/global-undo.js';
 
 /**
  * The panel's own learner-facing strings. Not scratch-gui's, so not
@@ -207,7 +208,17 @@ class CircuitTab extends React.Component {
     }
 
     componentDidMount () {
+        this._unregisterUndo = registerUndoSurface('circuit', {
+            canUndo: () => !!this._findUndoButton(),
+            undo: () => {
+                const button = this._findUndoButton();
+                if (!button) return false;
+                button.click();
+                return true;
+            }
+        });
         if (this.props.isVisible) {
+            activateUndoSurface('circuit');
             this.load();
             this.loadExamples();
             this.loadCurriculum();
@@ -500,7 +511,12 @@ class CircuitTab extends React.Component {
         }
     }
 
+    _findUndoButton = () => this._boxRef.current && Array.from(
+        this._boxRef.current.querySelectorAll('button')
+    ).find(button => button.textContent.trim() === '↶')
+
     componentDidUpdate (prevProps, prevState) {
+        if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('circuit');
         // The event that opens this lazily rendered bench can precede the
         // DebugPanel listener in the same React commit. Replay the retained
         // image after that commit; the transition guard prevents a loop when
@@ -608,6 +624,7 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        if (this._unregisterUndo) this._unregisterUndo();
         cancelAnimationFrame(this._hostResizeFrame);
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
         window.removeEventListener('resize', this._measureBox);
@@ -1893,7 +1910,7 @@ class CircuitTab extends React.Component {
         // with the compact debugger in its Instruments column.
         const dock = this.state.debugDock === 'solo' ? 'top' : this.state.debugDock;
         const content = (
-            <div ref={this._boxRef} style={box}>
+            <div ref={this._boxRef} style={box} onPointerDown={() => activateUndoSurface('circuit')}>
                 {/* The standalone-circuit invitation and the debugger hint used to render here
                     as two dismissible orange ▲ banners. Removed at the owner's request: they
                     pushed the board down and duplicated the top-bar Warnings selector, which
