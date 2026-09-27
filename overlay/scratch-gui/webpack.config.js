@@ -11,6 +11,8 @@ const distributionPolicy = {
     executableToolchains: process.env.BW_REMOTE_TOOLCHAINS_POLICY || remoteCodePolicy,
     machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY || remoteCodePolicy
 };
+const distributionPolicyReceipt = `remote-extensions=${distributionPolicy.remoteExtensions} ` +
+    `toolchains=${distributionPolicy.executableToolchains} machine-images=${distributionPolicy.machineImages}`;
 
 if (!['allow', 'deny'].includes(remoteCodePolicy)) {
     throw new Error(`BW_REMOTE_CODE_POLICY must be "allow" or "deny", got ${JSON.stringify(remoteCodePolicy)}`);
@@ -160,6 +162,9 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         'process.env.BW_REMOTE_EXTENSIONS_POLICY': JSON.stringify(distributionPolicy.remoteExtensions),
         'process.env.BW_REMOTE_TOOLCHAINS_POLICY': JSON.stringify(distributionPolicy.executableToolchains),
         'process.env.BW_REMOTE_MACHINE_IMAGES_POLICY': JSON.stringify(distributionPolicy.machineImages),
+        // One precomputed literal lets diagnostics and artifact verification quote the exact
+        // compiled profile; deriving it from object properties lets minifiers retain fragments.
+        'process.env.BW_DISTRIBUTION_POLICY_RECEIPT': JSON.stringify(distributionPolicyReceipt),
         // Where hosted synthesis lives, when it exists. Null means "not configured",
         // which the backend probe reports as a REASON rather than an empty picker.
         'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),

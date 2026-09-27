@@ -13,8 +13,7 @@ const POLICY = Object.freeze({
     toolchains: process.env.BW_REMOTE_TOOLCHAINS_POLICY === 'deny' ? 'deny' : 'allow',
     machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY === 'deny' ? 'deny' : 'allow'
 });
-const POLICY_RECEIPT = `remote-extensions=${POLICY.extensions} ` +
-    `toolchains=${POLICY.toolchains} machine-images=${POLICY.machineImages}`;
+const POLICY_RECEIPT = process.env.BW_DISTRIBUTION_POLICY_RECEIPT;
 
 const REPO_URL = 'https://github.com/CrispStrobe/brickwright-lite';
 const NOTICES_URL = `${REPO_URL}/blob/main/THIRD-PARTY-NOTICES.md`;

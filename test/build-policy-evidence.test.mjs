@@ -75,6 +75,7 @@ test('webpack derives the manifest and UI constants from one build identity', ()
     assert.match(config, /const buildManifest =/);
     assert.match(config, /distributionPolicy\n/);
     assert.match(config, /BW_REMOTE_EXTENSIONS_POLICY/);
+    assert.match(config, /BW_DISTRIBUTION_POLICY_RECEIPT/);
     assert.match(config, /class BuildManifestPlugin/);
     assert.match(config, /emitAsset\('brickwright-build\.json'/);
     assert.doesNotMatch(config, /from: Buffer\.from\(buildManifest\)/);
