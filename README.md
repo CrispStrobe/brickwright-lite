@@ -94,8 +94,27 @@ and Bluetooth Classic** without a browser or a separate install.
 bwlite --help
 bwlite spike probe
 bwlite spike run scripts/spike/example-usb-stream.bw
-bwlite compile program.bw --to sb3 --out program.sb3
+bwlite convert program.bw --to sb3 --out program.sb3
+bwlite convert program.bw --to c --out program.c
+bwlite read program.c --out recovered.bw
+bwlite 8051 build program.bw --out program.ihx
+bwlite 8051 flash program.ihx --port /dev/cu.usbserial-XXXX
+bwlite toolchain status
+bwlite machine validate machine.json
 ```
+
+`convert` reads `.bw`, `.sb3`, `.c`, `.py`, `.js`, and `.bas` and can write
+pseudocode, SB3, C, host C, Python, JavaScript, MicroPython, or BASIC. It uses
+the same pinned `SB3Creator` and language readers as the Code tab. The older
+`compile PROGRAM.bw --to ...` command remains an alias for conversion; use
+`toolchain compile FILE.c --mode local|online` for the separate 8051 compiler.
+`devices` and `retarget` expose the compiler's device mapping. `toolchain`,
+`machine`, `fpga`, and `makecode` forward to their existing repository CLIs;
+`machine` manages emulator configurations and boot plans, while interactive
+chip emulation and debugging still run in the app. `8051 build` uses installed
+SDCC to make Intel HEX from STC pseudocode or C; `8051 flash` uses installed
+`stcgal` and requires an explicit serial port. Flashing an STC also requires
+its usual cold power cycle into the ISP bootloader.
 
 SPIKE USB needs LEGO MINDSTORMS MicroPython firmware and Python with `pyserial`.
 The [USB guide](scripts/spike/README-usb-stream.md) covers the Mac/iPad WLAN
