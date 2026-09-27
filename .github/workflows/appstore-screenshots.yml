@@ -67,6 +67,11 @@ jobs:
       - name: Build the editor
         run: cd packages/scratch-gui && NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=${{ inputs.flag_on && '1' || '' }} npm run build
 
+      - name: Verify the captured store build uses the normal distribution policy
+        env:
+          BW_EXPECT_REMOTE_CODE_POLICY: allow
+        run: node scripts/verify-build-policy.mjs packages/scratch-gui/build
+
       - name: Install Playwright chromium
         run: |
           npm install --no-save playwright
