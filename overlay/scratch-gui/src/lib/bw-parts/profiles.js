@@ -230,14 +230,14 @@ export const REFUSED = Object.freeze({
     passive: [
         'battery', 'battery_9v', 'battery_aa', 'battery_coin', 'solar_cell',
         'fuse', 'header', 'usb_a', 'crystal', 'osc_can', 'light_bulb',
-        'polarized_cap', 'rnet_sip', 'level_shifter4', 'vreg', 'adp7118', 'lt1763', 'lm7805',
+        'polarized_cap', 'rnet_sip', 'level_shifter4', 'vreg', 'adp7118', 'adp151', 'lt1763', 'lm7805',
         'lm7809', 'lm7812', 'ld1117v33', 'ams1117_33', 'ams1117_50',
         'vcc', 'gnd', 'resistor', 'capacitor', 'inductor', 'transformer',
         'diode', 'zener', 'potentiometer', 'ntc', 'ldr', 'vsource', 'isource'
     ],
     instrument: ['voltmeter', 'ammeter', 'analog_meter', 'logic_probe'],
     'analog-only': [
-        'lm358', 'lm324', 'lm741', 'lm393', 'lm339', 'lm3915', 'tip120', 'timer_555', 'timer_556',
+        'lm358', 'lm324', 'lm741', 'op07', 'op27', 'lt1001', 'lt1006', 'lm393', 'lm339', 'lm3915', 'tip120', 'timer_555', 'timer_556',
         '555', '556', 'optocoupler', 'darlington_driver', 'tcs3200', 'msgeq7',
         'spectrum_display', 'clock_display', 'opamp', 'npn', 'pnp', 'nmos', 'pmos'
     ],
