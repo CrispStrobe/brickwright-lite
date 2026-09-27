@@ -204,7 +204,7 @@
       motorPairMove: "Lenkung [STEERING] mit Tempo [SPEED]% starten",
       displayShowImage: "eingebautes Bild [IMAGE] anzeigen",
       setLightMatrixPixel:
-        "3x3-Matrix [PORT] Pixel x:[X] y:[Y] Helligkeit [BRIGHTNESS]%",
+        "Setze 3x3-Matrix [PORT] Pixel x:[X] y:[Y] Helligkeit [BRIGHTNESS]%",
       getFaceUp: "Hub-Oberseite",
       getDistanceIn: "[PORT] Abstand in [UNIT]",
       extensionName: "LEGO SPIKE Prime",
