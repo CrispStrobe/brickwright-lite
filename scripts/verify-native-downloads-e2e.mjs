@@ -6,7 +6,10 @@ import path from 'node:path';
 
 const binary = process.argv[2];
 if (!binary || !existsSync(binary)) throw new Error(`app binary not found: ${binary}`);
-const port = Number(process.env.TAURI_DRIVER_PORT || 4445);
+// The installed tauri-driver/WebKitWebDriver pair is proven on its standard port by the broker
+// harness immediately before this one. The steps are sequential and each driver is shut down, so
+// reusing 4444 removes a needless transport difference without creating a concurrent bind.
+const port = Number(process.env.TAURI_DRIVER_PORT || 4444);
 const base = `http://127.0.0.1:${port}`;
 const nativeDriver = process.env.NATIVE_DRIVER ||
     ['/usr/bin/WebKitWebDriver', '/usr/lib/x86_64-linux-gnu/webkit2gtk-4.1/WebKitWebDriver',

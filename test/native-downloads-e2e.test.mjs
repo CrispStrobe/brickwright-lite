@@ -9,6 +9,7 @@ const workflow = readFileSync(path.join(ROOT, '.github/workflows/tauri.yml'), 'u
 
 test('native download proof launches a real Tauri binary and requires native IPC', () => {
     assert.match(proof, /tauri-driver/);
+    assert.match(proof, /TAURI_DRIVER_PORT \|\| 4444/);
     assert.match(proof, /application: path\.resolve\(binary\)/);
     assert.match(proof, /__TAURI_INTERNALS__/);
     assert.match(proof, /nativeInvoke: 'function'/);
