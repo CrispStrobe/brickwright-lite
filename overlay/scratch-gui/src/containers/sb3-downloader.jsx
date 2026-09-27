@@ -6,6 +6,7 @@ import {projectTitleInitialState} from '../reducers/project-title';
 import {showStandardAlertWithMessage} from '../reducers/alerts';
 import downloadBlob from '../lib/download-blob';
 import {attachBrickwrightState} from '../lib/bw-project-bundle';
+import {packActiveLms} from '../lib/mindstorms-lms';
 /**
  * Project saver component passes a downloadProject function to its child.
  * It expects this child to be a function with the signature
@@ -44,7 +45,9 @@ class SB3Downloader extends React.Component {
             // one format serves both directions — see lib/bw-project-bundle.js.
             // It returns the original blob if anything goes wrong: saving the
             // Scratch half beats saving nothing.
-            .then(content => attachBrickwrightState(content))
+            .then(content => this.props.format === 'lms' ?
+                packActiveLms(content, this.props.projectFilename.replace(/\.sb3$/i, ''),
+                    {unchanged: !this.props.projectChanged}) : attachBrickwrightState(content))
             .then(content => {
                 if (this.props.onSaveFinished) {
                     this.props.onSaveFinished();
@@ -52,7 +55,8 @@ class SB3Downloader extends React.Component {
                 // downloadBlob is not async on the browser path but CAN throw
                 // synchronously (blob URL creation, the anchor click), so it is
                 // inside the chain rather than after it.
-                return downloadBlob(this.props.projectFilename, content);
+                return downloadBlob(this.props.format === 'lms' ?
+                    this.props.projectFilename.replace(/\.sb3$/i, '.lms') : this.props.projectFilename, content);
             })
             .catch(err => {
                 const detail = (err && (err.message || err.name)) || String(err);
@@ -88,14 +92,17 @@ SB3Downloader.propTypes = {
     onExportError: PropTypes.func,
     onSaveFinished: PropTypes.func,
     projectFilename: PropTypes.string,
+    projectChanged: PropTypes.bool,
+    format: PropTypes.oneOf(['sb3', 'lms']),
     saveProjectSb3: PropTypes.func
 };
 SB3Downloader.defaultProps = {
-    className: ''
+    className: '', format: 'sb3'
 };
 
 const mapStateToProps = state => ({
     saveProjectSb3: state.scratchGui.vm.saveProjectSb3.bind(state.scratchGui.vm),
+    projectChanged: state.scratchGui.projectChanged,
     projectFilename: getProjectFilename(state.scratchGui.projectTitle, projectTitleInitialState)
 });
 

@@ -9,6 +9,7 @@ import {
     applyBrickwrightInspection,
     rollbackBrickwrightInspection
 } from './bw-project-bundle';
+import {unpackLms, setActiveLms, clearActiveLms} from './mindstorms-lms';
 import sharedMessages from './shared-messages';
 
 import {
@@ -81,7 +82,7 @@ const SBFileUploaderHOC = function (WrappedComponent) {
             this.fileReader.onload = this.onload;
             // create <input> element and add it to DOM
             this.inputElement = document.createElement('input');
-            this.inputElement.accept = '.sb,.sb2,.sb3';
+            this.inputElement.accept = '.sb,.sb2,.sb3,.lms';
             this.inputElement.style = 'display: none;';
             this.inputElement.type = 'file';
             this.inputElement.onchange = this.handleChange; // connects to step 3
@@ -142,8 +143,8 @@ const SBFileUploaderHOC = function (WrappedComponent) {
         getProjectTitleFromFilename (fileInputFilename) {
             if (!fileInputFilename) return '';
             // only parse title with valid scratch project extensions
-            // (.sb, .sb2, and .sb3)
-            const matches = fileInputFilename.match(/^(.*)\.sb[23]?$/);
+            // (.sb, .sb2, .sb3, and LEGO MINDSTORMS .lms)
+            const matches = fileInputFilename.match(/^(.*)\.(?:sb[23]?|lms)$/i);
             if (!matches) return '';
             return matches[1].substring(0, 100); // truncate project title to max 100 chars
         }
@@ -154,9 +155,17 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 this.props.onLoadingStarted();
                 const filename = this.fileToUpload && this.fileToUpload.name;
                 let loadingSuccess = false;
-                const rawFile = this.fileReader.result;
+                let rawFile = this.fileReader.result;
+                let lms = null;
                 let bundle;
-                inspectBrickwrightState(rawFile)
+                Promise.resolve()
+                    .then(async () => {
+                        if (filename && /\.lms$/i.test(filename)) {
+                            lms = await unpackLms(rawFile);
+                            rawFile = lms.scratch;
+                        }
+                        return inspectBrickwrightState(rawFile);
+                    })
                     .then(inspection => {
                         if (inspection.outcome === 'invalid' || inspection.outcome === 'future') {
                             if (typeof window !== 'undefined') {
@@ -181,6 +190,8 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                         });
                     })
                     .then(() => {
+                        if (lms) setActiveLms(lms);
+                        else clearActiveLms();
                         // A project that spans four tabs is only really loaded
                         // when all four are. Tell the tabs their storage changed;
                         // they seed from localStorage on mount and this is what

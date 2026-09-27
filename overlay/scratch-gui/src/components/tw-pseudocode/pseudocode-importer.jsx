@@ -276,6 +276,14 @@ const L10N = {
         runOnSimulator: '▶ Run on Simulator',
         runOnSpike: '▶ Run on SPIKE (Pybricks)',
         runOnSpikeTitle: 'Run this Pybricks program on a simulated SPIKE Prime hub: Pybricks MicroPython itself, compiled to WebAssembly, with simulated motors and sensors',
+        runSpikeUsb: '▶ Run on SPIKE USB',
+        probeSpikeUsb: 'Identify A–F',
+        spikeUsbDirect: 'USB on this computer', spikeUsbBridge: 'USB via Mac on WLAN',
+        spikeUsbUrl: 'Mac bridge URL', spikeUsbToken: 'Bridge token',
+        spikeUsbRunning: 'Streaming to the USB hub…',
+        spikeUsbProbing: 'Reading USB hub ports…',
+        spikeUsbDone: (firmware, ports) => `USB run complete (${firmware}). Ports: ${ports}`,
+        spikeUsbFail: message => `SPIKE USB: ${message}`,
         debugOnSimulator: '🐞 Debug',
         debugLevelBlock: 'Block',
         debugLevelLine: 'Line',
@@ -554,6 +562,14 @@ const L10N = {
         runOnSimulator: '▶ Im Simulator ausführen',
         runOnSpike: '▶ Auf SPIKE ausführen (Pybricks)',
         runOnSpikeTitle: 'Dieses Pybricks-Programm auf einem simulierten SPIKE-Prime-Hub ausführen: Pybricks-MicroPython selbst, nach WebAssembly übersetzt, mit simulierten Motoren und Sensoren',
+        runSpikeUsb: '▶ Auf SPIKE über USB ausführen',
+        probeSpikeUsb: 'A–F erkennen',
+        spikeUsbDirect: 'USB an diesem Computer', spikeUsbBridge: 'USB über Mac im WLAN',
+        spikeUsbUrl: 'Mac-Bridge-URL', spikeUsbToken: 'Bridge-Token',
+        spikeUsbRunning: 'Programm wird per USB übertragen…',
+        spikeUsbProbing: 'USB-Hub-Ports werden gelesen…',
+        spikeUsbDone: (firmware, ports) => `USB-Programm beendet (${firmware}). Ports: ${ports}`,
+        spikeUsbFail: message => `SPIKE USB: ${message}`,
         debugOnSimulator: '🐞 Debuggen',
         debugLevelBlock: 'Block',
         debugLevelLine: 'Zeile',
@@ -1040,6 +1056,10 @@ class PseudocodeImporter extends React.Component {
             // Hardware-extension codegen options (see reference/runtime-drivers.md): the emitted
             // driver (shim / remote / on-brick), plus async/await and event-hat switches.
             driverMode: 'shim', asyncMode: false, eventsMode: false,
+            spikeUsbRoute: typeof navigator !== 'undefined' &&
+                (/iPad|iPhone|Android/i.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) ? 'bridge' : 'direct',
+            spikeUsbBridgeUrl: '', spikeUsbBridgeToken: '',
             // The RISC-V C route the user picks: 'browser' (shecc.wasm, a C
             // subset, no server) or 'server' (the hosted service — full C via
             // native gcc+picolibc). Default keeps the no-server path.
@@ -1082,6 +1102,7 @@ class PseudocodeImporter extends React.Component {
         this._onMicrobitRunRequest = this._onMicrobitRunRequest.bind(this);
         this.flashMicrobitSimDebug = this.flashMicrobitSimDebug.bind(this);
         this.deployToPico = this.deployToPico.bind(this);
+        this.runSpikeUsb = this.runSpikeUsb.bind(this);
         this.deployPicoUf2 = this.deployPicoUf2.bind(this);
         this.flashToBoard = this.flashToBoard.bind(this);
         this.flashStm32ViaSwd = this.flashStm32ViaSwd.bind(this);
@@ -3119,6 +3140,36 @@ class PseudocodeImporter extends React.Component {
     // is Chromium-only, so everywhere else this degrades to downloading
     // main.py with a hint at Thonny / `bw flash`. The protocol core lives
     // in pico-repl.js (vendored from sb3-creator, tested against a mock).
+    async runSpikeUsb (probeOnly = false) {
+        const source = probeOnly ? '' : (this.state.buffers.pseudocode || '');
+        if (!probeOnly && !source.trim()) return;
+        this.setState({busy: true, status: probeOnly ? this.L.spikeUsbProbing : this.L.spikeUsbRunning, output: ''});
+        try {
+            const usb = await import(/* webpackChunkName: "spike-usb-stream" */ '../../lib/spike-usb-stream.js');
+            let result;
+            if (this.state.spikeUsbRoute === 'bridge') {
+                if (!this.state.spikeUsbBridgeUrl || !this.state.spikeUsbBridgeToken) {
+                    throw new Error('Enter the Mac bridge URL and token');
+                }
+                result = await usb.runSpikeUsbBridge(source,
+                    this.state.spikeUsbBridgeUrl, this.state.spikeUsbBridgeToken);
+                this.setState({output: result.lines.join('\n')});
+            } else {
+                const lines = [];
+                result = await usb.runSpikeUsbDirect(source, {onLine: line => {
+                    lines.push(line);
+                    this.setState({output: lines.join('\n')});
+                }});
+            }
+            const ports = Object.entries(result.ports).map(([p, type]) =>
+                `${p}: ${usb.SPIKE_USB_NAMES[type] || 'empty'}`).join(' · ');
+            this.setState({busy: false, status: this.L.spikeUsbDone(result.firmware, ports)});
+        } catch (error) {
+            const cancelled = error && error.name === 'NotFoundError';
+            this.setState({busy: false, status: cancelled ? '' : this.L.spikeUsbFail(error.message)});
+        }
+    }
+
     async deployToPico () {
         const src = this.state.buffers.pseudocode || '';
         if (!src.trim()) return;
@@ -5196,6 +5247,37 @@ class PseudocodeImporter extends React.Component {
                             style={{...btn, background: 'linear-gradient(135deg,#2f9e44,#237a34)'}}>
                             {this.L.deployPico}
                         </button>
+                    ) : null}
+                    {this.state.lang === 'pseudocode' ? (
+                        <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'wrap'}}>
+                            <select value={this.state.spikeUsbRoute} disabled={this.state.busy}
+                                aria-label="SPIKE USB route" data-testid="bw-spike-usb-route"
+                                onChange={e => this.setState({spikeUsbRoute: e.target.value})}
+                                style={{...sel, maxWidth: 220}}>
+                                <option value="direct">{this.L.spikeUsbDirect}</option>
+                                <option value="bridge">{this.L.spikeUsbBridge}</option>
+                            </select>
+                            {this.state.spikeUsbRoute === 'bridge' ? (
+                                <React.Fragment>
+                                    <input type="url" placeholder={this.L.spikeUsbUrl}
+                                        aria-label={this.L.spikeUsbUrl} value={this.state.spikeUsbBridgeUrl}
+                                        onChange={e => this.setState({spikeUsbBridgeUrl: e.target.value})}
+                                        style={{...sel, width: 170}} />
+                                    <input type="password" placeholder={this.L.spikeUsbToken}
+                                        aria-label={this.L.spikeUsbToken} value={this.state.spikeUsbBridgeToken}
+                                        onChange={e => this.setState({spikeUsbBridgeToken: e.target.value})}
+                                        style={{...sel, width: 130}} />
+                                </React.Fragment>
+                            ) : null}
+                            <button onClick={() => this.runSpikeUsb(true)} disabled={this.state.busy}
+                                data-testid="bw-probe-spike-usb" style={btn}>
+                                {this.L.probeSpikeUsb}
+                            </button>
+                            <button onClick={() => this.runSpikeUsb(false)} disabled={this.state.busy || !(this.state.buffers.pseudocode || '').trim()}
+                                data-testid="bw-run-spike-usb" style={{...btn, background: '#d97706', color: '#fff'}}>
+                                {this.L.runSpikeUsb}
+                            </button>
+                        </span>
                     ) : null}
                     {/* Flash to a real board for every family that has a serial
                         bootloader (STC ISP, AVR STK500v1, STM32 AN3155); the

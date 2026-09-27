@@ -31,7 +31,7 @@ DEVICE_NAMES = {
 def compile_line(line, speeds, types):
     """Return (hub command, expected delay) for one supported pseudocode line."""
     line = line.strip()
-    if not line or line.startswith("#") or re.fullmatch(r"when flag clicked", line, re.I):
+    if not line or line.startswith("#") or re.fullmatch(r"when flag clicked:?|device spike", line, re.I):
         return None
     if m := re.fullmatch(r'display text "([^"\\]*)"', line, re.I):
         return f"hub.display.show({m[1]!r})", 0
@@ -130,15 +130,19 @@ def main():
                     print(output.split("\r\n", 1)[-1].removesuffix(">>> ").strip())
         if args.program:
             speeds = dict.fromkeys("ABCDEF", 30)
+            commands = []
             for number, line in enumerate(open(args.program, encoding="utf-8"), 1):
                 try:
                     compiled = compile_line(line, speeds, types)
                     if compiled:
-                        command, delay = compiled
-                        output = repl.command(command, delay).split("\r\n", 1)[-1].removesuffix(">>> ").strip()
-                        print(f"{number}: {line.strip()}" + (f" -> {output}" if output else ""))
+                        commands.append((number, line, compiled))
                 except Exception as exc:
                     raise RuntimeError(f"line {number}: {exc}") from exc
+            if len(commands) > 100 or sum(item[2][1] for item in commands) > 60:
+                raise ValueError("SPIKE USB runs are limited to 100 commands and 60 seconds")
+            for number, line, (command, delay) in commands:
+                output = repl.command(command, delay).split("\r\n", 1)[-1].removesuffix(">>> ").strip()
+                print(f"{number}: {line.strip()}" + (f" -> {output}" if output else ""))
     finally:
         for p in "ABCDEF":
             if types.get(p) in MOTOR_TYPES:

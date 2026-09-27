@@ -87,6 +87,21 @@ and Bluetooth Classic** without a browser or a separate install.
 
 ## Quick start
 
+**Terminal CLI:** after the web-build setup has populated `packages/`, run
+`npm link` once to put `bwlite` on your PATH (or use `npm run cli --`).
+
+```bash
+bwlite --help
+bwlite spike probe
+bwlite spike run scripts/spike/example-usb-stream.bw
+bwlite compile program.bw --to sb3 --out program.sb3
+```
+
+SPIKE USB needs LEGO MINDSTORMS MicroPython firmware and Python with `pyserial`.
+The [USB guide](scripts/spike/README-usb-stream.md) covers the Mac/iPad WLAN
+bridge; the [MINDSTORMS guide](docs/mindstorms-lms.md) covers `.lms` import and
+export.
+
 **Web build:**
 
 ```bash
