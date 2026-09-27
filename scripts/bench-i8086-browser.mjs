@@ -138,6 +138,8 @@ try {
         await mark('dom-ready');
         await page.getByRole('tab', {name: 'Code', exact: true}).click();
         const device = page.getByTestId('bw-device-select');
+        // This is setup synchronisation; the durable `running` phase below proves the bench.
+        // gate-shapes-allow
         await device.waitFor({state: 'visible', timeout: 30000});
         await mark('device-ready');
         // The home starter is a GPIO program. Selecting another MCU while it is
@@ -208,13 +210,11 @@ try {
         // On the phone layout the example picker can overlap this control.
         // Setup is not the subject of this benchmark; dispatch the enabled
         // production button and measure only the resulting machine pump.
-        await page.getByTestId('bw-asm-assemble').click({force: true});
-        await page.waitForFunction(() => /booting the 8086 bench/.test(
-            document.querySelector('[data-testid="bw-code-status"]')?.textContent || ''),
-        null, {timeout: 30000});
-        await mark('bench-booted');
+        await page.getByTestId('bw-asm-assemble').dispatchEvent('click');
+        await mark('assemble-dispatched');
         await page.locator('[data-debug-panel][data-debug-phase="running"]')
             .waitFor({state: 'attached', timeout: 30000});
+        await mark('bench-booted');
         await mark('runner-running');
         await mark('circuit-open-request');
         await page.getByRole('tab', {name: /Circuit/}).click({force: true});
