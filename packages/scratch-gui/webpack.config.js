@@ -5,6 +5,11 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const reactProfiling = process.env.BW_REACT_PROFILE === '1';
+const remoteCodePolicy = process.env.BW_REMOTE_CODE_POLICY || 'allow';
+
+if (!['allow', 'deny'].includes(remoteCodePolicy)) {
+    throw new Error(`BW_REMOTE_CODE_POLICY must be "allow" or "deny", got ${JSON.stringify(remoteCodePolicy)}`);
+}
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
 
@@ -109,6 +114,12 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // runtime toggle could not promise. Enabling it by DEFAULT is a separate,
         // later decision that may never be taken -- see docs/TANG-NANO.md.
         'process.env.BW_ENABLE_FPGA': JSON.stringify(process.env.BW_ENABLE_FPGA === '1'),
+        // Distribution policy, selected at BUILD TIME. This is intentionally not inferred from
+        // Tauri: Android, Windows and direct-download desktop builds have different store rules,
+        // and even Apple's educational-code exception is a submission decision rather than a
+        // property of the runtime. Use `BW_REMOTE_CODE_POLICY=deny` only for a deliberately
+        // self-contained artifact; the normal web and native profile is `allow`.
+        'process.env.BW_REMOTE_CODE_POLICY': JSON.stringify(remoteCodePolicy),
         // Where hosted synthesis lives, when it exists. Null means "not configured",
         // which the backend probe reports as a REASON rather than an empty picker.
         'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),

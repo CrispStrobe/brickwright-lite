@@ -49,8 +49,9 @@ human coordination and qualification process.
   Python and JavaScript representations. Conversion and generated-view limits
   are kept explicit instead of promising that every construct round-trips.
 - 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
-  surface). The web edition can additionally load 150 reviewed gallery
-  extensions; native store builds stay self-contained and show bundled entries only.
+  surface) plus 150 reviewed gallery extensions. Web and native builds allow
+  the gallery by default; a deliberately self-contained artifact can be built
+  with `BW_REMOTE_CODE_POLICY=deny`.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
 
@@ -285,11 +286,12 @@ Scratch Foundation relicensed the whole stack BSD-3-Clause -> AGPL-3.0 on
 > **Do not** swap in `scratch-blocks@2.x` — it is a ground-up Blockly rewrite
 > incompatible with the v4 GUI.
 
-No GPL code is bundled. The web edition can opt into separately distributed GPL
-tools or media, with their licence and corresponding source shown at the point
-of download. Store-distributed native builds do not download executable
-toolchains, machine images, or extension JavaScript: they use the bundled
-permissive/MPL/LGPL components and hosted compilation of learner-authored source.
+No GPL code is bundled. Web and native editions can opt into separately
+distributed GPL tools or media, with their licence and corresponding source
+shown at the point of download. These user-initiated downloads remain separate
+from the BSD-3 application. A review-specific, self-contained build can disable
+remote toolchains, machine images and extension JavaScript at compile time with
+`BW_REMOTE_CODE_POLICY=deny`; the normal build policy is `allow`.
 
 ### The bundled extensions
 
