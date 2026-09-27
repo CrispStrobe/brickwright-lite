@@ -203,6 +203,61 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.22 en-US
+
+**SPIKE Prime extension — German palette crash fixed**
+
+This build fixes the crash that appeared when the editor was used in German
+and LEGO SPIKE Prime / Robot Inventor was added. Blockly incorrectly read the
+digit at the start of the translated 3x3 light-matrix label as part of an
+internal message index and showed “Message index 823 out of range”. The block
+has not been removed; its German label now starts with a word and the complete
+SPIKE palette should render normally.
+
+- Set the app language to German, open the extension gallery, and choose
+  “LEGO SPIKE Prime / Robot Inventor”. Confirm that the palette opens without
+  an error dialog or dismissible error overlay.
+- Find “Setze 3x3-Matrix … Helligkeit …%”. Drag it into the workspace, edit
+  port, x, y, and brightness, save the project, reopen it, and confirm the
+  block and all four values survive.
+- Repeat the gallery check in English and French. Their labels should render
+  normally and no SPIKE block should disappear.
+- If a hub is available, connect through the usual Bluetooth or bridge route
+  and exercise the block. The fix is presentation-only, so connection and
+  light-matrix behavior should be unchanged.
+
+Please report the selected language, device and OS version, whether the error
+appeared while opening the extension or later, and attach the project if a
+saved block fails to reopen.
+
+## What to Test — 0.1.22 de-DE
+
+**SPIKE-Prime-Erweiterung — Absturz der deutschen Palette behoben**
+
+Dieser Build behebt den Absturz, der bei deutscher Oberfläche nach dem
+Hinzufügen von LEGO SPIKE Prime / Robot Inventor auftrat. Blockly las die
+Ziffer am Anfang der übersetzten Beschriftung für die 3x3-Lichtmatrix
+fälschlich als Teil eines internen Nachrichtenindex und zeigte „Message index
+823 out of range“. Der Block wurde nicht entfernt: Seine deutsche
+Beschriftung beginnt jetzt mit einem Wort, und die vollständige SPIKE-Palette
+soll normal erscheinen.
+
+- Stelle die App auf Deutsch, öffne die Erweiterungsgalerie und wähle „LEGO
+  SPIKE Prime / Robot Inventor“. Die Palette muss ohne Fehlerdialog oder
+  wegklickbare Fehlermeldung geöffnet werden.
+- Suche „Setze 3x3-Matrix … Helligkeit …%“. Ziehe den Block in den
+  Arbeitsbereich, ändere Anschluss, x, y und Helligkeit, speichere das Projekt
+  und öffne es erneut. Block und alle vier Werte müssen erhalten bleiben.
+- Wiederhole den Galerietest auf Englisch und Französisch. Die Beschriftungen
+  müssen normal erscheinen; kein SPIKE-Block darf fehlen.
+- Falls ein Hub verfügbar ist, verbinde ihn wie gewohnt per Bluetooth oder
+  Bridge und probiere den Block aus. Die Korrektur betrifft nur die Anzeige;
+  Verbindung und Lichtmatrix-Verhalten sollen unverändert sein.
+
+Bitte ausgewählte Sprache, Gerät und Betriebssystemversion nennen, angeben,
+ob der Fehler beim Öffnen der Erweiterung oder später erschien, und das
+Projekt anhängen, falls ein gespeicherter Block nicht wieder geöffnet wird.
+
 ## What to Test — 0.1.21 en-US
 
 **SPIKE Prime simulator — Pybricks MicroPython, in the browser**
