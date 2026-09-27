@@ -109,7 +109,7 @@
     },
     "devDependencies": {
         "bw-board": "github:CrispStrobe/bw-board#9044950cbb941d7b878019ad44da19afbd7986a9",
-        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#9febb957aabe6d9f80874ace1fd7cf3d2b3f5389",
+        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#d196b5c097f103510eb3a4d96f760d956d877e65",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
         "playwright": "^1.62.1",
