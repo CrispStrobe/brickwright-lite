@@ -14,7 +14,14 @@ on:
       - 'scripts/package-native-broker-*.mjs'
       - 'scripts/verify-native-broker-e2e.mjs'
       - 'overlay/scratch-gui/static/capability-broker.html'
+      - 'overlay/scratch-gui/src/lib/distribution-policy.js'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'overlay/scratch-gui/src/lib/sdcc-wasm/**'
+      - 'overlay/scratch-gui/src/lib/bw-machines/**'
+      - 'overlay/scratch-vm/src/extension-support/extension-manager.js'
       - '.github/workflows/tauri.yml'
+      - 'scripts/verify-native-downloads-e2e.mjs'
+      - 'scripts/vercel-build.sh'
   pull_request:
     paths:
       - 'apps/tauri/**'
@@ -27,7 +34,14 @@ on:
       - 'scripts/package-native-broker-*.mjs'
       - 'scripts/verify-native-broker-e2e.mjs'
       - 'overlay/scratch-gui/static/capability-broker.html'
+      - 'overlay/scratch-gui/src/lib/distribution-policy.js'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'overlay/scratch-gui/src/lib/sdcc-wasm/**'
+      - 'overlay/scratch-gui/src/lib/bw-machines/**'
+      - 'overlay/scratch-vm/src/extension-support/extension-manager.js'
       - '.github/workflows/tauri.yml'
+      - 'scripts/verify-native-downloads-e2e.mjs'
+      - 'scripts/vercel-build.sh'
 
 # A PR branch is already tested by pull_request; running the same job again for
 # its push doubles the Rust queue without producing a second verdict. Keep the
@@ -89,6 +103,10 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
       - name: Install Tauri system dependencies and a WebDriver
         run: |
           sudo apt-get update
@@ -128,20 +146,17 @@ jobs:
       - name: Install tauri-driver
         run: cargo install tauri-driver --version 2.0.6 --locked
 
-      # A REAL frontend is not needed and would cost twenty minutes of webpack: what the broker
-      # requires is its own document and its packaged assets. Anything else the editor would
-      # normally serve is irrelevant to this boundary, and building it would only make the gate
-      # slow enough to be skipped.
-      - name: Assemble the minimal frontend the broker actually needs
+      # This job used to embed a one-page broker stub. That proved the broker boundary but could
+      # not prove that the actual native editor retained its remote extension/toolchain/machine
+      # paths. Build the same allow-profile frontend release jobs package, then drive both claims
+      # through the real WebKit/Tauri process below.
+      - name: Build the real allow-profile frontend
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BW_REMOTE_CODE_POLICY: allow
         run: |
-          set -eu
-          out=packages/scratch-gui/build
-          mkdir -p "$out"
-          printf '%s' '<!doctype html><title>broker-e2e</title>' > "$out/index.html"
-          cp overlay/scratch-gui/static/capability-broker.html "$out/capability-broker.html"
-          cp -r overlay/scratch-gui/static/native-broker "$out/native-broker"
-          test -f "$out/native-broker/native-broker-host.js"
-          test -f "$out/native-broker/proof-pins/manifest.json"
+          npm ci --ignore-scripts --no-audit --no-fund
+          bash scripts/vercel-build.sh
 
       # Force tauri-build to re-run so the frontend assembled above is the one embedded. A
       # cached build script output is silent about which assets it captured.
@@ -185,6 +200,13 @@ jobs:
           # failing harness would report success. That exact confusion — a pipeline's exit code
           # taken for the command's — has already cost this repository a "PUSHED" on a rejected
           # push, so it is worth the one line.
+
+      - name: Drive remote downloads through the real native WebView
+        run: |
+          set -o pipefail
+          xvfb-run -a dbus-run-session -- node scripts/verify-native-downloads-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/native-downloads.log
 
       # CP3-E asks that the artifacts SHOW the real vertical slice. The log is the evidence: it
       # carries the realm dump (both documents, so "the frontend loaded" is visible rather than
