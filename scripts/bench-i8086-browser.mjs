@@ -138,7 +138,7 @@ try {
         await mark('dom-ready');
         await page.getByRole('tab', {name: 'Code', exact: true}).click();
         const device = page.getByTestId('bw-device-select');
-        await device.waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: synchronization before `device.selectOption` three lines below -- the detector looks at the IMMEDIATELY following statement and sees `mark()`, which is a timestamp rather than a use
+        await device.waitFor({state: 'visible', timeout: 30000});
         await mark('device-ready');
         // The home starter is a GPIO program. Selecting another MCU while it is
         // present is a real retarget request and correctly loads sb3-creator;
@@ -155,19 +155,22 @@ try {
             .every(node => !(node.textContent || '').trim()),
         null, {timeout: assemblySetupTimeoutMs});
         // CodeMirror changes immediately; React's controlled DEVICE picker is
-        // the acknowledgement that the importer state has committed the same
-        // empty document. Without this boundary, selectOption can race the
-        // old GPIO starter still held in state and legitimately invoke the
-        // retarget compiler even though the editor already looks blank.
+        // the acknowledgement that importer state committed the empty document.
         await page.waitForFunction(() =>
             document.querySelector('[data-testid="bw-device-select"]')?.value === '',
         null, {timeout: assemblySetupTimeoutMs});
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
-        await device.selectOption('i8086');
+        // This is deliberately authored as a fresh DEVICE directive, not a
+        // picker change. Picker selection on an existing hardware program is a
+        // real retarget request and is therefore allowed to load sb3-creator;
+        // this benchmark's pre-Circuit policy window promises that no retarget,
+        // conversion, compile or export was requested.
+        await initialEditor.click();
+        await page.keyboard.insertText('DEVICE i8086\n');
         await page.waitForFunction(() =>
             document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
-        null, {timeout: 15000});
+        null, {timeout: assemblySetupTimeoutMs});
         await mark('i8086-selected');
         // Device selection briefly marks the language row busy. A forced click
         // on its disabled ASM button is silently discarded by the browser, so
