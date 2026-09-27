@@ -25,6 +25,9 @@ const BUNDLED_LICENCES = [
     ['8086 example programs (MIT)', 'static/licenses/amey-thakur-8086.MIT.txt'],
     ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
     ['Pybricks + MicroPython (MIT)', 'static/licenses/pybricks-micropython.MIT.txt'],
+    ['Bochs BIOS + VGABios firmware (LGPL-2.1)', 'static/licenses/free-386-firmware.LGPL-2.1.txt'],
+    ['bw-circuit-ui (MPL-2.0)', 'static/licenses/bw-circuit-ui.MPL-2.0.txt'],
+    ['NQC (MPL-2.0)', 'static/licenses/nqc.MPL-2.0.txt']
 ];
 const COMPILER_ABOUT_URL = 'https://stc-compiler.vercel.app/#about';
 const COMPILER_HEALTH_URL = 'https://stc-compiler.vercel.app/health';
@@ -62,7 +65,7 @@ const L10N = {
             'polarity, voltage and current limits before wiring real hardware, and treat ' +
             'anything not verified on a real chip as unverified.',
         components: 'Components and licences',
-        licenseNote: 'Open-source under BSD-3-Clause, Apache-2.0, MIT, and MPL-2.0. Brickwright ' +
+        licenseNote: 'Open-source under BSD-3-Clause, Apache-2.0, MIT, MPL-2.0, and LGPL-2.1. Brickwright ' +
             'uses the last BSD Scratch stack plus its own editors and engines; it is not a TurboWarp fork.',
         // Named here, not only in the linked file: these ship INSIDE the binary,
         // and BSD-3 clause 2 asks for the notice to travel with it.
@@ -124,7 +127,7 @@ const L10N = {
             'Pybricks MicroPython, Copyright (c) 2018-2026 The Pybricks Authors, und MicroPython, ' +
             'Copyright (c) 2013-2025 Damien P. George, beide MIT, nach WebAssembly uebersetzt.',
         thanksTexts: 'Lizenztexte (offline):',
-        licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT und MPL-2.0. Brickwright nutzt ' +
+        licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT, MPL-2.0 und LGPL-2.1. Brickwright nutzt ' +
             'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',
         notices: 'Vollstandige Third-Party-Hinweise',
         affil: 'Zugehorigkeit',

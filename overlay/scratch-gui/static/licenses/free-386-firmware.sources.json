@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "notice": "Complete corresponding source for the unmodified LGPL firmware binaries shipped by Brickwright.",
+  "firmware": [
+    {
+      "artifact": "static/roms/free-386-bochs-bios.rom",
+      "artifactSha256": "6481181809b58a9f805346a7ecf9bebdaf5b322c32825fb49ee89da51552c4ac",
+      "source": "Bochs 2.7 source release (bios/rombios.c and BIOS build files)",
+      "sourceArchive": "https://sourceforge.net/projects/bochs/files/bochs/2.7/bochs-2.7.tar.gz/download",
+      "sourceArchiveSha256": "a010ab1bfdc72ac5a08d2e2412cd471c0febd66af1d9349bc0d796879de5b17a"
+    },
+    {
+      "artifact": "static/roms/free-386-vgabios-lgpl.bin",
+      "artifactSha256": "76af53f14955df3edd6365daa64393e91fafe55241c2c00384ff05b740431da1",
+      "source": "VGABios 0.8a / revision 288 source release",
+      "sourceArchive": "https://download-mirror.savannah.gnu.org/releases/vgabios/vgabios-0.8a.tgz",
+      "sourceArchiveSha256": "481042240ef0f1c918780c92a6bb42ad4d3f5d989b29502fa7ee7faf13a041b9"
+    }
+  ]
+}

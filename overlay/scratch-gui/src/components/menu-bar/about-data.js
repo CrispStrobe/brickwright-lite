@@ -92,6 +92,14 @@ const ABOUT_GROUPS = [
                 role: 'CCP+BDOS binary (orig. Digital Research); see PROVENANCE in bw-board'
             },
             {
+                name: 'Bochs BIOS + LGPL VGABios',
+                url: 'static/licenses/free-386-firmware.sources.json',
+                license: 'LGPL-2.1-or-later',
+                licenseUrl: 'static/licenses/free-386-firmware.LGPL-2.1.txt',
+                role: 'Unmodified redistributable firmware for the fully-free 80386 machine; ' +
+                    'exact source URLs and archive hashes are recorded offline in this entry'
+            },
+            {
                 name: 'PicoBB',
                 url: 'https://github.com/Memotech-Bill/PicoBB',
                 license: 'zlib',
@@ -130,6 +138,13 @@ const ABOUT_GROUPS = [
                 url: 'https://github.com/alexfru/SmallerC',
                 license: 'BSD-2-Clause (with ucpp, © Thomas Pornin)',
                 role: 'C to 16-bit NASM assembly for the 8086; bundled as WASM and runs offline'
+            },
+            {
+                name: 'NQC (Not Quite C)',
+                url: 'https://github.com/jverne/nqc/tree/21c24ec1e520c736ce78e33e4c0dafca887fc2b7',
+                license: 'MPL-2.0',
+                licenseUrl: 'static/licenses/nqc.MPL-2.0.txt',
+                role: 'Bundled WebAssembly compiler for LEGO Mindstorms RCX bytecode'
             }
         ]
     },

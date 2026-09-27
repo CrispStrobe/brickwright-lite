@@ -1754,9 +1754,15 @@ never fetched, stored, or committed.
 - **LGPL VGABios** — the **VGABios** project, distributed under the **GNU
   LGPL**. Upstream: https://savannah.nongnu.org/projects/vgabios/ (revision
   `288`, 2021-05-28, `(C) 2002-2021 the LGPL VGABios developers Team`).
-- **Licence:** GNU Lesser General Public License v2.1 (the full text ships with
-  the upstream firmware under bw-board `roms/free-at-bios/LICENSE` at the pinned
-  sha; both binaries are covered by it).
+- **Licence:** GNU Lesser General Public License v2.1-or-later. The full text
+  ships inside the application as
+  `static/licenses/free-386-firmware.LGPL-2.1.txt`; both binaries are covered by
+  it.
+- **Corresponding source:**
+  `static/licenses/free-386-firmware.sources.json` ships inside the application
+  and records the exact Bochs 2.7 and VGABios 0.8a source archives plus their
+  SHA-256 hashes. The About dialog links both this manifest and the offline
+  licence text.
 - **What ships:** `static/roms/free-386-bochs-bios.rom` (64 KiB) and
   `static/roms/free-386-vgabios-lgpl.bin` (38400 bytes), with
   `free-386-bios.provenance.json` beside them recording the upstreams, licences,
