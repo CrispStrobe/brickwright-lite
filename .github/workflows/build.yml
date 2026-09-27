@@ -1142,6 +1142,14 @@ jobs:
       # Wiring it found three defects, one of them in the product: see the PR.
       # Measured locally against the github-pages artifact of 78cfe1d54: 5
       # checks, 8.8 s and 9.5 s. It calls no waitForTimeout.
+      #
+      # The same script then runs the Machine Manager's other built-in machine,
+      # the Linux on RISC-V lesson: licence line + source link on the row, Run
+      # fetches the GPL kernel and initramfs from brickwright-media-lab (pinned
+      # commit, sha256-checked by the app; never in this build), Linux 6.1 boots
+      # to the bwb# prompt, uname -a is typed into the serial input and
+      # "Linux ... riscv32" read back. It prints Run-to-prompt seconds and
+      # uploads artifacts/linux-riscv beside the CP/M proof.
       - name: Browser gate — CP/M 2.2 boots from the Machine Manager to A>
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         id: cpm_system
@@ -1154,7 +1162,9 @@ jobs:
         if: always() && steps.cpm_system.outcome != 'skipped' && matrix.shard == 'light'
         with:
           name: cpm-system-proof
-          path: artifacts/cpm-system/*
+          path: |
+            artifacts/cpm-system/*
+            artifacts/linux-riscv/*
           if-no-files-found: error
 
       - name: Browser gate — debugger run-to and synchronized inspection

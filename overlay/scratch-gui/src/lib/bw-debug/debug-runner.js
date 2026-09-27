@@ -769,6 +769,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     /** Serial output buffer — bytes received from adapter.onSerial, decoded as UTF-8. */
     let serialLines = [];
     /**
+     * The serial face is a TERMINAL, not a log: set for a booted Linux, whose
+     * shell edits its own line — backspace-space-backspace to erase, ANSI CSI
+     * sequences (`ESC [ … final`) to clear and move — which the plain line
+     * buffer would print as `^H` litter and `[J` fragments. Off for every
+     * other bench, whose output keeps exactly the bytes it always showed.
+     */
+    let serialTerminal = false;
+    let serialEsc = 0;                 // 0 text, 1 after ESC, 2 inside CSI
+    /** Per-frame boot-progress hook for the Linux lesson, or null. */
+    let linuxProgressWatch = null;
+    /**
      * What the ATTACHED engine cannot carry, in the user's words.
      *
      * bw-board's createDebugTarget returns a `refusals` ledger for exactly this:
@@ -1411,6 +1422,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // labwired refusal still shown after the user switched back to the
         // light tier would be a warning about a limit that no longer applies.
         engineNotes = [];
+        serialTerminal = false;
+        serialEsc = 0;
+        linuxProgressWatch = null;
         const device = String(projectStc(null)?.device || '').toLowerCase();
         const selectedTargetKind = selectDebugTargetKind(device, targetKind);
         // The picker offers two targets and only one of them can be honoured
@@ -1433,6 +1447,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         if (selectedTargetKind === 'riscv32') {
+            if (bootMedia && bootMedia.profile === 'linux') return attachRiscV32Linux();
             return attachRiscV32();
         }
 
@@ -2072,6 +2087,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // "B\nB\nC\n…" in the console. CR is display noise; LF ends a line.
             adapter.onSerial((byte) => {
                 const ch = String.fromCharCode(byte & 0x7f);
+                if (serialTerminal) {
+                    // ESC [ params final — swallowed whole (the final byte is
+                    // @..~). A lone ESC followed by anything else drops both.
+                    if (serialEsc === 1) { serialEsc = ch === '[' ? 2 : 0; return; }
+                    if (serialEsc === 2) { if (byte >= 0x40 && byte <= 0x7e) serialEsc = 0; return; }
+                    if (byte === 0x1b) { serialEsc = 1; return; }
+                    if (byte === 0x08 || byte === 0x7f) {
+                        if (serialLines.length) {
+                            const last = serialLines.length - 1;
+                            serialLines[last] = serialLines[last].slice(0, -1);
+                        }
+                        return;
+                    }
+                    if (byte === 0x07) return;          // BEL
+                }
                 if (ch === '\r') return;
                 if (ch === '\n' || serialLines.length === 0) serialLines.push('');
                 if (ch !== '\n') serialLines[serialLines.length - 1] += ch;
@@ -2444,6 +2474,42 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const result = await createDebugTarget('riscv32', { image, config: { ecallTraps } });
         wireMachineBench(result, createDebugSession);
         setStatus('ready', S('ready.riscv', {label}));
+        return session;
+    }
+
+    // LINUX ON RISC-V — the Machine Manager's lesson. bootMedia.bytes is the
+    // kernel Image and bootMedia.linuxInitrd the initramfs, both fetched from
+    // brickwright-media-lab and sha256-checked by activateConfig before they
+    // got here (a mismatch is refused there, by slot name, and never boots).
+    // bw-board's `linux` option builds the 64 MiB virt-style machine, hands off
+    // like firmware, and time-slices each frame: a busy boot runs up to ~10 ms
+    // of wall per frame, an idle shell only as long as the kernel has work. The
+    // serial console becomes a terminal (backspace, ANSI) and its input line
+    // feeds the 16550A, which is where the shell reads. Progress is read off
+    // the target every frame and written to the status line.
+    async function attachRiscV32Linux() {
+        const { createDebugTarget, createDebugSession } =
+            await import(/* webpackChunkName: "bw-board" */ 'bw-board');
+        const kernel = bootMedia.bytes;
+        if (!(kernel instanceof Uint8Array) || !kernel.length) throw new Error(S('linux.noKernel'));
+        setStatus('attaching', S('linux.starting'));
+        const result = await createDebugTarget('riscv32', {
+            linux: {kernel, initrd: bootMedia.linuxInitrd || undefined}
+        });
+        serialTerminal = true;
+        serialEsc = 0;
+        wireMachineBench(result, createDebugSession);
+        let shown = '';
+        linuxProgressWatch = () => {
+            const p = target && typeof target.linuxProgress === 'function' ? target.linuxProgress() : null;
+            if (!p) return;
+            const key = `${p.phase}:${p.percent}`;
+            if (key === shown) return;
+            shown = key;
+            const phaseText = S(`linux.phase.${p.phase}`);
+            const line = p.ready ? S('linux.ready') : S('linux.booting', {phase: phaseText, percent: p.percent});
+            setStatus('running', line);
+        };
         return session;
     }
 
@@ -2960,6 +3026,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const perfWallStart = perfProbe ? performance.now() : 0;
         const perfSimStart = perfProbe ? target.timeNs() : 0n;
         let outcome = session.pump();
+        if (linuxProgressWatch) linuxProgressWatch();
 
         // Absorb skipped hits in this frame rather than one per frame. Bounded,
         // because a pause point inside a tight loop with a condition that never
@@ -3108,7 +3175,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     const device = String(projectStc(null)?.device || '').toLowerCase();
                     const selectedKind = selectDebugTargetKind(device, targetKind);
                     // Z80/6502 interactive interpreters: no compile step
+                    // riscv32 never compiles the project: its program is the
+                    // Code tab's assembled image, a shipped RTOS image, or a
+                    // booted Linux — all of which arrive as bootMedia.
                     const built = (selectedKind === 'z80' || selectedKind === 'eater6502' ||
+                        selectedKind === 'riscv32' ||
                         (selectedKind === 'i8086' && bootMedia)) ? null
                         : userFirmware ? builtFromUserFirmware(selectedKind)
                             : await build();

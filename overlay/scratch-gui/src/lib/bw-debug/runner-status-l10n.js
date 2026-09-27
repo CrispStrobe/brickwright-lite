@@ -95,6 +95,17 @@ const TABLE = {
         'ready.romOnMap': '{name} on {map}',
         'ready.bbcbasic': 'BBC BASIC (Z80) — type at the > prompt',
         'ready.riscv': 'RISC-V (RV32IMA) — {label} running',
+
+        // ---- Linux on RISC-V (the Machine Manager lesson)
+        'linux.starting': 'starting Linux on RISC-V…',
+        'linux.booting': 'booting Linux on RISC-V — {phase} ({percent}%)',
+        'linux.phase.starting': 'the kernel is starting up',
+        'linux.phase.kernel': 'the kernel is running',
+        'linux.phase.console': 'the serial console is up',
+        'linux.phase.init': 'starting /init',
+        'linux.phase.userspace': 'BusyBox is starting',
+        'linux.ready': 'Linux on RISC-V — type a command at the bwb# prompt (try uname -a)',
+        'linux.noKernel': 'the Linux lesson has no kernel image to boot',
         'ready.dosBench': '{name} loaded as a .{format} on the DOS bench '
             + '— output is the CGA screen and the console',
         'ready.floppyBoot': '{name} booting — the video is the CGA screen, '
@@ -177,6 +188,16 @@ const TABLE = {
         'ready.romOnMap': '{name} auf {map}',
         'ready.bbcbasic': 'BBC BASIC (Z80) — tippe am >-Prompt',
         'ready.riscv': 'RISC-V (RV32IMA) — {label} läuft',
+
+        'linux.starting': 'Linux auf RISC-V wird gestartet…',
+        'linux.booting': 'Linux auf RISC-V startet — {phase} ({percent} %)',
+        'linux.phase.starting': 'der Kernel fährt hoch',
+        'linux.phase.kernel': 'der Kernel läuft',
+        'linux.phase.console': 'die serielle Konsole ist bereit',
+        'linux.phase.init': '/init wird gestartet',
+        'linux.phase.userspace': 'BusyBox startet',
+        'linux.ready': 'Linux auf RISC-V — tippe einen Befehl am bwb#-Prompt (z. B. uname -a)',
+        'linux.noKernel': 'die Linux-Lektion hat kein Kernel-Image zum Starten',
         'ready.dosBench': '{name} als .{format} auf der DOS-Werkbank geladen '
             + '— die Ausgabe sind der CGA-Bildschirm und die Konsole',
         'ready.floppyBoot': '{name} startet — das Bild ist der CGA-Bildschirm, '
