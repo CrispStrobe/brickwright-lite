@@ -237,7 +237,7 @@ export const REFUSED = Object.freeze({
     ],
     instrument: ['voltmeter', 'ammeter', 'analog_meter', 'logic_probe'],
     'analog-only': [
-        'lm358', 'lm324', 'lm741', 'lm393', 'lm339', 'lm3915', 'tip120', 'timer_555', 'timer_556',
+        'lm358', 'lm324', 'lm741', 'lt1001', 'lm393', 'lm339', 'lm3915', 'tip120', 'timer_555', 'timer_556',
         '555', '556', 'optocoupler', 'darlington_driver', 'tcs3200', 'msgeq7',
         'spectrum_display', 'clock_display', 'opamp', 'npn', 'pnp', 'nmos', 'pmos'
     ],
