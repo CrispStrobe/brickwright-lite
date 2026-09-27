@@ -116,25 +116,33 @@ try {
     touchPoints: points.map(([x, y], id) => ({ x, y, id, radiusX: 4, radiusY: 4, force: 1 })),
   });
 
-  await touch('touchStart', [[cx - 60, cy], [cx + 60, cy]]);
-  for (const half of [90, 120, 150, 180]) {
-    await touch('touchMove', [[cx - half, cy], [cx + half, cy]]);
-    await page.waitForTimeout(60);
-  }
-  await touch('touchEnd', []);
-  await page.waitForTimeout(500);
-  const after = await zoom();
-  check(after > before, 'pinching out zooms the gate canvas in', `x${before} -> x${after}`);
+  // PINCH IN FIRST, and the order is the finding. The canvas opens at x2 —
+  // React Flow's default maxZoom — because fitView on a small starter circuit
+  // lands exactly on the ceiling. Pinching out from there cannot raise the
+  // zoom, so the first version of this gate reported "the canvas does not
+  // pinch" while measuring a clamp. Zoom out, then back in: both directions
+  // are then free to move.
+  const pinch = async (halves) => {
+    await touch('touchStart', [[cx - halves[0], cy], [cx + halves[0], cy]]);
+    for (const half of halves.slice(1)) {
+      await touch('touchMove', [[cx - half, cy], [cx + half, cy]]);
+      await page.waitForTimeout(60);
+    }
+    await touch('touchEnd', []);
+    await page.waitForTimeout(500);
+    return zoom();
+  };
 
-  await touch('touchStart', [[cx - 180, cy], [cx + 180, cy]]);
-  for (const half of [140, 100, 70, 50]) {
-    await touch('touchMove', [[cx - half, cy], [cx + half, cy]]);
-    await page.waitForTimeout(60);
-  }
-  await touch('touchEnd', []);
-  await page.waitForTimeout(500);
-  const back = await zoom();
-  check(back < after, 'pinching in zooms it out again', `x${after} -> x${back}`);
+  const out = await pinch([180, 140, 100, 70, 50]);
+  check(out < before, 'pinching in zooms the gate canvas out', `x${before} -> x${out}`);
+
+  const back = await pinch([50, 80, 120, 160, 200]);
+  check(back > out, 'and pinching out zooms it back in', `x${out} -> x${back}`);
+
+  // The clamp is real and worth naming, so the next reader does not re-derive
+  // it from a confusing failure.
+  check(before <= 2.001, 'the canvas opens at React Flow\'s maxZoom of 2 (fitView on a small graph)',
+    `x${before}`);
 } finally {
   await browser.close();
 }
