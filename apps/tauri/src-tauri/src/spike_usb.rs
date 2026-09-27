@@ -32,7 +32,10 @@ pub async fn spike_usb_bridge_run(
     let body_text = response.text().await.map_err(|e| e.to_string())?;
     let body: serde_json::Value = serde_json::from_str(&body_text).map_err(|e| e.to_string())?;
     if !status.is_success() {
-        return Err(body["error"].as_str().unwrap_or("SPIKE USB bridge request failed").into());
+        return Err(body["error"]
+            .as_str()
+            .unwrap_or("SPIKE USB bridge request failed")
+            .into());
     }
     Ok(body)
 }
