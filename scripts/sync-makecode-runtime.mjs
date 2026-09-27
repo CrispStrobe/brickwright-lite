@@ -238,7 +238,7 @@ export const ARCADE_BASES_DIR = path.join(ROOT, 'artifacts', 'makecode', 'arcade
 export const ARCADE_BASES = {
     rp2040: {sha: 'a62909b15aac9c857b6fd620f3679a7f5e05a41ab27915d9427cc4b74ee626a5',
         url: `${MAKECODE_CDN}a62909b15aac9c857b6fd620f3679a7f5e05a41ab27915d9427cc4b74ee626a5.hex`, sha256: '9055c740a7282afe5ecf1b151a0f1cc4d0cb48c09d4e9e32472c056b889c0daf', bytes: 288515,
-        built: {sha256: 'ac1e891bd6d451ca83e97f452f97050cb07322ba6c7d75af88ab761bd323fd2f', bytes: 310152}},
+        built: {sha256: '369643c3d8309e77f4d6158898832ae48d41e85e0813b1a3f8f6e244705f7423', bytes: 310152}},
     samd51: {sha: 'c160106c8559347801cd81c14bb4569af0ea0d946fac0fe5408f22a39af497de',
         url: `${MAKECODE_CDN}c160106c8559347801cd81c14bb4569af0ea0d946fac0fe5408f22a39af497de.hex`, sha256: 'e07518572d4c43f77d90eef6c7c76878daf3940ec16201319aab8b013f890166', bytes: 359398,
         built: {sha256: '5d617fdaa6d88466c23ef8e9c708ecf2495df165b6a23bbf53c658bb08c6357f', bytes: 374931}},
