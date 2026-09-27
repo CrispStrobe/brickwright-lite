@@ -1997,6 +1997,21 @@ jobs:
           name: fpga-builder-proof
           path: artifacts/fpga-builder/*
           if-no-files-found: warn
+      # Two fingers on the gate canvas. The circuit designer's pinch was
+      # written and never attached (bw-circuit-ui #50); this canvas is React
+      # Flow, whose zoomOnPinch defaults to true, so it is BELIEVED to work.
+      # Believed is not measured, and the integration can break what the
+      # library provides — a touch-action on an ancestor, a preventDefault on
+      # the wrapper, a panel mounted but never laid out. Driven with CDP touch
+      # points, since Playwright's touchscreen taps with one finger and cannot
+      # express a pinch.
+      - name: FPGA gate — two fingers pinch the gate canvas
+        timeout-minutes: 6
+        if: ${{ !cancelled() && steps.fpga_serve.outcome == 'success' }}
+        env:
+          PROOF_URL: http://localhost:8632/
+        run: node scripts/verify-fpga-pinch.mjs
+
       - name: FPGA gate — the flag-on surface and the learning path
         timeout-minutes: 10
         if: ${{ !cancelled() && steps.fpga_playwright.outcome == 'success' }}
