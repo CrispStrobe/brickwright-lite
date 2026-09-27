@@ -4,9 +4,13 @@
 
 ## What changed
 
-`spikeprimeBTC`, `spikeprimeBridge`, `spikeprimeble` and `legospikeprimeBLE` no longer
-exist as extensions. Everything they did is in `spikeprime`, which is the single entry in
-the picker: **LEGO SPIKE Prime / Robot Inventor**.
+`spikeprimeBTC`, `spikeprimeBridge`, `spikeprimeble` and `legospikeprimeBLE` were
+consolidated into `spikeprime`, the normal picker entry: **LEGO SPIKE Prime / Robot Inventor**.
+The archived drivers remain bundled for hardware diagnosis. In Settings → Workspace,
+set **Legacy SPIKE extensions** to **Show for debugging** to reveal the four extra
+gallery entries. Start with **SPIKE Legacy · Scratch Link BLE** on iPad with a SPIKE 3
+hub, and test one driver at a time. Turning the setting off hides the entries; projects
+saved with old ids still migrate to `spikeprime` on load.
 
 Projects saved against the old ids keep working. They are rewritten as they load.
 
@@ -190,7 +194,7 @@ should be deleted.**
 | `spike-legacy-migration.test.mjs` | the rewrite works on real sb3 structures; idempotent; survives malformed input |
 | `spike-unified-protocol.test.mjs` | the wire format, the record parser, transport selection, capability answers |
 | `spike-runtime-registry.test.mjs` | the Code tab still round-trips every opcode the migration can produce |
-| `spike-legacy-ids-resolve.test.mjs` | the retired ids still lead somewhere; the picker lists one |
+| `spike-legacy-ids-resolve.test.mjs` | old ids migrate by default; four pinned drivers appear only with the debug toggle |
 | `bundled-extensions-match-upstream.test.mjs` | no bundled extension differs from the upstream file it claims |
 | `virtual-spike-*-e2e.test.mjs` | the shipping extension driven against the virtual hub, on both protocols |
 

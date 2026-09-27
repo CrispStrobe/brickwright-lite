@@ -74,6 +74,12 @@ export const MAP = {
     legorcx: 'extensions/CrispStrobe/lego_rcx.js',
     planetemaths: 'extensions/CrispStrobe/planetemaths.js',
     spikeprime: 'extensions/CrispStrobe/legospike_turbowarp_transpile.js',
+    // Opt-in hardware diagnostics: archive the four pre-consolidation drivers
+    // at the same immutable upstream pin as the unified driver.
+    spikeprimeBTC: 'extensions/CrispStrobe/legospikeprime_btc_scratchlink.js',
+    spikeprimeBridge: 'extensions/CrispStrobe/legospike_bridge.js',
+    spikeprimeble: 'extensions/CrispStrobe/legospike_ble.js',
+    legospikeprimeBLE: 'extensions/CrispStrobe/legospikeprime_ble.js',
     stc12: 'extensions/CrispStrobe/stc12.js',
     stc12live: 'extensions/CrispStrobe/stc12live.js',
     universalgamepad: 'extensions/CrispStrobe/gamepad.js',

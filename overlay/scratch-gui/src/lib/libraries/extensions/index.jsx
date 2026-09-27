@@ -199,6 +199,42 @@ export default [
         featured: true
     },
     {
+        name: 'SPIKE Legacy · Scratch Link BLE',
+        extensionId: 'legospikeprimeBLE',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'Archived SPIKE 3 driver via Scratch Link BLE. Best first comparison on iPad; use one hub driver at a time.',
+        legacySpikeDebug: true,
+        featured: true
+    },
+    {
+        name: 'SPIKE Legacy · Web Bluetooth',
+        extensionId: 'spikeprimeble',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'Archived SPIKE 3 driver via Web Bluetooth, for browsers that support it.',
+        legacySpikeDebug: true,
+        featured: true
+    },
+    {
+        name: 'SPIKE Legacy · Bluetooth Classic',
+        extensionId: 'spikeprimeBTC',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'Archived SPIKE 2 driver via Scratch Link Bluetooth Classic; requires matching firmware.',
+        legacySpikeDebug: true,
+        featured: true
+    },
+    {
+        name: 'SPIKE Legacy · Local Bridge',
+        extensionId: 'spikeprimeBridge',
+        iconURL: 'static/extension-posters/lego.png',
+        insetIconURL: 'https://crispstrobe.github.io/extensions/images/CrispStrobe/legospike_turbowarp_transpile.svg',
+        description: 'Archived SPIKE 2 driver via a local WebSocket bridge; requires matching firmware.',
+        legacySpikeDebug: true,
+        featured: true
+    },
+    {
         // Was one of THREE entries for the stock EV3 firmware — this one,
         // "LEGO EV3 (Direct)" and "LEGO EV3 LMS" — and the picker gave no way
         // to tell which you wanted, while this one, the flagship, was the one
