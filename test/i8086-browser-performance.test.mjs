@@ -44,8 +44,8 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'the statistical gate must not accept fewer than three repetitions');
     assert.match(script, /!button\.disabled[\s\S]*asmTab\.dispatchEvent\('click'\)/,
         'the minimum-width profile must wait for and dispatch the overlapped enabled ASM control');
-    assert.match(script, /bw-asm-assemble'\)\.dispatchEvent\('click'\)[\s\S]*data-debug-phase="running"/,
-        'assembly must dispatch the enabled control and prove the durable running state');
+    assert.match(script, /bw-asm-assemble'\)\.click\(\{force: true\}\)[\s\S]*data-debug-phase="running"/,
+        'assembly must click the enabled control and prove the durable running state');
     assert.doesNotMatch(script, /waitForFunction\([\s\S]{0,200}booting the 8086 bench/,
         'a transient booting message is an event, not proof that the benchmark is running');
     assert.doesNotMatch(script, /device\.selectOption\(['"]i8086['"]\)/,
