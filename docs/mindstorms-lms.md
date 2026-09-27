@@ -10,11 +10,12 @@ reuses the original embedded `.sb3` byte for byte. If editing causes a LEGO
 `flipper` block to disappear, export refuses
 instead of writing a damaged `.lms` file.
 
-The terminal path uses the same converter:
+The terminal path uses this repository's `bwlite` command (see the
+[CLI guide](CLI.md)) and the same converter:
 
 ```sh
-node bin/bwlite.mjs mindstorms import 'Projekt 33.lms' --out project.sb3
-node bin/bwlite.mjs mindstorms export project.sb3 --template 'Projekt 33.lms' --out revised.lms
+bwlite mindstorms import 'Projekt 33.lms' --out project.sb3
+bwlite mindstorms export project.sb3 --template 'Projekt 33.lms' --out revised.lms
 ```
 
 Keep the source `.lms` file as the export template: it carries LEGO-only

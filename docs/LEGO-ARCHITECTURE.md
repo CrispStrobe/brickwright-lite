@@ -133,8 +133,10 @@ says which of their opcodes became which.
 
 **The remaining islands.** Outside that measured slice, two authoring worlds still do not meet:
 
-- `.bw` (BrickWright dialect) transpiles to `c | micropython | python | sb3` via `bw`
-  (`sb3-creator/bin/bw.mjs`). Only the canonical SPIKE slice produces measured LEGO blocks.
+- `.bw` (BrickWright dialect) transpiles to `c | micropython | python | sb3` via
+  `bw` in the separate `sb3-creator` repository, or via `bwlite convert` in
+  this repository (see the [CLI guide](CLI.md)). Only the canonical SPIKE slice
+  produces measured LEGO blocks.
 - The LEGO extensions transpile *Scratch-with-LEGO-blocks* ⇄ *hub code*.
 
 There is not yet a general edge for EV3, NXT, Boost, WeDo, Powered Up, the other SPIKE schemas,
@@ -148,7 +150,8 @@ or the 29 canonical learner-facing SPIKE operations outside the current dialect.
   and already maps some extensions' field-blocks (the `stc12` pin blocks). What's missing is a
   **per-hub block-map** (dialect verb → extension opcode + arg shape), anchored on each
   extension's `getInfo` block set.
-- **Reverse:** extend `bw read` beyond the 30 mapped `spikeprime` opcodes. Each remaining hub needs
+- **Reverse:** extend the compiler reader (`bw read` upstream, `bwlite read` here)
+  beyond the 30 mapped `spikeprime` opcodes. Each remaining hub needs
   its own block → dialect-verb table; incompatible extension IDs must not be collapsed by name.
 
 **Why it's the priority (above Gap 2):** it is the missing joint that connects the whole stack
@@ -157,7 +160,8 @@ It does not prove a physical connection or on-brick deployment, and it does not 
 family-wide claim; those boundaries remain owned by each extension and transport.
 
 **Lives in:** `sb3-creator` (`sb3Creator.js` forward emitter + a reverse table), the
-`CrispStrobe/extensions` per-hardware transpilers, and the `bw` CLI. Needs a per-hub block-map
+`CrispStrobe/extensions` per-hardware transpilers, and the compiler used by
+both `bw` and `bwlite`. Needs a per-hub block-map
 authored from each extension's `getInfo`.
 
 ---

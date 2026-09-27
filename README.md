@@ -87,7 +87,10 @@ and Bluetooth Classic** without a browser or a separate install.
 
 ## Quick start
 
-**Terminal CLI:** after the web-build setup has populated `packages/`, run
+**Terminal CLI:** `bwlite` is the command for this repository; the older `bw`
+command belongs to the separate `sb3-creator` compiler repository. A `.bw`
+file is Brickwright pseudocode. After the web-build setup has populated
+`packages/`, run
 `npm link` once to put `bwlite` on your PATH (or use `npm run cli --`).
 
 ```bash
@@ -117,7 +120,8 @@ SDCC to make Intel HEX from STC pseudocode or C; `8051 flash` uses installed
 its usual cold power cycle into the ISP bootloader.
 
 SPIKE USB needs LEGO MINDSTORMS MicroPython firmware and Python with `pyserial`.
-The [USB guide](scripts/spike/README-usb-stream.md) covers the Mac/iPad WLAN
+The [CLI guide](docs/CLI.md) maps old `bw` references to the current Lite
+commands. The [USB guide](scripts/spike/README-usb-stream.md) covers the Mac/iPad WLAN
 bridge; the [MINDSTORMS guide](docs/mindstorms-lms.md) covers `.lms` import and
 export.
 

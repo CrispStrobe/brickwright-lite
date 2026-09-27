@@ -13,8 +13,10 @@ npm run cli -- spike run scripts/spike/example-usb-stream.bw
 ```
 
 For a chosen Python environment, set `BWLITE_PYTHON=/path/to/python`.
-`node bin/bwlite.mjs --help` lists the terminal commands, including
-`compile PROGRAM.bw --to sb3|python|javascript` for Brickwright code export.
+`node bin/bwlite.mjs --help` lists the terminal commands. General pseudocode
+conversion uses `bwlite convert PROGRAM.bw --to sb3|c|python|javascript|micropython|basic`;
+see the [CLI guide](../../docs/CLI.md). `spike run` accepts only the USB subset
+listed below, which is separate from the general compiler dialect.
 
 In the desktop app's Code tab, choose **USB on this computer** and press
 **Run on SPIKE USB**. In the iPad app, leave the hub connected to the Mac and
