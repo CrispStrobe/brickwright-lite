@@ -205,7 +205,7 @@ async function verify () {
             const boardPlay = frame.locator('.play-button').first();
             if (await boardPlay.count() > 0) {
                 await boardPlay.click();
-                await page.waitForTimeout(1000);
+                await page.waitForFunction(element => !element.disabled, await stopBtn.elementHandle());
                 if (await stopBtn.isEnabled()) pass('Code Run plus board-face Play starts the current program');
                 else fail('Code Run did not stage a program for board-face Play');
             } else {
@@ -213,11 +213,12 @@ async function verify () {
             }
 
             await stopBtn.click();
+            await page.waitForFunction(element => element.disabled, await stopBtn.elementHandle());
             const greenFlag = page.locator('[class*="green-flag_green-flag"], [aria-label*="Go"], [aria-label*="Start"]')
                 .first();
             if (await greenFlag.count() > 0) {
                 await greenFlag.click();
-                await page.waitForTimeout(1000);
+                await page.waitForFunction(element => !element.disabled, await stopBtn.elementHandle());
                 if (await stopBtn.isEnabled()) pass('Global green flag runs the current MicroPython program');
                 else fail('Global green flag did not start the micro:bit simulator');
             } else {
@@ -226,9 +227,10 @@ async function verify () {
 
             // Consume the pending run, stop once more, then use the board face.
             await stopBtn.click();
+            await page.waitForFunction(element => element.disabled, await stopBtn.elementHandle());
             if (await boardPlay.count() > 0) {
                 await boardPlay.click();
-                await page.waitForTimeout(1000);
+                await page.waitForFunction(element => !element.disabled, await stopBtn.elementHandle());
                 if (await stopBtn.isEnabled()) pass('Board-face Play requests and runs the current program');
                 else fail('Board-face Play had no current program to run');
             } else {
@@ -262,9 +264,10 @@ async function verify () {
         // alias and not a circuit-bench error. Retarget in the live UI, run,
         // and require device-correct board identity on the shared pane.
         await deviceSelect.selectOption('calliopemini');
-        await page.waitForTimeout(500);
-        const calliopeTitle = await page.locator('[data-testid="bw-microbit-iframe"]').first()
-            .getAttribute('title').catch(() => '');
+        const simFrameElement = page.locator('[data-testid="bw-microbit-iframe"]').first();
+        await page.waitForFunction(element => /Calliope mini/i.test(element.title),
+            await simFrameElement.elementHandle());
+        const calliopeTitle = await simFrameElement.getAttribute('title').catch(() => '');
         if (/Calliope mini/i.test(calliopeTitle || '')) pass('Calliope mini has device-correct simulator identity');
         else fail(`Calliope simulator identity missing (title=${JSON.stringify(calliopeTitle)})`);
         const visibleError = await page.locator('body').innerText();
