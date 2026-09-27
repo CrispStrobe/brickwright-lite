@@ -47,7 +47,7 @@ const L10N = {
         'px.largeLiteral': 'Arcade image exceeds the 128×128 pixel-editor limit.',
         'px.translucentLiteral': 'Arcade img cannot represent partly transparent layers. Set their opacity to 0% or 100% first.',
         'px.literalHint': 'The imported image becomes a new editable layer. Existing layers are kept.',
-        'px.copyLiteral': 'Copy'
+        'px.copyLiteral': 'Copy', 'px.literalLabel': 'Arcade img literal'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -71,7 +71,7 @@ const L10N = {
         'px.largeLiteral': 'Das Arcade-Bild überschreitet die Grenze von 128×128 Pixeln.',
         'px.translucentLiteral': 'Arcade-img unterstützt keine teilweise transparenten Ebenen. Deckkraft zuerst auf 0 % oder 100 % setzen.',
         'px.literalHint': 'Das importierte Bild wird eine neue bearbeitbare Ebene. Bestehende Ebenen bleiben erhalten.',
-        'px.copyLiteral': 'Kopieren'
+        'px.copyLiteral': 'Kopieren', 'px.literalLabel': 'Arcade-img-Literal'
     }
 };
 const t = makeT(L10N);
@@ -798,7 +798,7 @@ class PixelArtEditor extends React.Component {
                     padding: 8, border: '1px solid #cbd5e1', borderRadius: 6}}>
                     {literalMode === 'import' ? <span style={{fontSize: 12}}>{t(locale, 'px.literalHint')}</span> : null}
                     <textarea value={literalText} rows={7} spellCheck={false}
-                        data-testid="bw-pixel-img-literal" aria-label="Arcade img"
+                        data-testid="bw-pixel-img-literal" aria-label={t(locale, 'px.literalLabel')}
                         readOnly={literalMode === 'export'}
                         onChange={event => this.setState({literalText: event.target.value, literalError: ''})}
                         style={{width: '100%', boxSizing: 'border-box', fontFamily: 'monospace'}} />
