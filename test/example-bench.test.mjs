@@ -36,6 +36,14 @@ test('retarget refuses instead of pairing a new program with the authored circui
     assert.match(resolved.error, /matching circuit bench is not available/);
 });
 
+test('simulator-only boards retarget without requiring a fictional circuit bench', () => {
+    for (const device of ['microbit', 'calliopemini']) {
+        assert.deepEqual(resolveExampleBench(example, device, 'stc12c5a60s2'), {
+            path: null, retargeted: true
+        });
+    }
+});
+
 test('device switching refuses before committing firmware when its reseated bench is unavailable', () => {
     const importer = readFileSync(resolve('overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8');
     const setDevice = importer.slice(importer.indexOf('async setDevice (deviceId)'), importer.indexOf('async setDevice (deviceId)') + 6500);

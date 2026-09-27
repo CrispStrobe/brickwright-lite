@@ -9,6 +9,7 @@
  * - Serial output area present
  * - Stop/Reset/Clear buttons present
  * - Stage-header micro:bit toggle button present
+ * - Global green flag and the board-face Play button both run current code
  *
  * Usage:
  *   node scripts/verify-microbit.mjs
@@ -197,6 +198,42 @@ async function verify () {
             else fail('Reset button not found');
             if (await clearBtn.count() > 0) pass('Clear button present');
             else fail('Clear button not found');
+
+            // Code-tab Run stages the program; the in-board Play gesture
+            // unlocks audio and starts it. Prove that first-run handoff.
+            const frame = page.frameLocator('[data-testid="bw-microbit-iframe"]');
+            const boardPlay = frame.locator('.play-button').first();
+            if (await boardPlay.count() > 0) {
+                await boardPlay.click();
+                await page.waitForTimeout(1000);
+                if (await stopBtn.isEnabled()) pass('Code Run plus board-face Play starts the current program');
+                else fail('Code Run did not stage a program for board-face Play');
+            } else {
+                fail('Board-face Play button not found');
+            }
+
+            await stopBtn.click();
+            const greenFlag = page.locator('[class*="green-flag_green-flag"], [aria-label*="Go"], [aria-label*="Start"]')
+                .first();
+            if (await greenFlag.count() > 0) {
+                await greenFlag.click();
+                await page.waitForTimeout(1000);
+                if (await stopBtn.isEnabled()) pass('Global green flag runs the current MicroPython program');
+                else fail('Global green flag did not start the micro:bit simulator');
+            } else {
+                fail('Global green flag not found');
+            }
+
+            // Consume the pending run, stop once more, then use the board face.
+            await stopBtn.click();
+            if (await boardPlay.count() > 0) {
+                await boardPlay.click();
+                await page.waitForTimeout(1000);
+                if (await stopBtn.isEnabled()) pass('Board-face Play requests and runs the current program');
+                else fail('Board-face Play had no current program to run');
+            } else {
+                fail('Board-face Play button not found');
+            }
         } else {
             console.log('  note: Run on Simulator button disabled or not found — skipping sim pane checks');
         }
@@ -219,6 +256,22 @@ async function verify () {
             } else {
                 console.log(`  note: contenteditable=${editable} (may vary by CM config)`);
             }
+        }
+
+        // ── 10. Calliope is a real selectable simulator target, not a hidden
+        // alias and not a circuit-bench error. Retarget in the live UI, run,
+        // and require device-correct board identity on the shared pane.
+        await deviceSelect.selectOption('calliopemini');
+        await page.waitForTimeout(500);
+        const calliopeTitle = await page.locator('[data-testid="bw-microbit-iframe"]').first()
+            .getAttribute('title').catch(() => '');
+        if (/Calliope mini/i.test(calliopeTitle || '')) pass('Calliope mini has device-correct simulator identity');
+        else fail(`Calliope simulator identity missing (title=${JSON.stringify(calliopeTitle)})`);
+        const visibleError = await page.locator('body').innerText();
+        if (!/matching circuit bench is not available/i.test(visibleError)) {
+            pass('Calliope retarget does not demand a circuit bench');
+        } else {
+            fail('Calliope retarget still demands a circuit bench');
         }
 
     } catch (err) {

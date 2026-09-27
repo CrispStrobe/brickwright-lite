@@ -2742,6 +2742,14 @@
           if (!isFileSystem(filesystem)) {
             throw new Error("Invalid flash filesystem field.");
           }
+          // Host-level Run may arrive before the simulator play button has
+          // unlocked audio. A suspended context lets the board run muted;
+          // the next in-frame play gesture resumes sound.
+          if (!board2.audio.context) {
+            board2.audio.context = new (window.AudioContext || window.webkitAudioContext)({
+              sampleRate: 44100
+            });
+          }
           board2.flash(filesystem);
           break;
         }
