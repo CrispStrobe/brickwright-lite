@@ -4,6 +4,7 @@ import {FormattedMessage} from 'react-intl';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 import {inlineSvgFonts} from 'scratch-svg-renderer';
+import {resetCostumeDocument, setCostumeDocument} from '../lib/bw-artwork-bundle';
 
 import {connect} from 'react-redux';
 import DynamicReducerContext from '../lib/dynamic-reducer-context';
@@ -98,13 +99,18 @@ class PaintEditorWrapper extends React.Component {
         this.props.vm.renameCostume(this.props.selectedCostumeIndex, name);
     }
     handleUpdateImage (isVector, image, rotationCenterX, rotationCenterY) {
+        const costume = this.props.vm.editingTarget?.sprite?.costumes?.[this.props.selectedCostumeIndex];
         if (isVector) {
             this.props.vm.updateSvg(
                 this.props.selectedCostumeIndex,
                 image,
                 rotationCenterX,
                 rotationCenterY);
+            setCostumeDocument(costume, {version: 1, layers: [{id: 'base', type: 'vector',
+                name: 'Artwork', visible: true, locked: false, opacity: 1,
+                content: {kind: 'svg', value: image}}]});
         } else {
+            resetCostumeDocument(costume);
             this.props.vm.updateBitmap(
                 this.props.selectedCostumeIndex,
                 image,
@@ -150,6 +156,7 @@ class PaintEditorWrapper extends React.Component {
 PaintEditorWrapper.propTypes = {
     imageFormat: PropTypes.string.isRequired,
     imageId: PropTypes.string.isRequired,
+    editorTools: PropTypes.node,
     installReducer: PropTypes.func,
     name: PropTypes.string,
     rotationCenterX: PropTypes.number,

@@ -28,7 +28,7 @@
 
 import {
     GPL_TOOLCHAIN_ORIGIN, TOOLCHAIN_FILES,
-    getToolchainMode, setToolchainMode, localToolchainEnabled,
+    getToolchainMode, setToolchainMode, localToolchainEnabled, isNativeAppRuntime,
     primeToolchainCache, inspectToolchain, removeToolchain, measureToolchain
 } from './sdcc-wasm/toolchain-source.js';
 
@@ -137,11 +137,16 @@ export const openPanel = () => {
         choices.textContent = '';
         choices.appendChild(modeRow('online', 'bw-toolchain-mode-online', 'Build online (default)',
             'Your program is sent to the compiler service. Nothing is downloaded.'));
-        choices.appendChild(modeRow('local', 'bw-toolchain-mode-local', 'Build in this page',
-            'Downloads the compiler once (about 1.7 MB) and keeps it here, so builds work offline.'));
+        if (!isNativeAppRuntime()) {
+            choices.appendChild(modeRow('local', 'bw-toolchain-mode-local', 'Build in this page',
+                'Downloads the compiler once (about 1.7 MB) and keeps it here, so builds work offline.'));
+        } else {
+            choices.appendChild(note(
+                'Native store builds do not download executable toolchains. Build online remains available.'));
+        }
 
         actions.textContent = '';
-        if (!installed) {
+        if (!installed && !isNativeAppRuntime()) {
             actions.appendChild(button(partial ? 'Continue download' : 'Download compiler',
                 download, 'bw-toolchain-download'));
         }

@@ -1302,6 +1302,14 @@ uses those features. Brickwright Lite is based on permissively licensed Scratch
 components plus original editors, circuit simulation, debugging, lessons, device
 runtimes, and native-app code; it is not a TurboWarp fork.
 
+The submitted native app is self-contained. It does not download extension
+JavaScript, executable compiler toolchains, kernels, firmware, or other machine
+images. The extension picker contains only extensions bundled in the reviewed
+binary. Learner-authored source may be sent to the compilation service and the
+result returned to that learner's emulator or device; the source remains visible
+and editable in the app. The separately hosted web edition has additional optional
+downloads which are intentionally unavailable in this native build.
+
 ## Listing fields
 
 | Field | en-US | de-DE |

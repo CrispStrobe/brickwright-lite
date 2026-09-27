@@ -36,8 +36,8 @@ import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const STATIC = path.join(ROOT, 'packages/scratch-gui/static/makecode/arcade');
-const {PXT_GLUE_JS, ARCADE_HARDWARE, firmwareFile} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'));
-const {ARCADE_BASES} = await import(path.join(ROOT, 'scripts/sync-makecode-runtime.mjs'));
+const {PXT_GLUE_JS, ARCADE_HARDWARE, ARCADE_BOARDS_FILE, arcadeBoardsFrom, firmwareFile} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'));
+const {ARCADE_BASES, TARGETS, CACHE_DIR, arcadeHardwareList, untar} = await import(path.join(ROOT, 'scripts/sync-makecode-runtime.mjs'));
 const {buildRequest} = await import(path.join(ROOT, 'scripts/build-makecode-arcade-bases.mjs'));
 
 const SYNCED = fs.existsSync(path.join(STATIC, 'pxtworker.js'));
@@ -166,3 +166,82 @@ for (const [variant, pin] of Object.entries(ARCADE_BASES).filter(([, p]) => REQU
         assert.match(r.outfiles['binary.asm'] || '', /bw arcade hw/, 'the listing does not contain the program');
     });
 }
+
+// ---- the board picker (pseudocode-importer.jsx ⤓ firmware on an Arcade project) ----
+
+test('the board list is pxt-arcade\'s own, kept only where a base is served', () => {
+    // Shapes of pxt-arcade 4.2.1's targetconfig.json hardwareOptions and hw---<variant> cards.
+    const targetconfig = {hardwareOptions: [
+        {name: 'Meowbit', variant: 'hw---stm32f401'},
+        {name: 'Adafruit PyBadge', variant: 'hw---samd51adafruit'},
+        {name: 'Some Pi', variant: 'hw---rpi'},
+        {name: '', variant: 'hw---n3'}
+    ]};
+    const card = (name, extra = {}) => ({'pxt.json': JSON.stringify({card: name ? {name} : undefined, ...extra})});
+    const bundle = {bundledpkgs: {'hw': card(null), 'hw---rp2040': card('R2'), 'hw---rpi': card('Pi0'), 'hw---vm': card('VM'),
+        'hw---samd51adafruit': card(null), 'hw---stm32f401': card('F4'), 'core': card('not hardware')}};
+    const list = arcadeHardwareList(targetconfig, bundle, ['stm32f401', 'samd51adafruit', 'rp2040']);
+    assert.deepEqual(list, [
+        {name: 'Meowbit', variant: 'stm32f401'},
+        {name: 'Adafruit PyBadge', variant: 'samd51adafruit'},
+        {name: 'R2', variant: 'rp2040', card: true},
+        {name: 'F4', variant: 'stm32f401', card: true}
+    ], 'products first, then the per-chip cards; no Linux image, no nameless entry, no unserved variant');
+    // Without its base, a board is not offered at all: the picker never offers a build that is refused.
+    assert.deepEqual(arcadeHardwareList(targetconfig, bundle, ['rp2040']).map(b => b.name), ['R2']);
+    // The UI's view: the file each board downloads, from its UF2 family; an unknown variant is dropped.
+    const entries = arcadeBoardsFrom([...list, {name: 'N3 shield', variant: 'n3'}, {name: 'Future', variant: 'hw9000'}]);
+    assert.deepEqual(entries.map(e => [e.name, e.ext, e.card]), [
+        ['Meowbit', 'uf2', false], ['Adafruit PyBadge', 'uf2', false], ['R2', 'uf2', true], ['F4', 'uf2', true], ['N3 shield', 'hex', false]]);
+    assert.equal(entries[1].family, 0x55114460);
+});
+
+test('every board the picker offers maps to a firmware base the sync served', {skip}, () => {
+    const file = path.join(STATIC, ARCADE_BOARDS_FILE);
+    assert.ok(fs.existsSync(file), `the sync did not serve ${ARCADE_BOARDS_FILE}`);
+    const served = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const boards = arcadeBoardsFrom(served);
+    assert.ok(boards.length >= 6, `only ${boards.length} boards offered`);
+    assert.equal(boards.length, served.length, 'a served board names a variant ARCADE_HARDWARE does not know');
+    for (const b of boards) {
+        const pin = ARCADE_BASES[b.variant];
+        assert.ok(pin, `${b.name}: ${b.variant} has no pinned base`);
+        assert.ok(fs.existsSync(path.join(STATIC, 'hexcache', `${pin.sha}.hex`)), `${b.name}: the ${b.variant} base is not served`);
+        assert.equal(b.ext, ARCADE_HARDWARE[b.variant].family === null ? 'hex' : 'uf2', `${b.name}: file type`);
+    }
+    // Derived from pxt-arcade's own list, not written here: the served file IS the
+    // derivation over the pinned tarball's targetconfig.json and target.json.
+    const tar = untar(fs.readFileSync(path.join(CACHE_DIR, `${TARGETS.arcade.target.replace('@', '-')}.tgz`)));
+    const variants = Object.entries(ARCADE_BASES).filter(([, pin]) => fs.existsSync(path.join(STATIC, 'hexcache', `${pin.sha}.hex`))).map(([v]) => v);
+    assert.deepEqual(served, arcadeHardwareList(JSON.parse(tar.get('targetconfig.json').toString('utf8')),
+        JSON.parse(fs.readFileSync(path.join(STATIC, 'target.json'), 'utf8')), variants));
+    // …and it says what pxt-arcade says (a few of its products, by the variant pxt gives them).
+    const byName = Object.fromEntries(boards.filter(b => !b.card).map(b => [b.name, b.variant]));
+    for (const [name, variant] of [['Adafruit PyBadge', 'samd51adafruit'], ['Adafruit EdgeBadge', 'samd51adafruit'],
+        ['Meowbit', 'stm32f401'], ['Kitronik ARCADE', 'samd51'], ['micro:bit Arcade Shield', 'n3']]) {
+        if (variants.includes(variant)) assert.equal(byName[name], variant, `${name}`);
+    }
+});
+
+test('a picked board builds: the imported game links for that board\'s variant, family id and all', {skip}, async () => {
+    const served = JSON.parse(fs.readFileSync(path.join(STATIC, ARCADE_BOARDS_FILE), 'utf8'));
+    const board = arcadeBoardsFrom(served).find(b => b.ext === 'uf2' && !b.card);
+    assert.ok(board, 'no UF2 product board is offered');
+    const {unpackMakeCodeSource} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js'));
+    const {files} = await unpackMakeCodeSource(new Uint8Array(fs.readFileSync(path.join(ROOT, 'test/fixtures/makecode/arcade-assets.hex'))));
+    const sb = pxt();
+    const asked = [];
+    const r = JSON.parse(JSON.stringify(await sb.bwMakeCode.compile(files, {
+        native: true, hwVariant: board.variant,
+        getBaseHex: async sha => {
+            asked.push(sha);
+            const p = path.join(STATIC, 'hexcache', `${sha}.hex`);
+            return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+        }
+    })));
+    assert.equal(r.success, true, JSON.stringify(r.diagnostics.slice(0, 3)));
+    assert.deepEqual(asked, [ARCADE_BASES[board.variant].sha], `${board.name}: not linked onto its variant's base`);
+    const fw = firmwareFile({[`binary.${board.ext}`]: r.outfiles[`binary.${board.ext}`]});
+    assert.ok(fw, `${board.name}: no binary.${board.ext}`);
+    assert.ok(uf2Image(fw.bytes, board.family).blocks > 100, `${board.name}: too few UF2 blocks`);
+});

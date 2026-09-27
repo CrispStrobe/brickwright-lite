@@ -120,11 +120,14 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // change this time — MakeCode's led/game helpers for generateMicroPython,
     // each emitted only when a microbitplus block uses it. None of the SPIKE
     // paths this round trip reads are touched; the assertions re-ran at it.
-    // PIN MOVED 4a3996b9 -> 48e2f174 (2026-09-27): #25/#26 (ATtiny88 circuits
-    // and pin metadata) and #27 (MakeCode radio hats, music, the yield-less
-    // task guard, the json fallback and off-grid plots in generateMicroPython).
-    // The MicroPython changes are micro:bit-only; the ATtiny edits touch pin
-    // tables, not the SPIKE path this round trip reads. The assertions re-ran.
+    // PIN MOVED 4a3996b9 -> 5546e6fb (2026-09-27, sb3-creator#25/#26):
+    // ATtiny88 GPIO/ADC metadata, generated benches, and the Blinkenrocket
+    // QFN32 circuit/licence boundary changed. The SPIKE compiler path is
+    // unchanged, and this complete artifact round trip was re-run at the pin.
+    // PIN MOVED 5546e6fb -> 48e2f174 (2026-09-27, sb3-creator#27): MakeCode
+    // radio hats, music, the yield-less task guard, the json fallback and
+    // off-grid plots in generateMicroPython — all micro:bit-only, none on the
+    // SPIKE path this round trip reads. The assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
         '48e2f174aba6c5a37aeab7c8df4a54a46ecc5032');
 

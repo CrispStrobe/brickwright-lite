@@ -38,7 +38,7 @@ import {
 // The REAL panel model + widget vocabulary from the pinned bw-board — so the
 // video-mirror tests drive the same setVgaFrame the browser paints through, not
 // a mock (design §4.2: a machine's screen is a simplevga widget).
-import {ControllerPanel} from 'bw-board/controller.js';
+import {ControllerPanel, createDebugTarget} from 'bw-board';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -154,6 +154,25 @@ test('executionMode gating: an i80386 without a BIOS source is rejected', () => 
     assert.ok(res.errors.some(e => /BIOS/.test(e)), res.errors.join(';'));
     // With a BIOS source it passes.
     assert.deepEqual(validateMachineConfig(freedos386Config()).errors, []);
+});
+
+test('nativeBlocks is a persisted i80386-only opt-in', async () => {
+    const cfg = newMachineConfig({...freedos386Config(), nativeBlocks: true});
+    assert.equal(cfg.nativeBlocks, true);
+    assert.deepEqual(validateMachineConfig(cfg).errors, []);
+    const store = createMemoryMachineStore();
+    const saved = await store.put(cfg);
+    assert.equal((await store.get(saved.id)).nativeBlocks, true);
+    const imported = createMemoryMachineStore();
+    await imported.import(await store.export());
+    assert.equal((await imported.get(saved.id)).nativeBlocks, true);
+
+    const wrongKind = newMachineConfig({...elksConfig(), nativeBlocks: true});
+    assert.match(validateMachineConfig(wrongKind).errors.join('; '), /only for i80386/);
+    const wrongType = newMachineConfig({...freedos386Config(), nativeBlocks: 'true'});
+    assert.match(validateMachineConfig(wrongType).errors.join('; '), /must be a boolean/);
+    await assert.rejects(() => store.put(wrongType), /nativeBlocks must be a boolean/);
+    assert.equal(freedos386Config().nativeBlocks, false);
 });
 
 test('validate rejects a functional config with no bootable slot and a slot with no url', () => {
@@ -393,6 +412,27 @@ test('activate: functional 386 → hdd bootMedia + resolved BIOS/VGA media', asy
     assert.ok(!result.warnings.some(w => /386 video will/.test(w)));
     // all three images fetched
     assert.equal(seen.length, 3);
+});
+
+test('nativeBlocks reaches the GUI media-load event only when the 386 config opts in', async () => {
+    const {fetcher} = stubFetcher();
+    const cfg = newMachineConfig({...freedos386Config(), nativeBlocks: true});
+    let dispatched;
+    const {activated, detail} = await runMachineConfig(cfg, {
+        fetcher, dispatch: event => { dispatched = event; }
+    });
+    assert.equal(activated.bootMedia.nativeBlocks, true);
+    assert.equal(activated.debugRunnerOptions.bootMedia.nativeBlocks, true);
+    assert.equal(detail.nativeBlocks, true);
+    assert.equal(dispatched.nativeBlocks, true);
+
+    const ordinary = await runMachineConfig(freedos386Config(), {fetcher, dispatch() {}});
+    assert.equal(ordinary.detail.nativeBlocks, false);
+});
+
+test('the pinned bw-board target accepts the Machine Manager native option', async () => {
+    const {adapter} = await createDebugTarget('i80386', {nativeBlocks: true});
+    assert.ok(adapter.nativeDispatcher, 'the pinned board must include native dispatch');
 });
 
 test('DOSBox imgmount imports an AT disk with its explicit CHS and free BIOS', () => {

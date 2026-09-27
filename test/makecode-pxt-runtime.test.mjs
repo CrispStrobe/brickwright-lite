@@ -29,6 +29,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import util from 'node:util';
+import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -36,6 +37,9 @@ const STATIC = path.join(ROOT, 'packages/scratch-gui/static/makecode');
 const {PXT_GLUE_JS, MICROBIT_DEFAULT_DEPENDENCIES} =
     await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'));
 const {unpackMakeCodeSource} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js'));
+const {BASES, MICROBIT_EMU_BASES} = await import(path.join(ROOT, 'scripts/sync-makecode-runtime.mjs'));
+const {baseLicence} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/base-licences.js'));
+const sha256 = b => crypto.createHash('sha256').update(b).digest('hex');
 
 const SYNCED = ['microbit', 'arcade'].every(t => fs.existsSync(path.join(STATIC, t, 'pxtworker.js')));
 const skip = SYNCED ? false : 'MakeCode runtime not synced (npm run sync:makecode) — pxt compiler absent';
@@ -75,7 +79,7 @@ const compile = async (target, files, native = false, embedSource = null) =>
     JSON.parse(JSON.stringify(await pxtFor(target).bwMakeCode.compile(files, {native, embedSource, getBaseHex: getBaseHex(target)})));
 const netAttempts = target => JSON.parse(JSON.stringify(pxtFor(target).bwMakeCode.netAttempts));
 
-/** Flash bytes 0..0x80000 of an Intel HEX (the nRF52833 image); other records ignored. */
+/** Flash bytes 0..0x80000 of an Intel HEX (the nRF52833 image); other record types ignored. */
 function flashImage (hex) {
     const img = new Uint8Array(0x80000).fill(0xff);
     let base = 0;
@@ -84,6 +88,8 @@ function flashImage (hex) {
         const b = Buffer.from(line.slice(1), 'hex');
         const n = b[0], addr = b.readUInt16BE(1), type = b[3];
         if (type === 4) base = b.readUInt16BE(4) * 0x10000;
+        // Type 02 (segment address, x16): MakeCode's CDN bases use it where the npm ones use 04.
+        else if (type === 2) base = b.readUInt16BE(4) * 16;
         else if (type === 0 && base + addr + n <= img.length) img.set(b.subarray(4, 4 + n), base + addr);
         else if (type === 1) break;
     }
@@ -313,4 +319,77 @@ test('census batch 2: radio handlers, music, A+B and stored truth values come ba
     assert.match(ts, /Button\.AB/);
     const r = await compile('microbit', tinyMicrobit(ts));
     assert.equal(r.success, true, `MakeCode refused the re-export: ${JSON.stringify(r.diagnostics.slice(0, 2))}\n${ts}`);
+});
+
+// ---- which base a micro:bit DOWNLOAD links onto ----
+// The owner's rule: Microsoft's official bases wherever one exists; ours (the
+// Bluetooth-free V2 build, hexcache-emu/) only where none does. For {core, radio}
+// the npm hexcache has none, but MakeCode's CDN has both halves (V1 f7b3cfda…,
+// V2 137d8c97…), pinned in the sync's BASES — so a {core, radio} download is a
+// full universal .hex on the official bases, and our base stays the emulator's.
+
+/** A native micro:bit build through the download's own base lookup (hexcache/), recording what it asked for. */
+async function download (deps) {
+    const files = {'pxt.json': JSON.stringify({name: 'bw-dl', dependencies: deps, files: ['main.ts'], targetVersions: {target: '9.1.1'}}),
+        'main.ts': 'basic.showString("DL")\n'};
+    const asked = [];
+    const sb = pxtFor('microbit');
+    const r = JSON.parse(JSON.stringify(await sb.bwMakeCode.compile(files, {native: true, getBaseHex: async sha => {
+        asked.push(sha);
+        return getBaseHex('microbit')(sha);
+    }})));
+    return {r, asked};
+}
+const flat = hex => flashImage(hex);
+const servedBase = sha => fs.readFileSync(path.join(STATIC, 'microbit/hexcache', `${sha}.hex`));
+
+test('a {core, radio} micro:bit project downloads a universal .hex on MakeCode\'s official V1 and V2 bases', {skip}, async () => {
+    const [v1, v2] = BASES.microbit;
+    const {r, asked} = await download({core: '*', radio: '*'});
+    assert.equal(r.success, true, JSON.stringify(r.diagnostics.slice(0, 2)));
+    assert.deepEqual(asked, [v1.sha, v2.sha], 'the universal build asks for the V1 (mbdal) then the V2 (mbcodal) base');
+    // The served bytes ARE the pinned official builds (sha256), and are classified as such.
+    for (const pin of [v1, v2]) {
+        assert.equal(sha256(servedBase(pin.sha)), pin.sha256, `${pin.sha}: the served base is not the pinned CDN build`);
+        const l = baseLicence(pin.sha256);
+        assert.ok(l && l.classification === 'chip-restricted' && /MakeCode CDN/.test(l.source), `${pin.sha}: not classified as the official cloud build`);
+    }
+    assert.ok(r.outfiles['mbdal-binary.hex'] && r.outfiles['mbcodal-binary.hex'], 'both halves of the universal .hex');
+    // The V2 image contains the official base's bytes below the program — and not our emulator build's.
+    const img = flat(r.outfiles['mbcodal-binary.hex']);
+    const official = flat(servedBase(v2.sha).toString('utf8'));
+    const same = (a, b, from, to) => { let d = 0; for (let i = from; i < to; i++) if (a[i] !== b[i]) d++; return d; };
+    assert.equal(same(img, official, 0, 0x1C000), 0, 'the MBR and S113 SoftDevice region is not the official base\'s');
+    assert.ok(same(img, official, 0x1C000, 0x40000) <= 64, 'the CODAL region differs from the official base by more than pxt\'s patch');
+    // …and the V1 image carries the official V1 base (MBR + S110) unchanged.
+    assert.equal(same(flat(r.outfiles['mbdal-binary.hex']), flat(servedBase(v1.sha).toString('utf8')), 0, 0x18000), 0,
+        'the V1 MBR and S110 SoftDevice region is not the official V1 base\'s');
+    const ours = path.join(STATIC, 'microbit/hexcache-emu', `${MICROBIT_EMU_BASES['v2-radio'].sha}.hex`);
+    if (fs.existsSync(ours)) {
+        assert.ok(same(img, flat(fs.readFileSync(ours, 'utf8')), 0, 0x40000) > 1000, 'the download linked onto OUR emulator base');
+    }
+    assert.deepEqual(r.netAttempts, []);
+});
+
+test('a project that already had an official base still gets the same one: {core, radio, microphone} from pxt-microbit\'s own hexcache', {skip}, async () => {
+    const {r, asked} = await download({core: '*', radio: '*', microphone: '*'});
+    assert.equal(r.success, true, JSON.stringify(r.diagnostics.slice(0, 2)));
+    assert.deepEqual(asked, ['949fbd03bf2de1d4bf409bb1e68613a9d8745ca0bbafef44aa472a60ef9c0f73', '354b97da4696027afdaa3977420ec181bfc88a2faa2d2c0174842767718551e7']);
+    for (const sha of asked) {
+        const l = baseLicence(sha256(servedBase(sha)));
+        assert.ok(l && /pxt-microbit 9\.1\.1 hexcache/.test(l.source), `${sha}: not the base pxt-microbit ships (${l && l.source})`);
+    }
+    assert.ok(!BASES.microbit.some(p => asked.includes(p.sha)), 'the CDN pins must not shadow a set the npm package covers');
+});
+
+test('THIRD-PARTY-NOTICES says which base a {core, radio} download carries', () => {
+    const notices = fs.readFileSync(path.join(ROOT, 'THIRD-PARTY-NOTICES.md'), 'utf8');
+    const section = notices.slice(notices.indexOf('## Microsoft MakeCode'), notices.indexOf('### micro:bit emulator firmware bases'));
+    for (const pin of BASES.microbit) {
+        assert.ok(section.includes(pin.sha.slice(0, 8)), `the MakeCode notice does not name the ${pin.sha.slice(0, 8)}… base`);
+        const l = baseLicence(pin.sha256);
+        assert.ok(l, `${pin.sha}: not classified in base-licences.js`);
+        assert.ok(section.includes(l.base), `the notice does not say ${pin.sha.slice(0, 8)}… is the ${l.base} base`);
+    }
+    assert.match(section, /\{core, radio\}[^]*S110[^]*S113|\{core, radio\}[^]*S113[^]*S110/, 'and names the SoftDevices they carry');
 });

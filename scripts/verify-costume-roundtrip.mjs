@@ -20,7 +20,7 @@
  * Asserting on ids here would fail for a reason that has nothing to do with
  * whether the artwork survived.
  */
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -53,7 +53,8 @@ const record = (name, ok, detail = '') => {
 
 await mkdir(SHOTS, {recursive: true});
 const {chromium} = await import('playwright');
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.BW_BROWSER ?
+    {executablePath: process.env.BW_BROWSER} : {});
 const errors = [];
 
 const open = async () => {
@@ -264,13 +265,24 @@ try {
     await (await download).saveAs(saved);
     record('Save to your computer produced a file and the app stayed up',
         errors.length === 0, errors.join(' | ') || saved);
+    const {default: JSZip} = await import('jszip');
+    const archive = await JSZip.loadAsync(await readFile(saved));
+    const scratchProject = JSON.parse(await archive.file('project.json').async('text'));
+    const sourceEntry = archive.file('brickwright/artwork/v1.json');
+    const source = sourceEntry && JSON.parse(await sourceEntry.async('text'));
+    record('editable artwork source is embedded beside Scratch costume assets',
+        Boolean(source && source.format === 'brickwright-artwork' &&
+            source.costumes.every(record =>
+                scratchProject.targets[record.targetIndex]?.costumes?.[record.costumeIndex]?.md5ext ===
+                    record.renderedMd5ext) &&
+            source.costumes.every(record => archive.file(record.renderedMd5ext))));
 
     // ── reopen in a FRESH session and load it back ──────────────────────
     await page.close();
     page = await open();
     await page.getByText('File', {exact: true}).click();
     await page.getByText('Load from your computer', {exact: true}).click();
-    await page.locator('body > input[type="file"][accept=".sb,.sb2,.sb3"]').setInputFiles(saved);
+    await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(saved);
     // The load is done when the costumes are back and carry their asset bytes —
     // which is precisely what the checks below read.
     await page.waitForFunction(n => {

@@ -37,6 +37,12 @@ if (evidenceIssues.length) {
 const workloadId = 'i8086-cpu-bound-v1';
 const heartbeatOffset = 0x110;
 const maximumSimulatedMsPerPump = 50;
+// Loading the lazy assembly editor is setup, outside every measured window.
+// Shared CI runners can spend more than 15 s compiling/painting this chunk
+// while the other browser and unit jobs are busy, and the minimum-device
+// profile deliberately adds 4x CPU throttling. Give setup enough time without
+// weakening any benchmark duration or performance threshold.
+const assemblySetupTimeoutMs = 60000;
 const workloadSource = `; BW-I8086-CPU-BOUND-V1
     ORG 100H
 
@@ -132,48 +138,90 @@ try {
         await mark('dom-ready');
         await page.getByRole('tab', {name: 'Code', exact: true}).click();
         const device = page.getByTestId('bw-device-select');
-        await device.waitFor({state: 'visible', timeout: 30000}); // gate-shapes-allow: synchronization before `device.selectOption` three lines below -- the detector looks at the IMMEDIATELY following statement and sees `mark()`, which is a timestamp rather than a use
+        // This is setup synchronisation; the durable `running` phase below proves the bench.
+        // gate-shapes-allow
+        await device.waitFor({state: 'visible', timeout: 30000});
         await mark('device-ready');
+        // Clear the home GPIO starter before requesting a different device. The
+        // picker request below is still a real retarget operation (and may load
+        // sb3-creator), but it must not inherit pins from the starter program.
+        const initialEditor = page.locator('.cm-content:visible').first();
+        await initialEditor.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
+        await initialEditor.click();
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
+        await page.keyboard.press('Backspace');
+        await page.waitForFunction(() => [...document.querySelectorAll('.cm-content')]
+            .filter(node => node.getClientRects().length > 0)
+            .every(node => !(node.textContent || '').trim()),
+        null, {timeout: assemblySetupTimeoutMs});
+        await page.waitForFunction(() =>
+            document.querySelector('[data-testid="bw-device-select"]')?.value === '',
+        null, {timeout: assemblySetupTimeoutMs});
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
+        // The resource window before this mark proves that merely revealing
+        // Code did not fetch the compiler. The retarget request after it is a
+        // legitimate compiler consumer.
+        await mark('retarget-request');
         await device.selectOption('i8086');
         await page.waitForFunction(() =>
             document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
-        null, {timeout: 15000});
+        null, {timeout: assemblySetupTimeoutMs});
         await mark('i8086-selected');
-        // The minimum-width language row overlaps sibling controls visually;
-        // dispatch the enabled production control just as the assemble step
-        // below does. Setup interaction is outside the measured window.
-        await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click({force: true});
-        await page.getByTestId('bw-asm-examples').waitFor({state: 'visible', timeout: 15000});
+        // Device selection briefly marks the language row busy. A forced click
+        // on its disabled ASM button is silently discarded by the browser, so
+        // first wait for the actual production control to become enabled. The
+        // minimum-width row can overlap siblings visually; dispatching the
+        // click after that readiness check avoids charging layout quirks to a
+        // benchmark whose measured window has not started yet.
+        const asmTab = page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/});
+        await page.waitForFunction(() => [...document.querySelectorAll(
+            '[data-testid="bw-lang-row"] button'
+        )].some(button => /ASM/.test(button.textContent || '') && !button.disabled),
+        null, {timeout: assemblySetupTimeoutMs});
+        await asmTab.dispatchEvent('click');
+        await page.getByTestId('bw-asm-examples').waitFor({
+            state: 'visible', timeout: assemblySetupTimeoutMs
+        });
         const dialect = page.getByTestId('bw-asm-dialect');
-        await dialect.waitFor({state: 'visible', timeout: 15000});
+        await dialect.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
         await dialect.selectOption('masm');
         await mark('asm-ready');
         const editor = page.locator('.cm-content:visible').first();
-        await editor.waitFor({state: 'visible', timeout: 15000});
+        await editor.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
         await editor.click();
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
         await page.keyboard.press('Backspace');
         await page.keyboard.insertText(workloadSource);
         await page.waitForFunction(marker => [...document.querySelectorAll('.cm-content')].some(node =>
             node.getClientRects().length > 0 && (node.textContent || '').includes(marker)),
-        'BW-I8086-CPU-BOUND-V1', {timeout: 15000});
+        'BW-I8086-CPU-BOUND-V1', {timeout: assemblySetupTimeoutMs});
         await page.waitForFunction(() => {
             const button = document.querySelector('[data-testid="bw-asm-assemble"]');
             return button && !button.disabled;
-        }, null, {timeout: 15000});
+        }, null, {timeout: assemblySetupTimeoutMs});
         await mark('example-ready');
         // On the phone layout the example picker can overlap this control.
-        // Setup is not the subject of this benchmark; dispatch the enabled
+        // Setup is not the subject of this benchmark; click the enabled
         // production button and measure only the resulting machine pump.
         await page.getByTestId('bw-asm-assemble').click({force: true});
-        await page.waitForFunction(() => /booting the 8086 bench/.test(
-            document.querySelector('[data-testid="bw-code-status"]')?.textContent || ''),
-        null, {timeout: 30000});
+        await mark('assemble-clicked');
+        try {
+            await page.locator('[data-debug-panel][data-debug-phase="running"]')
+                .waitFor({state: 'attached', timeout: 30000});
+        } catch (cause) {
+            const state = await page.evaluate(() => ({
+                codeStatus: document.querySelector('[data-testid="bw-code-status"]')?.textContent || '',
+                debugPhase: document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase') || '',
+                device: document.querySelector('[data-testid="bw-device-select"]')?.value || '',
+                assembleDisabled: document.querySelector('[data-testid="bw-asm-assemble"]')?.disabled ?? null,
+                visibleEditor: [...document.querySelectorAll('.cm-content')]
+                    .find(node => node.getClientRects().length > 0)?.textContent || ''
+            }));
+            throw new Error(`the assembled 8086 benchmark did not reach running: ${JSON.stringify(state)}`,
+                {cause});
+        }
         await mark('bench-booted');
-        await page.locator('[data-debug-panel][data-debug-phase="running"]')
-            .waitFor({state: 'attached', timeout: 30000});
         await mark('runner-running');
         await mark('circuit-open-request');
         await page.getByRole('tab', {name: /Circuit/}).click({force: true});
@@ -254,6 +302,11 @@ try {
             throw new Error(`${name} #${repetition} lost the pre-Circuit resource boundary`);
         }
         const circuitOpenAt = circuitOpenMilestone.at;
+        const retargetMilestone = raw.milestones.find(mark => mark.name === 'retarget-request');
+        if (!retargetMilestone) {
+            throw new Error(`${name} #${repetition} lost the pre-retarget resource boundary`);
+        }
+        const retargetAt = retargetMilestone.at;
         const dosLoadAt = raw.milestones.find(mark => mark.name === 'dos-load-start')?.at ?? 0;
         const runnerRunningAt = raw.milestones.find(mark => mark.name === 'runner-running')?.at ?? sampleStart;
         const dosLoadResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
@@ -277,6 +330,11 @@ try {
         const preCircuitResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
             from: 0,
             to: circuitOpenAt,
+            origin: new URL(url).origin
+        }) : null;
+        const preRetargetResources = webpackStats ? auditWebpackResourceWindow(webpackStats, raw.resources, {
+            from: 0,
+            to: retargetAt,
             origin: new URL(url).origin
         }) : null;
         const startupAttribution = attributeReactCommits(
@@ -330,6 +388,7 @@ try {
             dosLoadResources,
             dosJourneyResources,
             preCircuitResources,
+            preRetargetResources,
             heapBytes: raw.heapBytes,
             userAgent: raw.userAgent,
         };
@@ -395,7 +454,7 @@ try {
         if (preCircuitResources) {
             const eagerCircuitAssets = preCircuitResources.assets.filter(asset =>
                 /(?:^|\/)bw-(?:board|circuit-ui)\.js$/.test(asset));
-            const speculativeCompilerAssets = preCircuitResources.assets.filter(asset =>
+            const speculativeCompilerAssets = (preRetargetResources?.assets || []).filter(asset =>
                 /(?:^|\/)sb3-creator\.js$/.test(asset));
             const speculativeExampleAssets = preCircuitResources.assets.filter(asset =>
                 /(?:^|\/)pseudocode-examples\.js$/.test(asset));
@@ -404,7 +463,7 @@ try {
             const eagerPaintAssets = preCircuitResources.assets.filter(asset => lazyPaintAssets.has(asset));
             console.log(`  pre-Circuit: ${(preCircuitResources.encodedBodyBytes / 1048576).toFixed(2)} MiB ` +
                 `encoded, ${eagerCircuitAssets.length} deferred circuit asset(s) and ` +
-                `${speculativeCompilerAssets.length} speculative compiler asset(s), ` +
+                `${speculativeCompilerAssets.length} pre-retarget compiler asset(s), ` +
                 `${speculativeExampleAssets.length} speculative examples asset(s), and ` +
                 `${eagerGrammarAssets.length} optional grammar asset(s), and ` +
                 `${eagerPaintAssets.length} paint asset(s) fetched early`);

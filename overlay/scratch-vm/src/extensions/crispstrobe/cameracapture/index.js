@@ -3,10 +3,81 @@ const ArgumentType = require('../../../extension-support/argument-type');
 const BlockType = require('../../../extension-support/block-type');
 const Cast = require('../../../util/cast');
 const Video = require('../../../io/video');
+const formatMessage = require('format-message');
 const {ScannerStore} = require('./scanner-store');
 
 const DIMENSIONS = [1280, 960];
 const MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+const COPY = {
+    en: {
+        name: 'Camera Capture', startCamera: 'start [FACING]', refreshCameras: 'refresh camera list',
+        selectCamera: 'use camera [CAMERA] width [WIDTH] height [HEIGHT] fps [FPS]',
+        cameraNames: 'available cameras', activeCamera: 'active camera', capabilities: 'camera capabilities',
+        setControl: 'set camera [CONTROL] to [VALUE]', ready: 'camera ready?',
+        takePhoto: 'take photo as [FORMAT] quality [QUALITY] %', lastPhoto: 'last photo',
+        photoWidth: 'photo width', photoHeight: 'photo height', status: 'camera status',
+        beginScan: 'begin scan session [NAME]', saveFrame: 'save last photo to scan',
+        frameCount: 'scan frame count', exportScan: 'share scan session', importScan: 'open scan archive',
+        serveScan: 'share scan on local network for [MINUTES] minutes', shareAddress: 'local share address',
+        stopSharing: 'stop local sharing', clearScan: 'delete current scan session',
+        depthAvailable: 'depth camera available?', depthStatus: 'depth camera status',
+        startDepth: 'start depth camera', stopDepth: 'stop depth camera', sharePhoto: 'share last photo',
+        photoToCostume: 'add last photo as costume', stopCamera: 'stop camera',
+        rearCamera: 'rear camera', frontCamera: 'front camera', defaultCamera: 'default camera',
+        zoom: 'zoom', focusDistance: 'focus distance', exposure: 'exposure', torch: 'torch'
+    },
+    de: {
+        name: 'Kameraaufnahme', startCamera: '[FACING] starten', refreshCameras: 'Kameraliste aktualisieren',
+        selectCamera: 'Kamera [CAMERA] mit Breite [WIDTH] Höhe [HEIGHT] fps [FPS] verwenden',
+        cameraNames: 'verfügbare Kameras', activeCamera: 'aktive Kamera', capabilities: 'Kamerafunktionen',
+        setControl: 'Kamera [CONTROL] auf [VALUE] setzen', ready: 'Kamera bereit?',
+        takePhoto: 'Foto als [FORMAT] mit Qualität [QUALITY] % aufnehmen', lastPhoto: 'letztes Foto',
+        photoWidth: 'Fotobreite', photoHeight: 'Fotohöhe', status: 'Kamerastatus',
+        beginScan: 'Scan-Sitzung [NAME] beginnen', saveFrame: 'letztes Foto im Scan speichern',
+        frameCount: 'Anzahl Scan-Bilder', exportScan: 'Scan-Sitzung teilen', importScan: 'Scan-Archiv öffnen',
+        serveScan: 'Scan für [MINUTES] Minuten im lokalen Netzwerk teilen', shareAddress: 'lokale Freigabeadresse',
+        stopSharing: 'lokale Freigabe beenden', clearScan: 'aktuelle Scan-Sitzung löschen',
+        depthAvailable: 'Tiefenkamera verfügbar?', depthStatus: 'Tiefenkamerastatus',
+        startDepth: 'Tiefenkamera starten', stopDepth: 'Tiefenkamera stoppen', sharePhoto: 'letztes Foto teilen',
+        photoToCostume: 'letztes Foto als Kostüm hinzufügen', stopCamera: 'Kamera stoppen',
+        rearCamera: 'Rückkamera', frontCamera: 'Frontkamera', defaultCamera: 'Standardkamera',
+        zoom: 'Zoom', focusDistance: 'Fokusabstand', exposure: 'Belichtung', torch: 'Licht'
+    }
+};
+
+const language = () => String(formatMessage.setup().locale || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
+const t = key => COPY[language()][key] || COPY.en[key] || key;
+
+const STATUS_DE = {
+    off: 'aus', ready: 'bereit', starting: 'wird gestartet', 'camera unavailable': 'Kamera nicht verfügbar',
+    'requesting permission': 'Berechtigung wird angefragt', 'permission denied': 'Berechtigung verweigert',
+    'camera error': 'Kamerafehler', 'camera not ready': 'Kamera nicht bereit',
+    'frame unavailable': 'Bild nicht verfügbar', 'photo captured': 'Foto aufgenommen',
+    'permission denied or unavailable': 'Berechtigung verweigert oder Kamera nicht verfügbar',
+    'camera enumeration unavailable': 'Kameraliste nicht verfügbar', 'camera enumeration error': 'Fehler der Kameraliste',
+    'camera disconnected': 'Kamera getrennt', 'camera selection unavailable': 'Kameraauswahl nicht verfügbar',
+    'camera selection error': 'Fehler bei der Kameraauswahl', 'camera controls unavailable': 'Kamerasteuerung nicht verfügbar',
+    'scan session ready': 'Scan-Sitzung bereit', 'scan frame saved': 'Scan-Bild gespeichert',
+    'take a photo first': 'zuerst ein Foto aufnehmen', 'sharing unavailable': 'Teilen nicht verfügbar',
+    'scan ready to share': 'Scan zum Teilen bereit', 'scan import unavailable': 'Scan-Import nicht verfügbar',
+    'local sharing requires the installed app': 'Lokales Teilen erfordert die installierte App',
+    'local sharing active': 'Lokales Teilen aktiv', 'local sharing stopped': 'Lokales Teilen beendet',
+    'scan session cleared': 'Scan-Sitzung gelöscht', 'depth camera unavailable; RGB only': 'Tiefenkamera nicht verfügbar; nur RGB',
+    'depth camera ready': 'Tiefenkamera bereit', 'depth camera stopped': 'Tiefenkamera gestoppt',
+    'photo ready to share': 'Foto zum Teilen bereit', 'photo added as costume': 'Foto als Kostüm hinzugefügt'
+};
+const localizeStatus = status => {
+    if (language() !== 'de') return status;
+    if (STATUS_DE[status]) return STATUS_DE[status];
+    let match = /^(\d+) camera\(s\) available$/.exec(status);
+    if (match) return `${match[1]} Kamera(s) verfügbar`;
+    match = /^(\d+) scan frame\(s\) imported$/.exec(status);
+    if (match) return `${match[1]} Scan-Bild(er) importiert`;
+    match = /^(zoom|focusDistance|exposureCompensation|torch) (updated|unsupported)$/.exec(status);
+    if (match) return `${t({focusDistance: 'focusDistance', exposureCompensation: 'exposure'}[match[1]] || match[1])} ${match[2] === 'updated' ? 'aktualisiert' : 'nicht unterstützt'}`;
+    return status;
+};
 
 class CameraCapture {
     constructor (runtime) {
@@ -30,20 +101,20 @@ class CameraCapture {
     getInfo () {
         return {
             id: 'cameracapture',
-            name: 'Camera Capture',
+            name: t('name'),
             color1: '#0FBD8C',
             color2: '#0DA57A',
             blocks: [
                 {
                     opcode: 'startCamera',
                     blockType: BlockType.COMMAND,
-                    text: 'start [FACING] camera',
+                    text: t('startCamera'),
                     arguments: {FACING: {type: ArgumentType.STRING, menu: 'facing'}}
                 },
-                {opcode: 'refreshCameras', blockType: BlockType.COMMAND, text: 'refresh camera list'},
+                {opcode: 'refreshCameras', blockType: BlockType.COMMAND, text: t('refreshCameras')},
                 {
                     opcode: 'selectCamera', blockType: BlockType.COMMAND,
-                    text: 'use camera [CAMERA] width [WIDTH] height [HEIGHT] fps [FPS]',
+                    text: t('selectCamera'),
                     arguments: {
                         CAMERA: {type: ArgumentType.STRING, menu: 'cameras'},
                         WIDTH: {type: ArgumentType.NUMBER, defaultValue: 1280},
@@ -51,55 +122,55 @@ class CameraCapture {
                         FPS: {type: ArgumentType.NUMBER, defaultValue: 30}
                     }
                 },
-                {opcode: 'cameraNames', blockType: BlockType.REPORTER, text: 'available cameras'},
-                {opcode: 'activeCamera', blockType: BlockType.REPORTER, text: 'active camera'},
-                {opcode: 'cameraCapabilities', blockType: BlockType.REPORTER, text: 'camera capabilities'},
+                {opcode: 'cameraNames', blockType: BlockType.REPORTER, text: t('cameraNames')},
+                {opcode: 'activeCamera', blockType: BlockType.REPORTER, text: t('activeCamera')},
+                {opcode: 'cameraCapabilities', blockType: BlockType.REPORTER, text: t('capabilities')},
                 {
                     opcode: 'setCameraControl', blockType: BlockType.COMMAND,
-                    text: 'set camera [CONTROL] to [VALUE]',
+                    text: t('setControl'),
                     arguments: {
                         CONTROL: {type: ArgumentType.STRING, menu: 'controls'},
                         VALUE: {type: ArgumentType.NUMBER, defaultValue: 1}
                     }
                 },
-                {opcode: 'cameraReady', blockType: BlockType.BOOLEAN, text: 'camera ready?'},
+                {opcode: 'cameraReady', blockType: BlockType.BOOLEAN, text: t('ready')},
                 {
                     opcode: 'takePhoto',
                     blockType: BlockType.COMMAND,
-                    text: 'take photo as [FORMAT] quality [QUALITY] %',
+                    text: t('takePhoto'),
                     arguments: {
                         FORMAT: {type: ArgumentType.STRING, menu: 'format'},
                         QUALITY: {type: ArgumentType.NUMBER, defaultValue: 92}
                     }
                 },
-                {opcode: 'lastPhoto', blockType: BlockType.REPORTER, text: 'last photo'},
-                {opcode: 'photoWidth', blockType: BlockType.REPORTER, text: 'photo width'},
-                {opcode: 'photoHeight', blockType: BlockType.REPORTER, text: 'photo height'},
-                {opcode: 'cameraStatus', blockType: BlockType.REPORTER, text: 'camera status'},
-                {opcode: 'beginScan', blockType: BlockType.COMMAND, text: 'begin scan session [NAME]',
+                {opcode: 'lastPhoto', blockType: BlockType.REPORTER, text: t('lastPhoto')},
+                {opcode: 'photoWidth', blockType: BlockType.REPORTER, text: t('photoWidth')},
+                {opcode: 'photoHeight', blockType: BlockType.REPORTER, text: t('photoHeight')},
+                {opcode: 'cameraStatus', blockType: BlockType.REPORTER, text: t('status')},
+                {opcode: 'beginScan', blockType: BlockType.COMMAND, text: t('beginScan'),
                     arguments: {NAME: {type: ArgumentType.STRING, defaultValue: 'LEGO scan'}}},
-                {opcode: 'saveFrame', blockType: BlockType.COMMAND, text: 'save last photo to scan'},
-                {opcode: 'scanFrameCount', blockType: BlockType.REPORTER, text: 'scan frame count'},
-                {opcode: 'exportScan', blockType: BlockType.COMMAND, text: 'share scan session'},
-                {opcode: 'importScan', blockType: BlockType.COMMAND, text: 'open scan archive'},
+                {opcode: 'saveFrame', blockType: BlockType.COMMAND, text: t('saveFrame')},
+                {opcode: 'scanFrameCount', blockType: BlockType.REPORTER, text: t('frameCount')},
+                {opcode: 'exportScan', blockType: BlockType.COMMAND, text: t('exportScan')},
+                {opcode: 'importScan', blockType: BlockType.COMMAND, text: t('importScan')},
                 {opcode: 'serveScan', blockType: BlockType.COMMAND,
-                    text: 'share scan on local network for [MINUTES] minutes',
+                    text: t('serveScan'),
                     arguments: {MINUTES: {type: ArgumentType.NUMBER, defaultValue: 10}}},
-                {opcode: 'shareAddress', blockType: BlockType.REPORTER, text: 'local share address'},
-                {opcode: 'stopSharing', blockType: BlockType.COMMAND, text: 'stop local sharing'},
-                {opcode: 'clearScan', blockType: BlockType.COMMAND, text: 'delete current scan session'},
-                {opcode: 'depthAvailable', blockType: BlockType.BOOLEAN, text: 'depth camera available?'},
-                {opcode: 'depthStatus', blockType: BlockType.REPORTER, text: 'depth camera status'},
-                {opcode: 'startDepthCamera', blockType: BlockType.COMMAND, text: 'start depth camera'},
-                {opcode: 'stopDepthCamera', blockType: BlockType.COMMAND, text: 'stop depth camera'},
-                {opcode: 'shareLastPhoto', blockType: BlockType.COMMAND, text: 'share last photo'},
-                {opcode: 'photoToCostume', blockType: BlockType.COMMAND, text: 'add last photo as costume'},
-                {opcode: 'stopCamera', blockType: BlockType.COMMAND, text: 'stop camera'}
+                {opcode: 'shareAddress', blockType: BlockType.REPORTER, text: t('shareAddress')},
+                {opcode: 'stopSharing', blockType: BlockType.COMMAND, text: t('stopSharing')},
+                {opcode: 'clearScan', blockType: BlockType.COMMAND, text: t('clearScan')},
+                {opcode: 'depthAvailable', blockType: BlockType.BOOLEAN, text: t('depthAvailable')},
+                {opcode: 'depthStatus', blockType: BlockType.REPORTER, text: t('depthStatus')},
+                {opcode: 'startDepthCamera', blockType: BlockType.COMMAND, text: t('startDepth')},
+                {opcode: 'stopDepthCamera', blockType: BlockType.COMMAND, text: t('stopDepth')},
+                {opcode: 'shareLastPhoto', blockType: BlockType.COMMAND, text: t('sharePhoto')},
+                {opcode: 'photoToCostume', blockType: BlockType.COMMAND, text: t('photoToCostume')},
+                {opcode: 'stopCamera', blockType: BlockType.COMMAND, text: t('stopCamera')}
             ],
             menus: {
                 facing: {acceptReporters: true, items: [
-                    {text: 'rear', value: 'environment'},
-                    {text: 'front', value: 'user'}
+                    {text: t('rearCamera'), value: 'environment'},
+                    {text: t('frontCamera'), value: 'user'}
                 ]},
                 format: {acceptReporters: true, items: [
                     {text: 'JPEG', value: 'image/jpeg'},
@@ -108,10 +179,10 @@ class CameraCapture {
                 ]},
                 cameras: {acceptReporters: true, items: '_cameraMenu'},
                 controls: {acceptReporters: true, items: [
-                    {text: 'zoom', value: 'zoom'},
-                    {text: 'focus distance', value: 'focusDistance'},
-                    {text: 'exposure', value: 'exposureCompensation'},
-                    {text: 'torch', value: 'torch'}
+                    {text: t('zoom'), value: 'zoom'},
+                    {text: t('focusDistance'), value: 'focusDistance'},
+                    {text: t('exposure'), value: 'exposureCompensation'},
+                    {text: t('torch'), value: 'torch'}
                 ]}
             }
         };
@@ -123,7 +194,7 @@ class CameraCapture {
     }
 
     _cameraMenu () {
-        if (!this._devices.length) return [{text: 'default camera', value: ''}];
+        if (!this._devices.length) return [{text: t('defaultCamera'), value: ''}];
         return this._devices.map(device => ({text: device.label, value: device.deviceId}));
     }
 
@@ -220,7 +291,7 @@ class CameraCapture {
         const settings = provider && typeof provider.cameraInfo === 'function' ? provider.cameraInfo().settings : {};
         const id = settings.deviceId || this._selectedDevice;
         const match = this._devices.find(device => device.deviceId === id);
-        return match ? match.label : (id ? 'selected camera' : 'default camera');
+        return match ? match.label : (id ? t('activeCamera') : t('defaultCamera'));
     }
     cameraCapabilities () {
         const provider = this._provider();
@@ -276,13 +347,13 @@ class CameraCapture {
     photoHeight () { return this._height; }
     cameraStatus () {
         const video = this.runtime && this.runtime.ioDevices && this.runtime.ioDevices.video;
-        if (video && video.videoReady) return 'ready';
+        if (video && video.videoReady) return localizeStatus('ready');
         // The stock provider reports getUserMedia failures through onError and
         // resolves enableVideo(), so a missing element is the observable refusal.
         if (this._status === 'starting' && video && video.provider && !video.provider.video) {
-            return 'permission denied or unavailable';
+            return localizeStatus('permission denied or unavailable');
         }
-        return this._status;
+        return localizeStatus(this._status);
     }
 
     beginScan (args) {

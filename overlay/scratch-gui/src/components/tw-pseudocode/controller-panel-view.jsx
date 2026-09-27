@@ -3,6 +3,7 @@ import { ControllerPanel, WIDGET_TYPES, WIDGET_DEFAULTS } from 'bw-board/control
 import { bindPanelToBoard } from 'bw-board/controller-binding.js';
 import MachineConsole from './machine-console.jsx';
 import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../../lib/global-undo.js';
+import SpikePortMonitor from './spike-port-monitor.jsx';
 
 const L10N = {
     en: {
@@ -11,6 +12,7 @@ const L10N = {
         'chooseImage': 'Choose an Image',
         title: 'Controller',
         edit: 'Edit', play: 'Play',
+        exitFullScreen: 'Exit full screen',
         addWidget: '+ Add Widget',
         joystick: 'Joystick', button: 'Button', slider: 'Slider',
         dpad: 'D-Pad', dial: 'Dial',
@@ -32,6 +34,7 @@ const L10N = {
         'chooseImage': 'Ein Bild wählen',
         title: 'Controller',
         edit: 'Bearbeiten', play: 'Spielen',
+        exitFullScreen: 'Vollbild verlassen',
         addWidget: '+ Widget hinzufügen',
         joystick: 'Joystick', button: 'Taste', slider: 'Schieberegler',
         dpad: 'Steuerkreuz', dial: 'Drehregler',
@@ -1684,6 +1687,7 @@ class ControllerPanelView extends React.Component {
                 <div style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: '8px 12px',
+                    paddingTop: this.props.isFullScreen ? 'calc(env(safe-area-inset-top, 0px) + 56px)' : 8,
                     borderBottom: '1px solid #e2e8f0',
                     background: '#fff',
                     flexShrink: 0,
@@ -1691,6 +1695,17 @@ class ControllerPanelView extends React.Component {
                     <span style={{ fontWeight: 700, fontSize: 14, color: '#7C3AED' }}>
                         {t('title')}
                     </span>
+                    {this.props.isFullScreen && (
+                        <button type="button" data-testid="bw-widgets-exit-fullscreen"
+                            onClick={this.props.onExitFullScreen}
+                            aria-label={t('exitFullScreen')}
+                            title={t('exitFullScreen')}
+                            style={{border: '1px solid #cbd5e1', borderRadius: 6,
+                                background: '#fff', color: '#334155', padding: '5px 9px',
+                                cursor: 'pointer', fontSize: 12}}>
+                            {'↙ '}{t('exitFullScreen')}
+                        </button>
+                    )}
                     <div style={{ flex: 1 }} />
                     {/* Mode toggle */}
                     <div style={{
@@ -1811,6 +1826,8 @@ class ControllerPanelView extends React.Component {
                         </div>
                     )}
                 </div>
+
+                <SpikePortMonitor vm={this.props.vm} locale={this.props.locale} />
 
                 {/* Widget canvas: absolute placement from layout.{x,y}, size from
                     layout.{w,h}, rotation + colour + label applied. In EDIT mode

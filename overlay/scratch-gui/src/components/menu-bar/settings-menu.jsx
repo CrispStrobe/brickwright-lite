@@ -19,6 +19,7 @@ import {persistTheme} from '../../lib/themes/themePersistance';
 import {setTheme} from '../../reducers/theme.js';
 import {hardReload} from '../../lib/hard-reload.js';
 import {getFpgaEnabled, setFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
+import {getLegacySpikeVisible, setLegacySpikeVisible} from '../../lib/spike-legacy-debug.js';
 
 const emit = (name, value) => {
     window.dispatchEvent(new CustomEvent(name, {detail: value}));
@@ -112,6 +113,11 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                                     {value: '1', label: 'On'}
                                 ], 'Show the ⬢ FPGA tab: synthesise Verilog for the Tang Nano 20K and '
                                     + 'drive the on-screen board') : null}
+                            {workspaceSelect('Legacy SPIKE extensions', getLegacySpikeVisible() ? '1' : '0',
+                                value => { setLegacySpikeVisible(value === '1'); onRequestClose(); }, [
+                                    {value: '0', label: 'Off'},
+                                    {value: '1', label: 'Show for debugging'}
+                                ], 'Show four archived SPIKE Prime drivers in the extension gallery for hardware diagnosis')}
                         </Submenu>
                     </MenuItem>
                 </MenuSection>

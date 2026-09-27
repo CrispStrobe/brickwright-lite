@@ -42,10 +42,11 @@ import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
 /**
  * The MakeCode targets whose runtime sync-makecode-runtime serves, by pxt
  * target id (the `pxtTarget` a MakeCode file names), and what each builds.
- * `firmware` is the file the generic firmware download produces, or null where
- * it cannot: Arcade builds a .uf2 only for a chosen board (`hwVariant`, see
- * ARCADE_HARDWARE), and the importer's download has no board picker yet, so a
- * board-less native Arcade build stays refused by name (NO_BASE_HEX).
+ * `firmware` is the file the firmware download produces. Arcade builds one only
+ * for a chosen board (`hwVariant`, see ARCADE_HARDWARE and arcadeBoards): the
+ * importer's download asks for the board first, a .uf2 for most and an Intel
+ * .hex for the nRF52833 ones (micro:bit shields); a board-less native Arcade
+ * build stays refused by name (NO_BASE_HEX).
  * `name` is the product's own name (a proper noun, the same in every language),
  * which is why it is not a `label` for the i18n rule to count.
  */
@@ -54,7 +55,7 @@ export const MAKECODE_BOARDS = Object.freeze({
     calliopemini: {name: 'Calliope mini', firmware: 'hex'},
     ev3: {name: 'LEGO MINDSTORMS EV3', firmware: 'uf2'},
     adafruit: {name: 'Circuit Playground Express', firmware: 'uf2'},
-    arcade: {name: 'Arcade', firmware: null}
+    arcade: {name: 'Arcade', firmware: 'uf2', perBoard: true}
 });
 export const MAKECODE_TARGETS = Object.freeze(Object.keys(MAKECODE_BOARDS));
 
@@ -315,17 +316,54 @@ export async function compileMakeCodeForEmulator ({target = 'microbit', files, b
  * The Arcade hardware a native build can target: pxt-arcade's hw---<variant>
  * packages built by pxt's CODAL engine (hw---rpi and hw---vm are Linux builds,
  * not here). `family` is the UF2 family id pxt writes (null: the build is an
- * Intel HEX, not a UF2 — the nRF52833 boards).
+ * Intel HEX, not a UF2 — the nRF52833 boards). `chip` is the part number, the
+ * same in every language. Which PRODUCT is which variant is pxt-arcade's own
+ * list, not this table: arcadeBoards() reads it from the served runtime.
  */
 export const ARCADE_HARDWARE = Object.freeze({
-    rp2040: {name: 'Raspberry Pi Pico (RP2040)', family: 0xe48bff56},
-    samd51: {name: 'SAMD51 (Adafruit PyBadge and similar, "D5")', family: 0x55114460},
-    samd51adafruit: {name: 'SAMD51, Adafruit bootloader layout', family: 0x55114460},
-    stm32f401: {name: 'STM32F401 ("F4", Meowbit and similar)', family: 0x57755a57},
-    n3: {name: 'nRF52833 ("N3")', family: null},
-    gdk: {name: 'nRF52833 Game Designer\'s Kit', family: null},
-    n4: {name: 'nRF52840 ("N4", experimental)', family: 0xada52840}
+    rp2040: {name: 'Raspberry Pi Pico (RP2040)', chip: 'RP2040', family: 0xe48bff56},
+    samd51: {name: 'SAMD51 ("D5")', chip: 'SAMD51', family: 0x55114460},
+    samd51adafruit: {name: 'SAMD51, Adafruit bootloader layout (PyBadge, PyGamer, EdgeBadge)', chip: 'SAMD51', family: 0x55114460},
+    stm32f401: {name: 'STM32F401 ("F4", Meowbit and similar)', chip: 'STM32F401', family: 0x57755a57},
+    n3: {name: 'nRF52833 ("N3")', chip: 'nRF52833', family: null},
+    gdk: {name: 'nRF52833 Game Designer\'s Kit', chip: 'nRF52833', family: null},
+    n4: {name: 'nRF52840 ("N4", experimental)', chip: 'nRF52840', family: 0xada52840}
 });
+
+/** Where the board picker's list is served (scripts/sync-makecode-runtime.mjs arcadeHardwareList). */
+export const ARCADE_BOARDS_FILE = 'hardware.json';
+
+/**
+ * The picker's entries from the served list: each board pxt-arcade names, with
+ * the variant it builds for and the file it downloads. An entry whose variant
+ * is not ARCADE_HARDWARE (a new pxt-arcade pin added one) is dropped, not
+ * guessed at. `card` entries are pxt's per-chip cards ("R2", "D5"…), for a
+ * board no product names.
+ * @param {{name: string, variant: string, card?: boolean}[]} list
+ * @returns {{name: string, variant: string, card: boolean, chip: string, ext: 'uf2'|'hex', family: number|null}[]}
+ */
+export function arcadeBoardsFrom (list) {
+    return (Array.isArray(list) ? list : [])
+        .filter(b => b && typeof b.name === 'string' && b.name && ARCADE_HARDWARE[b.variant])
+        .map(b => {
+            const hw = ARCADE_HARDWARE[b.variant];
+            return {name: b.name, variant: b.variant, card: !!b.card, chip: hw.chip,
+                ext: hw.family === null ? 'hex' : 'uf2', family: hw.family};
+        });
+}
+
+/**
+ * The Arcade boards this build can make firmware for — pxt-arcade's own
+ * hardware list, as the sync served it (only boards whose base is served).
+ * Absent (the runtime was not synced), [] — the picker then offers nothing.
+ * @param {{baseUrl?: string}} [args]
+ */
+export async function arcadeBoards ({baseUrl} = {}) {
+    const url = new URL(runtimeBase('arcade') + ARCADE_BOARDS_FILE, baseUrl || document.baseURI).href;
+    const res = await fetch(url).catch(() => null);
+    if (!res || !res.ok) return [];
+    return arcadeBoardsFrom(await res.json().catch(() => []));
+}
 
 /**
  * The flashable file in a native build's outfiles. pxt returns a UF2 as BASE64

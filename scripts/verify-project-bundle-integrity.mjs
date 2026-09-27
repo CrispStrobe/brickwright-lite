@@ -40,7 +40,7 @@ const waitForVM = page => page.waitForFunction(() => {
 const openProject = async (page, file) => {
     await page.getByText('File', {exact: true}).click();
     await page.getByText('Load from your computer', {exact: true}).click();
-    await page.locator('body > input[type="file"][accept=".sb,.sb2,.sb3"]').setInputFiles(file);
+    await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(file);
 };
 const projectKeys = page => page.evaluate(() => ({
     code: localStorage.getItem('bw-code-autosave'),

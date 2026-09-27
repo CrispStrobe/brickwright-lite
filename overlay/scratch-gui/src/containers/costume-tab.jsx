@@ -18,6 +18,7 @@ import DragConstants from '../lib/drag-constants';
 import {emptyCostume} from '../lib/empty-assets';
 import sharedMessages from '../lib/shared-messages';
 import downloadBlob from '../lib/download-blob';
+import {copyCostumeDocument} from '../lib/bw-artwork-bundle';
 
 import {
     openCostumeLibrary,
@@ -150,7 +151,12 @@ class CostumeTab extends React.Component {
         });
     }
     handleDuplicateCostume (costumeIndex) {
-        this.props.vm.duplicateCostume(costumeIndex);
+        const vm = this.props.vm;
+        const target = vm.editingTarget;
+        const original = target.sprite.costumes[costumeIndex];
+        return vm.duplicateCostume(costumeIndex).then(() => {
+            copyCostumeDocument(original, target.sprite.costumes[costumeIndex + 1]);
+        });
     }
     handleExportCostume (costumeIndex) {
         const item = this.props.vm.editingTarget.sprite.costumes[costumeIndex];
@@ -286,6 +292,25 @@ class CostumeTab extends React.Component {
             details: costume.size ? this.formatCostumeDetails(costume.size, costume.bitmapResolution) : null,
             dragPayload: costume
         })) : [];
+        const toolStyle = {fontSize: 12, padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
+            border: '1px solid #cbd5e1', background: '#fff', whiteSpace: 'nowrap'};
+        const editorTools = pixel => (
+            <div style={{display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 'auto'}}>
+                <button type="button" data-testid={pixel ? 'bw-costume-import-pixel' : 'bw-costume-import'}
+                    onClick={this.handleFileUploadClick}
+                    style={toolStyle}>{/^de/i.test(intl.locale) ? 'Datei öffnen…' : 'Open file…'}</button>
+                <button type="button" data-testid={pixel ? 'bw-costume-export-pixel' : 'bw-costume-export'}
+                    onClick={() => this.handleExportCostume(this.state.selectedCostumeIndex)}
+                    style={toolStyle}>{/^de/i.test(intl.locale) ? 'Datei speichern' : 'Save file'}</button>
+                <button type="button" data-testid={pixel ? 'bw-pixel-toggle-pixel' : 'bw-pixel-toggle'}
+                    onClick={() => this.setState(state => ({pixelMode: !state.pixelMode}))}
+                    style={{...toolStyle, background: this.state.pixelMode ? '#e0edff' : '#fff'}}>
+                    {this.state.pixelMode ?
+                        (/^de/i.test(intl.locale) ? '✎ Malprogramm' : '✎ Paint editor') :
+                        (/^de/i.test(intl.locale) ? '▦ Pixel-Editor' : '▦ Pixel editor')}
+                </button>
+            </div>
+        );
         return (
             <AssetPanel
                 buttons={[
@@ -331,20 +356,11 @@ class CostumeTab extends React.Component {
                 onItemClick={this.handleSelectCostume}
             >
                 {target.costumes ? (
-                    <div style={{display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0}}>
+                    <div style={{display: 'flex', flexDirection: 'column', flex: '1 1 0', width: '100%', minWidth: 0,
+                        height: '100%', minHeight: 0}}>
                         {/* scratch-paint has no grid and no palette lock; Arcade
                             art is edited AS pixels in the palette editor. */}
-                        <div style={{display: 'flex', justifyContent: 'flex-end', padding: '4px 8px 0'}}>
-                            <button type="button" data-testid="bw-pixel-toggle"
-                                onClick={() => this.setState(state => ({pixelMode: !state.pixelMode}))}
-                                style={{fontSize: 12, padding: '3px 10px', borderRadius: 6, cursor: 'pointer',
-                                    border: '1px solid #cbd5e1', background: this.state.pixelMode ? '#e0edff' : '#fff'}}>
-                                {this.state.pixelMode ?
-                                    (/^de/i.test(navigator.language) ? '✎ Malprogramm' : '✎ Paint editor') :
-                                    (/^de/i.test(navigator.language) ? '▦ Pixel-Editor' : '▦ Pixel editor')}
-                            </button>
-                        </div>
-                        <div style={{flex: 1, minHeight: 0}}>
+                        <div style={{flex: '1 1 0', minWidth: 0, minHeight: 0}}>
                             {/* The paint editor stays MOUNTED and is only hidden: unmounting
                                 it while scratch-paint is still importing a costume leaves a
                                 pending paper.js callback reading a destroyed project
@@ -352,6 +368,7 @@ class CostumeTab extends React.Component {
                             <div style={{display: this.state.pixelMode ? 'none' : 'contents'}}>
                                 <PaintEditorWrapper
                                     selectedCostumeIndex={this.state.selectedCostumeIndex}
+                                    editorTools={editorTools(false)}
                                 />
                             </div>
                             {this.state.pixelMode ? (
@@ -359,6 +376,7 @@ class CostumeTab extends React.Component {
                                     <PixelArtEditor
                                         costumeIndex={this.state.selectedCostumeIndex}
                                         vm={vm}
+                                        editorTools={editorTools(true)}
                                     />
                                 </React.Suspense>
                             ) : null}

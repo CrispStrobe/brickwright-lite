@@ -65,6 +65,9 @@ async function sha256Hex(bytes) {
  */
 export async function defaultImageFetcher(ref) {
     if (!isStr(ref.url)) throw new Error('image reference has no url');
+    if (typeof window !== 'undefined' && window.__TAURI__ && /^https?:/i.test(ref.url)) {
+        throw new Error('the native app does not download executable machine images; import a local image instead');
+    }
     const res = await globalThis.fetch(ref.url);
     if (!res.ok) throw new Error(`failed to fetch ${ref.url}: HTTP ${res.status}`);
     const bytes = new Uint8Array(await res.arrayBuffer());
@@ -153,6 +156,7 @@ export async function activateConfig(config, opts = {}) {
         name: cfg.title || bootSlotId,
         profile: SLOT_PROFILE[bootSlotId] || null
     };
+    if (cfg.machine === 'i80386') bootMedia.nativeBlocks = cfg.nativeBlocks === true;
     if (bootRef.geometry) bootMedia.geometry = {...bootRef.geometry};
     // A ROM image states its own load address via the config; carry it so the
     // reset vector reads from real bytes (debug-runner's romAt path).

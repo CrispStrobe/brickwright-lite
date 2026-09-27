@@ -67,6 +67,11 @@ const STRINGS = {
         lockObject: 'Lock',
         unlockObject: 'Unlock',
         renameHint: 'Click to select, double-click to rename, drag to reorder',
+        roundedRectangle: 'Rounded rectangle',
+        rectangle: 'Rectangle', triangle: 'Triangle', ellipse: 'Ellipse', line: 'Line',
+        polygon: 'Polygon', star: 'Star', shapeObject: 'Shape', groupObject: 'Group',
+        imageObject: 'Image', compoundPath: 'Compound path', textObject: 'Text', object: 'Object',
+        sides: 'sides', points: 'points',
 
         grid: 'Grid & snapping',
         showGrid: 'Show grid',
@@ -140,6 +145,11 @@ const STRINGS = {
         lockObject: 'Sperren',
         unlockObject: 'Entsperren',
         renameHint: 'Klicken zum Auswählen, Doppelklick zum Umbenennen, Ziehen zum Umsortieren',
+        roundedRectangle: 'Abgerundetes Rechteck',
+        rectangle: 'Rechteck', triangle: 'Dreieck', ellipse: 'Ellipse', line: 'Linie',
+        polygon: 'Vieleck', star: 'Stern', shapeObject: 'Form', groupObject: 'Gruppe',
+        imageObject: 'Bild', compoundPath: 'Zusammengesetzter Pfad', textObject: 'Text', object: 'Objekt',
+        sides: 'Seiten', points: 'Punkte',
 
         grid: 'Raster & Einrasten',
         showGrid: 'Raster anzeigen',

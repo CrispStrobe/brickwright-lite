@@ -5,7 +5,8 @@
   <key>com.apple.security.app-sandbox</key>
   <true/>
 
-  <!-- Outbound: gallery extension JS, CDN asset fetches, remote-driver bridge. -->
+  <!-- Outbound: ordinary CDN assets, hosted compilation, and remote-driver bridge.
+       Native builds refuse downloaded extension JS, toolchains and machine images. -->
   <key>com.apple.security.network.client</key>
   <true/>
   <!-- Inbound: native ScratchLink WS (127.0.0.1:20111) + local asset server (127.0.0.1:20112). -->

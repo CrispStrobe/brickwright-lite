@@ -49,6 +49,7 @@ on:
       - 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'
       - 'overlay/scratch-gui/src/lib/bw-makecode/base-licences.js'
       - 'test/makecode-arcade-bases.test.mjs'
+      - 'test/makecode-locked-source-acquisition.test.mjs'
       - 'test/makecode-emu-bases.test.mjs'
       - '.github/workflows/makecode-arcade-bases.yml'
 

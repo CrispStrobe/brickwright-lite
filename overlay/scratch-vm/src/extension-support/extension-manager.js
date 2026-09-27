@@ -31,8 +31,11 @@ const EV3_UNIFIED_ID = 'ev3comprehensive';
  * paths would fall through to the bare-id branch below and log a missing
  * implementation for an extension that is present under another name.
  */
-const resolveExtensionId = id => {
+const resolveExtensionId = (id, options = {}) => {
     if (typeof id !== 'string') return id;
+    // Only a deliberate gallery selection may load an archived driver. Old
+    // projects keep resolving their ids to the unified extension by default.
+    if (options.legacySpikeDebug === true && SPIKE_LEGACY_IDS.includes(id)) return id;
     if (SPIKE_LEGACY_IDS.indexOf(id) !== -1) return SPIKE_UNIFIED_ID;
     if (EV3_LEGACY_IDS.indexOf(id) !== -1) return EV3_UNIFIED_ID;
     return id;
@@ -111,6 +114,10 @@ const lazyBuiltinExtensions = {
     // reached four ways, and they now resolve here through SPIKE_LEGACY_IDS.
     // See extension-support/spike-legacy-migration.js.
     spikeprime: () => import(/* webpackChunkName: "ext-spikeprime" */ '../extensions/crispstrobe/spikeprime/index.js'),
+    spikeprimeBTC: () => import(/* webpackChunkName: "ext-spikeprimeBTC" */ '../extensions/crispstrobe/spikeprimeBTC/index.js'),
+    spikeprimeBridge: () => import(/* webpackChunkName: "ext-spikeprimeBridge" */ '../extensions/crispstrobe/spikeprimeBridge/index.js'),
+    spikeprimeble: () => import(/* webpackChunkName: "ext-spikeprimeble" */ '../extensions/crispstrobe/spikeprimeble/index.js'),
+    legospikeprimeBLE: () => import(/* webpackChunkName: "ext-legospikeprimeBLE" */ '../extensions/crispstrobe/legospikeprimeBLE/index.js'),
     // One EV3 extension for the stock LEGO firmware. legoev3direct and ev3lms
     // used to sit beside this line; they were the same brick reached with the
     // same protocol, split across a block surface, a working live
@@ -318,8 +325,8 @@ class ExtensionManager {
      * @param {string} extensionURL - the URL for the extension to load OR the ID of an internal extension
      * @returns {Promise} resolved once the extension is loaded and initialized or rejected on failure
      */
-    loadExtensionURL (extensionURL) {
-        extensionURL = resolveExtensionId(extensionURL);
+    loadExtensionURL (extensionURL, options) {
+        extensionURL = resolveExtensionId(extensionURL, options);
         if (hasOwn(lazyBuiltinExtensions, extensionURL)) {
             return this._loadLazyBuiltinExtension(extensionURL);
         }
@@ -336,6 +343,16 @@ class ExtensionManager {
             const serviceName = this._registerInternalExtension(extensionInstance);
             this._loadedExtensions.set(extensionURL, serviceName);
             return Promise.resolve();
+        }
+
+        // Tauri store builds are self-contained. Worker isolation limits privileges, but it does
+        // not change downloaded JavaScript into non-code for store-review purposes. Apply this at
+        // the VM boundary as well as the picker so projects, deep links and direct API callers all
+        // fail closed. Bundled IDs have already returned above and remain fully available offline.
+        if (typeof window !== 'undefined' && window.__TAURI__) {
+            return Promise.reject(new Error(
+                'The native app can load only bundled extensions; open this project in the web app to use URL extensions.'
+            ));
         }
 
         // Brickwright: a BARE ID that is not a builtin is a missing implementation,

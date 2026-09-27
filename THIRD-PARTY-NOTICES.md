@@ -1190,11 +1190,13 @@ SDCC 4.5.0, compiled to WebAssembly (Emscripten), is distributed under
 compile C source to Intel HEX for the 8051/mcs51 target — it is NOT linked into
 the BSD-3 editor code, and it is no longer distributed with it.
 
-**How it reaches a user.** The default is `online`: nothing is downloaded and
-the hosted compiler serves the request, as it already does for every target this
-bundle cannot link. A user who wants offline compiling opts in, and the
+**How it reaches a web user.** The default is `online`: nothing is downloaded
+and the hosted compiler serves the request, as it already does for every target
+this bundle cannot link. A web user who wants offline compiling opts in, and the
 toolchain is then fetched from the GPL origin above and kept in Cache Storage on
-their own device. See `overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js`.
+their own device. Native builds refuse this download and always use the hosted
+route; the refusal is enforced both by the routing predicate and the downloader.
+See `overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js`.
 
 - **Version:** 4.5.0 (mcs51 port only)
 - **Licence:** GPL-2.0-or-later
@@ -1543,7 +1545,14 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   (`built/hexcache/`), and — for EV3 and Circuit Playground Express, whose npm
   packages ship none — the two firmware bases MakeCode's own CDN serves for their
   default package sets (`cdn.makecode.com/compile/<sha>.hex`, content-addressed by
-  the package set, pinned here by sha256; the request names no user program). Written under `packages/scratch-gui/static/makecode/`
+  the package set, pinned here by sha256; the request names no user program).
+  From the same CDN, the two micro:bit bases for the {core, radio} package set,
+  which pxt-microbit's hexcache lacks: the V1 {core, radio} base (f7b3cfda…, DAL on
+  nRF51822, with Nordic's S110 v8 SoftDevice) and the V2 {core, radio} base
+  (137d8c97…, CODAL on nRF52833, with Nordic's S113 SoftDevice) — Microsoft's own
+  cloud builds, the halves of the universal .hex a {core, radio} project downloads
+  as. Their MBR and SoftDevice regions are byte-identical to the npm bases', and
+  the Nordic terms below apply to them as to those. Written under `packages/scratch-gui/static/makecode/`
   (gitignored) with each package's own LICENSE file beside it, and copied into the
   app by webpack — served, never committed. The Arcade simulator page
   (`scripts/makecode/arcade-simulator.html`) is ours: pxt-arcade ships none.
@@ -1754,9 +1763,15 @@ never fetched, stored, or committed.
 - **LGPL VGABios** — the **VGABios** project, distributed under the **GNU
   LGPL**. Upstream: https://savannah.nongnu.org/projects/vgabios/ (revision
   `288`, 2021-05-28, `(C) 2002-2021 the LGPL VGABios developers Team`).
-- **Licence:** GNU Lesser General Public License v2.1 (the full text ships with
-  the upstream firmware under bw-board `roms/free-at-bios/LICENSE` at the pinned
-  sha; both binaries are covered by it).
+- **Licence:** GNU Lesser General Public License v2.1-or-later. The full text
+  ships inside the application as
+  `static/licenses/free-386-firmware.LGPL-2.1.txt`; both binaries are covered by
+  it.
+- **Corresponding source:**
+  `static/licenses/free-386-firmware.sources.json` ships inside the application
+  and records the exact Bochs 2.7 and VGABios 0.8a source archives plus their
+  SHA-256 hashes. The About dialog links both this manifest and the offline
+  licence text.
 - **What ships:** `static/roms/free-386-bochs-bios.rom` (64 KiB) and
   `static/roms/free-386-vgabios-lgpl.bin` (38400 bytes), with
   `free-386-bios.provenance.json` beside them recording the upstreams, licences,

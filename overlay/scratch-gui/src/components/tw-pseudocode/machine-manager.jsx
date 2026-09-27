@@ -29,7 +29,8 @@ const T = {
         importL: 'Import a brickwright-media.json, a DOSBox .conf, or a machine config:',
         importB: 'Import', exportB: 'Export all', paste: 'Paste JSON or .conf here…',
         imported: 'Imported.', exported: 'Exported below — copy it.', removed: 'Deleted.',
-        duped: 'Duplicated.', badImport: 'Could not import: '
+        duped: 'Duplicated.', badImport: 'Could not import: ',
+        nativeBlocks: 'Native blocks (experimental)', nativeSaved: 'Execution setting saved.'
     }
 };
 const tr = (locale, k) => (T[(locale || 'en').slice(0, 2)] || T.en)[k] || T.en[k] || k;
@@ -98,6 +99,13 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     };
     const dup = async id => { try { await store.duplicate(id); setStatus(t('duped')); await refresh(); } catch (e) { setStatus(e.message); } };
     const del = async id => { try { await store.remove(id); setStatus(t('removed')); await refresh(); } catch (e) { setStatus(e.message); } };
+    const setNativeBlocks = async (cfg, enabled) => {
+        try {
+            await store.put({...cfg, nativeBlocks: enabled});
+            setStatus(t('nativeSaved'));
+            await refresh();
+        } catch (e) { setStatus(e.message); }
+    };
 
     const doImport = async () => {
         const src = text.trim();
@@ -179,6 +187,12 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                     {m.machine || '?'} · {modeBadge(m.executionMode)}
                                     {m.cpu && m.cpu.variant ? ` · ${m.cpu.variant}` : ''}
                                 </div>
+                                {m.machine === 'i80386' && <label style={{fontSize: 11, color: '#475569'}}>
+                                    <input type="checkbox" data-testid="bw-mm-native-blocks"
+                                        checked={m.nativeBlocks === true}
+                                        onChange={e => setNativeBlocks(m, e.target.checked)} />
+                                    {t('nativeBlocks')}
+                                </label>}
                             </div>
                             <button onClick={() => run(m)} style={primary} data-testid="bw-mm-run">{t('run')}</button>
                             <button onClick={() => dup(m.id)} style={btn}>{t('dup')}</button>

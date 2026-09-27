@@ -49,7 +49,8 @@ human coordination and qualification process.
   Python and JavaScript representations. Conversion and generated-view limits
   are kept explicit instead of promising that every construct round-trips.
 - 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
-  surface) plus 150 gallery extensions loadable at runtime.
+  surface). The web edition can additionally load 150 reviewed gallery
+  extensions; native store builds stay self-contained and show bundled entries only.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
 
@@ -86,6 +87,44 @@ and Bluetooth Classic** without a browser or a separate install.
   file associations and deep links.
 
 ## Quick start
+
+**Terminal CLI:** `bwlite` is the command for this repository; the older `bw`
+command belongs to the separate `sb3-creator` compiler repository. A `.bw`
+file is Brickwright pseudocode. After the web-build setup has populated
+`packages/`, run
+`npm link` once to put `bwlite` on your PATH (or use `npm run cli --`).
+
+```bash
+bwlite --help
+bwlite spike probe
+bwlite spike run scripts/spike/example-usb-stream.bw
+bwlite convert program.bw --to sb3 --out program.sb3
+bwlite convert program.bw --to c --out program.c
+bwlite read program.c --out recovered.bw
+bwlite 8051 build program.bw --out program.ihx
+bwlite 8051 flash program.ihx --port /dev/cu.usbserial-XXXX
+bwlite toolchain status
+bwlite machine validate machine.json
+```
+
+`convert` reads `.bw`, `.sb3`, `.c`, `.py`, `.js`, and `.bas` and can write
+pseudocode, SB3, C, host C, Python, JavaScript, MicroPython, or BASIC. It uses
+the same pinned `SB3Creator` and language readers as the Code tab. The older
+`compile PROGRAM.bw --to ...` command remains an alias for conversion; use
+`toolchain compile FILE.c --mode local|online` for the separate 8051 compiler.
+`devices` and `retarget` expose the compiler's device mapping. `toolchain`,
+`machine`, `fpga`, and `makecode` forward to their existing repository CLIs;
+`machine` manages emulator configurations and boot plans, while interactive
+chip emulation and debugging still run in the app. `8051 build` uses installed
+SDCC to make Intel HEX from STC pseudocode or C; `8051 flash` uses installed
+`stcgal` and requires an explicit serial port. Flashing an STC also requires
+its usual cold power cycle into the ISP bootloader.
+
+SPIKE USB needs LEGO MINDSTORMS MicroPython firmware and Python with `pyserial`.
+The [CLI guide](docs/CLI.md) maps old `bw` references to the current Lite
+commands. The [USB guide](scripts/spike/README-usb-stream.md) covers the Mac/iPad WLAN
+bridge; the [MINDSTORMS guide](docs/mindstorms-lms.md) covers `.lms` import and
+export.
 
 **Web build:**
 
@@ -142,7 +181,7 @@ CI does this for all platforms: `.github/workflows/release.yml` (desktop) and
 - [x] Permissive base pinned and verified (BSD-3 / Apache-2.0 / MIT).
 - [x] Code tab — blocks / pseudocode / Python / JS.
 - [x] SoundFX creator; German i18n.
-- [x] 23 built-in + 150 gallery extensions.
+- [x] 23 built-in extensions everywhere; 150 additional gallery extensions on the web.
 - [x] Tauri native app for all five platforms.
 - [x] Native ScratchLink — BLE + Bluetooth Classic + WiFi bridge.
 - [x] Native save/load/share, offline library, camera + microphone.
@@ -246,8 +285,11 @@ Scratch Foundation relicensed the whole stack BSD-3-Clause -> AGPL-3.0 on
 > **Do not** swap in `scratch-blocks@2.x` — it is a ground-up Blockly rewrite
 > incompatible with the v4 GUI.
 
-Anything GPL (e.g. gallery extensions) is *fetched at runtime from a URL*,
-never bundled — so it never contaminates the distributed app.
+No GPL code is bundled. The web edition can opt into separately distributed GPL
+tools or media, with their licence and corresponding source shown at the point
+of download. Store-distributed native builds do not download executable
+toolchains, machine images, or extension JavaScript: they use the bundled
+permissive/MPL/LGPL components and hosted compilation of learner-authored source.
 
 ### The bundled extensions
 

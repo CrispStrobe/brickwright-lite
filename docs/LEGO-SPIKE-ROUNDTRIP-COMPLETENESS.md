@@ -46,7 +46,9 @@ block independently.
 
 **DoD**
 
-- `bw transpile ... --to sb3 --device spikeprime` produces a real ZIP whose
+- `bw transpile ... --to sb3 --device spikeprime` (the separate `sb3-creator`
+  CLI used for this historical checkpoint; Lite now offers `bwlite transpile`,
+  described in the [CLI guide](CLI.md)) produces a real ZIP whose
   `project.json` carries the canonical extension id and only valid block/input
   shapes; the command works from outside the repository working directory.
 - Re-reading that archive reproduces the normalized `.bw` program.

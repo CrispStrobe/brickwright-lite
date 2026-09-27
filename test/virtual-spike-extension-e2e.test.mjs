@@ -141,6 +141,10 @@ test('bundled direct BLE extension runs through the virtual hub and reconnects',
     assert.equal(extension.getDistanceIn({PORT: 'B', UNIT: 'mm'}), 345,
         'the hub-reported millimetres, at the sensor\'s own resolution');
     assert.equal(extension.getDistanceIn({PORT: 'B', UNIT: 'cm'}), 34.5);
+    state.setPort('F', 'matrix3', {pixels: [9, 0, 0, 0, 9, 0, 0, 0, 9]});
+    assert.deepEqual(extension._peripheral.portValues.F,
+        {type: 'matrix3', pixels: [9, 0, 0, 0, 9, 0, 0, 0, 9]},
+        'a 3x3 matrix notification must not disappear as an unknown record');
     extension.disconnectHub();
     assert.equal(state.data.motors[2].speed, 0);
     await extension.connectHub();

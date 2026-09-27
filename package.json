@@ -3,7 +3,9 @@
     "private": true,
     "description": "Brickwright visual computing workbench: circuits, emulated machines, blocks⇄code⇄Python/JS and LEGO extensions. Component licenses are recorded in THIRD-PARTY-NOTICES.md.",
     "license": "BSD-3-Clause",
+    "bin": {"bwlite": "bin/bwlite.mjs"},
     "scripts": {
+        "cli": "node bin/bwlite.mjs",
         "vendor": "node scripts/vendor.mjs",
         "postvendor": "echo 'Vendored. Next: npm run integrate && cd packages/scratch-gui && npm install --ignore-scripts && cd ../.. && npm run build:gui'",
         "check:load": "node scripts/check-system-load.mjs",
@@ -71,6 +73,7 @@
         "verify:starters": "node scripts/verify-starter-journeys.mjs",
         "verify:lego-spike": "node scripts/verify-lego-spike-roundtrip.mjs",
         "verify:project-bundle": "node scripts/verify-project-bundle-integrity.mjs",
+        "verify:pixel-source": "node scripts/verify-pixel-source-roundtrip.mjs",
         "verify:arrays-table": "node scripts/verify-arrays-table-display.mjs",
         "verify:lazy-degradation": "node scripts/verify-lazy-extension-degradation.mjs",
         "verify:dock": "node scripts/verify-debug-dock.mjs",

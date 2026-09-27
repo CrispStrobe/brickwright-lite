@@ -170,6 +170,7 @@ export function fromMediaManifest(manifest, opts = {}) {
         title: manifest.title || manifest.machine || 'imported machine',
         executionMode: 'functional',
         machine: manifest.machine || null,
+        nativeBlocks: manifest.nativeBlocks === undefined ? false : manifest.nativeBlocks,
         // Carry the manifest's own machine preset verbatim — a string preset
         // name ('PCXT8086') or an inline {regions,chips} (the Eater case). The
         // activate/boot path resolves it; the manager does not rewrite it.

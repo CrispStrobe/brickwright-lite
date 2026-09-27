@@ -194,10 +194,14 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // and 54-motor-driver's attiny88 bench went with the device. One file
     // arrives: arduino-sk-p08-hourglass regains circuit.stm32f030.json, which
     // its Uno base makes retargetable again. -12 +1.
+    // 1192 -> 1216 on 2026-09-27: the validated ATtiny88 retarget axis adds
+    // 24 device-specific benches. The three Arduino examples whose authored
+    // circuits reserve PC4/PC5 for an external EEPROM are deliberately absent:
+    // remapping those wires would change the lesson rather than retarget it.
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1192, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1216, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -336,8 +340,12 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         // pin, and the attiny88 retarget convention offers none, so the
         // dry-run refuses the device by name rather than shipping a bench that
         // cannot exist. One retargeted combination, no authored one.
+        // 883 -> 907 (total 999 -> 1023) on 2026-09-27: the ATtiny88 retarget
+        // axis contributes the same 24 electrically validated benches counted
+        // above; the three EEPROM-conflicting Arduino candidates remain
+        // intentionally unavailable.
         authored: 116,
-        retargeted: 883,
-        total: 999
+        retargeted: 907,
+        total: 1023
     });
 });

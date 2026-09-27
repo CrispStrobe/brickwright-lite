@@ -59,6 +59,11 @@ export const BASE_LICENCES = Object.freeze({
     'a5c187b6772222173376ca5ce42e003c59f21563c95ce12fe2b4eb13984313d8': {target: 'microbit', base: 'V2 {core, bluetooth, microphone}', source: 'pxt-microbit 9.1.1 hexcache (8b83cd59…)', classification: 'chip-restricted', component: NORDIC_V2, licence: NRF5_LICENCE},
     'bb04445c25e8c1cba8d291de1c646fa22608276673625aedc6941787a73245c0': {target: 'microbit', base: 'V1 {core, radio, microphone}', source: 'pxt-microbit 9.1.1 hexcache (949fbd03…)', classification: 'chip-restricted', component: NORDIC_V1, licence: S110_LICENCE},
     '72b52b93ac20d0d7e2e54873333cb9da374a4bb2a9a280315e96a24bdc35bea0': {target: 'microbit', base: 'V1 {core, bluetooth, microphone}', source: 'pxt-microbit 9.1.1 hexcache (4cc31a5b…)', classification: 'chip-restricted', component: NORDIC_V1, licence: S110_LICENCE},
+    // micro:bit — MakeCode's cloud builds for {core, radio}, which the npm hexcache lacks
+    // (cdn.makecode.com/compile/<sha>.hex, pinned in sync-makecode-runtime.mjs BASES). Their MBR and
+    // SoftDevice regions are byte-identical to the npm bases' above (measured 2026-09-27).
+    '710f7746bc5124c50d87e7a2817ce870d9d084f0ac238f3e27c443fa9801c7ee': {target: 'microbit', base: 'V2 {core, radio}', source: 'MakeCode CDN (137d8c97…)', classification: 'chip-restricted', component: NORDIC_V2, licence: NRF5_LICENCE},
+    '7a60b592d945a831ba4e3c04e754dd6bd21aad1aa6319aecc03e0a0f8843ef98': {target: 'microbit', base: 'V1 {core, radio}', source: 'MakeCode CDN (f7b3cfda…)', classification: 'chip-restricted', component: NORDIC_V1, licence: S110_LICENCE},
     // micro:bit — OUR emulator bases (scripts/build-makecode-emu-bases.mjs; pinned in sync-makecode-runtime.mjs EMU_BASES).
     '93892ba327fc49240cdbad3cc3b53358765467fb1d06f47a98a32fb0242a910e': {target: 'microbit', base: 'V2 {core, radio}, Bluetooth-free', source: 'built from source (137d8c97…)', classification: 'clean'},
     '9c5e1cc82148ebe4d825ce7134a61a81fe577a46b64eefb6dc8d3b798f683e53': {target: 'microbit', base: 'V2 {core, radio, microphone}, Bluetooth-free', source: 'built from source (354b97da…)', classification: 'clean'},

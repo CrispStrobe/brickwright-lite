@@ -43,6 +43,9 @@ const waitForVm = (tries = 100) => new Promise((resolve, reject) => {
  * @returns {void}
  */
 export default function initUrlExtensions () {
+    // Store-distributed native apps are self-contained. Ignore deep links which attempt to turn a
+    // native launch into a remote-code loading request; the VM independently refuses the same call.
+    if (typeof window !== 'undefined' && window.__TAURI__) return;
     const urls = collectUrls();
     if (!urls.length) return;
     waitForVm()

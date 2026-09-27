@@ -24,6 +24,7 @@ mod native_policy;
 mod pico;
 mod scratchlink;
 mod share_server;
+mod spike_usb;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -105,6 +106,7 @@ pub fn run() {
             pico::pico_serial_close,
             pico::pico_bootsel_volume,
             pico::pico_flash_uf2,
+            spike_usb::spike_usb_bridge_run,
             scratchlink::bridge::scratchlink_bridge_open,
             scratchlink::bridge::scratchlink_bridge_send,
             scratchlink::bridge::scratchlink_bridge_close,

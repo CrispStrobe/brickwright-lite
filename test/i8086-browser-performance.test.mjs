@@ -17,7 +17,7 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
     const script = readFileSync(new URL('../scripts/bench-i8086-browser.mjs', import.meta.url), 'utf8');
     for (const fact of [
         "name: 'desktop'", "name: 'mobile'", "name: 'minimum-device-4x'", '__BW_I8086_PERF__',
-        "selectOption('i8086')", 'i8086-cpu-bound-v1', 'BW-I8086-CPU-BOUND-V1',
+        "device.selectOption('i8086')", 'i8086-cpu-bound-v1', 'BW-I8086-CPU-BOUND-V1',
         "locator('.cm-content:visible')", 'workloadSourceSha256', 'heartbeatDelta',
         'heartbeatSegment', 'heartbeatAddress', 'cycleDelta', "selectOption('masm')", 'simulatedMsPerPump',
         'maximumSimulatedMsPerPump = 50',
@@ -42,8 +42,20 @@ test('the production 8086 benchmark covers desktop and mobile pump health', () =
         'the CPU-bound workload must not advance through a service, halt or wait');
     assert.match(script, /Math\.max\(3, requestedRepetitions\)/,
         'the statistical gate must not accept fewer than three repetitions');
-    assert.match(script, /getByRole\('button', \{name: \/ASM\/\}\)\.click\(\{force: true\}\)/,
-        'the minimum-width profile must dispatch the overlapped but enabled ASM control');
+    assert.match(script, /!button\.disabled[\s\S]*asmTab\.dispatchEvent\('click'\)/,
+        'the minimum-width profile must wait for and dispatch the overlapped enabled ASM control');
+    assert.match(script, /bw-asm-assemble'\)\.click\(\{force: true\}\)[\s\S]*data-debug-phase="running"/,
+        'assembly must click the enabled control and prove the durable running state');
+    assert.doesNotMatch(script, /waitForFunction\([\s\S]{0,200}booting the 8086 bench/,
+        'a transient booting message is an event, not proof that the benchmark is running');
+    const emptyAuthorBuffer = script.indexOf("page.keyboard.press('Backspace')");
+    const retargetBoundary = script.indexOf("mark('retarget-request')");
+    const freshDeviceSelection = script.indexOf("device.selectOption('i8086')");
+    assert.ok(emptyAuthorBuffer >= 0 && retargetBoundary > emptyAuthorBuffer &&
+        freshDeviceSelection > retargetBoundary,
+    'the DOS journey must clear the starter and close the speculative-load window before retargeting');
+    assert.match(script, /preRetargetResources[\s\S]*speculativeCompilerAssets = \(preRetargetResources/,
+        'the compiler gate must end before the benchmark deliberately requests a retarget');
     const repetitionLoop = script.indexOf('for (let repetition = 1; repetition <= repetitions; repetition++)');
     const freshContext = script.indexOf('browser.newContext(contextOptions)', repetitionLoop);
     const rawReceipt = script.indexOf('writeFile(resolve(rawDir', freshContext);

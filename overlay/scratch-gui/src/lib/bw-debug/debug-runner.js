@@ -2915,6 +2915,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         };
 
         const targetOpts = { config };
+        if (bootMedia?.nativeBlocks === true) targetOpts.nativeBlocks = true;
         // A hard-disk boot attaches its image as the ATA16 drive at construction
         // (the adapter reads opts.ataImage/ataGeometry). A floppy is inserted
         // into the µPD765 after construction, below.

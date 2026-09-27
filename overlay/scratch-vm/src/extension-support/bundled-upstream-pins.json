@@ -58,6 +58,26 @@
             "sha256": "4c0abe1b749ef470549f94fb4157a50d3a539af7294728046f29c30cc735b606",
             "bytes": 248100
         },
+        "spikeprimeBTC": {
+            "path": "extensions/CrispStrobe/legospikeprime_btc_scratchlink.js",
+            "sha256": "cfbe99510ae876f32cd0661a40299580795f556c81c9c51e496512b865a603bd",
+            "bytes": 99987
+        },
+        "spikeprimeBridge": {
+            "path": "extensions/CrispStrobe/legospike_bridge.js",
+            "sha256": "6bdcafe3925b8d7ea08681cd41f14d36ba13d551999809c43bd7b0b6348c6155",
+            "bytes": 39048
+        },
+        "spikeprimeble": {
+            "path": "extensions/CrispStrobe/legospike_ble.js",
+            "sha256": "f75acfab5c184fe81aec511259be3f63ae0f8fdec8e43a67d5482b6491ffde40",
+            "bytes": 31515
+        },
+        "legospikeprimeBLE": {
+            "path": "extensions/CrispStrobe/legospikeprime_ble.js",
+            "sha256": "61b115535723157bc357d69a8f177f56960edcd867786f70b786dcf8639a4763",
+            "bytes": 95969
+        },
         "stc12": {
             "path": "extensions/CrispStrobe/stc12.js",
             "sha256": "4215ef029e56adfcdcb609b24ac6d931621deed7ab44f404f6a77bebf320adc3",
