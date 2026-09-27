@@ -37,6 +37,12 @@ if (evidenceIssues.length) {
 const workloadId = 'i8086-cpu-bound-v1';
 const heartbeatOffset = 0x110;
 const maximumSimulatedMsPerPump = 50;
+// Loading the lazy assembly editor is setup, outside every measured window.
+// Shared CI runners can spend more than 15 s compiling/painting this chunk
+// while the other browser and unit jobs are busy, and the minimum-device
+// profile deliberately adds 4x CPU throttling. Give setup enough time without
+// weakening any benchmark duration or performance threshold.
+const assemblySetupTimeoutMs = 60000;
 const workloadSource = `; BW-I8086-CPU-BOUND-V1
     ORG 100H
 
@@ -145,24 +151,26 @@ try {
         // dispatch the enabled production control just as the assemble step
         // below does. Setup interaction is outside the measured window.
         await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click({force: true});
-        await page.getByTestId('bw-asm-examples').waitFor({state: 'visible', timeout: 15000});
+        await page.getByTestId('bw-asm-examples').waitFor({
+            state: 'visible', timeout: assemblySetupTimeoutMs
+        });
         const dialect = page.getByTestId('bw-asm-dialect');
-        await dialect.waitFor({state: 'visible', timeout: 15000});
+        await dialect.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
         await dialect.selectOption('masm');
         await mark('asm-ready');
         const editor = page.locator('.cm-content:visible').first();
-        await editor.waitFor({state: 'visible', timeout: 15000});
+        await editor.waitFor({state: 'visible', timeout: assemblySetupTimeoutMs});
         await editor.click();
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+a' : 'Control+a');
         await page.keyboard.press('Backspace');
         await page.keyboard.insertText(workloadSource);
         await page.waitForFunction(marker => [...document.querySelectorAll('.cm-content')].some(node =>
             node.getClientRects().length > 0 && (node.textContent || '').includes(marker)),
-        'BW-I8086-CPU-BOUND-V1', {timeout: 15000});
+        'BW-I8086-CPU-BOUND-V1', {timeout: assemblySetupTimeoutMs});
         await page.waitForFunction(() => {
             const button = document.querySelector('[data-testid="bw-asm-assemble"]');
             return button && !button.disabled;
-        }, null, {timeout: 15000});
+        }, null, {timeout: assemblySetupTimeoutMs});
         await mark('example-ready');
         // On the phone layout the example picker can overlap this control.
         // Setup is not the subject of this benchmark; dispatch the enabled
