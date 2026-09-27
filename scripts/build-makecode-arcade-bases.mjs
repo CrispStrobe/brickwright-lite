@@ -147,6 +147,48 @@ export function run (cmd, args, opts = {}) {
     return (r.stdout || '').trim();
 }
 
+// codal-rp2040's dependency installer clones the library's current default
+// branch recursively and only then checks out the commit in target-locked.json.
+// That transient tree references a deleted TinyUSB commit; when the checkout
+// cannot fetch it, CMake silently continues without USB and produces different
+// firmware bytes. Seed the locked library first so Git never visits that
+// unrelated default-branch tree.
+export const RP2040_LOCKED_SOURCE = Object.freeze({
+    library: 'codal-rp2040',
+    url: 'https://github.com/lancaster-university/codal-rp2040',
+    commit: 'ca54f854754d4cd2aad993f6c8027b8ecb9fb1a1',
+    submodule: 'pico-sdk',
+    submoduleCommit: 'acf638acd7dca45316d704f916605871db9685fc'
+});
+
+export function seedLockedSources (dir, codalJson, exec = run) {
+    if (codalJson.target?.name !== 'codal-pi-pico') return [];
+    const locked = RP2040_LOCKED_SOURCE;
+    const targetLock = codalJson.target;
+    if (targetLock.branch !== 'v0.0.13') {
+        throw new Error(`rp2040: unreviewed target lock ${targetLock.branch}; refresh RP2040_LOCKED_SOURCE`);
+    }
+    const libraryDir = path.join(dir, 'libraries', locked.library);
+    fs.mkdirSync(path.dirname(libraryDir), {recursive: true});
+    if (!fs.existsSync(path.join(libraryDir, '.git'))) {
+        exec('git', ['init', '--quiet', libraryDir]);
+        exec('git', ['-C', libraryDir, 'remote', 'add', 'origin', locked.url]);
+    }
+    exec('git', ['-C', libraryDir, 'fetch', '--quiet', '--depth', '1', 'origin', locked.commit]);
+    exec('git', ['-C', libraryDir, 'checkout', '--quiet', '--detach', 'FETCH_HEAD']);
+    exec('git', ['-C', libraryDir, 'submodule', 'sync', '--', locked.submodule]);
+    exec('git', ['-C', libraryDir, 'submodule', 'update', '--init', '--depth', '1', '--', locked.submodule]);
+    const libraryCommit = exec('git', ['-C', libraryDir, 'rev-parse', 'HEAD'], {quiet: true});
+    const submoduleCommit = exec('git', ['-C', path.join(libraryDir, locked.submodule), 'rev-parse', 'HEAD'], {quiet: true});
+    if (libraryCommit !== locked.commit || submoduleCommit !== locked.submoduleCommit) {
+        throw new Error(`rp2040: locked source mismatch ${libraryCommit}/${submoduleCommit}`);
+    }
+    return [
+        {path: locked.library, commit: libraryCommit},
+        {path: `${locked.library}/${locked.submodule}`, commit: submoduleCommit}
+    ];
+}
+
 /** Every git checkout under dir (the build root, the codal target, its libraries, their submodules). */
 export function gitCommits (dir) {
     const out = {};
@@ -188,6 +230,8 @@ export async function buildBase (variant, {work, out}) {
         fs.mkdirSync(path.dirname(p), {recursive: true});
         fs.writeFileSync(p, text);
     }
+    const seeded = seedLockedSources(dir, codalJson);
+    for (const source of seeded) console.log(`[bases] ${variant}: preseeded ${source.path}@${source.commit}`);
     console.log(`[bases] ${variant}: sha ${sha} — ${repo}@${tag}, target ${codalJson.target.name}@${codalJson.target.branch}`);
     // BUILD_ENV: flags the image bytes must NOT depend on (see its comment), plus
     // the build directory mapped away: STM32Cube's assert_param() compiles
