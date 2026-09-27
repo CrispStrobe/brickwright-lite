@@ -37,8 +37,9 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   future-version pass-through. A browser gate checks layer visibility and
   persistence across SB3 save/reopen, lasso and wand selection, plus mouse,
   keyboard, trackpad and touch interactions. The GUI build is the integration
-  gate. Scratch Paint's regular bitmap mode still has its own rectangular
-  selection; lasso and wand currently belong to the palette pixel editor.
+  gate. Scratch Paint's regular bitmap mode now also offers rectangle, lasso,
+  and connected-colour wand selection. Its lifted selection keeps transparent
+  pixels outside the mask untouched, and the wand has an adjustable tolerance.
 
 ## Next delivery slices
 
@@ -62,7 +63,7 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
 4. **Raster core.** Render ordered raster layers with transparency and opacity;
-   add marquee/lasso selections, move/transform/crop, brush size/opacity and
+   expand the new lasso and wand selectors into layer-aware selection, move/transform/crop, brush size/opacity and
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
