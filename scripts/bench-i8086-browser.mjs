@@ -154,6 +154,14 @@ try {
             .filter(node => node.getClientRects().length > 0)
             .every(node => !(node.textContent || '').trim()),
         null, {timeout: assemblySetupTimeoutMs});
+        // CodeMirror changes immediately; React's controlled DEVICE picker is
+        // the acknowledgement that the importer state has committed the same
+        // empty document. Without this boundary, selectOption can race the
+        // old GPIO starter still held in state and legitimately invoke the
+        // retarget compiler even though the editor already looks blank.
+        await page.waitForFunction(() =>
+            document.querySelector('[data-testid="bw-device-select"]')?.value === '',
+        null, {timeout: assemblySetupTimeoutMs});
         await page.waitForLoadState('networkidle', {timeout: 20000}).catch(() => {});
         await mark('dos-load-start');
         await device.selectOption('i8086');
