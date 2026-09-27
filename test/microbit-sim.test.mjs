@@ -29,6 +29,17 @@ test('pseudocode-importer has micropython buffer and tab', () => {
     assert.ok(src.includes('generateMicroPython'), 'generateMicroPython call not found');
     assert.ok(src.includes('flashMicrobitSim'), 'flashMicrobitSim method not found');
     assert.ok(src.includes('bw-microbit-flash'), 'bw-microbit-flash event not found');
+    assert.match(src, /\['microbit', 'calliopemini'\]\.includes\(this\.currentDevice\(\)\)/,
+        'Calliope retarget hides the generated MicroPython tab');
+    assert.match(src, /this\.currentDevice\(\) === 'calliopemini' \? '🤖 Calliope'/,
+        'Calliope generated-code tab keeps the micro:bit identity');
+    const setDevice = src.slice(src.indexOf('async setDevice (deviceId)'), src.indexOf('async deployToPico'));
+    assert.match(setDevice, /pseudocode: result\.pseudocode, micropython: ''/,
+        'retargeting can reuse stale MicroPython from the previous device/source');
+    assert.match(setDevice, /await new Promise\(resolve => this\.setState[\s\S]{0,900}await this\.compile\(\)/,
+        'pinless micro:bit examples are not rebuilt when retargeted to Calliope');
+    assert.match(setDevice, /deriveBuffer\(nextSource, 'pseudocode', 'micropython'\)/,
+        'pinless Calliope retarget does not derive generated code from the rewritten source');
 });
 
 test('global Run and simulator Play both request the current MicroPython program', () => {

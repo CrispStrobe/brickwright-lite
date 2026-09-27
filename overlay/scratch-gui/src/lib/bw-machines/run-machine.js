@@ -62,6 +62,11 @@ export async function runMachineConfig(config, opts = {}) {
     };
     if (typeof bm.romAt === 'number') detail.romAt = bm.romAt;
     if (bm.geometry) detail.geometry = {...bm.geometry};
+    // A Linux kernel boots WITH its initramfs: both were fetched and
+    // sha256-checked by activateConfig; the kernel is `bytes`, this is the rest.
+    if (activated.media && activated.media.initrd && activated.media.initrd.bytes) {
+        detail.linuxInitrd = activated.media.initrd.bytes;
+    }
     // An inline machineConfig ({regions,chips}) — the Eater 6502 case — carries
     // the program's hardware as `chips`; a string preset (PCXT8086) is built by
     // the boot path itself and needs nothing here.

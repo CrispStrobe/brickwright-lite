@@ -16,7 +16,7 @@
  * ways a file can arrive — a stray `static/` commit, a plugin, or a future copy
  * rule would all be invisible to a source-level assertion.
  */
-import {existsSync, readdirSync, readFileSync, statSync} from 'node:fs';
+import {existsSync, readdirSync, readFileSync, statSync, openSync, readSync, closeSync} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
 import {contentOffences} from './lib/lgpl-sparse-tripwire.mjs';
 
@@ -38,6 +38,33 @@ const FORBIDDEN_FILES = new Map([
     ['cc1.wasm', 'the SDCC C front end']
 ]);
 
+/**
+ * GPL BOOT MEDIA, recognised by CONTENT, not by name: the Linux-on-RISC-V
+ * lesson's kernel and initramfs (GPL-2.0 / LGPL-2.1) are fetched at run time
+ * from brickwright-media-lab (lib/bw-machines/lessons.js) and must never be
+ * copied into this output under any filename. A RISC-V Linux `Image` carries
+ * the magic "RSC\x05" at byte 0x38 (Documentation/riscv/boot-image-header);
+ * a newc initramfs starts "070701" (or "070702" with checksums).
+ */
+const bootMediaOffence = head => {
+    if (head.length >= 0x3c && head[0x38] === 0x52 && head[0x39] === 0x53 && head[0x3a] === 0x43 &&
+        head[0x3b] === 0x05) {
+        return 'a RISC-V Linux kernel Image (GPL-2.0) — fetched at run time from brickwright-media-lab, never bundled';
+    }
+    if (head.length >= 6 && /^07070[12]$/.test(String.fromCharCode(...head.subarray(0, 6)))) {
+        return 'a cpio archive (an initramfs: BusyBox GPL-2.0, glibc LGPL-2.1) — fetched at run time, never bundled';
+    }
+    return null;
+};
+const headOf = file => {
+    const fd = openSync(file, 'r');
+    try {
+        const buf = new Uint8Array(64);
+        const n = readSync(fd, buf, 0, 64, 0);
+        return buf.subarray(0, n);
+    } finally { closeSync(fd); }
+};
+
 const offences = [];
 const walk = dir => {
     for (const entry of readdirSync(dir, {withFileTypes: true})) {
@@ -54,6 +81,8 @@ const walk = dir => {
             offences.push(`${relative(build, full)} — ${FORBIDDEN_FILES.get(entry.name)}`);
         } else if (/blinkenrocket.*\.(?:hex|elf|eep|bin)$/i.test(entry.name)) {
             offences.push(`${relative(build, full)} — Blinkenrocket firmware images are GPL-3.0 and must remain external/user-supplied`);
+        } else if (bootMediaOffence(headOf(full))) {
+            offences.push(`${relative(build, full)} — ${bootMediaOffence(headOf(full))}`);
         } else if (/\.(m?js|cjs)$/.test(entry.name)) {
             // The LGPL sparse-solver family (KLU/CSparse, mathjs's sparse
             // module) arrives as JavaScript, so it is looked for in the bundles.

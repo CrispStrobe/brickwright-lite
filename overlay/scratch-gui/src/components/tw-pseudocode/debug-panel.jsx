@@ -318,6 +318,10 @@ class DebugPanel extends React.Component {
         // `bytes`. Read on their own line so the fixed field-list gate above
         // (i8086-chips-wiring) still sees the canonical destructure unchanged.
         const {riscvImage, riscvEcallTraps} = e.detail || {};
+        // A Linux kernel boots WITH its initramfs (the Machine Manager's
+        // `kernel` + `initrd` slots, both sha256-checked by activateConfig).
+        // Its own line, for the same fixed-field-list reason as above.
+        const {linuxInitrd} = e.detail || {};
         if (!bytes && !riscvImage) return;
         this._teardownRunner();
         this._bootMedia = {
@@ -325,6 +329,8 @@ class DebugPanel extends React.Component {
             bytes: bytes ? (bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)) : null,
             riscvImage: riscvImage || null,
             riscvEcallTraps: riscvEcallTraps || false,
+            linuxInitrd: linuxInitrd
+                ? (linuxInitrd instanceof Uint8Array ? linuxInitrd : new Uint8Array(linuxInitrd)) : null,
             profile: profile || null,
             name: name || null,
             // HARDWARE THE PROGRAM ASKED FOR, and it has to be listed here

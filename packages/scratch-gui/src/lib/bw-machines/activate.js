@@ -26,7 +26,8 @@ const TARGET_KIND = Object.freeze({
     i8086: 'i8086', i8088: 'i8086', i80186: 'i8086', i80286: 'i8086',
     i80386: 'i80386',
     z80: 'z80', zx48: 'z80', zx128: 'z80',
-    eater6502: 'eater6502', gpascal: 'eater6502'
+    eater6502: 'eater6502', gpascal: 'eater6502',
+    riscv32: 'riscv32'
 });
 
 /** Boot slot → the debug-runner `bootMedia.profile` that selects its branch.
@@ -37,7 +38,10 @@ const SLOT_PROFILE = Object.freeze({
     // A 'cpmsys' slot boots the REAL CP/M 2.2 (CCP+BDOS on our BIOS, an A>
     // prompt) on the Z80 machine — see debug-runner's attachZ80 cpmSystem
     // branch. The slot's file (if any) is placed on drive A: beside BBC BASIC.
-    cpmsys: 'cpm-system'
+    cpmsys: 'cpm-system',
+    // A 'kernel' slot boots Linux on the RV32 machine (debug-runner's
+    // attachRiscV32Linux); its `initrd` slot rides along as extra media.
+    kernel: 'linux'
 });
 
 const isObj = v => v != null && typeof v === 'object' && !Array.isArray(v);
@@ -74,14 +78,25 @@ export async function defaultImageFetcher(ref) {
 /** Resolve one slot ref through the fetcher and (if a sha was fetched AND the
  *  ref declares one) verify it — a stub fetcher that returns no sha is trusted,
  *  which is what tests want. */
-async function resolveSlot(ref, fetcher) {
-    const resolved = await fetcher(ref);
+async function resolveSlot(ref, fetcher, slotId) {
+    let resolved;
+    try {
+        resolved = await fetcher(ref);
+    } catch (e) {
+        // NAME THE SLOT. A sha256 refusal that says only a URL leaves the
+        // learner to work out which of a machine's images was wrong; the slot
+        // id ('kernel', 'initrd', 'bios') is the word the manifest uses.
+        if (slotId && e && typeof e.message === 'string' && !e.message.startsWith(`${slotId}: `)) {
+            e.message = `${slotId}: ${e.message}`;
+        }
+        throw e;
+    }
     if (!resolved || !(resolved.bytes instanceof Uint8Array)) {
         throw new Error(`fetcher for ${ref.url} returned no bytes`);
     }
     if (isStr(ref.sha256) && isStr(resolved.sha256) &&
         ref.sha256.toLowerCase() !== resolved.sha256.toLowerCase()) {
-        throw new Error(`sha256 mismatch for ${ref.url}`);
+        throw new Error(`${slotId ? `${slotId}: ` : ''}sha256 mismatch for ${ref.url}`);
     }
     return resolved;
 }
@@ -131,7 +146,7 @@ export async function activateConfig(config, opts = {}) {
     if (!bootSlotId) throw new Error('functional config has no boot slot to activate');
     const bootRef = cfg.slots[bootSlotId];
 
-    const resolved = await resolveSlot(bootRef, fetcher);
+    const resolved = await resolveSlot(bootRef, fetcher, bootSlotId);
     const bootMedia = {
         slot: bootSlotId,
         bytes: resolved.bytes,
@@ -159,9 +174,11 @@ export async function activateConfig(config, opts = {}) {
     // boot path supplies its own XT BIOS and needs none of these.
     const media = {};
     const warnings = [];
-    for (const extraSlot of ['bios', 'vga-rom']) {
+    // A Linux kernel's initramfs is the same kind of companion: a `kernel`
+    // boot needs its `initrd` before the first instruction runs.
+    for (const extraSlot of ['bios', 'vga-rom', 'initrd']) {
         if (extraSlot !== bootSlotId && cfg.slots[extraSlot]) {
-            media[extraSlot] = await resolveSlot(cfg.slots[extraSlot], fetcher);
+            media[extraSlot] = await resolveSlot(cfg.slots[extraSlot], fetcher, extraSlot);
         }
     }
 

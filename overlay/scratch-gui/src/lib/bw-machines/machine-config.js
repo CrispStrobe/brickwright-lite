@@ -19,7 +19,10 @@ export const EXECUTION_MODES = Object.freeze(['functional', 'wired', 'auto']);
  *  data list, not a hardcoded switch, so a new kind is one entry. */
 export const MACHINE_KINDS = Object.freeze([
     'i8086', 'i8088', 'i80186', 'i80286', 'i80386',
-    'z80', 'zx48', 'zx128', 'eater6502', 'gpascal'
+    'z80', 'zx48', 'zx128', 'eater6502', 'gpascal',
+    // The RV32 machine. Its media-lab bundle is a Linux kernel (`kernel` slot)
+    // plus an initramfs (`initrd` slot) — debug-runner's attachRiscV32Linux.
+    'riscv32'
 ]);
 
 /** The x86 family. A functional x86 machine boots a BIOS; the others do not,
@@ -31,13 +34,14 @@ const X86_KINDS = Object.freeze(['i8086', 'i8088', 'i80186', 'i80286', 'i80386']
  *  variant strings match run-dos.mjs / the i8086 machine presets. */
 const DEFAULT_VARIANT = Object.freeze({
     i8086: '8086', i8088: '8088', i80186: '80186', i80286: '80286', i80386: '80386',
-    z80: 'z80', zx48: 'z80', zx128: 'z80', eater6502: '6502', gpascal: '6502'
+    z80: 'z80', zx48: 'z80', zx128: 'z80', eater6502: '6502', gpascal: '6502',
+    riscv32: 'rv32imac'
 });
 
 /** Preferred boot order when a config does not state one — a floppy is tried
  *  before a hard disk before a program before a bare ROM (matches the ELKS
  *  manifest's `["floppy","hdd"]`). Only slots that are actually present survive. */
-const BOOT_PRIORITY = Object.freeze(['floppy', 'hdd', 'com', 'exe', 'disk', 'rom', 'rom0']);
+const BOOT_PRIORITY = Object.freeze(['floppy', 'hdd', 'com', 'exe', 'disk', 'rom', 'rom0', 'kernel']);
 
 const isObj = v => v != null && typeof v === 'object' && !Array.isArray(v);
 const isStr = v => typeof v === 'string' && v.length > 0;
