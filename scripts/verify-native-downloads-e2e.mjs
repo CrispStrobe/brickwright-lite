@@ -16,15 +16,20 @@ const driverBin = [path.join(cargoBin, 'tauri-driver'), '/usr/local/bin/tauri-dr
 if (!driverBin) throw new Error('tauri-driver is not installed');
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-const call = async (method, route, body) => {
-    const response = await fetch(base + route, {
-        method,
-        headers: {'content-type': 'application/json'},
-        body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(125000)
-    });
-    const text = await response.text();
-    return {status: response.status, body: text ? JSON.parse(text) : null};
+const mark = stage => console.log(`[native-downloads] ${stage}`);
+const call = async (method, route, body, timeout = 10000) => {
+    try {
+        const response = await fetch(base + route, {
+            method,
+            headers: {'content-type': 'application/json'},
+            body: body === undefined ? undefined : JSON.stringify(body),
+            signal: AbortSignal.timeout(timeout)
+        });
+        const text = await response.text();
+        return {status: response.status, body: text ? JSON.parse(text) : null};
+    } catch (error) {
+        throw new Error(`${method} ${route} failed after at most ${timeout}ms: ${error.message}`, {cause: error});
+    }
 };
 
 const logs = [];
@@ -34,7 +39,7 @@ driver.stdout.on('data', chunk => logs.push(String(chunk)));
 driver.stderr.on('data', chunk => logs.push(String(chunk)));
 let session;
 const finish = async () => {
-    if (session) await call('DELETE', `/session/${session}`).catch(() => {});
+    if (session) await call('DELETE', `/session/${session}`, undefined, 5000).catch(() => {});
     driver.kill('SIGTERM');
 };
 const fail = async message => {
@@ -43,20 +48,24 @@ const fail = async message => {
 };
 
 try {
+    mark(`waiting for tauri-driver on ${base}`);
     let ready = false;
     for (let attempt = 0; attempt < 60 && !ready; attempt++) {
-        try { await call('GET', '/status'); ready = true; } catch { await sleep(500); }
+        try { await call('GET', '/status', undefined, 2000); ready = true; } catch { await sleep(500); }
         if (driver.exitCode !== null) await fail(`tauri-driver exited ${driver.exitCode}`);
     }
     if (!ready) await fail('tauri-driver did not become ready');
+    mark('creating Tauri WebDriver session');
     const created = await call('POST', '/session', {
         capabilities: {alwaysMatch: {'tauri:options': {application: path.resolve(binary)}}}
-    });
+    }, 60000);
     session = created.body?.value?.sessionId;
     if (!session) await fail(`no WebDriver session: ${JSON.stringify(created.body)}`);
+    mark(`session ${session} created; setting script timeout`);
     const timeouts = await call('POST', `/session/${session}/timeouts`, {script: 120000});
     if (timeouts.status >= 400) await fail(`could not set WebDriver script timeout: ${JSON.stringify(timeouts.body)}`);
 
+    mark('discovering the editor WebView');
     let editor;
     for (let attempt = 0; attempt < 120 && !editor; attempt++) {
         const handles = (await call('GET', `/session/${session}/window/handles`)).body?.value || [];
@@ -76,6 +85,7 @@ try {
         if (!editor) await sleep(500);
     }
     if (!editor) await fail('the real editor WebView never exposed its VM');
+    mark(`editor ready at ${editor.href}; starting remote download probe`);
     await call('POST', `/session/${session}/window`, {handle: editor.handle});
 
     const result = await call('POST', `/session/${session}/execute/async`, {
@@ -160,7 +170,8 @@ try {
                 fatal: stage + ': ' + String(error && error.stack || error)
             }));`,
         args: []
-    });
+    }, 125000);
+    mark('remote download probe returned');
     const proof = result.body?.value;
     if (!proof || proof.fatal) await fail(proof?.fatal || 'native download probe returned no result');
     const expected = {

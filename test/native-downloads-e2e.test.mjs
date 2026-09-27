@@ -27,7 +27,11 @@ test('native proof exercises extension, toolchain and pinned machine media', () 
 });
 
 test('native proof is bounded and reports the stage that stalled', () => {
-    assert.match(proof, /AbortSignal\.timeout\(125000\)/);
+    assert.match(proof, /AbortSignal\.timeout\(timeout\)/);
+    assert.match(proof, /creating Tauri WebDriver session/);
+    assert.match(proof, /discovering the editor WebView/);
+    assert.match(proof, /starting remote download probe/);
+    assert.match(proof, /DELETE[\s\S]*5000/);
     assert.match(proof, /\{script: 120000\}/);
     assert.match(proof, /native download probe timed out during/);
     assert.match(proof, /extension manager load/);
