@@ -804,7 +804,33 @@ const InnerBuilder = ({onUseVerilog, seed, locale}) => {
                     >
                         <Background />
                         <Controls />
-                        <MiniMap pannable zoomable />
+                        {/* STYLED, because unstyled it reads as damage. React Flow's
+                            MiniMap defaults to a white panel with faint grey squares;
+                            against this canvas it photographed as a blank rectangle in
+                            the corner — visible in the App Store capture of run
+                            36295089997. Give it the canvas's own colours and the nodes
+                            a colour that matches their role, and it reads as a map. */}
+                        <MiniMap
+                            pannable
+                            zoomable
+                            style={{
+                                background: 'rgba(241,245,249,0.92)',
+                                border: '1px solid rgba(71,85,105,0.25)',
+                                borderRadius: 6
+                            }}
+                            maskColor="rgba(148,163,184,0.25)"
+                            nodeColor={n => {
+                                // data.kind, not data.dir: an io node carries
+                                // {kind: 'in'|'out', name, width} (see the drop
+                                // handler). The colours are the node's own —
+                                // sky for an input, amber for an output.
+                                const kind = n.data && n.data.kind;
+                                if (kind === 'out') return '#fde68a';
+                                if (kind === 'in') return '#bae6fd';
+                                return '#e2e8f0';
+                            }}
+                            nodeStrokeColor="#475569"
+                            nodeStrokeWidth={2} />
                     </ReactFlow>
                 </div>
                 {inspectNode ? (
