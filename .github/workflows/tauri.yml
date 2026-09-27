@@ -212,7 +212,7 @@ jobs:
       - name: Drive remote downloads through the real native WebView
         run: |
           set -o pipefail
-          timeout --signal=TERM --kill-after=15s 240s \
+          timeout --signal=TERM --kill-after=15s 360s \
             xvfb-run -a dbus-run-session -- node scripts/verify-native-downloads-e2e.mjs \
             apps/tauri/src-tauri/target/debug/brickwright-tauri \
             2>&1 | tee e2e-evidence/native-downloads.log

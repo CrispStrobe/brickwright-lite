@@ -82,7 +82,10 @@ try {
 
     mark('discovering the editor WebView');
     let editor;
-    for (let attempt = 0; attempt < 120 && !editor; attempt++) {
+    // Headless Linux waits up to 25 seconds for org.bluez before the app degrades cleanly to
+    // "BLE unavailable". Give the production webpack application a full two minutes after that
+    // session launch to expose the VM; this is a startup bound, not a fixed sleep.
+    for (let attempt = 0; attempt < 240 && !editor; attempt++) {
         const handles = (await call('GET', `/session/${session}/window/handles`)).body?.value || [];
         for (const handle of handles) {
             await call('POST', `/session/${session}/window`, {handle});
