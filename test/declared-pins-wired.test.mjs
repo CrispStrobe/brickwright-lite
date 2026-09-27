@@ -52,7 +52,7 @@ const EXAMPLES = path.join(root, 'overlay/scratch-gui/examples');
  *  reaches PB0-PB7 through a W65C22 VIA, and keying on MCU kinds alone
  *  reported eight false unwired pins on a correctly wired bench. */
 const PAD_PROVIDERS = new Set(['mcu', 'stc_mcu', 'stc15_mcu', 'arduino_uno', 'arduino_nano',
-    'arduino_mega', 'pi_pico', 'attiny85', 'attiny88', 'w65c22', 'microbit']);
+    'arduino_mega', 'pi_pico', 'attiny85', 'attiny88', 'attiny88_qfn32', 'w65c22', 'microbit']);
 
 /** A core may ADDRESS a pad under a name the board does not use for the
  *  terminal. The w65c22 case above needed only the part, because there the
@@ -341,7 +341,7 @@ test('INSTRUMENT: the corpus walk actually derived something', t => {
     // rather than trusting either bootstrap step to have run.
     const MULTI_PIN = new Set(['keypad_4x4', 'ssd1306', 'char_lcd_i2c', 'hd44780', 'max7219',
         'seven_segment', 'mcu', 'stc_mcu', 'stc15_mcu', 'arduino_uno', 'arduino_nano',
-        'arduino_mega', 'pi_pico', 'w65c22', 'attiny88']);
+        'arduino_mega', 'pi_pico', 'w65c22', 'attiny88', 'attiny88_qfn32']);
     const degraded = [];
     for (const r of ROWS) {
         for (const p of (r.parts || [])) {
