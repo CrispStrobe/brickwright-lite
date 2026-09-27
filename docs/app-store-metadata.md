@@ -1314,7 +1314,10 @@ The normal web, macOS, Windows, Linux, Android and iOS bundles are built with
 self-contained artifact, build the same source with `BW_REMOTE_CODE_POLICY=deny`;
 that compile-time profile removes the remote extension choices and refuses remote
 toolchain and executable machine-image downloads. It is not inferred from Tauri or
-selected at runtime.
+selected at runtime. A channel may instead set `BW_REMOTE_EXTENSIONS_POLICY`,
+`BW_REMOTE_TOOLCHAINS_POLICY`, or `BW_REMOTE_MACHINE_IMAGES_POLICY` to `deny` and
+restrict only that capability; each defaults to the umbrella policy. The compiled
+three-value policy is visible in About and in `brickwright-build.json`.
 
 ## Listing fields
 

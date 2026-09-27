@@ -43,6 +43,17 @@ human coordination and qualification process.
   Instruction-level emulation, debugger run/pause/step/reset, register and
   memory inspection.
 
+ATtiny88 (including the QFN-32 Blinkenrocket board) deliberately uses the
+permissively licensed avr8js path, extended in `bw-board` with the ATtiny88
+memory map, ports, timers, EEPROM and analog comparator. That target supplies
+instruction/block/over/out stepping, code/yield/write breakpoints, writable
+SRAM, symbols and instruction/memory/device events. LabWired's native AVR core
+is fast (the `bw-board` receipt records a 21.43x median on its AVR loop), but
+the shipped LabWired WASM bridge currently has no AVR board descriptor and its
+debug surface is narrower: instruction step, code breakpoints and read-only
+memory. It remains the right heavy tier for STM32/RISC-V/Xtensa, not a better
+ATtiny88 backend today.
+
 ### Block and code editor
 
 - **Scratch-based block editor** with a "Code" tab for Brickwright Code,
@@ -51,7 +62,8 @@ human coordination and qualification process.
 - 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
   surface) plus 150 reviewed gallery extensions. Web and native builds allow
   the gallery by default; a deliberately self-contained artifact can be built
-  with `BW_REMOTE_CODE_POLICY=deny`.
+  with `BW_REMOTE_CODE_POLICY=deny`, or only URL extensions can be removed with
+  `BW_REMOTE_EXTENSIONS_POLICY=deny`.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
 
@@ -291,7 +303,10 @@ distributed GPL tools or media, with their licence and corresponding source
 shown at the point of download. These user-initiated downloads remain separate
 from the BSD-3 application. A review-specific, self-contained build can disable
 remote toolchains, machine images and extension JavaScript at compile time with
-`BW_REMOTE_CODE_POLICY=deny`; the normal build policy is `allow`.
+`BW_REMOTE_CODE_POLICY=deny`; the normal build policy is `allow`. The narrower
+`BW_REMOTE_EXTENSIONS_POLICY`, `BW_REMOTE_TOOLCHAINS_POLICY`, and
+`BW_REMOTE_MACHINE_IMAGES_POLICY` variables independently override the umbrella,
+so review-channel restrictions do not unnecessarily disable unrelated features.
 
 ### The bundled extensions
 

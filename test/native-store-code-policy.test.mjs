@@ -4,7 +4,8 @@ import {readFileSync} from 'node:fs';
 import path from 'node:path';
 
 import {
-    remoteCodeAllowed, remoteCodeRestricted, remoteCodePolicy
+    remoteCodeAllowed, remoteCodeRestricted, remoteCodePolicy,
+    remoteExtensionsAllowed, remoteToolchainsAllowed, remoteMachineImagesAllowed
 } from '../overlay/scratch-gui/src/lib/distribution-policy.js';
 import {
     localToolchainEnabled, primeToolchainCache
@@ -83,6 +84,27 @@ test('deny profile wins over opt-ins and refuses before network access', async (
     });
 });
 
+test('narrow build policies do not disable unrelated download capabilities', async () => {
+    const names = ['BW_REMOTE_EXTENSIONS_POLICY', 'BW_REMOTE_TOOLCHAINS_POLICY',
+        'BW_REMOTE_MACHINE_IMAGES_POLICY'];
+    const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+    process.env.BW_REMOTE_EXTENSIONS_POLICY = 'deny';
+    process.env.BW_REMOTE_TOOLCHAINS_POLICY = 'allow';
+    process.env.BW_REMOTE_MACHINE_IMAGES_POLICY = 'allow';
+    try {
+        assert.equal(remoteExtensionsAllowed(), false);
+        assert.equal(remoteToolchainsAllowed(), true);
+        assert.equal(remoteMachineImagesAllowed(), true);
+        assert.equal(remoteCodeRestricted(), true, 'the compatibility aggregate is conservative');
+        assert.ok(lessonMachines('en').length > 0);
+    } finally {
+        for (const name of names) {
+            if (previous[name] === undefined) delete process.env[name];
+            else process.env[name] = previous[name];
+        }
+    }
+});
+
 test('extension restrictions use the build policy, never the runtime platform', () => {
     const picker = readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/containers/extension-library.jsx'), 'utf8');
     const deepLink = readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/url-extensions.js'), 'utf8');
@@ -90,12 +112,14 @@ test('extension restrictions use the build policy, never the runtime platform', 
         path.join(ROOT, 'overlay/scratch-vm/src/extension-support/extension-manager.js'), 'utf8');
     const webpack = readFileSync(path.join(ROOT, 'overlay/scratch-gui/webpack.config.js'), 'utf8');
 
-    assert.match(picker, /if \(remoteCodeAllowed\(\)\) \{[\s\S]*fetchGallery\(\)/);
-    assert.match(picker, /remoteCodeAllowed\(\) \? \[customEntry\] : \[\]/);
-    assert.match(deepLink, /if \(remoteCodeRestricted\(\)\) return/);
-    assert.match(manager, /process\.env\.BW_REMOTE_CODE_POLICY === 'deny'/);
+    assert.match(picker, /if \(remoteExtensionsAllowed\(\)\) \{[\s\S]*fetchGallery\(\)/);
+    assert.match(picker, /remoteExtensionsAllowed\(\) \? \[customEntry\] : \[\]/);
+    assert.match(deepLink, /if \(!remoteExtensionsAllowed\(\)\) return/);
+    assert.match(manager, /process\.env\.BW_REMOTE_EXTENSIONS_POLICY === 'deny'/);
     assert.doesNotMatch(manager, /window\.__TAURI__/);
-    assert.match(webpack, /'process\.env\.BW_REMOTE_CODE_POLICY': JSON\.stringify\(remoteCodePolicy\)/);
+    assert.match(webpack, /'process\.env\.BW_REMOTE_EXTENSIONS_POLICY'/);
+    assert.match(webpack, /'process\.env\.BW_REMOTE_TOOLCHAINS_POLICY'/);
+    assert.match(webpack, /'process\.env\.BW_REMOTE_MACHINE_IMAGES_POLICY'/);
     assert.match(webpack, /\['allow', 'deny'\]\.includes\(remoteCodePolicy\)/);
 });
 

@@ -17,7 +17,7 @@
 import {
     normalizeMachineConfig, validateMachineConfig
 } from './machine-config.js';
-import {remoteCodeRestricted} from '../distribution-policy.js';
+import {remoteMachineImagesAllowed} from '../distribution-policy.js';
 
 /** Machine kind → debug-runner `targetKind`. Same grouping as debug-runner's
  *  `selectDebugTargetKind` (i8086 covers the whole 8086/286 tier; the 386 is
@@ -66,7 +66,7 @@ async function sha256Hex(bytes) {
  */
 export async function defaultImageFetcher(ref) {
     if (!isStr(ref.url)) throw new Error('image reference has no url');
-    if (remoteCodeRestricted() && /^https?:/i.test(ref.url)) {
+    if (!remoteMachineImagesAllowed() && /^https?:/i.test(ref.url)) {
         throw new Error('this restricted build does not download executable machine images; import a local image instead');
     }
     const res = await globalThis.fetch(ref.url);

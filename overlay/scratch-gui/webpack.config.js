@@ -6,9 +6,19 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const reactProfiling = process.env.BW_REACT_PROFILE === '1';
 const remoteCodePolicy = process.env.BW_REMOTE_CODE_POLICY || 'allow';
+const distributionPolicy = {
+    remoteExtensions: process.env.BW_REMOTE_EXTENSIONS_POLICY || remoteCodePolicy,
+    executableToolchains: process.env.BW_REMOTE_TOOLCHAINS_POLICY || remoteCodePolicy,
+    machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY || remoteCodePolicy
+};
 
 if (!['allow', 'deny'].includes(remoteCodePolicy)) {
     throw new Error(`BW_REMOTE_CODE_POLICY must be "allow" or "deny", got ${JSON.stringify(remoteCodePolicy)}`);
+}
+for (const [name, value] of Object.entries(distributionPolicy)) {
+    if (!['allow', 'deny'].includes(value)) {
+        throw new Error(`${name} policy must be "allow" or "deny", got ${JSON.stringify(value)}`);
+    }
 }
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
@@ -50,12 +60,26 @@ const buildVersion = () => {
 const buildCommit = buildVersion();
 const buildTime = new Date().toISOString();
 const buildManifest = `${JSON.stringify({
-    schema: 1,
+    schema: 2,
     product: 'Brickwright',
     commit: buildCommit,
     builtAt: buildTime,
-    distributionPolicy: {remoteCode: remoteCodePolicy}
+    distributionPolicy
 }, null, 2)}\n`;
+
+/** Emit generated build identity without pretending in-memory bytes are a CopyPlugin path. */
+class BuildManifestPlugin {
+    apply (compiler) {
+        compiler.hooks.thisCompilation.tap('BrickwrightBuildManifest', compilation => {
+            compilation.hooks.processAssets.tap({
+                name: 'BrickwrightBuildManifest',
+                stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL
+            }, () => {
+                compilation.emitAsset('brickwright-build.json', new webpack.sources.RawSource(buildManifest));
+            });
+        });
+    }
+}
 
 // const STATIC_PATH = process.env.STATIC_PATH || '/static';
 
@@ -133,6 +157,9 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // property of the runtime. Use `BW_REMOTE_CODE_POLICY=deny` only for a deliberately
         // self-contained artifact; the normal web and native profile is `allow`.
         'process.env.BW_REMOTE_CODE_POLICY': JSON.stringify(remoteCodePolicy),
+        'process.env.BW_REMOTE_EXTENSIONS_POLICY': JSON.stringify(distributionPolicy.remoteExtensions),
+        'process.env.BW_REMOTE_TOOLCHAINS_POLICY': JSON.stringify(distributionPolicy.executableToolchains),
+        'process.env.BW_REMOTE_MACHINE_IMAGES_POLICY': JSON.stringify(distributionPolicy.machineImages),
         // Where hosted synthesis lives, when it exists. Null means "not configured",
         // which the backend probe reports as a REASON rather than an empty picker.
         'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),
@@ -151,12 +178,9 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         'process.env.GTM_ENV_AUTH': `"${process.env.GTM_ENV_AUTH || ''}"`,
         'process.env.GTM_ID': process.env.GTM_ID ? `"${process.env.GTM_ID}"` : null
     }))
+    .addPlugin(new BuildManifestPlugin())
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
-            {
-                from: Buffer.from(buildManifest),
-                to: 'brickwright-build.json'
-            },
             {
                 from: 'node_modules/scratch-blocks/media',
                 to: 'static/blocks-media/default'

@@ -103,7 +103,9 @@ try {
                 const kernel = await kernelResponse.arrayBuffer();
                 done({
                     manifestStatus: manifestResponse.status,
-                    policy: manifest?.distributionPolicy?.remoteCode,
+                    remoteExtensionsPolicy: manifest?.distributionPolicy?.remoteExtensions,
+                    executableToolchainsPolicy: manifest?.distributionPolicy?.executableToolchains,
+                    machineImagesPolicy: manifest?.distributionPolicy?.machineImages,
                     galleryStatus: galleryResponse.status,
                     galleryEntries: gallery?.extensions?.length || 0,
                     extensionStatus: extensionResponse.status,
@@ -124,7 +126,9 @@ try {
     if (!proof || proof.fatal) await fail(proof?.fatal || 'native download probe returned no result');
     const expected = {
         manifestStatus: 200,
-        policy: 'allow',
+        remoteExtensionsPolicy: 'allow',
+        executableToolchainsPolicy: 'allow',
+        machineImagesPolicy: 'allow',
         galleryStatus: 200,
         extensionStatus: 200,
         toolchainStatus: 200,
