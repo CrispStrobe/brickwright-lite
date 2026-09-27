@@ -456,6 +456,18 @@ class Parser {
     parseFor () {
         this.expect('for');
         this.expect('punct', '(');
+        // `for (let x of list)`. It was read as a counted for: `let x`, then
+        // `of` as the test — and the body came out as stray statements
+        // (census 2026-09-27: "Identifier statement" in three apps).
+        if ((this.at('let') || this.at('const') || this.at('var')) &&
+            this.peek(1).type === 'ident' && this.peek(2).type === 'ident' && this.peek(2).value === 'of') {
+            this.next();
+            const name = this.next().value;
+            this.next();
+            const iterable = this.parseExpression();
+            this.expect('punct', ')');
+            return {type: 'ForOf', name, iterable, body: this.parseBlockOrStatement()};
+        }
         let init = null;
         if (!this.at('punct', ';')) {
             init = (this.at('let') || this.at('const') || this.at('var')) ?
