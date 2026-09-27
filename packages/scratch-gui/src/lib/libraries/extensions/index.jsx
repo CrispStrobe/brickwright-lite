@@ -324,11 +324,23 @@ export default [
         featured: true
     },
     {
-        name: 'Camera Capture',
+        name: (
+            <FormattedMessage
+                defaultMessage="Camera Capture"
+                description="Name for the Camera Capture extension"
+                id="gui.extension.cameracapture.name"
+            />
+        ),
         extensionId: 'cameracapture',
         iconURL: videoSensingIconURL,
         insetIconURL: videoSensingInsetIconURL,
-        description: 'Take photos for scanners and camera projects.',
+        description: (
+            <FormattedMessage
+                defaultMessage="Take photos for scanners and camera projects."
+                description="Description for the Camera Capture extension"
+                id="gui.extension.cameracapture.description"
+            />
+        ),
         featured: true
     },
     {

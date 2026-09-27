@@ -2,6 +2,29 @@ const ArgumentType = require('../../extension-support/argument-type');
 const BlockType = require('../../extension-support/block-type');
 const TargetType = require('../../extension-support/target-type');
 const Cast = require('../../util/cast');
+const formatMessage = require('format-message');
+
+// Older bundled extensions sometimes use stable English menu values directly
+// as their labels. Preserve those values for saved projects and localize only
+// what the learner sees. This also covers bundles whose own translation table
+// predates a newly added menu item (for example `forward`).
+const GERMAN_MENU_LABELS = {
+    forward: 'vorwärts', backward: 'rückwärts', reverse: 'umkehren',
+    brake: 'bremsen', coast: 'ausrollen', on: 'an', off: 'aus', any: 'beliebig',
+    up: 'oben', down: 'unten', left: 'links', right: 'rechts'
+};
+const localizeLegacyMenus = info => {
+    const locale = String(formatMessage.setup().locale || 'en').toLowerCase();
+    if (!locale.startsWith('de') || !info || !info.menus) return info;
+    for (const menu of Object.values(info.menus)) {
+        if (!menu || !Array.isArray(menu.items)) continue;
+        menu.items = menu.items.map(item => {
+            if (typeof item !== 'string' || !GERMAN_MENU_LABELS[item]) return item;
+            return {text: GERMAN_MENU_LABELS[item], value: item};
+        });
+    }
+    return info;
+};
 
 // Xcratch extensions ship as ES modules (`.mjs`) with top-level `export`
 // statements, but we run source through `new Function` (a function body, where
@@ -54,6 +77,6 @@ module.exports = function makeCrispExtension (source) {
                 }
             }
         }
-        getInfo () { return this._inst.getInfo(); }
+        getInfo () { return localizeLegacyMenus(this._inst.getInfo()); }
     };
 };
