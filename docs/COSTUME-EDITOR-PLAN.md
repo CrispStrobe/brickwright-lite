@@ -24,6 +24,7 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 - Existing costumes acquire a one-layer source document. Vector edits store an
   editable SVG layer. The palette pixel editor stores dimensions, scale and
   individual palette indices; on reopen it reads those pixels from the source.
+  Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
   larger colour targets, a pan tool and two-pointer/pinch navigation. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
@@ -35,8 +36,8 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 1. **Source/render transaction.** Replace the current per-editor callbacks with
    a single operation that updates the source document, renders SVG/PNG,
    updates the Scratch costume, then commits one undo step. Keep a rollback
-   snapshot if rendering or storage fails. Include duplication, deletion,
-   reorder, sprite cloning, project replacement and LMS wrapping. Add a browser
+   snapshot if rendering or storage fails. Cover deletion, reorder, project
+   replacement and LMS wrapping. Add a browser
    test that saves and reopens both source and render.
 2. **Interaction foundation.** Share pointer classification and view transforms
    across vector, bitmap and pixel modes. Mouse: click/select, wheel scroll,

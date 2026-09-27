@@ -119,3 +119,17 @@ test('one ZIP pass carries both Brickwright state and artwork source', async () 
         delete global.localStorage;
     }
 });
+
+test('duplicating a costume retains an independent editable source', async () => {
+    const {costume} = await fixture();
+    const document = {version: 1, pixelScale: 4, layers: [{id: 'pixels', type: 'pixel',
+        name: 'Pixels', visible: true, locked: false, opacity: 1,
+        content: {kind: 'pixels', value: {width: 1, height: 1, pixels: [10]}}}]};
+    artwork.setCostumeDocument(costume, document);
+    const duplicate = {...costume};
+    artwork.copyCostumeDocument(costume, duplicate);
+    assert.deepEqual(artwork.getCostumeDocument(duplicate), document);
+    assert.notStrictEqual(artwork.getCostumeDocument(duplicate), document);
+    artwork.resetCostumeDocument(costume);
+    assert.deepEqual(artwork.getCostumeDocument(duplicate), document);
+});

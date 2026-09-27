@@ -91,6 +91,21 @@ const resetCostumeDocument = costume => {
     if (costume) documents.delete(costume);
 };
 
+/**
+ * Preserve source when Scratch duplicates a costume into a new object.
+ * @param {object} original Original costume
+ * @param {object} copy Newly created costume
+ * @returns {void}
+ */
+const copyCostumeDocument = (original, copy) => {
+    if (!original || !copy) return;
+    const record = documents.get(original);
+    if (!record || (!record.pendingRender && record.renderedMd5ext !== assetName(original))) return;
+    documents.set(copy, {renderedMd5ext: assetName(copy),
+        pendingRender: record.pendingRender,
+        document: JSON.parse(JSON.stringify(record.document))});
+};
+
 const getCostumeDocument = costume => {
     const record = costume && documents.get(costume);
     if (record && (record.pendingRender || record.renderedMd5ext === assetName(costume))) return record.document;
@@ -224,4 +239,5 @@ const attachArtwork = async (blob, vm) => {
 };
 
 export {ARTWORK_PATH, ARTWORK_FORMAT, ARTWORK_VERSION, inspectArtwork, applyArtwork,
-    attachArtwork, writeArtworkToZip, getCostumeDocument, setCostumeDocument, resetCostumeDocument};
+    attachArtwork, writeArtworkToZip, getCostumeDocument, setCostumeDocument,
+    resetCostumeDocument, copyCostumeDocument};

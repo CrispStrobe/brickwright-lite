@@ -18,6 +18,7 @@ import DragConstants from '../lib/drag-constants';
 import {emptyCostume} from '../lib/empty-assets';
 import sharedMessages from '../lib/shared-messages';
 import downloadBlob from '../lib/download-blob';
+import {copyCostumeDocument} from '../lib/bw-artwork-bundle';
 
 import {
     openCostumeLibrary,
@@ -150,7 +151,12 @@ class CostumeTab extends React.Component {
         });
     }
     handleDuplicateCostume (costumeIndex) {
-        this.props.vm.duplicateCostume(costumeIndex);
+        const vm = this.props.vm;
+        const target = vm.editingTarget;
+        const original = target.sprite.costumes[costumeIndex];
+        return vm.duplicateCostume(costumeIndex).then(() => {
+            copyCostumeDocument(original, target.sprite.costumes[costumeIndex + 1]);
+        });
     }
     handleExportCostume (costumeIndex) {
         const item = this.props.vm.editingTarget.sprite.costumes[costumeIndex];
