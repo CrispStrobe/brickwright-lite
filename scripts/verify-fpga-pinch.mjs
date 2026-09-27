@@ -71,8 +71,33 @@ try {
   const canvas = page.getByTestId('bw-fpga-rf-canvas');
   await canvas.waitFor({ state: 'visible', timeout: 30000 });
   const box = await canvas.boundingBox();
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
+
+  /**
+   * Pinch on EMPTY PANE, not on a node. The canvas opens with a starter
+   * circuit (a AND b -> y) sitting near the middle, so the obvious choice —
+   * the centre — put both fingers on the AND gate, where React Flow reads a
+   * drag rather than a pane zoom. The first run of this gate failed that way
+   * and looked like "the canvas does not pinch".
+   *
+   * So ask the page what is under each candidate and take one that is the
+   * pane itself.
+   */
+  const spot = await page.evaluate(([bx, by, bw, bh]) => {
+    const candidates = [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.8, 0.8], [0.5, 0.15]];
+    for (const [fx, fy] of candidates) {
+      const x = bx + bw * fx, y = by + bh * fy;
+      const el = document.elementFromPoint(x, y);
+      if (el && el.closest('.react-flow__pane') && !el.closest('.react-flow__node')) {
+        return {x, y, on: el.className.toString().slice(0, 40)};
+      }
+    }
+    return null;
+  }, [box.x, box.y, box.width, box.height]);
+  check(!!spot, 'found empty pane to pinch on (not a node)',
+    spot ? `${Math.round(spot.x)},${Math.round(spot.y)} on ${spot.on}` : 'every candidate was a node');
+  if (!spot) throw new Error('no empty pane found');
+  const cx = spot.x;
+  const cy = spot.y;
 
   /** React Flow keeps the world->screen transform on its own viewport node. */
   const zoom = async () => page.evaluate(() => {
