@@ -242,7 +242,7 @@ async function verify () {
 
         // ── 8. Stage-header micro:bit toggle ──
         // The toggle might not be visible if stage header is in fullscreen mode
-        const bodyText = await page.locator('body').innerHTML();
+        const bodyText = await page.locator('body').first().innerHTML();
         if (bodyText.includes('icon--microbit') || bodyText.includes('microbitSim')) {
             pass('Stage-header micro:bit toggle present in DOM');
         } else {
@@ -270,11 +270,57 @@ async function verify () {
         const calliopeTitle = await simFrameElement.getAttribute('title').catch(() => '');
         if (/Calliope mini/i.test(calliopeTitle || '')) pass('Calliope mini has device-correct simulator identity');
         else fail(`Calliope simulator identity missing (title=${JSON.stringify(calliopeTitle)})`);
-        const visibleError = await page.locator('body').innerText();
+        const visibleError = await page.locator('body').first().innerText();
         if (!/matching circuit bench is not available/i.test(visibleError)) {
             pass('Calliope retarget does not demand a circuit bench');
         } else {
             fail('Calliope retarget still demands a circuit bench');
+        }
+
+        // ── 11. The real catalog journey that exposed the remaining gap:
+        // load an authored micro:bit example, retarget it to Calliope, then
+        // reach generated code and run it. A device-only test missed that the
+        // tab visibility predicate named microbit but omitted calliopemini.
+        await deviceSelect.selectOption('microbit');
+        const actions = page.locator('[data-testid="bw-code-actions"]');
+        if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+        const catalogToggle = page.locator('[data-testid="bw-catalog-toggle"]');
+        await catalogToggle.waitFor({state: 'visible', timeout: 15000});
+        await catalogToggle.click();
+        const catalogSearch = page.locator('[data-testid="bw-catalog-search"]');
+        await catalogSearch.fill('Sensor Readout');
+        const sensorExample = page.locator('[data-testid="bw-catalog-item"][title="mb02-sensors"]');
+        await sensorExample.waitFor({state: 'visible', timeout: 15000});
+        // The manifest orders micro:bit first; use its explicit chip so this
+        // proof is independent of the device selected by the preceding case.
+        await sensorExample.locator('[data-testid="bw-catalog-device"]').first().click();
+        await page.waitForFunction(() => Array.from(document.querySelectorAll('.cm-content'))
+            .some(element => /DEVICE MICROBIT/.test(element.textContent || '')));
+        pass('authored Sensor Readout example loaded as micro:bit pseudocode');
+        await deviceSelect.selectOption('calliopemini');
+        await page.waitForFunction(() => Array.from(document.querySelectorAll('.cm-content'))
+            .some(element => /DEVICE CALLIOPEMINI/.test(element.textContent || '')));
+        pass('authored Sensor Readout example retargeted to Calliope pseudocode');
+        const calliopeTab = page.getByRole('button', {name: /Calliope/i}).first();
+        await calliopeTab.waitFor({state: 'visible', timeout: 15000});
+        await page.waitForFunction(element => element && !element.disabled,
+            await calliopeTab.elementHandle(), {timeout: 15000});
+        if (await calliopeTab.count() === 1) {
+            pass('authored micro:bit example retains a device-correct generated-code tab after Calliope retarget');
+        } else {
+            fail('authored micro:bit example lost its generated-code tab after Calliope retarget');
+        }
+        await calliopeTab.click();
+        const globalStop = page.locator('[data-testid="bw-microbit-stop"]').first();
+        if (await globalStop.isEnabled()) await globalStop.click();
+        await page.locator('[class*="green-flag_green-flag"], [aria-label*="Go"], [aria-label*="Start"]')
+            .first().click();
+        await page.waitForFunction(element => element && !element.disabled,
+            await globalStop.elementHandle());
+        if (await globalStop.isEnabled()) {
+            pass('retargeted catalog example runs as Calliope from the global green flag');
+        } else {
+            fail('retargeted catalog example did not run as Calliope from the global green flag');
         }
 
     } catch (err) {
