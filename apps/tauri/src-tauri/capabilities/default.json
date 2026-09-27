@@ -18,6 +18,7 @@
     "allow-start-share-server",
     "allow-stop-share-server",
     "allow-share-server-status",
+    "allow-spike-usb-bridge-run",
     "allow-download-pack",
     "allow-download-pack-zip",
     "allow-pack-present",

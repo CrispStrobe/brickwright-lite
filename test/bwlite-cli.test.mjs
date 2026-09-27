@@ -50,13 +50,19 @@ test('bwlite forwards the existing machine CLI', () => {
     assert.match(result.stderr, /machine-manager/);
 });
 
-test('bwlite builds an 8051 Intel HEX image with installed SDCC', {
-    skip: Boolean(spawnSync('sdcc', ['--version'], {stdio: 'ignore'}).error)
-}, () => {
+test('bwlite builds with SDCC or explains the missing compiler', () => {
+    // This integration check verifies both installed and missing compiler routes.
+    // gate-shapes-allow: deliberately probes the user's installed SDCC.
+    const hasSdcc = !spawnSync('sdcc', ['--version'], {stdio: 'ignore'}).error;
     const dir = mkdtempSync(join(tmpdir(), 'bwlite-cli-'));
     try {
         const ihx = join(dir, 'blink.ihx');
         const result = run('8051', 'build', blink, '--out', ihx);
+        if (!hasSdcc) {
+            assert.notEqual(result.status, 0);
+            assert.match(result.stderr, /SDCC is required for 8051 build/);
+            return;
+        }
         assert.equal(result.status, 0, result.stderr);
         assert.match(readFileSync(ihx, 'utf8'), /^:/);
     } finally {

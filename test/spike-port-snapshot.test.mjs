@@ -53,3 +53,15 @@ test('Widgets follows the shared virtual hub when no physical hub is attached', 
     state.setSimulationEnabled(false);
     assert.equal(snapshotSpikePorts({}, state).mode, 'offline');
 });
+
+test('SPIKE port readings follow the selected UI language', () => {
+    const runtime = {peripheralExtensions: {spikeprime: {
+        isConnected: () => true,
+        portValues: {B: {type: 'force', pressed: true, force: 27}, C: {type: 'color', color: 9}}
+    }}};
+    const snapshot = snapshotSpikePorts(runtime, null, 'de');
+    assert.equal(snapshot.ports[0].label, 'Keine Telemetrie');
+    assert.equal(snapshot.ports[1].label, 'Drucksensor');
+    assert.equal(snapshot.ports[1].detail, 'gedrückt · 27');
+    assert.equal(snapshot.ports[2].detail, 'rot');
+});

@@ -1,9 +1,11 @@
 import React from 'react';
-import snapshotSpikePorts, {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
+import {useSelector} from 'react-redux';
+import snapshotSpikePorts, {isSpikeExtensionLoaded, spikeText} from '../../lib/spike-port-snapshot.js';
 
 const EMPTY = {mode: 'offline', connected: false, ports: []};
 
 const SpikePortMonitor = ({vm}) => {
+    const locale = useSelector(state => state.locales.locale);
     const [snapshot, setSnapshot] = React.useState(EMPTY);
     const [expanded, setExpanded] = React.useState(false);
     const [loaded, setLoaded] = React.useState(() => isSpikeExtensionLoaded(vm));
@@ -14,7 +16,7 @@ const SpikePortMonitor = ({vm}) => {
             const nextLoaded = isSpikeExtensionLoaded(vm);
             setLoaded(previousLoaded => previousLoaded === nextLoaded ? previousLoaded : nextLoaded);
             if (!nextLoaded) return;
-            const next = snapshotSpikePorts(vm?.runtime, virtual);
+            const next = snapshotSpikePorts(vm?.runtime, virtual, locale);
             const serialized = JSON.stringify(next);
             if (serialized !== previous) {
                 previous = serialized;
@@ -25,7 +27,7 @@ const SpikePortMonitor = ({vm}) => {
         const interval = window.setInterval(refresh, 500);
         const unsubscribe = virtual?.subscribe?.(refresh);
         return () => { window.clearInterval(interval); unsubscribe?.(); };
-    }, [vm]);
+    }, [vm, locale]);
     React.useEffect(() => {
         if (snapshot.mode !== 'offline') setExpanded(true);
     }, [snapshot.mode]);
@@ -33,8 +35,8 @@ const SpikePortMonitor = ({vm}) => {
     if (!loaded) return null;
 
     const virtual = snapshot.mode === 'virtual';
-    const status = snapshot.mode === 'live' ? 'Live hub' :
-        virtual ? (snapshot.connected ? 'Virtual hub connected' : 'Virtual hub ready') : 'No hub connected';
+    const status = spikeText(locale, snapshot.mode === 'live' ? 'liveHub' :
+        virtual ? (snapshot.connected ? 'virtualConnected' : 'virtualReady') : 'noHub');
     return (
         <section data-testid="bw-spike-port-monitor"
             style={{background: '#f5f3ff', borderBottom: '1px solid #ddd6fe', flexShrink: 0}}>
@@ -43,7 +45,7 @@ const SpikePortMonitor = ({vm}) => {
                     aria-expanded={expanded}
                     style={{background: 'none', border: 0, color: '#4c1d95', fontWeight: 700,
                         cursor: 'pointer', padding: 0, fontSize: 12}}>
-                    {expanded ? '▾' : '▸'} SPIKE ports
+                    {expanded ? '▾' : '▸'} {spikeText(locale, 'ports')}
                 </button>
                 <span style={{fontSize: 11, color: '#6b7280'}}>{status}</span>
                 <span style={{flex: 1}} />
@@ -51,7 +53,7 @@ const SpikePortMonitor = ({vm}) => {
                     onClick={() => window.dispatchEvent(new Event('bw-open-virtual-spike'))}
                     style={{fontSize: 11, padding: '3px 7px', background: '#fff', color: '#5b21b6',
                         border: '1px solid #c4b5fd', borderRadius: 5, cursor: 'pointer'}}>
-                    Configure simulation
+                    {spikeText(locale, 'configure')}
                 </button>
             </div>
             {expanded && (
@@ -67,7 +69,7 @@ const SpikePortMonitor = ({vm}) => {
                             {device.detail && <div style={{fontSize: 10, color: '#475569',
                                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}
                                 title={device.detail}>{device.detail}</div>}
-                            {device.pixels && <div aria-label="3 by 3 matrix pixels"
+                            {device.pixels && <div aria-label={spikeText(locale, 'matrixPixels')}
                                 style={{display: 'grid', gridTemplateColumns: 'repeat(3,6px)', gap: 2, marginTop: 3}}>
                                 {Array.from({length: 9}, (_, index) => (
                                     <span key={index} style={{width: 6, height: 6, borderRadius: 2,

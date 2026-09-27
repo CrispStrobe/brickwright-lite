@@ -53,6 +53,7 @@ fn main() {
         "start_share_server",
         "stop_share_server",
         "share_server_status",
+        "spike_usb_bridge_run",
         "download_pack",
         "download_pack_zip",
         "pack_present",

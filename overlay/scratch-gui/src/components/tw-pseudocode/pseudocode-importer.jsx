@@ -280,6 +280,7 @@ const L10N = {
         runSpikeUsb: '▶ Run on SPIKE USB',
         probeSpikeUsb: 'Identify A–F',
         spikeUsbDirect: 'USB on this computer', spikeUsbBridge: 'USB via Mac on WLAN',
+        spikeUsbRouteLabel: 'SPIKE USB route', dismissNotice: 'Dismiss notice',
         spikeUsbUrl: 'Mac bridge URL', spikeUsbToken: 'Bridge token',
         spikeUsbRunning: 'Streaming to the USB hub…',
         spikeUsbProbing: 'Reading USB hub ports…',
@@ -566,6 +567,7 @@ const L10N = {
         runSpikeUsb: '▶ Auf SPIKE über USB ausführen',
         probeSpikeUsb: 'A–F erkennen',
         spikeUsbDirect: 'USB an diesem Computer', spikeUsbBridge: 'USB über Mac im WLAN',
+        spikeUsbRouteLabel: 'SPIKE-USB-Verbindung', dismissNotice: 'Hinweis schließen',
         spikeUsbUrl: 'Mac-Bridge-URL', spikeUsbToken: 'Bridge-Token',
         spikeUsbRunning: 'Programm wird per USB übertragen…',
         spikeUsbProbing: 'USB-Hub-Ports werden gelesen…',
@@ -5257,7 +5259,7 @@ class PseudocodeImporter extends React.Component {
                     {this.state.lang === 'pseudocode' && showSpikeAction ? (
                         <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0}}>
                             <select value={this.state.spikeUsbRoute} disabled={this.state.busy}
-                                aria-label="SPIKE USB route" data-testid="bw-spike-usb-route"
+                                aria-label={this.L.spikeUsbRouteLabel} data-testid="bw-spike-usb-route"
                                 onChange={e => this.setState({spikeUsbRoute: e.target.value})}
                                 style={{...csel, maxWidth: 180}}>
                                 <option value="direct">{this.L.spikeUsbDirect}</option>
@@ -5543,7 +5545,7 @@ class PseudocodeImporter extends React.Component {
                         style={{fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0}}>
                         {this.state.status}
                         {/^(Restored your unsaved |Nicht gespeicherter ).*(?:\.|wiederhergestellt\.)$/.test(this.state.status) ?
-                            <button type="button" data-testid="bw-dismiss-restored" aria-label={this.L.close || 'Close'}
+                            <button type="button" data-testid="bw-dismiss-restored" aria-label={this.L.dismissNotice}
                                 onClick={() => this.setState({status: ''})}
                                 style={{border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, lineHeight: 1}}>×</button> : null}
                     </span> : null}
