@@ -50,5 +50,5 @@ test('device switching refuses before committing firmware when its reseated benc
     assert.match(setDevice, /resolveExampleBench\(ex, deviceId, sourceDevice\)/);
     assert.match(setDevice, /if \(resolvedBench && resolvedBench\.error\)/);
     assert.ok(setDevice.indexOf('if (resolvedBench && resolvedBench.error)') <
-        setDevice.indexOf('buffers: {...this.state.buffers, pseudocode: result.pseudocode}'));
+        setDevice.indexOf('buffers: {...this.state.buffers, pseudocode: result.pseudocode'));
 });
