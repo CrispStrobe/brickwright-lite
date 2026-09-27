@@ -208,10 +208,10 @@ try {
         }, null, {timeout: assemblySetupTimeoutMs});
         await mark('example-ready');
         // On the phone layout the example picker can overlap this control.
-        // Setup is not the subject of this benchmark; dispatch the enabled
+        // Setup is not the subject of this benchmark; click the enabled
         // production button and measure only the resulting machine pump.
-        await page.getByTestId('bw-asm-assemble').dispatchEvent('click');
-        await mark('assemble-dispatched');
+        await page.getByTestId('bw-asm-assemble').click({force: true});
+        await mark('assemble-clicked');
         await page.locator('[data-debug-panel][data-debug-phase="running"]')
             .waitFor({state: 'attached', timeout: 30000});
         await mark('bench-booted');
