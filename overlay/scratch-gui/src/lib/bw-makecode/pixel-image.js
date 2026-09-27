@@ -46,6 +46,39 @@ export function nearestIndex (rgb, palette = ARCADE_PALETTE) {
     return best;
 }
 
+/** Remap indexed artwork when several costumes must share one Arcade project palette. */
+export function remapPalette (image, sourcePalette, targetPalette) {
+    const lookup = sourcePalette.map((colour, index) => index === 0 ? 0 :
+        nearestIndex(hexToRgb(colour), targetPalette));
+    return {width: image.width, height: image.height,
+        pixels: Uint8Array.from(image.pixels, index => lookup[index])};
+}
+
+/** Read a 15/16-colour Arcade palette from hex lines or a GIMP .gpl file. */
+export function parsePaletteFile (text) {
+    const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/);
+    const gimp = lines.some(line => line.trim() === 'GIMP Palette');
+    const colours = [];
+    for (const original of lines) {
+        const line = original.trim();
+        if (!line || line.startsWith('//')) continue;
+        if (gimp) {
+            if (line === 'GIMP Palette' || line.startsWith('#') || /^(Name|Columns):/.test(line)) continue;
+            const match = /^(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})(?:\s|$)/.exec(line);
+            if (!match) return null;
+            const rgb = match.slice(1, 4).map(Number);
+            if (rgb.some(value => value > 255)) return null;
+            colours.push(`#${rgb.map(value => value.toString(16).padStart(2, '0')).join('')}`);
+        } else {
+            const match = /^#?([0-9a-f]{6})$/i.exec(line);
+            if (!match) return null;
+            colours.push(`#${match[1].toLowerCase()}`);
+        }
+    }
+    if (colours.length === 16) colours.shift(); // Arcade index 0 is transparent.
+    return colours.length === 15 ? [null, ...colours] : null;
+}
+
 /** A blank image. */
 export function blankImage (width, height) {
     return {width, height, pixels: new Uint8Array(width * height)};

@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
+import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 
 const artwork = await import('../overlay/scratch-gui/src/lib/bw-artwork-bundle.js');
 const projectBundle = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
@@ -30,8 +31,9 @@ test('SB3 retains Scratch rendering and opens its editable pixel source', async 
     const zip = await JSZip.loadAsync(await saved.arrayBuffer());
     assert.deepEqual(JSON.parse(await zip.file('project.json').async('text')), project);
     assert.equal(await zip.file(id).async('text'), svg);
-    assert.deepEqual(JSON.parse(await zip.file(artwork.ARTWORK_PATH).async('text')).costumes[0].document,
-        pixelDoc);
+    const payload = JSON.parse(await zip.file(artwork.ARTWORK_PATH).async('text'));
+    assert.equal(payload.version, 1, 'default artwork keeps the original bundle version');
+    assert.deepEqual(payload.costumes[0].document, pixelDoc);
 
     const inspected = await artwork.inspectArtwork(await saved.arrayBuffer());
     assert.equal(inspected.outcome, 'loaded');
@@ -60,6 +62,26 @@ test('SB3 keeps ordered, hidden pixel layers while Scratch keeps its flattened a
     const reopened = await fixture();
     assert.equal(artwork.applyArtwork(inspected, reopened.vm).count, 1);
     assert.deepEqual(artwork.getCostumeDocument(reopened.costume), source);
+});
+
+test('a version 2 palette survives SB3 save/reopen alongside the unchanged Scratch asset', async () => {
+    const {vm, costume, blob, id, svg} = await fixture();
+    const palette = [...ARCADE_PALETTE];
+    palette[2] = '#123456';
+    const source = {version: 2, palette, pixelScale: 4, layers: [{id: 'pixels', type: 'pixel',
+        name: 'Pixels', visible: true, locked: false, opacity: 1,
+        content: {kind: 'pixels', value: {width: 2, height: 2, pixels: [2, 2, 0, 2]}}}]};
+    artwork.setCostumeDocument(costume, source);
+    const saved = await artwork.attachArtwork(blob, vm);
+    const zip = await JSZip.loadAsync(await saved.arrayBuffer());
+    assert.equal(await zip.file(id).async('text'), svg);
+    assert.equal(JSON.parse(await zip.file(artwork.ARTWORK_PATH).async('text')).version, 2);
+    const reopened = await fixture();
+    const inspected = await artwork.inspectArtwork(await saved.arrayBuffer());
+    assert.equal(artwork.applyArtwork(inspected, reopened.vm).count, 1);
+    assert.deepEqual(artwork.getCostumeDocument(reopened.costume), source);
+    assert.throws(() => artwork.setCostumeDocument(reopened.costume, {...source, palette: [null, '#fff']}),
+        /invalid artwork palette/);
 });
 
 test('stale source is ignored if another editor changed the Scratch asset', async () => {

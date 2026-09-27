@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 
 const {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
     moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels} =
@@ -34,6 +35,20 @@ test('layer opacity survives source save and produces a translucent Scratch rend
     assert.equal(layersToSvg([bottom, {...top, opacity: 1}], 2, 1, 4),
         layersToSvg([{...bottom, pixels: Uint8Array.from([10, 2])}], 2, 1, 4),
         'fully opaque art retains the previous flattened SVG format');
+});
+
+test('a custom Arcade palette stays upstream of its SVG rendering', () => {
+    const palette = [...ARCADE_PALETTE];
+    palette[2] = '#123456';
+    const layer = {...blankLayer('paint', 'Paint', 2, 1), pixels: Uint8Array.from([2, 0])};
+    const document = layersDocument([layer], 2, 1, 4, 'paint', palette);
+    assert.equal(document.version, 2);
+    assert.deepEqual(document.palette, palette);
+    assert.deepEqual([...sourceLayers(document, 2, 1)[0].pixels], [2, 0]);
+    assert.match(layersToSvg([layer], 2, 1, 4, palette), /fill="#123456"/);
+    assert.doesNotMatch(layersToSvg([layer], 2, 1, 4, palette), /#ff2121/);
+    assert.equal(layersDocument([layer], 2, 1, 4, 'paint').version, 1,
+        'untouched default palettes keep the old source document version');
 });
 
 test('selection moves only its active-layer pixels and clamps at canvas edges', () => {

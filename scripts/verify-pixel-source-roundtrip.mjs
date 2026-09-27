@@ -278,6 +278,43 @@ try {
     const importedPixels = imported.document.layers[2].content.value.pixels;
     assert.deepEqual(importedPixels.slice(0, 2), [1, 2]);
     assert.deepEqual(importedPixels.slice(width, width + 2), [0, 15]);
+    console.log('checking custom palette source and rendering');
+    await page.getByTestId('bw-pixel-colour-2').click();
+    const paletteEditor = page.getByTestId('bw-pixel-palette-edit');
+    const beforePalette = await reopenedCanvas.evaluate(element => element.toDataURL());
+    await paletteEditor.fill('#123456');
+    assert.notEqual(await reopenedCanvas.evaluate(element => element.toDataURL()), beforePalette,
+        'changing a palette entry must recolour indexed pixels in the preview');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await paletteEditor.inputValue(), '#ff2121', 'palette edits must be undoable');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Redo', exact: true}).click();
+    assert.equal(await paletteEditor.inputValue(), '#123456');
+    await page.getByTestId('bw-pixel-save').click();
+    const paletteSvg = await page.evaluate(() =>
+        window.__brickwrightStore.getState().scratchGui.vm.editingTarget.sprite.costumes[0].asset.decodeText());
+    assert.match(paletteSvg, /#123456/, 'Scratch must render the edited palette');
+    const recoloured = await saveProject(page);
+    assert.equal(recoloured.version, 2);
+    const custom = recoloured.costumes.find(record => record.document.palette?.[2] === '#123456');
+    assert.ok(custom, 'the archive must retain the custom palette with indexed source');
+    await page.close();
+    page = await open();
+    await page.getByText('File', {exact: true}).click();
+    await page.getByText('Load from your computer', {exact: true}).click();
+    await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(file);
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await page.getByTestId('bw-pixel-toggle').click();
+    await page.getByTestId('bw-pixel-colour-2').click();
+    assert.equal(await page.getByTestId('bw-pixel-palette-edit').inputValue(), '#123456',
+        'reopened artwork must use its editable palette');
+    const paletteFile = ['000000', 'ffffff', '00aa00', 'ff93c4', 'ff8135', 'fff609', '249ca3',
+        '78dc52', '003fad', '87f2ff', '8e2ec4', 'a4839f', '5c406c', 'e5cdc4', '91463d', '000000'];
+    await page.getByTestId('bw-pixel-palette-file').setInputFiles({name: 'arcade.hex',
+        mimeType: 'text/plain', buffer: Buffer.from(paletteFile.join('\n'))});
+    assert.equal(await page.getByTestId('bw-pixel-palette-edit').inputValue(), '#00aa00',
+        'a MakeCode palette file must replace colours without replacing indexed pixels');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await page.getByTestId('bw-pixel-palette-edit').inputValue(), '#123456');
     assert.deepEqual(errors, []);
     console.log('PASS: moved pixels and layers survive SB3 save/reopen; zoom and pinch preserve artwork');
 } finally {

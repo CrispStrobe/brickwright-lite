@@ -7,7 +7,7 @@
  */
 const ARTWORK_PATH = 'brickwright/artwork/v1.json';
 const ARTWORK_FORMAT = 'brickwright-artwork';
-const ARTWORK_VERSION = 1;
+const ARTWORK_VERSION = 2;
 const MAX_ARTWORK_BYTES = 64 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 
@@ -26,8 +26,16 @@ const loadZip = async () => {
 };
 
 const validateDocument = doc => {
-    if (!isObject(doc) || doc.version !== 1 || !Array.isArray(doc.layers) || !doc.layers.length) {
+    if (!isObject(doc) || ![1, 2].includes(doc.version) || !Array.isArray(doc.layers) || !doc.layers.length) {
         throw new Error('artwork document must contain layers');
+    }
+    if (doc.version === 2) {
+        if (!Array.isArray(doc.palette) || doc.palette.length !== 16 || doc.palette[0] !== null ||
+            !doc.palette.slice(1).every(colour => /^#[0-9a-f]{6}$/i.test(colour))) {
+            throw new Error('invalid artwork palette');
+        }
+    } else if (Object.prototype.hasOwnProperty.call(doc, 'palette')) {
+        throw new Error('palette requires artwork document version 2');
     }
     if (Object.prototype.hasOwnProperty.call(doc, 'pixelScale') && (!Number.isInteger(doc.pixelScale) ||
         doc.pixelScale < 1 || doc.pixelScale > 64)) throw new Error('invalid pixel scale');
@@ -152,6 +160,7 @@ const inspectArtwork = async input => {
             const costume = project.targets?.[record.targetIndex]?.costumes?.[record.costumeIndex];
             if (!costume || costume.md5ext !== record.renderedMd5ext) continue;
             validateDocument(record.document);
+            if (record.document.version > payload.version) throw new Error('artwork document exceeds bundle version');
             // Every asset reference must point to the matching render or another ZIP asset.
             for (const layer of record.document.layers) {
                 if (layer.content.kind === 'asset' && !zip.file(layer.content.value)) {
@@ -218,7 +227,8 @@ const writeArtworkToZip = async (zip, vm) => {
                     document: validateDocument(document)});
             }
         }
-        zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT, version: ARTWORK_VERSION, costumes}));
+        const version = Math.max(1, ...costumes.map(record => record.document.version));
+        zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT, version, costumes}));
         return true;
     } catch (error) {
         // A source failure may not turn a valid Scratch project into an unsaveable one.

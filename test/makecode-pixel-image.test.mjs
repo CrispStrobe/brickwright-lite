@@ -10,7 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
-    ARCADE_PALETTE, svgToPixels, pixelsToSvg, quantizeRgba, toImgLiteral, floodFill, resizeCanvas, nearestIndex
+    ARCADE_PALETTE, svgToPixels, pixelsToSvg, quantizeRgba, toImgLiteral, floodFill, resizeCanvas,
+    nearestIndex, remapPalette, parsePaletteFile
 } from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {parseImageLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {importArtefact} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
@@ -71,6 +72,31 @@ test('quantizing: palette colours stay exact, transparency stays transparent, ot
     for (let i = 0; i < 16; i++) block.set([0x24, 0x9c, 0xa3, 255], i * 4);
     assert.deepEqual([...quantizeRgba(block, 4, 4, 2, 2).pixels], [6, 6, 6, 6]);
     assert.equal(ARCADE_PALETTE[6], '#249ca3');
+});
+
+test('a mixed-palette Arcade project remaps indices to its one project palette', () => {
+    const target = [...ARCADE_PALETTE];
+    target[2] = '#123456';
+    target[3] = ARCADE_PALETTE[2];
+    const source = {width: 3, height: 1, pixels: Uint8Array.from([0, 2, 3])};
+    const remapped = remapPalette(source, ARCADE_PALETTE, target);
+    assert.deepEqual([...remapped.pixels.slice(0, 2)], [0, 3],
+        'transparent stays transparent and exact matching RGB moves to its new index');
+    assert.deepEqual([...source.pixels], [0, 2, 3], 'source indices remain editable');
+});
+
+test('Arcade hex and GIMP palettes import exactly and reject malformed files', () => {
+    const hex = ['000000', ...ARCADE_PALETTE.slice(1).map(value => value.slice(1))].join('\n');
+    assert.deepEqual(parsePaletteFile(hex), ARCADE_PALETTE);
+    assert.deepEqual(parsePaletteFile(ARCADE_PALETTE.slice(1).join('\n')), ARCADE_PALETTE);
+    const gimp = ['GIMP Palette', 'Name: Arcade', 'Columns: 8', '# colours',
+        '0 0 0 Transparent', ...ARCADE_PALETTE.slice(1).map(colour => {
+            const rgb = [1, 3, 5].map(position => parseInt(colour.slice(position, position + 2), 16));
+            return `${rgb.join(' ')} Colour`;
+        })].join('\n');
+    assert.deepEqual(parsePaletteFile(gimp), ARCADE_PALETTE);
+    assert.equal(parsePaletteFile('ff2121\nwrong'), null);
+    assert.equal(parsePaletteFile('GIMP Palette\n256 0 0 Bad'), null);
 });
 
 test('editing primitives: flood fill stays inside its region; resizing crops and pads', () => {

@@ -21,7 +21,7 @@ import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundl
 import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
     moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral
+    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile
 } from '../../lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
 
@@ -47,7 +47,11 @@ const L10N = {
         'px.largeLiteral': 'Arcade image exceeds the 128×128 pixel-editor limit.',
         'px.translucentLiteral': 'Arcade img cannot represent partly transparent layers. Set their opacity to 0% or 100% first.',
         'px.literalHint': 'The imported image becomes a new editable layer. Existing layers are kept.',
-        'px.copyLiteral': 'Copy', 'px.literalLabel': 'Arcade img literal'
+        'px.copyLiteral': 'Copy', 'px.literalLabel': 'Arcade img literal',
+        'px.paletteColour': 'Edit palette colour',
+        'px.resetPalette': 'Reset palette', 'px.paletteHint': 'Change the colour of every pixel with this index.',
+        'px.importPalette': 'Import palette',
+        'px.invalidPalette': 'Use a 15- or 16-colour .hex, .txt or GIMP .gpl palette.'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -71,7 +75,11 @@ const L10N = {
         'px.largeLiteral': 'Das Arcade-Bild überschreitet die Grenze von 128×128 Pixeln.',
         'px.translucentLiteral': 'Arcade-img unterstützt keine teilweise transparenten Ebenen. Deckkraft zuerst auf 0 % oder 100 % setzen.',
         'px.literalHint': 'Das importierte Bild wird eine neue bearbeitbare Ebene. Bestehende Ebenen bleiben erhalten.',
-        'px.copyLiteral': 'Kopieren', 'px.literalLabel': 'Arcade-img-Literal'
+        'px.copyLiteral': 'Kopieren', 'px.literalLabel': 'Arcade-img-Literal',
+        'px.paletteColour': 'Palettenfarbe bearbeiten',
+        'px.resetPalette': 'Palette zurücksetzen', 'px.paletteHint': 'Die Farbe aller Pixel mit diesem Index ändern.',
+        'px.importPalette': 'Palette importieren',
+        'px.invalidPalette': 'Eine .hex-, .txt- oder GIMP-.gpl-Palette mit 15 oder 16 Farben verwenden.'
     }
 };
 const t = makeT(L10N);
@@ -97,19 +105,22 @@ class PixelArtEditor extends React.Component {
     constructor (props) {
         super(props);
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
+            palette: [...ARCADE_PALETTE],
             scale: 4, zoom: 1, colour: 2, tool: 'pencil',
             mirror: false, converted: false, selection: null,
             status: '', w: 16, h: 16, renamingLayerId: null, renameValue: '',
-            literalMode: null, literalText: '', literalError: ''};
+            literalMode: null, literalText: '', literalError: '', paletteError: ''};
         this.canvas = React.createRef();
         this.viewport = React.createRef();
         this.root = React.createRef();
+        this.paletteFile = React.createRef();
         this.drawing = false;
         this.strokeRecorded = false;
         this.pointers = new Map();
         this.undoStack = [];
         this.redoStack = [];
         this.opacityGesture = false;
+        this.paletteGesture = false;
         this.renameCommitted = false;
         this.lastCell = null;
         this.shapeStart = null;
@@ -134,7 +145,8 @@ class PixelArtEditor extends React.Component {
 
     componentDidUpdate (prev, prevState) {
         if (prev.costumeIndex !== this.props.costumeIndex || this.loadedCostume !== this.costume()) this.load();
-        else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection) this.paint();
+        else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection ||
+            prevState.palette !== this.state.palette) this.paint();
     }
 
     costume () {
@@ -150,6 +162,7 @@ class PixelArtEditor extends React.Component {
         let layers = null;
         let scale = 4;
         const document = getCostumeDocument(costume);
+        const palette = document?.version === 2 ? document.palette : [...ARCADE_PALETTE];
         const first = document?.layers?.[0];
         if (!size && first?.type === 'pixel' && first.content.kind === 'pixels') {
             const {width, height} = first.content.value;
@@ -160,7 +173,7 @@ class PixelArtEditor extends React.Component {
             }
         }
         if (!image && !size && costume.asset.dataFormat === 'svg') {
-            const px = svgToPixels(costume.asset.decodeText());
+            const px = svgToPixels(costume.asset.decodeText(), palette);
             if (px) {
                 image = {width: px.width, height: px.height, pixels: px.pixels};
                 scale = px.scale;
@@ -171,7 +184,7 @@ class PixelArtEditor extends React.Component {
             const {rgba, w, h} = await rasterize(costume);
             const tw = size ? size.w : Math.min(64, Math.max(4, Math.round(w / 4)));
             const th = size ? size.h : Math.min(64, Math.max(4, Math.round(h / 4)));
-            image = quantizeRgba(rgba, w, h, tw, th);
+            image = quantizeRgba(rgba, w, h, tw, th, palette);
             converted = true;
         }
         if (!layers) layers = [{...blankLayer('pixels', 'Pixels', image.width, image.height),
@@ -181,8 +194,9 @@ class PixelArtEditor extends React.Component {
         this.undoStack = [];
         this.redoStack = [];
         this.setState({image, layers, activeLayerId, selection: null, renamingLayerId: null, renameValue: '',
-            literalMode: null, literalText: '', literalError: '',
-            original: {layers, activeLayerId, selection: null, w: image.width, h: image.height},
+            literalMode: null, literalText: '', literalError: '', paletteError: '',
+            original: {layers, activeLayerId, selection: null, palette, w: image.width, h: image.height},
+            palette,
             scale, zoom: 1, converted, status: '',
             w: image.width, h: image.height});
     }
@@ -223,13 +237,13 @@ class PixelArtEditor extends React.Component {
     }
 
     paintLayers (ctx, c) {
-        const {image, layers} = this.state;
+        const {image, layers, palette} = this.state;
         for (const layer of layers) {
             if (!layer.visible || layer.opacity <= 0) continue;
             ctx.globalAlpha = layer.opacity;
             for (let y = 0; y < image.height; y++) {
                 for (let x = 0; x < image.width; x++) {
-                    const colour = ARCADE_PALETTE[layer.pixels[(y * image.width) + x]];
+                    const colour = palette[layer.pixels[(y * image.width) + x]];
                     if (!colour) continue;
                     ctx.fillStyle = colour;
                     ctx.fillRect(x * c, y * c, c, c);
@@ -251,7 +265,7 @@ class PixelArtEditor extends React.Component {
     remember () {
         if (!this.state.image) return;
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
-            selection: this.state.selection,
+            selection: this.state.selection, palette: this.state.palette,
             w: this.state.w, h: this.state.h});
         if (this.undoStack.length > 80) this.undoStack.shift();
         this.redoStack = [];
@@ -260,7 +274,7 @@ class PixelArtEditor extends React.Component {
     undo () {
         if (!this.undoStack.length) return;
         this.redoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
-            selection: this.state.selection,
+            selection: this.state.selection, palette: this.state.palette,
             w: this.state.w, h: this.state.h});
         this.restore(this.undoStack.pop());
     }
@@ -268,7 +282,7 @@ class PixelArtEditor extends React.Component {
     redo () {
         if (!this.redoStack.length) return;
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
-            selection: this.state.selection,
+            selection: this.state.selection, palette: this.state.palette,
             w: this.state.w, h: this.state.h});
         this.restore(this.redoStack.pop());
     }
@@ -633,6 +647,41 @@ class PixelArtEditor extends React.Component {
         }
     }
 
+    setPaletteColour (index, colour) {
+        if (index < 1 || index > 15 || !/^#[0-9a-f]{6}$/i.test(colour)) return;
+        if (!this.paletteGesture) {
+            this.remember();
+            this.paletteGesture = true;
+        }
+        this.setState(state => {
+            const palette = state.palette.slice();
+            palette[index] = colour.toLowerCase();
+            return {palette, status: '', paletteError: ''};
+        });
+    }
+
+    resetPalette () {
+        if (this.state.palette.every((value, index) => value === ARCADE_PALETTE[index])) return;
+        this.remember();
+        this.paletteGesture = false;
+        this.setState({palette: [...ARCADE_PALETTE], status: '', paletteError: ''});
+    }
+
+    async importPalette (event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        let palette = null;
+        try { palette = parsePaletteFile(await file.text()); } catch (error) { /* report below */ }
+        if (!palette) {
+            this.setState({paletteError: t(this.props.locale || browserLocale(), 'px.invalidPalette')});
+            return;
+        }
+        this.remember();
+        this.paletteGesture = false;
+        this.setState({palette, status: '', paletteError: ''});
+    }
+
     addLayer () {
         const {w, h, layers} = this.state;
         this.remember();
@@ -707,13 +756,14 @@ class PixelArtEditor extends React.Component {
     }
 
     save () {
-        const {image, scale, layers, activeLayerId} = this.state;
+        const {image, scale, layers, activeLayerId, palette} = this.state;
         const vm = this.props.vm;
         if (!image || !vm) return;
-        const svg = layersToSvg(layers, image.width, image.height, scale);
+        const svg = layersToSvg(layers, image.width, image.height, scale, palette);
         vm.updateSvg(this.props.costumeIndex, svg, (image.width * scale) / 2, (image.height * scale) / 2);
-        setCostumeDocument(this.costume(), layersDocument(layers, image.width, image.height, scale, activeLayerId));
-        this.setState({original: {layers, activeLayerId, selection: null,
+        setCostumeDocument(this.costume(), layersDocument(layers, image.width, image.height, scale, activeLayerId,
+            palette));
+        this.setState({original: {layers, activeLayerId, selection: null, palette,
             w: image.width, h: image.height},
             converted: false, status: 'saved'});
     }
@@ -738,8 +788,8 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, layers, activeLayerId, selection, colour, tool, mirror, converted, status, w, h, zoom,
-            renamingLayerId, renameValue, literalMode, literalText, literalError} =
+        const {image, layers, activeLayerId, selection, colour, tool, mirror, converted, status, w, h, zoom, palette,
+            renamingLayerId, renameValue, literalMode, literalText, literalError, paletteError} =
             this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
         const activeLayer = layers.find(layer => layer.id === activeLayerId);
@@ -815,15 +865,34 @@ class PixelArtEditor extends React.Component {
                             {t(locale, 'px.closeLiteral')}</button>
                     </div>
                 </div> : null}
-                <div style={{display: 'flex', gap: 4, flexWrap: 'wrap'}} role="radiogroup">
-                    {ARCADE_PALETTE.map((c, i) => (
-                        <button key={i} type="button" role="radio" aria-checked={colour === i}
-                            title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
-                            onClick={() => this.setState({colour: i, tool: tool === 'pick' ? 'pencil' : tool})}
-                            style={{width: 44, height: 44, borderRadius: 4, cursor: 'pointer',
-                                border: colour === i ? '3px solid #0f172a' : '1px solid #94a3b8',
-                                background: c || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
-                    ))}
+                <div style={{display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center'}}>
+                    <div style={{display: 'flex', gap: 4, flexWrap: 'wrap'}} role="radiogroup">
+                        {palette.map((c, i) => (
+                            <button key={i} type="button" role="radio" aria-checked={colour === i}
+                                title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
+                                onClick={() => this.setState({colour: i, tool: tool === 'pick' ? 'pencil' : tool})}
+                                style={{width: 44, height: 44, borderRadius: 4, cursor: 'pointer',
+                                    border: colour === i ? '3px solid #0f172a' : '1px solid #94a3b8',
+                                    background: c || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
+                        ))}
+                    </div>
+                    <label style={{display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44,
+                        fontSize: 12}} title={t(locale, 'px.paletteHint')}>
+                        {t(locale, 'px.paletteColour')} {colour}
+                        <input type="color" value={palette[colour] || '#000000'} disabled={colour === 0}
+                            data-testid="bw-pixel-palette-edit" aria-label={t(locale, 'px.paletteColour')}
+                            onPointerDown={() => { this.paletteGesture = false; }}
+                            onPointerUp={() => { this.paletteGesture = false; }}
+                            onBlur={() => { this.paletteGesture = false; }}
+                            onChange={event => this.setPaletteColour(colour, event.target.value)} />
+                    </label>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-palette-reset"
+                        onClick={() => this.resetPalette()}>{t(locale, 'px.resetPalette')}</button>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-palette-import"
+                        onClick={() => this.paletteFile.current?.click()}>{t(locale, 'px.importPalette')}</button>
+                    <input ref={this.paletteFile} type="file" accept=".hex,.txt,.gpl" style={{display: 'none'}}
+                        data-testid="bw-pixel-palette-file" onChange={event => this.importPalette(event)} />
+                    {paletteError ? <span role="alert" style={{color: '#b91c1c', fontSize: 12}}>{paletteError}</span> : null}
                 </div>
                 {converted ? (
                     <div style={{fontSize: 12, color: '#92400e', background: '#fffbeb', padding: '4px 8px', borderRadius: 6}}>

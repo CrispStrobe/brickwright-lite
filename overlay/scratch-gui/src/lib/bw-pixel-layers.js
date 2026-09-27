@@ -1,4 +1,4 @@
-import {blankImage, pixelsToSvg, resizeCanvas} from './bw-makecode/pixel-image.js';
+import {ARCADE_PALETTE, blankImage, pixelsToSvg, resizeCanvas} from './bw-makecode/pixel-image.js';
 
 const makeLayer = (id, name, image) => ({id, name, visible: true, locked: false,
     opacity: 1, type: 'pixel', pixels: image.pixels});
@@ -17,12 +17,12 @@ const composeLayers = (layers, width, height) => {
 // Preserve the historical single-layer SVG byte format for fully opaque art.
 // Opacity needs separate SVG groups because palette indices cannot represent
 // blended colours without losing the independently editable layer pixels.
-const layersToSvg = (layers, width, height, scale) => {
+const layersToSvg = (layers, width, height, scale, palette = ARCADE_PALETTE) => {
     if (layers.every(layer => !layer.visible || layer.opacity === 0 || layer.opacity === 1)) {
-        return pixelsToSvg(composeLayers(layers, width, height), {scale});
+        return pixelsToSvg(composeLayers(layers, width, height), {scale, palette});
     }
     const groups = layers.filter(layer => layer.visible && layer.opacity > 0).map(layer => {
-        const svg = pixelsToSvg({width, height, pixels: layer.pixels}, {scale});
+        const svg = pixelsToSvg({width, height, pixels: layer.pixels}, {scale, palette});
         const rects = svg.slice(svg.indexOf('>') + 1, -'</svg>'.length);
         return `<g opacity="${layer.opacity}">${rects}</g>`;
     });
@@ -43,12 +43,14 @@ const resizeLayers = (layers, width, height, nextWidth, nextHeight) => layers.ma
     ...layer, pixels: resizeCanvas({width, height, pixels: layer.pixels}, nextWidth, nextHeight).pixels
 }));
 
-const layersDocument = (layers, width, height, scale, activeLayerId) => ({
-    version: 1, pixelScale: scale, activeLayerId,
-    layers: layers.map(layer => ({id: layer.id, type: 'pixel', name: layer.name,
-        visible: layer.visible, locked: layer.locked, opacity: layer.opacity,
-        content: {kind: 'pixels', value: {width, height, pixels: Array.from(layer.pixels)}}}))
-});
+const layersDocument = (layers, width, height, scale, activeLayerId, palette = ARCADE_PALETTE) => {
+    const customPalette = palette.some((colour, index) => colour !== ARCADE_PALETTE[index]);
+    return {version: customPalette ? 2 : 1,
+        ...(customPalette ? {palette: [...palette]} : {}), pixelScale: scale, activeLayerId,
+        layers: layers.map(layer => ({id: layer.id, type: 'pixel', name: layer.name,
+            visible: layer.visible, locked: layer.locked, opacity: layer.opacity,
+            content: {kind: 'pixels', value: {width, height, pixels: Array.from(layer.pixels)}}}))};
+};
 
 const blankLayer = (id, name, width, height) => makeLayer(id, name, blankImage(width, height));
 

@@ -61,7 +61,7 @@ async function readProject (file) {
             const a = cr.assets.get(c.assetId);
             return a && a.type === 'svg' ? a.data : null;
         };
-        return {project: cr.project, costumeSvg};
+        return {project: cr.project, costumeSvg, costumePalette: () => null};
     }
     const zip = await JSZip.loadAsync(fs.readFileSync(file));
     const json = zip.file('project.json');
@@ -70,16 +70,36 @@ async function readProject (file) {
     const svgs = new Map();
     for (const name of Object.keys(zip.files)) if (/\.svg$/i.test(name)) svgs.set(name, await zip.file(name).async('string'));
     const costumeSvg = (t, c) => svgs.get(c.md5ext || `${c.assetId}.${c.dataFormat}`) || null;
-    return {project, costumeSvg};
+    const palettes = new Map();
+    const artwork = zip.file('brickwright/artwork/v1.json');
+    if (artwork) {
+        try {
+            const bundle = JSON.parse(await artwork.async('string'));
+            if (bundle.format === 'brickwright-artwork' && bundle.version === 2) {
+                for (const record of bundle.costumes || []) {
+                    const saved = project.targets?.[record.targetIndex]?.costumes?.[record.costumeIndex];
+                    const palette = record.document?.palette;
+                    if (saved?.md5ext === record.renderedMd5ext && record.document?.version === 2 &&
+                        Array.isArray(palette) && palette.length === 16) {
+                        palettes.set(`${record.targetIndex}:${record.costumeIndex}`, palette);
+                    }
+                }
+            }
+        } catch (error) {
+            // An invalid optional source must not prevent ordinary Scratch export.
+        }
+    }
+    const costumePalette = (t, c) => palettes.get(`${project.targets.indexOf(t)}:${t.costumes.indexOf(c)}`) || null;
+    return {project, costumeSvg, costumePalette};
 }
 
 /** The MakeCode files for a project, for a target, with what did not map. */
 async function toMakeCode (file, target) {
-    const {project, costumeSvg} = await readProject(file);
+    const {project, costumeSvg, costumePalette} = await readProject(file);
     const name = base(file).slice(0, 40);
     if (target === 'arcade') {
         const {projectToArcade} = await lib('bw-makecode/export-arcade.js');
-        const out = projectToArcade(project, {name, costumeSvg});
+        const out = projectToArcade(project, {name, costumeSvg, costumePalette});
         return {...out, name};
     }
     const {exportToMakeCode} = await lib('bw-makecode/export.js');

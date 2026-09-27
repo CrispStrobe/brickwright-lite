@@ -3,7 +3,8 @@
 Brickwright projects remain ordinary `.sb3` archives. `project.json` names the
 SVG/PNG costume assets that Scratch, TurboWarp, and older Brickwright read and
 render. Brickwright also stores editable source in
-`brickwright/artwork/v1.json`. It is an additional ZIP entry; it never replaces
+`brickwright/artwork/v1.json`. This stable ZIP entry has versioned payloads
+and documents; it never replaces
 or changes the Scratch assets. An older reader can ignore it.
 
 The source document is upstream of a rendered costume. A document owns ordered
@@ -35,6 +36,13 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   into the Scratch SVG while retaining each layer's palette indices in editable
   source. It also exports a transparent PNG from the current layer stack. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
+- Pixel art can use the default Arcade palette, edit its 15 colours, or import
+  a 15/16-colour `.hex`, `.txt` or GIMP `.gpl` palette. Indexed
+  pixels remain unchanged when a colour changes. Custom palettes use a version
+  2 source document and render into Scratch SVG; default palettes keep version
+  1 documents. Arcade project export writes the selected colours to `pxt.json`
+  and retains exact `img` indices. If costumes use different palettes, export
+  maps them to one project palette and reports the colour conversion.
 - Archive tests cover round-trip preservation, stale source rejection and
   future-version pass-through. A browser gate checks layer visibility and
   persistence across SB3 save/reopen, plus mouse, keyboard, trackpad and touch
@@ -66,7 +74,7 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
-5. **Pixel and animation.** Add palette editing, frames and
+5. **Pixel and animation.** Add palette presets, frames and
    onion-skin preview. Export frames as costumes or
    a sprite sheet without hiding animation-only data in Scratch's render asset.
 6. **Parity gate.** Run the same task corpus on desktop mouse, trackpad, iPad
@@ -92,15 +100,16 @@ missing data or export behavior.
 | Pen, eraser, fill, line, rectangle, circle, eyedropper, marquee, pan | Available in the palette pixel editor | Add brush sizes, filled shapes, marquee copy/paste and keyboard tool shortcuts |
 | Flip and quarter-turn, with selection scope | Available, with touch buttons and undo | Test on iPad and expose arrow-key selection moves |
 | Foreground/background colours, swap, colour replace and outline | Foreground colour only | Add secondary colour and index-preserving replace/outline operations |
-| Palette presets and 15 editable colours | Default palette only | Introduce a versioned palette source with migration; render and Arcade export must use the same palette |
+| Palette presets and 15 editable colours | All 15 colours can be edited or imported from `.hex`/`.txt`/`.gpl`; version 2 source, Scratch rendering and Arcade export use them | Add built-in presets |
 | Animation timeline, frame order, interval, onion skin | Not yet available | Preserve frames in editable source and export them as costumes or sprite sheets |
 | Sprite-sheet and `img` import/export | Exact `img` literal paste/export and PNG export exist; pasted images become new layers | Add sprite-sheet slicing preview and sheet export |
 | Tile and tilemap asset editing | Imported tilemaps are rendered as costumes | Add editable tile set/map source and Arcade-compatible export |
 
-Palette and frame data need a source-format migration. Adding these fields to
-the v1 document without changing its version would let older Brickwright
-silently reinterpret edited colours or frames, even though Scratch itself
-would still render the saved SVG or PNG correctly.
+Custom palettes have a version 2 document. The ZIP entry path stays stable,
+while its payload version becomes 2 only when such a document is present.
+Older Brickwright treats the payload as future data and preserves it when the
+rendered costumes are unchanged. Animation frame metadata still needs its own
+versioned source design.
 An Arcade `img` literal has only palette indices and transparent pixels, so
 literal export is refused while a visible layer has partial opacity. This
 prevents a flattened approximation from silently changing the artwork.
