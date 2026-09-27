@@ -5,6 +5,7 @@ import argparse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import importlib.util
 import json
+import re
 import secrets
 import socket
 from pathlib import Path
@@ -21,11 +22,11 @@ def execute(port, source):
     lines = []
     try:
         version = repl.command("import hub; print('FIRMWARE', hub.__version__)")
-        if "FIRMWARE" not in version:
+        version_match = re.search(r"(?:^|\r\n)FIRMWARE ([^\r\n]+)", version)
+        if not version_match:
             raise RuntimeError("This USB device did not identify as a LEGO MicroPython hub")
         for p in "ABCDEF":
             output = repl.command(f"print('PORT {p}', hub.port.{p}.info().get('type'))")
-            import re
             match = re.search(rf"PORT {p} (\d+|None)", output)
             types[p] = int(match[1]) if match and match[1] != "None" else None
         if source:
@@ -43,7 +44,7 @@ def execute(port, source):
             for number, line, (command, delay) in commands:
                 repl.command(command, delay)
                 lines.append(f"{number}: {line.strip()}")
-        return {"firmware": version.split("FIRMWARE ", 1)[-1].split("\r\n", 1)[0],
+        return {"firmware": version_match[1],
                 "ports": types, "lines": lines}
     finally:
         for p in "ABCDEF":
