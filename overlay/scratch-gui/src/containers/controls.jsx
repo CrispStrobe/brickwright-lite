@@ -16,6 +16,18 @@ class Controls extends React.Component {
         if (e.shiftKey) {
             this.props.vm.setTurboMode(!this.props.turbo);
         } else {
+            const runtime = this.props.vm.runtime;
+            const device = runtime.bwDeviceId || (runtime.stc && runtime.stc.device);
+            if (device === 'microbit' || device === 'calliopemini') {
+                // The green flag is the global Run affordance. Simulator-only
+                // boards do not have a Scratch VM execution target, so hand
+                // this real user gesture to the MicroPython runner instead of
+                // silently green-flagging an unrelated/empty Scratch stage.
+                window.dispatchEvent(new CustomEvent('bw-microbit-run-request', {
+                    detail: {source: 'green-flag', autostart: true}
+                }));
+                return;
+            }
             if (!this.props.isStarted) this.props.vm.start();
             this.props.vm.greenFlag();
             // The circuit designer listens to the same user-level action. This
