@@ -1,15 +1,19 @@
 import React from 'react';
-import snapshotSpikePorts from '../../lib/spike-port-snapshot.js';
+import snapshotSpikePorts, {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
 
 const EMPTY = {mode: 'offline', connected: false, ports: []};
 
 const SpikePortMonitor = ({vm}) => {
     const [snapshot, setSnapshot] = React.useState(EMPTY);
     const [expanded, setExpanded] = React.useState(false);
+    const [loaded, setLoaded] = React.useState(() => isSpikeExtensionLoaded(vm));
     React.useEffect(() => {
         const virtual = window.__brickwrightVirtualSpike?.hubState;
         let previous = '';
         const refresh = () => {
+            const nextLoaded = isSpikeExtensionLoaded(vm);
+            setLoaded(previousLoaded => previousLoaded === nextLoaded ? previousLoaded : nextLoaded);
+            if (!nextLoaded) return;
             const next = snapshotSpikePorts(vm?.runtime, virtual);
             const serialized = JSON.stringify(next);
             if (serialized !== previous) {
@@ -25,6 +29,8 @@ const SpikePortMonitor = ({vm}) => {
     React.useEffect(() => {
         if (snapshot.mode !== 'offline') setExpanded(true);
     }, [snapshot.mode]);
+
+    if (!loaded) return null;
 
     const virtual = snapshot.mode === 'virtual';
     const status = snapshot.mode === 'live' ? 'Live hub' :

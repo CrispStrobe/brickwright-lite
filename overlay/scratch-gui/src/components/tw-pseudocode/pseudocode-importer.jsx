@@ -64,6 +64,7 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 import {lowerableLines} from '../../lib/bw-fpga/pseudocode-expr.js';
 import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
 import {isPybricksProgram} from '../../lib/pybricks-sim/pybricks-hub-host.js';
+import {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
 // handoff has to name a tab index and a wrong one silently switches to Sounds.
@@ -4743,9 +4744,12 @@ class PseudocodeImporter extends React.Component {
             display: 'flex', flexDirection: 'column', font: '14px/1.5 sans-serif', color: '#575e75'};
         const btn = {padding: '10px 18px', borderRadius: 8, border: 'none', color: '#fff', cursor: 'pointer',
             fontWeight: 600, background: 'linear-gradient(135deg,#4c97ff,#4280d7)'};
+        const actionBtn = {...btn, padding: '5px 9px', fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0};
         const sel = {padding: '6px 10px', borderRadius: 6, border: '1px solid #cbd5e1', font: 'inherit'};
         const max = this.state.maximized;
         const csel = {...sel, padding: '4px 8px', fontSize: 12}; // compact select
+        const spikeCode = /\b(?:spike(?:prime)?|PrimeHub|InventorHub)\b/i.test(this.activeCode());
+        const showSpikeAction = isSpikeExtensionLoaded(this.props.vm) || spikeCode;
         return (
             <div style={wrap} data-testid="bw-code-editor">
                 {/* ── Single merged row: language tabs (left) + compact controls (right) ── */}
@@ -5228,32 +5232,34 @@ class PseudocodeImporter extends React.Component {
                 )}
 
                 {/* Bottom controls row — hidden in maximize mode (compact To/From are in the tab row) */}
-                <div style={{marginTop: max ? 4 : 12, display: max ? 'none' : 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0}}>
+                <div data-testid="bw-code-action-row" style={{marginTop: max ? 4 : 8, display: max ? 'none' : 'flex',
+                    alignItems: 'center', gap: 6, flexWrap: 'nowrap', flexShrink: 0, minWidth: 0,
+                    overflowX: 'auto', whiteSpace: 'nowrap'}}>
                     <button onClick={this.compile}
                         disabled={this.state.busy || !this.activeCode().trim() || !(TWO_WAY.has(this.state.lang) || this.canLiftAsm())}
                         title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
-                        style={btn}>
+                        style={actionBtn}>
                         {this.L.toBlocks}
                     </button>
                     <button onClick={this.fromBlocks} disabled={this.state.busy}
                         title={this.L.fromBlocksTitle}
-                        style={{...btn, background: 'linear-gradient(135deg,#a55b80,#8e4a6c)'}}>
+                        style={{...actionBtn, background: 'linear-gradient(135deg,#a55b80,#8e4a6c)'}}>
                         {this.L.fromBlocks}
                     </button>
                     {this.currentDevice() === 'pico' ? (
                         <button onClick={this.deployToPico} disabled={this.state.busy}
                             data-testid="bw-deploy-pico"
                             title={this.L.deployPicoTitle}
-                            style={{...btn, background: 'linear-gradient(135deg,#2f9e44,#237a34)'}}>
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#2f9e44,#237a34)'}}>
                             {this.L.deployPico}
                         </button>
                     ) : null}
-                    {this.state.lang === 'pseudocode' ? (
-                        <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'wrap'}}>
+                    {this.state.lang === 'pseudocode' && showSpikeAction ? (
+                        <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0}}>
                             <select value={this.state.spikeUsbRoute} disabled={this.state.busy}
                                 aria-label="SPIKE USB route" data-testid="bw-spike-usb-route"
                                 onChange={e => this.setState({spikeUsbRoute: e.target.value})}
-                                style={{...sel, maxWidth: 220}}>
+                                style={{...csel, maxWidth: 180}}>
                                 <option value="direct">{this.L.spikeUsbDirect}</option>
                                 <option value="bridge">{this.L.spikeUsbBridge}</option>
                             </select>
@@ -5262,19 +5268,19 @@ class PseudocodeImporter extends React.Component {
                                     <input type="url" placeholder={this.L.spikeUsbUrl}
                                         aria-label={this.L.spikeUsbUrl} value={this.state.spikeUsbBridgeUrl}
                                         onChange={e => this.setState({spikeUsbBridgeUrl: e.target.value})}
-                                        style={{...sel, width: 170}} />
+                                        style={{...csel, width: 135}} />
                                     <input type="password" placeholder={this.L.spikeUsbToken}
                                         aria-label={this.L.spikeUsbToken} value={this.state.spikeUsbBridgeToken}
                                         onChange={e => this.setState({spikeUsbBridgeToken: e.target.value})}
-                                        style={{...sel, width: 130}} />
+                                        style={{...csel, width: 95}} />
                                 </React.Fragment>
                             ) : null}
                             <button onClick={() => this.runSpikeUsb(true)} disabled={this.state.busy}
-                                data-testid="bw-probe-spike-usb" style={btn}>
+                                data-testid="bw-probe-spike-usb" style={actionBtn}>
                                 {this.L.probeSpikeUsb}
                             </button>
                             <button onClick={() => this.runSpikeUsb(false)} disabled={this.state.busy || !(this.state.buffers.pseudocode || '').trim()}
-                                data-testid="bw-run-spike-usb" style={{...btn, background: '#d97706', color: '#fff'}}>
+                                data-testid="bw-run-spike-usb" style={{...actionBtn, background: '#d97706', color: '#fff'}}>
                                 {this.L.runSpikeUsb}
                             </button>
                         </span>
@@ -5289,7 +5295,7 @@ class PseudocodeImporter extends React.Component {
                         <button onClick={this.flashToBoard} disabled={this.state.busy}
                             data-testid="bw-flash-board"
                             title={this.L.flashBoardTitle}
-                            style={{...btn, background: 'linear-gradient(135deg,#c9761b,#a35d12)'}}>
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#c9761b,#a35d12)'}}>
                             {this.L.flashBoard}
                         </button>
                     ) : null}
@@ -5305,7 +5311,7 @@ class PseudocodeImporter extends React.Component {
                             <button onClick={this.runPseudocodeOn8086} disabled={this.state.busy}
                                 data-testid="bw-run-8086"
                                 title={this.L.run8086Title}
-                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                 {this.L.run8086}
                             </button>
                         ) : null}
@@ -5317,12 +5323,12 @@ class PseudocodeImporter extends React.Component {
                             <React.Fragment>
                                 <button onClick={() => this.exportI8086('com')} disabled={this.state.busy}
                                     data-testid="bw-export-8086-com" title={this.L.export8086ComTitle}
-                                    style={{...btn, background: '#e2e8f0', color: '#334155'}}>
+                                    style={{...actionBtn, background: '#e2e8f0', color: '#334155'}}>
                                     {this.L.export8086Com}
                                 </button>
                                 <button onClick={() => this.exportI8086('img')} disabled={this.state.busy}
                                     data-testid="bw-export-8086-img" title={this.L.export8086ImgTitle}
-                                    style={{...btn, background: '#e2e8f0', color: '#334155'}}>
+                                    style={{...actionBtn, background: '#e2e8f0', color: '#334155'}}>
                                     {this.L.export8086Img}
                                 </button>
                             </React.Fragment>
@@ -5337,7 +5343,7 @@ class PseudocodeImporter extends React.Component {
                             <button onClick={this.runCOn8086} disabled={this.state.busy}
                                 data-testid="bw-run-c-8086"
                                 title={this.L.runC8086Title}
-                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                 {this.L.runC8086}
                             </button>
                         ) : null}
@@ -5378,7 +5384,7 @@ class PseudocodeImporter extends React.Component {
                                 <button onClick={() => this.runCOnRiscv()} disabled={this.state.busy}
                                     data-testid="bw-run-c-riscv"
                                     title={this.L.runCRiscvTitle}
-                                    style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                    style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                     {this.L.runCRiscv}
                                 </button>
                                 {/* Smart hint: the browser subset rejected this program;
@@ -5387,7 +5393,7 @@ class PseudocodeImporter extends React.Component {
                                     <button onClick={() => this.runCOnRiscv('server')} disabled={this.state.busy}
                                         data-testid="bw-run-c-riscv-server"
                                         title={this.L.runCRiscvTryServerTitle}
-                                        style={{...btn, background: 'linear-gradient(135deg,#f08c00,#e67700)'}}>
+                                        style={{...actionBtn, background: 'linear-gradient(135deg,#f08c00,#e67700)'}}>
                                         {this.L.runCRiscvTryServer}
                                     </button>
                                 ) : null}
@@ -5420,7 +5426,7 @@ class PseudocodeImporter extends React.Component {
                                 <button onClick={this.runSketchOnAvr} disabled={this.state.busy}
                                     data-testid="bw-run-arduino-sketch"
                                     title={this.L.runSketchTitle}
-                                    style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                    style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                     {this.L.runSketch}
                                 </button>
                             </span>
@@ -5431,7 +5437,7 @@ class PseudocodeImporter extends React.Component {
                             <button onClick={this.runCOnZ80} disabled={this.state.busy}
                                 data-testid="bw-run-c-z80"
                                 title={this.L.runCZ80Title}
-                                style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                                 {this.L.runCZ80}
                             </button>
                         ) : null}
@@ -5439,7 +5445,7 @@ class PseudocodeImporter extends React.Component {
                         <button onClick={this.flashStm32ViaSwd} disabled={this.state.busy}
                             data-testid="bw-flash-swd"
                             title={this.L.flashSwdTitle}
-                            style={{...btn, background: 'linear-gradient(135deg,#1b7fc9,#125fa3)'}}>
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#1b7fc9,#125fa3)'}}>
                             {this.L.flashSwd}
                         </button>
                     ) : null}
@@ -5467,26 +5473,26 @@ class PseudocodeImporter extends React.Component {
                     ) : null}
                     {(this.state.lang === 'python' || this.state.lang === 'javascript') && this.activeCode().trim() ? (
                         <button onClick={this.run} disabled={this.state.running}
-                            style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}>
                             ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JavaScript'}
                         </button>
                     ) : null}
                     {this.state.lang === 'python' && isPybricksProgram(this.activeCode()) ? (
                         <button onClick={() => this.runOnPybricksSim()} title={this.L.runOnSpikeTitle}
-                            style={{...btn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
                             data-testid="bw-pybricks-run-on-spike">
                             {this.L.runOnSpike}
                         </button>
                     ) : null}
                     {this.state.picoSimRunning ? (
                         <button onClick={() => this.stopPicoSim()} data-testid="bw-pico-sim-stop"
-                            style={{...btn, background: 'linear-gradient(135deg,#fa5252,#e03131)'}}>
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#fa5252,#e03131)'}}>
                             ■ {this.L.stop}
                         </button>
                     ) : null}
                     {this.state.lang === 'basic' && this.activeCode().trim() ? (
                         <button onClick={() => this.runBasic()} disabled={this.state.running}
-                            style={{...btn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
                             data-testid="bw-basic-run">
                             {this.L.runBasic}
                         </button>
@@ -5503,13 +5509,13 @@ class PseudocodeImporter extends React.Component {
                             <button type="button" onClick={() => this.compileNqcToFile()}
                                 disabled={this.state.busy || !(this.state.buffers.nqc || '').trim()}
                                 data-testid="bw-nqc-compile" title={this.L.nqcNote.slice(0, 80)}
-                                style={{...btn, background: '#e2e8f0', color: '#334155'}}>
+                                style={{...actionBtn, background: '#e2e8f0', color: '#334155'}}>
                                 {this.L.nqcCompile}
                             </button>
                             <button type="button" onClick={() => this.sendNqcToBrick()}
                                 disabled={this.state.busy || !(this.state.buffers.nqc || '').trim()}
                                 data-testid="bw-nqc-send" title={this.L.nqcNote.slice(0, 80)}
-                                style={{...btn, background: '#4c97ff', color: '#fff'}}>
+                                style={{...actionBtn, background: '#4c97ff', color: '#fff'}}>
                                 {this.L.nqcSend}
                             </button>
                             <button type="button" onClick={() => this.setState(st => ({showNqcInfo: !st.showNqcInfo}))}
@@ -5534,7 +5540,13 @@ class PseudocodeImporter extends React.Component {
                             title={this.L.asmInfoTitle} data-testid="bw-asm-info-toggle">i</button>
                     ) : null}
                     {this.state.status ? <span data-testid="bw-code-status"
-                        style={{fontSize: 13}}>{this.state.status}</span> : null}
+                        style={{fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0}}>
+                        {this.state.status}
+                        {/^(Restored your unsaved |Nicht gespeicherter ).*(?:\.|wiederhergestellt\.)$/.test(this.state.status) ?
+                            <button type="button" data-testid="bw-dismiss-restored" aria-label={this.L.close || 'Close'}
+                                onClick={() => this.setState({status: ''})}
+                                style={{border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, lineHeight: 1}}>×</button> : null}
+                    </span> : null}
                 </div>
                 {this.state.conversionReport ? (() => {
                     const report = this.state.conversionReport;

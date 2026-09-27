@@ -6,6 +6,14 @@ const COLOR_NAMES = ['black', 'magenta', 'purple', 'blue', 'azure', 'turquoise',
 const EXTENSION_IDS = ['spikeprime', 'legospikeprimeBLE', 'spikeprimeble',
     'spikeprimeBTC', 'spikeprimeBridge'];
 
+// The Widgets pane is shared by every project. Port telemetry belongs there
+// only after a SPIKE extension has actually been added to this project.
+export const isSpikeExtensionLoaded = vm => {
+    const manager = vm?.extensionManager;
+    return Boolean(manager?.isExtensionLoaded &&
+        EXTENSION_IDS.some(id => manager.isExtensionLoaded(id)));
+};
+
 const reading = (kind, data = {}) => {
     if (kind === 'motor') {
         const speed = Number(data.speed) || 0;

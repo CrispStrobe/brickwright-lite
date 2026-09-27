@@ -7,8 +7,21 @@ const {default: HubState} = await import(resolve(here,
     '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js'));
 const {loadSpikeTestRig} = await import(resolve(here,
     '../overlay/scratch-gui/src/lib/virtual-hub/spike-panel.js'));
-const {snapshotSpikePorts} = await import(resolve(here,
+const {snapshotSpikePorts, isSpikeExtensionLoaded} = await import(resolve(here,
     '../overlay/scratch-gui/src/lib/spike-port-snapshot.js'));
+
+test('SPIKE ports appear only when a SPIKE extension is loaded', () => {
+    const loaded = new Set();
+    const vm = {extensionManager: {isExtensionLoaded: id => loaded.has(id)}};
+    assert.equal(isSpikeExtensionLoaded(vm), false);
+    loaded.add('spikeprime');
+    assert.equal(isSpikeExtensionLoaded(vm), true);
+    loaded.delete('spikeprime');
+    loaded.add('spikeprimeble');
+    assert.equal(isSpikeExtensionLoaded(vm), true);
+    loaded.clear();
+    assert.equal(isSpikeExtensionLoaded(vm), false);
+});
 
 test('Widgets shows real reported ports and does not mistake absent telemetry for an empty port', () => {
     const runtime = {peripheralExtensions: {spikeprime: {

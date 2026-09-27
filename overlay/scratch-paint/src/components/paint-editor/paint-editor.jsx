@@ -67,7 +67,7 @@ const PaintEditorComponent = props => (
         {props.canvas !== null ? ( // eslint-disable-line no-negated-condition
             <div className={styles.editorContainerTop}>
                 {/* First row */}
-                <div className={styles.row}>
+                <div className={styles.row} style={{minWidth: 0, overflowX: 'auto'}}>
                     <FixedToolsContainer
                         canRedo={props.canRedo}
                         canUndo={props.canUndo}
@@ -77,6 +77,7 @@ const PaintEditorComponent = props => (
                         onUpdateImage={props.onUpdateImage}
                         onUpdateName={props.onUpdateName}
                     />
+                    {props.editorTools}
                 </div>
                 {/* Second Row */}
                 {isVector(props.format) ?
@@ -331,6 +332,7 @@ const PaintEditorComponent = props => (
 );
 
 PaintEditorComponent.propTypes = {
+    editorTools: PropTypes.node,
     canRedo: PropTypes.func.isRequired,
     canUndo: PropTypes.func.isRequired,
     canvas: PropTypes.instanceOf(Element),
