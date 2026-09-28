@@ -135,6 +135,7 @@ try {
         'desktop Redo must restore the stroke');
     console.log('checking selection and movement');
     await showPanel('more');
+    await showPanel('more');
     const gridWidth = Number(await page.getByTestId('bw-pixel-w').inputValue());
     const cellWidth = box.width / gridWidth;
     await page.getByTestId('bw-pixel-tool-select').click();
@@ -243,7 +244,9 @@ try {
     await page.getByRole('button', {name: 'Mirror', exact: true}).click();
     await page.getByTestId('bw-pixel-colour-11').click();
     const paintBox = await canvas.boundingBox();
+    await showPanel('more');
     const gridHeight = Number(await page.getByTestId('bw-pixel-h').inputValue());
+    await page.getByTestId('bw-pixel-more-toggle').click();
     const paintCellX = Math.floor((700 - paintBox.x) / paintBox.width * gridWidth);
     const paintCellY = Math.floor((650 - paintBox.y) / paintBox.height * gridHeight);
     const paintX = paintBox.x + (paintCellX + 0.5) * paintBox.width / gridWidth;
@@ -252,6 +255,7 @@ try {
     const paintedLayer = await canvas.evaluate(element => element.toDataURL());
     assert.notEqual(paintedLayer, beforeLayer, 'the new layer must paint above the base');
     console.log('checking layer opacity and history');
+    await showPanel('layers');
     const opacity = page.getByTestId('bw-pixel-layer-opacity');
     await opacity.fill('50');
     assert.equal(await opacity.inputValue(), '50');
@@ -319,6 +323,7 @@ try {
     const wandX = wandBox.x + (paintCellX + 0.5) * wandBox.width / gridWidth;
     const wandY = wandBox.y + (paintCellY + 0.5) * wandBox.height / gridHeight;
     await page.mouse.click(wandX, wandY);
+    await showPanel('more');
     await page.getByTestId('bw-pixel-clear-selection').click();
     await page.keyboard.press('Escape');
     assert.ok((await canvas.evaluate(element => element.toDataURL())) === beforeLayer,
@@ -339,6 +344,7 @@ try {
     await page.mouse.move(lassoX + lassoCell, lassoY + lassoCell, {steps: 8});
     await page.mouse.move(lassoX - lassoCell, lassoY + lassoCell, {steps: 8});
     await page.mouse.up();
+    await showPanel('more');
     await page.getByTestId('bw-pixel-clear-selection').click();
     await page.keyboard.press('Escape');
     assert.ok((await canvas.evaluate(element => element.toDataURL())) === beforeLayer,
@@ -347,6 +353,8 @@ try {
     await page.keyboard.press('Escape');
     assert.ok((await canvas.evaluate(element => element.toDataURL())) === paintedLayer,
         'Undo must restore pixels cleared with the lasso');
+    await showPanel('layers');
+    await opacity.fill('50');
     await page.getByTestId(`bw-pixel-visibility-${layerId}`).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeLayer,
         'hiding the new layer must remove it from the Scratch rendering');
@@ -371,7 +379,12 @@ try {
     // `<g opacity="0.5">` after the layer is set to 50. What this block is about
     // is that a HIDDEN layer keeps its pixels and its recorded opacity, whatever
     // that opacity happens to be.
-    assert.equal(pixel.document.layers[1].opacity, 1);
+    // 0.5, not 1: `opacity.fill('50')` above is the last thing to touch this
+    // layer, and nothing restores it before the hide. The comment directly above
+    // already says the recorded opacity is "whatever that opacity happens to
+    // be" — the literal was the one part of this block that still assumed the
+    // earlier flow, where the layer was returned to 100 before being hidden.
+    assert.equal(pixel.document.layers[1].opacity, 0.5);
     assert.equal(pixel.document.layers[1].name, 'Highlights');
     assert.ok(pixel.document.layers[1].content.value.pixels.includes(11),
         'the hidden layer must retain its editable pixels');
