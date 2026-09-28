@@ -558,7 +558,7 @@ export function toggleTargetCodeBreakpoint ({target, addrBps, addr}) {
  *   names the machine shape a preset image was built for; absent, the
  *   extracted config (or the target's default map) is used.
  */
-export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, onChange = () => {} }) {
+export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, labwiredChip = null, onChange = () => {} }) {
     let session = null;
     let target = null;
     let i8086ExecutionResult = null;
@@ -1893,6 +1893,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 '. Run `npm run sync:labwiredwasm` and rebuild, or pick another engine.');
         }
 
+        // A chip picked in the panel means "my firmware on that chip", with no
+        // circuit — whatever the project's own device is.
+        if (labwiredChip) return attachLabwiredFirmwareOnly(built, wasm, createDebugTarget, createDebugSession);
+
         const stc = projectStc(null);
         const device = String(stc?.device || '').toLowerCase();
         const isAvr = ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device);
@@ -1965,6 +1969,42 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             ...(refusals || []).map(r => `${r.subject}: ${r.reason}`)
         ];
 
+        return finishLabwiredAttach(lwTarget, lwAdapter, program.length, stc.pins || [], createDebugSession);
+    }
+
+
+    /** The user's own ELF on a labwired catalog chip, with no circuit.
+     *
+     *  No netlist, so no board, no pins and no bench refusals: the Circuit tab
+     *  is not told a board is ready, because there is none. The panel offers
+     *  the chip list (bw-board/labwired-catalog.js, the engine's own chip
+     *  descriptors at the wasm build pin) only on the LabWired engine. */
+    async function attachLabwiredFirmwareOnly (built, wasm, createDebugTarget, createDebugSession) {
+        const { LABWIRED_CATALOG } = await import(
+            /* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js');
+        const chip = LABWIRED_CATALOG[labwiredChip];
+        if (!chip) throw new Error(`'${labwiredChip}' is not a chip the LabWired engine offers`);
+        if (!built || built.format !== 'elf' || !(built.image instanceof Uint8Array)) {
+            throw new Error(`the ${chip.name} runs your own firmware: load an .elf with Firmware… first ` +
+                '(a block project compiles for its own device, not for this chip)');
+        }
+        const { target: lwTarget, adapter: lwAdapter } = await createDebugTarget('labwired', {
+            wasm, chip, firmware: built.image,
+        });
+        board = null;
+        engineNotes = [
+            `Your firmware on the ${chip.name} (${chip.arch}, ${chip.clockHz / 1e6} MHz), with no circuit: ` +
+            'pins are not wired to anything here, so this is for stepping, breakpoints, registers, ' +
+            'memory and the serial console.'
+        ];
+        emit();
+        return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession);
+    }
+
+    /** What every labwired attach does once it has a target: the console (out
+     *  AND in), the runner's target/session, and the ready line. Shared by the
+     *  bench attach and the firmware-only one so the two cannot drift. */
+    function finishLabwiredAttach (lwTarget, lwAdapter, programBytes, pins, createDebugSession) {
         if (lwAdapter && lwAdapter.onSerial) {
             let lineBuf = '';
             serialLines = [];
@@ -2009,7 +2049,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // names this run cannot resolve — readings that look right and are not.
         symbols = null;
         variableTable = [];
-        pinTable = stc.pins || [];
+        pinTable = pins;
         if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
 
         session = createDebugSession(target, {
@@ -2020,7 +2060,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
         // Said in the status line rather than left for the user to infer from a
         // greyed-out button.
-        setStatus('ready', S('built.labwired', {bytes: program.length}));
+        setStatus('ready', S('built.labwired', {bytes: programBytes}));
         return session;
     }
 
@@ -3296,6 +3336,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             return { hex: null, image: bytes, symbols: null, c: null,
                 bytes: bytes.length, f_cpu: null, format: 'bin' };
+        }
+        if (kind === 'labwired') {
+            // The heavy tier runs the user's image on a catalog chip (see
+            // attachLabwiredFirmwareOnly). ELF only: it says where every byte
+            // loads, which a raw .bin cannot, and the chips differ (STM32 flash
+            // at 0x0800_0000, nRF at 0, RP2040 XIP at 0x1000_0000).
+            const bytes = fw.bytes || new Uint8Array(0);
+            const isElf = bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 &&
+                bytes[2] === 0x4c && bytes[3] === 0x46;
+            if (!isElf) {
+                throw new Error(`${fw.name}: the LabWired engine takes an ELF (.elf) — ` +
+                    'a raw .bin or .hex does not say where its bytes load on this chip');
+            }
+            return { hex: null, image: bytes, symbols: null, c: null,
+                bytes: bytes.length, f_cpu: null, format: 'elf' };
         }
         throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
     }

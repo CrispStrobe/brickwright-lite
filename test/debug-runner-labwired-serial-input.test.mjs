@@ -11,13 +11,20 @@ const source = readFileSync(new URL(
     '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js', import.meta.url), 'utf8');
 
 function labwiredRxBlock() {
-    const fn = source.indexOf('async function attachLabwiredTarget');
-    assert.ok(fn >= 0, 'attachLabwiredTarget exists');
-    const end = source.indexOf('async function ', fn + 1);
+    // Every labwired attach (the bench one and firmware-only) ends in this
+    // shared finisher, so the RX block lives there once.
+    const fn = source.indexOf('function finishLabwiredAttach (');
+    assert.ok(fn >= 0, 'finishLabwiredAttach exists');
+    const end = source.indexOf('\n    }\n', fn);
     const body = source.slice(fn, end);
     const start = body.indexOf("if (lwAdapter && typeof lwAdapter.feedSerial === 'function')");
     const stop = body.indexOf('// `target` and `session` are the RUNNER');
-    assert.ok(start >= 0 && stop > start, 'the RX block sits in attachLabwiredTarget, before target/session');
+    assert.ok(start >= 0 && stop > start, 'the RX block sits in finishLabwiredAttach, before target/session');
+    for (const caller of ['async function attachLabwiredTarget', 'async function attachLabwiredFirmwareOnly']) {
+        const at = source.indexOf(caller);
+        const next = source.indexOf('\n    }\n', at);
+        assert.match(source.slice(at, next), /return finishLabwiredAttach\(/, `${caller} ends in the shared finisher`);
+    }
     return new Function('lwAdapter', 'runner', body.slice(start, stop));
 }
 

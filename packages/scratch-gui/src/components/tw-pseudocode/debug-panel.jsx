@@ -65,6 +65,8 @@ const L10N = {
         modemSend: 'Encode and transmit this message on PA0/ADC6',
         modemSent: 'transmitted',
         firmwareRunning: 'running',
+        labwiredChipProject: 'project board',
+        labwiredChipTitle: 'Run your own firmware (.elf) on this chip, with no circuit — or the project\'s board',
         firmwareBack: 'Blocks',
         firmwareBackTitle: 'Stop running this image and go back to debugging the blocks program',
         firmwareBareChip: 'No circuit is drawn, so this image runs on the bare chip: pins, serial and stepping all work. Draw a circuit in the Circuit tab to wire parts to its pins.',
@@ -113,6 +115,8 @@ const L10N = {
         modemSend: 'Diese Nachricht kodieren und an PA0/ADC6 senden',
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
+        labwiredChipProject: 'Projekt-Board',
+        labwiredChipTitle: 'Eigene Firmware (.elf) auf diesem Chip ausführen, ohne Schaltung — oder das Board des Projekts',
         firmwareBack: 'Blöcke',
         firmwareBackTitle: 'Dieses Abbild beenden und wieder das Blockprogramm debuggen',
         firmwareBareChip: 'Es ist keine Schaltung gezeichnet, daher läuft dieses Abbild auf dem nackten Chip: Pins, Seriell und Einzelschritte funktionieren. Zeichne im Circuit-Tab eine Schaltung, um Bauteile an seine Pins anzuschließen.',
@@ -164,6 +168,7 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
+            labwiredChip: '', labwiredChips: null,
             machineConfig: null, serialInput: '', modemInput: '', modemStatus: null,
             firmwareName: null,
             recordingStatus: null, reverseStatus: null, timelineStatus: null,
@@ -596,6 +601,23 @@ class DebugPanel extends React.Component {
     componentDidUpdate (prevProps) {
         this.syncDeviceKind();
         this.syncProjectTokens(prevProps, false);
+        this.ensureLabwiredChips();
+    }
+
+    // The chip list for "your own firmware on the LabWired engine" — the
+    // engine's own chip descriptors, a 160 KB chunk, so fetched only once the
+    // LabWired engine is actually picked. Failure leaves the picker absent
+    // (the project-board route still works) and says why in the console.
+    ensureLabwiredChips () {
+        if (this.state.kind !== 'labwired' || this.state.labwiredChips || this._labwiredChipsLoading) return;
+        this._labwiredChipsLoading = true;
+        import(/* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js')
+            .then(m => {
+                const chips = Object.values(m.LABWIRED_CATALOG || {}).map(c => ({name: c.name, arch: c.arch}));
+                this.setState({labwiredChips: chips});
+            })
+            .catch(e => console.warn('[brickwright] LabWired chip list unavailable:', e))
+            .finally(() => { this._labwiredChipsLoading = false; });
     }
 
     // When the project's DEVICE declaration changes, switch the default
@@ -751,6 +773,7 @@ class DebugPanel extends React.Component {
             targetKind: this.state.kind,
             machineConfig: this.state.machineConfig,
             bootMedia: this._bootMedia,
+            labwiredChip: this.state.kind === 'labwired' ? (this.state.labwiredChip || null) : null,
             onChange: (ui) => {
                 // Runner notifications arrive from rAF/target callbacks, outside
                 // React 16's event batching. The local panel and its CircuitTab
@@ -1299,6 +1322,26 @@ class DebugPanel extends React.Component {
                                     <option key={k.kind} value={k.kind}>{k.label}</option>
                                 ))}
                             </select>
+                            {this.state.kind === 'labwired' && this.state.labwiredChips ? (
+                                <select
+                                    value={this.state.labwiredChip}
+                                    disabled={running || paused || busy}
+                                    title={this.tx('labwiredChipTitle')}
+                                    onChange={e => {
+                                        // A different chip is a different machine:
+                                        // the next Start must attach fresh.
+                                        this._teardownRunner();
+                                        this.setState({labwiredChip: e.target.value, runner: null,
+                                            ui: {phase: 'idle', message: ''}});
+                                    }}
+                                    style={{...BTN, padding: '3px 6px'}}
+                                >
+                                    <option value="">{this.tx('labwiredChipProject')}</option>
+                                    {this.state.labwiredChips.map(c => (
+                                        <option key={c.name} value={c.name}>{`${c.name} (${c.arch})`}</option>
+                                    ))}
+                                </select>
+                            ) : null}
                         </span>
                     ) : null}
 
