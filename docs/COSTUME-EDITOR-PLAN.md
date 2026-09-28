@@ -26,16 +26,20 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   individual palette indices; on reopen it reads those pixels from the source.
   Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
-  line and rectangle tools, a rectangular selection that can move or clear
-  pixels on the active layer, mirrored drawing, ordered pixel layers with
+  line and rectangle tools, rectangular and lasso selections, and a connected
+  colour wand with adjustable tolerance. Selections can move or clear pixels
+  on the active layer. The editor also has mirrored drawing, ordered pixel layers with
   visibility, locking, reordering and deletion, larger colour targets, a pan
   tool and two-pointer/pinch navigation. It flattens visible layers into the
   Scratch SVG while retaining hidden layers in editable source. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
 - Archive tests cover round-trip preservation, stale source rejection and
   future-version pass-through. A browser gate checks layer visibility and
-  persistence across SB3 save/reopen, plus mouse, keyboard, trackpad and touch
-  interactions. The GUI build is the integration gate.
+  persistence across SB3 save/reopen, lasso and wand selection, plus mouse,
+  keyboard, trackpad and touch interactions. The GUI build is the integration
+  gate. Scratch Paint's regular bitmap mode now also offers rectangle, lasso,
+  and connected-colour wand selection. Its lifted selection keeps transparent
+  pixels outside the mask untouched, and the wand has an adjustable tolerance.
 
 ## Next delivery slices
 
@@ -59,7 +63,7 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
 4. **Raster core.** Render ordered raster layers with transparency and opacity;
-   add marquee/lasso selections, move/transform/crop, brush size/opacity and
+   expand the new lasso and wand selectors into layer-aware selection, move/transform/crop, brush size/opacity and
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
