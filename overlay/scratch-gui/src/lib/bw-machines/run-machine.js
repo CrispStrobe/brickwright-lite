@@ -82,6 +82,33 @@ export async function runMachineConfig(config, opts = {}) {
         detail.chips = activated.machineConfig.chips;
     }
 
-    dispatch(detail);
+    // DOM event listeners cannot return a Promise to dispatchEvent(). For the
+    // named browser 386 route, wait for the panel's actual attach result so a
+    // failed ROM/media load remains visible in Machine Manager. Injected
+    // dispatchers keep the old synchronous contract unless a test opts in.
+    const awaitBoot = activated.machinePreset === 'freedos-vga' &&
+        (opts.awaitBoot ?? typeof opts.dispatch !== 'function');
+    let completion = null;
+    let timer = null;
+    if (awaitBoot) {
+        completion = new Promise((resolve, reject) => {
+            const settle = (error) => {
+                clearTimeout(timer);
+                delete detail.bootCompletion;
+                if (error) reject(error);
+                else resolve();
+            };
+            detail.bootCompletion = {resolve: () => settle(null), reject: settle};
+            timer = setTimeout(() => settle(new Error('timed out waiting for the 386 machine to attach')), 60000);
+        });
+    }
+    try {
+        dispatch(detail);
+    } catch (error) {
+        if (timer) clearTimeout(timer);
+        delete detail.bootCompletion;
+        throw error;
+    }
+    if (completion) await completion;
     return {mode: 'functional', activated, detail};
 }

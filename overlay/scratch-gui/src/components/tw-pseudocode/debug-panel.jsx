@@ -312,6 +312,21 @@ class DebugPanel extends React.Component {
      *  must boot TOGETHER so the CPU reads its reset vector from the
      *  real bytes, not from a zero-filled ROM it booted with earlier. */
     async _onMediaLoad (e) {
+        try {
+            const consumed = await this._bootFromMedia(e);
+            if (consumed) e.detail?.bootCompletion?.resolve();
+        } catch (error) {
+            // DOM dispatch does not await an async listener. Return attachment
+            // failures to Machine Manager when it requested completion.
+            if (e.detail?.bootCompletion) {
+                e.detail.bootCompletion.reject(error);
+                return;
+            }
+            throw error;
+        }
+    }
+
+    async _bootFromMedia (e) {
         const {slotId, bytes, kind, profile, name, romAt, chips, widgets, geometry} = e.detail || {};
         // A RISC-V program from the local RV32IM assembler carries a loadable
         // {entry, segments} image, not a flat ROM — the one media that is not
@@ -330,7 +345,7 @@ class DebugPanel extends React.Component {
         // the first time). A panel that already took it would tear down the
         // machine it is booting and boot a second one — for Linux, a second
         // 64 MiB kernel. Identity, not equality: a new Run makes a new detail.
-        if (e.detail && e.detail === this._lastMediaDetail) return;
+        if (e.detail && e.detail === this._lastMediaDetail) return false;
         this._lastMediaDetail = e.detail || null;
         this._teardownRunner();
         this._bootMedia = {
@@ -380,6 +395,13 @@ class DebugPanel extends React.Component {
             {kind: nextKind, runner: null, ui: {phase: 'idle', message: ''}}, resolve));
         const runner = await this.runner();
         await runner.start();
+        // The runner reports attachment failures in state() rather than
+        // rejecting start(). Promote that failure to the media completion
+        // promise before the manager closes or a dead screen is mirrored.
+        const bootState = e.detail?.bootCompletion ? runner.state() : null;
+        if (bootState?.phase === 'error') {
+            throw new Error(bootState.message || 'the 386 machine failed to attach');
+        }
         // A machine that declares a screen widget (a source:'video' display in
         // its config/manifest) mirrors its framebuffer into the Widgets pane —
         // a machine's screen is a widget (design §4.2). gui.jsx owns the pump
@@ -418,6 +440,7 @@ class DebugPanel extends React.Component {
             typeof window.bwPlayMachineAudio === 'function') {
             window.bwPlayMachineAudio({audioFn: () => runner.audio()});
         }
+        return true;
     }
 
     /**
