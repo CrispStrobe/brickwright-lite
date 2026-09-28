@@ -1984,8 +1984,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             /* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js');
         const chip = LABWIRED_CATALOG[labwiredChip];
         if (!chip) throw new Error(`'${labwiredChip}' is not a chip the LabWired engine offers`);
-        if (!built || built.format !== 'elf' || !(built.image instanceof Uint8Array)) {
-            throw new Error(`the ${chip.name} runs your own firmware: load an .elf with Firmware… first ` +
+        if (!built || !['elf', 'uf2'].includes(built.format) || !(built.image instanceof Uint8Array)) {
+            throw new Error(`the ${chip.name} runs your own firmware: load an .elf or .uf2 with Firmware… first ` +
                 '(a block project compiles for its own device, not for this chip)');
         }
         const { target: lwTarget, adapter: lwAdapter } = await createDebugTarget('labwired', {
@@ -3345,12 +3345,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const bytes = fw.bytes || new Uint8Array(0);
             const isElf = bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 &&
                 bytes[2] === 0x4c && bytes[3] === 0x46;
-            if (!isElf) {
-                throw new Error(`${fw.name}: the LabWired engine takes an ELF (.elf) — ` +
+            // UF2 (a Pico's drag-and-drop image): every block names its flash
+            // address, so bw-board converts it without guessing an origin.
+            const isUf2 = bytes.length >= 8 && bytes[0] === 0x55 && bytes[1] === 0x46 &&
+                bytes[2] === 0x32 && bytes[3] === 0x0a;
+            if (!isElf && !isUf2) {
+                throw new Error(`${fw.name}: the LabWired engine takes an ELF (.elf) or a UF2 (.uf2) — ` +
                     'a raw .bin or .hex does not say where its bytes load on this chip');
             }
             return { hex: null, image: bytes, symbols: null, c: null,
-                bytes: bytes.length, f_cpu: null, format: 'elf' };
+                bytes: bytes.length, f_cpu: null, format: isElf ? 'elf' : 'uf2' };
         }
         throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
     }

@@ -66,7 +66,7 @@ const L10N = {
         modemSent: 'transmitted',
         firmwareRunning: 'running',
         labwiredChipProject: 'project board',
-        labwiredChipTitle: 'Run your own firmware (.elf) on this chip, with no circuit — or the project\'s board',
+        labwiredChipTitle: 'Run your own firmware (.elf or .uf2) on this chip, with no circuit — or the project\'s board',
         firmwareBack: 'Blocks',
         firmwareBackTitle: 'Stop running this image and go back to debugging the blocks program',
         firmwareBareChip: 'No circuit is drawn, so this image runs on the bare chip: pins, serial and stepping all work. Draw a circuit in the Circuit tab to wire parts to its pins.',
@@ -116,7 +116,7 @@ const L10N = {
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
         labwiredChipProject: 'Projekt-Board',
-        labwiredChipTitle: 'Eigene Firmware (.elf) auf diesem Chip ausführen, ohne Schaltung — oder das Board des Projekts',
+        labwiredChipTitle: 'Eigene Firmware (.elf oder .uf2) auf diesem Chip ausführen, ohne Schaltung — oder das Board des Projekts',
         firmwareBack: 'Blöcke',
         firmwareBackTitle: 'Dieses Abbild beenden und wieder das Blockprogramm debuggen',
         firmwareBareChip: 'Es ist keine Schaltung gezeichnet, daher läuft dieses Abbild auf dem nackten Chip: Pins, Seriell und Einzelschritte funktionieren. Zeichne im Circuit-Tab eine Schaltung, um Bauteile an seine Pins anzuschließen.',
@@ -1275,11 +1275,14 @@ class DebugPanel extends React.Component {
                         — pins, board, serial and stepping stay. */}
                     <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
                         <label style={{...BTN, padding: '3px 6px', cursor: 'pointer'}}
-                            title={'Load a firmware file (.bin for Pico/STM32, .hex/.ihx for 8051/AVR) and run it instead of the blocks'}>
+                            title={'Load a firmware file (.bin for Pico/STM32, .hex/.ihx for 8051/AVR' +
+                                (this.state.kind === 'labwired' ? ', .elf/.uf2 for a chip picked on LabWired' : '') +
+                                ') and run it instead of the blocks'}>
                             {'📂'}
                             <input
                                 type="file"
-                                accept=".bin,.hex,.ihx"
+                                accept={this.state.kind === 'labwired'
+                                    ? '.elf,.uf2,.bin,.hex,.ihx' : '.bin,.hex,.ihx'}
                                 style={{display: 'none'}}
                                 disabled={running || paused || busy}
                                 onChange={e => this.onFirmwareFile(e)}
