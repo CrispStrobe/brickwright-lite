@@ -491,7 +491,11 @@ class Emitter {
             this.arrays.add(this.arrayName(b));
             return;                                   // the declaration IS the creation
         case 'arrays_create1D': {
-            const json = this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
+            // The literal's own text, not value(): value() JSON-quotes a text
+            // input, and stripping only the outer quotes left `[\"cat\"]`
+            // escaped — a string array MakeCode could not read.
+            const slot = b.inputs && b.inputs.JSON && b.inputs.JSON[1];
+            const json = Array.isArray(slot) ? String(slot[1]) : this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
             push(`${this.arrayName(b)} = ${json}`);
             return;
         }

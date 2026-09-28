@@ -668,3 +668,18 @@ test('pauseUntil — how `wait until` and every polled handler\'s release wait g
     assert.match(code, /wait until read button_a/);
     assert.match(code, /wait until not \(logo touched\)/);
 });
+
+test('a string array goes to MakeCode as a string array, not an escaped one, and comes back as itself',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        // arrays_create1D's JSON went through value(), which quoted it, and only
+        // the outer quotes were stripped: `words = [\\"cat\\", \\"dog\\"]`.
+        const src = 'DEVICE MICROBIT\nWHEN flag clicked:\n  new array "words" = ["cat", "dog"]\n  new array "nums" = [1, 2]\n' +
+            '  show text item 1 of array "words"\n';
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(src));
+        assert.deepEqual(unsupported, []);
+        assert.match(ts, /words = \["cat", "dog"\]/);
+        assert.match(ts, /nums = \[1, 2\]/);
+        assert.doesNotMatch(ts, /\\"/);
+        const again = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(ts).code)).ts;
+        assert.equal(again, ts, 'a fixed point');
+    });
