@@ -14,7 +14,7 @@
 // SLOT NAME, before anything boots. The licence line and the source link are
 // shown next to the Run button, so the offer travels with the binary.
 
-import {remoteCodeRestricted} from '../distribution-policy.js';
+import {remoteMachineImagesAllowed} from '../distribution-policy.js';
 //
 // WHY raw.githubusercontent.com AT A COMMIT, not the release download: a
 // GitHub release asset redirects to a host that sends no CORS header, so a
@@ -98,7 +98,7 @@ export const LINUX_DOWNLOAD_BYTES = LINUX_RISCV_MEDIA.kernel.bytes + LINUX_RISCV
 export function lessonMachines (locale) {
     // A deliberately self-contained build omits separately hosted machine media. This is selected
     // by webpack, not inferred from Tauri; normal native builds offer the same lesson as the web app.
-    if (remoteCodeRestricted()) return [];
+    if (!remoteMachineImagesAllowed()) return [];
     const t = (k, v) => lessonT(locale, k, v);
     const config = newMachineConfig({
         id: 'lesson-linux-riscv32',

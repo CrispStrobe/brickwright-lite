@@ -31,7 +31,7 @@ import {
     getToolchainMode, setToolchainMode, localToolchainEnabled,
     primeToolchainCache, inspectToolchain, removeToolchain, measureToolchain
 } from './sdcc-wasm/toolchain-source.js';
-import {remoteCodeRestricted} from './distribution-policy.js';
+import {remoteToolchainsAllowed} from './distribution-policy.js';
 
 const el = (tag, style, text) => {
     const node = document.createElement(tag);
@@ -138,7 +138,7 @@ export const openPanel = () => {
         choices.textContent = '';
         choices.appendChild(modeRow('online', 'bw-toolchain-mode-online', 'Build online (default)',
             'Your program is sent to the compiler service. Nothing is downloaded.'));
-        if (!remoteCodeRestricted()) {
+        if (remoteToolchainsAllowed()) {
             choices.appendChild(modeRow('local', 'bw-toolchain-mode-local', 'Build in this page',
                 'Downloads the compiler once (about 1.7 MB) and keeps it here, so builds work offline.'));
         } else {
@@ -147,7 +147,7 @@ export const openPanel = () => {
         }
 
         actions.textContent = '';
-        if (!installed && !remoteCodeRestricted()) {
+        if (!installed && remoteToolchainsAllowed()) {
             actions.appendChild(button(partial ? 'Continue download' : 'Download compiler',
                 download, 'bw-toolchain-download'));
         }
