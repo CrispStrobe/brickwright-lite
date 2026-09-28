@@ -41,26 +41,13 @@ pub fn run() {
         // Open external links (help/docs/credits) in the system browser.
         .plugin(tauri_plugin_opener::init());
 
-    // BLE transport (btleplug on desktop/iOS; Tauri Android plugin on Android).
-    //
-    // `tauri_plugin_blec::init()` PANICS if its handler cannot be built — the crate documents
-    // this, and on Linux the handler needs org.bluez on the session bus. So a desktop with no
-    // Bluetooth hardware, one where bluetoothd is masked, or any container was not degrading to
-    // "no BLE": it was a hard crash before the first window appeared. Found by the end-to-end
-    // harness, which is the first gate that LAUNCHES the app rather than building it — the panic
-    // is invisible to every compile-time and packaging gate we have.
-    //
-    // Registering it conditionally means a machine without Bluetooth loses the BLE features it
-    // could not have used anyway, and keeps the rest of the app. catch_unwind is the available
-    // mechanism because init() panics rather than returning a Result.
-    let builder = match std::panic::catch_unwind(tauri_plugin_blec::init) {
-        Ok(plugin) => builder.plugin(plugin),
-        Err(_) => {
-            log::warn!("BLE transport unavailable (no reachable Bluetooth service); \
-                        ScratchLink over BLE is disabled for this session");
-            builder
-        }
-    };
+    // BLE transport (btleplug on desktop/iOS; Tauri Android plugin on Android). Bluetooth is an
+    // optional peripheral path, so its platform discovery must not hold the first window hostage:
+    // Linux D-Bus waits 25 seconds for a missing BlueZ service. Our exact MIT/Apache fork keeps
+    // plugin registration synchronous but initializes the handler in the background. Until it is
+    // ready (or forever on a host without BLE), commands return HandlerNotInitialized and the
+    // existing ScratchLink status path reports `handler:false`.
+    let builder = builder.plugin(tauri_plugin_blec::init_nonblocking());
 
     // OS share sheet (sender side of the project share round-trip) — mobile only.
     #[cfg(mobile)]

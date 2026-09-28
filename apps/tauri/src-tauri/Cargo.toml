@@ -21,7 +21,9 @@ cc = "1"
 # available is a feature, not a leak.
 [dependencies]
 tauri = { version = "2", features = ["devtools"] }
-tauri-plugin-blec = "0.5"
+# Exact permissive fork pin. Upstream 0.5.3 synchronously waits for BlueZ and panics from init()
+# when Bluetooth is absent; this adds the backwards-compatible nonblocking initializer used below.
+tauri-plugin-blec = { git = "https://github.com/CrispStrobe/tauri-plugin-blec", rev = "d22466eef77128ec08a47283d6bbc5f81f269367" }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-deep-link = "2"
