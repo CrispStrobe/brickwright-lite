@@ -462,8 +462,15 @@ class MicrobitTranslator extends BaseTranslator {
         // full expression — which is what showNumber(count) needs. The
         // literal spellings are kept where they apply because they carry
         // the scroll delay the device blocks model.
+        // `show number`, which WAITS while the number is shown, as MakeCode's
+        // does (a digit 750 ms, "42" 2550 ms at the default interval). It was
+        // `display`, lite's own word, which scrolls and moves on, so a program
+        // that showed a count ran ahead of MakeCode's (owner's decision
+        // 2026-09-28: its own word; `display` keeps its meaning). The interval
+        // is MakeCode's optional second argument.
         case 'basic.showNumber':
-            push(`display ${this.expr(a[0])}`);
+            push(a[1] ? `show number ${this.expr(a[0])} delay ${this.operand(a[1])} ms` :
+                `show number ${this.expr(a[0])}`);
             return;
         case 'basic.showString': {
             const literal = this.literalString(a[0]);

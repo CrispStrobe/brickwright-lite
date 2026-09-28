@@ -575,6 +575,13 @@ class Emitter {
             push(`basic.showLeds(\`${ledsOf(f('MATRIX'))}\n${pad}    \`)`);
             return;
         }
+        // `show number` is MakeCode's showNumber itself (it waits while shown);
+        // 150 is its default interval, so it is left implicit.
+        case 'microbitplus_shownumber': {
+            const ms = v('MS', '150');
+            push(ms === '150' ? `basic.showNumber(${v('VALUE')})` : `basic.showNumber(${v('VALUE')}, ${ms})`);
+            return;
+        }
         case 'microbitplus_showtext':
             push(`basic.showString(${v('TEXT', '""')})`);
             return;

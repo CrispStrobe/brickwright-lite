@@ -786,3 +786,14 @@ test('LED sprites: MakeCode\'s own sprite program round-trips exactly — export
         assert.deepEqual(unsupported, []);
         assert.equal(ts, SPRITE_PROGRAM);
     });
+
+test('`show number` goes back as basic.showNumber (with its interval when not the default); `display` still does too',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const ts = tsOfProgram('  show number (n + 1)\n  show number 42 delay 100 ms\n  display 7\n');
+        assert.match(ts, /basic\.showNumber\(\(n \+ 1\)\)\n/);
+        assert.match(ts, /basic\.showNumber\(42, 100\)/);
+        assert.match(ts, /basic\.showNumber\(7\)/);
+        const again = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(ts).code)).ts;
+        const twice = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(again).code)).ts;
+        assert.equal(twice, again, 'settles after one trip');
+    });

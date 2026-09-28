@@ -85,7 +85,7 @@ test('a real MakeCode micro:bit project translates whole', async () => {
     const out = microbitToPseudocode(res.files['main.ts'], {name: 'pins test 1'});
     assert.match(out.code, /^DEVICE MICROBIT/);
     assert.match(out.code, /FOREVER:/);
-    assert.match(out.code, /display analog value of pin P0/);
+    assert.match(out.code, /show number analog value of pin P0/);
     assert.deepEqual(out.unsupported, [], 'this project needs no excuses');
 });
 
@@ -152,7 +152,7 @@ test('the emitted pseudocode compiles to the blocks it names', {skip: canCompile
     assert.ok(ops.has('event_whenflagclicked'), 'a hat');
     assert.ok(ops.has('control_forever'));
     assert.ok(ops.has('microbitplus_analogread'), 'the sensor read survived as a reporter');
-    assert.ok(ops.has('microbit_display'), 'and it is displayed');
+    assert.ok(ops.has('microbitplus_shownumber'), 'and it is displayed');
 });
 
 test('every mapped API reaches a block — the anti-silence gate', {skip: canCompile ? false :
@@ -198,7 +198,7 @@ test('every mapped API reaches a block — the anti-silence gate', {skip: canCom
     assert.deepEqual(out.unsupported, [], 'nothing in this program should need an excuse');
     const ops = opcodesOf(out.code);
     for (const expected of [
-        'microbitplus_showleds', 'microbit_display', 'microbitplus_scrolltext',
+        'microbitplus_showleds', 'microbitplus_shownumber', 'microbitplus_scrolltext',
         'microbitplus_cleardisplay', 'control_wait', 'microbitplus_plot',
         'microbitplus_digitalwrite', 'microbitplus_analogwrite', 'microbitplus_servo',
         'microbitplus_setpull', 'microbitplus_playtone', 'microbitplus_stoptone',
@@ -280,7 +280,7 @@ const BATCH_1 = [
     ['game.setScore(4)', 'set game score to 4', 'microbitplus_setscore'],
     ['game.removeLife(1)', 'remove game life 1', 'microbitplus_removelife'],
     ['game.gameOver()', 'game over', 'microbitplus_gameover'],
-    ['basic.showNumber(game.score())', 'display game score', 'microbitplus_score'],
+    ['basic.showNumber(game.score())', 'show number game score', 'microbitplus_score'],
     ['v = pins.map(v, 0, 1023, 0, 4)', 'set v to map v from low 0 high 1023 to low 0 high 4', 'microbitplus_map'],
     ['v = Math.map(v, 0, 10, 0, 100)', 'set v to map v from low 0 high 10 to low 0 high 100', 'microbitplus_map'],
     ['v = Math.min(v, 3)', 'set v to min of v and 3', 'planetemaths_min'],
@@ -418,7 +418,7 @@ test('a radio handler is a HAT, and its parameter IS the packet (it was a pollin
 
 test('a handler that assigns its parameter gets a variable to assign', () => {
     const {code} = microbitToPseudocode('radio.onReceivedNumber(function (n) {\n    n += 1\n    basic.showNumber(n)\n})\n');
-    assert.match(code, /WHEN radio receives number:\n {2}set n to read last radio number\n {2}change n by 1\n {2}display n/);
+    assert.match(code, /WHEN radio receives number:\n {2}set n to read last radio number\n {2}change n by 1\n {2}show number n/);
 });
 
 test('a truth value stored in a variable is stored as the choice it is (it was the TEXT of the comparison)',
@@ -532,7 +532,7 @@ test('the logo handler is polled like the buttons; a long press and a release ar
         '    basic.showNumber(2)',
         '})'
     ].join('\n'));
-    assert.match(code, /IF logo touched THEN:\n {6}display 1\n {6}wait until not \(logo touched\)/);
+    assert.match(code, /IF logo touched THEN:\n {6}show number 1\n {6}wait until not \(logo touched\)/);
     assert.deepEqual(unsupported, ['input.onLogoEvent(TouchButtonEvent.LongPressed) — polling sees the logo held, not a long press']);
 });
 
@@ -559,7 +559,7 @@ test('a function that returns a value hands it back in <name>_result; the caller
         ].join('\n'));
         assert.deepEqual(unsupported, []);
         assert.match(code, /DEFINE seriesSum \(n\):\n {2}IF n < 1 THEN:\n {4}set seriesSum_result to 0\n {4}stop this script\n {2}set seriesSum_result to n \* \(n \+ 1\) \/ 2\n {2}stop this script/);
-        assert.match(code, / {2}seriesSum 4\n {2}set _mc1 to seriesSum_result\n {2}set total to _mc1 \+ 1\n {2}seriesSum total\n {2}set _mc2 to seriesSum_result\n {2}display _mc2/);
+        assert.match(code, / {2}seriesSum 4\n {2}set _mc1 to seriesSum_result\n {2}set total to _mc1 \+ 1\n {2}seriesSum total\n {2}set _mc2 to seriesSum_result\n {2}show number _mc2/);
         const ops = opcodesOf(code);
         assert.ok(ops.has('procedures_call') && ops.has('control_stop'));
     });
@@ -582,7 +582,7 @@ test('break leaves the loop through a flag; the rest of the pass is skipped', {s
         '}'
     ].join('\n'));
     assert.deepEqual(unsupported, []);
-    assert.match(code, /set _brk1 to 0\n {2}REPEAT UNTIL \(_brk1 = 1\) or \(not \(i < 10\)\):\n {4}change i by 1\n {4}IF i = 3 THEN:\n {6}set _brk1 to 1\n {4}IF _brk1 = 0 THEN:\n {6}display i/);
+    assert.match(code, /set _brk1 to 0\n {2}REPEAT UNTIL \(_brk1 = 1\) or \(not \(i < 10\)\):\n {4}change i by 1\n {4}IF i = 3 THEN:\n {6}set _brk1 to 1\n {4}IF _brk1 = 0 THEN:\n {6}show number i/);
 });
 
 test('for … of a list is a counter over it (it was read as a counted for, and the body came out as stray lines)',
@@ -727,3 +727,13 @@ test('a sprite method name on something that is not a sprite is left to the rest
     assert.ok(unsupported.some(u => /robot\.move\(\)/.test(u)), unsupported.join('\n'));
     assert.doesNotMatch(code, /sprite/);
 });
+
+test('basic.showNumber is `show number`, which waits while shown; its interval rides along; `display` is lite\'s own',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode('let n = 0\nbasic.showNumber(n + 1)\nbasic.showNumber(42, 100)\n');
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /show number n \+ 1\n/);
+        assert.match(code, /show number 42 delay 100 ms/);
+        assert.doesNotMatch(code, /^\s*display /m);
+        assert.ok(opcodesOf(code).has('microbitplus_shownumber'));
+    });
