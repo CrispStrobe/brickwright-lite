@@ -161,7 +161,8 @@ try {
                     extensionLoaded = vm.extensionManager.isExtensionLoaded(extensionURL);
                 } catch (error) { extensionError = String(error && error.message || error); }
                 const toolchainDownload = await download(
-                    'https://crispstrobe.github.io/sdcc-wasm/runtime.json', 'toolchain runtime');
+                    'https://crispstrobe.github.io/sdcc-wasm/static/sdcc-wasm/runtime.json',
+                    'toolchain runtime');
                 const toolchainResponse = toolchainDownload.response;
                 const toolchainBytes = toolchainDownload.bytes.byteLength;
                 const kernelDownload = await download(
