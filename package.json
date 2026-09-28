@@ -80,6 +80,7 @@
         "verify:lazy-degradation": "node scripts/verify-lazy-extension-degradation.mjs",
         "verify:dock": "node scripts/verify-debug-dock.mjs",
         "verify:debug-history": "node scripts/verify-debug-history-browser.mjs",
+        "verify:i80386-freedos-vga-browser": "node scripts/verify-i80386-freedos-vga-browser.mjs",
         "verify:debug-inspection": "node scripts/verify-debug-run-to-inspection.mjs",
         "verify:matrix-ui": "node scripts/verify-matrix-ui.mjs",
         "verify:bluetooth": "node scripts/verify-bluetooth.mjs",
