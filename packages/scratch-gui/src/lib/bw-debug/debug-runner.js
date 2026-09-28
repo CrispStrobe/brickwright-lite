@@ -1860,7 +1860,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
-    /** STM32F030 or ATmega328P on the HEAVY tier (labwired-wasm).
+    /** Native firmware on the HEAVY tier (labwired-wasm).
      *
      *  STM32F030 uses the same raw flash image as attachStm32F0Target. AVR
      *  compiler output is Intel HEX, converted below to little-endian flash
@@ -1896,12 +1896,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const stc = projectStc(null);
         const device = String(stc?.device || '').toLowerCase();
         const isAvr = ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device);
-        if (!isAvr && device !== 'stm32f030') {
-            throw new Error('LabWired is admitted here only for STM32F030 and '
-                + 'ATmega328P/Arduino Uno/Nano. ATtiny85/88 stay on avr8js.');
+        const chipKind = isAvr ? 'arduino_uno'
+            : device === 'stm32f030' ? 'stm32f030'
+                : device === 'microbit' || device === 'microbit-v2' ? 'microbit_v2'
+                    : ['pybadge', 'pybadge-lc', 'samd51', 'arcade'].includes(device) ? 'pybadge' : null;
+        if (!chipKind) {
+            throw new Error(`LabWired has no admitted board model for '${device || 'this project'}'. `
+                + 'ATtiny85/88 stay on avr8js.');
         }
-        const chipKind = isAvr ? 'arduino_uno' : 'stm32f030';
-        const chip = isAvr ? LABWIRED_CHIPS.arduino_uno : STM32F0;
+        const chip = chipKind === 'stm32f030' ? STM32F0 : LABWIRED_CHIPS[chipKind];
+        if (!chip) throw new Error(`this bw-board build does not carry the LabWired '${chipKind}' model`);
         const clockHz = built.f_cpu || built.clockHz || chip.clockHz;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
@@ -1934,7 +1938,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         let lwTarget, lwAdapter, refusals;
         try {
             ({ target: lwTarget, adapter: lwAdapter, refusals } = await createDebugTarget('labwired', {
-                wasm, board, firmware: program, chipKind, clockHz,
+                wasm, board, firmware: program, firmwareAddress: built.firmwareAddress,
+                chipKind, clockHz,
             }));
         } catch (e) {
             // The bridge throws with a `refusals` array when the bench cannot be
@@ -1958,10 +1963,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // level-pended timer interrupt when its source deasserts inside the
             // handler, measured 0.97 entries per update event on both tiers —
             // the same instrument that ledgered 1.95.
-            'Analog inputs are not injected on this tier: the engine now EXPORTS a '
+            ...(chipKind === 'stm32f030' ? ['Analog inputs are not injected on this tier: the engine now EXPORTS a '
             + 'per-channel ADC entry point, but this adapter does not feed it yet, so a '
             + 'pot or LDR still reads the engine\'s own counter instead of the voltage '
-            + 'this board solves. Use the light tier (Simulated STM32F030) for analog work.',
+            + 'this board solves. Use the light tier (Simulated STM32F030) for analog work.'] : []),
+            ...(built.omittedFirmwareBytes ? [
+                `${built.omittedFirmwareBytes} non-flash configuration byte(s) were omitted from the image`
+            ] : []),
             ...(refusals || []).map(r => `${r.subject}: ${r.reason}`)
         ];
 
@@ -3258,7 +3266,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // run/pause/step-insn, pins, board and serial all still work.
     let userFirmware = null; // {name, bytes: Uint8Array|null, text: string|null}
 
-    function builtFromUserFirmware(kind) {
+    async function builtFromUserFirmware(kind) {
         const fw = userFirmware;
         blockOf = new Map();
         yieldOf = new Map();
@@ -3296,6 +3304,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             }
             return { hex: null, image: bytes, symbols: null, c: null,
                 bytes: bytes.length, f_cpu: null, format: 'bin' };
+        }
+        if (kind === 'labwired') {
+            const device = String(projectStc(null)?.device || '').toLowerCase();
+            const chipKind = device === 'microbit' || device === 'microbit-v2' ? 'microbit_v2'
+                : ['pybadge', 'pybadge-lc', 'samd51', 'arcade'].includes(device) ? 'pybadge'
+                    : device === 'stm32f030' ? 'stm32f030'
+                        : ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device) ? 'arduino_uno' : null;
+            if (!chipKind) throw new Error(`LabWired cannot identify the chip for '${device || fw.name}'`);
+            // AVR remains on the long-standing Intel-HEX path above. ARM
+            // containers retain their own address here: a PyBadge UF2 starts
+            // at the bootloader's application offset, not at flash zero.
+            if (chipKind === 'arduino_uno') {
+                const text = fw.text || (fw.bytes ? new TextDecoder().decode(fw.bytes) : '');
+                if (!/^\s*:/.test(text)) throw new Error(`${fw.name}: the ATmega328P LabWired target takes Intel HEX`);
+                return {hex: text, image: null, symbols: null, c: null,
+                    bytes: text.length, f_cpu: fw.fCpu || null, format: 'ihx'};
+            }
+            const {labwiredFirmwareImage} = await import(
+                /* webpackChunkName: "labwired-firmware" */ './labwired-firmware.js');
+            const parsed = labwiredFirmwareImage(fw, chipKind);
+            return {hex: null, image: parsed.image, symbols: null, c: null,
+                bytes: parsed.image.length, f_cpu: fw.fCpu || null, format: parsed.format,
+                firmwareAddress: parsed.address, omittedFirmwareBytes: parsed.omitted};
         }
         throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
     }
@@ -3339,7 +3370,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     const built = (selectedKind === 'z80' || selectedKind === 'eater6502' ||
                         selectedKind === 'riscv32' ||
                         ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia)) ? null
-                        : userFirmware ? builtFromUserFirmware(selectedKind)
+                        : userFirmware ? await builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);
                     if (destroyed) {
