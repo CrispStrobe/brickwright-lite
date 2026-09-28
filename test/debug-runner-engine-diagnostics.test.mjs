@@ -63,3 +63,10 @@ test('save points: the list when available, the reason when not, nothing while r
     assert.match(source, /savePoints: savePointsNow\(\),/);
     assert.match(source, /restoreSnapshot\(id\) \{/);
 });
+
+test('the engine\'s console-mismatch sentence is carried on its own', () => {
+    const d = helperWith({state: () => 'halted', diagnostics: () => ({fault: null, fidelityGaps: [],
+        consoleMismatch: 'firmware wrote UART1; this board listens on UART0'})});
+    assert.equal(d.consoleMismatch, 'firmware wrote UART1; this board listens on UART0');
+    assert.equal(d.fault, null);
+});

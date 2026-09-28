@@ -1640,6 +1640,11 @@ class DebugPanel extends React.Component {
                         ) : null}
                     </div>
                 ) : null}
+                {ui.engineDiagnostics && ui.engineDiagnostics.consoleMismatch ? (
+                    <div data-engine-console style={{color: '#f39c12', fontSize: 11}}>
+                        {`• ${ui.engineDiagnostics.consoleMismatch}`}
+                    </div>
+                ) : null}
                 {ui.engineDiagnostics && ui.engineDiagnostics.fidelityGapCount ? (
                     <div data-engine-fidelity style={{color: '#f39c12', fontSize: 11}}>
                         <div>{`${this.tx('engineFidelity')} (${ui.engineDiagnostics.fidelityGapCount})`}</div>

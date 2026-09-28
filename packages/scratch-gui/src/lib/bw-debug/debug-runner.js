@@ -857,8 +857,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         try { d = target.diagnostics(); } catch (e) { return undefined; }
         const fault = d && d.fault && d.fault.summary ? {summary: String(d.fault.summary)} : null;
         const gaps = d && Array.isArray(d.fidelityGaps) ? d.fidelityGaps : [];
-        if (!fault && !gaps.length) return undefined;
-        return {fault, fidelityGaps: gaps.slice(0, 20), fidelityGapCount: gaps.length};
+        const consoleMismatch = d && typeof d.consoleMismatch === 'string' && d.consoleMismatch
+            ? d.consoleMismatch : null;
+        if (!fault && !gaps.length && !consoleMismatch) return undefined;
+        return {fault, fidelityGaps: gaps.slice(0, 20), fidelityGapCount: gaps.length, consoleMismatch};
     }
     /** How many conditional hits were skipped, so the UI can show it happened. */
     let skipped = 0;
@@ -2054,6 +2056,27 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 } else if (ch !== '\r') {
                     lineBuf += ch;
                 }
+            });
+        }
+
+        // RTT / semihosting / ITM: other ways firmware prints. Same console,
+        // one line buffer per channel, each line labelled so a reader knows
+        // which stream said it (a UART line has no label, as before).
+        if (lwAdapter && typeof lwAdapter.onTrace === 'function') {
+            const partial = new Map();
+            lwAdapter.onTrace((channel, bytes) => {
+                let buf = partial.get(channel) || '';
+                for (const byte of bytes) {
+                    const ch = String.fromCharCode(byte);
+                    if (ch === '\n') {
+                        serialLines.push(`[${channel}] ${buf}`);
+                        buf = '';
+                        if (serialLines.length > 200) serialLines.shift();
+                    } else if (ch !== '\r') {
+                        buf += ch;
+                    }
+                }
+                partial.set(channel, buf);
             });
         }
 

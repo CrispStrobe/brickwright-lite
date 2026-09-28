@@ -55,3 +55,17 @@ test('with a target that records input, bytes go through the target (so replay c
     assert.deepEqual(viaTarget, [0x6f, 0x6b]);
     assert.deepEqual(viaAdapter, [], 'not fed twice');
 });
+
+test('RTT / semihosting lines land in the console, labelled, buffered per channel', () => {
+    const start = source.indexOf("if (lwAdapter && typeof lwAdapter.onTrace === 'function')");
+    const stop = source.indexOf('// RX into the program', start);
+    assert.ok(start >= 0 && stop > start, 'the trace block sits before the RX block in the finisher');
+    let cb;
+    const serialLines = [];
+    new Function('lwAdapter', 'serialLines', source.slice(start, stop))({onTrace: f => { cb = f; }}, serialLines);
+    const bytes = s => Uint8Array.from(s, c => c.charCodeAt(0));
+    cb('rtt', bytes('hel'));
+    cb('semihosting', bytes('ok\r\n'));
+    cb('rtt', bytes('lo\nx'));
+    assert.deepEqual(serialLines, ['[semihosting] ok', '[rtt] hello'], 'a partial RTT line waits for its newline');
+});
