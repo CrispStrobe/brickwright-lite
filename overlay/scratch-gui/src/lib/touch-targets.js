@@ -41,18 +41,38 @@
  * true and the conclusion drawn from it was too narrow: width is not the only
  * cost, and the overlap A/B is what found the one that mattered.
  *
- * WHY A `@media` QUERY CANNOT DO THIS: the layout viewport is 1024 on every
- * phone by construction, so `@media (max-width: 700px)` never matches. The
- * signal is the layout width TIMES the scale the browser chose, which only
- * JS can see — the same arithmetic visual-viewport.js already does for the
- * modal overlay.
+ * WHY THE SIGNAL IS `(pointer: coarse)` AND NOT A WIDTH: because the question
+ * is "is this a fingertip", and width answers a different one. Measured:
+ *
+ *   phone portrait    coarse  effective 430
+ *   phone LANDSCAPE   coarse  effective 930
+ *   tablet            coarse  effective 834
+ *   desktop           fine    effective 1440
+ *   desktop, narrow    fine    effective 600
+ *
+ * A width threshold of 700 gets two of those wrong. It misses a phone in
+ * LANDSCAPE, whose controls are still touched with a finger and still render at
+ * ~18pt; and it would floor a narrow desktop WINDOW, where the pointer is a
+ * mouse and needs no help. So the floor keys on the pointer.
+ *
+ * Note this is the opposite conclusion from the LAYOUT question next door: side
+ * panels collapse on a NARROW screen (a width question, answered by layout width
+ * x scale, because a 190px rail costs the same fraction of the screen whatever
+ * is pointing at it). Two questions, two signals; conflating them was the first
+ * version of this file.
+ *
+ * A plain `@media (pointer: coarse)` rule in a stylesheet would in fact work
+ * here — unlike a width query, which cannot, since the layout viewport is 1024
+ * on every phone by construction. It stays in JS only because this app's CSS
+ * lives in the vendored upstream tree and adopting a file of it for one rule
+ * costs more than it saves.
  *
  * @module
  */
-import {currentBox, subscribeVisualViewport} from './visual-viewport.js';
+import {subscribeVisualViewport} from './visual-viewport.js';
 
-/** Below this many effective (on-screen) pixels, a pointer is a fingertip. */
-export const NARROW_PX = 700;
+/** The media query that decides. Exported so a test can assert which one. */
+export const COARSE_QUERY = '(pointer: coarse)';
 
 /** Minimum hit box, in CSS pixels. Not 44 — see WHY 32 below. */
 export const FLOOR_PX = 32;
@@ -61,25 +81,24 @@ const STYLE_ID = 'bw-touch-targets';
 const ATTR = 'data-bw-touch';
 
 /**
- * Effective on-screen width: layout width scaled by whatever the browser chose.
- * Pure, so the arithmetic is testable without a browser.
- * @param {{width: number, height: number, scale: number}} box
- * @param {number} layoutWidth
- * @returns {number}
+ * Does this reader point with a finger? Pure in its input so a test can pass a
+ * stand-in for `matchMedia` rather than needing a browser.
+ * @param {(q: string) => {matches: boolean}} [match]
+ * @returns {boolean}
  */
-export const effectiveWidth = (box, layoutWidth) => {
-    const w = box && box.width > 0 ? box.width : layoutWidth;
-    const scale = box && box.scale > 0 ? box.scale : 1;
-    return w * scale;
+export const wantsTouchTargets = match => {
+    const mm = match || (typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia.bind(window)
+        : null);
+    if (!mm) return false;
+    try {
+        return !!mm(COARSE_QUERY).matches;
+    } catch {
+        // A browser too old for this query is also too old to be a phone we
+        // ship to; treat it as a mouse rather than restyling every control.
+        return false;
+    }
 };
-
-/** @param {number} effective @returns {boolean} */
-export const isTouchWidth = effective => effective > 0 && effective < NARROW_PX;
-
-/** @returns {boolean} */
-export const touchWidthNow = () => (typeof window === 'undefined'
-    ? false
-    : isTouchWidth(effectiveWidth(currentBox(), window.innerWidth)));
 
 /**
  * The rule text. Exported so a test can assert what it targets without a
@@ -127,15 +146,23 @@ export function installTouchTargets (opts = {}) {
     style.textContent = ruleFor(floor);
 
     const apply = () => {
-        const on = touchWidthNow();
+        const on = wantsTouchTargets();
         // Set the attribute on <html> rather than <body>: the GUI replaces
         // body's children, and a flag on a node the app owns would be lost.
         if (on) document.documentElement.setAttribute(ATTR, '1');
         else document.documentElement.removeAttribute(ATTR);
     };
     apply();
+    // The pointer can change under us — a tablet gaining a trackpad, a desktop
+    // browser's device emulation being toggled — so listen to the query itself
+    // rather than reading it once at boot.
+    const mq = typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia(COARSE_QUERY)
+        : null;
+    if (mq && mq.addEventListener) mq.addEventListener('change', apply);
     const stop = subscribeVisualViewport(apply);
     return () => {
+        if (mq && mq.removeEventListener) mq.removeEventListener('change', apply);
         stop();
         document.documentElement.removeAttribute(ATTR);
         if (style && style.parentNode) style.parentNode.removeChild(style);

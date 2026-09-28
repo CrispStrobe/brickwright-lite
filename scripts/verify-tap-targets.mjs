@@ -34,6 +34,12 @@ const check = (ok, msg, detail = '') => {
  * content-visibility and opacity: 0; the fallback is for a browser without it.
  */
 
+// Tabs are addressed BY POSITION, never by name: the Code tab is "Skripte" in
+// German and a by-name lookup times out silently. The FPGA tab exists only in a
+// flag-on build, hence the bounds check at the call site.
+const TAB_CIRCUIT = 4;
+const TAB_FPGA = 5;
+
 // Below this, a control is not a near miss, it is unhittable. Kept separate
 // from FLOOR_PX so a future floor change cannot quietly relax the hard limit.
 const UNHITTABLE = 24;
@@ -74,6 +80,24 @@ try {
     check(flagged === '1',
         'the app recognises a phone and set the touch flag on <html>',
         `data-bw-touch=${JSON.stringify(flagged)}`);
+    // AND IT IS THE POINTER, NOT THE WIDTH, THAT SET IT. This is the assertion
+    // that a width threshold fails: a phone in landscape measures 930 effective
+    // pixels — above any sane narrow-screen threshold — while still being
+    // touched with a finger and still rendering its controls at ~18pt.
+    const coarse = await page.evaluate(() => ({
+        coarse: matchMedia('(pointer: coarse)').matches,
+        effective: window.visualViewport
+            ? Math.round(window.visualViewport.width * window.visualViewport.scale)
+            : innerWidth,
+    }));
+    // A precondition, not a consequence: this says the environment really does
+    // look like a finger, so the flag assertion above is testing what it claims.
+    // Phrased carefully because the earlier wording ("and it did so because the
+    // pointer is coarse") read as a causal claim and passed on a build where the
+    // flag was never set at all.
+    check(coarse.coarse,
+        'the pointer really is coarse here, so the assertion above means something',
+        `effective width ${coarse.effective}px — a width rule would key on this number instead`);
     const styled = await page.evaluate(() =>
         !!document.getElementById('bw-touch-targets'));
     check(styled, 'and installed the floor stylesheet');
@@ -203,6 +227,59 @@ try {
             `covered centres: ${overlap.without} unfloored -> ${overlap.with} floored`
               + (overlap.added.length ? `; newly covered: ${overlap.added.map(n => `"${n}"`).join(', ')}` : ''));
     }
+    // ── LANDSCAPE ────────────────────────────────────────────────────────────
+    // Not a full sweep: the point is that rotating does not switch the floor
+    // off. It used to. The floor keyed on a 700px narrow-screen threshold, and
+    // landscape measures 930 effective — so every control went back to its
+    // unfloored size on a device that is still a phone. Two panes are enough to
+    // catch that, and a full second sweep would double this gate's budget.
+    await page.setViewportSize({width: 930, height: 430});
+    await page.waitForFunction(
+        'window.visualViewport ? window.visualViewport.width > 0 : true',
+        null, {timeout: 10000, polling: 100});
+    const land = await page.evaluate(() => ({
+        flag: document.documentElement.getAttribute('data-bw-touch'),
+        effective: window.visualViewport
+            ? Math.round(window.visualViewport.width * window.visualViewport.scale)
+            : innerWidth,
+    }));
+    check(land.flag === '1',
+        'LANDSCAPE: the floor is still on after rotating',
+        `data-bw-touch=${JSON.stringify(land.flag)}, effective width ${land.effective}px`);
+
+    for (const idx of [TAB_CIRCUIT, TAB_FPGA].filter(i => i < tabs)) {
+        await page.getByRole('tab').nth(idx).click().catch(() => {});
+        await page.waitForFunction(
+            'document.querySelectorAll(\'[role="tab"][aria-selected="true"]\').length === 1',
+            null, {timeout: 20000, polling: 100});
+        let last = -1;
+        let stable = 0;
+        const deadline = Date.now() + 20000;
+        while (Date.now() < deadline && stable < 3) {
+            const n = await page.evaluate(() => document.querySelectorAll(
+                'button,select,[role="button"],[role="tab"]').length);
+            stable = n === last ? stable + 1 : 0;
+            last = n;
+            await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
+        }
+        const r = await page.evaluate(() => {
+            const visible = window.__bwVisible;
+            const name = document.querySelector('[role="tab"][aria-selected="true"]')
+                ?.textContent.trim() || '?';
+            const els = [...document.querySelectorAll(
+                'button,select,[role="button"],[role="tab"]')].filter(visible);
+            let tiny = 0;
+            for (const el of els) {
+                const b = el.getBoundingClientRect();
+                if (Math.min(b.width, b.height) < 24) tiny++;
+            }
+            return {name, total: els.length, tiny};
+        });
+        check(r.tiny === 0,
+            `LANDSCAPE ${r.name}: no visible control is under ${UNHITTABLE}px (${r.total} controls)`,
+            r.tiny ? `${r.tiny} still under the limit` : '');
+    }
+
     console.log(`\n(floor is ${FLOOR_PX} CSS px; hard limit asserted at ${UNHITTABLE})`);
 } finally {
     await browser.close();

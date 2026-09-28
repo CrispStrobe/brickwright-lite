@@ -84,6 +84,30 @@ touched, nothing to keep in sync as those panes change. `test/touch-targets.test
 asserts the rule sets *exactly* those two properties, since that is the claim the
 approach rests on.
 
+**The trigger is `(pointer: coarse)`, not a width.** Measured across five
+contexts:
+
+| context | pointer | effective width |
+|---|---|---|
+| phone portrait | coarse | 430 |
+| phone **landscape** | coarse | **930** |
+| tablet | coarse | 834 |
+| desktop | fine | 1440 |
+| desktop, narrow window | fine | 600 |
+
+A width threshold of 700 gets two of these wrong, and the first version of this
+work used one. It **misses a phone in landscape** — 930 effective, above any sane
+narrow-screen threshold, still a finger, still rendering controls at ~18pt. And
+it would **floor a narrow desktop window**, where the pointer is a mouse and
+needs no help.
+
+Note this is the opposite conclusion from the layout question next door: side
+panels collapse on a *narrow screen*, which genuinely is a width question,
+because a 190px rail costs the same fraction of the screen whatever is pointing
+at it. Two questions, two signals. Conflating them was the original mistake, and
+the gate now asserts the flag is still set after rotating precisely because that
+is what the width version silently got wrong.
+
 **The floor is 32, not the standard 44, and that is a measurement not a
 preference.** Two costs were considered. The first was width: a `min-width`
 could widen dense toolbar rows until content ran off the pane. Floors of 0, 32

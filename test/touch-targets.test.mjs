@@ -1,36 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-    effectiveWidth, isTouchWidth, ruleFor, NARROW_PX, FLOOR_PX,
+    wantsTouchTargets, ruleFor, COARSE_QUERY, FLOOR_PX,
 } from '../overlay/scratch-gui/src/lib/touch-targets.js';
 
-test('a phone reads as touch-width despite the 1024 layout', () => {
-    // The whole point: innerWidth is 1024 on a 430pt phone, so the layout
-    // width alone can never answer this.
-    const w = effectiveWidth({width: 1024, height: 2215, scale: 430 / 1024}, 1024);
-    assert.ok(Math.abs(w - 430) < 1, `expected ~430, got ${w}`);
-    assert.equal(isTouchWidth(w), true);
-    assert.equal(isTouchWidth(1024), false, 'the layout width must NOT trip it');
+/** A stand-in for matchMedia that answers one query. */
+const mm = (query, matches) => q => ({matches: q === query && matches});
+
+test('a finger asks for bigger targets; a mouse does not', () => {
+    assert.equal(wantsTouchTargets(mm(COARSE_QUERY, true)), true);
+    assert.equal(wantsTouchTargets(mm(COARSE_QUERY, false)), false);
 });
 
-test('a tablet and a desktop do not', () => {
-    assert.equal(isTouchWidth(effectiveWidth({width: 1024, scale: 834 / 1024}, 1024)), false);
-    assert.equal(isTouchWidth(effectiveWidth({width: 1440, scale: 1}, 1440)), false);
+test('the signal is the POINTER, not the width — the case that got this wrong', () => {
+    // Measured: a phone in landscape reports effective width 930 and coarse. A
+    // width threshold of 700 therefore leaves its controls at ~18pt on screen
+    // while still being touched with a finger. And a 600px-wide DESKTOP window
+    // reports fine, so a width rule would floor controls for a mouse that needs
+    // no help. Both are why this asks about the pointer.
+    assert.equal(COARSE_QUERY, '(pointer: coarse)');
+    assert.ok(!/width/.test(COARSE_QUERY), 'the query must not mention width');
 });
 
-test('a missing or degenerate box falls back instead of reporting zero', () => {
-    assert.equal(effectiveWidth(null, 1440), 1440);
-    assert.equal(effectiveWidth({width: 0, scale: 1}, 1440), 1440);
-    assert.equal(effectiveWidth({width: 1024, scale: 0}, 1024), 1024, 'scale 0 treated as 1');
-    assert.equal(isTouchWidth(0), false, 'an unknown width is not a touch screen');
+test('no matchMedia at all is treated as a mouse, not as a phone', () => {
+    // Failing open here would restyle every control in an environment we cannot
+    // measure — worse than leaving it alone.
+    assert.equal(wantsTouchTargets(null), false);
+    assert.equal(wantsTouchTargets(() => { throw new Error('unsupported query'); }), false);
 });
 
 test('the rule sets ONLY the two properties the panes leave unset', () => {
-    // This is the load-bearing claim: those panes style every control inline,
-    // so a rule touching padding or font-size would lose, and a rule touching
-    // anything else would fight a style the author chose on purpose.
-    // Strip comments first — prose in a /* */ block contains colons too, and
-    // the first version of this test read "Height still applies:" as a property.
+    // The load-bearing claim: those panes style every control inline, so a rule
+    // touching padding or font-size would lose, and one touching anything else
+    // would fight a style its author chose. Comments are stripped first — prose
+    // in a /* */ block contains colons too, and the first version of this test
+    // read "Height still applies:" as a property.
     const css = ruleFor(FLOOR_PX).replace(/\/\*[\s\S]*?\*\//g, '');
     const props = [...css.matchAll(/^\s*([a-z-]+)\s*:/gm)].map(m => m[1]);
     assert.deepEqual([...new Set(props)].sort(), ['min-height', 'min-width']);
@@ -54,11 +58,18 @@ test('a dense row keeps its width, and only its width', () => {
         'height must still be floored in a dense row — a 16px-tall button is the harder miss');
 });
 
-test('the floor is a CSS-pixel floor, not a 44pt one', () => {
-    // 44 CSS px shows as 18.5pt at the 0.42 a phone renders this app at, so a
-    // "44" here would be a claim the code cannot make good on. Guard the
-    // reasoning, not just the number.
-    assert.ok(FLOOR_PX >= 24 && FLOOR_PX <= 48);
+test('the floor is 32, and 44 is excluded on purpose', () => {
+    // 44 is the accessibility standard and was measured to make the Circuit
+    // tab's "Analog" control land under an svg, untappable at its centre
+    // (covered centres 17 -> 18, against 17 -> 17 at 32). An unreachable 44px
+    // control is worse than a reachable 32px one. Guard the decision, not just
+    // the digit.
+    assert.equal(FLOOR_PX, 32);
     assert.match(ruleFor(37), /min-height: 37px/, 'the floor is parameterised');
-    assert.ok(NARROW_PX > 430 && NARROW_PX < 1024);
+});
+
+test('the floor clears the gate\'s hard limit with room to spare', () => {
+    // verify-tap-targets.mjs fails anything under 24. A floor at or below that
+    // would let the gate pass while changing nothing.
+    assert.ok(FLOOR_PX > 24);
 });
