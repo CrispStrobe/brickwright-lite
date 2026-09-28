@@ -115,6 +115,53 @@ its PR is merged/closed; or the sha is not the branch tip and no open PR wants
 it. 56 of the 68 were none of those and were left alone — they are other lanes'
 live work, and a queue being deep is not a licence to empty it.
 
+**THE CASCADE, and the exception that nearly made me the cause of it.** The
+queue does not only delay verdicts — it manufactures red ones in OTHER repos.
+`#455 browser (light)` failed, on a branch full of phone-layout changes, at a
+step called **"Require green upstream evidence for the pinned 8086 engine"**.
+Reproduced locally:
+
+```
+bw-board CI evidence FAILED: no successful CrispStrobe/bw-board CI workflow
+exists for pinned SHA d9a967cad... (matching runs: 36448206942:queued/-)
+```
+
+The run is not missing and not failing. It is QUEUED — starved by the same
+account-wide Actions pool. bw-board was at **39 queued, 0 running**. So:
+
+    account pool saturated
+      -> bw-board CI for the pinned sha never runs
+        -> lite's verify:bwboard-ci finds no green evidence
+          -> EVERY lite PR is red, at a step none of them touched
+
+Nothing in lite can fix that, and the failing step names an engine, which sends
+the reader into the 8086 code. The tell is that the gate reports a run id with a
+status: `queued/-` is not `failure`.
+
+**The exception: DO NOT CANCEL A SHA THAT SOMETHING DOWNSTREAM PINS.** The
+sweep rule recorded above — "cancel a queued run whose sha is an ancestor of the
+current tip" — would have cancelled run `36448206942`, because `d9a967cad` IS an
+ancestor of bw-board's master. It is also the sha lite pins, and its green run
+is the evidence a downstream gate requires. Cancelling it would have converted a
+slow gate into a permanently red one, and the sweep would have looked correct
+while doing it.
+
+So the rule gains a clause, checked BEFORE ancestry:
+
+```bash
+# in every downstream repo that pins this one
+grep -h '"<repo>"' */vendor-pins.json | grep -oE '[0-9a-f]{40}'
+# never cancel a queued run whose head_sha is in that set
+```
+
+A superseded sha is worthless *as a branch verdict* and can still be load-bearing
+*as pinned evidence*. Those are different questions and only the second one has
+a downstream consumer.
+
+Swept on that basis: 32 of bw-board's 39 (22 for five branches whose PRs were
+all MERGED and whose refs were deleted, 10 superseded), 1 protected, 6 left as
+live work. 39 -> 12 queued, and the protected run started moving.
+
 **How to tell you are in this situation** rather than looking at a broken PR:
 `gh pr checks <n>` is empty AND the repo-wide queue is deep. Check the queue
 before debugging the branch:
