@@ -3,28 +3,155 @@ const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
+const {pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
+// The four SPIKE ids that became `spikeprime`.
+//
+// Inlined rather than imported: the canonical table lives in the GUI
+// (scratch-gui/src/lib/spike-legacy-migration.js, which explains why), and
+// this overlay is applied INTO scratch-gui's node_modules — so there is no
+// path from here to there that survives the build. Four strings is a cheap
+// duplication and test/spike-legacy-ids-resolve.test.mjs fails if it drifts
+// from the table.
+const SPIKE_LEGACY_IDS = ['spikeprimeBTC', 'spikeprimeBridge', 'spikeprimeble', 'legospikeprimeBLE'];
+const SPIKE_UNIFIED_ID = 'spikeprime';
+// The two EV3 ids that became `ev3comprehensive`, inlined for the same reason
+// and held against ev3-legacy-migration.js by test/ev3-legacy-ids-resolve.test.mjs.
+// `ev3dev` is NOT here: it runs a different operating system on the brick and
+// is still its own extension.
+const EV3_LEGACY_IDS = ['ev3lms', 'legoev3direct'];
+const EV3_UNIFIED_ID = 'ev3comprehensive';
+
+/**
+ * The id an extension request should actually load.
+ *
+ * A project saved before the five SPIKE extensions became one names an id
+ * that no longer exists. The project loader rewrites those ids, but not every
+ * path into the manager goes through it — shareBlocksToTarget and direct
+ * loadExtensionURL calls do not — so the last word is here. Without it those
+ * paths would fall through to the bare-id branch below and log a missing
+ * implementation for an extension that is present under another name.
+ */
+const resolveExtensionId = (id, options = {}) => {
+    if (typeof id !== 'string') return id;
+    // Only a deliberate gallery selection may load an archived driver. Old
+    // projects keep resolving their ids to the unified extension by default.
+    if (options.legacySpikeDebug === true && SPIKE_LEGACY_IDS.includes(id)) return id;
+    if (SPIKE_LEGACY_IDS.indexOf(id) !== -1) return SPIKE_UNIFIED_ID;
+    if (EV3_LEGACY_IDS.indexOf(id) !== -1) return EV3_UNIFIED_ID;
+    return id;
+};
+
+// HTTP(S) URLs are candidates for the content-pinned compatibility path. Unpinned URLs are always
+// sent to the extension worker; see isTrustedExtensionURL / loadExtensionURL.
+const isRemoteExtensionURL = url =>
+    typeof url === 'string' && /^https?:\/\//.test(url);
 
 // These extensions are currently built into the VM repository but should not be loaded at startup.
 // TODO: move these out into a separate repository?
 // TODO: change extension spec so that library info, including extension ID, can be collected through static methods
 
+// Built-in extensions the VM instantiates synchronously. Everything here is small
+// or is what the lessons' hardware flows reach for first (stc12, circuit,
+// controller, devices), so it stays in the first load.
 const builtinExtensions = {
+    arrays: () => require('../extensions/crispstrobe/arrays'),
+    // The pin blocks sb3-creator has always emitted for hardware projects. Without
+    // this line every one of them failed to load with "Unknown extension: stc12".
+    // sb3-creator's bitwise reporters (bitand/bitor/.../shiftright). Without
+    // this line the id fell to the SANDBOXED loader: importScripts('bitops')
+    // 404'd and the blocks were dropped (gallery sweep, 2026-08-10).
+    bitops: () => require('../extensions/crispstrobe/bitops'),
+    microbitplus: () => require('../extensions/crispstrobe/microbitplus'),
+    arcade: () => require('../extensions/crispstrobe/arcade'),
+    stc12: () => require('../extensions/crispstrobe/stc12'),
+    stc12live: () => require('../extensions/crispstrobe/stc12live'),
+    circuit: () => require('../extensions/crispstrobe/circuit'),
+    // Vendored from the bw-board PACKAGE, not from CrispStrobe/extensions —
+    // bw-board ships this extension and Lite had carried a five-block copy of
+    // its fourteen, so the panel offered lcd, oled, simplevga, keyboard,
+    // bargraph and rgb widgets that no block could drive. The path is
+    // unchanged because only the bundle's contents moved; see MAP in
+    // scripts/spike/bundled-upstream.mjs.
+    controller: () => require('../extensions/crispstrobe/controller'),
+    // Device convenience blocks: servo, motor, relay, sensors, LCD, NeoPixel.
+    // 7 stubs (showdigit, setrgb, setpixel, clearmatrix, devicestate, ircode,
+    // whenirreceived) are hidden from the palette; methods remain so saved
+    // projects load.  NeoPixel hidden on 12T, servo/motor hidden on STC89 (no PCA).
+    devices: () => require('../extensions/crispstrobe/devices'),
+    brickwrightTTS: () => require('../extensions/crispstrobe/text2speech'),
+    csp: () => require('../extensions/crispstrobe/csp'),
     // This is an example that isn't loaded with the other core blocks,
     // but serves as a reference for loading core blocks as extensions.
     coreExample: () => require('../blocks/scratch3_core_example'),
-    // These are the non-core built-in extensions.
     pen: () => require('../extensions/scratch3_pen'),
-    wedo2: () => require('../extensions/scratch3_wedo2'),
-    music: () => require('../extensions/scratch3_music'),
-    microbit: () => require('../extensions/scratch3_microbit'),
-    text2speech: () => require('../extensions/scratch3_text2speech'),
-    translate: () => require('../extensions/scratch3_translate'),
-    videoSensing: () => require('../extensions/scratch3_video_sensing'),
-    ev3: () => require('../extensions/scratch3_ev3'),
-    makeymakey: () => require('../extensions/scratch3_makeymakey'),
-    boost: () => require('../extensions/scratch3_boost'),
-    gdxfor: () => require('../extensions/scratch3_gdx_for')
+    makeymakey: () => require('../extensions/scratch3_makeymakey')
 };
+
+// Built-in extensions that are LOADED ON DEMAND. Each `import()` is its own
+// webpack chunk, so none of this code — nor the sound samples and hub drivers it
+// carries — is in the first load. Measured on the 2026-09-05 production build:
+// the music extension's 61 samples were 1.46 MB compressed of the 3.5 MB boot
+// vendor chunk, the LEGO hub drivers roughly another 0.4 MB, and none of it is
+// needed until a project or the extension library asks for it.
+//
+// `loadExtensionURL` resolves these asynchronously — the same promise the GUI's
+// extension library and the project loader already wait on. The ids are the
+// same as before; only WHEN the code arrives changed. `scripts/verify-boot-payload.mjs`
+// fails the build if any of this lands back in an eagerly-loaded script.
+//
+// Our own extensions, hard-bundled (permissive, offline). Kept in the gallery
+// repo too; the bundledIds dedup removes the gallery copy from the picker.
+// Specifiers name `index.js` explicitly: the unit suite boots this VM in Node,
+// where `import()` follows ES-module resolution even from CommonJS, and that
+// has no directory imports. webpack is indifferent.
+const lazyBuiltinExtensions = {
+    planetemaths: () => import(/* webpackChunkName: "ext-planetemaths" */ '../extensions/crispstrobe/planetemaths/index.js'),
+    legopoweredup: () => import(/* webpackChunkName: "ext-legopoweredup" */ '../extensions/crispstrobe/legopoweredup/index.js'),
+    legoboostunified: () => import(/* webpackChunkName: "ext-legoboostunified" */ '../extensions/crispstrobe/legoboostunified/index.js'),
+    wedo2unified: () => import(/* webpackChunkName: "ext-wedo2unified" */ '../extensions/crispstrobe/wedo2unified/index.js'),
+    // One SPIKE extension. spikeprimeble, spikeprimeBTC, spikeprimeBridge and
+    // legospikeprimeBLE used to sit beside this line; they were the same hub
+    // reached four ways, and they now resolve here through SPIKE_LEGACY_IDS.
+    // See extension-support/spike-legacy-migration.js.
+    spikeprime: () => import(/* webpackChunkName: "ext-spikeprime" */ '../extensions/crispstrobe/spikeprime/index.js'),
+    spikeprimeBTC: () => import(/* webpackChunkName: "ext-spikeprimeBTC" */ '../extensions/crispstrobe/spikeprimeBTC/index.js'),
+    spikeprimeBridge: () => import(/* webpackChunkName: "ext-spikeprimeBridge" */ '../extensions/crispstrobe/spikeprimeBridge/index.js'),
+    spikeprimeble: () => import(/* webpackChunkName: "ext-spikeprimeble" */ '../extensions/crispstrobe/spikeprimeble/index.js'),
+    legospikeprimeBLE: () => import(/* webpackChunkName: "ext-legospikeprimeBLE" */ '../extensions/crispstrobe/legospikeprimeBLE/index.js'),
+    // One EV3 extension for the stock LEGO firmware. legoev3direct and ev3lms
+    // used to sit beside this line; they were the same brick reached with the
+    // same protocol, split across a block surface, a working live
+    // implementation and a compiler, and they now resolve here through
+    // EV3_LEGACY_IDS. ev3dev below is deliberately separate — different OS.
+    ev3comprehensive: () => import(/* webpackChunkName: "ext-ev3comprehensive" */ '../extensions/crispstrobe/ev3comprehensive/index.js'),
+    legorcx: () => import(/* webpackChunkName: "ext-legorcx" */ '../extensions/crispstrobe/legorcx/index.js'),
+    legonxt: () => import(/* webpackChunkName: "ext-legonxt" */ '../extensions/crispstrobe/legonxt/index.js'),
+    ev3dev: () => import(/* webpackChunkName: "ext-ev3dev" */ '../extensions/crispstrobe/ev3dev/index.js'),
+    universalgamepad: () => import(/* webpackChunkName: "ext-universalgamepad" */ '../extensions/crispstrobe/universalgamepad/index.js'),
+    // These are the non-core built-in extensions.
+    wedo2: () => import(/* webpackChunkName: "ext-wedo2" */ '../extensions/scratch3_wedo2/index.js'),
+    music: () => import(/* webpackChunkName: "ext-music" */ '../extensions/scratch3_music/index.js'),
+    microbit: () => import(/* webpackChunkName: "ext-microbit" */ '../extensions/scratch3_microbit/index.js'),
+    text2speech: () => import(/* webpackChunkName: "ext-text2speech" */ '../extensions/scratch3_text2speech/index.js'),
+    translate: () => import(/* webpackChunkName: "ext-translate" */ '../extensions/scratch3_translate/index.js'),
+    videoSensing: () => import(/* webpackChunkName: "ext-videosensing" */ '../extensions/scratch3_video_sensing/index.js'),
+    cameracapture: () => import(/* webpackChunkName: "ext-cameracapture" */ '../extensions/crispstrobe/cameracapture/index.js'),
+    ev3: () => import(/* webpackChunkName: "ext-ev3" */ '../extensions/scratch3_ev3/index.js'),
+    boost: () => import(/* webpackChunkName: "ext-boost" */ '../extensions/scratch3_boost/index.js'),
+    gdxfor: () => import(/* webpackChunkName: "ext-gdxfor" */ '../extensions/scratch3_gdx_for/index.js')
+};
+
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+
+/**
+ * Unwrap whatever `import()` handed back into the extension class. Every
+ * built-in is a CommonJS module whose `module.exports` IS the class, which
+ * webpack surfaces as the namespace's `default`; an ES module with a default
+ * export lands in the same place.
+ * @param {object} mod - the namespace object from a dynamic import
+ * @returns {Function} the extension constructor
+ */
+const extensionClassFrom = mod => (mod && mod.default) || mod;
 
 /**
  * @typedef {object} ArgumentInfo - Information about an extension block argument
@@ -80,6 +207,16 @@ class ExtensionManager {
          */
         this.pendingWorkers = [];
 
+        // URL -> in-flight promoted-pin load. _loadedExtensions is populated only
+        // after registration, so it cannot by itself close the fetch/verify race
+        // between two callers loading the same gallery URL concurrently.
+        this.pendingPinnedLoads = new Map();
+
+        // id -> in-flight chunk load for a lazyBuiltinExtensions entry. Two
+        // callers asking for the same extension while its chunk is downloading
+        // must share one registration, not race to two.
+        this._pendingBuiltinLoads = new Map();
+
         /**
          * Map of loaded extension URLs/IDs (equivalent for built-in extensions) to service name.
          * @type {Map.<string,string>}
@@ -116,7 +253,16 @@ class ExtensionManager {
      * @param {string} extensionId - the ID of an internal extension
      */
     loadExtensionIdSync (extensionId) {
-        if (!Object.prototype.hasOwnProperty.call(builtinExtensions, extensionId)) {
+        extensionId = resolveExtensionId(extensionId);
+        if (hasOwn(lazyBuiltinExtensions, extensionId)) {
+            // Nothing calls this for a lazy id today (CORE_EXTENSIONS is empty);
+            // if something starts to, it gets the extension a moment later
+            // rather than never, and a warning that says why.
+            log.warn(`Extension ${extensionId} is loaded on demand; loading it asynchronously.`);
+            this._loadLazyBuiltinExtension(extensionId);
+            return;
+        }
+        if (!hasOwn(builtinExtensions, extensionId)) {
             log.warn(`Could not find extension ${extensionId} in the built in extensions.`);
             return;
         }
@@ -135,12 +281,56 @@ class ExtensionManager {
     }
 
     /**
+     * Load a built-in extension whose code lives in its own chunk.
+     * @param {string} extensionId - a key of lazyBuiltinExtensions
+     * @returns {Promise} resolved once the chunk has arrived and the extension is registered
+     * @private
+     */
+    _loadLazyBuiltinExtension (extensionId) {
+        if (this.isExtensionLoaded(extensionId)) {
+            log.warn(`Rejecting attempt to load a second extension with ID ${extensionId}`);
+            return Promise.resolve();
+        }
+        if (this._pendingBuiltinLoads.has(extensionId)) {
+            return this._pendingBuiltinLoads.get(extensionId);
+        }
+        const pending = lazyBuiltinExtensions[extensionId]().catch(err => {
+            // The callers (deserializeProject's pre-load, installTargets,
+            // shareBlocksToTarget) tolerate this rejection on purpose, so that a
+            // chunk that fails to arrive costs its blocks and not the project.
+            // Which means that without this line "the module never came" is
+            // indistinguishable from "nobody asked" — a feature that asks for
+            // something must leave a trace its absence cannot produce. Rethrown
+            // unchanged: the callers' contract is not this line's to alter.
+            log.error(`Built-in extension ${extensionId} failed to load its chunk: ` +
+                `${(err && err.message) || err}`);
+            throw err;
+        }).then(mod => {
+            // loadExtensionIdSync's fallback also arrives here without going
+            // through the pending map, so the registration check is repeated.
+            if (this.isExtensionLoaded(extensionId)) return;
+            const extension = extensionClassFrom(mod);
+            const extensionInstance = new extension(this.runtime);
+            const serviceName = this._registerInternalExtension(extensionInstance);
+            this._loadedExtensions.set(extensionId, serviceName);
+        });
+        const settle = () => this._pendingBuiltinLoads.delete(extensionId);
+        pending.then(settle, settle);
+        this._pendingBuiltinLoads.set(extensionId, pending);
+        return pending;
+    }
+
+    /**
      * Load an extension by URL or internal extension ID
      * @param {string} extensionURL - the URL for the extension to load OR the ID of an internal extension
      * @returns {Promise} resolved once the extension is loaded and initialized or rejected on failure
      */
-    loadExtensionURL (extensionURL) {
-        if (Object.prototype.hasOwnProperty.call(builtinExtensions, extensionURL)) {
+    loadExtensionURL (extensionURL, options) {
+        extensionURL = resolveExtensionId(extensionURL, options);
+        if (hasOwn(lazyBuiltinExtensions, extensionURL)) {
+            return this._loadLazyBuiltinExtension(extensionURL);
+        }
+        if (hasOwn(builtinExtensions, extensionURL)) {
             /** @TODO dupe handling for non-builtin extensions. See commit 670e51d33580e8a2e852b3b038bb3afc282f81b9 */
             if (this.isExtensionLoaded(extensionURL)) {
                 const message = `Rejecting attempt to load a second extension with ID ${extensionURL}`;
@@ -155,6 +345,50 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
+        // A distribution built with remote extensions denied is self-contained at this boundary. Apply that
+        // BUILD-TIME choice at the VM boundary as well as the picker so projects, deep links and
+        // direct API callers all fail closed. Do not infer it from Tauri: ordinary native builds,
+        // Android and Windows retain URL extensions. Bundled IDs already returned above.
+        if (process.env.BW_REMOTE_EXTENSIONS_POLICY === 'deny') {
+            return Promise.reject(new Error(
+                'This distribution can load only bundled extensions; use an unrestricted build for URL extensions.'
+            ));
+        }
+
+        // Brickwright: a BARE ID that is not a builtin is a missing implementation,
+        // not a URL. Treating it as one spawned a sandbox worker whose
+        // importScripts('<id>') 404'd as a page error on every project load
+        // (id 'devices', example 53, 2026-08-10). Warn once, loudly, and skip —
+        // the blocks stay dropped either way until the extension exists.
+        if (!/^(https?:|data:|blob:|\.|\/)/.test(extensionURL)) {
+            log.warn(`Unknown extension id "${extensionURL}" — no builtin and not a URL; skipping.`);
+            return Promise.resolve();
+        }
+
+        // Only exact, content-pinned gallery URLs retain the in-process compatibility adapter.
+        // Everything else — including a new file on the same Pages host — is imported by the VM's
+        // worker and therefore cannot see the DOM or Tauri IPC. Hostname and a confirm dialog are
+        // not isolation boundaries.
+        if (isRemoteExtensionURL(extensionURL) && pinForURL(extensionURL)) {
+            const pin = pinForURL(extensionURL);
+            // Promotion is explicit and fail closed. Candidate/deferred pins retain the compatibility
+            // adapter until their individual review changes the manifest; only `worker` pins enter
+            // the source-bootstrap protocol.
+            if (pin.migration && pin.migration.status === 'worker') {
+                return this._loadPinnedWorkerExtension(extensionURL);
+            }
+            return this._loadTrustedRemoteExtension(extensionURL);
+        }
+
+        return this._loadSandboxedExtension(extensionURL);
+    }
+
+    /**
+     * Load an unpinned extension in the Scratch VM worker.
+     * @param {string} extensionURL - URL imported inside the worker
+     * @returns {Promise} resolved once the worker has registered its extension
+     */
+    _loadSandboxedExtension (extensionURL) {
         return new Promise((resolve, reject) => {
             // If we `require` this at the global level it breaks non-webpack targets, including tests
             const worker = new Worker('./extension-worker.js');
@@ -165,11 +399,123 @@ class ExtensionManager {
     }
 
     /**
+     * Fetch and authenticate a promoted gallery extension before creating its worker. The host owns
+     * the allocation and source: downloaded code cannot choose an ID, URL, or replacement payload.
+     * There is deliberately no adapter fallback if any stage fails.
+     * @param {string} extensionURL exact pinned gallery URL
+     * @returns {Promise<number>} resolved with the immutable worker ID after initialization
+     */
+    _loadPinnedWorkerExtension (extensionURL) {
+        // Re-derive authority at this boundary. A same-realm caller can invoke this method directly,
+        // so a caller-supplied object must never be able to invent a digest, identity or declaration.
+        const pin = pinForURL(extensionURL);
+        if (!pin || !pin.migration || pin.migration.status !== 'worker') {
+            return Promise.reject(new Error(`URL is not an immutable promoted worker pin: ${extensionURL}`));
+        }
+        if (this.isExtensionLoaded(extensionURL)) {
+            log.warn(`Rejecting attempt to load a second extension with URL ${extensionURL}`);
+            return;
+        }
+        if (this.pendingPinnedLoads.has(extensionURL)) return this.pendingPinnedLoads.get(extensionURL);
+        const loading = this._startPinnedWorkerExtension(extensionURL, pin)
+            .finally(() => this.pendingPinnedLoads.delete(extensionURL));
+        this.pendingPinnedLoads.set(extensionURL, loading);
+        return loading;
+    }
+
+    async _startPinnedWorkerExtension (extensionURL, pin) {
+
+        const response = await fetch(extensionURL);
+        if (!response.ok) throw new Error(`HTTP ${response.status} loading ${extensionURL}`);
+        const bytes = await response['arrayBuffer']();
+        const verifyPinnedBytes = verifyGallerySource;
+        await verifyPinnedBytes(extensionURL, bytes);
+        const source = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+
+        // Allocate only after all fallible fetch/verification/decoding work. A failed pin therefore
+        // consumes neither an ID nor a pending slot and never constructs an execution realm.
+        const workerId = this.nextExtensionWorker++;
+        const capabilities = Object.freeze((pin.brokerCapabilities || []).slice());
+        const hostRecord = Object.freeze({
+            protocol: 1,
+            workerId,
+            url: extensionURL,
+            slug: pin.slug,
+            digest: pin.served,
+            capabilities,
+            proof: pin.proof === true,
+            source
+        });
+        return new Promise((resolve, reject) => {
+            this.pendingWorkers[workerId] = {extensionURL, resolve, reject, hostRecord, serviceNames: []};
+            try {
+                const worker = new Worker('./extension-worker.js');
+                dispatch.addWorker(worker, hostRecord);
+            } catch (error) {
+                delete this.pendingWorkers[workerId];
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Whether a URL names exact reviewed gallery content (loads without a user prompt). A hostname
+     * alone is not trust: new entries and URL variants use the custom-URL path; changed pinned bytes
+     * are refused after fetch and before evaluation.
+     * @param {string} extensionURL - candidate URL
+     * @returns {boolean} true only for an exact URL in the shipped pin map
+     */
+    isTrustedExtensionURL (extensionURL) {
+        return Boolean(pinForURL(extensionURL));
+    }
+
+    /**
+     * Why a URL is or is not trusted, for the UI to word its warning with.
+     * @param {string} extensionURL - candidate URL
+     * @returns {string} 'pinned', 'unpinned' (a plain gallery URL we have no pin for) or 'foreign'
+     */
+    pinStatusFor (extensionURL) {
+        return pinStatusFor(extensionURL);
+    }
+
+    /**
+     * Fetch content-pinned gallery source and load it unsandboxed via the compatibility adapter.
+     * @param {string} extensionURL - an https URL to the extension's .js source
+     * @returns {Promise} resolved once the extension is registered
+     */
+    _loadTrustedRemoteExtension (extensionURL) {
+        if (this.isExtensionLoaded(extensionURL)) {
+            log.warn(`Rejecting attempt to load a second extension with URL ${extensionURL}`);
+            return Promise.resolve();
+        }
+        // require lazily so non-webpack/test targets that never hit this branch don't need it
+        const makeCrispExtension = require('../extensions/crispstrobe/adapter');
+        return fetch(extensionURL)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status} loading ${extensionURL}`);
+                return res.arrayBuffer();
+            })
+            .then(async bytes => {
+                await verifyGallerySource(extensionURL, bytes);
+                const source = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+                const Extension = makeCrispExtension(source);
+                const extensionInstance = new Extension(this.runtime);
+                const serviceName = this._registerInternalExtension(extensionInstance);
+                // Key by both the URL (what the library UI checks) and the extension's own id.
+                this._loadedExtensions.set(extensionURL, serviceName);
+                const info = extensionInstance.getInfo && extensionInstance.getInfo();
+                if (info && info.id) this._loadedExtensions.set(info.id, serviceName);
+            });
+    }
+
+    /**
      * Regenerate blockinfo for any loaded extensions
      * @returns {Promise} resolved once all the extensions have been reinitialized
      */
     refreshBlocks () {
-        const allPromises = Array.from(this._loadedExtensions.values()).map(serviceName =>
+        // Deduplicate: an extension loaded by URL is keyed by both URL and ID,
+        // so iterating values() would call getInfo twice for the same service.
+        const allPromises = Array.from(new Set(this._loadedExtensions.values())).map(serviceName =>
             dispatch.call(serviceName, 'getInfo')
                 .then(info => {
                     info = this._prepareExtensionInfo(serviceName, info);
@@ -203,8 +549,14 @@ class ExtensionManager {
      * @param {string} serviceName - the name of the service hosting the extension.
      */
     registerExtensionService (serviceName) {
-        dispatch.call(serviceName, 'getInfo').then(info => {
-            this._registerExtensionInfo(serviceName, info);
+        return dispatch.call(serviceName, 'getInfo').then(info => {
+            const extensionInfo = this._prepareExtensionInfo(serviceName, info);
+            return dispatch.call('runtime', '_registerExtensionPrimitives', extensionInfo).then(() => {
+                this._loadedExtensions.set(extensionInfo.id, serviceName);
+                const match = /^extension\.(\d+)\.\d+$/.exec(serviceName);
+                const workerInfo = match && this.pendingWorkers[Number(match[1])];
+                if (workerInfo && Array.isArray(workerInfo.serviceNames)) workerInfo.serviceNames.push(serviceName);
+            });
         });
     }
 
@@ -216,9 +568,13 @@ class ExtensionManager {
     onWorkerInit (id, e) {
         const workerInfo = this.pendingWorkers[id];
         delete this.pendingWorkers[id];
+        if (!workerInfo) throw new Error(`Unknown extension worker ${id} initialized`);
         if (e) {
             workerInfo.reject(e);
         } else {
+            if (workerInfo.extensionURL && workerInfo.serviceNames && workerInfo.serviceNames.length) {
+                this._loadedExtensions.set(workerInfo.extensionURL, workerInfo.serviceNames[0]);
+            }
             workerInfo.resolve(id);
         }
     }

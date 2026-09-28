@@ -19,9 +19,11 @@
  *
  * ## The mirrors, and what each failure cost when it was found in CI instead
  *
- *   1. overlay/scratch-gui <-> packages/scratch-gui, for files tracked in BOTH.
- *      integrate.mjs copies overlay over packages in every real build, so a
- *      divergent pair means one side's edit is silently dead.
+ *   1. overlay/<component> <-> packages/<component>, for files tracked in BOTH.
+ *      The GUI is copied by integrate.mjs; VM and Paint are copied into the
+ *      installed runtime by their apply-overlay scripts. A divergent tracked
+ *      package copy is therefore stale documentation at best and dead code at
+ *      worst, regardless of which overlay mechanism ships it.
  *   2. vendor-pins.json <-> a sha LITERAL asserted in a test. The pin is
  *      duplicated on purpose, so that artifact assertions are known to have
  *      been re-run at that pin — moving one without the other is the whole
@@ -65,15 +67,17 @@ const nextCommitContent = rel => {
 };
 
 // ── 1. overlay <-> packages, for files tracked in both ──────────────────────
-export function overlayPackagePairs () {
-    const tracked = new Set(git('ls-files', 'packages/scratch-gui').split('\n').filter(Boolean));
+export function overlayPackagePairs (components = ['scratch-gui', 'scratch-vm', 'scratch-paint']) {
     const out = [];
-    for (const rel of git('ls-files', 'overlay/scratch-gui').split('\n').filter(Boolean)) {
-        const twin = rel.replace(/^overlay\//, 'packages/');
-        if (!tracked.has(twin)) continue;
-        const a = nextCommitContent(rel);
-        const b = nextCommitContent(twin);
-        if (a && b && !a.equals(b)) out.push({overlay: rel, packages: twin});
+    for (const component of components) {
+        const tracked = new Set(git('ls-files', `packages/${component}`).split('\n').filter(Boolean));
+        for (const rel of git('ls-files', `overlay/${component}`).split('\n').filter(Boolean)) {
+            const twin = rel.replace(/^overlay\//, 'packages/');
+            if (!tracked.has(twin)) continue;
+            const a = nextCommitContent(rel);
+            const b = nextCommitContent(twin);
+            if (a && b && !a.equals(b)) out.push({component, overlay: rel, packages: twin});
+        }
     }
     return out;
 }

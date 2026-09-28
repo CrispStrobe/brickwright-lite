@@ -8,6 +8,7 @@ import {
     clearSelection, cloneSelection, getSelectedLeafItems, getSelectedRootItems, setItemSelection
 } from '../selection';
 import {getDragCrosshairLayer, CROSSHAIR_FULL_OPACITY} from '../layer';
+import {clearSmartGuides, drawSmartGuides, snapDragVector} from '../bw/snapping';
 
 /** Snap to align selection center to rotation center within this distance */
 const SNAPPING_THRESHOLD = 4;
@@ -89,6 +90,10 @@ class MoveTool {
             }
         }
         this.selectionCenter = selectionBounds.center;
+        // Brickwright: snapping needs the whole box, not just its centre, so it can align edges
+        // as well. Cloned because for a single selected item `selectionBounds` is still the
+        // item's own LinkedRectangle, and writing to it would move the artwork.
+        this.bwSelectionBounds = selectionBounds.clone();
 
         if (this.boundsPath) {
             this.selectedItems.push(this.boundsPath);
@@ -145,6 +150,20 @@ class MoveTool {
         if (this.selectedItems.length === 0) {
             return;
         }
+
+        // Brickwright: snap to other objects and/or the grid, and show what matched. This runs
+        // only if the rotation-centre snap above didn't already claim the drag — that one is a
+        // stronger intent — and never with shift held, which means "constrain to 45 degrees",
+        // or in reshape mode, where the drag moves individual points rather than whole objects.
+        let smartGuides = [];
+        if (!snapVector && !event.modifiers.shift && this.mode !== Modes.RESHAPE && this.bwSelectionBounds) {
+            const snapped = snapDragVector(this.bwSelectionBounds, dragVector, this.selectedItems);
+            smartGuides = snapped.guides;
+            if (!snapped.vector.equals(dragVector)) {
+                snapVector = snapped.vector;
+            }
+        }
+        drawSmartGuides(smartGuides);
 
         let bounds;
         for (const item of this.selectedItems) {
@@ -203,6 +222,8 @@ class MoveTool {
     }
     onMouseUp () {
         this.firstDrag = false;
+        // Brickwright: the alignment guides describe a drag in progress; nothing should outlive it.
+        clearSmartGuides();
         let moved = false;
         // resetting the items origin point for the next usage
         for (const item of this.selectedItems) {
@@ -213,6 +234,7 @@ class MoveTool {
         }
         this.selectedItems = null;
         this.selectionCenter = null;
+        this.bwSelectionBounds = null;
 
         if (moved) {
             this.onUpdateImage();
