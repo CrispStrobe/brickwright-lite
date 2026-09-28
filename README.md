@@ -62,10 +62,10 @@ RP2040 1.66x, and LabWired STM32F0 24.2x (three-pass medians, bw-board GitHub
 run 36384508630). The board-level hosted census adds adapter-inclusive Arduboy
 3.93x and ATtiny88 7.09x. Exact LabWired nRF52833/micro:bit v2 and
 ATSAMD51J19A/PyBadge firmware targets are now wired through the debugger with
-address-preserving ELF, Intel HEX and UF2 loading. Their pre-optimization
-tight-loop ceilings are 1.04x and 1.76x, but they stay explicitly experimental
-until representative hosted workloads also clear 1.0x and the missing board
-peripherals are modeled. The public Renode fork now has a qualified exact
+address-preserving ELF, Intel HEX and UF2 loading. The optimized, adapter-
+equivalent hosted smoke receipt reaches **3.32x** and **3.78x** respectively
+(seven-run medians, both booted to `OK`); missing board peripherals remain
+explicit rather than being hidden by the CPU result. The public Renode fork now has a qualified exact
 STM32F413VG SPIKE Prime platform; its target RTx remains unmeasured rather than
 being inferred from the old F412 proxy. The EV3 work now has a source-built
 AM1808/ARM926 Renode boundary for reset, UART1, AINTC interrupts and GDB, but
