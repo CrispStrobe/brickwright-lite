@@ -1,5 +1,41 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
+## OPEN — the SPIKE arena gate is decided by two independently scheduled clocks (2026-09-28)
+
+`scripts/verify-lego-spike-roundtrip.mjs` failed once in CI with
+
+    the reference solution did not pass in the browser: fail "Mission failed: time is up after 15 s."
+
+on a mission whose budget is 15 s (`rb07-stop-at-the-line` or `rb09-cliff-wall`;
+the eleven rover missions run 10-40 s). The reference solution is the one the
+arena itself ships, so a fail is either a real regression or a race.
+
+**It is a race between two clocks that nothing synchronises:**
+
+  - the arena's own `timeMs` advances from requestAnimationFrame deltas,
+    `Math.min(MAX_FRAME_MS, now - lastFrame)` with MAX_FRAME_MS = 100
+    (spike-arena-pane.jsx:24,186);
+  - the robot's travel does NOT come from that clock. `ArenaHubBridge` reads
+    `motors[port].position` — encoder degrees — which the VM accumulates on its
+    own scheduling.
+
+So under load the two drift apart, and WHICH WAY IS NOT OBVIOUS: starve the
+frames and sim time runs slow while the motors keep turning, which makes a
+mission easier; starve the VM while rAF keeps firing and the clock runs out
+under a robot that has not moved, which makes it fail. One observed failure does
+not say which happened, and this note deliberately does not guess.
+
+**Not investigated further here because the fix is a design decision in this
+lane's feature**, not a repair: either drive the arena from the VM's notion of
+elapsed time, or step the VM from the arena, so that one clock governs both. A
+gate whose verdict depends on runner load will redden at random for everyone
+until then.
+
+**To reproduce deliberately:** run the gate against a served build under CDP CPU
+throttling and vary the rate; if the verdict flips, the coupling is confirmed and
+the direction is measured at the same time.
+
+
 ## ~~OPEN, UPSTREAM~~ — FIXED UPSTREAM the same day: the gallery snapshot could not be attested (2026-09-28)
 
 **`sync-gallery-pins.mjs --check` refuses, and it is right to.** It attests that
