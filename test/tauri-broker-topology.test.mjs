@@ -95,9 +95,14 @@ const audit = ({handler, broker, adapter, capability, transport, capabilities, r
         'the broker realm must not request an incognito context: on Linux it loses the custom ' +
         'protocol and the document never loads');
 
-    // The executor is the whole semantic surface, and it must stay a single read.
-    assert.match(capability, /fn execute\(operation: Operation\)[\s\S]{0,400}Operation::PlatformKindRead/,
-        'the only semantic operation is platform.kind.read');
+    // The executor is the whole semantic surface. Each reviewed operation is explicit; no
+    // wildcard, raw command, path, socket or process primitive is accepted here.
+    assert.match(capability, /fn execute\([\s\S]{0,300}operation: Operation[\s\S]{0,700}Operation::PlatformKindRead/,
+        'the platform read must remain explicit');
+    assert.match(capability, /Operation::RenodeSpikeStart[\s\S]{0,150}debugger\.start\(supervisor\)/,
+        'SPIKE start must delegate to the managed debugger');
+    assert.match(capability, /Operation::RenodeSpikeClose[\s\S]{0,150}debugger\.close\(supervisor\)/,
+        'SPIKE close must delegate to the managed debugger');
     assert.doesNotMatch(capability, /std::process|Command::new|fs::(read|write)|reqwest|TcpStream/,
         'the semantic executor must not reach the filesystem, the network or a subprocess');
     assert.match(transport, /pub\(crate\)\s+const\s+BROKER_LABEL\s*:\s*&str\s*=\s*"capability-broker"\s*;/,
@@ -229,7 +234,7 @@ test('topology contract rejects independently weakened boundaries', () => {
         input => { input.capability = input.capability.replace(
             'Operation::PlatformKindRead', 'Operation::SomethingElse'); },
         input => { input.capability = input.capability.replace(
-            'fn execute(operation: Operation)', 'fn execute_renamed(operation: Operation)'); },
+            'fn execute(', 'fn execute_renamed('); },
         input => { input.capability += '\nfn escape() { let _ = std::process::Command::new("sh"); }\n'; },
         input => { input.capability = input.capability.replace(
             'if window.label() != MAIN_LABEL {', 'if false {'); },
