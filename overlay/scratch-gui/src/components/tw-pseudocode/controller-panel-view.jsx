@@ -12,6 +12,7 @@ const L10N = {
         'chooseImage': 'Choose an Image',
         title: 'Controller',
         edit: 'Edit', play: 'Play',
+        enterFullScreen: 'Full screen',
         exitFullScreen: 'Exit full screen',
         addWidget: '+ Add Widget',
         joystick: 'Joystick', button: 'Button', slider: 'Slider',
@@ -34,6 +35,7 @@ const L10N = {
         'chooseImage': 'Ein Bild wählen',
         title: 'Controller',
         edit: 'Bearbeiten', play: 'Spielen',
+        enterFullScreen: 'Vollbild',
         exitFullScreen: 'Vollbild verlassen',
         addWidget: '+ Widget hinzufügen',
         joystick: 'Joystick', button: 'Taste', slider: 'Schieberegler',
@@ -1704,6 +1706,24 @@ class ControllerPanelView extends React.Component {
                     <span style={{ fontWeight: 700, fontSize: 14, color: '#7C3AED' }}>
                         {t('title')}
                     </span>
+                    {/* ENTERING full screen from here, because there is no other way in
+                        on a phone: the stage header that normally offers it is capped
+                        to 44px in this dock mode, and a sweep of the pane on a phone
+                        found no reachable enter-fullscreen control at all. Exit was
+                        already covered; entry was not. */}
+                    {!this.props.isFullScreen && this.props.onEnterFullScreen && (
+                        <button type="button" data-testid="bw-widgets-enter-fullscreen"
+                            onClick={this.props.onEnterFullScreen}
+                            aria-label={t('enterFullScreen')}
+                            title={t('enterFullScreen')}
+                            style={{
+                                background: '#ede9fe', color: '#5b21b6',
+                                border: '1px solid #c4b5fd', borderRadius: 6,
+                                padding: '4px 10px', cursor: 'pointer', fontSize: 12,
+                            }}>
+                            {'⛶ '}{t('enterFullScreen')}
+                        </button>
+                    )}
                     {this.props.isFullScreen && (
                         <button type="button" data-testid="bw-widgets-exit-fullscreen"
                             onClick={this.props.onExitFullScreen}
