@@ -117,15 +117,6 @@ html[${ATTR}] input[type="radio"] {
     min-height: ${floor}px;
     min-width: ${floor}px;
 }
-/* An icon-only control inside a dense row would push the row wider than the
-   pane if it also claimed ${floor}px of WIDTH, so the width floor is dropped
-   where the author has said the control is laid out in a row. Height still
-   applies: a 16px-tall button is the harder miss. */
-html[${ATTR}] [data-bw-dense] button,
-html[${ATTR}] [data-bw-dense] select,
-html[${ATTR}] [data-bw-dense] [role="button"] {
-    min-width: 0;
-}
 `;
 
 /**

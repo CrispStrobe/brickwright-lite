@@ -50,12 +50,17 @@ test('the rule is inert until the html flag is set', () => {
     }
 });
 
-test('a dense row keeps its width, and only its width', () => {
+test('the rule carries no speculative escape hatch', () => {
+    // An earlier version shipped a `[data-bw-dense]` opt-out that dropped the
+    // width floor for crowded rows. Nothing ever set that attribute, so the
+    // selector was dead, and the measurement it was insuring against — a width
+    // floor pushing content off the pane — never happened: scrollWidth stayed
+    // at 1024 on every tab at every floor tried. Add it back when a real row
+    // needs it, with the row that needs it.
     const css = ruleFor(FLOOR_PX);
-    const dense = css.slice(css.indexOf('data-bw-dense'));
-    assert.match(dense, /min-width:\s*0/);
-    assert.ok(!/min-height/.test(dense),
-        'height must still be floored in a dense row — a 16px-tall button is the harder miss');
+    assert.ok(!/data-bw-/.test(css.replace(/data-bw-touch/g, '')),
+        'no attribute hooks beyond the one flag that arms the rule');
+    assert.equal(css.split('{').length - 1, 1, 'exactly one rule block');
 });
 
 test('the floor is 32, and 44 is excluded on purpose', () => {
