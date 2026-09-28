@@ -233,7 +233,7 @@ fn sha256(path: &Path) -> io::Result<String> {
         }
         hash.update(&buffer[..count]);
     }
-    Ok(format!("{hash:x}"))
+    Ok(format!("{:x}", hash.finalize()))
 }
 
 fn random_token() -> Result<String, String> {
