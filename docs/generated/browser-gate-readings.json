@@ -6564,6 +6564,12 @@
      "seconds": 5
     }
    ]
+  },
+  "Browser gate — controls are hittable on a phone": {
+   "n": 0,
+   "p95": 0,
+   "max": null,
+   "readings": []
   }
  }
 }

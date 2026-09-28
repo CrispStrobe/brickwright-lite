@@ -1156,6 +1156,16 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-phone-modal.mjs
 
+      # Controls are big enough to hit, AND the floor that makes them so costs
+      # no width. Unfloored, the Code tab had 4 controls under 24 CSS px and the
+      # FPGA pane 25; the risk of fixing it with a min-width was widening dense
+      # toolbar rows, so the gate measures scrollWidth on every tab too.
+      - name: Browser gate — controls are hittable on a phone
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        id: tap_targets
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-tap-targets.mjs
+
       # And the whole editor, not just its modals. This app is 1024 CSS px wide
       # and cannot be narrower (the floor is load-bearing), so the phone
       # question is whether the browser SCALES it to fit — one meta tag.

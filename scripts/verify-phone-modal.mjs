@@ -140,7 +140,14 @@ try {
   // one that broke: the overlay must cover the VISIBLE BAND, not the layout
   // viewport. `inset: 0` covered a 1024x2215 layout and centred the dialog
   // 289px below what the reader could see. So compare the two rects.
-  const overlay = await page.evaluate(() => {
+  // WAIT FOR IT, do not race it. The overlay resizes in response to a
+  // VisualViewport event that React then renders, so there is no moment at
+  // which the new geometry is synchronously true. Probing straight after the
+  // CDP call passed locally and FAILED IN CI with overlay 1024x2215 against a
+  // 179x388 band — the event had not yet arrived in that Chromium. A control
+  // that never converges (inset: 0) still fails here, it just takes the
+  // timeout to say so.
+  const probeOverlay = () => page.evaluate(() => {
     const el = document.querySelector('[data-testid="bw-machine-manager"]');
     const vv = window.visualViewport;
     if (!el || !vv) return null;
@@ -155,6 +162,13 @@ try {
               near(r.width, vv.width) && near(r.height, vv.height),
     };
   });
+
+  let overlay = await probeOverlay();
+  const deadline = Date.now() + 10000;
+  while ((!overlay || !overlay.tracks) && Date.now() < deadline) {
+    await page.evaluate(() => new Promise(r => requestAnimationFrame(() => r())));
+    overlay = await probeOverlay();
+  }
   check(overlay && overlay.tracks,
     'ZOOMED: the overlay covers the VISIBLE band, not the layout viewport',
     overlay
