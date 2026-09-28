@@ -39,6 +39,7 @@ import {
     setCondition, conditionOf, allConditions
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
+import {createReadyGatedInput} from './ready-gated-input.js';
 import {cpmFileName} from './cpm-z80.js';
 import { canRecordDebugInput } from 'bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
@@ -779,6 +780,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let serialEsc = 0;                 // 0 text, 1 after ESC, 2 inside CSI
     /** Per-frame boot-progress hook for the Linux lesson, or null. */
     let linuxProgressWatch = null;
+    /**
+     * Set by destroy(). A runner destroyed while its start() is still awaiting
+     * attach() must not come back to life when attach resolves: before this,
+     * start() went on to session.start() + schedule() and the destroyed runner
+     * pumped forever beside its replacement — two machines, one console, and
+     * input sent to the one whose output was not on screen (the Linux-lesson
+     * gate's ~1-in-10 "uname never answered"). Checked after the await and in
+     * schedule()/pumpFrame().
+     */
+    let destroyed = false;
     /**
      * What the ATTACHED engine cannot carry, in the user's words.
      *
@@ -2526,10 +2537,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         serialTerminal = true;
         serialEsc = 0;
         wireMachineBench(result, createDebugSession);
+        // HOLD console input until the shell is listening. Bytes sent while
+        // the kernel boots are dropped (the 8250 driver clears the receive FIFO
+        // at port start-up; nothing reads the tty before init opens it), so
+        // they are queued here and flushed, in order, the frame the prompt is
+        // up. See ready-gated-input.js.
+        const linuxTarget = target;
+        const gatedInput = createReadyGatedInput({
+            isReady: () => !!(linuxTarget.linuxProgress() || {}).ready,
+            send: byte => linuxTarget.sendSerial(byte)
+        });
+        runner.sendSerial = (data) => {
+            if (typeof data === 'number') return gatedInput.push(data);
+            const text = String(data);
+            for (let i = 0; i < text.length; i++) {
+                if (gatedInput.push(text.charCodeAt(i)) === false) return false;
+            }
+            return true;
+        };
         let shown = '';
         linuxProgressWatch = () => {
             const p = target && typeof target.linuxProgress === 'function' ? target.linuxProgress() : null;
             if (!p) return;
+            gatedInput.flush();
             const key = `${p.phase}:${p.percent}`;
             if (key === shown) return;
             shown = key;
@@ -2838,6 +2868,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * network clone and never the private $AT_BIOS_ROM.
      */
     async function attachI80386() {
+        if (bootMedia?.machinePreset === 'freedos-vga') {
+            return attachI80386FreedosVgaProfile();
+        }
         setStatus('attaching', bootMedia && bootMedia.name
             ? S('boot.free386Named', {name: bootMedia.name})
             : S('boot.free386'));
@@ -2975,6 +3008,52 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
+    // The named board profile owns the AT/VGA/CMOS map. Keep all four media
+    // slots on bw-board's loader so this browser path matches the board API.
+    async function attachI80386FreedosVgaProfile() {
+        const {createDebugTarget, createDebugSession, applyMedia} =
+            await import(/* webpackChunkName: "bw-board-i80386" */ 'bw-board');
+        const biosUrl = new URL('static/roms/free-386-bochs-bios.rom', document.baseURI).href;
+        const vgaUrl = new URL('static/roms/free-386-vgabios-lgpl.bin', document.baseURI).href;
+        const fallback = async (url, label) => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load ${label}: HTTP ${response.status}`);
+            return new Uint8Array(await response.arrayBuffer());
+        };
+        const entries = {...bootMedia.i80386Media};
+        entries.bios ||= await fallback(biosUrl, 'the free-386 BIOS');
+        entries['vga-rom'] ||= await fallback(vgaUrl, 'the free-386 VGABios');
+        if (bootMedia?.slot === 'hdd' || bootMedia?.slot === 'floppy') {
+            entries[bootMedia.slot] = (await resolveMediaImage(bootMedia)).bytes;
+        } else if (bootMedia?.slot) {
+            throw new Error(`the FreeDOS VGA profile cannot boot ${bootMedia.slot} media`);
+        }
+        const targetOpts = {profile: 'freedos-vga'};
+        if (bootMedia?.nativeBlocks === true) targetOpts.nativeBlocks = true;
+        const db = designerBoard();
+        if (db.board) { targetOpts.board = db.board; board = db.board; }
+        const result = await createDebugTarget('i80386', targetOpts);
+        i8086ExecutionResult = result;
+        if (i8086ExecutionLifetime.signal.aborted) throw new Error('80386 attachment was disposed');
+        const machine = result.adapter?.machine;
+        if (!machine) throw new Error('the FreeDOS VGA profile did not build an AT machine');
+        const applied = applyMedia({kind: 'i80386', adapter: result.adapter, machine}, entries);
+        if (applied.errors.length) {
+            throw new Error(applied.errors.map(item => `${item.slot}: ${item.error}`).join('; '));
+        }
+        machine.reset();
+        wireMachineBench(result, createDebugSession);
+        if (typeof result.adapter?.mouseIn === 'function' && machine.canTakeMouse?.()) {
+            runner.mouseIn = event => result.adapter.mouseIn(event);
+        }
+        const name = bootMedia.name || S('noun.floppy');
+        const readyMsg = bootMedia.slot === 'floppy'
+            ? S('ready.free386Floppy', {name})
+            : S('ready.free386Disk', {name});
+        setStatus('ready', readyMsg);
+        return session;
+    }
+
     /**
      * Should this halt be swallowed?
      *
@@ -3039,7 +3118,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     function pumpFrame() {
         rafId = null;
-        if (!session) return;
+        if (!session || destroyed) return;
         if (activeRunTo) {
             const result = runToController.pump();
             if (board) board.advanceTo(target.timeNs());
@@ -3117,6 +3196,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     function schedule() {
+        if (destroyed) return;
         if (rafId === null && typeof requestAnimationFrame === 'function') {
             rafId = requestAnimationFrame(pumpFrame);
         }
@@ -3219,6 +3299,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                         : userFirmware ? builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);
+                    if (destroyed) {
+                        // Torn down while attaching: release what attach built
+                        // and stay dead (see `destroyed`).
+                        if (session) session.destroy();
+                        session = target = null;
+                        return {accepted: false, code: 'destroyed'};
+                    }
                     // The user's breakpoints only became SETTABLE now: until a
                     // target exists there is nothing to set them on, and until
                     // this build exists nothing knows which (task, state) a
@@ -4385,6 +4472,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             i8086ExecutionLifetime.abort();
             i8086Execution.release(i8086ExecutionResult);
             i8086ExecutionResult = null;
+            destroyed = true;
             setValueResolver(null);
             if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();

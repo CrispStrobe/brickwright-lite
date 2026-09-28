@@ -35,6 +35,8 @@ test('getTargetKinds lists the shipped simulator engines', async () => {
 
     assert.ok(kindIds.includes('emulator'), 'missing emulator (emu8051)');
     assert.ok(kindIds.includes('avr8js'), 'missing avr8js');
+    assert.ok(kindIds.includes('attiny85'), 'missing attiny85');
+    assert.ok(kindIds.includes('attiny88'), 'missing attiny88');
     assert.ok(kindIds.includes('rp2040js'), 'missing rp2040js');
     assert.ok(kindIds.includes('i8086'), 'missing i8086');
     assert.ok(kindIds.includes('i80286'), 'missing i80286');

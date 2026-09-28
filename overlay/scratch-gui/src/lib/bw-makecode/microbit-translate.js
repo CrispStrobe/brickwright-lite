@@ -61,11 +61,26 @@ export const MAKECODE_NOTES = [
     'C', 'CSharp', 'D', 'Eb', 'E', 'F', 'FSharp', 'G', 'GSharp', 'A', 'Bb', 'B',
     ...['3', '4', '5'].flatMap(o => ['C', 'CSharp', 'D', 'Eb', 'E', 'F', 'FSharp', 'G', 'GSharp', 'A', 'Bb', 'B'].map(n => n + o))
 ];
+/** The V2 built-in sounds (soundExpression.X), which MicroPython's Sound.X shares. */
+export const MAKECODE_SOUNDS = ['giggle', 'happy', 'hello', 'mysterious', 'sad', 'slide', 'soaring', 'spring', 'twinkle', 'yawn'];
 /** MakeCode's built-in Melodies (libs/core/melodies.ts). */
 export const MAKECODE_MELODIES = [
     'Dadadadum', 'Entertainer', 'Prelude', 'Ode', 'Nyan', 'Ringtone', 'Funk', 'Blues', 'Birthday', 'Wedding',
     'Funeral', 'Punchline', 'Baddy', 'Chase', 'BaDing', 'Wawawawaa', 'JumpUp', 'JumpDown', 'PowerUp', 'PowerDown'
 ];
+
+/** LedSpriteProperty member -> the dialect's property word. */
+const SPRITE_PROPERTY = {X: 'x', Y: 'y', Direction: 'direction', Brightness: 'brightness', Blink: 'blink'};
+/** The methods only a sprite has, so a call of one on an object field IS a sprite call. */
+const SPRITE_ONLY = new Set(['isTouchingEdge', 'ifOnEdgeBounce', 'isDeleted', 'setBlink', 'changeBlinkBy',
+    'changeXBy', 'changeYBy', 'turnRight', 'turnLeft', 'changeDirectionBy', 'changeBrightnessBy']);
+/** game.LedSprite's methods (pxt-microbit 9.1.1 libs/core/game.ts). */
+const SPRITE_METHODS = new Set([
+    'get', 'set', 'change', 'x', 'y', 'direction', 'brightness', 'blink', 'isTouching', 'isTouchingEdge', 'isDeleted',
+    'setX', 'setY', 'setDirection', 'setBrightness', 'setBlink', 'on', 'off', 'changeXBy', 'changeYBy',
+    'changeDirectionBy', 'changeBrightnessBy', 'changeBlinkBy', 'goTo', 'move', 'turn', 'turnRight', 'turnLeft',
+    'ifOnEdgeBounce', 'delete'
+]);
 
 const isPinEnum = name => /^(DigitalPin|AnalogPin|TouchPin|PwmPin)$/.test(name);
 
@@ -88,6 +103,28 @@ class MicrobitTranslator extends BaseTranslator {
             return `frequency of note ${node.name}`;
         }
         return super.expr(node);
+    }
+
+    /** `soundExpression.giggle`'s name, or null. */
+    builtinSound (node) {
+        const name = node && node.type === 'Member' && node.object && node.object.name === 'soundExpression' ? node.name : null;
+        return name && MAKECODE_SOUNDS.includes(name) ? name : null;
+    }
+
+    /**
+     * createSoundEffect/createSoundExpression's eight arguments as the
+     * dialect's `play sound effect …` (without its mode), or null when an
+     * enum is one the block does not have.
+     */
+    soundEffect (args) {
+        const member = (node, owner, table) => (node && node.type === 'Member' && node.object &&
+            node.object.name === owner ? table[node.name] : null);
+        const wave = member(args[0], 'WaveShape', {Sine: 'sine', Sawtooth: 'sawtooth', Triangle: 'triangle', Square: 'square', Noise: 'noise'});
+        const fx = member(args[6], 'SoundExpressionEffect', {None: 'none', Vibrato: 'vibrato', Tremolo: 'tremolo', Warble: 'warble'});
+        const curve = member(args[7], 'InterpolationCurve', {Linear: 'linear', Curve: 'curve', Logarithmic: 'logarithmic'});
+        if (!wave || !fx || !curve) return null;
+        const o = i => this.operand(args[i]);
+        return `play sound effect ${wave} from ${o(1)} to ${o(2)} hz volume ${o(3)} to ${o(4)} for ${o(5)} ms effect ${fx} curve ${curve}`;
     }
 
     /** `music.builtInPlayableMelody(Melodies.X)`'s X, or null. */
@@ -117,9 +154,12 @@ class MicrobitTranslator extends BaseTranslator {
      */
     isBooleanValue (value) {
         return super.isBooleanValue(value) ||
+            value === 'logo touched' ||
             /^read button_/.test(value) ||
             / happening$/.test(value) ||
             / touched$/.test(value) ||
+            /^sprite .+ (touching sprite .+|touching edge|deleted)$/.test(value) ||
+            /^game is (over|running|paused)$/.test(value) ||
             value === 'false';
     }
 
@@ -136,8 +176,158 @@ class MicrobitTranslator extends BaseTranslator {
         return super.condition(node);
     }
 
+    // ── LED sprites ─────────────────────────────────────────────────
+    //
+    // A sprite is a numbered handle in a variable or an array (sb3-creator's
+    // micro:bit+ sprite words), so what has to be known is which expressions
+    // HOLD one: a name assigned game.createSprite() or declared LedSprite, an
+    // array filled with them, an element of such an array, a loop variable
+    // over one. claimSprites() finds them before the walk.
+
+    /** Record every name that holds a sprite, and every array of them. */
+    claimSprites (ast) {
+        this.sprites = new Set();
+        this.spriteArrays = new Set();
+        const isCreate = n => n && n.type === 'Call' && this.path(n.callee) === 'game.createSprite';
+        const isProperty = n => n && n.type === 'Member' && n.object && n.object.type === 'Identifier' &&
+            n.object.name === 'LedSpriteProperty';
+        const holds = (name, value) => {
+            if (!name || !value) return;
+            if (isCreate(value)) this.sprites.add(name);
+            else if (value.type === 'Index' && value.object.type === 'Identifier' && this.spriteArrays.has(value.object.name)) {
+                this.sprites.add(name);
+            }
+        };
+        const walk = node => {
+            if (!node || typeof node !== 'object') return;
+            if (Array.isArray(node)) {
+                node.forEach(walk);
+                return;
+            }
+            if (node.type === 'Declaration') {
+                for (const d of node.decls || []) {
+                    if (/LedSprite/.test(d.typeName || '')) (/\[\]|Array/.test(d.typeName) ? this.spriteArrays : this.sprites).add(d.name);
+                    if (d.init && d.init.type === 'Array' && d.init.items.some(isCreate)) this.spriteArrays.add(d.name);
+                    holds(d.name, d.init);
+                }
+            }
+            if (node.type === 'Assignment' && node.op === '=' && node.left.type === 'Identifier') holds(node.left.name, node.right);
+            if (node.type === 'ForOf' && node.iterable && node.iterable.type === 'Identifier' &&
+                this.spriteArrays.has(node.iterable.name)) this.sprites.add(node.name);
+            if (node.type === 'Call' && node.callee && node.callee.type === 'Member') {
+                const receiver = node.callee.object;
+                // `obstacles.push(game.createSprite(4, y))`
+                if (node.callee.name === 'push' && receiver.type === 'Identifier' && isCreate(node.args[0])) {
+                    this.spriteArrays.add(receiver.name);
+                }
+                // `hero.get(LedSpriteProperty.X)`: only a sprite has these.
+                if (/^(get|set|change)$/.test(node.callee.name) && isProperty(node.args[0])) {
+                    if (receiver.type === 'Identifier') this.sprites.add(receiver.name);
+                    if (receiver.type === 'Index' && receiver.object.type === 'Identifier') this.spriteArrays.add(receiver.object.name);
+                }
+            }
+            for (const v of Object.values(node)) if (v && typeof v === 'object') walk(v);
+        };
+        // Twice: a loop variable is only known once its array is.
+        walk(ast);
+        walk(ast);
+    }
+
+    /** Does this expression hold a sprite (a handle)? */
+    isSprite (node) {
+        if (!node || !this.sprites) return false;
+        if (node.type === 'Identifier') return this.sprites.has(node.name);
+        if (node.type === 'Index') return node.object.type === 'Identifier' && this.spriteArrays.has(node.object.name);
+        if (node.type === 'Call') {
+            if (this.path(node.callee) === 'game.createSprite') return true;
+            const c = node.callee;
+            return c && c.type === 'Member' && /^(removeAt|pop|shift)$/.test(c.name) &&
+                c.object.type === 'Identifier' && this.spriteArrays.has(c.object.name);
+        }
+        return false;
+    }
+
+    /** A sprite as the dialect's sprite slot takes it: one token or parenthesised. */
+    spriteRef (node) {
+        return this.operand(node);
+    }
+
+    /**
+     * A method call on a sprite as the dialect's words, or null when it is not
+     * one. `asValue` picks the reporters; the commands go to `push`.
+     */
+    spriteCall (node, push) {
+        const callee = node.callee;
+        if (!callee || callee.type !== 'Member' || !SPRITE_METHODS.has(callee.name)) return null;
+        const receiver = callee.object;
+        if (!this.isSprite(receiver)) {
+            // A sprite kept in an object's field (`client.sprite.setBlink(0)`):
+            // the handles live in variables and arrays, and an object has no
+            // form here, so the call is named with that reason.
+            if (receiver && receiver.type === 'Member' && (/sprite/i.test(receiver.name) || SPRITE_ONLY.has(callee.name))) {
+                const what = `${this.path(callee) || callee.name}() — a sprite kept in an object field; ` +
+                    'sprites are handles in variables and arrays here, and objects have no form';
+                return push ? push(this.note(what)) || true : (this.unsupported.push(what), '0');
+            }
+            return null;
+        }
+        const a = node.args || [];
+        // `obstacles.removeAt(0).delete()`: delete the element, then remove it.
+        const removal = push && receiver.type === 'Call' && receiver.callee.name === 'removeAt' ? receiver : null;
+        const s = removal ? `(item ${this.expr(removal.args[0])} of ${this.arrayRef(removal.callee.object.name)})` :
+            this.spriteRef(receiver);
+        const prop = n => (n && n.type === 'Member' && SPRITE_PROPERTY[n.name]) || null;
+        const val = i => this.operand(a[i]);
+        if (!push) {
+            switch (callee.name) {
+            case 'get': return prop(a[0]) ? `${prop(a[0])} of sprite ${s}` : null;
+            case 'x': case 'y': case 'direction': case 'brightness': case 'blink':
+                return `${callee.name} of sprite ${s}`;
+            case 'isTouching': return this.isSprite(a[0]) || a[0] ? `sprite ${s} touching sprite ${this.spriteRef(a[0])}` : null;
+            case 'isTouchingEdge': return `sprite ${s} touching edge`;
+            case 'isDeleted': return `sprite ${s} deleted`;
+            default: return null;
+            }
+        }
+        const target = s;
+        const set = (p, v) => push(`set sprite ${target} ${p} to ${v}`);
+        const change = (p, v) => push(`change sprite ${target} ${p} by ${v}`);
+        switch (callee.name) {
+        case 'set': if (!prop(a[0])) return null; set(prop(a[0]), val(1)); break;
+        case 'change': if (!prop(a[0])) return null; change(prop(a[0]), val(1)); break;
+        case 'setX': set('x', val(0)); break;
+        case 'setY': set('y', val(0)); break;
+        case 'setDirection': set('direction', val(0)); break;
+        case 'setBrightness': set('brightness', val(0)); break;
+        case 'setBlink': set('blink', val(0)); break;
+        case 'on': set('brightness', '255'); break;
+        case 'off': set('brightness', '0'); break;
+        case 'changeXBy': change('x', val(0)); break;
+        case 'changeYBy': change('y', val(0)); break;
+        case 'changeDirectionBy': change('direction', val(0)); break;
+        case 'changeBrightnessBy': change('brightness', val(0)); break;
+        case 'changeBlinkBy': change('blink', val(0)); break;
+        case 'goTo': set('x', val(0)); set('y', val(1)); break;
+        case 'move': push(`move sprite ${target} by ${val(0)}`); break;
+        case 'turn': {
+            const dir = a[0] && a[0].type === 'Member' && a[0].name === 'Left' ? 'left' : 'right';
+            push(`turn sprite ${target} ${dir} by ${val(1)} degrees`);
+            break;
+        }
+        case 'turnRight': push(`turn sprite ${target} right by ${val(0)} degrees`); break;
+        case 'turnLeft': push(`turn sprite ${target} left by ${val(0)} degrees`); break;
+        case 'ifOnEdgeBounce': push(`bounce sprite ${target} if on edge`); break;
+        case 'delete': push(`delete sprite ${target}`); break;
+        default: return null;
+        }
+        if (removal) push(`remove item ${this.expr(removal.args[0])} of ${this.arrayRef(removal.callee.object.name)}`);
+        return true;
+    }
+
     /** Reporter calls: MakeCode's sensors and maths in our spelling. */
     callExpression (node) {
+        const sprite = this.spriteCall(node, null);
+        if (sprite) return sprite;
         const name = this.path(node.callee);
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
@@ -165,6 +355,17 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.digitalReadPin': return `pin ${this.pin(a[0]) || 'P0'} digital`;
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
+        case 'input.logoIsPressed': return 'logo touched';
+        // Of a packet's properties, MicroPython's radio reports the signal
+        // strength (receive_full); the sender's serial number and send time
+        // are not in its packets at all.
+        case 'radio.receivedPacket': {
+            const prop = a[0] && a[0].type === 'Member' ? a[0].name : '';
+            if (prop === 'SignalStrength') return 'last radio signal strength';
+            this.unsupported.push(`radio.receivedPacket(RadioPacketProperty.${prop || '…'}) — ` +
+                'a MicroPython radio packet carries no serial number or send time');
+            return '0';
+        }
         case 'radio.receivedString': return 'read last radio text';
         // MakeCode's music reporters, as the blocks they are. music.beat was
         // read as its 120 bpm length (a number), which ran — until the program
@@ -216,6 +417,12 @@ class MicrobitTranslator extends BaseTranslator {
         // MakeCode's game score, not a variable called `score`: that
         // variable was never set by addScore, so every score read 0.
         case 'game.score': return 'game score';
+        // LED sprites: a new sprite is its handle.
+        case 'game.createSprite': return `create sprite at x ${this.operand(a[0])} y ${this.operand(a[1])}`;
+        case 'game.isGameOver': return 'game is over';
+        case 'game.isRunning': return 'game is running';
+        case 'game.isPaused': return 'game is paused';
+        case 'game.life': return 'game life';
         // An image is a value here, and the only thing our display can be
         // handed is a pattern, so that is what it becomes: `"0101…"`. It
         // survives being stored in an array, which is how these programs
@@ -244,6 +451,7 @@ class MicrobitTranslator extends BaseTranslator {
     command (node, indent, out) {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
+        if (this.spriteCall(node, push)) return;
         const name = this.path(node.callee);
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
@@ -254,8 +462,15 @@ class MicrobitTranslator extends BaseTranslator {
         // full expression — which is what showNumber(count) needs. The
         // literal spellings are kept where they apply because they carry
         // the scroll delay the device blocks model.
+        // `show number`, which WAITS while the number is shown, as MakeCode's
+        // does (a digit 750 ms, "42" 2550 ms at the default interval). It was
+        // `display`, lite's own word, which scrolls and moves on, so a program
+        // that showed a count ran ahead of MakeCode's (owner's decision
+        // 2026-09-28: its own word; `display` keeps its meaning). The interval
+        // is MakeCode's optional second argument.
         case 'basic.showNumber':
-            push(`display ${this.expr(a[0])}`);
+            push(a[1] ? `show number ${this.expr(a[0])} delay ${this.operand(a[1])} ms` :
+                `show number ${this.expr(a[0])}`);
             return;
         case 'basic.showString': {
             const literal = this.literalString(a[0]);
@@ -295,6 +510,20 @@ class MicrobitTranslator extends BaseTranslator {
         case 'basic.clearScreen':
             push('clear display');
             return;
+        // `wait until` goes to MakeCode as pauseUntil(() => cond) — which is
+        // how every polled handler's release wait is exported — and it was not
+        // read back: a second round trip dropped it (census batch 3 test).
+        case 'pauseUntil': {
+            const fn = a[0];
+            const ret = fn && fn.type === 'FunctionExpression' && fn.body.length === 1 && fn.body[0].type === 'Return' ?
+                fn.body[0].value : null;
+            if (ret) {
+                push(`wait until ${this.condition(ret)}`);
+                return;
+            }
+            push(this.note('pauseUntil() with a function body — only a condition has a block here'));
+            return;
+        }
         // The serial console. `print` is the dialect's serial line on every
         // board (MicroPython's print() on the micro:bit), and it goes back as
         // serial.writeLine — the census found it refused in two apps, and
@@ -337,6 +566,28 @@ class MicrobitTranslator extends BaseTranslator {
         case 'game.gameOver':
             push('game over');
             return;
+        case 'game.startCountdown':
+            push(`start countdown ${this.operand(a[0])} ms`);
+            return;
+        case 'game.pause':
+            push('pause game');
+            return;
+        case 'game.resume':
+            push('resume game');
+            return;
+        case 'game.setLife':
+            push(`set game life to ${this.operand(a[0])}`);
+            return;
+        case 'game.addLife':
+            push(`add game life ${this.operand(a[0])}`);
+            return;
+        // A sprite made and not kept is still made (it is drawn).
+        case 'game.createSprite': {
+            const temp = `_mc${++this.temps}`;
+            this.declared.add(temp);
+            push(`set ${temp} to create sprite at x ${this.operand(a[0])} y ${this.operand(a[1])}`);
+            return;
+        }
         case 'basic.pause':
             push(`wait ${seconds(a[0], this)} seconds`);
             return;
@@ -414,7 +665,50 @@ class MicrobitTranslator extends BaseTranslator {
                 push(`play melody ${tune} ${mode || 'until done'}`);
                 return;
             }
-            push(this.note(`${name}() — only MakeCode's built-in melodies have a block here`));
+            const inner = a[0] && a[0].type === 'Call' ? this.path(a[0].callee) : null;
+            const args = inner ? a[0].args || [] : [];
+            if (mode === 'looping in background' && inner !== null) {
+                push(this.note(`${name}(${inner}(), LoopingInBackground) — a looping sound has no block here`));
+                return;
+            }
+            // music.play(music.tonePlayable(F, D), mode): a tone with its mode.
+            if (inner === 'music.tonePlayable') {
+                push(`play tone ${this.operand(args[0])} hz for ${this.operand(args[1])} ms ${mode || 'until done'}`);
+                return;
+            }
+            if (inner === 'music.builtinPlayableSoundEffect' || inner === 'music.builtinSoundEffect') {
+                const sound = this.builtinSound(args[0]);
+                if (sound) {
+                    push(`play sound ${sound} ${mode || 'until done'}`);
+                    return;
+                }
+            }
+            // createSoundExpression(...) is `new SoundExpression(createSoundEffect(...))`
+            // in pxt-microbit (libs/core/soundexpressions.ts): the same sound.
+            if (inner === 'music.createSoundExpression') {
+                const effect = this.soundEffect(args);
+                if (effect) {
+                    push(`${effect} ${mode || 'until done'}`);
+                    return;
+                }
+            }
+            push(this.note(`${name}() — only MakeCode's built-in melodies, tones, built-in sounds and sound effects have blocks here`));
+            return;
+        }
+        case 'music.playSoundEffect': {
+            const inner = a[0] && a[0].type === 'Call' ? this.path(a[0].callee) : null;
+            const effect = inner === 'music.createSoundEffect' ? this.soundEffect(a[0].args || []) : null;
+            const builtin = inner === 'music.builtinSoundEffect' ? this.builtinSound((a[0].args || [])[0]) : null;
+            const mode = a[1] && a[1].type === 'Member' && a[1].name === 'InBackground' ? 'in background' : 'until done';
+            if (effect) {
+                push(`${effect} ${mode}`);
+                return;
+            }
+            if (builtin) {
+                push(`play sound ${builtin} ${mode}`);
+                return;
+            }
+            push(this.note('music.playSoundEffect() — only a createSoundEffect or built-in sound has a block here'));
             return;
         }
         case 'music.stopAllSounds':
@@ -473,6 +767,10 @@ class MicrobitTranslator extends BaseTranslator {
                 push(this.note(`${name}() — ${CALLIOPE_ONLY[name]}`));
                 return;
             }
+            if (NO_MICROPYTHON[name]) {
+                push(this.note(`${name}() — ${NO_MICROPYTHON[name]}`));
+                return;
+            }
             if (node.callee && node.callee.type === 'Member' &&
                 (node.callee.name === 'showImage' || node.callee.name === 'plotImage')) {
                 const image = this.expr(node.callee.object);
@@ -492,6 +790,15 @@ class MicrobitTranslator extends BaseTranslator {
         }
     }
 }
+
+/**
+ * MakeCode calls with NO MicroPython counterpart at all — refused with the
+ * reason, because "unsupported" alone reads like a gap someone forgot.
+ */
+const NO_MICROPYTHON = {
+    'radio.setTransmitSerialNumber': 'MicroPython\'s radio has no serial number to send, and its packets carry none',
+    'radio.writeReceivedPacketToSerial': 'MicroPython\'s radio has no packet-to-serial dump'
+};
 
 /**
  * Calliope-only API, named rather than merely refused.
@@ -565,6 +872,23 @@ export function ledPattern (node) {
     return rows.map(r => [...r].map(c => (c === '#' ? '9' : '0')).join('')).join(':');
 }
 
+/** Does this function body `return` a VALUE (not counting functions nested in it)? */
+function returnsValue (body) {
+    let found = false;
+    const walk = node => {
+        if (found || !node || typeof node !== 'object') return;
+        if (Array.isArray(node)) return node.forEach(walk);
+        if (node.type === 'Return' && node.value) {
+            found = true;
+            return;
+        }
+        if (node.type === 'FunctionExpression' || node.type === 'FunctionDeclaration') return;
+        for (const v of Object.values(node)) if (v && typeof v === 'object') walk(v);
+    };
+    walk(body);
+    return found;
+}
+
 /** Does this statement list assign `name` anywhere? */
 function writes (body, name) {
     let found = false;
@@ -606,6 +930,14 @@ const HANDLERS = {
     'input.onPinReleased': translator => a => {
         const pin = translator.pin(a[0]) || 'P0';
         return {test: `not (pin ${pin} touched)`, release: null};
+    },
+    // The V2 touch logo. Pressed and Touched both fire as the logo is
+    // touched, which polling can say; Released and LongPressed need the timing
+    // of the touch, which a poll does not keep — refused, by name.
+    'input.onLogoEvent': translator => a => {
+        const event = a[0] && a[0].type === 'Member' ? a[0].name : 'Pressed';
+        if (event === 'Pressed' || event === 'Touched') return {test: 'logo touched', release: 'logo touched'};
+        return {refuse: `input.onLogoEvent(TouchButtonEvent.${event}) — polling sees the logo held, not a ${event === 'Released' ? 'release' : 'long press'}`};
     }
 };
 
@@ -633,12 +965,23 @@ export function microbitToPseudocode (source, opts = {}) {
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
+    t.claimSprites(ast);
 
     // Enums and functions first: a call can precede its definition, and
     // an enum member can be referenced before the enum is declared.
     for (const st of ast.body) {
         if (st.type === 'Enum') t.statement(st, 0, []);
         if (st.type === 'FunctionDeclaration') t.functions.push({name: st.name, params: st.params, body: st.body});
+    }
+    // A function that returns a value hands it back in a variable of its own,
+    // `<name>_result`, which its callers read after calling it.
+    for (const fn of t.functions) {
+        if (returnsValue(fn.body)) {
+            let result = `${fn.name}_result`;
+            while (t.taken && t.taken.has(result)) result += '_';
+            if (t.taken) t.taken.add(result);
+            fn.result = result;
+        }
     }
 
     const scripts = [];
@@ -668,6 +1011,11 @@ export function microbitToPseudocode (source, opts = {}) {
 
         if (callName && HANDLERS[callName]) {
             const shape = HANDLERS[callName](t)(call.args);
+            if (shape.refuse) {
+                t.unsupported.push(shape.refuse);
+                scripts.push([`# unsupported: ${shape.refuse}`]);
+                continue;
+            }
             const handlerBody = bodyOf(call.args[call.args.length - 1]);
             const lines = [
                 `# ${callName} — MakeCode fires this on an event; here it is polled.`,
@@ -696,7 +1044,10 @@ export function microbitToPseudocode (source, opts = {}) {
             // A body that assigns its parameter needs a variable to assign.
             if (param && writes(bodyOf(fn), param)) lines.push(`  set ${t.varName(param)} to ${reporter}`);
             else if (param) t.aliases.set(param, reporter);
+            // A return in a radio hat leaves that one handler, as in MakeCode.
+            t.returnable = {result: null};
             t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
             if (param) t.aliases.delete(param);
             scripts.push(lines);
             continue;
@@ -731,7 +1082,9 @@ export function microbitToPseudocode (source, opts = {}) {
         const signature = fn.params && fn.params.length ?
             `${fn.name} ${fn.params.map(p => `(${p})`).join(' ')}` : fn.name;
         const lines = [`DEFINE ${signature}:`];
+        t.returnable = {result: fn.result || null};
         t.block(fn.body, 1, lines);
+        t.returnable = null;
         out.push(...lines, '');
     }
 

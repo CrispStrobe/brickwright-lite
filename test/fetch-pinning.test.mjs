@@ -524,6 +524,18 @@ const CENSUS = [
            + 'raw CDN, not the release download, because only it serves CORS. The bytes are ALSO '
            + 'sha256-checked against the per-slot pins before anything boots (activate.js '
            + 'defaultImageFetcher; a mismatch is refused by slot name, test/linux-riscv-lesson.test.mjs).'
+    },
+    {
+        file: 'scripts/verify-native-downloads-e2e.mjs',
+        kind: 'raw',
+        text: 'raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/',
+        class: 'sha-const',
+        why: 'The native-downloads end-to-end proof downloads the Linux-on-RISC-V kernel Image the way '
+           + 'the lesson does, to show the packaged app may fetch machine images. Not part of any build: '
+           + 'a verification script. The URL is split over two literals, and the second names commit '
+           + '5b257a33… in full — the same commit as lessons.js LINUX_MEDIA_COMMIT; SHA_CONSTANTS below '
+           + 'asserts it is 40-hex. The proof also compares the downloaded bytes with a sha256 constant '
+           + '(kernelSha256) and fails on a mismatch.'
     }
 ];
 
@@ -535,7 +547,8 @@ const SHA_CONSTANTS = [
     ['scripts/sync-emu8051-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m],
-    ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/]
+    ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
+    ['scripts/verify-native-downloads-e2e.mjs', /'([0-9a-zA-Z]+)\/riscv32-linux\/Image'/]
 ];
 
 const key = (h) => `${h.file} ${h.kind} ${h.text}`;

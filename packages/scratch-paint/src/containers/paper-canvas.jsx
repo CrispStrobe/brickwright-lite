@@ -41,6 +41,15 @@ class PaperCanvas extends React.Component {
     componentDidMount () {
         paper.setup(this.canvas);
         paper.view.on('resize', this.onViewResize);
+        // Brickwright: paper only learns the canvas changed size from a WINDOW resize (the canvas
+        // is rendered with resize="true" and nothing else notifies it). Anything that resizes the
+        // canvas WITHIN an unchanged window — opening the properties rail, switching between the
+        // small and large stage, dragging a pane divider — therefore left paper drawing and
+        // hit-testing against a stale viewport: artwork spilling outside its box, and every mouse
+        // coordinate offset, which reads as broken zooming and panning. See the note on
+        // recalibrateSize below, which describes exactly this failure and until now had no
+        // trigger for it. Observing the element covers every cause at once instead of asking each
+        // possible cause to remember to announce itself.
         resetZoom();
         if (this.props.zoomLevelId) {
             this.props.setZoomLevelId(this.props.zoomLevelId);
@@ -65,6 +74,43 @@ class PaperCanvas extends React.Component {
         setupLayers(this.props.format);
         this.importImage(
             this.props.imageFormat, this.props.image, this.props.rotationCenterX, this.props.rotationCenterY);
+        // Last, so it can never interfere with the initial zoom-to-fit above.
+        this.observeCanvasResize();
+    }
+    /**
+     * Brickwright: re-measure when the canvas ELEMENT changes size, whatever moved it — the
+     * properties rail opening, the small/large stage buttons, a pane divider, browser zoom.
+     * paper itself only learns of a WINDOW resize (the canvas is rendered with resize="true"),
+     * so every other cause left it drawing and hit-testing against a stale viewport.
+     *
+     * The guards matter as much as the observer. ResizeObserver always delivers one callback for
+     * the INITIAL measurement, which is not a resize at all; reacting to it ran clampViewBounds
+     * while the costume was still being imported and zoomed to fit, and left the view parked off
+     * the artwork with the workspace background showing. A callback reporting a size we already
+     * hold is likewise not a resize, and neither is one that arrives while a zoom-to-fit is still
+     * pending.
+     */
+    observeCanvasResize () {
+        if (typeof ResizeObserver === 'undefined') return;
+        // Seed the baseline from the size paper was actually set up against, NOT from the
+        // observer's first callback. Treating that first callback as the baseline meant that if
+        // the element settled to a different size than it had at paper.setup() — which is normal,
+        // since layout is still resolving during mount — the difference was recorded and never
+        // acted on, leaving paper's viewport smaller than the element and an unpainted strip
+        // along the bottom and right edges.
+        const measure = () => `${Math.round(this.canvas.clientWidth)}x${Math.round(this.canvas.clientHeight)}`;
+        let lastSize = measure();
+        this.resizeObserver = new ResizeObserver(entries => {
+            if (!paper.view || !entries.length) return;
+            const {width, height} = entries[0].contentRect;
+            const size = `${Math.round(width)}x${Math.round(height)}`;
+            if (size === lastSize) return;
+            lastSize = size;
+            // An import is still settling the view; it will size itself when it lands.
+            if (this.shouldZoomToFit) return;
+            this.onViewResize();
+        });
+        this.resizeObserver.observe(this.canvas);
     }
     componentWillReceiveProps (newProps) {
         if (this.props.imageId !== newProps.imageId) {
@@ -78,6 +124,10 @@ class PaperCanvas extends React.Component {
         }
     }
     componentWillUnmount () {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
         this.clearQueuedImport();
         // shouldZoomToFit means the zoom level hasn't been initialized yet
         if (!this.shouldZoomToFit) {
@@ -218,6 +268,40 @@ class PaperCanvas extends React.Component {
             for (let i = 0; i < viewBox.length; i++) {
                 viewBox[i] = parseFloat(viewBox[i]);
             }
+        }
+
+        // Brickwright: give every rounded <rect> both of its corner radii before paper sees it.
+        //
+        // SVG says a missing ry defaults to rx and vice versa, so `<rect rx="12">` is a rect with
+        // 12x12 corners. paper's importer does not implement that default: it reads ry straight
+        // off the node, gets nothing, and builds the shape with radius (12, 0) — and a corner
+        // radius with a zero axis is a SQUARE corner. Every `<rect rx="...">` written the normal
+        // way therefore lost its rounding on import, and the next edit exported the squared-off
+        // result back over the costume, so the damage was permanent. Our own robot sprite is 14
+        // such rects (the 6 that also carry ry always survived, which is why some corners looked
+        // right and others did not).
+        //
+        // Normalising the input is the honest fix: it is what the spec already says the markup
+        // means, it is confined to the file we own, and it leaves paper untouched.
+        const rects = svgDom.getElementsByTagName('rect');
+        let normalizedRadii = false;
+        for (let i = 0; i < rects.length; i++) {
+            const rx = rects[i].getAttribute('rx');
+            const ry = rects[i].getAttribute('ry');
+            // Copy the value verbatim rather than parsing it: percentages and SVG2's `auto` are
+            // both legal here and both mean "whatever the other axis is".
+            if (rx !== null && ry === null) {
+                rects[i].setAttribute('ry', rx);
+                normalizedRadii = true;
+            } else if (ry !== null && rx === null) {
+                rects[i].setAttribute('rx', ry);
+                normalizedRadii = true;
+            }
+        }
+        // Only re-serialise when something actually changed, so costumes without this problem go
+        // to paper as the exact bytes they arrived as.
+        if (normalizedRadii) {
+            svg = new XMLSerializer().serializeToString(svgDom);
         }
 
         paper.project.importSVG(svg, {

@@ -96,3 +96,62 @@ test('local DOSBox disk boot passes its native opt-in to the 386 run', async () 
     assert.equal(typeof runs[1].opts.fetcher, 'function');
     renderer.unmount();
 });
+
+test('FreeDOS VGA action selects the named profile and keeps four local files in the run fetcher', async () => {
+    const MachineManager = await loadManager();
+    const runs = [];
+    let renderer;
+    await act(async () => {
+        renderer = create(React.createElement(MachineManager, {
+            store: createMemoryMachineStore(),
+            onRun: (cfg, opts) => { runs.push({cfg, opts}); }, onClose() {}
+        }));
+    });
+    const files = {
+        floppy: {name: 'boot.img', size: 80 * 2 * 15 * 512, arrayBuffer: async () => Uint8Array.of(1).buffer},
+        hdd: {name: 'disk.img', size: 306 * 4 * 17 * 512, arrayBuffer: async () => Uint8Array.of(2).buffer},
+        bios: {name: 'bios.rom', size: 65536, arrayBuffer: async () => Uint8Array.of(3).buffer},
+        vgaRom: {name: 'vga.rom', size: 38400, arrayBuffer: async () => Uint8Array.of(4).buffer}
+    };
+    for (const [slot, media] of Object.entries(files)) {
+        await act(async () => {
+            renderer.root.findByProps({'data-testid': `bw-mm-free386-${slot}`}).props
+                .onChange({target: {files: [media]}});
+        });
+    }
+    await act(async () => {
+        await renderer.root.findByProps({'data-testid': 'bw-mm-free386-run'}).props.onClick();
+    });
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].cfg.machineConfig, 'freedos-vga');
+    assert.equal(runs[0].cfg.bootOrder[0], 'floppy');
+    for (const [slot, value] of [['floppy', 1], ['hdd', 2], ['bios', 3], ['vga-rom', 4]]) {
+        const fetched = await runs[0].opts.fetcher({url: `local-media:${slot}`});
+        assert.equal(fetched.bytes[0], value);
+    }
+    renderer.unmount();
+});
+
+test('FreeDOS file selection survives React 16 clearing a pooled event before state flush', async () => {
+    const MachineManager = await loadManager();
+    const runs = [];
+    let renderer;
+    await act(async () => {
+        renderer = create(React.createElement(MachineManager, {
+            store: createMemoryMachineStore(), onRun: cfg => runs.push(cfg), onClose() {}
+        }));
+    });
+    const floppy = {name: 'boot.img', size: 80 * 2 * 15 * 512,
+        arrayBuffer: async () => Uint8Array.of(1).buffer};
+    const event = {target: {files: [floppy]}};
+    await act(async () => {
+        renderer.root.findByProps({'data-testid': 'bw-mm-free386-floppy'}).props.onChange(event);
+        event.target = null; // React 16 pooled SyntheticEvent after the handler returns.
+    });
+    await act(async () => {
+        await renderer.root.findByProps({'data-testid': 'bw-mm-free386-run'}).props.onClick();
+    });
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].slots.floppy.url, 'local-media:floppy');
+    renderer.unmount();
+});

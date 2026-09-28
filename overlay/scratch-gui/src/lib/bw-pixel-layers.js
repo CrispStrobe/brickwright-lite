@@ -1,4 +1,4 @@
-import {blankImage, pixelsToSvg, resizeCanvas} from './bw-makecode/pixel-image.js';
+import {ARCADE_PALETTE, blankImage, pixelsToSvg, resizeCanvas} from './bw-makecode/pixel-image.js';
 
 const makeLayer = (id, name, image) => ({id, name, visible: true, locked: false,
     opacity: 1, type: 'pixel', pixels: image.pixels});
@@ -57,12 +57,114 @@ const selectionRect = (start, end) => ({x: Math.min(start[0], end[0]),
     height: Math.abs(start[1] - end[1]) + 1});
 
 const containsCell = (selection, x, y) => selection && x >= selection.x && y >= selection.y &&
-    x < selection.x + selection.width && y < selection.y + selection.height;
+    x < selection.x + selection.width && y < selection.y + selection.height &&
+    (!selection.mask || Boolean(selection.mask[((y - selection.y) * selection.width) + x - selection.x]));
+
+const cropMask = (full, width, height) => {
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            if (!full[(y * width) + x]) continue;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        }
+    }
+    if (maxX < 0) return null;
+    const croppedWidth = maxX - minX + 1;
+    const croppedHeight = maxY - minY + 1;
+    const mask = new Uint8Array(croppedWidth * croppedHeight);
+    for (let y = 0; y < croppedHeight; y++) {
+        for (let x = 0; x < croppedWidth; x++) {
+            mask[(y * croppedWidth) + x] = full[((minY + y) * width) + minX + x];
+        }
+    }
+    return {x: minX, y: minY, width: croppedWidth, height: croppedHeight, mask};
+};
+
+const lassoSelection = (points, width, height) => {
+    if (!points.length) return null;
+    const mask = new Uint8Array(width * height);
+    const mark = (x, y) => {
+        if (x >= 0 && y >= 0 && x < width && y < height) mask[(y * width) + x] = 1;
+    };
+    for (let i = 0; i < points.length; i++) {
+        const [ax, ay] = points[i];
+        const [bx, by] = points[(i + 1) % points.length];
+        let x = ax;
+        let y = ay;
+        const dx = Math.abs(bx - ax);
+        const dy = -Math.abs(by - ay);
+        const sx = ax < bx ? 1 : -1;
+        const sy = ay < by ? 1 : -1;
+        let error = dx + dy;
+        while (true) {
+            mark(x, y);
+            if (x === bx && y === by) break;
+            const doubled = 2 * error;
+            if (doubled >= dy) { error += dy; x += sx; }
+            if (doubled <= dx) { error += dx; y += sy; }
+        }
+    }
+    if (points.length >= 3) {
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                let inside = false;
+                for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+                    const [xi, yi] = points[i];
+                    const [xj, yj] = points[j];
+                    if ((yi > y) !== (yj > y) &&
+                        x < ((xj - xi) * (y - yi) / (yj - yi)) + xi) inside = !inside;
+                }
+                if (inside) mark(x, y);
+            }
+        }
+    }
+    return cropMask(mask, width, height);
+};
+
+const paletteRgb = ARCADE_PALETTE.map(colour => colour ? [1, 3, 5].map(i =>
+    parseInt(colour.slice(i, i + 2), 16)) : null);
+const colourDistance = (a, b) => {
+    if (a === 0 || b === 0) return a === b ? 0 : Infinity;
+    return Math.hypot(...paletteRgb[a].map((channel, index) => channel - paletteRgb[b][index])) / Math.sqrt(3);
+};
+
+const wandSelection = (pixels, width, height, startX, startY, tolerance = 0) => {
+    if (startX < 0 || startY < 0 || startX >= width || startY >= height) return null;
+    const start = (startY * width) + startX;
+    const colour = pixels[start];
+    const mask = new Uint8Array(width * height);
+    const queue = new Int32Array(width * height);
+    let head = 0;
+    let tail = 0;
+    queue[tail++] = start;
+    mask[start] = 1;
+    while (head < tail) {
+        const index = queue[head++];
+        const x = index % width;
+        const y = Math.floor(index / width);
+        const neighbours = [x > 0 ? index - 1 : -1, x < width - 1 ? index + 1 : -1,
+            y > 0 ? index - width : -1, y < height - 1 ? index + width : -1];
+        for (const next of neighbours) {
+            if (next < 0 || mask[next] || colourDistance(colour, pixels[next]) > tolerance) continue;
+            mask[next] = 1;
+            queue[tail++] = next;
+        }
+    }
+    return cropMask(mask, width, height);
+};
 
 const clearSelectedPixels = (pixels, width, selection) => {
     const next = new Uint8Array(pixels);
     for (let y = selection.y; y < selection.y + selection.height; y++) {
-        next.fill(0, (y * width) + selection.x, (y * width) + selection.x + selection.width);
+        for (let x = selection.x; x < selection.x + selection.width; x++) {
+            if (containsCell(selection, x, y)) next[(y * width) + x] = 0;
+        }
     }
     return next;
 };
@@ -73,6 +175,7 @@ const moveSelectedPixels = (pixels, width, height, selection, requestedDx, reque
     const next = clearSelectedPixels(pixels, width, selection);
     for (let y = 0; y < selection.height; y++) {
         for (let x = 0; x < selection.width; x++) {
+            if (!containsCell(selection, selection.x + x, selection.y + y)) continue;
             const original = ((selection.y + y) * width) + selection.x + x;
             const destination = ((selection.y + y + dy) * width) + selection.x + x + dx;
             next[destination] = pixels[original];
@@ -81,5 +184,5 @@ const moveSelectedPixels = (pixels, width, height, selection, requestedDx, reque
     return {pixels: next, selection: {...selection, x: selection.x + dx, y: selection.y + dy}};
 };
 
-export {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers};
+export {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument, layersToSvg,
+    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, wandSelection};

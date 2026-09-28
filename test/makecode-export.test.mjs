@@ -582,3 +582,218 @@ test('show icon with a picture that is not an icon goes back as showLeds, and sa
         assert.match(ts, /basic\.showLeds\(`/);
         assert.ok(unsupported.some(u => /not one of MakeCode's icons/.test(u)), unsupported.join('\n'));
     });
+
+// Batch 3 of the MakeCode census (2026-09-27): the way back for each new spelling.
+const BATCH_3_WAY_BACK = [
+    ['play tone 262 hz for (beat whole) ms until done',
+        'music.play(music.tonePlayable(262, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)'],
+    ['play tone 392 hz for 100 ms in background', 'music.play(music.tonePlayable(392, 100), music.PlaybackMode.InBackground)'],
+    ['play sound giggle until done', 'music.play(music.builtinPlayableSoundEffect(soundExpression.giggle), music.PlaybackMode.UntilDone)'],
+    ['play sound effect noise from 4120 to 1266 hz volume 255 to 148 for 500 ms effect warble curve curve until done',
+        'music.playSoundEffect(music.createSoundEffect(WaveShape.Noise, 4120, 1266, 255, 148, 500, SoundExpressionEffect.Warble, ' +
+        'InterpolationCurve.Curve), SoundExpressionPlayMode.UntilDone)'],
+    ['set v to last radio signal strength', 'v = radio.receivedPacket(RadioPacketProperty.SignalStrength)'],
+    ['IF logo touched THEN:\n    clear display', 'if (input.logoIsPressed()) {']
+];
+
+for (const [line, call] of BATCH_3_WAY_BACK) {
+    test(`census batch 3: \`${line.split('\n')[0].slice(0, 50)}\` exports as \`${call.slice(0, 50)}\``, {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(`DEVICE MICROBIT\nWHEN flag clicked:\n  ${line}\n`));
+        assert.deepEqual(unsupported, []);
+        assert.ok(ts.includes(call), `\`${call}\` not in:\n${ts}`);
+    });
+}
+
+test('`stop this script` in a function or radio handler goes back as return; elsewhere as it did', {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+    const {ts} = projectToMakeCodeTs(new SB3Creator().parse([
+        'DEVICE MICROBIT', 'DEFINE f (n):', '  set f_result to n * 2', '  stop this script', '',
+        'WHEN radio receives number:', '  IF read last radio number = 0 THEN:', '    stop this script', '  display read last radio number', '',
+        'WHEN flag clicked:', '  f 3', '  display f_result', ''
+    ].join('\n')));
+    assert.match(ts, /function f\(n: number\) \{\n {4}f_result = \(n \* 2\)\n {4}return\n\}/);
+    assert.match(ts, /radio\.onReceivedNumber\(function \(receivedNumber\) \{\n {4}if \(\(receivedNumber == 0\)\) \{\n {8}return/);
+});
+
+/** A MakeCode program that says every batch-3 construct lite maps. */
+export const BATCH_3_MAKECODE = [
+    'let total = 0',
+    'let nums: number[] = [3, 5]',
+    'function seriesSum(n: number) {',
+    '    if (n < 1) {',
+    '        return 0',
+    '    }',
+    '    return (n * (n + 1)) / 2',
+    '}',
+    'radio.onReceivedNumber(function (receivedNumber) {',
+    '    total = radio.receivedPacket(RadioPacketProperty.SignalStrength)',
+    '    if (receivedNumber == 0) {',
+    '        return',
+    '    }',
+    '    music.playSoundEffect(music.createSoundEffect(WaveShape.Sine, 5000, 1, 255, 0, 300, SoundExpressionEffect.Vibrato, ' +
+        'InterpolationCurve.Linear), SoundExpressionPlayMode.InBackground)',
+    '})',
+    'input.onLogoEvent(TouchButtonEvent.Pressed, function () {',
+    '    music.play(music.builtinPlayableSoundEffect(soundExpression.hello), music.PlaybackMode.UntilDone)',
+    '})',
+    'basic.forever(function () {',
+    '    total = seriesSum(4) + 1',
+    '    for (let n of nums) {',
+    '        total += n',
+    '        if (total > 20) {',
+    '            break',
+    '        }',
+    '        basic.showNumber(total)',
+    '    }',
+    '    music.play(music.tonePlayable(262, music.beat(BeatFraction.Quarter)), music.PlaybackMode.UntilDone)',
+    '})'
+].join('\n');
+
+test('batch 3: a MakeCode program settles after one trip and keeps its calls (makecode-pxt-runtime compiles it)',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const imported = microbitToPseudocode(BATCH_3_MAKECODE);
+        assert.deepEqual(imported.unsupported, []);
+        const once = projectToMakeCodeTs(new SB3Creator().parse(imported.code));
+        assert.deepEqual(once.unsupported, []);
+        const twice = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(once.ts).code)).ts;
+        assert.equal(twice, once.ts, 'the second trip changed the program');
+        for (const call of ['radio.receivedPacket(RadioPacketProperty.SignalStrength)', 'music.playSoundEffect(music.createSoundEffect(',
+            'input.logoIsPressed()', 'soundExpression.hello', 'music.tonePlayable(', 'seriesSum(']) {
+            assert.ok(once.ts.includes(call), `${call} lost:\n${once.ts}`);
+        }
+    });
+
+test('pauseUntil — how `wait until` and every polled handler\'s release wait go out — reads back as `wait until`', () => {
+    const {code, unsupported} = microbitToPseudocode('pauseUntil(() => input.buttonIsPressed(Button.A))\npauseUntil(() => (!(input.logoIsPressed())))\n');
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /wait until read button_a/);
+    assert.match(code, /wait until not \(logo touched\)/);
+});
+
+test('a string array goes to MakeCode as a string array, not an escaped one, and comes back as itself',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        // arrays_create1D's JSON went through value(), which quoted it, and only
+        // the outer quotes were stripped: `words = [\\"cat\\", \\"dog\\"]`.
+        const src = 'DEVICE MICROBIT\nWHEN flag clicked:\n  new array "words" = ["cat", "dog"]\n  new array "nums" = [1, 2]\n' +
+            '  show text item 1 of array "words"\n';
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(src));
+        assert.deepEqual(unsupported, []);
+        assert.match(ts, /words = \["cat", "dog"\]/);
+        assert.match(ts, /nums = \[1, 2\]/);
+        assert.doesNotMatch(ts, /\\"/);
+        const again = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(ts).code)).ts;
+        assert.equal(again, ts, 'a fixed point');
+    });
+
+// LED sprites and the game state around them: each dialect line goes back to
+// MakeCode as the call its sprite block writes (a handle is a game.LedSprite).
+const SPRITES_WAY_BACK = [
+    ['set s to create sprite at x 2 y 3', 's = game.createSprite(2, 3)'],
+    ['set v to x of sprite s', 'v = s.get(LedSpriteProperty.X)'],
+    ['set v to blink of sprite s', 'v = s.get(LedSpriteProperty.Blink)'],
+    ['set sprite s brightness to 8', 's.set(LedSpriteProperty.Brightness, 8)'],
+    ['change sprite s direction by (0 - 45)', 's.change(LedSpriteProperty.Direction, (0 - 45))'],
+    ['move sprite s by 1', 's.move(1)'],
+    ['turn sprite s left by 90 degrees', 's.turn(Direction.Left, 90)'],
+    ['bounce sprite s if on edge', 's.ifOnEdgeBounce()'],
+    ['delete sprite s', 's.delete()'],
+    ['IF sprite s touching sprite t THEN:\n    clear display', 'if (s.isTouching(t)) {'],
+    ['IF sprite s touching edge THEN:\n    clear display', 'if (s.isTouchingEdge()) {'],
+    ['IF sprite s deleted THEN:\n    clear display', 'if (s.isDeleted()) {'],
+    ['start countdown 10000 ms', 'game.startCountdown(10000)'],
+    ['pause game', 'game.pause()'],
+    ['resume game', 'game.resume()'],
+    ['set game life to 5', 'game.setLife(5)'],
+    ['add game life 1', 'game.addLife(1)'],
+    ['set v to game life', 'v = game.life()'],
+    ['IF game is over THEN:\n    clear display', 'if (game.isGameOver()) {'],
+    ['IF game is running THEN:\n    clear display', 'if (game.isRunning()) {'],
+    ['IF game is paused THEN:\n    clear display', 'if (game.isPaused()) {'],
+    ['new array "obs"\n  push create sprite at x 4 y 0 to array "obs"\n  move sprite (item 0 of array "obs") by 1',
+        'obs[0].move(1)']
+];
+
+for (const [line, call] of SPRITES_WAY_BACK) {
+    test(`LED sprites: \`${line.split('\n')[0]}\` exports as \`${call}\``, {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(
+            `DEVICE MICROBIT\nWHEN flag clicked:\n  set s to create sprite at x 0 y 0\n  set t to create sprite at x 1 y 1\n  ${line}\n`));
+        assert.deepEqual(unsupported, []);
+        assert.ok(ts.includes(call), `\`${call}\` not in:\n${ts}`);
+    });
+}
+
+test('LED sprites: a sprite variable is a game.LedSprite (null until made), an array of them game.LedSprite[]',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const ts = tsOfProgram(['  set bird to 0', '  set bird to create sprite at x 0 y 2', '  new array "obs"',
+            '  push create sprite at x 4 y 1 to array "obs"', '  set o to item 0 of array "obs"', '  move sprite o by 1',
+            '  set n to 3', ''].join('\n'));
+        assert.match(ts, /let bird: game\.LedSprite = null\n/);
+        assert.match(ts, /let o: game\.LedSprite = null\n/);
+        assert.match(ts, /let n = 0\n/, 'a number stays a number');
+        assert.match(ts, /let obs: game\.LedSprite\[\] = \[\]/);
+        assert.doesNotMatch(ts, /bird = null/, 'the leading null folds into the declaration');
+        assert.doesNotMatch(ts, /bird = 0/, 'a sprite is never the number 0 on MakeCode\'s side');
+    });
+
+/**
+ * MakeCode TypeScript, written the way MakeCode's own sprite blocks write it,
+ * saying every sprite and game construct: export(import(x)) must be x itself.
+ */
+const SPRITE_PROGRAM = [
+    'let v = 0',
+    'let hero: game.LedSprite = null',
+    'let food: game.LedSprite = null',
+    'let obs: game.LedSprite[] = []',
+    'hero = game.createSprite(2, 2)',
+    'food = game.createSprite(4, 4)',
+    'food.set(LedSpriteProperty.Brightness, 8)',
+    'food.change(LedSpriteProperty.Blink, 100)',
+    'obs.push(game.createSprite(4, 0))',
+    'game.setLife(5)',
+    'game.startCountdown(30000)',
+    'basic.forever(function () {',
+    '    hero.move(1)',
+    '    hero.turn(Direction.Right, 45)',
+    '    hero.ifOnEdgeBounce()',
+    '    obs[0].change(LedSpriteProperty.X, (0 - 1))',
+    '    if (hero.isTouching(food)) {',
+    '        game.addScore(1)',
+    '        food.set(LedSpriteProperty.X, randint(0, 4))',
+    '        game.addLife(1)',
+    '    }',
+    '    if (hero.isTouchingEdge()) {',
+    '        v = hero.get(LedSpriteProperty.Direction)',
+    '    }',
+    '    if (food.isDeleted()) {',
+    '        game.pause()',
+    '    }',
+    '    if (game.isPaused()) {',
+    '        game.resume()',
+    '    }',
+    '    if ((game.isRunning() && (!(game.isGameOver())))) {',
+    '        v = game.life()',
+    '    }',
+    '    obs[0].delete()',
+    '    basic.pause(400)',
+    '})',
+    ''
+].join('\n');
+
+test('LED sprites: MakeCode\'s own sprite program round-trips exactly — export(import(x)) is x',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const back = microbitToPseudocode(SPRITE_PROGRAM);
+        assert.deepEqual(back.unsupported, []);
+        const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(back.code));
+        assert.deepEqual(unsupported, []);
+        assert.equal(ts, SPRITE_PROGRAM);
+    });
+
+test('`show number` goes back as basic.showNumber (with its interval when not the default); `display` still does too',
+    {skip: !canCompile && 'sb3-creator not integrated'}, () => {
+        const ts = tsOfProgram('  show number (n + 1)\n  show number 42 delay 100 ms\n  display 7\n');
+        assert.match(ts, /basic\.showNumber\(\(n \+ 1\)\)\n/);
+        assert.match(ts, /basic\.showNumber\(42, 100\)/);
+        assert.match(ts, /basic\.showNumber\(7\)/);
+        const again = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(ts).code)).ts;
+        const twice = projectToMakeCodeTs(new SB3Creator().parse(microbitToPseudocode(again).code)).ts;
+        assert.equal(twice, again, 'settles after one trip');
+    });

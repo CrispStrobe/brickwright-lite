@@ -65,7 +65,30 @@ export const num = value => String(Math.round(value * 1000) / 1000);
 /** The statements inside a function-expression argument. */
 export const bodyOf = node => (node && node.type === 'FunctionExpression' ? node.body : []);
 
+/** Arithmetic binding strength, for side(): `*` `/` `%` bind tighter than `+` `-`. */
+const ARITH = {'*': 2, '/': 2, '%': 2, '+': 1, '-': 1};
+
 const isEmptyString = node => !!node && node.type === 'String' && node.value === '';
+
+/**
+ * Does this statement list `break` out of THE loop it is in — not out of a
+ * loop nested inside it, whose break is its own?
+ */
+const breaks = body => {
+    let found = false;
+    const walk = node => {
+        if (found || !node || typeof node !== 'object') return;
+        if (Array.isArray(node)) return node.forEach(walk);
+        if (node.type === 'Break') {
+            found = true;
+            return;
+        }
+        if (['While', 'For', 'ForOf', 'FunctionExpression', 'FunctionDeclaration'].includes(node.type)) return;
+        for (const v of Object.values(node)) if (v && typeof v === 'object') walk(v);
+    };
+    walk(body);
+    return found;
+};
 
 /** `(…)` whose first parenthesis closes at the very end: already one operand. */
 const wrapped = value => {
@@ -217,7 +240,7 @@ export class BaseTranslator {
             if (op === '!=' || op === '!==') return `not (${this.expr(node.left)} = ${this.expr(node.right)})`;
             if (op === '<=') return `not (${this.expr(node.left)} > ${this.expr(node.right)})`;
             if (op === '>=') return `not (${this.expr(node.left)} < ${this.expr(node.right)})`;
-            if (op === '%') return `${this.expr(node.left)} mod ${this.expr(node.right)}`;
+            if (op === '%') return `${this.side(node.left, op, false)} mod ${this.side(node.right, op, true)}`;
             // `+` with text on either side is concatenation, and the dialect
             // spells that `join`: written as `+` it became operator_add, which
             // adds " " + pi as NUMBERS. `("" + a + b)` is how the export writes
@@ -236,6 +259,7 @@ export class BaseTranslator {
                 if (op === '>>>') this.needsBitopsNote = true;
                 return `(${this.expr(node.left)} ${BITWISE[op]} ${this.expr(node.right)})`;
             }
+            if (ARITH[op]) return `${this.side(node.left, op, false)} ${op} ${this.side(node.right, op, true)}`;
             return `${this.expr(node.left)} ${op} ${this.expr(node.right)}`;
         }
         case 'Member': {
@@ -325,6 +349,68 @@ export class BaseTranslator {
             return;
         }
         out.push(`${pad}set ${target} to ${this.expr(value)}`);
+    }
+
+    /**
+     * One operand of an arithmetic operator, parenthesised when the grouping
+     * would otherwise change. The parser drops TypeScript's parentheses, and
+     * writing `(a + b) * c` back as `a + b * c` computed a different number
+     * without a word (census 2026-09-27: MakeCode's own seriesSum,
+     * `(n * (n + 1)) / 2`, became `n * n + 1 / 2`).
+     */
+    side (child, parentOp, isRight) {
+        const value = this.expr(child);
+        if (!child || child.type !== 'Binary') return value;
+        const mine = ARITH[child.op];
+        if (!mine) return ['<', '>', '<=', '>=', '==', '===', '!=', '!=='].includes(child.op) ? `(${value})` : value;
+        const theirs = ARITH[parentOp];
+        const wrap = mine < theirs || (isRight && mine === theirs && ['-', '/', '%'].includes(parentOp));
+        return wrap && !wrapped(value) ? `(${value})` : value;
+    }
+
+    /** A name nothing in the program uses yet, for a flag or counter we introduce. */
+    freshName (base) {
+        if (!this.taken) this.taken = new Set();
+        let n = 1;
+        while (this.taken.has(`${base}${n}`)) n++;
+        const name = `${base}${n}`;
+        this.taken.add(name);
+        this.declared.add(name);
+        return name;
+    }
+
+    /**
+     * A loop's condition. A function called for its result cannot be hoisted
+     * out of a condition that is tested on every pass, so there it is refused.
+     */
+    loopCondition (node) {
+        const was = this.inLoopCondition;
+        this.inLoopCondition = true;
+        const cond = this.condition(node);
+        this.inLoopCondition = was;
+        return cond;
+    }
+
+    /**
+     * A loop body that may `break`: statements after one that may break run
+     * only while the flag is still 0.
+     */
+    breakBlock (body, indent, out, flag) {
+        const was = this.breakFlag;
+        this.breakFlag = flag;
+        const emit = (list, level) => {
+            for (let k = 0; k < list.length; k++) {
+                this.statement(list[k], level, out);
+                if (breaks([list[k]]) && k < list.length - 1) {
+                    out.push(`${'  '.repeat(level)}IF ${flag} = 0 THEN:`);
+                    emit(list.slice(k + 1), level + 1);
+                    return;
+                }
+            }
+        };
+        emit(body, indent);
+        if (!body.length) out.push(`${'  '.repeat(indent)}# (empty)`);
+        this.breakFlag = was;
     }
 
     /**
@@ -436,7 +522,14 @@ export class BaseTranslator {
     statement (st, indent, out) {
         const before = this.unsupported.length;
         const mark = out.length;
+        // A function called for its RESULT runs as its own line first, and
+        // its result variable is read in its place (see callExpression). The
+        // lines are this statement's own: a nested statement keeps its own.
+        const outerPre = this.pre;
+        this.pre = [];
         this.statementInner(st, indent, out);
+        if (this.pre.length) out.splice(mark, 0, ...this.pre.map(line => `${'  '.repeat(indent)}${line}`));
+        this.pre = outerPre;
         const added = this.unsupported.slice(before);
         if (added.length && !out.slice(mark).some(line => line.includes('# unsupported'))) {
             out.splice(mark, 0, ...added.map(what => `${'  '.repeat(indent)}# unsupported: ${what}`));
@@ -478,15 +571,58 @@ export class BaseTranslator {
             }
             return;
 
-        case 'While':
-            if (st.test && st.test.type === 'Boolean' && st.test.value) {
+        case 'While': {
+            const forever = st.test && st.test.type === 'Boolean' && st.test.value;
+            if (breaks(st.body)) {
+                // No `break` in the dialect: a flag the loop also tests, and
+                // everything after a statement that may break runs only if it
+                // did not.
+                const flag = this.freshName('_brk');
+                push(`set ${flag} to 0`);
+                push(forever ? `REPEAT UNTIL ${flag} = 1:` :
+                    `REPEAT UNTIL (${flag} = 1) or (not (${this.loopCondition(st.test)})):`);
+                this.breakBlock(st.body, indent + 1, out, flag);
+                return;
+            }
+            if (forever) {
                 push('FOREVER:');
                 this.block(st.body, indent + 1, out);
                 return;
             }
-            push(`REPEAT UNTIL not (${this.condition(st.test)}):`);
+            // `while (!(c))` is how the export writes `REPEAT UNTIL c`: read it
+            // back as that, not as `not (not (c))`, which grew by one `not`
+            // per round trip.
+            if (st.test && st.test.type === 'Unary' && st.test.op === '!') {
+                push(`REPEAT UNTIL ${this.loopCondition(st.test.argument)}:`);
+                this.block(st.body, indent + 1, out);
+                return;
+            }
+            push(`REPEAT UNTIL not (${this.loopCondition(st.test)}):`);
             this.block(st.body, indent + 1, out);
             return;
+        }
+
+        case 'ForOf': {
+            // `for (let x of list)`: a counter over the list, which is what
+            // MakeCode's for-of means for the arrays we carry.
+            const name = this.arrayName(st.iterable);
+            if (!name) {
+                push(this.note(`for … of something that is not an array${callList(this.callsIn(st.iterable))}`));
+                return;
+            }
+            const i = this.freshName('_i');
+            const flag = breaks(st.body) ? this.freshName('_brk') : null;
+            push(`set ${i} to 0`);
+            if (flag) push(`set ${flag} to 0`);
+            const more = `${i} < length of ${this.arrayRef(name)}`;
+            push(flag ? `REPEAT UNTIL (${flag} = 1) or (not (${more})):` : `REPEAT UNTIL not (${more}):`);
+            this.declared.add(st.name);
+            out.push(`${pad}  set ${this.varName(st.name)} to item ${i} of ${this.arrayRef(name)}`);
+            if (flag) this.breakBlock(st.body, indent + 1, out, flag);
+            else this.block(st.body, indent + 1, out);
+            out.push(`${pad}  change ${i} by 1`);
+            return;
+        }
 
         case 'For': {
             // `for (let i = 0; i < N; i++)` — the only shape MakeCode
@@ -504,7 +640,7 @@ export class BaseTranslator {
                 st.update.argument && st.update.argument.name === counter.name &&
                 !JSON.stringify(st.body).includes(`"name":${JSON.stringify(counter.name)}`) &&
                 !JSON.stringify(st.test.right).includes(`"name":${JSON.stringify(counter.name)}`);
-            if (isCount) {
+            if (isCount && !breaks(st.body)) {
                 push(`REPEAT ${this.expr(st.test.right)}:`);
                 this.block(st.body, indent + 1, out);
                 return;
@@ -513,7 +649,19 @@ export class BaseTranslator {
                 this.declared.add(counter.name);
                 push(`set ${this.varName(counter.name)} to ${counter.init ? this.expr(counter.init) : '0'}`);
             }
-            push(`REPEAT UNTIL not (${this.condition(st.test)}):`);
+            if (breaks(st.body)) {
+                const flag = this.freshName('_brk');
+                push(`set ${flag} to 0`);
+                push(`REPEAT UNTIL (${flag} = 1) or (not (${this.loopCondition(st.test)})):`);
+                this.breakBlock(st.body, indent + 1, out, flag);
+                // the update runs only for an iteration that did not break
+                if (st.update) {
+                    out.push(`${pad}  IF ${flag} = 0 THEN:`);
+                    this.statement({type: 'ExpressionStatement', expr: st.update}, indent + 2, out);
+                }
+                return;
+            }
+            push(`REPEAT UNTIL not (${this.loopCondition(st.test)}):`);
             this.block(st.body, indent + 1, out);
             if (st.update) this.statement({type: 'ExpressionStatement', expr: st.update}, indent + 1, out);
             return;
@@ -543,13 +691,30 @@ export class BaseTranslator {
             push(this.note(`class ${st.name || ''}${callList(st.calls)}`.replace(/ +/g, ' ')));
             return;
 
+        // A function's `return X` sets its result variable (read by the
+        // caller) and leaves: `stop this script` inside a DEFINE ends the
+        // procedure, and inside a radio hat ends that handler — both what
+        // MakeCode's return does. Anywhere else (a polled handler, a forever
+        // loop) it would stop the whole loop, so it stays refused.
         case 'Return':
-            push(this.note('return from a function'));
+            if (!this.returnable) {
+                push(this.note('return from a function'));
+                return;
+            }
+            if (st.value && this.returnable.result) this.assign(this.returnable.result, st.value, indent, out);
+            push('stop this script');
             return;
 
         case 'Break':
+            if (this.breakFlag) {
+                push(`set ${this.breakFlag} to 1`);
+                return;
+            }
+            push(this.note('break inside a loop'));
+            return;
+
         case 'Continue':
-            push(this.note(`${st.type.toLowerCase()} inside a loop`));
+            push(this.note('continue inside a loop'));
             return;
 
         default:
@@ -708,6 +873,25 @@ export class BaseTranslator {
         const arrayValue = this.arrayValue(node);
         if (arrayValue !== null) return arrayValue;
         const name = this.path(node.callee);
+        const fn = name && this.functions.find(f => f.name === name);
+        if (fn && fn.result) {
+            if (this.inLoopCondition || !this.pre) {
+                this.unsupported.push(`${name}() as a value in a loop's condition — its result is read after a call, ` +
+                    'and a condition is tested again on every pass');
+                return '0';
+            }
+            // The call as its own line (hoisted above the statement), and the
+            // function's result variable in its place.
+            const args = (node.args || []).map(arg => this.single(arg, this.pre, ''));
+            this.pre.push([name, ...args].join(' '));
+            // Copied at once: a second call in the same statement
+            // (`f(4) + f(0)`) would otherwise overwrite the first result
+            // before either is read.
+            const copy = `_mc${++this.temps}`;
+            this.declared.add(copy);
+            this.pre.push(`set ${copy} to ${fn.result}`);
+            return copy;
+        }
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
         switch (name) {

@@ -112,13 +112,13 @@ as wide as each extension asked for.
 
 **Status: JavaScript broker core shipped; native attribution deliberately not
 enabled.** Schema v2 separates measured ambient requirements from reviewed
-semantic grants, which default to none for 120/120 pins. Promoted workers can
+semantic grants, which default to none for all 128 current pins. Promoted workers can
 reach only the closed `Scratch.capabilities.request(operation, args)` protocol;
 host WeakMap identity, exact declarations, strict arguments, replay state and
 revocation are enforced before a handler can run. No raw invoke operation or
 native handler is registered.
 
-The 99 deferred gallery entries still share the page realm and can call any
+The 103 deferred gallery entries still share the page realm and can call any
 Tauri command exposed to the main window. That fact blocks an honest native
 lease implementation in the same webview: one of those entries could retain or
 monkey-patch the invoke closure and observe any lease delivered through it.
@@ -160,7 +160,7 @@ real Tauri ACL, in the packaged app, under tauri-driver:
 **What this does NOT establish, and must not be read as establishing.** The
 attribution is at REALM granularity, not per extension. The capability path is
 reached through main-label transport commands, so any code in the editor realm —
-including the 95 gallery entries whose `migration.status` is still `deferred` and which
+including the 103 gallery entries whose `migration.status` is still `deferred` and which
 therefore share it — can drive it.
 Rust sees "the main webview asked", exactly as this section warned; it does not
 see which extension. That is survivable only because the vocabulary is CLOSED and
@@ -250,3 +250,18 @@ So there is no promotable cohort waiting on attention. The honest reframing:
    on that basis should read this table first. It was written because the alternative — quoting
    "95 deferred" as a to-do list — makes the work sound like patience.
 
+### Current census (2026-09-27)
+
+Re-measured after the gallery grew: **128 pins = 24 `worker`, 103 `deferred`,
+1 `candidate`**. All 128 still declare zero native broker capabilities. The
+static requirement counts are 87 `runtime`, 55 `dom`, 27 `fetch-import`,
+9 `websocket`, 5 `web-bluetooth`, 4 `web-serial`, 2 `nested-worker`, and
+1 `web-nfc` (requirements overlap).
+
+The sole candidate is `CrispStrobe/bitops`; candidate does not mean promoted.
+It remains on the verified compatibility path until the runtime corpus supplies
+an executable opcode/parity proof. The newer totals strengthen the conclusion
+above: bulk promotion would grant the very DOM/runtime authority the worker
+boundary is intended to remove. Builds which cannot accept that reviewed
+compatibility surface can now set `BW_REMOTE_EXTENSIONS_POLICY=deny` without
+also disabling pinned machine images or optional toolchain downloads.

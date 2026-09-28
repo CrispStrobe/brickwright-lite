@@ -5,6 +5,23 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const reactProfiling = process.env.BW_REACT_PROFILE === '1';
+const remoteCodePolicy = process.env.BW_REMOTE_CODE_POLICY || 'allow';
+const distributionPolicy = {
+    remoteExtensions: process.env.BW_REMOTE_EXTENSIONS_POLICY || remoteCodePolicy,
+    executableToolchains: process.env.BW_REMOTE_TOOLCHAINS_POLICY || remoteCodePolicy,
+    machineImages: process.env.BW_REMOTE_MACHINE_IMAGES_POLICY || remoteCodePolicy
+};
+const distributionPolicyReceipt = `remote-extensions=${distributionPolicy.remoteExtensions} ` +
+    `toolchains=${distributionPolicy.executableToolchains} machine-images=${distributionPolicy.machineImages}`;
+
+if (!['allow', 'deny'].includes(remoteCodePolicy)) {
+    throw new Error(`BW_REMOTE_CODE_POLICY must be "allow" or "deny", got ${JSON.stringify(remoteCodePolicy)}`);
+}
+for (const [name, value] of Object.entries(distributionPolicy)) {
+    if (!['allow', 'deny'].includes(value)) {
+        throw new Error(`${name} policy must be "allow" or "deny", got ${JSON.stringify(value)}`);
+    }
+}
 
 const ScratchWebpackConfigBuilder = require('scratch-webpack-configuration');
 
@@ -38,6 +55,33 @@ const buildVersion = () => {
         return 'unknown';
     }
 };
+
+// One identity shared by DefinePlugin, the About dialog and the emitted manifest. Calling either
+// producer twice would allow a build straddling a second (or a moving checkout) to describe itself
+// with two different values.
+const buildCommit = buildVersion();
+const buildTime = new Date().toISOString();
+const buildManifest = `${JSON.stringify({
+    schema: 2,
+    product: 'Brickwright',
+    commit: buildCommit,
+    builtAt: buildTime,
+    distributionPolicy
+}, null, 2)}\n`;
+
+/** Emit generated build identity without pretending in-memory bytes are a CopyPlugin path. */
+class BuildManifestPlugin {
+    apply (compiler) {
+        compiler.hooks.thisCompilation.tap('BrickwrightBuildManifest', compilation => {
+            compilation.hooks.processAssets.tap({
+                name: 'BrickwrightBuildManifest',
+                stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL
+            }, () => {
+                compilation.emitAsset('brickwright-build.json', new webpack.sources.RawSource(buildManifest));
+            });
+        });
+    }
+}
 
 // const STATIC_PATH = process.env.STATIC_PATH || '/static';
 
@@ -109,6 +153,18 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // runtime toggle could not promise. Enabling it by DEFAULT is a separate,
         // later decision that may never be taken -- see docs/TANG-NANO.md.
         'process.env.BW_ENABLE_FPGA': JSON.stringify(process.env.BW_ENABLE_FPGA === '1'),
+        // Distribution policy, selected at BUILD TIME. This is intentionally not inferred from
+        // Tauri: Android, Windows and direct-download desktop builds have different store rules,
+        // and even Apple's educational-code exception is a submission decision rather than a
+        // property of the runtime. Use `BW_REMOTE_CODE_POLICY=deny` only for a deliberately
+        // self-contained artifact; the normal web and native profile is `allow`.
+        'process.env.BW_REMOTE_CODE_POLICY': JSON.stringify(remoteCodePolicy),
+        'process.env.BW_REMOTE_EXTENSIONS_POLICY': JSON.stringify(distributionPolicy.remoteExtensions),
+        'process.env.BW_REMOTE_TOOLCHAINS_POLICY': JSON.stringify(distributionPolicy.executableToolchains),
+        'process.env.BW_REMOTE_MACHINE_IMAGES_POLICY': JSON.stringify(distributionPolicy.machineImages),
+        // One precomputed literal lets diagnostics and artifact verification quote the exact
+        // compiled profile; deriving it from object properties lets minifiers retain fragments.
+        'process.env.BW_DISTRIBUTION_POLICY_RECEIPT': JSON.stringify(distributionPolicyReceipt),
         // Where hosted synthesis lives, when it exists. Null means "not configured",
         // which the backend probe reports as a REASON rather than an empty picker.
         'process.env.BW_SYNTHESIS_ENDPOINT': JSON.stringify(process.env.BW_SYNTHESIS_ENDPOINT || null),
@@ -120,13 +176,14 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // riscv-compile.js tolerates. Override with BW_RISCV_CC_ENDPOINT.
         'process.env.BW_RISCV_CC_ENDPOINT':
             JSON.stringify(process.env.BW_RISCV_CC_ENDPOINT || 'https://stc-compiler.vercel.app'),
-        'process.env.BW_VERSION': JSON.stringify(buildVersion()),
-        'process.env.BW_BUILD_TIME': JSON.stringify(new Date().toISOString()),
+        'process.env.BW_VERSION': JSON.stringify(buildCommit),
+        'process.env.BW_BUILD_TIME': JSON.stringify(buildTime),
         'process.env.DEBUG': Boolean(process.env.DEBUG),
         'process.env.GA_ID': `"${process.env.GA_ID || 'UA-000000-01'}"`,
         'process.env.GTM_ENV_AUTH': `"${process.env.GTM_ENV_AUTH || ''}"`,
         'process.env.GTM_ID': process.env.GTM_ID ? `"${process.env.GTM_ID}"` : null
     }))
+    .addPlugin(new BuildManifestPlugin())
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
             {
@@ -252,6 +309,12 @@ const buildConfig = baseConfig.clone()
     }))
     .addPlugin(new CopyWebpackPlugin({
         patterns: [
+            {
+                // The native broker validates this exact origin-root pathname. The general
+                // static copy below intentionally nests everything else under /static/.
+                from: 'static/capability-broker.html',
+                to: 'capability-broker.html'
+            },
             {
                 from: 'static',
                 to: 'static',

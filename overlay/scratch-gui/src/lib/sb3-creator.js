@@ -115,11 +115,327 @@ function microbitMelody (name) {
     return key ? { name: key, py: MAKECODE_MELODIES[key] } : null;
 }
 
+/**
+ * `line.match(re)` where the keywords must sit OUTSIDE parentheses and
+ * quotes. A slot bounded by the next keyword is lazy, so `volume (pick
+ * random 0 to 1024) to 255` split at the `to` INSIDE the parentheses and the
+ * volume became the text "(pick random 0". The contents of every (...) and
+ * "..." are masked before matching, and the groups are cut from the real line.
+ */
+function matchTopLevel(line, re) {
+    let depth = 0, inStr = false, masked = '';
+    for (const ch of line) {
+        if (ch === '"') { inStr = !inStr; masked += ch; continue; }
+        if (!inStr && ch === '(') { depth++; masked += depth === 1 ? ch : '\u0001'; continue; }
+        if (!inStr && ch === ')') { masked += depth === 1 ? ch : '\u0001'; depth = Math.max(0, depth - 1); continue; }
+        masked += (inStr || depth > 0) ? '\u0001' : ch;
+    }
+    const m = new RegExp(re.source, re.flags.includes('d') ? re.flags : re.flags + 'd').exec(masked);
+    if (!m) return null;
+    const out = m.indices.map((span) => (span ? line.slice(span[0], span[1]) : undefined));
+    out.index = m.index;
+    return out;
+}
+
+/** The V2 built-in sounds: MakeCode's soundExpression.X and MicroPython's Sound.X are the same ten. */
+const MICROBIT_SOUNDS = ['giggle', 'happy', 'hello', 'mysterious', 'sad', 'slide', 'soaring', 'spring', 'twinkle', 'yawn'];
+
 /** micro:bit+ `isbutton` in MicroPython: A, B, or AB (both held, MakeCode's Button.AB). */
 function microbitButtonPy (btn) {
     const b = String(btn || 'a').toLowerCase();
     if (b === 'ab') return '(button_a.is_pressed() and button_b.is_pressed())';
     return `button_${b}.is_pressed()`;
+}
+
+/**
+ * MakeCode's LED sprites (game.LedSprite) and the game state around them, as
+ * MicroPython — written line by line from pxt-microbit 9.1.1 libs/core/game.ts,
+ * because the documentation leaves out what a program can see:
+ *
+ * - a sprite is created pointing right (90), at full brightness (255), with
+ *   its position clamped to 0..4; MakeCode never initialises its blink, so a
+ *   fresh sprite's blink is undefined and CHANGING it gives NaN — the sprite
+ *   then never blinks (hero's ghost). NaN models that exactly;
+ * - setDirection is `(floor(d / 45) % 8) * 45` with JavaScript's remainder
+ *   (the sign of the dividend), then folded into -135..180 — floored, not
+ *   rounded, whatever the doc comment says;
+ * - move() tests the direction against 0, 45, 90, 135, 180, -45, -90, and
+ *   anything else moves as -135; ifOnEdgeBounce is MakeCode's table, corners
+ *   included;
+ * - touching is the same pixel with BOTH sprites alive; touching an edge is
+ *   being on row or column 0 or 4, alive;
+ * - the screen is the sprites: plot() clears, adds each live sprite's
+ *   brightness into its pixel (capped at 255), and draws — on every change and
+ *   every 50 ms (the engine's forever: pause 30, plot, and forever's own 20)
+ *   — unless the game is over or paused. A blinking sprite shows while
+ *   floor(now / blink) is even. While startCountdown's intro plays the
+ *   display is the animation's: MakeCode queues the sprites' redraws behind
+ *   it (pxt-microbit's simulator, measured), and so does this.
+ *
+ * A sprite is a HANDLE: 1, 2, 3 in creation order (0 is "no sprite"), so it
+ * lives in an ordinary variable or array. An operation on a handle that names
+ * no sprite does nothing and reads 0 (MakeCode would stop on a null sprite).
+ *
+ * Brightness 0..255 becomes a 0..9 level the way `_bw_lvl` rounds (anything
+ * lit stays lit), and through `_bw_lvl` as well when the display is dimmed.
+ * Not reproduced, as for the other game helpers: the little animation
+ * addScore/removeLife play, during which MakeCode skips drawing the sprites.
+ *
+ * @param {object} uses the generator's per-board flags (dim)
+ * @param {object} pyUses the shared layer's flags (countdown)
+ * @returns {string[]} header lines
+ */
+function microbitSpriteHelpersPy (uses, pyUses) {
+    const level = uses.dim ? '_bw_lvl(int((p * 9 + 254) // 255))' : 'int((p * 9 + 254) // 255)';
+    const out = ['',
+        '_bw_spr = []',
+        '_bw_live = []',
+        '_bw_engine = False',
+        '_bw_paused = False',
+        '_bw_busy = False',
+        'def _bw_clamp(lo, hi, v):',
+        '    # Math.clamp: a NaN stays NaN, as Math.min/max keep it',
+        '    return v if v != v else min(hi, max(lo, v))',
+        'def _bw_s(h):',
+        '    try:',
+        '        h = int(h)',
+        '    except (ValueError, TypeError, OverflowError):',
+        '        return None',
+        '    return _bw_spr[h - 1] if 0 < h <= len(_bw_spr) else None',
+        'def _bw_splot():',
+        '    if _bw_is_over or _bw_paused or _bw_busy or not _bw_engine:',
+        '        return',
+        '    now = running_time()',
+        '    px = [0] * 25',
+        '    for s in _bw_live:',
+        '        if s[3] > 0 and not (s[4] > 0 and int(now // s[4]) % 2):',
+        '            i = int(s[1]) * 5 + int(s[0])',
+        '            px[i] = min(255, px[i] + s[3])',
+        '    for i in range(25):',
+        '        p = px[i]',
+        `        display.set_pixel(i % 5, i // 5, ${level})`,
+        'def _bw_sprite(x, y):',
+        '    global _bw_engine',
+        '    _bw_engine = True',
+        "    s = [_bw_clamp(0, 4, x), _bw_clamp(0, 4, y), 90, 255, float('nan'), True]",
+        '    _bw_spr.append(s)',
+        '    _bw_live.append(s)',
+        '    _bw_splot()',
+        '    return len(_bw_spr)',
+        'def _bw_sdir(s, d):',
+        '    q = int(d // 45)',
+        '    r = abs(q) % 8',
+        '    d = (-r if q < 0 else r) * 45',
+        '    if d <= -180:',
+        '        d += 360',
+        '    elif d > 180:',
+        '        d -= 360',
+        '    s[2] = d',
+        'def _bw_sget(h, p):',
+        '    s = _bw_s(h)',
+        '    return s[p] if s else 0',
+        'def _bw_sset(h, p, v):',
+        '    s = _bw_s(h)',
+        '    if not s:',
+        '        return',
+        '    if p < 2:',
+        '        s[p] = v',
+        '        s[0] = _bw_clamp(0, 4, s[0])',
+        '        s[1] = _bw_clamp(0, 4, s[1])',
+        '    elif p == 2:',
+        '        _bw_sdir(s, v)',
+        '    elif p == 3:',
+        '        s[3] = _bw_clamp(0, 255, v)',
+        '    else:',
+        '        s[4] = _bw_clamp(0, 10000, v)',
+        '        return',
+        '    _bw_splot()',
+        'def _bw_schange(h, p, v):',
+        '    s = _bw_s(h)',
+        '    if s:',
+        '        _bw_sset(h, p, s[p] + v)',
+        'def _bw_smove(h, n):',
+        '    s = _bw_s(h)',
+        '    if not s:',
+        '        return',
+        '    d = s[2]',
+        '    if d == 0:',
+        '        s[1] -= n',
+        '    elif d == 45:',
+        '        s[0] += n',
+        '        s[1] -= n',
+        '    elif d == 90:',
+        '        s[0] += n',
+        '    elif d == 135:',
+        '        s[0] += n',
+        '        s[1] += n',
+        '    elif d == 180:',
+        '        s[1] += n',
+        '    elif d == -45:',
+        '        s[0] -= n',
+        '        s[1] -= n',
+        '    elif d == -90:',
+        '        s[0] -= n',
+        '    else:',
+        '        s[0] -= n',
+        '        s[1] += n',
+        '    s[0] = _bw_clamp(0, 4, s[0])',
+        '    s[1] = _bw_clamp(0, 4, s[1])',
+        '    _bw_splot()',
+        'def _bw_sturn(h, right, deg):',
+        '    s = _bw_s(h)',
+        '    if s:',
+        '        _bw_sset(h, 2, s[2] + deg if right else s[2] - deg)',
+        'def _bw_sbounce(h):',
+        '    s = _bw_s(h)',
+        '    if not s:',
+        '        return',
+        '    x, y, d = s[0], s[1], s[2]',
+        '    if d == 0 and y == 0:',
+        '        d = 180',
+        '    elif d == 45 and (x == 4 or y == 0):',
+        '        d = -135 if x == 0 and y == 0 else 135 if y == 0 else -45',
+        '    elif d == 90 and x == 4:',
+        '        d = -90',
+        '    elif d == 135 and (x == 4 or y == 4):',
+        '        d = -45 if x == 4 and y == 4 else 45 if y == 4 else -135',
+        '    elif d == 180 and y == 4:',
+        '        d = 0',
+        '    elif d == -45 and (x == 0 or y == 0):',
+        '        d = 135 if x == 0 and y == 0 else -135 if y == 0 else 45',
+        '    elif d == -90 and x == 0:',
+        '        d = 90',
+        '    elif d == -135 and (x == 0 or y == 4):',
+        '        d = 45 if x == 0 and y == 4 else -45 if y == 4 else 135',
+        '    s[2] = d',
+        '    _bw_splot()',
+        'def _bw_stouching(h, o):',
+        '    s = _bw_s(h)',
+        '    t = _bw_s(o)',
+        '    return bool(s and t and s[5] and t[5] and s[0] == t[0] and s[1] == t[1])',
+        'def _bw_sedge(h):',
+        '    s = _bw_s(h)',
+        '    return bool(s and s[5] and (s[0] == 0 or s[0] == 4 or s[1] == 0 or s[1] == 4))',
+        'def _bw_sdeleted(h):',
+        '    s = _bw_s(h)',
+        '    return bool(s and not s[5])',
+        'def _bw_sdelete(h):',
+        '    s = _bw_s(h)',
+        '    if s:',
+        '        s[5] = False',
+        '        # by identity: two sprites in the same state are equal lists',
+        '        for i in range(len(_bw_live)):',
+        '            if _bw_live[i] is s:',
+        '                _bw_live.pop(i)',
+        '                _bw_splot()',
+        '                break',
+        'def _bw_game_pause():',
+        '    global _bw_paused',
+        '    _bw_splot()',
+        '    _bw_paused = True',
+        'def _bw_game_resume():',
+        '    global _bw_paused',
+        '    _bw_paused = False',
+        '    _bw_splot()',
+        'def _bw_sprites():',
+        '    # MakeCode\'s engine loop (a basic.forever: pause 30, plot, and the',
+        '    # 20 ms every forever pass waits), so a blink blinks',
+        '    while True:',
+        '        yield 30',
+        '        _bw_splot()',
+        '        if _bw_is_over:',
+        '            yield 600',
+        '        yield 20'];
+    if (pyUses.countdown) {
+        // startCountdown plays MakeCode's nine-frame intro, 400 ms a frame,
+        // BEFORE the countdown starts (the caller waits 3.6 s, measured in
+        // pxt-microbit's simulator), then game over comes after max(500, ms).
+        const a = '90909:09090:90909:09090:90909';
+        const b = '09090:90909:09090:90909:09090';
+        const frames = [a, b, a, b, a, b, '99999:99999:99999:99999:99999', '99999:99999:99999:99999:99999',
+            '00000:00000:00000:00000:00000'];
+        out.push(
+            `_bw_countdown_frames = ${JSON.stringify(frames).replace(/"/g, "'")}`,
+            '_bw_cd = 0',
+            'def _bw_start_countdown(ms):',
+            '    global _bw_cd, _bw_paused, _bw_busy',
+            '    if _bw_cd > 0:',
+            '        return',
+            '    # the display is the animation\'s until it ends: MakeCode queues',
+            '    # the sprites\' redraws behind it',
+            '    _bw_busy = True',
+            '    for f in _bw_countdown_frames:',
+            `        display.show(${uses.dim ? '_bw_img' : 'Image'}(f))`,
+            '        yield 400',
+            '    _bw_busy = False',
+            '    _bw_cd = max(500, ms)',
+            '    _bw_paused = False',
+            '    _bw_splot()',
+            "    _pending.append('__bw_countdown')",
+            'def _bw_countdown():',
+            '    yield _bw_cd',
+            '    yield from _bw_game_over()');
+    }
+    return out;
+}
+
+/**
+ * MakeCode's basic.showNumber (pxt-microbit 9.1.1 libs/core/basic.ts and its
+ * simulator's showString), which WAITS while the number is shown:
+ *
+ * - the number is written as Math.roundWithPrecision(value, 2) prints it —
+ *   rounded half up to two places (more when that would print 0), no
+ *   trailing zeros, "?" for NaN;
+ * - one character is shown still for 5 x interval ms; anything longer
+ *   scrolls with a trailing space, one column per interval, 6 x (length + 1)
+ *   - 1 columns in all — 2550 ms for "42" at MakeCode's default 150 (measured
+ *   in pxt-microbit's simulator, digits to five-character numbers);
+ * - the wait is a yield, so other scripts run, and while the number is on the
+ *   screen the LED sprites do not redraw over it (MakeCode queues their
+ *   redraws behind it).
+ *
+ * @param {object} pyUses the shared layer's flags (sprites)
+ * @returns {string[]} header lines
+ */
+function microbitShowNumberPy (pyUses) {
+    const sprites = !!pyUses.sprites;
+    return ['',
+        'def _bw_numstr(v):',
+        '    try:',
+        '        v = float(v)',
+        '    except (ValueError, TypeError):',
+        '        return str(v)',
+        '    if v != v:',
+        "        return '?'",
+        '    if v != 0 and v == v * 2:',
+        "        return 'Infinity' if v > 0 else '-Infinity'",
+        '    d = 2',
+        '    r = 0',
+        '    while True:',
+        '        p = 10 ** d',
+        '        n = (v * p + 0.5) // 1',
+        '        r = n / p',
+        '        if r != 0 or v == 0 or d >= 20:',
+        '            break',
+        '        d += 1',
+        '    if r == int(r):',
+        '        return str(int(r))',
+        "    s = ('%.' + str(d) + 'f') % r",
+        "    return s.rstrip('0').rstrip('.')",
+        'def _bw_show_number(v, interval=150):',
+        ...(sprites ? ['    global _bw_busy'] : []),
+        '    s = _bw_numstr(v)',
+        '    interval = int(interval)',
+        '    if interval <= 0:',
+        '        interval = 1',
+        ...(sprites ? ['    _bw_busy = True'] : []),
+        '    if len(s) == 1:',
+        '        display.show(s)',
+        '        yield 5 * interval',
+        '    else:',
+        '        display.scroll(s, delay=interval, wait=False)',
+        '        yield (6 * (len(s) + 1) - 1) * interval',
+        ...(sprites ? ['    _bw_busy = False', '    _bw_splot()'] : [])];
 }
 
 function microbitLedHelpersPy (uses, pyUses) {
@@ -232,10 +548,25 @@ function microbitLedHelpersPy (uses, pyUses) {
             "            display.scroll(' ', delay=150)",
             '            yield 0');
     }
+    if (pyUses.game && pyUses.setlife) {
+        out.push('',
+            'def _bw_set_life(n):',
+            '    global _bw_life',
+            '    _bw_life = max(0, n)',
+            '    if _bw_life <= 0:',
+            '        yield from _bw_game_over()');
+    }
+    if (pyUses.sprites) out.push(...microbitSpriteHelpersPy(uses, pyUses));
+    if (uses.shownumber) out.push(...microbitShowNumberPy(pyUses));
     // MakeCode's tempo: 120 bpm until set, a beat is 60000 / tempo ms
     // truncated (Math.idiv), the fractions shift it (libs/core/music.ts).
     // setTempo ignores a tempo that is not above 0 and floors it at 1. The
     // music module's own tempo follows, so a built-in melody keeps pace.
+    if (pyUses.limit) {
+        out.push('',
+            'def _bw_limit(v, hi):',
+            '    return min(hi, max(0, int(v)))');
+    }
     if (pyUses.tempo) {
         out.push('',
             '_bw_tempo = 120',
@@ -347,6 +678,19 @@ const gestureForMicroPython = label => {
 
 const MICROBIT_GESTURE_RE = new RegExp(
     `^(${MICROBIT_GESTURES.map(g => g.replace(' ', '\\s+')).join('|')})\\s+happening\\??$`, 'i');
+
+/**
+ * The LED sprite's properties, as MakeCode's LedSpriteProperty names them and
+ * in its order (X, Y, Direction, Brightness, Blink): the index is the slot in
+ * the MicroPython sprite model.
+ */
+const MICROBIT_SPRITE_PROPERTIES = ['x', 'y', 'direction', 'brightness', 'blink'];
+const MICROBIT_SPRITE_GET_RE = new RegExp(`^(${MICROBIT_SPRITE_PROPERTIES.join('|')})\\s+of\\s+sprite\\s+(.+)$`, 'i');
+const MICROBIT_SPRITE_SET_RE = new RegExp(
+    `^(set|change)\\s+sprite\\s+(.+?)\\s+(${MICROBIT_SPRITE_PROPERTIES.join('|')})\\s+(to|by)\\s+(.+?)\\s*$`, 'i');
+
+/** A property word -> its slot (0..4); anything else is x, as the menu defaults. */
+const spriteProperty = (word) => Math.max(0, MICROBIT_SPRITE_PROPERTIES.indexOf(String(word || 'x').toLowerCase()));
 
 const OPENS_A_BODY = new Set([
     'control_if', 'control_if_else', 'control_repeat',
@@ -1783,6 +2127,41 @@ class SB3Creator {
             return B('microbitplus_radiolaststr');
         }
         if (/^game\s+score$/i.test(s)) return B('microbitplus_score');
+        // The V2 touch logo (MakeCode input.logoIsPressed / onLogoEvent).
+        if (/^logo\s+touched\??$/i.test(s)) return B('microbitplus_islogo');
+        // MakeCode radio.receivedPacket(RadioPacketProperty.SignalStrength):
+        // the last packet's RSSI in dBm, as MicroPython's receive_full reports it.
+        if (/^last\s+radio\s+signal\s+strength$/i.test(s)) return B('microbitplus_radiorssi');
+        // MakeCode's LED sprites (game.LedSprite). A sprite is a numbered
+        // HANDLE — 1, 2, 3 in the order they were created, 0 for none — kept
+        // in an ordinary variable or array, so every place a number can go a
+        // sprite can go too (MakeCode's crashy-bird keeps them in an array).
+        // Each slot is bounded by the next keyword, so an argument may be any
+        // expression; the decompiler parenthesises a computed one.
+        if ((m = s.match(/^create\s+sprite\s+at\s+x\s+(.+?)\s+y\s+(.+)$/i))) {
+            return B('microbitplus_createsprite', { X: this.parseValue(m[1], context), Y: this.parseValue(m[2], context) });
+        }
+        if ((m = s.match(MICROBIT_SPRITE_GET_RE))) {
+            return B('microbitplus_spriteget', { SPRITE: this.parseValue(m[2], context) },
+                { PROPERTY: [m[1].toLowerCase(), null] });
+        }
+        if ((m = s.match(/^sprite\s+(.+?)\s+touching\s+edge$/i))) {
+            return B('microbitplus_spritetouchingedge', { SPRITE: this.parseValue(m[1], context) });
+        }
+        if ((m = s.match(/^sprite\s+(.+?)\s+touching\s+sprite\s+(.+)$/i))) {
+            return B('microbitplus_spritetouching', {
+                SPRITE: this.parseValue(m[1], context), OTHER: this.parseValue(m[2], context)
+            });
+        }
+        if ((m = s.match(/^sprite\s+(.+?)\s+deleted$/i))) {
+            return B('microbitplus_spritedeleted', { SPRITE: this.parseValue(m[1], context) });
+        }
+        // The game's own state, as MakeCode's game.isGameOver/isRunning/
+        // isPaused and game.life() read it.
+        if (/^game\s+is\s+over$/i.test(s)) return B('microbitplus_isgameover');
+        if (/^game\s+is\s+running$/i.test(s)) return B('microbitplus_isrunning');
+        if (/^game\s+is\s+paused$/i.test(s)) return B('microbitplus_ispaused');
+        if (/^game\s+life$/i.test(s)) return B('microbitplus_life');
         // MakeCode's music reporters: a beat's length in ms at the current
         // tempo, a note's frequency, the tempo itself.
         if ((m = s.match(/^beat\s+(whole|half|quarter|eighth|sixteenth|double|breve)$/i))) {
@@ -4615,6 +4994,18 @@ class SB3Creator {
         // libs/core/basic.ts). `show pattern` draws and moves on, so neither
         // came across exactly, and a picture exported back could not say which
         // of the two it had been. Each has its own block now.
+        // MakeCode's basic.showNumber: it WAITS while the number is on the
+        // screen (a digit 5 x interval, a longer number while it scrolls), where
+        // lite's own `display` scrolls and moves on. Its own word, as show leds
+        // and show icon are; `display` keeps its meaning. `show number N on
+        // <seven-segment part>` is the STC verb above, never this.
+        if ((match = line.match(/^show\s+number\s+(.+?)(?:\s+delay\s+(.+?)\s+ms)?\s*$/i)) &&
+                !/\s+on\s+[A-Za-z_]\w*$/i.test(match[1])) {
+            const { id, block } = cmd('microbitplus_shownumber');
+            block[id].inputs.VALUE = val(match[1]);
+            block[id].inputs.MS = val(match[2] || '150');
+            return ret(block);
+        }
         if ((match = line.match(/^show\s+(leds|icon)\s+([0-9:]+)\s*$/i))) {
             const { id, block } = cmd(match[1].toLowerCase() === 'leds' ? 'microbitplus_showleds' : 'microbitplus_showicon');
             block[id].fields.MATRIX = [match[2].replace(/[^0-9]/g, ''), null];
@@ -4715,6 +5106,60 @@ class SB3Creator {
             const { block } = cmd('microbitplus_gameover');
             return ret(block);
         }
+        // MakeCode's LED sprites, commands (the reporters are in parseReporter).
+        // BEFORE the Scratch motion verbs: `turn sprite s right by 45 degrees`
+        // would otherwise be `turn … degrees` of the stage sprite, and `move
+        // sprite s by 1` has to stay clear of `move … steps`.
+        if ((match = line.match(MICROBIT_SPRITE_SET_RE)) &&
+                (match[1].toLowerCase() === 'set') === (match[4].toLowerCase() === 'to')) {
+            const { id, block } = cmd(match[1].toLowerCase() === 'set' ? 'microbitplus_spriteset' : 'microbitplus_spritechange');
+            block[id].inputs.SPRITE = val(match[2]);
+            block[id].fields.PROPERTY = [match[3].toLowerCase(), null];
+            block[id].inputs.VALUE = val(match[5]);
+            return ret(block);
+        }
+        if ((match = line.match(/^move\s+sprite\s+(.+?)\s+by\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_spritemove');
+            block[id].inputs.SPRITE = val(match[1]);
+            block[id].inputs.LEDS = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^turn\s+sprite\s+(.+?)\s+(right|left)\s+by\s+(.+?)\s+degrees\s*$/i))) {
+            const { id, block } = cmd('microbitplus_spriteturn');
+            block[id].inputs.SPRITE = val(match[1]);
+            block[id].fields.DIRECTION = [match[2].toLowerCase(), null];
+            block[id].inputs.DEGREES = val(match[3]);
+            return ret(block);
+        }
+        if ((match = line.match(/^bounce\s+sprite\s+(.+?)\s+if\s+on\s+edge\s*$/i))) {
+            const { id, block } = cmd('microbitplus_spritebounce');
+            block[id].inputs.SPRITE = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^delete\s+sprite\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_spritedelete');
+            block[id].inputs.SPRITE = val(match[1]);
+            return ret(block);
+        }
+        // The rest of MakeCode's game: the countdown, pausing the sprite engine,
+        // and lives (`remove game life` is above).
+        if ((match = line.match(/^start\s+countdown\s+(.+?)\s+ms\s*$/i))) {
+            const { id, block } = cmd('microbitplus_startcountdown');
+            block[id].inputs.MS = val(match[1]);
+            return ret(block);
+        }
+        if (/^pause\s+game\s*$/i.test(line)) return ret(cmd('microbitplus_pausegame').block);
+        if (/^resume\s+game\s*$/i.test(line)) return ret(cmd('microbitplus_resumegame').block);
+        if ((match = line.match(/^set\s+game\s+life\s+to\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_setlife');
+            block[id].inputs.VALUE = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^add\s+game\s+life\s+(.+?)\s*$/i))) {
+            const { id, block } = cmd('microbitplus_addlife');
+            block[id].inputs.LIVES = val(match[1]);
+            return ret(block);
+        }
         // ---- micro:bit+ PINS group (DUAL-LOWERING-ORACLE P1–P7) ----
         if ((match = line.match(/^set\s+pin\s+(P\d+)\s+(?:to\s+|digital\s+)([01])\s*$/i))) {
             const { id, block } = cmd('microbitplus_digitalwrite');
@@ -4739,6 +5184,37 @@ class SB3Creator {
             const { id, block } = cmd('microbitplus_playtone');
             block[id].inputs.FREQ = val(match[1]);
             block[id].inputs.MS = [1, [4, match[2] || '-1']];
+            return ret(block);
+        }
+        // MakeCode's music.play(music.tonePlayable(F, D), mode) and its sound
+        // effects (music.playSoundEffect / music.play of createSoundEffect or a
+        // built-in sound). The PLAYBACK MODE is part of each: until done waits,
+        // in background does not.
+        const MODE = '(?:\\s+(until\\s+done|in\\s+background))?';
+        if ((match = matchTopLevel(line, new RegExp('^play\\s+tone\\s+(.+?)\\s*hz\\s+for\\s+(.+?)\\s*ms\\s+(until\\s+done|in\\s+background)\\s*$', 'i')))) {
+            const { id, block } = cmd('microbitplus_playtonemode');
+            block[id].inputs.FREQ = val(match[1]);
+            block[id].inputs.MS = val(match[2]);
+            block[id].fields.MODE = [match[3].toLowerCase().replace(/\s+/g, ' '), null];
+            return ret(block);
+        }
+        if ((match = line.match(new RegExp('^play\\s+sound\\s+([a-z]+)' + MODE + '\\s*$', 'i'))) && MICROBIT_SOUNDS.includes(match[1].toLowerCase())) {
+            const { id, block } = cmd('microbitplus_playsound');
+            block[id].fields.SOUND = [match[1].toLowerCase(), null];
+            block[id].fields.MODE = [(match[2] || 'until done').toLowerCase().replace(/\s+/g, ' '), null];
+            return ret(block);
+        }
+        if ((match = matchTopLevel(line, new RegExp('^play\\s+sound\\s+effect\\s+(sine|sawtooth|triangle|square|noise)\\s+from\\s+(.+?)\\s+to\\s+(.+?)\\s*hz\\s+volume\\s+(.+?)\\s+to\\s+(.+?)\\s+for\\s+(.+?)\\s*ms\\s+effect\\s+(none|vibrato|tremolo|warble)\\s+curve\\s+(linear|curve|logarithmic)' + MODE + '\\s*$', 'i')))) {
+            const { id, block } = cmd('microbitplus_playsoundeffect');
+            block[id].fields.WAVE = [match[1].toLowerCase(), null];
+            block[id].inputs.FROM = val(match[2]);
+            block[id].inputs.TO = val(match[3]);
+            block[id].inputs.VFROM = val(match[4]);
+            block[id].inputs.VTO = val(match[5]);
+            block[id].inputs.MS = val(match[6]);
+            block[id].fields.FX = [match[7].toLowerCase(), null];
+            block[id].fields.CURVE = [match[8].toLowerCase(), null];
+            block[id].fields.MODE = [(match[9] || 'until done').toLowerCase().replace(/\s+/g, ' '), null];
             return ret(block);
         }
         // `play tone` takes an EXPRESSION in both slots — they are inputs on
@@ -6874,9 +7350,20 @@ class SB3Creator {
             case 'microbitplus_radiolastnum': return 'read last radio number';
             case 'microbitplus_radiolaststr': return 'read last radio text';
             case 'microbitplus_score': return 'game score';
+            case 'microbitplus_createsprite': return `create sprite at x ${v('X')} y ${v('Y')}`;
+            case 'microbitplus_spriteget': return `${f('PROPERTY') || 'x'} of sprite ${v('SPRITE')}`;
+            case 'microbitplus_spritetouching': return `sprite ${v('SPRITE')} touching sprite ${v('OTHER')}`;
+            case 'microbitplus_spritetouchingedge': return `sprite ${v('SPRITE')} touching edge`;
+            case 'microbitplus_spritedeleted': return `sprite ${v('SPRITE')} deleted`;
+            case 'microbitplus_isgameover': return 'game is over';
+            case 'microbitplus_isrunning': return 'game is running';
+            case 'microbitplus_ispaused': return 'game is paused';
+            case 'microbitplus_life': return 'game life';
             case 'microbitplus_beat': return `beat ${f('FRACTION')}`;
             case 'microbitplus_notefreq': return `frequency of note ${f('NOTE')}`;
             case 'microbitplus_tempo': return 'music tempo';
+            case 'microbitplus_islogo': return 'logo touched';
+            case 'microbitplus_radiorssi': return 'last radio signal strength';
             case 'microbitplus_map': return `map ${v('VALUE')} from low ${v('FROMLOW')} high ${v('FROMHIGH')} to low ${v('TOLOW')} high ${v('TOHIGH')}`;
             // STC12 / 8051 pin read (digital level or ADC value).
             case 'stc12_read': return `read ${f('PIN')}`;
@@ -7140,6 +7627,10 @@ class SB3Creator {
             case 'microbitplus_showmatrix': return line(`show pattern ${f('MATRIX')}`);
             case 'microbitplus_showleds': return line(`show leds ${f('MATRIX')}`);
             case 'microbitplus_showicon': return line(`show icon ${f('MATRIX')}`);
+            case 'microbitplus_shownumber': {
+                const ms = v('MS');
+                return line(ms === '150' || ms === '' ? `show number ${v('VALUE')}` : `show number ${v('VALUE')} delay ${ms} ms`);
+            }
             // Quote what dval already quotes and nothing else: force-quoting
             // turned `show text count` into `show text "count"`, which reads
             // back as the literal word — a construct that does not converge.
@@ -7155,6 +7646,17 @@ class SB3Creator {
             case 'microbitplus_setscore': return line(`set game score to ${v('VALUE')}`);
             case 'microbitplus_removelife': return line(`remove game life ${v('LIFE')}`);
             case 'microbitplus_gameover': return line('game over');
+            case 'microbitplus_spriteset': return line(`set sprite ${v('SPRITE')} ${f('PROPERTY') || 'x'} to ${v('VALUE')}`);
+            case 'microbitplus_spritechange': return line(`change sprite ${v('SPRITE')} ${f('PROPERTY') || 'x'} by ${v('VALUE')}`);
+            case 'microbitplus_spritemove': return line(`move sprite ${v('SPRITE')} by ${v('LEDS')}`);
+            case 'microbitplus_spriteturn': return line(`turn sprite ${v('SPRITE')} ${f('DIRECTION') || 'right'} by ${v('DEGREES')} degrees`);
+            case 'microbitplus_spritebounce': return line(`bounce sprite ${v('SPRITE')} if on edge`);
+            case 'microbitplus_spritedelete': return line(`delete sprite ${v('SPRITE')}`);
+            case 'microbitplus_startcountdown': return line(`start countdown ${v('MS')} ms`);
+            case 'microbitplus_pausegame': return line('pause game');
+            case 'microbitplus_resumegame': return line('resume game');
+            case 'microbitplus_setlife': return line(`set game life to ${v('VALUE')}`);
+            case 'microbitplus_addlife': return line(`add game life ${v('LIVES')}`);
             case 'microbitplus_digitalwrite': return line(`set pin ${f('PIN')} to ${f('LEVEL')}`);
             case 'microbitplus_analogwrite': return line(`set pin ${f('PIN')} analog ${v('PCT')} %`);
             case 'microbitplus_setpull': return line(`set pin ${f('PIN')} pull ${f('MODE')}`);
@@ -7165,6 +7667,11 @@ class SB3Creator {
                 return line(ms === '-1' ? `play tone ${v('FREQ')} hz` : `play tone ${v('FREQ')} hz for ${ms} ms`);
             }
             case 'microbitplus_rest': return line(`rest for ${v('MS')} ms`);
+            case 'microbitplus_playtonemode': return line(`play tone ${v('FREQ')} hz for ${v('MS')} ms ${f('MODE') || 'until done'}`);
+            case 'microbitplus_playsound': return line(`play sound ${f('SOUND')} ${f('MODE') || 'until done'}`);
+            case 'microbitplus_playsoundeffect':
+                return line(`play sound effect ${f('WAVE')} from ${v('FROM')} to ${v('TO')} hz volume ${v('VFROM')} to ${v('VTO')} ` +
+                    `for ${v('MS')} ms effect ${f('FX')} curve ${f('CURVE')} ${f('MODE') || 'until done'}`);
             case 'microbitplus_settempo': return line(`set music tempo to ${v('BPM')}`);
             case 'microbitplus_changetempo': return line(`change music tempo by ${v('BPM')}`);
             case 'microbitplus_playmelody': return line(`play melody ${f('MELODY')} ${f('MODE') || 'until done'}`);
@@ -7417,6 +7924,30 @@ class SB3Creator {
             // MakeCode's game score lives in the module the helpers keep it in
             // (generateMicroPython's `_bw_score`); reading it needs no `global`.
             case 'microbitplus_score': this._pyUses.game = true; return '_bw_score';
+            // MakeCode's LED sprites: handles into the model the header keeps
+            // (microbitSpriteHelpersPy); the property is its LedSpriteProperty slot.
+            case 'microbitplus_createsprite':
+                this._pyUses.game = true; this._pyUses.sprites = true;
+                return `_bw_sprite(${v('X')}, ${v('Y')})`;
+            case 'microbitplus_spriteget':
+                this._pyUses.game = true; this._pyUses.sprites = true;
+                return `_bw_sget(${v('SPRITE')}, ${spriteProperty(f('PROPERTY'))})`;
+            case 'microbitplus_spritetouching':
+                this._pyUses.game = true; this._pyUses.sprites = true;
+                return `_bw_stouching(${v('SPRITE')}, ${v('OTHER')})`;
+            case 'microbitplus_spritetouchingedge':
+                this._pyUses.game = true; this._pyUses.sprites = true;
+                return `_bw_sedge(${v('SPRITE')})`;
+            case 'microbitplus_spritedeleted':
+                this._pyUses.game = true; this._pyUses.sprites = true;
+                return `_bw_sdeleted(${v('SPRITE')})`;
+            case 'microbitplus_isgameover': this._pyUses.game = true; return '_bw_is_over';
+            // isRunning: not over, not paused, and the engine started (a sprite exists).
+            case 'microbitplus_isrunning':
+                this._pyUses.game = true; this._pyUses.sprites = true;
+                return '(not _bw_is_over and not _bw_paused and _bw_engine)';
+            case 'microbitplus_ispaused': this._pyUses.game = true; this._pyUses.sprites = true; return '_bw_paused';
+            case 'microbitplus_life': this._pyUses.game = true; return '_bw_life';
             // MakeCode's music.beat / noteFrequency / tempo. A note's frequency
             // is a constant (Note.C IS 262 in MakeCode); a beat follows the tempo.
             case 'microbitplus_beat':
@@ -7424,6 +7955,8 @@ class SB3Creator {
                 return `_bw_beat(${MAKECODE_BEAT_SHIFT[String(f('FRACTION')).toLowerCase()] ?? 0})`;
             case 'microbitplus_notefreq': return String((microbitNote(f('NOTE')) || { hz: 262 }).hz);
             case 'microbitplus_tempo': this._pyUses.tempo = true; return '_bw_tempo';
+            case 'microbitplus_islogo': return 'pin_logo.is_touched()';
+            case 'microbitplus_radiorssi': this._pyUses.radio = true; this._pyUses.rssi = true; return '_radio_last_rssi';
             // pins.map, exactly as MakeCode computes it:
             // ((value - fromLow) * (toHigh - toLow)) / (fromHigh - fromLow) + toLow
             case 'microbitplus_map':
@@ -7478,6 +8011,14 @@ class SB3Creator {
             case 'planetemaths_not': return `(not ${c('OPERAND1')})`;
             case 'planetemaths_contains': return `(str(${v('STRING2')}) in str(${v('STRING1')}))`;
             case 'planetemaths_multiple': this._pyUses.multiple = true; return `_multiple(${v('NUM1')}, ${v('NUM2')})`;
+            // The sprite and game booleans, dropped straight into a condition.
+            case 'microbitplus_spritetouching':
+            case 'microbitplus_spritetouchingedge':
+            case 'microbitplus_spritedeleted':
+            case 'microbitplus_isgameover':
+            case 'microbitplus_isrunning':
+            case 'microbitplus_ispaused':
+                return this.pyRep(b, blocks);
             // Scratch-runtime predicates (touching, key pressed?, mouse down?) -> scratch.<method>().
             default: {
                 const ac = this.arraysCall(b, blocks, this.pyVal);
@@ -10475,6 +11016,9 @@ class SB3Creator {
                     if (b.opcode === 'microbitplus_showicon') return [show, `${pad}yield 600`];
                     return [show];
                 }
+                case 'microbitplus_shownumber':
+                    uses.shownumber = true;
+                    return [`${pad}yield from _bw_show_number(${v('VALUE')}, ${v('MS')})`];
                 case 'microbitplus_showtext':
                     return [`${pad}display.scroll(${pyText('TEXT')})`];
                 case 'microbitplus_scrolltext':
@@ -10531,6 +11075,42 @@ class SB3Creator {
                 case 'microbitplus_gameover':
                     this._pyUses.game = true; uses.dim = true;
                     return [`${pad}yield from _bw_game_over()`];
+                // MakeCode's LED sprites (microbitSpriteHelpersPy): each call is
+                // the model's, and redraws the sprites the way MakeCode's plot() does.
+                case 'microbitplus_spriteset':
+                case 'microbitplus_spritechange':
+                    this._pyUses.game = true; this._pyUses.sprites = true;
+                    return [`${pad}_bw_s${b.opcode === 'microbitplus_spriteset' ? 'set' : 'change'}(` +
+                        `${v('SPRITE')}, ${spriteProperty(f('PROPERTY'))}, ${v('VALUE')})`];
+                case 'microbitplus_spritemove':
+                    this._pyUses.game = true; this._pyUses.sprites = true;
+                    return [`${pad}_bw_smove(${v('SPRITE')}, ${v('LEDS')})`];
+                case 'microbitplus_spriteturn':
+                    this._pyUses.game = true; this._pyUses.sprites = true;
+                    return [`${pad}_bw_sturn(${v('SPRITE')}, ${String(f('DIRECTION')).toLowerCase() === 'left' ? 'False' : 'True'}, ${v('DEGREES')})`];
+                case 'microbitplus_spritebounce':
+                    this._pyUses.game = true; this._pyUses.sprites = true;
+                    return [`${pad}_bw_sbounce(${v('SPRITE')})`];
+                case 'microbitplus_spritedelete':
+                    this._pyUses.game = true; this._pyUses.sprites = true;
+                    return [`${pad}_bw_sdelete(${v('SPRITE')})`];
+                case 'microbitplus_pausegame':
+                    this._pyUses.game = true; this._pyUses.sprites = true;
+                    return [`${pad}_bw_game_pause()`];
+                case 'microbitplus_resumegame':
+                    this._pyUses.game = true; this._pyUses.sprites = true;
+                    return [`${pad}_bw_game_resume()`];
+                // The countdown's intro WAITS (3.6 s) and its end is game over, so
+                // it is a generator like removeLife; the timer is a task of its own.
+                case 'microbitplus_startcountdown':
+                    this._pyUses.game = true; this._pyUses.sprites = true; this._pyUses.countdown = true; uses.dim = true;
+                    return [`${pad}yield from _bw_start_countdown(${v('MS')})`];
+                case 'microbitplus_setlife':
+                    this._pyUses.game = true; this._pyUses.setlife = true; uses.dim = true;
+                    return [`${pad}yield from _bw_set_life(${v('VALUE')})`];
+                case 'microbitplus_addlife':
+                    this._pyUses.game = true; this._pyUses.setlife = true; uses.dim = true;
+                    return [`${pad}yield from _bw_set_life(_bw_life + ${v('LIVES')})`];
                 // micro:bit+ PINS group (DUAL-LOWERING-ORACLE P1–P7)
                 case 'microbitplus_digitalwrite': {
                     const pin = String(f('PIN')).toLowerCase().replace(/^p/, '');
@@ -10569,6 +11149,45 @@ class SB3Creator {
                 case 'microbitplus_rest':
                     uses.music = true;
                     return [`${pad}music.stop()`, `${pad}yield int(${v('MS')})`];
+                // Until done WAITS as a yield for the known length, so the
+                // other scripts keep running (a blocking call would stop them);
+                // in background starts it and goes on.
+                case 'microbitplus_playtonemode': {
+                    uses.music = true;
+                    const bg = f('MODE') === 'in background';
+                    // The length is evaluated ONCE: the wait must be the tone's
+                    // own length even when it is `pick random …`.
+                    return [`${pad}_bw_d = int(${v('MS')})`,
+                        `${pad}music.pitch(int(${v('FREQ')}), _bw_d, pin=pin0, wait=False)`,
+                        ...(bg ? [] : [`${pad}yield _bw_d`])];
+                }
+                case 'microbitplus_playsound': {
+                    const bg = f('MODE') === 'in background';
+                    const name = String(f('SOUND') || 'giggle').toUpperCase();
+                    return [`${pad}audio.play(Sound.${name}, wait=${bg ? 'False' : 'True'})`];
+                }
+                case 'microbitplus_playsoundeffect': {
+                    // MakeCode's createSoundEffect and MicroPython V2's
+                    // audio.SoundEffect take the same eight things: waveform,
+                    // start/end frequency, start/end volume (0..255), duration,
+                    // effect, interpolation.
+                    const bg = f('MODE') === 'in background';
+                    const W = { sine: 'WAVEFORM_SINE', sawtooth: 'WAVEFORM_SAWTOOTH', triangle: 'WAVEFORM_TRIANGLE', square: 'WAVEFORM_SQUARE', noise: 'WAVEFORM_NOISE' };
+                    const X = { none: 'FX_NONE', vibrato: 'FX_VIBRATO', tremolo: 'FX_TREMOLO', warble: 'FX_WARBLE' };
+                    const C = { linear: 'SHAPE_LINEAR', curve: 'SHAPE_CURVE', logarithmic: 'SHAPE_LOG' };
+                    // MakeCode CLAMPS each number into the sound's fields
+                    // (soundexpressions.ts: volume 0..255 scaled, frequency and
+                    // duration 0..9999); MicroPython raises ValueError instead —
+                    // measured: MakeCode's jonnys-bird plays volume 0..1024 and
+                    // stopped. So the clamp is written out. The duration is
+                    // evaluated once, for the sound and for the wait.
+                    const c = (x, hi) => `_bw_limit(${x}, ${hi})`;
+                    this._pyUses.limit = true;
+                    const fx = `audio.SoundEffect(freq_start=${c(v('FROM'), 9999)}, freq_end=${c(v('TO'), 9999)}, duration=_bw_d, ` +
+                        `vol_start=${c(v('VFROM'), 255)}, vol_end=${c(v('VTO'), 255)}, waveform=audio.SoundEffect.${W[f('WAVE')] || 'WAVEFORM_SQUARE'}, ` +
+                        `fx=audio.SoundEffect.${X[f('FX')] || 'FX_NONE'}, shape=audio.SoundEffect.${C[f('CURVE')] || 'SHAPE_LINEAR'})`;
+                    return [`${pad}_bw_d = ${c(v('MS'), 9999)}`, `${pad}audio.play(${fx}, wait=False)`, ...(bg ? [] : [`${pad}yield _bw_d`])];
+                }
                 case 'microbitplus_settempo':
                     uses.music = true; this._pyUses.tempo = true; this._pyUses.settempo = true;
                     return [`${pad}_bw_set_tempo(${v('BPM')})`];
@@ -10644,8 +11263,14 @@ class SB3Creator {
                     return [`${pad}yield int((${v('DURATION')}) * 1000)`];
                 case 'control_wait_until':
                     return [`${pad}while not (${cond(b, blocks)}):`, `${pad}    yield 0`];
+                // A micro:bit forever waits 20 ms after every pass, as MakeCode's
+                // does (CODAL's forever_stub; pxt-microbit's simulator,
+                // thread.forever): a forever that polled or counted ran up to
+                // several times as often here, and an imported MakeCode program
+                // drifted ahead of MakeCode's own (brickwright-lite's comparison
+                // with pxt-microbit's simulator). The Pico keeps its bare yield.
                 case 'control_forever':
-                    return [`${pad}while True:`, ...sub('SUBSTACK'), `${pad}    yield 0`];
+                    return [`${pad}while True:`, ...sub('SUBSTACK'), `${pad}    yield ${isPico ? 0 : 20}`];
                 case 'control_repeat':
                     return [`${pad}for _ in range(int(${v('TIMES')})):`, ...sub('SUBSTACK'), `${pad}    yield 0`];
                 case 'control_repeat_until':
@@ -10957,10 +11582,22 @@ class SB3Creator {
             const txt = keys('text').map((k) => `${k}m)`);
             taskDefs.push([
                 'def _bw_radio_rx():',
-                '    global _radio_last_num, _radio_last_str',
+                `    global _radio_last_num, _radio_last_str${this._pyUses.rssi ? ', _radio_last_rssi' : ''}`,
                 '    radio.on()',
                 '    while True:',
-                '        m = radio.receive()',
+                // The signal strength is only in receive_full(), which keeps
+                // the three-byte header receive() strips; asked for only when
+                // a program reads it, so every other receiver is as it was.
+                ...(this._pyUses.rssi ? [
+                    '        f = radio.receive_full()',
+                    '        m = None',
+                    '        if f:',
+                    '            _radio_last_rssi = f[1]',
+                    '            try:',
+                    "                m = str(f[0][3:], 'utf8')",
+                    '            except Exception:',
+                    '                m = None'
+                ] : ['        m = radio.receive()']),
                 '        if m is not None:',
                 '            try:',
                 '                n = float(m)',
@@ -10976,6 +11613,10 @@ class SB3Creator {
                 '        yield 0'].join('\n'));
             starts.push('_bw_radio_rx');
         }
+        // The sprite engine's redraw loop, and the countdown's timer task (started
+        // through _pending when the countdown begins), only for programs that use them.
+        if (this._pyUses.sprites) starts.push('_bw_sprites');
+        if (this._pyUses.countdown) receivers.push(['__bw_countdown', '_bw_countdown']);
         if (!taskDefs.length) reasons.push('no runnable scripts (a when-flag-clicked hat is required)');
         if (reasons.length) return { ok: false, reasons, warnings };
 
@@ -11018,6 +11659,7 @@ class SB3Creator {
         // stopped with a NameError on its first read.
         if (uses.radio) header.push('import radio');
         if (this._pyUses.radio || radioHandlers.length) header.push('_radio_last_num = 0', "_radio_last_str = ''");
+        if (this._pyUses.rssi) header.push('_radio_last_rssi = 0');
         // The reporters emit `_arrays.<method>(…)` whether or not anything
         // defines `_arrays`. Without this the device raised NameError at the
         // first array read, and nothing in the result said so.

@@ -345,13 +345,13 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
-        // Tauri store builds are self-contained. Worker isolation limits privileges, but it does
-        // not change downloaded JavaScript into non-code for store-review purposes. Apply this at
-        // the VM boundary as well as the picker so projects, deep links and direct API callers all
-        // fail closed. Bundled IDs have already returned above and remain fully available offline.
-        if (typeof window !== 'undefined' && window.__TAURI__) {
+        // A distribution built with remote extensions denied is self-contained at this boundary. Apply that
+        // BUILD-TIME choice at the VM boundary as well as the picker so projects, deep links and
+        // direct API callers all fail closed. Do not infer it from Tauri: ordinary native builds,
+        // Android and Windows retain URL extensions. Bundled IDs already returned above.
+        if (process.env.BW_REMOTE_EXTENSIONS_POLICY === 'deny') {
             return Promise.reject(new Error(
-                'The native app can load only bundled extensions; open this project in the web app to use URL extensions.'
+                'This distribution can load only bundled extensions; use an unrestricted build for URL extensions.'
             ));
         }
 

@@ -5,8 +5,11 @@
   <key>com.apple.security.app-sandbox</key>
   <true/>
 
-  <!-- Outbound: ordinary CDN assets, hosted compilation, and remote-driver bridge.
-       Native builds refuse downloaded extension JS, toolchains and machine images. -->
+  <!-- Outbound: ordinary CDN assets, hosted compilation, remote-driver bridge,
+       and the three user-initiated download classes recorded in
+       brickwright-build.json. They default to allow on every platform and can
+       be removed independently at build time; the sandbox entitlement itself
+       is deliberately not presented as that policy boundary. -->
   <key>com.apple.security.network.client</key>
   <true/>
   <!-- Inbound: native ScratchLink WS (127.0.0.1:20111) + local asset server (127.0.0.1:20112). -->

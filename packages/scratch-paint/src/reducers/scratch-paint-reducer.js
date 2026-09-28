@@ -2,7 +2,11 @@ import {combineReducers} from 'redux';
 import modeReducer from './modes';
 import bitBrushSizeReducer from './bit-brush-size';
 import bitEraserSizeReducer from './bit-eraser-size';
+import bwBitmapSelectionReducer from './bw-bitmap-selection';
 import brushModeReducer from './brush-mode';
+import bwGridReducer from './bw-grid';
+import bwPanelReducer from './bw-panel';
+import bwShapeReducer from './bw-shape';
 import eraserModeReducer from './eraser-mode';
 import colorReducer from './color';
 import clipboardReducer from './clipboard';
@@ -24,7 +28,13 @@ export default combineReducers({
     mode: modeReducer,
     bitBrushSize: bitBrushSizeReducer,
     bitEraserSize: bitEraserSizeReducer,
+    bwBitmapSelection: bwBitmapSelectionReducer,
     brushMode: brushModeReducer,
+    // Brickwright additions: the properties rail, the grid and snapping, and the parametric
+    // shape tools.
+    bwGrid: bwGridReducer,
+    bwPanel: bwPanelReducer,
+    bwShape: bwShapeReducer,
     color: colorReducer,
     clipboard: clipboardReducer,
     cursor: cursorReducer,
