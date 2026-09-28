@@ -1,0 +1,64 @@
+name: Board target RTx
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/bench-board-targets.mjs'
+      - 'docs/TARGET-EMULATOR-PERFORMANCE.md'
+      - '.github/workflows/target-performance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  board-targets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check out the exact LabWired descriptor source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/labwired-core
+          ref: 1cf3d3b823da8baba48d5bd7cd0bd22f6aa67ab9
+          path: .bench/labwired-core
+      - name: Fetch the exact LabWired node artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .bench/labwired-wasm
+          gh release download labwired-wasm-1cf3d3b8 --repo CrispStrobe/bw-board \
+            --pattern 'nodejs-*' --dir .bench/labwired-wasm
+          mv .bench/labwired-wasm/nodejs-labwired_wasm.js .bench/labwired-wasm/labwired_wasm.js
+          mv .bench/labwired-wasm/nodejs-labwired_wasm_bg.wasm .bench/labwired-wasm/labwired_wasm_bg.wasm
+          printf '{"type":"commonjs"}\n' > .bench/labwired-wasm/package.json
+      - name: Measure every CPU-backed board target
+        env:
+          LABWIRED_WASM: ${{ github.workspace }}/.bench/labwired-wasm
+          LABWIRED_CORE: ${{ github.workspace }}/.bench/labwired-core
+        run: node scripts/bench-board-targets.mjs | tee board-target-rtx.json
+      - name: Require every measured target to clear real time
+        run: |
+          node -e '
+            const fs = require("fs");
+            const report = JSON.parse(fs.readFileSync("board-target-rtx.json", "utf8"));
+            const skipped = report.rows.filter(row => row.skipped);
+            const slow = report.rows.filter(row => row.medianRtx !== undefined && row.medianRtx < 1);
+            if (skipped.length || slow.length) {
+              console.error(JSON.stringify({skipped, slow}, null, 2));
+              process.exit(1);
+            }
+          '
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: board-target-rtx
+          path: board-target-rtx.json
+          if-no-files-found: error
+

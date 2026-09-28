@@ -209,7 +209,10 @@ separate simulator rather than as a binary on a core the board can watch.
 A board gets whichever path its execution model gives it. That decides
 the PyBadge:
 
-- Path 1 needs a **SAMD51 instruction emulator**, which does not exist.
+- Path 1 needs the **existing LabWired SAMD51 model integrated into Lite**.
+  LabWired `1cf3d3b8` now boots an ATSAMD51 and models PORT, clocks and SERCOM3;
+  it is L1 rather than a complete PyBadge, so the display, buttons, NeoPixels,
+  timers and audio remain real work.
 - Path 2 needs pin blocks, and the `arcade` extension has none — it is a
   game API (sprites, score, buttons, NeoPixels), not a GPIO vocabulary.
 
@@ -272,34 +275,37 @@ own program:
 
 For anything analog, or anything whose timing matters, use the light tier.
 
-## labwired will not shortcut SAMD51, and it looks like it should
+## labwired now supplies the SAMD51 core, but not a PyBadge
 
 labwired is the heavy tier for cores beyond Cortex-M0 — the obvious home
 for a SAMD51's M4 — and it takes a **chip YAML**, which makes a new part
 look like the data-file job the ATmega32U4 was for avr8js.
 
-It is not. Every peripheral type labwired offers is STM32-specific:
+That was not true when this section was written: every relevant peripheral
+type was STM32-specific. It changed upstream. The pinned LabWired build now
+has a SAMD51 descriptor plus `sam_port`, MCLK/GCLK and SERCOM support, and the
+target-level benchmark measures its M4 loop above real time. It still does not
+model a PyBadge:
 
 ```
 stm32_crc  stm32_gpioport  stm32_timer  stm32f0_adc  stm32f4_rtc
 stm32f7_i2c  stm32f7_usart  stm32spi  stmcan       (+ pythonperipheral)
 ```
 
-A SAMD51 has PORT, SERCOM and TC/TCC, and none of them can be expressed
-in those. Writing `samd51.yaml` would produce a chip whose pads never
-move — the same silent failure the STM32F0 hit when its GPIO ports were
-given the F1 register map, where the firmware runs, the UART talks, and
-every pad reads low for ever. So SAMD51 is **upstream work in labwired**,
-in Rust, not a descriptor here. `pythonperipheral` is the only escape
-hatch and whether the wasm build carries it is unverified.
+A complete PyBadge still needs TC/TCC behavior, SPI display traffic, ST7735,
+buttons, NeoPixels and audio. USB and QSPI are explicit stubs in the current
+model. Treat this as a proven CPU/PORT/clock/serial base, not as a finished
+board. The exact measured boundary and next work are in
+[TARGET-EMULATOR-PERFORMANCE.md](TARGET-EMULATOR-PERFORMANCE.md).
 
 ## What is missing, said plainly
 
 - **Calliope has no circuit part.** `microbit.json` exists;
   `calliope.json` does not. Same shape of work: terminals plus a
   footprint.
-- **SAMD51 has no circuit part and no emulator**, and the second is the
-  one that matters — see the two sections above.
+- **SAMD51 has no circuit part and its LabWired emulator is not connected to
+  Lite.** The CPU/PORT/clock/serial base exists; the PyBadge peripherals and
+  bridge are what remain.
 - **No emulated MCU drives a drawn circuit yet.** The contract is there
   (`board.setPin` / `board.readPin`) and both halves exist separately;
   nothing joins them.

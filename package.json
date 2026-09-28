@@ -29,6 +29,7 @@
         "gen:census:check": "node scripts/gen-bw-board-census.mjs --check",
         "verify:bwboard-ci": "node scripts/verify-bw-board-ci.mjs",
         "bench:debug-snapshots": "node scripts/bench-debug-snapshots.mjs",
+        "bench:board-targets": "node scripts/bench-board-targets.mjs",
         "sync:sb3creator": "node scripts/sync-sb3creator.mjs",
         "sync:sb3creator:check": "node scripts/sync-sb3creator.mjs --check",
         "pin:packages": "node scripts/pin-packages.mjs",
@@ -115,7 +116,7 @@
         "node": ">=22"
     },
     "devDependencies": {
-        "bw-board": "github:CrispStrobe/bw-board#7a4b1e1aeadb040a078d1e819a82367c407c9ddc",
+        "bw-board": "github:CrispStrobe/bw-board#d348541e9f19fd311f87d04c0b92308f6f510140",
         "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#1510d38ab654c17105340f9a85485fc3f7af0764",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
