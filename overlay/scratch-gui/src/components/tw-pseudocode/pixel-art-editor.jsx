@@ -19,7 +19,7 @@ import styles from './pixel-art-editor.css';
 import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
-import {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument, layersToSvg,
+import {blankLayer, clearSelectedPixels, composeLayers, containsCell, cropLayers, lassoSelection, layersDocument, layersToSvg,
     copySelectedPixels, moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels,
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels, wandSelection} from '../../lib/bw-pixel-layers.js';
@@ -41,6 +41,7 @@ const L10N = {
         'px.showLayer': 'Show layer', 'px.hideLayer': 'Hide layer', 'px.layerUp': 'Move up',
         'px.layerDown': 'Move down', 'px.lockLayer': 'Lock layer', 'px.unlockLayer': 'Unlock layer',
         'px.select': 'Select', 'px.move': 'Move selection', 'px.clearSelection': 'Clear selection',
+        'px.cropSelection': 'Crop to selection',
         'px.deselect': 'Deselect', 'px.opacity': 'Opacity', 'px.renameLayer': 'Rename layer',
         'px.exportPng': 'Export transparent PNG', 'px.circle': 'Circle',
         'px.flipH': 'Flip horizontally', 'px.flipV': 'Flip vertically',
@@ -97,6 +98,7 @@ const L10N = {
         'px.layerUp': 'Nach oben', 'px.layerDown': 'Nach unten', 'px.lockLayer': 'Ebene sperren',
         'px.unlockLayer': 'Ebene entsperren', 'px.select': 'Auswählen',
         'px.move': 'Auswahl verschieben', 'px.clearSelection': 'Auswahl löschen',
+        'px.cropSelection': 'Auf Auswahl zuschneiden',
         'px.deselect': 'Auswahl aufheben', 'px.opacity': 'Deckkraft',
         'px.renameLayer': 'Ebene umbenennen', 'px.exportPng': 'Transparentes PNG exportieren',
         'px.circle': 'Kreis', 'px.flipH': 'Horizontal spiegeln', 'px.flipV': 'Vertikal spiegeln',
@@ -1022,6 +1024,21 @@ class PixelArtEditor extends React.Component {
         });
     }
 
+    cropToSelection () {
+        const {layers, selection, w, h} = this.state;
+        const first = cropLayers(layers, w, h, selection);
+        if (!first) return;
+        this.remember();
+        this.setState(state => {
+            const frames = this.materializeFrames(state).map(frame => ({...frame,
+                layers: cropLayers(frame.layers, state.w, state.h, state.selection).layers}));
+            const active = frames.find(frame => frame.id === state.activeFrameId);
+            return {frames, layers: active.layers,
+                image: composeLayers(active.layers, first.width, first.height),
+                w: first.width, h: first.height, selection: null, status: ''};
+        });
+    }
+
     transform (operation) {
         const {layers, activeLayerId, selection, w, h} = this.state;
         const active = layers.find(layer => layer.id === activeLayerId);
@@ -1505,6 +1522,8 @@ class PixelArtEditor extends React.Component {
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.cutSelection()}
                         disabled={!activeLayer || activeLayer.locked || !activeLayer.visible}
                         data-testid="bw-pixel-cut-selection">{t(locale, 'px.cutSelection')}</button> : null}
+                    {selection ? <button type="button" style={btn(false)} onClick={() => this.cropToSelection()}
+                        data-testid="bw-pixel-crop-selection">{t(locale, 'px.cropSelection')}</button> : null}
                     <button type="button" style={btn(false)} onClick={() => this.pasteSelection()}
                         disabled={!this.pixelClipboard} data-testid="bw-pixel-paste-selection">
                         {t(locale, 'px.pasteSelection')}</button>

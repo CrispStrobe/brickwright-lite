@@ -6774,6 +6774,12 @@
       "p95": 0,
       "max": null,
       "readings": []
+    },
+    "Browser gate \u2014 pixel crop": {
+      "n": 0,
+      "p95": 0,
+      "max": null,
+      "readings": []
     }
   }
 }

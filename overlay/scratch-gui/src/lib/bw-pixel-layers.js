@@ -43,6 +43,29 @@ const resizeLayers = (layers, width, height, nextWidth, nextHeight) => layers.ma
     ...layer, pixels: resizeCanvas({width, height, pixels: layer.pixels}, nextWidth, nextHeight).pixels
 }));
 
+// Crop the entire layer stack to a selection's bounding rectangle. A lasso or
+// wand mask determines that rectangle, but does not erase unselected pixels
+// inside it: cropping changes canvas bounds, not the layer artwork.
+const cropLayers = (layers, width, height, selection) => {
+    if (!selection) return null;
+    const left = Math.max(0, Math.floor(selection.x));
+    const top = Math.max(0, Math.floor(selection.y));
+    const right = Math.min(width, Math.ceil(selection.x + selection.width));
+    const bottom = Math.min(height, Math.ceil(selection.y + selection.height));
+    const croppedWidth = right - left;
+    const croppedHeight = bottom - top;
+    if (croppedWidth < 1 || croppedHeight < 1 ||
+        (left === 0 && top === 0 && croppedWidth === width && croppedHeight === height)) return null;
+    return {width: croppedWidth, height: croppedHeight, layers: layers.map(layer => {
+        const pixels = new Uint8Array(croppedWidth * croppedHeight);
+        for (let y = 0; y < croppedHeight; y++) {
+            const start = ((top + y) * width) + left;
+            pixels.set(layer.pixels.subarray(start, start + croppedWidth), y * croppedWidth);
+        }
+        return {...layer, pixels};
+    })};
+};
+
 const serializeLayers = (layers, width, height) => layers.map(layer => ({id: layer.id, type: 'pixel', name: layer.name,
     visible: layer.visible, locked: layer.locked, opacity: layer.opacity,
     content: {kind: 'pixels', value: {width, height, pixels: Array.from(layer.pixels)}}}));
@@ -303,6 +326,7 @@ const transformPixels = (pixels, width, height, selection, operation) => {
         selection: selection ? {x: left, y: top, width: regionWidth, height: regionHeight} : null};
 };
 
-export {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels, layersDocument, layersToSvg,
+export {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels, cropLayers,
+    layersDocument, layersToSvg,
     lassoSelection, moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels, resizeLayers,
     selectionRect, sourceLayers, sourceFrames, stampBrushInto, transformPixels, wandSelection};

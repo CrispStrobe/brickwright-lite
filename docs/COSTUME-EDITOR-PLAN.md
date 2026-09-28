@@ -47,11 +47,11 @@ within one drag do not darken each other. On desktop, holding Space
 while dragging pans either vector or bitmap canvas without marking the costume;
 trackpad wheel pan and pointer-centred zoom remain available.
 
-This is a workspace improvement, not raster/vector feature parity. The next
-capability gates are: (1) vector node operations such as join/split and
-asymmetric handles that survive SB3 save/reopen; (2) bitmap layer rename,
-locking, crop and richer compositing; (3) colour history. Bitmap selections can already move, resize and rotate through
-the properties panel; 90° turns are now in the Select toolbar for touch use.
+This is a workspace improvement, not raster/vector feature parity. Vector node
+operations, bitmap layer rename and locking, and colour history are described
+below. Crop and richer compositing still need work in Scratch's regular bitmap
+editor. Bitmap selections can already move, resize and rotate through the
+properties panel; 90° turns are now in the Select toolbar for touch use.
 Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
 for older Scratch readers.
 
@@ -74,6 +74,13 @@ now lets touch users move one Bézier handle without moving the opposite handle;
 Option-drag remains available on desktop. A browser gate verifies mouse and
 finger drags, the untouched handle, and asymmetric SVG after SB3 save/reopen. Reshape double-click detection
 also checks click position so a quick handle grab cannot move the whole path.
+
+The shared fill and outline picker keeps six recent completed colours in a
+scrollable strip of touch-sized swatches. Slider intermediates are excluded, and
+reusing a shade moves it to the front. The indexed pixel editor can crop to a
+selection's bounding rectangle. Cropping updates every layer in every animation
+frame together, keeps layer metadata, and is one undoable operation. Its source
+and ordinary Scratch render survive an SB3 save and reopen.
 
 The bitmap editor now keeps separate full-size PNG layers. The compact layer
 strip selects the paint target and can add, delete, reorder, rename, lock, hide and fade
@@ -155,7 +162,7 @@ selection transforms and masks remain ahead.
 4. **Raster core.** Expand the new lasso and wand selectors into layer-aware
    selection, move/transform/crop and
    eyedropper. The existing sampler is directly reachable from the bitmap
-   toolbar; crop and richer selection transforms remain. Keep layer pixels separately in source and generate a flattened
+   toolbar; crop is available in the indexed pixel editor, while crop and richer selection transforms in the Scratch bitmap editor remain. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
 5. **Pixel and animation.** Improve timeline thumbnails and palette switching feedback.
