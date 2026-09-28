@@ -1,0 +1,26 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: it guesses the distance instead of feeling for
+# the boulder, stops short and never touches it. It reaches the shelter, but
+# the mission was to find the boulder with the force sensor.
+DEFINE quarter turn left:
+  reset yaw
+  set motor speed A 15
+  set motor speed B 15
+  start motor A clockwise
+  start motor B clockwise
+  wait until spike angle yaw < -87
+  stop motor A
+  stop motor B
+
+WHEN flag clicked:
+  set motor speed A 50
+  set motor speed B 50
+  move forward 60 cm
+  wait 3 seconds
+  move backward 10 cm
+  wait 1 seconds
+  quarter turn left
+  set motor speed A 50
+  set motor speed B 50
+  move forward 30 cm

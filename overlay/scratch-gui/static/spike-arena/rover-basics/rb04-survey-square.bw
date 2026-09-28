@@ -1,0 +1,21 @@
+DEVICE SPIKE
+
+# Rover basics 4 - survey square (reference solution).
+DEFINE quarter turn right:
+  reset yaw
+  set motor speed A 15
+  set motor speed B 15
+  start motor A counterclockwise
+  start motor B counterclockwise
+  wait until spike angle yaw > 87
+  stop motor A
+  stop motor B
+
+WHEN flag clicked:
+  REPEAT 4:
+    set motor speed A 50
+    set motor speed B 50
+    # "move" returns before the rover has arrived, so a wait follows it.
+    move forward 50 cm
+    wait 2 seconds
+    quarter turn right

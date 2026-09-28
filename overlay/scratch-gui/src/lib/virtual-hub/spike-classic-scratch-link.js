@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import VirtualSpikeHubState from './spike-hub-state.js';
+import {applyHubPython, applyScratchVerb} from './spike-hub-commands.js';
 
 export const CLASSIC_MESSAGE_MAX_BYTES = 64 * 1024;
 export const CLASSIC_INPUT_MAX_BYTES = 4096;
@@ -143,37 +144,28 @@ export class VirtualSpikeClassicSocket {
                 this.hubState.setMotorSpeed(port, command.p.speed);
             }
         }
-        if (command.m === 'scratch.motor_start' && command.p) {
-            this.hubState.setMotorSpeed(command.p.port, command.p.speed);
-        } else if (command.m === 'scratch.motor_stop' && command.p) {
-            this.hubState.setMotorSpeed(command.p.port, 0);
-        } else if (command.m === 'scratch.display_clear') {
+        // Motion verbs go through the hub's motor model. A SPIKE 2 hub answers
+        // a motion request when the motion ENDS, which is what lets the Scratch
+        // blocks that send one wait for it; this hub does the same.
+        const motion = typeof command.m === 'string' ? applyScratchVerb(this.hubState, command.m, command.p || {}) : null;
+        if (!motion && command.m === 'scratch.display_clear') {
             this.hubState.setDisplay(Array(25).fill(0));
-        } else if (command.m === 'scratch.display_image' && command.p) {
+        } else if (!motion && command.m === 'scratch.display_image' && command.p) {
             this.hubState.setDisplay(String(command.p.image || '').replaceAll(':', '').split('').map(Number));
-        } else if (command.m === 'scratch.display_set_pixel' && command.p) {
+        } else if (!motion && command.m === 'scratch.display_set_pixel' && command.p) {
             const pixels = [...this.state.display];
             const index = Number(command.p.y) * 5 + Number(command.p.x);
             if (index >= 0 && index < 25) pixels[index] = Number(command.p.brightness) || 0;
             this.hubState.setDisplay(pixels);
         }
-        if (command.i !== undefined) this._sendRfcomm(`${JSON.stringify({i: command.i, r: null})}\r\n`);
+        if (command.i === undefined) return;
+        const reply = () => { if (this.readyState === 1) this._sendRfcomm(`${JSON.stringify({i: command.i, r: null})}\r\n`); };
+        if (motion && motion.done) motion.done.then(reply);
+        else reply();
     }
 
     _translatePython (text) {
-        const pwm = /hub\.port\.([A-F])\.motor\.pwm\((-?\d+(?:\.\d+)?)\)/.exec(text);
-        if (pwm) {
-            const port = 'ABCDEF'.indexOf(pwm[1]);
-            this.hubState.setMotorSpeed(port, pwm[2]);
-            return true;
-        }
-        const stop = /hub\.port\.([A-F])\.motor\.stop\(\)/.exec(text);
-        if (stop) {
-            const port = 'ABCDEF'.indexOf(stop[1]);
-            this.hubState.setMotorSpeed(port, 0);
-            return true;
-        }
-        return false;
+        return applyHubPython(this.hubState, text).recognised > 0;
     }
 
     emitCurrentState () {

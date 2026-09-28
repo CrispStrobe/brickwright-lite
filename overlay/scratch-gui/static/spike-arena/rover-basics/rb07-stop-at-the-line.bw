@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# Rover basics 7 - stop at the line (reference solution).
+WHEN flag clicked:
+  set motor speed A 30
+  set motor speed B 30
+  start motor A counterclockwise
+  start motor B clockwise
+  wait until spike color C is black
+  stop motor A
+  stop motor B
