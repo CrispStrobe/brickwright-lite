@@ -1,5 +1,39 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
+## OPEN, UPSTREAM — the gallery snapshot cannot be attested, so `vendor-freshness` is red on main (2026-09-28)
+
+**`sync-gallery-pins.mjs --check` refuses, and it is right to.** It attests that
+each extension the gallery SERVES equals that extension's repo source with the
+known generated blocks applied and nothing else — the content claim standing
+behind ~120 extensions that load unsandboxed and in-process. One fails it:
+
+    UNEXPLAINED  CrispStrobe/legospike_turbowarp_transpile:
+      served byte 108437 is not a generated block: "this.active._movementMotors = value;..."   (extensions@a7886c12)
+      served byte  94548 is not a generated block: "default: // An unknown record has an..."   (extensions@4fb33f88)
+
+**Persistent, not a mid-publish flicker.** Upstream `main` moved from `a7886c12`
+to `4fb33f88` between those two readings and the same extension still fails, at a
+different offset — so it is not a cache serving a stale copy, which is the
+failure mode docs/FETCH-PINNING.md was written for.
+
+**Lite cannot fix it and should not route around it.** The script resolves
+upstream `main` and hashes sha-addressed bytes, so there is no pin on this side
+to hold back; `--check` exits 1 rather than writing, so there is no "just
+regenerate"; and adopting the snapshot anyway would vendor content that is not in
+the reviewed source, which is the one thing this gate exists to prevent.
+
+**Where it belongs:** `CrispStrobe/extensions`. Either that extension's published
+bundle is built from something other than its committed source, or it is
+produced by a step `sync-gallery-pins.mjs` does not model — the slug says
+`transpile`, which would fit. Both offsets land in ordinary JS rather than in a
+wrapper, which argues for the first.
+
+**Effect meanwhile:** `vendor-freshness` (the `check` context) is red on `main`
+and therefore on every branch. Measured on main 2026-09-28: `b2246fd85` 12:18,
+`30c3e781a` 12:14, `58746c0bf` 11:08 — all failure. Lanes merging on substantive
+green should say so, rather than treat a red context as passing.
+
+
 ## ~~OPEN, FLEET-WIDE~~ — FIXED (`17e5b46ec`): main's `build` job had no verdict from 04:21 to 06:5x (2026-09-21)
 
 **Nobody's unit run is being verified on `main`, and the failure does not say
