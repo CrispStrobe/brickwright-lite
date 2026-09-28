@@ -57,32 +57,80 @@ const messages = defineMessages({
         defaultMessage: 'Convert to Vector',
         description: 'Label for button that converts the paint editor to vector mode',
         id: 'paint.paintEditor.vector'
+    },
+    canvasOnly: {
+        defaultMessage: 'Focus on canvas',
+        description: 'Hide paint editor tools and panels to focus on the canvas',
+        id: 'paint.paintEditor.canvasOnly'
+    },
+    exitCanvasOnly: {
+        defaultMessage: 'Show paint tools',
+        description: 'Leave the paint editor canvas focus mode',
+        id: 'paint.paintEditor.exitCanvasOnly'
     }
 });
 
-const PaintEditorComponent = props => (
+const PaintEditorComponent = props => {
+    const [canvasOnly, setCanvasOnly] = React.useState(false);
+    React.useEffect(() => {
+        const frame = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+        return () => cancelAnimationFrame(frame);
+    }, [canvasOnly]);
+    React.useEffect(() => {
+        if (!canvasOnly) return undefined;
+        const leaveOnEscape = event => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            setCanvasOnly(false);
+        };
+        document.addEventListener('keydown', leaveOnEscape, true);
+        return () => document.removeEventListener('keydown', leaveOnEscape, true);
+    }, [canvasOnly]);
+    const focusLabel = props.intl.formatMessage(canvasOnly ? messages.exitCanvasOnly : messages.canvasOnly);
+    const focusButton = (
+        <button
+            aria-label={focusLabel}
+            className={styles.canvasFocusButton}
+            data-testid="bw-paint-canvas-focus"
+            title={focusLabel}
+            type="button"
+            onClick={() => setCanvasOnly(!canvasOnly)}
+        >
+            <svg aria-hidden="true" fill="none" height="22" stroke="currentColor" strokeWidth="2"
+                viewBox="0 0 24 24" width="22">
+                {canvasOnly ?
+                    <path d="M4 9h5V4M20 9h-5V4M4 15h5v5m11-5h-5v5" /> :
+                    <path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" />}
+            </svg>
+        </button>
+    );
+    return (
     <div
-        className={styles.editorContainer}
+        className={classNames(styles.editorContainer, {[styles.canvasOnly]: canvasOnly})}
+        data-testid="bw-paint-workspace"
         dir={props.rtl ? 'rtl' : 'ltr'}
     >
         {props.canvas !== null ? ( // eslint-disable-line no-negated-condition
             <div className={styles.editorContainerTop}>
                 {/* First row */}
-                <div className={styles.row} style={{minWidth: 0, overflowX: 'auto'}}>
-                    <FixedToolsContainer
-                        canRedo={props.canRedo}
-                        canUndo={props.canUndo}
-                        name={props.name}
-                        onRedo={props.onRedo}
-                        onUndo={props.onUndo}
-                        onUpdateImage={props.onUpdateImage}
-                        onUpdateName={props.onUpdateName}
-                    />
-                    {props.editorTools}
+                <div className={styles.commandRow}>
+                    <div className={styles.commandStrip}>
+                        <FixedToolsContainer
+                            canRedo={props.canRedo}
+                            canUndo={props.canUndo}
+                            name={props.name}
+                            onRedo={props.onRedo}
+                            onUndo={props.onUndo}
+                            onUpdateImage={props.onUpdateImage}
+                            onUpdateName={props.onUpdateName}
+                        />
+                    </div>
+                    <div className={styles.fileActions}>{props.editorTools}</div>
                 </div>
                 {/* Second Row */}
                 {isVector(props.format) ?
-                    <div className={styles.row}>
+                    <div className={classNames(styles.row, styles.settingsRow)}>
                         <InputGroup
                             className={classNames(
                                 styles.row,
@@ -111,7 +159,7 @@ const PaintEditorComponent = props => (
                         </InputGroup>
                     </div> :
                     isBitmap(props.format) ?
-                        <div className={styles.row}>
+                        <div className={classNames(styles.row, styles.settingsRow)}>
                             <InputGroup
                                 className={classNames(
                                     styles.row,
@@ -137,6 +185,7 @@ const PaintEditorComponent = props => (
         ) : null}
 
         <div className={styles.topAlignRow}>
+            {canvasOnly ? <div className={styles.canvasFocusFloating}>{focusButton}</div> : null}
             {/* Modes */}
             {props.canvas !== null && isVector(props.format) ? ( // eslint-disable-line no-negated-condition
                 <div className={styles.modeSelector}>
@@ -315,6 +364,7 @@ const PaintEditorComponent = props => (
                             </Button>
                         </ButtonGroup>
                     </InputGroup>
+                    {!canvasOnly ? focusButton : null}
                 </div>
             </div>
 
@@ -324,14 +374,15 @@ const PaintEditorComponent = props => (
                 // Renders nothing; it keeps the grid drawn on paper's guide layer in step with
                 // the settings. Vector only, like the panel that controls it.
                 <BwGridLayer key="grid" />,
-                <BwPropertiesPanel
+                canvasOnly ? null : <BwPropertiesPanel
                     key="properties"
                     onUpdateImage={props.onUpdateImage}
                 />
             ] : null}
         </div>
     </div>
-);
+    );
+};
 
 PaintEditorComponent.propTypes = {
     editorTools: PropTypes.node,

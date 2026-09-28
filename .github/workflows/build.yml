@@ -1569,6 +1569,10 @@ jobs:
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36413884486; max 6 s in run 36407872441 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+      - name: Browser gate — paint workspace and bitmap brush opacity
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-paint-workspace.mjs
       - name: Browser gate — editable pixel source survives save and reopen
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36413884486; max 7 s in run 36357001392 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}

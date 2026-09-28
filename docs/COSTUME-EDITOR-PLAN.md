@@ -29,6 +29,26 @@ settings open over the canvas and close without changing the artwork. The
 converted-costume warning and save status sit over the canvas instead of
 claiming permanent rows. Tool buttons retain localized accessible names.
 
+The shared vector/bitmap workspace now keeps file actions reachable at tablet
+widths, gives its drawing tools 44-pixel targets, scrolls command and settings
+strips independently, and lets the properties panel float over the canvas on
+a narrow screen. Both modes can enter and leave a canvas focus view by touch;
+Escape also leaves that view. Bitmap rectangle, lasso and wand selection use
+icon buttons with localized names. The bitmap brush has adjustable opacity;
+its semitransparent pixels are stored in the ordinary PNG and survive SB3
+save/reopen. This follows Pinta's icon toolbox and tool
+settings bar and Krita's canvas-only view without changing how Scratch stores SVG
+or PNG costumes.
+
+This is a workspace improvement, not raster/vector feature parity. The next
+capability gates are: (1) editable vector paths with pen-created nodes and
+curve/cusp controls that survive SB3 save/reopen; (2) ordered bitmap layers
+with independent pixels, visibility and opacity in artwork source, plus a
+flattened PNG for Scratch; (3) brush presets, per-stroke opacity compositing,
+colour history and selection transforms exposed through contextual controls.
+Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
+for older Scratch readers.
+
 - Save and load paths in the browser and native project importer read/write the
   source entry. They leave `project.json` and the Scratch costume assets intact.
   The browser save writes artwork and other Brickwright state in one ZIP pass.
@@ -93,7 +113,7 @@ claiming permanent rows. Tool buttons retain localized accessible names.
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
 4. **Raster core.** Render ordered raster layers with transparency and opacity;
-   expand the new lasso and wand selectors into layer-aware selection, move/transform/crop, brush size/opacity and
+   expand the new lasso and wand selectors into layer-aware selection, move/transform/crop, brush presets and
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
