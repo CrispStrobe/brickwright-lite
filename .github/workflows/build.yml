@@ -57,6 +57,11 @@ on:
     # The list tracks what code NAMES, so it shrinks as well as grows.
     # 2026-09-20: 16 — SPIKE-CONSOLIDATION.md, named by the spikeprime bundle.
     # 2026-09-26: 17 — LEGO-ARCHITECTURE.md gained an executable status contract.
+    # 2026-09-28: 19 — TARGET-EMULATOR-PERFORMANCE.md, read by
+    # test/target-checkpoint-ledger.test.mjs. It arrived with
+    # target-performance.yml (#453) and, like that workflow's census entry,
+    # without the record that has to move with it — so editing the doc that
+    # test reads would not have rerun it.
     # 2026-09-28: 18 — APP-STORE-COMPLIANCE.md. It arrived with
     # test/app-store-compliance-bundle.test.mjs and
     # scripts/package-store-compliance.mjs, both of which NAME it, but was
@@ -80,6 +85,7 @@ on:
       - '!ROADMAP.md'
       - '!docs/*.md'
       - 'docs/APP-STORE-COMPLIANCE.md'
+      - 'docs/TARGET-EMULATOR-PERFORMANCE.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'docs/EXAMPLE-CORPUS-FINDINGS.md'
       - 'docs/EXTENSION-SECURITY.md'

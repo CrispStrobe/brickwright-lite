@@ -126,6 +126,11 @@ export const roleOf = file => {
     // used at the time; moving those SHAs would falsify historical evidence.
     if (/^docs\/receipts\//.test(file)) return 'ledger';
     if (/^docs\/.*\.md$/.test(file)) return 'docs-prose';
+    // An example's prose cites where its circuit was generated and
+    // bench-verified, e.g. "verified in bw-circuit-ui at revision <sha>". That
+    // is narrative about a commit, which is exactly why docs/**.md is exempt;
+    // the only difference is which directory the prose lives in. Moving the sha
+    // on a pin bump would claim a verification nobody performed.
     if (/^overlay\/scratch-gui\/examples\/.*\.md$/.test(file)) return 'docs-prose';
     if (/^packages\//.test(file)) return 'skip';
     return 'code';
