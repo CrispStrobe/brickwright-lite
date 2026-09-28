@@ -2,10 +2,22 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "d983253edbffd56ff18ded41387a15932d48f347",
+    "sha": "d9a967cadb194309a1c192882110b99e1f930af9",
     "read": "2026-09-28"
   },
   "rows": [
+    {
+      "id": "i80386-win16-qemu",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI does not install the pinned QEMU executable; the test skips there",
+      "via": "/usr/bin/qemu-system-i386",
+      "gates": [
+        "test/i80386-win16-io-boundary-oracle.test.mjs"
+      ],
+      "what": "Pinned QEMU 8.2.2 TCG 486 supplies protected-16 CPU-state checkpoints for the owned branch-to-I/O fixture. The test requires the exact executable SHA-256 before running; mere file presence is not acceptance."
+    },
     {
       "id": "harris-native-wasm",
       "kind": "fixture",
