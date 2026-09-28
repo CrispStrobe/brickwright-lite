@@ -255,6 +255,7 @@ test('force sensor: pressed only when its tip touches something solid', () => {
     const tipX = sim.pose.x + 9.8;
     assert.equal(sim.readSensors().E.pressed, true);
     close(tipX, 70, 0.35, 'pressed at the rock face');
+    assert.ok(sim.touching.has('rock'), 'the pressed button is the rover touching the rock, though the body is short of it');
 });
 
 // ---------------------------------------------------------------- collisions
@@ -354,4 +355,20 @@ test('the Pybricks bridge reads the arena\'s colour RGB in the hub\'s 0-1024 ran
         setColor: (port, rgb) => colours.push([port, rgb]), setOrientation () {}, setButtons () {}};
     applyHubStateToSim(host, hub.data);
     assert.deepEqual(colours.map(([port, {r, g, b}]) => [port, r, g, b]), [['C', 224, 37, 37]], 'red, 900/150/150 of 1024');
+});
+
+test('the translator: the extension\'s exec(...) MotorPair lines set the pair; the guarded one only if none is set', () => {
+    // Exactly what CrispStrobe/extensions#22's _motorPairPython builds (as sent on the wire).
+    const define = (a, b) => 'try:\\n from spike import MotorPair\\nexcept ImportError:\\n from mindstorms import MotorPair\\n' +
+        `motors = MotorPair('${a}', '${b}')`;
+    const plain = (a, b) => `exec("${define(a, b)}")`;
+    const guarded = (a, b) => `exec("try:\\n motors\\nexcept NameError:\\n ${define(a, b).replace(/\\n/g, '\\n ')}")`;
+    const hub = new HubState();
+    let result = applyHubPython(hub, `${guarded('C', 'D')}; motors.start(0, speed=50)`);
+    assert.deepEqual([result.unhandled, hub.movementPair], [[], ['C', 'D']], 'no pair yet: the guard defines it');
+    result = applyHubPython(hub, `${guarded('A', 'B')}; motors.stop()`);
+    assert.deepEqual([result.unhandled, hub.movementPair], [[], ['C', 'D']], 'a pair exists: the guard leaves it');
+    result = applyHubPython(hub, plain('E', 'F'));
+    assert.deepEqual([result.unhandled, hub.movementPair], [[], ['E', 'F']], 'set movement motors always redefines');
+    assert.deepEqual(applyHubPython(hub, 'exec("print(1)")').unhandled, ['exec("print(1)")'], 'any other exec is not guessed at');
 });

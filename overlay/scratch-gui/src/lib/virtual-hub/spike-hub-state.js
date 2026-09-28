@@ -31,6 +31,9 @@ export default class VirtualSpikeHubState {
         // The movement pair `motors.*` commands address: [left, right]. The left
         // motor is mounted mirrored, as on the SPIKE driving base.
         this.movementPair = ['A', 'B'];
+        // Whether a program has defined the hub's `motors` (MotorPair) yet;
+        // a guarded definition only takes effect while it has not.
+        this.motorPairDefined = false;
         this._heading = 0;
         this._yawZero = 0;
     }

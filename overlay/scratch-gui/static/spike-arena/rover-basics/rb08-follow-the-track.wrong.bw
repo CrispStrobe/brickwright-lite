@@ -3,12 +3,9 @@ DEVICE SPIKE
 # A deliberately wrong attempt: the steering is the wrong way round, so the
 # rover turns away from the line instead of back to it.
 WHEN flag clicked:
+  set movement motors A B
   FOREVER:
     IF spike color C is black THEN:
-      set motor speed A 30
-      set motor speed B 8
+      start tank 30 8
     ELSE:
-      set motor speed A 8
-      set motor speed B 30
-    start motor A counterclockwise
-    start motor B clockwise
+      start tank 8 30

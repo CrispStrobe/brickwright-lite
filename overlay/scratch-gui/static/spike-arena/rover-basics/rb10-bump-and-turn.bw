@@ -2,27 +2,19 @@ DEVICE SPIKE
 
 # Rover basics 10 - bump and turn (reference solution).
 DEFINE quarter turn left:
+  set movement speed 15
   reset yaw
-  set motor speed A 15
-  set motor speed B 15
-  start motor A clockwise
-  start motor B clockwise
+  start moving steering -100
   wait until spike angle yaw < -87
-  stop motor A
-  stop motor B
+  stop movement
 
 WHEN flag clicked:
-  set motor speed A 30
-  set motor speed B 30
-  start motor A counterclockwise
-  start motor B clockwise
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
   wait until spike force sensor E pressed
-  stop motor A
-  stop motor B
-  # "move" returns before the rover has arrived, so a wait follows it.
+  stop movement
   move backward 10 cm
-  wait 1 seconds
   quarter turn left
-  set motor speed A 50
-  set motor speed B 50
+  set movement speed 50
   move forward 30 cm

@@ -251,8 +251,18 @@ export class ArenaSim {
         const footprint = this.footprint();
         this.touching = new Set();
         if (polygonOverlapsPieces(footprint, this.wallPieces, FORCE_CONTACT_CM)) this.touching.add('wall');
+        // The force sensor's button sticks out past the body: pressing it
+        // against something is the robot touching it.
+        const tips = this.robot.sensors.filter(sensor => sensor.kind === 'force').map(sensor => {
+            const pose = this.sensorPose(sensor);
+            return [pose.x, pose.y];
+        });
+        const tipTouches = pieces => tips.some(tip => distanceToPieces(tip, pieces) <= FORCE_CONTACT_CM);
+        if (tipTouches(this.wallPieces)) this.touching.add('wall');
         for (const object of this.objects) {
-            if (polygonOverlapsPieces(footprint, object.pieces, FORCE_CONTACT_CM)) this.touching.add(object.id);
+            if (polygonOverlapsPieces(footprint, object.pieces, FORCE_CONTACT_CM) || tipTouches(object.pieces)) {
+                this.touching.add(object.id);
+            }
         }
         for (const id of this.touching) this.touchedEver.add(id);
     }
