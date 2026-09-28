@@ -207,7 +207,8 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                     <div style={{fontSize: 12, fontWeight: 600, marginBottom: 4}}>Boot a local DOSBox HDD</div>
                     <div style={{fontSize: 11, color: '#64748b', marginBottom: 6}}>
                         Select a raw .img disk. Optionally load a DOSBox .conf with 386 CPU and
-                        imgmount -size geometry. The image stays in this browser tab.
+                        imgmount -size geometry. The selected filename must match imgmount.
+                        The image stays in this browser tab.
                     </div>
                     <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10}}>
                         <input type="file" accept=".img,.ima,.bin" data-testid="bw-mm-local-disk"
