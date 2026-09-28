@@ -114,6 +114,9 @@ spikeprime extension actually sends, so both of its routes reach the model:
   run_for_time, run_to_position, brake, float, hold, stop, preset}`,
   `motor.run(port.X, v)`, `motor.stop(port.X)`, `motors.{move, start,
   start_tank, move_tank, stop, set_default_speed}`, `MotorPair('A','B')`,
+  and the extension's `exec("…motors = MotorPair('A', 'B')")` definition and
+  its guarded form (`try: motors / except NameError: …`), which sets the pair
+  only while the hub has none (`hubState.motorPairDefined`),
   `hub.motion.{reset_yaw, preset_yaw}`, `motion_sensor.reset_yaw`.
 - SPIKE 2 route (Classic): the same REPL lines, plus JSON-RPC
   `scratch.motor_{start, stop, run_for_degrees, run_timed,
@@ -159,7 +162,8 @@ while in contact and stop at walls; they do not rotate.
   otherwise -1. The real sensor's entrance angle is about ±35° and varies with
   distance; the narrower cone is deliberate.
 - Force: pressed when the button's tip is within 0.3 cm of something solid;
-  force then reads 60 %.
+  force then reads 60 %. The pressed button counts as the robot touching
+  that thing (`touch`, `noTouch`, `noWallContact`).
 - IMU: yaw follows the world heading, clockwise positive, zeroed at start and on
   `reset_yaw`; pitch and roll stay 0 (the mat is flat).
 
@@ -227,12 +231,13 @@ in English and German. Files: `static/spike-arena/rover-basics/`.
 | 5 | Canyon beacon | sequential moves in a walled canyon | `stopIn` beacon, `noWallContact` |
 | 6 | Crater detour | drive around a crater | `stopIn` cache, `avoid` crater |
 | 7 | Stop at the line | colour sensor: stop on black | `stopIn` band, `avoid` soft ground |
-| 8 | Follow the track | colour-sensor line follower | `sequence` midway, landing; `stayIn` corridor |
+| 8 | Follow the track | colour-sensor line follower with tank steering | `sequence` midway, landing; `stayIn` corridor |
 | 9 | Stop at the cliff | distance sensor | `stopIn` drilling distance, `noWallContact` |
 | 10 | Bump and turn | force sensor, back off, turn | `touch` boulder, `stopIn` shelter |
+| 11 | Round the crater rim | a steered curve (steering -20), yaw | `sequence` east side, far side; `stopIn` far side; `avoid` crater |
 
 Each has a reference solution (`<id>.bw`) and a deliberately wrong one
-(`<id>.wrong.bw`). `test/spike-arena-challenges.test.mjs` runs all twenty in
+(`<id>.wrong.bw`). `test/spike-arena-challenges.test.mjs` runs every one of them in
 the real Scratch VM through the real spikeprime extension and the virtual
 hub's BLE peripheral, with simulated time (`test/helpers/spike-arena-vm.mjs`):
 every reference passes, every wrong one fails, and the checker is
@@ -249,25 +254,26 @@ extrudes walls and objects, and consumes the same snapshot; nothing in the
 simulation is 2D-renderer specific. `docs/SIM-LAB-PLAN.md`'s physics world can
 replace `ArenaSim` behind the same bridge: the hub contract does not change.
 
-## Programming the rover today, and the gaps
+## Programming the rover
 
 The reference solutions are lite SPIKE dialect (`DEVICE SPIKE` `.bw`), run in
-the real Scratch VM through the real spikeprime extension. They use only words
-the dialect already has: `set motor speed`, `start motor`, `stop motor`,
-`move forward`, `wait`, `wait until`, `reset yaw`, and the `spike angle`,
-`spike color`, `spike distance`, `spike force sensor` reporters.
+the real Scratch VM through the real spikeprime extension. They use the SPIKE
+driving-base words: `set movement motors A B`, `set movement speed`,
+`move forward/backward N cm` (which waits until the rover has arrived),
+`start moving steering S` (turns in place at ±100, curves in between),
+`start tank L R`, `stop movement`, `reset yaw`, `wait until`, and the
+`spike angle`, `spike color`, `spike distance` and `spike force sensor`
+reporters. No solution sleeps a fixed time; the challenge test holds that.
 
-Found while building this, and taken upstream rather than worked around:
+History: the first version of the unit had to follow every `move` with a
+`wait` and turn with two `start motor` blocks, because the extension's `move`
+did not wait and the dialect had no steering words. Those were fixed upstream
+(CrispStrobe/extensions#22, CrispStrobe/sb3-creator#34) and the solutions
+moved to the words above.
 
-- the extension's `move forward N cm` block does not wait for the move to end
-  (it returns when the command is sent), so a following block runs at once —
-  the solutions follow each `move` with a `wait`; it also passes the unit
-  singular (`'rotation'`) to `motors.move` (CrispStrobe/extensions PR);
-- the dialect has no steering, tank or "set movement motors" words, so turns
-  are written with two `start motor` blocks and a yaw condition
-  (CrispStrobe/sb3-creator#34 adds `set movement motors`, `set movement speed`,
-  `start moving steering`, `start tank`);
-- `spike motor position` reports the position modulo 360, so a distance
-  cannot be measured with it beyond one rotation;
+Two limits remain, both outside the arena:
+- `spike motor position` reports the position modulo 360, so it cannot
+  measure a distance beyond one rotation;
 - on the SPIKE 3 route the colour sensor's reflection is not transmitted (the
   protocol record has no field for it), so the solutions use colour ids.
+
