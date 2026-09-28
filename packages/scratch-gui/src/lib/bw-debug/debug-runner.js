@@ -2019,22 +2019,33 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      *  the chip list (bw-board/labwired-catalog.js, the engine's own chip
      *  descriptors at the wasm build pin) only on the LabWired engine. */
     async function attachLabwiredFirmwareOnly (built, wasm, createDebugTarget, createDebugSession) {
-        const { LABWIRED_CATALOG } = await import(
+        const { LABWIRED_CATALOG, LABWIRED_BOARDS } = await import(
             /* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js');
-        const chip = LABWIRED_CATALOG[labwiredChip];
+        // `board:<name>` is a labwired BOARD — its chip plus the devices its
+        // manifest wires, a display among them; a bare name is just the chip.
+        const labBoard = labwiredChip.startsWith('board:')
+            ? (LABWIRED_BOARDS || {})[labwiredChip.slice(6)] : null;
+        if (labwiredChip.startsWith('board:') && !labBoard) {
+            throw new Error(`'${labwiredChip.slice(6)}' is not a board the LabWired engine offers`);
+        }
+        const chip = LABWIRED_CATALOG[labBoard ? labBoard.chip : labwiredChip];
         if (!chip) throw new Error(`'${labwiredChip}' is not a chip the LabWired engine offers`);
         if (!built || !['elf', 'uf2'].includes(built.format) || !(built.image instanceof Uint8Array)) {
             throw new Error(`the ${chip.name} runs your own firmware: load an .elf or .uf2 with Firmware… first ` +
                 '(a block project compiles for its own device, not for this chip)');
         }
         const { target: lwTarget, adapter: lwAdapter } = await createDebugTarget('labwired', {
-            wasm, chip, firmware: built.image,
+            wasm, chip, firmware: built.image, labwiredBoard: labBoard || undefined,
         });
         board = null;
         engineNotes = [
-            `Your firmware on the ${chip.name} (${chip.arch}, ${chip.clockHz / 1e6} MHz), with no circuit: ` +
-            'pins are not wired to anything here, so this is for stepping, breakpoints, registers, ' +
-            'memory and the serial console.'
+            labBoard
+                ? `Your firmware on the ${labBoard.name} board (${chip.name}, ${chip.arch}), with its ` +
+                  `${labBoard.displays.map(d => d.type).join(', ')} display shown in Widgets; other pins ` +
+                  'are not wired to a circuit here.'
+                : `Your firmware on the ${chip.name} (${chip.arch}, ${chip.clockHz / 1e6} MHz), with no circuit: ` +
+                  'pins are not wired to anything here, so this is for stepping, breakpoints, registers, ' +
+                  'memory and the serial console.'
         ];
         emit();
         return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession);
@@ -2102,6 +2113,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             };
         } else {
             delete runner.sendSerial;
+        }
+
+        // The board's display (a labwired board picked with its display): the
+        // Widgets mirror polls this. Deleted otherwise, so an earlier machine's
+        // screen cannot outlive it.
+        if (lwTarget && typeof lwTarget.video === 'function' && lwTarget.video() !== null) {
+            runner.video = () => lwTarget.video();
+        } else {
+            delete runner.video;
         }
 
         // `target` and `session` are the RUNNER's, not locals. Declaring them

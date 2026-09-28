@@ -627,7 +627,13 @@ class DebugPanel extends React.Component {
         this._labwiredChipsLoading = true;
         import(/* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js')
             .then(m => {
-                const chips = Object.values(m.LABWIRED_CATALOG || {}).map(c => ({name: c.name, arch: c.arch}));
+                const chips = [
+                    ...Object.values(m.LABWIRED_CATALOG || {}).map(c => ({value: c.name, label: `${c.name} (${c.arch})`})),
+                    // Boards: the chip plus the devices its manifest wires, a
+                    // display among them — what the firmware draws reaches Widgets.
+                    ...Object.values(m.LABWIRED_BOARDS || {}).map(b => ({value: `board:${b.name}`,
+                        label: `${b.name} (${b.chip} + ${b.displays.map(d => d.type).join(', ')})`}))
+                ];
                 this.setState({labwiredChips: chips});
             })
             .catch(e => console.warn('[brickwright] LabWired chip list unavailable:', e))
@@ -818,7 +824,23 @@ class DebugPanel extends React.Component {
         const runner = await this.runner();
         const phase = this.state.ui.phase;
         if (phase === 'paused') runner.resume();
-        else await runner.start();
+        else {
+            await runner.start();
+            this.mirrorLabwiredDisplay(runner);
+        }
+    }
+
+    // A LabWired board with a display: its screen is a widget (the same mirror
+    // a machine's VGA uses), sized from the first frame the engine reports.
+    mirrorLabwiredDisplay (runner) {
+        if (this.state.kind !== 'labwired' || !String(this.state.labwiredChip || '').startsWith('board:')) return;
+        if (typeof runner.video !== 'function' || typeof window === 'undefined' ||
+            typeof window.bwMirrorMachineVideo !== 'function') return;
+        const first = runner.video();
+        window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: {
+            name: 'LabWired display', type: 'simplevga', source: 'video',
+            config: {width: (first && first.width) || 128, height: (first && first.height) || 64}
+        }});
     }
 
     onSerialInput (e) { this.setState({serialInput: e.target.value}); }
@@ -1355,7 +1377,7 @@ class DebugPanel extends React.Component {
                                 >
                                     <option value="">{this.tx('labwiredChipProject')}</option>
                                     {this.state.labwiredChips.map(c => (
-                                        <option key={c.name} value={c.name}>{`${c.name} (${c.arch})`}</option>
+                                        <option key={c.value} value={c.value}>{c.label}</option>
                                     ))}
                                 </select>
                             ) : null}

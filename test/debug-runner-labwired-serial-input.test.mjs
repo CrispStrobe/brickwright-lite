@@ -69,3 +69,13 @@ test('RTT / semihosting lines land in the console, labelled, buffered per channe
     cb('rtt', bytes('lo\nx'));
     assert.deepEqual(serialLines, ['[semihosting] ok', '[rtt] hello'], 'a partial RTT line waits for its newline');
 });
+
+test('a board with a display gets runner.video; anything else clears a stale one', () => {
+    const frame = {width: 128, height: 64, rgba: new Uint8ClampedArray(4), frame: 1, signal: true};
+    const runner = {};
+    labwiredRxBlock()({feedSerial() {}}, runner, {video: () => frame});
+    assert.equal(runner.video(), frame);
+    const stale = {video: () => 'old machine'};
+    labwiredRxBlock()({feedSerial() {}}, stale, {video: () => null});
+    assert.equal('video' in stale, false, 'a target with nothing to draw removes the old screen');
+});
