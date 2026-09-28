@@ -116,6 +116,23 @@ remain explicit exclusions. The post-merge hosted reproduction is
 [run 36489661477](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36489661477),
 which was queued rather than represented as passing when CP09 was closed.
 
+The MMC/SD checkpoint replaces that injected-request boundary with a real
+AM1808 MMC/SD0 controller at `0x01c40000`. A native-mode CMD8 fix first passed
+4/4 focused tests and the complete peripheral suite (199 passed, 5 skipped).
+Nine controller tests then cover reset and mask behavior, no-card response
+semantics, TI short/long response ordering, CMD17/CMD18 and fixed-length data,
+32/64-byte DMA thresholds, reset cancellation, rejected-write non-mutation,
+and a real 512-byte EDMA channel-16 transfer with completion IRQ. The exact-pin
+all-translator and managed Release build completed with zero errors. Two
+independently authored MIT ARM926 payloads read the generated, nonpersistent
+1 MiB SDSC image and emitted exactly `EV3 MMC PIO READ OK` and
+`EV3 MMC EDMA READ OK`; the image remained byte-identical at SHA-256
+`8e8b458d4c0b8ee96c726f78962fd63fb109f78b1dc073da15a8fc53df28c637`.
+MMC/SD1 remains absent because EV3 does not enable it, and card writes/TX DMA,
+cycle timing and Linux boot remain explicit exclusions. The post-merge hosted
+reproduction is [run 36494374026](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36494374026),
+which was queued rather than represented as passing when CP10 was closed.
+
 ## Circuit audit
 
 The private repo contains 314 project-example directories. Every Lite
@@ -148,8 +165,8 @@ rows must not be marked complete while an earlier row remains open.
 | CP07 | DONE | Model DA8xx Timer64 | Exact documented register behavior and IRQ routing are covered by unit tests and exercised by a source-built ARM926 payload. | Infrastructure [PR 3](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/3), merge `7feaab14`; Renode [PR 8](https://github.com/CrispStrobe/renode-spike-prime/pull/8), merge `bbaf76d4`; 5/5 model tests and executable IRQ proof passed locally |
 | CP08 | DONE | Model EV3 boot clocks and pinmux | PSC, PLL and pinmux behavior required by the public DA850/EV3 boot path is modeled with mutation-sensitive tests. | Infrastructure [PR 4](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/4), merge `ad68f7601`; Renode [PR 9](https://github.com/CrispStrobe/renode-spike-prime/pull/9), merge `07a1bd6d`; 14/14 model tests, full Release build and exact executable UART proof passed locally |
 | CP09 | DONE | Model AM1808 EDMA | The required EDMA channels, completion/error interrupts and memory transfers pass peripheral and executable payload tests. | Infrastructure [PR 5](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/5), merge `ecf4d0ac`; Renode [PR 10](https://github.com/CrispStrobe/renode-spike-prime/pull/10), merge `546300f7`; 13/13 model tests, exact-pin full Release build and both executable IRQ paths passed locally |
-| CP10 | NEXT | Model MMC/SD boot storage | A redistributable test image is read through the modeled AM1808 MMC/SD path with bounded media input and deterministic block receipts. | pending |
-| CP11 | TODO | Model EV3 GPIO and LCDC | GPIO direction/edge IRQs and the LCD controller's required framebuffer path are observable in tests and through the debugger. | pending |
+| CP10 | DONE | Model MMC/SD boot storage | A redistributable test image is read through the modeled AM1808 MMC/SD path with bounded media input and deterministic block receipts. | Infrastructure [PR 6](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/6), merge `0c92bedf`; Infrastructure [PR 7](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/7), merge `94ec6e91`; Renode [PR 11](https://github.com/CrispStrobe/renode-spike-prime/pull/11), merge `0b5d9cc3`; 9/9 model tests, exact-pin full Release build, both executable read paths and media non-mutation passed locally |
+| CP11 | NEXT | Model EV3 GPIO and LCDC | GPIO direction/edge IRQs and the LCD controller's required framebuffer path are observable in tests and through the debugger. | pending |
 | CP12 | TODO | Model EV3 motors and sensors | Permissive front ends cover the extension-visible motor and sensor subset and publish it through the neutral brick-state contract. | pending |
 | CP13 | TODO | Complete micro:bit v2 board I/O | The LabWired target drives the 5x5 display, buttons and selected sensor/audio paths with board-level tests while retaining >=1.0x hosted RTx. | pending |
 | CP14 | TODO | Complete PyBadge board I/O | ST7735, button mux, NeoPixels, audio and QSPI are exercised by public firmware and debugger-visible tests; USB is either implemented or explicitly isolated, while hosted RTx remains >=1.0x. | pending |
@@ -159,9 +176,9 @@ not promoted ahead of those dependencies. PXT/MicroPython remain the complete
 source-level experiences while CP13 and CP14 are partial.
 
 The immutable integration points are bw-board `bdffe947` for the exact
-LabWired target bridge, Renode `06d86c51` for SPIKE Prime, Renode `546300f7`
-for EV3 through EDMA and its active-workload 300-MIPS qualification, and
-Infrastructure `ecf4d0ac` for the corresponding peripheral models. Public
+LabWired target bridge, Renode `06d86c51` for SPIKE Prime, Renode `0b5d9cc3`
+for EV3 through MMC/SD and its active-workload 300-MIPS qualification, and
+Infrastructure `94ec6e91` for the corresponding peripheral models. Public
 simulation firmware is kept in its separate MIT repository; no private
 recovery image is read, copied, bundled or required by these source-only gates.
 The public simulation firmware used by the current SPIKE qualification is
