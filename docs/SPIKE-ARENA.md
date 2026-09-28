@@ -23,7 +23,8 @@ in by honouring the contract below, without touching the arena.
 | `lib/spike-arena/arena-world.js` | the world/challenge format and its validator |
 | `lib/spike-arena/arena-checker.js` | pass/fail with a reason |
 | `lib/spike-arena/arena-hub-bridge.js` | couples the world to the hub; owns simulated time |
-| `lib/spike-arena/units/rover-basics/` | the starter unit: challenges, reference and wrong solutions |
+| `lib/spike-arena/arena-render.js`, `l10n.js`, `arena-units.js` | canvas drawing, EN/DE strings, loading a unit |
+| `static/spike-arena/rover-basics/` | the starter unit: challenges, reference and wrong solutions |
 | `components/tw-pseudocode/spike-arena-pane.jsx` | the dockable pane |
 
 ## The hub contract
@@ -88,6 +89,12 @@ distinction). The movement pair is `hubState.movementPair = [left, right]`
 SPIKE's steering (the inner wheel slows linearly, stops at ±50, reverses at
 ±100) and the mirrored left motor (wheel-forward is left counterclockwise,
 right clockwise).
+
+**Pybricks.** The Pybricks pane mirrors its own motor angles into
+`data.motors[i].position`; the arena reads position DELTAS, so it follows a
+Pybricks run too. Start the Pybricks program after the arena's Reset: Reset
+zeroes the drive motors' positions, and a mirror that then writes its old
+angle back reads as one large wheel turn.
 
 **For a SPIKE 3 Python runtime** (runloop, `motor`, `motor_pair`,
 `color_sensor`, `distance_sensor`, `force_sensor`, `motion_sensor`): map each
@@ -161,7 +168,7 @@ stall, sensor noise, ambient light, a sloped or bumpy mat, objects rotating.
 
 ## World and challenge format
 
-A challenge is JSON (`units/<unit>/<id>.json`), validated by
+A challenge is JSON (`static/spike-arena/<unit>/<id>.json`, listed in that folder's `unit.json`), validated by
 `arena-world.js` (every error names its path). Lengths are cm, x right, y down,
 headings degrees clockwise from +x.
 
@@ -206,6 +213,33 @@ The run passes on the first tick at which every success condition is met, and
 fails on the first failure. Verdicts carry a reason key (`pass.stoppedIn`,
 `fail.enteredZone`, …) translated in `lib/spike-arena/l10n.js`.
 
+## Rover basics (the starter unit)
+
+Original missions, written for this arena; the text is in each challenge file
+in English and German. Files: `static/spike-arena/rover-basics/`.
+
+| # | Challenge | Skill | Judged by |
+|---|---|---|---|
+| 1 | Leave the lander | drive a distance | `stopIn` survey square |
+| 2 | Face the ridge | turn in place 90° (yaw) | `heading 90`, `stayIn` pad |
+| 3 | Turn around | 180° as two quarter turns, a defined block | `heading 180`, `stayIn` pad |
+| 4 | Survey square | a square with `REPEAT 4` | `sequence` of four flags, `noWallContact` |
+| 5 | Canyon beacon | sequential moves in a walled canyon | `stopIn` beacon, `noWallContact` |
+| 6 | Crater detour | drive around a crater | `stopIn` cache, `avoid` crater |
+| 7 | Stop at the line | colour sensor: stop on black | `stopIn` band, `avoid` soft ground |
+| 8 | Follow the track | colour-sensor line follower | `sequence` midway, landing; `stayIn` corridor |
+| 9 | Stop at the cliff | distance sensor | `stopIn` drilling distance, `noWallContact` |
+| 10 | Bump and turn | force sensor, back off, turn | `touch` boulder, `stopIn` shelter |
+
+Each has a reference solution (`<id>.bw`) and a deliberately wrong one
+(`<id>.wrong.bw`). `test/spike-arena-challenges.test.mjs` runs all twenty in
+the real Scratch VM through the real spikeprime extension and the virtual
+hub's BLE peripheral, with simulated time (`test/helpers/spike-arena-vm.mjs`):
+every reference passes, every wrong one fails, and the checker is
+mutation-checked by replaying the recorded runs with each evaluator replaced
+by always-false and always-true. The browser gate is the third half of
+`scripts/verify-lego-spike-roundtrip.mjs`.
+
 ## For a later 3D view
 
 `ArenaSim.snapshot()` is the whole render state: pose, footprint, object
@@ -223,12 +257,16 @@ the dialect already has: `set motor speed`, `start motor`, `stop motor`,
 `move forward`, `wait`, `wait until`, `reset yaw`, and the `spike angle`,
 `spike color`, `spike distance`, `spike force sensor` reporters.
 
-Found while building this, and reported upstream rather than worked around:
+Found while building this, and taken upstream rather than worked around:
 
 - the extension's `move forward N cm` block does not wait for the move to end
-  (it returns when the command is sent), so a following block runs at once;
+  (it returns when the command is sent), so a following block runs at once —
+  the solutions follow each `move` with a `wait`; it also passes the unit
+  singular (`'rotation'`) to `motors.move` (CrispStrobe/extensions PR);
 - the dialect has no steering, tank or "set movement motors" words, so turns
-  are written with two `start motor` blocks and a yaw condition;
+  are written with two `start motor` blocks and a yaw condition
+  (CrispStrobe/sb3-creator#34 adds `set movement motors`, `set movement speed`,
+  `start moving steering`, `start tank`);
 - `spike motor position` reports the position modulo 360, so a distance
   cannot be measured with it beyond one rotation;
 - on the SPIKE 3 route the colour sensor's reflection is not transmitted (the
