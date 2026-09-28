@@ -61,15 +61,18 @@ handle adjustment and adding a node on a curve were already present in the
 reshape tool. Join/split operations and asymmetric handles remain ahead.
 
 The bitmap editor now keeps separate full-size PNG layers. The compact layer
-strip selects the paint target and can add, delete, reorder, hide and fade
-layers. The source document records their order, visibility, opacity and active
+strip selects the paint target and can add, delete, reorder, rename, lock, hide and fade
+layers. Locking the active layer moves the paint target to an unlocked layer;
+switching layers commits a floating bitmap selection to its original layer.
+The source document records their order, names, locks, visibility, opacity and active
 layer; the SB3 stores each layer PNG under `brickwright/layers/` and still gives
-Scratch one flattened PNG costume. Loading restores the editable layer stack.
+Scratch one flattened PNG costume. Loading restores the editable layer stack,
+including its name when only one layer remains.
 The browser gate paints one layer, saves/reopens, paints another, and proves
 that each layer's pixels remain unchanged when the other is edited. It also
 checks that visibility and opacity affect the flattened costume and that the
-add control works by touch on an iPad-sized viewport. Selection operations
-still need layer-aware behavior, and the UI needs layer naming and locking.
+add control works by touch on an iPad-sized viewport. Further layer-aware
+selection transforms and masks remain ahead.
 
 - Save and load paths in the browser and native project importer read/write the
   source entry. They leave `project.json` and the Scratch costume assets intact.

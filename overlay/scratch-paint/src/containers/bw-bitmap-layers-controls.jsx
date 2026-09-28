@@ -5,9 +5,10 @@ import ReactDOM from 'react-dom';
 import {connect} from 'react-redux';
 import {defineMessages, injectIntl, intlShape} from 'react-intl';
 import {getSelectedLeafItems} from '../helper/selection';
+import {clearSelectedItems} from '../reducers/selected-items';
 import {
     getBitmapLayers, setActiveBitmapLayer, addBitmapLayer, deleteBitmapLayer,
-    setBitmapLayerVisibility, setBitmapLayerOpacity, moveBitmapLayer
+    setBitmapLayerName, setBitmapLayerLocked, setBitmapLayerVisibility, setBitmapLayerOpacity, moveBitmapLayer
 } from '../helper/bw/bitmap-layers';
 import styles from './bw-bitmap-layers-controls.css';
 
@@ -21,6 +22,9 @@ const messages = defineMessages({
     up: {id: 'paint.bitmapLayers.up', defaultMessage: 'Move layer up', description: 'Move a bitmap layer up'},
     down: {id: 'paint.bitmapLayers.down', defaultMessage: 'Move layer down', description: 'Move a bitmap layer down'},
     opacity: {id: 'paint.bitmapLayers.opacity', defaultMessage: 'Layer opacity', description: 'Bitmap layer opacity'},
+    rename: {id: 'paint.bitmapLayers.rename', defaultMessage: 'Rename layer', description: 'Rename bitmap layer'},
+    lock: {id: 'paint.bitmapLayers.lock', defaultMessage: 'Lock layer', description: 'Lock bitmap layer'},
+    unlock: {id: 'paint.bitmapLayers.unlock', defaultMessage: 'Unlock layer', description: 'Unlock bitmap layer'},
     newLayer: {id: 'paint.bitmapLayers.newLayer', defaultMessage: 'Layer {number}',
         description: 'Default name for a bitmap layer'}
 });
@@ -35,7 +39,10 @@ const icon = kind => {
             <path d="M6.4 6.8C3.6 8.4 2 12 2 12s4 6 10 6c1.2 0 2.4-.2 3.4-.6" />
         </>,
         up: <path d="m5 14 7-7 7 7M12 7v13" />,
-        down: <path d="m5 10 7 7 7-7M12 4v13" />
+        down: <path d="m5 10 7 7 7-7M12 4v13" />,
+        lock: <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
+        unlock: <><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0" /></>,
+        rename: <><path d="m4 16 10-10 4 4L8 20H4v-4ZM12 8l4 4" /></>
     };
     return <svg aria-hidden="true" fill="none" height="22" stroke="currentColor"
         strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" width="22">
@@ -62,7 +69,7 @@ IconButton.propTypes = {
 class BitmapLayersControls extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {open: false};
+        this.state = {open: false, editingId: null, draftName: ''};
         this.anchor = null;
         this.panel = null;
         this.handleOutside = this.handleOutside.bind(this);
@@ -81,6 +88,19 @@ class BitmapLayersControls extends React.Component {
     refresh (snapshot = true) {
         this.props.onUpdateImage(!snapshot);
         this.forceUpdate();
+    }
+    finishSelection () {
+        if (!getSelectedLeafItems().length) return true;
+        if (!paper.tool || typeof paper.tool.commitSelection !== 'function') return false;
+        paper.tool.commitSelection();
+        paper.project.deselectAll();
+        this.props.clearSelectedItems();
+        return true;
+    }
+    saveName () {
+        const {editingId, draftName} = this.state;
+        this.setState({editingId: null});
+        if (editingId && setBitmapLayerName(editingId, draftName)) this.refresh();
     }
     render () {
         if (!paper.project) return null;
@@ -130,17 +150,40 @@ class BitmapLayersControls extends React.Component {
                 </div>
                 <div className={styles.list}>
                     {[...layers].reverse().map(layer => <div className={styles.layerRow} key={layer.id}>
-                        <button
+                        {this.state.editingId === layer.id ? <input
+                            aria-label={t('rename')}
+                            autoFocus
+                            className={styles.nameInput}
+                            data-testid="bw-bitmap-layer-name-input"
+                            maxLength="80"
+                            value={this.state.draftName}
+                            onBlur={() => this.saveName()}
+                            onChange={event => this.setState({draftName: event.target.value})}
+                            onKeyDown={event => {
+                                if (event.key === 'Enter') event.currentTarget.blur();
+                                if (event.key === 'Escape') this.setState({editingId: null});
+                            }}
+                        /> : <button
                             aria-pressed={layer.active}
                             className={layer.active ? styles.activeLayer : styles.layerName}
                             data-testid={`bw-bitmap-layer-item-${layer.id}`}
+                            disabled={layer.locked}
                             title={layer.name}
                             type="button"
-                            onClick={() => { setActiveBitmapLayer(layer.id); this.refresh(false); }}
-                        >{layer.name}</button>
+                            onClick={() => {
+                                if (this.finishSelection() && setActiveBitmapLayer(layer.id)) this.refresh(false);
+                            }}
+                        >{layer.name}</button>}
+                        <IconButton label={t(layer.locked ? 'unlock' : 'lock')}
+                            name={`lock-${layer.id}`}
+                            disabled={!layer.locked && layers.filter(item => !item.locked).length < 2}
+                            onClick={() => {
+                                if (this.finishSelection() && setBitmapLayerLocked(layer.id, !layer.locked)) this.refresh();
+                            }}>{icon(layer.locked ? 'lock' : 'unlock')}</IconButton>
                         <IconButton label={t(layer.visible ? 'hide' : 'show')}
                             name={`visibility-${layer.id}`} disabled={layers.length < 2}
                             onClick={() => {
+                                if (!this.finishSelection()) return;
                                 setBitmapLayerVisibility(layer.id, !layer.visible);
                                 this.refresh();
                             }}>{icon(layer.visible ? 'eye' : 'eyeOff')}</IconButton>
@@ -151,16 +194,21 @@ class BitmapLayersControls extends React.Component {
                     <input aria-label={t('opacity')} data-testid="bw-bitmap-layer-opacity" type="range"
                         min="0" max="100" disabled={layers.length < 2}
                         value={Math.round(active.opacity * 100)} onChange={event => {
+                            if (!this.finishSelection()) return;
                             setBitmapLayerOpacity(active.id, Number(event.target.value) / 100);
                             this.refresh();
                         }} />
                 </label>
                 <div className={styles.actions}>
-                    <IconButton label={t('up')} name="up" disabled={index === layers.length - 1}
-                        onClick={() => { moveBitmapLayer(active.id, 1); this.refresh(); }}>{icon('up')}</IconButton>
-                    <IconButton label={t('down')} name="down" disabled={index === 0}
-                        onClick={() => { moveBitmapLayer(active.id, -1); this.refresh(); }}>{icon('down')}</IconButton>
-                    <IconButton label={t('remove')} name="delete" disabled={layers.length < 2 || selected}
+                    <IconButton label={t('rename')} name="rename" onClick={() =>
+                        this.setState({editingId: active.id, draftName: active.name})}>{icon('rename')}</IconButton>
+                    <IconButton label={t('up')} name="up" disabled={index === layers.length - 1 || active.locked}
+                        onClick={() => { if (this.finishSelection()) { moveBitmapLayer(active.id, 1); this.refresh(); } }}>
+                        {icon('up')}</IconButton>
+                    <IconButton label={t('down')} name="down" disabled={index === 0 || active.locked}
+                        onClick={() => { if (this.finishSelection()) { moveBitmapLayer(active.id, -1); this.refresh(); } }}>
+                        {icon('down')}</IconButton>
+                    <IconButton label={t('remove')} name="delete" disabled={layers.length < 2 || selected || active.locked}
                         onClick={() => { deleteBitmapLayer(active.id); this.refresh(); }}>{icon('close')}</IconButton>
                 </div>
             </div>, document.body) : null}
@@ -168,9 +216,12 @@ class BitmapLayersControls extends React.Component {
     }
 }
 BitmapLayersControls.propTypes = {
+    clearSelectedItems: PropTypes.func.isRequired,
     intl: intlShape.isRequired,
     onUpdateImage: PropTypes.func.isRequired,
     viewBounds: PropTypes.instanceOf(paper.Matrix)
 };
 
-export default connect(state => ({viewBounds: state.scratchPaint.viewBounds}))(injectIntl(BitmapLayersControls));
+export default connect(state => ({viewBounds: state.scratchPaint.viewBounds}), dispatch => ({
+    clearSelectedItems: () => dispatch(clearSelectedItems())
+}))(injectIntl(BitmapLayersControls));

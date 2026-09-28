@@ -119,8 +119,41 @@ try {
     assert.equal(paintedBase.sources[1], paintedTop.sources[1],
         'painting the base leaves the top pixels intact');
 
+    await page.locator('[aria-label="Select"], [title="Select"]').first().click();
+    await page.getByTestId('bw-bitmap-select-wand').click();
+    await page.mouse.click(reopenedBox.x + reopenedBox.width * .42,
+        reopenedBox.y + reopenedBox.height * .17);
+    assert.equal(await page.evaluate(() => window.__brickwrightStore.getState().scratchPaint.selectedItems.length), 1,
+        'wand lifts pixels from the active base layer');
     await showLayers(page);
-    await page.getByTestId(`bw-bitmap-layer-item-${paintedBase.document.layers[1].id}`).click();
+    const topId = paintedBase.document.layers[1].id;
+    await page.getByTestId(`bw-bitmap-layer-item-${topId}`).click();
+    const selectedTop = await save(page);
+    assert.deepEqual(selectedTop.sources, paintedBase.sources,
+        'switching layers commits the floating selection to its original layer');
+    assert.equal(await page.evaluate(() => window.__brickwrightStore.getState().scratchPaint.selectedItems.length), 0,
+        'switching layers clears the floating selection');
+    await showLayers(page);
+    await page.getByTestId('bw-bitmap-layer-rename').click();
+    await page.getByTestId('bw-bitmap-layer-name-input').fill('Ink');
+    await page.getByTestId('bw-bitmap-layer-name-input').press('Enter');
+    await page.getByTestId(`bw-bitmap-layer-lock-${topId}`).click();
+    assert.equal(await page.getByTestId(`bw-bitmap-layer-item-${topId}`).isDisabled(), true,
+        'locking a layer prevents selecting it for painting');
+    const locked = await save(page);
+    assert.equal(locked.document.layers[1].name, 'Ink', 'layer rename persists in editable source');
+    assert.equal(locked.document.layers[1].locked, true, 'layer lock persists in editable source');
+    assert.equal(locked.document.activeLayerId, 'base', 'locking the paint target switches to an unlocked layer');
+    assert.deepEqual(locked.sources, paintedBase.sources, 'rename and lock preserve layer pixels');
+    await page.getByText('File', {exact: true}).click();
+    await page.getByText('Load from your computer', {exact: true}).click();
+    await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(locked.file);
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await showLayers(page);
+    assert.equal(await page.getByTestId(`bw-bitmap-layer-item-${topId}`).isDisabled(), true,
+        'a locked layer remains protected after reopening the SB3');
+    await page.getByTestId(`bw-bitmap-layer-lock-${topId}`).click();
+    await page.getByTestId(`bw-bitmap-layer-item-${topId}`).click();
     await page.getByTestId(`bw-bitmap-layer-visibility-${paintedBase.document.layers[1].id}`).click();
     const hidden = await save(page);
     assert.equal(hidden.document.layers[1].visible, false, 'visibility remains in editable source');
@@ -136,13 +169,26 @@ try {
     await showLayers(page);
     await page.getByTestId('bw-bitmap-layer-down').click();
     const reordered = await save(page);
-    assert.deepEqual(reordered.document.layers.map(layer => layer.name), ['Layer 2', 'Artwork'],
+    assert.deepEqual(reordered.document.layers.map(layer => layer.name), ['Ink', 'Artwork'],
         'reordering changes the source layer order');
     await showLayers(page);
     await page.getByTestId('bw-bitmap-layer-delete').click();
     const deleted = await save(page);
     assert.equal(deleted.document.layers.length, 1, 'deleting a layer returns to one Scratch-compatible raster');
     assert.ok(deleted.pngHash, 'the flattened PNG remains after layer deletion');
+    await showLayers(page);
+    await page.getByTestId('bw-bitmap-layer-rename').click();
+    await page.getByTestId('bw-bitmap-layer-name-input').fill('Solo');
+    await page.getByTestId('bw-bitmap-layer-name-input').press('Enter');
+    const single = await save(page);
+    assert.equal(single.document.layers[0].name, 'Solo', 'one-layer source retains its name');
+    await page.getByText('File', {exact: true}).click();
+    await page.getByText('Load from your computer', {exact: true}).click();
+    await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(single.file);
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await showLayers(page);
+    assert.equal(await page.getByTestId('bw-bitmap-layer-item-base').textContent(), 'Solo',
+        'a one-layer bitmap name reopens from the source document');
     assert.deepEqual(errors, [], 'layer editing causes no page errors');
     await page.close();
 

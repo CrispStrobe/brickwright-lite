@@ -12,11 +12,12 @@ const getBitmapLayers = () => rasters().map(raster => ({
     name: raster.data.bwBitmapLayerName || 'Artwork',
     visible: raster.visible,
     opacity: raster.opacity,
+    locked: Boolean(raster.data.bwBitmapLocked),
     active: raster === getRaster()
 }));
 const setActiveBitmapLayer = layerId => {
     const target = rasters().find(raster => raster.data.bwBitmapLayerId === layerId);
-    if (!target) return false;
+    if (!target || target.data.bwBitmapLocked) return false;
     for (const raster of rasters()) raster.data.bwBitmapActive = raster === target;
     return true;
 };
@@ -35,11 +36,32 @@ const deleteBitmapLayer = layerId => {
     const layers = rasters();
     if (layers.length < 2) return false;
     const target = layers.find(raster => raster.data.bwBitmapLayerId === layerId);
-    if (!target) return false;
+    if (!target || target.data.bwBitmapLocked) return false;
     const index = layers.indexOf(target);
-    const nextActiveId = layers[index === 0 ? 1 : index - 1].data.bwBitmapLayerId;
+    const nextActive = [...layers.slice(0, index).reverse(), ...layers.slice(index + 1)]
+        .find(raster => !raster.data.bwBitmapLocked);
+    if (!nextActive) return false;
     target.remove();
-    setActiveBitmapLayer(nextActiveId);
+    setActiveBitmapLayer(nextActive.data.bwBitmapLayerId);
+    return true;
+};
+const setBitmapLayerName = (layerId, name) => {
+    const target = rasters().find(raster => raster.data.bwBitmapLayerId === layerId);
+    const trimmed = String(name).trim().slice(0, 80);
+    if (!target || !trimmed) return false;
+    target.data.bwBitmapLayerName = trimmed;
+    return true;
+};
+const setBitmapLayerLocked = (layerId, locked) => {
+    const layers = rasters();
+    const target = layers.find(raster => raster.data.bwBitmapLayerId === layerId);
+    if (!target) return false;
+    if (locked && target === getRaster()) {
+        const nextActive = layers.find(raster => raster !== target && !raster.data.bwBitmapLocked);
+        if (!nextActive) return false;
+        setActiveBitmapLayer(nextActive.data.bwBitmapLayerId);
+    }
+    target.data.bwBitmapLocked = Boolean(locked);
     return true;
 };
 const setBitmapLayerVisibility = (layerId, visible) => {
@@ -58,7 +80,7 @@ const moveBitmapLayer = (layerId, direction) => {
     const layers = rasters();
     const index = layers.findIndex(raster => raster.data.bwBitmapLayerId === layerId);
     const next = index + direction;
-    if (index < 0 || next < 0 || next >= layers.length) return false;
+    if (index < 0 || next < 0 || next >= layers.length || layers[index].data.bwBitmapLocked) return false;
     getRasterLayer().insertChild(next, layers[index]);
     return true;
 };
@@ -78,20 +100,19 @@ const getCompositeBitmapRaster = activeReplacement => {
 };
 const getBitmapLayerDocument = activeReplacement => {
     const layers = rasters();
-    if (layers.length < 2) return null;
     return {version: 1, activeLayerId: getRaster().data.bwBitmapLayerId, layers: layers.map(raster => ({
         id: raster.data.bwBitmapLayerId,
         type: 'bitmap',
         name: raster.data.bwBitmapLayerName,
         visible: raster.visible,
-        locked: false,
+        locked: Boolean(raster.data.bwBitmapLocked),
         opacity: raster.opacity,
         content: {kind: 'data-uri', value: (raster === getRaster() && activeReplacement ?
             activeReplacement.canvas : raster.canvas).toDataURL('image/png')}
     }))};
 };
 const loadBitmapLayers = async (document, isCurrent = () => true) => {
-    if (!document || !Array.isArray(document.layers) || document.layers.length < 2 ||
+    if (!document || !Array.isArray(document.layers) || document.layers.length < 1 ||
         !document.layers.every(layer => layer.type === 'bitmap' && layer.content?.kind === 'data-uri')) return false;
     const images = await Promise.all(document.layers.map(layer => new Promise((resolve, reject) => {
         const image = new Image();
@@ -113,12 +134,18 @@ const loadBitmapLayers = async (document, isCurrent = () => true) => {
         raster.opacity = layer.opacity;
         raster.data.bwBitmapLayerId = layer.id;
         raster.data.bwBitmapLayerName = layer.name;
+        raster.data.bwBitmapLocked = Boolean(layer.locked);
         raster.data.bwBitmapActive = layer.id === document.activeLayerId;
     });
-    if (!rasters().some(raster => raster.data.bwBitmapActive)) rasters()[0].data.bwBitmapActive = true;
+    const layers = rasters();
+    if (layers.every(raster => raster.data.bwBitmapLocked)) layers[0].data.bwBitmapLocked = false;
+    const active = layers.find(raster => raster.data.bwBitmapActive);
+    if (!active || active.data.bwBitmapLocked) {
+        setActiveBitmapLayer(layers.find(raster => !raster.data.bwBitmapLocked).data.bwBitmapLayerId);
+    }
     return true;
 };
 
 export {getBitmapLayers, setActiveBitmapLayer, addBitmapLayer, deleteBitmapLayer,
-    setBitmapLayerVisibility, setBitmapLayerOpacity, moveBitmapLayer,
+    setBitmapLayerName, setBitmapLayerLocked, setBitmapLayerVisibility, setBitmapLayerOpacity, moveBitmapLayer,
     getCompositeBitmapRaster, getBitmapLayerDocument, loadBitmapLayers};

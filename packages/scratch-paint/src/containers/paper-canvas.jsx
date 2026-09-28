@@ -229,7 +229,7 @@ class PaperCanvas extends React.Component {
                 };
                 imgElement.src = image;
             };
-            if (artworkDocument?.layers?.length > 1 &&
+            if (artworkDocument?.layers?.length > 0 &&
                 artworkDocument.layers.every(layer => layer.type === 'bitmap' &&
                     layer.content?.kind === 'data-uri')) {
                 loadBitmapLayers(artworkDocument, () => generation === this.bitmapImportGeneration &&

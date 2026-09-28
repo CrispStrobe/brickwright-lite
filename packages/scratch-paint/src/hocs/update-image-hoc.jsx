@@ -120,7 +120,7 @@ const UpdateImageHOC = function (WrappedComponent) {
                 imageData,
                 (ART_BOARD_WIDTH / 2) - rect.x,
                 (ART_BOARD_HEIGHT / 2) - rect.y,
-                layered ? getBitmapLayerDocument(plasteredRaster) : null);
+                getBitmapLayerDocument(plasteredRaster));
 
             if (!skipSnapshot) {
                 performSnapshot(this.props.undoSnapshot, Formats.BITMAP);

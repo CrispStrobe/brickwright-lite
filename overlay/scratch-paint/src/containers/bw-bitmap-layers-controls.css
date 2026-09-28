@@ -78,6 +78,17 @@
     background: #efe8ff;
 }
 
+.name-input {
+    box-sizing: border-box;
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 2px solid #855cd6;
+    border-radius: 6px;
+    font: inherit;
+}
+
 .opacity {
     display: flex;
     flex-direction: column;
