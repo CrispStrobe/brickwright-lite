@@ -532,7 +532,7 @@ test('the logo handler is polled like the buttons; a long press and a release ar
         '    basic.showNumber(2)',
         '})'
     ].join('\n'));
-    assert.match(code, /IF logo touched THEN:\n {6}display 1\n {6}wait until not \(logo touched\)/);
+    assert.match(code, /IF logo touched THEN:\n {6}show number 1\n {6}wait until not \(logo touched\)/);
     assert.deepEqual(unsupported, ['input.onLogoEvent(TouchButtonEvent.LongPressed) — polling sees the logo held, not a long press']);
 });
 
@@ -559,7 +559,7 @@ test('a function that returns a value hands it back in <name>_result; the caller
         ].join('\n'));
         assert.deepEqual(unsupported, []);
         assert.match(code, /DEFINE seriesSum \(n\):\n {2}IF n < 1 THEN:\n {4}set seriesSum_result to 0\n {4}stop this script\n {2}set seriesSum_result to n \* \(n \+ 1\) \/ 2\n {2}stop this script/);
-        assert.match(code, / {2}seriesSum 4\n {2}set _mc1 to seriesSum_result\n {2}set total to _mc1 \+ 1\n {2}seriesSum total\n {2}set _mc2 to seriesSum_result\n {2}display _mc2/);
+        assert.match(code, / {2}seriesSum 4\n {2}set _mc1 to seriesSum_result\n {2}set total to _mc1 \+ 1\n {2}seriesSum total\n {2}set _mc2 to seriesSum_result\n {2}show number _mc2/);
         const ops = opcodesOf(code);
         assert.ok(ops.has('procedures_call') && ops.has('control_stop'));
     });
@@ -582,7 +582,7 @@ test('break leaves the loop through a flag; the rest of the pass is skipped', {s
         '}'
     ].join('\n'));
     assert.deepEqual(unsupported, []);
-    assert.match(code, /set _brk1 to 0\n {2}REPEAT UNTIL \(_brk1 = 1\) or \(not \(i < 10\)\):\n {4}change i by 1\n {4}IF i = 3 THEN:\n {6}set _brk1 to 1\n {4}IF _brk1 = 0 THEN:\n {6}display i/);
+    assert.match(code, /set _brk1 to 0\n {2}REPEAT UNTIL \(_brk1 = 1\) or \(not \(i < 10\)\):\n {4}change i by 1\n {4}IF i = 3 THEN:\n {6}set _brk1 to 1\n {4}IF _brk1 = 0 THEN:\n {6}show number i/);
 });
 
 test('for … of a list is a counter over it (it was read as a counted for, and the body came out as stray lines)',
