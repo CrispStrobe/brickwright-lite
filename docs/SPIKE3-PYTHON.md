@@ -40,7 +40,7 @@ arbitrary awaitables. Those are refused by name rather than approximated.
 |---|---|
 | The reader and exporter | sb3-creator `src/utils/spike3Python.js`, vendored as `overlay/scratch-gui/src/lib/sb3-creator-spike3.js` |
 | Routing | the Python entry point (`sb3-creator-python.js`) sends a program that imports `runloop` / `hub` / `motor`… to it |
-| New dialect words | sb3-creator `sb3Creator.js`: 13 learner-gap opcodes gained words (43 mapped) |
+| Dialect words | sb3-creator `sb3Creator.js`: reuses #34's drive-base words (`set movement motors`, `set movement speed`, `start moving steering`, `start tank`) and adds eight (42 mapped) |
 | The Run button, console, Stop | `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` |
 | Connect + green flag | `overlay/scratch-gui/src/lib/spike3-python-run.js` |
 | Tests | sb3-creator `test/spike3-python.test.mjs`, `test/spikeprime-spike3-words.test.mjs`; lite `test/spike3-python-import.test.mjs` |
@@ -77,7 +77,8 @@ Python itself, as read by sb3-creator's Python parser (extended for this):
   unpacking of `tilt_angles()` / `acceleration()`, and f-strings.
 - `if` / `elif` / `else`, `while`, `for … in range(…)` including a loop variable used in the body,
   and `break`. A break is lowered to a flag the loop tests, with the rest of the body guarded.
-- `print(a, b)`, which joins with a space.
+- `print(a, b)`, which joins with a space. A program that prints runs on a sprite, Hub, because
+  the Stage has no speech bubble.
 - Module-level constants for ports and pairs, and helper functions: one-line predicates are
   inlined, anything else becomes a custom block.
 - `runloop.run(a(), b())` becomes two flag scripts that start together.
@@ -120,8 +121,8 @@ The extension's `motorPairMove` block sends `run_at_speed` to each motor raw, wi
 On a standard SPIKE driving base (left motor mounted counterclockwise), both a real hub and the
 virtual one spin on the spot.
 
-SPIKE 3's `motor_pair.move` is the drive base's own steered start, and that is the `steer` block
-(`motors.start(steering)`): the hub applies the steering and the mirrored pair. This was measured
+SPIKE 3's `motor_pair.move` is the drive base's own steered start, and that is the `steer` block,
+spelled `start moving steering N` (`motors.start(steering)`): the hub applies the steering and the mirrored pair. This was measured
 in the arena: routed through `motorPairMove`, three of four imported Rover-basics solutions fail.
 
 ## Found on the way
@@ -160,7 +161,7 @@ shipping extension's own `getInfo()` menus.
   - EN/DE strings.
   - Mutation-checked: 6 of 7 killed. The survivor, steer vs `motorPairMove`, is a world-level
     property: upstream's unit tests and the arena test hold it.
-- **Arena, headless** (lands with the arena, PR #452): imported SPIKE 3 Python solutions of
+- **Arena, headless** (`test/spike3-python-arena.test.mjs`): imported SPIKE 3 Python solutions of
   Rover basics 1, 2, 7 and 9 PASS in the real VM through the real extension and the virtual hub.
   A program reading the yaw with the app's sign FAILS. At world level, four reader mutants (yaw
   sign, steer vs `motorPairMove`, distance unit, second-wheel wait) each fail a challenge.

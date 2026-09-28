@@ -71,7 +71,10 @@ test('every block an import emits is one the bundled spikeprime extension define
         assert.deepEqual(c.warnings, [], fn);
         const report = conformance(project);
         assert.deepEqual(report.errors, [], fn);
-        assert.deepEqual(report.missing, [], `${fn}: ${JSON.stringify(report.missing)}`);
+        // A spikeprime_menu_<NAME> block is the shadow Scratch builds for a menu
+        // argument that accepts reporters; it is judged against that menu below.
+        const missing = report.missing.filter(m => !/^spikeprime_menu_/.test(m.opcode));
+        assert.deepEqual(missing, [], `${fn}: ${JSON.stringify(missing)}`);
         checked++;
     }
     assert.ok(checked >= 38, `counted 38 mapped or approximate API samples on 2026-09-28; checked ${checked}`);
@@ -128,6 +131,16 @@ test('every menu field an import writes is a value of that block\'s menu in the 
     for (const program of programs) {
         const {blocks: emitted} = compile(pythonToPseudocode(program).pseudocode);
         for (const b of emitted.filter(x => /^spikeprime_/.test(x.opcode))) {
+            const shadowMenu = /^spikeprime_menu_(.+)$/.exec(b.opcode);
+            if (shadowMenu) {
+                const values = menuValues(shadowMenu[1]);
+                assert.ok(values, `${b.opcode} names a menu of the shipping extension`);
+                for (const [field, [value]] of Object.entries(b.fields || {})) {
+                    assert.ok(values.includes(String(value)), `${b.opcode}.${field} = ${JSON.stringify(value)} is not in menu ${shadowMenu[1]}`);
+                    judged++;
+                }
+                continue;
+            }
             const def = blocks.get(b.opcode.slice('spikeprime_'.length));
             assert.ok(def, `${b.opcode} is a block of the shipping extension`);
             for (const [field, [value]] of Object.entries(b.fields || {})) {
