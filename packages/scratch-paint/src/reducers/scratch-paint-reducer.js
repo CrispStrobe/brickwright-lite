@@ -4,6 +4,7 @@ import bitBrushSizeReducer from './bit-brush-size';
 import bitBrushOpacityReducer from './bw-bit-brush-opacity';
 import bitEraserSizeReducer from './bit-eraser-size';
 import bwBitmapSelectionReducer from './bw-bitmap-selection';
+import bwIndependentHandlesReducer from './bw-independent-handles';
 import brushModeReducer from './brush-mode';
 import bwGridReducer from './bw-grid';
 import bwPanelReducer from './bw-panel';
@@ -31,6 +32,7 @@ export default combineReducers({
     bitBrushOpacity: bitBrushOpacityReducer,
     bitEraserSize: bitEraserSizeReducer,
     bwBitmapSelection: bwBitmapSelectionReducer,
+    bwIndependentHandles: bwIndependentHandlesReducer,
     brushMode: brushModeReducer,
     // Brickwright additions: the properties rail, the grid and snapping, and the parametric
     // shape tools.

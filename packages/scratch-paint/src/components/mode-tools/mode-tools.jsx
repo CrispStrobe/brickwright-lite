@@ -8,6 +8,7 @@ import {changeBrushSize as changeEraserSize} from '../../reducers/eraser-mode';
 import {changeBitBrushSize} from '../../reducers/bit-brush-size';
 import {changeBitBrushOpacity} from '../../reducers/bw-bit-brush-opacity';
 import {changeBitEraserSize} from '../../reducers/bit-eraser-size';
+import {setIndependentHandles} from '../../reducers/bw-independent-handles';
 import {setShapesFilled} from '../../reducers/fill-bitmap-shapes';
 
 import FontDropdown from '../../containers/font-dropdown.jsx';
@@ -39,6 +40,7 @@ import straightPointIcon from './icons/straight-point.svg';
 import openPathIcon from './icons/open-path.svg';
 import splitPathIcon from './icons/split-path.svg';
 import joinPathsIcon from './icons/join-paths.svg';
+import independentHandlesIcon from './icons/independent-handles.svg';
 import bitOvalIcon from '../bit-oval-mode/oval.svg';
 import bitRectIcon from '../bit-rect-mode/rectangle.svg';
 import bitOvalOutlinedIcon from '../bit-oval-mode/oval-outlined.svg';
@@ -88,6 +90,11 @@ const ModeToolsComponent = props => {
             defaultMessage: 'Pointed',
             description: 'Label for the button that converts selected points to sharp points',
             id: 'paint.modeTools.pointed'
+        },
+        independentHandles: {
+            defaultMessage: 'Independent handles',
+            description: 'Move one Bézier handle without moving the opposite handle',
+            id: 'paint.modeTools.independentHandles'
         },
         closePath: {
             defaultMessage: 'Close path',
@@ -224,6 +231,14 @@ const ModeToolsComponent = props => {
                         imgSrc={straightPointIcon}
                         title={props.intl.formatMessage(messages.pointed)}
                         onClick={props.onPointPoints}
+                    />
+                    <LabeledIconButton
+                        aria-pressed={props.independentHandles}
+                        highlighted={props.independentHandles}
+                        hideLabel={hideLabel(props.intl.locale)}
+                        imgSrc={independentHandlesIcon}
+                        title={props.intl.formatMessage(messages.independentHandles)}
+                        onClick={() => props.onIndependentHandlesChange(!props.independentHandles)}
                     />
                 </InputGroup>
                 <InputGroup className={classNames(styles.modLabeledIconHeight)}>
@@ -388,6 +403,7 @@ ModeToolsComponent.propTypes = {
     format: PropTypes.oneOf(Object.keys(Formats)),
     hasSelectedUncurvedPoints: PropTypes.bool,
     hasSelectedUnpointedPoints: PropTypes.bool,
+    independentHandles: PropTypes.bool.isRequired,
     intl: intlShape.isRequired,
     mode: PropTypes.string.isRequired,
     onBitBrushSliderChange: PropTypes.func.isRequired,
@@ -406,6 +422,7 @@ ModeToolsComponent.propTypes = {
     onOpenPath: PropTypes.func.isRequired,
     onSplitPath: PropTypes.func.isRequired,
     onJoinPaths: PropTypes.func.isRequired,
+    onIndependentHandlesChange: PropTypes.func.isRequired,
     onPasteFromClipboard: PropTypes.func.isRequired,
     onPointPoints: PropTypes.func.isRequired,
     onUpdateImage: PropTypes.func.isRequired
@@ -420,7 +437,8 @@ const mapStateToProps = state => ({
     bitEraserSize: state.scratchPaint.bitEraserSize,
     brushValue: state.scratchPaint.brushMode.brushSize,
     clipboardItems: state.scratchPaint.clipboard.items,
-    eraserValue: state.scratchPaint.eraserMode.brushSize
+    eraserValue: state.scratchPaint.eraserMode.brushSize,
+    independentHandles: state.scratchPaint.bwIndependentHandles
 });
 const mapDispatchToProps = dispatch => ({
     onBrushSliderChange: brushSize => {
@@ -443,6 +461,9 @@ const mapDispatchToProps = dispatch => ({
     },
     onOutlineShapes: () => {
         dispatch(setShapesFilled(false));
+    },
+    onIndependentHandlesChange: enabled => {
+        dispatch(setIndependentHandles(enabled));
     }
 });
 

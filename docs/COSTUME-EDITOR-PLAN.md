@@ -62,8 +62,11 @@ reshape tool. The reshape toolbar now splits a path at one selected node and
 joins two open paths at a shared endpoint. A split closed path opens at that
 node; splitting an open path creates two editable SVG paths with their new
 ends selected for an immediate join. The browser gates check Bézier geometry,
-undo/redo, SB3 save/reopen and touch use. An on-screen asymmetric-handle control remains
-ahead; holding Option while dragging a handle already breaks symmetry on desktop.
+undo/redo, SB3 save/reopen and touch use. An on-screen Independent handles toggle
+now lets touch users move one Bézier handle without moving the opposite handle;
+Option-drag remains available on desktop. A browser gate verifies mouse and
+finger drags, the untouched handle, and asymmetric SVG after SB3 save/reopen. Reshape double-click detection
+also checks click position so a quick handle grab cannot move the whole path.
 
 The bitmap editor now keeps separate full-size PNG layers. The compact layer
 strip selects the paint target and can add, delete, reorder, rename, lock, hide and fade
@@ -137,8 +140,7 @@ selection transforms and masks remain ahead.
    need large hit areas; on-screen modifiers replace keyboard-only shortcuts.
    Test on macOS mouse/trackpad and iPad finger/Pencil, including resize and
    fullscreen transitions.
-3. **Vector core.** Extend node operations with on-screen asymmetric handles;
-   keep named groups and text editable. Improve
+3. **Vector core.** Keep named groups and text editable. Improve
    gradient/stroke controls and precise transform handles. Use the source layer
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
