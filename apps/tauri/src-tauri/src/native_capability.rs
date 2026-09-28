@@ -34,6 +34,7 @@ fn opaque(_: StateError) -> String {
 /// No caller string becomes a path, process argument, monitor command, port or token.
 fn execute(
     operation: Operation,
+    args: &Value,
     debugger: &RenodeDebugger,
     supervisor: &RenodeSupervisor,
 ) -> Result<String, String> {
@@ -48,6 +49,30 @@ fn execute(
         .to_owned()),
         Operation::RenodeSpikeStart => debugger.start(supervisor).map(str::to_owned),
         Operation::RenodeSpikeClose => debugger.close(supervisor).map(str::to_owned),
+        Operation::RenodeSpikeRun => debugger.run().map(str::to_owned),
+        Operation::RenodeSpikePause => debugger.pause().map(str::to_owned),
+        Operation::RenodeSpikeReset => debugger.reset(supervisor).map(str::to_owned),
+        Operation::RenodeSpikeStep => debugger.step().map(str::to_owned),
+        Operation::RenodeSpikeRegistersRead => debugger.registers().map(|value| value.to_string()),
+        Operation::RenodeSpikeMemoryRead => debugger.read_memory(
+            u32::try_from(args["address"].as_u64().expect("validated address"))
+                .expect("bounded address"),
+            usize::try_from(args["length"].as_u64().expect("validated length"))
+                .expect("bounded length"),
+        ),
+        Operation::RenodeSpikeStateRead => debugger.state().map(|value| value.to_string()),
+        Operation::RenodeSpikeBreakpointSet => debugger
+            .set_breakpoint(
+                u32::try_from(args["address"].as_u64().expect("validated address"))
+                    .expect("bounded address"),
+            )
+            .map(str::to_owned),
+        Operation::RenodeSpikeBreakpointClear => debugger
+            .clear_breakpoint(
+                u32::try_from(args["address"].as_u64().expect("validated address"))
+                    .expect("bounded address"),
+            )
+            .map(str::to_owned),
     }
 }
 
@@ -90,7 +115,7 @@ pub(crate) fn native_broker_invoke(
     let call = policy
         .authorize_broker_call(window.label(), id, sequence, &operation, &resource, &args)
         .map_err(opaque)?;
-    execute(call.operation, &debugger, &supervisor)
+    execute(call.operation, &args, &debugger, &supervisor)
 }
 
 /// Diagnostics. Readable from the MAIN webview because that is where the learner sees it, and

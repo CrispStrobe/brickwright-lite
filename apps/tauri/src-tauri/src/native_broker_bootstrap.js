@@ -22,7 +22,16 @@ const hexId = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
 const CAPABILITY_RESOURCE = Object.freeze({__proto__: null,
     'platform.kind.read': 'platform/default',
     'renode.spike.session.start': 'renode/spike-prime',
-    'renode.spike.session.close': 'renode/spike-prime'
+    'renode.spike.session.close': 'renode/spike-prime',
+    'renode.spike.run': 'renode/spike-prime',
+    'renode.spike.pause': 'renode/spike-prime',
+    'renode.spike.reset': 'renode/spike-prime',
+    'renode.spike.step': 'renode/spike-prime',
+    'renode.spike.registers.read': 'renode/spike-prime',
+    'renode.spike.memory.read': 'renode/spike-prime',
+    'renode.spike.state.read': 'renode/spike-prime',
+    'renode.spike.breakpoint.set': 'renode/spike-prime',
+    'renode.spike.breakpoint.clear': 'renode/spike-prime'
 });
 
 const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, invoke, createProtocol}) => {

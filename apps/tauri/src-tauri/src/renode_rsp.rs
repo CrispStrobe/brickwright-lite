@@ -5,6 +5,7 @@
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
+use std::sync::mpsc::SyncSender;
 use std::time::Duration;
 
 const MAX_PACKET_BYTES: usize = 64 * 1024;
@@ -21,6 +22,18 @@ pub(crate) struct RenodeRsp {
     stream: TcpStream,
 }
 
+pub(crate) struct RenodeRspInterrupt {
+    stream: TcpStream,
+}
+
+impl RenodeRspInterrupt {
+    pub(crate) fn request(&mut self) -> Result<(), String> {
+        self.stream
+            .write_all(&[0x03])
+            .map_err(|_| "Renode debugger interrupt failed".to_owned())
+    }
+}
+
 impl RenodeRsp {
     pub(crate) fn connect(endpoint: SocketAddr) -> Result<Self, String> {
         if !endpoint.ip().is_loopback() {
@@ -35,6 +48,13 @@ impl RenodeRsp {
             .set_write_timeout(Some(IO_TIMEOUT))
             .map_err(|_| "Renode debugger unavailable".to_owned())?;
         Ok(Self { stream })
+    }
+
+    pub(crate) fn interrupt_handle(&self) -> Result<RenodeRspInterrupt, String> {
+        self.stream
+            .try_clone()
+            .map(|stream| RenodeRspInterrupt { stream })
+            .map_err(|_| "Renode debugger unavailable".to_owned())
     }
 
     pub(crate) fn registers(&mut self) -> Result<CortexMRegisters, String> {
@@ -74,7 +94,27 @@ impl RenodeRsp {
     }
 
     pub(crate) fn resume(&mut self) -> Result<Vec<u8>, String> {
-        self.exchange(b"c")
+        self.resume_started(None)
+    }
+
+    pub(crate) fn resume_started(
+        &mut self,
+        started: Option<SyncSender<()>>,
+    ) -> Result<Vec<u8>, String> {
+        let result = self.send_packet(b"c").and_then(|()| {
+            self.stream
+                .set_read_timeout(None)
+                .map_err(|_| "Renode debugger unavailable".to_owned())?;
+            if let Some(started) = started {
+                let _ = started.send(());
+            }
+            self.read_packet()
+        });
+        let restore = self.stream.set_read_timeout(Some(IO_TIMEOUT));
+        if restore.is_err() {
+            return Err("Renode debugger unavailable".into());
+        }
+        result
     }
 
     pub(crate) fn interrupt(&mut self) -> Result<Vec<u8>, String> {
@@ -92,6 +132,11 @@ impl RenodeRsp {
     }
 
     fn exchange(&mut self, payload: &[u8]) -> Result<Vec<u8>, String> {
+        self.send_packet(payload)?;
+        self.read_packet()
+    }
+
+    fn send_packet(&mut self, payload: &[u8]) -> Result<(), String> {
         if payload.len() > MAX_PACKET_BYTES {
             return Err("Renode debugger request exceeds its bounds".into());
         }
@@ -111,7 +156,7 @@ impl RenodeRsp {
         if ack[0] != b'+' {
             return Err("Renode debugger rejected the packet".into());
         }
-        self.read_packet()
+        Ok(())
     }
 
     fn read_packet(&mut self) -> Result<Vec<u8>, String> {
@@ -280,6 +325,36 @@ mod tests {
         let mut rsp = RenodeRsp::connect(endpoint).unwrap();
         assert!(rsp.read_memory(0, MAX_MEMORY_BYTES + 1).is_err());
         assert!(rsp.read_memory(0, 0).is_err());
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn cloned_interrupt_stops_an_acknowledged_continue() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0u8; 5];
+            stream.read_exact(&mut request).unwrap();
+            assert_eq!(&request[..2], b"$c");
+            stream.write_all(b"+").unwrap();
+            let mut interrupt = [0u8; 1];
+            stream.read_exact(&mut interrupt).unwrap();
+            assert_eq!(interrupt, [0x03]);
+            stream.write_all(&packet(b"S02")).unwrap();
+            let mut ack = [0u8; 1];
+            stream.read_exact(&mut ack).unwrap();
+            assert_eq!(ack, [b'+']);
+        });
+        let mut rsp = RenodeRsp::connect(endpoint).unwrap();
+        let mut interrupt = rsp.interrupt_handle().unwrap();
+        let (started_tx, started_rx) = std::sync::mpsc::sync_channel(0);
+        let interrupter = thread::spawn(move || {
+            started_rx.recv().unwrap();
+            interrupt.request().unwrap();
+        });
+        assert_eq!(rsp.resume_started(Some(started_tx)).unwrap(), b"S02");
+        interrupter.join().unwrap();
         server.join().unwrap();
     }
 }
