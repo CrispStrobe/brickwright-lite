@@ -114,6 +114,16 @@ try {
         assert.ok(bitmapBounds.x >= 0 && bitmapBounds.x + bitmapBounds.width <= viewport.width + 1,
             'the bitmap workspace must fit the tablet viewport');
         await page.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').tap();
+        const preset = page.getByTestId('bw-bitmap-brush-preset');
+        const presetBox = await preset.boundingBox();
+        assert.ok(presetBox.width >= 44 && presetBox.height >= 44 &&
+            presetBox.x >= 0 && presetBox.x + presetBox.width <= viewport.width,
+        'bitmap brush presets have a visible touch-sized control');
+        await preset.selectOption('light');
+        assert.deepEqual(await page.evaluate(() => {
+            const state = window.__brickwrightStore.getState().scratchPaint;
+            return [state.bitBrushSize, state.bitBrushOpacity];
+        }), [24, 35], 'the light preset sets both brush size and opacity');
         await page.getByTestId('bw-bitmap-brush-opacity').fill('60');
         assert.equal(await page.evaluate(() => window.__brickwrightStore.getState().scratchPaint.bitBrushOpacity), 60,
             'bitmap brush opacity must be reachable at iPad widths');
@@ -162,7 +172,16 @@ try {
     };
     await paint.getByRole('button', {name: /Convert to Bitmap/}).click();
     await paint.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').click();
+    await paint.getByTestId('bw-bitmap-brush-preset').selectOption('fine');
+    assert.deepEqual(await paint.evaluate(() => {
+        const state = window.__brickwrightStore.getState().scratchPaint;
+        return [state.bitBrushSize, state.bitBrushOpacity];
+    }), [2, 100]);
+    await paint.getByTestId('bw-bitmap-brush-preset').selectOption('light');
+    assert.equal(await paint.getByTestId('bw-bitmap-brush-preset').inputValue(), 'light');
     await paint.getByTestId('bw-bitmap-brush-opacity').fill('50');
+    assert.equal(await paint.getByTestId('bw-bitmap-brush-preset').inputValue(), 'custom',
+        'manual adjustment remains available after choosing a preset');
     await paint.evaluate(() => window.__brickwrightStore.dispatch({
         type: 'scratch-paint/fill-style/CHANGE_FILL_COLOR', color: '#ff0000'
     }));

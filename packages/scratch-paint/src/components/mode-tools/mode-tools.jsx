@@ -21,6 +21,7 @@ import LabeledIconButton from '../labeled-icon-button/labeled-icon-button.jsx';
 import Modes from '../../lib/modes';
 import Formats, {isBitmap, isVector} from '../../lib/format';
 import {hideLabel} from '../../lib/hide-label';
+import tx from '../../lib/bw-messages';
 import styles from './mode-tools.css';
 
 import copyIcon from './icons/copy.svg';
@@ -49,6 +50,12 @@ import bitRectOutlinedIcon from '../bit-rect-mode/rectangle-outlined.svg';
 import {MAX_STROKE_WIDTH} from '../../reducers/stroke-width';
 
 const LiveInput = LiveInputHOC(Input);
+const BIT_BRUSH_PRESETS = [
+    {id: 'fine', size: 2, opacity: 100},
+    {id: 'medium', size: 8, opacity: 100},
+    {id: 'broad', size: 24, opacity: 100},
+    {id: 'light', size: 24, opacity: 35}
+];
 const ModeToolsComponent = props => {
     const messages = defineMessages({
         brushSize: {
@@ -155,6 +162,8 @@ const ModeToolsComponent = props => {
         const currentBrushValue = isBitmap(props.format) ? props.bitBrushSize : props.brushValue;
         const changeFunction = isBitmap(props.format) ? props.onBitBrushSliderChange : props.onBrushSliderChange;
         const currentMessage = props.mode === Modes.BIT_LINE ? messages.thickness : messages.brushSize;
+        const selectedPreset = BIT_BRUSH_PRESETS.find(preset => preset.size === props.bitBrushSize &&
+            preset.opacity === props.bitBrushOpacity)?.id || 'custom';
         return (
             <div className={classNames(props.className, styles.modeTools)}>
                 <div>
@@ -174,6 +183,24 @@ const ModeToolsComponent = props => {
                     value={currentBrushValue}
                     onSubmit={changeFunction}
                 />
+                {props.mode === Modes.BIT_BRUSH ? <select
+                    value={selectedPreset}
+                    data-testid="bw-bitmap-brush-preset"
+                    aria-label={tx(props.intl.locale, 'brushPreset')}
+                    title={tx(props.intl.locale, 'brushPreset')}
+                    onChange={event => {
+                        const preset = BIT_BRUSH_PRESETS.find(item => item.id === event.target.value);
+                        if (!preset) return;
+                        props.onBitBrushSliderChange(preset.size);
+                        props.onBitBrushOpacityChange(preset.opacity);
+                    }}
+                    style={{height: 44, width: 108, marginLeft: 8, borderRadius: 6,
+                        border: '1px solid #cbd5e1', background: '#fff', flexShrink: 0}}>
+                    <option value="custom">{tx(props.intl.locale, 'brushCustom')}</option>
+                    {BIT_BRUSH_PRESETS.map(preset => <option key={preset.id} value={preset.id}>
+                        {tx(props.intl.locale, `brush${preset.id[0].toUpperCase()}${preset.id.slice(1)}`)}
+                    </option>)}
+                </select> : null}
                 {props.mode === Modes.BIT_BRUSH ? <label style={{display: 'inline-flex', alignItems: 'center',
                     gap: 5, minHeight: 44, marginLeft: 12, whiteSpace: 'nowrap'}}>
                     {props.intl.formatMessage(messages.brushOpacity)} {props.bitBrushOpacity}%

@@ -40,14 +40,15 @@ save/reopen. This follows Pinta's icon toolbox and tool
 settings bar and Krita's canvas-only view without changing how Scratch stores SVG
 or PNG costumes.
 The bitmap toolbar now exposes the canvas colour sampler beside the brush, with
-one-tap sampling and a touch-sized cancel control. On desktop, holding Space
+one-tap sampling and a touch-sized cancel control. Fine, medium, broad and light
+brush presets set size and opacity together while both remain adjustable. On desktop, holding Space
 while dragging pans either vector or bitmap canvas without marking the costume;
 trackpad wheel pan and pointer-centred zoom remain available.
 
 This is a workspace improvement, not raster/vector feature parity. The next
 capability gates are: (1) vector node operations such as join/split and
 asymmetric handles that survive SB3 save/reopen; (2) bitmap layer rename,
-locking, selection transforms and richer compositing; (3) brush presets, per-stroke opacity compositing,
+locking, selection transforms and richer compositing; (3) per-stroke opacity compositing,
 colour history and selection transforms exposed through contextual controls.
 Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
 for older Scratch readers.
