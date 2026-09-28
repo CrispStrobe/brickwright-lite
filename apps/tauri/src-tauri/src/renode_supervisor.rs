@@ -345,10 +345,13 @@ fn monitor_path(path: &Path) -> Result<String, String> {
     let value = path
         .to_str()
         .ok_or_else(|| "SPIKE package path is not UTF-8".to_owned())?;
-    if value.contains(['"', '\n', '\r']) {
+    if value.contains([';', '\n', '\r', '\t']) {
         return Err("SPIKE package path is not monitor-safe".into());
     }
-    Ok(format!("@\"{value}\""))
+    // Renode's ReadFilePath token is `@path`, not `@"path"`. Its tokenizer
+    // supports spaces only as `\ `; quoting the path changes the token type
+    // and makes LoadELF/include reject it.
+    Ok(format!("@{}", value.replace(' ', "\\ ")))
 }
 
 fn spike_arguments(
@@ -524,5 +527,13 @@ mod tests {
         assert!(!arguments
             .iter()
             .any(|value| matches!(value.as_str(), "sh" | "bash" | "cmd" | "powershell")));
+        assert_eq!(
+            monitor_path(Path::new("/package with spaces/image.elf")).unwrap(),
+            "@/package\\ with\\ spaces/image.elf"
+        );
+        assert_eq!(
+            monitor_path(Path::new("/package/image.elf;quit")).unwrap_err(),
+            "SPIKE package path is not monitor-safe"
+        );
     }
 }
