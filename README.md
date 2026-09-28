@@ -68,8 +68,10 @@ equivalent hosted smoke receipt reaches **3.32x** and **3.78x** respectively
 explicit rather than being hidden by the CPU result. The public Renode fork now has a qualified exact
 STM32F413VG SPIKE Prime platform; its target RTx remains unmeasured rather than
 being inferred from the old F412 proxy. The EV3 work now has a source-built
-AM1808/ARM926 Renode boundary for reset, UART1, AINTC interrupts and GDB, but
-not yet the Linux boot peripherals or a Lite process adapter. See
+AM1808/ARM926 Renode boundary for reset, UART1, AINTC interrupts and GDB. Its
+hosted active-loop qualification reaches **1.361x median** with a **1.207x
+minimum**, but it does not yet have the Linux boot peripherals or a Lite
+process adapter. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
 

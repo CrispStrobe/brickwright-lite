@@ -22,7 +22,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model | **84.63x unpaced**, UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform merged and qualified; RTx unmeasured**; not yet a Lite process adapter |
-| EV3 | MakeCode source simulator where source is present; real-brick transport | Renode paced ~1x by policy; **0.44–0.57x unpaced on the contended VPS**, not a release pass | no ARM9/AM1808 | no | **merged exact AM1808 foundation**: 300 MHz ARM926, high-vector SRAM, UART1, AINTC and GDB; not yet a Lite process adapter or full EV3 |
+| EV3 | MakeCode source simulator where source is present; real-brick transport | **1.361x median, 1.207x minimum** on an active ARM926 loop in hosted CI | no ARM9/AM1808 | no | **merged exact AM1808 foundation**: 300 MHz ARM926, high-vector SRAM, UART1, AINTC, GDB and a guarded throughput harness; not yet a Lite process adapter or full EV3 |
 
 The 2026-09-28 hosted core receipt remains the less noisy comparison for the
 already integrated CPU engines: Z80 186x, 6502 150x, avr8js ATmega328P 13.3x,
@@ -69,36 +69,37 @@ The remaining `.hex` files found outside those repos are FPGA/toolchain test
 firmware under `apicula/examples`; they are not Brickwright circuits. There
 was therefore no orphan circuit to import from this VPS.
 
-## Remaining gaps, in order
+## Ordered target checkpoints
 
-1. **Complete board peripherals.** The exact nRF52833 and ATSAMD51 CPU paths,
-   addressed ELF/HEX/UF2 loading, pin maps and >=1.0x hosted post-boot receipts
-   are complete. micro:bit v2 still needs its charlieplexed
-   5x5 display, buttons and sensor paths. PyBadge still needs the ST7735,
-   buttons, NeoPixels, audio, QSPI and USB paths. PXT/MicroPython remain the
-   complete source-level experiences while those device models are partial.
-2. **Connect the merged Prime backend to Lite.** The public Renode fork now has
-   an exact F413VG platform, six LPF2 UARTs, display, IMU, flash, buttons,
-   sound, tests and a bounded `brick-state/v1` TCP/NDJSON contract. Add a
-   supervised optional native process adapter, then record representative RTx;
-   do not call the old F412 proxy an exact result.
-3. **Grow EV3 from its executable AM1808 boundary.** The current foundation
-   proves ARM926 reset/instruction execution, high-vector SRAM, UART1, AINTC
-   interrupt entry/acknowledge and GDB support without recovery firmware. Linux
-   or unchanged EV3 firmware still needs Timer64, PSC/PLL/pinmux, EDMA,
-   MMC/SD, GPIO/LCDC and the EV3 motor/sensor front ends. PRU follows the boot
-   path rather than preceding it. Its current 133–171 MIPS unpaced VPS result
-   is below the 300-MIPS real-time target, so optimize/measure on a quiet host
-   before promoting the native backend.
-4. **Keep hosted target-level performance gates honest.** Require median
-   >=1.0x for every CPU-backed target promoted from experimental to shipped.
-   Source-level simulators get deadline/frame tests, and native Renode targets
-   get a fixed firmware workload plus both virtual and wall time instead of an
-   idle-loop number.
+This table is the execution order, not a wish list. Work starts on the first
+`NEXT` row. A checkpoint becomes `DONE` only when its definition of done is
+met and the evidence column names an immutable commit, PR or hosted run. Later
+rows must not be marked complete while an earlier row remains open.
+
+| ID | State | Checkpoint | Definition of done | Evidence |
+|---|---|---|---|---|
+| CP01 | DONE | Reconcile the target ledger | Every currently claimed target has an exact engine, workload and non-idle result; stale EV3 VPS and F412-proxy claims are removed. | Renode [run 36437429134](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36437429134), docs `7a5d4173`; LabWired `bdffe947` |
+| CP02 | NEXT | Enforce ordered evidence | A repository test rejects fewer than ten checkpoints, malformed IDs/states, completion without immutable evidence, and any completed row after the first open row. | pending |
+| CP03 | TODO | Qualify exact SPIKE Prime RTx | The STM32F413VG platform runs a source-built public firmware workload; five non-idle passes report exact instruction deltas, median/minimum RTx, UART/brick-state proof, and median plus minimum are at least 1.0x. | pending |
+| CP04 | TODO | Supervise Renode as an optional native backend | The Tauri broker launches a pinned Renode executable without a shell, uses a random loopback port and token, enforces time/output limits, and always kills the process tree on reset, project close and app exit. | pending |
+| CP05 | TODO | Connect SPIKE Prime to Lite | The debugger can load the public simulation firmware, run/pause/reset/step, inspect registers and memory, set a breakpoint, and receive bounded `brick-state/v1` updates through CP04. | pending |
+| CP06 | TODO | Connect EV3 to Lite | The same debugger contract operates the source-built EV3 smoke image through Renode/GDB, including UART and AINTC IRQ evidence, without private recovery firmware. | pending |
+| CP07 | TODO | Model DA8xx Timer64 | Exact documented register behavior and IRQ routing are covered by unit tests and exercised by a source-built ARM926 payload. | pending |
+| CP08 | TODO | Model EV3 boot clocks and pinmux | PSC, PLL and pinmux behavior required by the public DA850/EV3 boot path is modeled with mutation-sensitive tests. | pending |
+| CP09 | TODO | Model AM1808 EDMA | The required EDMA channels, completion/error interrupts and memory transfers pass peripheral and executable payload tests. | pending |
+| CP10 | TODO | Model MMC/SD boot storage | A redistributable test image is read through the modeled AM1808 MMC/SD path with bounded media input and deterministic block receipts. | pending |
+| CP11 | TODO | Model EV3 GPIO and LCDC | GPIO direction/edge IRQs and the LCD controller's required framebuffer path are observable in tests and through the debugger. | pending |
+| CP12 | TODO | Model EV3 motors and sensors | Permissive front ends cover the extension-visible motor and sensor subset and publish it through the neutral brick-state contract. | pending |
+| CP13 | TODO | Complete micro:bit v2 board I/O | The LabWired target drives the 5x5 display, buttons and selected sensor/audio paths with board-level tests while retaining >=1.0x hosted RTx. | pending |
+| CP14 | TODO | Complete PyBadge board I/O | ST7735, button mux, NeoPixels, audio and QSPI are exercised by public firmware and debugger-visible tests; USB is either implemented or explicitly isolated, while hosted RTx remains >=1.0x. | pending |
+
+CP07–CP12 are intentionally ordered by the public EV3 boot path. PRU support is
+not promoted ahead of those dependencies. PXT/MicroPython remain the complete
+source-level experiences while CP13 and CP14 are partial.
 
 The immutable integration points are bw-board `bdffe947` for the exact
-LabWired target bridge, Renode `d82f6466` for SPIKE Prime, Renode `64b51361`
-for EV3 including its honest 300-MIPS clock, and Infrastructure `d4353862` for
+LabWired target bridge, Renode `d82f6466` for SPIKE Prime, Renode `7a5d4173`
+for EV3 including its active-workload 300-MIPS qualification, and Infrastructure `d4353862` for
 their peripheral models. Public
 simulation firmware is kept in its separate MIT repository; no private
 recovery image is read, copied, bundled or required by these source-only gates.
