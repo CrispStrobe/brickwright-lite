@@ -136,6 +136,60 @@ try {
         check(r.docScrollW <= r.layoutW + 1,
             `${r.name}: flooring the controls did not widen the page`,
             `scrollWidth ${r.docScrollW} vs layout ${r.layoutW}`);
+
+        // AND THAT NOTHING BECAME UNCLICKABLE. A min-width can push a control
+        // under a neighbour, which costs no page width and would pass the check
+        // above while making the control impossible to tap — a worse outcome
+        // than the small target it replaced.
+        //
+        // Measured as an A/B in this one page rather than against a stored
+        // baseline: the whole rule hangs off one attribute on <html>, so it can
+        // be switched off, measured, switched back on and measured again with
+        // the same pane in the same state. That asks exactly the right question
+        // — "did MY rule cover anything" — and needs no number to maintain.
+        // Several controls have a covered centre already, unfloored (the editor
+        // overlays some Code-tab buttons at this width); those are not this
+        // change's doing and this comparison does not blame them on it.
+        const overlap = await page.evaluate(() => {
+            const countCovered = () => {
+                const visible = el => {
+                    const b = el.getBoundingClientRect();
+                    const s = getComputedStyle(el);
+                    return b.width > 0 && b.height > 0 &&
+                        s.visibility !== 'hidden' && s.display !== 'none';
+                };
+                const els = [...document.querySelectorAll(
+                    'button,select,[role="button"],[role="tab"]')].filter(visible);
+                const hits = [];
+                for (const el of els) {
+                    const b = el.getBoundingClientRect();
+                    const cx = b.left + (b.width / 2);
+                    const cy = b.top + (b.height / 2);
+                    if (cx < 0 || cy < 0 || cx > innerWidth || cy > innerHeight) continue;
+                    const top = document.elementFromPoint(cx, cy);
+                    if (!top || top === el || el.contains(top) || top.contains(el)) continue;
+                    hits.push((el.getAttribute('aria-label') || el.textContent || '')
+                        .trim().slice(0, 24));
+                }
+                return hits;
+            };
+            const root = document.documentElement;
+            const had = root.getAttribute('data-bw-touch');
+            root.removeAttribute('data-bw-touch');
+            void root.offsetHeight;                  // force the reflow
+            const without = countCovered();
+            if (had !== null) root.setAttribute('data-bw-touch', had);
+            void root.offsetHeight;
+            const with_ = countCovered();
+            return {
+                without: without.length, with: with_.length,
+                added: with_.filter(n => !without.includes(n)).slice(0, 5),
+            };
+        });
+        check(overlap.with <= overlap.without,
+            `${r.name}: the floor covered no control that was reachable without it`,
+            `covered centres: ${overlap.without} unfloored -> ${overlap.with} floored`
+              + (overlap.added.length ? `; newly covered: ${overlap.added.map(n => `"${n}"`).join(', ')}` : ''));
     }
     console.log(`\n(floor is ${FLOOR_PX} CSS px; hard limit asserted at ${UNHITTABLE})`);
 } finally {

@@ -84,11 +84,38 @@ touched, nothing to keep in sync as those panes change. `test/touch-targets.test
 asserts the rule sets *exactly* those two properties, since that is the claim the
 approach rests on.
 
-**44 was chosen by measuring the objection.** The risk was that a `min-width`
-would widen dense toolbar rows until content ran off the pane. Floors of 0, 32
-and 44 were each applied and `document.scrollWidth` read on all six tabs: it
-stayed at 1024 in every case. 44 costs nothing here, so there was no reason to
-settle for less than the standard.
+**The floor is 32, not the standard 44, and that is a measurement not a
+preference.** Two costs were considered. The first was width: a `min-width`
+could widen dense toolbar rows until content ran off the pane. Floors of 0, 32
+and 44 were applied and `document.scrollWidth` read on all six tabs — it stayed
+at 1024 in every case, so width is not the constraint.
+
+The second cost is the one that decided it, and it was nearly missed. A
+`min-width` can push a control **under a neighbour**: that costs no page width,
+so the check above passes, and the control becomes impossible to tap — worse
+than the small target it replaced. Both candidates were A/B'd by switching the
+rule off and on in one live page and counting controls whose own centre is
+covered by something else:
+
+| floor | covered centres, per tab | verdict |
+|---|---|---|
+| 32 | 0/0, 1/1, 1/1, 6/6, 17/17, 0/0 — unchanged everywhere | nothing new is hidden |
+| 44 | Circuit goes **17 → 18** | "Analog" lands under an `svg`, untappable at its centre |
+
+An unreachable 44px control is worse than a reachable 32px one. 32 still clears
+the 24px hard limit for every control on every tab, which is what the gate
+asserts.
+
+A note on how that was found, because the first version of this section said
+"44 costs nothing here" on the strength of the `scrollWidth` reading alone. That
+measurement was true; the conclusion drawn from it was too narrow. Worse, the
+first attempt to build an overlap detector was pronounced working without being
+provoked — and when finally stressed with a 400px `min-width`, it reported
+*fewer* covered controls, because enlarging an element moves its own centre
+further inside itself. A self-centre test cannot be stressed by growth; it has
+to be stressed by something that covers a *different* element. Once stressed
+correctly (`min-height: 400px`, and an absolutely-positioned block) it fired,
+and only then was it trustworthy enough to report the 44px regression.
 
 ### Where the floor is installed, and where it is not
 

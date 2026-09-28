@@ -16,13 +16,30 @@
  * goal is that a control be comfortable once the reader has pinched in (the
  * viewport meta allows up to 5x), which is what a CSS-pixel floor gives.
  *
- * WHY 44 AND NOT LESS: measured on the shipped build at 430x930 before
- * choosing. Unfloored, the Code tab had 4 of 29 controls under 24 CSS px and
- * 21 under 32, with none reaching 44; the FPGA pane had 25 of 43 under 24. The
- * worry with 44 was that widening dense toolbar rows would push content off
- * the pane, so both 32 and 44 were tried and document scrollWidth measured on
- * every tab: it stayed at 1024 in all six tabs at both floors. 44 costs
- * nothing here, so there is no reason to settle for less than the standard.
+ * WHY 32 AND NOT THE STANDARD 44: because 44 was measured and it breaks
+ * something. Unfloored, the Code tab had 4 of 29 controls under 24 CSS px and
+ * 21 under 32, with none reaching 44; the FPGA pane had 25 of 43 under 24. So a
+ * floor is wanted. But a min-width can also push a control UNDER a neighbour,
+ * which costs no page width and leaves it impossible to tap — worse than the
+ * small target it replaced.
+ *
+ * Both candidates were A/B'd on all six tabs, switching this rule off and on in
+ * one live page and counting controls whose own centre is covered by something
+ * else:
+ *
+ *   floor 32 — covered counts unchanged on every tab (0/0, 1/1, 1/1, 6/6,
+ *              17/17, 0/0). Nothing new is hidden.
+ *   floor 44 — the Circuit tab goes 17 -> 18: a control labelled "Analog"
+ *              ends up under an svg and cannot be tapped at its centre.
+ *
+ * An unreachable 44px control is a worse outcome than a reachable 32px one, so
+ * the floor is 32. It still clears the 24px hard limit for every control on
+ * every tab, which is what scripts/verify-tap-targets.mjs asserts.
+ *
+ * Note that an earlier version of this comment claimed "44 costs nothing here"
+ * on the strength of document scrollWidth staying at 1024. That measurement was
+ * true and the conclusion drawn from it was too narrow: width is not the only
+ * cost, and the overlap A/B is what found the one that mattered.
  *
  * WHY A `@media` QUERY CANNOT DO THIS: the layout viewport is 1024 on every
  * phone by construction, so `@media (max-width: 700px)` never matches. The
@@ -37,9 +54,8 @@ import {currentBox, subscribeVisualViewport} from './visual-viewport.js';
 /** Below this many effective (on-screen) pixels, a pointer is a fingertip. */
 export const NARROW_PX = 700;
 
-/** Minimum hit box, in CSS pixels. 44 is the accessibility standard; the
- * experiment below found it costs nothing here. */
-export const FLOOR_PX = 44;
+/** Minimum hit box, in CSS pixels. Not 44 — see WHY 32 below. */
+export const FLOOR_PX = 32;
 
 const STYLE_ID = 'bw-touch-targets';
 const ATTR = 'data-bw-touch';
