@@ -98,3 +98,41 @@ test('arrays run without a json module, and a point off the display is ignored a
     assert.deepEqual(lines, ['dog', '2']);
     assert.equal(pixels[4][4], 9);
 });
+
+test('a function\'s result, a break and a for … of run as MakeCode runs them', async () => {
+    const {lines} = await runMakeCode([
+        'function seriesSum(n: number) {',
+        '    if (n < 1) {',
+        '        return 0',
+        '    }',
+        '    return (n * (n + 1)) / 2',
+        '}',
+        'let nums: number[] = [4, 7, 9, 12]',
+        'let seen = 0',
+        'for (let v of nums) {',
+        '    if (v > 8) {',
+        '        break',
+        '    }',
+        '    seen += v',
+        '}',
+        'serial.writeLine("" + seriesSum(4) + " " + seriesSum(0) + " " + seen)'
+    ].join('\n'), {ms: 1000});
+    // seriesSum(4) = 4 * 5 / 2 = 10 (it was n * n + 1 / 2 = 16.5); 4 + 7 before the
+    // break. Python's `/` gives 10.0, and the emitter's join is str(): printing
+    // it "10" as MakeCode does is the emitter's, and separate from this.
+    assert.deepEqual(lines, ['10.0 0 11']);
+});
+
+test('sound effects, built-in sounds and a tone with its mode run on the V2 firmware; the logo reads', async () => {
+    const {lines} = await runMakeCode([
+        'music.play(music.tonePlayable(262, 100), music.PlaybackMode.UntilDone)',
+        'music.play(music.builtinPlayableSoundEffect(soundExpression.giggle), music.PlaybackMode.InBackground)',
+        'music.playSoundEffect(music.createSoundEffect(WaveShape.Noise, 4120, 1266, 1024, 148, 500, SoundExpressionEffect.Warble, InterpolationCurve.Curve), SoundExpressionPlayMode.UntilDone)',
+        'if (input.logoIsPressed()) {',
+        '    serial.writeLine("logo")',
+        '} else {',
+        '    serial.writeLine("no logo")',
+        '}'
+    ].join('\n'), {ms: 2000});
+    assert.deepEqual(lines, ['no logo']);
+});

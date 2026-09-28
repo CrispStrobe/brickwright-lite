@@ -97,6 +97,11 @@ const TRANSFORMS = {
     'input.onButtonPressed': 'input.buttonIsPressed',
     'input.onGesture': 'input.isGesture',
     'input.onPinPressed': 'input.pinIsPressed',
+    'input.onLogoEvent': 'input.logoIsPressed',
+    // pxt-microbit defines one as the other (libs/core/soundexpressions.ts:
+    // createSoundExpression(...) is `new SoundExpression(createSoundEffect(...))`),
+    // and the dialect's one sound-effect block goes back as createSoundEffect.
+    'music.createSoundExpression': 'music.createSoundEffect',
     // The same function under two names (pxt-microbit: Math.map is pins.map);
     // the dialect has one `map … from low … high …` block, which goes back as pins.map.
     'Math.map': 'pins.map',

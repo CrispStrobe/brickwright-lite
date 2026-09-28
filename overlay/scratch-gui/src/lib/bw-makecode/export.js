@@ -51,7 +51,7 @@ const BUTTON = {a: 'Button.A', b: 'Button.B', ab: 'Button.AB'};
 /** Reporters that already ARE a boolean, so comparing them to "true" is noise. */
 const BOOLEAN_REPORTERS = new Set([
     'microbitplus_isgesture', 'microbitplus_istouch', 'microbitplus_isbutton',
-    'microbitplus_ispinhigh', 'operator_and', 'operator_or', 'operator_not',
+    'microbitplus_ispinhigh', 'microbitplus_islogo', 'operator_and', 'operator_or', 'operator_not',
     'operator_gt', 'operator_lt', 'operator_equals', 'operator_contains',
     'sensing_keypressed', 'sensing_touchingobject',
     'microbitplus_spritetouching', 'microbitplus_spritetouchingedge', 'microbitplus_spritedeleted',
@@ -348,6 +348,8 @@ class Emitter {
         case 'microbitplus_beat': return `music.beat(BeatFraction.${BEAT_FRACTION[f('FRACTION')] || 'Whole'})`;
         case 'microbitplus_notefreq': return `music.noteFrequency(Note.${f('NOTE') || 'C'})`;
         case 'microbitplus_tempo': return 'music.tempo()';
+        case 'microbitplus_islogo': return 'input.logoIsPressed()';
+        case 'microbitplus_radiorssi': return 'radio.receivedPacket(RadioPacketProperty.SignalStrength)';
         case 'planetemaths_pow': return `Math.pow(${v('NUM1')}, ${v('NUM2')})`;
         case 'sensing_timer': return '(input.runningTime() / 1000)';
         // Inside a DEFINE, a parameter is read through one of these.
@@ -475,7 +477,14 @@ class Emitter {
         case 'control_wait_until':
             push(`pauseUntil(() => ${this.condition(b, 'CONDITION')})`);
             return;
+        // `stop this script` in a function or a radio handler is how the
+        // importer writes MakeCode's `return` (see translate-base.js Return),
+        // and it goes back as that.
         case 'control_stop':
+            if (this.inFunction && f('STOP_OPTION') === 'this script') {
+                push('return');
+                return;
+            }
             push('control.reset()');
             return;
 
@@ -508,7 +517,11 @@ class Emitter {
             this.arrays.add(this.arrayName(b));
             return;                                   // the declaration IS the creation
         case 'arrays_create1D': {
-            const json = this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
+            // The literal's own text, not value(): value() JSON-quotes a text
+            // input, and stripping only the outer quotes left `[\"cat\"]`
+            // escaped — a string array MakeCode could not read.
+            const slot = b.inputs && b.inputs.JSON && b.inputs.JSON[1];
+            const json = Array.isArray(slot) ? String(slot[1]) : this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
             push(`${this.arrayName(b)} = ${json}`);
             return;
         }
@@ -685,6 +698,24 @@ class Emitter {
         case 'microbitplus_rest':
             push(`music.rest(${v('MS')})`);
             return;
+        // MakeCode's own forms for a tone with a mode, a built-in sound and a
+        // sound effect.
+        case 'microbitplus_playtonemode':
+            push(`music.play(music.tonePlayable(${v('FREQ')}, ${v('MS')}), music.PlaybackMode.${PLAYBACK[f('MODE')] || 'UntilDone'})`);
+            return;
+        case 'microbitplus_playsound':
+            push(`music.play(music.builtinPlayableSoundEffect(soundExpression.${f('SOUND') || 'giggle'}), ` +
+                `music.PlaybackMode.${PLAYBACK[f('MODE')] || 'UntilDone'})`);
+            return;
+        case 'microbitplus_playsoundeffect': {
+            const W = {sine: 'Sine', sawtooth: 'Sawtooth', triangle: 'Triangle', square: 'Square', noise: 'Noise'};
+            const X = {none: 'None', vibrato: 'Vibrato', tremolo: 'Tremolo', warble: 'Warble'};
+            const C = {linear: 'Linear', curve: 'Curve', logarithmic: 'Logarithmic'};
+            push(`music.playSoundEffect(music.createSoundEffect(WaveShape.${W[f('WAVE')] || 'Square'}, ${v('FROM')}, ${v('TO')}, ` +
+                `${v('VFROM')}, ${v('VTO')}, ${v('MS')}, SoundExpressionEffect.${X[f('FX')] || 'None'}, ` +
+                `InterpolationCurve.${C[f('CURVE')] || 'Linear'}), SoundExpressionPlayMode.${f('MODE') === 'in background' ? 'InBackground' : 'UntilDone'})`);
+            return;
+        }
         case 'microbitplus_settempo':
             push(`music.setTempo(${v('BPM')})`);
             return;
@@ -880,10 +911,12 @@ export function projectToMakeCodeTs (project) {
                 if (!proto) continue;
                 const {name, args} = emitter.procedure(proto);
                 const names = emitter.parameterNames(proto);
+                emitter.inFunction = true;
                 definitions.push(
                     `function ${name}(${names.map(n => `${n}: number`).join(', ')}) {`,
                     ...emitter.stack(block.next, 1),
                     '}');
+                emitter.inFunction = false;
                 void args;
                 continue;
             }
@@ -892,7 +925,9 @@ export function projectToMakeCodeTs (project) {
             if (RADIO_HATS[block.opcode]) {
                 const {call, param} = RADIO_HATS[block.opcode];
                 emitter.radioHat = block.opcode;
+                emitter.inFunction = true;
                 body.push(`${call}(function (${param}) {`, ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
                 emitter.radioHat = null;
                 continue;
             }

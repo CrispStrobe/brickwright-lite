@@ -324,6 +324,14 @@ class DebugPanel extends React.Component {
         const {linuxInitrd} = e.detail || {};
         const {nativeBlocks} = e.detail || {};
         if (!bytes && !riscvImage) return;
+        // THE SAME LOAD, DELIVERED TWICE. circuit-tab stashes every media-load
+        // and, when that flips it to "machine booted", re-dispatches the very
+        // same detail object a frame later (for a panel that was not mounted
+        // the first time). A panel that already took it would tear down the
+        // machine it is booting and boot a second one — for Linux, a second
+        // 64 MiB kernel. Identity, not equality: a new Run makes a new detail.
+        if (e.detail && e.detail === this._lastMediaDetail) return;
+        this._lastMediaDetail = e.detail || null;
         this._teardownRunner();
         this._bootMedia = {
             slot: slotId,

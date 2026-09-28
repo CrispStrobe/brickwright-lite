@@ -185,3 +185,36 @@ test('imported music keeps MakeCode\'s time in the real extension; the new block
     assert.equal(value('tempo_'), 100, 'changeTempoBy(40) from 60');
     assert.equal(value('a'), 440, 'Note.A');
 });
+
+test('imported sound, logo and signal-strength calls reach the real extension', {skip: SKIP}, async () => {
+    // Census batch 3. The sound is the simulator's; here the blocks must load
+    // and be reached, and the reporters read their quiet values.
+    const {code, unsupported} = microbitToPseudocode(`
+        let rssi = 5
+        let logo = 5
+        music.play(music.tonePlayable(262, 10), music.PlaybackMode.InBackground)
+        music.play(music.builtinPlayableSoundEffect(soundExpression.giggle), music.PlaybackMode.InBackground)
+        music.playSoundEffect(music.createSoundEffect(WaveShape.Sine, 500, 100, 255, 0, 10, SoundExpressionEffect.None, InterpolationCurve.Linear), SoundExpressionPlayMode.InBackground)
+        rssi = radio.receivedPacket(RadioPacketProperty.SignalStrength)
+        if (input.logoIsPressed()) {
+            logo = 1
+        } else {
+            logo = 0
+        }
+    `);
+    assert.deepEqual(unsupported, []);
+    const run = await runProgram(code, {frames: 10});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    for (const opcode of ['microbitplus_playtonemode', 'microbitplus_playsound', 'microbitplus_playsoundeffect',
+        'microbitplus_radiorssi', 'microbitplus_islogo']) {
+        assert.ok(run.calls.get(opcode) > 0, `${opcode} never reached the extension`);
+    }
+    const value = name => {
+        for (const target of run.vm.runtime.targets) {
+            for (const variable of Object.values(target.variables || {})) if (variable.name === name) return Number(variable.value);
+        }
+        return null;
+    };
+    assert.equal(value('rssi'), 0);
+    assert.equal(value('logo'), 0);
+});
