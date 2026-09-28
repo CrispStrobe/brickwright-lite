@@ -15,6 +15,8 @@ mod native_capability;
 #[cfg(desktop)]
 mod renode_brick_state;
 #[cfg(desktop)]
+mod renode_debugger;
+#[cfg(desktop)]
 mod renode_rsp;
 #[cfg(desktop)]
 mod renode_supervisor;
@@ -80,6 +82,8 @@ pub fn run() {
     let builder = builder.manage(native_broker_adapter::NativeBrokerAdapter::new());
     #[cfg(desktop)]
     let builder = builder.manage(renode_supervisor::RenodeSupervisor::new());
+    #[cfg(desktop)]
+    let builder = builder.manage(renode_debugger::RenodeDebugger::new());
 
     builder
         .invoke_handler(tauri::generate_handler![

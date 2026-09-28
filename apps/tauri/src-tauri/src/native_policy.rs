@@ -58,7 +58,11 @@ impl NativePolicyState {
     ) -> Result<LeaseId, StateError> {
         let identity = HostIdentity::new(
             audit_id,
-            [(Operation::PlatformKindRead, Resource::PlatformDefault)],
+            [
+                (Operation::PlatformKindRead, Resource::PlatformDefault),
+                (Operation::RenodeSpikeStart, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeClose, Resource::RenodeSpikePrime),
+            ],
         );
         let now = self.now();
         self.inner
@@ -123,12 +127,16 @@ impl NativePolicyState {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) enum Operation {
     PlatformKindRead,
+    RenodeSpikeStart,
+    RenodeSpikeClose,
 }
 
 impl Operation {
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "platform.kind.read" => Some(Self::PlatformKindRead),
+            "renode.spike.session.start" => Some(Self::RenodeSpikeStart),
+            "renode.spike.session.close" => Some(Self::RenodeSpikeClose),
             _ => None,
         }
     }
@@ -137,12 +145,14 @@ impl Operation {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) enum Resource {
     PlatformDefault,
+    RenodeSpikePrime,
 }
 
 impl Resource {
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "platform/default" => Some(Self::PlatformDefault),
+            "renode/spike-prime" => Some(Self::RenodeSpikePrime),
             _ => None,
         }
     }
@@ -171,7 +181,11 @@ impl LeaseId {
     /// Exactly 64 lowercase hex characters. Anything else is not a lease id and must not be
     /// coerced into one — a short or mixed-case value is a caller error, not a near miss.
     pub(crate) fn parse_hex(value: &str) -> Option<Self> {
-        if value.len() != 64 || !value.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) {
+        if value.len() != 64
+            || !value
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        {
             return None;
         }
         let mut bytes = [0u8; 32];
@@ -270,8 +284,15 @@ impl RedactedAuditRow {
             index: event.index,
             at: event.at,
             principal: event.principal,
-            operation: event.operation.map(|_| "platform.kind.read"),
-            resource: event.resource.map(|_| "platform/default"),
+            operation: event.operation.map(|operation| match operation {
+                Operation::PlatformKindRead => "platform.kind.read",
+                Operation::RenodeSpikeStart => "renode.spike.session.start",
+                Operation::RenodeSpikeClose => "renode.spike.session.close",
+            }),
+            resource: event.resource.map(|resource| match resource {
+                Resource::PlatformDefault => "platform/default",
+                Resource::RenodeSpikePrime => "renode/spike-prime",
+            }),
             sequence: event.sequence,
             decision,
             denial,
@@ -621,6 +642,32 @@ mod tests {
         assert_eq!(request(&mut core, lease, 0, 5).unwrap().principal, 7);
         assert_eq!(request(&mut core, lease, 1, 5).unwrap().sequence, 1);
         assert_eq!(request(&mut core, lease, 2, 5), Err(Denial::Exhausted));
+    }
+
+    #[test]
+    fn broker_lease_declares_only_the_reviewed_platform_and_spike_operations() {
+        let state = NativePolicyState::new();
+        let lease = state.issue_broker_lease(BROKER_LABEL, 7, id(9)).unwrap();
+        for (sequence, operation, resource) in [
+            (0, "platform.kind.read", "platform/default"),
+            (1, "renode.spike.session.start", "renode/spike-prime"),
+            (2, "renode.spike.session.close", "renode/spike-prime"),
+        ] {
+            assert!(state
+                .authorize_broker_call(BROKER_LABEL, lease, sequence, operation, resource, &empty())
+                .is_ok());
+        }
+        assert_eq!(
+            state.authorize_broker_call(
+                BROKER_LABEL,
+                lease,
+                3,
+                "renode.spike.session.start",
+                "platform/default",
+                &empty()
+            ),
+            Err(StateError::Denied(Denial::Undeclared))
+        );
     }
 
     #[test]
