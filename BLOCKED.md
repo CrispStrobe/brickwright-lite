@@ -78,6 +78,13 @@ with the same extension still failing at a DIFFERENT byte offset. A cache would
 have cleared. That distinction is what says "wait for upstream" rather than
 "re-run it".
 
+**What actually landed it: lite #473**, `fix/spike-transpiler-fixture-4fb33f88`
+— the SPIKE transpiler fixture was refreshed to the gallery pin (extensions
+`4fb33f88`). So the unreviewable bytes were a fixture in THIS repo lagging the
+pin, not a gallery-side rebuild as guessed above; the "wait for upstream"
+verdict was right by luck, and the reusable part is still the moving-offset
+test, not the attribution.
+
 
 ## ~~OPEN, FLEET-WIDE~~ — FIXED (`17e5b46ec`): main's `build` job had no verdict from 04:21 to 06:5x (2026-09-21)
 
