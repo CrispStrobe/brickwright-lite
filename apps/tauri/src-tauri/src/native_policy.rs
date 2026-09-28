@@ -58,7 +58,40 @@ impl NativePolicyState {
     ) -> Result<LeaseId, StateError> {
         let identity = HostIdentity::new(
             audit_id,
-            [(Operation::PlatformKindRead, Resource::PlatformDefault)],
+            [
+                (Operation::PlatformKindRead, Resource::PlatformDefault),
+                (Operation::RenodeSpikeStart, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeClose, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeRun, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikePause, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeReset, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeStep, Resource::RenodeSpikePrime),
+                (
+                    Operation::RenodeSpikeRegistersRead,
+                    Resource::RenodeSpikePrime,
+                ),
+                (Operation::RenodeSpikeMemoryRead, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeStateRead, Resource::RenodeSpikePrime),
+                (
+                    Operation::RenodeSpikeBreakpointSet,
+                    Resource::RenodeSpikePrime,
+                ),
+                (
+                    Operation::RenodeSpikeBreakpointClear,
+                    Resource::RenodeSpikePrime,
+                ),
+                (Operation::RenodeEv3Start, Resource::RenodeEv3),
+                (Operation::RenodeEv3Close, Resource::RenodeEv3),
+                (Operation::RenodeEv3Run, Resource::RenodeEv3),
+                (Operation::RenodeEv3Pause, Resource::RenodeEv3),
+                (Operation::RenodeEv3Reset, Resource::RenodeEv3),
+                (Operation::RenodeEv3Step, Resource::RenodeEv3),
+                (Operation::RenodeEv3RegistersRead, Resource::RenodeEv3),
+                (Operation::RenodeEv3MemoryRead, Resource::RenodeEv3),
+                (Operation::RenodeEv3StateRead, Resource::RenodeEv3),
+                (Operation::RenodeEv3BreakpointSet, Resource::RenodeEv3),
+                (Operation::RenodeEv3BreakpointClear, Resource::RenodeEv3),
+            ],
         );
         let now = self.now();
         self.inner
@@ -123,13 +156,87 @@ impl NativePolicyState {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) enum Operation {
     PlatformKindRead,
+    RenodeSpikeStart,
+    RenodeSpikeClose,
+    RenodeSpikeRun,
+    RenodeSpikePause,
+    RenodeSpikeReset,
+    RenodeSpikeStep,
+    RenodeSpikeRegistersRead,
+    RenodeSpikeMemoryRead,
+    RenodeSpikeStateRead,
+    RenodeSpikeBreakpointSet,
+    RenodeSpikeBreakpointClear,
+    RenodeEv3Start,
+    RenodeEv3Close,
+    RenodeEv3Run,
+    RenodeEv3Pause,
+    RenodeEv3Reset,
+    RenodeEv3Step,
+    RenodeEv3RegistersRead,
+    RenodeEv3MemoryRead,
+    RenodeEv3StateRead,
+    RenodeEv3BreakpointSet,
+    RenodeEv3BreakpointClear,
 }
 
 impl Operation {
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "platform.kind.read" => Some(Self::PlatformKindRead),
+            "renode.spike.session.start" => Some(Self::RenodeSpikeStart),
+            "renode.spike.session.close" => Some(Self::RenodeSpikeClose),
+            "renode.spike.run" => Some(Self::RenodeSpikeRun),
+            "renode.spike.pause" => Some(Self::RenodeSpikePause),
+            "renode.spike.reset" => Some(Self::RenodeSpikeReset),
+            "renode.spike.step" => Some(Self::RenodeSpikeStep),
+            "renode.spike.registers.read" => Some(Self::RenodeSpikeRegistersRead),
+            "renode.spike.memory.read" => Some(Self::RenodeSpikeMemoryRead),
+            "renode.spike.state.read" => Some(Self::RenodeSpikeStateRead),
+            "renode.spike.breakpoint.set" => Some(Self::RenodeSpikeBreakpointSet),
+            "renode.spike.breakpoint.clear" => Some(Self::RenodeSpikeBreakpointClear),
+            "renode.ev3.session.start" => Some(Self::RenodeEv3Start),
+            "renode.ev3.session.close" => Some(Self::RenodeEv3Close),
+            "renode.ev3.run" => Some(Self::RenodeEv3Run),
+            "renode.ev3.pause" => Some(Self::RenodeEv3Pause),
+            "renode.ev3.reset" => Some(Self::RenodeEv3Reset),
+            "renode.ev3.step" => Some(Self::RenodeEv3Step),
+            "renode.ev3.registers.read" => Some(Self::RenodeEv3RegistersRead),
+            "renode.ev3.memory.read" => Some(Self::RenodeEv3MemoryRead),
+            "renode.ev3.state.read" => Some(Self::RenodeEv3StateRead),
+            "renode.ev3.breakpoint.set" => Some(Self::RenodeEv3BreakpointSet),
+            "renode.ev3.breakpoint.clear" => Some(Self::RenodeEv3BreakpointClear),
             _ => None,
+        }
+    }
+
+    fn valid_args(self, args: &Value) -> bool {
+        let Value::Object(map) = args else {
+            return false;
+        };
+        match self {
+            Self::RenodeSpikeMemoryRead | Self::RenodeEv3MemoryRead => {
+                map.len() == 2
+                    && map
+                        .get("address")
+                        .and_then(Value::as_u64)
+                        .is_some_and(|value| value <= u64::from(u32::MAX))
+                    && map
+                        .get("length")
+                        .and_then(Value::as_u64)
+                        .is_some_and(|value| (1..=4096).contains(&value))
+            }
+            Self::RenodeSpikeBreakpointSet
+            | Self::RenodeSpikeBreakpointClear
+            | Self::RenodeEv3BreakpointSet
+            | Self::RenodeEv3BreakpointClear => {
+                map.len() == 1
+                    && map
+                        .get("address")
+                        .and_then(Value::as_u64)
+                        .is_some_and(|value| value <= u64::from(u32::MAX))
+            }
+            _ => map.is_empty(),
         }
     }
 }
@@ -137,12 +244,16 @@ impl Operation {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub(crate) enum Resource {
     PlatformDefault,
+    RenodeSpikePrime,
+    RenodeEv3,
 }
 
 impl Resource {
     pub(crate) fn parse(value: &str) -> Option<Self> {
         match value {
             "platform/default" => Some(Self::PlatformDefault),
+            "renode/spike-prime" => Some(Self::RenodeSpikePrime),
+            "renode/ev3" => Some(Self::RenodeEv3),
             _ => None,
         }
     }
@@ -171,7 +282,11 @@ impl LeaseId {
     /// Exactly 64 lowercase hex characters. Anything else is not a lease id and must not be
     /// coerced into one — a short or mixed-case value is a caller error, not a near miss.
     pub(crate) fn parse_hex(value: &str) -> Option<Self> {
-        if value.len() != 64 || !value.bytes().all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()) {
+        if value.len() != 64
+            || !value
+                .bytes()
+                .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+        {
             return None;
         }
         let mut bytes = [0u8; 32];
@@ -270,8 +385,36 @@ impl RedactedAuditRow {
             index: event.index,
             at: event.at,
             principal: event.principal,
-            operation: event.operation.map(|_| "platform.kind.read"),
-            resource: event.resource.map(|_| "platform/default"),
+            operation: event.operation.map(|operation| match operation {
+                Operation::PlatformKindRead => "platform.kind.read",
+                Operation::RenodeSpikeStart => "renode.spike.session.start",
+                Operation::RenodeSpikeClose => "renode.spike.session.close",
+                Operation::RenodeSpikeRun => "renode.spike.run",
+                Operation::RenodeSpikePause => "renode.spike.pause",
+                Operation::RenodeSpikeReset => "renode.spike.reset",
+                Operation::RenodeSpikeStep => "renode.spike.step",
+                Operation::RenodeSpikeRegistersRead => "renode.spike.registers.read",
+                Operation::RenodeSpikeMemoryRead => "renode.spike.memory.read",
+                Operation::RenodeSpikeStateRead => "renode.spike.state.read",
+                Operation::RenodeSpikeBreakpointSet => "renode.spike.breakpoint.set",
+                Operation::RenodeSpikeBreakpointClear => "renode.spike.breakpoint.clear",
+                Operation::RenodeEv3Start => "renode.ev3.session.start",
+                Operation::RenodeEv3Close => "renode.ev3.session.close",
+                Operation::RenodeEv3Run => "renode.ev3.run",
+                Operation::RenodeEv3Pause => "renode.ev3.pause",
+                Operation::RenodeEv3Reset => "renode.ev3.reset",
+                Operation::RenodeEv3Step => "renode.ev3.step",
+                Operation::RenodeEv3RegistersRead => "renode.ev3.registers.read",
+                Operation::RenodeEv3MemoryRead => "renode.ev3.memory.read",
+                Operation::RenodeEv3StateRead => "renode.ev3.state.read",
+                Operation::RenodeEv3BreakpointSet => "renode.ev3.breakpoint.set",
+                Operation::RenodeEv3BreakpointClear => "renode.ev3.breakpoint.clear",
+            }),
+            resource: event.resource.map(|resource| match resource {
+                Resource::PlatformDefault => "platform/default",
+                Resource::RenodeSpikePrime => "renode/spike-prime",
+                Resource::RenodeEv3 => "renode/ev3",
+            }),
             sequence: event.sequence,
             decision,
             denial,
@@ -405,7 +548,7 @@ impl PolicyCore {
             Some(Denial::UnknownOperation)
         } else if resource.is_none() {
             Some(Denial::UnknownResource)
-        } else if !matches!(args, Value::Object(map) if map.is_empty()) {
+        } else if !operation.unwrap().valid_args(args) {
             Some(Denial::MalformedArguments)
         } else {
             match self.leases.get(&id) {
@@ -621,6 +764,119 @@ mod tests {
         assert_eq!(request(&mut core, lease, 0, 5).unwrap().principal, 7);
         assert_eq!(request(&mut core, lease, 1, 5).unwrap().sequence, 1);
         assert_eq!(request(&mut core, lease, 2, 5), Err(Denial::Exhausted));
+    }
+
+    #[test]
+    fn broker_lease_declares_only_the_reviewed_platform_spike_and_ev3_operations() {
+        let state = NativePolicyState::new();
+        let lease = state.issue_broker_lease(BROKER_LABEL, 7, id(9)).unwrap();
+        for (sequence, operation, resource, args) in [
+            (0, "platform.kind.read", "platform/default", empty()),
+            (
+                1,
+                "renode.spike.session.start",
+                "renode/spike-prime",
+                empty(),
+            ),
+            (
+                2,
+                "renode.spike.session.close",
+                "renode/spike-prime",
+                empty(),
+            ),
+            (3, "renode.spike.run", "renode/spike-prime", empty()),
+            (4, "renode.spike.pause", "renode/spike-prime", empty()),
+            (5, "renode.spike.reset", "renode/spike-prime", empty()),
+            (6, "renode.spike.step", "renode/spike-prime", empty()),
+            (
+                7,
+                "renode.spike.registers.read",
+                "renode/spike-prime",
+                empty(),
+            ),
+            (
+                8,
+                "renode.spike.memory.read",
+                "renode/spike-prime",
+                json!({"address": 0x20000000u64, "length": 4096}),
+            ),
+            (9, "renode.spike.state.read", "renode/spike-prime", empty()),
+            (
+                10,
+                "renode.spike.breakpoint.set",
+                "renode/spike-prime",
+                json!({"address": u32::MAX}),
+            ),
+            (
+                11,
+                "renode.spike.breakpoint.clear",
+                "renode/spike-prime",
+                json!({"address": 0}),
+            ),
+            (12, "renode.ev3.session.start", "renode/ev3", empty()),
+            (13, "renode.ev3.session.close", "renode/ev3", empty()),
+            (14, "renode.ev3.run", "renode/ev3", empty()),
+            (15, "renode.ev3.pause", "renode/ev3", empty()),
+            (16, "renode.ev3.reset", "renode/ev3", empty()),
+            (17, "renode.ev3.step", "renode/ev3", empty()),
+            (18, "renode.ev3.registers.read", "renode/ev3", empty()),
+            (
+                19,
+                "renode.ev3.memory.read",
+                "renode/ev3",
+                json!({"address": 0xffff0000u64, "length": 4096}),
+            ),
+            (20, "renode.ev3.state.read", "renode/ev3", empty()),
+            (
+                21,
+                "renode.ev3.breakpoint.set",
+                "renode/ev3",
+                json!({"address": u32::MAX}),
+            ),
+            (
+                22,
+                "renode.ev3.breakpoint.clear",
+                "renode/ev3",
+                json!({"address": 0}),
+            ),
+        ] {
+            assert!(state
+                .authorize_broker_call(BROKER_LABEL, lease, sequence, operation, resource, &args)
+                .is_ok());
+        }
+        assert_eq!(
+            state.authorize_broker_call(
+                BROKER_LABEL,
+                lease,
+                23,
+                "renode.spike.session.start",
+                "platform/default",
+                &empty()
+            ),
+            Err(StateError::Denied(Denial::Undeclared))
+        );
+    }
+
+    #[test]
+    fn debugger_argument_shapes_are_exact_and_bounded_for_both_targets() {
+        assert!(Operation::RenodeSpikeMemoryRead.valid_args(&json!({"address": 0, "length": 1})));
+        assert!(Operation::RenodeSpikeBreakpointSet.valid_args(&json!({"address": u32::MAX})));
+        for args in [
+            json!({"address": 0, "length": 0}),
+            json!({"address": 0, "length": 4097}),
+            json!({"address": u64::from(u32::MAX) + 1, "length": 1}),
+            json!({"address": 0, "length": 1, "extra": true}),
+            json!({"address": 0.5, "length": 1}),
+        ] {
+            assert!(!Operation::RenodeSpikeMemoryRead.valid_args(&args));
+        }
+        assert!(!Operation::RenodeSpikeBreakpointClear.valid_args(&json!({"address": -1})));
+        assert!(!Operation::RenodeSpikeRun.valid_args(&json!({"extra": true})));
+        assert!(Operation::RenodeEv3MemoryRead.valid_args(&json!({"address": 0, "length": 1})));
+        assert!(Operation::RenodeEv3BreakpointSet.valid_args(&json!({"address": u32::MAX})));
+        assert!(!Operation::RenodeEv3MemoryRead.valid_args(&json!({"address": 0, "length": 0})));
+        assert!(!Operation::RenodeEv3BreakpointClear.valid_args(&json!({"address": -1})));
+        assert!(!Operation::RenodeEv3Run.valid_args(&json!({"extra": true})));
     }
 
     #[test]

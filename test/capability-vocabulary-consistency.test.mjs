@@ -27,15 +27,22 @@ const root = new URL('..', import.meta.url);
 const bootstrap = readFileSync(new URL('apps/tauri/src-tauri/src/native_broker_bootstrap.js', root), 'utf8');
 const policy = readFileSync(new URL('apps/tauri/src-tauri/src/native_policy.rs', root), 'utf8');
 const capability = readFileSync(new URL('apps/tauri/src-tauri/src/native_capability.rs', root), 'utf8');
+const overlayVocabulary = readFileSync(new URL(
+    'overlay/scratch-vm/src/extension-support/capability-broker.js', root), 'utf8');
+const packagedVocabulary = readFileSync(new URL(
+    'packages/scratch-vm/src/extension-support/capability-broker.js', root), 'utf8');
 const {VOCABULARY_VERSION} = require_('../overlay/scratch-vm/src/extension-support/capability-broker.js');
 
 /** Operation names the JavaScript vocabulary declares. */
 const vocabulary = () => {
-    const source = readFileSync(
-        new URL('overlay/scratch-vm/src/extension-support/capability-broker.js', root), 'utf8');
-    const block = source.slice(source.indexOf('const OPERATIONS'), source.indexOf('const isPlainRecord'));
+    const block = overlayVocabulary.slice(overlayVocabulary.indexOf('const OPERATIONS'),
+        overlayVocabulary.indexOf('const isPlainRecord'));
     return [...block.matchAll(/'([a-z][a-z0-9]*(?:\.[a-z][a-z0-9]*)+)':/g)].map(m => m[1]).sort();
 };
+
+test('overlay and packaged capability vocabularies are byte-identical', () => {
+    assert.equal(packagedVocabulary, overlayVocabulary);
+});
 
 /** Operation names the broker realm will map to a resource. */
 const realmTable = () => {

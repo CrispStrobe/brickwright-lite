@@ -30,6 +30,21 @@ const audit = ({source, entry, manifest}) => {
         'production launch must never invoke a command shell');
     assert.match(source, /TcpListener::bind\(\(Ipv4Addr::LOCALHOST, 0\)\)/,
         'the endpoint must be chosen by a loopback-only ephemeral bind');
+    assert.doesNotMatch(source, /Ipv4Addr::UNSPECIFIED/,
+        'no Renode endpoint may bind beyond loopback');
+    for (const pin of [
+        'BW_RENODE_SPIKE_ROOT', 'BW_RENODE_SPIKE_SCENARIO',
+        'BW_RENODE_SPIKE_SCENARIO_SHA256', 'BW_RENODE_SPIKE_FIRMWARE',
+        'BW_RENODE_SPIKE_FIRMWARE_SHA256', 'BW_RENODE_SPIKE_STATE_SCRIPT',
+        'BW_RENODE_SPIKE_STATE_SCRIPT_SHA256', 'BW_RENODE_SPIKE_STATE_CONFIG',
+        'BW_RENODE_SPIKE_STATE_CONFIG_SHA256', 'BW_RENODE_EV3_ROOT',
+        'BW_RENODE_EV3_PLATFORM', 'BW_RENODE_EV3_PLATFORM_SHA256',
+        'BW_RENODE_EV3_FIRMWARE', 'BW_RENODE_EV3_FIRMWARE_SHA256'
+    ]) assert.match(source, new RegExp(`option_env!\\("${pin}"\\)`));
+    assert.match(source, /machine StartGdbServer \{BW_GDB_PORT\}/);
+    assert.match(source, /spike_state_start \\\"127\.0\.0\.1\\\" \{BW_STATE_PORT\}/);
+    assert.match(source, /uart1 CreateFileBackend \{BW_UART_PATH\} true/,
+        'EV3 evidence must come from a native-only bounded UART capture');
     assert.match(source, /BW_RENODE_SESSION_TOKEN/);
     assert.match(source, /getrandom::getrandom\(&mut bytes\)/,
         'the session token must come from the OS CSPRNG');

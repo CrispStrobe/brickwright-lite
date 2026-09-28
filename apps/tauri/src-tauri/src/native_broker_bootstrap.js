@@ -19,7 +19,31 @@ const hexId = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)
  * authority it could reuse or replay. An operation that is not a key here is refused before any
  * native call is made — unknown names fail closed, the way the vocabulary does everywhere else.
  */
-const CAPABILITY_RESOURCE = Object.freeze({__proto__: null, 'platform.kind.read': 'platform/default'});
+const CAPABILITY_RESOURCE = Object.freeze({__proto__: null,
+    'platform.kind.read': 'platform/default',
+    'renode.spike.session.start': 'renode/spike-prime',
+    'renode.spike.session.close': 'renode/spike-prime',
+    'renode.spike.run': 'renode/spike-prime',
+    'renode.spike.pause': 'renode/spike-prime',
+    'renode.spike.reset': 'renode/spike-prime',
+    'renode.spike.step': 'renode/spike-prime',
+    'renode.spike.registers.read': 'renode/spike-prime',
+    'renode.spike.memory.read': 'renode/spike-prime',
+    'renode.spike.state.read': 'renode/spike-prime',
+    'renode.spike.breakpoint.set': 'renode/spike-prime',
+    'renode.spike.breakpoint.clear': 'renode/spike-prime',
+    'renode.ev3.session.start': 'renode/ev3',
+    'renode.ev3.session.close': 'renode/ev3',
+    'renode.ev3.run': 'renode/ev3',
+    'renode.ev3.pause': 'renode/ev3',
+    'renode.ev3.reset': 'renode/ev3',
+    'renode.ev3.step': 'renode/ev3',
+    'renode.ev3.registers.read': 'renode/ev3',
+    'renode.ev3.memory.read': 'renode/ev3',
+    'renode.ev3.state.read': 'renode/ev3',
+    'renode.ev3.breakpoint.set': 'renode/ev3',
+    'renode.ev3.breakpoint.clear': 'renode/ev3'
+});
 
 const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, invoke, createProtocol}) => {
     if (typeof NativeBrokerProtocol !== 'function' || typeof BrokerProtocolError !== 'function' ||

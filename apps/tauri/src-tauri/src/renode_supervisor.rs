@@ -28,14 +28,31 @@ pub(crate) enum TeardownReason {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct RenodeEndpoint {
+    /// Renode monitor endpoint. It remains native-only and is never returned
+    /// through the capability broker.
     pub(crate) port: u16,
+    pub(crate) gdb_port: u16,
+    pub(crate) state_port: u16,
     token: String,
+    uart_evidence: Option<PathBuf>,
 }
 
 impl RenodeEndpoint {
+    #[cfg(test)]
     pub(crate) fn token(&self) -> &str {
         &self.token
     }
+
+    pub(crate) fn uart_evidence(&self) -> Option<&Path> {
+        self.uart_evidence.as_deref()
+    }
+}
+
+#[derive(Clone, Copy)]
+struct LaunchBounds {
+    timeout: Duration,
+    output_limit: usize,
+    capture_uart: bool,
 }
 
 #[derive(Clone)]
@@ -77,16 +94,97 @@ impl RenodeSupervisor {
             .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
         let digest = option_env!("BW_RENODE_SHA256")
             .ok_or_else(|| "Renode backend digest is not packaged in this build".to_owned())?;
-        self.start_verified(
+        self.start_verified_with_evidence(
             Path::new(executable),
             digest,
             arguments,
             working_directory,
-            MAX_SESSION_TIME,
-            MAX_OUTPUT_BYTES,
+            LaunchBounds {
+                timeout: MAX_SESSION_TIME,
+                output_limit: MAX_OUTPUT_BYTES,
+                capture_uart: false,
+            },
         )
     }
 
+    /// Launch the packaged SPIKE Prime machine and public simulation image.
+    /// Every path and digest is fixed at build time; editor data cannot enter
+    /// the Renode command line or monitor language.
+    #[allow(dead_code)]
+    pub(crate) fn start_spike(&self) -> Result<RenodeEndpoint, String> {
+        let root = pinned_path(
+            "SPIKE model root",
+            option_env!("BW_RENODE_SPIKE_ROOT"),
+            None,
+        )?;
+        let scenario = pinned_file(
+            "SPIKE scenario",
+            option_env!("BW_RENODE_SPIKE_SCENARIO"),
+            option_env!("BW_RENODE_SPIKE_SCENARIO_SHA256"),
+        )?;
+        let firmware = pinned_file(
+            "SPIKE firmware",
+            option_env!("BW_RENODE_SPIKE_FIRMWARE"),
+            option_env!("BW_RENODE_SPIKE_FIRMWARE_SHA256"),
+        )?;
+        let state_script = pinned_file(
+            "SPIKE state service",
+            option_env!("BW_RENODE_SPIKE_STATE_SCRIPT"),
+            option_env!("BW_RENODE_SPIKE_STATE_SCRIPT_SHA256"),
+        )?;
+        let state_config = pinned_file(
+            "SPIKE state config",
+            option_env!("BW_RENODE_SPIKE_STATE_CONFIG"),
+            option_env!("BW_RENODE_SPIKE_STATE_CONFIG_SHA256"),
+        )?;
+        for path in [&scenario, &state_script, &state_config] {
+            if !path.starts_with(&root) {
+                return Err("SPIKE model artifact escaped its packaged root".into());
+            }
+        }
+        let arguments = spike_arguments(&scenario, &firmware, &state_script, &state_config)?;
+        self.start(&arguments, &root)
+    }
+
+    /// Launch the exact public AM1808 model and source-built permissive smoke
+    /// image. Every executable input remains a build-time pin.
+    #[allow(dead_code)]
+    pub(crate) fn start_ev3(&self) -> Result<RenodeEndpoint, String> {
+        let root = pinned_path("EV3 model root", option_env!("BW_RENODE_EV3_ROOT"), None)?;
+        let platform = pinned_file(
+            "EV3 platform",
+            option_env!("BW_RENODE_EV3_PLATFORM"),
+            option_env!("BW_RENODE_EV3_PLATFORM_SHA256"),
+        )?;
+        let firmware = pinned_file(
+            "EV3 firmware",
+            option_env!("BW_RENODE_EV3_FIRMWARE"),
+            option_env!("BW_RENODE_EV3_FIRMWARE_SHA256"),
+        )?;
+        for path in [&platform, &firmware] {
+            if !path.starts_with(&root) {
+                return Err("EV3 model artifact escaped its packaged root".into());
+            }
+        }
+        let arguments = ev3_arguments(&platform, &firmware)?;
+        let executable = option_env!("BW_RENODE_EXECUTABLE")
+            .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
+        let digest = option_env!("BW_RENODE_SHA256")
+            .ok_or_else(|| "Renode backend digest is not packaged in this build".to_owned())?;
+        self.start_verified_with_evidence(
+            Path::new(executable),
+            digest,
+            &arguments,
+            &root,
+            LaunchBounds {
+                timeout: MAX_SESSION_TIME,
+                output_limit: MAX_OUTPUT_BYTES,
+                capture_uart: true,
+            },
+        )
+    }
+
+    #[cfg(test)]
     fn start_verified(
         &self,
         executable: &Path,
@@ -95,6 +193,27 @@ impl RenodeSupervisor {
         working_directory: &Path,
         timeout: Duration,
         output_limit: usize,
+    ) -> Result<RenodeEndpoint, String> {
+        self.start_verified_with_evidence(
+            executable,
+            expected_digest,
+            arguments,
+            working_directory,
+            LaunchBounds {
+                timeout,
+                output_limit,
+                capture_uart: false,
+            },
+        )
+    }
+
+    fn start_verified_with_evidence(
+        &self,
+        executable: &Path,
+        expected_digest: &str,
+        arguments: &[String],
+        working_directory: &Path,
+        bounds: LaunchBounds,
     ) -> Result<RenodeEndpoint, String> {
         if arguments.len() > 64 || arguments.iter().any(|value| value.len() > 16 * 1024) {
             return Err("Renode launch plan exceeds its bounds".into());
@@ -123,18 +242,51 @@ impl RenodeSupervisor {
         }
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
             .map_err(|_| "Renode loopback endpoint unavailable")?;
+        let gdb_listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
+            .map_err(|_| "Renode loopback endpoint unavailable")?;
+        let state_listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
+            .map_err(|_| "Renode loopback endpoint unavailable")?;
         let port = listener
             .local_addr()
             .map_err(|_| "Renode loopback endpoint unavailable")?
             .port();
+        let gdb_port = gdb_listener
+            .local_addr()
+            .map_err(|_| "Renode loopback endpoint unavailable")?
+            .port();
+        let state_port = state_listener
+            .local_addr()
+            .map_err(|_| "Renode loopback endpoint unavailable")?
+            .port();
         let token = random_token()?;
+        let uart_evidence = bounds
+            .capture_uart
+            .then(|| std::env::temp_dir().join(format!("brickwright-ev3-{token}.uart")));
+        let uart_monitor_path = uart_evidence
+            .as_deref()
+            .map(monitor_path)
+            .transpose()?
+            .unwrap_or_default();
+
+        let arguments: Vec<String> = arguments
+            .iter()
+            .map(|argument| {
+                argument
+                    .replace("{BW_MONITOR_PORT}", &port.to_string())
+                    .replace("{BW_GDB_PORT}", &gdb_port.to_string())
+                    .replace("{BW_STATE_PORT}", &state_port.to_string())
+                    .replace("{BW_UART_PATH}", &uart_monitor_path)
+            })
+            .collect();
 
         let mut command = Command::new(&executable);
         command
-            .args(arguments)
+            .args(&arguments)
             .current_dir(working_directory)
             .env("BW_RENODE_LOOPBACK_HOST", "127.0.0.1")
             .env("BW_RENODE_LOOPBACK_PORT", port.to_string())
+            .env("BW_RENODE_GDB_PORT", gdb_port.to_string())
+            .env("BW_RENODE_STATE_PORT", state_port.to_string())
             .env("BW_RENODE_SESSION_TOKEN", &token)
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -143,6 +295,8 @@ impl RenodeSupervisor {
         // ever told the selected loopback address; it cannot be redirected to
         // a LAN interface by project input.
         drop(listener);
+        drop(gdb_listener);
+        drop(state_listener);
         let mut child = command
             .group_spawn()
             .map_err(|_| "Renode process failed to start")?;
@@ -164,22 +318,23 @@ impl RenodeSupervisor {
             stdout,
             Arc::clone(&total),
             Arc::clone(&overflow),
-            output_limit,
+            bounds.output_limit,
         );
         let stderr_reader = drain_bounded(
             stderr,
             Arc::clone(&total),
             Arc::clone(&overflow),
-            output_limit,
+            bounds.output_limit,
         );
         let worker_stop = Arc::clone(&stop);
         let worker_done = Arc::clone(&done);
+        let worker_uart_evidence = uart_evidence.clone();
         thread::spawn(move || {
             let started = Instant::now();
             loop {
                 let terminate = worker_stop.load(Ordering::SeqCst)
                     || overflow.load(Ordering::SeqCst)
-                    || started.elapsed() >= timeout;
+                    || started.elapsed() >= bounds.timeout;
                 if terminate {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -197,6 +352,9 @@ impl RenodeSupervisor {
             }
             let _ = stdout_reader.join();
             let _ = stderr_reader.join();
+            if let Some(path) = worker_uart_evidence {
+                let _ = std::fs::remove_file(path);
+            }
             let (lock, wake) = &*worker_done;
             if let Ok(mut finished) = lock.lock() {
                 *finished = true;
@@ -204,7 +362,13 @@ impl RenodeSupervisor {
             }
         });
         *slot = Some(SessionControl { stop, done });
-        Ok(RenodeEndpoint { port, token })
+        Ok(RenodeEndpoint {
+            port,
+            gdb_port,
+            state_port,
+            token,
+            uart_evidence,
+        })
     }
 
     pub(crate) fn teardown(&self, _reason: TeardownReason) {
@@ -234,6 +398,101 @@ fn sha256(path: &Path) -> io::Result<String> {
         hash.update(&buffer[..count]);
     }
     Ok(format!("{:x}", hash.finalize()))
+}
+
+fn pinned_path(
+    label: &str,
+    path: Option<&'static str>,
+    expected_digest: Option<&'static str>,
+) -> Result<PathBuf, String> {
+    let path = path.ok_or_else(|| format!("{label} is not packaged in this build"))?;
+    let path = Path::new(path)
+        .canonicalize()
+        .map_err(|_| format!("{label} is unavailable"))?;
+    if let Some(expected) = expected_digest {
+        let actual = sha256(&path).map_err(|_| format!("{label} cannot be verified"))?;
+        if expected.len() != 64
+            || !expected.bytes().all(|byte| byte.is_ascii_hexdigit())
+            || !actual.eq_ignore_ascii_case(expected)
+        {
+            return Err(format!("{label} digest mismatch"));
+        }
+    }
+    Ok(path)
+}
+
+fn pinned_file(
+    label: &str,
+    path: Option<&'static str>,
+    expected_digest: Option<&'static str>,
+) -> Result<PathBuf, String> {
+    let expected_digest =
+        expected_digest.ok_or_else(|| format!("{label} digest is not packaged in this build"))?;
+    pinned_path(label, path, Some(expected_digest))
+}
+
+fn monitor_path(path: &Path) -> Result<String, String> {
+    let value = path
+        .to_str()
+        .ok_or_else(|| "SPIKE package path is not UTF-8".to_owned())?;
+    if value.contains([';', '\n', '\r', '\t']) {
+        return Err("SPIKE package path is not monitor-safe".into());
+    }
+    // Renode's ReadFilePath token is `@path`, not `@"path"`. Its tokenizer
+    // supports spaces only as `\ `; quoting the path changes the token type
+    // and makes LoadELF/include reject it.
+    Ok(format!("@{}", value.replace(' ', "\\ ")))
+}
+
+fn spike_arguments(
+    scenario: &Path,
+    firmware: &Path,
+    state_script: &Path,
+    state_config: &Path,
+) -> Result<Vec<String>, String> {
+    Ok(vec![
+        "--disable-gui".into(),
+        "--hide-log".into(),
+        "-P".into(),
+        "{BW_MONITOR_PORT}".into(),
+        scenario
+            .to_str()
+            .ok_or_else(|| "SPIKE scenario path is not UTF-8".to_owned())?
+            .into(),
+        "-e".into(),
+        format!("sysbus LoadELF {}", monitor_path(firmware)?),
+        "-e".into(),
+        "machine StartGdbServer {BW_GDB_PORT}".into(),
+        "-e".into(),
+        format!("include {}", monitor_path(state_script)?),
+        "-e".into(),
+        format!(
+            "spike_state_start \"127.0.0.1\" {{BW_STATE_PORT}} {}",
+            monitor_path(state_config)?
+        ),
+    ])
+}
+
+fn ev3_arguments(platform: &Path, firmware: &Path) -> Result<Vec<String>, String> {
+    Ok(vec![
+        "--disable-gui".into(),
+        "--hide-log".into(),
+        "-P".into(),
+        "{BW_MONITOR_PORT}".into(),
+        "-e".into(),
+        "mach create".into(),
+        "-e".into(),
+        format!(
+            "machine LoadPlatformDescription {}",
+            monitor_path(platform)?
+        ),
+        "-e".into(),
+        format!("sysbus LoadELF {}", monitor_path(firmware)?),
+        "-e".into(),
+        "uart1 CreateFileBackend {BW_UART_PATH} true".into(),
+        "-e".into(),
+        "machine StartGdbServer {BW_GDB_PORT}".into(),
+    ])
 }
 
 fn random_token() -> Result<String, String> {
@@ -317,6 +576,11 @@ mod tests {
                 )
                 .unwrap();
             assert!(endpoint.port > 0);
+            assert!(endpoint.gdb_port > 0);
+            assert!(endpoint.state_port > 0);
+            assert_ne!(endpoint.port, endpoint.gdb_port);
+            assert_ne!(endpoint.port, endpoint.state_port);
+            assert_ne!(endpoint.gdb_port, endpoint.state_port);
             assert_eq!(endpoint.token().len(), 64);
             supervisor.teardown(reason);
             assert!(supervisor.session.lock().unwrap().is_none());
@@ -351,5 +615,62 @@ mod tests {
             supervisor.teardown(TeardownReason::Reset);
             assert!(supervisor.session.lock().unwrap().is_none());
         }
+    }
+
+    #[test]
+    fn spike_launch_plan_is_fixed_loopback_and_shell_free() {
+        let arguments = spike_arguments(
+            Path::new("/package/spike-prime.resc"),
+            Path::new("/package/nuttx"),
+            Path::new("/package/spike-state-server.py"),
+            Path::new("/package/renode-prime.json"),
+        )
+        .unwrap();
+        assert_eq!(
+            &arguments[..4],
+            ["--disable-gui", "--hide-log", "-P", "{BW_MONITOR_PORT}"]
+        );
+        assert!(arguments
+            .iter()
+            .any(|value| value == "machine StartGdbServer {BW_GDB_PORT}"));
+        assert!(arguments
+            .iter()
+            .any(|value| value.contains("spike_state_start \"127.0.0.1\" {BW_STATE_PORT}")));
+        assert!(!arguments
+            .iter()
+            .any(|value| matches!(value.as_str(), "sh" | "bash" | "cmd" | "powershell")));
+        assert_eq!(
+            monitor_path(Path::new("/package with spaces/image.elf")).unwrap(),
+            "@/package\\ with\\ spaces/image.elf"
+        );
+        assert_eq!(
+            monitor_path(Path::new("/package/image.elf;quit")).unwrap_err(),
+            "SPIKE package path is not monitor-safe"
+        );
+    }
+
+    #[test]
+    fn ev3_launch_plan_is_fixed_loopback_and_shell_free() {
+        let arguments = ev3_arguments(
+            Path::new("/package/platforms/boards/lego-ev3.repl"),
+            Path::new("/package/am1808-smoke.elf"),
+        )
+        .unwrap();
+        assert_eq!(
+            &arguments[..4],
+            ["--disable-gui", "--hide-log", "-P", "{BW_MONITOR_PORT}"]
+        );
+        assert!(arguments
+            .iter()
+            .any(|value| value.contains("machine LoadPlatformDescription @/package/")));
+        assert!(arguments
+            .iter()
+            .any(|value| value == "uart1 CreateFileBackend {BW_UART_PATH} true"));
+        assert!(arguments
+            .iter()
+            .any(|value| value == "machine StartGdbServer {BW_GDB_PORT}"));
+        assert!(!arguments
+            .iter()
+            .any(|value| matches!(value.as_str(), "sh" | "bash" | "cmd" | "powershell")));
     }
 }

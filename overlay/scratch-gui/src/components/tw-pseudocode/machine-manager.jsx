@@ -55,6 +55,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     const [localDisk, setLocalDisk] = React.useState(null);
     const [localNativeBlocks, setLocalNativeBlocks] = React.useState(false);
     const [freeMedia, setFreeMedia] = React.useState({});
+    const [freeNativeBlocks, setFreeNativeBlocks] = React.useState(false);
     const t = k => tr(locale, k);
 
     const refresh = React.useCallback(async () => {
@@ -84,7 +85,8 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     };
     const runFree386 = async () => {
         try {
-            const cfg = localFreedosVgaMachine(freeMedia);
+            const cfg = localFreedosVgaMachine({...freeMedia,
+                nativeBlocks: freeNativeBlocks});
             const files = {};
             for (const slot of ['hdd', 'floppy', 'bios', 'vgaRom']) {
                 if (freeMedia[slot]) files[slot === 'vgaRom' ? 'vga-rom' : slot] =
@@ -269,6 +271,12 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                         </label>)}
                         <button onClick={runFree386} style={primary}
                             data-testid="bw-mm-free386-run">Boot FreeDOS VGA</button>
+                        <label style={{fontSize: 11, color: '#475569'}}>
+                            <input type="checkbox" data-testid="bw-mm-free386-native-blocks"
+                                checked={freeNativeBlocks}
+                                onChange={e => setFreeNativeBlocks(e.target.checked)} />
+                            {t('nativeBlocks')}
+                        </label>
                     </div>
                     <label style={{fontSize: 12, color: '#475569'}}>{t('importL')}</label>
                     <textarea value={text} onChange={e => setText(e.target.value)}

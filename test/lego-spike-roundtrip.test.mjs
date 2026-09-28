@@ -145,14 +145,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // start tank) plus one board-preset gallery example. The SPIKE path gains
     // four words and changes none this round trip reads; the assertions re-ran
     // at the pin.
-    // PIN MOVED 1cdc4fb5 -> fa8739e2 (2026-09-28, sb3-creator#35 squash-merged as
-    // 5686a903, SPIKE App 3 Python, and #36, the PRECHIN A2 layout fix): this range DOES move the SPIKE path. Eight dialect words gain
-    // blocks, and the motor UNIT field now stores the extension's menu value
-    // ("degrees", not "degree", which motorRunFor matched to nothing and so
-    // turned by 0). The phrases this artifact reads (start/stop motor, spike
-    // distance) are unchanged, and the assertions below re-ran at the pin; the
-    // unit fix is held by test/spike3-python-import.test.mjs against the
-    // shipping extension's menus.
+    // PIN MOVED 1cdc4fb5 -> fa8739e2 (2026-09-28, sb3-creator#35/#36): SPIKE App 3
+    // Python reader and exporter plus eight SPIKE dialect words (#35), and the
+    // PRECHIN A2 preset's layout with the revision sha dropped from its intros
+    // (#36). The words are additions; none of the SPIKE lines this round trip
+    // reads changed, and the assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
         'fa8739e22603d7598bad37a7b9c4275b7048f822');
 

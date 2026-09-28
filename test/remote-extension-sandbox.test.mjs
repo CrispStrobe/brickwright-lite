@@ -136,6 +136,10 @@ test('the broker rejects privileged calls and cross-worker response forgery at r
             return Module.prototype.require.call(brokerModule,
                 path.join(root, 'overlay/scratch-vm/src/extension-support/native-platform-capability.js'));
         }
+        if (request === '../extension-support/native-renode-capability') {
+            return Module.prototype.require.call(brokerModule,
+                path.join(root, 'overlay/scratch-vm/src/extension-support/native-renode-capability.js'));
+        }
             return Module.prototype.require.call(brokerModule, request);
         };
         brokerModule._compile(central, filename);
