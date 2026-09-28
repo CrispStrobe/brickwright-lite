@@ -53,6 +53,7 @@ const L10N = {
         'px.literalHint': 'The imported image becomes a new editable layer. Existing layers are kept.',
         'px.copyLiteral': 'Copy', 'px.literalLabel': 'Arcade img literal',
         'px.paletteColour': 'Edit palette colour',
+        'px.secondaryColour': 'Choose second colour', 'px.swapColours': 'Swap colours (X)',
         'px.resetPalette': 'Reset palette', 'px.paletteHint': 'Change the colour of every pixel with this index.',
         'px.importPalette': 'Import palette',
         'px.palettePreset': 'Preset', 'px.paletteCustom': 'Custom',
@@ -107,6 +108,7 @@ const L10N = {
         'px.literalHint': 'Das importierte Bild wird eine neue bearbeitbare Ebene. Bestehende Ebenen bleiben erhalten.',
         'px.copyLiteral': 'Kopieren', 'px.literalLabel': 'Arcade-img-Literal',
         'px.paletteColour': 'Palettenfarbe bearbeiten',
+        'px.secondaryColour': 'Zweite Farbe wählen', 'px.swapColours': 'Farben tauschen (X)',
         'px.resetPalette': 'Palette zurücksetzen', 'px.paletteHint': 'Die Farbe aller Pixel mit diesem Index ändern.',
         'px.importPalette': 'Palette importieren',
         'px.palettePreset': 'Vorlage', 'px.paletteCustom': 'Benutzerdefiniert',
@@ -222,7 +224,8 @@ class PixelArtEditor extends React.Component {
         super(props);
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             palette: [...ARCADE_PALETTE],
-            scale: 4, zoom: 1, colour: 2, replaceFrom: 0, brushSize: 1, tool: 'pencil',
+            scale: 4, zoom: 1, colour: 2, secondaryColour: 0, choosingSecondary: false,
+            replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null, tolerance: 0,
             frames: [], activeFrameId: null, framesOpen: false, panel: null, exportingFrames: false,
             onionSkin: false, playing: false,
@@ -662,9 +665,14 @@ class PixelArtEditor extends React.Component {
         const cell = this.cellAt(event);
         if (!cell) return;
         const [x, y] = cell;
-        const {image, tool, colour, mirror, brushSize} = this.state;
+        const {image, tool, mirror, brushSize} = this.state;
+        const colour = this.strokeColour ?? this.state.colour;
         const k = (y * image.width) + x;
-        if (tool === 'pick') { this.setState({colour: image.pixels[k], tool: 'pencil'}); return; }
+        if (tool === 'pick') {
+            this.setState({[this.strokeIsSecondary ? 'secondaryColour' : 'colour']: image.pixels[k],
+                tool: 'pencil'});
+            return;
+        }
         const active = this.activeLayer();
         if (!active || active.locked || !active.visible) return;
         if (tool === 'fill') {
@@ -710,7 +718,7 @@ class PixelArtEditor extends React.Component {
         if (!end || !this.shapeStart || !this.shapeBase) return;
         const {width, height} = this.shapeBase;
         const pixels = new Uint8Array(this.shapeBase.pixels);
-        const value = this.state.colour;
+        const value = this.strokeColour ?? this.state.colour;
         const filled = ['filledRect', 'filledCircle'].includes(this.state.tool);
         const plot = (x, y) => stampBrushInto(pixels, width, height, x, y, value,
             filled ? 1 : this.state.brushSize, this.state.mirror);
@@ -776,6 +784,9 @@ class PixelArtEditor extends React.Component {
     }
 
     onPointerDown (event) {
+        if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 2) return;
+        this.strokeIsSecondary = event.pointerType === 'mouse' && event.button === 2;
+        this.strokeColour = this.strokeIsSecondary ? this.state.secondaryColour : this.state.colour;
         this.root.current?.focus({preventScroll: true});
         event.currentTarget.setPointerCapture(event.pointerId);
         this.pointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
@@ -887,6 +898,8 @@ class PixelArtEditor extends React.Component {
         this.lassoPoints = null;
         this.selectionBeforeGesture = null;
         this.gesture = null;
+        this.strokeColour = null;
+        this.strokeIsSecondary = false;
     }
 
     onWheel (event) {
@@ -939,6 +952,9 @@ class PixelArtEditor extends React.Component {
             } else if (/^[0-9]$/.test(event.key)) {
                 event.preventDefault();
                 this.setState({colour: Number(event.key)});
+            } else if (event.key.toLowerCase() === 'x') {
+                event.preventDefault();
+                this.setState(state => ({colour: state.secondaryColour, secondaryColour: state.colour}));
             } else if (event.key.toLowerCase() === 'r') {
                 event.preventDefault();
                 this.replaceColour();
@@ -1380,7 +1396,8 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, layers, activeLayerId, selection, colour, replaceFrom, brushSize, tool, tolerance, mirror, converted,
+        const {image, layers, activeLayerId, selection, colour, secondaryColour, choosingSecondary,
+            replaceFrom, brushSize, tool, tolerance, mirror, converted,
             frames, activeFrameId, panel, onionSkin, playing, status, exportingFrames, w, h, zoom, palette,
             sheetMode, sheetName, sheetWidth, sheetHeight, sheetFrameWidth, sheetFrameHeight,
             sheetPixelScale, sheetPreview, sheetError,
@@ -1537,12 +1554,40 @@ class PixelArtEditor extends React.Component {
                         {palette.map((c, i) => (
                             <button key={i} type="button" role="radio" aria-checked={colour === i}
                                 title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
-                                onClick={() => this.setState({colour: i, tool: tool === 'pick' ? 'pencil' : tool})}
+                                onClick={() => this.setState(state => ({
+                                    [state.choosingSecondary ? 'secondaryColour' : 'colour']: i,
+                                    choosingSecondary: false, tool: state.tool === 'pick' ? 'pencil' : state.tool}))}
+                                onContextMenu={event => {
+                                    event.preventDefault();
+                                    this.setState({secondaryColour: i, choosingSecondary: false});
+                                }}
                                 style={{width: 44, height: 44, flexShrink: 0, borderRadius: 6, cursor: 'pointer',
                                     border: colour === i ? '3px solid #0f172a' : '1px solid #94a3b8',
+                                    outline: secondaryColour === i ? '2px dashed #e58c11' : 'none',
+                                    outlineOffset: '-6px',
                                     background: c || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
                         ))}
                     </div>
+                    <button type="button" style={{...iconBtn(choosingSecondary), flexShrink: 0,
+                        background: palette[secondaryColour] ||
+                            'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}}
+                        data-testid="bw-pixel-secondary-colour" aria-label={t(locale, 'px.secondaryColour')}
+                        title={t(locale, 'px.secondaryColour')} aria-pressed={choosingSecondary}
+                        onClick={() => this.setState({choosingSecondary: !choosingSecondary})}>
+                        <span aria-hidden="true" style={{width: 20, height: 20, border: '2px solid #0f172a',
+                            borderRadius: 3, background: palette[colour] ||
+                                'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
+                    </button>
+                    <button type="button" style={{...iconBtn(false), flexShrink: 0}}
+                        data-testid="bw-pixel-swap-colours" aria-label={t(locale, 'px.swapColours')}
+                        title={t(locale, 'px.swapColours')}
+                        onClick={() => this.setState(state => ({colour: state.secondaryColour,
+                            secondaryColour: state.colour, choosingSecondary: false}))}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                            strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                            <path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4" />
+                        </svg>
+                    </button>
                     <button type="button" style={{...iconBtn(panel === 'brush'), flexShrink: 0}} aria-label={t(locale, 'px.brushSize')}
                         title={`${t(locale, 'px.brushSize')} ${brushSize}`}
                         data-testid="bw-pixel-brush-toggle" aria-expanded={panel === 'brush'}
@@ -1758,6 +1803,7 @@ class PixelArtEditor extends React.Component {
                             height: image.height * this.cellSize() * zoom, imageRendering: 'pixelated',
                             cursor: tool === 'hand' ? 'grab' : 'crosshair', touchAction: 'none'}}
                         onPointerDown={this.onPointerDown} onPointerMove={this.onPointerMove}
+                        onContextMenu={event => event.preventDefault()}
                         onPointerUp={this.onPointerUp} onPointerCancel={this.onPointerUp} />
                     {converted ? <div style={{position: 'absolute', left: 8, bottom: 8, maxWidth: 320,
                         padding: '6px 8px', borderRadius: 6, fontSize: 11, lineHeight: 1.3,

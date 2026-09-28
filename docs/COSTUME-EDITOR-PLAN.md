@@ -181,7 +181,7 @@ missing data or export behavior.
 | --- | --- | --- |
 | Pen, eraser, fill, line, rectangle, circle, eyedropper, marquee, pan | Available, including brush sizes 1–8, filled shapes, marquee copy/cut/paste, and keyboard tool shortcuts | Test selection and toolbar interaction on iPad |
 | Flip and quarter-turn, with selection scope | Available, with touch buttons, undo, and arrow-key selection moves | Test on iPad |
-| Foreground/background colours, swap, colour replace and outline | Foreground colour, selection-aware index-preserving replace and outline | Add secondary colour and swap |
+| Foreground/background colours, swap, colour replace and outline | Two colour slots with touch selection, X/button swap and right-mouse drawing; selection-aware index-preserving replace and outline | Add colour-slot persistence across editor sessions |
 | Palette presets and 15 editable colours | MakeCode Arcade's 11 built-in presets, editing and `.hex`/`.txt`/`.gpl` import use versioned source, Scratch rendering and Arcade export | Test preset selection and persistence on iPad |
 | Animation timeline, frame order, interval, onion skin | Editable frames, thumbnails, duration, order, playback and onion skin use version 3 source; the active frame renders as the Scratch costume. Export adds separate Scratch costumes with editable pixel source per frame. | Test touch interaction on iPad and improve frame naming |
 | Sprite-sheet and `img` import/export | Exact `img` literal paste/export, PNG export and horizontal transparent sprite-sheet PNG import/export exist | Add configurable palette conversion and animation metadata exchange |

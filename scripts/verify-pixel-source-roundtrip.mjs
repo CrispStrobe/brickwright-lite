@@ -133,6 +133,24 @@ try {
     await page.keyboard.press('Control+Shift+z');
     assert.equal(await canvas.evaluate(element => element.toDataURL()), afterStroke,
         'desktop Redo must restore the stroke');
+    console.log('checking foreground and second colour controls');
+    await page.getByTestId('bw-pixel-secondary-colour').click();
+    assert.equal(await page.getByTestId('bw-pixel-secondary-colour').getAttribute('aria-pressed'), 'true');
+    await page.getByTestId('bw-pixel-colour-3').click();
+    assert.equal(await page.getByTestId('bw-pixel-colour-10').getAttribute('aria-checked'), 'true',
+        'setting the second colour must keep the foreground colour');
+    await page.mouse.click(box.x + box.width * 0.65, box.y + box.height * 0.35, {button: 'right'});
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), afterStroke,
+        'right mouse drawing must use the second colour');
+    assert.equal(await page.getByTestId('bw-pixel-colour-10').getAttribute('aria-checked'), 'true');
+    await page.getByTestId('bw-pixel-swap-colours').click();
+    assert.equal(await page.getByTestId('bw-pixel-colour-3').getAttribute('aria-checked'), 'true');
+    await page.keyboard.press('x');
+    assert.equal(await page.getByTestId('bw-pixel-colour-10').getAttribute('aria-checked'), 'true',
+        'X swaps the two colours on desktop');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), afterStroke,
+        'Undo restores the drawing made with the second colour');
     console.log('checking selection and movement');
     await showPanel('more');
     await showPanel('more');
@@ -648,6 +666,12 @@ try {
         assert.ok((await tabletPreset.boundingBox()).height >= 44,
             'palette presets have a touch-sized control');
         await tablet.getByTestId('bw-pixel-colour-2').tap();
+        await tablet.getByTestId('bw-pixel-secondary-colour').tap();
+        await tablet.getByTestId('bw-pixel-colour-3').tap();
+        await tablet.getByTestId('bw-pixel-swap-colours').tap();
+        assert.equal(await tablet.getByTestId('bw-pixel-colour-3').getAttribute('aria-checked'), 'true',
+            'secondary-colour selection and swap must work without a keyboard on iPad');
+        await tablet.getByTestId('bw-pixel-swap-colours').tap();
         await tabletPreset.selectOption('Grayscale');
         assert.equal(await tablet.getByTestId('bw-pixel-palette-edit').inputValue(), '#ededed',
             'the grayscale preset works at iPad width');
