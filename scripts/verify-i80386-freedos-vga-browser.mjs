@@ -83,7 +83,8 @@ try {
             },
             mouseInFn: event => {
                 const result = payload.mouseInFn?.(event);
-                window.__free386Inputs.push({kind: 'mouse', buttons: event.buttons, result});
+                window.__free386Inputs.push({kind: 'mouse', dx: event.dx, dy: event.dy,
+                    buttons: event.buttons, result});
                 return result;
             }
         });
@@ -109,8 +110,44 @@ try {
     assert.ok(inputs.some(e => e.kind === 'mouse' && e.buttons === 2 &&
         typeof e.result === 'boolean'),
         'Widgets pointer must reach the named PS/2 adapter');
+
+    // Dispatch DOM PointerEvents on the real canvas, through MachineConsole,
+    // the Widgets mirror, the attached runner and its board adapter. No guest
+    // disk bytes are needed to prove this input route or its release edges.
+    await consoleFace.evaluate(el => el.blur());
+    const pointerPackets = await canvas.evaluate(canvasElement => {
+        window.__free386Inputs = [];
+        const send = (type, x, y, button = 0) => canvasElement.dispatchEvent(
+            new PointerEvent(type, {bubbles: true, pointerId: 17,
+                pointerType: 'mouse', clientX: x, clientY: y, button}));
+        send('pointermove', 100, 600); // Relative origin, no guest packet.
+        send('pointermove', 600, 100); // Both axes clamp to PS/2 range.
+        send('pointerdown', 600, 100, 0);
+        send('pointermove', 100, 600);
+        send('pointerup', 100, 600, 0);
+        send('pointerdown', 100, 600, 1);
+        send('lostpointercapture', 100, 600, 1);
+        send('pointerdown', 100, 600, 2);
+        document.querySelector('[data-testid="bw-machine-console"]').blur();
+        return window.__free386Inputs.filter(e => e.kind === 'mouse');
+    });
+    assert.deepEqual(pointerPackets.map(({dx, dy, buttons}) => ({dx, dy, buttons})), [
+        {dx: 127, dy: -127, buttons: 0},
+        {dx: 0, dy: 0, buttons: 1},
+        {dx: -127, dy: 127, buttons: 1},
+        {dx: 0, dy: 0, buttons: 0},
+        {dx: 0, dy: 0, buttons: 4},
+        {dx: 0, dy: 0, buttons: 0}, // Lost capture releases middle.
+        {dx: 0, dy: 0, buttons: 2},
+        {dx: 0, dy: 0, buttons: 0}  // Blur releases right.
+    ], 'canvas movement, buttons and release edges reach the attached runner');
+    assert.ok(pointerPackets.every(e => typeof e.result === 'boolean'),
+        'each pointer packet calls the attached 386 board mouseIn adapter');
+    // The synthetic disks do not initialize the guest 8042 auxiliary port;
+    // the real board may decline packets until mouse reporting is enabled.
+    const acceptedPackets = pointerPackets.filter(e => e.result).length;
     assert.deepEqual(errors, [], 'browser must have no uncaught page errors');
-    console.log(`ok named 386 attached both synthetic disks; Widgets canvas ${await canvas.getAttribute('width')}x${await canvas.getAttribute('height')}; keyboard and PS/2 mouse forwarded`);
+    console.log(`ok named 386 attached both synthetic disks; Widgets canvas ${await canvas.getAttribute('width')}x${await canvas.getAttribute('height')}; keyboard and ${pointerPackets.length} bounded PS/2 packets forwarded (${acceptedPackets} accepted by uninitialized guest)`);
     await page.close();
 
     // The named GUI option must make the built browser fetch and instantiate
