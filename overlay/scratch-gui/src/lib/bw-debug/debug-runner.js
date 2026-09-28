@@ -4420,10 +4420,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         symbols: () => symbols,
 
         destroy() {
-            destroyed = true;
             i8086ExecutionLifetime.abort();
             i8086Execution.release(i8086ExecutionResult);
             i8086ExecutionResult = null;
+            destroyed = true;
             setValueResolver(null);
             if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();
