@@ -92,7 +92,10 @@ try {
             const identity = await call('POST', `/session/${session}/execute/sync`, {
                 script: `return {href:String(location.href), title:String(document.title),
                     tauri:typeof (globalThis.__TAURI_INTERNALS__||{}).invoke,
-                    vm:!!(globalThis.__vm && globalThis.__vm.extensionManager)};`, args: []
+                    vm:!!(globalThis.__brickwrightStore && globalThis.__brickwrightStore.getState &&
+                        globalThis.__brickwrightStore.getState().scratchGui &&
+                        globalThis.__brickwrightStore.getState().scratchGui.vm &&
+                        globalThis.__brickwrightStore.getState().scratchGui.vm.extensionManager)};`, args: []
             });
             const value = identity.body?.value || {};
             if (!/capability-broker\.html/.test(value.href || '') && value.tauri === 'function' && value.vm) {
@@ -137,6 +140,7 @@ try {
             const sha256 = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)))
                 .map(x => x.toString(16).padStart(2, '0')).join('');
             (async () => {
+                const vm = globalThis.__brickwrightStore.getState().scratchGui.vm;
                 stage = 'build manifest';
                 const manifestResponse = await within(fetch('brickwright-build.json', {cache:'no-store'}),
                     'build manifest fetch');
@@ -152,9 +156,9 @@ try {
                 const extensionBytes = extensionDownload.bytes.byteLength;
                 let extensionLoaded = false, extensionError = null;
                 try {
-                    await within(globalThis.__vm.extensionManager.loadExtensionURL(extensionURL),
+                    await within(vm.extensionManager.loadExtensionURL(extensionURL),
                         'extension manager load', 40000);
-                    extensionLoaded = globalThis.__vm.extensionManager.isExtensionLoaded(extensionURL);
+                    extensionLoaded = vm.extensionManager.isExtensionLoaded(extensionURL);
                 } catch (error) { extensionError = String(error && error.message || error); }
                 const toolchainDownload = await download(
                     'https://crispstrobe.github.io/sdcc-wasm/runtime.json', 'toolchain runtime');
