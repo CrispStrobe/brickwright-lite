@@ -87,6 +87,8 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
         const frameIds = new Set();
         for (const frame of doc.animation.frames) {
             if (!isObject(frame) || typeof frame.id !== 'string' || !frame.id || frameIds.has(frame.id) ||
+                (Object.prototype.hasOwnProperty.call(frame, 'name') &&
+                    (typeof frame.name !== 'string' || !frame.name.trim() || frame.name.length > 80)) ||
                 !Number.isInteger(frame.durationMs) || frame.durationMs < 20 || frame.durationMs > 10000 ||
                 typeof frame.activeLayerId !== 'string') throw new Error('invalid artwork frame');
             frameIds.add(frame.id);

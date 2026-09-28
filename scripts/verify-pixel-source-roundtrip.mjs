@@ -495,6 +495,9 @@ try {
     await page.getByTestId('bw-pixel-add-frame').click();
     assert.equal(await page.getByTestId('bw-pixel-frames').getByRole('button', {pressed: true}).count(), 1);
     await page.getByTestId('bw-pixel-frame-duration').fill('180');
+    await page.getByTestId('bw-pixel-frame-name').fill('Blink');
+    await page.getByTestId('bw-pixel-frame-name').press('Enter');
+    assert.equal(await page.getByTestId('bw-pixel-frame-1').getAttribute('aria-label'), 'Blink');
     await page.getByTestId('bw-pixel-colour-3').click();
     await page.getByTestId('bw-pixel-tool-pencil').click();
     const frameBox = await frameCanvas.boundingBox();
@@ -525,6 +528,7 @@ try {
     assert.ok(animatedDoc);
     assert.equal(animatedDoc.animation.frames.length, 2);
     assert.equal(animatedDoc.animation.frames[1].durationMs, 180);
+    assert.equal(animatedDoc.animation.frames[1].name, 'Blink');
     assert.deepEqual(animatedDoc.layers, animatedDoc.animation.frames[1].layers);
     await page.close();
     page = await open();
@@ -535,6 +539,7 @@ try {
     await page.getByTestId('bw-pixel-toggle').click();
     await page.getByTestId('bw-pixel-frames-toggle').click();
     assert.equal(await page.getByTestId('bw-pixel-frame-duration').inputValue(), '180');
+    assert.equal(await page.getByTestId('bw-pixel-frame-name').inputValue(), 'Blink');
     assert.equal(await page.getByTestId('bw-pixel-canvas').evaluate(element => element.toDataURL()), secondFrame);
     await page.getByTestId('bw-pixel-frame-0').click();
     assert.equal(await page.getByTestId('bw-pixel-canvas').evaluate(element => element.toDataURL()), firstFrame);
@@ -563,7 +568,10 @@ try {
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Redo', exact: true}).click();
     await page.getByTestId('bw-pixel-save').click();
     const resliced = await saveProject(page);
-    assert.equal(resliced.costumes.find(record => record.document.animation)?.document.animation.frames.length, 2);
+    const reslicedFrames = resliced.costumes.find(record => record.document.animation)?.document.animation.frames;
+    assert.equal(reslicedFrames.length, 2);
+    assert.equal(reslicedFrames[1].name, 'Blink', 'replacing matching frames keeps their names');
+    assert.equal(reslicedFrames[1].durationMs, 180, 'replacing matching frames keeps their timing');
     console.log('checking MakeCode Arcade palette presets');
     await page.getByTestId('bw-pixel-colour-2').click();
     await showPanel('palette');
@@ -616,6 +624,8 @@ try {
     const project = JSON.parse(await zip.file('project.json').async('text'));
     assert.equal(project.targets.find(target => !target.isStage).costumes.length, 4,
         'all exported frames must be ordinary Scratch costumes in project.json');
+    assert.equal(project.targets.find(target => !target.isStage).costumes[3].name, 'costume1 Blink',
+        'a named frame gives its exported Scratch costume a meaningful name');
     for (const costume of project.targets.find(target => !target.isStage).costumes) {
         assert.match(await zip.file(costume.md5ext).async('text'), /^<svg /,
             'every exported frame must have a standalone renderable SVG asset');

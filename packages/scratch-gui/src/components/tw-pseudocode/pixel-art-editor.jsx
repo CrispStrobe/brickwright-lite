@@ -81,7 +81,8 @@ const L10N = {
         'px.sheetReplace': 'Replace frames with slices', 'px.sheetClose': 'Close sheet import',
         'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 128×128 art pixels.',
         'px.sheetHint': 'Rows are read left to right. Colours match the current palette; replacing frames is undoable.',
-        'px.frameNumber': 'Frame {number}', 'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
+        'px.frameNumber': 'Frame {number}', 'px.frameName': 'Frame name',
+        'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
         'px.tolerance': 'Tolerance', 'px.more': 'More options'
     },
     de: {
@@ -137,7 +138,8 @@ const L10N = {
         'px.sheetReplace': 'Bilder durch Schnitte ersetzen', 'px.sheetClose': 'Import schließen',
         'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 128×128 Grafikpixel verwenden.',
         'px.sheetHint': 'Zeilen werden von links gelesen. Farben nutzen die aktuelle Palette; Ersetzen kann rückgängig gemacht werden.',
-        'px.frameNumber': 'Bild {number}', 'px.lasso': 'Lasso', 'px.wand': 'Zauberstab',
+        'px.frameNumber': 'Bild {number}', 'px.frameName': 'Bildname',
+        'px.lasso': 'Lasso', 'px.wand': 'Zauberstab',
         'px.tolerance': 'Toleranz', 'px.more': 'Weitere Optionen'
     }
 };
@@ -536,6 +538,21 @@ class PixelArtEditor extends React.Component {
         this.remember();
         this.setState(state => ({frames: this.materializeFrames(state).map(item =>
             item.id === state.activeFrameId ? {...item, durationMs} : item), status: ''}));
+    }
+
+    renameFrame (value) {
+        if (!this.frameNameGesture) {
+            this.remember();
+            this.frameNameGesture = true;
+        }
+        this.setState(state => ({frames: this.materializeFrames(state).map(frame =>
+            frame.id === state.activeFrameId ? {...frame, name: value.slice(0, 80)} : frame), status: ''}));
+    }
+
+    finishFrameRename () {
+        this.frameNameGesture = false;
+        this.setState(state => ({frames: this.materializeFrames(state).map(frame =>
+            frame.id === state.activeFrameId ? {...frame, name: (frame.name || '').trim()} : frame)}));
     }
 
     stopPlayback () {
@@ -1278,7 +1295,7 @@ class PixelArtEditor extends React.Component {
                 const svg = layersToSvg(frame.layers, image.width, image.height, scale, palette);
                 const asset = storage.createAsset(storage.AssetType.ImageVector, storage.DataFormat.SVG,
                     new TextEncoder().encode(svg), null, true);
-                const costume = {name: `${name} ${index + 1}`, asset, assetId: asset.assetId,
+                const costume = {name: `${name} ${frame.name || index + 1}`, asset, assetId: asset.assetId,
                     dataFormat: storage.DataFormat.SVG, md5: `${asset.assetId}.svg`,
                     bitmapResolution: 1, rotationCenterX: image.width * scale / 2,
                     rotationCenterY: image.height * scale / 2};
@@ -1377,9 +1394,13 @@ class PixelArtEditor extends React.Component {
         this.stopPlayback();
         this.remember();
         const {width, height} = sheetPreview[0].image;
+        const previousFrames = this.materializeFrames();
+        const preserveTimingAndNames = previousFrames.length === sheetPreview.length;
         const frames = sheetPreview.map(({image}, index) => {
             const layer = {...blankLayer('pixels', 'Pixels', width, height), pixels: image.pixels};
-            return {id: `sheet-${Date.now()}-${index}`, durationMs: 100,
+            return {id: `sheet-${Date.now()}-${index}`,
+                durationMs: preserveTimingAndNames ? previousFrames[index].durationMs : 100,
+                name: preserveTimingAndNames ? previousFrames[index].name || '' : '',
                 activeLayerId: 'pixels', layers: [layer]};
         });
         this.sheetRgba = null;
@@ -1725,12 +1746,13 @@ class PixelArtEditor extends React.Component {
                         data-testid="bw-pixel-sheet-file" onChange={event => this.loadSheet(event)} />
                     {frames.map((frame, index) => <button key={frame.id} type="button"
                         style={btn(frame.id === activeFrameId)} data-testid={`bw-pixel-frame-${index}`}
-                        aria-label={t(locale, 'px.frameNumber', {number: index + 1})}
+                        aria-label={frame.name || t(locale, 'px.frameNumber', {number: index + 1})}
                         aria-pressed={frame.id === activeFrameId}
                         onClick={() => this.selectFrame(frame.id)}>
                         <img src={this.frameThumbnail(frame.id === activeFrameId ? layers : frame.layers,
                             w, h, palette)} alt="" style={{width: 40, height: 40, display: 'block'}} />
-                        {index + 1}</button>)}
+                        <span style={{display: 'block', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                            {frame.name || index + 1}</span></button>)}
                     <button type="button" style={btn(false)} data-testid="bw-pixel-add-frame"
                         disabled={frames.length >= 64} onClick={() => this.addFrame()}>{t(locale, 'px.addFrame')}</button>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-duplicate-frame"
@@ -1748,6 +1770,17 @@ class PixelArtEditor extends React.Component {
                         <input type="number" min="20" max="10000" step="10" style={{width: 64}}
                             data-testid="bw-pixel-frame-duration" value={activeFrame.durationMs}
                             onChange={event => this.setFrameDuration(event.target.value)} /></label>
+                    {frames.length > 1 ? <label style={{display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0}}>{t(locale, 'px.frameName')}
+                        <input type="text" maxLength="80" value={activeFrame.name || ''}
+                            placeholder={t(locale, 'px.frameNumber', {number: frameIndex + 1})}
+                            style={{width: 120, minHeight: 44, boxSizing: 'border-box'}}
+                            data-testid="bw-pixel-frame-name" aria-label={t(locale, 'px.frameName')}
+                            onChange={event => this.renameFrame(event.target.value)}
+                            onBlur={() => this.finishFrameRename()}
+                            onKeyDown={event => {
+                                if (event.key === 'Enter') event.currentTarget.blur();
+                            }} /></label> : null}
                     <button type="button" style={btn(playing)} data-testid="bw-pixel-play-frames"
                         disabled={frames.length < 2} onClick={() => this.togglePlayback()}>
                         {t(locale, playing ? 'px.pause' : 'px.play')}</button>

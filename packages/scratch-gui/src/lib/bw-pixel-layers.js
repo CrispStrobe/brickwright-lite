@@ -55,6 +55,7 @@ const layersDocument = (layers, width, height, scale, activeLayerId, palette = A
         layers: serializeLayers(layers, width, height),
         ...(animation ? {animation: {activeFrameId: animation.activeFrameId,
             frames: animation.frames.map(frame => ({id: frame.id, durationMs: frame.durationMs,
+                ...(frame.name ? {name: frame.name} : {}),
                 activeLayerId: frame.activeLayerId,
                 layers: serializeLayers(frame.layers, width, height)}))}} : {})};
 };
@@ -62,6 +63,7 @@ const layersDocument = (layers, width, height, scale, activeLayerId, palette = A
 const sourceFrames = (document, width, height) => {
     if (document?.version !== 3 || !document.animation) return null;
     const frames = document.animation.frames.map(frame => ({id: frame.id, durationMs: frame.durationMs,
+        name: frame.name || '',
         activeLayerId: frame.activeLayerId, layers: sourceLayers({layers: frame.layers}, width, height)}));
     return frames.every(frame => frame.layers) ? frames : null;
 };
