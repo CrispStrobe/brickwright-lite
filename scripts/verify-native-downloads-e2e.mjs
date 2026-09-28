@@ -82,11 +82,12 @@ try {
 
     mark('discovering the editor WebView');
     let editor;
-    // Headless Linux waits up to 25 seconds for org.bluez before the app degrades cleanly to
-    // "BLE unavailable". Give the production webpack application a full two minutes after that
-    // session launch to expose the VM; this is a startup bound, not a fixed sleep.
+    let lastObserved = {handles: [], pages: []};
+    // Give the production webpack application up to two minutes to expose
+    // its VM; this is a startup bound, not a fixed sleep.
     for (let attempt = 0; attempt < 240 && !editor; attempt++) {
         const handles = (await call('GET', `/session/${session}/window/handles`)).body?.value || [];
+        const observed = {handles, pages: []};
         for (const handle of handles) {
             await call('POST', `/session/${session}/window`, {handle});
             const identity = await call('POST', `/session/${session}/execute/sync`, {
@@ -98,14 +99,21 @@ try {
                         globalThis.__brickwrightStore.getState().scratchGui.vm.extensionManager)};`, args: []
             });
             const value = identity.body?.value || {};
+            observed.pages.push({handle, href: value.href, title: value.title,
+                tauri: value.tauri, vm: value.vm, status: identity.status,
+                webdriverError: value.error,
+                message: typeof value.message === 'string' ? value.message.slice(0, 200) : undefined});
             if (!/capability-broker\.html/.test(value.href || '') && value.tauri === 'function' && value.vm) {
                 editor = {handle, ...value};
                 break;
             }
         }
+        // Keep the last nonempty snapshot if the app closes its windows before timeout.
+        if (handles.length) lastObserved = observed;
         if (!editor) await sleep(500);
     }
-    if (!editor) await fail('the real editor WebView never exposed its VM');
+    if (!editor) await fail(`the real editor WebView never exposed its VM; ` +
+        `last observed: ${JSON.stringify(lastObserved)}`);
     mark(`editor ready at ${editor.href}; starting remote download probe`);
     await call('POST', `/session/${session}/window`, {handle: editor.handle});
 
