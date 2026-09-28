@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "dec8f2a3d6f05a1d3929719cc8218a337f94ca11",
+  "workflowRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/36404517587",
+  "runner": "ubuntu-24.04 GitHub-hosted runner",
+  "node": "22.23.2",
+  "metric": "simulated seconds per wall second (1.0x = real time)",
+  "results": [
+    {"target": "Arduboy", "engine": "avr8js adapter", "clockHz": 16000000, "rtx": [4.678, 3.898, 3.929], "medianRtx": 3.929},
+    {"target": "Blinkenrocket / ATtiny88", "engine": "avr8js adapter", "clockHz": 8000000, "rtx": [7.094, 7.094, 7.147], "medianRtx": 7.094},
+    {"target": "Arduino Uno", "engine": "avr8js adapter", "clockHz": 16000000, "rtx": [3.381, 3.297, 3.386], "medianRtx": 3.381},
+    {"target": "SPIKE Prime", "engine": "Pybricks WASM (unpaced)", "rtx": [84.627, 85.222, 83.054], "medianRtx": 84.627},
+    {"target": "micro:bit v2", "engine": "LabWired WASM core ceiling", "clockHz": 64000000, "rtx": [12.860, 23.694, 34.557], "medianRtx": 23.694},
+    {"target": "PyBadge-class ATSAMD51", "engine": "LabWired WASM core ceiling", "clockHz": 120000000, "rtx": [28.660, 27.006, 27.625], "medianRtx": 27.625}
+  ],
+  "minimumMedianRtx": 1.0,
+  "allMeetMinimum": true
+}
