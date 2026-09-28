@@ -1,0 +1,101 @@
+{
+  "id": "rb05-canyon-beacon",
+  "title": {
+    "en": "Canyon beacon",
+    "de": "Leuchtfeuer im Canyon"
+  },
+  "intro": {
+    "en": "The radio beacon lies at the end of a narrow canyon that bends to the right. Drive 70 cm, turn right, drive 50 cm and stop on the beacon - without scraping the canyon walls.",
+    "de": "Das Funkfeuer liegt am Ende eines schmalen Canyons, der nach rechts abknickt. Fahre 70 cm, biege rechts ab, fahre 50 cm und halte auf dem Funkfeuer - ohne die Canyonwände zu streifen."
+  },
+  "hints": [
+    {
+      "en": "Plan the moves on paper first: straight, turn, straight.",
+      "de": "Plane die Fahrt erst auf Papier: geradeaus, drehen, geradeaus."
+    },
+    {
+      "en": "The turn happens in place, so the corner is where your first move ends.",
+      "de": "Die Drehung geschieht auf der Stelle; die Ecke ist also dort, wo die erste Fahrt endet."
+    }
+  ],
+  "mat": {
+    "width": 120,
+    "height": 110,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": []
+  },
+  "walls": [
+    {
+      "shape": {
+        "type": "rect",
+        "x": 55,
+        "y": 4,
+        "w": 110,
+        "h": 8
+      }
+    },
+    {
+      "shape": {
+        "type": "rect",
+        "x": 45,
+        "y": 40,
+        "w": 70,
+        "h": 8
+      }
+    },
+    {
+      "shape": {
+        "type": "rect",
+        "x": 114,
+        "y": 55,
+        "w": 8,
+        "h": 110
+      }
+    },
+    {
+      "shape": {
+        "type": "rect",
+        "x": 76,
+        "y": 75,
+        "w": 8,
+        "h": 70
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "beacon",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 95,
+        "y": 72,
+        "r": 8
+      },
+      "label": {
+        "en": "beacon",
+        "de": "Funkfeuer"
+      }
+    }
+  ],
+  "start": {
+    "x": 25,
+    "y": 22,
+    "heading": 0
+  },
+  "timeLimitMs": 25000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "beacon"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "rb05-canyon-beacon.bw",
+  "wrong": "rb05-canyon-beacon.wrong.bw"
+}

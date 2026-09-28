@@ -1,0 +1,38 @@
+DEVICE SPIKE
+
+# Rover basics 6 - crater detour (reference solution).
+DEFINE quarter turn left:
+  reset yaw
+  set motor speed A 15
+  set motor speed B 15
+  start motor A clockwise
+  start motor B clockwise
+  wait until spike angle yaw < -87
+  stop motor A
+  stop motor B
+
+DEFINE quarter turn right:
+  reset yaw
+  set motor speed A 15
+  set motor speed B 15
+  start motor A counterclockwise
+  start motor B counterclockwise
+  wait until spike angle yaw > 87
+  stop motor A
+  stop motor B
+
+WHEN flag clicked:
+  set motor speed A 50
+  set motor speed B 50
+  # "move" returns before the rover has arrived, so a wait follows it.
+  move forward 25 cm
+  wait 1 seconds
+  quarter turn left
+  set motor speed A 50
+  set motor speed B 50
+  move forward 33 cm
+  wait 1.5 seconds
+  quarter turn right
+  set motor speed A 50
+  set motor speed B 50
+  move forward 83 cm
