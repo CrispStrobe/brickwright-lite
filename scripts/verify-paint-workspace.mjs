@@ -189,10 +189,38 @@ try {
     const beforeAsset = await paint.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm
         .editingTarget.getCostumes()[0].asset.encodeDataURI());
     const bitmapCanvas = await paint.locator('canvas[resize="true"]:visible').boundingBox();
-    await paint.mouse.click(bitmapCanvas.x + bitmapCanvas.width * 0.38,
+    await paint.mouse.move(bitmapCanvas.x + bitmapCanvas.width * 0.38,
         bitmapCanvas.y + bitmapCanvas.height * 0.17);
+    await paint.mouse.down();
+    await paint.mouse.move(bitmapCanvas.x + bitmapCanvas.width * 0.48,
+        bitmapCanvas.y + bitmapCanvas.height * 0.17, {steps: 20});
+    await paint.mouse.up();
     await paint.waitForFunction(previous => window.__brickwrightStore.getState().scratchGui.vm
         .editingTarget.getCostumes()[0].asset.encodeDataURI() !== previous, beforeAsset);
+    const strokeAlpha = await paint.evaluate(async () => {
+        const costume = window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getCostumes()[0];
+        const image = new Image();
+        image.src = costume.asset.encodeDataURI();
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const context = canvas.getContext('2d');
+        context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let red = 0;
+        let darkest = 0;
+        for (let index = 0; index < pixels.length; index += 4) {
+            if (pixels[index] > 245 && pixels[index + 1] < 10 && pixels[index + 2] < 10 &&
+                pixels[index + 3] > 0) {
+                red++;
+                darkest = Math.max(darkest, pixels[index + 3]);
+            }
+        }
+        return {red, darkest};
+    });
+    assert.ok(strokeAlpha.red > 100 && strokeAlpha.darkest <= 129,
+        `one 50% drag must not accumulate opacity where its own brush stamps overlap: ${JSON.stringify(strokeAlpha)}`);
     const paintedOpacity = await alphaCount(paint);
     assert.ok(paintedOpacity >= beforeOpacity + 50,
         'a single 50% bitmap brush dab must leave semitransparent PNG pixels');

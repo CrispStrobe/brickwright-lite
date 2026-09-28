@@ -44,6 +44,11 @@ class BrushTool extends paper.Tool {
     // Draw a brush mark at the given point
     draw (x, y) {
         const roundedUpRadius = Math.ceil(this.size / 2);
+        if (this.strokeCanvas) {
+            this.strokeCanvas.getContext('2d').drawImage(this.tmpCanvas,
+                ~~x - roundedUpRadius, ~~y - roundedUpRadius);
+            return;
+        }
         const context = getRaster().getContext('2d');
         const previousAlpha = context.globalAlpha;
         const previousComposite = context.globalCompositeOperation;
@@ -54,6 +59,33 @@ class BrushTool extends paper.Tool {
         getRaster().drawImage(this.tmpCanvas, new paper.Point(~~x - roundedUpRadius, ~~y - roundedUpRadius));
         context.globalAlpha = previousAlpha;
         context.globalCompositeOperation = previousComposite;
+    }
+    beginTranslucentStroke () {
+        this.strokeCanvas = null;
+        this.strokeBase = null;
+        if (this.isEraser || !this.color || this.opacity >= 1) return;
+        const source = getRaster().canvas;
+        this.strokeBase = document.createElement('canvas');
+        this.strokeBase.width = source.width;
+        this.strokeBase.height = source.height;
+        this.strokeBase.getContext('2d').drawImage(source, 0, 0);
+        this.strokeCanvas = document.createElement('canvas');
+        this.strokeCanvas.width = source.width;
+        this.strokeCanvas.height = source.height;
+    }
+    compositeStroke () {
+        if (!this.strokeCanvas) return;
+        const raster = getRaster();
+        const context = raster.getContext(true /* modify */);
+        context.save();
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.clearRect(0, 0, raster.canvas.width, raster.canvas.height);
+        context.globalCompositeOperation = 'source-over';
+        context.globalAlpha = 1;
+        context.drawImage(this.strokeBase, 0, 0);
+        context.globalAlpha = this.opacity;
+        context.drawImage(this.strokeCanvas, 0, 0);
+        context.restore();
     }
     updateCursorIfNeeded () {
         if (!this.size) {
@@ -96,13 +128,16 @@ class BrushTool extends paper.Tool {
             this.cursorPreview.remove();
         }
 
+        this.beginTranslucentStroke();
         this.draw(event.point.x, event.point.y);
+        this.compositeStroke();
         this.lastPoint = event.point;
     }
     handleMouseDrag (event) {
         if (event.event.button > 0 || !this.active) return; // only first mouse button
 
         forEachLinePoint(this.lastPoint, event.point, this.draw.bind(this));
+        this.compositeStroke();
         this.lastPoint = event.point;
     }
     handleMouseUp (event) {
@@ -110,9 +145,12 @@ class BrushTool extends paper.Tool {
 
         if (this.lastPoint && !this.lastPoint.equals(event.point)) {
             forEachLinePoint(this.lastPoint, event.point, this.draw.bind(this));
+            this.compositeStroke();
         }
         this.onUpdateImage();
 
+        this.strokeCanvas = null;
+        this.strokeBase = null;
         this.lastPoint = null;
         this.active = false;
 
@@ -121,6 +159,8 @@ class BrushTool extends paper.Tool {
     }
     deactivateTool () {
         this.active = false;
+        this.strokeCanvas = null;
+        this.strokeBase = null;
         this.tmpCanvas = null;
         if (this.cursorPreview) {
             this.cursorPreview.remove();

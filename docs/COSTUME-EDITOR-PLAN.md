@@ -41,15 +41,16 @@ settings bar and Krita's canvas-only view without changing how Scratch stores SV
 or PNG costumes.
 The bitmap toolbar now exposes the canvas colour sampler beside the brush, with
 one-tap sampling and a touch-sized cancel control. Fine, medium, broad and light
-brush presets set size and opacity together while both remain adjustable. On desktop, holding Space
+brush presets set size and opacity together while both remain adjustable. A
+translucent brush stroke is composed once over its starting image, so stamps
+within one drag do not darken each other. On desktop, holding Space
 while dragging pans either vector or bitmap canvas without marking the costume;
 trackpad wheel pan and pointer-centred zoom remain available.
 
 This is a workspace improvement, not raster/vector feature parity. The next
 capability gates are: (1) vector node operations such as join/split and
 asymmetric handles that survive SB3 save/reopen; (2) bitmap layer rename,
-locking, crop and richer compositing; (3) per-stroke opacity compositing and
-colour history. Bitmap selections can already move, resize and rotate through
+locking, crop and richer compositing; (3) colour history. Bitmap selections can already move, resize and rotate through
 the properties panel; 90° turns are now in the Select toolbar for touch use.
 Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
 for older Scratch readers.
