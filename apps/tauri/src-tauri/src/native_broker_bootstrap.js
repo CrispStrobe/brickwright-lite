@@ -31,7 +31,18 @@ const CAPABILITY_RESOURCE = Object.freeze({__proto__: null,
     'renode.spike.memory.read': 'renode/spike-prime',
     'renode.spike.state.read': 'renode/spike-prime',
     'renode.spike.breakpoint.set': 'renode/spike-prime',
-    'renode.spike.breakpoint.clear': 'renode/spike-prime'
+    'renode.spike.breakpoint.clear': 'renode/spike-prime',
+    'renode.ev3.session.start': 'renode/ev3',
+    'renode.ev3.session.close': 'renode/ev3',
+    'renode.ev3.run': 'renode/ev3',
+    'renode.ev3.pause': 'renode/ev3',
+    'renode.ev3.reset': 'renode/ev3',
+    'renode.ev3.step': 'renode/ev3',
+    'renode.ev3.registers.read': 'renode/ev3',
+    'renode.ev3.memory.read': 'renode/ev3',
+    'renode.ev3.state.read': 'renode/ev3',
+    'renode.ev3.breakpoint.set': 'renode/ev3',
+    'renode.ev3.breakpoint.clear': 'renode/ev3'
 });
 
 const createNativeBrokerReceiver = ({NativeBrokerProtocol, BrokerProtocolError, invoke, createProtocol}) => {

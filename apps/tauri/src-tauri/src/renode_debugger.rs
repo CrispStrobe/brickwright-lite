@@ -1,13 +1,14 @@
-//! Semantic owner for the optional SPIKE Prime Renode session.
+//! Semantic owner for optional architecture-aware Renode sessions.
 //!
 //! It returns status words only. Ports, tokens, paths and process handles stay
 //! in native state and cannot cross into either webview.
 
 use crate::renode_brick_state::BrickStateFeed;
-use crate::renode_rsp::{RenodeRsp, RenodeRspInterrupt};
+use crate::renode_rsp::{Arm32Architecture, RenodeRsp, RenodeRspInterrupt};
 use crate::renode_supervisor::{RenodeSupervisor, TeardownReason};
 use serde_json::{json, Value};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -18,12 +19,42 @@ use std::time::{Duration, Instant};
 // seconds on a cold CI worker. Keep this below the supervisor's hard session
 // limit while allowing the real packaged model to finish starting.
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+const EV3_EVIDENCE_TIMEOUT: Duration = Duration::from_secs(2);
+const EV3_UART_EVIDENCE: &[u8] = b"EV3 ARM9 IRQ\n";
 
 struct Session {
     rsp: Arc<Mutex<RenodeRsp>>,
     interrupt: RenodeRspInterrupt,
     running: Arc<AtomicBool>,
-    state: BrickStateFeed,
+    target: RenodeTarget,
+    state: TargetState,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum RenodeTarget {
+    SpikePrime,
+    Ev3,
+}
+
+impl RenodeTarget {
+    fn architecture(self) -> Arm32Architecture {
+        match self {
+            Self::SpikePrime => Arm32Architecture::CortexM,
+            Self::Ev3 => Arm32Architecture::Arm,
+        }
+    }
+
+    fn status_name(self) -> &'static str {
+        match self {
+            Self::SpikePrime => "xpsr",
+            Self::Ev3 => "cpsr",
+        }
+    }
+}
+
+enum TargetState {
+    Spike(BrickStateFeed),
+    Ev3(PathBuf),
 }
 
 pub(crate) struct RenodeDebugger {
@@ -38,6 +69,18 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn start(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
+        self.start_target(supervisor, RenodeTarget::SpikePrime)
+    }
+
+    pub(crate) fn start_ev3(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
+        self.start_target(supervisor, RenodeTarget::Ev3)
+    }
+
+    fn start_target(
+        &self,
+        supervisor: &RenodeSupervisor,
+        target: RenodeTarget,
+    ) -> Result<&'static str, String> {
         let mut session = self
             .session
             .lock()
@@ -45,11 +88,14 @@ impl RenodeDebugger {
         if session.is_some() {
             return Err("Renode debugger already started".into());
         }
-        let endpoint = supervisor.start_spike()?;
+        let endpoint = match target {
+            RenodeTarget::SpikePrime => supervisor.start_spike()?,
+            RenodeTarget::Ev3 => supervisor.start_ev3()?,
+        };
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
         let deadline = Instant::now() + STARTUP_TIMEOUT;
         let rsp = loop {
-            match RenodeRsp::connect(address) {
+            match RenodeRsp::connect_for_architecture(address, target.architecture()) {
                 Ok(rsp) => break rsp,
                 Err(_) if Instant::now() < deadline => thread::sleep(Duration::from_millis(25)),
                 Err(error) => {
@@ -65,30 +111,43 @@ impl RenodeDebugger {
                 return Err(error);
             }
         };
-        let state_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.state_port);
-        let state_deadline = Instant::now() + STARTUP_TIMEOUT;
-        let state = loop {
-            match BrickStateFeed::connect(state_address) {
-                Ok(state) => match state.wait_ready(Duration::from_secs(2)) {
-                    Ok(()) => break state,
-                    Err(error) => {
-                        supervisor.teardown(TeardownReason::Reset);
-                        return Err(error);
+        let state = match target {
+            RenodeTarget::SpikePrime => {
+                let state_address =
+                    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.state_port);
+                let state_deadline = Instant::now() + STARTUP_TIMEOUT;
+                let feed = loop {
+                    match BrickStateFeed::connect(state_address) {
+                        Ok(state) => match state.wait_ready(Duration::from_secs(2)) {
+                            Ok(()) => break state,
+                            Err(error) => {
+                                supervisor.teardown(TeardownReason::Reset);
+                                return Err(error);
+                            }
+                        },
+                        Err(_) if Instant::now() < state_deadline => {
+                            thread::sleep(Duration::from_millis(25))
+                        }
+                        Err(error) => {
+                            supervisor.teardown(TeardownReason::Reset);
+                            return Err(error);
+                        }
                     }
-                },
-                Err(_) if Instant::now() < state_deadline => {
-                    thread::sleep(Duration::from_millis(25))
-                }
-                Err(error) => {
-                    supervisor.teardown(TeardownReason::Reset);
-                    return Err(error);
-                }
+                };
+                TargetState::Spike(feed)
             }
+            RenodeTarget::Ev3 => TargetState::Ev3(
+                endpoint
+                    .uart_evidence()
+                    .ok_or_else(|| "EV3 UART evidence unavailable".to_owned())?
+                    .to_path_buf(),
+            ),
         };
         *session = Some(Session {
             rsp: Arc::new(Mutex::new(rsp)),
             interrupt,
             running: Arc::new(AtomicBool::new(false)),
+            target,
             state,
         });
         Ok("ready")
@@ -109,25 +168,39 @@ impl RenodeDebugger {
         Ok("closed")
     }
 
+    pub(crate) fn ensure_target(&self, expected: RenodeTarget) -> Result<(), String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        match session.as_ref() {
+            Some(active) if active.target == expected => Ok(()),
+            Some(_) => Err("Renode debugger target does not match the operation".into()),
+            None => Err("Renode debugger is not started".into()),
+        }
+    }
+
     pub(crate) fn reset(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        {
+        let target = {
             let mut session = self
                 .session
                 .lock()
                 .map_err(|_| "Renode debugger unavailable".to_owned())?;
+            let target = session.as_ref().map(|active| active.target);
             if let Some(active) = session.as_mut() {
                 if active.running.load(Ordering::Acquire) {
                     let _ = active.interrupt.request();
                 }
             }
             session.take();
-        }
+            target.ok_or_else(|| "Renode debugger is not started".to_owned())?
+        };
         supervisor.teardown(TeardownReason::Reset);
-        self.start(supervisor)?;
+        self.start_target(supervisor, target)?;
         Ok("reset")
     }
 
-    fn idle_rsp(&self) -> Result<Arc<Mutex<RenodeRsp>>, String> {
+    fn idle_rsp(&self) -> Result<(Arc<Mutex<RenodeRsp>>, RenodeTarget), String> {
         let session = self
             .session
             .lock()
@@ -138,11 +211,11 @@ impl RenodeDebugger {
         if active.running.load(Ordering::Acquire) {
             return Err("Renode debugger is running".into());
         }
-        Ok(Arc::clone(&active.rsp))
+        Ok((Arc::clone(&active.rsp), active.target))
     }
 
     pub(crate) fn registers(&self) -> Result<Value, String> {
-        let rsp = self.idle_rsp()?;
+        let (rsp, target) = self.idle_rsp()?;
         let registers = rsp
             .lock()
             .map_err(|_| "Renode debugger unavailable".to_owned())?
@@ -154,12 +227,12 @@ impl RenodeDebugger {
         result.insert("sp".into(), json!(registers.r[13]));
         result.insert("lr".into(), json!(registers.r[14]));
         result.insert("pc".into(), json!(registers.r[15]));
-        result.insert("xpsr".into(), json!(registers.xpsr));
+        result.insert(target.status_name().into(), json!(registers.status));
         Ok(Value::Object(result))
     }
 
     pub(crate) fn read_memory(&self, address: u32, length: usize) -> Result<String, String> {
-        let rsp = self.idle_rsp()?;
+        let (rsp, _) = self.idle_rsp()?;
         let bytes = rsp
             .lock()
             .map_err(|_| "Renode debugger unavailable".to_owned())?
@@ -168,7 +241,7 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn set_breakpoint(&self, address: u32) -> Result<&'static str, String> {
-        let rsp = self.idle_rsp()?;
+        let (rsp, _) = self.idle_rsp()?;
         rsp.lock()
             .map_err(|_| "Renode debugger unavailable".to_owned())?
             .set_breakpoint(address)?;
@@ -176,7 +249,7 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn clear_breakpoint(&self, address: u32) -> Result<&'static str, String> {
-        let rsp = self.idle_rsp()?;
+        let (rsp, _) = self.idle_rsp()?;
         rsp.lock()
             .map_err(|_| "Renode debugger unavailable".to_owned())?
             .clear_breakpoint(address)?;
@@ -184,7 +257,7 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn step(&self) -> Result<&'static str, String> {
-        let rsp = self.idle_rsp()?;
+        let (rsp, _) = self.idle_rsp()?;
         rsp.lock()
             .map_err(|_| "Renode debugger unavailable".to_owned())?
             .step()?;
@@ -248,8 +321,32 @@ impl RenodeDebugger {
         let active = session
             .as_ref()
             .ok_or_else(|| "Renode debugger is not started".to_owned())?;
-        serde_json::to_value(active.state.latest()?)
-            .map_err(|_| "brick-state snapshot unavailable".to_owned())
+        match &active.state {
+            TargetState::Spike(state) => serde_json::to_value(state.latest()?)
+                .map_err(|_| "brick-state snapshot unavailable".to_owned()),
+            TargetState::Ev3(path) => {
+                let deadline = Instant::now() + EV3_EVIDENCE_TIMEOUT;
+                loop {
+                    match std::fs::read(path) {
+                        Ok(uart) if uart == EV3_UART_EVIDENCE => break,
+                        Ok(uart) if EV3_UART_EVIDENCE.starts_with(&uart) => {}
+                        Ok(_) => return Err("EV3 UART/AINTC evidence is invalid".into()),
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                        Err(_) => return Err("EV3 UART evidence unavailable".into()),
+                    }
+                    if Instant::now() >= deadline {
+                        return Err("EV3 UART/AINTC evidence is incomplete".into());
+                    }
+                    thread::sleep(Duration::from_millis(5));
+                }
+                Ok(json!({
+                    "schemaVersion": 1,
+                    "type": "snapshot",
+                    "target": {"board": "ev3", "architecture": "arm926ej-s"},
+                    "evidence": {"uart": "EV3 ARM9 IRQ\n", "aintcIrq": true}
+                }))
+            }
+        }
     }
 
     #[cfg(test)]
@@ -298,6 +395,36 @@ mod tests {
         assert_eq!(state["schemaVersion"], 1);
         assert_eq!(state["type"], "snapshot");
         assert_eq!(state["target"]["board"], "spike-prime");
+        assert_eq!(debugger.reset(&supervisor).unwrap(), "reset");
+        assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned Renode EV3 package"]
+    fn packaged_ev3_session_drives_the_complete_cpu_and_evidence_contract() {
+        assert!(option_env!("BW_RENODE_EXECUTABLE").is_some());
+        assert!(option_env!("BW_RENODE_EV3_FIRMWARE").is_some());
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        assert_eq!(debugger.start_ev3(&supervisor).unwrap(), "ready");
+
+        let registers = debugger.registers().unwrap();
+        let pc = u32::try_from(registers["pc"].as_u64().unwrap()).unwrap();
+        assert_eq!(pc, 0xffff_0000);
+        assert!(registers["cpsr"].is_u64());
+        assert_eq!(debugger.read_memory(pc, 4).unwrap().len(), 8);
+        assert_eq!(debugger.set_breakpoint(pc & !3).unwrap(), "set");
+        assert_eq!(debugger.clear_breakpoint(pc & !3).unwrap(), "cleared");
+        assert_eq!(debugger.step().unwrap(), "stopped");
+        assert_eq!(debugger.run().unwrap(), "running");
+        let state = debugger.state().unwrap();
+        assert_eq!(debugger.pause().unwrap(), "paused");
+        assert_eq!(state["schemaVersion"], 1);
+        assert_eq!(state["type"], "snapshot");
+        assert_eq!(state["target"]["board"], "ev3");
+        assert_eq!(state["target"]["architecture"], "arm926ej-s");
+        assert_eq!(state["evidence"]["uart"], "EV3 ARM9 IRQ\n");
+        assert_eq!(state["evidence"]["aintcIrq"], true);
         assert_eq!(debugger.reset(&supervisor).unwrap(), "reset");
         assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
     }
