@@ -82,7 +82,7 @@ test('a custom palette keeps image indices and is written into Arcade project se
     assert.deepEqual(out.warnings, []);
 });
 
-test('the CLI reads custom palette source from SB3 for exact Arcade img export', async () => {
+test('the CLI reads version 2 and animated version 3 palettes for exact Arcade img export', async () => {
     const cr = new SB3Creator();
     cr.parse('SPRITE gem:\nWHEN flag clicked:\n  wait 1 seconds\n');
     const image = parseImageLiteral('. 2 .\n2 2 2');
@@ -94,20 +94,26 @@ test('the CLI reads custom palette source from SB3 for exact Arcade img export',
     const zip = new JSZip();
     zip.file('project.json', JSON.stringify(cr.project));
     zip.file(costume.md5ext, svg);
-    zip.file('brickwright/artwork/v1.json', JSON.stringify({format: 'brickwright-artwork', version: 2,
-        costumes: [{targetIndex: 1, costumeIndex: 0, renderedMd5ext: costume.md5ext,
-            document: {version: 2, palette, pixelScale: 4, layers: [{id: 'pixels', type: 'pixel',
+    const layers = [{id: 'pixels', type: 'pixel',
                 name: 'Pixels', visible: true, locked: false, opacity: 1,
-                content: {kind: 'pixels', value: {width: 3, height: 2, pixels: [...image.pixels]}}}]}}]}));
+                content: {kind: 'pixels', value: {width: 3, height: 2, pixels: [...image.pixels]}}}];
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-arcade-palette-'));
     const input = path.join(directory, 'custom.sb3');
     const output = path.join(directory, 'custom.ts');
     try {
-        fs.writeFileSync(input, await zip.generateAsync({type: 'nodebuffer'}));
-        const result = spawnSync(process.execPath, [path.join(ROOT, 'scripts/makecode.mjs'),
-            'to-ts', input, '-o', output, '--target', 'arcade'], {encoding: 'utf8'});
-        assert.equal(result.status, 0, result.stderr);
-        assert.match(fs.readFileSync(output, 'utf8'), /img`\n\s+\. 2 \.\n\s+2 2 2\n`/);
+        for (const version of [2, 3]) {
+            const document = {version, palette, pixelScale: 4, activeLayerId: 'pixels', layers,
+                ...(version === 3 ? {animation: {activeFrameId: 'two', frames: [
+                    {id: 'one', durationMs: 100, activeLayerId: 'pixels', layers},
+                    {id: 'two', durationMs: 100, activeLayerId: 'pixels', layers}]}} : {})};
+            zip.file('brickwright/artwork/v1.json', JSON.stringify({format: 'brickwright-artwork', version,
+                costumes: [{targetIndex: 1, costumeIndex: 0, renderedMd5ext: costume.md5ext, document}]}));
+            fs.writeFileSync(input, await zip.generateAsync({type: 'nodebuffer'}));
+            const result = spawnSync(process.execPath, [path.join(ROOT, 'scripts/makecode.mjs'),
+                'to-ts', input, '-o', output, '--target', 'arcade'], {encoding: 'utf8'});
+            assert.equal(result.status, 0, result.stderr);
+            assert.match(fs.readFileSync(output, 'utf8'), /img`\n\s+\. 2 \.\n\s+2 2 2\n`/);
+        }
     } finally {
         fs.rmSync(directory, {recursive: true, force: true});
     }

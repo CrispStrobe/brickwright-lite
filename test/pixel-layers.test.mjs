@@ -4,7 +4,7 @@ import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-i
 
 const {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels,
     layersDocument, layersToSvg, moveSelectedPixels, outlinePixels, pasteSelectedPixels,
-    replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
+    replaceColourPixels, resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels} =
     await import('../overlay/scratch-gui/src/lib/bw-pixel-layers.js');
 
@@ -31,6 +31,20 @@ test('marquee copy/paste retains indices and clips at canvas edges', () => {
     assert.deepEqual(pasted.selection, {x: 2, y: 1, width: 1, height: 2});
     assert.equal(pasteSelectedPixels(clipboard, 3, 3, 3, 0), null);
     assert.deepEqual([...source], [0, 2, 3, 0, 4, 5, 0, 6, 7]);
+});
+
+test('animation frames retain separate editable layers and the active render', () => {
+    const first = {...blankLayer('pixels', 'Pixels', 2, 1), pixels: Uint8Array.from([2, 0])};
+    const second = {...blankLayer('pixels', 'Pixels', 2, 1), pixels: Uint8Array.from([0, 3])};
+    const frames = [{id: 'one', durationMs: 80, activeLayerId: 'pixels', layers: [first]},
+        {id: 'two', durationMs: 120, activeLayerId: 'pixels', layers: [second]}];
+    const source = layersDocument([second], 2, 1, 4, 'pixels', ARCADE_PALETTE,
+        {activeFrameId: 'two', frames});
+    assert.equal(source.version, 3);
+    assert.deepEqual(source.layers, source.animation.frames[1].layers);
+    assert.deepEqual(sourceFrames(source, 2, 1).map(frame => [...frame.layers[0].pixels]),
+        [[2, 0], [0, 3]]);
+    assert.equal(sourceFrames(source, 3, 1), null);
 });
 
 test('layer opacity survives source save and produces a translucent Scratch render', () => {

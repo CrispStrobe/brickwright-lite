@@ -7,7 +7,7 @@
  */
 const ARTWORK_PATH = 'brickwright/artwork/v1.json';
 const ARTWORK_FORMAT = 'brickwright-artwork';
-const ARTWORK_VERSION = 2;
+const ARTWORK_VERSION = 3;
 const MAX_ARTWORK_BYTES = 64 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 
@@ -25,26 +25,11 @@ const loadZip = async () => {
     return module.default || module;
 };
 
-const validateDocument = doc => {
-    if (!isObject(doc) || ![1, 2].includes(doc.version) || !Array.isArray(doc.layers) || !doc.layers.length) {
-        throw new Error('artwork document must contain layers');
-    }
-    if (doc.version === 2) {
-        if (!Array.isArray(doc.palette) || doc.palette.length !== 16 || doc.palette[0] !== null ||
-            !doc.palette.slice(1).every(colour => /^#[0-9a-f]{6}$/i.test(colour))) {
-            throw new Error('invalid artwork palette');
-        }
-    } else if (Object.prototype.hasOwnProperty.call(doc, 'palette')) {
-        throw new Error('palette requires artwork document version 2');
-    }
-    if (Object.prototype.hasOwnProperty.call(doc, 'pixelScale') && (!Number.isInteger(doc.pixelScale) ||
-        doc.pixelScale < 1 || doc.pixelScale > 64)) throw new Error('invalid pixel scale');
-    if (Object.prototype.hasOwnProperty.call(doc, 'activeLayerId') &&
-        !doc.layers.some(layer => layer.id === doc.activeLayerId)) throw new Error('invalid active layer');
-    if (byteLength(JSON.stringify(doc)) > MAX_DOCUMENT_BYTES) throw new Error('artwork document is too large');
+const validateLayers = (layers, expectedSize = null) => {
+    if (!Array.isArray(layers) || !layers.length) throw new Error('artwork document must contain layers');
     const ids = new Set();
     let pixelSize = null;
-    for (const layer of doc.layers) {
+    for (const layer of layers) {
         if (!isObject(layer) || typeof layer.id !== 'string' || !['vector', 'bitmap', 'pixel'].includes(layer.type) ||
             typeof layer.name !== 'string' || typeof layer.visible !== 'boolean' ||
             typeof layer.locked !== 'boolean' || !Number.isFinite(layer.opacity) ||
@@ -64,11 +49,61 @@ const validateDocument = doc => {
                 throw new Error('invalid pixel source');
             }
             const size = `${value.width}x${value.height}`;
-            if (pixelSize && pixelSize !== size) throw new Error('mismatched pixel layer size');
+            if ((pixelSize && pixelSize !== size) || (expectedSize && expectedSize !== size)) {
+                throw new Error('mismatched pixel layer size');
+            }
             pixelSize = size;
         } else if (typeof layer.content.value !== 'string') {
             throw new Error('invalid artwork content');
         }
+    }
+    return pixelSize;
+};
+
+const validateDocument = doc => {
+    if (!isObject(doc) || ![1, 2, 3].includes(doc.version)) {
+        throw new Error('artwork document must contain layers');
+    }
+    if (doc.version === 2 || (doc.version === 3 && Object.prototype.hasOwnProperty.call(doc, 'palette'))) {
+        if (!Array.isArray(doc.palette) || doc.palette.length !== 16 || doc.palette[0] !== null ||
+            !doc.palette.slice(1).every(colour => /^#[0-9a-f]{6}$/i.test(colour))) {
+            throw new Error('invalid artwork palette');
+        }
+    } else if (doc.version === 1 && Object.prototype.hasOwnProperty.call(doc, 'palette')) {
+        throw new Error('palette requires artwork document version 2');
+    }
+    if (Object.prototype.hasOwnProperty.call(doc, 'pixelScale') && (!Number.isInteger(doc.pixelScale) ||
+        doc.pixelScale < 1 || doc.pixelScale > 64)) throw new Error('invalid pixel scale');
+    const pixelSize = validateLayers(doc.layers);
+    if (Object.prototype.hasOwnProperty.call(doc, 'activeLayerId') &&
+        !doc.layers.some(layer => layer.id === doc.activeLayerId)) throw new Error('invalid active layer');
+    if (byteLength(JSON.stringify(doc)) > MAX_DOCUMENT_BYTES) throw new Error('artwork document is too large');
+    if (doc.animation) {
+        if (doc.version !== 3 || !pixelSize || !isObject(doc.animation) ||
+            !Array.isArray(doc.animation.frames) || doc.animation.frames.length < 2 ||
+            doc.animation.frames.length > 64 || typeof doc.animation.activeFrameId !== 'string') {
+            throw new Error('invalid artwork animation');
+        }
+        const frameIds = new Set();
+        for (const frame of doc.animation.frames) {
+            if (!isObject(frame) || typeof frame.id !== 'string' || !frame.id || frameIds.has(frame.id) ||
+                !Number.isInteger(frame.durationMs) || frame.durationMs < 20 || frame.durationMs > 10000 ||
+                typeof frame.activeLayerId !== 'string') throw new Error('invalid artwork frame');
+            frameIds.add(frame.id);
+            if (!Array.isArray(frame.layers) || !frame.layers.some(layer => layer.id === frame.activeLayerId)) {
+                throw new Error('invalid artwork frame layers');
+            }
+            validateLayers(frame.layers, pixelSize);
+            if (!frame.layers.every(layer => layer.type === 'pixel' && layer.content.kind === 'pixels')) {
+                throw new Error('animation frames require pixel layers');
+            }
+        }
+        if (!frameIds.has(doc.animation.activeFrameId)) throw new Error('invalid active frame');
+        const active = doc.animation.frames.find(frame => frame.id === doc.animation.activeFrameId);
+        if (JSON.stringify(active.layers) !== JSON.stringify(doc.layers) ||
+            active.activeLayerId !== doc.activeLayerId) throw new Error('active frame differs from costume source');
+    } else if (doc.version === 3) {
+        throw new Error('version 3 artwork requires animation');
     }
     return doc;
 };

@@ -75,11 +75,12 @@ async function readProject (file) {
     if (artwork) {
         try {
             const bundle = JSON.parse(await artwork.async('string'));
-            if (bundle.format === 'brickwright-artwork' && bundle.version === 2) {
+            if (bundle.format === 'brickwright-artwork' && [2, 3].includes(bundle.version)) {
                 for (const record of bundle.costumes || []) {
                     const saved = project.targets?.[record.targetIndex]?.costumes?.[record.costumeIndex];
                     const palette = record.document?.palette;
-                    if (saved?.md5ext === record.renderedMd5ext && record.document?.version === 2 &&
+                    if (saved?.md5ext === record.renderedMd5ext &&
+                        [2, 3].includes(record.document?.version) &&
                         Array.isArray(palette) && palette.length === 16) {
                         palettes.set(`${record.targetIndex}:${record.costumeIndex}`, palette);
                     }

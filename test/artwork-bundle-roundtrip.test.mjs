@@ -84,6 +84,34 @@ test('a version 2 palette survives SB3 save/reopen alongside the unchanged Scrat
         /invalid artwork palette/);
 });
 
+test('a version 3 animation preserves editable frames beside one Scratch render', async () => {
+    const {vm, costume, blob, id, svg} = await fixture();
+    const layer = pixels => ({id: 'pixels', type: 'pixel', name: 'Pixels', visible: true,
+        locked: false, opacity: 1, content: {kind: 'pixels',
+            value: {width: 2, height: 1, pixels}}});
+    const first = [layer([2, 0])];
+    const second = [layer([0, 3])];
+    const source = {version: 3, pixelScale: 4, activeLayerId: 'pixels', layers: second,
+        animation: {activeFrameId: 'two', frames: [
+            {id: 'one', durationMs: 80, activeLayerId: 'pixels', layers: first},
+            {id: 'two', durationMs: 120, activeLayerId: 'pixels', layers: second}]}};
+    artwork.setCostumeDocument(costume, source);
+    const saved = await artwork.attachArtwork(blob, vm);
+    const zip = await JSZip.loadAsync(await saved.arrayBuffer());
+    assert.equal(await zip.file(id).async('text'), svg);
+    assert.equal(JSON.parse(await zip.file(artwork.ARTWORK_PATH).async('text')).version, 3);
+    const reopened = await fixture();
+    const inspected = await artwork.inspectArtwork(await saved.arrayBuffer());
+    assert.equal(artwork.applyArtwork(inspected, reopened.vm).count, 1);
+    assert.deepEqual(artwork.getCostumeDocument(reopened.costume), source);
+    assert.throws(() => artwork.setCostumeDocument(reopened.costume,
+        {...source, animation: {...source.animation, frames: [source.animation.frames[0]]}}),
+    /invalid artwork animation/);
+    assert.throws(() => artwork.setCostumeDocument(reopened.costume,
+        {...source, animation: {...source.animation, frames: [source.animation.frames[0],
+            {...source.animation.frames[1], layers: first}]}}), /active frame differs/);
+});
+
 test('stale source is ignored if another editor changed the Scratch asset', async () => {
     const {vm, costume, blob} = await fixture();
     const saved = await artwork.attachArtwork(blob, vm);

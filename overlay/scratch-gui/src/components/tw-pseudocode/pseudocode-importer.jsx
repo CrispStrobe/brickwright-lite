@@ -1994,7 +1994,7 @@ class PseudocodeImporter extends React.Component {
                 if (costume.asset.dataFormat === 'svg') svgs.set(costume.assetId, costume.asset.decodeText());
                 rasters.set(costume.assetId, await draw(costume.asset));
                 const artwork = getCostumeDocument(costume);
-                if (artwork?.version === 2) palettes.set(costume.assetId, artwork.palette);
+                if (artwork?.palette) palettes.set(costume.assetId, artwork.palette);
             }
         }
         const {projectToArcade} = await import(

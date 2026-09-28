@@ -43,13 +43,27 @@ const resizeLayers = (layers, width, height, nextWidth, nextHeight) => layers.ma
     ...layer, pixels: resizeCanvas({width, height, pixels: layer.pixels}, nextWidth, nextHeight).pixels
 }));
 
-const layersDocument = (layers, width, height, scale, activeLayerId, palette = ARCADE_PALETTE) => {
+const serializeLayers = (layers, width, height) => layers.map(layer => ({id: layer.id, type: 'pixel', name: layer.name,
+    visible: layer.visible, locked: layer.locked, opacity: layer.opacity,
+    content: {kind: 'pixels', value: {width, height, pixels: Array.from(layer.pixels)}}}));
+
+const layersDocument = (layers, width, height, scale, activeLayerId, palette = ARCADE_PALETTE,
+    animation = null) => {
     const customPalette = palette.some((colour, index) => colour !== ARCADE_PALETTE[index]);
-    return {version: customPalette ? 2 : 1,
+    return {version: animation ? 3 : customPalette ? 2 : 1,
         ...(customPalette ? {palette: [...palette]} : {}), pixelScale: scale, activeLayerId,
-        layers: layers.map(layer => ({id: layer.id, type: 'pixel', name: layer.name,
-            visible: layer.visible, locked: layer.locked, opacity: layer.opacity,
-            content: {kind: 'pixels', value: {width, height, pixels: Array.from(layer.pixels)}}}))};
+        layers: serializeLayers(layers, width, height),
+        ...(animation ? {animation: {activeFrameId: animation.activeFrameId,
+            frames: animation.frames.map(frame => ({id: frame.id, durationMs: frame.durationMs,
+                activeLayerId: frame.activeLayerId,
+                layers: serializeLayers(frame.layers, width, height)}))}} : {})};
+};
+
+const sourceFrames = (document, width, height) => {
+    if (document?.version !== 3 || !document.animation) return null;
+    const frames = document.animation.frames.map(frame => ({id: frame.id, durationMs: frame.durationMs,
+        activeLayerId: frame.activeLayerId, layers: sourceLayers({layers: frame.layers}, width, height)}));
+    return frames.every(frame => frame.layers) ? frames : null;
 };
 
 const blankLayer = (id, name, width, height) => makeLayer(id, name, blankImage(width, height));
@@ -186,4 +200,4 @@ const transformPixels = (pixels, width, height, selection, operation) => {
 
 export {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels, layersDocument, layersToSvg,
     moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
-    stampBrushInto, transformPixels};
+    sourceFrames, stampBrushInto, transformPixels};
