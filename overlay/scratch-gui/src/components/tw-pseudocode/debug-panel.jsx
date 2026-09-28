@@ -65,6 +65,8 @@ const L10N = {
         modemSend: 'Encode and transmit this message on PA0/ADC6',
         modemSent: 'transmitted',
         firmwareRunning: 'running',
+        engineFault: 'Firmware fault',
+        engineFidelity: 'The engine skipped something here — the run may not match the chip',
         labwiredChipProject: 'project board',
         labwiredChipTitle: 'Run your own firmware (.elf or .uf2) on this chip, with no circuit — or the project\'s board',
         firmwareBack: 'Blocks',
@@ -115,6 +117,8 @@ const L10N = {
         modemSend: 'Diese Nachricht kodieren und an PA0/ADC6 senden',
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
+        engineFault: 'Firmware-Fehler',
+        engineFidelity: 'Die Engine hat hier etwas übersprungen — der Lauf entspricht evtl. nicht dem Chip',
         labwiredChipProject: 'Projekt-Board',
         labwiredChipTitle: 'Eigene Firmware (.elf oder .uf2) auf diesem Chip ausführen, ohne Schaltung — oder das Board des Projekts',
         firmwareBack: 'Blöcke',
@@ -1568,6 +1572,25 @@ class DebugPanel extends React.Component {
                     <div style={{color: '#f39c12', fontSize: 11}}>
                         {ui.engineNotes.map((n, i) => (
                             <div key={i}>{`• ${n}`}</div>
+                        ))}
+                    </div>
+                ) : null}
+
+                {/* WHAT THE ENGINE KNOWS AND THE RUN DOES NOT SHOW. A fault looks
+                    like firmware idling in its handler, and a skipped instruction
+                    like firmware running correctly — the engine knows both, so
+                    say them. Red for the fault (the run stopped because of it),
+                    amber for the skipped instructions (the run may be wrong). */}
+                {ui.engineDiagnostics && ui.engineDiagnostics.fault ? (
+                    <div data-engine-fault style={{color: '#e74c3c', fontSize: 11}}>
+                        {`${this.tx('engineFault')}: ${ui.engineDiagnostics.fault.summary}`}
+                    </div>
+                ) : null}
+                {ui.engineDiagnostics && ui.engineDiagnostics.fidelityGapCount ? (
+                    <div data-engine-fidelity style={{color: '#f39c12', fontSize: 11}}>
+                        <div>{`${this.tx('engineFidelity')} (${ui.engineDiagnostics.fidelityGapCount})`}</div>
+                        {ui.engineDiagnostics.fidelityGaps.map((g, i) => (
+                            <div key={i}>{`• ${typeof g === 'string' ? g : JSON.stringify(g)}`}</div>
                         ))}
                     </div>
                 ) : null}

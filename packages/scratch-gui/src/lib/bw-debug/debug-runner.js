@@ -838,6 +838,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * a question asked after the program is running, not during the build.
      */
     let imageProvenance = null;
+    /** See `engineDiagnostics` in the snapshot. */
+    function engineDiagnosticsNow () {
+        if (!target || typeof target.diagnostics !== 'function') return undefined;
+        if (typeof target.state === 'function' && target.state() === 'running') return undefined;
+        let d;
+        try { d = target.diagnostics(); } catch (e) { return undefined; }
+        const fault = d && d.fault && d.fault.summary ? {summary: String(d.fault.summary)} : null;
+        const gaps = d && Array.isArray(d.fidelityGaps) ? d.fidelityGaps : [];
+        if (!fault && !gaps.length) return undefined;
+        return {fault, fidelityGaps: gaps.slice(0, 20), fidelityGapCount: gaps.length};
+    }
     /** How many conditional hits were skipped, so the UI can show it happened. */
     let skipped = 0;
     /** Set by the halt handler when a stop should not be shown; read by pumpFrame. */
@@ -1138,6 +1149,15 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
              * nothing rather than an empty warning box.
              */
             engineNotes: engineNotes.length ? [...engineNotes] : undefined,
+            /**
+             * What the engine knows that the run does not show (targets that
+             * offer `diagnostics()`, i.e. LabWired): the fault verdict — why
+             * and where the firmware faulted, one sentence — and the
+             * instructions it silently skipped or addresses nothing claimed.
+             * Read only while stopped, so a running frame costs nothing.
+             * undefined when there is nothing to say.
+             */
+            engineDiagnostics: engineDiagnosticsNow(),
             /**
              * The prebuilt-image sentence, or undefined when the image was
              * compiled for this session. See `imageProvenance` above.
