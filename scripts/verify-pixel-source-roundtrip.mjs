@@ -576,6 +576,32 @@ try {
     await showPanel('palette');
     assert.equal(await page.getByTestId('bw-pixel-palette-preset').inputValue(), 'Pastel',
         'the preset is recognized after SB3 save and reopen');
+    console.log('checking animation frames exported as editable Scratch costumes');
+    await showPanel('frames');
+    await page.getByTestId('bw-pixel-export-frames').click();
+    await page.waitForFunction(() => window.__brickwrightStore.getState()
+        .scratchGui.vm.editingTarget.sprite.costumes.length === 4);
+    const exported = await saveProject(page);
+    const pixelRecords = exported.costumes.filter(record => record.targetIndex === 1 &&
+        record.document.layers[0].type === 'pixel');
+    assert.equal(pixelRecords.length, 3,
+        'the animation and both new frame costumes must have editable source records');
+    const source = exported.costumes.find(record => record.document.animation)?.document;
+    assert.ok(source && source.animation.frames.length === 2,
+        'exporting frames must preserve the original editable animation');
+    for (const [index, record] of pixelRecords.filter(item => !item.document.animation).entries()) {
+        assert.deepEqual(record.document.layers, source.animation.frames[index].layers,
+            'each ordinary Scratch costume retains the corresponding editable frame layers');
+        assert.deepEqual(record.document.palette, source.palette);
+    }
+    const zip = await JSZip.loadAsync(await readFile(file));
+    const project = JSON.parse(await zip.file('project.json').async('text'));
+    assert.equal(project.targets.find(target => !target.isStage).costumes.length, 4,
+        'all exported frames must be ordinary Scratch costumes in project.json');
+    for (const costume of project.targets.find(target => !target.isStage).costumes) {
+        assert.match(await zip.file(costume.md5ext).async('text'), /^<svg /,
+            'every exported frame must have a standalone renderable SVG asset');
+    }
     await page.close();
     console.log('checking iPad toolbar layout and touch controls');
     for (const viewport of [{width: 834, height: 1194}, {width: 1024, height: 768}]) {

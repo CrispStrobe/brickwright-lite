@@ -156,8 +156,9 @@ selection transforms and masks remain ahead.
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
 5. **Pixel and animation.** Improve timeline thumbnails and palette switching feedback.
-   Export frames as costumes without hiding
-   animation-only data in Scratch's render asset.
+   Frames can now be added as ordinary Scratch costumes; each has its own SVG
+   render and editable pixel source while the original animation stays intact.
+   Next, test timeline gestures on iPad and offer a choice of frame names.
 6. **Parity gate.** Run the same task corpus on desktop mouse, trackpad, iPad
    touch and Pencil: trace/edit curves, compose vector over paint, draw a
    palette sprite, save/reopen, and export SVG and transparent PNG. Every task
@@ -182,7 +183,7 @@ missing data or export behavior.
 | Flip and quarter-turn, with selection scope | Available, with touch buttons, undo, and arrow-key selection moves | Test on iPad |
 | Foreground/background colours, swap, colour replace and outline | Foreground colour, selection-aware index-preserving replace and outline | Add secondary colour and swap |
 | Palette presets and 15 editable colours | MakeCode Arcade's 11 built-in presets, editing and `.hex`/`.txt`/`.gpl` import use versioned source, Scratch rendering and Arcade export | Test preset selection and persistence on iPad |
-| Animation timeline, frame order, interval, onion skin | Editable frames, thumbnails, duration, order, playback and onion skin use version 3 source; the active frame renders as the Scratch costume | Export frames as costumes and test touch interaction on iPad |
+| Animation timeline, frame order, interval, onion skin | Editable frames, thumbnails, duration, order, playback and onion skin use version 3 source; the active frame renders as the Scratch costume. Export adds separate Scratch costumes with editable pixel source per frame. | Test touch interaction on iPad and improve frame naming |
 | Sprite-sheet and `img` import/export | Exact `img` literal paste/export, PNG export and horizontal transparent sprite-sheet PNG import/export exist | Add configurable palette conversion and animation metadata exchange |
 | Tile and tilemap asset editing | Imported tilemaps are rendered as costumes | Add editable tile set/map source and Arcade-compatible export |
 

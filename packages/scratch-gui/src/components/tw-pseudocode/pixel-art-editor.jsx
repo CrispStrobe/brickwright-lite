@@ -73,6 +73,8 @@ const L10N = {
         'px.play': 'Play', 'px.pause': 'Pause', 'px.onionSkin': 'Onion skin',
         'px.frameUp': 'Earlier frame', 'px.frameDown': 'Later frame',
         'px.exportSheet': 'Export sprite sheet PNG', 'px.importSheet': 'Import sprite sheet PNG',
+        'px.exportFrames': 'Add frames as costumes', 'px.framesExported': 'Frames added as editable costumes.',
+        'px.framesExportFailed': 'Could not add every frame as a costume.',
         'px.sheetFrameWidth': 'Frame width (PNG px)', 'px.sheetFrameHeight': 'Frame height (PNG px)',
         'px.sheetScale': 'PNG pixels per art pixel', 'px.sheetPreview': 'Preview slices',
         'px.sheetReplace': 'Replace frames with slices', 'px.sheetClose': 'Close sheet import',
@@ -125,6 +127,9 @@ const L10N = {
         'px.frameDuration': 'Bilddauer (ms)', 'px.play': 'Abspielen', 'px.pause': 'Pause',
         'px.onionSkin': 'Zwiebelschicht', 'px.frameUp': 'Bild nach vorn', 'px.frameDown': 'Bild nach hinten',
         'px.exportSheet': 'Sprite-Sheet-PNG exportieren', 'px.importSheet': 'Sprite-Sheet-PNG importieren',
+        'px.exportFrames': 'Einzelbilder als Kostüme hinzufügen',
+        'px.framesExported': 'Einzelbilder als bearbeitbare Kostüme hinzugefügt.',
+        'px.framesExportFailed': 'Nicht alle Einzelbilder konnten als Kostüme hinzugefügt werden.',
         'px.sheetFrameWidth': 'Bildbreite (PNG-Pixel)', 'px.sheetFrameHeight': 'Bildhöhe (PNG-Pixel)',
         'px.sheetScale': 'PNG-Pixel pro Grafikpixel', 'px.sheetPreview': 'Schnitte vorschauen',
         'px.sheetReplace': 'Bilder durch Schnitte ersetzen', 'px.sheetClose': 'Import schließen',
@@ -219,7 +224,7 @@ class PixelArtEditor extends React.Component {
             palette: [...ARCADE_PALETTE],
             scale: 4, zoom: 1, colour: 2, replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null, tolerance: 0,
-            frames: [], activeFrameId: null, framesOpen: false, panel: null,
+            frames: [], activeFrameId: null, framesOpen: false, panel: null, exportingFrames: false,
             onionSkin: false, playing: false,
             sheetMode: false, sheetName: '', sheetWidth: 0, sheetHeight: 0,
             sheetFrameWidth: 16, sheetFrameHeight: 16, sheetPixelScale: 1,
@@ -1239,6 +1244,40 @@ class PixelArtEditor extends React.Component {
         }, 'image/png');
     }
 
+    async exportFramesAsCostumes () {
+        const {image, scale, palette} = this.state;
+        const vm = this.props.vm;
+        const target = vm?.editingTarget;
+        const storage = vm?.runtime?.storage;
+        const frames = this.materializeFrames();
+        if (!image || !target || !storage || frames.length < 2 || this.state.exportingFrames) return;
+        // Keep the complete animation on its original costume. The additional
+        // Scratch costumes have independent pixel documents and flat SVG renders.
+        this.save();
+        const name = this.costume()?.name || 'Costume';
+        const targetId = target.id;
+        this.setState({exportingFrames: true, status: ''});
+        try {
+            for (const [index, frame] of frames.entries()) {
+                const svg = layersToSvg(frame.layers, image.width, image.height, scale, palette);
+                const asset = storage.createAsset(storage.AssetType.ImageVector, storage.DataFormat.SVG,
+                    new TextEncoder().encode(svg), null, true);
+                const costume = {name: `${name} ${index + 1}`, asset, assetId: asset.assetId,
+                    dataFormat: storage.DataFormat.SVG, md5: `${asset.assetId}.svg`,
+                    bitmapResolution: 1, rotationCenterX: image.width * scale / 2,
+                    rotationCenterY: image.height * scale / 2};
+                await vm.addCostume(costume.md5, costume, targetId);
+                setCostumeDocument(costume, layersDocument(frame.layers, image.width, image.height,
+                    scale, frame.activeLayerId, palette));
+            }
+            this.setState({status: 'framesExported'});
+        } catch (error) {
+            this.setState({status: 'framesExportFailed'});
+        } finally {
+            this.setState({exportingFrames: false});
+        }
+    }
+
     frameThumbnail (layers, width, height, palette) {
         const cached = this.thumbnailCache.get(layers);
         if (cached?.palette === palette) return cached.url;
@@ -1342,7 +1381,7 @@ class PixelArtEditor extends React.Component {
     render () {
         const locale = this.props.locale || browserLocale();
         const {image, layers, activeLayerId, selection, colour, replaceFrom, brushSize, tool, tolerance, mirror, converted,
-            frames, activeFrameId, panel, onionSkin, playing, status, w, h, zoom, palette,
+            frames, activeFrameId, panel, onionSkin, playing, status, exportingFrames, w, h, zoom, palette,
             sheetMode, sheetName, sheetWidth, sheetHeight, sheetFrameWidth, sheetFrameHeight,
             sheetPixelScale, sheetPreview, sheetError,
             renamingLayerId, renameValue, literalMode, literalText, literalError, paletteError} =
@@ -1670,6 +1709,9 @@ class PixelArtEditor extends React.Component {
                     <button type="button" style={btn(false)} data-testid="bw-pixel-export-sheet"
                         disabled={frames.length < 2} onClick={() => this.exportSheet()}>
                         {t(locale, 'px.exportSheet')}</button>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-export-frames"
+                        disabled={frames.length < 2 || exportingFrames}
+                        onClick={() => this.exportFramesAsCostumes()}>{t(locale, 'px.exportFrames')}</button>
                     <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12,
                         whiteSpace: 'nowrap', flexShrink: 0}}>
                         <input type="checkbox" checked={onionSkin} data-testid="bw-pixel-onion-skin"
@@ -1721,10 +1763,11 @@ class PixelArtEditor extends React.Component {
                         padding: '6px 8px', borderRadius: 6, fontSize: 11, lineHeight: 1.3,
                         color: '#78350f', background: 'rgba(255,251,235,0.96)', pointerEvents: 'none'}}>
                         {t(locale, 'px.converted', {w: image.width, h: image.height})}</div> : null}
-                    {status === 'saved' ? <div style={{position: 'absolute', right: 8, bottom: 8,
+                    {['saved', 'framesExported', 'framesExportFailed'].includes(status) ? <div
+                        style={{position: 'absolute', right: 8, bottom: 8,
                         padding: '6px 8px', borderRadius: 6, fontSize: 12, color: '#166534',
                         background: 'rgba(240,253,244,0.96)', pointerEvents: 'none'}}>
-                        {t(locale, 'px.saved')}</div> : null}
+                        {t(locale, `px.${status}`)}</div> : null}
                 </div>
             </div>
         );
