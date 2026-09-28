@@ -61,10 +61,35 @@ try {
 
     for (let i = 0; i < tabs; i++) {
         await page.getByRole('tab').nth(i).click().catch(() => {});
-        // Settle on the pane rendering rather than a fixed sleep.
         await page.waitForFunction(
             'document.querySelectorAll(\'[role="tab"][aria-selected="true"]\').length === 1',
             null, {timeout: 20000, polling: 100});
+
+        // WAIT FOR THE PANE TO FILL, not merely to be selected. aria-selected
+        // flips before the pane's contents mount, and measuring there is how a
+        // gate passes because there is nothing to measure: on the Circuit tab
+        // this counted 9 controls where a settled pane has ~489 — so the pane
+        // holding 317 of the sub-24px controls in the original audit would have
+        // been waved through. Found by running this gate against a build with
+        // no floor at all and noticing the count, not the verdict.
+        //
+        // Stabilisation rather than a fixed sleep: poll until the count stops
+        // changing across three consecutive samples.
+        const settled = await (async () => {
+            let last = -1;
+            let stable = 0;
+            const deadline = Date.now() + 25000;
+            while (Date.now() < deadline) {
+                const n = await page.evaluate(() => document.querySelectorAll(
+                    'button,select,[role="button"],[role="tab"],input[type=checkbox],input[type=radio]'
+                ).length);
+                stable = n === last ? stable + 1 : 0;
+                last = n;
+                if (stable >= 3) return {n, stable: true};
+                await page.evaluate(() => new Promise(r => setTimeout(r, 200)));
+            }
+            return {n: last, stable: false};
+        })();
         const r = await page.evaluate(() => {
             const visible = el => {
                 const b = el.getBoundingClientRect();
@@ -83,7 +108,10 @@ try {
                 const m = Math.min(b.width, b.height);
                 if (m < 24) {
                     tiny.push({
-                        px: Math.round(m), tag: el.tagName.toLowerCase(),
+                        // One decimal, not rounded: Math.round(23.6) prints "24px"
+                        // beside a message saying the control is under 24, which
+                        // reads as a bug in the gate rather than in the control.
+                        px: Number(m.toFixed(1)), tag: el.tagName.toLowerCase(),
                         label: (el.getAttribute('aria-label') || el.textContent ||
                                 el.getAttribute('title') || '').trim().slice(0, 30),
                     });
@@ -95,6 +123,9 @@ try {
                 layoutW: window.innerWidth,
             };
         });
+        check(settled.stable,
+            `${r.name}: the pane settled before measuring (${settled.n} controls)`,
+            settled.stable ? '' : 'count still changing at the deadline — the numbers below are a snapshot of a moving pane');
         check(r.tiny.length === 0,
             `${r.name}: no visible control is under ${UNHITTABLE}px (${r.controls} controls)`,
             r.tiny.length
