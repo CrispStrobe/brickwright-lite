@@ -469,6 +469,17 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     return requested;
 }
 
+/** Convert avr8js's word-addressed Intel-HEX result to flat AVR flash bytes. */
+export function avrWordsToFlashBytes(words) {
+    if (!(words instanceof Uint16Array)) throw new TypeError('AVR flash words must be Uint16Array');
+    const bytes = new Uint8Array(words.length * 2);
+    for (let i = 0; i < words.length; i++) {
+        bytes[i * 2] = words[i] & 0xff;
+        bytes[i * 2 + 1] = words[i] >>> 8;
+    }
+    return bytes;
+}
+
 /**
  * Apply one write-watchpoint toggle without changing the target's address.
  *
@@ -1849,28 +1860,28 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
-    /** STM32F030 on the HEAVY tier (labwired-wasm).
+    /** STM32F030 or ATmega328P on the HEAVY tier (labwired-wasm).
      *
-     *  Same board and the same raw flash image as attachStm32F0Target — the
-     *  program is identical, only the engine underneath differs. That is the
-     *  point of the two-tier split in STM32-PATH.md: the light tier is the
-     *  hand-rolled CortexM0Machine with its peripheral set capped at what our
-     *  codegen emits, and this is what a project runs on when it needs more.
+     *  STM32F030 uses the same raw flash image as attachStm32F0Target. AVR
+     *  compiler output is Intel HEX, converted below to little-endian flash
+     *  bytes; the bw-board adapter wraps either architecture in the matching
+     *  ELF container before handing it to LabWired.
      *
      *  Two things this path does that the light one does not:
      *
-     *  1. It fetches a 20 MB engine on first use. `loadLabwired()` returns null
+     *  1. It fetches the optional engine on first use. `loadLabwired()` returns null
      *     rather than throwing when the artifact was never deployed, so the
      *     failure here is a clear message, not a broken panel — and the picker
      *     should not have offered the kind at all in that case.
-     *  2. It wraps the flash image in an ELF. labwired's ARM path ends in
-     *     `load_elf_bytes` and takes nothing else, while everything we compile
-     *     is a raw image; the adapter does the wrapping. The cost is symbols:
+     *  2. It wraps the flash image in an ELF. LabWired ends in
+     *     `load_elf_bytes`; the adapter supplies the architecture-correct
+     *     container. The cost is symbols:
      *     there are none in a .bin, so no source lines and no yield points.
      */
     async function attachLabwiredTarget (built) {
         setStatus('attaching', S('attach.labwired'));
-        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist, STM32F0 } =
+        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist,
+            STM32F0, LABWIRED_CHIPS, parseIntelHex } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
         const { loadLabwired } = await import(
             /* webpackChunkName: "labwired-probe" */ '../labwired-engine.js');
@@ -1883,17 +1894,31 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         const stc = projectStc(null);
-        const clockHz = built.f_cpu || built.clockHz || STM32F0.clockHz;
+        const device = String(stc?.device || '').toLowerCase();
+        const isAvr = ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device);
+        if (!isAvr && device !== 'stm32f030') {
+            throw new Error('LabWired is admitted here only for STM32F030 and '
+                + 'ATmega328P/Arduino Uno/Nano. ATtiny85/88 stay on avr8js.');
+        }
+        const chipKind = isAvr ? 'arduino_uno' : 'stm32f030';
+        const chip = isAvr ? LABWIRED_CHIPS.arduino_uno : STM32F0;
+        const clockHz = built.f_cpu || built.clockHz || chip.clockHz;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
-        board = new BoardImpl(3.3);
+        board = new BoardImpl(isAvr ? 5.0 : 3.3);
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
         if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
 
-        const program = built.image instanceof Uint8Array ? built.image : null;
-        if (!program) throw new Error('the STM32F030 build produced no flash image');
+        const program = isAvr
+            ? (typeof built.hex === 'string'
+                ? avrWordsToFlashBytes(parseIntelHex(built.hex, 32 * 1024))
+                : null)
+            : (built.image instanceof Uint8Array ? built.image : null);
+        if (!program) throw new Error(isAvr
+            ? 'the ATmega328P build produced no Intel HEX image'
+            : 'the STM32F030 build produced no flash image');
 
         // NO `pins`, and NO `chipYaml`. This is the documented mistake, and it
         // was made here: handing the factory a header map alongside the board
@@ -1909,7 +1934,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         let lwTarget, lwAdapter, refusals;
         try {
             ({ target: lwTarget, adapter: lwAdapter, refusals } = await createDebugTarget('labwired', {
-                wasm, board, firmware: program, chipKind: 'stm32f030', clockHz,
+                wasm, board, firmware: program, chipKind, clockHz,
             }));
         } catch (e) {
             // The bridge throws with a `refusals` array when the bench cannot be
