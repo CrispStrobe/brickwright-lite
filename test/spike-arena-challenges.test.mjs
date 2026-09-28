@@ -29,7 +29,7 @@ test('the unit lists every challenge file in its folder, and nothing else', () =
     const files = readdirSync(UNIT_DIR).sort();
     const expected = ['unit.json', ...unit.challenges.flatMap(id => [`${id}.json`, `${id}.bw`, `${id}.wrong.bw`])].sort();
     assert.deepEqual(files, expected);
-    assert.ok(unit.challenges.length >= 8 && unit.challenges.length <= 10, `${unit.challenges.length} challenges`);
+    assert.ok(unit.challenges.length >= 8 && unit.challenges.length <= 12, `${unit.challenges.length} challenges`);
     assert.ok(unit.title.en && unit.title.de && unit.intro.en && unit.intro.de);
 });
 
@@ -55,9 +55,14 @@ test('the unit covers the skills it promises', () => {
     const solutions = worlds.map(w => readFileSync(path.join(UNIT_DIR, w.solution), 'utf8')).join('\n');
     for (const [skill, pattern] of [['colour sensor', /spike color C is/], ['distance sensor', /spike distance D/],
         ['force sensor', /spike force sensor E pressed/], ['yaw', /spike angle yaw/], ['repeat', /REPEAT 4:/],
-        ['forever', /FOREVER:/], ['a defined block', /^DEFINE /m]]) {
+        ['forever', /FOREVER:/], ['a defined block', /^DEFINE /m], ['steering', /start moving steering -?\d/],
+        ['tank driving', /start tank /], ['the movement pair', /set movement motors A B/]]) {
         assert.match(solutions, pattern, `no reference solution uses the ${skill}`);
     }
+    // `move` waits for the rover to arrive (CrispStrobe/extensions#22), so a
+    // solution that still sleeps a fixed time is compensating for a defect
+    // that is gone, and would hide its return.
+    assert.doesNotMatch(solutions, /^\s*wait \d+(?:\.\d+)? seconds?\s*$/m, 'a reference solution sleeps a fixed time');
 });
 
 // ── the runs ─────────────────────────────────────────────────────────────────
@@ -87,7 +92,8 @@ if (!existsSync(missing)) {
             assert.equal(result.verdict.status, 'pass',
                 `${world.id}: ${JSON.stringify(result.verdict)} at ${JSON.stringify(result.snapshot.pose)}`);
             assert.deepEqual(result.unsupported, [], 'every command the program sent was understood by the hub');
-            const verbs = ['motorStart', 'moveForward', 'motorStop'].filter(name => result.calls.get(name));
+            const verbs = ['moveForward', 'steer', 'startTank', 'stopMovement', 'motorStart']
+                .filter(name => result.calls.get(name));
             assert.ok(verbs.length, `${world.id}: the program reached a motion block of the extension`);
         });
         test(`${world.id}: the deliberately wrong solution fails`, async () => {

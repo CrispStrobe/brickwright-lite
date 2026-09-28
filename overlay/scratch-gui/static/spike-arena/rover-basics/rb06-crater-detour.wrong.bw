@@ -2,6 +2,6 @@ DEVICE SPIKE
 
 # A deliberately wrong attempt: straight at the cache, through the crater.
 WHEN flag clicked:
-  set motor speed A 50
-  set motor speed B 50
+  set movement motors A B
+  set movement speed 50
   move forward 110 cm

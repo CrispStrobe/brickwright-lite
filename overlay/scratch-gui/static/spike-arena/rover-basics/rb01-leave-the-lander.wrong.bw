@@ -2,4 +2,5 @@ DEVICE SPIKE
 
 # A deliberately wrong attempt: 60 wheel DEGREES is not 60 cm.
 WHEN flag clicked:
+  set movement motors A B
   move forward 60 degrees

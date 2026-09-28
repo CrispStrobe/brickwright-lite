@@ -74,6 +74,52 @@ try {
       return { total: t.length, fit: fit.length,
                names: t.map(e => e.textContent.trim().slice(0, 14)) };
     });
+    // CHROME BUDGET. The menu bar and tab strip cost 92px unshrunk, which in
+    // LANDSCAPE is 84pt of a 430pt screen — 19.4% gone before any content. The
+    // phone-chrome rules take the two rows to 36 and 34. Asserted as a budget
+    // rather than exact numbers so a later redesign can beat it, and paired with
+    // a clickability check because the way to fail this cheaply is to shrink the
+    // rows until the tabs cannot be tapped.
+    const chrome = await page.evaluate(() => {
+      const firstPanel = [...document.querySelectorAll('[class*="react-tabs__tab-panel"]')]
+        .find(el => el.getBoundingClientRect().height > 0);
+      const tabEls = [...document.querySelectorAll('[role="tab"]')];
+
+      return {
+        top: firstPanel ? Math.round(firstPanel.getBoundingClientRect().top) : null,
+        tabs: tabEls.length,
+        minTabH: tabEls.length ? Math.min(...tabEls.map(t => Math.round(t.getBoundingClientRect().height))) : 0,
+        flag: document.documentElement.getAttribute('data-bw-touch'),
+      };
+    });
+    check(chrome.flag === '1', `${orientation}: the touch flag is set, so the chrome rules apply`,
+      `data-bw-touch=${JSON.stringify(chrome.flag)}`);
+    check(chrome.top !== null && chrome.top <= 76,
+      `${orientation}: chrome above the content is within budget`,
+      `${chrome.top}px (was 92 before the phone-chrome rules; budget 76)`);
+    // CLICK THEM, do not hit-test them. An elementFromPoint check has to know
+    // where the app has scrolled to, and this app scrolls an inner container
+    // rather than the window: the first version reported 0 of 5 in CI's
+    // landscape shard, and after a scrollIntoView pass it reported 0 of 6 in
+    // portrait instead — the measurement moving, not the app. Clicking and
+    // reading aria-selected back asks the question that matters (can the reader
+    // select this tab) and lets Playwright do the scrolling, which it does
+    // correctly without me modelling the layout.
+    let switched = 0;
+    for (let i = 0; i < chrome.tabs; i++) {
+      await page.getByRole('tab').nth(i).click({timeout: 5000}).catch(() => {});
+      const ok = await page.evaluate(
+        idx => document.querySelectorAll('[role="tab"]')[idx]?.getAttribute('aria-selected') === 'true',
+        i).catch(() => false);
+      if (ok) switched++;
+    }
+    check(switched === chrome.tabs && chrome.tabs > 0,
+      `${orientation}: every tab still selects after the chrome shrank`,
+      `${switched}/${chrome.tabs}`);
+    check(chrome.minTabH >= 32,
+      `${orientation}: no tab was shrunk below the 32px touch floor`,
+      `shortest tab ${chrome.minTabH}px`);
+
     check(tabs.fit === tabs.total, `${orientation}: every editor tab is reachable`,
       `${tabs.fit}/${tabs.total} — ${tabs.names.join(' | ')}`);
 

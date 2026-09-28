@@ -2,19 +2,16 @@ DEVICE SPIKE
 
 # A deliberately wrong attempt: the first leg is too long and runs into the wall.
 DEFINE quarter turn right:
+  set movement speed 15
   reset yaw
-  set motor speed A 15
-  set motor speed B 15
-  start motor A counterclockwise
-  start motor B counterclockwise
+  start moving steering 100
   wait until spike angle yaw > 87
-  stop motor A
-  stop motor B
+  stop movement
 
 WHEN flag clicked:
-  set motor speed A 50
-  set motor speed B 50
+  set movement motors A B
+  set movement speed 50
   move forward 100 cm
-  wait 3 seconds
   quarter turn right
+  set movement speed 50
   move forward 50 cm

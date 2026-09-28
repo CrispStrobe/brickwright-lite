@@ -1,12 +1,10 @@
 DEVICE SPIKE
 
-# A deliberately wrong attempt: both motors clockwise turns LEFT, not right.
+# A deliberately wrong attempt: steering -100 spins LEFT, not right.
 WHEN flag clicked:
+  set movement motors A B
+  set movement speed 15
   reset yaw
-  set motor speed A 15
-  set motor speed B 15
-  start motor A clockwise
-  start motor B clockwise
-  wait until spike angle yaw < -86
-  stop motor A
-  stop motor B
+  start moving steering -100
+  wait until spike angle yaw < -87
+  stop movement
