@@ -41,13 +41,20 @@ settings bar and Krita's canvas-only view without changing how Scratch stores SV
 or PNG costumes.
 
 This is a workspace improvement, not raster/vector feature parity. The next
-capability gates are: (1) editable vector paths with pen-created nodes and
-curve/cusp controls that survive SB3 save/reopen; (2) ordered bitmap layers
+capability gates are: (1) a pen for creating vector paths and node operations
+such as join/split that survive SB3 save/reopen; (2) ordered bitmap layers
 with independent pixels, visibility and opacity in artwork source, plus a
 flattened PNG for Scratch; (3) brush presets, per-stroke opacity compositing,
 colour history and selection transforms exposed through contextual controls.
 Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
 for older Scratch readers.
+
+The reshape toolbar now exposes open/close operations for one selected SVG
+path. They change the path's topology in Paper and save as an ordinary SVG
+path, so an older Scratch reader can still display it. The browser gate draws
+a path, opens it, saves/reopens the SB3, then closes it again. Node movement,
+handle adjustment and adding a node on a curve were already present in the
+reshape tool; the pen and other path operations remain ahead.
 
 - Save and load paths in the browser and native project importer read/write the
   source entry. They leave `project.json` and the Scratch costume assets intact.

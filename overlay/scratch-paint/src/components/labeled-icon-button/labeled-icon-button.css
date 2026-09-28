@@ -28,7 +28,8 @@ $border-radius: 0.25rem;
 }
 
 @media only screen and (max-width: 900px) {
-    .mod-edit-field {
+    .mod-edit-field,
+    :global(html[data-bw-touch]) .mod-edit-field {
         min-width: 44px;
         min-height: 44px;
         padding: 0;

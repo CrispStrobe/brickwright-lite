@@ -31,10 +31,12 @@ import bitEraserIcon from '../bit-eraser-mode/eraser.svg';
 import bitLineIcon from '../bit-line-mode/line.svg';
 import brushIcon from '../brush-mode/brush.svg';
 import curvedPointIcon from './icons/curved-point.svg';
+import closePathIcon from './icons/close-path.svg';
 import eraserIcon from '../eraser-mode/eraser.svg';
 import flipHorizontalIcon from './icons/flip-horizontal.svg';
 import flipVerticalIcon from './icons/flip-vertical.svg';
 import straightPointIcon from './icons/straight-point.svg';
+import openPathIcon from './icons/open-path.svg';
 import bitOvalIcon from '../bit-oval-mode/oval.svg';
 import bitRectIcon from '../bit-rect-mode/rectangle.svg';
 import bitOvalOutlinedIcon from '../bit-oval-mode/oval-outlined.svg';
@@ -84,6 +86,16 @@ const ModeToolsComponent = props => {
             defaultMessage: 'Pointed',
             description: 'Label for the button that converts selected points to sharp points',
             id: 'paint.modeTools.pointed'
+        },
+        closePath: {
+            defaultMessage: 'Close path',
+            description: 'Join the ends of the selected vector path',
+            id: 'paint.modeTools.closePath'
+        },
+        openPath: {
+            defaultMessage: 'Open path',
+            description: 'Separate the ends of the selected vector path',
+            id: 'paint.modeTools.openPath'
         },
         thickness: {
             defaultMessage: 'Thickness',
@@ -200,6 +212,22 @@ const ModeToolsComponent = props => {
                         imgSrc={straightPointIcon}
                         title={props.intl.formatMessage(messages.pointed)}
                         onClick={props.onPointPoints}
+                    />
+                </InputGroup>
+                <InputGroup className={classNames(styles.modLabeledIconHeight)}>
+                    <LabeledIconButton
+                        disabled={!props.canClosePath}
+                        hideLabel={hideLabel(props.intl.locale)}
+                        imgSrc={closePathIcon}
+                        title={props.intl.formatMessage(messages.closePath)}
+                        onClick={props.onClosePath}
+                    />
+                    <LabeledIconButton
+                        disabled={!props.canOpenPath}
+                        hideLabel={hideLabel(props.intl.locale)}
+                        imgSrc={openPathIcon}
+                        title={props.intl.formatMessage(messages.openPath)}
+                        onClick={props.onOpenPath}
                     />
                 </InputGroup>
                 <InputGroup className={classNames(styles.modLabeledIconHeight)}>
@@ -323,6 +351,8 @@ ModeToolsComponent.propTypes = {
     bitBrushOpacity: PropTypes.number,
     bitEraserSize: PropTypes.number,
     brushValue: PropTypes.number,
+    canClosePath: PropTypes.bool,
+    canOpenPath: PropTypes.bool,
     className: PropTypes.string,
     clipboardItems: PropTypes.arrayOf(PropTypes.array),
     eraserValue: PropTypes.number,
@@ -337,6 +367,7 @@ ModeToolsComponent.propTypes = {
     onBitEraserSliderChange: PropTypes.func.isRequired,
     onBrushSliderChange: PropTypes.func.isRequired,
     onCopyToClipboard: PropTypes.func.isRequired,
+    onClosePath: PropTypes.func.isRequired,
     onCurvePoints: PropTypes.func.isRequired,
     onDelete: PropTypes.func.isRequired,
     onEraserSliderChange: PropTypes.func,
@@ -344,6 +375,7 @@ ModeToolsComponent.propTypes = {
     onFlipHorizontal: PropTypes.func.isRequired,
     onFlipVertical: PropTypes.func.isRequired,
     onOutlineShapes: PropTypes.func.isRequired,
+    onOpenPath: PropTypes.func.isRequired,
     onPasteFromClipboard: PropTypes.func.isRequired,
     onPointPoints: PropTypes.func.isRequired,
     onUpdateImage: PropTypes.func.isRequired

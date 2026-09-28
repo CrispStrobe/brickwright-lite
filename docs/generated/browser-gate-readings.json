@@ -6738,6 +6738,12 @@
       "p95": 0,
       "max": null,
       "readings": []
+    },
+    "Browser gate \u2014 vector path topology survives save and reopen": {
+      "n": 0,
+      "p95": 0,
+      "max": null,
+      "readings": []
     }
   }
 }
