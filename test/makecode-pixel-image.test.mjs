@@ -11,13 +11,40 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {
     ARCADE_PALETTE, svgToPixels, pixelsToSvg, quantizeRgba, toImgLiteral, floodFill, resizeCanvas,
-    nearestIndex, remapPalette, parsePaletteFile
+    nearestIndex, remapPalette, parsePaletteFile, sliceSpriteSheet
 } from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {parseImageLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {importArtefact} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const same = (a, b) => a.width === b.width && a.height === b.height && a.pixels.every((v, i) => v === b.pixels[i]);
+
+test('sprite sheets slice row by row and retain transparent palette pixels', () => {
+    const rgba = new Uint8ClampedArray(4 * 2 * 4);
+    const paint = (x, y, rgb, alpha = 255) => {
+        const offset = ((y * 4) + x) * 4;
+        rgba.set([...rgb, alpha], offset);
+    };
+    paint(0, 0, [255, 33, 33]);
+    paint(2, 0, [255, 33, 33]);
+    paint(2, 1, [255, 33, 33]);
+    const sheet = sliceSpriteSheet(rgba, 4, 2, 2, 2, 1);
+    assert.equal(sheet.columns, 2);
+    assert.deepEqual(sheet.frames.map(frame => [...frame.pixels]), [[2, 0, 0, 0], [2, 0, 2, 0]]);
+    assert.equal(sliceSpriteSheet(rgba, 4, 2, 3, 2, 1), null);
+    assert.equal(sliceSpriteSheet(rgba, 4, 2, 2, 2, 3), null);
+});
+
+test('sprite sheet rows retain Arcade palette order', () => {
+    const rgba = new Uint8ClampedArray(4 * 4 * 4);
+    for (const [x, y, index] of [[0, 0, 2], [2, 0, 3], [0, 2, 4], [2, 2, 5]]) {
+        const colour = ARCADE_PALETTE[index];
+        rgba.set([1, 3, 5].map(offset => parseInt(colour.slice(offset, offset + 2), 16)).concat(255),
+            ((y * 4) + x) * 4);
+    }
+    const sheet = sliceSpriteSheet(rgba, 4, 4, 2, 2);
+    assert.deepEqual(sheet.frames.map(frame => frame.pixels[0]), [2, 3, 4, 5]);
+});
 
 const SPRITE = parseImageLiteral(`
     . . 5 5 5 5 . .

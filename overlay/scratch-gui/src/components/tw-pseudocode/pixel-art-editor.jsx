@@ -23,7 +23,7 @@ import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocu
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile
+    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
 } from '../../lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
 
@@ -63,7 +63,13 @@ const L10N = {
         'px.deleteFrame': 'Delete frame', 'px.frameDuration': 'Frame duration (ms)',
         'px.play': 'Play', 'px.pause': 'Pause', 'px.onionSkin': 'Onion skin',
         'px.frameUp': 'Earlier frame', 'px.frameDown': 'Later frame',
-        'px.exportSheet': 'Export sprite sheet PNG'
+        'px.exportSheet': 'Export sprite sheet PNG', 'px.importSheet': 'Import sprite sheet PNG',
+        'px.sheetFrameWidth': 'Frame width (PNG px)', 'px.sheetFrameHeight': 'Frame height (PNG px)',
+        'px.sheetScale': 'PNG pixels per art pixel', 'px.sheetPreview': 'Preview slices',
+        'px.sheetReplace': 'Replace frames with slices', 'px.sheetClose': 'Close sheet import',
+        'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 128×128 art pixels.',
+        'px.sheetHint': 'Rows are read left to right. Colours match the current palette; replacing frames is undoable.',
+        'px.frameNumber': 'Frame {number}'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -101,10 +107,44 @@ const L10N = {
         'px.duplicateFrame': 'Einzelbild duplizieren', 'px.deleteFrame': 'Einzelbild löschen',
         'px.frameDuration': 'Bilddauer (ms)', 'px.play': 'Abspielen', 'px.pause': 'Pause',
         'px.onionSkin': 'Zwiebelschicht', 'px.frameUp': 'Bild nach vorn', 'px.frameDown': 'Bild nach hinten',
-        'px.exportSheet': 'Sprite-Sheet-PNG exportieren'
+        'px.exportSheet': 'Sprite-Sheet-PNG exportieren', 'px.importSheet': 'Sprite-Sheet-PNG importieren',
+        'px.sheetFrameWidth': 'Bildbreite (PNG-Pixel)', 'px.sheetFrameHeight': 'Bildhöhe (PNG-Pixel)',
+        'px.sheetScale': 'PNG-Pixel pro Grafikpixel', 'px.sheetPreview': 'Schnitte vorschauen',
+        'px.sheetReplace': 'Bilder durch Schnitte ersetzen', 'px.sheetClose': 'Import schließen',
+        'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 128×128 Grafikpixel verwenden.',
+        'px.sheetHint': 'Zeilen werden von links gelesen. Farben nutzen die aktuelle Palette; Ersetzen kann rückgängig gemacht werden.',
+        'px.frameNumber': 'Bild {number}'
     }
 };
 const t = makeT(L10N);
+
+const thumbnailData = (layers, width, height, palette) => {
+    const source = document.createElement('canvas');
+    source.width = width;
+    source.height = height;
+    const ctx = source.getContext('2d');
+    for (const layer of layers) {
+        if (!layer.visible || layer.opacity <= 0) continue;
+        ctx.globalAlpha = layer.opacity;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const colour = palette[layer.pixels[(y * width) + x]];
+                if (!colour) continue;
+                ctx.fillStyle = colour;
+                ctx.fillRect(x, y, 1, 1);
+            }
+        }
+    }
+    const preview = document.createElement('canvas');
+    preview.width = 40;
+    preview.height = 40;
+    const previewCtx = preview.getContext('2d');
+    previewCtx.imageSmoothingEnabled = false;
+    const ratio = Math.min(40 / width, 40 / height);
+    previewCtx.drawImage(source, (40 - width * ratio) / 2, (40 - height * ratio) / 2,
+        width * ratio, height * ratio);
+    return preview.toDataURL('image/png');
+};
 
 /** The costume's RGBA at its natural size, via an <img> and a canvas. */
 const rasterize = costume => new Promise((resolve, reject) => {
@@ -131,12 +171,18 @@ class PixelArtEditor extends React.Component {
             scale: 4, zoom: 1, colour: 2, replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null,
             frames: [], activeFrameId: null, framesOpen: false, onionSkin: false, playing: false,
+            sheetMode: false, sheetName: '', sheetWidth: 0, sheetHeight: 0,
+            sheetFrameWidth: 16, sheetFrameHeight: 16, sheetPixelScale: 1,
+            sheetPreview: [], sheetError: '',
             status: '', w: 16, h: 16, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: ''};
         this.canvas = React.createRef();
         this.viewport = React.createRef();
         this.root = React.createRef();
         this.paletteFile = React.createRef();
+        this.sheetFile = React.createRef();
+        this.sheetRgba = null;
+        this.thumbnailCache = new WeakMap();
         this.drawing = false;
         this.strokeRecorded = false;
         this.pointers = new Map();
@@ -174,6 +220,7 @@ class PixelArtEditor extends React.Component {
         if (prev.costumeIndex !== this.props.costumeIndex || this.loadedCostume !== this.costume()) this.load();
         else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection ||
             prevState.palette !== this.state.palette || prevState.onionSkin !== this.state.onionSkin) this.paint();
+        if (prevState.palette !== this.state.palette && this.sheetRgba && this.state.sheetMode) this.previewSheet();
     }
 
     costume () {
@@ -183,6 +230,7 @@ class PixelArtEditor extends React.Component {
 
     async load (size) {
         clearTimeout(this.playTimer);
+        this.sheetRgba = null;
         const costume = this.costume();
         this.loadedCostume = costume;
         if (!costume) { this.setState({image: null}); return; }
@@ -227,6 +275,7 @@ class PixelArtEditor extends React.Component {
         this.redoStack = [];
         this.pixelClipboard = null;
         this.setState({image, layers, activeLayerId, frames, activeFrameId, playing: false,
+            sheetMode: false, sheetPreview: [], sheetError: '',
             selection: null, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: '',
             original: {layers, activeLayerId, frames, activeFrameId,
@@ -1071,6 +1120,101 @@ class PixelArtEditor extends React.Component {
         }, 'image/png');
     }
 
+    frameThumbnail (layers, width, height, palette) {
+        const cached = this.thumbnailCache.get(layers);
+        if (cached?.palette === palette) return cached.url;
+        const url = thumbnailData(layers, width, height, palette);
+        this.thumbnailCache.set(layers, {palette, url});
+        return url;
+    }
+
+    async loadSheet (event) {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        const locale = this.props.locale || browserLocale();
+        if (!/\.png$/i.test(file.name) || file.size > 16 * 1024 * 1024) {
+            this.setState({sheetMode: true, sheetPreview: [], sheetError: t(locale, 'px.sheetInvalid')});
+            return;
+        }
+        let url = null;
+        try {
+            const header = new DataView(await file.slice(0, 24).arrayBuffer());
+            const signature = [137, 80, 78, 71, 13, 10, 26, 10];
+            if (header.byteLength < 24 || !signature.every((byte, index) => header.getUint8(index) === byte) ||
+                !header.getUint32(16) || !header.getUint32(20) ||
+                header.getUint32(16) > 16384 || header.getUint32(20) > 16384 ||
+                header.getUint32(16) * header.getUint32(20) > 16 * 1024 * 1024) {
+                throw new Error('invalid PNG dimensions');
+            }
+            url = URL.createObjectURL(file);
+            const image = new Image();
+            await new Promise((resolve, reject) => {
+                image.onload = resolve;
+                image.onerror = reject;
+                image.src = url;
+            });
+            const width = image.naturalWidth;
+            const height = image.naturalHeight;
+            if (!width || !height || width > 16384 || height > 16384 || width * height > 16 * 1024 * 1024) {
+                throw new Error('large PNG');
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(image, 0, 0);
+            this.sheetRgba = ctx.getImageData(0, 0, width, height).data;
+            const expectedWidth = this.state.w * this.state.scale;
+            const expectedHeight = this.state.h * this.state.scale;
+            const count = (width / expectedWidth) * (height / expectedHeight);
+            const matching = width % expectedWidth === 0 && height % expectedHeight === 0 &&
+                count >= 2 && count <= 64;
+            this.setState({sheetMode: true, sheetName: file.name, sheetWidth: width, sheetHeight: height,
+                sheetFrameWidth: matching ? expectedWidth : Math.min(16, width),
+                sheetFrameHeight: matching ? expectedHeight : Math.min(16, height),
+                sheetPixelScale: matching ? this.state.scale : 1,
+                sheetPreview: [], sheetError: ''}, () => this.previewSheet());
+        } catch (error) {
+            this.sheetRgba = null;
+            this.setState({sheetMode: true, sheetPreview: [], sheetError: t(locale, 'px.sheetInvalid')});
+        } finally {
+            if (url) URL.revokeObjectURL(url);
+        }
+    }
+
+    previewSheet () {
+        const {sheetWidth, sheetHeight, sheetFrameWidth, sheetFrameHeight, sheetPixelScale, palette} = this.state;
+        const sliced = this.sheetRgba && sliceSpriteSheet(this.sheetRgba, sheetWidth, sheetHeight,
+            sheetFrameWidth, sheetFrameHeight, sheetPixelScale, palette);
+        if (!sliced) {
+            this.setState({sheetPreview: [], sheetError: t(this.props.locale || browserLocale(), 'px.sheetInvalid')});
+            return;
+        }
+        const sheetPreview = sliced.frames.map(image => ({image,
+            url: thumbnailData([{visible: true, opacity: 1, pixels: image.pixels}],
+                image.width, image.height, palette)}));
+        this.setState({sheetPreview, sheetError: ''});
+    }
+
+    importSheet () {
+        const {sheetPreview} = this.state;
+        if (sheetPreview.length < 2) return;
+        this.stopPlayback();
+        this.remember();
+        const {width, height} = sheetPreview[0].image;
+        const frames = sheetPreview.map(({image}, index) => {
+            const layer = {...blankLayer('pixels', 'Pixels', width, height), pixels: image.pixels};
+            return {id: `sheet-${Date.now()}-${index}`, durationMs: 100,
+                activeLayerId: 'pixels', layers: [layer]};
+        });
+        this.sheetRgba = null;
+        this.setState({frames, activeFrameId: frames[0].id, layers: frames[0].layers,
+            activeLayerId: 'pixels', image: composeLayers(frames[0].layers, width, height),
+            w: width, h: height, selection: null, converted: false,
+            sheetMode: false, sheetPreview: [], sheetError: '', framesOpen: true, status: ''});
+    }
+
     revert () {
         const {original} = this.state;
         if (original) this.restore(original);
@@ -1080,6 +1224,8 @@ class PixelArtEditor extends React.Component {
         const locale = this.props.locale || browserLocale();
         const {image, layers, activeLayerId, selection, colour, replaceFrom, brushSize, tool, mirror, converted,
             frames, activeFrameId, framesOpen, onionSkin, playing, status, w, h, zoom, palette,
+            sheetMode, sheetName, sheetWidth, sheetHeight, sheetFrameWidth, sheetFrameHeight,
+            sheetPixelScale, sheetPreview, sheetError,
             renamingLayerId, renameValue, literalMode, literalText, literalError, paletteError} =
             this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
@@ -1289,10 +1435,18 @@ class PixelArtEditor extends React.Component {
                 {framesOpen ? <div data-testid="bw-pixel-frames" style={{display: 'flex', flexShrink: 0,
                     alignItems: 'center', gap: 6, minHeight: 52, overflowX: 'auto', overflowY: 'hidden',
                     overscrollBehaviorX: 'contain'}}>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-import-sheet"
+                        onClick={() => this.sheetFile.current?.click()}>{t(locale, 'px.importSheet')}</button>
+                    <input ref={this.sheetFile} type="file" accept="image/png,.png" style={{display: 'none'}}
+                        data-testid="bw-pixel-sheet-file" onChange={event => this.loadSheet(event)} />
                     {frames.map((frame, index) => <button key={frame.id} type="button"
                         style={btn(frame.id === activeFrameId)} data-testid={`bw-pixel-frame-${index}`}
+                        aria-label={t(locale, 'px.frameNumber', {number: index + 1})}
                         aria-pressed={frame.id === activeFrameId}
-                        onClick={() => this.selectFrame(frame.id)}>{index + 1}</button>)}
+                        onClick={() => this.selectFrame(frame.id)}>
+                        <img src={this.frameThumbnail(frame.id === activeFrameId ? layers : frame.layers,
+                            w, h, palette)} alt="" style={{width: 40, height: 40, display: 'block'}} />
+                        {index + 1}</button>)}
                     <button type="button" style={btn(false)} data-testid="bw-pixel-add-frame"
                         disabled={frames.length >= 64} onClick={() => this.addFrame()}>{t(locale, 'px.addFrame')}</button>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-duplicate-frame"
@@ -1321,6 +1475,38 @@ class PixelArtEditor extends React.Component {
                         <input type="checkbox" checked={onionSkin} data-testid="bw-pixel-onion-skin"
                             onChange={event => this.setState({onionSkin: event.target.checked})} />
                         {t(locale, 'px.onionSkin')}</label>
+                </div> : null}
+                {sheetMode ? <div data-testid="bw-pixel-sheet-preview" style={{display: 'flex', flexDirection: 'column',
+                    gap: 6, padding: 8, border: '1px solid #cbd5e1', borderRadius: 6, flexShrink: 0}}>
+                    <span style={{fontSize: 12}}>{sheetName} ({sheetWidth}×{sheetHeight}) — {t(locale, 'px.sheetHint')}</span>
+                    <div style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
+                        {[[sheetFrameWidth, 'px.sheetFrameWidth', 'width'],
+                            [sheetFrameHeight, 'px.sheetFrameHeight', 'height'],
+                            [sheetPixelScale, 'px.sheetScale', 'scale']].map(([value, label, key]) =>
+                            <label key={key} style={{fontSize: 12}}>{t(locale, label)}
+                                <input type="number" min="1" max="16384" value={value}
+                                    data-testid={`bw-pixel-sheet-${key}`} style={{width: 70, marginLeft: 4}}
+                                    onChange={event => this.setState({
+                                        [{width: 'sheetFrameWidth', height: 'sheetFrameHeight',
+                                            scale: 'sheetPixelScale'}[key]]: Number(event.target.value),
+                                        sheetPreview: [], sheetError: ''})} /></label>)}
+                        <button type="button" style={btn(false)} data-testid="bw-pixel-preview-sheet"
+                            onClick={() => this.previewSheet()}>{t(locale, 'px.sheetPreview')}</button>
+                        <button type="button" style={btn(true)} data-testid="bw-pixel-apply-sheet"
+                            disabled={sheetPreview.length < 2} onClick={() => this.importSheet()}>
+                            {t(locale, 'px.sheetReplace')}</button>
+                        <button type="button" style={btn(false)} onClick={() => {
+                            this.sheetRgba = null;
+                            this.setState({sheetMode: false, sheetPreview: [], sheetError: ''});
+                        }}>{t(locale, 'px.sheetClose')}</button>
+                    </div>
+                    {sheetError ? <span role="alert" style={{color: '#b91c1c', fontSize: 12}}>{sheetError}</span> : null}
+                    {sheetPreview.length ? <div style={{display: 'flex', gap: 5, overflowX: 'auto'}}>
+                        {sheetPreview.map((frame, index) => <div key={index} style={{flexShrink: 0,
+                            fontSize: 11, textAlign: 'center'}}>
+                            <img src={frame.url} alt={t(locale, 'px.frameNumber', {number: index + 1})}
+                                style={{width: 40, height: 40, display: 'block'}} />{index + 1}</div>)}
+                    </div> : null}
                 </div> : null}
                 <div ref={this.viewport} onWheel={this.onWheel}
                     style={{flex: '1 1 auto', minHeight: 180, overflow: 'auto', background: '#f1f5f9'}}>

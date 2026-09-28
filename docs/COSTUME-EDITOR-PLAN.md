@@ -46,11 +46,12 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   and retains exact `img` indices. If costumes use different palettes, export
   maps them to one project palette and reports the colour conversion.
 - A pixel costume can hold up to 64 editable animation frames with per-frame
-  duration, order, playback preview and onion-skin preview. The active frame's
+  duration, order, thumbnail, playback preview and onion-skin preview. The active frame's
   SVG remains the ordinary Scratch costume asset. Other frames live in a
   version 3 artwork document and reopen with their individual layers. A
-  horizontal transparent PNG sprite sheet can be exported; exporting frames
-  as separate costumes remains future work.
+  horizontal transparent PNG sprite sheet can be exported. A PNG sheet can be
+  previewed as rows of frames and imported into the editable timeline after
+  palette matching. Exporting frames as separate costumes remains future work.
 - Archive tests cover round-trip preservation, stale source rejection and
   future-version pass-through. A browser gate checks layer visibility and
   persistence across SB3 save/reopen, plus mouse, keyboard, trackpad and touch
@@ -82,8 +83,8 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
-5. **Pixel and animation.** Add palette presets and timeline thumbnails.
-   Export frames as costumes and import sliced sprite sheets without hiding
+5. **Pixel and animation.** Add palette presets and improve timeline thumbnails.
+   Export frames as costumes without hiding
    animation-only data in Scratch's render asset.
 6. **Parity gate.** Run the same task corpus on desktop mouse, trackpad, iPad
    touch and Pencil: trace/edit curves, compose vector over paint, draw a
@@ -109,8 +110,8 @@ missing data or export behavior.
 | Flip and quarter-turn, with selection scope | Available, with touch buttons, undo, and arrow-key selection moves | Test on iPad |
 | Foreground/background colours, swap, colour replace and outline | Foreground colour, selection-aware index-preserving replace and outline | Add secondary colour and swap |
 | Palette presets and 15 editable colours | All 15 colours can be edited or imported from `.hex`/`.txt`/`.gpl`; version 2 source, Scratch rendering and Arcade export use them | Add built-in presets |
-| Animation timeline, frame order, interval, onion skin | Editable frames, duration, order, playback and onion skin use version 3 source; the active frame renders as the Scratch costume | Add timeline thumbnails and export frames as costumes |
-| Sprite-sheet and `img` import/export | Exact `img` literal paste/export, PNG export and horizontal transparent sprite-sheet PNG export exist | Add sprite-sheet slicing preview and import |
+| Animation timeline, frame order, interval, onion skin | Editable frames, thumbnails, duration, order, playback and onion skin use version 3 source; the active frame renders as the Scratch costume | Export frames as costumes and test touch interaction on iPad |
+| Sprite-sheet and `img` import/export | Exact `img` literal paste/export, PNG export and horizontal transparent sprite-sheet PNG import/export exist | Add configurable palette conversion and animation metadata exchange |
 | Tile and tilemap asset editing | Imported tilemaps are rendered as costumes | Add editable tile set/map source and Arcade-compatible export |
 
 Custom palettes have a version 2 document unless the costume also has

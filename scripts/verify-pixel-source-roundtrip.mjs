@@ -9,6 +9,7 @@ import {chromium} from 'playwright';
 
 const url = process.env.PROOF_URL || 'http://localhost:8617/';
 const file = path.join(mkdtempSync(path.join(tmpdir(), 'bw-pixels-')), 'pixel-source.sb3');
+const sheetFile = path.join(path.dirname(file), 'frames-spritesheet.png');
 const browser = await chromium.launch(process.env.BW_BROWSER ?
     {executablePath: process.env.BW_BROWSER} : {});
 const errors = [];
@@ -394,10 +395,13 @@ try {
     await page.getByTestId('bw-pixel-onion-skin').check();
     assert.notEqual(await frameCanvas.evaluate(element => element.toDataURL()), secondFrame);
     await page.getByTestId('bw-pixel-onion-skin').uncheck();
+    await page.evaluate(() => Object.defineProperty(navigator, 'canShare',
+        {configurable: true, value: () => false}));
     const sheetDownload = page.waitForEvent('download');
     await page.getByTestId('bw-pixel-export-sheet').click();
     const sheet = await sheetDownload;
     assert.match(sheet.suggestedFilename(), /-spritesheet\.png$/);
+    await sheet.saveAs(sheetFile);
     const sheetBytes = await readFile(await sheet.path());
     assert.equal(sheetBytes.readUInt32BE(16), width * 4 * 2);
     assert.equal(sheetBytes.readUInt32BE(20), height * 4);
@@ -421,6 +425,32 @@ try {
     assert.equal(await page.getByTestId('bw-pixel-canvas').evaluate(element => element.toDataURL()), secondFrame);
     await page.getByTestId('bw-pixel-frame-0').click();
     assert.equal(await page.getByTestId('bw-pixel-canvas').evaluate(element => element.toDataURL()), firstFrame);
+    await page.getByTestId('bw-pixel-sheet-file').setInputFiles(sheetFile);
+    await page.getByTestId('bw-pixel-sheet-preview').waitFor();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="bw-pixel-sheet-preview"] img').length === 2);
+    assert.equal(await page.getByTestId('bw-pixel-sheet-width').inputValue(), String(width * 4));
+    assert.equal(await page.getByTestId('bw-pixel-sheet-height').inputValue(), String(height * 4));
+    await page.getByTestId('bw-pixel-sheet-width').fill(String(width * 4 - 1));
+    await page.getByTestId('bw-pixel-preview-sheet').click();
+    assert.ok(await page.getByTestId('bw-pixel-sheet-preview').getByRole('alert').isVisible());
+    assert.ok(await page.getByTestId('bw-pixel-apply-sheet').isDisabled());
+    await page.getByTestId('bw-pixel-sheet-width').fill(String(width * 4));
+    await page.getByTestId('bw-pixel-preview-sheet').click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="bw-pixel-sheet-preview"] img').length === 2);
+    await page.getByTestId('bw-pixel-apply-sheet').click();
+    assert.equal(await page.getByTestId('bw-pixel-canvas').evaluate(element => element.toDataURL()), firstFrame,
+        'a sheet exported by Brickwright must import its first indexed frame');
+    await page.getByTestId('bw-pixel-frame-1').click();
+    assert.equal(await page.getByTestId('bw-pixel-canvas').evaluate(element => element.toDataURL()), secondFrame,
+        'the second imported frame must match the exported sprite sheet');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    await page.getByTestId('bw-pixel-frame-1').click();
+    assert.equal(await page.getByTestId('bw-pixel-frame-duration').inputValue(), '180',
+        'Undo must restore the earlier editable frames');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Redo', exact: true}).click();
+    await page.getByTestId('bw-pixel-save').click();
+    const resliced = await saveProject(page);
+    assert.equal(resliced.costumes.find(record => record.document.animation)?.document.animation.frames.length, 2);
     assert.deepEqual(errors, []);
     console.log('PASS: pixel layers and animation frames survive SB3 save/reopen');
 } finally {

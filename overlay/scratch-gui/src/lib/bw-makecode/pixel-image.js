@@ -174,6 +174,33 @@ export function quantizeRgba (rgba, srcW, srcH, width, height, palette = ARCADE_
     return out;
 }
 
+/** Slice a regular PNG sheet row by row, then map each cell to indexed pixels. */
+export function sliceSpriteSheet (rgba, sheetWidth, sheetHeight, frameWidth, frameHeight,
+    pixelScale = 1, palette = ARCADE_PALETTE) {
+    if (![sheetWidth, sheetHeight, frameWidth, frameHeight, pixelScale].every(Number.isInteger) ||
+        !sheetWidth || !sheetHeight || !frameWidth || !frameHeight || !pixelScale ||
+        sheetWidth % frameWidth || sheetHeight % frameHeight ||
+        frameWidth % pixelScale || frameHeight % pixelScale ||
+        frameWidth / pixelScale > 128 || frameHeight / pixelScale > 128 ||
+        rgba.length !== sheetWidth * sheetHeight * 4) return null;
+    const columns = sheetWidth / frameWidth;
+    const rows = sheetHeight / frameHeight;
+    if (columns * rows < 2 || columns * rows > 64) return null;
+    const frames = [];
+    for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column++) {
+            const cell = new Uint8ClampedArray(frameWidth * frameHeight * 4);
+            for (let y = 0; y < frameHeight; y++) {
+                const from = (((row * frameHeight + y) * sheetWidth) + column * frameWidth) * 4;
+                cell.set(rgba.subarray(from, from + frameWidth * 4), y * frameWidth * 4);
+            }
+            frames.push(quantizeRgba(cell, frameWidth, frameHeight,
+                frameWidth / pixelScale, frameHeight / pixelScale, palette));
+        }
+    }
+    return {columns, rows, frames};
+}
+
 /** Pixels as one of our rect-SVG costumes. */
 export function pixelsToSvg (image, opts = {}) {
     return imageToSvg(image, opts);
