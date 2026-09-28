@@ -632,7 +632,9 @@ class DebugPanel extends React.Component {
                     // Boards: the chip plus the devices its manifest wires, a
                     // display among them — what the firmware draws reaches Widgets.
                     ...Object.values(m.LABWIRED_BOARDS || {}).map(b => ({value: `board:${b.name}`,
-                        label: `${b.name} (${b.chip} + ${b.displays.map(d => d.type).join(', ')})`}))
+                        label: b.softdevice
+                            ? `${b.name} (${b.chip}, emulated ${b.softdevice.toUpperCase()} SoftDevice — .hex)`
+                            : `${b.name} (${b.chip} + ${b.displays.map(d => d.type).join(', ')})`}))
                 ];
                 this.setState({labwiredChips: chips});
             })

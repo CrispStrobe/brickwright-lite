@@ -2034,7 +2034,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         const chip = LABWIRED_CATALOG[labBoard ? labBoard.chip : labwiredChip];
         if (!chip) throw new Error(`'${labwiredChip}' is not a chip the LabWired engine offers`);
-        if (!built || !['elf', 'uf2'].includes(built.format) || !(built.image instanceof Uint8Array)) {
+        // A .hex only for an S110 board (the SoftDevice-emulated app region).
+        const formats = labBoard && labBoard.softdevice === 's110' ? ['elf', 'uf2', 'hex'] : ['elf', 'uf2'];
+        if (!built || !formats.includes(built.format) || !(built.image instanceof Uint8Array)) {
             throw new Error(`the ${chip.name} runs your own firmware: load an .elf or .uf2 with Firmware… first ` +
                 '(a block project compiles for its own device, not for this chip)');
         }
@@ -2043,7 +2045,11 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
         board = null;
         engineNotes = [
-            labBoard
+            labBoard && labBoard.softdevice
+                ? `Your ${labBoard.name} application on the ${chip.name}, with the Nordic ` +
+                  `${labBoard.softdevice.toUpperCase()} SoftDevice EMULATED (only the application region of the ` +
+                  'image is loaded — no Nordic byte). Serial console and buttons A/B work; there is no circuit.'
+                : labBoard
                 ? `Your firmware on the ${labBoard.name} board (${chip.name}, ${chip.arch}), with its ` +
                   `${labBoard.displays.map(d => d.type).join(', ')} display shown in Widgets; other pins ` +
                   'are not wired to a circuit here.'
@@ -3439,9 +3445,19 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // address, so bw-board converts it without guessing an origin.
             const isUf2 = bytes.length >= 8 && bytes[0] === 0x55 && bytes[1] === 0x46 &&
                 bytes[2] === 0x32 && bytes[3] === 0x0a;
+            // A .hex is taken for an S110 board (micro:bit V1 / Calliope): bw-board
+            // keeps only its application window and the engine emulates the
+            // SoftDevice. For any other chip a .hex is refused as before.
+            const hexText = fw.text || (!isElf && !isUf2 && bytes.length && bytes[0] === 0x3a
+                ? new TextDecoder().decode(bytes) : null);
+            if (hexText && String(labwiredChip || '').startsWith('board:')) {
+                return { hex: hexText, image: new TextEncoder().encode(hexText), symbols: null, c: null,
+                    bytes: hexText.length, f_cpu: null, format: 'hex' };
+            }
             if (!isElf && !isUf2) {
                 throw new Error(`${fw.name}: the LabWired engine takes an ELF (.elf) or a UF2 (.uf2) — ` +
-                    'a raw .bin or .hex does not say where its bytes load on this chip');
+                    'a raw .bin or .hex does not say where its bytes load on this chip ' +
+                    '(a micro:bit V1 / Calliope .hex runs on the micro:bit V1 board)');
             }
             return { hex: null, image: bytes, symbols: null, c: null,
                 bytes: bytes.length, f_cpu: null, format: isElf ? 'elf' : 'uf2' };
