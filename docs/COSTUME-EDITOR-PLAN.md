@@ -39,6 +39,10 @@ its semitransparent pixels are stored in the ordinary PNG and survive SB3
 save/reopen. This follows Pinta's icon toolbox and tool
 settings bar and Krita's canvas-only view without changing how Scratch stores SVG
 or PNG costumes.
+The bitmap toolbar now exposes the canvas colour sampler beside the brush, with
+one-tap sampling and a touch-sized cancel control. On desktop, holding Space
+while dragging pans either vector or bitmap canvas without marking the costume;
+trackpad wheel pan and pointer-centred zoom remain available.
 
 This is a workspace improvement, not raster/vector feature parity. The next
 capability gates are: (1) vector node operations such as join/split and
@@ -146,7 +150,8 @@ selection transforms and masks remain ahead.
    survive save/reopen and match the Scratch stage preview.
 4. **Raster core.** Expand the new lasso and wand selectors into layer-aware
    selection, move/transform/crop, brush presets and
-   eyedropper. Keep layer pixels separately in source and generate a flattened
+   eyedropper. The existing sampler is directly reachable from the bitmap
+   toolbar; selection transforms, crop and brush presets remain. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
 5. **Pixel and animation.** Add palette presets and improve timeline thumbnails.

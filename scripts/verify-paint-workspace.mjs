@@ -125,6 +125,41 @@ try {
     await paint.goto(url, {waitUntil: 'domcontentloaded'});
     await paint.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
     await paint.getByTestId('bw-paint-workspace').waitFor();
+    const navigationCanvas = paint.locator('canvas[resize="true"]:visible');
+    const matrix = () => paint.evaluate(() => {
+        const view = window.__brickwrightStore.getState().scratchPaint.viewBounds;
+        return {tx: view.tx, ty: view.ty};
+    });
+    const panAndCheck = async (format, dx, dy) => {
+        await paint.getByAltText('Zoom In').click();
+        const before = await matrix();
+        const asset = await paint.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm
+            .editingTarget.getCostumes()[0].asset.encodeDataURI());
+        const box = await navigationCanvas.boundingBox();
+        const start = {x: box.x + box.width * .45, y: box.y + box.height * .45};
+        await paint.mouse.move(start.x, start.y);
+        await paint.evaluate(() => document.activeElement.blur());
+        await paint.keyboard.down('Space');
+        assert.equal(await navigationCanvas.evaluate(canvas => getComputedStyle(canvas).cursor), 'grab',
+            'Space over the costume canvas offers the pan cursor');
+        await paint.mouse.down();
+        await paint.mouse.move(start.x + dx, start.y + dy, {steps: 8});
+        await paint.mouse.up();
+        await paint.keyboard.up('Space');
+        const after = await matrix();
+        assert.ok(Math.abs(after.tx - before.tx) > 5 || Math.abs(after.ty - before.ty) > 5,
+            `Space-drag pans the ${format} costume`);
+        assert.equal(await paint.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm
+            .editingTarget.getCostumes()[0].asset.encodeDataURI()), asset,
+        `panning with the ${format} tool does not edit the costume`);
+        if (format === 'bitmap brush') {
+            await paint.getByTestId('bw-bitmap-brush-opacity').focus();
+            await paint.keyboard.down('Space');
+            assert.notEqual(await navigationCanvas.evaluate(canvas => getComputedStyle(canvas).cursor), 'grab',
+                'Space keeps its input behavior when a paint setting has focus');
+            await paint.keyboard.up('Space');
+        }
+    };
     await paint.getByRole('button', {name: /Convert to Bitmap/}).click();
     await paint.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').click();
     await paint.getByTestId('bw-bitmap-brush-opacity').fill('50');
@@ -168,6 +203,10 @@ try {
         'the paint workspace reopens with the project');
     assert.equal(await alphaCount(paint), paintedOpacity,
         'the semitransparent brush stroke must survive SB3 save/reopen');
+    await paint.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').click();
+    await panAndCheck('bitmap brush', -80, -45);
+    await paint.getByRole('button', {name: /Convert to Vector/}).click();
+    await panAndCheck('vector', 80, 45);
     await paint.close();
     console.log('PASS: vector and bitmap workspaces fit iPad widths and canvas focus returns by touch');
     console.log('PASS: bitmap brush opacity survives SB3 save/reopen');
