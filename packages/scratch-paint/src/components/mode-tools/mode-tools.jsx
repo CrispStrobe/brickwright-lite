@@ -22,6 +22,7 @@ import Modes from '../../lib/modes';
 import Formats, {isBitmap, isVector} from '../../lib/format';
 import {hideLabel} from '../../lib/hide-label';
 import tx from '../../lib/bw-messages';
+import {RotateClockwise, RotateCounterClockwise} from '../bw-properties-panel/bw-icons.jsx';
 import styles from './mode-tools.css';
 
 import copyIcon from './icons/copy.svg';
@@ -349,6 +350,17 @@ const ModeToolsComponent = props => {
                         title={props.intl.formatMessage(messages.flipVertical)}
                         onClick={props.onFlipVertical}
                     />
+                    {props.mode === Modes.BIT_SELECT ? [
+                        ['ccw', RotateCounterClockwise, 'rotateCounterClockwise', props.onRotateCounterClockwise],
+                        ['cw', RotateClockwise, 'rotateClockwise', props.onRotateClockwise]
+                    ].map(([key, Icon, label, action]) => <button key={key} type="button"
+                        data-testid={`bw-bitmap-select-rotate-${key}`}
+                        aria-label={tx(props.intl.locale, label)} title={tx(props.intl.locale, label)}
+                        disabled={!props.hasBitmapSelection} onClick={action}
+                        style={{width: 44, height: 44, marginLeft: 4, flexShrink: 0, borderRadius: 6,
+                            border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer'}}>
+                        <Icon />
+                    </button>) : null}
                 </InputGroup>
             </div>
         );
@@ -430,6 +442,7 @@ ModeToolsComponent.propTypes = {
     format: PropTypes.oneOf(Object.keys(Formats)),
     hasSelectedUncurvedPoints: PropTypes.bool,
     hasSelectedUnpointedPoints: PropTypes.bool,
+    hasBitmapSelection: PropTypes.bool,
     independentHandles: PropTypes.bool.isRequired,
     intl: intlShape.isRequired,
     mode: PropTypes.string.isRequired,
@@ -445,6 +458,8 @@ ModeToolsComponent.propTypes = {
     onFillShapes: PropTypes.func.isRequired,
     onFlipHorizontal: PropTypes.func.isRequired,
     onFlipVertical: PropTypes.func.isRequired,
+    onRotateClockwise: PropTypes.func.isRequired,
+    onRotateCounterClockwise: PropTypes.func.isRequired,
     onOutlineShapes: PropTypes.func.isRequired,
     onOpenPath: PropTypes.func.isRequired,
     onSplitPath: PropTypes.func.isRequired,

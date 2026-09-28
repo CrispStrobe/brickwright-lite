@@ -192,6 +192,48 @@ try {
     assert.deepEqual(errors, [], 'layer editing causes no page errors');
     await page.close();
 
+    console.log('checking one-tap rotation of selected bitmap pixels');
+    const turnPage = await browser.newPage({viewport: {width: 1194, height: 834}, acceptDownloads: true});
+    await openEditor(turnPage);
+    await turnPage.getByText('File', {exact: true}).click();
+    await turnPage.getByText('Load from your computer', {exact: true}).click();
+    await turnPage.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(paintedTop.file);
+    await turnPage.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await turnPage.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').click();
+    const turnBox = await editor(turnPage).boundingBox();
+    await turnPage.mouse.move(turnBox.x + turnBox.width * .30, turnBox.y + turnBox.height * .16);
+    await turnPage.mouse.down();
+    await turnPage.mouse.move(turnBox.x + turnBox.width * .45, turnBox.y + turnBox.height * .16, {steps: 12});
+    await turnPage.mouse.up();
+    const beforeTurn = await save(turnPage);
+    await turnPage.locator('[aria-label="Select"], [title="Select"]').first().click();
+    const turn = turnPage.getByTestId('bw-bitmap-select-rotate-cw');
+    assert.ok(await turn.isDisabled(), 'turning requires a selected region');
+    await turnPage.getByTestId('bw-bitmap-select-wand').click();
+    await turnPage.mouse.click(turnBox.x + turnBox.width * .36, turnBox.y + turnBox.height * .16);
+    assert.equal(await turnPage.evaluate(() => window.__brickwrightStore.getState().scratchPaint.selectedItems.length),
+        1, 'the brush stroke lifts as one region');
+    assert.ok(await turn.isEnabled());
+    await turn.click();
+    await turnPage.getByTestId('bw-bitmap-select-rotate-ccw').click();
+    assert.equal(await turnPage.evaluate(() => window.__brickwrightStore.getState().scratchPaint
+        .selectedItems[0].data.bwRotation), 0, 'counter-clockwise reverses the selected raster turn');
+    await turn.click();
+    await turnPage.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').click();
+    const turned = await save(turnPage);
+    assert.equal(turned.sources[0], beforeTurn.sources[0],
+        'rotating selected pixels leaves the other bitmap layer unchanged');
+    assert.notEqual(turned.sources[1], beforeTurn.sources[1],
+        'rotating selected pixels updates their editable layer');
+    assert.notEqual(turned.pngHash, beforeTurn.pngHash, 'Scratch renders the rotated pixels');
+    await turnPage.getByText('File', {exact: true}).click();
+    await turnPage.getByText('Load from your computer', {exact: true}).click();
+    await turnPage.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(turned.file);
+    await turnPage.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    const reopenedTurn = await save(turnPage);
+    assert.deepEqual(reopenedTurn.sources, turned.sources, 'rotated layer pixels survive SB3 reopen');
+    await turnPage.close();
+
     const tablet = await browser.newPage({viewport: {width: 834, height: 1194}, hasTouch: true});
     await openEditor(tablet);
     await tablet.getByRole('button', {name: /Convert to Bitmap/}).tap();
@@ -204,6 +246,26 @@ try {
     await add.tap();
     assert.equal(await tablet.locator('[data-testid^="bw-bitmap-layer-item-"]').count(), 2,
         'touch adds an editable bitmap layer');
+    await tablet.getByTestId('bw-bitmap-layer-close').tap();
+    await tablet.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').tap();
+    const tabletBox = await editor(tablet).boundingBox();
+    await tablet.mouse.move(tabletBox.x + tabletBox.width * .30, tabletBox.y + tabletBox.height * .16);
+    await tablet.mouse.down();
+    await tablet.mouse.move(tabletBox.x + tabletBox.width * .45,
+        tabletBox.y + tabletBox.height * .16, {steps: 12});
+    await tablet.mouse.up();
+    await tablet.locator('[aria-label="Select"], [title="Select"]').first().tap();
+    await tablet.getByTestId('bw-bitmap-select-wand').tap();
+    await tablet.mouse.click(tabletBox.x + tabletBox.width * .36, tabletBox.y + tabletBox.height * .16);
+    const touchTurn = tablet.getByTestId('bw-bitmap-select-rotate-cw');
+    const touchTurnBox = await touchTurn.boundingBox();
+    assert.ok(touchTurnBox.width >= 44 && touchTurnBox.height >= 44 && touchTurnBox.x >= 0 &&
+        touchTurnBox.x + touchTurnBox.width <= 834, 'quarter-turn is a visible iPad touch target');
+    const beforeTouchTurn = await tablet.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm
+        .editingTarget.getCostumes()[0].asset.assetId);
+    await touchTurn.tap();
+    await tablet.waitForFunction(previous => window.__brickwrightStore.getState().scratchGui.vm
+        .editingTarget.getCostumes()[0].asset.assetId !== previous, beforeTouchTurn);
     await tablet.close();
     console.log('PASS: bitmap layers retain independent pixels and flatten into a Scratch PNG');
     console.log('PASS: layers, order, visibility and opacity survive SB3; iPad touch adds a layer');

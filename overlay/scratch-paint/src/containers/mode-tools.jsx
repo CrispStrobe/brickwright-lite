@@ -19,6 +19,7 @@ import {
 import {HANDLE_RATIO, ensureClockwise} from '../helper/math';
 import {getRaster} from '../helper/layer';
 import {flipBitmapHorizontal, flipBitmapVertical, selectAllBitmap} from '../helper/bitmap';
+import {rotateBy} from '../helper/bw/transform';
 import Formats, {isBitmap} from '../lib/format';
 import Modes from '../lib/modes';
 
@@ -34,6 +35,8 @@ class ModeTools extends React.Component {
             'handleClosePath',
             'handleFlipHorizontal',
             'handleFlipVertical',
+            'handleRotateClockwise',
+            'handleRotateCounterClockwise',
             'handleDelete',
             'handleOpenPath',
             'handleSplitPath',
@@ -257,6 +260,18 @@ class ModeTools extends React.Component {
             this._handleFlip(1, -1, selectedItems);
         }
     }
+    handleRotateClockwise () {
+        if (isBitmap(this.props.format) && rotateBy(90)) {
+            this.props.setSelectedItems(this.props.format);
+            this.props.onUpdateImage();
+        }
+    }
+    handleRotateCounterClockwise () {
+        if (isBitmap(this.props.format) && rotateBy(-90)) {
+            this.props.setSelectedItems(this.props.format);
+            this.props.onUpdateImage();
+        }
+    }
     handlePasteFromClipboard () {
         if (this.props.onPasteFromClipboard()) {
             this.props.onUpdateImage();
@@ -286,12 +301,15 @@ class ModeTools extends React.Component {
                 canJoinPaths={Boolean(this.getJoinPaths())}
                 hasSelectedUncurvedPoints={this.hasSelectedUncurvedPoints()}
                 hasSelectedUnpointedPoints={this.hasSelectedUnpointedPoints()}
+                hasBitmapSelection={getSelectedRootItems().length > 0}
                 onCopyToClipboard={this.props.onCopyToClipboard}
                 onCurvePoints={this.handleCurvePoints}
                 onClosePath={this.handleClosePath}
                 onDelete={this.handleDelete}
                 onFlipHorizontal={this.handleFlipHorizontal}
                 onFlipVertical={this.handleFlipVertical}
+                onRotateClockwise={this.handleRotateClockwise}
+                onRotateCounterClockwise={this.handleRotateCounterClockwise}
                 onPasteFromClipboard={this.handlePasteFromClipboard}
                 onPointPoints={this.handlePointPoints}
                 onOpenPath={this.handleOpenPath}

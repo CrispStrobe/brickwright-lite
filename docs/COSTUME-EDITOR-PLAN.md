@@ -48,8 +48,9 @@ trackpad wheel pan and pointer-centred zoom remain available.
 This is a workspace improvement, not raster/vector feature parity. The next
 capability gates are: (1) vector node operations such as join/split and
 asymmetric handles that survive SB3 save/reopen; (2) bitmap layer rename,
-locking, selection transforms and richer compositing; (3) per-stroke opacity compositing,
-colour history and selection transforms exposed through contextual controls.
+locking, crop and richer compositing; (3) per-stroke opacity compositing and
+colour history. Bitmap selections can already move, resize and rotate through
+the properties panel; 90° turns are now in the Select toolbar for touch use.
 Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
 for older Scratch readers.
 
@@ -151,9 +152,9 @@ selection transforms and masks remain ahead.
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
 4. **Raster core.** Expand the new lasso and wand selectors into layer-aware
-   selection, move/transform/crop, brush presets and
+   selection, move/transform/crop and
    eyedropper. The existing sampler is directly reachable from the bitmap
-   toolbar; selection transforms, crop and brush presets remain. Keep layer pixels separately in source and generate a flattened
+   toolbar; crop and richer selection transforms remain. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
 5. **Pixel and animation.** Improve timeline thumbnails and palette switching feedback.
