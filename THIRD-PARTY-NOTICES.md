@@ -397,6 +397,7 @@ takes a permissive option: specifically, `unescaper` declares
 - chacha20 0.10.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/stream-ciphers
 - chrono 0.4.45 (MIT OR Apache-2.0) -- https://github.com/chronotope/chrono
 - combine 4.6.7 (MIT) -- https://github.com/Marwes/combine
+- command-group 5.0.1 (Apache-2.0 OR MIT) -- https://github.com/watchexec/command-group
 - concurrent-queue 2.5.0 (Apache-2.0 OR MIT) -- https://github.com/smol-rs/concurrent-queue
 - const-random 0.1.18 (MIT OR Apache-2.0) -- https://github.com/tkaitchuck/constrandom
 - const-random-macro 0.1.16 (MIT OR Apache-2.0) -- https://github.com/tkaitchuck/constrandom
@@ -583,6 +584,7 @@ takes a permissive option: specifically, `unescaper` declares
 - ndk-sys 0.6.0+11769913 (MIT OR Apache-2.0) -- https://github.com/rust-mobile/ndk
 - new_debug_unreachable 1.0.6 (MIT) -- https://github.com/mbrubeck/rust-debug-unreachable
 - nix 0.26.4 (MIT) -- https://github.com/nix-rust/nix
+- nix 0.27.1 (MIT) -- https://github.com/nix-rust/nix
 - nix 0.29.0 (MIT) -- https://github.com/nix-rust/nix
 - num_enum 0.7.6 (BSD-3-Clause OR MIT OR Apache-2.0) -- https://github.com/illicitonion/num_enum
 - num_enum_derive 0.7.6 (BSD-3-Clause OR MIT OR Apache-2.0) -- https://github.com/illicitonion/num_enum
