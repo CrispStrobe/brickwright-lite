@@ -71,6 +71,12 @@ export async function runSpike3OnVirtualHub (vm, options = {}) {
     const onSay = (target, type, text) => {
         if (typeof options.onPrint === 'function' && text !== '') options.onPrint(text);
     };
+    // While this run owns the console, print() is the console's: the stage's
+    // speech-bubble renderer is detached for the run and put back on Stop. The
+    // Code tab can hold the stage at zero size, where measuring a bubble throws
+    // (Chromium: "getImageData ... source width is 0") — CI saw exactly that.
+    const bubbles = typeof vm.runtime.listeners === 'function' ? vm.runtime.listeners('SAY') : [];
+    for (const listener of bubbles) vm.runtime.removeListener('SAY', listener);
     vm.runtime.on('SAY', onSay);
     vm.greenFlag();
     let stopped = false;
@@ -81,6 +87,7 @@ export async function runSpike3OnVirtualHub (vm, options = {}) {
             stopped = true;
             vm.stopAll();
             vm.runtime.removeListener('SAY', onSay);
+            for (const listener of bubbles) vm.runtime.on('SAY', listener);
         }
     };
 }

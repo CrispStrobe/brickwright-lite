@@ -177,7 +177,7 @@ const SPIKE3_DISTANCE_MM = 345;
 async function spike3Python () {
     const pane = await browser.newPage({viewport: {width: 1600, height: 1000}});
     const errors = [];
-    pane.on('pageerror', error => errors.push(error.message));
+    pane.on('pageerror', error => errors.push(`${error.message}\n${error.stack || ''}`));
     pane.on('dialog', dialog => dialog.accept());
     await pane.addInitScript(source => {
         localStorage.clear();

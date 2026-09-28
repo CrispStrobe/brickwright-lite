@@ -221,12 +221,15 @@ test('the run helper connects over Web Bluetooth, starts, forwards print(), and 
                 spikeprime_connectHub: async () => { calls.push(['connect', typeof globalThis.__brickwrightChooseVirtualBluetooth]); connected = true; }
             },
             getEditingTarget: () => null,
-            on: (name, fn) => listeners.set(name, fn),
-            removeListener: (name, fn) => { if (listeners.get(name) === fn) listeners.delete(name); }
+            on: (name, fn) => listeners.set(name, [...(listeners.get(name) || []), fn]),
+            removeListener: (name, fn) => listeners.set(name, (listeners.get(name) || []).filter(f => f !== fn)),
+            listeners: name => [...(listeners.get(name) || [])]
         },
         greenFlag: () => calls.push(['green']),
         stopAll: () => calls.push(['stop'])
     };
+    const bubble = () => {};
+    listeners.set('SAY', [bubble]);
     let enabled = null;
     const win = {__brickwrightVirtualSpike: {enable: v => { enabled = v; }}};
     const printed = [];
@@ -235,11 +238,12 @@ test('the run helper connects over Web Bluetooth, starts, forwards print(), and 
     assert.equal(enabled, true, 'the virtual hub is switched on');
     assert.deepEqual(calls, [['mode', 'web-ble'], ['connect', 'function'], ['green']]);
     assert.equal(win.__brickwrightChooseVirtualBluetooth, undefined, 'the chooser is put back');
-    listeners.get('SAY')({}, 'say', 'yaw=12');
+    assert.deepEqual(listeners.get('SAY').length, 1, 'only the console hears print() during the run');
+    listeners.get('SAY')[0]({}, 'say', 'yaw=12');
     assert.deepEqual(printed, ['yaw=12']);
     run.stop();
     assert.deepEqual(calls.at(-1), ['stop']);
-    assert.equal(listeners.has('SAY'), false, 'print() stops being forwarded');
+    assert.deepEqual(listeners.get('SAY'), [bubble], 'print() stops being forwarded and the speech bubble is back');
     assert.deepEqual(await runSpike3OnVirtualHub(vm, {window: {}}), {ok: false, reason: 'no-hub'});
 });
 
