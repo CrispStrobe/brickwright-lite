@@ -118,11 +118,30 @@ test('the CSV export is real CSV a supplier could take', () => {
     buildLogicIcCircuit(c, IC_CIRCUITS.ripple_adder_4);
     const csv = bomToCsv(generateBom(c.parts));
     const lines = csv.split('\n');
-    assert.equal(lines[0], 'Qty,Part,Value', 'a header row');
-    assert.match(csv, /^2,"74HC86 Quad XOR"/m, 'quantities against real part numbers');
+    // The first three columns are the contract — what this panel promises and
+    // what a reader copying the block expects. The exporter is free to add more
+    // to the right (bw-circuit-ui grew sourcing columns between pins
+    // ea94554dc and 75e3058bd), and pinning the WHOLE header here made that a
+    // failure in lite for a change that broke nothing. Assert the prefix, then
+    // assert the property that actually makes it real CSV: every row has the
+    // same number of fields as the header.
+    const header = lines[0].split(',');
+    assert.deepEqual(header.slice(0, 3), ['Qty', 'Part', 'Value'],
+        `the first three columns are the contract; header was ${lines[0]}`);
+    // The quantity may or may not be quoted — the exporter began quoting every
+    // field between pins ea94554dc and 75e3058bd. Both are valid CSV and a
+    // supplier's parser cannot tell the difference, so the test should not.
+    assert.match(csv, /^"?2"?,"74HC86 Quad XOR"/m, 'quantities against real part numbers');
     assert.match(csv, /"Resistor 330Ω"/, 'and values where a part has one');
+    // Fields, counted with quotes respected — a value containing a comma is the
+    // classic way a "CSV" export stops being one, and splitting naively would
+    // hide exactly that.
+    const fields = row => row.match(/("([^"]|"")*"|[^,]*)(,|$)/g).length - 1;
+    const want = fields(lines[0]);
     for (const l of lines.slice(1)) {
-        assert.match(l, /^\d+,"/, `every row starts with a quantity: ${l}`);
+        assert.match(l, /^"?\d+"?,/, `every row starts with a quantity: ${l}`);
+        assert.equal(fields(l), want,
+            `every row has the header's field count (${want}): ${l}`);
     }
 });
 

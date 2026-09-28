@@ -57,6 +57,12 @@ on:
     # The list tracks what code NAMES, so it shrinks as well as grows.
     # 2026-09-20: 16 — SPIKE-CONSOLIDATION.md, named by the spikeprime bundle.
     # 2026-09-26: 17 — LEGO-ARCHITECTURE.md gained an executable status contract.
+    # 2026-09-28: 18 — APP-STORE-COMPLIANCE.md. It arrived with
+    # test/app-store-compliance-bundle.test.mjs and
+    # scripts/package-store-compliance.mjs, both of which NAME it, but was
+    # left under the `!docs/*.md` negation — so editing the doc those two
+    # read would not have rebuilt or retested them. Caught by
+    # test/build-trigger-paths.test.mjs, which is the whole point of it.
     #
     # A skipped run means no Pages deploy for that push. That is correct: the
     # app is byte-identical, and deploy-daily republishes regardless.
@@ -73,6 +79,7 @@ on:
       - '!README.md'
       - '!ROADMAP.md'
       - '!docs/*.md'
+      - 'docs/APP-STORE-COMPLIANCE.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'docs/EXAMPLE-CORPUS-FINDINGS.md'
       - 'docs/EXTENSION-SECURITY.md'
