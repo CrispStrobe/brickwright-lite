@@ -45,6 +45,10 @@ const saveProject = async page => {
 try {
     console.log('opening pixel editor');
     let page = await open();
+    const showPanel = async name => {
+        const toggle = page.getByTestId(`bw-pixel-${name}-toggle`);
+        if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
+    };
     await page.getByTestId('bw-pixel-colour-10').click();
     const canvas = page.getByTestId('bw-pixel-canvas');
     const box = await canvas.boundingBox();
@@ -77,12 +81,14 @@ try {
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
     await page.getByTestId('bw-pixel-tool-pencil').click();
+    await showPanel('brush');
     await page.getByTestId('bw-pixel-brush-size').fill('3');
     await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
     assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
     await page.getByTestId('bw-pixel-brush-size').fill('1');
+    await showPanel('more');
     await page.getByTestId('bw-pixel-flip-h').click();
     assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools,
         'flipping must change the editable costume');
@@ -93,11 +99,13 @@ try {
         'rotating must change the editable costume');
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await showPanel('layers');
     await page.getByTestId('bw-pixel-add-layer').click();
     await page.getByTestId('bw-pixel-colour-11').click();
     await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
     const onePixel = await canvas.evaluate(element => element.toDataURL());
     await page.getByTestId('bw-pixel-colour-12').click();
+    await showPanel('more');
     await page.getByTestId('bw-pixel-outline').click();
     assert.notEqual(await canvas.evaluate(element => element.toDataURL()), onePixel,
         'outline must draw around opaque pixels');
@@ -126,6 +134,7 @@ try {
     assert.equal(await canvas.evaluate(element => element.toDataURL()), afterStroke,
         'desktop Redo must restore the stroke');
     console.log('checking selection and movement');
+    await showPanel('more');
     const gridWidth = Number(await page.getByTestId('bw-pixel-w').inputValue());
     const cellWidth = box.width / gridWidth;
     await page.getByTestId('bw-pixel-tool-select').click();
@@ -149,6 +158,7 @@ try {
     await page.getByTestId('bw-pixel-tool-select').click();
     await page.mouse.click(box.x + box.width / 2 + cellWidth, box.y + box.height / 2);
     const beforeClipboard = await canvas.evaluate(element => element.toDataURL());
+    await showPanel('more');
     await page.getByTestId('bw-pixel-copy-selection').click();
     await page.getByTestId('bw-pixel-paste-selection').click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeClipboard,
@@ -221,6 +231,7 @@ try {
     await page.getByTestId('bw-pixel-tool-pencil').click();
     console.log('checking editable layers');
     const beforeLayer = await canvas.evaluate(element => element.toDataURL());
+    await showPanel('layers');
     await page.getByTestId('bw-pixel-add-layer').click();
     const newLayer = page.locator('[data-testid^="bw-pixel-layer-pixels-"]');
     await newLayer.waitFor();
@@ -262,6 +273,7 @@ try {
     await page.evaluate(() => Object.defineProperty(navigator, 'canShare',
         {configurable: true, value: () => false}));
     const pngDownload = page.waitForEvent('download');
+    await showPanel('more');
     await page.getByTestId('bw-pixel-export-png').click();
     const png = await pngDownload;
     assert.match(png.suggestedFilename(), /\.png$/);
@@ -291,6 +303,7 @@ try {
         'PNG export must preserve transparent and painted pixels without the editor grid');
     assert.ok(pngPixels.translucent > 0, 'PNG export must include partially transparent layer pixels');
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    await showPanel('layers');
     await newLayer.click();
     await opacity.fill('100');
 
@@ -377,6 +390,7 @@ try {
     await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(file);
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
     await page.getByTestId('bw-pixel-toggle').click();
+    await showPanel('layers');
     await page.getByTestId(`bw-pixel-visibility-${layerId}`).waitFor();
     const reopenedCanvas = page.getByTestId('bw-pixel-canvas');
     const reopenedBefore = await reopenedCanvas.evaluate(element => element.toDataURL());
@@ -388,10 +402,12 @@ try {
     const restored = after.costumes.find(record => record.document.layers[0].type === 'pixel');
     assert.deepEqual(restored.document, pixel.document);
     console.log('checking exact Arcade img exchange');
+    await showPanel('more');
     await page.getByTestId('bw-pixel-show-img').click();
     const exportedLiteral = await page.getByTestId('bw-pixel-img-literal').inputValue();
     assert.match(exportedLiteral, /^img`\n/);
     await page.getByRole('button', {name: 'Close', exact: true}).click();
+    await showPanel('more');
     await page.getByTestId('bw-pixel-import-img').click();
     await page.getByTestId('bw-pixel-img-literal').fill('img`\n1 2\n. f\n`');
     await page.getByTestId('bw-pixel-apply-img').click();
@@ -403,6 +419,7 @@ try {
     assert.deepEqual(importedPixels.slice(width, width + 2), [0, 15]);
     console.log('checking custom palette source and rendering');
     await page.getByTestId('bw-pixel-colour-2').click();
+    await showPanel('palette');
     const paletteEditor = page.getByTestId('bw-pixel-palette-edit');
     const beforePalette = await reopenedCanvas.evaluate(element => element.toDataURL());
     await paletteEditor.fill('#123456');
@@ -428,6 +445,7 @@ try {
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
     await page.getByTestId('bw-pixel-toggle').click();
     await page.getByTestId('bw-pixel-colour-2').click();
+    await showPanel('palette');
     assert.equal(await page.getByTestId('bw-pixel-palette-edit').inputValue(), '#123456',
         'reopened artwork must use its editable palette');
     const paletteFile = ['000000', 'ffffff', '00aa00', 'ff93c4', 'ff8135', 'fff609', '249ca3',
@@ -515,6 +533,51 @@ try {
     await page.getByTestId('bw-pixel-save').click();
     const resliced = await saveProject(page);
     assert.equal(resliced.costumes.find(record => record.document.animation)?.document.animation.frames.length, 2);
+    await page.close();
+    console.log('checking iPad toolbar layout and touch controls');
+    for (const viewport of [{width: 834, height: 1194}, {width: 1024, height: 768}]) {
+        const tablet = await browser.newPage({viewport, hasTouch: true});
+        tablet.on('pageerror', error => errors.push(error.message));
+        await tablet.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
+        await tablet.goto(url, {waitUntil: 'domcontentloaded'});
+        await tablet.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+        await tablet.getByTestId('bw-pixel-toggle').click();
+        await tablet.getByTestId('bw-pixel-canvas').waitFor();
+        const layout = await tablet.evaluate(() => {
+            const box = name => document.querySelector(`[data-testid="bw-pixel-${name}"]`).getBoundingClientRect();
+            const editor = box('editor');
+            const toolbar = box('primary-toolbar');
+            const palette = box('palette-toolbar');
+            const canvas = box('canvas');
+            const stage = box('viewport');
+            const save = box('save');
+            const paletteButton = box('palette-toggle');
+            return {editor: {top: editor.top, bottom: editor.bottom},
+                toolbar: {top: toolbar.top, bottom: toolbar.bottom, height: toolbar.height},
+                palette: {top: palette.top, bottom: palette.bottom, height: palette.height},
+                canvas: {top: canvas.top, bottom: canvas.bottom},
+                stage: {top: stage.top, bottom: stage.bottom, left: stage.left, right: stage.right},
+                save: {left: save.left, right: save.right},
+                paletteButton: {left: paletteButton.left, right: paletteButton.right}};
+        });
+        assert.ok(layout.toolbar.height <= 52 && layout.palette.height <= 52,
+            'drawing controls must use two compact rows');
+        assert.ok(layout.save.right <= viewport.width && layout.paletteButton.right <= viewport.width,
+            'Save and palette settings must remain visible at iPad widths');
+        assert.ok(layout.stage.bottom - layout.stage.top >= (viewport.height === 768 ? 400 : 800),
+            `the canvas workspace must retain most of the available height: ${JSON.stringify({viewport, layout})}`);
+        assert.ok(layout.stage.left >= 0 && layout.stage.right <= viewport.width,
+            'the workspace must fit horizontally on iPad');
+        await tablet.getByTestId('bw-pixel-layers-toggle').tap();
+        assert.ok(await tablet.getByTestId('bw-pixel-layers').isVisible());
+        await tablet.getByTestId('bw-pixel-layers-toggle').tap();
+        await tablet.getByTestId('bw-pixel-tool-hand').tap();
+        assert.equal(await tablet.getByTestId('bw-pixel-tool-hand').getAttribute('aria-pressed'), 'true');
+        await tablet.getByTestId('bw-pixel-palette-toggle').tap();
+        assert.ok(await tablet.getByTestId('bw-pixel-palette-edit').isVisible());
+        await tablet.screenshot({path: path.join(path.dirname(file), `pixel-ipad-${viewport.width}.png`)});
+        await tablet.close();
+    }
     assert.deepEqual(errors, []);
     console.log('PASS: pixel layers and animation frames survive SB3 save/reopen');
 } finally {

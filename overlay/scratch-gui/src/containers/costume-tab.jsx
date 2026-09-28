@@ -292,7 +292,8 @@ class CostumeTab extends React.Component {
             details: costume.size ? this.formatCostumeDetails(costume.size, costume.bitmapResolution) : null,
             dragPayload: costume
         })) : [];
-        const toolStyle = {fontSize: 12, padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
+        const toolStyle = {fontSize: 12, padding: '4px 8px', minHeight: 44,
+            borderRadius: 6, cursor: 'pointer',
             border: '1px solid #cbd5e1', background: '#fff', whiteSpace: 'nowrap'};
         const editorTools = pixel => (
             <div style={{display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 'auto'}}>

@@ -19,6 +19,16 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 
 ## Current implementation
 
+The iPad pixel workspace follows the tool/settings separation in the
+[Pinta workspace](https://www.pinta-project.com/user-guide/overview/) and the
+on-demand panels in [Krita's dockers](https://docs.krita.org/en/reference_manual/dockers.html).
+Only two control rows stay above the canvas: recognizable 44-pixel icon tools
+and a palette strip. Undo, redo, layers, frames, options and save stay visible
+at narrow widths while the tool strip scrolls. Layer, frame, palette and file
+settings open over the canvas and close without changing the artwork. The
+converted-costume warning and save status sit over the canvas instead of
+claiming permanent rows. Tool buttons retain localized accessible names.
+
 - Save and load paths in the browser and native project importer read/write the
   source entry. They leave `project.json` and the Scratch costume assets intact.
   The browser save writes artwork and other Brickwright state in one ZIP pass.
