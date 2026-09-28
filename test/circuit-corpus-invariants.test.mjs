@@ -199,8 +199,8 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // circuits reserve PC4/PC5 for an external EEPROM are deliberately absent:
     // remapping those wires would change the lesson rather than retarget it.
     // 1216 -> 1217 on 2026-09-28: sb3-creator's PRECHIN A2 learning-board
-    // preset (board-prechin-a2-learning-board/circuit.json), which arrives with
-    // the pin that brings SPIKE App 3 Python.
+    // preset (board-prechin-a2-learning-board/circuit.json), vendored at the
+    // sb3-creator pin that also brings SPIKE App 3 Python (laid out by #36).
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
