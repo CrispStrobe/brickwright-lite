@@ -43,3 +43,23 @@ test('the snapshot carries it and the panel renders both lines', () => {
     assert.match(panel, /data-engine-fault/);
     assert.match(panel, /data-engine-fidelity/);
 });
+
+function savePointsWith(target) {
+    const start = source.indexOf('    function savePointsNow () {');
+    assert.ok(start >= 0, 'savePointsNow exists');
+    const end = source.indexOf('\n    }\n', start) + '\n    }\n'.length;
+    return new Function('target', `${source.slice(start, end)}\nreturn savePointsNow();`)(target);
+}
+
+test('save points: the list when available, the reason when not, nothing while running', () => {
+    const points = [{id: 1, label: '#1', cycles: 1000}];
+    assert.deepEqual(savePointsWith({state: () => 'halted', snapshotUnavailable: () => null, listSnapshots: () => points}),
+        {unavailable: null, points});
+    assert.deepEqual(savePointsWith({state: () => 'halted', snapshotUnavailable: () => 'the circuit cannot be rewound',
+        listSnapshots: () => { throw new Error('must not list when unavailable'); }}),
+    {unavailable: 'the circuit cannot be rewound', points: []});
+    assert.equal(savePointsWith({state: () => 'running', snapshotUnavailable: () => null, listSnapshots: () => points}), undefined);
+    assert.equal(savePointsWith({state: () => 'halted'}), undefined, 'a target without save points');
+    assert.match(source, /savePoints: savePointsNow\(\),/);
+    assert.match(source, /restoreSnapshot\(id\) \{/);
+});

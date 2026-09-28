@@ -838,6 +838,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * a question asked after the program is running, not during the build.
      */
     let imageProvenance = null;
+    /** See `savePoints` in the snapshot. */
+    function savePointsNow () {
+        if (!target || typeof target.snapshotUnavailable !== 'function') return undefined;
+        if (typeof target.state === 'function' && target.state() === 'running') return undefined;
+        let unavailable;
+        try { unavailable = target.snapshotUnavailable(); } catch (e) { unavailable = String(e.message || e); }
+        if (unavailable) return {unavailable, points: []};
+        let points = [];
+        try { points = target.listSnapshots() || []; } catch (e) { points = []; }
+        return {unavailable: null, points};
+    }
     /** See `engineDiagnostics` in the snapshot. */
     function engineDiagnosticsNow () {
         if (!target || typeof target.diagnostics !== 'function') return undefined;
@@ -1158,6 +1169,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
              * undefined when there is nothing to say.
              */
             engineDiagnostics: engineDiagnosticsNow(),
+            /**
+             * Engine save points (LabWired, firmware-only): `unavailable` is the
+             * reason when there are none to offer (a bench cannot rewind its
+             * circuit), else `points` oldest first. Read only while stopped.
+             */
+            savePoints: savePointsNow(),
             /**
              * The prebuilt-image sentence, or undefined when the image was
              * compiled for this session. See `imageProvenance` above.
@@ -3619,6 +3636,27 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
 
         /** Raw bytes, for the hex view. Returns [] rather than throwing. */
+        /** Save the engine's current point (LabWired). {id,label,cycles} or {unsupported}. */
+        saveSnapshot(label) {
+            if (!target || typeof target.saveSnapshot !== 'function') {
+                return {unsupported: 'this engine has no save points'};
+            }
+            const r = target.saveSnapshot(label);
+            emit();
+            return r;
+        },
+
+        /** Return to a save point; the target halts first. undefined or {unsupported}. */
+        restoreSnapshot(id) {
+            if (!target || typeof target.restoreSnapshot !== 'function') {
+                return {unsupported: 'this engine has no save points'};
+            }
+            const r = target.restoreSnapshot(id);
+            if (!r) setStatus('paused');
+            emit();
+            return r;
+        },
+
         readMem(space, addr, len) {
             if (!target) return [];
             const out = target.readMem(space, addr, len);

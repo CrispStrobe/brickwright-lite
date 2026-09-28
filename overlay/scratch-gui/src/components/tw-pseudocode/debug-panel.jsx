@@ -65,6 +65,9 @@ const L10N = {
         modemSend: 'Encode and transmit this message on PA0/ADC6',
         modemSent: 'transmitted',
         firmwareRunning: 'running',
+        savePoint: 'Save point',
+        savePointTitle: 'Remember this exact moment; ↺ returns here',
+        restorePointTitle: 'Return the chip to this save point',
         engineFault: 'Firmware fault',
         engineFidelity: 'The engine skipped something here — the run may not match the chip',
         labwiredChipProject: 'project board',
@@ -117,6 +120,9 @@ const L10N = {
         modemSend: 'Diese Nachricht kodieren und an PA0/ADC6 senden',
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
+        savePoint: 'Speicherpunkt',
+        savePointTitle: 'Diesen Moment merken; ↺ kehrt hierher zurück',
+        restorePointTitle: 'Den Chip auf diesen Speicherpunkt zurücksetzen',
         engineFault: 'Firmware-Fehler',
         engineFidelity: 'Die Engine hat hier etwas übersprungen — der Lauf entspricht evtl. nicht dem Chip',
         labwiredChipProject: 'Projekt-Board',
@@ -1584,6 +1590,38 @@ class DebugPanel extends React.Component {
                 {ui.engineDiagnostics && ui.engineDiagnostics.fault ? (
                     <div data-engine-fault style={{color: '#e74c3c', fontSize: 11}}>
                         {`${this.tx('engineFault')}: ${ui.engineDiagnostics.fault.summary}`}
+                    </div>
+                ) : null}
+                {/* SAVE POINTS (LabWired, your own firmware on a chip). The engine
+                    rebuilds the machine and replays to the point, refusing when
+                    the replay does not match — so a restore either lands exactly
+                    or says why. Shown only while stopped; a bench with a circuit
+                    gets none (the circuit cannot be rewound with the firmware). */}
+                {ui.savePoints && !ui.savePoints.unavailable && this.state.runner ? (
+                    <div data-save-points style={{display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', fontSize: 11}}>
+                        <button
+                            style={{...BTN, padding: '2px 6px'}}
+                            title={this.tx('savePointTitle')}
+                            onClick={() => {
+                                const r = this.state.runner.saveSnapshot(`#${ui.savePoints.points.length + 1}`);
+                                if (r && r.unsupported) this.setState({savePointError: r.unsupported});
+                                else this.setState({savePointError: null});
+                            }}
+                        >{`💾 ${this.tx('savePoint')}`}</button>
+                        {ui.savePoints.points.map(p => (
+                            <button
+                                key={p.id}
+                                style={{...BTN, padding: '2px 6px'}}
+                                title={`${this.tx('restorePointTitle')} (${p.cycles} cycles)`}
+                                onClick={() => {
+                                    const r = this.state.runner.restoreSnapshot(p.id);
+                                    this.setState({savePointError: r && r.unsupported ? r.unsupported : null});
+                                }}
+                            >{`↺ ${p.label || p.id}`}</button>
+                        ))}
+                        {this.state.savePointError ? (
+                            <span style={{color: '#e74c3c'}}>{this.state.savePointError}</span>
+                        ) : null}
                     </div>
                 ) : null}
                 {ui.engineDiagnostics && ui.engineDiagnostics.fidelityGapCount ? (
