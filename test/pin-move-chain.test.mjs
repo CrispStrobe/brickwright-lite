@@ -27,6 +27,12 @@
  *   - docs prose (docs/**.md EXCEPT docs/generated/**): narrative cites the
  *     commit it discusses. docs/generated is the opposite — it is one of the
  *     four documents this test exists to keep current.
+ *   - gallery example prose (overlay/scratch-gui/examples/**.md): vendored
+ *     byte for byte from sb3-creator (scripts/sync-examples.mjs), where an
+ *     intro may cite the revision a circuit was generated at — a dated
+ *     citation, and one lite cannot edit without forking the gallery. Added
+ *     2026-09-28 when sb3-creator 1cdc4fb5 brought board-prechin-a2's intro
+ *     ("bench-verified in bw-circuit-ui at revision 75e3058b…").
  *   - comment lines in code (// * # in .js/.mjs/.jsx/.ts/.yml/.sh): notes
  *     beside code, e.g. "pin moved 4134b86 -> ... -> 5d17288" in a test. The
  *     CODE line beside them is not exempt.
@@ -123,6 +129,7 @@ export const roleOf = file => {
     if (/^(LANES|HISTORY|ROADMAP|PLAN|BLOCKED|HANDOFF)\.md$/.test(file)) return 'ledger';
     if (/^docs\/generated\//.test(file)) return 'code';
     if (/^docs\/.*\.md$/.test(file)) return 'docs-prose';
+    if (/^overlay\/scratch-gui\/examples\/.*\.md$/.test(file)) return 'docs-prose';
     if (/^packages\//.test(file)) return 'skip';
     return 'code';
 };
@@ -286,6 +293,10 @@ test('the same sha in a ledger, in docs prose, or on a comment line is history a
     const [sha] = [...previous.entries()][0];
     assert.deepEqual(judgeFile('LANES.md', `| row | ${sha} |`, known), []);
     assert.deepEqual(judgeFile('docs/SOMETHING.md', `measured at ${sha}`, known), []);
+    assert.deepEqual(judgeFile('overlay/scratch-gui/examples/x/intro.md', `generated at ${sha}`, known), [],
+        'vendored gallery prose cites dated revisions');
+    assert.equal(judgeFile('overlay/scratch-gui/examples/x/program.bw', `pin ${sha}`, known).length, 1,
+        'only the gallery PROSE is a citation; its other files are judged');
     assert.deepEqual(judgeFile('test/x.test.mjs', `// pin moved ${sha} -> now`, known), []);
     assert.equal(judgeFile('test/x.test.mjs', `const PIN = '${sha}';`, known).length, 1, 'the code line beside the comment is not exempt');
     assert.equal(judgeFile('docs/generated/report.md', `Vendored engine: \`x@${sha}\``, known).length, 1, 'docs/generated is not prose');
