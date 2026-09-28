@@ -42,9 +42,8 @@ or PNG costumes.
 
 This is a workspace improvement, not raster/vector feature parity. The next
 capability gates are: (1) vector node operations such as join/split and
-asymmetric handles that survive SB3 save/reopen; (2) ordered bitmap layers
-with independent pixels, visibility and opacity in artwork source, plus a
-flattened PNG for Scratch; (3) brush presets, per-stroke opacity compositing,
+asymmetric handles that survive SB3 save/reopen; (2) bitmap layer rename,
+locking, selection transforms and richer compositing; (3) brush presets, per-stroke opacity compositing,
 colour history and selection transforms exposed through contextual controls.
 Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
 for older Scratch readers.
@@ -59,8 +58,18 @@ path. They change the path's topology in Paper and save as an ordinary SVG
 path, so an older Scratch reader can still display it. The browser gate draws
 a path, opens it, saves/reopens the SB3, then closes it again. Node movement,
 handle adjustment and adding a node on a curve were already present in the
-reshape tool. Join/split operations, asymmetric handles and ordered bitmap
-layers remain ahead.
+reshape tool. Join/split operations and asymmetric handles remain ahead.
+
+The bitmap editor now keeps separate full-size PNG layers. The compact layer
+strip selects the paint target and can add, delete, reorder, hide and fade
+layers. The source document records their order, visibility, opacity and active
+layer; the SB3 stores each layer PNG under `brickwright/layers/` and still gives
+Scratch one flattened PNG costume. Loading restores the editable layer stack.
+The browser gate paints one layer, saves/reopens, paints another, and proves
+that each layer's pixels remain unchanged when the other is edited. It also
+checks that visibility and opacity affect the flattened costume and that the
+add control works by touch on an iPad-sized viewport. Selection operations
+still need layer-aware behavior, and the UI needs layer naming and locking.
 
 - Save and load paths in the browser and native project importer read/write the
   source entry. They leave `project.json` and the Scratch costume assets intact.
@@ -125,8 +134,8 @@ layers remain ahead.
    gradient/stroke controls and precise transform handles. Use the source layer
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
-4. **Raster core.** Render ordered raster layers with transparency and opacity;
-   expand the new lasso and wand selectors into layer-aware selection, move/transform/crop, brush presets and
+4. **Raster core.** Expand the new lasso and wand selectors into layer-aware
+   selection, move/transform/crop, brush presets and
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.

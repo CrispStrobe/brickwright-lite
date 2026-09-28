@@ -324,6 +324,7 @@ class PaintEditor extends React.Component {
         return (
             <PaintEditorComponent
                 editorTools={this.props.editorTools}
+                artworkDocument={this.props.artworkDocument}
                 canRedo={this.props.shouldShowRedo}
                 canUndo={this.props.shouldShowUndo}
                 canvas={this.state.canvas}
@@ -357,6 +358,7 @@ class PaintEditor extends React.Component {
 
 PaintEditor.propTypes = {
     editorTools: PropTypes.node,
+    artworkDocument: PropTypes.object,
     changeColorToEyeDropper: PropTypes.func,
     changeMode: PropTypes.func.isRequired,
     clearSelectedItems: PropTypes.func.isRequired,

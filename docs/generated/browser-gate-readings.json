@@ -6750,6 +6750,12 @@
       "p95": 0,
       "max": null,
       "readings": []
+    },
+    "Browser gate \u2014 bitmap layers preserve independent pixels and flatten for Scratch": {
+      "n": 0,
+      "p95": 0,
+      "max": null,
+      "readings": []
     }
   }
 }

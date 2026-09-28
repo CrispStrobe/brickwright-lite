@@ -15,6 +15,7 @@ import BitFillMode from '../../containers/bit-fill-mode.jsx';
 import BitEraserMode from '../../containers/bit-eraser-mode.jsx';
 import BitSelectMode from '../../containers/bit-select-mode.jsx';
 import BitmapSelectionControls from '../../containers/bw-bitmap-selection-controls.jsx';
+import BitmapLayersControls from '../../containers/bw-bitmap-layers-controls.jsx';
 import Box from '../box/box.jsx';
 import Button from '../button/button.jsx';
 import ButtonGroup from '../button-group/button-group.jsx';
@@ -180,6 +181,7 @@ const PaintEditorComponent = props => {
                                 />
                             </InputGroup>
                             <BitmapSelectionControls />
+                            <BitmapLayersControls onUpdateImage={props.onUpdateImage} />
                         </div> : null
                 }
             </div>
@@ -274,6 +276,7 @@ const PaintEditorComponent = props => {
                     style={styles.canvasContainer}
                 >
                     <PaperCanvas
+                        artworkDocument={props.artworkDocument}
                         canvasRef={props.setCanvas}
                         image={props.image}
                         imageFormat={props.imageFormat}
@@ -390,6 +393,7 @@ const PaintEditorComponent = props => {
 
 PaintEditorComponent.propTypes = {
     editorTools: PropTypes.node,
+    artworkDocument: PropTypes.object,
     canRedo: PropTypes.func.isRequired,
     canUndo: PropTypes.func.isRequired,
     canvas: PropTypes.instanceOf(Element),

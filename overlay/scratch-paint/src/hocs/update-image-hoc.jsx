@@ -13,6 +13,7 @@ import {updateViewBounds} from '../reducers/view-bounds';
 import {getSelectedLeafItems} from '../helper/selection';
 import {rehideItems, revealHiddenItems} from '../helper/bw/objects';
 import {getRaster, hideGuideLayers, showGuideLayers} from '../helper/layer';
+import {getBitmapLayers, getCompositeBitmapRaster, getBitmapLayerDocument} from '../helper/bw/bitmap-layers';
 import {commitRectToBitmap, commitOvalToBitmap, commitSelectionToBitmap, getHitBounds} from '../helper/bitmap';
 import {performSnapshot} from '../helper/undo';
 import {scaleWithStrokes} from '../helper/math';
@@ -101,7 +102,9 @@ const UpdateImageHOC = function (WrappedComponent) {
                     );
                 }
             }
-            const rect = getHitBounds(plasteredRaster);
+            const layered = getBitmapLayers().length > 1;
+            const exportedRaster = layered ? getCompositeBitmapRaster(plasteredRaster) : plasteredRaster;
+            const rect = getHitBounds(exportedRaster);
 
             // Use 1x1 instead of 0x0 for getting imageData since paper.js automagically
             // returns the full artboard in the case of getImageData(0x0).
@@ -110,13 +113,14 @@ const UpdateImageHOC = function (WrappedComponent) {
                 rect.width = rect.height = 1;
             }
 
-            const imageData = plasteredRaster.getImageData(rect);
+            const imageData = exportedRaster.getImageData(rect);
 
             this.props.onUpdateImage(
                 false /* isVector */,
                 imageData,
                 (ART_BOARD_WIDTH / 2) - rect.x,
-                (ART_BOARD_HEIGHT / 2) - rect.y);
+                (ART_BOARD_HEIGHT / 2) - rect.y,
+                layered ? getBitmapLayerDocument(plasteredRaster) : null);
 
             if (!skipSnapshot) {
                 performSnapshot(this.props.undoSnapshot, Formats.BITMAP);

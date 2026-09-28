@@ -60,7 +60,7 @@ const validateLayers = (layers, expectedSize = null) => {
     return pixelSize;
 };
 
-const validateDocument = doc => {
+const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
     if (!isObject(doc) || ![1, 2, 3].includes(doc.version)) {
         throw new Error('artwork document must contain layers');
     }
@@ -77,7 +77,7 @@ const validateDocument = doc => {
     const pixelSize = validateLayers(doc.layers);
     if (Object.prototype.hasOwnProperty.call(doc, 'activeLayerId') &&
         !doc.layers.some(layer => layer.id === doc.activeLayerId)) throw new Error('invalid active layer');
-    if (byteLength(JSON.stringify(doc)) > MAX_DOCUMENT_BYTES) throw new Error('artwork document is too large');
+    if (byteLength(JSON.stringify(doc)) > maxBytes) throw new Error('artwork document is too large');
     if (doc.animation) {
         if (doc.version !== 3 || !pixelSize || !isObject(doc.animation) ||
             !Array.isArray(doc.animation.frames) || doc.animation.frames.length < 2 ||
@@ -131,7 +131,7 @@ const setCostumeDocument = (costume, document) => {
     // The editor source generated that render, so bind it to the final md5ext at save.
     documents.set(costume, {renderedMd5ext: assetName(costume),
         pendingRender: true,
-        document: validateDocument(document)});
+        document: validateDocument(document, MAX_ARTWORK_BYTES)});
 };
 
 /**
@@ -187,6 +187,7 @@ const inspectArtwork = async input => {
             return {outcome: 'future', records: [], raw, signature: costumeSignature(project)};
         }
         const records = [];
+        let inflatedLayerBytes = 0;
         for (const record of payload.costumes) {
             if (!isObject(record) || !Number.isInteger(record.targetIndex) ||
                 !Number.isInteger(record.costumeIndex) || typeof record.renderedMd5ext !== 'string') {
@@ -200,6 +201,13 @@ const inspectArtwork = async input => {
             for (const layer of record.document.layers) {
                 if (layer.content.kind === 'asset' && !zip.file(layer.content.value)) {
                     throw new Error(`missing artwork asset ${layer.content.value}`);
+                }
+                if (layer.type === 'bitmap' && layer.content.kind === 'asset' &&
+                    layer.content.value.startsWith('brickwright/layers/')) {
+                    const asset = zip.file(layer.content.value);
+                    inflatedLayerBytes += asset._data?.uncompressedSize || 0;
+                    if (inflatedLayerBytes > MAX_ARTWORK_BYTES) throw new Error('bitmap layers are too large');
+                    layer.content = {kind: 'data-uri', value: `data:image/png;base64,${await asset.async('base64')}`};
                 }
             }
             records.push(record);
@@ -254,8 +262,19 @@ const writeArtworkToZip = async (zip, vm) => {
                 const live = targets[targetIndex]?.sprite?.costumes?.[costumeIndex];
                 if (!saved.md5ext || !zip.file(saved.md5ext)) continue;
                 const record = live && assetName(live) === saved.md5ext && documents.get(live);
-                const document = record && (record.pendingRender || record.renderedMd5ext === saved.md5ext) ?
-                    record.document : fromRendered(saved);
+                const document = JSON.parse(JSON.stringify(record &&
+                    (record.pendingRender || record.renderedMd5ext === saved.md5ext) ?
+                    record.document : fromRendered(saved)));
+                for (let layerIndex = 0; layerIndex < document.layers.length; layerIndex++) {
+                    const layer = document.layers[layerIndex];
+                    if (layer.type !== 'bitmap' || layer.content.kind !== 'data-uri') continue;
+                    const match = /^data:image\/png;base64,([a-z\d+/=]+)$/i.exec(layer.content.value);
+                    if (!match) throw new Error('invalid bitmap layer PNG');
+                    const bytes = Uint8Array.from(atob(match[1]), character => character.charCodeAt(0));
+                    const assetPath = `brickwright/layers/t${targetIndex}-c${costumeIndex}-l${layerIndex}.png`;
+                    zip.file(assetPath, bytes);
+                    layer.content = {kind: 'asset', value: assetPath};
+                }
                 costumes.push({targetIndex,
                     costumeIndex,
                     renderedMd5ext: saved.md5ext,
