@@ -1,6 +1,6 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
-## OPEN, UPSTREAM — the gallery snapshot cannot be attested, so `vendor-freshness` is red on main (2026-09-28)
+## ~~OPEN, UPSTREAM~~ — FIXED UPSTREAM the same day: the gallery snapshot could not be attested (2026-09-28)
 
 **`sync-gallery-pins.mjs --check` refuses, and it is right to.** It attests that
 each extension the gallery SERVES equals that extension's repo source with the
@@ -28,10 +28,19 @@ produced by a step `sync-gallery-pins.mjs` does not model — the slug says
 `transpile`, which would fit. Both offsets land in ordinary JS rather than in a
 wrapper, which argues for the first.
 
-**Effect meanwhile:** `vendor-freshness` (the `check` context) is red on `main`
-and therefore on every branch. Measured on main 2026-09-28: `b2246fd85` 12:18,
-`30c3e781a` 12:14, `58746c0bf` 11:08 — all failure. Lanes merging on substantive
-green should say so, rather than treat a red context as passing.
+**Effect while it lasted:** `vendor-freshness` (the `check` context) was red on
+`main` and therefore on every branch. Measured on main 2026-09-28: `b2246fd85`
+12:18, `30c3e781a` 12:14, `58746c0bf` 11:08 — all failure.
+
+**RESOLVED UPSTREAM, ~90 minutes later.** `sync-gallery-pins.mjs --check` now
+exits 0 and reports `DRIFT: 2 changed, 0 added, 0 dropped` — it can attest the
+snapshot again, so whatever was serving unreviewable bytes has been rebuilt.
+Recorded rather than deleted because the diagnosis is the reusable part: the
+failure looked exactly like the stale-cache case `docs/FETCH-PINNING.md` covers,
+and the thing that ruled that out was upstream `main` MOVING between two readings
+with the same extension still failing at a DIFFERENT byte offset. A cache would
+have cleared. That distinction is what says "wait for upstream" rather than
+"re-run it".
 
 
 ## ~~OPEN, FLEET-WIDE~~ — FIXED (`17e5b46ec`): main's `build` job had no verdict from 04:21 to 06:5x (2026-09-21)
