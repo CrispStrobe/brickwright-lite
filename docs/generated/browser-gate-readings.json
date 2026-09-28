@@ -6576,6 +6576,12 @@
    "p95": 0,
    "max": null,
    "readings": []
+  },
+  "Browser gate — named 386 media reaches Widgets and reports attach failures": {
+   "n": 0,
+   "p95": 0,
+   "max": null,
+   "readings": []
   }
  }
 }

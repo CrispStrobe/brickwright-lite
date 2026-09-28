@@ -36,10 +36,13 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
-    'verify-i80386-freedos-real-browser.mjs': 'manual/local: requires the pinned external FreeDOS 1.4 '
-        + 'floppy and generated type-1 FAT16 HDD. It checks real boot, Widgets VGA and physical keyboard '
-        + 'input in Chromium; CI uses the separate synthetic named-media browser gate. Run with '
-        + 'FREEDOS_IMAGE and FREEDOS_HDD after building the GUI.',
+    'verify-i80386-freedos-real-browser.mjs': 'manual/local: real FreeDOS 1.4 acceptance in a browser. '
+        + 'CANNOT run in CI, and this is the script\'s own contract rather than a judgement about it — it '
+        + 'throws immediately unless FREEDOS_IMAGE and FREEDOS_HDD point at local media, and its header says '
+        + 'those images "stay outside this repo". Its expected hashes also bind it to one qualified image, one '
+        + 'generated type-1 HDD and a fixed viewport, so a CI-fetchable substitute would not satisfy it. '
+        + 'Run `FREEDOS_IMAGE=/path/to/x86BOOT-1200.img FREEDOS_HDD=/path/to/type1-hdd.img '
+        + 'npm run verify:i80386-freedos-real-browser`.',
     'verify-machine-video-boot.mjs': 'manual/local: boots a real OS from the manager and watches its screen '
         + 'render into a Widgets simplevga widget. NEEDS a local bootable image (ELKS_IMG) and self-skips '
         + '(exit 0) without one, so it cannot run in CI. Run `ELKS_IMG=/path/to/fd1440-fat.img node scripts/verify-machine-video-boot.mjs`.',

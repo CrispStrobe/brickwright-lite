@@ -123,10 +123,44 @@ try {
             `${o.name}: the page does not overflow sideways`,
             `scrollWidth ${s.docScrollW} vs ${s.innerW}`);
 
+        // AND A WAY IN. A sweep of this pane on a phone found no reachable
+        // enter-fullscreen control at all: the stage header that normally offers
+        // one is capped to 44px in this dock mode. Exit was already covered;
+        // entry was the gap.
+        const enter = await page.evaluate(() => {
+            const vis = el => (el.checkVisibility ? el.checkVisibility({
+                contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true,
+            }) : true);
+            const el = document.querySelector('[data-testid="bw-widgets-enter-fullscreen"]');
+            if (!el) return {found: false};
+            const b = el.getBoundingClientRect();
+            const top = document.elementFromPoint(b.left + (b.width / 2), b.top + (b.height / 2));
+            return {
+                found: true, visible: vis(el),
+                w: Math.round(b.width), h: Math.round(b.height),
+                hittable: !!(top && (top === el || el.contains(top))),
+            };
+        });
+        check(enter.found && enter.visible && enter.hittable,
+            `${o.name}: FULL SCREEN HAS A WAY IN — the enter control is on screen and clickable`,
+            JSON.stringify(enter));
+        if (enter.found && enter.hittable) {
+            await page.click('[data-testid="bw-widgets-enter-fullscreen"]', {timeout: 5000}).catch(() => {});
+            const entered = await page.waitForFunction(
+                "!!document.querySelector('[data-testid=\"bw-widgets-exit-fullscreen\"]')",
+                null, {timeout: 8000, polling: 100}).then(() => true).catch(() => false);
+            check(entered, `${o.name}: tapping it really enters full screen`);
+        }
+
         // FULL SCREEN MUST HAVE A WAY BACK. Entered through the store because
         // the stage header that normally offers it is capped in this dock mode.
-        await page.evaluate(() => window.__bwStore.dispatch(
-            {type: 'scratch-gui/mode/SET_FULL_SCREEN', isFullScreen: true}));
+        await page.evaluate(() => {
+            // Already full screen if the button above worked; this makes the
+            // exit checks below run either way rather than depending on it.
+            if (!document.querySelector('[data-testid="bw-widgets-exit-fullscreen"]')) {
+                window.__bwStore.dispatch({type: 'scratch-gui/mode/SET_FULL_SCREEN', isFullScreen: true});
+            }
+        });
         await page.waitForFunction(
             "!!document.querySelector('[data-testid=\"bw-widgets-exit-fullscreen\"]')",
             null, {timeout: 10000, polling: 100}).catch(() => {});
