@@ -123,9 +123,25 @@ const RUN = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(im
 const asJson = process.argv.includes('--json');
 if (RUN) {
 
+// WHY THE ADVICE IS PER-COMPONENT. This line used to say "integrate.mjs copies
+// overlay OVER packages" for all three components. That is true of scratch-gui
+// and FALSE of the other two, and the wrong version cost a reader real time:
+// told that the build overwrites packages/scratch-vm, they go looking for the
+// copy that does it, find none, and start doubting the gate instead of the
+// sentence. The three are wired differently and only the conclusion is shared.
+const deadBecause = overlay => (overlay.startsWith('overlay/scratch-gui/') ?
+    'integrate.mjs copies overlay/scratch-gui OVER packages/scratch-gui in every real build, so the packages edit is overwritten' :
+    // scratch-vm and scratch-paint: apply-{vm,paint}-overlay.mjs copy the overlay
+    // onto packages/scratch-gui/node_modules/<pkg> after install. Nothing copies
+    // to or from packages/<pkg> — the build never reads it — so the packages edit
+    // is dead in a stronger sense than scratch-gui's. It is still tracked, and
+    // some packages/scratch-vm paths ARE load-bearing as tauri.yml trigger
+    // globs, which is why the twin is kept in step rather than deleted.
+    `the build never reads ${overlay.split('/')[1]}'s packages/ tree — apply-${overlay.startsWith('overlay/scratch-vm/') ? 'vm' : 'paint'}-overlay.mjs applies the overlay to packages/scratch-gui/node_modules/ instead, so the packages edit reaches nothing`);
+
 for (const {overlay, packages} of overlayPackagePairs()) {
     note('overlay↔packages', `${overlay} differs from its tracked twin ${packages}`,
-        `cp ${overlay} ${packages}   (integrate.mjs copies overlay OVER packages, so the packages edit is the dead one)`);
+        `cp ${overlay} ${packages}   (${deadBecause(overlay)})`);
 }
 
 const pinsPath = path.join(ROOT, 'vendor-pins.json');
