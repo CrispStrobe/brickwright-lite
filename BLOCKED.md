@@ -35,6 +35,52 @@ until then.
 throttling and vary the rate; if the verdict flips, the coupling is confirmed and
 the direction is measured at the same time.
 
+---
+
+**UPDATE, 2026-09-28 21:2x — no longer "once", and the experiment ran itself.**
+The note above rested on a single observation and declined to guess. Both of
+those are now out of date.
+
+**It is not branch-specific, and it fails on `main`.** Four distinct refs hit it
+in one evening: `docs/cp07-timer64-closeout`, `docs/cp06-ev3-closeout`,
+`lane/census-window`, and **`main`**. So every PR inherits a red `browser
+(light)` from it.
+
+**The coin-flip is measured.** `browser (light)` outcomes, interleaved, inside
+half an hour, on content that did not change between them:
+
+| started | verdict |
+|---|---|
+| 20:45 | success |
+| 20:56 | failure |
+| 21:05 | failure |
+| 21:07 | success |
+| 21:10 | failure |
+| 21:12 | success |
+| 21:21 | failure |
+| (and a success at 21:07/21:12 band) | |
+
+Four and four. The saturated runner pool documented in the entry below was an
+accidental, fleet-scale version of exactly the CPU-throttling experiment this
+note asked for, and **the verdict flipped**. The coupling is confirmed: the
+gate's answer is a function of runner load, not of the code under test.
+
+**The direction is now indicated too.** Every failure is `time is up`, never a
+wrong position or a crash. Per the mechanism above that is the rAF-survives /
+VM-starves branch: the arena's `timeMs` keeps accumulating frame deltas while
+the VM falls behind, so the budget expires under a robot that has not travelled.
+The MAX_FRAME_MS = 100 clamp is what makes the other direction unreachable — it
+can only ever make sim time run SLOW, which would make a mission easier, not
+fail it. So the clamp protects against the harmless direction and not the harmful
+one.
+
+**What this costs everyone right now:** a green on this gate carries about one
+bit of information and half of it is luck. Re-running until it passes would
+launder that, so this note exists instead. Still not repaired here: the fix is
+the design decision named above and it belongs to the arena lane, which has work
+in flight (`feat/spike-arena-pins-2`). Redesigning another lane's clock coupling
+underneath it would be worse than the flake.
+
 
 ## OPEN, FLEET-WIDE: main's per-sha concurrency group lets superseded runs accumulate until they starve every PR (2026-09-28)
 
