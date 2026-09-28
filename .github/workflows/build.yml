@@ -1023,6 +1023,10 @@ jobs:
         run: |
           python3 -m http.server 8617 --directory packages/scratch-gui/build &
           for i in $(seq 1 30); do curl -sf http://localhost:8617/ >/dev/null && break; sleep 1; done
+      - name: Browser gate — named 386 media reaches Widgets and reports attach failures
+        timeout-minutes: 3
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: npm run verify:i80386-freedos-vga-browser
 
       # Keep the debugger acceptance checks at the front of the browser queue.
       # They reuse this job's one build, server and Chromium installation, but
