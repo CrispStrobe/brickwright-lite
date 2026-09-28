@@ -17,10 +17,12 @@ import supportedBrowser from '../lib/supported-browser';
 // Floor the tap size of controls once the app is rendering at a phone's scale.
 // Must run before first paint so nothing is measured or tapped at 16px first.
 import {installTouchTargets} from '../lib/touch-targets.js';
+import {installPhoneChrome} from '../lib/phone-chrome.js';
 
 import styles from './index.css';
 
 installTouchTargets();
+installPhoneChrome();
 
 const appTarget = document.createElement('div');
 appTarget.className = styles.app;

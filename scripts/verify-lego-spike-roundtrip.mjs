@@ -282,7 +282,8 @@ async function arenaPane () {
             const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
             const opcodes = new Set((vm?.runtime?.targets || []).flatMap(target =>
                 Object.values(target.blocks?._blocks || {}).map(block => block.opcode)));
-            return opcodes.has('spikeprime_isColor') && opcodes.has('spikeprime_motorStart') && !opcodes.has('spikeprime_displayText');
+            return opcodes.has('spikeprime_isColor') && opcodes.has('spikeprime_steer') &&
+                opcodes.has('spikeprime_stopMovement') && !opcodes.has('spikeprime_displayText');
         }, null, {timeout: 45000});
         console.log('  ok: the reference solution was loaded into the Code tab and built into blocks');
         await pane.locator('[data-testid="bw-spike-arena-start"]').click();

@@ -77,6 +77,9 @@ export const movePair = (hubState, {amount = null, unit = 'rotations', speed = 5
     return result.then(results => (results.includes('interrupted') ? 'interrupted' : 'completed'));
 };
 
+/** A rule that matched the shape of a statement but not a form it models. */
+const UNHANDLED = Symbol('unhandled');
+
 const STATEMENTS = [
     // ---- one motor, SPIKE 2 style: hub.port.A.motor.<verb>(...) --------------
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:pwm|start_at_power|run_at_speed|start)\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
@@ -100,7 +103,24 @@ const STATEMENTS = [
         h.motors.runAtSpeed(m[1], h.motors.percentToDps(m[1], clampPercent(num(m[2]) / 10)))],
     [new RegExp(`^motor\\.stop\\(\\s*port\\.${PORT}\\s*\\)$`), (h, m) => h.motors.stop(m[1])],
     // ---- the movement pair, SPIKE 2 MotorPair style: motors.<verb>(...) -------
-    [/^(?:\w+\s*=\s*)?MotorPair\(\s*['"]([A-F])['"]\s*,\s*['"]([A-F])['"]\s*\)$/, (h, m) => { h.movementPair = [m[1], m[2]]; }],
+    [/^(?:\w+\s*=\s*)?MotorPair\(\s*['"]([A-F])['"]\s*,\s*['"]([A-F])['"]\s*\)$/, (h, m) => {
+        h.movementPair = [m[1], m[2]];
+        h.motorPairDefined = true;
+    }],
+    // The extension defines the hub's `motors` in one exec'd line (it has to
+    // survive the REPL's one-line framing), and puts a guarded copy in front of
+    // every movement command: `try: motors / except NameError: <define>`,
+    // which defines the pair only if the hub has none yet. Only the MotorPair
+    // is read out of it; the imports around it select spike or mindstorms.
+    [/^exec\("((?:[^"\\]|\\.)*)"\)$/, (h, m) => {
+        const body = m[1].replace(/\\n/g, '\n').replace(/\\(.)/g, '$1');
+        const pair = /motors\s*=\s*MotorPair\(\s*['"]([A-F])['"]\s*,\s*['"]([A-F])['"]\s*\)/.exec(body);
+        if (!pair) return UNHANDLED;
+        const guarded = /^try:\n\s*motors\n\s*except NameError:/.test(body);
+        if (guarded && h.motorPairDefined) return;
+        h.movementPair = [pair[1], pair[2]];
+        h.motorPairDefined = true;
+    }],
     // The unit arrives singular too: the dialect's `move forward 2 rotations`
     // stores UNIT=rotation and the extension passes it through verbatim.
     [new RegExp(`^motors\\.move\\(\\s*${NUM}\\s*,\\s*['"](rotations?|degrees?|seconds?|cm|in)['"]` +
@@ -165,6 +185,7 @@ export const applyHubPython = (hubState, text) => {
         const rule = STATEMENTS.find(([pattern]) => pattern.test(statement));
         if (!rule) { unhandled.push(statement); continue; }
         const result = rule[1](hubState, statement.match(rule[0]));
+        if (result === UNHANDLED) { unhandled.push(statement); continue; }
         if (result && typeof result.then === 'function') pending.push(result);
         recognised++;
     }

@@ -1,0 +1,12 @@
+DEVICE SPIKE
+
+# Rover basics 11 - round the crater rim (reference solution).
+# Steering -20 slows the left wheel to 60 %: the rover drives a left-hand
+# curve of about 22 cm radius. Half a circle is a 180 degree change of yaw.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  reset yaw
+  start moving steering -20
+  wait until spike angle yaw < -176
+  stop movement

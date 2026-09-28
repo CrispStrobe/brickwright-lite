@@ -64,6 +64,7 @@ export class ArenaHubBridge {
             hub.motors.stop(side.port);
         }
         hub.movementPair = [left.port, right.port];
+        hub.motorPairDefined = false;
         this.lastPositions = {[left.port]: 0, [right.port]: 0};
         hub.resetHeading(this.sim.pose.heading);
         this._publish();

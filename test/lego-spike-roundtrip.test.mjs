@@ -140,15 +140,19 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // PIN MOVED c5ffaf0a -> d33fa40b (2026-09-28, sb3-creator#32): `show number`,
     // MakeCode's blocking showNumber — micro:bit MicroPython only; the SPIKE
     // path is untouched, and the assertions re-ran at the pin.
-    // PIN MOVED d33fa40b -> 1c9cbc90 (2026-09-28, SPIKE App 3 Python): this range
-    // DOES move the SPIKE path. Twelve dialect words gain blocks, and the motor
-    // UNIT field now stores the extension's menu value ("degrees", not "degree",
-    // which motorRunFor matched to nothing and so turned by 0). The phrases this
-    // artifact reads (start/stop motor, spike distance) are unchanged, and the
-    // assertions below re-ran at the pin; the unit fix is held by
-    // test/spike3-python-import.test.mjs against the shipping extension's menus.
-    // The range also carries upstream main's PRECHIN A2 board preset (examples)
-    // and #34's driving-base words, which this branch reuses.
+    // PIN MOVED d33fa40b -> 1cdc4fb5 (2026-09-28, sb3-creator#34): the SPIKE
+    // driving-base words (set movement motors/speed, start moving steering,
+    // start tank) plus one board-preset gallery example. The SPIKE path gains
+    // four words and changes none this round trip reads; the assertions re-ran
+    // at the pin.
+    // PIN MOVED 1cdc4fb5 -> 1c9cbc90 (2026-09-28, sb3-creator#35, SPIKE App 3
+    // Python): this range DOES move the SPIKE path. Eight dialect words gain
+    // blocks, and the motor UNIT field now stores the extension's menu value
+    // ("degrees", not "degree", which motorRunFor matched to nothing and so
+    // turned by 0). The phrases this artifact reads (start/stop motor, spike
+    // distance) are unchanged, and the assertions below re-ran at the pin; the
+    // unit fix is held by test/spike3-python-import.test.mjs against the
+    // shipping extension's menus.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
         '1c9cbc9069bef5995ba22cab35c1b87677edaca6');
 
