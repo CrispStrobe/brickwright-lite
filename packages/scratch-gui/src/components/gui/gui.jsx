@@ -1200,6 +1200,7 @@ const GUIComponent = props => {
                                             locale={intl.locale}
                                             isFullScreen={isFullScreen}
                                             onExitFullScreen={props.onExitFullScreen}
+                                            onEnterFullScreen={props.onEnterFullScreen}
                                         />
                                     </div>
                                 </React.Suspense>
@@ -1263,6 +1264,7 @@ GUIComponent.propTypes = {
     onClickLogo: PropTypes.func,
     onCloseAccountNav: PropTypes.func,
     onExtensionButtonClick: PropTypes.func,
+    onEnterFullScreen: PropTypes.func,
     onExitFullScreen: PropTypes.func,
     onLogOut: PropTypes.func,
     onOpenRegistration: PropTypes.func,
@@ -1321,6 +1323,7 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = dispatch => ({
     onSetPaneSize: (column, size) => dispatch(setPaneSize(column, size)),
+    onEnterFullScreen: () => dispatch(setFullScreen(true)),
     onExitFullScreen: () => dispatch(setFullScreen(false))
 });
 
