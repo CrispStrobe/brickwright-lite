@@ -15,6 +15,7 @@ const STRINGS = {
         brushPreset: 'Brush preset', brushCustom: 'Custom',
         brushFine: 'Fine · 2 px', brushMedium: 'Medium · 8 px',
         brushBroad: 'Broad · 24 px', brushLight: 'Light · 35%',
+        recentColours: 'Recent colours', reuseColour: 'Reuse colour',
 
         transform: 'Transform',
         positionX: 'X',
@@ -97,6 +98,7 @@ const STRINGS = {
         brushPreset: 'Pinselvorlage', brushCustom: 'Benutzerdefiniert',
         brushFine: 'Fein · 2 px', brushMedium: 'Mittel · 8 px',
         brushBroad: 'Breit · 24 px', brushLight: 'Leicht · 35%',
+        recentColours: 'Letzte Farben', reuseColour: 'Farbe erneut verwenden',
 
         transform: 'Transformieren',
         positionX: 'X',
