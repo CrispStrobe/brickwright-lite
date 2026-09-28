@@ -491,3 +491,117 @@ test('a MakeCode `? :` parses (it stopped the parser, and the rest came out as s
     assert.equal(init.type, 'Conditional');
     assert.equal(init.alternate.type, 'Conditional', 'right-associative');
 });
+
+// Batch 3 of the MakeCode census (2026-09-27). Each MakeCode call imports to a
+// line that compiles to the block that means it.
+const BATCH_3 = [
+    ['music.play(music.tonePlayable(262, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)',
+        'play tone 262 hz for (beat whole) ms until done', 'microbitplus_playtonemode'],
+    ['music.play(music.tonePlayable(392, 100), music.PlaybackMode.InBackground)',
+        'play tone 392 hz for 100 ms in background', 'microbitplus_playtonemode'],
+    ['music.play(music.builtinPlayableSoundEffect(soundExpression.giggle), music.PlaybackMode.UntilDone)',
+        'play sound giggle until done', 'microbitplus_playsound'],
+    ['music.playSoundEffect(music.createSoundEffect(WaveShape.Noise, 4120, 1266, 255, 148, 500, SoundExpressionEffect.Warble, ' +
+        'InterpolationCurve.Curve), SoundExpressionPlayMode.UntilDone)',
+    'play sound effect noise from 4120 to 1266 hz volume 255 to 148 for 500 ms effect warble curve curve until done',
+    'microbitplus_playsoundeffect'],
+    ['music.play(music.createSoundExpression(WaveShape.Square, 1600, 1, 255, 0, 300, SoundExpressionEffect.None, ' +
+        'InterpolationCurve.Logarithmic), music.PlaybackMode.InBackground)',
+    'play sound effect square from 1600 to 1 hz volume 255 to 0 for 300 ms effect none curve logarithmic in background',
+    'microbitplus_playsoundeffect'],
+    ['v = radio.receivedPacket(RadioPacketProperty.SignalStrength)', 'set v to last radio signal strength', 'microbitplus_radiorssi'],
+    ['if (input.logoIsPressed()) { basic.clearScreen() }', 'IF logo touched THEN:', 'microbitplus_islogo']
+];
+
+for (const [ts, line, opcode] of BATCH_3) {
+    test(`census batch 3: \`${ts.slice(0, 60)}\` imports as \`${line.slice(0, 50)}\` → ${opcode}`, {skip: canCompile ? false :
+        'packages/scratch-gui not integrated'}, () => {
+        const out = microbitToPseudocode(`let v = 0\nbasic.forever(function () {\n    ${ts}\n})\n`);
+        assert.deepEqual(out.unsupported, [], 'nothing refused');
+        assert.ok(out.code.includes(line), `\`${line}\` not in:\n${out.code}`);
+        assert.ok(opcodesOf(out.code).has(opcode), `${opcode} missing: the line parsed to nothing`);
+    });
+}
+
+test('the logo handler is polled like the buttons; a long press and a release are refused by name', () => {
+    const {code, unsupported} = microbitToPseudocode([
+        'input.onLogoEvent(TouchButtonEvent.Pressed, function () {',
+        '    basic.showNumber(1)',
+        '})',
+        'input.onLogoEvent(TouchButtonEvent.LongPressed, function () {',
+        '    basic.showNumber(2)',
+        '})'
+    ].join('\n'));
+    assert.match(code, /IF logo touched THEN:\n {6}display 1\n {6}wait until not \(logo touched\)/);
+    assert.deepEqual(unsupported, ['input.onLogoEvent(TouchButtonEvent.LongPressed) — polling sees the logo held, not a long press']);
+});
+
+test('what MicroPython\'s radio does not have is refused with the reason', () => {
+    const {unsupported} = microbitToPseudocode([
+        'radio.setTransmitSerialNumber(true)',
+        'let s = radio.receivedPacket(RadioPacketProperty.SerialNumber)'
+    ].join('\n'));
+    assert.ok(unsupported.some(u => /setTransmitSerialNumber\(\) — MicroPython's radio has no serial number/.test(u)), unsupported.join('\n'));
+    assert.ok(unsupported.some(u => /SerialNumber\) — a MicroPython radio packet carries no serial number/.test(u)), unsupported.join('\n'));
+});
+
+test('a function that returns a value hands it back in <name>_result; the caller calls, then reads it',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'function seriesSum(n: number) {',
+            '    if (n < 1) {',
+            '        return 0',
+            '    }',
+            '    return (n * (n + 1)) / 2',
+            '}',
+            'let total = seriesSum(4) + 1',
+            'basic.showNumber(seriesSum(total))'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /DEFINE seriesSum \(n\):\n {2}IF n < 1 THEN:\n {4}set seriesSum_result to 0\n {4}stop this script\n {2}set seriesSum_result to n \* \(n \+ 1\) \/ 2\n {2}stop this script/);
+        assert.match(code, / {2}seriesSum 4\n {2}set _mc1 to seriesSum_result\n {2}set total to _mc1 \+ 1\n {2}seriesSum total\n {2}set _mc2 to seriesSum_result\n {2}display _mc2/);
+        const ops = opcodesOf(code);
+        assert.ok(ops.has('procedures_call') && ops.has('control_stop'));
+    });
+
+test('a result read in a loop\'s condition is refused: the call would run once, the condition every pass', () => {
+    const {unsupported} = microbitToPseudocode('function f() {\n    return 1\n}\nwhile (f() > 0) {\n    basic.pause(1)\n}\n');
+    assert.ok(unsupported.some(u => /f\(\) as a value in a loop's condition/.test(u)), unsupported.join('\n'));
+});
+
+test('break leaves the loop through a flag; the rest of the pass is skipped', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const {code, unsupported} = microbitToPseudocode([
+        'let i = 0',
+        'while (i < 10) {',
+        '    i += 1',
+        '    if (i == 3) {',
+        '        break',
+        '    }',
+        '    basic.showNumber(i)',
+        '}'
+    ].join('\n'));
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /set _brk1 to 0\n {2}REPEAT UNTIL \(_brk1 = 1\) or \(not \(i < 10\)\):\n {4}change i by 1\n {4}IF i = 3 THEN:\n {6}set _brk1 to 1\n {4}IF _brk1 = 0 THEN:\n {6}display i/);
+});
+
+test('for … of a list is a counter over it (it was read as a counted for, and the body came out as stray lines)',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'let nums: number[] = [3, 5]',
+            'let total = 0',
+            'for (let n of nums) {',
+            '    total += n',
+            '}'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /set _i1 to 0\n {2}REPEAT UNTIL not \(_i1 < length of array "nums"\):\n {4}set n to item _i1 of array "nums"\n {4}change total by n\n {4}change _i1 by 1/);
+    });
+
+test('parentheses that change a value are kept ((n * (n + 1)) / 2 was n * n + 1 / 2)', () => {
+    const {code} = microbitToPseudocode('let a = 1\nlet b = 2\nlet c = 3\nlet r = (a + b) * c\nr = a - (b - c)\nr = a / (b * c)\nr = a * b + c\n');
+    assert.match(code, /set r to \(a \+ b\) \* c/);
+    assert.match(code, /set r to a - \(b - c\)/);
+    assert.match(code, /set r to a \/ \(b \* c\)/);
+    assert.match(code, /set r to a \* b \+ c/);
+});
