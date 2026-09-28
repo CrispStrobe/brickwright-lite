@@ -1980,6 +1980,24 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
         }
 
+        // RX into the program, the half the other tiers already had: without a
+        // `sendSerial` the panel hides its input line (it asks for the
+        // capability), so on this tier the console was output-only even though
+        // the adapter feeds the engine's UART. A string (a typed line) or one
+        // byte, the two shapes the console produces; the adapter takes a byte
+        // at a time. Deleted when absent so an earlier attach's input line
+        // cannot outlive it and type into a different engine.
+        if (lwAdapter && typeof lwAdapter.feedSerial === 'function') {
+            runner.sendSerial = (data) => {
+                const bytes = typeof data === 'number'
+                    ? [data & 0xff]
+                    : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff);
+                for (const b of bytes) lwAdapter.feedSerial(b);
+            };
+        } else {
+            delete runner.sendSerial;
+        }
+
         // `target` and `session` are the RUNNER's, not locals. Declaring them
         // with const here shadowed the outer pair, so attach() returned a live
         // session while the runner's stayed null and start() died on
