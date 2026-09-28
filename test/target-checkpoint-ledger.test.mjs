@@ -47,7 +47,7 @@ test('target checkpoint ledger has one strictly ordered work frontier', async ()
 
 test('target checkpoint ledger rejects an out-of-order completion', async () => {
     const rows = parseRows(await readFile(ledgerUrl, 'utf8'));
-    rows[2] = {...rows[2], state: 'DONE', evidence: '`deadbeef`'};
+    rows[3] = {...rows[3], state: 'DONE', evidence: '`deadbeef`'};
     assert.throws(() => validateRows(rows), /sequential execution order/);
 });
 
