@@ -21,7 +21,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.04x | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; display/sensors incomplete | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
-| SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model | **84.63x unpaced**, UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform merged and qualified; RTx unmeasured**; not yet a Lite process adapter |
+| SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model | Pybricks **84.63x unpaced**; exact Renode F413 **1.770x median, 1.383x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform and guarded active-workload RTx qualified**; not yet a Lite process adapter |
 | EV3 | MakeCode source simulator where source is present; real-brick transport | **1.361x median, 1.207x minimum** on an active ARM926 loop in hosted CI | no ARM9/AM1808 | no | **merged exact AM1808 foundation**: 300 MHz ARM926, high-vector SRAM, UART1, AINTC, GDB and a guarded throughput harness; not yet a Lite process adapter or full EV3 |
 
 The 2026-09-28 hosted core receipt remains the less noisy comparison for the
@@ -37,8 +37,9 @@ load average to 19.5 it fell to 0.50x. That is oversubscription, not an engine
 regression, and is why release RTx gates run on an isolated hosted runner.
 The removed Renode F411/F412 proxy figures were useful capability estimates,
 but they are not measurements of Prime's F413 platform and are no longer used
-as target claims. A repeatable exact-firmware virtual-time/wall-time receipt is
-still required before assigning Prime Renode an RTx value.
+as target claims. The exact F413 qualification now retires 96 million active
+guest instructions in each of five hosted passes and retains both the JSON
+receipt and UART proof in [run 36440006278](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36440006278).
 
 “Intentionally wall-paced” is not a failed benchmark. Those engines model an
 API and animation timeline, not chip cycles, and their browser loop sleeps to
@@ -80,8 +81,8 @@ rows must not be marked complete while an earlier row remains open.
 |---|---|---|---|---|
 | CP01 | DONE | Reconcile the target ledger | Every currently claimed target has an exact engine, workload and non-idle result; stale EV3 VPS and F412-proxy claims are removed. | Renode [run 36437429134](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36437429134), docs `7a5d4173`; LabWired `bdffe947` |
 | CP02 | DONE | Enforce ordered evidence | A repository test rejects fewer than ten checkpoints, malformed IDs/states, completion without immutable evidence, and any completed row after the first open row. | Brickwright Lite [PR 472](https://github.com/CrispStrobe/brickwright-lite/pull/472) |
-| CP03 | NEXT | Qualify exact SPIKE Prime RTx | The STM32F413VG platform runs a source-built public firmware workload; five non-idle passes report exact instruction deltas, median/minimum RTx, UART/brick-state proof, and median plus minimum are at least 1.0x. | pending |
-| CP04 | TODO | Supervise Renode as an optional native backend | The Tauri broker launches a pinned Renode executable without a shell, uses a random loopback port and token, enforces time/output limits, and always kills the process tree on reset, project close and app exit. | pending |
+| CP03 | DONE | Qualify exact SPIKE Prime RTx | The STM32F413VG platform runs a source-built public firmware workload; five non-idle passes report exact instruction deltas, median/minimum RTx, UART/brick-state proof, and median plus minimum are at least 1.0x. | Renode [PR 7](https://github.com/CrispStrobe/renode-spike-prime/pull/7), [run 36440006278](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36440006278), merge `06d86c51` |
+| CP04 | NEXT | Supervise Renode as an optional native backend | The Tauri broker launches a pinned Renode executable without a shell, uses a random loopback port and token, enforces time/output limits, and always kills the process tree on reset, project close and app exit. | pending |
 | CP05 | TODO | Connect SPIKE Prime to Lite | The debugger can load the public simulation firmware, run/pause/reset/step, inspect registers and memory, set a breakpoint, and receive bounded `brick-state/v1` updates through CP04. | pending |
 | CP06 | TODO | Connect EV3 to Lite | The same debugger contract operates the source-built EV3 smoke image through Renode/GDB, including UART and AINTC IRQ evidence, without private recovery firmware. | pending |
 | CP07 | TODO | Model DA8xx Timer64 | Exact documented register behavior and IRQ routing are covered by unit tests and exercised by a source-built ARM926 payload. | pending |
