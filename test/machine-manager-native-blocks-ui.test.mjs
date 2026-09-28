@@ -131,3 +131,27 @@ test('FreeDOS VGA action selects the named profile and keeps four local files in
     }
     renderer.unmount();
 });
+
+test('FreeDOS file selection survives React 16 clearing a pooled event before state flush', async () => {
+    const MachineManager = await loadManager();
+    const runs = [];
+    let renderer;
+    await act(async () => {
+        renderer = create(React.createElement(MachineManager, {
+            store: createMemoryMachineStore(), onRun: cfg => runs.push(cfg), onClose() {}
+        }));
+    });
+    const floppy = {name: 'boot.img', size: 80 * 2 * 15 * 512,
+        arrayBuffer: async () => Uint8Array.of(1).buffer};
+    const event = {target: {files: [floppy]}};
+    await act(async () => {
+        renderer.root.findByProps({'data-testid': 'bw-mm-free386-floppy'}).props.onChange(event);
+        event.target = null; // React 16 pooled SyntheticEvent after the handler returns.
+    });
+    await act(async () => {
+        await renderer.root.findByProps({'data-testid': 'bw-mm-free386-run'}).props.onClick();
+    });
+    assert.equal(runs.length, 1);
+    assert.equal(runs[0].slots.floppy.url, 'local-media:floppy');
+    renderer.unmount();
+});

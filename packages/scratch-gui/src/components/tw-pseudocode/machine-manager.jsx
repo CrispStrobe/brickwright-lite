@@ -262,8 +262,10 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                         ].map(([slot, label, accept]) => <label key={slot} style={{fontSize: 11}}>
                             {label}
                             <input type="file" accept={accept} data-testid={`bw-mm-free386-${slot}`}
-                                onChange={e => setFreeMedia(current => ({...current,
-                                    [slot]: e.target.files?.[0] || null}))} />
+                                onChange={e => {
+                                    const file = e.target.files?.[0] || null;
+                                    setFreeMedia(current => ({...current, [slot]: file}));
+                                }} />
                         </label>)}
                         <button onClick={runFree386} style={primary}
                             data-testid="bw-mm-free386-run">Boot FreeDOS VGA</button>
