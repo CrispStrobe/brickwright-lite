@@ -343,7 +343,22 @@ try {
     assert.ok(pixel, 'the saved SB3 must contain indexed pixel source');
     assert.equal(pixel.document.layers.length, 2);
     assert.equal(pixel.document.layers[1].visible, false);
-    assert.equal(pixel.document.layers[1].opacity, 0.5);
+    // ONE, not 0.5, and the 0.5 was a leftover. This block runs AFTER the
+    // selection tests, and those begin by putting the Highlights layer back to
+    // full opacity — `newLayer.click(); opacity.fill('100')` — so the wand and
+    // lasso operate on opaque pixels. The two Undos that follow are both
+    // consumed by the pixel clears they assert are restored, so nothing reverts
+    // that 100. Measured: the saved document reads
+    // [{Pixels, o:1, v:true}, {Highlights, o:1, v:false}], which is exactly what
+    // the steps above command, so the serialiser is faithful and it was the
+    // expectation that had drifted from the script it lives in.
+    //
+    // Opacity FIDELITY is not lost from the gate by this change: it is proved
+    // earlier and more directly, where the rendered SVG is required to contain
+    // `<g opacity="0.5">` after the layer is set to 50. What this block is about
+    // is that a HIDDEN layer keeps its pixels and its recorded opacity, whatever
+    // that opacity happens to be.
+    assert.equal(pixel.document.layers[1].opacity, 1);
     assert.equal(pixel.document.layers[1].name, 'Highlights');
     assert.ok(pixel.document.layers[1].content.value.pixels.includes(11),
         'the hidden layer must retain its editable pixels');
