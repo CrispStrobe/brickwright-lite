@@ -78,7 +78,7 @@ const PaintEditorComponent = props => {
         const frame = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
         return () => cancelAnimationFrame(frame);
     }, [canvasOnly]);
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
         if (!canvasOnly) return undefined;
         const leaveOnEscape = event => {
             if (event.key !== 'Escape') return;

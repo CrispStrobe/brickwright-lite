@@ -28,7 +28,7 @@ const openEditor = async page => {
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     await page.goto(url, {waitUntil: 'domcontentloaded'});
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
-    await canvas(page).waitFor();
+    await canvas(page).boundingBox();
 };
 
 try {
@@ -51,8 +51,7 @@ try {
     const initialCurve = await curve(page);
 
     await page.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Reshape"]').click();
-    await page.mouse.click(b.x, b.y);
-    await page.waitForTimeout(300);
+    await page.mouse.click(a.x, a.y);
     await page.mouse.click(b.x, b.y);
     const before = await handleState(page);
     assert.ok(before, 'one curved node exposes two handles');
@@ -83,7 +82,7 @@ try {
     await page.getByText('Load from your computer', {exact: true}).click();
     await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(saved);
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
-    await canvas(page).waitFor();
+    await canvas(page).boundingBox();
     assert.equal(await curve(page), editedCurve, 'the asymmetric Bézier curve survives SB3 save/reopen');
     assert.deepEqual(errors, [], 'handle editing causes no page errors');
     await page.close();
@@ -109,8 +108,7 @@ try {
     await tablet.mouse.click(tc.x, tc.y);
     await tablet.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Finish path"]').tap();
     await tablet.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Reshape"]').tap();
-    await tablet.touchscreen.tap(tb.x, tb.y);
-    await tablet.waitForTimeout(300);
+    await tablet.touchscreen.tap(ta.x, ta.y);
     await tablet.touchscreen.tap(tb.x, tb.y);
     const touchBefore = await handleState(tablet);
     assert.ok(touchBefore, 'touch selects a curved node');

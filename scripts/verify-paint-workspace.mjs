@@ -55,13 +55,19 @@ try {
         await focus.tap();
         assert.equal((await editor.boundingBox()).width, bounds.width,
             'touch must return from canvas focus without losing the editor');
-        // ESCAPE-TO-EXIT IS NOT THIS COMMIT'S FEATURE. It arrives later in this
-        // series, in the change that qualifies the editor gates and fullscreen
-        // escape; asserting it here made the gate fail for a behaviour the code
-        // under it does not yet have — a 30 s timeout waiting for a width that
-        // never returns. The tap round trip above is what this commit ships, and
-        // that is what it proves. The Escape assertion belongs to the commit
-        // that implements Escape, and lives there.
+        // ESCAPE-TO-EXIT IS THIS COMMIT'S FEATURE, so this is where it is proved.
+        // It was asserted earlier in the series, against code that did not yet
+        // have it, and timed out for 30 s waiting on a width that never returned.
+        await focus.tap();
+        await page.waitForFunction(width => Math.abs(document.querySelector('[data-testid="bw-paint-workspace"]')
+            .getBoundingClientRect().width - width) < 1, viewport.width);
+        await page.keyboard.press('Escape');
+        // Both transitions get a condition. Escape STARTS a layout change; an
+        // assertion straight after the keypress read the still-focused width.
+        await page.waitForFunction(width => Math.abs(document.querySelector('[data-testid="bw-paint-workspace"]')
+            .getBoundingClientRect().width - width) < 1, bounds.width);
+        assert.equal((await editor.boundingBox()).width, bounds.width,
+            'Escape must return from canvas focus');
 
         if (viewport.width === 834) {
             const canvas = page.locator('[class*="paint-editor_canvas-container"]').first();
@@ -134,6 +140,8 @@ try {
     await paint.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(savedProject);
     await paint.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
     await paint.getByTestId('bw-paint-workspace').waitFor();
+    assert.ok(await paint.getByTestId('bw-paint-workspace').boundingBox(),
+        'the paint workspace reopens with the project');
     assert.equal(await alphaCount(paint), paintedOpacity,
         'the semitransparent brush stroke must survive SB3 save/reopen');
     await paint.close();

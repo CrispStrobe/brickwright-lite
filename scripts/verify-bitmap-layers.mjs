@@ -17,7 +17,7 @@ const editor = page => page.locator('canvas[resize="true"]:visible');
 const showLayers = async page => {
     const panel = page.getByTestId('bw-bitmap-layers-panel');
     if (!await panel.isVisible().catch(() => false)) await page.getByTestId('bw-bitmap-layers-toggle').click();
-    await panel.waitFor();
+    assert.ok(await panel.isVisible(), 'the bitmap layers panel opens');
 };
 const openEditor = async page => {
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
