@@ -128,6 +128,36 @@ try {
       `${orientation}: every tab in the consolidated row actually switches`,
       `${switched}/${chrome.tabs}`);
 
+    // THE PANE BESIDE THE EDITOR MUST HAVE ROOM. Upstream gives the editor
+    // column `flex: 1 0 598px` — grow freely, never shrink — and on a 1024
+    // layout that starves its neighbour. Measured on the Circuit tab in
+    // landscape, where the parts rail is open: the editor grew to 942px, the
+    // stage column (which the debugger is portaled into) collapsed to its 120px
+    // min-width, and its right edge landed at 1071 against a 1024 layout. A
+    // 120px debugger is not a debugger, and the overflow is invisible because
+    // the page itself does not scroll.
+    const columns = await page.evaluate(() => {
+      const stage = document.querySelector('[class*="gui_stage-and-targ"]');
+      const editor = document.querySelector('[class*="gui_editor-wrapper"]');
+      if (!stage || !editor) return {found: false};
+      const s = stage.getBoundingClientRect();
+      return {
+        found: true,
+        stageW: Math.round(s.width), stageRight: Math.round(s.right),
+        editorW: Math.round(editor.getBoundingClientRect().width),
+        layoutW: window.innerWidth,
+        stageShown: s.width > 0,
+      };
+    });
+    if (columns.found && columns.stageShown) {
+      check(columns.stageRight <= columns.layoutW + 1,
+        `${orientation}: the right-hand column does not overflow the layout`,
+        `right edge ${columns.stageRight} against ${columns.layoutW} (editor ${columns.editorW})`);
+      check(columns.stageW >= 200,
+        `${orientation}: the right-hand column is wide enough to use`,
+        `${columns.stageW}px (120 is its bare min-width, which is what starvation looks like)`);
+    }
+
     // A fixed strip floats over everything by nature, so prove it does not
     // float over the menus it now sits beside.
     const menus = await page.evaluate(() => {

@@ -53,6 +53,12 @@ export const TABS_H = 34;
 /** Distance from the right edge, clearing the menu bar's right-hand item. */
 export const TABS_RIGHT = 48;
 /**
+ * Floor for the editor column, in CSS pixels — upstream's own flex-basis.
+ * It is a FLOOR and not a fixed width: the point is to let that column shrink
+ * back to it so the right-hand pane can have some width. See the note below.
+ */
+export const EDITOR_MIN = 598;
+/**
  * Tab height. Stays at or above the 32px touch floor deliberately — shrinking
  * the row must not shrink the thing you tap.
  */
@@ -87,6 +93,24 @@ html[${ATTR}] [class*="gui_tab"][role="tab"] {
     min-height: ${TAB_H}px;
     padding-top: 0;
     padding-bottom: 0;
+}
+/* LET THE EDITOR COLUMN SHRINK, so the pane beside it can exist.
+   Upstream gives it 'flex: 1 0 598px' -- grow freely, NEVER shrink. On a 1024
+   layout that starves its neighbour: measured on the Circuit tab in landscape,
+   where the parts rail is open, the editor grew to 942px and the stage column
+   (which is what the debugger is portaled into) collapsed to its 120px
+   min-width and then overflowed the layout, right edge 1071 against 1024. A
+   120px debugger is not a debugger.
+   With shrink enabled and 598 kept as a floor: editor 942 -> 660, debugger
+   120 -> 355, right edge 1071 -> 1024. The designer keeps its bench — the
+   canvas stays 700 wide inside an overflow-x: auto pane (scrollWidth 700,
+   client 418), which is how it already behaved, and its right edge is inside
+   the layout.
+   Portrait is unaffected: the rail starts closed there, so the editor was
+   already 660 and the column already 355. */
+html[${ATTR}] [class*="gui_editor-wrapper"] {
+    flex: 1 1 ${EDITOR_MIN}px;
+    min-width: ${EDITOR_MIN}px;
 }
 `;
 

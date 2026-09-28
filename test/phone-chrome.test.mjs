@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {chromeRule, MENU_H, TABS_H, TAB_H, TABS_RIGHT} from '../overlay/scratch-gui/src/lib/phone-chrome.js';
+import {chromeRule, MENU_H, TABS_H, TAB_H, TABS_RIGHT, EDITOR_MIN} from '../overlay/scratch-gui/src/lib/phone-chrome.js';
 
 test('the rule is inert until the touch flag is set', () => {
     // Same flag as the tap-target floor, so the two cannot disagree about
@@ -61,4 +61,32 @@ test('the chrome is now ONE row, and bounded', () => {
     assert.ok(MENU_H < 48, `the menu row must shrink below 48px, got ${MENU_H}`);
     assert.ok(MENU_H >= TABS_H, `a ${TABS_H}px strip cannot sit inside a ${MENU_H}px row`);
     assert.ok(MENU_H < 92, 'the whole chrome must beat the two-row 92px it replaces');
+});
+
+test('the editor column is allowed to shrink, with a floor', () => {
+    // Upstream gives it `flex: 1 0 598px` — grow freely, NEVER shrink — which on
+    // a 1024 layout starves the pane beside it: the debugger collapsed to its
+    // 120px min-width and overflowed the layout. The rule must enable shrink
+    // (the middle number) AND keep a floor, or the designer gets crushed
+    // instead. Both halves are load-bearing, so both are asserted.
+    const css = chromeRule();
+    const block = css.slice(css.indexOf('gui_editor-wrapper'));
+    assert.match(block, new RegExp('flex:\\s*1\\s+1\\s+' + EDITOR_MIN + 'px'),
+        'shrink must be 1; `1 0` is the upstream value that caused this');
+    assert.match(block, new RegExp('min-width:\\s*' + EDITOR_MIN + 'px'),
+        'and a floor, so shrinking cannot crush the designer');
+    assert.ok(EDITOR_MIN > 400, `${EDITOR_MIN}px would not hold the designer`);
+});
+
+test('the chrome rule set stays scoped to the touch flag as it grows', () => {
+    // Four rules now. Every one must still be gated, or a desktop inherits a
+    // phone's layout.
+    const css = chromeRule().replace(/\/\*[\s\S]*?\*\//g, '');
+    const selectors = css.split('{').slice(0, -1)
+        .map(chunk => chunk.split('\n').filter(Boolean).pop().trim())
+        .filter(Boolean);
+    assert.ok(selectors.length >= 4, `expected at least 4 selectors, got ${selectors.length}`);
+    for (const sel of selectors) {
+        assert.ok(sel.startsWith('html[data-bw-touch]'), `"${sel}" is not gated on the flag`);
+    }
 });
