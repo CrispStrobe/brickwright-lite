@@ -29,6 +29,7 @@ const CAPABILITY_RESOURCE = Object.freeze({__proto__: null,
     'renode.spike.step': 'renode/spike-prime',
     'renode.spike.registers.read': 'renode/spike-prime',
     'renode.spike.memory.read': 'renode/spike-prime',
+    'renode.spike.state.read': 'renode/spike-prime',
     'renode.spike.breakpoint.set': 'renode/spike-prime',
     'renode.spike.breakpoint.clear': 'renode/spike-prime'
 });

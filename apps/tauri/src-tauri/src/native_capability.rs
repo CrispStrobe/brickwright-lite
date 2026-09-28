@@ -60,6 +60,7 @@ fn execute(
             usize::try_from(args["length"].as_u64().expect("validated length"))
                 .expect("bounded length"),
         ),
+        Operation::RenodeSpikeStateRead => debugger.state().map(|value| value.to_string()),
         Operation::RenodeSpikeBreakpointSet => debugger
             .set_breakpoint(
                 u32::try_from(args["address"].as_u64().expect("validated address"))

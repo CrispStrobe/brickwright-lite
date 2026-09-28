@@ -71,6 +71,7 @@ impl NativePolicyState {
                     Resource::RenodeSpikePrime,
                 ),
                 (Operation::RenodeSpikeMemoryRead, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeStateRead, Resource::RenodeSpikePrime),
                 (
                     Operation::RenodeSpikeBreakpointSet,
                     Resource::RenodeSpikePrime,
@@ -152,6 +153,7 @@ pub(crate) enum Operation {
     RenodeSpikeStep,
     RenodeSpikeRegistersRead,
     RenodeSpikeMemoryRead,
+    RenodeSpikeStateRead,
     RenodeSpikeBreakpointSet,
     RenodeSpikeBreakpointClear,
 }
@@ -168,6 +170,7 @@ impl Operation {
             "renode.spike.step" => Some(Self::RenodeSpikeStep),
             "renode.spike.registers.read" => Some(Self::RenodeSpikeRegistersRead),
             "renode.spike.memory.read" => Some(Self::RenodeSpikeMemoryRead),
+            "renode.spike.state.read" => Some(Self::RenodeSpikeStateRead),
             "renode.spike.breakpoint.set" => Some(Self::RenodeSpikeBreakpointSet),
             "renode.spike.breakpoint.clear" => Some(Self::RenodeSpikeBreakpointClear),
             _ => None,
@@ -354,6 +357,7 @@ impl RedactedAuditRow {
                 Operation::RenodeSpikeStep => "renode.spike.step",
                 Operation::RenodeSpikeRegistersRead => "renode.spike.registers.read",
                 Operation::RenodeSpikeMemoryRead => "renode.spike.memory.read",
+                Operation::RenodeSpikeStateRead => "renode.spike.state.read",
                 Operation::RenodeSpikeBreakpointSet => "renode.spike.breakpoint.set",
                 Operation::RenodeSpikeBreakpointClear => "renode.spike.breakpoint.clear",
             }),
@@ -746,14 +750,15 @@ mod tests {
                 "renode/spike-prime",
                 json!({"address": 0x20000000u64, "length": 4096}),
             ),
+            (9, "renode.spike.state.read", "renode/spike-prime", empty()),
             (
-                9,
+                10,
                 "renode.spike.breakpoint.set",
                 "renode/spike-prime",
                 json!({"address": u32::MAX}),
             ),
             (
-                10,
+                11,
                 "renode.spike.breakpoint.clear",
                 "renode/spike-prime",
                 json!({"address": 0}),
@@ -767,7 +772,7 @@ mod tests {
             state.authorize_broker_call(
                 BROKER_LABEL,
                 lease,
-                11,
+                12,
                 "renode.spike.session.start",
                 "platform/default",
                 &empty()

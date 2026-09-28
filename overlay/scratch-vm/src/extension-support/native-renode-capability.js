@@ -9,6 +9,7 @@ const OPERATIONS = Object.freeze({
     step: 'renode.spike.step',
     registers: 'renode.spike.registers.read',
     memory: 'renode.spike.memory.read',
+    state: 'renode.spike.state.read',
     setBreakpoint: 'renode.spike.breakpoint.set',
     clearBreakpoint: 'renode.spike.breakpoint.clear'
 });

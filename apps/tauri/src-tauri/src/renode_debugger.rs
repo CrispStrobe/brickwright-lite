@@ -3,6 +3,7 @@
 //! It returns status words only. Ports, tokens, paths and process handles stay
 //! in native state and cannot cross into either webview.
 
+use crate::renode_brick_state::BrickStateFeed;
 use crate::renode_rsp::{RenodeRsp, RenodeRspInterrupt};
 use crate::renode_supervisor::{RenodeSupervisor, TeardownReason};
 use serde_json::{json, Value};
@@ -17,6 +18,7 @@ struct Session {
     rsp: Arc<Mutex<RenodeRsp>>,
     interrupt: RenodeRspInterrupt,
     running: Arc<AtomicBool>,
+    state: BrickStateFeed,
 }
 
 pub(crate) struct RenodeDebugger {
@@ -58,10 +60,31 @@ impl RenodeDebugger {
                 return Err(error);
             }
         };
+        let state_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.state_port);
+        let state_deadline = Instant::now() + Duration::from_secs(5);
+        let state = loop {
+            match BrickStateFeed::connect(state_address) {
+                Ok(state) => match state.wait_ready(Duration::from_secs(2)) {
+                    Ok(()) => break state,
+                    Err(error) => {
+                        supervisor.teardown(TeardownReason::Reset);
+                        return Err(error);
+                    }
+                },
+                Err(_) if Instant::now() < state_deadline => {
+                    thread::sleep(Duration::from_millis(25))
+                }
+                Err(error) => {
+                    supervisor.teardown(TeardownReason::Reset);
+                    return Err(error);
+                }
+            }
+        };
         *session = Some(Session {
             rsp: Arc::new(Mutex::new(rsp)),
             interrupt,
             running: Arc::new(AtomicBool::new(false)),
+            state,
         });
         Ok("ready")
     }
@@ -210,6 +233,18 @@ impl RenodeDebugger {
         } else {
             Ok("paused")
         }
+    }
+
+    pub(crate) fn state(&self) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        serde_json::to_value(active.state.latest()?)
+            .map_err(|_| "brick-state snapshot unavailable".to_owned())
     }
 
     #[cfg(test)]
