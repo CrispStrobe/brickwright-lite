@@ -2,6 +2,12 @@ name: tauri
 
 on:
   workflow_dispatch:
+    inputs:
+      spike_prime_only:
+        description: Run only the heavy pinned SPIKE Prime Renode integration proof
+        required: false
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -91,6 +97,7 @@ concurrency:
 
 jobs:
   test:
+    if: github.event_name != 'workflow_dispatch' || inputs.spike_prime_only != true
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -138,6 +145,7 @@ jobs:
   # release.yml builds the app and stops. tauri-driver drives the real binary, so every invoke
   # below crosses the real Tauri ACL in the real process.
   e2e:
+    if: github.event_name != 'workflow_dispatch' || inputs.spike_prime_only != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -267,7 +275,7 @@ jobs:
   # job is the release-grade CP05 proof that Lite's semantic broker drives the real emulator,
   # not only the bounded fake sockets in the ordinary Rust suite.
   spike-prime-renode:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.spike_prime_only == true
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
