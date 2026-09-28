@@ -27,6 +27,7 @@ import {
     ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
 } from '../../lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
+import {PALETTE_PRESETS} from '../../lib/bw-makecode/palette-presets.js';
 
 const L10N = {
     en: {
@@ -54,6 +55,13 @@ const L10N = {
         'px.paletteColour': 'Edit palette colour',
         'px.resetPalette': 'Reset palette', 'px.paletteHint': 'Change the colour of every pixel with this index.',
         'px.importPalette': 'Import palette',
+        'px.palettePreset': 'Preset', 'px.paletteCustom': 'Custom',
+        'px.palette.Arcade': 'Arcade', 'px.palette.Matte': 'Matte',
+        'px.palette.Pastel': 'Pastel', 'px.palette.Sweet': 'Sweet',
+        'px.palette.Poke': 'Poke', 'px.palette.Adventure': 'Adventure',
+        'px.palette.DIY': 'DIY', 'px.palette.Adafruit': 'Adafruit',
+        'px.palette.StillLife': 'Still Life', 'px.palette.SteamPunk': 'Steam Punk',
+        'px.palette.Grayscale': 'Grayscale',
         'px.invalidPalette': 'Use a 15- or 16-colour .hex, .txt or GIMP .gpl palette.',
         'px.filledRect': 'Filled rectangle', 'px.filledCircle': 'Filled circle',
         'px.brushSize': 'Brush size', 'px.replaceColour': 'Replace colour',
@@ -99,6 +107,13 @@ const L10N = {
         'px.paletteColour': 'Palettenfarbe bearbeiten',
         'px.resetPalette': 'Palette zurücksetzen', 'px.paletteHint': 'Die Farbe aller Pixel mit diesem Index ändern.',
         'px.importPalette': 'Palette importieren',
+        'px.palettePreset': 'Vorlage', 'px.paletteCustom': 'Benutzerdefiniert',
+        'px.palette.Arcade': 'Arcade', 'px.palette.Matte': 'Matt',
+        'px.palette.Pastel': 'Pastell', 'px.palette.Sweet': 'Sweet',
+        'px.palette.Poke': 'Poke', 'px.palette.Adventure': 'Abenteuer',
+        'px.palette.DIY': 'DIY', 'px.palette.Adafruit': 'Adafruit',
+        'px.palette.StillLife': 'Stillleben', 'px.palette.SteamPunk': 'Steampunk',
+        'px.palette.Grayscale': 'Graustufen',
         'px.invalidPalette': 'Eine .hex-, .txt- oder GIMP-.gpl-Palette mit 15 oder 16 Farben verwenden.',
         'px.filledRect': 'Gefülltes Rechteck', 'px.filledCircle': 'Gefüllter Kreis',
         'px.brushSize': 'Pinselgröße', 'px.replaceColour': 'Farbe ersetzen',
@@ -1074,11 +1089,17 @@ class PixelArtEditor extends React.Component {
         });
     }
 
-    resetPalette () {
-        if (this.state.palette.every((value, index) => value === ARCADE_PALETTE[index])) return;
+    applyPalettePreset (id) {
+        const preset = PALETTE_PRESETS.find(item => item.id === id);
+        if (!preset || (this.state.palette.length === preset.colors.length && this.state.palette.every((value, index) =>
+            (value?.toLowerCase() ?? null) === preset.colors[index]))) return;
         this.remember();
         this.paletteGesture = false;
-        this.setState({palette: [...ARCADE_PALETTE], status: '', paletteError: ''});
+        this.setState({palette: [...preset.colors], status: '', paletteError: ''});
+    }
+
+    resetPalette () {
+        this.applyPalettePreset('Arcade');
     }
 
     async importPalette (event) {
@@ -1330,6 +1351,8 @@ class PixelArtEditor extends React.Component {
         const activeLayer = layers.find(layer => layer.id === activeLayerId);
         const activeFrame = frames.find(frame => frame.id === activeFrameId);
         const frameIndex = frames.findIndex(frame => frame.id === activeFrameId);
+        const palettePreset = PALETTE_PRESETS.find(preset => palette.length === preset.colors.length &&
+            palette.every((value, index) => (value?.toLowerCase() ?? null) === preset.colors[index]))?.id || '';
         const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12,
             whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
             border: `1px solid ${active ? '#4c97ff' : '#cbd5e1'}`, background: active ? '#e0edff' : '#fff'});
@@ -1519,6 +1542,18 @@ class PixelArtEditor extends React.Component {
                 </div> : null}
                 {panel === 'palette' ? <div style={{...popover, width: 300, display: 'flex',
                     alignItems: 'center', flexWrap: 'wrap', gap: 8}}>
+                    <label style={{display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44,
+                        fontSize: 12}}>{t(locale, 'px.palettePreset')}
+                        <select value={palettePreset} data-testid="bw-pixel-palette-preset"
+                            aria-label={t(locale, 'px.palettePreset')}
+                            style={{maxWidth: 170, minHeight: 44}}
+                            onChange={event => this.applyPalettePreset(event.target.value)}>
+                            <option value="" disabled>{t(locale, 'px.paletteCustom')}</option>
+                            {PALETTE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>
+                                {t(locale, `px.palette.${preset.id}`)}
+                            </option>)}
+                        </select>
+                    </label>
                     <label style={{display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44,
                         fontSize: 12}} title={t(locale, 'px.paletteHint')}>
                         {t(locale, 'px.paletteColour')} {colour}

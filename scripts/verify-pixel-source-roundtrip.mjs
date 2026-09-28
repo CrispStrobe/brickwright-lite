@@ -546,6 +546,36 @@ try {
     await page.getByTestId('bw-pixel-save').click();
     const resliced = await saveProject(page);
     assert.equal(resliced.costumes.find(record => record.document.animation)?.document.animation.frames.length, 2);
+    console.log('checking MakeCode Arcade palette presets');
+    await page.getByTestId('bw-pixel-colour-2').click();
+    await showPanel('palette');
+    const presetPicker = page.getByTestId('bw-pixel-palette-preset');
+    assert.equal(await presetPicker.locator('option').count(), 12,
+        'the menu offers all 11 MakeCode Arcade presets plus Custom');
+    await presetPicker.selectOption('Pastel');
+    assert.equal(await page.getByTestId('bw-pixel-palette-edit').inputValue(), '#f98284',
+        'Pastel sets the official Arcade palette entry');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await presetPicker.inputValue(), '', 'undo restores the previous custom palette');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Redo', exact: true}).click();
+    assert.equal(await presetPicker.inputValue(), 'Pastel', 'redo reapplies the preset');
+    await page.getByTestId('bw-pixel-save').click();
+    const presetArchive = await saveProject(page);
+    const presetDocument = presetArchive.costumes.find(record => record.document.animation)?.document;
+    const previousDocument = resliced.costumes.find(record => record.document.animation)?.document;
+    assert.equal(presetDocument.palette[2], '#f98284', 'the editable source stores the chosen palette');
+    assert.deepEqual(presetDocument.animation.frames, previousDocument.animation.frames,
+        'changing palettes keeps every frame’s indexed pixels intact');
+    await page.close();
+    page = await open();
+    await page.getByText('File', {exact: true}).click();
+    await page.getByText('Load from your computer', {exact: true}).click();
+    await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(file);
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await page.getByTestId('bw-pixel-toggle').click();
+    await showPanel('palette');
+    assert.equal(await page.getByTestId('bw-pixel-palette-preset').inputValue(), 'Pastel',
+        'the preset is recognized after SB3 save and reopen');
     await page.close();
     console.log('checking iPad toolbar layout and touch controls');
     for (const viewport of [{width: 834, height: 1194}, {width: 1024, height: 768}]) {
@@ -588,6 +618,13 @@ try {
         assert.equal(await tablet.getByTestId('bw-pixel-tool-hand').getAttribute('aria-pressed'), 'true');
         await tablet.getByTestId('bw-pixel-palette-toggle').tap();
         assert.ok(await tablet.getByTestId('bw-pixel-palette-edit').isVisible());
+        const tabletPreset = tablet.getByTestId('bw-pixel-palette-preset');
+        assert.ok((await tabletPreset.boundingBox()).height >= 44,
+            'palette presets have a touch-sized control');
+        await tablet.getByTestId('bw-pixel-colour-2').tap();
+        await tabletPreset.selectOption('Grayscale');
+        assert.equal(await tablet.getByTestId('bw-pixel-palette-edit').inputValue(), '#ededed',
+            'the grayscale preset works at iPad width');
         await tablet.screenshot({path: path.join(path.dirname(file), `pixel-ipad-${viewport.width}.png`)});
         await tablet.close();
     }

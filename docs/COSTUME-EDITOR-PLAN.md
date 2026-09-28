@@ -106,7 +106,8 @@ selection transforms and masks remain ahead.
   into the Scratch SVG while retaining every layer's palette indices in editable
   source. It also exports a transparent PNG from the current layer stack. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
-- Pixel art can use the default Arcade palette, edit its 15 colours, or import
+- Pixel art can use the default Arcade palette, choose any of the 11 preset
+  palettes from MakeCode Arcade's Asset Editor, edit its 15 colours, or import
   a 15/16-colour `.hex`, `.txt` or GIMP `.gpl` palette. Indexed
   pixels remain unchanged when a colour changes. Custom palettes use a version
   2 source document and render into Scratch SVG; default palettes keep version
@@ -154,7 +155,7 @@ selection transforms and masks remain ahead.
    toolbar; selection transforms, crop and brush presets remain. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
-5. **Pixel and animation.** Add palette presets and improve timeline thumbnails.
+5. **Pixel and animation.** Improve timeline thumbnails and palette switching feedback.
    Export frames as costumes without hiding
    animation-only data in Scratch's render asset.
 6. **Parity gate.** Run the same task corpus on desktop mouse, trackpad, iPad
@@ -180,7 +181,7 @@ missing data or export behavior.
 | Pen, eraser, fill, line, rectangle, circle, eyedropper, marquee, pan | Available, including brush sizes 1–8, filled shapes, marquee copy/cut/paste, and keyboard tool shortcuts | Test selection and toolbar interaction on iPad |
 | Flip and quarter-turn, with selection scope | Available, with touch buttons, undo, and arrow-key selection moves | Test on iPad |
 | Foreground/background colours, swap, colour replace and outline | Foreground colour, selection-aware index-preserving replace and outline | Add secondary colour and swap |
-| Palette presets and 15 editable colours | All 15 colours can be edited or imported from `.hex`/`.txt`/`.gpl`; version 2 source, Scratch rendering and Arcade export use them | Add built-in presets |
+| Palette presets and 15 editable colours | MakeCode Arcade's 11 built-in presets, editing and `.hex`/`.txt`/`.gpl` import use versioned source, Scratch rendering and Arcade export | Test preset selection and persistence on iPad |
 | Animation timeline, frame order, interval, onion skin | Editable frames, thumbnails, duration, order, playback and onion skin use version 3 source; the active frame renders as the Scratch costume | Export frames as costumes and test touch interaction on iPad |
 | Sprite-sheet and `img` import/export | Exact `img` literal paste/export, PNG export and horizontal transparent sprite-sheet PNG import/export exist | Add configurable palette conversion and animation metadata exchange |
 | Tile and tilemap asset editing | Imported tilemaps are rendered as costumes | Add editable tile set/map source and Arcade-compatible export |
