@@ -27,6 +27,7 @@ import FillColorIndicatorComponent from '../../containers/fill-color-indicator.j
 import FillMode from '../../containers/fill-mode.jsx';
 import InputGroup from '../input-group/input-group.jsx';
 import LineMode from '../../containers/line-mode.jsx';
+import PenMode from '../../containers/pen-mode.jsx';
 import Loupe from '../loupe/loupe.jsx';
 import FixedToolsContainer from '../../containers/fixed-tools.jsx';
 import ModeToolsContainer from '../../containers/mode-tools.jsx';
@@ -209,6 +210,9 @@ const PaintEditorComponent = props => {
                         onUpdateImage={props.onUpdateImage}
                     />
                     <LineMode
+                        onUpdateImage={props.onUpdateImage}
+                    />
+                    <PenMode
                         onUpdateImage={props.onUpdateImage}
                     />
                     <OvalMode

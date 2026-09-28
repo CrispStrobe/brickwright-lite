@@ -41,20 +41,26 @@ settings bar and Krita's canvas-only view without changing how Scratch stores SV
 or PNG costumes.
 
 This is a workspace improvement, not raster/vector feature parity. The next
-capability gates are: (1) a pen for creating vector paths and node operations
-such as join/split that survive SB3 save/reopen; (2) ordered bitmap layers
+capability gates are: (1) vector node operations such as join/split and
+asymmetric handles that survive SB3 save/reopen; (2) ordered bitmap layers
 with independent pixels, visibility and opacity in artwork source, plus a
 flattened PNG for Scratch; (3) brush presets, per-stroke opacity compositing,
 colour history and selection transforms exposed through contextual controls.
 Each gate needs desktop and iPad tests and must preserve the ordinary costume asset
 for older Scratch readers.
 
-The reshape toolbar now exposes open/close operations for one selected SVG
+The vector toolbox now has a pen. Tap/click to place corner nodes, drag a node
+to create symmetric Bézier handles, tap the first node to close, or use the
+contextual finish icon/Enter to keep a path open. Escape cancels a draft and
+switching tools commits it. The browser gate verifies curved SVG output,
+SB3 save/reopen, and iPad tap interactions. The reshape toolbar exposes
+open/close operations for one selected SVG
 path. They change the path's topology in Paper and save as an ordinary SVG
 path, so an older Scratch reader can still display it. The browser gate draws
 a path, opens it, saves/reopens the SB3, then closes it again. Node movement,
 handle adjustment and adding a node on a curve were already present in the
-reshape tool; the pen and other path operations remain ahead.
+reshape tool. Join/split operations, asymmetric handles and ordered bitmap
+layers remain ahead.
 
 - Save and load paths in the browser and native project importer read/write the
   source entry. They leave `project.json` and the Scratch costume assets intact.
@@ -114,8 +120,8 @@ reshape tool; the pen and other path operations remain ahead.
    need large hit areas; on-screen modifiers replace keyboard-only shortcuts.
    Test on macOS mouse/trackpad and iPad finger/Pencil, including resize and
    fullscreen transitions.
-3. **Vector core.** Complete pen/path creation and node operations (smooth,
-   cusp, join, split, open/close); keep named groups and text editable. Improve
+3. **Vector core.** Complete node operations (join, split, asymmetric handles);
+   keep named groups and text editable. Improve
    gradient/stroke controls and precise transform handles. Use the source layer
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
