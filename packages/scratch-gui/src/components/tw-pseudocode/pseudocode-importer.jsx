@@ -4857,7 +4857,17 @@ class PseudocodeImporter extends React.Component {
         return (
             <div style={wrap} data-testid="bw-code-editor">
                 {/* ── Single merged row: language tabs (left) + compact controls (right) ── */}
-                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0}}
+                {/* paddingRight reserves the top-right corner for the floating
+                    "Show right panel" button, which is absolutely positioned at
+                    z-index 20 over this very area. The two did not collide while
+                    the editor chrome was 92px tall and this row sat at y=109;
+                    shrinking the chrome to one row moved the row to y=52 and the
+                    maximize button landed under it — measured, ⊞ at x=980 with
+                    the floating button at x=992, covered and untappable. The
+                    room is reserved unconditionally because the overlay is there
+                    at every chrome height; it was only ever luck that they
+                    missed each other. */}
+                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0, paddingRight: 40}}
                     data-testid="bw-lang-row">
                     {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
                         // The tab follows the DEVICE line, except when a
