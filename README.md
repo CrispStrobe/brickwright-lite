@@ -49,10 +49,18 @@ memory map, ports, timers, EEPROM and analog comparator. That target supplies
 instruction/block/over/out stepping, code/yield/write breakpoints, writable
 SRAM, symbols and instruction/memory/device events. LabWired's native AVR core
 is fast (the `bw-board` receipt records a 21.43x median on its AVR loop), but
-the shipped LabWired WASM bridge currently has no AVR board descriptor and its
-debug surface is narrower: instruction step, code breakpoints and read-only
-memory. It remains the right heavy tier for STM32/RISC-V/Xtensa, not a better
-ATtiny88 backend today.
+the LabWired WASM bridge now admits only its proven ATmega328P/Arduino Uno
+descriptor. Brickwright converts the compiler's Intel HEX to flash bytes and
+the adapter wraps those bytes in an AVR (`EM_AVR`) ELF for LabWired. Its debug
+surface is narrower: instruction step, code breakpoints and read-only memory. It therefore adds an
+optional Uno whole-SoC comparison without pretending to implement ATtiny88;
+ATtiny85/88 raw images and full debugger workflows remain on avr8js.
+
+The current pinned hosted RTx receipt clears real time on every measured
+engine: Z80 186x, 6502 150x, avr8js ATmega328P 13.3x, emu8051 5.23x, rp2040js
+RP2040 1.66x, and LabWired STM32F0 24.2x (three-pass medians, bw-board GitHub
+run 36384508630). In particular, RP2040 moved from a 0.94x median to 1.66x
+after the exhaustively differential-tested Thumb tier-zero dispatch path.
 
 ### Block and code editor
 
