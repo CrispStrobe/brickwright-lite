@@ -42,7 +42,7 @@ export const ROOT = resolve(here, '../..');
 export const BUNDLES = resolve(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe');
 
 /** CrispStrobe/extensions commit these sha256s were taken at. */
-export const UPSTREAM_COMMIT = 'a7886c128e31e6856eccd96e39de31a291ae8e6d';
+export const UPSTREAM_COMMIT = '4fb33f88d0ac46c291f3e4896f09c729f75f37f5';
 export const UPSTREAM_REPO = 'CrispStrobe/extensions';
 
 /**
@@ -138,12 +138,7 @@ export const LITE_ONLY = {
  * has been argued for in review rather than one that arrived unannounced —
  * which is the only difference between this and the situation the audit found.
  */
-export const ALLOWED_DIVERGENCE = {
-    spikeprime: '2026-09-27: Parse SPIKE 3 matrix notifications for the live A-F Widgets view; ' +
-        'the pinned upstream parser stopped at type 0x0e, hiding port F and all later records. ' +
-        'Upstreamed as CrispStrobe/extensions#23 (open 2026-09-28); the pin moved to a7886c12 ' +
-        'for extensions#22 with this case re-applied, and this entry goes when #23 merges.'
-};
+export const ALLOWED_DIVERGENCE = {};
 
 /**
  * The extension source a bundle holds, or null if it is not a bundle at all.

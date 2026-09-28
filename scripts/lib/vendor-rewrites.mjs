@@ -108,6 +108,7 @@ export const SB3_CREATOR_FILES = Object.freeze([
     ['sb3-creator-examples.js', 'src/utils/examples.js'],
     ['sb3-creator-python.js', 'src/utils/pythonToPseudocode.js'],
     ['sb3-creator-micropython.js', 'src/utils/micropythonToPseudocode.js'],
+    ['sb3-creator-spike3.js', 'src/utils/spike3Python.js'],
     ['pico-repl.js', 'src/utils/picoRepl.js'],
     ['sb3-creator-javascript.js', 'src/utils/javascriptToPseudocode.js'],
     ['sb3-creator-c.js', 'src/utils/cToPseudocode.js'],
@@ -122,11 +123,13 @@ export const SB3_CREATOR_FILES = Object.freeze([
 /**
  * The import remapping the sb3-creator sync performs by construction.
  *
- * THIS IS THE SYNC'S ACTUAL TABLE, SIX ENTRIES, NOT A DERIVATION OF THE RENAME
+ * THIS IS THE SYNC'S ACTUAL TABLE, SEVEN ENTRIES, NOT A DERIVATION OF THE RENAME
  * MAP ABOVE — and the difference is a finding rather than an accident.
+ * (Six until 2026-09-28, when spike3Python.js arrived: pythonToPseudocode.js
+ * imports it by its upstream name, so its rename joined the table with it.)
  *
- * Deriving it from SB3_CREATOR_FILES yields THIRTEEN rewrites: every file whose
- * vendored name differs from its upstream name. The sync performs six. So seven
+ * Deriving it from SB3_CREATOR_FILES yields FOURTEEN rewrites: every file whose
+ * vendored name differs from its upstream name. The sync performs seven. So seven
  * possible renames are unhandled, and a vendored file that imported one of them
  * by its upstream name (`./sb3Creator.js`, `./traceOracle.js`, `./examples.js`,
  * ...) would be copied in with an import pointing at a file that does not exist.
@@ -139,6 +142,7 @@ export const SB3_CREATOR_FILES = Object.freeze([
 export const SB3_CREATOR_IMPORT_REWRITES = Object.freeze([
     ['pythonToPseudocode.js', 'sb3-creator-python.js'],
     ['micropythonToPseudocode.js', 'sb3-creator-micropython.js'],
+    ['spike3Python.js', 'sb3-creator-spike3.js'],
     ['runtimeRegistry.generated.js', 'sb3-creator-runtime.js'],
     ['scratchRuntime.js', 'sb3-creator-scratchruntime.js'],
     ['cHostRuntime.js', 'sb3-creator-chostruntime.js'],

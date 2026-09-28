@@ -145,8 +145,13 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // start tank) plus one board-preset gallery example. The SPIKE path gains
     // four words and changes none this round trip reads; the assertions re-ran
     // at the pin.
+    // PIN MOVED 1cdc4fb5 -> fa8739e2 (2026-09-28, sb3-creator#35/#36): SPIKE App 3
+    // Python reader and exporter plus eight SPIKE dialect words (#35), and the
+    // PRECHIN A2 preset's layout with the revision sha dropped from its intros
+    // (#36). The words are additions; none of the SPIKE lines this round trip
+    // reads changed, and the assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '1cdc4fb5c88be001769b3bb19e4c18324c54d8b9');
+        'fa8739e22603d7598bad37a7b9c4275b7048f822');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
