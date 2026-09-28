@@ -2868,6 +2868,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * network clone and never the private $AT_BIOS_ROM.
      */
     async function attachI80386() {
+        if (bootMedia?.machinePreset === 'freedos-vga') {
+            return attachI80386FreedosVgaProfile();
+        }
         setStatus('attaching', bootMedia && bootMedia.name
             ? S('boot.free386Named', {name: bootMedia.name})
             : S('boot.free386'));
@@ -3001,6 +3004,52 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             machine.canTakeMouse?.()) {
             runner.mouseIn = event => result.adapter.mouseIn(event);
         }
+        setStatus('ready', readyMsg);
+        return session;
+    }
+
+    // The named board profile owns the AT/VGA/CMOS map. Keep all four media
+    // slots on bw-board's loader so this browser path matches the board API.
+    async function attachI80386FreedosVgaProfile() {
+        const {createDebugTarget, createDebugSession, applyMedia} =
+            await import(/* webpackChunkName: "bw-board-i80386" */ 'bw-board');
+        const biosUrl = new URL('static/roms/free-386-bochs-bios.rom', document.baseURI).href;
+        const vgaUrl = new URL('static/roms/free-386-vgabios-lgpl.bin', document.baseURI).href;
+        const fallback = async (url, label) => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load ${label}: HTTP ${response.status}`);
+            return new Uint8Array(await response.arrayBuffer());
+        };
+        const entries = {...bootMedia.i80386Media};
+        entries.bios ||= await fallback(biosUrl, 'the free-386 BIOS');
+        entries['vga-rom'] ||= await fallback(vgaUrl, 'the free-386 VGABios');
+        if (bootMedia?.slot === 'hdd' || bootMedia?.slot === 'floppy') {
+            entries[bootMedia.slot] = (await resolveMediaImage(bootMedia)).bytes;
+        } else if (bootMedia?.slot) {
+            throw new Error(`the FreeDOS VGA profile cannot boot ${bootMedia.slot} media`);
+        }
+        const targetOpts = {profile: 'freedos-vga'};
+        if (bootMedia?.nativeBlocks === true) targetOpts.nativeBlocks = true;
+        const db = designerBoard();
+        if (db.board) { targetOpts.board = db.board; board = db.board; }
+        const result = await createDebugTarget('i80386', targetOpts);
+        i8086ExecutionResult = result;
+        if (i8086ExecutionLifetime.signal.aborted) throw new Error('80386 attachment was disposed');
+        const machine = result.adapter?.machine;
+        if (!machine) throw new Error('the FreeDOS VGA profile did not build an AT machine');
+        const applied = applyMedia({kind: 'i80386', adapter: result.adapter, machine}, entries);
+        if (applied.errors.length) {
+            throw new Error(applied.errors.map(item => `${item.slot}: ${item.error}`).join('; '));
+        }
+        machine.reset();
+        wireMachineBench(result, createDebugSession);
+        if (typeof result.adapter?.mouseIn === 'function' && machine.canTakeMouse?.()) {
+            runner.mouseIn = event => result.adapter.mouseIn(event);
+        }
+        const name = bootMedia.name || S('noun.floppy');
+        const readyMsg = bootMedia.slot === 'floppy'
+            ? S('ready.free386Floppy', {name})
+            : S('ready.free386Disk', {name});
         setStatus('ready', readyMsg);
         return session;
     }

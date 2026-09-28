@@ -237,10 +237,11 @@ export const REFUSED = Object.freeze({
     ],
     instrument: ['voltmeter', 'ammeter', 'analog_meter', 'logic_probe'],
     'analog-only': [
-        'lm358', 'lm324', 'lm741', 'lt1001', 'lt1006', 'lt1007', 'lt1007_channel',
+        'lm358', 'lm324', 'lm741', 'ltspice_universal_opamp2', 'lt1001', 'lt1006', 'lt1007', 'lt1007_channel',
         'lt1678', 'lt1678_channel',
         'lt1014', 'lt1014_channel', 'adtl082', 'adtl082_channel', 'ad711', 'ad711_channel', 'op07', 'op27',
-        'op747', 'op747_channel', 'lm393', 'lm339', 'lm3915', 'tip120', 'timer_555', 'timer_556',
+        'op747', 'op747_channel', 'ad8541', 'ad8541_channel', 'ad8602', 'ad8602_channel',
+        'ada4522_1', 'ada4522_1_channel', 'lm393', 'lm339', 'lm3915', 'tip120', 'timer_555', 'timer_556',
         '555', '556', 'optocoupler', 'darlington_driver', 'tcs3200', 'msgeq7',
         'spectrum_display', 'clock_display', 'opamp', 'npn', 'pnp', 'nmos', 'pmos'
     ],

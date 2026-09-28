@@ -56,6 +56,7 @@ export async function runMachineConfig(config, opts = {}) {
         profile: bm.profile || null,
         name: bm.name || null,
         nativeBlocks: bm.nativeBlocks === true,
+        machinePreset: activated.machinePreset || null,
         // The declared screen widget rides here so debug-panel mirrors video
         // into the Widgets pane; an empty array simply means no screen (video
         // stays in the Debug instrument).
@@ -67,6 +68,12 @@ export async function runMachineConfig(config, opts = {}) {
     // sha256-checked by activateConfig; the kernel is `bytes`, this is the rest.
     if (activated.media && activated.media.initrd && activated.media.initrd.bytes) {
         detail.linuxInitrd = activated.media.initrd.bytes;
+    }
+    if (activated.targetKind === 'i80386') {
+        for (const slot of ['bios', 'vga-rom', 'hdd', 'floppy']) {
+            const bytes = activated.media?.[slot]?.bytes;
+            if (bytes) (detail.i80386Media ||= {})[slot] = bytes;
+        }
     }
     // An inline machineConfig ({regions,chips}) — the Eater 6502 case — carries
     // the program's hardware as `chips`; a string preset (PCXT8086) is built by
