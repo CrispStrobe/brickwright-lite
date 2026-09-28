@@ -322,7 +322,7 @@ class DebugPanel extends React.Component {
         // `kernel` + `initrd` slots, both sha256-checked by activateConfig).
         // Its own line, for the same fixed-field-list reason as above.
         const {linuxInitrd} = e.detail || {};
-        const {nativeBlocks} = e.detail || {};
+        const {nativeBlocks, machinePreset, i80386Media} = e.detail || {};
         if (!bytes && !riscvImage) return;
         // THE SAME LOAD, DELIVERED TWICE. circuit-tab stashes every media-load
         // and, when that flips it to "machine booted", re-dispatches the very
@@ -343,6 +343,8 @@ class DebugPanel extends React.Component {
             profile: profile || null,
             name: name || null,
             nativeBlocks: kind === 'i80386' && nativeBlocks === true,
+            machinePreset: kind === 'i80386' ? machinePreset || null : null,
+            i80386Media: kind === 'i80386' ? i80386Media || null : null,
             // HARDWARE THE PROGRAM ASKED FOR, and it has to be listed here
             // explicitly: this destructure is a fixed field list, so a new
             // field on the event is silently dropped unless it is named in

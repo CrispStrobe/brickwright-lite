@@ -19,6 +19,7 @@ import {
     newMachineConfig, validateMachineConfig
 } from '../../lib/bw-machines/machine-config.js';
 import {localDosboxMachine} from '../../lib/bw-machines/local-dosbox.js';
+import {localFreedosVgaMachine} from '../../lib/bw-machines/local-freedos-vga.js';
 import {defaultImageFetcher} from '../../lib/bw-machines/activate.js';
 import {lessonMachines, lessonT} from '../../lib/bw-machines/lessons.js';
 
@@ -53,6 +54,7 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     const [text, setText] = React.useState('');
     const [localDisk, setLocalDisk] = React.useState(null);
     const [localNativeBlocks, setLocalNativeBlocks] = React.useState(false);
+    const [freeMedia, setFreeMedia] = React.useState({});
     const t = k => tr(locale, k);
 
     const refresh = React.useCallback(async () => {
@@ -78,6 +80,23 @@ export default function MachineManager({store, onRun, onClose, locale}) {
             const bytes = new Uint8Array(await localDisk.arrayBuffer());
             await run(cfg, {fetcher: ref => ref.url === 'local-media:disk'
                 ? Promise.resolve({bytes}) : defaultImageFetcher(ref)});
+        } catch (e) { setStatus(e.message); }
+    };
+    const runFree386 = async () => {
+        try {
+            const cfg = localFreedosVgaMachine(freeMedia);
+            const files = {};
+            for (const slot of ['hdd', 'floppy', 'bios', 'vgaRom']) {
+                if (freeMedia[slot]) files[slot === 'vgaRom' ? 'vga-rom' : slot] =
+                    new Uint8Array(await freeMedia[slot].arrayBuffer());
+            }
+            await run(cfg, {fetcher: ref => {
+                const slot = ref.url.slice('local-media:'.length);
+                if (!Object.prototype.hasOwnProperty.call(files, slot)) {
+                    throw new Error(`no selected ${slot} media`);
+                }
+                return Promise.resolve({bytes: files[slot]});
+            }});
         } catch (e) { setStatus(e.message); }
     };
     // A LESSON fetches its media on Run (megabytes, SHA-256-checked), so it is
@@ -227,6 +246,27 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                 onChange={e => setLocalNativeBlocks(e.target.checked)} />
                             {t('nativeBlocks')}
                         </label>
+                    </div>
+                    <div style={{fontSize: 12, fontWeight: 600, marginBottom: 4}}>FreeDOS VGA (named 386 profile)</div>
+                    <div style={{fontSize: 11, color: '#64748b', marginBottom: 6}}>
+                        Select a 1.2MB floppy or a type-1 306×4×17 hard disk. BIOS and VGA ROM
+                        files are optional; the bundled LGPL firmware is used when omitted.
+                        The selected bytes stay in this browser tab.
+                    </div>
+                    <div style={{display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10}}>
+                        {[
+                            ['floppy', 'Floppy', '.img,.ima,.dsk'],
+                            ['hdd', 'HDD', '.img,.ima'],
+                            ['bios', 'AT BIOS', '.rom,.bin'],
+                            ['vgaRom', 'VGA ROM', '.rom,.bin'],
+                        ].map(([slot, label, accept]) => <label key={slot} style={{fontSize: 11}}>
+                            {label}
+                            <input type="file" accept={accept} data-testid={`bw-mm-free386-${slot}`}
+                                onChange={e => setFreeMedia(current => ({...current,
+                                    [slot]: e.target.files?.[0] || null}))} />
+                        </label>)}
+                        <button onClick={runFree386} style={primary}
+                            data-testid="bw-mm-free386-run">Boot FreeDOS VGA</button>
                     </div>
                     <label style={{fontSize: 12, color: '#475569'}}>{t('importL')}</label>
                     <textarea value={text} onChange={e => setText(e.target.value)}
