@@ -265,4 +265,35 @@ mod tests {
         assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
         assert!(!debugger.has_endpoint());
     }
+
+    /// Hosted/manual proof against the exact build-pinned Renode tree. The ordinary library
+    /// suite cannot carry a 1+ GB emulator build, so the dedicated workflow supplies every
+    /// compile-time pin and explicitly selects this test.
+    #[test]
+    #[ignore = "requires the build-pinned Renode SPIKE package"]
+    fn packaged_spike_session_drives_the_complete_cpu_and_state_contract() {
+        assert!(option_env!("BW_RENODE_EXECUTABLE").is_some());
+        assert!(option_env!("BW_RENODE_SPIKE_FIRMWARE").is_some());
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        assert_eq!(debugger.start(&supervisor).unwrap(), "ready");
+
+        let registers = debugger.registers().unwrap();
+        let pc = u32::try_from(registers["pc"].as_u64().unwrap()).unwrap();
+        assert_ne!(pc, 0);
+        assert_eq!(debugger.read_memory(pc & !1, 4).unwrap().len(), 8);
+        assert_eq!(debugger.set_breakpoint(pc & !1).unwrap(), "set");
+        assert_eq!(debugger.clear_breakpoint(pc & !1).unwrap(), "cleared");
+        assert_eq!(debugger.step().unwrap(), "stopped");
+        assert_eq!(debugger.run().unwrap(), "running");
+        thread::sleep(Duration::from_millis(25));
+        assert_eq!(debugger.pause().unwrap(), "paused");
+
+        let state = debugger.state().unwrap();
+        assert_eq!(state["schemaVersion"], 1);
+        assert_eq!(state["type"], "snapshot");
+        assert_eq!(state["target"]["board"], "spike-prime");
+        assert_eq!(debugger.reset(&supervisor).unwrap(), "reset");
+        assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
+    }
 }
