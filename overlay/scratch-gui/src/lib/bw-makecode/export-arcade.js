@@ -21,8 +21,13 @@
  *
  * @module
  */
-import {svgToPixels, quantizeRgba, toImgLiteral} from './pixel-image.js';
-import {imageToSvg} from './arcade-assets.js';
+import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette} from './pixel-image.js';
+import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
+
+const isPalette = palette => Array.isArray(palette) && palette.length === 16 && palette[0] === null &&
+    palette.slice(1).every(colour => /^#[0-9a-f]{6}$/i.test(colour));
+const samePalette = (left, right) => left.every((colour, index) =>
+    String(colour).toLowerCase() === String(right[index]).toLowerCase());
 
 const KEY_BUTTON = {
     'left arrow': 'controller.left', 'right arrow': 'controller.right',
@@ -52,6 +57,12 @@ class ArcadeEmitter {
         this.blocks = null;
         this.kinds = new Map();         // TS variable -> Set('number'|'string')
         this.usedNa = false;
+        const palettes = this.sprites.map(target => {
+            const costume = target.costumes[target.currentCostume || 0];
+            const palette = costume && opts.costumePalette?.(target, costume);
+            return isPalette(palette) ? palette : ARCADE_PALETTE;
+        });
+        this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
     }
 
     /** Record what kind of value a variable is given, for its declaration. */
@@ -325,9 +336,15 @@ class ArcadeEmitter {
     image (target) {
         const costume = target.costumes[target.currentCostume || 0];
         const svg = costume && this.opts.costumeSvg ? this.opts.costumeSvg(target, costume) : null;
+        const candidate = costume && this.opts.costumePalette?.(target, costume);
+        const sourcePalette = isPalette(candidate) ? candidate : ARCADE_PALETTE;
         if (svg) {
-            const px = svgToPixels(svg);
-            if (px) return px;
+            const px = svgToPixels(svg, sourcePalette);
+            if (px) {
+                if (samePalette(sourcePalette, this.palette)) return px;
+                this.warnings.push(`${target.name}: costume palette mapped to the Arcade project palette`);
+                return remapPalette(px, sourcePalette, this.palette);
+            }
         }
         const raster = costume && this.opts.costumeRgba ? this.opts.costumeRgba(target, costume) : null;
         if (raster) {
@@ -335,7 +352,8 @@ class ArcadeEmitter {
             // is 3x the screen); palette-matched, and named, because that is lossy.
             this.warnings.push(`${target.name}: costume "${costume.name}" converted to palette pixels`);
             return quantizeRgba(raster.rgba, raster.width, raster.height,
-                Math.max(1, Math.round(raster.width / 3)), Math.max(1, Math.round(raster.height / 3)));
+                Math.max(1, Math.round(raster.width / 3)), Math.max(1, Math.round(raster.height / 3)),
+                this.palette);
         }
         this.warnings.push(`${target.name}: no costume image available — a placeholder square`);
         const w = 8;
@@ -420,6 +438,7 @@ class ArcadeEmitter {
  * @param {object} [opts]
  * @param {(target, costume) => string|null} [opts.costumeSvg] the costume's SVG text, if it is an SVG
  * @param {(target, costume) => {rgba, width, height}|null} [opts.costumeRgba] its pixels, for anything else
+ * @param {(target, costume) => Array<string|null>|null} [opts.costumePalette] editable palette, if any
  * @param {(stage) => object|null} [opts.stageBackground] a 160x120 palette image for the backdrop
  * @returns {{ts: string, files: object, unsupported: string[], warnings: string[]}}
  */
@@ -431,7 +450,8 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': ts,
         'pxt.json': `${JSON.stringify({
             name, description: 'Exported from BrickWright', dependencies: {device: '*'},
-            files: ['main.ts'], preferredEditor: 'tsprj'
+            files: ['main.ts'], preferredEditor: 'tsprj',
+            ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};

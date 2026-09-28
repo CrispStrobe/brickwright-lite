@@ -75,6 +75,17 @@ export function parseImageLiteral (text) {
     return {width, height, pixels};
 }
 
+/** Read a pasted `img` literal without silently dropping unknown characters. */
+export function parseExactImgLiteral (text) {
+    const match = /^\s*img\s*`([\s\S]*?)`\s*;?\s*$/.exec(String(text || ''));
+    if (!match) return null;
+    const rows = match[1].split(/\r?\n/).map(row => [...row].filter(c => !/[ \t]/.test(c)))
+        .filter(row => row.length);
+    if (!rows.length || rows.some(row => row.length !== rows[0].length ||
+        row.some(cell => !CHAR_TO_INDEX.has(cell)))) return null;
+    return parseImageLiteral(match[1]);
+}
+
 /**
  * base64 → bytes, in whichever runtime this is.
  *

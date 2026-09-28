@@ -12,14 +12,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
 import vm from 'node:vm';
 import util from 'node:util';
 import {fileURLToPath} from 'node:url';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {pixelsToSvg} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
-import {parseImageLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
+import {ARCADE_PALETTE, parseImageLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {importArtefact} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import JSZip from 'jszip';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const {default: SB3Creator} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
@@ -61,6 +64,59 @@ test('a pixel-art costume becomes the sprite\'s image exactly', () => {
     const art = parseImageLiteral('. 2 2 .\n2 5 5 2\n. 2 2 .');
     const {ts} = exportOf('SPRITE gem:\nWHEN flag clicked:\n  wait 1 seconds\n', [{sprite: 'gem', svg: pixelsToSvg(art), mode: 'replace'}]);
     assert.match(ts, /sprites\.create\(img`\n\s+\. 2 2 \.\n\s+2 5 5 2\n\s+\. 2 2 \.\n`, SpriteKind\.Player\)/);
+});
+
+test('a custom palette keeps image indices and is written into Arcade project settings', () => {
+    const cr = new SB3Creator();
+    cr.parse('SPRITE gem:\nWHEN flag clicked:\n  wait 1 seconds\n');
+    const image = parseImageLiteral('. 2 .\n2 2 2');
+    const palette = [...ARCADE_PALETTE];
+    palette[2] = '#123456';
+    cr.applyCustomSVG('gem', pixelsToSvg(image, {palette}));
+    const out = projectToArcade(cr.project, {
+        costumeSvg: (target, costume) => cr.assets.get(costume.assetId)?.data || null,
+        costumePalette: () => palette
+    });
+    assert.match(out.ts, /img`\n\s+\. 2 \.\n\s+2 2 2\n`/);
+    assert.equal(JSON.parse(out.files['pxt.json']).palette[2], '#123456');
+    assert.deepEqual(out.warnings, []);
+});
+
+test('the CLI reads version 2 and animated version 3 palettes for exact Arcade img export', async () => {
+    const cr = new SB3Creator();
+    cr.parse('SPRITE gem:\nWHEN flag clicked:\n  wait 1 seconds\n');
+    const image = parseImageLiteral('. 2 .\n2 2 2');
+    const palette = [...ARCADE_PALETTE];
+    palette[2] = '#123456';
+    const svg = pixelsToSvg(image, {palette});
+    cr.applyCustomSVG('gem', svg);
+    const costume = cr.project.targets[1].costumes[0];
+    const zip = new JSZip();
+    zip.file('project.json', JSON.stringify(cr.project));
+    zip.file(costume.md5ext, svg);
+    const layers = [{id: 'pixels', type: 'pixel',
+                name: 'Pixels', visible: true, locked: false, opacity: 1,
+                content: {kind: 'pixels', value: {width: 3, height: 2, pixels: [...image.pixels]}}}];
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-arcade-palette-'));
+    const input = path.join(directory, 'custom.sb3');
+    const output = path.join(directory, 'custom.ts');
+    try {
+        for (const version of [2, 3]) {
+            const document = {version, palette, pixelScale: 4, activeLayerId: 'pixels', layers,
+                ...(version === 3 ? {animation: {activeFrameId: 'two', frames: [
+                    {id: 'one', durationMs: 100, activeLayerId: 'pixels', layers},
+                    {id: 'two', durationMs: 100, activeLayerId: 'pixels', layers}]}} : {})};
+            zip.file('brickwright/artwork/v1.json', JSON.stringify({format: 'brickwright-artwork', version,
+                costumes: [{targetIndex: 1, costumeIndex: 0, renderedMd5ext: costume.md5ext, document}]}));
+            fs.writeFileSync(input, await zip.generateAsync({type: 'nodebuffer'}));
+            const result = spawnSync(process.execPath, [path.join(ROOT, 'scripts/makecode.mjs'),
+                'to-ts', input, '-o', output, '--target', 'arcade'], {encoding: 'utf8'});
+            assert.equal(result.status, 0, result.stderr);
+            assert.match(fs.readFileSync(output, 'utf8'), /img`\n\s+\. 2 \.\n\s+2 2 2\n`/);
+        }
+    } finally {
+        fs.rmSync(directory, {recursive: true, force: true});
+    }
 });
 
 test('what has no Arcade counterpart is named and left as a comment where it stood', () => {

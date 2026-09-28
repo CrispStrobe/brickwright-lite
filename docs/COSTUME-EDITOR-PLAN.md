@@ -3,7 +3,8 @@
 Brickwright projects remain ordinary `.sb3` archives. `project.json` names the
 SVG/PNG costume assets that Scratch, TurboWarp, and older Brickwright read and
 render. Brickwright also stores editable source in
-`brickwright/artwork/v1.json`. It is an additional ZIP entry; it never replaces
+`brickwright/artwork/v1.json`. This stable ZIP entry has versioned payloads
+and documents; it never replaces
 or changes the Scratch assets. An older reader can ignore it.
 
 The source document is upstream of a rendered costume. A document owns ordered
@@ -26,15 +27,32 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   individual palette indices; on reopen it reads those pixels from the source.
   Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
-  line and rectangle tools, rectangular and lasso selections, and a connected
-  colour wand with adjustable tolerance. Selections can move or clear pixels
-  on the active layer. The editor also has mirrored drawing, ordered pixel layers
-  with visibility, locking, renaming, reordering, deletion and opacity, larger
-  colour targets, a pan tool and two-pointer/pinch navigation. It renders
-  translucent visible layers into the Scratch SVG while retaining every layer's
-  palette indices in editable source. It also exports a transparent PNG from the
-  current layer stack. The
+  adjustable square brushes, line, outline and filled rectangle and circle tools,
+  index-preserving colour replacement and outline, rectangular and lasso
+  selections, and a connected colour wand with adjustable tolerance. Selections
+  can move or clear pixels on the active layer, copy/cut/paste into a movable new layer, arrow-key
+  nudging, mirrored drawing, ordered pixel layers with
+  visibility, locking, renaming, reordering, deletion and opacity, larger colour targets,
+  selection-aware horizontal and vertical flips and quarter turns, a pan tool
+  and two-pointer/pinch navigation. Whole-canvas rotation preserves all layers;
+  a selected transform affects only the active layer. It renders translucent visible layers
+  into the Scratch SVG while retaining every layer's palette indices in editable
+  source. It also exports a transparent PNG from the current layer stack. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
+- Pixel art can use the default Arcade palette, edit its 15 colours, or import
+  a 15/16-colour `.hex`, `.txt` or GIMP `.gpl` palette. Indexed
+  pixels remain unchanged when a colour changes. Custom palettes use a version
+  2 source document and render into Scratch SVG; default palettes keep version
+  1 documents. Arcade project export writes the selected colours to `pxt.json`
+  and retains exact `img` indices. If costumes use different palettes, export
+  maps them to one project palette and reports the colour conversion.
+- A pixel costume can hold up to 64 editable animation frames with per-frame
+  duration, order, thumbnail, playback preview and onion-skin preview. The active frame's
+  SVG remains the ordinary Scratch costume asset. Other frames live in a
+  version 3 artwork document and reopen with their individual layers. A
+  horizontal transparent PNG sprite sheet can be exported. A PNG sheet can be
+  previewed as rows of frames and imported into the editable timeline after
+  palette matching. Exporting frames as separate costumes remains future work.
 - Archive tests cover round-trip preservation, stale source rejection and
   future-version pass-through. A browser gate checks layer visibility and
   persistence across SB3 save/reopen, lasso and wand selection, plus mouse,
@@ -69,9 +87,9 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.
-5. **Pixel and animation.** Add palette editing, frames and
-   onion-skin preview. Export frames as costumes or
-   a sprite sheet without hiding animation-only data in Scratch's render asset.
+5. **Pixel and animation.** Add palette presets and improve timeline thumbnails.
+   Export frames as costumes without hiding
+   animation-only data in Scratch's render asset.
 6. **Parity gate.** Run the same task corpus on desktop mouse, trackpad, iPad
    touch and Pencil: trace/edit curves, compose vector over paint, draw a
    palette sprite, save/reopen, and export SVG and transparent PNG. Every task
@@ -81,3 +99,32 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 The source schema is versioned. Changes to its meaning require a new version
 and migration; broadening the editor must not make older `.sb3` projects
 unreadable or silently discard source data from a newer Brickwright.
+
+## MakeCode Arcade pixel-art parity
+
+The target is the [MakeCode asset-editor shortcut contract](https://github.com/Microsoft/pxt/blob/master/docs/asset-editor-shortcuts.md)
+and its [image, palette and sprite-sheet model](https://arcade.makecode.com/developer/images),
+in addition to Brickwright's editable layers and `.sb3` compatibility. Track
+these as separate capabilities so a familiar-looking toolbar does not conceal
+missing data or export behavior.
+
+| Capability | Brickwright status | Next work |
+| --- | --- | --- |
+| Pen, eraser, fill, line, rectangle, circle, eyedropper, marquee, pan | Available, including brush sizes 1–8, filled shapes, marquee copy/cut/paste, and keyboard tool shortcuts | Test selection and toolbar interaction on iPad |
+| Flip and quarter-turn, with selection scope | Available, with touch buttons, undo, and arrow-key selection moves | Test on iPad |
+| Foreground/background colours, swap, colour replace and outline | Foreground colour, selection-aware index-preserving replace and outline | Add secondary colour and swap |
+| Palette presets and 15 editable colours | All 15 colours can be edited or imported from `.hex`/`.txt`/`.gpl`; version 2 source, Scratch rendering and Arcade export use them | Add built-in presets |
+| Animation timeline, frame order, interval, onion skin | Editable frames, thumbnails, duration, order, playback and onion skin use version 3 source; the active frame renders as the Scratch costume | Export frames as costumes and test touch interaction on iPad |
+| Sprite-sheet and `img` import/export | Exact `img` literal paste/export, PNG export and horizontal transparent sprite-sheet PNG import/export exist | Add configurable palette conversion and animation metadata exchange |
+| Tile and tilemap asset editing | Imported tilemaps are rendered as costumes | Add editable tile set/map source and Arcade-compatible export |
+
+Custom palettes have a version 2 document unless the costume also has
+animation frames, in which case it uses version 3. The ZIP entry path stays
+stable, while its payload version follows the newest document present.
+Older Brickwright treats the payload as future data and preserves it when the
+rendered costumes are unchanged. Animation frames use version 3 documents; the
+active frame is repeated in `layers` for the Scratch render, and all frames
+remain in `animation.frames`.
+An Arcade `img` literal has only palette indices and transparent pixels, so
+literal export is refused while a visible layer has partial opacity. This
+prevents a flattened approximation from silently changing the artwork.

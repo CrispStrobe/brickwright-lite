@@ -17,12 +17,12 @@ const composeLayers = (layers, width, height) => {
 // Preserve the historical single-layer SVG byte format for fully opaque art.
 // Opacity needs separate SVG groups because palette indices cannot represent
 // blended colours without losing the independently editable layer pixels.
-const layersToSvg = (layers, width, height, scale) => {
+const layersToSvg = (layers, width, height, scale, palette = ARCADE_PALETTE) => {
     if (layers.every(layer => !layer.visible || layer.opacity === 0 || layer.opacity === 1)) {
-        return pixelsToSvg(composeLayers(layers, width, height), {scale});
+        return pixelsToSvg(composeLayers(layers, width, height), {scale, palette});
     }
     const groups = layers.filter(layer => layer.visible && layer.opacity > 0).map(layer => {
-        const svg = pixelsToSvg({width, height, pixels: layer.pixels}, {scale});
+        const svg = pixelsToSvg({width, height, pixels: layer.pixels}, {scale, palette});
         const rects = svg.slice(svg.indexOf('>') + 1, -'</svg>'.length);
         return `<g opacity="${layer.opacity}">${rects}</g>`;
     });
@@ -43,12 +43,28 @@ const resizeLayers = (layers, width, height, nextWidth, nextHeight) => layers.ma
     ...layer, pixels: resizeCanvas({width, height, pixels: layer.pixels}, nextWidth, nextHeight).pixels
 }));
 
-const layersDocument = (layers, width, height, scale, activeLayerId) => ({
-    version: 1, pixelScale: scale, activeLayerId,
-    layers: layers.map(layer => ({id: layer.id, type: 'pixel', name: layer.name,
-        visible: layer.visible, locked: layer.locked, opacity: layer.opacity,
-        content: {kind: 'pixels', value: {width, height, pixels: Array.from(layer.pixels)}}}))
-});
+const serializeLayers = (layers, width, height) => layers.map(layer => ({id: layer.id, type: 'pixel', name: layer.name,
+    visible: layer.visible, locked: layer.locked, opacity: layer.opacity,
+    content: {kind: 'pixels', value: {width, height, pixels: Array.from(layer.pixels)}}}));
+
+const layersDocument = (layers, width, height, scale, activeLayerId, palette = ARCADE_PALETTE,
+    animation = null) => {
+    const customPalette = palette.some((colour, index) => colour !== ARCADE_PALETTE[index]);
+    return {version: animation ? 3 : customPalette ? 2 : 1,
+        ...(customPalette ? {palette: [...palette]} : {}), pixelScale: scale, activeLayerId,
+        layers: serializeLayers(layers, width, height),
+        ...(animation ? {animation: {activeFrameId: animation.activeFrameId,
+            frames: animation.frames.map(frame => ({id: frame.id, durationMs: frame.durationMs,
+                activeLayerId: frame.activeLayerId,
+                layers: serializeLayers(frame.layers, width, height)}))}} : {})};
+};
+
+const sourceFrames = (document, width, height) => {
+    if (document?.version !== 3 || !document.animation) return null;
+    const frames = document.animation.frames.map(frame => ({id: frame.id, durationMs: frame.durationMs,
+        activeLayerId: frame.activeLayerId, layers: sourceLayers({layers: frame.layers}, width, height)}));
+    return frames.every(frame => frame.layers) ? frames : null;
+};
 
 const blankLayer = (id, name, width, height) => makeLayer(id, name, blankImage(width, height));
 
@@ -169,6 +185,75 @@ const clearSelectedPixels = (pixels, width, selection) => {
     return next;
 };
 
+const copySelectedPixels = (pixels, width, selection) => {
+    const copied = new Uint8Array(selection.width * selection.height);
+    for (let y = 0; y < selection.height; y++) {
+        for (let x = 0; x < selection.width; x++) {
+            copied[(y * selection.width) + x] = pixels[((selection.y + y) * width) + selection.x + x];
+        }
+    }
+    return {width: selection.width, height: selection.height, pixels: copied};
+};
+
+const pasteSelectedPixels = (clipboard, width, height, x, y) => {
+    const pixels = new Uint8Array(width * height);
+    const left = Math.max(0, x);
+    const top = Math.max(0, y);
+    const right = Math.min(width, x + clipboard.width);
+    const bottom = Math.min(height, y + clipboard.height);
+    if (right <= left || bottom <= top) return null;
+    for (let py = top; py < bottom; py++) {
+        for (let px = left; px < right; px++) {
+            pixels[(py * width) + px] = clipboard.pixels[((py - y) * clipboard.width) + px - x];
+        }
+    }
+    return {pixels, selection: {x: left, y: top, width: right - left, height: bottom - top}};
+};
+
+const stampBrushInto = (pixels, width, height, x, y, value, size = 1, mirror = false) => {
+    const before = Math.floor((size - 1) / 2);
+    const after = size - before - 1;
+    for (let dy = -before; dy <= after; dy++) {
+        for (let dx = -before; dx <= after; dx++) {
+            const px = x + dx;
+            const py = y + dy;
+            if (px < 0 || py < 0 || px >= width || py >= height) continue;
+            pixels[(py * width) + px] = value;
+            if (mirror) pixels[(py * width) + width - 1 - px] = value;
+        }
+    }
+};
+
+const replaceColourPixels = (pixels, width, height, selection, from, to) => {
+    const next = new Uint8Array(pixels);
+    if (from === to) return next;
+    const region = selection || {x: 0, y: 0, width, height};
+    for (let y = region.y; y < region.y + region.height; y++) {
+        for (let x = region.x; x < region.x + region.width; x++) {
+            const index = (y * width) + x;
+            if (next[index] === from) next[index] = to;
+        }
+    }
+    return next;
+};
+
+const outlinePixels = (pixels, width, height, selection, colour) => {
+    const next = new Uint8Array(pixels);
+    if (!colour) return next;
+    const region = selection || {x: 0, y: 0, width, height};
+    const inside = (x, y) => x >= region.x && y >= region.y &&
+        x < region.x + region.width && y < region.y + region.height;
+    for (let y = region.y; y < region.y + region.height; y++) {
+        for (let x = region.x; x < region.x + region.width; x++) {
+            const index = (y * width) + x;
+            if (pixels[index]) continue;
+            if ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]
+                .some(([nx, ny]) => inside(nx, ny) && pixels[(ny * width) + nx])) next[index] = colour;
+        }
+    }
+    return next;
+};
+
 const moveSelectedPixels = (pixels, width, height, selection, requestedDx, requestedDy) => {
     const dx = Math.max(-selection.x, Math.min(width - selection.x - selection.width, requestedDx));
     const dy = Math.max(-selection.y, Math.min(height - selection.y - selection.height, requestedDy));
@@ -184,5 +269,38 @@ const moveSelectedPixels = (pixels, width, height, selection, requestedDx, reque
     return {pixels: next, selection: {...selection, x: selection.x + dx, y: selection.y + dy}};
 };
 
-export {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, wandSelection};
+// Transform palette indices rather than a rendered image. A selection affects
+// only its rectangle; a whole-canvas quarter turn swaps canvas dimensions.
+const transformPixels = (pixels, width, height, selection, operation) => {
+    const region = selection || {x: 0, y: 0, width, height};
+    const turn = operation === 'rotate-cw' || operation === 'rotate-ccw';
+    if (!['flip-h', 'flip-v', 'rotate-cw', 'rotate-ccw'].includes(operation)) return null;
+    const regionWidth = turn ? region.height : region.width;
+    const regionHeight = turn ? region.width : region.height;
+    const outWidth = turn && !selection ? height : width;
+    const outHeight = turn && !selection ? width : height;
+    if (regionWidth > outWidth || regionHeight > outHeight) return null;
+    const left = selection ? Math.min(region.x, outWidth - regionWidth) : 0;
+    const top = selection ? Math.min(region.y, outHeight - regionHeight) : 0;
+    const out = selection ? clearSelectedPixels(pixels, width, region) : null;
+    const next = selection ? out : new Uint8Array(outWidth * outHeight);
+    for (let y = 0; y < region.height; y++) {
+        for (let x = 0; x < region.width; x++) {
+            let tx; let ty;
+            switch (operation) {
+            case 'flip-h': tx = region.width - 1 - x; ty = y; break;
+            case 'flip-v': tx = x; ty = region.height - 1 - y; break;
+            case 'rotate-cw': tx = region.height - 1 - y; ty = x; break;
+            default: tx = y; ty = region.width - 1 - x;
+            }
+            next[((top + ty) * outWidth) + left + tx] =
+                pixels[((region.y + y) * width) + region.x + x];
+        }
+    }
+    return {pixels: next, width: outWidth, height: outHeight,
+        selection: selection ? {x: left, y: top, width: regionWidth, height: regionHeight} : null};
+};
+
+export {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels, layersDocument, layersToSvg,
+    lassoSelection, moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels, resizeLayers,
+    selectionRect, sourceLayers, sourceFrames, stampBrushInto, transformPixels, wandSelection};

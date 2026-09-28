@@ -21,6 +21,7 @@ import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {
     ARCADE_PALETTE,
     parseImageLiteral,
+    parseExactImgLiteral,
     parseJres,
     parseTilemaps,
     renderTilemap,
@@ -48,6 +49,14 @@ test('an img literal is read with MakeCode\'s own character set', () => {
     assert.deepEqual([...image.pixels], [0, 1, 2, 0, 0, 2, 1, 0], 'T is 2 and # is 1');
     assert.equal(parseImageLiteral('. .\n. . .'), null, 'a ragged literal is refused, not guessed');
     assert.equal(parseImageLiteral(''), null);
+});
+
+test('pasted img literals retain palette indices and reject unknown pixels', () => {
+    const literal = 'img`\n . 1 T f\n 0 # 2 F\n`';
+    assert.deepEqual([...parseExactImgLiteral(literal).pixels], [0, 1, 2, 15, 0, 1, 2, 15]);
+    assert.equal(parseExactImgLiteral('img`\n. 1 ?\n`'), null);
+    assert.equal(parseExactImgLiteral('img`\n. 1\n2\n`'), null);
+    assert.equal(parseExactImgLiteral('not an img literal'), null);
 });
 
 test('the SVG uses the Arcade palette and leaves colour 0 out', () => {

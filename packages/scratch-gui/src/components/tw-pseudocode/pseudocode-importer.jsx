@@ -23,6 +23,7 @@ import {
 } from '../../lib/bw-matrix/capabilities.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
+import {getCostumeDocument} from '../../lib/bw-artwork-bundle.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -1986,11 +1987,14 @@ class PseudocodeImporter extends React.Component {
         });
         const svgs = new Map();
         const rasters = new Map();
+        const palettes = new Map();
         for (const target of vm.runtime.targets) {
             if (!target.isOriginal) continue;
             for (const costume of target.sprite.costumes) {
                 if (costume.asset.dataFormat === 'svg') svgs.set(costume.assetId, costume.asset.decodeText());
                 rasters.set(costume.assetId, await draw(costume.asset));
+                const artwork = getCostumeDocument(costume);
+                if (artwork?.palette) palettes.set(costume.assetId, artwork.palette);
             }
         }
         const {projectToArcade} = await import(
@@ -1998,7 +2002,8 @@ class PseudocodeImporter extends React.Component {
         return projectToArcade(project, {
             name: 'brickwright-game',
             costumeSvg: (t, c) => svgs.get(c.assetId) || null,
-            costumeRgba: (t, c) => rasters.get(c.assetId) || null
+            costumeRgba: (t, c) => rasters.get(c.assetId) || null,
+            costumePalette: (t, c) => palettes.get(c.assetId) || null
         });
     }
 
