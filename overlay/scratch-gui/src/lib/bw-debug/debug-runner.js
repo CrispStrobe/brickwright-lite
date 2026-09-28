@@ -39,6 +39,7 @@ import {
     setCondition, conditionOf, allConditions
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
+import {createReadyGatedInput} from './ready-gated-input.js';
 import {cpmFileName} from './cpm-z80.js';
 import { canRecordDebugInput } from 'bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
@@ -779,6 +780,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let serialEsc = 0;                 // 0 text, 1 after ESC, 2 inside CSI
     /** Per-frame boot-progress hook for the Linux lesson, or null. */
     let linuxProgressWatch = null;
+    /**
+     * Set by destroy(). A runner destroyed while its start() is still awaiting
+     * attach() must not come back to life when attach resolves: before this,
+     * start() went on to session.start() + schedule() and the destroyed runner
+     * pumped forever beside its replacement — two machines, one console, and
+     * input sent to the one whose output was not on screen (the Linux-lesson
+     * gate's ~1-in-10 "uname never answered"). Checked after the await and in
+     * schedule()/pumpFrame().
+     */
+    let destroyed = false;
     /**
      * What the ATTACHED engine cannot carry, in the user's words.
      *
@@ -2526,10 +2537,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         serialTerminal = true;
         serialEsc = 0;
         wireMachineBench(result, createDebugSession);
+        // HOLD console input until the shell is listening. Bytes sent while
+        // the kernel boots are dropped (the 8250 driver clears the receive FIFO
+        // at port start-up; nothing reads the tty before init opens it), so
+        // they are queued here and flushed, in order, the frame the prompt is
+        // up. See ready-gated-input.js.
+        const linuxTarget = target;
+        const gatedInput = createReadyGatedInput({
+            isReady: () => !!(linuxTarget.linuxProgress() || {}).ready,
+            send: byte => linuxTarget.sendSerial(byte)
+        });
+        runner.sendSerial = (data) => {
+            if (typeof data === 'number') return gatedInput.push(data);
+            const text = String(data);
+            for (let i = 0; i < text.length; i++) {
+                if (gatedInput.push(text.charCodeAt(i)) === false) return false;
+            }
+            return true;
+        };
         let shown = '';
         linuxProgressWatch = () => {
             const p = target && typeof target.linuxProgress === 'function' ? target.linuxProgress() : null;
             if (!p) return;
+            gatedInput.flush();
             const key = `${p.phase}:${p.percent}`;
             if (key === shown) return;
             shown = key;
@@ -3039,7 +3069,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     function pumpFrame() {
         rafId = null;
-        if (!session) return;
+        if (!session || destroyed) return;
         if (activeRunTo) {
             const result = runToController.pump();
             if (board) board.advanceTo(target.timeNs());
@@ -3117,6 +3147,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     function schedule() {
+        if (destroyed) return;
         if (rafId === null && typeof requestAnimationFrame === 'function') {
             rafId = requestAnimationFrame(pumpFrame);
         }
@@ -3219,6 +3250,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                         : userFirmware ? builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);
+                    if (destroyed) {
+                        // Torn down while attaching: release what attach built
+                        // and stay dead (see `destroyed`).
+                        if (session) session.destroy();
+                        session = target = null;
+                        return {accepted: false, code: 'destroyed'};
+                    }
                     // The user's breakpoints only became SETTABLE now: until a
                     // target exists there is nothing to set them on, and until
                     // this build exists nothing knows which (task, state) a
@@ -4385,6 +4423,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             i8086ExecutionLifetime.abort();
             i8086Execution.release(i8086ExecutionResult);
             i8086ExecutionResult = null;
+            destroyed = true;
             setValueResolver(null);
             if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();
