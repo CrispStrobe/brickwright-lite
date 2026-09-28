@@ -140,7 +140,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // PIN MOVED c5ffaf0a -> d33fa40b (2026-09-28, sb3-creator#32): `show number`,
     // MakeCode's blocking showNumber — micro:bit MicroPython only; the SPIKE
     // path is untouched, and the assertions re-ran at the pin.
-    // PIN MOVED d33fa40b -> 67586ac8 (2026-09-28, SPIKE App 3 Python): this range
+    // PIN MOVED d33fa40b -> 4edc039b (2026-09-28, SPIKE App 3 Python): this range
     // DOES move the SPIKE path. Twelve dialect words gain blocks, and the motor
     // UNIT field now stores the extension's menu value ("degrees", not "degree",
     // which motorRunFor matched to nothing and so turned by 0). The phrases this
@@ -149,7 +149,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // test/spike3-python-import.test.mjs against the shipping extension's menus.
     // The range is exactly sb3-creator#35, based on the old pin: no example moved.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '67586ac89d3062ccf2629d4551c642495829d3bd');
+        '4edc039b1f914342c84958f752aeea8863c48f71');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

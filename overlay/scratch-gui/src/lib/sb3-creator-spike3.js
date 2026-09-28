@@ -27,7 +27,7 @@
 // UNITS, the part a line-by-line reading gets wrong:
 //   velocity   SPIKE 3: degrees/second. Blocks: percent of the motor's full
 //              speed, which is how the virtual hub's motor model reads them
-//              (docs/SPIKE-ARENA.md in lite: small 660, medium 1110, large 1050
+//              (the hub contract of lite's SPIKE arena: small 660, medium 1110, large 1050
 //              deg/s — LEGO's own velocity limits). Converted at the MEDIUM
 //              motor's 1110 deg/s = 100 %, SPIKE Prime's drive motor; on a small
 //              or large motor the same percent is a different deg/s — a note.
@@ -704,8 +704,10 @@ function translatorClass () {
                 return this.withPre(indent, [`${e.func.id}${args.length ? ' ' + args.join(' ') : ''}`]);
             }
             if (e.func.type === 'Name' && e.func.id === 'print') {
+                // print(a, b) writes them with a space between, as Python does.
                 const parts = e.args.map((a) => this.expr(a));
-                const text = parts.length ? parts.reduce((acc, x) => `(${acc} join ${x})`) : '""';
+                const text = parts.length ? parts.reduce((acc, x) => `((${acc} join " ") join ${x})`) : '""';
+                if ((e.keywords || []).length) this.note('print(): sep= and end= are not carried; values are joined with a space');
                 return this.withPre(indent, [`say ${text}`]);
             }
             if (path === 'time.sleep_ms') return this.withPre(indent, [`wait ${this.seconds(e.args[0])} seconds`]);

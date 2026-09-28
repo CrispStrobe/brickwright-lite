@@ -5,7 +5,12 @@
  *  2. the Pybricks simulator pane: a Python program from the Code tab, run by
  *     Pybricks MicroPython compiled to wasm, lights the hub face's matrix and
  *     turns the port-A motor to 90 degrees, then stops.
- * Both halves are SPIKE, so they share this gate and its one CI shard.
+ *  3. LEGO SPIKE App 3 Python: a program in the Code tab, run with "Run on
+ *     SPIKE 3 (Python)", is read into SPIKE blocks and drives the virtual hub
+ *     through the spikeprime extension: its motor turns at the commanded
+ *     speed, its print() reaches the console with the distance the hub holds,
+ *     and Stop ends it.
+ * All three are SPIKE, so they share this gate and its one CI shard.
  */
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -144,6 +149,85 @@ async function pybricksPane () {
     }
 }
 
+// The SPIKE 3 half. 555 deg/s is half the medium motor's full speed, so the
+// hub's port-A motor must read 50 %; the distance the test puts on port D must
+// come back through the extension into print(). The program then waits on a
+// force sensor nobody presses, so both are read while it runs, and Stop ends it.
+const spike3Program = `from hub import port
+import runloop
+import motor
+import distance_sensor
+import force_sensor
+
+async def main():
+    motor.run(port.A, 555)
+    await runloop.sleep_ms(300)
+    print("mm", distance_sensor.distance(port.D))
+    await runloop.until(lambda: force_sensor.pressed(port.E))
+    motor.stop(port.A)
+
+runloop.run(main())
+`;
+const SPIKE3_DISTANCE_MM = 345;
+
+async function spike3Python () {
+    const pane = await browser.newPage({viewport: {width: 1600, height: 1000}});
+    const errors = [];
+    pane.on('pageerror', error => errors.push(error.message));
+    pane.on('dialog', dialog => dialog.accept());
+    await pane.addInitScript(source => {
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-code-autosave', JSON.stringify({lang: 'python', code: source}));
+    }, spike3Program);
+    try {
+        await pane.goto(url, {waitUntil: 'domcontentloaded', timeout: 60000});
+        await pane.waitForFunction(() => Boolean(window.__brickwrightVirtualSpike?.hubState), null, {timeout: 30000});
+        await pane.evaluate(mm => {
+            window.__brickwrightVirtualSpike.setPort('A', 'motor');
+            window.__brickwrightVirtualSpike.setPort('D', 'distance', {distance: mm});
+            window.__brickwrightVirtualSpike.setPort('E', 'force', {force: 0, pressed: false});
+        }, SPIKE3_DISTANCE_MM);
+        await pane.getByRole('tab', {name: 'Code', exact: true}).click();
+        const runLine = spike3Program.split('\n').find(line => line.includes('motor.run('));
+        await pane.waitForFunction(line => (document.querySelector('.cm-content')?.textContent || '')
+            .includes(line.trim()), runLine, {timeout: 30000});
+        await pane.getByRole('button', {name: '▶ Run on SPIKE 3 (Python)'}).click();
+        try {
+            await pane.waitForFunction(() => window.__brickwrightVirtualSpike.snapshot().motors[0].speed === 50,
+                null, {timeout: 45000});
+        } catch (error) {
+            const hub = await pane.evaluate(() => window.__brickwrightVirtualSpike.snapshot());
+            const log = await pane.locator('[data-testid="bw-spike3-console"]').textContent().catch(() => 'no console');
+            await pane.screenshot({path: resolve(artifacts, 'spike3-motor-failure.png'), fullPage: true});
+            throw new Error(`port-A motor never ran at 50 %: motors ${JSON.stringify(hub.motors)}, console ${log}`,
+                {cause: error});
+        }
+        console.log('  ok: SPIKE 3 motor.run(port.A, 555) runs the hub\'s port-A motor at 50 %');
+        try {
+            await pane.waitForFunction(mm => [...document.querySelectorAll('[data-testid="bw-spike3-console"] [data-kind="out"]')]
+                .some(line => line.textContent === `mm ${mm}`), SPIKE3_DISTANCE_MM, {timeout: 30000});
+        } catch (error) {
+            const log = await pane.locator('[data-testid="bw-spike3-console"]').textContent().catch(() => 'no console');
+            await pane.screenshot({path: resolve(artifacts, 'spike3-print-failure.png'), fullPage: true});
+            throw new Error(`print() never showed "mm ${SPIKE3_DISTANCE_MM}": console ${log}`, {cause: error});
+        }
+        console.log(`  ok: print() shows the hub's distance, mm ${SPIKE3_DISTANCE_MM}`);
+        await pane.screenshot({path: resolve(artifacts, 'spike3-python-running.png'), fullPage: true});
+        await pane.locator('[data-testid="bw-spike3-stop"]').click();
+        await pane.waitForFunction(() => {
+            const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+            return !document.querySelector('[data-testid="bw-spike3-stop"]') && vm && vm.runtime.threads.length === 0;
+        }, null, {timeout: 30000});
+        console.log('  ok: Stop ended the SPIKE 3 program');
+        if (errors.length) throw new Error(`SPIKE 3 Python page errors: ${errors.join(' | ')}`);
+        console.log('SPIKE 3 Python on the virtual hub passed.');
+    } finally {
+        await pane.close();
+    }
+}
+
 const expected = ['event_whenflagclicked', 'spikeprime_motorStart', 'control_wait',
     'data_setvariableto', 'spikeprime_getDistance', 'spikeprime_displayText', 'spikeprime_motorStop'];
 const browser = await chromium.launch({headless: true});
@@ -248,6 +332,7 @@ try {
     console.log('LEGO SPIKE browser round trip passed.');
 
     await pybricksPane();
+    await spike3Python();
 } finally {
     await browser.close();
 }
