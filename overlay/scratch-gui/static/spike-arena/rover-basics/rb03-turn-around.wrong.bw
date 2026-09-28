@@ -1,0 +1,12 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: one quarter turn is only 90 degrees.
+WHEN flag clicked:
+  reset yaw
+  set motor speed A 15
+  set motor speed B 15
+  start motor A counterclockwise
+  start motor B counterclockwise
+  wait until spike angle yaw > 87
+  stop motor A
+  stop motor B

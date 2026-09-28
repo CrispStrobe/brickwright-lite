@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: waiting for a colour that is not on the mat.
+WHEN flag clicked:
+  set motor speed A 30
+  set motor speed B 30
+  start motor A counterclockwise
+  start motor B clockwise
+  wait until spike color C is red
+  stop motor A
+  stop motor B

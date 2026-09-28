@@ -10,7 +10,11 @@
  *     through the spikeprime extension: its motor turns at the commanded
  *     speed, its print() reaches the console with the distance the hub holds,
  *     and Stop ends it.
- * All three are SPIKE, so they share this gate and its one CI shard.
+ *  4. the SPIKE arena pane (docs/SPIKE-ARENA.md): the Code tab opens the arena,
+ *     the arena loads a challenge's reference solution into the Code tab, and
+ *     Start runs it as blocks in the Scratch VM, through the spikeprime
+ *     extension and the virtual hub, until the pass banner shows.
+ * All four are SPIKE, so they share this gate and its one CI shard.
  */
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
@@ -228,6 +232,87 @@ async function spike3Python () {
     }
 }
 
+// The arena half. The Code tab starts with a DIFFERENT SPIKE program (it only
+// has to be DEVICE SPIKE for the arena button to show), so a pass proves the
+// arena's own "load reference solution" put the solution there. The challenge
+// is the colour-sensor stop: it passes only if the sensor reading travels
+// world -> hub -> BLE -> extension -> VM and the stop travels back.
+const ARENA_CHALLENGE = 'rb07-stop-at-the-line';
+const arenaSolution = await readFile(resolve('overlay/scratch-gui/static/spike-arena/rover-basics',
+    `${ARENA_CHALLENGE}.bw`), 'utf8');
+const arenaStarter = `DEVICE SPIKE
+
+WHEN flag clicked:
+  display text "hi"
+`;
+
+async function arenaPane () {
+    const pane = await browser.newPage({viewport: {width: 1600, height: 1000}});
+    const errors = [];
+    pane.on('pageerror', error => errors.push(error.message));
+    pane.on('dialog', dialog => dialog.accept());
+    await pane.addInitScript(source => {
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-code-autosave', JSON.stringify({lang: 'pseudocode', code: source}));
+    }, arenaStarter);
+    try {
+        await pane.goto(url, {waitUntil: 'domcontentloaded', timeout: 60000});
+        await pane.waitForFunction(() => Boolean(window.__brickwrightVirtualSpike?.hubState), null, {timeout: 30000});
+        await pane.getByRole('tab', {name: 'Code', exact: true}).click();
+        await pane.waitForFunction(() => (document.querySelector('.cm-content')?.textContent || '').includes('display text'),
+            null, {timeout: 30000});
+        if (await pane.locator('[data-testid="bw-spike-arena-pane"]').count()) {
+            throw new Error('precondition: the arena pane must not be mounted before the Code tab opens it');
+        }
+        await pane.locator('[data-testid="bw-open-spike-arena"]').click();
+        await pane.locator('[data-testid="bw-spike-arena-pane"]').waitFor({timeout: 30000});
+        console.log('  ok: the Code tab opened the SPIKE arena');
+        await pane.waitForFunction(() => document.querySelectorAll('[data-testid="bw-spike-arena-select"] option').length >= 8,
+            null, {timeout: 30000});
+        await pane.evaluate(id => window.dispatchEvent(new CustomEvent('bw-spike-arena-select', {detail: {id}})), ARENA_CHALLENGE);
+        await pane.waitForFunction(id => window.__bwSpikeArena?._pane?.world?.id === id, ARENA_CHALLENGE, {timeout: 10000});
+        await pane.locator('[data-testid="bw-spike-arena-load-solution"]').click();
+        // Derived from the solution, not restated: its sensor line must reach the editor.
+        const sensorLine = arenaSolution.split('\n').map(line => line.trim()).find(line => line.startsWith('wait until'));
+        await pane.waitForFunction(line => (document.querySelector('.cm-content')?.textContent || '').includes(line),
+            sensorLine, {timeout: 30000});
+        await pane.waitForFunction(() => {
+            const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+            const opcodes = new Set((vm?.runtime?.targets || []).flatMap(target =>
+                Object.values(target.blocks?._blocks || {}).map(block => block.opcode)));
+            return opcodes.has('spikeprime_isColor') && opcodes.has('spikeprime_motorStart') && !opcodes.has('spikeprime_displayText');
+        }, null, {timeout: 45000});
+        console.log('  ok: the reference solution was loaded into the Code tab and built into blocks');
+        await pane.locator('[data-testid="bw-spike-arena-start"]').click();
+        try {
+            await pane.waitForFunction(() => {
+                const banner = document.querySelector('[data-testid="bw-spike-arena-banner"]');
+                return banner && banner.dataset.verdict;
+            }, null, {timeout: 60000});
+        } catch (error) {
+            const state = await pane.evaluate(() => ({
+                verdict: window.__bwSpikeArena?.verdict, pose: window.__bwSpikeArena?.snapshot?.pose,
+                message: document.querySelector('[data-testid="bw-spike-arena-message"]')?.textContent,
+                hub: window.__brickwrightVirtualSpike?.snapshot?.()?.motors
+            }));
+            await pane.screenshot({path: resolve(artifacts, 'spike-arena-failure.png'), fullPage: true});
+            throw new Error(`the arena never decided: ${JSON.stringify(state)}`, {cause: error});
+        }
+        const banner = await pane.locator('[data-testid="bw-spike-arena-banner"]');
+        const verdict = await banner.getAttribute('data-verdict');
+        const text = await banner.textContent();
+        await pane.screenshot({path: resolve(artifacts, 'spike-arena-pass.png'), fullPage: true});
+        if (verdict !== 'pass') throw new Error(`the reference solution did not pass in the browser: ${verdict} "${text}"`);
+        console.log(`  ok: pass banner: "${text}"`);
+        if (errors.length) throw new Error(`SPIKE arena page errors: ${errors.join(' | ')}`);
+        console.log('SPIKE arena pane passed.');
+    } finally {
+        await pane.close();
+    }
+}
+
 const expected = ['event_whenflagclicked', 'spikeprime_motorStart', 'control_wait',
     'data_setvariableto', 'spikeprime_getDistance', 'spikeprime_displayText', 'spikeprime_motorStop'];
 const browser = await chromium.launch({headless: true});
@@ -333,6 +418,7 @@ try {
 
     await pybricksPane();
     await spike3Python();
+    await arenaPane();
 } finally {
     await browser.close();
 }
