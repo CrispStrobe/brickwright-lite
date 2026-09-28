@@ -266,20 +266,17 @@ serial.writeLine("unreached")
 });
 
 test('MakeCode\'s own sprite apps behave the same: snap-the-dot and hero\'s ghost', {skip}, async () => {
-    // snap-the-dot (projects/snap-the-dot), with the dot's position printed. A
-    // counted loop, not basic.forever: MakeCode's forever waits 20 ms after
-    // every pass (pxsim thread.forever, CODAL's forever_stub) and lite's
-    // FOREVER does not — a timing difference of every imported forever, not of
-    // the sprites, and not what this compares.
+    // snap-the-dot (projects/snap-the-dot) as MakeCode wrote it, with the dot's
+    // position printed. A real basic.forever: it waits 20 ms after every pass
+    // in MakeCode (CODAL's forever_stub) and, since sb3-creator#31, in lite.
     const snap = await both(`
 let sprite = game.createSprite(2, 2)
-for (let i = 0; i < 12; i++) {
+basic.forever(function () {
     sprite.move(1)
     sprite.ifOnEdgeBounce()
     serial.writeLine("" + sprite.get(LedSpriteProperty.X))
     basic.pause(100)
-}
-basic.pause(10000)
+})
 `, {ms: 1500, at: [555, 1255]});
     assert.deepEqual(snap.lite.lines, snap.mc.lines);
     sameFrames(snap, [555, 1255]);

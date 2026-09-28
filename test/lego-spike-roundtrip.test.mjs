@@ -134,8 +134,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // PIN MOVED 5b98a28c -> b61acb4c (2026-09-27, sb3-creator#30): MakeCode's
     // LED sprites and game state — micro:bit dialect words and MicroPython
     // only; the SPIKE path is untouched, and the assertions re-ran at the pin.
+    // PIN MOVED b61acb4c -> c5ffaf0a (2026-09-28, sb3-creator#29, #31): MakeCode
+    // sound effects, tone modes, the touch logo, radio signal strength, and a
+    // micro:bit forever's 20 ms — micro:bit MicroPython only; the SPIKE path
+    // is untouched, and the assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'b61acb4c4aaeb3902003451f2cc610021e4acd91');
+        'c5ffaf0a2d4edb56e19fcad1b14911d3e5b45f8c');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
