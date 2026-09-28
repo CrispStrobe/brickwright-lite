@@ -94,17 +94,28 @@ try {
     });
     check(chrome.flag === '1', `${orientation}: the touch flag is set, so the chrome rules apply`,
       `data-bw-touch=${JSON.stringify(chrome.flag)}`);
-    check(chrome.top !== null && chrome.top <= 76,
-      `${orientation}: chrome above the content is within budget`,
-      `${chrome.top}px (was 92 before the phone-chrome rules; budget 76)`);
-    // CLICK THEM, do not hit-test them. An elementFromPoint check has to know
-    // where the app has scrolled to, and this app scrolls an inner container
-    // rather than the window: the first version reported 0 of 5 in CI's
-    // landscape shard, and after a scrollIntoView pass it reported 0 of 6 in
-    // portrait instead — the measurement moving, not the app. Clicking and
-    // reading aria-selected back asks the question that matters (can the reader
-    // select this tab) and lets Playwright do the scrolling, which it does
-    // correctly without me modelling the layout.
+    check(chrome.top !== null && chrome.top <= 44,
+      `${orientation}: chrome above the content is ONE row`,
+      `${chrome.top}px (was 92 as two rows; the tab strip is fixed so it costs no flow height; budget 44)`);
+    check(chrome.minTabH >= 32,
+      `${orientation}: no tab was shrunk below the 32px touch floor`,
+      `shortest tab ${chrome.minTabH}px`);
+
+    // SWITCHABLE, not merely present and hittable, and CLICKED rather than
+    // hit-tested. Two reasons, both learned the hard way.
+    //
+    // Moving the strip into the menu row can leave tabs that look right, pass a
+    // hit test and still not select — the first attempt at this move
+    // (position: absolute) failed the hit test outright, so this asks the
+    // stronger question.
+    //
+    // And an elementFromPoint check has to know where the app has scrolled to,
+    // which this app makes hard: it scrolls an inner container (gui_flex-wrapper
+    // carries overflow auto), not the window. A window.scrollTo(0, 0) moved
+    // nothing and CI read 0 of 5 in landscape; adding scrollIntoView flipped it
+    // to 0 of 6 in portrait instead. Two opposite results from one build is the
+    // instrument moving, not the app. Clicking lets Playwright do the scrolling,
+    // which it does correctly without this gate modelling the layout.
     let switched = 0;
     for (let i = 0; i < chrome.tabs; i++) {
       await page.getByRole('tab').nth(i).click({timeout: 5000}).catch(() => {});
@@ -114,11 +125,34 @@ try {
       if (ok) switched++;
     }
     check(switched === chrome.tabs && chrome.tabs > 0,
-      `${orientation}: every tab still selects after the chrome shrank`,
+      `${orientation}: every tab in the consolidated row actually switches`,
       `${switched}/${chrome.tabs}`);
-    check(chrome.minTabH >= 32,
-      `${orientation}: no tab was shrunk below the 32px touch floor`,
-      `shortest tab ${chrome.minTabH}px`);
+
+    // A fixed strip floats over everything by nature, so prove it does not
+    // float over the menus it now sits beside.
+    const menus = await page.evaluate(() => {
+      const items = [...document.querySelectorAll('[class*="menu-bar_menu-bar-item"]')];
+      const file = items.find(e => /File/i.test(e.textContent || ''));
+      if (!file) return {opened: false};
+      file.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
+      return {opened: true};
+    });
+    if (menus.opened) {
+      await page.waitForFunction(
+        "[...document.querySelectorAll('[class*=\"menu_menu\"]')].some(e => e.getBoundingClientRect().height > 20)",
+        null, {timeout: 6000, polling: 100}).catch(() => {});
+      const dd = await page.evaluate(() => {
+        const m = [...document.querySelectorAll('[class*="menu_menu"]')]
+          .find(e => e.getBoundingClientRect().height > 20);
+        if (!m) return {found: false};
+        const r = m.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + 12, r.top + 12);
+        return {found: true, reachable: !!(top && m.contains(top))};
+      });
+      check(dd.found && dd.reachable,
+        `${orientation}: the File menu still opens and is not covered by the fixed tab strip`,
+        JSON.stringify(dd));
+    }
 
     check(tabs.fit === tabs.total, `${orientation}: every editor tab is reachable`,
       `${tabs.fit}/${tabs.total} — ${tabs.names.join(' | ')}`);
