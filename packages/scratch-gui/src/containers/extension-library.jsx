@@ -6,7 +6,7 @@ import {defineMessages, injectIntl, intlShape} from 'react-intl';
 
 import extensionLibraryContent from '../lib/libraries/extensions/index.jsx';
 import {getLegacySpikeVisible, LEGACY_SPIKE_CHANGE_EVENT} from '../lib/spike-legacy-debug';
-import {remoteCodeAllowed} from '../lib/distribution-policy';
+import {remoteExtensionsAllowed} from '../lib/distribution-policy';
 
 import LibraryComponent from '../components/library/library.jsx';
 import extensionIcon from '../components/action-menu/icon--sprite.svg';
@@ -144,7 +144,7 @@ class ExtensionLibrary extends React.PureComponent {
         window.addEventListener(LEGACY_SPIKE_CHANGE_EVENT, this.handleLegacySpikeChange);
         // A deliberately restricted distribution exposes only extensions already bundled with it.
         // This is a webpack build policy, not a Tauri/runtime-platform inference.
-        if (remoteCodeAllowed()) {
+        if (remoteExtensionsAllowed()) {
             fetchGallery()
                 .then(gallery => this.setState({gallery}))
                 .catch(err => this.setState({galleryError: err.message}));
@@ -210,7 +210,7 @@ class ExtensionLibrary extends React.PureComponent {
             tags: ['gallery'],
             featured: true
         };
-        const allExtensions = (remoteCodeAllowed() ? [customEntry] : []).concat(bundled, gallery);
+        const allExtensions = (remoteExtensionsAllowed() ? [customEntry] : []).concat(bundled, gallery);
         const extensionLibraryThumbnailData = allExtensions.map(extension => ({
             rawURL: extension.iconURL || extensionIcon,
             ...extension
