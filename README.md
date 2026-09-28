@@ -66,8 +66,9 @@ address-preserving ELF, Intel HEX and UF2 loading. The optimized, adapter-
 equivalent hosted smoke receipt reaches **3.32x** and **3.78x** respectively
 (seven-run medians, both booted to `OK`); missing board peripherals remain
 explicit rather than being hidden by the CPU result. The public Renode fork now has a qualified exact
-STM32F413VG SPIKE Prime platform; its target RTx remains unmeasured rather than
-being inferred from the old F412 proxy. The EV3 work now has a source-built
+STM32F413VG SPIKE Prime platform. Its hosted active-loop receipt reaches
+**1.770x median** with a **1.383x minimum**, rather than inferring performance
+from the old F412 proxy. The EV3 work now has a source-built
 AM1808/ARM926 Renode boundary for reset, UART1, AINTC interrupts and GDB. Its
 hosted active-loop qualification reaches **1.361x median** with a **1.207x
 minimum**, but it does not yet have the Linux boot peripherals or a Lite
