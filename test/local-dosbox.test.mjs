@@ -21,14 +21,44 @@ test('local 386 disk infers 1000/4/17 and boots through the media event', async 
 
 test('DOSBox -size must agree with selected image', () => {
     const confText = '[cpu]\ncputype=386\n[autoexec]\nimgmount c disk.img -t hdd -size 512,17,4,615';
-    assert.throws(() => localDosboxMachine({confText, fileName: 'win311.img', byteLength: SIZE}),
+    assert.throws(() => localDosboxMachine({confText, fileName: 'disk.img', byteLength: SIZE}),
         /geometry does not match/);
+});
+
+test('local DOSBox boot accepts a matching selected image and dispatches its geometry', async () => {
+    const confText = '[cpu]\ncputype=386\n[autoexec]\nimgmount 2 "disk/owned.img" -t hdd -size 512,17,4,1\nboot -l c';
+    const bytes = new Uint8Array(4 * 17 * 512);
+    const cfg = localDosboxMachine({confText, fileName: 'OWNED.IMG', byteLength: bytes.length});
+    const events = [];
+    await runMachineConfig(cfg, {
+        fetcher: async ref => {
+            assert.equal(ref.url, 'local-media:disk');
+            return {bytes};
+        },
+        dispatch: detail => events.push(detail)
+    });
+    assert.equal(events.length, 1);
+    assert.strictEqual(events[0].bytes, bytes);
+    assert.deepEqual(events[0].geometry, {cylinders: 1, heads: 4, sectors: 17});
+    assert.equal(events[0].slotId, 'hdd');
+    assert.equal(events[0].widgets[0].source, 'video');
+    const windowsPath = confText.replace('disk/owned.img', 'disk\\owned.img');
+    assert.deepEqual(localDosboxMachine({
+        confText: windowsPath, fileName: 'owned.img', byteLength: bytes.length
+    }).slots.hdd.geometry, {cylinders: 1, heads: 4, sectors: 17});
+});
+
+test('local DOSBox boot rejects the wrong same-size selected image', () => {
+    const confText = '[autoexec]\nimgmount 2 "disk/owned.img" -t hdd -size 512,17,4,1\nboot -l c';
+    assert.throws(() => localDosboxMachine({
+        confText, fileName: 'other.img', byteLength: 4 * 17 * 512
+    }), /does not match DOSBox imgmount filename/);
 });
 
 test('local HDD uses the 386 AT with omitted, auto, or older DOSBox CPU settings', () => {
     for (const cpu of ['', '[cpu]\ncputype=auto\n', '[cpu]\ncputype=8086\n']) {
         const confText = `${cpu}[autoexec]\nimgmount c disk.img -t hdd -size 512,17,4,1000`;
-        const cfg = localDosboxMachine({confText, fileName: 'win311.img', byteLength: SIZE});
+        const cfg = localDosboxMachine({confText, fileName: 'disk.img', byteLength: SIZE});
         assert.equal(cfg.machine, 'i80386');
         assert.deepEqual(cfg.slots.hdd.geometry, {cylinders: 1000, heads: 4, sectors: 17});
     }

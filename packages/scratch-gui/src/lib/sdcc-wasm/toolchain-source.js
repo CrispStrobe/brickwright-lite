@@ -34,7 +34,7 @@
  * app is not a trade that a convenience can win.
  */
 
-import {remoteCodeRestricted} from '../distribution-policy.js';
+import {remoteToolchainsAllowed} from '../distribution-policy.js';
 
 export const GPL_TOOLCHAIN_ORIGIN = 'https://crispstrobe.github.io/sdcc-wasm/';
 export const TOOLCHAIN_MODE_KEY = 'bw-sdcc-toolchain';
@@ -145,7 +145,7 @@ export function localCompilerRequest (win = typeof window === 'undefined' ? unde
 export function localToolchainEnabled (win = typeof window === 'undefined' ? undefined : window) {
     // This BUILD-TIME rule precedes every opt-in, including ?localCompiler=on. A URL or stale
     // preference cannot change the distribution policy baked into the webpack bundle.
-    if (remoteCodeRestricted()) return false;
+    if (!remoteToolchainsAllowed()) return false;
     const store = win && win.localStorage ? win.localStorage : undefined;
     try {
         const asked = localCompilerRequest(win);
@@ -240,7 +240,7 @@ export async function measureToolchain (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) 
 }
 
 export async function primeToolchainCache (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
-    if (remoteCodeRestricted()) {
+    if (!remoteToolchainsAllowed()) {
         throw new Error('This distribution cannot download executable toolchains; use Build online.');
     }
     const fetch_ = deps.fetch || (typeof fetch === 'undefined' ? null : fetch);
