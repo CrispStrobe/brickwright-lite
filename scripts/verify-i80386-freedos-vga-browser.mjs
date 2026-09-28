@@ -113,6 +113,28 @@ try {
     console.log(`ok named 386 attached both synthetic disks; Widgets canvas ${await canvas.getAttribute('width')}x${await canvas.getAttribute('height')}; keyboard and PS/2 mouse forwarded`);
     await page.close();
 
+    // The named GUI option must make the built browser fetch and instantiate
+    // the packaged WASM modules. This is an attachment smoke, not a claim that
+    // synthetic media reached protected32 or retired a native block.
+    const native = await context.newPage();
+    native.on('pageerror', error => errors.push(error.message));
+    await openManager(native);
+    await native.getByTestId('bw-mm-free386-floppy').setInputFiles(localFile('boot.img', floppy));
+    await native.getByTestId('bw-mm-free386-native-blocks').check();
+    const ramWasm = native.waitForResponse(response =>
+        /i80386-ram-bridge[^/]*\.wasm(?:\?|$)/.test(response.url()), {timeout: 30000});
+    const blockWasm = native.waitForResponse(response =>
+        /i80386-block-spike[^/]*\.wasm(?:\?|$)/.test(response.url()), {timeout: 30000});
+    await native.getByTestId('bw-mm-free386-run').click();
+    const [ramResponse, blockResponse] = await Promise.all([ramWasm, blockWasm]);
+    assert.equal(ramResponse.status(), 200, 'native RAM bridge WASM must load');
+    assert.equal(blockResponse.status(), 200, 'native block WASM must load');
+    await native.getByTestId('bw-machine-manager').waitFor({state: 'detached', timeout: 90000});
+    await native.getByTestId('bw-machine-canvas').waitFor({state: 'visible', timeout: 30000});
+    assert.deepEqual(errors, [], 'native attachment must have no uncaught page errors');
+    console.log('ok named 386 native option attached and fetched both emitted WASM assets');
+    await native.close();
+
     const failing = await context.newPage();
     failing.on('pageerror', error => errors.push(error.message));
     let blockedBios = 0;

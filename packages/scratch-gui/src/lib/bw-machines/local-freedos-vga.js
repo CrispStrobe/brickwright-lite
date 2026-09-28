@@ -5,7 +5,7 @@ const FLOPPY_BYTES = new Set([360 * 1024, 1200 * 1024]);
 
 /** One-shot local media for the board's named, type-1 FreeDOS/VGA profile. */
 export function localFreedosVgaMachine({hdd = null, floppy = null, bios = null,
-    vgaRom = null} = {}) {
+    vgaRom = null, nativeBlocks = false} = {}) {
     if (!hdd && !floppy) throw new Error('select a hard disk or floppy image');
     if (hdd && hdd.size !== HDD_BYTES) {
         throw new Error('FreeDOS VGA profile needs a 306×4×17 hard-disk image');
@@ -32,6 +32,7 @@ export function localFreedosVgaMachine({hdd = null, floppy = null, bios = null,
     return newMachineConfig({
         title: floppy?.name || hdd?.name || 'FreeDOS VGA',
         machine: 'i80386', machineConfig: 'freedos-vga', executionMode: 'functional',
+        nativeBlocks,
         bios: {kind: bios ? 'supplied' : 'bochs-lgpl'},
         video: {kind: 'vga', optionRom: vgaRom ? 'supplied' : 'seavgabios-lgpl'},
         slots, bootOrder: [floppy ? 'floppy' : 'hdd',
