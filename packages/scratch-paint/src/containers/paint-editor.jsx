@@ -185,8 +185,22 @@ class PaintEditor extends React.Component {
             case Modes.OVAL:
                 this.props.changeMode(Modes.BIT_OVAL);
                 break;
+            case Modes.ROUNDED_RECT:
+                // Brickwright: no rounded-rect primitive in bitmap mode; the plain rectangle is
+                // the nearest thing, and lands the user on a tool that draws the same kind of
+                // shape. Without this the switch falls to `default`, which logs an error and
+                // silently hands them the brush.
+                /* falls through */
             case Modes.RECT:
                 this.props.changeMode(Modes.BIT_RECT);
+                break;
+            case Modes.POLYGON:
+                /* falls through */
+            case Modes.STAR:
+                // Brickwright: bitmap mode has no polygon or star primitive at all, so the brush
+                // genuinely is the best available landing spot — but say so deliberately rather
+                // than arriving there via an error path.
+                this.props.changeMode(Modes.BIT_BRUSH);
                 break;
             case Modes.TEXT:
                 this.props.changeMode(Modes.BIT_TEXT);
@@ -306,6 +320,7 @@ class PaintEditor extends React.Component {
     render () {
         return (
             <PaintEditorComponent
+                editorTools={this.props.editorTools}
                 canRedo={this.props.shouldShowRedo}
                 canUndo={this.props.shouldShowUndo}
                 canvas={this.state.canvas}
@@ -338,6 +353,7 @@ class PaintEditor extends React.Component {
 }
 
 PaintEditor.propTypes = {
+    editorTools: PropTypes.node,
     changeColorToEyeDropper: PropTypes.func,
     changeMode: PropTypes.func.isRequired,
     clearSelectedItems: PropTypes.func.isRequired,

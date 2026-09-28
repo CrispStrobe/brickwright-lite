@@ -3,6 +3,7 @@ import Modes from '../../lib/modes';
 import {styleShape} from '../style-path';
 import {clearSelection} from '../selection';
 import {getSquareDimensions} from '../math';
+import {snapPointToGrid} from '../bw/grid';
 import BoundingBoxTool from '../selection-tools/bounding-box-tool';
 import NudgeTool from '../selection-tools/nudge-tool';
 
@@ -94,20 +95,26 @@ class RectTool extends paper.Tool {
             this.rect.remove();
         }
 
-        const rect = new paper.Rectangle(event.downPoint, event.point);
-        const squareDimensions = getSquareDimensions(event.downPoint, event.point);
+        // Brickwright: snap the two drag corners to the grid, so everything downstream — the
+        // square constraint, the alt/shift positioning — is computed from the snapped values
+        // and the finished shape lands on grid lines rather than merely starting on one.
+        const downPoint = snapPointToGrid(event.downPoint);
+        const dragPoint = snapPointToGrid(event.point);
+
+        const rect = new paper.Rectangle(downPoint, dragPoint);
+        const squareDimensions = getSquareDimensions(downPoint, dragPoint);
         if (event.modifiers.shift) {
             rect.size = squareDimensions.size.abs();
         }
 
         this.rect = new paper.Path.Rectangle(rect);
         if (event.modifiers.alt) {
-            this.rect.position = event.downPoint;
+            this.rect.position = downPoint;
         } else if (event.modifiers.shift) {
             this.rect.position = squareDimensions.position;
         } else {
-            const dimensions = event.point.subtract(event.downPoint);
-            this.rect.position = event.downPoint.add(dimensions.multiply(0.5));
+            const dimensions = dragPoint.subtract(downPoint);
+            this.rect.position = downPoint.add(dimensions.multiply(0.5));
         }
 
         styleShape(this.rect, this.colorState);
