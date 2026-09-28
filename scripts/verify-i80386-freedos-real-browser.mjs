@@ -63,12 +63,22 @@ const capture = async label => {
     const bytes = await page.getByTestId('bw-machine-canvas').screenshot({path:file});
     return {file,sha256:sha256(bytes)};
 };
+const waitForGuestTime = async (advanceNs, timeout = 30000) => {
+    const startNs = await page.evaluate(() => Number(window.__benchTarget?.timeNs?.()));
+    assert.ok(Number.isFinite(startNs), '386 target has a readable simulated clock');
+    await page.waitForFunction(({startNs,advanceNs}) =>
+        Number(window.__benchTarget?.timeNs?.()) >= startNs + advanceNs,
+    {startNs,advanceNs}, {timeout});
+};
 const captureExpected = async (label, expected) => {
     let shot;
     for (let attempt = 0; attempt < 20; attempt++) {
         shot = await capture(label);
         if (shot.sha256 === expected) return shot;
-        await page.waitForTimeout(250);
+        const frame = await page.evaluate(() => window.__benchTarget?.video?.()?.frame);
+        await page.waitForFunction(frame =>
+            (window.__benchTarget?.video?.()?.frame ?? 0) > frame + 100,
+        frame, {timeout:5000});
     }
     throw new Error(`${label} canvas did not match expected guest screen: ${shot.sha256}`);
 };
@@ -127,7 +137,7 @@ try {
     assert.ok(Number.isInteger(maxMs) && maxMs >= 30000 && maxMs <= 600000);
     let finalTarget = null;
     for (let tick = 0; Date.now()-started < maxMs; tick++) {
-        await page.waitForTimeout(5000);
+        await waitForGuestTime(2_000_000_000);
         const state = await page.evaluate(() => {
             const t = window.__benchTarget;
             const v = t?.video?.();
@@ -157,7 +167,7 @@ try {
             installerCapture = await captureExpected('installer-question', expectedScreen.installer);
             await page.getByTestId('bw-machine-canvas').click();
             await page.keyboard.press('n');
-            await page.waitForTimeout(250);
+            await waitForGuestTime(100_000_000);
             await page.keyboard.press('Enter');
             console.log('INPUT', JSON.stringify({source:'Widgets keyboard',
                 keys:'n,Enter',elapsedSec:(Date.now()-started)/1000}));
@@ -169,14 +179,14 @@ try {
             await page.getByTestId('bw-machine-canvas').click();
             for (const key of ['d','i','r',' ','c']) {
                 await page.keyboard.press(key);
-                await page.waitForTimeout(180);
+                await waitForGuestTime(100_000_000);
             }
             await page.keyboard.down('Shift');
-            await page.waitForTimeout(180);
+            await waitForGuestTime(100_000_000);
             await page.keyboard.press('Semicolon');
-            await page.waitForTimeout(180);
+            await waitForGuestTime(100_000_000);
             await page.keyboard.up('Shift');
-            await page.waitForTimeout(180);
+            await waitForGuestTime(100_000_000);
             await page.keyboard.press('Enter');
             const scans = await page.evaluate(() => window.__realFree386.keyScans);
             console.log('INPUT', JSON.stringify({source:'Widgets physical keyboard',
