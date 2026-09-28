@@ -36,6 +36,63 @@ throttling and vary the rate; if the verdict flips, the coupling is confirmed an
 the direction is measured at the same time.
 
 
+## OPEN, FLEET-WIDE: main's per-sha concurrency group lets superseded runs accumulate until they starve every PR (2026-09-28)
+
+**Measured at 18:5x: 78 workflow runs queued, ONE in progress.** No PR in the
+repo could get a verdict, and it looked from inside a lane like "CI is slow" or
+"my checks are empty". `gh pr checks 466` returned nothing at all for over two
+hours; the PR was fine.
+
+**26 of the 78 queued runs were on `main`, for 13 different superseded shas.**
+That is the mechanism, and it is in `.github/workflows/build.yml`:
+
+```yaml
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && format('pages-{0}', github.sha) || ... }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+```
+
+For a PR branch the group is per-PR and `cancel-in-progress` is true, so a new
+push supersedes the old run and the queue stays at one per PR. **For main the
+group is keyed by `github.sha` and cancel-in-progress is false**, so every main
+push opens a NEW group that nothing will ever collapse. Main runs do not queue
+behind each other — they queue *alongside* each other, without bound, and each
+one holds a runner slot until it is served.
+
+**This is not obviously a bug**, which is why it is recorded rather than
+changed. The per-sha group was deliberate and the reason is in the file's own
+comment: a shared `pages-main` group made each push cancel the previous one, so
+main took twelve pushes in eighty minutes and got ZERO verdicts, and the
+cancellations read as though somebody had stopped them. Per-sha fixes that, and
+its cost is exactly what was measured today. Which failure mode is worse is a
+choice about what main's builds are FOR, and that belongs to the CI lane.
+
+**What is not a judgement call: a build for a sha that is already 13 commits
+behind main cannot inform anything.** Cancelling the 21 runs whose sha was a
+verified ancestor of current `origin/main` (keeping the three for the tip)
+freed the queue, and that is safe housekeeping rather than a design change:
+
+```bash
+git merge-base --is-ancestor "$sha" origin/main && gh api -X POST \
+  "repos/$REPO/actions/runs/$id/cancel"
+```
+
+**One run cannot be cancelled at all.** Run `34748500702` (Build, main) has been
+`queued` since **2026-09-13** — fifteen days. Both `/cancel` and `/force-cancel`
+refuse it with `409: Cannot cancel a workflow run that has not been queued yet`.
+It holds a slot permanently and there is no API that reaches it; it likely needs
+GitHub support or will age out on its own. Recorded so the next person who
+counts the queue does not spend an hour on the one entry that cannot move.
+
+**How to tell you are in this situation** rather than looking at a broken PR:
+`gh pr checks <n>` is empty AND the repo-wide queue is deep. Check the queue
+before debugging the branch:
+
+```bash
+gh api 'repos/OWNER/REPO/actions/runs?status=queued&per_page=1' -q .total_count
+gh api 'repos/OWNER/REPO/actions/runs?status=in_progress&per_page=1' -q .total_count
+```
+
 ## ~~OPEN, UPSTREAM~~ — FIXED UPSTREAM the same day: the gallery snapshot could not be attested (2026-09-28)
 
 **`sync-gallery-pins.mjs --check` refuses, and it is right to.** It attests that
