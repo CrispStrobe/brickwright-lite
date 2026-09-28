@@ -198,10 +198,13 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 24 device-specific benches. The three Arduino examples whose authored
     // circuits reserve PC4/PC5 for an external EEPROM are deliberately absent:
     // remapping those wires would change the lesson rather than retarget it.
+    // 1216 -> 1217 on 2026-09-28: sb3-creator's PRECHIN A2 learning-board
+    // preset (board-prechin-a2-learning-board/circuit.json), which arrives with
+    // the pin that brings SPIKE App 3 Python.
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1216, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1217, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
