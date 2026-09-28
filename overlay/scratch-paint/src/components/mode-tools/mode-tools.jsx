@@ -37,6 +37,8 @@ import flipHorizontalIcon from './icons/flip-horizontal.svg';
 import flipVerticalIcon from './icons/flip-vertical.svg';
 import straightPointIcon from './icons/straight-point.svg';
 import openPathIcon from './icons/open-path.svg';
+import splitPathIcon from './icons/split-path.svg';
+import joinPathsIcon from './icons/join-paths.svg';
 import bitOvalIcon from '../bit-oval-mode/oval.svg';
 import bitRectIcon from '../bit-rect-mode/rectangle.svg';
 import bitOvalOutlinedIcon from '../bit-oval-mode/oval-outlined.svg';
@@ -96,6 +98,16 @@ const ModeToolsComponent = props => {
             defaultMessage: 'Open path',
             description: 'Separate the ends of the selected vector path',
             id: 'paint.modeTools.openPath'
+        },
+        splitPath: {
+            defaultMessage: 'Split at node',
+            description: 'Split the selected vector path at one selected node',
+            id: 'paint.modeTools.splitPath'
+        },
+        joinPaths: {
+            defaultMessage: 'Join paths',
+            description: 'Join two selected vector paths at a shared endpoint',
+            id: 'paint.modeTools.joinPaths'
         },
         thickness: {
             defaultMessage: 'Thickness',
@@ -229,6 +241,20 @@ const ModeToolsComponent = props => {
                         title={props.intl.formatMessage(messages.openPath)}
                         onClick={props.onOpenPath}
                     />
+                    <LabeledIconButton
+                        disabled={!props.canSplitPath}
+                        hideLabel={hideLabel(props.intl.locale)}
+                        imgSrc={splitPathIcon}
+                        title={props.intl.formatMessage(messages.splitPath)}
+                        onClick={props.onSplitPath}
+                    />
+                    <LabeledIconButton
+                        disabled={!props.canJoinPaths}
+                        hideLabel={hideLabel(props.intl.locale)}
+                        imgSrc={joinPathsIcon}
+                        title={props.intl.formatMessage(messages.joinPaths)}
+                        onClick={props.onJoinPaths}
+                    />
                 </InputGroup>
                 <InputGroup className={classNames(styles.modLabeledIconHeight)}>
                     <LabeledIconButton
@@ -353,6 +379,8 @@ ModeToolsComponent.propTypes = {
     brushValue: PropTypes.number,
     canClosePath: PropTypes.bool,
     canOpenPath: PropTypes.bool,
+    canSplitPath: PropTypes.bool,
+    canJoinPaths: PropTypes.bool,
     className: PropTypes.string,
     clipboardItems: PropTypes.arrayOf(PropTypes.array),
     eraserValue: PropTypes.number,
@@ -376,6 +404,8 @@ ModeToolsComponent.propTypes = {
     onFlipVertical: PropTypes.func.isRequired,
     onOutlineShapes: PropTypes.func.isRequired,
     onOpenPath: PropTypes.func.isRequired,
+    onSplitPath: PropTypes.func.isRequired,
+    onJoinPaths: PropTypes.func.isRequired,
     onPasteFromClipboard: PropTypes.func.isRequired,
     onPointPoints: PropTypes.func.isRequired,
     onUpdateImage: PropTypes.func.isRequired

@@ -58,7 +58,12 @@ path. They change the path's topology in Paper and save as an ordinary SVG
 path, so an older Scratch reader can still display it. The browser gate draws
 a path, opens it, saves/reopens the SB3, then closes it again. Node movement,
 handle adjustment and adding a node on a curve were already present in the
-reshape tool. Join/split operations and asymmetric handles remain ahead.
+reshape tool. The reshape toolbar now splits a path at one selected node and
+joins two open paths at a shared endpoint. A split closed path opens at that
+node; splitting an open path creates two editable SVG paths with their new
+ends selected for an immediate join. The browser gates check Bézier geometry,
+undo/redo, SB3 save/reopen and touch use. An on-screen asymmetric-handle control remains
+ahead; holding Option while dragging a handle already breaks symmetry on desktop.
 
 The bitmap editor now keeps separate full-size PNG layers. The compact layer
 strip selects the paint target and can add, delete, reorder, rename, lock, hide and fade
@@ -132,7 +137,7 @@ selection transforms and masks remain ahead.
    need large hit areas; on-screen modifiers replace keyboard-only shortcuts.
    Test on macOS mouse/trackpad and iPad finger/Pencil, including resize and
    fullscreen transitions.
-3. **Vector core.** Complete node operations (join, split, asymmetric handles);
+3. **Vector core.** Extend node operations with on-screen asymmetric handles;
    keep named groups and text editable. Improve
    gradient/stroke controls and precise transform handles. Use the source layer
    tree as the authority; render it deterministically to SVG. Test node edits

@@ -10,6 +10,7 @@ import {clearSelectedItems, setSelectedItems} from '../reducers/selected-items';
 import {
     deleteSelection,
     getSelectedLeafItems,
+    getSelectedSegments,
     getSelectedRootItems,
     getAllRootItems,
     selectAllItems,
@@ -35,6 +36,8 @@ class ModeTools extends React.Component {
             'handleFlipVertical',
             'handleDelete',
             'handleOpenPath',
+            'handleSplitPath',
+            'handleJoinPaths',
             'handlePasteFromClipboard',
             'handlePointPoints'
         ]);
@@ -46,7 +49,8 @@ class ModeTools extends React.Component {
     handleClosePath () {
         const path = this.getSelectedPath();
         if (!path || path.closed || path.segments.length < 3) return;
-        path.closed = true;
+        if (path.firstSegment.point.equals(path.lastSegment.point)) path.join();
+        else path.closed = true;
         this.props.setSelectedItems(this.props.format);
         this.props.onUpdateImage();
     }
@@ -54,6 +58,49 @@ class ModeTools extends React.Component {
         const path = this.getSelectedPath();
         if (!path || !path.closed) return;
         path.closed = false;
+        this.props.setSelectedItems(this.props.format);
+        this.props.onUpdateImage();
+    }
+    getSplitSegment () {
+        const path = this.getSelectedPath();
+        const selected = getSelectedSegments();
+        if (!path || selected.length !== 1 || selected[0].path !== path || path.segments.length < 3) return null;
+        const segment = selected[0];
+        return path.closed || (segment.index > 0 && segment.index < path.segments.length - 1) ? segment : null;
+    }
+    handleSplitPath () {
+        const segment = this.getSplitSegment();
+        if (!segment) return;
+        const path = segment.path;
+        const wasClosed = path.closed;
+        const result = path.splitAt(segment.location);
+        if (!result) return;
+        paper.project.deselectAll();
+        if (wasClosed) {
+            path.firstSegment.selected = true;
+            path.lastSegment.selected = true;
+        } else {
+            path.lastSegment.selected = true;
+            result.firstSegment.selected = true;
+        }
+        this.props.setSelectedItems(this.props.format);
+        this.props.onUpdateImage();
+    }
+    getJoinPaths () {
+        const paths = getSelectedLeafItems();
+        if (paths.length !== 2 || !paths.every(path => path instanceof paper.Path && !path.closed &&
+            path.segments.length > 1) || paths[0].parent !== paths[1].parent ||
+            !paths[0].matrix.equals(paths[1].matrix) ||
+            !paths[0].style.equals(paths[1].style)) return null;
+        const ends = path => [path.firstSegment.point, path.lastSegment.point];
+        return ends(paths[0]).some(a => ends(paths[1]).some(b => a.isClose(b, 1e-6))) ? paths : null;
+    }
+    handleJoinPaths () {
+        const paths = this.getJoinPaths();
+        if (!paths) return;
+        paths[0].join(paths[1]);
+        paper.project.deselectAll();
+        paths[0].selected = true;
         this.props.setSelectedItems(this.props.format);
         this.props.onUpdateImage();
     }
@@ -235,6 +282,8 @@ class ModeTools extends React.Component {
             <ModeToolsComponent
                 canClosePath={Boolean(path && !path.closed && path.segments.length >= 3)}
                 canOpenPath={Boolean(path && path.closed)}
+                canSplitPath={Boolean(this.getSplitSegment())}
+                canJoinPaths={Boolean(this.getJoinPaths())}
                 hasSelectedUncurvedPoints={this.hasSelectedUncurvedPoints()}
                 hasSelectedUnpointedPoints={this.hasSelectedUnpointedPoints()}
                 onCopyToClipboard={this.props.onCopyToClipboard}
@@ -246,6 +295,8 @@ class ModeTools extends React.Component {
                 onPasteFromClipboard={this.handlePasteFromClipboard}
                 onPointPoints={this.handlePointPoints}
                 onOpenPath={this.handleOpenPath}
+                onSplitPath={this.handleSplitPath}
+                onJoinPaths={this.handleJoinPaths}
                 onUpdateImage={this.props.onUpdateImage}
             />
         );
