@@ -221,29 +221,45 @@ try {
     const openDebugger = page.getByTestId('bw-open-circuit-debugger');
     if (await openDebugger.count()) await openDebugger.first().click();
     await page.getByTestId('bw-serial-console').waitFor({state: 'attached', timeout: 30000});
+    // THE PROMPT, AT THE TAIL, AND STILL THERE ONE POLL LATER. A `bwb#`
+    // anywhere in the scrollback proves nothing about now; the prompt must end
+    // the console and the text must have stopped growing (the shell is waiting,
+    // not mid-print). Only then is the command typed.
     await page.waitForFunction(`(() => {
         const el = document.querySelector('[data-testid="bw-serial-console"]');
         const now = el ? el.textContent : '';
-        return now.includes('BWB-LINUX-USERSPACE-UP') && /bwb# $/.test(now);
+        const prev = window.__bwLinuxPrev;
+        window.__bwLinuxPrev = now;
+        return now.includes('BWB-LINUX-USERSPACE-UP') && /bwb# $/.test(now) && prev === now;
     })()`, null, {timeout: 120000, polling: 100});
     const booted = (Date.now() - t0) / 1000;
     check(true, `Linux booted to the bwb# prompt in the browser — ${booted.toFixed(1)} s from Run (media fetched + verified in ${fetched.toFixed(1)} s)`);
 
+    // THE ANSWER MUST BE NEW. Mark the console before typing and read only
+    // what arrives after the mark: the echoed command, then a line that is
+    // uname's answer, then the prompt again. The boot log is full of lines
+    // containing "Linux", so a match anywhere in the scrollback is not an
+    // answer — that is how this check once reported the kernel's ALSA line.
+    const mark = await page.evaluate(`(() => {
+        const el = document.querySelector('[data-testid="bw-serial-console"]');
+        return (window.__bwLinuxMark = el ? el.textContent.length : 0);
+    })()`);
     const input = page.getByTestId('bw-serial-input');
     await input.fill('uname -a');
     await page.getByTestId('bw-serial-send').click();
-    let unameText = '';
+    const ANSWER = /uname -a\s*\n(?:[^\n]*\n)*?Linux \S+ 6\.1\.\d+ [^\n]*riscv32 GNU\/Linux\s*\n[\s\S]*bwb# $/;
     try {
         await page.waitForFunction(`(() => {
             const el = document.querySelector('[data-testid="bw-serial-console"]');
-            const now = el ? el.textContent : '';
-            return /Linux \\S+ 6\\.1\\.\\d+ .*riscv32 GNU\\/Linux[\\s\\S]*bwb# $/.test(now);
+            const after = (el ? el.textContent : '').slice(window.__bwLinuxMark || 0);
+            return ${ANSWER}.test(after);
         })()`, null, {timeout: 60000, polling: 100});
     } catch { /* checked below on whatever arrived */ }
-    unameText = await page.evaluate(SERIAL);
-    check(/Linux \S+ 6\.1\.\d+ .*riscv32 GNU\/Linux/.test(unameText),
-        'uname -a typed into the serial console answers "Linux … riscv32 GNU/Linux"',
-        unameText.split('\n').filter(l => /Linux/.test(l)).slice(-1)[0] || unameText.slice(-160));
+    const unameText = await page.evaluate(SERIAL);
+    const after = unameText.slice(mark);
+    check(ANSWER.test(after),
+        'uname -a typed into the serial console answers "Linux … riscv32 GNU/Linux" on a NEW line after the command',
+        JSON.stringify(after.slice(-200)) || '(nothing after the command)');
     check(!linuxErrors.length, 'no page errors during the Linux boot', linuxErrors.slice(0, 2).join(' | '));
     await mkdir(LINUX_ARTIFACTS, {recursive: true});
     await writeFile(join(LINUX_ARTIFACTS, 'serial.txt'), unameText || '(no serial output)');
