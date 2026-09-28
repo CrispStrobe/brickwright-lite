@@ -147,6 +147,25 @@ const L10N = {
 };
 const t = makeT(L10N);
 
+// Palette indices are a per-browser tool preference, not costume artwork. Keep
+// them outside the SB3 source document so older projects retain their schema.
+const COLOUR_SLOTS_KEY = 'bw-pixel-colour-slots-v1';
+const validSlot = value => Number.isInteger(value) && value >= 0 && value <= 15;
+const readColourSlots = () => {
+    try {
+        const saved = JSON.parse(globalThis.localStorage?.getItem(COLOUR_SLOTS_KEY) || 'null');
+        return {colour: validSlot(saved?.colour) ? saved.colour : 2,
+            secondaryColour: validSlot(saved?.secondaryColour) ? saved.secondaryColour : 0};
+    } catch {
+        return {colour: 2, secondaryColour: 0};
+    }
+};
+const writeColourSlots = (colour, secondaryColour) => {
+    try {
+        globalThis.localStorage?.setItem(COLOUR_SLOTS_KEY, JSON.stringify({colour, secondaryColour}));
+    } catch { /* Drawing still works when browser storage is unavailable. */ }
+};
+
 const toolIcon = name => {
     const icons = {
         pencil: <><path d="M4 20l4.5-1 10-10-3.5-3.5-10 10L4 20z" /><path d="M13.5 7l3.5 3.5" /></>,
@@ -226,9 +245,10 @@ const rasterize = costume => new Promise((resolve, reject) => {
 class PixelArtEditor extends React.Component {
     constructor (props) {
         super(props);
+        const colourSlots = readColourSlots();
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             palette: [...ARCADE_PALETTE],
-            scale: 4, zoom: 1, colour: 2, secondaryColour: 0, choosingSecondary: false,
+            scale: 4, zoom: 1, ...colourSlots, choosingSecondary: false,
             replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null, tolerance: 0,
             frames: [], activeFrameId: null, framesOpen: false, panel: null, exportingFrames: false,
@@ -280,6 +300,9 @@ class PixelArtEditor extends React.Component {
     componentWillUnmount () { clearTimeout(this.playTimer); }
 
     componentDidUpdate (prev, prevState) {
+        if (prevState.colour !== this.state.colour || prevState.secondaryColour !== this.state.secondaryColour) {
+            writeColourSlots(this.state.colour, this.state.secondaryColour);
+        }
         if (prev.costumeIndex !== this.props.costumeIndex || this.loadedCostume !== this.costume()) this.load();
         else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection ||
             prevState.palette !== this.state.palette || prevState.onionSkin !== this.state.onionSkin) this.paint();
