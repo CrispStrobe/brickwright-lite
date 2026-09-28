@@ -39,6 +39,7 @@ import {
     setCondition, conditionOf, allConditions
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
+import {createReadyGatedInput} from './ready-gated-input.js';
 import {cpmFileName} from './cpm-z80.js';
 import { canRecordDebugInput } from 'bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
@@ -468,6 +469,17 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     return requested;
 }
 
+/** Convert avr8js's word-addressed Intel-HEX result to flat AVR flash bytes. */
+export function avrWordsToFlashBytes(words) {
+    if (!(words instanceof Uint16Array)) throw new TypeError('AVR flash words must be Uint16Array');
+    const bytes = new Uint8Array(words.length * 2);
+    for (let i = 0; i < words.length; i++) {
+        bytes[i * 2] = words[i] & 0xff;
+        bytes[i * 2 + 1] = words[i] >>> 8;
+    }
+    return bytes;
+}
+
 /**
  * Apply one write-watchpoint toggle without changing the target's address.
  *
@@ -779,6 +791,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let serialEsc = 0;                 // 0 text, 1 after ESC, 2 inside CSI
     /** Per-frame boot-progress hook for the Linux lesson, or null. */
     let linuxProgressWatch = null;
+    /**
+     * Set by destroy(). A runner destroyed while its start() is still awaiting
+     * attach() must not come back to life when attach resolves: before this,
+     * start() went on to session.start() + schedule() and the destroyed runner
+     * pumped forever beside its replacement — two machines, one console, and
+     * input sent to the one whose output was not on screen (the Linux-lesson
+     * gate's ~1-in-10 "uname never answered"). Checked after the await and in
+     * schedule()/pumpFrame().
+     */
+    let destroyed = false;
     /**
      * What the ATTACHED engine cannot carry, in the user's words.
      *
@@ -1838,28 +1860,28 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
-    /** STM32F030 on the HEAVY tier (labwired-wasm).
+    /** STM32F030 or ATmega328P on the HEAVY tier (labwired-wasm).
      *
-     *  Same board and the same raw flash image as attachStm32F0Target — the
-     *  program is identical, only the engine underneath differs. That is the
-     *  point of the two-tier split in STM32-PATH.md: the light tier is the
-     *  hand-rolled CortexM0Machine with its peripheral set capped at what our
-     *  codegen emits, and this is what a project runs on when it needs more.
+     *  STM32F030 uses the same raw flash image as attachStm32F0Target. AVR
+     *  compiler output is Intel HEX, converted below to little-endian flash
+     *  bytes; the bw-board adapter wraps either architecture in the matching
+     *  ELF container before handing it to LabWired.
      *
      *  Two things this path does that the light one does not:
      *
-     *  1. It fetches a 20 MB engine on first use. `loadLabwired()` returns null
+     *  1. It fetches the optional engine on first use. `loadLabwired()` returns null
      *     rather than throwing when the artifact was never deployed, so the
      *     failure here is a clear message, not a broken panel — and the picker
      *     should not have offered the kind at all in that case.
-     *  2. It wraps the flash image in an ELF. labwired's ARM path ends in
-     *     `load_elf_bytes` and takes nothing else, while everything we compile
-     *     is a raw image; the adapter does the wrapping. The cost is symbols:
+     *  2. It wraps the flash image in an ELF. LabWired ends in
+     *     `load_elf_bytes`; the adapter supplies the architecture-correct
+     *     container. The cost is symbols:
      *     there are none in a .bin, so no source lines and no yield points.
      */
     async function attachLabwiredTarget (built) {
         setStatus('attaching', S('attach.labwired'));
-        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist, STM32F0 } =
+        const { createDebugTarget, createDebugSession, BoardImpl, inferNetlist,
+            STM32F0, LABWIRED_CHIPS, parseIntelHex } =
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
         const { loadLabwired } = await import(
             /* webpackChunkName: "labwired-probe" */ '../labwired-engine.js');
@@ -1872,17 +1894,31 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         const stc = projectStc(null);
-        const clockHz = built.f_cpu || built.clockHz || STM32F0.clockHz;
+        const device = String(stc?.device || '').toLowerCase();
+        const isAvr = ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device);
+        if (!isAvr && device !== 'stm32f030') {
+            throw new Error('LabWired is admitted here only for STM32F030 and '
+                + 'ATmega328P/Arduino Uno/Nano. ATtiny85/88 stay on avr8js.');
+        }
+        const chipKind = isAvr ? 'arduino_uno' : 'stm32f030';
+        const chip = isAvr ? LABWIRED_CHIPS.arduino_uno : STM32F0;
+        const clockHz = built.f_cpu || built.clockHz || chip.clockHz;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
-        board = new BoardImpl(3.3);
+        board = new BoardImpl(isAvr ? 5.0 : 3.3);
         board.setNetlist(netlist.parts, netlist.nets);
         board.setPower(true);
         if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
 
-        const program = built.image instanceof Uint8Array ? built.image : null;
-        if (!program) throw new Error('the STM32F030 build produced no flash image');
+        const program = isAvr
+            ? (typeof built.hex === 'string'
+                ? avrWordsToFlashBytes(parseIntelHex(built.hex, 32 * 1024))
+                : null)
+            : (built.image instanceof Uint8Array ? built.image : null);
+        if (!program) throw new Error(isAvr
+            ? 'the ATmega328P build produced no Intel HEX image'
+            : 'the STM32F030 build produced no flash image');
 
         // NO `pins`, and NO `chipYaml`. This is the documented mistake, and it
         // was made here: handing the factory a header map alongside the board
@@ -1898,7 +1934,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         let lwTarget, lwAdapter, refusals;
         try {
             ({ target: lwTarget, adapter: lwAdapter, refusals } = await createDebugTarget('labwired', {
-                wasm, board, firmware: program, chipKind: 'stm32f030', clockHz,
+                wasm, board, firmware: program, chipKind, clockHz,
             }));
         } catch (e) {
             // The bridge throws with a `refusals` array when the bench cannot be
@@ -2526,10 +2562,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         serialTerminal = true;
         serialEsc = 0;
         wireMachineBench(result, createDebugSession);
+        // HOLD console input until the shell is listening. Bytes sent while
+        // the kernel boots are dropped (the 8250 driver clears the receive FIFO
+        // at port start-up; nothing reads the tty before init opens it), so
+        // they are queued here and flushed, in order, the frame the prompt is
+        // up. See ready-gated-input.js.
+        const linuxTarget = target;
+        const gatedInput = createReadyGatedInput({
+            isReady: () => !!(linuxTarget.linuxProgress() || {}).ready,
+            send: byte => linuxTarget.sendSerial(byte)
+        });
+        runner.sendSerial = (data) => {
+            if (typeof data === 'number') return gatedInput.push(data);
+            const text = String(data);
+            for (let i = 0; i < text.length; i++) {
+                if (gatedInput.push(text.charCodeAt(i)) === false) return false;
+            }
+            return true;
+        };
         let shown = '';
         linuxProgressWatch = () => {
             const p = target && typeof target.linuxProgress === 'function' ? target.linuxProgress() : null;
             if (!p) return;
+            gatedInput.flush();
             const key = `${p.phase}:${p.percent}`;
             if (key === shown) return;
             shown = key;
@@ -2838,6 +2893,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * network clone and never the private $AT_BIOS_ROM.
      */
     async function attachI80386() {
+        if (bootMedia?.machinePreset === 'freedos-vga') {
+            return attachI80386FreedosVgaProfile();
+        }
         setStatus('attaching', bootMedia && bootMedia.name
             ? S('boot.free386Named', {name: bootMedia.name})
             : S('boot.free386'));
@@ -2975,6 +3033,52 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
+    // The named board profile owns the AT/VGA/CMOS map. Keep all four media
+    // slots on bw-board's loader so this browser path matches the board API.
+    async function attachI80386FreedosVgaProfile() {
+        const {createDebugTarget, createDebugSession, applyMedia} =
+            await import(/* webpackChunkName: "bw-board-i80386" */ 'bw-board');
+        const biosUrl = new URL('static/roms/free-386-bochs-bios.rom', document.baseURI).href;
+        const vgaUrl = new URL('static/roms/free-386-vgabios-lgpl.bin', document.baseURI).href;
+        const fallback = async (url, label) => {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load ${label}: HTTP ${response.status}`);
+            return new Uint8Array(await response.arrayBuffer());
+        };
+        const entries = {...bootMedia.i80386Media};
+        entries.bios ||= await fallback(biosUrl, 'the free-386 BIOS');
+        entries['vga-rom'] ||= await fallback(vgaUrl, 'the free-386 VGABios');
+        if (bootMedia?.slot === 'hdd' || bootMedia?.slot === 'floppy') {
+            entries[bootMedia.slot] = (await resolveMediaImage(bootMedia)).bytes;
+        } else if (bootMedia?.slot) {
+            throw new Error(`the FreeDOS VGA profile cannot boot ${bootMedia.slot} media`);
+        }
+        const targetOpts = {profile: 'freedos-vga'};
+        if (bootMedia?.nativeBlocks === true) targetOpts.nativeBlocks = true;
+        const db = designerBoard();
+        if (db.board) { targetOpts.board = db.board; board = db.board; }
+        const result = await createDebugTarget('i80386', targetOpts);
+        i8086ExecutionResult = result;
+        if (i8086ExecutionLifetime.signal.aborted) throw new Error('80386 attachment was disposed');
+        const machine = result.adapter?.machine;
+        if (!machine) throw new Error('the FreeDOS VGA profile did not build an AT machine');
+        const applied = applyMedia({kind: 'i80386', adapter: result.adapter, machine}, entries);
+        if (applied.errors.length) {
+            throw new Error(applied.errors.map(item => `${item.slot}: ${item.error}`).join('; '));
+        }
+        machine.reset();
+        wireMachineBench(result, createDebugSession);
+        if (typeof result.adapter?.mouseIn === 'function' && machine.canTakeMouse?.()) {
+            runner.mouseIn = event => result.adapter.mouseIn(event);
+        }
+        const name = bootMedia.name || S('noun.floppy');
+        const readyMsg = bootMedia.slot === 'floppy'
+            ? S('ready.free386Floppy', {name})
+            : S('ready.free386Disk', {name});
+        setStatus('ready', readyMsg);
+        return session;
+    }
+
     /**
      * Should this halt be swallowed?
      *
@@ -3039,7 +3143,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
     function pumpFrame() {
         rafId = null;
-        if (!session) return;
+        if (!session || destroyed) return;
         if (activeRunTo) {
             const result = runToController.pump();
             if (board) board.advanceTo(target.timeNs());
@@ -3117,6 +3221,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     }
 
     function schedule() {
+        if (destroyed) return;
         if (rafId === null && typeof requestAnimationFrame === 'function') {
             rafId = requestAnimationFrame(pumpFrame);
         }
@@ -3219,6 +3324,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                         : userFirmware ? builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);
+                    if (destroyed) {
+                        // Torn down while attaching: release what attach built
+                        // and stay dead (see `destroyed`).
+                        if (session) session.destroy();
+                        session = target = null;
+                        return {accepted: false, code: 'destroyed'};
+                    }
                     // The user's breakpoints only became SETTABLE now: until a
                     // target exists there is nothing to set them on, and until
                     // this build exists nothing knows which (task, state) a
@@ -4385,6 +4497,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             i8086ExecutionLifetime.abort();
             i8086Execution.release(i8086ExecutionResult);
             i8086ExecutionResult = null;
+            destroyed = true;
             setValueResolver(null);
             if (vm && vm.runtime) delete vm.runtime._bwDebugVariables;
             unschedule();

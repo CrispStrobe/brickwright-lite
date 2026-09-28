@@ -2,7 +2,27 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- THIS APP IS 1024 CSS PX WIDE, so say so and let the browser fit it.
+
+         `width=device-width` claims the layout should follow the screen. It
+         cannot: playground/index.css floors html, body and .app at 1024px
+         (upstream's minimum, and load-bearing — removing it collapses the
+         circuit designer, which the "floor holds" browser gate exists to
+         catch). So on a 430pt phone the layout viewport became 1024 at scale
+         1 and the reader saw a 430px window onto it: 58% of every surface off
+         the side, and 2 of 6 editor tabs unreachable. Measured on the shipping
+         build, both orientations.
+
+         Declaring the real width lets the browser scale the whole app to fit —
+         0.42 on a 430pt phone, 0.91 in landscape, 0.81 on an 834pt tablet, and
+         every tab and pane on screen at all three. Desktop browsers ignore
+         this meta entirely; verified unchanged at 1440, 1920 and a narrow 900
+         window, which still scrolls to 1024 as the floor gate requires.
+
+         user-scalable stays YES and maximum-scale is generous: this makes the
+         app smaller by default, so pinching in has to keep working. It does —
+         the breadboard, schematic and gate canvases each have a gate for it. -->
+    <meta name="viewport" content="width=1024, minimum-scale=0.25, maximum-scale=5, user-scalable=yes">
     <meta name="google" value="notranslate">
     <meta name="description" content="Build with blocks, read and edit as Python or JavaScript, and drive real LEGO bricks and robots.">
     <meta name="theme-color" content="#22c3d6">

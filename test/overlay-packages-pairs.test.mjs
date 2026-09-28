@@ -1,5 +1,5 @@
-// Every file that exists BOTH in overlay/scratch-gui and as a TRACKED file under
-// packages/scratch-gui must be byte-identical at HEAD.
+// Every file that exists BOTH in an overlaid Scratch component and as a TRACKED
+// file under packages/ must be byte-identical at HEAD.
 //
 // Why: scripts/integrate.mjs copies overlay/ over packages/ in every real build,
 // so for any divergent pair one side's edit is silently dead — an overlay edit
@@ -36,12 +36,14 @@ test('overlay/packages dual-tracked pairs are identical at HEAD', () => {
         }
         return map;
     };
-    const overlay = blobs('overlay/scratch-gui');
-    const packages = blobs('packages/scratch-gui');
     const divergent = [];
-    for (const [path, sha] of overlay) {
-        const other = packages.get(path);
-        if (other && other !== sha) divergent.push(path);
+    for (const component of ['scratch-gui', 'scratch-vm', 'scratch-paint']) {
+        const overlay = blobs(`overlay/${component}`);
+        const packages = blobs(`packages/${component}`);
+        for (const [path, sha] of overlay) {
+            const other = packages.get(path);
+            if (other && other !== sha) divergent.push(`${component}/${path}`);
+        }
     }
     assert.deepStrictEqual(
         divergent, [],

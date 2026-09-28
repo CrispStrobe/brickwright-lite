@@ -14,8 +14,13 @@ import ReactDOM from 'react-dom';
 import AppStateHOC from '../lib/app-state-hoc.jsx';
 import BrowserModalComponent from '../components/browser-modal/browser-modal.jsx';
 import supportedBrowser from '../lib/supported-browser';
+// Floor the tap size of controls once the app is rendering at a phone's scale.
+// Must run before first paint so nothing is measured or tapped at 16px first.
+import {installTouchTargets} from '../lib/touch-targets.js';
 
 import styles from './index.css';
+
+installTouchTargets();
 
 const appTarget = document.createElement('div');
 appTarget.className = styles.app;

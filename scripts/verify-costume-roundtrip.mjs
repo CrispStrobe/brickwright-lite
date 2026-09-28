@@ -250,6 +250,48 @@ try {
             return c && c.dataFormat === 'png';
         }, null, {timeout: 30000});
         await drawRect(page, box, 0.45, 0.70);
+        const bitmapCanvas = page.locator('canvas[resize="true"]:visible');
+        await page.locator('[aria-label="Select"], [title="Select"]').first().click();
+        await page.mouse.move(0, 0);
+        const pixelsBeforeSelection = await bitmapCanvas.evaluate(element => element.toDataURL());
+        await page.getByTestId('bw-bitmap-select-wand').click();
+        const tolerance = page.getByTestId('bw-bitmap-wand-tolerance');
+        record('bitmap wand exposes adjustable tolerance', await tolerance.inputValue() === '0');
+        await tolerance.fill('15');
+        const wandBox = await bitmapCanvas.boundingBox();
+        await page.mouse.click(wandBox.x + wandBox.width * 0.5, wandBox.y + wandBox.height * 0.5);
+        const selectionEvidence = () => page.evaluate(() => {
+            const state = window.__brickwrightStore.getState().scratchPaint;
+            const selected = state.selectedItems[0];
+            const pixels = selected?.canvas?.getContext('2d')?.getImageData(0, 0,
+                selected.canvas.width, selected.canvas.height).data;
+            let opaque = 0;
+            if (pixels) for (let i = 3; i < pixels.length; i += 4) if (pixels[i]) opaque++;
+            return {kind: state.bwBitmapSelection.kind, count: state.selectedItems.length,
+                id: selected?.id, opaque};
+        });
+        const wand = await selectionEvidence();
+        record('bitmap wand lifts a connected visible region',
+            wand.kind === 'wand' && wand.count === 1 && wand.opaque > 0);
+        await page.locator('[aria-label="Rectangle"], [title="Rectangle"]').first().click();
+        await page.mouse.move(0, 0);
+        const pixelsAfterSelection = await bitmapCanvas.evaluate(element => element.toDataURL());
+        record('committing a wand selection preserves the visible bitmap',
+            pixelsAfterSelection === pixelsBeforeSelection);
+        await page.locator('[aria-label="Select"], [title="Select"]').first().click();
+        await page.getByTestId('bw-bitmap-select-lasso').click();
+        const lassoBox = await bitmapCanvas.boundingBox();
+        const centerX = lassoBox.x + lassoBox.width * 0.5;
+        const centerY = lassoBox.y + lassoBox.height * 0.5;
+        await page.mouse.move(centerX - 100, centerY - 100);
+        await page.mouse.down();
+        await page.mouse.move(centerX + 100, centerY - 100, {steps: 8});
+        await page.mouse.move(centerX - 100, centerY + 100, {steps: 8});
+        await page.mouse.up();
+        const lasso = await selectionEvidence();
+        record('bitmap lasso lifts a new outlined region',
+            lasso.kind === 'lasso' && lasso.count === 1 && lasso.id !== wand.id && lasso.opaque > 0,
+            `wand=${JSON.stringify(wand)}, lasso=${JSON.stringify(lasso)}`);
     }
     const authored = await costumes(page);
     record('the costume converts to BITMAP and is still drawable',

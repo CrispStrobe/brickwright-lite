@@ -64,3 +64,10 @@ test('the overlay/packages scan runs over the real tree and finds the pairs', ()
         'this tree has diverged overlay/packages pairs:\n  ' +
         divergent.map(d => `${d.overlay} vs ${d.packages}`).join('\n  '));
 });
+
+test('the overlay/packages scan covers GUI, VM, and Paint', () => {
+    for (const component of ['scratch-gui', 'scratch-vm', 'scratch-paint']) {
+        const pairs = overlayPackagePairs([component]);
+        assert.deepEqual(pairs, [], `${component} has stale dual-tracked files`);
+    }
+});

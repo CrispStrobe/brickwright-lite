@@ -8,9 +8,13 @@ on:
       - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-*.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/debug-*.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'
       - 'vendor-pins.json'
       - 'package.json'
       - 'overlay/scratch-gui/src/lib/bw-debug/**'
@@ -20,15 +24,20 @@ on:
       - 'test/*debug*.test.mjs'
       - 'test/*checkpoint*.test.mjs'
       - 'test/*input*.test.mjs'
+      - 'test/workflow-trigger-coverage.test.mjs'
   pull_request:
     paths:
       - '.github/workflows/debugger.yml'
       - 'docs/FULL-DEBUGGER-ARCHITECTURE.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/debug-drawer.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/debug-*.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/debug-*.jsx'
       - 'overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'
+      - 'packages/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx'
       - 'vendor-pins.json'
       - 'package.json'
       - 'overlay/scratch-gui/src/lib/bw-debug/**'
@@ -38,6 +47,7 @@ on:
       - 'test/*debug*.test.mjs'
       - 'test/*checkpoint*.test.mjs'
       - 'test/*input*.test.mjs'
+      - 'test/workflow-trigger-coverage.test.mjs'
   workflow_dispatch:
 
 permissions:

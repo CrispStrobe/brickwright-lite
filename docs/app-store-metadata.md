@@ -203,6 +203,88 @@ Bitte Abstürze, falsche Simulationen oder Messwerte, unzugängliche Bedieneleme
 Übersetzungsfehler, verlorenen Fortschritt, Layoutprobleme sowie Hub- und
 macOS-Version melden.
 
+## What to Test — 0.1.23 en-US
+
+**Touchscreen and phone layout**
+
+This build is about using the app on a phone or tablet rather than a desktop.
+Previously the editor declared a screen width it did not have, so iOS cropped it
+and pinch-zoom was disabled; the circuit designer ignored two-finger gestures
+entirely; several panels demanded more width than a phone has, which pushed the
+workbench off the side of the screen; and the machine-import dialog centred
+itself below the visible area, so its buttons could not be reached at all.
+
+- On a phone, confirm the whole editor is visible rather than cut off at the
+  right edge, and that pinch-to-zoom now works anywhere in the page. Try both
+  portrait and landscape.
+- Open the Circuit tab. Pinch with two fingers to zoom the breadboard in and
+  out, and drag with two fingers to move it. Do the same on the schematic view.
+  One finger should still select and drag parts, not the canvas.
+- Still in the Circuit tab on a phone: the parts palette should start collapsed
+  so the workbench gets the width, with a small ‹ / › button to open it. Confirm
+  opening it works and that the workbench is usable at its default size.
+- Open the device menu and choose to manage machines. Confirm the dialog's
+  buttons — Import in particular — are on screen and can be tapped without
+  scrolling or panning. Then pinch to zoom in and confirm the dialog still
+  covers what you can see rather than drifting off it.
+- Tap the smaller controls in the Code and FPGA panels: the toolbar buttons and
+  dropdowns should be easier to hit than before. They are sized for a zoomed-in
+  view, so zoom in first if they still feel small.
+- On a desktop or laptop, confirm nothing has changed: the parts palette starts
+  open, panel widths are as before, and the layout is unaffected.
+
+This release also carries a large amount of work from other areas — native
+download handling, MakeCode project round-tripping and Linux lesson fixes — so
+general regressions are worth reporting too.
+
+Please report the device and OS version, the orientation, and whether you had
+zoomed in, and attach a screenshot for anything that looks cut off or
+misplaced.
+
+## What to Test — 0.1.23 de-DE
+
+**Touchscreen und Layout auf dem Telefon**
+
+Dieser Build betrifft die Nutzung auf Telefon und Tablet statt am Schreibtisch.
+Bisher gab der Editor eine Bildschirmbreite an, die er nicht hatte, weshalb iOS
+ihn beschnitt und das Zoomen mit zwei Fingern abschaltete; der Schaltungseditor
+reagierte überhaupt nicht auf Zwei-Finger-Gesten; mehrere Bereiche verlangten
+mehr Breite als ein Telefon hat, wodurch die Werkbank über den Bildschirmrand
+hinausrutschte; und der Dialog zum Importieren von Maschinen zentrierte sich
+unterhalb des sichtbaren Bereichs, sodass seine Schaltflächen gar nicht
+erreichbar waren.
+
+- Prüfe auf einem Telefon, dass der gesamte Editor sichtbar ist und nicht am
+  rechten Rand abgeschnitten wird, und dass sich die Seite überall mit zwei
+  Fingern zoomen lässt. Probiere Hoch- und Querformat.
+- Öffne den Reiter „Circuit“. Zoome das Steckbrett mit zwei Fingern ein und aus
+  und verschiebe es mit zwei Fingern. Dasselbe in der Schaltplanansicht. Mit
+  einem Finger sollen weiter Bauteile ausgewählt und gezogen werden, nicht die
+  Fläche.
+- Weiter im Reiter „Circuit“ auf dem Telefon: Die Bauteil-Palette soll
+  eingeklappt starten, damit die Werkbank die Breite bekommt; ein kleiner
+  ‹ / › -Knopf öffnet sie. Prüfe, dass das Öffnen funktioniert und die Werkbank
+  in ihrer Standardgröße benutzbar ist.
+- Öffne das Gerätemenü und wähle die Maschinenverwaltung. Die Schaltflächen des
+  Dialogs — besonders „Importieren“ — müssen sichtbar und ohne Scrollen oder
+  Verschieben antippbar sein. Zoome anschließend hinein: Der Dialog muss
+  weiterhin den sichtbaren Bereich abdecken und nicht daneben liegen.
+- Tippe die kleineren Bedienelemente in den Bereichen „Code“ und „FPGA“ an:
+  Knöpfe und Auswahlfelder sollen leichter zu treffen sein als vorher. Sie sind
+  für eine hineingezoomte Ansicht bemessen — zoome also zuerst hinein, falls sie
+  noch klein wirken.
+- Prüfe an einem Rechner, dass sich nichts geändert hat: Die Bauteil-Palette
+  startet geöffnet, die Bereichsbreiten sind wie bisher, das Layout ist
+  unverändert.
+
+Dieses Release enthält außerdem viel Arbeit aus anderen Bereichen — Umgang mit
+nativen Downloads, MakeCode-Projektaustausch und Korrekturen der
+Linux-Lektion — daher sind auch allgemeine Rückschritte meldenswert.
+
+Bitte Gerät und Betriebssystemversion, die Ausrichtung und ob hineingezoomt
+war nennen, und für alles, was abgeschnitten oder verrutscht aussieht, einen
+Screenshot anhängen.
+
 ## What to Test — 0.1.22 en-US
 
 **SPIKE Prime extension — German palette crash fixed**
@@ -1302,13 +1384,22 @@ uses those features. Brickwright Lite is based on permissively licensed Scratch
 components plus original editors, circuit simulation, debugging, lessons, device
 runtimes, and native-app code; it is not a TurboWarp fork.
 
-The submitted native app is self-contained. It does not download extension
-JavaScript, executable compiler toolchains, kernels, firmware, or other machine
-images. The extension picker contains only extensions bundled in the reviewed
-binary. Learner-authored source may be sent to the compilation service and the
-result returned to that learner's emulator or device; the source remains visible
-and editable in the app. The separately hosted web edition has additional optional
-downloads which are intentionally unavailable in this native build.
+Brickwright is an educational programming environment: downloading, importing,
+executing, inspecting and debugging learner programs is its disclosed core purpose.
+Learner-authored source remains visible and editable in the app, and downloaded
+machine programs execute inside the bundled emulators rather than as native host
+applications. Optional extension, compiler-toolchain and machine-media downloads
+are user initiated and cannot replace or update the Brickwright application.
+
+The normal web, macOS, Windows, Linux, Android and iOS bundles are built with
+`BW_REMOTE_CODE_POLICY=allow`. If a particular review channel requires a completely
+self-contained artifact, build the same source with `BW_REMOTE_CODE_POLICY=deny`;
+that compile-time profile removes the remote extension choices and refuses remote
+toolchain and executable machine-image downloads. It is not inferred from Tauri or
+selected at runtime. A channel may instead set `BW_REMOTE_EXTENSIONS_POLICY`,
+`BW_REMOTE_TOOLCHAINS_POLICY`, or `BW_REMOTE_MACHINE_IMAGES_POLICY` to `deny` and
+restrict only that capability; each defaults to the umbrella policy. The compiled
+three-value policy is visible in About and in `brickwright-build.json`.
 
 ## Listing fields
 

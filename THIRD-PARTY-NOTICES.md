@@ -1190,13 +1190,14 @@ SDCC 4.5.0, compiled to WebAssembly (Emscripten), is distributed under
 compile C source to Intel HEX for the 8051/mcs51 target — it is NOT linked into
 the BSD-3 editor code, and it is no longer distributed with it.
 
-**How it reaches a web user.** The default is `online`: nothing is downloaded
+**How it reaches a user.** The default is `online`: nothing is downloaded
 and the hosted compiler serves the request, as it already does for every target
-this bundle cannot link. A web user who wants offline compiling opts in, and the
+this bundle cannot link. A user who wants offline compiling opts in, and the
 toolchain is then fetched from the GPL origin above and kept in Cache Storage on
-their own device. Native builds refuse this download and always use the hosted
-route; the refusal is enforced both by the routing predicate and the downloader.
-See `overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js`.
+their own device. Web and native builds allow that separate, user-initiated GPL
+download by default. A distribution built with `BW_REMOTE_CODE_POLICY=deny`
+refuses it at both the routing predicate and downloader. See
+`overlay/scratch-gui/src/lib/sdcc-wasm/toolchain-source.js`.
 
 - **Version:** 4.5.0 (mcs51 port only)
 - **Licence:** GPL-2.0-or-later

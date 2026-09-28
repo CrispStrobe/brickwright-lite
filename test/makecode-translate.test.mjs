@@ -85,7 +85,7 @@ test('a real MakeCode micro:bit project translates whole', async () => {
     const out = microbitToPseudocode(res.files['main.ts'], {name: 'pins test 1'});
     assert.match(out.code, /^DEVICE MICROBIT/);
     assert.match(out.code, /FOREVER:/);
-    assert.match(out.code, /display analog value of pin P0/);
+    assert.match(out.code, /show number analog value of pin P0/);
     assert.deepEqual(out.unsupported, [], 'this project needs no excuses');
 });
 
@@ -152,7 +152,7 @@ test('the emitted pseudocode compiles to the blocks it names', {skip: canCompile
     assert.ok(ops.has('event_whenflagclicked'), 'a hat');
     assert.ok(ops.has('control_forever'));
     assert.ok(ops.has('microbitplus_analogread'), 'the sensor read survived as a reporter');
-    assert.ok(ops.has('microbit_display'), 'and it is displayed');
+    assert.ok(ops.has('microbitplus_shownumber'), 'and it is displayed');
 });
 
 test('every mapped API reaches a block — the anti-silence gate', {skip: canCompile ? false :
@@ -198,7 +198,7 @@ test('every mapped API reaches a block — the anti-silence gate', {skip: canCom
     assert.deepEqual(out.unsupported, [], 'nothing in this program should need an excuse');
     const ops = opcodesOf(out.code);
     for (const expected of [
-        'microbitplus_showleds', 'microbit_display', 'microbitplus_scrolltext',
+        'microbitplus_showleds', 'microbitplus_shownumber', 'microbitplus_scrolltext',
         'microbitplus_cleardisplay', 'control_wait', 'microbitplus_plot',
         'microbitplus_digitalwrite', 'microbitplus_analogwrite', 'microbitplus_servo',
         'microbitplus_setpull', 'microbitplus_playtone', 'microbitplus_stoptone',
@@ -280,7 +280,7 @@ const BATCH_1 = [
     ['game.setScore(4)', 'set game score to 4', 'microbitplus_setscore'],
     ['game.removeLife(1)', 'remove game life 1', 'microbitplus_removelife'],
     ['game.gameOver()', 'game over', 'microbitplus_gameover'],
-    ['basic.showNumber(game.score())', 'display game score', 'microbitplus_score'],
+    ['basic.showNumber(game.score())', 'show number game score', 'microbitplus_score'],
     ['v = pins.map(v, 0, 1023, 0, 4)', 'set v to map v from low 0 high 1023 to low 0 high 4', 'microbitplus_map'],
     ['v = Math.map(v, 0, 10, 0, 100)', 'set v to map v from low 0 high 10 to low 0 high 100', 'microbitplus_map'],
     ['v = Math.min(v, 3)', 'set v to min of v and 3', 'planetemaths_min'],
@@ -418,7 +418,7 @@ test('a radio handler is a HAT, and its parameter IS the packet (it was a pollin
 
 test('a handler that assigns its parameter gets a variable to assign', () => {
     const {code} = microbitToPseudocode('radio.onReceivedNumber(function (n) {\n    n += 1\n    basic.showNumber(n)\n})\n');
-    assert.match(code, /WHEN radio receives number:\n {2}set n to read last radio number\n {2}change n by 1\n {2}display n/);
+    assert.match(code, /WHEN radio receives number:\n {2}set n to read last radio number\n {2}change n by 1\n {2}show number n/);
 });
 
 test('a truth value stored in a variable is stored as the choice it is (it was the TEXT of the comparison)',
@@ -491,3 +491,249 @@ test('a MakeCode `? :` parses (it stopped the parser, and the rest came out as s
     assert.equal(init.type, 'Conditional');
     assert.equal(init.alternate.type, 'Conditional', 'right-associative');
 });
+
+// Batch 3 of the MakeCode census (2026-09-27). Each MakeCode call imports to a
+// line that compiles to the block that means it.
+const BATCH_3 = [
+    ['music.play(music.tonePlayable(262, music.beat(BeatFraction.Whole)), music.PlaybackMode.UntilDone)',
+        'play tone 262 hz for (beat whole) ms until done', 'microbitplus_playtonemode'],
+    ['music.play(music.tonePlayable(392, 100), music.PlaybackMode.InBackground)',
+        'play tone 392 hz for 100 ms in background', 'microbitplus_playtonemode'],
+    ['music.play(music.builtinPlayableSoundEffect(soundExpression.giggle), music.PlaybackMode.UntilDone)',
+        'play sound giggle until done', 'microbitplus_playsound'],
+    ['music.playSoundEffect(music.createSoundEffect(WaveShape.Noise, 4120, 1266, 255, 148, 500, SoundExpressionEffect.Warble, ' +
+        'InterpolationCurve.Curve), SoundExpressionPlayMode.UntilDone)',
+    'play sound effect noise from 4120 to 1266 hz volume 255 to 148 for 500 ms effect warble curve curve until done',
+    'microbitplus_playsoundeffect'],
+    ['music.play(music.createSoundExpression(WaveShape.Square, 1600, 1, 255, 0, 300, SoundExpressionEffect.None, ' +
+        'InterpolationCurve.Logarithmic), music.PlaybackMode.InBackground)',
+    'play sound effect square from 1600 to 1 hz volume 255 to 0 for 300 ms effect none curve logarithmic in background',
+    'microbitplus_playsoundeffect'],
+    ['v = radio.receivedPacket(RadioPacketProperty.SignalStrength)', 'set v to last radio signal strength', 'microbitplus_radiorssi'],
+    ['if (input.logoIsPressed()) { basic.clearScreen() }', 'IF logo touched THEN:', 'microbitplus_islogo']
+];
+
+for (const [ts, line, opcode] of BATCH_3) {
+    test(`census batch 3: \`${ts.slice(0, 60)}\` imports as \`${line.slice(0, 50)}\` → ${opcode}`, {skip: canCompile ? false :
+        'packages/scratch-gui not integrated'}, () => {
+        const out = microbitToPseudocode(`let v = 0\nbasic.forever(function () {\n    ${ts}\n})\n`);
+        assert.deepEqual(out.unsupported, [], 'nothing refused');
+        assert.ok(out.code.includes(line), `\`${line}\` not in:\n${out.code}`);
+        assert.ok(opcodesOf(out.code).has(opcode), `${opcode} missing: the line parsed to nothing`);
+    });
+}
+
+test('the logo handler is polled like the buttons; a long press and a release are refused by name', () => {
+    const {code, unsupported} = microbitToPseudocode([
+        'input.onLogoEvent(TouchButtonEvent.Pressed, function () {',
+        '    basic.showNumber(1)',
+        '})',
+        'input.onLogoEvent(TouchButtonEvent.LongPressed, function () {',
+        '    basic.showNumber(2)',
+        '})'
+    ].join('\n'));
+    assert.match(code, /IF logo touched THEN:\n {6}show number 1\n {6}wait until not \(logo touched\)/);
+    assert.deepEqual(unsupported, ['input.onLogoEvent(TouchButtonEvent.LongPressed) — polling sees the logo held, not a long press']);
+});
+
+test('what MicroPython\'s radio does not have is refused with the reason', () => {
+    const {unsupported} = microbitToPseudocode([
+        'radio.setTransmitSerialNumber(true)',
+        'let s = radio.receivedPacket(RadioPacketProperty.SerialNumber)'
+    ].join('\n'));
+    assert.ok(unsupported.some(u => /setTransmitSerialNumber\(\) — MicroPython's radio has no serial number/.test(u)), unsupported.join('\n'));
+    assert.ok(unsupported.some(u => /SerialNumber\) — a MicroPython radio packet carries no serial number/.test(u)), unsupported.join('\n'));
+});
+
+test('a function that returns a value hands it back in <name>_result; the caller calls, then reads it',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'function seriesSum(n: number) {',
+            '    if (n < 1) {',
+            '        return 0',
+            '    }',
+            '    return (n * (n + 1)) / 2',
+            '}',
+            'let total = seriesSum(4) + 1',
+            'basic.showNumber(seriesSum(total))'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /DEFINE seriesSum \(n\):\n {2}IF n < 1 THEN:\n {4}set seriesSum_result to 0\n {4}stop this script\n {2}set seriesSum_result to n \* \(n \+ 1\) \/ 2\n {2}stop this script/);
+        assert.match(code, / {2}seriesSum 4\n {2}set _mc1 to seriesSum_result\n {2}set total to _mc1 \+ 1\n {2}seriesSum total\n {2}set _mc2 to seriesSum_result\n {2}show number _mc2/);
+        const ops = opcodesOf(code);
+        assert.ok(ops.has('procedures_call') && ops.has('control_stop'));
+    });
+
+test('a result read in a loop\'s condition is refused: the call would run once, the condition every pass', () => {
+    const {unsupported} = microbitToPseudocode('function f() {\n    return 1\n}\nwhile (f() > 0) {\n    basic.pause(1)\n}\n');
+    assert.ok(unsupported.some(u => /f\(\) as a value in a loop's condition/.test(u)), unsupported.join('\n'));
+});
+
+test('break leaves the loop through a flag; the rest of the pass is skipped', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const {code, unsupported} = microbitToPseudocode([
+        'let i = 0',
+        'while (i < 10) {',
+        '    i += 1',
+        '    if (i == 3) {',
+        '        break',
+        '    }',
+        '    basic.showNumber(i)',
+        '}'
+    ].join('\n'));
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /set _brk1 to 0\n {2}REPEAT UNTIL \(_brk1 = 1\) or \(not \(i < 10\)\):\n {4}change i by 1\n {4}IF i = 3 THEN:\n {6}set _brk1 to 1\n {4}IF _brk1 = 0 THEN:\n {6}show number i/);
+});
+
+test('for … of a list is a counter over it (it was read as a counted for, and the body came out as stray lines)',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'let nums: number[] = [3, 5]',
+            'let total = 0',
+            'for (let n of nums) {',
+            '    total += n',
+            '}'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /set _i1 to 0\n {2}REPEAT UNTIL not \(_i1 < length of array "nums"\):\n {4}set n to item _i1 of array "nums"\n {4}change total by n\n {4}change _i1 by 1/);
+    });
+
+test('parentheses that change a value are kept ((n * (n + 1)) / 2 was n * n + 1 / 2)', () => {
+    const {code} = microbitToPseudocode('let a = 1\nlet b = 2\nlet c = 3\nlet r = (a + b) * c\nr = a - (b - c)\nr = a / (b * c)\nr = a * b + c\n');
+    assert.match(code, /set r to \(a \+ b\) \* c/);
+    assert.match(code, /set r to a - \(b - c\)/);
+    assert.match(code, /set r to a \/ \(b \* c\)/);
+    assert.match(code, /set r to a \* b \+ c/);
+});
+
+// LED sprites (game.LedSprite) and the game state around them: every sprite
+// app in the census refused the sprite (hero, crashy-bird, snap-the-dot,
+// radio-dashboard) and headbands refused game.startCountdown. A sprite is a
+// numbered handle in a variable or array (sb3-creator's micro:bit+ sprite
+// words); each call imports to the line that compiles to the block meaning it.
+const SPRITES = [
+    // [MakeCode, the line it imports to, the opcode that line compiles to]
+    ['s = game.createSprite(2, 3)', 'set s to create sprite at x 2 y 3', 'microbitplus_createsprite'],
+    ['s = game.createSprite(v + 1, 0)', 'set s to create sprite at x (v + 1) y 0', 'microbitplus_createsprite'],
+    ['v = s.get(LedSpriteProperty.X)', 'set v to x of sprite s', 'microbitplus_spriteget'],
+    ['v = s.get(LedSpriteProperty.Blink)', 'set v to blink of sprite s', 'microbitplus_spriteget'],
+    ['s.set(LedSpriteProperty.Brightness, 8)', 'set sprite s brightness to 8', 'microbitplus_spriteset'],
+    ['s.change(LedSpriteProperty.Y, -1)', 'change sprite s y by (0 - 1)', 'microbitplus_spritechange'],
+    ['s.change(LedSpriteProperty.Direction, 45)', 'change sprite s direction by 45', 'microbitplus_spritechange'],
+    ['s.move(1)', 'move sprite s by 1', 'microbitplus_spritemove'],
+    ['s.turn(Direction.Right, 45)', 'turn sprite s right by 45 degrees', 'microbitplus_spriteturn'],
+    ['s.turn(Direction.Left, v * 2)', 'turn sprite s left by (v * 2) degrees', 'microbitplus_spriteturn'],
+    ['s.ifOnEdgeBounce()', 'bounce sprite s if on edge', 'microbitplus_spritebounce'],
+    ['s.delete()', 'delete sprite s', 'microbitplus_spritedelete'],
+    ['if (s.isTouching(t)) { basic.clearScreen() }', 'IF sprite s touching sprite t THEN:', 'microbitplus_spritetouching'],
+    ['if (s.isTouchingEdge()) { basic.clearScreen() }', 'IF sprite s touching edge THEN:', 'microbitplus_spritetouchingedge'],
+    ['if (s.isDeleted()) { basic.clearScreen() }', 'IF sprite s deleted THEN:', 'microbitplus_spritedeleted'],
+    ['game.startCountdown(30000)', 'start countdown 30000 ms', 'microbitplus_startcountdown'],
+    ['game.pause()', 'pause game', 'microbitplus_pausegame'],
+    ['game.resume()', 'resume game', 'microbitplus_resumegame'],
+    ['game.setLife(5)', 'set game life to 5', 'microbitplus_setlife'],
+    ['game.addLife(1)', 'add game life 1', 'microbitplus_addlife'],
+    ['v = game.life()', 'set v to game life', 'microbitplus_life'],
+    ['if (game.isGameOver()) { basic.clearScreen() }', 'IF game is over THEN:', 'microbitplus_isgameover'],
+    ['if (game.isRunning()) { basic.clearScreen() }', 'IF game is running THEN:', 'microbitplus_isrunning'],
+    ['if (game.isPaused()) { basic.clearScreen() }', 'IF game is paused THEN:', 'microbitplus_ispaused'],
+    // The methods MakeCode has no block for read as the block that does the same.
+    ['s.setX(3)', 'set sprite s x to 3', 'microbitplus_spriteset'],
+    ['s.changeYBy(1)', 'change sprite s y by 1', 'microbitplus_spritechange'],
+    ['s.setBlink(500)', 'set sprite s blink to 500', 'microbitplus_spriteset'],
+    ['s.on()', 'set sprite s brightness to 255', 'microbitplus_spriteset'],
+    ['s.off()', 'set sprite s brightness to 0', 'microbitplus_spriteset'],
+    ['s.turnLeft(90)', 'turn sprite s left by 90 degrees', 'microbitplus_spriteturn'],
+    ['v = s.direction()', 'set v to direction of sprite s', 'microbitplus_spriteget']
+];
+
+for (const [ts, line, opcode] of SPRITES) {
+    test(`LED sprites: \`${ts.slice(0, 60)}\` imports as \`${line}\` → ${opcode}`, {skip: canCompile ? false :
+        'packages/scratch-gui not integrated'}, () => {
+        const out = microbitToPseudocode(
+            `let v = 0\nlet s = game.createSprite(0, 0)\nlet t = game.createSprite(1, 1)\nbasic.forever(function () {\n    ${ts}\n})\n`);
+        assert.deepEqual(out.unsupported, [], 'nothing refused');
+        assert.ok(out.code.includes(line), `\`${line}\` not in:\n${out.code}`);
+        assert.ok(opcodesOf(out.code).has(opcode), `${opcode} missing: the line parsed to nothing`);
+    });
+}
+
+test('LED sprites: a sprite is known by its declared type, an array of them by its element type or what is pushed',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'let bird: game.LedSprite = null',
+            'let obstacles: game.LedSprite[] = []',
+            'let more: game.LedSprite[] = []',
+            'let pile = []',
+            'pile.push(game.createSprite(4, 0))',
+            'bird = game.createSprite(0, 2)',
+            'basic.forever(function () {',
+            '    bird.move(1)',
+            '    obstacles[0].move(1)',
+            '    pile[0].ifOnEdgeBounce()',
+            '    more.removeAt(0).delete()',
+            '})'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /set bird to 0\n/, 'null is the handle 0');
+        assert.match(code, /move sprite bird by 1/);
+        assert.match(code, /move sprite \(item 0 of array "obstacles"\) by 1/);
+        assert.match(code, /bounce sprite \(item 0 of array "pile"\) if on edge/);
+        // removeAt(0).delete(): the element is deleted, then taken off the array.
+        assert.match(code, /delete sprite \(item 0 of array "more"\)\n\s+remove item 0 of array "more"/);
+    });
+
+test('`for (let x of list)` walks the list, re-reading its length each pass (crashy-bird)',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'let obstacles: game.LedSprite[] = []',
+            'basic.forever(function () {',
+            '    for (let o of obstacles) {',
+            '        o.change(LedSpriteProperty.X, -1)',
+            '    }',
+            '})'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /set (_i\w*) to 0\n\s+REPEAT UNTIL not \(\1 < length of array "obstacles"\):\n\s+set o to item \1 of array "obstacles"\n\s+change sprite o x by \(0 - 1\)\n\s+change \1 by 1/);
+        const ast = parseMakeCodeTs('for (const k of list) { f(k) }\n');
+        assert.equal(ast.body[0].type, 'ForOf');
+        assert.equal(ast.body[0].name, 'k');
+    });
+
+test('`for … of` something that is not a known array is named, not guessed', () => {
+    const {unsupported} = microbitToPseudocode('for (let k of control.deviceName()) { basic.showString(k) }\n');
+    assert.ok(unsupported.some(u => /for … of something that is not an array.*control\.deviceName\(\)/.test(u)), unsupported.join('\n'));
+});
+
+test('a sprite kept in an object field is named with its reason (the handles live in variables and arrays)', () => {
+    const {unsupported} = microbitToPseudocode([
+        'const clients: any[] = []',
+        'basic.forever(function () {',
+        '    for (const client of clients) {',
+        '        client.sprite.setBlink(500)',
+        '        client.sprite.setBrightness(0)',
+        '    }',
+        '})'
+    ].join('\n'));
+    for (const call of ['client.sprite.setBlink()', 'client.sprite.setBrightness()']) {
+        assert.ok(unsupported.some(u => u.startsWith(call) && /a sprite kept in an object field/.test(u)), `${call}: ${unsupported.join('\n')}`);
+    }
+});
+
+test('a sprite method name on something that is not a sprite is left to the rest of the table', () => {
+    // An array's `set`/`get` and an unknown object's `move` are not sprites.
+    const {code, unsupported} = microbitToPseudocode('let a = [1, 2]\na.set(0, 5)\nrobot.move(3)\n');
+    assert.match(code, /set item 0 of array "a" to 5/);
+    assert.ok(unsupported.some(u => /robot\.move\(\)/.test(u)), unsupported.join('\n'));
+    assert.doesNotMatch(code, /sprite/);
+});
+
+test('basic.showNumber is `show number`, which waits while shown; its interval rides along; `display` is lite\'s own',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode('let n = 0\nbasic.showNumber(n + 1)\nbasic.showNumber(42, 100)\n');
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /show number n \+ 1\n/);
+        assert.match(code, /show number 42 delay 100 ms/);
+        assert.doesNotMatch(code, /^\s*display /m);
+        assert.ok(opcodesOf(code).has('microbitplus_shownumber'));
+    });

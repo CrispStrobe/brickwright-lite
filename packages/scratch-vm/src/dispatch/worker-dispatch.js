@@ -2,108 +2,105 @@ const SharedDispatch = require('./shared-dispatch');
 
 const log = require('../util/log');
 
-/**
- * This class provides a Worker with the means to participate in the message dispatch system managed by CentralDispatch.
- * From any context in the messaging system, the dispatcher's "call" method can call any method on any "service"
- * provided in any participating context. The dispatch system will forward function arguments and return values across
- * worker boundaries as needed.
- * @see {CentralDispatch}
- */
+// Capture the transport before downloaded source runs. The public worker
+// messaging globals are removed before evaluation, while this closure retains
+// the only channel which can emit or receive broker protocol frames.
+const workerGlobal = typeof self === 'undefined' ? null : self;
+const sendToHost = workerGlobal && workerGlobal.postMessage.bind(workerGlobal);
+const listenToHost = workerGlobal && workerGlobal.addEventListener.bind(workerGlobal);
+const closeWorker = workerGlobal && workerGlobal.close.bind(workerGlobal);
+const hostTransport = sendToHost ? Object.freeze({postMessage: sendToHost}) : null;
+
 class WorkerDispatch extends SharedDispatch {
     constructor () {
         super();
-
-        /**
-         * This promise will be resolved when we have successfully connected to central dispatch.
-         * @type {Promise}
-         * @see {waitForConnection}
-         * @private
-         */
         this._connectionPromise = new Promise(resolve => {
             this._onConnect = resolve;
         });
-
-        /**
-         * Map of service name to local service provider.
-         * If a service is not listed here, it is assumed to be provided by another context (another Worker or the main
-         * thread).
-         * @see {setService}
-         * @type {object}
-         */
+        this._bootstrapHandler = null;
+        this._bootstrapped = false;
+        this._nextCapabilityRequestId = 0;
         this.services = {};
-
-        this._onMessage = this._onMessage.bind(this, self);
-        if (typeof self !== 'undefined') {
-            self.onmessage = this._onMessage;
-        }
+        this._onMessage = this._onMessage.bind(this, hostTransport);
+        if (listenToHost) listenToHost('message', this._onMessage);
     }
 
-    /**
-     * @returns {Promise} a promise which will resolve upon connection to central dispatch. If you need to make a call
-     * immediately on "startup" you can attach a 'then' to this promise.
-     * @example
-     *      dispatch.waitForConnection.then(() => {
-     *          dispatch.call('myService', 'hello');
-     *      })
-     */
     get waitForConnection () {
         return this._connectionPromise;
     }
 
-    /**
-     * Set a local object as the global provider of the specified service.
-     * WARNING: Any method on the provider can be called from any worker within the dispatch system.
-     * @param {string} service - a globally unique string identifying this service. Examples: 'vm', 'gui', 'extension9'.
-     * @param {object} provider - a local object which provides this service.
-     * @returns {Promise} - a promise which will resolve once the service is registered.
-     */
+    setBootstrapHandler (handler) {
+        if (this._bootstrapHandler) throw new Error('Extension bootstrap handler is already installed');
+        this._bootstrapHandler = handler;
+    }
+
+    lockSourceMessaging () {
+        if (!workerGlobal) return;
+        for (const name of ['postMessage', 'onmessage', 'addEventListener', 'removeEventListener']) {
+            Object.defineProperty(workerGlobal, name, {
+                value: undefined,
+                configurable: false,
+                writable: false
+            });
+        }
+    }
+
+    requestCapability (operation, args) {
+        return this.waitForConnection.then(hostBound => {
+            if (!hostBound) throw new Error('Capabilities require a verified gallery worker');
+            const envelope = Object.freeze({
+                protocol: 1,
+                requestId: this._nextCapabilityRequestId++,
+                operation,
+                args
+            });
+            return this._remoteCall(hostTransport, 'capabilityBroker', 'request', envelope);
+        });
+    }
+
+    setExtensionService (workerId, extensionId, provider) {
+        if (!Number.isInteger(workerId) || !Number.isInteger(extensionId) || extensionId < 0) {
+            return Promise.reject(new Error('Invalid extension service identity'));
+        }
+        const service = `extension.${workerId}.${extensionId}`;
+        if (Object.prototype.hasOwnProperty.call(this.services, service)) {
+            log.warn(`Worker dispatch replacing existing service provider for ${service}`);
+        }
+        this.services[service] = provider;
+        // The host derives the public namespace from its WeakMap identity. The frame carries no
+        // worker ID or service name which downloaded code could use as an authority claim.
+        return this.waitForConnection.then(() => this._remoteCall(hostTransport, 'dispatch', 'setService', extensionId));
+    }
+
     setService (service, provider) {
         if (Object.prototype.hasOwnProperty.call(this.services, service)) {
             log.warn(`Worker dispatch replacing existing service provider for ${service}`);
         }
         this.services[service] = provider;
-        return this.waitForConnection.then(() => this._remoteCall(self, 'dispatch', 'setService', service));
+        return this.waitForConnection.then(() => this._remoteCall(hostTransport, 'dispatch', 'setService', service));
     }
 
-    /**
-     * Fetch the service provider object for a particular service name.
-     * @override
-     * @param {string} service - the name of the service to look up
-     * @returns {{provider:(object|Worker), isRemote:boolean}} - the means to contact the service, if found
-     * @protected
-     */
     _getServiceProvider (service) {
-        // if we don't have a local service by this name, contact central dispatch by calling `postMessage` on self
         const provider = this.services[service];
-        return {
-            provider: provider || self,
-            isRemote: !provider
-        };
+        return {provider: provider || hostTransport, isRemote: !provider};
     }
 
-    /**
-     * Handle a call message sent to the dispatch service itself
-     * @override
-     * @param {Worker} worker - the worker which sent the message.
-     * @param {DispatchCallMessage} message - the message to be handled.
-     * @returns {Promise|undefined} - a promise for the results of this operation, if appropriate
-     * @protected
-     */
     _onDispatchMessage (worker, message) {
-        let promise;
         switch (message.method) {
         case 'handshake':
-            promise = this._onConnect();
-            break;
+            return Promise.resolve(this._onConnect(Boolean(message.args[0])));
+        case 'bootstrap':
+            if (this._bootstrapped || !this._bootstrapHandler) {
+                return Promise.reject(new Error('Invalid extension worker bootstrap'));
+            }
+            this._bootstrapped = true;
+            return Promise.resolve(this._bootstrapHandler(...message.args));
         case 'terminate':
-            // Don't close until next tick, after sending confirmation back
-            setTimeout(() => self.close(), 0);
-            promise = Promise.resolve();
-            break;
+            setTimeout(() => closeWorker(), 0);
+            return Promise.resolve();
         default:
             log.error(`Worker dispatch received message for unknown method: ${message.method}`);
         }
-        return promise;
     }
 }
 

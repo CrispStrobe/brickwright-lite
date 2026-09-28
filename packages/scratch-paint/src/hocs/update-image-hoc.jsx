@@ -7,10 +7,11 @@ import omit from 'lodash.omit';
 import {connect} from 'react-redux';
 
 import {undoSnapshot} from '../reducers/undo';
-import {setSelectedItems} from '../reducers/selected-items';
+import {redrawSelectionBox, setSelectedItems} from '../reducers/selected-items';
 import {updateViewBounds} from '../reducers/view-bounds';
 
 import {getSelectedLeafItems} from '../helper/selection';
+import {rehideItems, revealHiddenItems} from '../helper/bw/objects';
 import {getRaster, hideGuideLayers, showGuideLayers} from '../helper/layer';
 import {commitRectToBitmap, commitOvalToBitmap, commitSelectionToBitmap, getHitBounds} from '../helper/bitmap';
 import {performSnapshot} from '../helper/undo';
@@ -53,6 +54,12 @@ const UpdateImageHOC = function (WrappedComponent) {
             // Any time an image update is made, recalculate the bounds of the artwork
             setWorkspaceBounds();
             this.props.updateViewBounds(paper.view.matrix);
+            // Brickwright: the selected items are the same objects after a drag/scale/rotate, so
+            // `selectedItems` keeps its identity and nothing that reads item GEOMETRY out of
+            // redux re-renders — which would leave the properties panel showing stale numbers.
+            // redrawSelectionBox is upstream's own signal for "same items, moved" (it hands out
+            // a fresh array); scrollable-canvas already uses it after a zoom for the same reason.
+            this.props.redrawSelectionBox();
         }
         handleUpdateBitmap (skipSnapshot) {
             if (!getRaster().loaded) {
@@ -129,6 +136,12 @@ const UpdateImageHOC = function (WrappedComponent) {
                 workspaceMask.remove();
             }
             const guideLayers = hideGuideLayers(true /* includeRaster */);
+            // Brickwright: the objects panel's eye is an editing aid, not a costume property —
+            // a Scratch costume has no notion of a hidden element. Reveal hidden items for the
+            // duration of the export (before drawnBounds is read, so they still count towards
+            // the costume's extent) and hide them again afterwards. Without this, hiding
+            // something would quietly drop it from the artwork on the very next edit.
+            const hiddenItems = revealHiddenItems();
 
             // Export at 0.5x
             scaleWithStrokes(paper.project.activeLayer, .5, new paper.Point());
@@ -154,6 +167,7 @@ const UpdateImageHOC = function (WrappedComponent) {
             scaleWithStrokes(paper.project.activeLayer, 2, new paper.Point());
             paper.project.activeLayer.applyMatrix = true;
 
+            rehideItems(hiddenItems);
             showGuideLayers(guideLayers);
 
             // Add back viewbox
@@ -185,6 +199,7 @@ const UpdateImageHOC = function (WrappedComponent) {
         format: PropTypes.oneOf(Object.keys(Formats)),
         mode: PropTypes.oneOf(Object.keys(Modes)).isRequired,
         onUpdateImage: PropTypes.func.isRequired,
+        redrawSelectionBox: PropTypes.func.isRequired,
         undoSnapshot: PropTypes.func.isRequired,
         updateViewBounds: PropTypes.func.isRequired
     };
@@ -197,6 +212,9 @@ const UpdateImageHOC = function (WrappedComponent) {
     const mapDispatchToProps = dispatch => ({
         setSelectedItems: format => {
             dispatch(setSelectedItems(getSelectedLeafItems(), isBitmap(format)));
+        },
+        redrawSelectionBox: () => {
+            dispatch(redrawSelectionBox());
         },
         undoSnapshot: snapshot => {
             dispatch(undoSnapshot(snapshot));

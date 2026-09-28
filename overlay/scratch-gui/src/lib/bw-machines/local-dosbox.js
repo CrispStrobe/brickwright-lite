@@ -9,6 +9,10 @@ export function localDosboxMachine({confText = '', fileName, byteLength,
         throw new Error('select a non-empty raw disk image whose size is a multiple of 512 bytes');
     }
     const parsed = confText.trim() ? fromDosboxConf(confText, {title: fileName}) : null;
+    const declaredImage = parsed?.slots?.hdd?.url;
+    if (declaredImage && declaredImage.split(/[\\/]/).pop().toLowerCase() !== fileName.toLowerCase()) {
+        throw new Error('selected disk image does not match DOSBox imgmount filename');
+    }
     // The local boot target is always our 386 AT. DOSBox's cputype=auto (or
     // even an explicit older CPU) describes its own emulator, not a limit on
     // what this AT can execute in real mode.

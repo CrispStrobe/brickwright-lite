@@ -43,14 +43,35 @@ human coordination and qualification process.
   Instruction-level emulation, debugger run/pause/step/reset, register and
   memory inspection.
 
+ATtiny88 (including the QFN-32 Blinkenrocket board) deliberately uses the
+permissively licensed avr8js path, extended in `bw-board` with the ATtiny88
+memory map, ports, timers, EEPROM and analog comparator. That target supplies
+instruction/block/over/out stepping, code/yield/write breakpoints, writable
+SRAM, symbols and instruction/memory/device events. LabWired's native AVR core
+is fast (the `bw-board` receipt records a 21.43x median on its AVR loop), but
+the LabWired WASM bridge now admits only its proven ATmega328P/Arduino Uno
+descriptor. Brickwright converts the compiler's Intel HEX to flash bytes and
+the adapter wraps those bytes in an AVR (`EM_AVR`) ELF for LabWired. Its debug
+surface is narrower: instruction step, code breakpoints and read-only memory. It therefore adds an
+optional Uno whole-SoC comparison without pretending to implement ATtiny88;
+ATtiny85/88 raw images and full debugger workflows remain on avr8js.
+
+The current pinned hosted RTx receipt clears real time on every measured
+engine: Z80 186x, 6502 150x, avr8js ATmega328P 13.3x, emu8051 5.23x, rp2040js
+RP2040 1.66x, and LabWired STM32F0 24.2x (three-pass medians, bw-board GitHub
+run 36384508630). In particular, RP2040 moved from a 0.94x median to 1.66x
+after the exhaustively differential-tested Thumb tier-zero dispatch path.
+
 ### Block and code editor
 
 - **Scratch-based block editor** with a "Code" tab for Brickwright Code,
   Python and JavaScript representations. Conversion and generated-view limits
   are kept explicit instead of promising that every construct round-trips.
 - 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
-  surface). The web edition can additionally load 150 reviewed gallery
-  extensions; native store builds stay self-contained and show bundled entries only.
+  surface) plus 150 reviewed gallery extensions. Web and native builds allow
+  the gallery by default; a deliberately self-contained artifact can be built
+  with `BW_REMOTE_CODE_POLICY=deny`, or only URL extensions can be removed with
+  `BW_REMOTE_EXTENSIONS_POLICY=deny`.
 - SoundFX creator, costume editor, German i18n.
 - The green flag starts Scratch scripts and the circuit simulation together.
 
@@ -285,11 +306,15 @@ Scratch Foundation relicensed the whole stack BSD-3-Clause -> AGPL-3.0 on
 > **Do not** swap in `scratch-blocks@2.x` — it is a ground-up Blockly rewrite
 > incompatible with the v4 GUI.
 
-No GPL code is bundled. The web edition can opt into separately distributed GPL
-tools or media, with their licence and corresponding source shown at the point
-of download. Store-distributed native builds do not download executable
-toolchains, machine images, or extension JavaScript: they use the bundled
-permissive/MPL/LGPL components and hosted compilation of learner-authored source.
+No GPL code is bundled. Web and native editions can opt into separately
+distributed GPL tools or media, with their licence and corresponding source
+shown at the point of download. These user-initiated downloads remain separate
+from the BSD-3 application. A review-specific, self-contained build can disable
+remote toolchains, machine images and extension JavaScript at compile time with
+`BW_REMOTE_CODE_POLICY=deny`; the normal build policy is `allow`. The narrower
+`BW_REMOTE_EXTENSIONS_POLICY`, `BW_REMOTE_TOOLCHAINS_POLICY`, and
+`BW_REMOTE_MACHINE_IMAGES_POLICY` variables independently override the umbrella,
+so review-channel restrictions do not unnecessarily disable unrelated features.
 
 ### The bundled extensions
 

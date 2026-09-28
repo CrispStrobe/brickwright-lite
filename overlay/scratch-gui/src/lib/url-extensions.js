@@ -7,6 +7,8 @@
 // adapter. Everything else runs in the extension worker, without DOM/editor or
 // native IPC access, after an explicit confirmation.
 
+import {remoteExtensionsAllowed} from './distribution-policy.js';
+
 const collectUrls = () => {
     if (typeof window === 'undefined' || !window.location) return [];
     const urls = [];
@@ -43,9 +45,9 @@ const waitForVm = (tries = 100) => new Promise((resolve, reject) => {
  * @returns {void}
  */
 export default function initUrlExtensions () {
-    // Store-distributed native apps are self-contained. Ignore deep links which attempt to turn a
-    // native launch into a remote-code loading request; the VM independently refuses the same call.
-    if (typeof window !== 'undefined' && window.__TAURI__) return;
+    // A restricted build ignores deep links which attempt to load remote code; the VM independently
+    // refuses the same call. Normal native builds use the same URL-extension path as the web build.
+    if (!remoteExtensionsAllowed()) return;
     const urls = collectUrls();
     if (!urls.length) return;
     waitForVm()

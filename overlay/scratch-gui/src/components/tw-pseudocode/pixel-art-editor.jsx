@@ -18,10 +18,10 @@ import React from 'react';
 import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
-import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
+import {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument, layersToSvg,
     copySelectedPixels, moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels,
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
-    stampBrushInto, transformPixels} from '../../lib/bw-pixel-layers.js';
+    stampBrushInto, transformPixels, wandSelection} from '../../lib/bw-pixel-layers.js';
 import {
     ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
 } from '../../lib/bw-makecode/pixel-image.js';
@@ -69,7 +69,8 @@ const L10N = {
         'px.sheetReplace': 'Replace frames with slices', 'px.sheetClose': 'Close sheet import',
         'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 128×128 art pixels.',
         'px.sheetHint': 'Rows are read left to right. Colours match the current palette; replacing frames is undoable.',
-        'px.frameNumber': 'Frame {number}'
+        'px.frameNumber': 'Frame {number}', 'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
+        'px.tolerance': 'Tolerance'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -113,7 +114,8 @@ const L10N = {
         'px.sheetReplace': 'Bilder durch Schnitte ersetzen', 'px.sheetClose': 'Import schließen',
         'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 128×128 Grafikpixel verwenden.',
         'px.sheetHint': 'Zeilen werden von links gelesen. Farben nutzen die aktuelle Palette; Ersetzen kann rückgängig gemacht werden.',
-        'px.frameNumber': 'Bild {number}'
+        'px.frameNumber': 'Bild {number}', 'px.lasso': 'Lasso',
+        'px.wand': 'Zauberstab', 'px.tolerance': 'Toleranz'
     }
 };
 const t = makeT(L10N);
@@ -169,7 +171,7 @@ class PixelArtEditor extends React.Component {
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             palette: [...ARCADE_PALETTE],
             scale: 4, zoom: 1, colour: 2, replaceFrom: 0, brushSize: 1, tool: 'pencil',
-            mirror: false, converted: false, selection: null,
+            mirror: false, converted: false, selection: null, tolerance: 0,
             frames: [], activeFrameId: null, framesOpen: false, onionSkin: false, playing: false,
             sheetMode: false, sheetName: '', sheetWidth: 0, sheetHeight: 0,
             sheetFrameWidth: 16, sheetFrameHeight: 16, sheetPixelScale: 1,
@@ -196,6 +198,7 @@ class PixelArtEditor extends React.Component {
         this.lastCell = null;
         this.shapeStart = null;
         this.shapeBase = null;
+        this.lassoPoints = null;
         this.selectionBeforeGesture = null;
         this.gesture = null;
         this.onPointerDown = this.onPointerDown.bind(this);
@@ -316,11 +319,33 @@ class PixelArtEditor extends React.Component {
         const {selection} = this.state;
         if (selection) {
             ctx.save();
-            ctx.setLineDash([Math.max(2, c / 3), Math.max(2, c / 3)]);
             ctx.strokeStyle = '#0f172a';
             ctx.lineWidth = 2;
-            ctx.strokeRect((selection.x * c) + 1, (selection.y * c) + 1,
-                (selection.width * c) - 2, (selection.height * c) - 2);
+            if (selection.mask) {
+                ctx.beginPath();
+                for (let y = selection.y; y < selection.y + selection.height; y++) {
+                    for (let x = selection.x; x < selection.x + selection.width; x++) {
+                        if (!containsCell(selection, x, y)) continue;
+                        if (!containsCell(selection, x, y - 1)) {
+                            ctx.moveTo(x * c, y * c); ctx.lineTo((x + 1) * c, y * c);
+                        }
+                        if (!containsCell(selection, x + 1, y)) {
+                            ctx.moveTo((x + 1) * c, y * c); ctx.lineTo((x + 1) * c, (y + 1) * c);
+                        }
+                        if (!containsCell(selection, x, y + 1)) {
+                            ctx.moveTo(x * c, (y + 1) * c); ctx.lineTo((x + 1) * c, (y + 1) * c);
+                        }
+                        if (!containsCell(selection, x - 1, y)) {
+                            ctx.moveTo(x * c, y * c); ctx.lineTo(x * c, (y + 1) * c);
+                        }
+                    }
+                }
+                ctx.stroke();
+            } else {
+                ctx.setLineDash([Math.max(2, c / 3), Math.max(2, c / 3)]);
+                ctx.strokeRect((selection.x * c) + 1, (selection.y * c) + 1,
+                    (selection.width * c) - 2, (selection.height * c) - 2);
+            }
             ctx.restore();
         }
     }
@@ -552,6 +577,22 @@ class PixelArtEditor extends React.Component {
         if (end && this.shapeStart) this.setState({selection: selectionRect(this.shapeStart, end)});
     }
 
+    updateLasso (event) {
+        const cell = this.cellAt(event);
+        if (!cell || !this.lassoPoints) return;
+        const points = this.lassoPoints;
+        const last = points[points.length - 1];
+        if (last[0] === cell[0] && last[1] === cell[1]) return;
+        if (points.length > 1) {
+            const before = points[points.length - 2];
+            const cross = ((last[0] - before[0]) * (cell[1] - last[1])) -
+                ((last[1] - before[1]) * (cell[0] - last[0]));
+            if (cross === 0) points.pop();
+        }
+        points.push(cell);
+        this.setState({selection: lassoSelection(points, this.state.w, this.state.h)});
+    }
+
     updateMove (event) {
         const end = this.cellAt(event);
         if (!end || !this.shapeStart || !this.shapeBase || !this.selectionBeforeGesture) return;
@@ -694,6 +735,7 @@ class PixelArtEditor extends React.Component {
             this.strokeRecorded = false;
             this.shapeStart = null;
             this.shapeBase = null;
+            this.lassoPoints = null;
             this.selectionBeforeGesture = null;
             const point = this.midpoint();
             const viewport = this.viewport.current;
@@ -712,6 +754,25 @@ class PixelArtEditor extends React.Component {
         const active = this.activeLayer();
         const cell = this.cellAt(event);
         if (!cell) return;
+        if (this.state.tool === 'wand') {
+            if (!active || !active.visible) return;
+            this.drawing = true;
+            this.strokeRecorded = false;
+            this.selectionBeforeGesture = this.state.selection;
+            this.shapeStart = cell;
+            this.setState({selection: wandSelection(active.pixels, this.state.w, this.state.h,
+                cell[0], cell[1], this.state.tolerance)});
+            return;
+        }
+        if (this.state.tool === 'lasso') {
+            this.drawing = true;
+            this.strokeRecorded = false;
+            this.selectionBeforeGesture = this.state.selection;
+            this.shapeStart = cell;
+            this.lassoPoints = [cell];
+            this.setState({selection: lassoSelection(this.lassoPoints, this.state.w, this.state.h)});
+            return;
+        }
         if (this.state.tool === 'select' || (this.state.tool === 'move' &&
             !containsCell(this.state.selection, cell[0], cell[1]))) {
             this.drawing = true;
@@ -757,7 +818,8 @@ class PixelArtEditor extends React.Component {
         else if (this.drawing && ['line', 'rect', 'circle', 'filledRect', 'filledCircle']
             .includes(this.state.tool)) this.applyShape(event);
         else if (this.drawing && this.shapeBase && this.state.tool === 'move') this.updateMove(event);
-        else if (this.drawing && this.shapeStart) this.updateSelection(event);
+        else if (this.drawing && this.state.tool === 'lasso') this.updateLasso(event);
+        else if (this.drawing && this.shapeStart && this.state.tool !== 'wand') this.updateSelection(event);
     }
 
     onPointerUp (event) {
@@ -767,6 +829,7 @@ class PixelArtEditor extends React.Component {
         this.lastCell = null;
         this.shapeStart = null;
         this.shapeBase = null;
+        this.lassoPoints = null;
         this.selectionBeforeGesture = null;
         this.gesture = null;
     }
@@ -1222,7 +1285,7 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, layers, activeLayerId, selection, colour, replaceFrom, brushSize, tool, mirror, converted,
+        const {image, layers, activeLayerId, selection, colour, replaceFrom, brushSize, tool, tolerance, mirror, converted,
             frames, activeFrameId, framesOpen, onionSkin, playing, status, w, h, zoom, palette,
             sheetMode, sheetName, sheetWidth, sheetHeight, sheetFrameWidth, sheetFrameHeight,
             sheetPixelScale, sheetPreview, sheetError,
@@ -1246,7 +1309,7 @@ class PixelArtEditor extends React.Component {
                     <button type="button" style={btn(framesOpen)} data-testid="bw-pixel-frames-toggle"
                         aria-expanded={framesOpen} onClick={() => this.setState({framesOpen: !framesOpen})}>
                         {t(locale, 'px.frames')} {frames.length}</button>
-                    {['pencil', 'line', 'rect', 'filledRect', 'circle', 'filledCircle', 'select', 'move',
+                    {['pencil', 'line', 'rect', 'filledRect', 'circle', 'filledCircle', 'select', 'lasso', 'wand', 'move',
                         'fill', 'erase', 'pick', 'hand'].map(k => (
                         <button key={k} type="button" style={btn(tool === k)} data-testid={`bw-pixel-tool-${k}`}
                             onClick={() => this.setState({tool: k})}>{t(locale, `px.${k}`)}</button>
@@ -1259,6 +1322,12 @@ class PixelArtEditor extends React.Component {
                             aria-label={t(locale, 'px.brushSize')}
                             onChange={event => this.setState({brushSize: Number(event.target.value)})} />
                     </label>
+                    {tool === 'wand' ? <label style={{display: 'inline-flex', alignItems: 'center', gap: 6,
+                        minHeight: 44, fontSize: 12}}>{t(locale, 'px.tolerance')} {tolerance}
+                        <input type="range" min="0" max="255" value={tolerance}
+                            data-testid="bw-pixel-wand-tolerance"
+                            onChange={event => this.setState({tolerance: Number(event.target.value)})} />
+                    </label> : null}
                     <span style={{fontSize: 12, marginLeft: 8}}>{t(locale, 'px.size')}</span>
                     <input type="number" min="1" max="128" value={w} style={{width: 52}} data-testid="bw-pixel-w"
                         onChange={e => this.resize(Number(e.target.value), h)} />

@@ -51,10 +51,15 @@ const BUTTON = {a: 'Button.A', b: 'Button.B', ab: 'Button.AB'};
 /** Reporters that already ARE a boolean, so comparing them to "true" is noise. */
 const BOOLEAN_REPORTERS = new Set([
     'microbitplus_isgesture', 'microbitplus_istouch', 'microbitplus_isbutton',
-    'microbitplus_ispinhigh', 'operator_and', 'operator_or', 'operator_not',
+    'microbitplus_ispinhigh', 'microbitplus_islogo', 'operator_and', 'operator_or', 'operator_not',
     'operator_gt', 'operator_lt', 'operator_equals', 'operator_contains',
-    'sensing_keypressed', 'sensing_touchingobject'
+    'sensing_keypressed', 'sensing_touchingobject',
+    'microbitplus_spritetouching', 'microbitplus_spritetouchingedge', 'microbitplus_spritedeleted',
+    'microbitplus_isgameover', 'microbitplus_isrunning', 'microbitplus_ispaused'
 ]);
+
+/** The dialect's sprite property word -> MakeCode's LedSpriteProperty member. */
+const SPRITE_PROPERTY = {x: 'X', y: 'Y', direction: 'Direction', brightness: 'Brightness', blink: 'Blink'};
 
 const AXIS = {x: 'Dimension.X', y: 'Dimension.Y', z: 'Dimension.Z', strength: 'Dimension.Strength'};
 
@@ -181,6 +186,12 @@ class Emitter {
         if ((op === '>' && n === 0) || (op === '==' && n === 1)) return bool;
         if ((op === '==' && n === 0) || (op === '<' && n === 1)) return `(!${bool})`;
         return null;
+    }
+
+    /** The sprite in this block's SPRITE (or other) input, as a receiver. */
+    sprite (b, name = 'SPRITE') {
+        const value = this.value(b, name);
+        return /^[A-Za-z_][\w.]*(\[[^\]]*\])?$/.test(value) ? value : `(${value})`;
     }
 
     variableName (name) {
@@ -337,6 +348,8 @@ class Emitter {
         case 'microbitplus_beat': return `music.beat(BeatFraction.${BEAT_FRACTION[f('FRACTION')] || 'Whole'})`;
         case 'microbitplus_notefreq': return `music.noteFrequency(Note.${f('NOTE') || 'C'})`;
         case 'microbitplus_tempo': return 'music.tempo()';
+        case 'microbitplus_islogo': return 'input.logoIsPressed()';
+        case 'microbitplus_radiorssi': return 'radio.receivedPacket(RadioPacketProperty.SignalStrength)';
         case 'planetemaths_pow': return `Math.pow(${v('NUM1')}, ${v('NUM2')})`;
         case 'sensing_timer': return '(input.runningTime() / 1000)';
         // Inside a DEFINE, a parameter is read through one of these.
@@ -349,6 +362,17 @@ class Emitter {
         case 'planetemaths_min': return `Math.min(${v('NUM1')}, ${v('NUM2')})`;
         case 'planetemaths_max': return `Math.max(${v('NUM1')}, ${v('NUM2')})`;
         case 'microbitplus_score': return 'game.score()';
+        // LED sprites: a handle is a game.LedSprite on MakeCode's side.
+        case 'microbitplus_createsprite': return `game.createSprite(${v('X')}, ${v('Y')})`;
+        case 'microbitplus_spriteget':
+            return `${this.sprite(b)}.get(LedSpriteProperty.${SPRITE_PROPERTY[f('PROPERTY')] || 'X'})`;
+        case 'microbitplus_spritetouching': return `${this.sprite(b)}.isTouching(${this.sprite(b, 'OTHER')})`;
+        case 'microbitplus_spritetouchingedge': return `${this.sprite(b)}.isTouchingEdge()`;
+        case 'microbitplus_spritedeleted': return `${this.sprite(b)}.isDeleted()`;
+        case 'microbitplus_isgameover': return 'game.isGameOver()';
+        case 'microbitplus_isrunning': return 'game.isRunning()';
+        case 'microbitplus_ispaused': return 'game.isPaused()';
+        case 'microbitplus_life': return 'game.life()';
         case 'microbitplus_map':
             return `pins.map(${v('VALUE')}, ${v('FROMLOW')}, ${v('FROMHIGH')}, ${v('TOLOW')}, ${v('TOHIGH')})`;
         case 'microbitplus_isgesture':
@@ -453,7 +477,14 @@ class Emitter {
         case 'control_wait_until':
             push(`pauseUntil(() => ${this.condition(b, 'CONDITION')})`);
             return;
+        // `stop this script` in a function or a radio handler is how the
+        // importer writes MakeCode's `return` (see translate-base.js Return),
+        // and it goes back as that.
         case 'control_stop':
+            if (this.inFunction && f('STOP_OPTION') === 'this script') {
+                push('return');
+                return;
+            }
             push('control.reset()');
             return;
 
@@ -467,9 +498,13 @@ class Emitter {
             return;
         }
 
-        case 'data_setvariableto':
-            push(`${this.variableName(f('VARIABLE'))} = ${v('VALUE')}`);
+        case 'data_setvariableto': {
+            // A sprite variable's "none" is null on MakeCode's side, not 0.
+            const name = this.variableName(f('VARIABLE'));
+            const value = v('VALUE');
+            push(`${name} = ${this.spriteVars && this.spriteVars.has(name) && value === '0' ? 'null' : value}`);
             return;
+        }
         case 'data_changevariableby':
             push(`${this.variableName(f('VARIABLE'))} += ${v('VALUE')}`);
             return;
@@ -482,7 +517,11 @@ class Emitter {
             this.arrays.add(this.arrayName(b));
             return;                                   // the declaration IS the creation
         case 'arrays_create1D': {
-            const json = this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
+            // The literal's own text, not value(): value() JSON-quotes a text
+            // input, and stripping only the outer quotes left `[\"cat\"]`
+            // escaped — a string array MakeCode could not read.
+            const slot = b.inputs && b.inputs.JSON && b.inputs.JSON[1];
+            const json = Array.isArray(slot) ? String(slot[1]) : this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
             push(`${this.arrayName(b)} = ${json}`);
             return;
         }
@@ -534,6 +573,13 @@ class Emitter {
             }
             this.unsupported.push('show icon with a picture that is not one of MakeCode\'s icons — sent as showLeds');
             push(`basic.showLeds(\`${ledsOf(f('MATRIX'))}\n${pad}    \`)`);
+            return;
+        }
+        // `show number` is MakeCode's showNumber itself (it waits while shown);
+        // 150 is its default interval, so it is left implicit.
+        case 'microbitplus_shownumber': {
+            const ms = v('MS', '150');
+            push(ms === '150' ? `basic.showNumber(${v('VALUE')})` : `basic.showNumber(${v('VALUE')}, ${ms})`);
             return;
         }
         case 'microbitplus_showtext':
@@ -595,6 +641,39 @@ class Emitter {
         case 'microbitplus_gameover':
             push('game.gameOver()');
             return;
+        case 'microbitplus_startcountdown':
+            push(`game.startCountdown(${v('MS')})`);
+            return;
+        case 'microbitplus_pausegame':
+            push('game.pause()');
+            return;
+        case 'microbitplus_resumegame':
+            push('game.resume()');
+            return;
+        case 'microbitplus_setlife':
+            push(`game.setLife(${v('VALUE')})`);
+            return;
+        case 'microbitplus_addlife':
+            push(`game.addLife(${v('LIVES')})`);
+            return;
+        // LED sprites, as MakeCode's own sprite blocks write them.
+        case 'microbitplus_spriteset':
+        case 'microbitplus_spritechange':
+            push(`${this.sprite(b)}.${b.opcode === 'microbitplus_spriteset' ? 'set' : 'change'}(` +
+                `LedSpriteProperty.${SPRITE_PROPERTY[f('PROPERTY')] || 'X'}, ${v('VALUE')})`);
+            return;
+        case 'microbitplus_spritemove':
+            push(`${this.sprite(b)}.move(${v('LEDS')})`);
+            return;
+        case 'microbitplus_spriteturn':
+            push(`${this.sprite(b)}.turn(Direction.${f('DIRECTION') === 'left' ? 'Left' : 'Right'}, ${v('DEGREES')})`);
+            return;
+        case 'microbitplus_spritebounce':
+            push(`${this.sprite(b)}.ifOnEdgeBounce()`);
+            return;
+        case 'microbitplus_spritedelete':
+            push(`${this.sprite(b)}.delete()`);
+            return;
 
         case 'microbitplus_digitalwrite':
             push(`pins.digitalWritePin(DigitalPin.${PIN(f('PIN'))}, ${f('LEVEL') === '0' ? 0 : 1})`);
@@ -619,6 +698,24 @@ class Emitter {
         case 'microbitplus_rest':
             push(`music.rest(${v('MS')})`);
             return;
+        // MakeCode's own forms for a tone with a mode, a built-in sound and a
+        // sound effect.
+        case 'microbitplus_playtonemode':
+            push(`music.play(music.tonePlayable(${v('FREQ')}, ${v('MS')}), music.PlaybackMode.${PLAYBACK[f('MODE')] || 'UntilDone'})`);
+            return;
+        case 'microbitplus_playsound':
+            push(`music.play(music.builtinPlayableSoundEffect(soundExpression.${f('SOUND') || 'giggle'}), ` +
+                `music.PlaybackMode.${PLAYBACK[f('MODE')] || 'UntilDone'})`);
+            return;
+        case 'microbitplus_playsoundeffect': {
+            const W = {sine: 'Sine', sawtooth: 'Sawtooth', triangle: 'Triangle', square: 'Square', noise: 'Noise'};
+            const X = {none: 'None', vibrato: 'Vibrato', tremolo: 'Tremolo', warble: 'Warble'};
+            const C = {linear: 'Linear', curve: 'Curve', logarithmic: 'Logarithmic'};
+            push(`music.playSoundEffect(music.createSoundEffect(WaveShape.${W[f('WAVE')] || 'Square'}, ${v('FROM')}, ${v('TO')}, ` +
+                `${v('VFROM')}, ${v('VTO')}, ${v('MS')}, SoundExpressionEffect.${X[f('FX')] || 'None'}, ` +
+                `InterpolationCurve.${C[f('CURVE')] || 'Linear'}), SoundExpressionPlayMode.${f('MODE') === 'in background' ? 'InBackground' : 'UntilDone'})`);
+            return;
+        }
         case 'microbitplus_settempo':
             push(`music.setTempo(${v('BPM')})`);
             return;
@@ -692,6 +789,49 @@ function arrayNameOf (b, blocks, emitter) {
     return emitter.variableName(raw.replace(/^["']|["']$/g, ''));
 }
 
+/**
+ * The variables and arrays that hold LED sprites: MakeCode types them
+ * game.LedSprite / game.LedSprite[] (a sprite is a number only in the dialect).
+ * A variable holds one when it is set to a new sprite or to an element of a
+ * sprite array, or is used where a sprite goes; an array, when a new sprite is
+ * pushed onto it or one of its elements is used where a sprite goes.
+ */
+function spriteNames (blocks, emitter) {
+    const vars = new Set();
+    const arrays = new Set();
+    const slot = (b, name) => {
+        const input = b.inputs && b.inputs[name];
+        return input ? input[1] : null;
+    };
+    const block = s => (typeof s === 'string' ? blocks[s] : null);
+    const varOf = s => (Array.isArray(s) && (s[0] === 12) ? emitter.variableName(s[1]) : null);
+    for (let pass = 0; pass < 3; pass++) {
+        for (const b of Object.values(blocks)) {
+            if (!b) continue;
+            for (const name of ['SPRITE', 'OTHER']) {
+                if (!/^microbitplus_sprite/.test(b.opcode)) continue;
+                const s = slot(b, name);
+                if (varOf(s)) vars.add(varOf(s));
+                const r = block(s);
+                if (r && r.opcode === 'data_variable') vars.add(emitter.variableName(r.fields.VARIABLE[0]));
+                if (r && r.opcode === 'arrays_get') arrays.add(arrayNameOf(r, blocks, emitter));
+            }
+            const value = block(slot(b, 'VALUE'));
+            if (b.opcode === 'arrays_push' && value && value.opcode === 'microbitplus_createsprite') {
+                arrays.add(arrayNameOf(b, blocks, emitter));
+            }
+            if (b.opcode === 'data_setvariableto' && value && (value.opcode === 'microbitplus_createsprite' ||
+                (value.opcode === 'arrays_get' && arrays.has(arrayNameOf(value, blocks, emitter))))) {
+                vars.add(emitter.variableName(b.fields.VARIABLE[0]));
+            }
+            // `set o to item i of array "obs"` with o used as a sprite: obs holds sprites.
+            if (b.opcode === 'data_setvariableto' && value && value.opcode === 'arrays_get' &&
+                vars.has(emitter.variableName(b.fields.VARIABLE[0]))) arrays.add(arrayNameOf(value, blocks, emitter));
+        }
+    }
+    return {vars, arrays};
+}
+
 /** Arrays that are only ever filled with TEXT: MakeCode types them string[]. */
 function textArrayNames (blocks, emitter) {
     const kinds = new Map();
@@ -746,11 +886,14 @@ export function projectToMakeCodeTs (project) {
         // then `t = "COLD"` is a program MakeCode refuses (census 2026-09-27).
         const textArrays = textArrayNames(blocks, emitter);
         const text = textVariables(blocks, emitter, textArrays);
+        const sprites = spriteNames(blocks, emitter);
+        emitter.spriteVars = sprites.vars;
         for (const entry of Object.values(target.variables || {})) {
             const name = emitter.variableName(Array.isArray(entry) ? entry[0] : entry);
             if (declared.has(name)) continue;
             declared.add(name);
-            lines.push(`let ${name} = ${text.has(name) ? '""' : '0'}`);
+            lines.push(sprites.vars.has(name) ? `let ${name}: game.LedSprite = null` :
+                `let ${name} = ${text.has(name) ? '""' : '0'}`);
         }
 
         // The body is emitted first because an array's name is only met
@@ -768,10 +911,12 @@ export function projectToMakeCodeTs (project) {
                 if (!proto) continue;
                 const {name, args} = emitter.procedure(proto);
                 const names = emitter.parameterNames(proto);
+                emitter.inFunction = true;
                 definitions.push(
                     `function ${name}(${names.map(n => `${n}: number`).join(', ')}) {`,
                     ...emitter.stack(block.next, 1),
                     '}');
+                emitter.inFunction = false;
                 void args;
                 continue;
             }
@@ -780,7 +925,9 @@ export function projectToMakeCodeTs (project) {
             if (RADIO_HATS[block.opcode]) {
                 const {call, param} = RADIO_HATS[block.opcode];
                 emitter.radioHat = block.opcode;
+                emitter.inFunction = true;
                 body.push(`${call}(function (${param}) {`, ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
                 emitter.radioHat = null;
                 continue;
             }
@@ -798,7 +945,13 @@ export function projectToMakeCodeTs (project) {
         // literal assignments back into the declaration, so the way back does
         // not add a line per round trip (the CLI's full-circle test found it).
         while (body.length) {
-            const m = /^([A-Za-z_][A-Za-z0-9_]*) = (-?\d+(?:\.\d+)?|"[^"\\]*")$/.exec(body[0]);
+            const m = /^([A-Za-z_][A-Za-z0-9_]*) = (-?\d+(?:\.\d+)?|"[^"\\]*"|null)$/.exec(body[0]);
+            if (m && m[2] === 'null') {
+                // A sprite variable's leading `= null` is its declaration already.
+                if (!lines.includes(`let ${m[1]}: game.LedSprite = null`)) break;
+                body.shift();
+                continue;
+            }
             const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0` || l === `let ${m[1]} = ""`);
             if (!m || decl < 0) break;
             lines[decl] = `let ${m[1]} = ${m[2]}`;
@@ -808,7 +961,7 @@ export function projectToMakeCodeTs (project) {
         for (const name of emitter.arrays) {
             if (declared.has(name)) continue;
             declared.add(name);
-            lines.push(`let ${name}: ${textArrays.has(name) ? 'string' : 'number'}[] = []`);
+            lines.push(`let ${name}: ${sprites.arrays.has(name) ? 'game.LedSprite' : textArrays.has(name) ? 'string' : 'number'}[] = []`);
         }
         lines.push(...body);
         unsupported.push(...emitter.unsupported);

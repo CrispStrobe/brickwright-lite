@@ -28,14 +28,15 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   Duplicating a costume or sprite carries its source into the new copy.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
   adjustable square brushes, line, outline and filled rectangle and circle tools,
-  index-preserving colour replacement and outline, a rectangular selection that can move or clear
-  pixels on the active layer, copy/cut/paste into a movable new layer, arrow-key
+  index-preserving colour replacement and outline, rectangular and lasso
+  selections, and a connected colour wand with adjustable tolerance. Selections
+  can move or clear pixels on the active layer, copy/cut/paste into a movable new layer, arrow-key
   nudging, mirrored drawing, ordered pixel layers with
   visibility, locking, renaming, reordering, deletion and opacity, larger colour targets,
   selection-aware horizontal and vertical flips and quarter turns, a pan tool
   and two-pointer/pinch navigation. Whole-canvas rotation preserves all layers;
-  a selected transform affects only the active layer. It renders translucent layers
-  into the Scratch SVG while retaining each layer's palette indices in editable
+  a selected transform affects only the active layer. It renders translucent visible layers
+  into the Scratch SVG while retaining every layer's palette indices in editable
   source. It also exports a transparent PNG from the current layer stack. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
 - Pixel art can use the default Arcade palette, edit its 15 colours, or import
@@ -54,8 +55,11 @@ source entry must never prevent an otherwise valid Scratch project from opening.
   palette matching. Exporting frames as separate costumes remains future work.
 - Archive tests cover round-trip preservation, stale source rejection and
   future-version pass-through. A browser gate checks layer visibility and
-  persistence across SB3 save/reopen, plus mouse, keyboard, trackpad and touch
-  interactions. The GUI build is the integration gate.
+  persistence across SB3 save/reopen, lasso and wand selection, plus mouse,
+  keyboard, trackpad and touch interactions. The GUI build is the integration
+  gate. Scratch Paint's regular bitmap mode now also offers rectangle, lasso,
+  and connected-colour wand selection. Its lifted selection keeps transparent
+  pixels outside the mask untouched, and the wand has an adjustable tolerance.
 
 ## Next delivery slices
 
@@ -79,7 +83,7 @@ source entry must never prevent an otherwise valid Scratch project from opening.
    tree as the authority; render it deterministically to SVG. Test node edits
    survive save/reopen and match the Scratch stage preview.
 4. **Raster core.** Render ordered raster layers with transparency and opacity;
-   add marquee/lasso selections, move/transform/crop, brush size/opacity and
+   expand the new lasso and wand selectors into layer-aware selection, move/transform/crop, brush size/opacity and
    eyedropper. Keep layer pixels separately in source and generate a flattened
    PNG for Scratch. A save/reopen test must prove that painting one layer does
    not destroy another.

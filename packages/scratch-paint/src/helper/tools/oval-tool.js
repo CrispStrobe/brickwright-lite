@@ -3,6 +3,7 @@ import Modes from '../../lib/modes';
 import {styleShape} from '../style-path';
 import {clearSelection} from '../selection';
 import {getSquareDimensions} from '../math';
+import {snapPointToGrid} from '../bw/grid';
 import BoundingBoxTool from '../selection-tools/bounding-box-tool';
 import NudgeTool from '../selection-tools/nudge-tool';
 
@@ -95,9 +96,12 @@ class OvalTool extends paper.Tool {
             return;
         }
 
-        const downPoint = new paper.Point(event.downPoint.x, event.downPoint.y);
-        const point = new paper.Point(event.point.x, event.point.y);
-        const squareDimensions = getSquareDimensions(event.downPoint, event.point);
+        // Brickwright: snap the two drag corners to the grid, so everything downstream — the
+        // square constraint, the alt/shift positioning — is computed from the snapped values
+        // and the finished shape lands on grid lines rather than merely starting on one.
+        const downPoint = snapPointToGrid(new paper.Point(event.downPoint.x, event.downPoint.y));
+        const point = snapPointToGrid(new paper.Point(event.point.x, event.point.y));
+        const squareDimensions = getSquareDimensions(downPoint, point);
         if (event.modifiers.shift) {
             this.oval.size = squareDimensions.size.abs();
         } else {
