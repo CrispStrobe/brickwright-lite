@@ -1,0 +1,56 @@
+{
+  "schema": "brickwright-lite.i80386-windows311-widgets-pointer-receipt.v1",
+  "date": "2026-09-28",
+  "passed": true,
+  "scope": "One bounded paired Chromium replay of a Windows 3.11 Solitaire stock click through the Lite Widgets canvas, using external locally supplied guest media",
+  "source": {
+    "liteCommitTested": "029a00501baa25e7cc2b7be39f5ef13807f9952d",
+    "boardPin": "d9a967cadb194309a1c192882110b99e1f930af9",
+    "buildIndexSha256": "e63121d984d3f64806332a269c4059d9871c7967eca9da7b2a42585e59c9aeae",
+    "buildManifestSha256": "9d28fabd7ef56b3d12a7de4dc7c104a91e8faacbdf25dbf7cd60b9187e1af12d",
+    "privateProbeSha256": "11f4f11e3ee4cde5fc136a63472a7c645368002e1eb4291f506b22f1dc841f05"
+  },
+  "method": {
+    "control": "Physical Widgets pointer movements; no button press",
+    "candidate": "The same movements and physical left press/release over the visible stock, followed by the same parking movement",
+    "mediaAndKeyboardIdentical": true,
+    "beforeClickGuestRgbSha256": "a596082d951900e192350abe194fa2594c38595e021496839264e2e588ad8474",
+    "beforeClickFramesIdentical": true,
+    "fullyDealtFrameRgbSha256": "044c92a08b92244f8e2398e3c9b02159cd70c467f0f3ef56336fbc68173aee33"
+  },
+  "observations": {
+    "videoDimensions": [640, 480],
+    "control": {
+      "wallSeconds": 348.019,
+      "beforeClickChargedCycles": 836953550,
+      "afterParkChargedCycles": 887054552,
+      "stockWasteChangedPixels": 106,
+      "parkingChangedPixels": 126,
+      "acceptedAuxPackets": 4,
+      "afterParkGuestRgbSha256": "79f5d8294a69173851235762c8accc00dbbc06b6d967f56e4c76174419085974"
+    },
+    "candidate": {
+      "wallSeconds": 342.714,
+      "beforeClickChargedCycles": 832553462,
+      "afterParkChargedCycles": 881554442,
+      "stockWasteChangedPixels": 7204,
+      "parkingChangedPixels": 126,
+      "acceptedAuxPackets": 6,
+      "afterParkGuestRgbSha256": "4df5be3a48b481267c8bda37ad6821a40bf5514ef9b9fcb02d517042562029ca"
+    },
+    "parkedCursorDifferencePixelsBetweenArms": 0,
+    "guestWidgetsRgbMismatchPixelsAtComparedFrames": 0,
+    "visualAudit": "The control left the waste empty; the candidate showed newly dealt waste cards. The cursor was visibly over the stock before the click and parked outside the stock/waste region afterward in both arms.",
+    "browserErrors": []
+  },
+  "privateEvidence": {
+    "controlReportSha256": "89f493ea2412563182a02972e7544f07362e957f3401e5c115218c13855847e3",
+    "candidateReportSha256": "0d273034f2527339f43efeea669e89d9d841145e157ac5b6eb39912964913375",
+    "comparisonSha256": "919cb14136afac3effc2c619bed77865d2cb3a4437dd155d8a2365d150377053"
+  },
+  "limits": [
+    "This is one source-bound paired browser run with external guest media, not a general Windows compatibility claim.",
+    "Charged cycles are not retired instruction steps.",
+    "Guest media, raw reports, frames, and screenshots are not included in this repository."
+  ]
+}
