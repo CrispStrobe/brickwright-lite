@@ -393,3 +393,52 @@ test('THIRD-PARTY-NOTICES says which base a {core, radio} download carries', () 
     }
     assert.match(section, /\{core, radio\}[^]*S110[^]*S113|\{core, radio\}[^]*S113[^]*S110/, 'and names the SoftDevices they carry');
 });
+
+test('census batch 3: sound, the logo, signal strength, results, break and for-of come back from lite and MakeCode compiles them', {skip}, async () => {
+    const {default: SB3Creator} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/sb3-creator.js'));
+    const {microbitToPseudocode} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/microbit-translate.js'));
+    const {projectToMakeCodeTs} = await import(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/export.js'));
+    const original = [
+        'let total = 0',
+        'let nums: number[] = [3, 5]',
+        'function seriesSum(n: number) {',
+        '    if (n < 1) {',
+        '        return 0',
+        '    }',
+        '    return (n * (n + 1)) / 2',
+        '}',
+        'radio.onReceivedNumber(function (receivedNumber) {',
+        '    total = radio.receivedPacket(RadioPacketProperty.SignalStrength)',
+        '    if (receivedNumber == 0) {',
+        '        return',
+        '    }',
+        '    music.playSoundEffect(music.createSoundEffect(WaveShape.Sine, 5000, 1, 255, 0, 300, SoundExpressionEffect.Vibrato, InterpolationCurve.Linear), SoundExpressionPlayMode.InBackground)',
+        '})',
+        'input.onLogoEvent(TouchButtonEvent.Pressed, function () {',
+        '    music.play(music.builtinPlayableSoundEffect(soundExpression.hello), music.PlaybackMode.UntilDone)',
+        '})',
+        'basic.forever(function () {',
+        '    total = seriesSum(4) + 1',
+        '    for (let n of nums) {',
+        '        total += n',
+        '        if (total > 20) {',
+        '            break',
+        '        }',
+        '        basic.showNumber(total)',
+        '    }',
+        '    music.play(music.tonePlayable(262, music.beat(BeatFraction.Quarter)), music.PlaybackMode.UntilDone)',
+        '})'
+    ].join('\n');
+    const control = await compile('microbit', tinyMicrobit(original));
+    assert.equal(control.success, true, `the original is not valid MakeCode: ${JSON.stringify(control.diagnostics.slice(0, 2))}`);
+    const imported = microbitToPseudocode(original);
+    assert.deepEqual(imported.unsupported, [], 'the import refused something');
+    const {ts, unsupported} = projectToMakeCodeTs(new SB3Creator().parse(imported.code));
+    assert.deepEqual(unsupported, [], 'the export refused something');
+    for (const call of ['radio.receivedPacket', 'music.playSoundEffect', 'music.createSoundEffect', 'input.logoIsPressed',
+        'music.builtinPlayableSoundEffect', 'music.tonePlayable', 'seriesSum']) {
+        assert.ok(ts.includes(`${call}(`), `${call} did not come back:\n${ts}`);
+    }
+    const r = await compile('microbit', tinyMicrobit(ts));
+    assert.equal(r.success, true, `MakeCode refused the re-export: ${JSON.stringify(r.diagnostics.slice(0, 2))}\n${ts}`);
+});

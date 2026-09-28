@@ -61,6 +61,8 @@ export const MAKECODE_NOTES = [
     'C', 'CSharp', 'D', 'Eb', 'E', 'F', 'FSharp', 'G', 'GSharp', 'A', 'Bb', 'B',
     ...['3', '4', '5'].flatMap(o => ['C', 'CSharp', 'D', 'Eb', 'E', 'F', 'FSharp', 'G', 'GSharp', 'A', 'Bb', 'B'].map(n => n + o))
 ];
+/** The V2 built-in sounds (soundExpression.X), which MicroPython's Sound.X shares. */
+export const MAKECODE_SOUNDS = ['giggle', 'happy', 'hello', 'mysterious', 'sad', 'slide', 'soaring', 'spring', 'twinkle', 'yawn'];
 /** MakeCode's built-in Melodies (libs/core/melodies.ts). */
 export const MAKECODE_MELODIES = [
     'Dadadadum', 'Entertainer', 'Prelude', 'Ode', 'Nyan', 'Ringtone', 'Funk', 'Blues', 'Birthday', 'Wedding',
@@ -103,6 +105,28 @@ class MicrobitTranslator extends BaseTranslator {
         return super.expr(node);
     }
 
+    /** `soundExpression.giggle`'s name, or null. */
+    builtinSound (node) {
+        const name = node && node.type === 'Member' && node.object && node.object.name === 'soundExpression' ? node.name : null;
+        return name && MAKECODE_SOUNDS.includes(name) ? name : null;
+    }
+
+    /**
+     * createSoundEffect/createSoundExpression's eight arguments as the
+     * dialect's `play sound effect …` (without its mode), or null when an
+     * enum is one the block does not have.
+     */
+    soundEffect (args) {
+        const member = (node, owner, table) => (node && node.type === 'Member' && node.object &&
+            node.object.name === owner ? table[node.name] : null);
+        const wave = member(args[0], 'WaveShape', {Sine: 'sine', Sawtooth: 'sawtooth', Triangle: 'triangle', Square: 'square', Noise: 'noise'});
+        const fx = member(args[6], 'SoundExpressionEffect', {None: 'none', Vibrato: 'vibrato', Tremolo: 'tremolo', Warble: 'warble'});
+        const curve = member(args[7], 'InterpolationCurve', {Linear: 'linear', Curve: 'curve', Logarithmic: 'logarithmic'});
+        if (!wave || !fx || !curve) return null;
+        const o = i => this.operand(args[i]);
+        return `play sound effect ${wave} from ${o(1)} to ${o(2)} hz volume ${o(3)} to ${o(4)} for ${o(5)} ms effect ${fx} curve ${curve}`;
+    }
+
     /** `music.builtInPlayableMelody(Melodies.X)`'s X, or null. */
     melody (node) {
         const inner = node && node.type === 'Call' && /^music\.builtIn(Playable)?Melody$/.test(this.path(node.callee) || '') ?
@@ -130,6 +154,7 @@ class MicrobitTranslator extends BaseTranslator {
      */
     isBooleanValue (value) {
         return super.isBooleanValue(value) ||
+            value === 'logo touched' ||
             /^read button_/.test(value) ||
             / happening$/.test(value) ||
             / touched$/.test(value) ||
@@ -330,6 +355,17 @@ class MicrobitTranslator extends BaseTranslator {
         case 'pins.digitalReadPin': return `pin ${this.pin(a[0]) || 'P0'} digital`;
         case 'pins.analogReadPin': return `analog value of pin ${this.pin(a[0]) || 'P0'}`;
         case 'radio.receivedNumber': return 'read last radio number';
+        case 'input.logoIsPressed': return 'logo touched';
+        // Of a packet's properties, MicroPython's radio reports the signal
+        // strength (receive_full); the sender's serial number and send time
+        // are not in its packets at all.
+        case 'radio.receivedPacket': {
+            const prop = a[0] && a[0].type === 'Member' ? a[0].name : '';
+            if (prop === 'SignalStrength') return 'last radio signal strength';
+            this.unsupported.push(`radio.receivedPacket(RadioPacketProperty.${prop || '…'}) — ` +
+                'a MicroPython radio packet carries no serial number or send time');
+            return '0';
+        }
         case 'radio.receivedString': return 'read last radio text';
         // MakeCode's music reporters, as the blocks they are. music.beat was
         // read as its 120 bpm length (a number), which ran — until the program
@@ -467,6 +503,20 @@ class MicrobitTranslator extends BaseTranslator {
         case 'basic.clearScreen':
             push('clear display');
             return;
+        // `wait until` goes to MakeCode as pauseUntil(() => cond) — which is
+        // how every polled handler's release wait is exported — and it was not
+        // read back: a second round trip dropped it (census batch 3 test).
+        case 'pauseUntil': {
+            const fn = a[0];
+            const ret = fn && fn.type === 'FunctionExpression' && fn.body.length === 1 && fn.body[0].type === 'Return' ?
+                fn.body[0].value : null;
+            if (ret) {
+                push(`wait until ${this.condition(ret)}`);
+                return;
+            }
+            push(this.note('pauseUntil() with a function body — only a condition has a block here'));
+            return;
+        }
         // The serial console. `print` is the dialect's serial line on every
         // board (MicroPython's print() on the micro:bit), and it goes back as
         // serial.writeLine — the census found it refused in two apps, and
@@ -608,7 +658,50 @@ class MicrobitTranslator extends BaseTranslator {
                 push(`play melody ${tune} ${mode || 'until done'}`);
                 return;
             }
-            push(this.note(`${name}() — only MakeCode's built-in melodies have a block here`));
+            const inner = a[0] && a[0].type === 'Call' ? this.path(a[0].callee) : null;
+            const args = inner ? a[0].args || [] : [];
+            if (mode === 'looping in background' && inner !== null) {
+                push(this.note(`${name}(${inner}(), LoopingInBackground) — a looping sound has no block here`));
+                return;
+            }
+            // music.play(music.tonePlayable(F, D), mode): a tone with its mode.
+            if (inner === 'music.tonePlayable') {
+                push(`play tone ${this.operand(args[0])} hz for ${this.operand(args[1])} ms ${mode || 'until done'}`);
+                return;
+            }
+            if (inner === 'music.builtinPlayableSoundEffect' || inner === 'music.builtinSoundEffect') {
+                const sound = this.builtinSound(args[0]);
+                if (sound) {
+                    push(`play sound ${sound} ${mode || 'until done'}`);
+                    return;
+                }
+            }
+            // createSoundExpression(...) is `new SoundExpression(createSoundEffect(...))`
+            // in pxt-microbit (libs/core/soundexpressions.ts): the same sound.
+            if (inner === 'music.createSoundExpression') {
+                const effect = this.soundEffect(args);
+                if (effect) {
+                    push(`${effect} ${mode || 'until done'}`);
+                    return;
+                }
+            }
+            push(this.note(`${name}() — only MakeCode's built-in melodies, tones, built-in sounds and sound effects have blocks here`));
+            return;
+        }
+        case 'music.playSoundEffect': {
+            const inner = a[0] && a[0].type === 'Call' ? this.path(a[0].callee) : null;
+            const effect = inner === 'music.createSoundEffect' ? this.soundEffect(a[0].args || []) : null;
+            const builtin = inner === 'music.builtinSoundEffect' ? this.builtinSound((a[0].args || [])[0]) : null;
+            const mode = a[1] && a[1].type === 'Member' && a[1].name === 'InBackground' ? 'in background' : 'until done';
+            if (effect) {
+                push(`${effect} ${mode}`);
+                return;
+            }
+            if (builtin) {
+                push(`play sound ${builtin} ${mode}`);
+                return;
+            }
+            push(this.note('music.playSoundEffect() — only a createSoundEffect or built-in sound has a block here'));
             return;
         }
         case 'music.stopAllSounds':
@@ -667,6 +760,10 @@ class MicrobitTranslator extends BaseTranslator {
                 push(this.note(`${name}() — ${CALLIOPE_ONLY[name]}`));
                 return;
             }
+            if (NO_MICROPYTHON[name]) {
+                push(this.note(`${name}() — ${NO_MICROPYTHON[name]}`));
+                return;
+            }
             if (node.callee && node.callee.type === 'Member' &&
                 (node.callee.name === 'showImage' || node.callee.name === 'plotImage')) {
                 const image = this.expr(node.callee.object);
@@ -686,6 +783,15 @@ class MicrobitTranslator extends BaseTranslator {
         }
     }
 }
+
+/**
+ * MakeCode calls with NO MicroPython counterpart at all — refused with the
+ * reason, because "unsupported" alone reads like a gap someone forgot.
+ */
+const NO_MICROPYTHON = {
+    'radio.setTransmitSerialNumber': 'MicroPython\'s radio has no serial number to send, and its packets carry none',
+    'radio.writeReceivedPacketToSerial': 'MicroPython\'s radio has no packet-to-serial dump'
+};
 
 /**
  * Calliope-only API, named rather than merely refused.
@@ -759,6 +865,23 @@ export function ledPattern (node) {
     return rows.map(r => [...r].map(c => (c === '#' ? '9' : '0')).join('')).join(':');
 }
 
+/** Does this function body `return` a VALUE (not counting functions nested in it)? */
+function returnsValue (body) {
+    let found = false;
+    const walk = node => {
+        if (found || !node || typeof node !== 'object') return;
+        if (Array.isArray(node)) return node.forEach(walk);
+        if (node.type === 'Return' && node.value) {
+            found = true;
+            return;
+        }
+        if (node.type === 'FunctionExpression' || node.type === 'FunctionDeclaration') return;
+        for (const v of Object.values(node)) if (v && typeof v === 'object') walk(v);
+    };
+    walk(body);
+    return found;
+}
+
 /** Does this statement list assign `name` anywhere? */
 function writes (body, name) {
     let found = false;
@@ -800,6 +923,14 @@ const HANDLERS = {
     'input.onPinReleased': translator => a => {
         const pin = translator.pin(a[0]) || 'P0';
         return {test: `not (pin ${pin} touched)`, release: null};
+    },
+    // The V2 touch logo. Pressed and Touched both fire as the logo is
+    // touched, which polling can say; Released and LongPressed need the timing
+    // of the touch, which a poll does not keep — refused, by name.
+    'input.onLogoEvent': translator => a => {
+        const event = a[0] && a[0].type === 'Member' ? a[0].name : 'Pressed';
+        if (event === 'Pressed' || event === 'Touched') return {test: 'logo touched', release: 'logo touched'};
+        return {refuse: `input.onLogoEvent(TouchButtonEvent.${event}) — polling sees the logo held, not a ${event === 'Released' ? 'release' : 'long press'}`};
     }
 };
 
@@ -835,6 +966,16 @@ export function microbitToPseudocode (source, opts = {}) {
         if (st.type === 'Enum') t.statement(st, 0, []);
         if (st.type === 'FunctionDeclaration') t.functions.push({name: st.name, params: st.params, body: st.body});
     }
+    // A function that returns a value hands it back in a variable of its own,
+    // `<name>_result`, which its callers read after calling it.
+    for (const fn of t.functions) {
+        if (returnsValue(fn.body)) {
+            let result = `${fn.name}_result`;
+            while (t.taken && t.taken.has(result)) result += '_';
+            if (t.taken) t.taken.add(result);
+            fn.result = result;
+        }
+    }
 
     const scripts = [];
     const main = [];
@@ -863,6 +1004,11 @@ export function microbitToPseudocode (source, opts = {}) {
 
         if (callName && HANDLERS[callName]) {
             const shape = HANDLERS[callName](t)(call.args);
+            if (shape.refuse) {
+                t.unsupported.push(shape.refuse);
+                scripts.push([`# unsupported: ${shape.refuse}`]);
+                continue;
+            }
             const handlerBody = bodyOf(call.args[call.args.length - 1]);
             const lines = [
                 `# ${callName} — MakeCode fires this on an event; here it is polled.`,
@@ -891,7 +1037,10 @@ export function microbitToPseudocode (source, opts = {}) {
             // A body that assigns its parameter needs a variable to assign.
             if (param && writes(bodyOf(fn), param)) lines.push(`  set ${t.varName(param)} to ${reporter}`);
             else if (param) t.aliases.set(param, reporter);
+            // A return in a radio hat leaves that one handler, as in MakeCode.
+            t.returnable = {result: null};
             t.block(bodyOf(fn), 1, lines);
+            t.returnable = null;
             if (param) t.aliases.delete(param);
             scripts.push(lines);
             continue;
@@ -926,7 +1075,9 @@ export function microbitToPseudocode (source, opts = {}) {
         const signature = fn.params && fn.params.length ?
             `${fn.name} ${fn.params.map(p => `(${p})`).join(' ')}` : fn.name;
         const lines = [`DEFINE ${signature}:`];
+        t.returnable = {result: fn.result || null};
         t.block(fn.body, 1, lines);
+        t.returnable = null;
         out.push(...lines, '');
     }
 

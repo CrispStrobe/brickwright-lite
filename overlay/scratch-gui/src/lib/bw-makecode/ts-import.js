@@ -460,9 +460,9 @@ class Parser {
     parseFor () {
         this.expect('for');
         this.expect('punct', '(');
-        // `for (let x of list)` — what MakeCode writes for "for element x of
-        // list". It read as a three-part for and came out as `of = 0` tests
-        // and stray Identifier statements (census: crashy-bird).
+        // `for (let x of list)`. It was read as a counted for: `let x`, then
+        // `of` as the test — and the body came out as stray statements
+        // (census 2026-09-27: "Identifier statement" in three apps).
         if ((this.at('let') || this.at('const') || this.at('var')) &&
             this.peek(1).type === 'ident' && this.peek(2).type === 'ident' && this.peek(2).value === 'of') {
             this.next();
