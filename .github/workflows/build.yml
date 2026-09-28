@@ -1478,6 +1478,8 @@ jobs:
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-starter-journeys.mjs
       # Also the Pybricks SPIKE simulator pane (second half of the same script):
       # Code tab -> Run on SPIKE -> hub face matrix lit, port-A motor at 90 deg, Stop.
+      # And SPIKE App 3 Python (third half): Code tab -> Run on SPIKE 3 (Python) ->
+      # the hub's port-A motor at the commanded speed, print() in the console, Stop.
       # Folded in here rather than a new verify script, so it runs in this one shard.
       - name: Browser gate — LEGO SPIKE archive and Code-tab round trip
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36413884486; max 6 s in run 36318949314 (gen-gate-budgets.mjs)
