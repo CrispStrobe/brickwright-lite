@@ -1,0 +1,154 @@
+{
+  "id": "rb08-follow-the-track",
+  "title": {
+    "en": "Follow the track",
+    "de": "Folge der Spur"
+  },
+  "intro": {
+    "en": "An earlier rover left a black track across the plain to the landing site. Follow its left edge with the colour sensor all the way to the green pad. On black, steer left; off it, steer right.",
+    "de": "Ein früherer Rover hat eine schwarze Spur über die Ebene bis zum Landeplatz hinterlassen. Folge mit dem Farbsensor ihrer linken Kante bis zum grünen Feld. Auf Schwarz lenke nach links, daneben nach rechts."
+  },
+  "hints": [
+    {
+      "en": "Steer by running one wheel slower than the other, inside a forever loop.",
+      "de": "Lenke, indem ein Rad langsamer läuft als das andere - in einer Endlosschleife."
+    },
+    {
+      "en": "The sensor must keep crossing the edge; if it stays on one side for long, it has lost the line.",
+      "de": "Der Sensor muss die Kante immer wieder kreuzen; bleibt er lange auf einer Seite, hat er die Linie verloren."
+    }
+  ],
+  "mat": {
+    "width": 180,
+    "height": 110,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": [
+      {
+        "color": "black",
+        "shape": {
+          "type": "line",
+          "points": [
+            [
+              12,
+              75
+            ],
+            [
+              60,
+              75
+            ],
+            [
+              95,
+              62
+            ],
+            [
+              125,
+              38
+            ],
+            [
+              168,
+              34
+            ]
+          ],
+          "width": 2.5
+        }
+      },
+      {
+        "color": "green",
+        "shape": {
+          "type": "circle",
+          "x": 168,
+          "y": 34,
+          "r": 6
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "corridor",
+      "role": "area",
+      "shape": {
+        "type": "line",
+        "points": [
+          [
+            12,
+            75
+          ],
+          [
+            60,
+            75
+          ],
+          [
+            95,
+            62
+          ],
+          [
+            125,
+            38
+          ],
+          [
+            168,
+            34
+          ]
+        ],
+        "width": 28
+      },
+      "label": {
+        "en": "track corridor",
+        "de": "Spurkorridor"
+      }
+    },
+    {
+      "id": "midway",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 95,
+        "y": 62,
+        "r": 9
+      },
+      "label": {
+        "en": "halfway marker",
+        "de": "Halbzeitmarke"
+      }
+    },
+    {
+      "id": "landing",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 165,
+        "y": 34,
+        "r": 9
+      },
+      "label": {
+        "en": "landing pad",
+        "de": "Landeplatz"
+      }
+    }
+  ],
+  "start": {
+    "x": 18,
+    "y": 72,
+    "heading": 0
+  },
+  "timeLimitMs": 40000,
+  "success": [
+    {
+      "type": "sequence",
+      "zones": [
+        "midway",
+        "landing"
+      ]
+    }
+  ],
+  "failure": [
+    {
+      "type": "stayIn",
+      "zone": "corridor"
+    }
+  ],
+  "solution": "rb08-follow-the-track.bw",
+  "wrong": "rb08-follow-the-track.wrong.bw"
+}

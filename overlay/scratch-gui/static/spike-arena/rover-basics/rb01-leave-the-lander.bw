@@ -1,0 +1,6 @@
+DEVICE SPIKE
+
+# Rover basics 1 - leave the lander (reference solution).
+# 60 cm is 60 / 17.6 = 3.4 wheel turns; "move forward" drives both wheels.
+WHEN flag clicked:
+  move forward 60 cm
