@@ -90,6 +90,30 @@ and 44 were each applied and `document.scrollWidth` read on all six tabs: it
 stayed at 1024 in every case. 44 costs nothing here, so there was no reason to
 settle for less than the standard.
 
+### Where the floor is installed, and where it is not
+
+`installTouchTargets()` is called from `playground/index.jsx`. That is the `gui`
+webpack entry — the deployable build, and the one the Tauri app wraps, so every
+shipping path has it.
+
+The **`scratch-gui` library entry** (`src/index.js`, for embedders) does not.
+That is deliberate rather than an oversight: an embedder owns its own viewport
+meta and may already scale the page itself, so silently installing a global rule
+on `html` in someone else's document would be the wrong default. If a host needs
+it, it can call `installTouchTargets()` itself — the function is exported and
+idempotent.
+
+The same boundary applies to bw-circuit-ui run standalone on its own dev server:
+it has the designer's own narrow-screen behaviour (the rail, the canvas floor),
+because that lives in the component, but not lite's tap-target floor, because
+that lives in lite's entry.
+
+**A useful consequence:** the App Store screenshot capture renders at viewport
+1024 with no mobile scaling, so `visualViewport.scale` is 1, the effective width
+is 1024, and the floor does NOT apply. Store screenshots therefore show the
+desktop sizing, unchanged by this work — which is what they should show, since
+they are framed at 1024 and not held in a hand.
+
 ## The designer's three columns
 
 In bw-circuit-ui, `CircuitDesigner` renders a parts rail, the canvas, and an
