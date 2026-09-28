@@ -145,6 +145,21 @@ try {
     await page.keyboard.press('Escape');
     assert.notEqual(await canvas.evaluate(element => element.toDataURL()), afterStroke,
         'the moved pixels must be present when this artwork is saved');
+    await page.getByTestId('bw-pixel-tool-select').click();
+    await page.mouse.click(box.x + box.width / 2 + cellWidth, box.y + box.height / 2);
+    const beforeClipboard = await canvas.evaluate(element => element.toDataURL());
+    await page.getByTestId('bw-pixel-copy-selection').click();
+    await page.getByTestId('bw-pixel-paste-selection').click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeClipboard,
+        'pasting into a new layer must leave the copied pixels in place');
+    await page.keyboard.press('ArrowRight');
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeClipboard,
+        'arrow keys must move a pasted selection');
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeClipboard,
+        'Undo must remove the pasted layer without changing its source');
+    await page.keyboard.press('Escape');
     await page.getByTestId('bw-pixel-tool-line').click();
     const beforeLine = await canvas.evaluate(element => element.toDataURL());
     await page.mouse.move(box.x + box.width * 0.20, box.y + box.height * 0.20);

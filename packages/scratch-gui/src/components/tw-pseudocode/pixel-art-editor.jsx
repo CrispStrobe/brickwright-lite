@@ -19,7 +19,8 @@ import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
 import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, outlinePixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
+    copySelectedPixels, moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels,
+    resizeLayers, selectionRect, sourceLayers,
     stampBrushInto, transformPixels} from '../../lib/bw-pixel-layers.js';
 import {
     ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile
@@ -55,7 +56,9 @@ const L10N = {
         'px.invalidPalette': 'Use a 15- or 16-colour .hex, .txt or GIMP .gpl palette.',
         'px.filledRect': 'Filled rectangle', 'px.filledCircle': 'Filled circle',
         'px.brushSize': 'Brush size', 'px.replaceColour': 'Replace colour',
-        'px.replaceFrom': 'Replace index', 'px.outline': 'Outline'
+        'px.replaceFrom': 'Replace index', 'px.outline': 'Outline',
+        'px.copySelection': 'Copy selection', 'px.cutSelection': 'Cut selection',
+        'px.pasteSelection': 'Paste selection', 'px.pastedLayer': 'Pasted pixels'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -86,7 +89,9 @@ const L10N = {
         'px.invalidPalette': 'Eine .hex-, .txt- oder GIMP-.gpl-Palette mit 15 oder 16 Farben verwenden.',
         'px.filledRect': 'Gefülltes Rechteck', 'px.filledCircle': 'Gefüllter Kreis',
         'px.brushSize': 'Pinselgröße', 'px.replaceColour': 'Farbe ersetzen',
-        'px.replaceFrom': 'Index ersetzen', 'px.outline': 'Umriss'
+        'px.replaceFrom': 'Index ersetzen', 'px.outline': 'Umriss',
+        'px.copySelection': 'Auswahl kopieren', 'px.cutSelection': 'Auswahl ausschneiden',
+        'px.pasteSelection': 'Auswahl einfügen', 'px.pastedLayer': 'Eingefügte Pixel'
     }
 };
 const t = makeT(L10N);
@@ -128,6 +133,7 @@ class PixelArtEditor extends React.Component {
         this.redoStack = [];
         this.opacityGesture = false;
         this.paletteGesture = false;
+        this.pixelClipboard = null;
         this.renameCommitted = false;
         this.lastCell = null;
         this.shapeStart = null;
@@ -200,6 +206,7 @@ class PixelArtEditor extends React.Component {
             document.activeLayerId : layers[layers.length - 1].id;
         this.undoStack = [];
         this.redoStack = [];
+        this.pixelClipboard = null;
         this.setState({image, layers, activeLayerId, selection: null, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: '',
             original: {layers, activeLayerId, selection: null, palette, w: image.width, h: image.height},
@@ -315,6 +322,56 @@ class PixelArtEditor extends React.Component {
         if (!selection || !active || !active.visible || active.locked) return;
         this.remember();
         this.updateActive(clearSelectedPixels(active.pixels, w, selection));
+    }
+
+    copySelection () {
+        const {selection, w} = this.state;
+        const active = this.activeLayer();
+        if (!selection || !active || !active.visible) return false;
+        this.pixelClipboard = {...copySelectedPixels(active.pixels, w, selection),
+            x: selection.x, y: selection.y};
+        this.forceUpdate();
+        return true;
+    }
+
+    cutSelection () {
+        const active = this.activeLayer();
+        if (!active || active.locked || !active.visible) return;
+        if (!this.copySelection()) return;
+        this.clearSelection();
+    }
+
+    pasteSelection () {
+        const clipboard = this.pixelClipboard;
+        if (!clipboard) return;
+        const {w, h} = this.state;
+        const pasted = pasteSelectedPixels(clipboard, w, h, clipboard.x, clipboard.y);
+        if (!pasted) return;
+        this.remember();
+        const id = `pixels-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const layer = {...blankLayer(id, t(this.props.locale || browserLocale(), 'px.pastedLayer'), w, h),
+            pixels: pasted.pixels};
+        this.setState(state => {
+            const index = state.layers.findIndex(item => item.id === state.activeLayerId);
+            const layers = state.layers.slice();
+            layers.splice(index + 1, 0, layer);
+            return {layers, activeLayerId: id, selection: pasted.selection, tool: 'move',
+                image: composeLayers(layers, w, h), status: ''};
+        });
+    }
+
+    nudgeSelection (dx, dy) {
+        const {selection, w, h} = this.state;
+        const active = this.activeLayer();
+        if (!selection || !active || !active.visible || active.locked) return;
+        const moved = moveSelectedPixels(active.pixels, w, h, selection, dx, dy);
+        if (moved.selection.x === selection.x && moved.selection.y === selection.y) return;
+        this.remember();
+        this.setState(state => {
+            const layers = state.layers.map(layer => layer.id === state.activeLayerId ?
+                {...layer, pixels: moved.pixels} : layer);
+            return {layers, selection: moved.selection, image: composeLayers(layers, w, h), status: ''};
+        });
     }
 
     updateSelection (event) {
@@ -557,6 +614,13 @@ class PixelArtEditor extends React.Component {
 
     handleKeyDown (event) {
         if (event.target.closest('input, textarea, [contenteditable]')) return;
+        if (this.state.selection && !event.metaKey && !event.ctrlKey && !event.altKey &&
+            ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+            event.preventDefault();
+            const moves = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]};
+            this.nudgeSelection(...moves[event.key]);
+            return;
+        }
         if (event.key === 'Escape' && this.state.selection) {
             event.preventDefault();
             this.setState({selection: null});
@@ -600,6 +664,19 @@ class PixelArtEditor extends React.Component {
         }
         if (!(event.metaKey || event.ctrlKey)) return;
         const key = event.key.toLowerCase();
+        if (this.state.selection && ['c', 'x'].includes(key)) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (key === 'x') this.cutSelection();
+            else this.copySelection();
+            return;
+        }
+        if (key === 'v' && this.pixelClipboard) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.pasteSelection();
+            return;
+        }
         if (key !== 'z' && key !== 'y') return;
         event.preventDefault();
         event.stopPropagation();
@@ -889,6 +966,14 @@ class PixelArtEditor extends React.Component {
                         onClick={this.redo}>{t(locale, 'px.redo')}</button>
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.clearSelection()}
                         data-testid="bw-pixel-clear-selection">{t(locale, 'px.clearSelection')}</button> : null}
+                    {selection ? <button type="button" style={btn(false)} onClick={() => this.copySelection()}
+                        data-testid="bw-pixel-copy-selection">{t(locale, 'px.copySelection')}</button> : null}
+                    {selection ? <button type="button" style={btn(false)} onClick={() => this.cutSelection()}
+                        disabled={!activeLayer || activeLayer.locked || !activeLayer.visible}
+                        data-testid="bw-pixel-cut-selection">{t(locale, 'px.cutSelection')}</button> : null}
+                    <button type="button" style={btn(false)} onClick={() => this.pasteSelection()}
+                        disabled={!this.pixelClipboard} data-testid="bw-pixel-paste-selection">
+                        {t(locale, 'px.pasteSelection')}</button>
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.setState({selection: null})}>
                         {t(locale, 'px.deselect')}</button> : null}
                     <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12}}>

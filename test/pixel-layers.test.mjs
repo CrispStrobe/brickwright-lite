@@ -2,8 +2,9 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 
-const {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, outlinePixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
+const {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels,
+    layersDocument, layersToSvg, moveSelectedPixels, outlinePixels, pasteSelectedPixels,
+    replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
     stampBrushInto, transformPixels} =
     await import('../overlay/scratch-gui/src/lib/bw-pixel-layers.js');
 
@@ -19,6 +20,17 @@ test('pixel layers compose in order and keep hidden edits in source', () => {
     assert.equal(sourceLayers(doc, 3, 1), null);
     assert.deepEqual([...composeLayers(resizeLayers([bottom, hidden], 2, 1, 3, 1), 3, 1).pixels],
         [2, 3, 0]);
+});
+
+test('marquee copy/paste retains indices and clips at canvas edges', () => {
+    const source = Uint8Array.from([0, 2, 3, 0, 4, 5, 0, 6, 7]);
+    const clipboard = copySelectedPixels(source, 3, {x: 1, y: 0, width: 2, height: 2});
+    assert.deepEqual([...clipboard.pixels], [2, 3, 4, 5]);
+    const pasted = pasteSelectedPixels(clipboard, 3, 3, 2, 1);
+    assert.deepEqual([...pasted.pixels], [0, 0, 0, 0, 0, 2, 0, 0, 4]);
+    assert.deepEqual(pasted.selection, {x: 2, y: 1, width: 1, height: 2});
+    assert.equal(pasteSelectedPixels(clipboard, 3, 3, 3, 0), null);
+    assert.deepEqual([...source], [0, 2, 3, 0, 4, 5, 0, 6, 7]);
 });
 
 test('layer opacity survives source save and produces a translucent Scratch render', () => {

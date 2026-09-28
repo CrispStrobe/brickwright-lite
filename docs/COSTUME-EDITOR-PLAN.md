@@ -29,7 +29,8 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
   adjustable square brushes, line, outline and filled rectangle and circle tools,
   index-preserving colour replacement and outline, a rectangular selection that can move or clear
-  pixels on the active layer, mirrored drawing, ordered pixel layers with
+  pixels on the active layer, copy/cut/paste into a movable new layer, arrow-key
+  nudging, mirrored drawing, ordered pixel layers with
   visibility, locking, renaming, reordering, deletion and opacity, larger colour targets,
   selection-aware horizontal and vertical flips and quarter turns, a pan tool
   and two-pointer/pinch navigation. Whole-canvas rotation preserves all layers;
@@ -98,8 +99,8 @@ missing data or export behavior.
 
 | Capability | Brickwright status | Next work |
 | --- | --- | --- |
-| Pen, eraser, fill, line, rectangle, circle, eyedropper, marquee, pan | Available, including brush sizes 1–8, filled shapes, and keyboard tool shortcuts | Add marquee copy/paste and an iPad interaction pass |
-| Flip and quarter-turn, with selection scope | Available, with touch buttons and undo | Test on iPad and expose arrow-key selection moves |
+| Pen, eraser, fill, line, rectangle, circle, eyedropper, marquee, pan | Available, including brush sizes 1–8, filled shapes, marquee copy/cut/paste, and keyboard tool shortcuts | Test selection and toolbar interaction on iPad |
+| Flip and quarter-turn, with selection scope | Available, with touch buttons, undo, and arrow-key selection moves | Test on iPad |
 | Foreground/background colours, swap, colour replace and outline | Foreground colour, selection-aware index-preserving replace and outline | Add secondary colour and swap |
 | Palette presets and 15 editable colours | All 15 colours can be edited or imported from `.hex`/`.txt`/`.gpl`; version 2 source, Scratch rendering and Arcade export use them | Add built-in presets |
 | Animation timeline, frame order, interval, onion skin | Not yet available | Preserve frames in editable source and export them as costumes or sprite sheets |

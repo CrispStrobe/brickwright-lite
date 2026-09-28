@@ -69,6 +69,31 @@ const clearSelectedPixels = (pixels, width, selection) => {
     return next;
 };
 
+const copySelectedPixels = (pixels, width, selection) => {
+    const copied = new Uint8Array(selection.width * selection.height);
+    for (let y = 0; y < selection.height; y++) {
+        for (let x = 0; x < selection.width; x++) {
+            copied[(y * selection.width) + x] = pixels[((selection.y + y) * width) + selection.x + x];
+        }
+    }
+    return {width: selection.width, height: selection.height, pixels: copied};
+};
+
+const pasteSelectedPixels = (clipboard, width, height, x, y) => {
+    const pixels = new Uint8Array(width * height);
+    const left = Math.max(0, x);
+    const top = Math.max(0, y);
+    const right = Math.min(width, x + clipboard.width);
+    const bottom = Math.min(height, y + clipboard.height);
+    if (right <= left || bottom <= top) return null;
+    for (let py = top; py < bottom; py++) {
+        for (let px = left; px < right; px++) {
+            pixels[(py * width) + px] = clipboard.pixels[((py - y) * clipboard.width) + px - x];
+        }
+    }
+    return {pixels, selection: {x: left, y: top, width: right - left, height: bottom - top}};
+};
+
 const stampBrushInto = (pixels, width, height, x, y, value, size = 1, mirror = false) => {
     const before = Math.floor((size - 1) / 2);
     const after = size - before - 1;
@@ -159,6 +184,6 @@ const transformPixels = (pixels, width, height, selection, operation) => {
         selection: selection ? {x: left, y: top, width: regionWidth, height: regionHeight} : null};
 };
 
-export {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, outlinePixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
+export {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels, layersDocument, layersToSvg,
+    moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
     stampBrushInto, transformPixels};
