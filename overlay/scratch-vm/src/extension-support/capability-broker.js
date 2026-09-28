@@ -2,7 +2,7 @@
  * Closed, semantic capability vocabulary. Values describe public broker operations, never native
  * command names. Adding an operation is a security review: unknown names and wildcards fail closed.
  */
-const VOCABULARY_VERSION = 1;
+const VOCABULARY_VERSION = 2;
 const MAX_DIAGNOSTICS = 256;
 const OPERATIONS = Object.freeze({
     'platform.kind.read': Object.freeze({
@@ -14,6 +14,21 @@ const OPERATIONS = Object.freeze({
     'renode.spike.session.close': Object.freeze({
         validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
     }),
+    'renode.spike.run': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.pause': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.reset': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.step': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.registers.read': Object.freeze({validate: args =>
+        isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.memory.read': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address', 'length']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff && Number.isInteger(args.length) && args.length >= 1 && args.length <= 4096}),
+    'renode.spike.breakpoint.set': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff}),
+    'renode.spike.breakpoint.clear': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff}),
     'project.metadata.read': Object.freeze({
         validate: args => {
             if (!isPlainRecord(args) || !hasOnlyKeys(args, ['field'])) return false;
