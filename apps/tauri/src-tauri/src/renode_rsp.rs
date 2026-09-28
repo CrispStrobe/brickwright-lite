@@ -47,7 +47,16 @@ impl RenodeRsp {
         stream
             .set_write_timeout(Some(IO_TIMEOUT))
             .map_err(|_| "Renode debugger unavailable".to_owned())?;
-        Ok(Self { stream })
+        let mut rsp = Self { stream };
+        // Renode reports the initial halted state immediately after accepting
+        // the connection, before it will acknowledge the first request.
+        // Consume and acknowledge that bounded stop frame so it cannot be
+        // mistaken for the acknowledgement to `g`.
+        let initial = rsp.read_packet()?;
+        if !matches!(initial.first(), Some(b'S' | b'T')) {
+            return Err("Renode debugger returned an invalid initial state".into());
+        }
+        Ok(rsp)
     }
 
     pub(crate) fn interrupt_handle(&self) -> Result<RenodeRspInterrupt, String> {
@@ -59,8 +68,11 @@ impl RenodeRsp {
 
     pub(crate) fn registers(&mut self) -> Result<CortexMRegisters, String> {
         let payload = self.exchange(b"g")?;
-        let bytes = decode_hex(&payload, 17 * 4, MAX_PACKET_BYTES)?;
-        if bytes.len() < 17 * 4 {
+        // Renode's Cortex-M `g` frame contains the sixteen core registers.
+        // xPSR is a non-general register (GDB register 25 / 0x19) and must be
+        // requested separately with `p`.
+        let bytes = decode_hex(&payload, 16 * 4, MAX_PACKET_BYTES)?;
+        if bytes.len() < 16 * 4 {
             return Err("Renode debugger returned a short register frame".into());
         }
         let mut r = [0u32; 16];
@@ -68,7 +80,9 @@ impl RenodeRsp {
             let offset = index * 4;
             *value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
         }
-        let xpsr = u32::from_le_bytes(bytes[64..68].try_into().unwrap());
+        let xpsr_payload = self.exchange(b"p19")?;
+        let xpsr_bytes = decode_hex(&xpsr_payload, 4, 4)?;
+        let xpsr = u32::from_le_bytes(xpsr_bytes.try_into().unwrap());
         Ok(CortexMRegisters { r, xpsr })
     }
 
@@ -150,13 +164,24 @@ impl RenodeRsp {
         )
         .map_err(|_| "Renode debugger write failed".to_owned())?;
         let mut ack = [0u8; 1];
-        self.stream
-            .read_exact(&mut ack)
-            .map_err(|_| "Renode debugger acknowledgement failed".to_owned())?;
-        if ack[0] != b'+' {
-            return Err("Renode debugger rejected the packet".into());
+        // A model observer can briefly pause the machine while we are idle.
+        // Renode reports that as an asynchronous stop packet, which can race
+        // the acknowledgement for this request. Acknowledge bounded async
+        // packets, then continue waiting for the request ACK.
+        for _ in 0..=4 {
+            self.stream
+                .read_exact(&mut ack)
+                .map_err(|_| "Renode debugger acknowledgement failed".to_owned())?;
+            match ack[0] {
+                b'+' => return Ok(()),
+                b'-' => return Err("Renode debugger rejected the packet".into()),
+                b'$' => {
+                    self.read_packet_after_start()?;
+                }
+                _ => {}
+            }
         }
-        Ok(())
+        Err("Renode debugger acknowledgement was not received".into())
     }
 
     fn read_packet(&mut self) -> Result<Vec<u8>, String> {
@@ -169,6 +194,11 @@ impl RenodeRsp {
                 break;
             }
         }
+        self.read_packet_after_start()
+    }
+
+    fn read_packet_after_start(&mut self) -> Result<Vec<u8>, String> {
+        let mut byte = [0u8; 1];
         let mut payload = Vec::new();
         loop {
             self.stream
@@ -243,6 +273,10 @@ mod tests {
         let endpoint = listener.local_addr().unwrap();
         let handle = thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
+            stream.write_all(&packet(b"S05")).unwrap();
+            let mut initial_ack = [0u8; 1];
+            stream.read_exact(&mut initial_ack).unwrap();
+            assert_eq!(initial_ack[0], b'+');
             let mut requests = Vec::new();
             for response in responses {
                 let mut start = [0u8; 1];
@@ -278,13 +312,14 @@ mod tests {
 
     #[test]
     fn drives_register_memory_breakpoint_step_resume_and_pause() {
-        let register_bytes: Vec<u8> = (0u32..17).flat_map(u32::to_le_bytes).collect();
+        let register_bytes: Vec<u8> = (0u32..16).flat_map(u32::to_le_bytes).collect();
         let register_hex = register_bytes
             .iter()
             .flat_map(|byte| format!("{byte:02x}").into_bytes())
             .collect();
         let (endpoint, server) = serve(vec![
             register_hex,
+            b"10000000".to_vec(),
             b"01020304".to_vec(),
             b"OK".to_vec(),
             b"OK".to_vec(),
@@ -306,6 +341,7 @@ mod tests {
             server.join().unwrap(),
             vec![
                 b"g".to_vec(),
+                b"p19".to_vec(),
                 b"m20000000,4".to_vec(),
                 b"Z0,8000120,2".to_vec(),
                 b"z0,8000120,2".to_vec(),
@@ -334,6 +370,10 @@ mod tests {
         let endpoint = listener.local_addr().unwrap();
         let server = thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
+            stream.write_all(&packet(b"S05")).unwrap();
+            let mut initial_ack = [0u8; 1];
+            stream.read_exact(&mut initial_ack).unwrap();
+            assert_eq!(initial_ack, [b'+']);
             let mut request = [0u8; 5];
             stream.read_exact(&mut request).unwrap();
             assert_eq!(&request[..2], b"$c");
@@ -355,6 +395,40 @@ mod tests {
         });
         assert_eq!(rsp.resume_started(Some(started_tx)).unwrap(), b"S02");
         interrupter.join().unwrap();
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn acknowledges_an_async_stop_before_the_request_ack() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.write_all(&packet(b"S05")).unwrap();
+            let mut byte = [0u8; 1];
+            stream.read_exact(&mut byte).unwrap();
+            assert_eq!(byte, [b'+']);
+
+            let mut request = [0u8; 5];
+            stream.read_exact(&mut request).unwrap();
+            assert_eq!(&request[..2], b"$g");
+            stream.write_all(&packet(b"T05")).unwrap();
+            stream.read_exact(&mut byte).unwrap();
+            assert_eq!(byte, [b'+']);
+            stream.write_all(b"+").unwrap();
+            stream.write_all(&packet(&vec![b'0'; 16 * 8])).unwrap();
+            stream.read_exact(&mut byte).unwrap();
+            assert_eq!(byte, [b'+']);
+            let mut xpsr = [0u8; 7];
+            stream.read_exact(&mut xpsr).unwrap();
+            assert_eq!(&xpsr[..4], b"$p19");
+            stream.write_all(b"+").unwrap();
+            stream.write_all(&packet(b"00000000")).unwrap();
+            stream.read_exact(&mut byte).unwrap();
+            assert_eq!(byte, [b'+']);
+        });
+        let mut rsp = RenodeRsp::connect(endpoint).unwrap();
+        assert_eq!(rsp.registers().unwrap().r, [0; 16]);
         server.join().unwrap();
     }
 }

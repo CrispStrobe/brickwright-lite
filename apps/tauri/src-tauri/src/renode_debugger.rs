@@ -14,6 +14,11 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+// Parsing the exact STM32F413 platform and its SVD can take more than five
+// seconds on a cold CI worker. Keep this below the supervisor's hard session
+// limit while allowing the real packaged model to finish starting.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+
 struct Session {
     rsp: Arc<Mutex<RenodeRsp>>,
     interrupt: RenodeRspInterrupt,
@@ -42,7 +47,7 @@ impl RenodeDebugger {
         }
         let endpoint = supervisor.start_spike()?;
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
-        let deadline = Instant::now() + Duration::from_secs(5);
+        let deadline = Instant::now() + STARTUP_TIMEOUT;
         let rsp = loop {
             match RenodeRsp::connect(address) {
                 Ok(rsp) => break rsp,
@@ -61,7 +66,7 @@ impl RenodeDebugger {
             }
         };
         let state_address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.state_port);
-        let state_deadline = Instant::now() + Duration::from_secs(5);
+        let state_deadline = Instant::now() + STARTUP_TIMEOUT;
         let state = loop {
             match BrickStateFeed::connect(state_address) {
                 Ok(state) => match state.wait_ready(Duration::from_secs(2)) {
