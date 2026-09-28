@@ -32,6 +32,22 @@ const withPolicy = async (policy, fn) => {
     }
 };
 
+const withPolicies = async (values, fn) => {
+    const names = ['BW_REMOTE_CODE_POLICY', 'BW_REMOTE_EXTENSIONS_POLICY',
+        'BW_REMOTE_TOOLCHAINS_POLICY', 'BW_REMOTE_MACHINE_IMAGES_POLICY'];
+    const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
+    for (const name of names) delete process.env[name];
+    for (const [name, value] of Object.entries(values)) process.env[name] = value;
+    try {
+        return await fn();
+    } finally {
+        for (const name of names) {
+            if (previous[name] === undefined) delete process.env[name];
+            else process.env[name] = previous[name];
+        }
+    }
+};
+
 test('remote code is allowed by default in web and Tauri runtimes', async () => {
     await withPolicy(undefined, async () => {
         const previousWindow = globalThis.window;
@@ -84,25 +100,69 @@ test('deny profile wins over opt-ins and refuses before network access', async (
     });
 });
 
-test('narrow build policies do not disable unrelated download capabilities', async () => {
-    const names = ['BW_REMOTE_EXTENSIONS_POLICY', 'BW_REMOTE_TOOLCHAINS_POLICY',
-        'BW_REMOTE_MACHINE_IMAGES_POLICY'];
-    const previous = Object.fromEntries(names.map(name => [name, process.env[name]]));
-    process.env.BW_REMOTE_EXTENSIONS_POLICY = 'deny';
-    process.env.BW_REMOTE_TOOLCHAINS_POLICY = 'allow';
-    process.env.BW_REMOTE_MACHINE_IMAGES_POLICY = 'allow';
-    try {
+test('all eight narrow-policy profiles remain independent through real consumers', async t => {
+    for (const extensions of ['allow', 'deny']) {
+        for (const toolchains of ['allow', 'deny']) {
+            for (const machines of ['allow', 'deny']) {
+                const label = `${extensions}/${toolchains}/${machines}`;
+                await t.test(label, () => withPolicies({
+                    BW_REMOTE_CODE_POLICY: 'deny',
+                    BW_REMOTE_EXTENSIONS_POLICY: extensions,
+                    BW_REMOTE_TOOLCHAINS_POLICY: toolchains,
+                    BW_REMOTE_MACHINE_IMAGES_POLICY: machines
+                }, async () => {
+                    const expected = {extensions: extensions === 'allow',
+                        toolchains: toolchains === 'allow', machines: machines === 'allow'};
+                    assert.equal(remoteExtensionsAllowed(), expected.extensions);
+                    assert.equal(remoteToolchainsAllowed(), expected.toolchains);
+                    assert.equal(remoteMachineImagesAllowed(), expected.machines);
+                    assert.equal(remoteCodeAllowed(), expected.extensions && expected.toolchains && expected.machines);
+                    assert.equal(remoteCodeRestricted(), !(expected.extensions && expected.toolchains && expected.machines));
+
+                    assert.equal(localToolchainEnabled(nativeWindow()), expected.toolchains,
+                        `${label}: explicit local compiler request follows only the toolchain axis`);
+                    assert.equal(lessonMachines('en').length > 0, expected.machines,
+                        `${label}: lesson visibility follows only the machine-image axis`);
+
+                    const previousFetch = globalThis.fetch;
+                    let fetched = 0;
+                    globalThis.fetch = async () => {
+                        fetched++;
+                        return {ok: true, arrayBuffer: async () => Uint8Array.of(1, 2, 3).buffer};
+                    };
+                    try {
+                        if (expected.machines) {
+                            assert.deepEqual(
+                                [...(await defaultImageFetcher({url: 'https://example.invalid/image.bin'})).bytes],
+                                [1, 2, 3]);
+                            assert.equal(fetched, 1);
+                        } else {
+                            await assert.rejects(
+                                () => defaultImageFetcher({url: 'https://example.invalid/image.bin'}),
+                                /restricted build does not download executable machine images/);
+                            assert.equal(fetched, 0, `${label}: refusal must precede fetch`);
+                        }
+                    } finally {
+                        globalThis.fetch = previousFetch;
+                    }
+                }));
+            }
+        }
+    }
+});
+
+test('narrow allow overrides the deny umbrella and narrow deny overrides allow', async () => {
+    await withPolicies({
+        BW_REMOTE_CODE_POLICY: 'deny', BW_REMOTE_EXTENSIONS_POLICY: 'allow',
+        BW_REMOTE_TOOLCHAINS_POLICY: 'allow', BW_REMOTE_MACHINE_IMAGES_POLICY: 'allow'
+    }, async () => assert.equal(remoteCodeAllowed(), true));
+    await withPolicies({
+        BW_REMOTE_CODE_POLICY: 'allow', BW_REMOTE_EXTENSIONS_POLICY: 'deny'
+    }, async () => {
         assert.equal(remoteExtensionsAllowed(), false);
         assert.equal(remoteToolchainsAllowed(), true);
         assert.equal(remoteMachineImagesAllowed(), true);
-        assert.equal(remoteCodeRestricted(), true, 'the compatibility aggregate is conservative');
-        assert.ok(lessonMachines('en').length > 0);
-    } finally {
-        for (const name of names) {
-            if (previous[name] === undefined) delete process.env[name];
-            else process.env[name] = previous[name];
-        }
-    }
+    });
 });
 
 test('extension restrictions use the build policy, never the runtime platform', () => {
