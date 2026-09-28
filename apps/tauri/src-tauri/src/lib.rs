@@ -13,6 +13,10 @@ mod native_broker_adapter;
 #[cfg(desktop)]
 mod native_capability;
 #[cfg(desktop)]
+mod renode_brick_state;
+#[cfg(desktop)]
+mod renode_rsp;
+#[cfg(desktop)]
 mod renode_supervisor;
 // Compiled on every target so the staged relay stays warning-clean. It has no
 // command registration or runtime consumer until the authenticated adapter lands.
