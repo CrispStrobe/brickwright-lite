@@ -13,6 +13,8 @@
 // activateConfig's fetcher refuses a byte that does not hash to the pin, BY
 // SLOT NAME, before anything boots. The licence line and the source link are
 // shown next to the Run button, so the offer travels with the binary.
+
+import {remoteCodeRestricted} from '../distribution-policy.js';
 //
 // WHY raw.githubusercontent.com AT A COMMIT, not the release download: a
 // GitHub release asset redirects to a host that sends no CORS header, so a
@@ -94,10 +96,9 @@ export const LINUX_DOWNLOAD_BYTES = LINUX_RISCV_MEDIA.kernel.bytes + LINUX_RISCV
  * @returns {{config: object, summary: string, licence: string, source: string, sourceLabel: string}[]}
  */
 export function lessonMachines (locale) {
-    // The web app may offer separately hosted, source-accompanied GPL media. Native store builds
-    // may not download executable payloads which add functionality, irrespective of their licence.
-    // Tauri guarantees __TAURI__ because tauri.conf.json enables withGlobalTauri.
-    if (typeof window !== 'undefined' && window.__TAURI__) return [];
+    // A deliberately self-contained build omits separately hosted machine media. This is selected
+    // by webpack, not inferred from Tauri; normal native builds offer the same lesson as the web app.
+    if (remoteCodeRestricted()) return [];
     const t = (k, v) => lessonT(locale, k, v);
     const config = newMachineConfig({
         id: 'lesson-linux-riscv32',

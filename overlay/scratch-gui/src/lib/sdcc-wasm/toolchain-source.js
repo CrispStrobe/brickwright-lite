@@ -34,6 +34,8 @@
  * app is not a trade that a convenience can win.
  */
 
+import {remoteToolchainsAllowed} from '../distribution-policy.js';
+
 export const GPL_TOOLCHAIN_ORIGIN = 'https://crispstrobe.github.io/sdcc-wasm/';
 export const TOOLCHAIN_MODE_KEY = 'bw-sdcc-toolchain';
 export const TOOLCHAIN_CACHE = 'bw-sdcc-wasm-v1';
@@ -48,16 +50,6 @@ export const TOOLCHAIN_FILES = Object.freeze([
 ]);
 
 const IS_NODE = typeof process === 'object' && typeof process?.versions?.node === 'string';
-
-/**
- * Tauri injects this object before application JavaScript runs (`withGlobalTauri: true`).
- * Native store builds must remain self-contained: they may send learner-authored source to
- * the existing compiler service, but they must not download a new executable toolchain into
- * the app. Keep this runtime check independent of user-controlled storage and query strings.
- */
-export function isNativeAppRuntime (win = typeof window === 'undefined' ? undefined : window) {
-    return Boolean(win && win.__TAURI__);
-}
 
 export function getToolchainMode (storage) {
     const store = storage || (typeof localStorage === 'undefined' ? null : localStorage);
@@ -151,9 +143,9 @@ export function localCompilerRequest (win = typeof window === 'undefined' ? unde
  * precisely the thing that must be.
  */
 export function localToolchainEnabled (win = typeof window === 'undefined' ? undefined : window) {
-    // This rule precedes every opt-in, including ?localCompiler=on. A URL or stale preference
-    // must not turn a store-safe native binary into a remote-code loader.
-    if (isNativeAppRuntime(win)) return false;
+    // This BUILD-TIME rule precedes every opt-in, including ?localCompiler=on. A URL or stale
+    // preference cannot change the distribution policy baked into the webpack bundle.
+    if (!remoteToolchainsAllowed()) return false;
     const store = win && win.localStorage ? win.localStorage : undefined;
     try {
         const asked = localCompilerRequest(win);
@@ -248,8 +240,8 @@ export async function measureToolchain (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) 
 }
 
 export async function primeToolchainCache (base = GPL_TOOLCHAIN_ORIGIN, deps = {}) {
-    if (isNativeAppRuntime()) {
-        throw new Error('The native app cannot download executable toolchains; use Build online.');
+    if (!remoteToolchainsAllowed()) {
+        throw new Error('This distribution cannot download executable toolchains; use Build online.');
     }
     const fetch_ = deps.fetch || (typeof fetch === 'undefined' ? null : fetch);
     const store = defaultStore(deps);

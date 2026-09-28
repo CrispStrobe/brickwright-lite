@@ -11,6 +11,7 @@
         "check:load": "node scripts/check-system-load.mjs",
         "build:gui": "npm run check:load && npm run package:broker-proof-pins:check && npm run package:broker-assets:check && cd packages/scratch-gui && npm run build",
         "build:gui:force": "npm run package:broker-proof-pins:check && npm run package:broker-assets:check && cd packages/scratch-gui && npm run build",
+        "verify:build-policy": "node scripts/verify-build-policy.mjs",
         "integrate": "node scripts/integrate.mjs",
         "gen:notices": "node scripts/gen-rust-notices.mjs",
         "gen:notices:check": "node scripts/gen-rust-notices.mjs --check",
