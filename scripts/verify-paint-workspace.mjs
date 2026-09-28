@@ -88,6 +88,14 @@ try {
         }
 
         await page.getByRole('button', {name: /Convert to Bitmap/}).click();
+        const sampler = page.getByTestId('bw-bitmap-sample-color');
+        const samplerTarget = await sampler.boundingBox();
+        assert.ok(samplerTarget.width >= 44 && samplerTarget.height >= 44,
+            'the color sampler has an iPad-sized touch target');
+        await sampler.tap();
+        assert.equal(await sampler.getAttribute('aria-pressed'), 'true', 'touch starts color sampling');
+        await sampler.tap();
+        assert.equal(await sampler.getAttribute('aria-pressed'), 'false', 'touch can cancel color sampling');
         const wand = page.getByTestId('bw-bitmap-select-wand');
         // Wait for a CONDITION and prove the tool CHANGES STATE, not merely that
         // it appeared: a bare waitFor() shows the wand exists and would still
@@ -120,6 +128,9 @@ try {
     await paint.getByRole('button', {name: /Convert to Bitmap/}).click();
     await paint.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Brush"]').click();
     await paint.getByTestId('bw-bitmap-brush-opacity').fill('50');
+    await paint.evaluate(() => window.__brickwrightStore.dispatch({
+        type: 'scratch-paint/fill-style/CHANGE_FILL_COLOR', color: '#ff0000'
+    }));
     const beforeOpacity = await alphaCount(paint);
     const beforeAsset = await paint.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm
         .editingTarget.getCostumes()[0].asset.encodeDataURI());
@@ -131,6 +142,19 @@ try {
     const paintedOpacity = await alphaCount(paint);
     assert.ok(paintedOpacity >= beforeOpacity + 50,
         'a single 50% bitmap brush dab must leave semitransparent PNG pixels');
+    await paint.evaluate(() => window.__brickwrightStore.dispatch({
+        type: 'scratch-paint/fill-style/CHANGE_FILL_COLOR', color: '#0000ff'
+    }));
+    const sampler = paint.getByTestId('bw-bitmap-sample-color');
+    await sampler.click();
+    assert.equal(await sampler.getAttribute('aria-pressed'), 'true', 'the sampler shows its active state');
+    await paint.mouse.move(bitmapCanvas.x + bitmapCanvas.width * 0.38,
+        bitmapCanvas.y + bitmapCanvas.height * 0.17);
+    await paint.locator('[class*="color-picker-wrapper"]').waitFor();
+    await paint.mouse.click(bitmapCanvas.x + bitmapCanvas.width * 0.38,
+        bitmapCanvas.y + bitmapCanvas.height * 0.17);
+    await paint.waitForFunction(() => window.__brickwrightStore.getState().scratchPaint.color.fillColor.primary === '#ff0000');
+    assert.equal(await sampler.getAttribute('aria-pressed'), 'false', 'sampling returns to the brush');
     await paint.getByText('File', {exact: true}).click();
     const download = paint.waitForEvent('download');
     await paint.getByText('Save to your computer', {exact: true}).click();

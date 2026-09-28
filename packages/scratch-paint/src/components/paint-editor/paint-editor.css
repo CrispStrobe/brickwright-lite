@@ -200,6 +200,34 @@ $border-radius: 0.25rem;
     justify-content: space-between;
 }
 
+.sampler-button {
+    width: 48px;
+    height: 48px;
+    margin: $grid-unit;
+    padding: 8px;
+    border: 0;
+    border-radius: .25rem;
+    background: transparent;
+    cursor: pointer;
+}
+
+.sampler-button img {
+    width: 32px;
+    height: 32px;
+}
+
+.sampler-button.sampler-active {
+    background: $looks-secondary;
+}
+
+.sampler-button.sampler-active img {
+    filter: brightness(0) invert(1);
+}
+
+.sampler-button:focus-visible {
+    outline: 2px solid $looks-secondary;
+}
+
 .zoom-controls {
     display: flex;
     flex-direction: row-reverse;

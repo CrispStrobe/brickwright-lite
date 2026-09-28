@@ -48,6 +48,7 @@ import bitmapIcon from './icons/bitmap.svg';
 import zoomInIcon from './icons/zoom-in.svg';
 import zoomOutIcon from './icons/zoom-out.svg';
 import zoomResetIcon from './icons/zoom-reset.svg';
+import eyeDropperIcon from '../color-picker/icons/eye-dropper.svg';
 
 const messages = defineMessages({
     bitmap: {
@@ -69,6 +70,11 @@ const messages = defineMessages({
         defaultMessage: 'Show paint tools',
         description: 'Leave the paint editor canvas focus mode',
         id: 'paint.paintEditor.exitCanvasOnly'
+    },
+    sampleColor: {
+        defaultMessage: 'Sample color',
+        description: 'Bitmap tool that picks a color from the costume canvas',
+        id: 'paint.paintEditor.sampleColor'
     }
 });
 
@@ -242,6 +248,17 @@ const PaintEditorComponent = props => {
                     <BitBrushMode
                         onUpdateImage={props.onUpdateImage}
                     />
+                    <button
+                        aria-label={props.intl.formatMessage(messages.sampleColor)}
+                        aria-pressed={props.isEyeDropping}
+                        className={classNames(styles.samplerButton, {[styles.samplerActive]: props.isEyeDropping})}
+                        data-testid="bw-bitmap-sample-color"
+                        title={props.intl.formatMessage(messages.sampleColor)}
+                        type="button"
+                        onClick={props.onToggleBitmapEyeDropper}
+                    >
+                        <img alt="" draggable={false} src={eyeDropperIcon} />
+                    </button>
                     <BitLineMode
                         onUpdateImage={props.onUpdateImage}
                     />
@@ -411,6 +428,7 @@ PaintEditorComponent.propTypes = {
     onRedo: PropTypes.func.isRequired,
     onSwitchToBitmap: PropTypes.func.isRequired,
     onSwitchToVector: PropTypes.func.isRequired,
+    onToggleBitmapEyeDropper: PropTypes.func.isRequired,
     onUndo: PropTypes.func.isRequired,
     onUpdateImage: PropTypes.func.isRequired,
     onUpdateName: PropTypes.func.isRequired,
