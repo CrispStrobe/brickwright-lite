@@ -36,6 +36,10 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
+    'verify-i80386-doom-real-browser.mjs': 'manual/local: requires exact external FreeDOS 1.4 '
+        + 'floppy and rights-cleared short-demo Doom HDD. It checks Chromium Widgets physical keyboard, '
+        + 'a nontrivial 320x200 guest and visible canvas frame, then the 24-gametic timedemo result and C: prompt. '
+        + 'Run with DOOM_FREEDOS_IMAGE and DOOM_SHORT_HDD after building the GUI; routine CI has no licensed media.',
     'verify-i80386-freedos-real-browser.mjs': 'manual/local: real FreeDOS 1.4 acceptance in a browser. '
         + 'CANNOT run in CI, and this is the script\'s own contract rather than a judgement about it — it '
         + 'throws immediately unless FREEDOS_IMAGE and FREEDOS_HDD point at local media, and its header says '

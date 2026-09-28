@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "d348541e9f19fd311f87d04c0b92308f6f510140",
+    "sha": "d983253edbffd56ff18ded41387a15932d48f347",
     "read": "2026-09-28"
   },
   "rows": [
@@ -350,6 +350,18 @@
         "test/dos-boot-compiled-com.test.mjs"
       ],
       "what": "MASM 1.10 + LINK + EXE2BIN (Microsoft, MIT-relicensed 1982 binaries), an independent assembler toolchain. The differential oracle for MASM compatibility in src/i8086-asm.js — that our .COM is byte-identical to MASM's and that our ASSUME/segment-override and simplified-directive handling matches a real MASM. VERIFIED GREEN 2026-09-05 (10/10). Present on this box at /tmp/msdosbin."
+    },
+    {
+      "id": "doom-vga-report",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — public CI has no private source-bound Doom snapshot report; this specific browser raster comparison is explicitly optional.",
+      "via": "tried $I80386_DOOM_SNAPSHOT_REPORT",
+      "gates": [
+        "test/i80386-vga-browser-frame.test.mjs"
+      ],
+      "what": "Pinned source-bound Doom VGA snapshot report. Checks that the browser target raster matches the strict independent decoder at the first and latest observed graphics frames; it does not establish live Doom gameplay or include media pixels."
     },
     {
       "id": "doom-short-report",

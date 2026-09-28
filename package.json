@@ -3,7 +3,9 @@
     "private": true,
     "description": "Brickwright visual computing workbench: circuits, emulated machines, blocks⇄code⇄Python/JS and LEGO extensions. Component licenses are recorded in THIRD-PARTY-NOTICES.md.",
     "license": "BSD-3-Clause",
-    "bin": {"bwlite": "bin/bwlite.mjs"},
+    "bin": {
+        "bwlite": "bin/bwlite.mjs"
+    },
     "scripts": {
         "cli": "node bin/bwlite.mjs",
         "vendor": "node scripts/vendor.mjs",
@@ -116,7 +118,7 @@
         "node": ">=22"
     },
     "devDependencies": {
-        "bw-board": "github:CrispStrobe/bw-board#d348541e9f19fd311f87d04c0b92308f6f510140",
+        "bw-board": "github:CrispStrobe/bw-board#bdffe9471ace9bfa4023211bc6488d117344f41d",
         "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#1510d38ab654c17105340f9a85485fc3f7af0764",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",

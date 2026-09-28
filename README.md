@@ -56,14 +56,23 @@ surface is narrower: instruction step, code breakpoints and read-only memory. It
 optional Uno whole-SoC comparison without pretending to implement ATtiny88;
 ATtiny85/88 raw images and full debugger workflows remain on avr8js.
 
-The current pinned hosted RTx receipt clears real time on every measured
+The pinned hosted RTx receipt clears real time on every established measured
 engine: Z80 186x, 6502 150x, avr8js ATmega328P 13.3x, emu8051 5.23x, rp2040js
 RP2040 1.66x, and LabWired STM32F0 24.2x (three-pass medians, bw-board GitHub
-run 36384508630). In particular, RP2040 moved from a 0.94x median to 1.66x
-after the exhaustively differential-tested Thumb tier-zero dispatch path.
-The board-level hosted census adds adapter-inclusive Arduboy 3.93x and ATtiny88
-7.09x, plus the currently unintegrated LabWired nRF52833 and ATSAMD51 core
-ceilings (23.69x and 27.63x). See
+run 36384508630). The board-level hosted census adds adapter-inclusive Arduboy
+3.93x and ATtiny88 7.09x. Exact LabWired nRF52833/micro:bit v2 and
+ATSAMD51J19A/PyBadge firmware targets are now wired through the debugger with
+address-preserving ELF, Intel HEX and UF2 loading. The optimized, adapter-
+equivalent hosted smoke receipt reaches **3.32x** and **3.78x** respectively
+(seven-run medians, both booted to `OK`); missing board peripherals remain
+explicit rather than being hidden by the CPU result. The public Renode fork now has a qualified exact
+STM32F413VG SPIKE Prime platform. Its hosted active-loop receipt reaches
+**1.770x median** with a **1.383x minimum**, rather than inferring performance
+from the old F412 proxy. The EV3 work now has a source-built
+AM1808/ARM926 Renode boundary for reset, UART1, AINTC interrupts and GDB. Its
+hosted active-loop qualification reaches **1.361x median** with a **1.207x
+minimum**, but it does not yet have the Linux boot peripherals or a Lite
+process adapter. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
 
