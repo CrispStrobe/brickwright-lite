@@ -118,7 +118,11 @@ test('desktop construction installs the complete Renode semantic handler set', (
             'renode.spike.session.start', 'renode.spike.session.close', 'renode.spike.run',
             'renode.spike.pause', 'renode.spike.reset', 'renode.spike.step',
             'renode.spike.registers.read', 'renode.spike.memory.read', 'renode.spike.state.read',
-            'renode.spike.breakpoint.set', 'renode.spike.breakpoint.clear'
+            'renode.spike.breakpoint.set', 'renode.spike.breakpoint.clear',
+            'renode.ev3.session.start', 'renode.ev3.session.close', 'renode.ev3.run',
+            'renode.ev3.pause', 'renode.ev3.reset', 'renode.ev3.step',
+            'renode.ev3.registers.read', 'renode.ev3.memory.read', 'renode.ev3.state.read',
+            'renode.ev3.breakpoint.set', 'renode.ev3.breakpoint.clear'
         ]) {
             assert.equal(typeof broker.capabilityBroker._handlers[operation], 'function', operation);
         }

@@ -1,10 +1,20 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
 const require_ = createRequire(import.meta.url);
 const {createNativeRenodeCapabilities, OPERATIONS} = require_(
     '../overlay/scratch-vm/src/extension-support/native-renode-capability.js');
+
+test('overlay and packaged Renode capability adapters are byte-identical', () => {
+    assert.equal(
+        readFileSync(new URL('../packages/scratch-vm/src/extension-support/native-renode-capability.js',
+            import.meta.url), 'utf8'),
+        readFileSync(new URL('../overlay/scratch-vm/src/extension-support/native-renode-capability.js',
+            import.meta.url), 'utf8')
+    );
+});
 
 test('Renode operations are absent without the native boundary', () => {
     assert.equal(createNativeRenodeCapabilities(), null);
@@ -27,7 +37,12 @@ test('Renode debugger operations use the broker transport and share an ordered s
         [OPERATIONS.memory, {address: 0x20000000, length: 32}],
         [OPERATIONS.state, {}],
         [OPERATIONS.setBreakpoint, {address: 0x08000120}],
-        [OPERATIONS.clearBreakpoint, {address: 0x08000120}], [OPERATIONS.close, {}]
+        [OPERATIONS.clearBreakpoint, {address: 0x08000120}], [OPERATIONS.close, {}],
+        [OPERATIONS.ev3Start, {}], [OPERATIONS.ev3Run, {}], [OPERATIONS.ev3Pause, {}],
+        [OPERATIONS.ev3Reset, {}], [OPERATIONS.ev3Step, {}], [OPERATIONS.ev3Registers, {}],
+        [OPERATIONS.ev3Memory, {address: 0xffff0000, length: 32}], [OPERATIONS.ev3State, {}],
+        [OPERATIONS.ev3SetBreakpoint, {address: 0xffff0040}],
+        [OPERATIONS.ev3ClearBreakpoint, {address: 0xffff0040}], [OPERATIONS.ev3Close, {}]
     ];
     for (const [operation, args] of callsByOperation) {
         assert.equal(await handlers[operation](args), operation);

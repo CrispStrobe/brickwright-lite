@@ -1,4 +1,4 @@
-//! Bounded, loopback-only GDB Remote Serial Protocol client for Renode.
+//! Bounded, loopback-only ARM GDB Remote Serial Protocol client for Renode.
 //!
 //! This is transport, not a Tauri command. The CP05 semantic adapter owns it
 //! and exposes only debugger operations from the closed native vocabulary.
@@ -12,14 +12,30 @@ const MAX_PACKET_BYTES: usize = 64 * 1024;
 const MAX_MEMORY_BYTES: usize = 4096;
 const IO_TIMEOUT: Duration = Duration::from_secs(2);
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum Arm32Architecture {
+    CortexM,
+    Arm,
+}
+
+impl Arm32Architecture {
+    fn breakpoint_bytes(self) -> u8 {
+        match self {
+            Self::CortexM => 2,
+            Self::Arm => 4,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub(crate) struct CortexMRegisters {
+pub(crate) struct Arm32Registers {
     pub(crate) r: [u32; 16],
-    pub(crate) xpsr: u32,
+    pub(crate) status: u32,
 }
 
 pub(crate) struct RenodeRsp {
     stream: TcpStream,
+    architecture: Arm32Architecture,
 }
 
 pub(crate) struct RenodeRspInterrupt {
@@ -35,7 +51,15 @@ impl RenodeRspInterrupt {
 }
 
 impl RenodeRsp {
+    #[cfg(test)]
     pub(crate) fn connect(endpoint: SocketAddr) -> Result<Self, String> {
+        Self::connect_for_architecture(endpoint, Arm32Architecture::CortexM)
+    }
+
+    pub(crate) fn connect_for_architecture(
+        endpoint: SocketAddr,
+        architecture: Arm32Architecture,
+    ) -> Result<Self, String> {
         if !endpoint.ip().is_loopback() {
             return Err("Renode debugger endpoint must be loopback".into());
         }
@@ -47,7 +71,10 @@ impl RenodeRsp {
         stream
             .set_write_timeout(Some(IO_TIMEOUT))
             .map_err(|_| "Renode debugger unavailable".to_owned())?;
-        let mut rsp = Self { stream };
+        let mut rsp = Self {
+            stream,
+            architecture,
+        };
         // Renode reports the initial halted state immediately after accepting
         // the connection, before it will acknowledge the first request.
         // Consume and acknowledge that bounded stop frame so it cannot be
@@ -66,13 +93,13 @@ impl RenodeRsp {
             .map_err(|_| "Renode debugger unavailable".to_owned())
     }
 
-    pub(crate) fn registers(&mut self) -> Result<CortexMRegisters, String> {
+    pub(crate) fn registers(&mut self) -> Result<Arm32Registers, String> {
         let payload = self.exchange(b"g")?;
         // Renode's Cortex-M `g` frame contains the sixteen core registers.
         // xPSR is a non-general register (GDB register 25 / 0x19) and must be
         // requested separately with `p`.
-        let bytes = decode_hex(&payload, 16 * 4, MAX_PACKET_BYTES)?;
-        if bytes.len() < 16 * 4 {
+        let bytes = decode_hex_prefix(&payload, 16 * 4, MAX_PACKET_BYTES)?;
+        if bytes.len() != 16 * 4 {
             return Err("Renode debugger returned a short register frame".into());
         }
         let mut r = [0u32; 16];
@@ -80,10 +107,11 @@ impl RenodeRsp {
             let offset = index * 4;
             *value = u32::from_le_bytes(bytes[offset..offset + 4].try_into().unwrap());
         }
-        let xpsr_payload = self.exchange(b"p19")?;
-        let xpsr_bytes = decode_hex(&xpsr_payload, 4, 4)?;
-        let xpsr = u32::from_le_bytes(xpsr_bytes.try_into().unwrap());
-        Ok(CortexMRegisters { r, xpsr })
+        // GDB register 25 (hex 19) is xPSR on Cortex-M and CPSR on ARM.
+        let status_payload = self.exchange(b"p19")?;
+        let status_bytes = decode_hex(&status_payload, 4, 4)?;
+        let status = u32::from_le_bytes(status_bytes.try_into().unwrap());
+        Ok(Arm32Registers { r, status })
     }
 
     pub(crate) fn read_memory(&mut self, address: u32, length: usize) -> Result<Vec<u8>, String> {
@@ -96,17 +124,22 @@ impl RenodeRsp {
     }
 
     pub(crate) fn set_breakpoint(&mut self, address: u32) -> Result<(), String> {
-        self.expect_ok(format!("Z0,{address:x},2").as_bytes())
+        self.expect_ok(
+            format!("Z0,{address:x},{}", self.architecture.breakpoint_bytes()).as_bytes(),
+        )
     }
 
     pub(crate) fn clear_breakpoint(&mut self, address: u32) -> Result<(), String> {
-        self.expect_ok(format!("z0,{address:x},2").as_bytes())
+        self.expect_ok(
+            format!("z0,{address:x},{}", self.architecture.breakpoint_bytes()).as_bytes(),
+        )
     }
 
     pub(crate) fn step(&mut self) -> Result<Vec<u8>, String> {
         self.exchange(b"s")
     }
 
+    #[cfg(test)]
     pub(crate) fn resume(&mut self) -> Result<Vec<u8>, String> {
         self.resume_started(None)
     }
@@ -131,6 +164,7 @@ impl RenodeRsp {
         result
     }
 
+    #[cfg(test)]
     pub(crate) fn interrupt(&mut self) -> Result<Vec<u8>, String> {
         self.stream
             .write_all(&[0x03])
@@ -255,6 +289,14 @@ fn decode_hex(payload: &[u8], expected: usize, limit: usize) -> Result<Vec<u8>, 
         .collect()
 }
 
+fn decode_hex_prefix(payload: &[u8], expected: usize, limit: usize) -> Result<Vec<u8>, String> {
+    let prefix = expected.saturating_mul(2);
+    if expected > limit || payload.len() < prefix || payload.len() > limit.saturating_mul(2) {
+        return Err("Renode debugger returned an invalid byte frame".into());
+    }
+    decode_hex(&payload[..prefix], expected, limit)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -330,7 +372,7 @@ mod tests {
         let mut rsp = RenodeRsp::connect(endpoint).unwrap();
         let registers = rsp.registers().unwrap();
         assert_eq!(registers.r[15], 15);
-        assert_eq!(registers.xpsr, 16);
+        assert_eq!(registers.status, 16);
         assert_eq!(rsp.read_memory(0x2000_0000, 4).unwrap(), [1, 2, 3, 4]);
         rsp.set_breakpoint(0x0800_0120).unwrap();
         rsp.clear_breakpoint(0x0800_0120).unwrap();
@@ -362,6 +404,39 @@ mod tests {
         assert!(rsp.read_memory(0, MAX_MEMORY_BYTES + 1).is_err());
         assert!(rsp.read_memory(0, 0).is_err());
         server.join().unwrap();
+    }
+
+    #[test]
+    fn arm_breakpoints_use_full_width_instructions() {
+        let (endpoint, server) = serve(vec![b"OK".to_vec(), b"OK".to_vec()]);
+        let mut rsp =
+            RenodeRsp::connect_for_architecture(endpoint, Arm32Architecture::Arm).unwrap();
+        rsp.set_breakpoint(0xffff_0040).unwrap();
+        rsp.clear_breakpoint(0xffff_0040).unwrap();
+        assert_eq!(
+            server.join().unwrap(),
+            vec![b"Z0,ffff0040,4".to_vec(), b"z0,ffff0040,4".to_vec()]
+        );
+    }
+
+    #[test]
+    fn arm_registers_read_core_prefix_and_cpsr_from_extended_frame() {
+        let register_bytes: Vec<u8> = (0x10u32..0x20).flat_map(u32::to_le_bytes).collect();
+        let mut register_hex: Vec<u8> = register_bytes
+            .iter()
+            .flat_map(|byte| format!("{byte:02x}").into_bytes())
+            .collect();
+        // ARM's GDB frame may carry floating-point slots after r15. Their availability does not
+        // affect the exact core-register prefix used by the semantic contract.
+        register_hex.extend_from_slice(b"xxxxxxxxxxxxxxxx");
+        let (endpoint, server) = serve(vec![register_hex, b"13000060".to_vec()]);
+        let mut rsp =
+            RenodeRsp::connect_for_architecture(endpoint, Arm32Architecture::Arm).unwrap();
+        let registers = rsp.registers().unwrap();
+        assert_eq!(registers.r[0], 0x10);
+        assert_eq!(registers.r[15], 0x1f);
+        assert_eq!(registers.status, 0x6000_0013);
+        assert_eq!(server.join().unwrap(), vec![b"g".to_vec(), b"p19".to_vec()]);
     }
 
     #[test]

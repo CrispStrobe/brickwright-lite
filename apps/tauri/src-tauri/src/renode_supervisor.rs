@@ -34,12 +34,25 @@ pub(crate) struct RenodeEndpoint {
     pub(crate) gdb_port: u16,
     pub(crate) state_port: u16,
     token: String,
+    uart_evidence: Option<PathBuf>,
 }
 
 impl RenodeEndpoint {
+    #[cfg(test)]
     pub(crate) fn token(&self) -> &str {
         &self.token
     }
+
+    pub(crate) fn uart_evidence(&self) -> Option<&Path> {
+        self.uart_evidence.as_deref()
+    }
+}
+
+#[derive(Clone, Copy)]
+struct LaunchBounds {
+    timeout: Duration,
+    output_limit: usize,
+    capture_uart: bool,
 }
 
 #[derive(Clone)]
@@ -81,13 +94,16 @@ impl RenodeSupervisor {
             .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
         let digest = option_env!("BW_RENODE_SHA256")
             .ok_or_else(|| "Renode backend digest is not packaged in this build".to_owned())?;
-        self.start_verified(
+        self.start_verified_with_evidence(
             Path::new(executable),
             digest,
             arguments,
             working_directory,
-            MAX_SESSION_TIME,
-            MAX_OUTPUT_BYTES,
+            LaunchBounds {
+                timeout: MAX_SESSION_TIME,
+                output_limit: MAX_OUTPUT_BYTES,
+                capture_uart: false,
+            },
         )
     }
 
@@ -130,6 +146,45 @@ impl RenodeSupervisor {
         self.start(&arguments, &root)
     }
 
+    /// Launch the exact public AM1808 model and source-built permissive smoke
+    /// image. Every executable input remains a build-time pin.
+    #[allow(dead_code)]
+    pub(crate) fn start_ev3(&self) -> Result<RenodeEndpoint, String> {
+        let root = pinned_path("EV3 model root", option_env!("BW_RENODE_EV3_ROOT"), None)?;
+        let platform = pinned_file(
+            "EV3 platform",
+            option_env!("BW_RENODE_EV3_PLATFORM"),
+            option_env!("BW_RENODE_EV3_PLATFORM_SHA256"),
+        )?;
+        let firmware = pinned_file(
+            "EV3 firmware",
+            option_env!("BW_RENODE_EV3_FIRMWARE"),
+            option_env!("BW_RENODE_EV3_FIRMWARE_SHA256"),
+        )?;
+        for path in [&platform, &firmware] {
+            if !path.starts_with(&root) {
+                return Err("EV3 model artifact escaped its packaged root".into());
+            }
+        }
+        let arguments = ev3_arguments(&platform, &firmware)?;
+        let executable = option_env!("BW_RENODE_EXECUTABLE")
+            .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
+        let digest = option_env!("BW_RENODE_SHA256")
+            .ok_or_else(|| "Renode backend digest is not packaged in this build".to_owned())?;
+        self.start_verified_with_evidence(
+            Path::new(executable),
+            digest,
+            &arguments,
+            &root,
+            LaunchBounds {
+                timeout: MAX_SESSION_TIME,
+                output_limit: MAX_OUTPUT_BYTES,
+                capture_uart: true,
+            },
+        )
+    }
+
+    #[cfg(test)]
     fn start_verified(
         &self,
         executable: &Path,
@@ -138,6 +193,27 @@ impl RenodeSupervisor {
         working_directory: &Path,
         timeout: Duration,
         output_limit: usize,
+    ) -> Result<RenodeEndpoint, String> {
+        self.start_verified_with_evidence(
+            executable,
+            expected_digest,
+            arguments,
+            working_directory,
+            LaunchBounds {
+                timeout,
+                output_limit,
+                capture_uart: false,
+            },
+        )
+    }
+
+    fn start_verified_with_evidence(
+        &self,
+        executable: &Path,
+        expected_digest: &str,
+        arguments: &[String],
+        working_directory: &Path,
+        bounds: LaunchBounds,
     ) -> Result<RenodeEndpoint, String> {
         if arguments.len() > 64 || arguments.iter().any(|value| value.len() > 16 * 1024) {
             return Err("Renode launch plan exceeds its bounds".into());
@@ -183,6 +259,14 @@ impl RenodeSupervisor {
             .map_err(|_| "Renode loopback endpoint unavailable")?
             .port();
         let token = random_token()?;
+        let uart_evidence = bounds
+            .capture_uart
+            .then(|| std::env::temp_dir().join(format!("brickwright-ev3-{token}.uart")));
+        let uart_monitor_path = uart_evidence
+            .as_deref()
+            .map(monitor_path)
+            .transpose()?
+            .unwrap_or_default();
 
         let arguments: Vec<String> = arguments
             .iter()
@@ -191,6 +275,7 @@ impl RenodeSupervisor {
                     .replace("{BW_MONITOR_PORT}", &port.to_string())
                     .replace("{BW_GDB_PORT}", &gdb_port.to_string())
                     .replace("{BW_STATE_PORT}", &state_port.to_string())
+                    .replace("{BW_UART_PATH}", &uart_monitor_path)
             })
             .collect();
 
@@ -233,22 +318,23 @@ impl RenodeSupervisor {
             stdout,
             Arc::clone(&total),
             Arc::clone(&overflow),
-            output_limit,
+            bounds.output_limit,
         );
         let stderr_reader = drain_bounded(
             stderr,
             Arc::clone(&total),
             Arc::clone(&overflow),
-            output_limit,
+            bounds.output_limit,
         );
         let worker_stop = Arc::clone(&stop);
         let worker_done = Arc::clone(&done);
+        let worker_uart_evidence = uart_evidence.clone();
         thread::spawn(move || {
             let started = Instant::now();
             loop {
                 let terminate = worker_stop.load(Ordering::SeqCst)
                     || overflow.load(Ordering::SeqCst)
-                    || started.elapsed() >= timeout;
+                    || started.elapsed() >= bounds.timeout;
                 if terminate {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -266,6 +352,9 @@ impl RenodeSupervisor {
             }
             let _ = stdout_reader.join();
             let _ = stderr_reader.join();
+            if let Some(path) = worker_uart_evidence {
+                let _ = std::fs::remove_file(path);
+            }
             let (lock, wake) = &*worker_done;
             if let Ok(mut finished) = lock.lock() {
                 *finished = true;
@@ -278,6 +367,7 @@ impl RenodeSupervisor {
             gdb_port,
             state_port,
             token,
+            uart_evidence,
         })
     }
 
@@ -380,6 +470,28 @@ fn spike_arguments(
             "spike_state_start \"127.0.0.1\" {{BW_STATE_PORT}} {}",
             monitor_path(state_config)?
         ),
+    ])
+}
+
+fn ev3_arguments(platform: &Path, firmware: &Path) -> Result<Vec<String>, String> {
+    Ok(vec![
+        "--disable-gui".into(),
+        "--hide-log".into(),
+        "-P".into(),
+        "{BW_MONITOR_PORT}".into(),
+        "-e".into(),
+        "mach create".into(),
+        "-e".into(),
+        format!(
+            "machine LoadPlatformDescription {}",
+            monitor_path(platform)?
+        ),
+        "-e".into(),
+        format!("sysbus LoadELF {}", monitor_path(firmware)?),
+        "-e".into(),
+        "uart1 CreateFileBackend {BW_UART_PATH} true".into(),
+        "-e".into(),
+        "machine StartGdbServer {BW_GDB_PORT}".into(),
     ])
 }
 
@@ -535,5 +647,30 @@ mod tests {
             monitor_path(Path::new("/package/image.elf;quit")).unwrap_err(),
             "SPIKE package path is not monitor-safe"
         );
+    }
+
+    #[test]
+    fn ev3_launch_plan_is_fixed_loopback_and_shell_free() {
+        let arguments = ev3_arguments(
+            Path::new("/package/platforms/boards/lego-ev3.repl"),
+            Path::new("/package/am1808-smoke.elf"),
+        )
+        .unwrap();
+        assert_eq!(
+            &arguments[..4],
+            ["--disable-gui", "--hide-log", "-P", "{BW_MONITOR_PORT}"]
+        );
+        assert!(arguments
+            .iter()
+            .any(|value| value.contains("machine LoadPlatformDescription @/package/")));
+        assert!(arguments
+            .iter()
+            .any(|value| value == "uart1 CreateFileBackend {BW_UART_PATH} true"));
+        assert!(arguments
+            .iter()
+            .any(|value| value == "machine StartGdbServer {BW_GDB_PORT}"));
+        assert!(!arguments
+            .iter()
+            .any(|value| matches!(value.as_str(), "sh" | "bash" | "cmd" | "powershell")));
     }
 }
