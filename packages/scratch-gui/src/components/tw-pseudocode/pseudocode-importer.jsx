@@ -278,6 +278,8 @@ const L10N = {
         runOnSimulator: '▶ Run on Simulator',
         runOnSpike: '▶ Run on SPIKE (Pybricks)',
         runOnSpikeTitle: 'Run this Pybricks program on a simulated SPIKE Prime hub: Pybricks MicroPython itself, compiled to WebAssembly, with simulated motors and sensors',
+        openSpikeArena: '🪐 SPIKE arena',
+        openSpikeArenaTitle: 'Open the SPIKE arena: a virtual driving base on a mat, with challenges, driven by this program through the virtual SPIKE hub',
         runSpikeUsb: '▶ Run on SPIKE USB',
         probeSpikeUsb: 'Identify A–F',
         spikeUsbDirect: 'USB on this computer', spikeUsbBridge: 'USB via Mac on WLAN',
@@ -565,6 +567,8 @@ const L10N = {
         runOnSimulator: '▶ Im Simulator ausführen',
         runOnSpike: '▶ Auf SPIKE ausführen (Pybricks)',
         runOnSpikeTitle: 'Dieses Pybricks-Programm auf einem simulierten SPIKE-Prime-Hub ausführen: Pybricks-MicroPython selbst, nach WebAssembly übersetzt, mit simulierten Motoren und Sensoren',
+        openSpikeArena: '🪐 SPIKE-Arena',
+        openSpikeArenaTitle: 'Die SPIKE-Arena öffnen: eine virtuelle Fahrbasis auf einer Matte, mit Aufgaben, gesteuert von diesem Programm über den virtuellen SPIKE-Hub',
         runSpikeUsb: '▶ Auf SPIKE über USB ausführen',
         probeSpikeUsb: 'A–F erkennen',
         spikeUsbDirect: 'USB an diesem Computer', spikeUsbBridge: 'USB über Mac im WLAN',
@@ -1203,6 +1207,18 @@ class PseudocodeImporter extends React.Component {
             if (detail && detail.id) this._lastCatalogExample = detail;
         };
         window.addEventListener('bw-example-loaded', this._onExampleLoaded);
+        // The SPIKE arena's "load reference solution" (spike-arena-pane.jsx):
+        // the code replaces the pseudocode buffer and is built into blocks,
+        // exactly as loading a gallery example does.
+        this._onLoadPseudocode = event => {
+            const code = event && event.detail && event.detail.code;
+            if (typeof code !== 'string') return;
+            this.setState({lang: 'pseudocode', output: null, status: '',
+                buffers: {...this.state.buffers, pseudocode: code}}, () => {
+                Promise.resolve(this.compile()).catch(e => this.setState({status: e.message}));
+            });
+        };
+        window.addEventListener('bw-load-pseudocode', this._onLoadPseudocode);
         // A browser load can land before this component mounts (the Circuit tab
         // is the entry point for a journey). The publisher stashes the last one,
         // so replay it rather than starting blind.
@@ -2075,6 +2091,7 @@ class PseudocodeImporter extends React.Component {
         }
         window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
         window.removeEventListener('bw-example-loaded', this._onExampleLoaded);
+        window.removeEventListener('bw-load-pseudocode', this._onLoadPseudocode);
         window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         window.removeEventListener('bw-microbit-run-request', this._onMicrobitRunRequest);
         // A pending debounce would otherwise lose the last edits on unmount.
@@ -3760,6 +3777,16 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
         });
         window.dispatchEvent(new CustomEvent('bw-pybricks-run', {detail}));
+    }
+
+    // Open the SPIKE arena (spike-arena-pane.jsx) in the right column. The
+    // program reaches it through the virtual SPIKE hub, not through this call.
+    openSpikeArena () {
+        const values = {'bw-right-pane-hidden': '0', 'bw-debug-dock': 'spikearena'};
+        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
+        Object.entries(values).forEach(([k, v]) => {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
+        });
     }
 
     _onMicrobitRunRequest (event) {
@@ -5489,6 +5516,13 @@ class PseudocodeImporter extends React.Component {
                             style={{...actionBtn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
                             data-testid="bw-pybricks-run-on-spike">
                             {this.L.runOnSpike}
+                        </button>
+                    ) : null}
+                    {this.currentDevice() === 'spike' ? (
+                        <button onClick={() => this.openSpikeArena()} title={this.L.openSpikeArenaTitle}
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#e8590c,#c2410c)'}}
+                            data-testid="bw-open-spike-arena">
+                            {this.L.openSpikeArena}
                         </button>
                     ) : null}
                     {this.state.picoSimRunning ? (

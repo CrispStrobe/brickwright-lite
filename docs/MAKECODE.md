@@ -406,10 +406,11 @@ already exist:
 | what labwired wants | what we would have to do |
 |---|---|
 | `firmware` — an **ELF** | nothing. MakeCode ships an `.elf` beside the `.hex`, and our importer already reads the embedded source out of one |
-| `chipYaml` — a chip **descriptor** | write an nRF52833 one: memory map plus GPIO/GPIOTE, TIMER/RTC, SPIM, CLOCK. A description, not an emulator |
+| `chipYaml` — a chip **descriptor** | **done upstream:** LabWired `1cf3d3b8` carries an L3-gated nRF52833 descriptor (GPIO/GPIOTE, timers/RTC, EasyDMA serial, clock and more). Lite still has to vendor the descriptor and board pin map |
 | `pins` + a `board` | the arcade shield's header map, and an ST7735 model with a framebuffer the stage can show |
 
-So the cost is a chip description and a display model, not a CPU. What it
+So the remaining cost is integration and a display model, not a CPU or chip
+description. What it
 would buy is running an unmodified Arcade game — someone else's binary — with
 no translation. What it would NOT buy is any of the *editing* story: a running
 binary is not a project you can open, read or change, which is what the import

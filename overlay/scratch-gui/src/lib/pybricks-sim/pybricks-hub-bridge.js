@@ -12,7 +12,9 @@
 //
 // Units, stated once: distance in mm both sides; force in the panel is
 // 0-100 % of the sensor's 10 N range; display pixels are 0-100 brightness;
-// motor speed is written back as percent of 1000 deg/s.
+// motor speed is written back as percent of 1000 deg/s; colour RGB in the hub
+// state is the SPIKE 3 protocol's raw 0-1024 (docs/SPIKE-ARENA.md, "Units"),
+// scaled here to the 0-255 the simulator's surface colour takes.
 
 import {PORTS} from './pybricks-hub-host.js';
 
@@ -36,7 +38,8 @@ export const applyHubStateToSim = (host, data) => {
         if (sensor.kind === 'force') host.setForce(port, Math.max(0, Math.min(100, Number(sensor.force) || 0)) / 10);
         if (sensor.kind === 'color') {
             const hasRgb = ['red', 'green', 'blue'].some(k => Number(sensor[k]) > 0);
-            const [r, g, b] = hasRgb ? [sensor.red, sensor.green, sensor.blue].map(Number) :
+            const [r, g, b] = hasRgb ? [sensor.red, sensor.green, sensor.blue]
+                .map(v => Math.max(0, Math.min(255, Math.round(Number(v) * 255 / 1024)))) :
                 (LEGO_COLOR_RGB[Number(sensor.color)] || [0, 0, 0]);
             host.setColor(port, {r, g, b, ambient: Number(sensor.ambient) || undefined});
         }

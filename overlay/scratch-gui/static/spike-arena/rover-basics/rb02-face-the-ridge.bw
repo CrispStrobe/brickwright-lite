@@ -1,0 +1,14 @@
+DEVICE SPIKE
+
+# Rover basics 2 - face the ridge (reference solution).
+# Left wheel forward (motor A counterclockwise, it is mirrored) and right
+# wheel backward (motor B counterclockwise) turns the rover right on the spot.
+WHEN flag clicked:
+  reset yaw
+  set motor speed A 15
+  set motor speed B 15
+  start motor A counterclockwise
+  start motor B counterclockwise
+  wait until spike angle yaw > 86
+  stop motor A
+  stop motor B

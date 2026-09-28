@@ -1,0 +1,23 @@
+{
+  "id": "rover-basics",
+  "title": {
+    "en": "Rover basics",
+    "de": "Rover-Grundlagen"
+  },
+  "intro": {
+    "en": "Ten short missions for a SPIKE Prime driving base on Mars: driving, turning, sequences, and the colour, distance and force sensors.",
+    "de": "Zehn kurze Missionen für eine SPIKE-Prime-Fahrbasis auf dem Mars: fahren, drehen, Abfolgen und die Farb-, Abstands- und Kraftsensoren."
+  },
+  "challenges": [
+    "rb01-leave-the-lander",
+    "rb02-face-the-ridge",
+    "rb03-turn-around",
+    "rb04-survey-square",
+    "rb05-canyon-beacon",
+    "rb06-crater-detour",
+    "rb07-stop-at-the-line",
+    "rb08-follow-the-track",
+    "rb09-cliff-wall",
+    "rb10-bump-and-turn"
+  ]
+}

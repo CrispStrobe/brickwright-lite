@@ -1,0 +1,23 @@
+DEVICE SPIKE
+
+# Rover basics 5 - canyon beacon (reference solution): straight, turn, straight.
+DEFINE quarter turn right:
+  reset yaw
+  set motor speed A 15
+  set motor speed B 15
+  start motor A counterclockwise
+  start motor B counterclockwise
+  wait until spike angle yaw > 87
+  stop motor A
+  stop motor B
+
+WHEN flag clicked:
+  set motor speed A 50
+  set motor speed B 50
+  # "move" returns before the rover has arrived, so a wait follows it.
+  move forward 70 cm
+  wait 3 seconds
+  quarter turn right
+  set motor speed A 50
+  set motor speed B 50
+  move forward 50 cm

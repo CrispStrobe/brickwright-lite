@@ -1,0 +1,8 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: driving a fixed distance, without the sensor,
+# and too far.
+WHEN flag clicked:
+  set motor speed A 30
+  set motor speed B 30
+  move forward 130 cm
