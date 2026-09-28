@@ -66,6 +66,8 @@ const L10N = {
         modemSent: 'transmitted',
         firmwareRunning: 'running',
         savePoint: 'Save point',
+        engineReverse: 'Reverse (slower)',
+        engineReverseTitle: 'Record every instruction so Reverse Step / Reverse Continue work here — the run is much slower while this is on',
         savePointTitle: 'Remember this exact moment; ↺ returns here',
         restorePointTitle: 'Return the chip to this save point',
         engineFault: 'Firmware fault',
@@ -121,6 +123,8 @@ const L10N = {
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
         savePoint: 'Speicherpunkt',
+        engineReverse: 'Rückwärts (langsamer)',
+        engineReverseTitle: 'Jeden Befehl aufzeichnen, damit Rückwärts-Schritt / -Fortsetzen hier gehen — der Lauf ist dabei deutlich langsamer',
         savePointTitle: 'Diesen Moment merken; ↺ kehrt hierher zurück',
         restorePointTitle: 'Den Chip auf diesen Speicherpunkt zurücksetzen',
         engineFault: 'Firmware-Fehler',
@@ -1619,6 +1623,18 @@ class DebugPanel extends React.Component {
                                 }}
                             >{`↺ ${p.label || p.id}`}</button>
                         ))}
+                        <label style={{display: 'inline-flex', alignItems: 'center', gap: 3}}
+                            title={this.tx('engineReverseTitle')}>
+                            <input
+                                type="checkbox"
+                                checked={!!this.state.runner.engineRecording}
+                                onChange={e => {
+                                    const r = this.state.runner.setEngineRecording(e.target.checked);
+                                    this.setState({savePointError: r && r.unsupported ? r.unsupported : null});
+                                }}
+                            />
+                            {this.tx('engineReverse')}
+                        </label>
                         {this.state.savePointError ? (
                             <span style={{color: '#e74c3c'}}>{this.state.savePointError}</span>
                         ) : null}

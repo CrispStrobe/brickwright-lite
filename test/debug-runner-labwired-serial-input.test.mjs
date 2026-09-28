@@ -25,7 +25,7 @@ function labwiredRxBlock() {
         const next = source.indexOf('\n    }\n', at);
         assert.match(source.slice(at, next), /return finishLabwiredAttach\(/, `${caller} ends in the shared finisher`);
     }
-    return new Function('lwAdapter', 'runner', body.slice(start, stop));
+    return new Function('lwAdapter', 'runner', 'lwTarget', body.slice(start, stop));
 }
 
 test('labwired attach exposes sendSerial that feeds the adapter byte by byte', () => {
@@ -44,4 +44,14 @@ test('an adapter without feedSerial leaves no input line from an earlier attach'
     assert.equal('sendSerial' in runner, false);
     labwiredRxBlock()(null, runner);
     assert.equal('sendSerial' in runner, false);
+});
+
+test('with a target that records input, bytes go through the target (so replay can put them back)', () => {
+    const viaTarget = [];
+    const viaAdapter = [];
+    const runner = {};
+    labwiredRxBlock()({feedSerial: b => viaAdapter.push(b)}, runner, {feedSerial: b => viaTarget.push(b)});
+    runner.sendSerial('ok');
+    assert.deepEqual(viaTarget, [0x6f, 0x6b]);
+    assert.deepEqual(viaAdapter, [], 'not fed twice');
 });

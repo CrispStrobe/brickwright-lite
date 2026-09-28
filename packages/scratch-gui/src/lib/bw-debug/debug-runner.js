@@ -2065,11 +2065,17 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // at a time. Deleted when absent so an earlier attach's input line
         // cannot outlive it and type into a different engine.
         if (lwAdapter && typeof lwAdapter.feedSerial === 'function') {
+            // Through the TARGET when it offers feedSerial: it records each byte
+            // as an input fact on the instruction clock, which is what lets a
+            // reverse replay put the byte back at the same instruction.
+            const feed = lwTarget && typeof lwTarget.feedSerial === 'function'
+                ? b => lwTarget.feedSerial(b)
+                : b => lwAdapter.feedSerial(b);
             runner.sendSerial = (data) => {
                 const bytes = typeof data === 'number'
                     ? [data & 0xff]
                     : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff);
-                for (const b of bytes) lwAdapter.feedSerial(b);
+                for (const b of bytes) feed(b);
             };
         } else {
             delete runner.sendSerial;
@@ -3636,6 +3642,24 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
 
         /** Raw bytes, for the hex view. Returns [] rather than throwing. */
+        /**
+         * Opt the engine into reverse (LabWired): every instruction is then
+         * single-stepped so it can be announced, so the run is much slower.
+         * Once on, the Record / Reverse controls appear (they read the target's
+         * capabilities afresh). undefined or {unsupported}.
+         */
+        setEngineRecording(on) {
+            if (!target || typeof target.setRecording !== 'function') {
+                return {unsupported: 'this engine has no opt-in reverse'};
+            }
+            const r = target.setRecording(!!on);
+            emit();
+            return r;
+        },
+        get engineRecording() {
+            return !!(target && typeof target.isRecording === 'function' && target.isRecording());
+        },
+
         /** Save the engine's current point (LabWired). {id,label,cycles} or {unsupported}. */
         saveSnapshot(label) {
             if (!target || typeof target.saveSnapshot !== 'function') {
