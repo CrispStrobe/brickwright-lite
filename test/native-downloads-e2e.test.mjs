@@ -23,7 +23,7 @@ test('native proof exercises extension, toolchain and pinned machine media', () 
     assert.match(proof, /executableToolchainsPolicy: 'allow'/);
     assert.match(proof, /machineImagesPolicy: 'allow'/);
     assert.match(proof, /extensionManager\.loadExtensionURL/);
-    assert.match(proof, /sdcc-wasm\/runtime\.json/);
+    assert.match(proof, /sdcc-wasm\/static\/sdcc-wasm\/runtime\.json/);
     assert.match(proof, /riscv32-linux\/Image/);
     assert.match(proof, /9130ceb4be18d10560cf49ac495d7f2d5dde23c33972d7a522c077cc523de1a9/);
     assert.match(proof, /kernelBytes: 4876836/);
