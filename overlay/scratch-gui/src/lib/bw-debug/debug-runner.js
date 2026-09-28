@@ -169,7 +169,11 @@ export function codeListingRows (target, addr, count = 16) {
                 if (typeof target.readMem !== 'function') return [];
                 const head = target.readMem('code', current, 1);
                 if (!head || typeof head[Symbol.iterator] !== 'function' || head.length < 1) return [];
-                length = instructionLength(head[0]);
+                // The TARGET's length when it knows its architecture (Thumb 2/4,
+                // RISC-V, Xtensa 2/3...); the table is 8-bit-opcode lore.
+                length = typeof target.instructionLength === 'function'
+                    ? target.instructionLength(current) : instructionLength(head[0]);
+                if (!Number.isSafeInteger(length) || length < 1) return [];
                 const read = target.readMem('code', current, length);
                 if (!read || typeof read[Symbol.iterator] !== 'function') return [];
                 bytes = [...read];
@@ -3742,6 +3746,19 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          * the whole app from "under the hood" on the pendant (owner report,
          * 2026-08-16). */
         disasm(addr) { return (target && typeof target.disasm === 'function') ? target.disasm(addr) : ''; },
+
+        /** Whether the attached target can write a register (LabWired with a newer engine). */
+        canWriteRegs() { return !!(target && typeof target.writeReg === 'function'); },
+
+        /** Write register `name` (the target's own name). undefined or {unsupported}. */
+        writeReg(name, value) {
+            if (!target || typeof target.writeReg !== 'function') {
+                return {unsupported: 'this engine cannot write registers'};
+            }
+            const r = target.writeReg(name, value);
+            emit();
+            return r;
+        },
 
         /**
          * A short listing from `addr`, walking with the opcode length table.

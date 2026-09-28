@@ -635,15 +635,37 @@ class DebugDrawer extends React.Component {
                         </span>
                     </span>
                     {entries.filter(([k]) => k !== 'pc').map(([k, v]) => (
-                        <span key={k}>
+                        <span
+                            key={k}
+                            role={this.props.runner.canWriteRegs && this.props.runner.canWriteRegs() ? 'button' : undefined}
+                            tabIndex={-1}
+                            style={this.props.runner.canWriteRegs && this.props.runner.canWriteRegs() &&
+                                typeof v === 'number' ? {cursor: 'pointer'} : undefined}
+                            onClick={() => {
+                                const runner = this.props.runner;
+                                if (!runner.canWriteRegs || !runner.canWriteRegs() || typeof v !== 'number') return;
+                                const nv = this.askAddress(`${k.toUpperCase()} =`, v);
+                                if (nv === null) return;
+                                const r = runner.writeReg(k, nv);
+                                this.setState({regWriteError: r && r.unsupported ? r.unsupported : null});
+                                this.forceUpdate();
+                            }}
+                        >
                             <span style={{color: '#7f8c8d'}}>{`${k.toUpperCase().replace(/_$/, "'")} `}</span>
                             <span style={{color: '#ecf0f1'}}>
+                                {/* hex16 keeps the low 16 bits by design (a Z80 pair), so a
+                                    32-bit core's SP 0x20004000 read as 4000: wider values get all
+                                    eight digits. */}
                                 {typeof v === 'boolean' ? (v ? '1' : '0') :
-                                    (WIDE.has(k) || v > 0xFF) ? hex16(v) : hex8(v)}
+                                    v > 0xFFFF ? (v >>> 0).toString(16).toUpperCase().padStart(8, '0') :
+                                        (WIDE.has(k) || v > 0xFF) ? hex16(v) : hex8(v)}
                             </span>
                         </span>
                     ))}
                 </div>
+                {this.state && this.state.regWriteError ? (
+                    <div style={{color: '#e74c3c', fontSize: 11}}>{this.state.regWriteError}</div>
+                ) : null}
             </div>
         );
     }
