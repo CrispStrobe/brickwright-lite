@@ -1167,6 +1167,16 @@ jobs:
       # no width. Unfloored, the Code tab had 4 controls under 24 CSS px and the
       # FPGA pane 25; the risk of fixing it with a min-width was widening dense
       # toolbar rows, so the gate measures scrollWidth on every tab too.
+      # The widgets/controller pane, in both orientations, plus the rule that
+      # full screen must have a way back. Driven through the Redux store: the
+      # pane is filled by a project's blocks, so a bare editor shows an empty
+      # 0x0 pane that would pass every check.
+      - name: Browser gate — the controller pane works on a phone
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        id: controller_pane
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-controller-pane.mjs
+
       - name: Browser gate — controls are hittable on a phone
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         id: tap_targets

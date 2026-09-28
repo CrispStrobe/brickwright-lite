@@ -1683,9 +1683,18 @@ class ControllerPanelView extends React.Component {
                 overflow: 'hidden',
                 zIndex: 10,
             }} onPointerDown={() => activateUndoSurface('widgets')}>
-                {/* Toolbar */}
-                <div style={{
+                {/* Toolbar. WRAPS, because on a phone it cannot all fit on one
+                    line and the alternative is not "smaller" but "on top of each
+                    other": this row holds fixed-width segmented groups that carry
+                    their own `overflow: hidden`, so when the touch-target floor
+                    raised every button to 32px the row overflowed and
+                    bw-ctl-snap-toggle landed on the Play button — measured, Play
+                    went from 17x30 (hittable) to 32x32 with the snap toggle on
+                    top of it. Wrapping turns "too little space" into a second
+                    line instead of a collision. */}
+                <div data-widgets-toolbar style={{
                     display: 'flex', alignItems: 'center', gap: 8,
+                    flexWrap: 'wrap', rowGap: 6,
                     padding: '8px 12px',
                     paddingTop: this.props.isFullScreen ? 'calc(env(safe-area-inset-top, 0px) + 56px)' : 8,
                     borderBottom: '1px solid #e2e8f0',

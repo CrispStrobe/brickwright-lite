@@ -6570,6 +6570,12 @@
    "p95": 0,
    "max": null,
    "readings": []
+  },
+  "Browser gate — the controller pane works on a phone": {
+   "n": 0,
+   "p95": 0,
+   "max": null,
+   "readings": []
   }
  }
 }

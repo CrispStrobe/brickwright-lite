@@ -16,6 +16,13 @@
  * goal is that a control be comfortable once the reader has pinched in (the
  * viewport meta allows up to 5x), which is what a CSS-pixel floor gives.
  *
+ * WHY INPUTS ARE IN THE LIST: the controller/widgets pane renders its sliders
+ * as `input[type=range]`, and they measure 133x16 — SIXTEEN pixels tall, which
+ * at the 0.42 a phone renders this app at is 6.7pt of screen. They were missed
+ * by the first version of this rule, which named only buttons, selects,
+ * checkboxes and radios, because nothing had yet driven that pane on a phone.
+ * Text, number and bare inputs and textareas join for the same reason.
+ *
  * WHY 32 AND NOT THE STANDARD 44: because 44 was measured and it breaks
  * something. Unfloored, the Code tab had 4 of 29 controls under 24 CSS px and
  * 21 under 32, with none reaching 44; the FPGA pane had 25 of 43 under 24. So a
@@ -113,7 +120,12 @@ html[${ATTR}] select,
 html[${ATTR}] [role="button"],
 html[${ATTR}] [role="tab"],
 html[${ATTR}] input[type="checkbox"],
-html[${ATTR}] input[type="radio"] {
+html[${ATTR}] input[type="radio"],
+html[${ATTR}] input[type="range"],
+html[${ATTR}] input[type="text"],
+html[${ATTR}] input[type="number"],
+html[${ATTR}] input:not([type]),
+html[${ATTR}] textarea {
     min-height: ${floor}px;
     min-width: ${floor}px;
 }
