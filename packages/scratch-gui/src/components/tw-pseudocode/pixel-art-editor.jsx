@@ -15,12 +15,13 @@
  */
 import PropTypes from 'prop-types';
 import React from 'react';
+import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
-import {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument,
+import {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument, layersToSvg,
     moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, wandSelection} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, svgToPixels, pixelsToSvg, quantizeRgba, floodFill
+    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill
 } from '../../lib/bw-makecode/pixel-image.js';
 
 const L10N = {
@@ -35,7 +36,8 @@ const L10N = {
         'px.showLayer': 'Show layer', 'px.hideLayer': 'Hide layer', 'px.layerUp': 'Move up',
         'px.layerDown': 'Move down', 'px.lockLayer': 'Lock layer', 'px.unlockLayer': 'Unlock layer',
         'px.select': 'Select', 'px.move': 'Move selection', 'px.clearSelection': 'Clear selection',
-        'px.deselect': 'Deselect', 'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
+        'px.deselect': 'Deselect', 'px.opacity': 'Opacity', 'px.renameLayer': 'Rename layer',
+        'px.exportPng': 'Export transparent PNG', 'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
         'px.tolerance': 'Tolerance'
     },
     de: {
@@ -50,7 +52,9 @@ const L10N = {
         'px.layerUp': 'Nach oben', 'px.layerDown': 'Nach unten', 'px.lockLayer': 'Ebene sperren',
         'px.unlockLayer': 'Ebene entsperren', 'px.select': 'Auswählen',
         'px.move': 'Auswahl verschieben', 'px.clearSelection': 'Auswahl löschen',
-        'px.deselect': 'Auswahl aufheben', 'px.lasso': 'Lasso',
+        'px.deselect': 'Auswahl aufheben', 'px.opacity': 'Deckkraft',
+        'px.renameLayer': 'Ebene umbenennen', 'px.exportPng': 'Transparentes PNG exportieren',
+        'px.lasso': 'Lasso',
         'px.wand': 'Zauberstab', 'px.tolerance': 'Toleranz'
     }
 };
@@ -79,7 +83,7 @@ class PixelArtEditor extends React.Component {
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             scale: 4, zoom: 1, colour: 2, tool: 'pencil',
             mirror: false, converted: false, selection: null, tolerance: 0,
-            status: '', w: 16, h: 16};
+            status: '', w: 16, h: 16, renamingLayerId: null, renameValue: ''};
         this.canvas = React.createRef();
         this.viewport = React.createRef();
         this.root = React.createRef();
@@ -88,6 +92,8 @@ class PixelArtEditor extends React.Component {
         this.pointers = new Map();
         this.undoStack = [];
         this.redoStack = [];
+        this.opacityGesture = false;
+        this.renameCommitted = false;
         this.lastCell = null;
         this.shapeStart = null;
         this.shapeBase = null;
@@ -102,6 +108,7 @@ class PixelArtEditor extends React.Component {
         this.undo = this.undo.bind(this);
         this.redo = this.redo.bind(this);
         this.save = this.save.bind(this);
+        this.exportPng = this.exportPng.bind(this);
         this.revert = this.revert.bind(this);
         this.addLayer = this.addLayer.bind(this);
     }
@@ -156,9 +163,8 @@ class PixelArtEditor extends React.Component {
             document.activeLayerId : layers[layers.length - 1].id;
         this.undoStack = [];
         this.redoStack = [];
-        this.setState({image, layers, activeLayerId, selection: null, original: {layers, activeLayerId,
-            selection: null,
-            w: image.width, h: image.height},
+        this.setState({image, layers, activeLayerId, selection: null, renamingLayerId: null, renameValue: '',
+            original: {layers, activeLayerId, selection: null, w: image.width, h: image.height},
             scale, zoom: 1, converted, status: '',
             w: image.width, h: image.height});
     }
@@ -178,12 +184,11 @@ class PixelArtEditor extends React.Component {
         const ctx = canvas.getContext('2d');
         for (let y = 0; y < image.height; y++) {
             for (let x = 0; x < image.width; x++) {
-                const i = image.pixels[(y * image.width) + x];
-                // Transparent shows as a checkerboard, as in every pixel editor.
-                ctx.fillStyle = ARCADE_PALETTE[i] || (((x + y) % 2) ? '#e2e8f0' : '#f8fafc');
+                ctx.fillStyle = ((x + y) % 2) ? '#e2e8f0' : '#f8fafc';
                 ctx.fillRect(x * c, y * c, c, c);
             }
         }
+        this.paintLayers(ctx, c);
         ctx.strokeStyle = 'rgba(15,23,42,0.12)';
         for (let x = 0; x <= image.width; x++) { ctx.beginPath(); ctx.moveTo(x * c + 0.5, 0); ctx.lineTo(x * c + 0.5, canvas.height); ctx.stroke(); }
         for (let y = 0; y <= image.height; y++) { ctx.beginPath(); ctx.moveTo(0, y * c + 0.5); ctx.lineTo(canvas.width, y * c + 0.5); ctx.stroke(); }
@@ -219,6 +224,23 @@ class PixelArtEditor extends React.Component {
             }
             ctx.restore();
         }
+    }
+
+    paintLayers (ctx, c) {
+        const {image, layers} = this.state;
+        for (const layer of layers) {
+            if (!layer.visible || layer.opacity <= 0) continue;
+            ctx.globalAlpha = layer.opacity;
+            for (let y = 0; y < image.height; y++) {
+                for (let x = 0; x < image.width; x++) {
+                    const colour = ARCADE_PALETTE[layer.pixels[(y * image.width) + x]];
+                    if (!colour) continue;
+                    ctx.fillStyle = colour;
+                    ctx.fillRect(x * c, y * c, c, c);
+                }
+            }
+        }
+        ctx.globalAlpha = 1;
     }
 
     cellAt (event) {
@@ -586,6 +608,34 @@ class PixelArtEditor extends React.Component {
         });
     }
 
+    beginOpacityGesture () {
+        if (this.opacityGesture) return;
+        this.remember();
+        this.opacityGesture = true;
+    }
+
+    setLayerOpacity (id, value) {
+        this.beginOpacityGesture();
+        this.setState(state => {
+            const layers = state.layers.map(layer => layer.id === id ? {...layer, opacity: value} : layer);
+            return {layers, image: composeLayers(layers, state.w, state.h), status: ''};
+        });
+    }
+
+    startLayerRename (layer) {
+        this.renameCommitted = false;
+        this.setState({renamingLayerId: layer.id, renameValue: layer.name});
+    }
+
+    finishLayerRename (id, save) {
+        if (this.renameCommitted || this.state.renamingLayerId !== id) return;
+        this.renameCommitted = true;
+        const name = this.state.renameValue.trim();
+        const layer = this.state.layers.find(item => item.id === id);
+        if (save && name && layer && name !== layer.name) this.changeLayer(id, {name});
+        this.setState({renamingLayerId: null, renameValue: ''});
+    }
+
     moveLayer (id, offset) {
         const index = this.state.layers.findIndex(layer => layer.id === id);
         const target = index + offset;
@@ -613,12 +663,25 @@ class PixelArtEditor extends React.Component {
         const {image, scale, layers, activeLayerId} = this.state;
         const vm = this.props.vm;
         if (!image || !vm) return;
-        const svg = pixelsToSvg(image, {scale});
+        const svg = layersToSvg(layers, image.width, image.height, scale);
         vm.updateSvg(this.props.costumeIndex, svg, (image.width * scale) / 2, (image.height * scale) / 2);
         setCostumeDocument(this.costume(), layersDocument(layers, image.width, image.height, scale, activeLayerId));
         this.setState({original: {layers, activeLayerId, selection: null,
             w: image.width, h: image.height},
             converted: false, status: 'saved'});
+    }
+
+    exportPng () {
+        const {image, scale} = this.state;
+        if (!image) return;
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width * scale;
+        canvas.height = image.height * scale;
+        this.paintLayers(canvas.getContext('2d'), scale);
+        const name = (this.costume()?.name || 'costume').replace(/[\\/:*?"<>|]/g, '_');
+        canvas.toBlob(blob => {
+            if (blob) downloadBlob(`${name}.png`, blob);
+        }, 'image/png');
     }
 
     revert () {
@@ -628,9 +691,11 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, layers, activeLayerId, selection, colour, tool, tolerance, mirror, converted, status, w, h, zoom} =
+        const {image, layers, activeLayerId, selection, colour, tool, tolerance, mirror, converted, status, w, h, zoom,
+            renamingLayerId, renameValue} =
             this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
+        const activeLayer = layers.find(layer => layer.id === activeLayerId);
         const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12, cursor: 'pointer',
             border: `1px solid ${active ? '#4c97ff' : '#cbd5e1'}`, background: active ? '#e0edff' : '#fff'});
         return (
@@ -690,15 +755,42 @@ class PixelArtEditor extends React.Component {
                     <strong style={{fontSize: 12}}>{t(locale, 'px.layers')}</strong>
                     <button type="button" style={btn(false)} onClick={this.addLayer}
                         data-testid="bw-pixel-add-layer">+ {t(locale, 'px.addLayer')}</button>
+                    {activeLayer ? <label style={{display: 'inline-flex', alignItems: 'center', gap: 5,
+                        fontSize: 12, minHeight: 44}}>{t(locale, 'px.opacity')} {Math.round(activeLayer.opacity * 100)}%
+                        <input type="range" min="0" max="100" value={Math.round(activeLayer.opacity * 100)}
+                            data-testid="bw-pixel-layer-opacity" aria-label={t(locale, 'px.opacity')}
+                            onPointerDown={() => { this.opacityGesture = false; }}
+                            onPointerUp={() => { this.opacityGesture = false; }}
+                            onPointerCancel={() => { this.opacityGesture = false; }}
+                            onKeyUp={() => { this.opacityGesture = false; }}
+                            onBlur={() => { this.opacityGesture = false; }}
+                            onChange={event => this.setLayerOpacity(activeLayerId, Number(event.target.value) / 100)} />
+                    </label> : null}
                     {layers.slice().reverse().map(layer => {
                         const index = layers.findIndex(item => item.id === layer.id);
                         return <div key={layer.id} style={{display: 'flex', alignItems: 'center', gap: 2,
                             padding: 2, borderRadius: 6,
                             border: layer.id === activeLayerId ? '2px solid #4c97ff' : '1px solid #cbd5e1'}}>
-                            <button type="button" style={btn(layer.id === activeLayerId)}
-                                data-testid={`bw-pixel-layer-${layer.id}`}
-                                onClick={() => this.setState({activeLayerId: layer.id, selection: null})}>
-                                {layer.name}</button>
+                            {renamingLayerId === layer.id ?
+                                <input type="text" autoFocus value={renameValue} maxLength={80}
+                                    data-testid="bw-pixel-rename-input" aria-label={t(locale, 'px.renameLayer')}
+                                    style={{width: 110, minHeight: 40, boxSizing: 'border-box'}}
+                                    onChange={event => this.setState({renameValue: event.target.value})}
+                                    onBlur={() => this.finishLayerRename(layer.id, true)}
+                                    onKeyDown={event => {
+                                        if (event.key === 'Enter' || event.key === 'Escape') {
+                                            event.preventDefault();
+                                            event.stopPropagation();
+                                            this.finishLayerRename(layer.id, event.key === 'Enter');
+                                        }
+                                    }} /> :
+                                <button type="button" style={btn(layer.id === activeLayerId)}
+                                    data-testid={`bw-pixel-layer-${layer.id}`}
+                                    onClick={() => this.setState({activeLayerId: layer.id, selection: null})}>
+                                    {layer.name}</button>}
+                            <button type="button" style={btn(false)} aria-label={t(locale, 'px.renameLayer')}
+                                data-testid={`bw-pixel-rename-${layer.id}`}
+                                onClick={() => this.startLayerRename(layer)}>✎</button>
                             <button type="button" style={btn(false)} aria-label={t(locale,
                                 layer.visible ? 'px.hideLayer' : 'px.showLayer')}
                             data-testid={`bw-pixel-visibility-${layer.id}`}
@@ -728,6 +820,8 @@ class PixelArtEditor extends React.Component {
                 </div>
                 <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
                     <button type="button" style={btn(true)} onClick={this.save} data-testid="bw-pixel-save">{t(locale, 'px.save')}</button>
+                    <button type="button" style={btn(false)} onClick={this.exportPng}
+                        data-testid="bw-pixel-export-png">{t(locale, 'px.exportPng')}</button>
                     <button type="button" style={btn(false)} onClick={this.revert}>{t(locale, 'px.revert')}</button>
                     {status === 'saved' ? <span style={{fontSize: 12, color: '#15803d'}}>{t(locale, 'px.saved')}</span> : null}
                 </div>

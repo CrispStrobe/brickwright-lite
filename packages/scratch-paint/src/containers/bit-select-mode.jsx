@@ -31,6 +31,7 @@ class BitSelectMode extends React.Component {
         if (this.tool && nextProps.selectedItems !== this.props.selectedItems) {
             this.tool.onSelectionChanged(nextProps.selectedItems);
         }
+        if (this.tool) this.tool.setSelectionOptions(nextProps.selectionKind, nextProps.tolerance);
 
         if (nextProps.isSelectModeActive && !this.props.isSelectModeActive) {
             this.activateTool();
@@ -54,6 +55,7 @@ class BitSelectMode extends React.Component {
             this.props.setCursor,
             this.props.onUpdateImage
         );
+        this.tool.setSelectionOptions(this.props.selectionKind, this.props.tolerance);
         this.tool.activate();
     }
     deactivateTool () {
@@ -78,12 +80,16 @@ BitSelectMode.propTypes = {
     isSelectModeActive: PropTypes.bool.isRequired,
     onUpdateImage: PropTypes.func.isRequired,
     selectedItems: PropTypes.arrayOf(PropTypes.instanceOf(paper.Item)),
+    selectionKind: PropTypes.string.isRequired,
     setCursor: PropTypes.func.isRequired,
-    setSelectedItems: PropTypes.func.isRequired
+    setSelectedItems: PropTypes.func.isRequired,
+    tolerance: PropTypes.number.isRequired
 };
 
 const mapStateToProps = state => ({
     isSelectModeActive: state.scratchPaint.mode === Modes.BIT_SELECT,
+    selectionKind: state.scratchPaint.bwBitmapSelection.kind,
+    tolerance: state.scratchPaint.bwBitmapSelection.tolerance,
     selectedItems: state.scratchPaint.selectedItems
 });
 const mapDispatchToProps = dispatch => ({

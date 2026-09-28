@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-const {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument,
+const {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument, layersToSvg,
     moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, wandSelection} =
     await import('../overlay/scratch-gui/src/lib/bw-pixel-layers.js');
 
@@ -17,6 +17,23 @@ test('pixel layers compose in order and keep hidden edits in source', () => {
     assert.equal(sourceLayers(doc, 3, 1), null);
     assert.deepEqual([...composeLayers(resizeLayers([bottom, hidden], 2, 1, 3, 1), 3, 1).pixels],
         [2, 3, 0]);
+});
+
+test('layer opacity survives source save and produces a translucent Scratch render', () => {
+    const bottom = {...blankLayer('bottom', 'Bottom', 2, 1), pixels: Uint8Array.from([2, 2])};
+    const top = {...blankLayer('top', 'Top', 2, 1), pixels: Uint8Array.from([10, 0]), opacity: 0.5};
+    const doc = layersDocument([bottom, top], 2, 1, 4, 'top');
+    assert.equal(sourceLayers(doc, 2, 1)[1].opacity, 0.5);
+    const svg = layersToSvg([bottom, top], 2, 1, 4);
+    assert.match(svg, /<g opacity="0\.5"><rect/);
+    assert.match(svg, /<g opacity="1"><rect/);
+    assert.equal((svg.match(/<g opacity=/g) || []).length, 2);
+    assert.deepEqual([...composeLayers([bottom, {...top, opacity: 0}], 2, 1).pixels], [2, 2]);
+    assert.equal(layersToSvg([bottom, {...top, opacity: 0}], 2, 1, 4),
+        layersToSvg([bottom], 2, 1, 4), 'a zero-opacity layer leaves the old SVG format intact');
+    assert.equal(layersToSvg([bottom, {...top, opacity: 1}], 2, 1, 4),
+        layersToSvg([{...bottom, pixels: Uint8Array.from([10, 2])}], 2, 1, 4),
+        'fully opaque art retains the previous flattened SVG format');
 });
 
 test('lasso selects its traced edge and interior, not the surrounding rectangle', () => {

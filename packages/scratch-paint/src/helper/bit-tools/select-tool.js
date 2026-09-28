@@ -1,17 +1,18 @@
 import paper from '@scratch/paper';
 import Modes from '../../lib/modes';
 
-import {getRaster} from '../layer';
+import {getGuideLayer, getRaster} from '../layer';
 import {commitSelectionToBitmap} from '../bitmap';
+import {lassoMask, opaqueBounds, wandMask} from './bw-selection-mask';
 
 import BoundingBoxTool from '../selection-tools/bounding-box-tool';
 import NudgeTool from '../selection-tools/nudge-tool';
 import SelectionBoxTool from '../selection-tools/selection-box-tool';
 
 /**
- * paper.Tool that handles select mode in bitmap. This is made up of 2 subtools.
+ * paper.Tool that handles bitmap selection and transforms.
  * - The selection box tool is active when the user clicks an empty space and drags.
- *   It selects all items in the rectangle.
+ *   Lasso and wand use masks to lift only the chosen bitmap pixels.
  * - The bounding box tool is active if the user clicks on a non-empty space. It handles
  *   reshaping the selection.
  */
@@ -39,6 +40,11 @@ class SelectTool extends paper.Tool {
         const nudgeTool = new NudgeTool(Modes.BIT_SELECT, this.boundingBoxTool, onUpdateImage);
         this.selectionBoxTool = new SelectionBoxTool(Modes.BIT_SELECT, setSelectedItems, clearSelectedItems);
         this.selectionBoxMode = false;
+        this.maskMode = false;
+        this.maskPath = null;
+        this.lassoPoints = null;
+        this.selectionKind = 'rectangle';
+        this.tolerance = 0;
         this.selection = null;
         this.active = false;
 
@@ -52,6 +58,51 @@ class SelectTool extends paper.Tool {
         this.onKeyDown = nudgeTool.onKeyDown;
 
         this.boundingBoxTool.setSelectionBounds();
+    }
+    setSelectionOptions (kind, tolerance) {
+        this.selectionKind = kind;
+        this.tolerance = tolerance;
+    }
+    pointCell (point) {
+        return [Math.floor(point.x), Math.floor(point.y)];
+    }
+    takeMaskedSelection (mask) {
+        if (!mask) return;
+        const bitmap = getRaster();
+        const {width, height} = bitmap.canvas;
+        const context = bitmap.getContext();
+        const image = context.getImageData(0, 0, width, height);
+        const bounds = opaqueBounds(mask, image.data, width, height);
+        if (!bounds) return;
+        const rect = new paper.Rectangle(bounds.x, bounds.y, bounds.width, bounds.height);
+        const raster = bitmap.getSubRaster(rect);
+        const maskCanvas = document.createElement('canvas');
+        maskCanvas.width = bounds.width;
+        maskCanvas.height = bounds.height;
+        const maskContext = maskCanvas.getContext('2d');
+        const maskImage = maskContext.createImageData(bounds.width, bounds.height);
+        for (let y = 0; y < bounds.height; y++) {
+            for (let x = 0; x < bounds.width; x++) {
+                const index = ((bounds.y + y) * width) + bounds.x + x;
+                if (mask[index]) maskImage.data[(((y * bounds.width) + x) * 4) + 3] = 255;
+            }
+        }
+        maskContext.putImageData(maskImage, 0, 0);
+        const selectedContext = raster.canvas.getContext('2d');
+        selectedContext.globalCompositeOperation = 'destination-in';
+        selectedContext.drawImage(maskCanvas, 0, 0);
+        selectedContext.globalCompositeOperation = 'source-over';
+        raster.canvas.getContext('2d').imageSmoothingEnabled = false;
+        raster.parent = paper.project.activeLayer;
+        raster.selected = true;
+        // The base bitmap is altered only by pixels inside the mask. Keep the masked
+        // raster as the source for later rotations, instead of an unmasked expanded copy.
+        const baseContext = bitmap.getContext(true /* modify */);
+        baseContext.globalCompositeOperation = 'destination-out';
+        baseContext.drawImage(maskCanvas, bounds.x, bounds.y);
+        baseContext.globalCompositeOperation = 'source-over';
+        this.selection = raster;
+        this.selectionBoxTool.setSelectedItems();
     }
     /**
      * Should be called if the selection changes to update the bounds of the bounding box.
@@ -104,8 +155,28 @@ class SelectTool extends paper.Tool {
                 false /* doubleClicked */,
                 this.getHitOptions())) {
             this.commitSelection();
-            this.selectionBoxMode = true;
             this.selectionBoxTool.onMouseDown(event.modifiers.shift);
+            if (this.selectionKind === 'rectangle') {
+                this.selectionBoxMode = true;
+            } else {
+                this.maskMode = true;
+                const [x, y] = this.pointCell(event.point);
+                if (this.selectionKind === 'wand') {
+                    const canvas = getRaster().canvas;
+                    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+                    this.takeMaskedSelection(wandMask(data, canvas.width, canvas.height, x, y, this.tolerance));
+                } else {
+                    this.lassoPoints = [[x, y]];
+                    this.maskPath = new paper.Path();
+                    this.maskPath.parent = getGuideLayer();
+                    this.maskPath.guide = true;
+                    this.maskPath.data.isHelperItem = true;
+                    this.maskPath.strokeColor = '#777';
+                    this.maskPath.strokeWidth = 1 / paper.view.zoom;
+                    this.maskPath.dashArray = [3 / paper.view.zoom, 3 / paper.view.zoom];
+                    this.maskPath.add(event.point);
+                }
+            }
         }
     }
     handleMouseDrag (event) {
@@ -113,6 +184,15 @@ class SelectTool extends paper.Tool {
 
         if (this.selectionBoxMode) {
             this.selectionBoxTool.onMouseDrag(event);
+        } else if (this.maskMode) {
+            if (this.selectionKind === 'lasso' && this.maskPath) {
+                const cell = this.pointCell(event.point);
+                const last = this.lassoPoints[this.lassoPoints.length - 1];
+                if (cell[0] !== last[0] || cell[1] !== last[1]) {
+                    this.lassoPoints.push(cell);
+                    this.maskPath.add(event.point);
+                }
+            }
         } else {
             this.boundingBoxTool.onMouseDrag(event);
         }
@@ -125,10 +205,19 @@ class SelectTool extends paper.Tool {
 
         if (this.selectionBoxMode) {
             this.selectionBoxTool.onMouseUpBitmap(event);
+        } else if (this.maskMode) {
+            if (this.selectionKind === 'lasso' && this.lassoPoints) {
+                const canvas = getRaster().canvas;
+                this.takeMaskedSelection(lassoMask(this.lassoPoints, canvas.width, canvas.height));
+            }
+            if (this.maskPath) this.maskPath.remove();
+            this.maskPath = null;
+            this.lassoPoints = null;
         } else {
             this.boundingBoxTool.onMouseUp(event);
         }
         this.selectionBoxMode = false;
+        this.maskMode = false;
         this.active = false;
     }
     commitSelection () {
@@ -140,6 +229,9 @@ class SelectTool extends paper.Tool {
         this.onUpdateImage();
     }
     deactivateTool () {
+        if (this.maskPath) this.maskPath.remove();
+        this.maskPath = null;
+        this.lassoPoints = null;
         this.commitSelection();
         this.boundingBoxTool.deactivateTool();
         this.boundingBoxTool = null;

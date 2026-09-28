@@ -28,10 +28,12 @@ source entry must never prevent an otherwise valid Scratch project from opening.
 - The pixel editor has grouped stroke undo/redo, continuous pencil strokes,
   line and rectangle tools, rectangular and lasso selections, and a connected
   colour wand with adjustable tolerance. Selections can move or clear pixels
-  on the active layer. The editor also has mirrored drawing, ordered pixel layers with
-  visibility, locking, reordering and deletion, larger colour targets, a pan
-  tool and two-pointer/pinch navigation. It flattens visible layers into the
-  Scratch SVG while retaining hidden layers in editable source. The
+  on the active layer. The editor also has mirrored drawing, ordered pixel layers
+  with visibility, locking, renaming, reordering, deletion and opacity, larger
+  colour targets, a pan tool and two-pointer/pinch navigation. It renders
+  translucent visible layers into the Scratch SVG while retaining every layer's
+  palette indices in editable source. It also exports a transparent PNG from the
+  current layer stack. The
   drawing and interaction contract still needs a real iPad and trackpad pass.
 - Archive tests cover round-trip preservation, stale source rejection and
   future-version pass-through. A browser gate checks layer visibility and
