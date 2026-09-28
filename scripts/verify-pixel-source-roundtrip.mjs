@@ -311,6 +311,7 @@ try {
         '78dc52', '003fad', '87f2ff', '8e2ec4', 'a4839f', '5c406c', 'e5cdc4', '91463d', '000000'];
     await page.getByTestId('bw-pixel-palette-file').setInputFiles({name: 'arcade.hex',
         mimeType: 'text/plain', buffer: Buffer.from(paletteFile.join('\n'))});
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-pixel-palette-edit"]')?.value === '#00aa00');
     assert.equal(await page.getByTestId('bw-pixel-palette-edit').inputValue(), '#00aa00',
         'a MakeCode palette file must replace colours without replacing indexed pixels');
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
