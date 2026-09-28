@@ -12,6 +12,8 @@ test('native download proof launches a real Tauri binary and requires native IPC
     assert.match(proof, /TAURI_DRIVER_PORT \|\| 4444/);
     assert.match(proof, /application: path\.resolve\(binary\)/);
     assert.match(proof, /__TAURI_INTERNALS__/);
+    assert.match(proof, /__brickwrightStore\.getState\(\)\.scratchGui\.vm/);
+    assert.doesNotMatch(proof, /globalThis\.__vm/);
     assert.match(proof, /nativeInvoke: 'function'/);
     assert.doesNotMatch(proof, /__TAURI__\s*=/);
 });
