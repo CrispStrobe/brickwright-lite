@@ -84,6 +84,37 @@ It holds a slot permanently and there is no API that reaches it; it likely needs
 GitHub support or will age out on its own. Recorded so the next person who
 counts the queue does not spend an hour on the one entry that cannot move.
 
+**A SECOND mechanism, found on the next sweep: merging a PR and deleting its
+branch does not cancel that branch's queued runs.** After the main sweep, 12 of
+the 68 still-queued runs were dead, and only one of those was main's:
+
+| branch | state | queued runs |
+|---|---|---|
+| `fix/spike-prime-ci-isolation` | PR #493 MERGED, branch DELETED | 3 |
+| `feat/spike-prime-cpu-operations` | PR #487 MERGED, branch DELETED | 3 |
+| `feat/spike-prime-e2e` | #488 merged, #492 closed; sha not the tip | 3 |
+| `lane/blocked-gallery` | superseded by my own push | 2 |
+
+`cancel-in-progress` only collapses runs within one concurrency group while the
+ref still exists. It has nothing to say about a ref that is gone: those six runs
+were queued for branches GitHub itself had deleted, and they would have been
+served — cloning a branch that no longer exists — ahead of live work. There is
+no setting for this; it needs a sweep.
+
+**The classification that makes the sweep safe** is remote state, not local. A
+pruned local clone reports a branch as missing when it is merely unfetched, so
+resolve each one against the remote and against its PR before cancelling:
+
+```bash
+git ls-remote --heads origin "$br"     # empty => really deleted
+gh pr list --state all --json number,state,headRefName
+```
+
+Cancel only: sha is an ancestor of current main; or the branch is deleted AND
+its PR is merged/closed; or the sha is not the branch tip and no open PR wants
+it. 56 of the 68 were none of those and were left alone — they are other lanes'
+live work, and a queue being deep is not a licence to empty it.
+
 **How to tell you are in this situation** rather than looking at a broken PR:
 `gh pr checks <n>` is empty AND the repo-wide queue is deep. Check the queue
 before debugging the branch:
