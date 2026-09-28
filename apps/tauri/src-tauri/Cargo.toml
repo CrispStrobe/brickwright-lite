@@ -63,6 +63,8 @@ tauri-plugin-depth-capture = { path = "plugins/depth-capture" }
 # have no USB host serial we can reach, and the crate does not build there.
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 serialport = "4"
+command-group = "5.0.1"
+sha2 = "0.10"
 
 # Linux Bluetooth-Classic (RFCOMM/SPP) backend, for EV3 + legacy SPIKE.
 [target.'cfg(target_os = "linux")'.dependencies]
