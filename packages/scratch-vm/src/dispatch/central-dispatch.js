@@ -4,6 +4,7 @@ const log = require('../util/log');
 const {CapabilityBroker} = require('../extension-support/capability-broker');
 const {createNativePlatformCapability, OPERATION: NATIVE_PLATFORM_OPERATION} =
     require('../extension-support/native-platform-capability');
+const {createNativeRenodeCapabilities} = require('../extension-support/native-renode-capability');
 const CAPABILITY_REFUSAL_CODES = new Set([
     'invalid-session', 'invalid-envelope', 'replayed-request', 'unknown-operation',
     'undeclared-operation', 'invalid-arguments', 'unavailable-operation',
@@ -40,11 +41,12 @@ class CentralDispatch extends SharedDispatch {
         // to answer for a boundary it does not have.
         const handlers = {'project.metadata.read': proofMetadataHandler};
         const internals = typeof globalThis !== 'undefined' && globalThis.__TAURI_INTERNALS__;
-        const nativePlatform = createNativePlatformCapability({
-            invoke: internals && typeof internals.invoke === 'function' ?
-                internals.invoke.bind(internals) : null
-        });
+        const nativeInvoke = internals && typeof internals.invoke === 'function' ?
+            internals.invoke.bind(internals) : null;
+        const nativePlatform = createNativePlatformCapability({invoke: nativeInvoke});
         if (nativePlatform) handlers[NATIVE_PLATFORM_OPERATION] = nativePlatform;
+        const nativeRenode = createNativeRenodeCapabilities({invoke: nativeInvoke});
+        if (nativeRenode) Object.assign(handlers, nativeRenode);
         this.capabilityBroker = new CapabilityBroker(handlers);
         // A read-only window onto the broker's diagnostics for the capability diagnostics panel,
         // which is deliberately import-free (it has to work when the thing being diagnosed is the
