@@ -22,6 +22,18 @@ const check = (ok, msg, detail = '') => {
     if (!ok) failures.push(msg);
 };
 
+/**
+ * WHY THE PAGE GETS A SHARED VISIBILITY PREDICATE (installed below as
+ * `window.__bwVisible`): a hand-rolled width/display/visibility check is NOT
+ * enough. It admits controls inside a CLOSED <details>, whose boxes can still
+ * report a non-zero rect. The `⋯` overflow menu on the Code tab put 6 such
+ * phantoms into this gate's counts — 29 "controls" where 23 are real — and all
+ * 6 of that tab's apparent overlaps were those phantoms sitting under the
+ * editor. They are not reachable and not focusable, so they were this gate's
+ * problem and not the app's. `checkVisibility()` knows about closed details,
+ * content-visibility and opacity: 0; the fallback is for a browser without it.
+ */
+
 // Below this, a control is not a near miss, it is unhittable. Kept separate
 // from FLOOR_PX so a future floor change cannot quietly relax the hard limit.
 const UNHITTABLE = 24;
@@ -39,6 +51,16 @@ try {
             localStorage.setItem('bw-fpga-enabled', '1');
             localStorage.setItem('bw-fpga-guide-done', '1');
         } catch { /* private mode */ }
+        window.__bwVisible = el => (el.checkVisibility
+            ? el.checkVisibility({
+                contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true,
+            })
+            : (() => {
+                const b = el.getBoundingClientRect();
+                const s = getComputedStyle(el);
+                return b.width > 0 && b.height > 0 &&
+                    s.visibility !== 'hidden' && s.display !== 'none';
+            })());
     });
     await page.goto(base, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.waitForFunction("document.querySelectorAll('[role=\"tab\"]').length >= 4",
@@ -91,12 +113,7 @@ try {
             return {n: last, stable: false};
         })();
         const r = await page.evaluate(() => {
-            const visible = el => {
-                const b = el.getBoundingClientRect();
-                const s = getComputedStyle(el);
-                return b.width > 0 && b.height > 0 &&
-                    s.visibility !== 'hidden' && s.display !== 'none';
-            };
+            const visible = window.__bwVisible;
             const name = document.querySelector('[role="tab"][aria-selected="true"]')
                 ?.textContent.trim() || '?';
             const els = [...document.querySelectorAll(
@@ -124,7 +141,7 @@ try {
             };
         });
         check(settled.stable,
-            `${r.name}: the pane settled before measuring (${settled.n} controls)`,
+            `${r.name}: the pane settled before measuring (${settled.n} controls in the DOM)`,
             settled.stable ? '' : 'count still changing at the deadline — the numbers below are a snapshot of a moving pane');
         check(r.tiny.length === 0,
             `${r.name}: no visible control is under ${UNHITTABLE}px (${r.controls} controls)`,
@@ -152,12 +169,7 @@ try {
         // change's doing and this comparison does not blame them on it.
         const overlap = await page.evaluate(() => {
             const countCovered = () => {
-                const visible = el => {
-                    const b = el.getBoundingClientRect();
-                    const s = getComputedStyle(el);
-                    return b.width > 0 && b.height > 0 &&
-                        s.visibility !== 'hidden' && s.display !== 'none';
-                };
+                const visible = window.__bwVisible;
                 const els = [...document.querySelectorAll(
                     'button,select,[role="button"],[role="tab"]')].filter(visible);
                 const hits = [];

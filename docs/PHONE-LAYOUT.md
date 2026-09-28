@@ -99,12 +99,33 @@ covered by something else:
 
 | floor | covered centres, per tab | verdict |
 |---|---|---|
-| 32 | 0/0, 1/1, 1/1, 6/6, 17/17, 0/0 — unchanged everywhere | nothing new is hidden |
+| 32 | 0/0, 1/1, 1/1, 0/0, 17/17, 0/0 — unchanged everywhere | nothing new is hidden |
 | 44 | Circuit goes **17 → 18** | "Analog" lands under an `svg`, untappable at its centre |
 
 An unreachable 44px control is worse than a reachable 32px one. 32 still clears
 the 24px hard limit for every control on every tab, which is what the gate
 asserts.
+
+### The visibility predicate is part of the measurement
+
+An earlier version of this section reported the Code tab at 6/6 covered and said
+"the editor overlays some Code-tab buttons at this width". **That was wrong, and
+the app was never at fault.** The `⋯` overflow menu on that tab is a closed
+`<details>`, and a closed `<details>`'s descendants can still report a non-zero
+`getBoundingClientRect()`. A hand-rolled filter of width + `display` +
+`visibility` therefore admitted six controls that are not reachable, not
+focusable, and not painted — they merely happened to lie under the editor, which
+is what produced the "overlap".
+
+`Element.checkVisibility({contentVisibilityAuto, opacityProperty,
+visibilityProperty})` knows about closed details, `content-visibility` and
+`opacity: 0`, and is what the gate uses now. The corrected counts: Code has **23**
+visible controls, not 29; the FPGA pane 42, not 43; and the Code tab's overlap is
+0, not 6.
+
+The 44px regression survived this correction — re-measured with the right
+predicate, Circuit still goes 17 → 18 with "Analog" — so the floor of 32 stands
+on evidence that outlived the bug in how it was gathered.
 
 A note on how that was found, because the first version of this section said
 "44 costs nothing here" on the strength of the `scrollWidth` reading alone. That
