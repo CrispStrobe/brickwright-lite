@@ -2,6 +2,12 @@ name: tauri
 
 on:
   workflow_dispatch:
+    inputs:
+      spike_prime_only:
+        description: Run only the heavy pinned SPIKE Prime Renode integration proof
+        required: false
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -91,6 +97,7 @@ concurrency:
 
 jobs:
   test:
+    if: github.event_name != 'workflow_dispatch' || inputs.spike_prime_only != true
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -138,6 +145,7 @@ jobs:
   # release.yml builds the app and stops. tauri-driver drives the real binary, so every invoke
   # below crosses the real Tauri ACL in the real process.
   e2e:
+    if: github.event_name != 'workflow_dispatch' || inputs.spike_prime_only != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -262,3 +270,92 @@ jobs:
           path: e2e-evidence/
           if-no-files-found: error
           retention-days: 14
+
+  # Deliberately manual: building the exact Renode fork is too heavy for every native PR. This
+  # job is the release-grade CP05 proof that Lite's semantic broker drives the real emulator,
+  # not only the bounded fake sockets in the ordinary Rust suite.
+  spike-prime-renode:
+    if: github.event_name == 'workflow_dispatch' && inputs.spike_prime_only == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out Brickwright Lite
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Check out exact permissive Renode fork
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: CrispStrobe/renode-spike-prime
+          ref: 06d86c517d2d295745748833171906176aa8dd54
+          path: renode
+          submodules: recursive
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up .NET 8 for the pinned Renode build
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build public SPIKE payload and headless Renode
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi
+          renode/build.sh --net --no-gui --external-lib-only
+          renode/build.sh --net --no-gui --skip-fetch
+          cd renode/tests/platforms/SPIKE_Prime
+          arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -nostdlib \
+            -Wl,-T,stm32f413-throughput.ld -o stm32f413-throughput.elf \
+            stm32f413-throughput.S
+          test "$(arm-none-eabi-readelf -h stm32f413-throughput.elf | awk '/Entry point/{print $4}')" = 0x8000009
+
+      - name: Export exact Renode package pins
+        shell: bash
+        run: |
+          root="$GITHUB_WORKSPACE/renode"
+          executable="$root/renode"
+          scenario="$root/scripts/single-node/spike-prime.resc"
+          firmware="$root/tests/platforms/SPIKE_Prime/stm32f413-throughput.elf"
+          state_script="$root/scripts/spike-state-server.py"
+          state_config="$root/contracts/brick-state/renode-prime.example.json"
+          {
+            echo "BW_RENODE_EXECUTABLE=$executable"
+            echo "BW_RENODE_SHA256=$(sha256sum "$executable" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_ROOT=$root"
+            echo "BW_RENODE_SPIKE_SCENARIO=$scenario"
+            echo "BW_RENODE_SPIKE_SCENARIO_SHA256=$(sha256sum "$scenario" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_FIRMWARE=$firmware"
+            echo "BW_RENODE_SPIKE_FIRMWARE_SHA256=$(sha256sum "$firmware" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_STATE_SCRIPT=$state_script"
+            echo "BW_RENODE_SPIKE_STATE_SCRIPT_SHA256=$(sha256sum "$state_script" | awk '{print $1}')"
+            echo "BW_RENODE_SPIKE_STATE_CONFIG=$state_config"
+            echo "BW_RENODE_SPIKE_STATE_CONFIG_SHA256=$(sha256sum "$state_config" | awk '{print $1}')"
+          } >> "$GITHUB_ENV"
+
+      - name: Drive the complete Lite SPIKE semantic debugger contract
+        shell: bash
+        run: |
+          mkdir -p packages/scratch-gui/build
+          cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib \
+            renode_debugger::tests::packaged_spike_session_drives_the_complete_cpu_and_state_contract \
+            -- --ignored --exact --nocapture
+
+      - name: Write immutable SPIKE integration receipt
+        shell: bash
+        run: |
+          jq -n \
+            --arg lite "$GITHUB_SHA" \
+            --arg renode "06d86c517d2d295745748833171906176aa8dd54" \
+            --arg firmware_sha256 "$BW_RENODE_SPIKE_FIRMWARE_SHA256" \
+            '{schema:1,target:"spike-prime",lite_commit:$lite,renode_commit:$renode,firmware_sha256:$firmware_sha256,operations:["start","registers","memory","breakpoint-set","breakpoint-clear","step","run","pause","state","reset","close"],result:"pass"}' \
+            > spike-prime-renode-e2e.json
+          cat spike-prime-renode-e2e.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload SPIKE integration receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spike-prime-renode-e2e
+          path: spike-prime-renode-e2e.json

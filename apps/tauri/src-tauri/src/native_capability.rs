@@ -6,6 +6,8 @@
 //! interprets caller-supplied capability, and no reusable invoke handle is ever returned.
 
 use crate::native_policy::{LeaseId, NativePolicyState, Operation, RedactedAuditRow, StateError};
+use crate::renode_debugger::RenodeDebugger;
+use crate::renode_supervisor::RenodeSupervisor;
 use serde_json::Value;
 use tauri::{State, WebviewWindow};
 
@@ -27,19 +29,50 @@ fn opaque(_: StateError) -> String {
     "capability refused".into()
 }
 
-/// The single executor. Side-effect free, argument free, and constant per build — reading it
-/// twice cannot reveal anything a caller did not already know from the binary it is running.
-fn execute(operation: Operation) -> &'static str {
+/// Closed semantic executor. Platform inspection stays side-effect free; the two Renode
+/// lifecycle operations can only reach the managed debugger and its build-pinned supervisor.
+/// No caller string becomes a path, process argument, monitor command, port or token.
+fn execute(
+    operation: Operation,
+    args: &Value,
+    debugger: &RenodeDebugger,
+    supervisor: &RenodeSupervisor,
+) -> Result<String, String> {
     match operation {
-        Operation::PlatformKindRead => {
-            if cfg!(target_os = "macos") {
-                "macos"
-            } else if cfg!(target_os = "windows") {
-                "windows"
-            } else {
-                "linux"
-            }
+        Operation::PlatformKindRead => Ok(if cfg!(target_os = "macos") {
+            "macos"
+        } else if cfg!(target_os = "windows") {
+            "windows"
+        } else {
+            "linux"
         }
+        .to_owned()),
+        Operation::RenodeSpikeStart => debugger.start(supervisor).map(str::to_owned),
+        Operation::RenodeSpikeClose => debugger.close(supervisor).map(str::to_owned),
+        Operation::RenodeSpikeRun => debugger.run().map(str::to_owned),
+        Operation::RenodeSpikePause => debugger.pause().map(str::to_owned),
+        Operation::RenodeSpikeReset => debugger.reset(supervisor).map(str::to_owned),
+        Operation::RenodeSpikeStep => debugger.step().map(str::to_owned),
+        Operation::RenodeSpikeRegistersRead => debugger.registers().map(|value| value.to_string()),
+        Operation::RenodeSpikeMemoryRead => debugger.read_memory(
+            u32::try_from(args["address"].as_u64().expect("validated address"))
+                .expect("bounded address"),
+            usize::try_from(args["length"].as_u64().expect("validated length"))
+                .expect("bounded length"),
+        ),
+        Operation::RenodeSpikeStateRead => debugger.state().map(|value| value.to_string()),
+        Operation::RenodeSpikeBreakpointSet => debugger
+            .set_breakpoint(
+                u32::try_from(args["address"].as_u64().expect("validated address"))
+                    .expect("bounded address"),
+            )
+            .map(str::to_owned),
+        Operation::RenodeSpikeBreakpointClear => debugger
+            .clear_breakpoint(
+                u32::try_from(args["address"].as_u64().expect("validated address"))
+                    .expect("bounded address"),
+            )
+            .map(str::to_owned),
     }
 }
 
@@ -66,6 +99,8 @@ pub(crate) fn native_broker_lease(
 pub(crate) fn native_broker_invoke(
     window: WebviewWindow,
     policy: State<'_, NativePolicyState>,
+    debugger: State<'_, RenodeDebugger>,
+    supervisor: State<'_, RenodeSupervisor>,
     lease: String,
     sequence: u64,
     operation: String,
@@ -80,7 +115,7 @@ pub(crate) fn native_broker_invoke(
     let call = policy
         .authorize_broker_call(window.label(), id, sequence, &operation, &resource, &args)
         .map_err(opaque)?;
-    Ok(execute(call.operation).to_owned())
+    execute(call.operation, &args, &debugger, &supervisor)
 }
 
 /// Diagnostics. Readable from the MAIN webview because that is where the learner sees it, and

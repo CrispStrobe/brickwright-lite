@@ -122,7 +122,11 @@ export const parsePreviousPins = (logText, currentShas = new Set(), allowedKeys 
 export const roleOf = file => {
     if (/^(LANES|HISTORY|ROADMAP|PLAN|BLOCKED|HANDOFF)\.md$/.test(file)) return 'ledger';
     if (/^docs\/generated\//.test(file)) return 'code';
+    // Dated run receipts and example verification prose record the source
+    // used at the time; moving those SHAs would falsify historical evidence.
+    if (/^docs\/receipts\//.test(file)) return 'ledger';
     if (/^docs\/.*\.md$/.test(file)) return 'docs-prose';
+    if (/^overlay\/scratch-gui\/examples\/.*\.md$/.test(file)) return 'docs-prose';
     if (/^packages\//.test(file)) return 'skip';
     return 'code';
 };
@@ -286,6 +290,9 @@ test('the same sha in a ledger, in docs prose, or on a comment line is history a
     const [sha] = [...previous.entries()][0];
     assert.deepEqual(judgeFile('LANES.md', `| row | ${sha} |`, known), []);
     assert.deepEqual(judgeFile('docs/SOMETHING.md', `measured at ${sha}`, known), []);
+    assert.deepEqual(judgeFile('docs/receipts/dated-run.json', `{"boardPin":"${sha}"}`, known), []);
+    assert.deepEqual(judgeFile('overlay/scratch-gui/examples/example/intro.md',
+        `bench-verified at ${sha}`, known), []);
     assert.deepEqual(judgeFile('test/x.test.mjs', `// pin moved ${sha} -> now`, known), []);
     assert.equal(judgeFile('test/x.test.mjs', `const PIN = '${sha}';`, known).length, 1, 'the code line beside the comment is not exempt');
     assert.equal(judgeFile('docs/generated/report.md', `Vendored engine: \`x@${sha}\``, known).length, 1, 'docs/generated is not prose');
