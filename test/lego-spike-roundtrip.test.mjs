@@ -150,8 +150,17 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // PRECHIN A2 preset's layout with the revision sha dropped from its intros
     // (#36). The words are additions; none of the SPIKE lines this round trip
     // reads changed, and the assertions re-ran at the pin.
+    // PIN MOVED fa8739e2 -> 041ec7dc (2026-09-28, sb3-creator#37): i8086-blink's
+    // 18 origin-stacked parts given coordinates. This is the rare bump that
+    // carries NO emitter risk at all, and it is MEASURED rather than asserted:
+    // `git diff --name-only fa8739e22 041ec7dc1 -- src/` is EMPTY, and the whole
+    // range is one commit touching one file, examples/i8086-blink/circuit.json.
+    // So every vendored src/lib/sb3-creator*.js is byte-identical across it and
+    // no SPIKE line this round trip reads can have moved. Assertions re-ran at
+    // the pin regardless, because an empty src/ diff is the reason to believe
+    // that and not a substitute for checking.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'fa8739e22603d7598bad37a7b9c4275b7048f822');
+        '041ec7dc1c4741538c7cf6eb92f9fe7dd9bc0d81');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
