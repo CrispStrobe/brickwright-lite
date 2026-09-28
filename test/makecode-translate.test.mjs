@@ -605,3 +605,125 @@ test('parentheses that change a value are kept ((n * (n + 1)) / 2 was n * n + 1 
     assert.match(code, /set r to a \/ \(b \* c\)/);
     assert.match(code, /set r to a \* b \+ c/);
 });
+
+// LED sprites (game.LedSprite) and the game state around them: every sprite
+// app in the census refused the sprite (hero, crashy-bird, snap-the-dot,
+// radio-dashboard) and headbands refused game.startCountdown. A sprite is a
+// numbered handle in a variable or array (sb3-creator's micro:bit+ sprite
+// words); each call imports to the line that compiles to the block meaning it.
+const SPRITES = [
+    // [MakeCode, the line it imports to, the opcode that line compiles to]
+    ['s = game.createSprite(2, 3)', 'set s to create sprite at x 2 y 3', 'microbitplus_createsprite'],
+    ['s = game.createSprite(v + 1, 0)', 'set s to create sprite at x (v + 1) y 0', 'microbitplus_createsprite'],
+    ['v = s.get(LedSpriteProperty.X)', 'set v to x of sprite s', 'microbitplus_spriteget'],
+    ['v = s.get(LedSpriteProperty.Blink)', 'set v to blink of sprite s', 'microbitplus_spriteget'],
+    ['s.set(LedSpriteProperty.Brightness, 8)', 'set sprite s brightness to 8', 'microbitplus_spriteset'],
+    ['s.change(LedSpriteProperty.Y, -1)', 'change sprite s y by (0 - 1)', 'microbitplus_spritechange'],
+    ['s.change(LedSpriteProperty.Direction, 45)', 'change sprite s direction by 45', 'microbitplus_spritechange'],
+    ['s.move(1)', 'move sprite s by 1', 'microbitplus_spritemove'],
+    ['s.turn(Direction.Right, 45)', 'turn sprite s right by 45 degrees', 'microbitplus_spriteturn'],
+    ['s.turn(Direction.Left, v * 2)', 'turn sprite s left by (v * 2) degrees', 'microbitplus_spriteturn'],
+    ['s.ifOnEdgeBounce()', 'bounce sprite s if on edge', 'microbitplus_spritebounce'],
+    ['s.delete()', 'delete sprite s', 'microbitplus_spritedelete'],
+    ['if (s.isTouching(t)) { basic.clearScreen() }', 'IF sprite s touching sprite t THEN:', 'microbitplus_spritetouching'],
+    ['if (s.isTouchingEdge()) { basic.clearScreen() }', 'IF sprite s touching edge THEN:', 'microbitplus_spritetouchingedge'],
+    ['if (s.isDeleted()) { basic.clearScreen() }', 'IF sprite s deleted THEN:', 'microbitplus_spritedeleted'],
+    ['game.startCountdown(30000)', 'start countdown 30000 ms', 'microbitplus_startcountdown'],
+    ['game.pause()', 'pause game', 'microbitplus_pausegame'],
+    ['game.resume()', 'resume game', 'microbitplus_resumegame'],
+    ['game.setLife(5)', 'set game life to 5', 'microbitplus_setlife'],
+    ['game.addLife(1)', 'add game life 1', 'microbitplus_addlife'],
+    ['v = game.life()', 'set v to game life', 'microbitplus_life'],
+    ['if (game.isGameOver()) { basic.clearScreen() }', 'IF game is over THEN:', 'microbitplus_isgameover'],
+    ['if (game.isRunning()) { basic.clearScreen() }', 'IF game is running THEN:', 'microbitplus_isrunning'],
+    ['if (game.isPaused()) { basic.clearScreen() }', 'IF game is paused THEN:', 'microbitplus_ispaused'],
+    // The methods MakeCode has no block for read as the block that does the same.
+    ['s.setX(3)', 'set sprite s x to 3', 'microbitplus_spriteset'],
+    ['s.changeYBy(1)', 'change sprite s y by 1', 'microbitplus_spritechange'],
+    ['s.setBlink(500)', 'set sprite s blink to 500', 'microbitplus_spriteset'],
+    ['s.on()', 'set sprite s brightness to 255', 'microbitplus_spriteset'],
+    ['s.off()', 'set sprite s brightness to 0', 'microbitplus_spriteset'],
+    ['s.turnLeft(90)', 'turn sprite s left by 90 degrees', 'microbitplus_spriteturn'],
+    ['v = s.direction()', 'set v to direction of sprite s', 'microbitplus_spriteget']
+];
+
+for (const [ts, line, opcode] of SPRITES) {
+    test(`LED sprites: \`${ts.slice(0, 60)}\` imports as \`${line}\` → ${opcode}`, {skip: canCompile ? false :
+        'packages/scratch-gui not integrated'}, () => {
+        const out = microbitToPseudocode(
+            `let v = 0\nlet s = game.createSprite(0, 0)\nlet t = game.createSprite(1, 1)\nbasic.forever(function () {\n    ${ts}\n})\n`);
+        assert.deepEqual(out.unsupported, [], 'nothing refused');
+        assert.ok(out.code.includes(line), `\`${line}\` not in:\n${out.code}`);
+        assert.ok(opcodesOf(out.code).has(opcode), `${opcode} missing: the line parsed to nothing`);
+    });
+}
+
+test('LED sprites: a sprite is known by its declared type, an array of them by its element type or what is pushed',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'let bird: game.LedSprite = null',
+            'let obstacles: game.LedSprite[] = []',
+            'let more: game.LedSprite[] = []',
+            'let pile = []',
+            'pile.push(game.createSprite(4, 0))',
+            'bird = game.createSprite(0, 2)',
+            'basic.forever(function () {',
+            '    bird.move(1)',
+            '    obstacles[0].move(1)',
+            '    pile[0].ifOnEdgeBounce()',
+            '    more.removeAt(0).delete()',
+            '})'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /set bird to 0\n/, 'null is the handle 0');
+        assert.match(code, /move sprite bird by 1/);
+        assert.match(code, /move sprite \(item 0 of array "obstacles"\) by 1/);
+        assert.match(code, /bounce sprite \(item 0 of array "pile"\) if on edge/);
+        // removeAt(0).delete(): the element is deleted, then taken off the array.
+        assert.match(code, /delete sprite \(item 0 of array "more"\)\n\s+remove item 0 of array "more"/);
+    });
+
+test('`for (let x of list)` walks the list, re-reading its length each pass (crashy-bird)',
+    {skip: canCompile ? false : 'packages/scratch-gui not integrated'}, () => {
+        const {code, unsupported} = microbitToPseudocode([
+            'let obstacles: game.LedSprite[] = []',
+            'basic.forever(function () {',
+            '    for (let o of obstacles) {',
+            '        o.change(LedSpriteProperty.X, -1)',
+            '    }',
+            '})'
+        ].join('\n'));
+        assert.deepEqual(unsupported, []);
+        assert.match(code, /set (_i\w*) to 0\n\s+REPEAT UNTIL not \(\1 < length of array "obstacles"\):\n\s+set o to item \1 of array "obstacles"\n\s+change sprite o x by \(0 - 1\)\n\s+change \1 by 1/);
+        const ast = parseMakeCodeTs('for (const k of list) { f(k) }\n');
+        assert.equal(ast.body[0].type, 'ForOf');
+        assert.equal(ast.body[0].name, 'k');
+    });
+
+test('`for … of` something that is not a known array is named, not guessed', () => {
+    const {unsupported} = microbitToPseudocode('for (let k of control.deviceName()) { basic.showString(k) }\n');
+    assert.ok(unsupported.some(u => /for … of something that is not an array.*control\.deviceName\(\)/.test(u)), unsupported.join('\n'));
+});
+
+test('a sprite kept in an object field is named with its reason (the handles live in variables and arrays)', () => {
+    const {unsupported} = microbitToPseudocode([
+        'const clients: any[] = []',
+        'basic.forever(function () {',
+        '    for (const client of clients) {',
+        '        client.sprite.setBlink(500)',
+        '        client.sprite.setBrightness(0)',
+        '    }',
+        '})'
+    ].join('\n'));
+    for (const call of ['client.sprite.setBlink()', 'client.sprite.setBrightness()']) {
+        assert.ok(unsupported.some(u => u.startsWith(call) && /a sprite kept in an object field/.test(u)), `${call}: ${unsupported.join('\n')}`);
+    }
+});
+
+test('a sprite method name on something that is not a sprite is left to the rest of the table', () => {
+    // An array's `set`/`get` and an unknown object's `move` are not sprites.
+    const {code, unsupported} = microbitToPseudocode('let a = [1, 2]\na.set(0, 5)\nrobot.move(3)\n');
+    assert.match(code, /set item 0 of array "a" to 5/);
+    assert.ok(unsupported.some(u => /robot\.move\(\)/.test(u)), unsupported.join('\n'));
+    assert.doesNotMatch(code, /sprite/);
+});

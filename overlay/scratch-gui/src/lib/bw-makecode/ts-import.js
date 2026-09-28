@@ -256,6 +256,9 @@ class Parser {
      * variable, and `let a: number[] = []` carries the fact nowhere else.
      */
     skipTypeAnnotation () {
+        // The type's text rides along (`lastType`): `let bird: game.LedSprite = null`
+        // says it holds a sprite, and nothing else in the declaration does.
+        this.lastType = '';
         if (!this.eat('punct', ':')) return false;
         let depth = 0;
         let isArray = false;
@@ -273,7 +276,7 @@ class Parser {
             }
             if (depth === 0 && t.type === 'punct' && (t.value === '=' || t.value === ';' || t.value === ',')) return isArray;
             if (depth === 0 && t.type === 'punct' && t.value === ')') return isArray;
-            this.next();
+            this.lastType += this.next().value;
         }
     }
 
@@ -379,9 +382,10 @@ class Parser {
         do {
             const name = this.expect('ident').value;
             const isArray = this.skipTypeAnnotation();
+            const typeName = this.lastType;
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            decls.push({name, init, isArray});
+            decls.push({name, init, isArray, typeName});
         } while (this.eat('punct', ','));
         this.eat('punct', ';');
         return {type: 'Declaration', kind, decls};
