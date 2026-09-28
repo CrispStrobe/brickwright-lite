@@ -99,6 +99,7 @@ function uiLang () {
 /** Status text in the reader's language. `S('boot.media', {name})`. */
 const S = (key, vars) => statusT(uiLang(), key, vars);
 import { localCompilerRequest, localToolchainEnabled } from '../sdcc-wasm/toolchain-source.js';
+import {withI80386MouseCmos} from '../bw-machines/i80386-cmos.js';
 
 /**
  * How many suppressed breakpoint hits one frame will absorb before yielding to
@@ -2978,7 +2979,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             [0x23, g.sectors & 0xff],
             [0x39, 0x00],
         ])(hdGeom) : [];
-        const hdCmosIdx = new Set(hdCmos.map(([i]) => i));
         const config = {
             ...base,
             a20: {...base.a20, mouse: true},
@@ -2987,15 +2987,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 ...base.regions.filter(r => !(r.kind === 'rom' && r.start === 0xc0000)),
                 { kind: 'rom', start: 0xc0000, end: 0xc9fff },
             ],
-            ...(isHdd ? {
-                chips: base.chips.map(chip => chip.kind === 'rtc' ? {
-                    ...chip,
-                    initialCmos: [
-                        ...chip.initialCmos.filter(([i]) => i !== 0x3d && i !== 0x12 && !hdCmosIdx.has(i)),
-                        [0x3d, 0x21], [0x12, 0xf0], ...hdCmos,
-                    ],
-                } : chip),
-            } : {}),
+            chips: withI80386MouseCmos(base.chips,
+                isHdd ? [[0x3d, 0x21], [0x12, 0xf0], ...hdCmos] : []),
         };
 
         const targetOpts = { config };
