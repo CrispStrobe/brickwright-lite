@@ -90,3 +90,20 @@ test('GUI event and runner preserve the named profile and all media slots', () =
     assert.match(runner, /profile: 'freedos-vga'/);
     assert.match(runner, /applyMedia\(\{kind: 'i80386', adapter: result.adapter, machine\}, entries\)/);
 });
+
+test('named browser run waits for attach completion and exposes a later failure', async () => {
+    const cfg = localFreedosVgaMachine({floppy: file('boot.img', FLOPPY_BYTES)});
+    const fetcher = async () => ({bytes: new Uint8Array(FLOPPY_BYTES)});
+    let successDetail;
+    await runMachineConfig(cfg, {fetcher, awaitBoot: true, dispatch: detail => {
+        successDetail = detail;
+        queueMicrotask(() => detail.bootCompletion.resolve());
+    }});
+    assert.equal(successDetail.bootCompletion, undefined,
+        'the completion callback must not remain in the retained event');
+
+    await assert.rejects(runMachineConfig(cfg, {fetcher, awaitBoot: true,
+        dispatch: detail => queueMicrotask(() =>
+            detail.bootCompletion.reject(new Error('VGA ROM could not attach')))}),
+    /VGA ROM could not attach/);
+});

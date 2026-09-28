@@ -33,6 +33,8 @@ const server = createServer(async (req, res) => {
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const url = `http://127.0.0.1:${server.address().port}/`;
 const browser = await chromium.launch();
+const context = await browser.newContext({viewport: {width: 1600, height: 1000},
+    serviceWorkers: 'block'});
 const floppy = Buffer.alloc(360 * 1024);
 const hdd = Buffer.alloc(306 * 4 * 17 * 512);
 floppy[0] = 0xeb;
@@ -62,7 +64,7 @@ const openManager = async page => {
 };
 const errors = [];
 try {
-    const page = await browser.newPage({viewport: {width: 1600, height: 1000}});
+    const page = await context.newPage();
     page.on('pageerror', error => errors.push(error.message));
     await openManager(page);
     await page.getByTestId('bw-mm-free386-floppy').setInputFiles(localFile('boot.img', floppy));
@@ -110,6 +112,32 @@ try {
     assert.deepEqual(errors, [], 'browser must have no uncaught page errors');
     console.log(`ok named 386 attached both synthetic disks; Widgets canvas ${await canvas.getAttribute('width')}x${await canvas.getAttribute('height')}; keyboard and PS/2 mouse forwarded`);
     await page.close();
+
+    const failing = await context.newPage();
+    failing.on('pageerror', error => errors.push(error.message));
+    let blockedBios = 0;
+    await failing.route('**/static/roms/free-386-bochs-bios.rom', route => {
+        blockedBios++;
+        return route.fulfill({status: 404, body: 'missing test BIOS'});
+    });
+    await openManager(failing);
+    await failing.getByTestId('bw-mm-free386-floppy').setInputFiles(localFile('boot.img', floppy));
+    await failing.getByTestId('bw-mm-free386-run').click();
+    try { await failing.waitForFunction(() => /Failed to load the free-386 BIOS/i.test(
+        document.querySelector('[data-testid="bw-mm-status"]')?.textContent || ''),
+    null, {timeout: 15000}); } catch (error) {
+        console.log('failure probe', {blockedBios,
+            modal: await failing.getByTestId('bw-machine-manager').count(),
+            status: await failing.getByTestId('bw-mm-status').allTextContents(),
+            events: await failing.evaluate(() => window.__free386Events), errors});
+        throw error;
+    }
+    assert.ok(blockedBios > 0, 'test must intercept a real browser firmware fetch');
+    assert.equal(await failing.getByTestId('bw-machine-manager').isVisible(), true,
+        'the manager must stay open and show a later attachment failure');
+    assert.deepEqual(errors, [], 'attachment refusal must not become an unhandled page error');
+    console.log('ok later 386 attachment failure remains visible in Machine Manager');
+    await failing.close();
 
 } finally {
     await browser.close();
