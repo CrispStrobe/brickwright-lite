@@ -46,15 +46,28 @@ test('allow and deny artifacts carry matching immutable policy evidence', async 
     }
 });
 
-test('a mixed artifact proves each independent capability', async () => {
-    const policies = {remoteExtensions: 'deny', executableToolchains: 'allow', machineImages: 'allow'};
-    const directory = await fixture(policies);
-    const result = spawnSync(process.execPath, [verifier, directory], {
-        encoding: 'utf8',
-        env: {...process.env, BW_EXPECT_REMOTE_EXTENSIONS_POLICY: 'deny',
-            BW_EXPECT_REMOTE_TOOLCHAINS_POLICY: 'allow', BW_EXPECT_REMOTE_MACHINE_IMAGES_POLICY: 'allow'}
-    });
-    assert.equal(result.status, 0, result.stderr);
+test('all eight independent capability profiles carry matching artifact evidence', async t => {
+    for (const remoteExtensions of ['allow', 'deny']) {
+        for (const executableToolchains of ['allow', 'deny']) {
+            for (const machineImages of ['allow', 'deny']) {
+                const policies = {remoteExtensions, executableToolchains, machineImages};
+                await t.test(`${remoteExtensions}/${executableToolchains}/${machineImages}`, async () => {
+                    const directory = await fixture(policies);
+                    const result = spawnSync(process.execPath, [verifier, directory], {
+                        encoding: 'utf8',
+                        env: {...process.env,
+                            BW_EXPECT_REMOTE_EXTENSIONS_POLICY: remoteExtensions,
+                            BW_EXPECT_REMOTE_TOOLCHAINS_POLICY: executableToolchains,
+                            BW_EXPECT_REMOTE_MACHINE_IMAGES_POLICY: machineImages}
+                    });
+                    assert.equal(result.status, 0, result.stderr);
+                    for (const [name, value] of Object.entries(policies)) {
+                        assert.match(result.stdout, new RegExp(`"${name}":"${value}"`));
+                    }
+                });
+            }
+        }
+    }
 });
 
 test('the artifact verifier rejects an expected-policy mismatch and missing UI evidence', async () => {
