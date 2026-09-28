@@ -2,7 +2,8 @@
 
 Baseline measured 2026-09-28 from Lite `dec8f2a`, bw-board `7a4b1e1`, and
 LabWired `1cf3d3b8`. The exact-board follow-up uses LabWired engine commit
-`cdd2f1fa` (merged as `313252d4`) and bw-board `47e0cb0b`. RTx means simulated
+`cdd2f1fa` (merged as `313252d4`) and bw-board `bdffe947` (the exact target
+bridge landed at ancestor `47e0cb0b`). RTx means simulated
 seconds per wall second; 1.0x is real time. Functional and throughput evidence
 remain separate.
 The in-process figures below are three-pass medians from the quiet GitHub
@@ -95,7 +96,7 @@ was therefore no orphan circuit to import from this VPS.
    get a fixed firmware workload plus both virtual and wall time instead of an
    idle-loop number.
 
-The immutable integration points are bw-board `47e0cb0b` for the exact
+The immutable integration points are bw-board `bdffe947` for the exact
 LabWired target bridge, Renode `d82f6466` for SPIKE Prime, Renode `64b51361`
 for EV3 including its honest 300-MIPS clock, and Infrastructure `d4353862` for
 their peripheral models. Public
