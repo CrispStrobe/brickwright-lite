@@ -91,7 +91,7 @@ describe('the labwired attach path', () => {
             + 'are absent, so passing one turns the ledger off.');
         assert.doesNotMatch(call[0], /\bchipYaml\s*:/,
             'same: a chipYaml passed here skips the derivation.');
-        assert.match(call[0], /chipKind\s*:/,
+        assert.match(call[0], /\bchipKind(?:\s*:|\s*[,}])/,
             'chipKind is the one thing that must still be passed — the canonical loader '
             + 'rewrites every controller to `mcu`, so the netlist cannot say which silicon.');
     });
