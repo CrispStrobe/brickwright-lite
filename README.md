@@ -61,6 +61,11 @@ engine: Z80 186x, 6502 150x, avr8js ATmega328P 13.3x, emu8051 5.23x, rp2040js
 RP2040 1.66x, and LabWired STM32F0 24.2x (three-pass medians, bw-board GitHub
 run 36384508630). In particular, RP2040 moved from a 0.94x median to 1.66x
 after the exhaustively differential-tested Thumb tier-zero dispatch path.
+The board-level census adds adapter-inclusive Arduboy 1.55x and ATtiny88
+2.76x on the busy VPS, plus the currently unintegrated LabWired nRF52833 and
+ATSAMD51 core ceilings (9.36x and 9.26x). See
+[board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
+for the exact shipped/candidate matrix and the gaps that remain.
 
 ### Block and code editor
 
