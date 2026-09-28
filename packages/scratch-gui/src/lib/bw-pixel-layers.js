@@ -69,6 +69,50 @@ const clearSelectedPixels = (pixels, width, selection) => {
     return next;
 };
 
+const stampBrushInto = (pixels, width, height, x, y, value, size = 1, mirror = false) => {
+    const before = Math.floor((size - 1) / 2);
+    const after = size - before - 1;
+    for (let dy = -before; dy <= after; dy++) {
+        for (let dx = -before; dx <= after; dx++) {
+            const px = x + dx;
+            const py = y + dy;
+            if (px < 0 || py < 0 || px >= width || py >= height) continue;
+            pixels[(py * width) + px] = value;
+            if (mirror) pixels[(py * width) + width - 1 - px] = value;
+        }
+    }
+};
+
+const replaceColourPixels = (pixels, width, height, selection, from, to) => {
+    const next = new Uint8Array(pixels);
+    if (from === to) return next;
+    const region = selection || {x: 0, y: 0, width, height};
+    for (let y = region.y; y < region.y + region.height; y++) {
+        for (let x = region.x; x < region.x + region.width; x++) {
+            const index = (y * width) + x;
+            if (next[index] === from) next[index] = to;
+        }
+    }
+    return next;
+};
+
+const outlinePixels = (pixels, width, height, selection, colour) => {
+    const next = new Uint8Array(pixels);
+    if (!colour) return next;
+    const region = selection || {x: 0, y: 0, width, height};
+    const inside = (x, y) => x >= region.x && y >= region.y &&
+        x < region.x + region.width && y < region.y + region.height;
+    for (let y = region.y; y < region.y + region.height; y++) {
+        for (let x = region.x; x < region.x + region.width; x++) {
+            const index = (y * width) + x;
+            if (pixels[index]) continue;
+            if ([[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]
+                .some(([nx, ny]) => inside(nx, ny) && pixels[(ny * width) + nx])) next[index] = colour;
+        }
+    }
+    return next;
+};
+
 const moveSelectedPixels = (pixels, width, height, selection, requestedDx, requestedDy) => {
     const dx = Math.max(-selection.x, Math.min(width - selection.x - selection.width, requestedDx));
     const dy = Math.max(-selection.y, Math.min(height - selection.y - selection.height, requestedDy));
@@ -116,4 +160,5 @@ const transformPixels = (pixels, width, height, selection, operation) => {
 };
 
 export {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels};
+    moveSelectedPixels, outlinePixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
+    stampBrushInto, transformPixels};

@@ -59,6 +59,29 @@ try {
         'the circle tool must draw an outline');
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-tool-filledRect').click();
+    await page.mouse.move(box.x + box.width * 0.06, box.y + box.height * 0.55);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.65, {steps: 5});
+    await page.mouse.up();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-tool-filledCircle').click();
+    await page.mouse.move(box.x + box.width * 0.06, box.y + box.height * 0.55);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.25, box.y + box.height * 0.75, {steps: 5});
+    await page.mouse.up();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-tool-pencil').click();
+    await page.getByTestId('bw-pixel-brush-size').fill('3');
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-brush-size').fill('1');
     await page.getByTestId('bw-pixel-flip-h').click();
     assert.notEqual(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools,
         'flipping must change the editable costume');
@@ -69,6 +92,26 @@ try {
         'rotating must change the editable costume');
     await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
     assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-add-layer').click();
+    await page.getByTestId('bw-pixel-colour-11').click();
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
+    const onePixel = await canvas.evaluate(element => element.toDataURL());
+    await page.getByTestId('bw-pixel-colour-12').click();
+    await page.getByTestId('bw-pixel-outline').click();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), onePixel,
+        'outline must draw around opaque pixels');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), onePixel);
+    await page.getByTestId('bw-pixel-replace-from').selectOption('11');
+    await page.getByTestId('bw-pixel-replace-colour').click();
+    assert.notEqual(await canvas.evaluate(element => element.toDataURL()), onePixel,
+        'replace must change the chosen palette index');
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), onePixel);
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    await page.getByTestId('bw-pixel-editor').getByRole('button', {name: 'Undo', exact: true}).click();
+    assert.equal(await canvas.evaluate(element => element.toDataURL()), beforeArcadeTools);
+    await page.getByTestId('bw-pixel-colour-10').click();
     await page.getByTestId('bw-pixel-tool-pencil').click();
     const beforeStroke = await canvas.evaluate(element => element.toDataURL());
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);

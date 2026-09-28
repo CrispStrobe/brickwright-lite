@@ -19,7 +19,8 @@ import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
 import {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels} from '../../lib/bw-pixel-layers.js';
+    moveSelectedPixels, outlinePixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
+    stampBrushInto, transformPixels} from '../../lib/bw-pixel-layers.js';
 import {
     ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile
 } from '../../lib/bw-makecode/pixel-image.js';
@@ -51,7 +52,10 @@ const L10N = {
         'px.paletteColour': 'Edit palette colour',
         'px.resetPalette': 'Reset palette', 'px.paletteHint': 'Change the colour of every pixel with this index.',
         'px.importPalette': 'Import palette',
-        'px.invalidPalette': 'Use a 15- or 16-colour .hex, .txt or GIMP .gpl palette.'
+        'px.invalidPalette': 'Use a 15- or 16-colour .hex, .txt or GIMP .gpl palette.',
+        'px.filledRect': 'Filled rectangle', 'px.filledCircle': 'Filled circle',
+        'px.brushSize': 'Brush size', 'px.replaceColour': 'Replace colour',
+        'px.replaceFrom': 'Replace index', 'px.outline': 'Outline'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -79,7 +83,10 @@ const L10N = {
         'px.paletteColour': 'Palettenfarbe bearbeiten',
         'px.resetPalette': 'Palette zurücksetzen', 'px.paletteHint': 'Die Farbe aller Pixel mit diesem Index ändern.',
         'px.importPalette': 'Palette importieren',
-        'px.invalidPalette': 'Eine .hex-, .txt- oder GIMP-.gpl-Palette mit 15 oder 16 Farben verwenden.'
+        'px.invalidPalette': 'Eine .hex-, .txt- oder GIMP-.gpl-Palette mit 15 oder 16 Farben verwenden.',
+        'px.filledRect': 'Gefülltes Rechteck', 'px.filledCircle': 'Gefüllter Kreis',
+        'px.brushSize': 'Pinselgröße', 'px.replaceColour': 'Farbe ersetzen',
+        'px.replaceFrom': 'Index ersetzen', 'px.outline': 'Umriss'
     }
 };
 const t = makeT(L10N);
@@ -106,7 +113,7 @@ class PixelArtEditor extends React.Component {
         super(props);
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             palette: [...ARCADE_PALETTE],
-            scale: 4, zoom: 1, colour: 2, tool: 'pencil',
+            scale: 4, zoom: 1, colour: 2, replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null,
             status: '', w: 16, h: 16, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: ''};
@@ -329,7 +336,7 @@ class PixelArtEditor extends React.Component {
         const cell = this.cellAt(event);
         if (!cell) return;
         const [x, y] = cell;
-        const {image, tool, colour, mirror} = this.state;
+        const {image, tool, colour, mirror, brushSize} = this.state;
         const k = (y * image.width) + x;
         if (tool === 'pick') { this.setState({colour: image.pixels[k], tool: 'pencil'}); return; }
         const active = this.activeLayer();
@@ -350,10 +357,8 @@ class PixelArtEditor extends React.Component {
             const current = state.layers.find(layer => layer.id === state.activeLayerId);
             if (!current || current.locked || !current.visible) return null;
             const pixels = new Uint8Array(current.pixels);
-            const plot = (px, py) => {
-                pixels[(py * state.w) + px] = value;
-                if (mirror) pixels[(py * state.w) + state.w - 1 - px] = value;
-            };
+            const plot = (px, py) => stampBrushInto(pixels, state.w, state.h,
+                px, py, value, brushSize, mirror);
             let x0 = previous[0];
             let y0 = previous[1];
             const dx = Math.abs(x - x0);
@@ -380,31 +385,43 @@ class PixelArtEditor extends React.Component {
         const {width, height} = this.shapeBase;
         const pixels = new Uint8Array(this.shapeBase.pixels);
         const value = this.state.colour;
-        const plot = (x, y) => {
-            if (x < 0 || y < 0 || x >= width || y >= height) return;
-            pixels[(y * width) + x] = value;
-            if (this.state.mirror) pixels[(y * width) + width - 1 - x] = value;
-        };
+        const filled = ['filledRect', 'filledCircle'].includes(this.state.tool);
+        const plot = (x, y) => stampBrushInto(pixels, width, height, x, y, value,
+            filled ? 1 : this.state.brushSize, this.state.mirror);
         const [x1, y1] = end;
         const [startX, startY] = this.shapeStart;
-        if (this.state.tool === 'rect') {
+        if (this.state.tool === 'rect' || this.state.tool === 'filledRect') {
             const left = Math.min(startX, x1);
             const right = Math.max(startX, x1);
             const top = Math.min(startY, y1);
             const bottom = Math.max(startY, y1);
-            for (let x = left; x <= right; x++) { plot(x, top); plot(x, bottom); }
-            for (let y = top; y <= bottom; y++) { plot(left, y); plot(right, y); }
-        } else if (this.state.tool === 'circle') {
+            if (filled) {
+                for (let y = top; y <= bottom; y++) for (let x = left; x <= right; x++) plot(x, y);
+            } else {
+                for (let x = left; x <= right; x++) { plot(x, top); plot(x, bottom); }
+                for (let y = top; y <= bottom; y++) { plot(left, y); plot(right, y); }
+            }
+        } else if (this.state.tool === 'circle' || this.state.tool === 'filledCircle') {
             const cx = (startX + x1) / 2;
             const cy = (startY + y1) / 2;
             const rx = Math.abs(x1 - startX) / 2;
             const ry = Math.abs(y1 - startY) / 2;
-            // Dense sampling gives an unbroken one-pixel outline even for
-            // small and narrow circles, including a one-cell drag.
-            const steps = Math.max(1, 16 * Math.max(Math.abs(x1 - startX), Math.abs(y1 - startY)));
-            for (let step = 0; step < steps; step++) {
-                const angle = (step * 2 * Math.PI) / steps;
-                plot(Math.round(cx + rx * Math.cos(angle)), Math.round(cy + ry * Math.sin(angle)));
+            if (filled) {
+                for (let y = Math.min(startY, y1); y <= Math.max(startY, y1); y++) {
+                    for (let x = Math.min(startX, x1); x <= Math.max(startX, x1); x++) {
+                        const dx = (x - cx) / Math.max(1, rx);
+                        const dy = (y - cy) / Math.max(1, ry);
+                        if ((dx * dx) + (dy * dy) <= 1.0001) plot(x, y);
+                    }
+                }
+            } else {
+                // Dense sampling gives an unbroken one-pixel outline even for
+                // small and narrow circles, including a one-cell drag.
+                const steps = Math.max(1, 16 * Math.max(Math.abs(x1 - startX), Math.abs(y1 - startY)));
+                for (let step = 0; step < steps; step++) {
+                    const angle = (step * 2 * Math.PI) / steps;
+                    plot(Math.round(cx + rx * Math.cos(angle)), Math.round(cy + ry * Math.sin(angle)));
+                }
             }
         } else {
             let x = startX;
@@ -483,7 +500,7 @@ class PixelArtEditor extends React.Component {
             this.shapeStart = cell;
             this.shapeBase = {pixels: active.pixels};
             this.selectionBeforeGesture = this.state.selection;
-        } else if (['line', 'rect', 'circle'].includes(this.state.tool)) {
+        } else if (['line', 'rect', 'circle', 'filledRect', 'filledCircle'].includes(this.state.tool)) {
             this.shapeStart = cell;
             this.shapeBase = {width: this.state.w, height: this.state.h, pixels: active.pixels};
             this.applyShape(event);
@@ -507,7 +524,8 @@ class PixelArtEditor extends React.Component {
             viewport.scrollLeft = this.gesture.scrollLeft + this.gesture.x - event.clientX;
             viewport.scrollTop = this.gesture.scrollTop + this.gesture.y - event.clientY;
         } else if (this.drawing && ['pencil', 'erase'].includes(this.state.tool)) this.apply(event);
-        else if (this.drawing && ['line', 'rect', 'circle'].includes(this.state.tool)) this.applyShape(event);
+        else if (this.drawing && ['line', 'rect', 'circle', 'filledRect', 'filledCircle']
+            .includes(this.state.tool)) this.applyShape(event);
         else if (this.drawing && this.shapeBase && this.state.tool === 'move') this.updateMove(event);
         else if (this.drawing && this.shapeStart) this.updateSelection(event);
     }
@@ -555,7 +573,29 @@ class PixelArtEditor extends React.Component {
             if (operation) {
                 event.preventDefault();
                 this.transform(operation);
-            } else if (event.key.toLowerCase() === 'c') this.setState({tool: 'circle'});
+            } else if (event.shiftKey && (/^Digit[1-9]$/.test(event.code) || /^[a-f]$/i.test(event.key))) {
+                event.preventDefault();
+                this.outline(/^Digit[1-9]$/.test(event.code) ? Number(event.code.slice(-1)) :
+                    parseInt(event.key, 16));
+            } else if (event.shiftKey && (event.code === 'Period' || event.code === 'Comma')) {
+                event.preventDefault();
+                this.setState(state => ({brushSize: Math.max(1, Math.min(8,
+                    state.brushSize + (event.code === 'Period' ? 1 : -1)))}));
+            } else if (/^[0-9]$/.test(event.key)) {
+                event.preventDefault();
+                this.setState({colour: Number(event.key)});
+            } else if (event.key.toLowerCase() === 'r') {
+                event.preventDefault();
+                this.replaceColour();
+            } else {
+                const tools = {b: 'pencil', p: 'pencil', e: 'erase', g: 'fill', l: 'line',
+                    u: 'rect', c: 'circle', m: 'select', q: 'hand'};
+                const tool = tools[event.key.toLowerCase()];
+                if (tool) {
+                    event.preventDefault();
+                    this.setState({tool});
+                }
+            }
             return;
         }
         if (!(event.metaKey || event.ctrlKey)) return;
@@ -597,6 +637,22 @@ class PixelArtEditor extends React.Component {
         });
         this.setState({layers: next, image: composeLayers(next, transformed.width, transformed.height),
             w: transformed.width, h: transformed.height, selection: transformed.selection, status: ''});
+    }
+
+    replaceColour () {
+        const {replaceFrom, colour, selection, w, h} = this.state;
+        const active = this.activeLayer();
+        if (!active || active.locked || !active.visible || replaceFrom === colour) return;
+        this.remember();
+        this.updateActive(replaceColourPixels(active.pixels, w, h, selection, replaceFrom, colour));
+    }
+
+    outline (colour = this.state.colour) {
+        const {selection, w, h} = this.state;
+        const active = this.activeLayer();
+        if (!active || active.locked || !active.visible || !colour) return;
+        this.remember();
+        this.updateActive(outlinePixels(active.pixels, w, h, selection, colour));
     }
 
     showLiteral () {
@@ -788,26 +844,36 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, layers, activeLayerId, selection, colour, tool, mirror, converted, status, w, h, zoom, palette,
+        const {image, layers, activeLayerId, selection, colour, replaceFrom, brushSize, tool, mirror, converted,
+            status, w, h, zoom, palette,
             renamingLayerId, renameValue, literalMode, literalText, literalError, paletteError} =
             this.state;
         if (!image) return <div style={{padding: 24, color: '#64748b'}}>{t(locale, 'px.none')}</div>;
         const activeLayer = layers.find(layer => layer.id === activeLayerId);
-        const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12, cursor: 'pointer',
+        const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12,
+            whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
             border: `1px solid ${active ? '#4c97ff' : '#cbd5e1'}`, background: active ? '#e0edff' : '#fff'});
         return (
             <div ref={this.root} data-testid="bw-pixel-editor" tabIndex={0}
                 onKeyDown={this.handleKeyDown}
                 style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
                     height: '100%', boxSizing: 'border-box', overflow: 'auto'}}>
-                <div style={{display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center'}}>
+                <div style={{display: 'flex', gap: 6, flexWrap: 'nowrap', alignItems: 'center',
+                    minHeight: 52, overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain'}}>
                     {this.props.editorTools}
-                    {['pencil', 'line', 'rect', 'circle', 'select', 'move', 'fill', 'erase', 'pick', 'hand'].map(k => (
+                    {['pencil', 'line', 'rect', 'filledRect', 'circle', 'filledCircle', 'select', 'move',
+                        'fill', 'erase', 'pick', 'hand'].map(k => (
                         <button key={k} type="button" style={btn(tool === k)} data-testid={`bw-pixel-tool-${k}`}
                             onClick={() => this.setState({tool: k})}>{t(locale, `px.${k}`)}</button>
                     ))}
                     <button type="button" style={btn(mirror)} aria-pressed={mirror}
                         onClick={() => this.setState({mirror: !mirror})}>{t(locale, 'px.mirror')}</button>
+                    <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12}}>
+                        {t(locale, 'px.brushSize')} {brushSize}
+                        <input type="range" min="1" max="8" value={brushSize} data-testid="bw-pixel-brush-size"
+                            aria-label={t(locale, 'px.brushSize')}
+                            onChange={event => this.setState({brushSize: Number(event.target.value)})} />
+                    </label>
                     <span style={{fontSize: 12, marginLeft: 8}}>{t(locale, 'px.size')}</span>
                     <input type="number" min="1" max="128" value={w} style={{width: 52}} data-testid="bw-pixel-w"
                         onChange={e => this.resize(Number(e.target.value), h)} />
@@ -825,6 +891,20 @@ class PixelArtEditor extends React.Component {
                         data-testid="bw-pixel-clear-selection">{t(locale, 'px.clearSelection')}</button> : null}
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.setState({selection: null})}>
                         {t(locale, 'px.deselect')}</button> : null}
+                    <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12}}>
+                        {t(locale, 'px.replaceFrom')}
+                        <select value={replaceFrom} data-testid="bw-pixel-replace-from"
+                            aria-label={t(locale, 'px.replaceFrom')}
+                            onChange={event => this.setState({replaceFrom: Number(event.target.value)})}>
+                            {palette.map((swatch, index) => <option key={index} value={index}>{index}</option>)}
+                        </select>
+                    </label>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-replace-colour"
+                        disabled={!activeLayer || activeLayer.locked || !activeLayer.visible || replaceFrom === colour}
+                        onClick={() => this.replaceColour()}>{t(locale, 'px.replaceColour')}</button>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-outline"
+                        disabled={!activeLayer || activeLayer.locked || !activeLayer.visible || colour === 0}
+                        onClick={() => this.outline()}>{t(locale, 'px.outline')}</button>
                     {[
                         ['flip-h', 'px.flipH', '↔'], ['flip-v', 'px.flipV', '↕'],
                         ['rotate-ccw', 'px.rotateCCW', '↶'], ['rotate-cw', 'px.rotateCW', '↷']
@@ -865,8 +945,9 @@ class PixelArtEditor extends React.Component {
                             {t(locale, 'px.closeLiteral')}</button>
                     </div>
                 </div> : null}
-                <div style={{display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center'}}>
-                    <div style={{display: 'flex', gap: 4, flexWrap: 'wrap'}} role="radiogroup">
+                <div style={{display: 'flex', gap: 8, flexWrap: 'nowrap', alignItems: 'center',
+                    minHeight: 52, overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain'}}>
+                    <div style={{display: 'flex', gap: 4, flexWrap: 'nowrap', flexShrink: 0}} role="radiogroup">
                         {palette.map((c, i) => (
                             <button key={i} type="button" role="radio" aria-checked={colour === i}
                                 title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
@@ -898,8 +979,9 @@ class PixelArtEditor extends React.Component {
                     <div style={{fontSize: 12, color: '#92400e', background: '#fffbeb', padding: '4px 8px', borderRadius: 6}}>
                         {t(locale, 'px.converted', {w: image.width, h: image.height})}</div>
                 ) : null}
-                <div data-testid="bw-pixel-layers" style={{display: 'flex', flexWrap: 'wrap', gap: 6,
-                    alignItems: 'center'}}>
+                <div data-testid="bw-pixel-layers" style={{display: 'flex', flexWrap: 'nowrap', gap: 6,
+                    alignItems: 'center', minHeight: 52, overflowX: 'auto', overflowY: 'hidden',
+                    overscrollBehaviorX: 'contain'}}>
                     <strong style={{fontSize: 12}}>{t(locale, 'px.layers')}</strong>
                     <button type="button" style={btn(false)} onClick={this.addLayer}
                         data-testid="bw-pixel-add-layer">+ {t(locale, 'px.addLayer')}</button>
@@ -916,7 +998,7 @@ class PixelArtEditor extends React.Component {
                     </label> : null}
                     {layers.slice().reverse().map(layer => {
                         const index = layers.findIndex(item => item.id === layer.id);
-                        return <div key={layer.id} style={{display: 'flex', alignItems: 'center', gap: 2,
+                        return <div key={layer.id} style={{display: 'flex', flexShrink: 0, alignItems: 'center', gap: 2,
                             padding: 2, borderRadius: 6,
                             border: layer.id === activeLayerId ? '2px solid #4c97ff' : '1px solid #cbd5e1'}}>
                             {renamingLayerId === layer.id ?

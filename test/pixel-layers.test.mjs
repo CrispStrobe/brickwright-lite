@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 
 const {blankLayer, clearSelectedPixels, composeLayers, containsCell, layersDocument, layersToSvg,
-    moveSelectedPixels, resizeLayers, selectionRect, sourceLayers, transformPixels} =
+    moveSelectedPixels, outlinePixels, replaceColourPixels, resizeLayers, selectionRect, sourceLayers,
+    stampBrushInto, transformPixels} =
     await import('../overlay/scratch-gui/src/lib/bw-pixel-layers.js');
 
 test('pixel layers compose in order and keep hidden edits in source', () => {
@@ -91,4 +92,30 @@ test('a selected quarter turn stays inside the canvas and refuses an impossible 
         false, 'a fitting rotated footprint is allowed');
     assert.equal(transformPixels(pixels, 4, 3, {x: 0, y: 0, width: 4, height: 1}, 'rotate-cw'), null,
         'a four-cell-high selection cannot fit in a three-cell-high canvas');
+});
+
+test('larger mirrored brushes clip at edges without changing their source snapshot', () => {
+    const pixels = new Uint8Array(5 * 3);
+    stampBrushInto(pixels, 5, 3, 0, 0, 7, 3, true);
+    assert.deepEqual([...pixels], [7, 7, 0, 7, 7, 7, 7, 0, 7, 7, 0, 0, 0, 0, 0]);
+    const erased = new Uint8Array(pixels);
+    stampBrushInto(erased, 5, 3, 0, 0, 0, 1, true);
+    assert.equal(erased[0], 0);
+    assert.equal(erased[4], 0);
+    assert.equal(pixels[0], 7, 'the prior buffer remains an undo snapshot');
+});
+
+test('colour replacement and outline stay on the active selected region', () => {
+    const pixels = Uint8Array.from([0, 0, 0, 0, 0,
+        0, 2, 2, 0, 0,
+        0, 0, 0, 0, 0]);
+    const selection = {x: 0, y: 0, width: 4, height: 3};
+    const outlined = outlinePixels(pixels, 5, 3, selection, 3);
+    assert.deepEqual([...outlined], [0, 3, 3, 0, 0,
+        3, 2, 2, 3, 0,
+        0, 3, 3, 0, 0]);
+    const replaced = replaceColourPixels(outlined, 5, 3, selection, 3, 10);
+    assert.equal(replaced[1], 10);
+    assert.equal(replaced[9], 0, 'pixels outside the selection remain untouched');
+    assert.equal(outlined[1], 3, 'replacement keeps the previous undo snapshot');
 });
