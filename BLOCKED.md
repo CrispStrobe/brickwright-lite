@@ -487,7 +487,23 @@ bw-bundle continues to own: CI guards, bundle budget, bw-board vendoring,
 WASM pinning, sb3-creator vendoring, extension conformance, and deploy
 verification.
 
-## OPEN: debugger visibility from the Code tab
+## ~~OPEN~~ — STALE (re-tested 2026-09-29): debugger visibility from the Code tab
+
+**The Code tab has a debugger control.**
+`pseudocode-importer.jsx:4923` renders a button titled "Open debugger in the
+right pane" ("Debugger im rechten Bereich öffnen"), and `circuit-tab.jsx:402`
+handles "Workspace → Debugger → Right, from any tab but Circuit". The note's
+central claim — "The Code tab has NO debugger controls" — is false.
+
+It is also pinned rather than merely true: `scripts/verify-debug-dock.mjs` is a
+`run:` step in build.yml and exists because dock 'right' once rendered a BLANK
+pane from the coding view. So the gap was not only closed, it was closed with a
+gate that fires if it reopens.
+
+The note chose option (b), a link from the Code tab, which is what shipped.
+
+### The original note
+
 
 Verified on production: Run/Sim controls are in the Circuit tab.
 Pause/Step appear after a program starts. The Code tab has NO debugger
@@ -510,7 +526,25 @@ owner" pattern.
 - ~~STC89 12T timing~~ — RESOLVED (ba6e001)
 - ~~Naming rule~~ — RESOLVED (b787135 + 956fab6)
 
-## FINDING: To-blocks drops stc12 extension blocks
+## ~~FINDING~~ — STALE, and it was already fixed further down this file: To-blocks drops stc12 extension blocks
+
+**Re-tested 2026-09-29: fixed.** Parsing the SHIPPED `01-blink/program.bw`
+through `SB3Creator` gives zero warnings and emits `stc12_setpin` twice, next to
+`event_whenflagclicked`, `control_wait` and `control_forever`. The entry below
+("~~To-blocks drops stc12 blocks~~ — FIXED (e155ca1), VERIFIED") is the same
+issue: the resolution was filed as a NEW heading instead of closing this one, so
+anyone scanning for OPEN work hits this copy first. It cost me a real
+investigation before I noticed the fix was fifteen lines below.
+
+**Its repro is also malformed, which is why it still reproduces symptoms.**
+`DEVICE STC12` is not a known device (the list has `STC12C5A60S2`), and
+`PIN led1 = P1.0` lacks the `OUTPUT ACTIVE LOW` the parser wants. Both produce
+exactly "pins empty, no stc12 blocks" against perfectly working code. A repro
+that fails for its own reasons will keep an entry alive forever; test a shipped
+example, which is what settled it.
+
+### The original note, kept for its diagnosis
+
 
 Headless repro (Playwright, production site):
 - Textarea filled with: DEVICE/CLOCK/PIN + WHEN flag clicked + turn on/off led1 + wait
@@ -545,7 +579,34 @@ Fix: deserializeProject pre-loads declared extensions before parsing targets.
 **bw-blocks:** your side was clean (confirmed). The loss was in
 vm.loadProject's deserialization, not in sb3-creator.
 
-## IN PROGRESS: pane-slots (gui.jsx)
+## ~~IN PROGRESS~~ — STALE on both facts (re-tested 2026-09-29): pane-slots (gui.jsx)
+
+Both factual claims below are now false, in different directions:
+
+  - "gui.jsx reads only `.size`" — it reads the CONTENT slot too.
+    `gui.jsx:779` is `paneLayout?.middle?.upper || 'blocks-canvas'`, and that id
+    decides what the first TabPanel shows. The `code` preset sets it to `code`;
+    `blocks` leaves it `blocks-canvas`.
+  - "PaneColumn exists and is unreferenced" — PaneColumn does not exist at all
+    any more; there is no reference to it anywhere under `overlay/`. It was
+    removed, not wired.
+
+The "approach decision needed" was therefore taken: the content-swap route, with
+the Tabs structure left intact, which is what the comment at `gui.jsx:770` now
+describes.
+
+**Newly pinned, because nothing pinned it.** That is why this entry could sit
+open while the code moved underneath it — the two other stale entries in this
+file were at least pinned by tests or a gate.
+`test/pane-layout-slots-are-consumed.test.mjs` asserts gui.jsx reads
+`middle.upper`, that every declared size is read, that the `code` preset
+genuinely differs in the field gui.jsx consumes (otherwise the first assertion
+could pass while the preset did nothing), and that gui.jsx's fallback is a
+content id some preset actually declares. Falsified: stubbing out the slot read
+fails 2 of 4, flattening the `code` preset fails 1.
+
+### The original note
+
 
 **Owner: bw-bundle.**
 
@@ -572,7 +633,13 @@ would just change which TabPanel is selected, not where content renders.
 
 ---
 
-## Wind-down note (2026-08-10, quota pause until Aug 15)
+## ~~Wind-down note~~ — EXPIRED (the pause it announces ended 2026-08-15; it is now September)
+
+A dated session hand-off, not a claim about the code. Kept for its record of what
+had just landed; it should not be read as outstanding work.
+
+### The note
+
 
 ### What was just finished
 - Licence notices for all three vendored sources: bw-circuit-ui (MPL-2.0,
@@ -684,7 +751,16 @@ real terminal list. Wire endpoints referencing legacy names never matched,
 bw-circuit-ui `92c6450`. Cases 1 and 2 were unaffected — their circuits
 already resolved. Screenshots: `/tmp/schematic-{1,2,3}-*.png`.
 
-## PLANNED: avr8js emulator integration
+## ~~PLANNED~~ — DONE (re-tested 2026-09-29): avr8js emulator integration
+
+`avr8js` is an installed dependency and is used by three shipped modules —
+`lib/sb3-creator.js`, `lib/bw-debug/arduino-sketch.js`, `lib/bw-debug/frames.js`
+— and is exercised by `test/debug-capabilities.test.mjs`,
+`test/debug-frames.test.mjs` and `test/shipped-lesson-images.test.mjs`. Nothing
+about this is still planned.
+
+### The original plan
+
 
 **Owner: bw-bundle.** Not started — write-up only, to hand forward.
 

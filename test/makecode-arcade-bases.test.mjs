@@ -245,3 +245,17 @@ test('a picked board builds: the imported game links for that board\'s variant, 
     assert.ok(fw, `${board.name}: no binary.${board.ext}`);
     assert.ok(uf2Image(fw.bytes, board.family).blocks > 100, `${board.name}: too few UF2 blocks`);
 });
+
+test('the base build fixes the date gcc stamps into the image (rp2040 compiles __DATE__)', async () => {
+    const src = fs.readFileSync(path.join(ROOT, 'scripts/build-makecode-arcade-bases.mjs'), 'utf8');
+    const {SOURCE_DATE_EPOCH} = await import(path.join(ROOT, 'scripts/build-makecode-arcade-bases.mjs'));
+    // gcc's __DATE__ format, from the epoch the build passes: the pinned rp2040
+    // bytes carry "Sep 27 2026" (a rebuild on 2026-09-29 without this carried
+    // "Sep 29 2026" and missed the pin by that one record, main run 36544779170).
+    const d = new Date(Number(SOURCE_DATE_EPOCH) * 1000);
+    const gccDate = `${d.toUTCString().slice(8, 11)} ${String(d.getUTCDate()).padStart(2, ' ')} ${d.getUTCFullYear()}`;
+    assert.equal(gccDate, 'Sep 27 2026', 'SOURCE_DATE_EPOCH moved off the day the pinned rp2040 base was built: re-pin rp2040');
+    const call = src.match(/run\('python3', \['build\.py'\], \{[^\n]*\}\);/);
+    assert.ok(call, 'the build.py call is not where this test looks');
+    assert.match(call[0], /\bSOURCE_DATE_EPOCH\b/, 'build.py runs without SOURCE_DATE_EPOCH: the rp2040 image then depends on the build day');
+});

@@ -82,6 +82,18 @@ export const BUILD_ENV = Object.freeze({CFLAGS: '-gno-variable-location-views', 
 
 const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
 
+/**
+ * The build date the images are stamped with. The rp2040 image compiles
+ * `__DATE__` into itself (hex record 0x7F60: "Sep 27 2026"), so a rebuild on
+ * any other day produced different bytes from the SAME sources and toolchain:
+ * main run 36544779170 on 2026-09-29 built sha256 868e7ee0... against the pin
+ * 369643c3..., one record apart. gcc takes `__DATE__`/`__TIME__` from
+ * SOURCE_DATE_EPOCH when it is set, so it is fixed here to noon UTC on the day
+ * the pinned rp2040 bytes were built (2026-09-27). Moving it re-pins rp2040.
+ */
+export const SOURCE_DATE_EPOCH = '1790510400';
+
+
 /** The program every base is keyed on: MakeCode Arcade's default package set. */
 export const DEFAULT_PROJECT = Object.freeze({
     'pxt.json': JSON.stringify({name: 'arcade-base', dependencies: {device: '*'}, files: ['main.ts'], binaryonly: true}),
@@ -239,7 +251,7 @@ export async function buildBase (variant, {work, out}) {
     // build ran in (measured: work2/ vs work3/, 10 bytes, three different
     // sha256s from three directories). Mapped, any directory builds the pinned bytes.
     const flags = `${BUILD_ENV.CFLAGS} -ffile-prefix-map=${dir}=.`;
-    run('python3', ['build.py'], {cwd: dir, env: {...process.env, CFLAGS: flags, CXXFLAGS: flags}});
+    run('python3', ['build.py'], {cwd: dir, env: {...process.env, CFLAGS: flags, CXXFLAGS: flags, SOURCE_DATE_EPOCH}});
     const hexFile = path.join(dir, 'build', `${cs.codalBinary}.hex`);
     if (!fs.existsSync(hexFile)) throw new Error(`${variant}: the build produced no ${cs.codalBinary}.hex`);
     const hex = fs.readFileSync(hexFile);
