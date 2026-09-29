@@ -2031,8 +2031,11 @@ class PseudocodeImporter extends React.Component {
         const svgs = new Map();
         const rasters = new Map();
         const palettes = new Map();
+        const sounds = new Map();
         for (const target of vm.runtime.targets) {
             if (!target.isOriginal) continue;
+            // Sound bytes, for the export's tone check (a steady tone plays; sampled audio is named).
+            for (const sound of target.sprite.sounds || []) if (sound.asset) sounds.set(sound.assetId, sound.asset.data);
             for (const costume of target.sprite.costumes) {
                 if (costume.asset.dataFormat === 'svg') svgs.set(costume.assetId, costume.asset.decodeText());
                 rasters.set(costume.assetId, await draw(costume.asset));
@@ -2046,7 +2049,8 @@ class PseudocodeImporter extends React.Component {
             name: 'brickwright-game',
             costumeSvg: (t, c) => svgs.get(c.assetId) || null,
             costumeRgba: (t, c) => rasters.get(c.assetId) || null,
-            costumePalette: (t, c) => palettes.get(c.assetId) || null
+            costumePalette: (t, c) => palettes.get(c.assetId) || null,
+            soundData: (t, s) => sounds.get(s.assetId) || null
         });
     }
 

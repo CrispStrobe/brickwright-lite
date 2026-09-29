@@ -61,7 +61,8 @@ async function readProject (file) {
             const a = cr.assets.get(c.assetId);
             return a && a.type === 'svg' ? a.data : null;
         };
-        return {project: cr.project, costumeSvg, costumePalette: () => null};
+        const soundData = (t, s) => cr.assets.get(s.assetId)?.data || null;
+        return {project: cr.project, costumeSvg, costumePalette: () => null, soundData};
     }
     const zip = await JSZip.loadAsync(fs.readFileSync(file));
     const json = zip.file('project.json');
@@ -70,6 +71,10 @@ async function readProject (file) {
     const svgs = new Map();
     for (const name of Object.keys(zip.files)) if (/\.svg$/i.test(name)) svgs.set(name, await zip.file(name).async('string'));
     const costumeSvg = (t, c) => svgs.get(c.md5ext || `${c.assetId}.${c.dataFormat}`) || null;
+    // Sound files, for the Arcade export's tone check (a steady tone plays; sampled audio is named).
+    const audio = new Map();
+    for (const name of Object.keys(zip.files)) if (/\.wav$/i.test(name)) audio.set(name, await zip.file(name).async('uint8array'));
+    const soundData = (t, s) => audio.get(s.md5ext || `${s.assetId}.${s.dataFormat}`) || null;
     const palettes = new Map();
     const artwork = zip.file('brickwright/artwork/v1.json');
     if (artwork) {
@@ -91,16 +96,16 @@ async function readProject (file) {
         }
     }
     const costumePalette = (t, c) => palettes.get(`${project.targets.indexOf(t)}:${t.costumes.indexOf(c)}`) || null;
-    return {project, costumeSvg, costumePalette};
+    return {project, costumeSvg, costumePalette, soundData};
 }
 
 /** The MakeCode files for a project, for a target, with what did not map. */
 async function toMakeCode (file, target) {
-    const {project, costumeSvg, costumePalette} = await readProject(file);
+    const {project, costumeSvg, costumePalette, soundData} = await readProject(file);
     const name = base(file).slice(0, 40);
     if (target === 'arcade') {
         const {projectToArcade} = await lib('bw-makecode/export-arcade.js');
-        const out = projectToArcade(project, {name, costumeSvg, costumePalette});
+        const out = projectToArcade(project, {name, costumeSvg, costumePalette, soundData});
         return {...out, name};
     }
     const {exportToMakeCode} = await lib('bw-makecode/export.js');
