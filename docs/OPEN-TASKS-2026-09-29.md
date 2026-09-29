@@ -29,8 +29,8 @@ lands there first; Lite then advances the exact pin.
 | # | task | scope / done-when | status |
 | --- | --- | --- | --- |
 | B1 | PWM duty in bw-board | Analog outputs (analogWrite, servo, LED dimming) are on/off in the circuit. Add a duty-cycle model so LED brightness and motor speed follow the program, across all MCUs. | CLAIMED 2026-09-29 |
-| B2 | Visible LED matrix in labwired | labwired cannot trace nRF GPIO, so an emulated micro:bit's 5×5 display is not visible. Add nRF GPIO tracing in labwired and wire the matrix into Lite's board face. | CLAIMED 2026-09-29 (VPS Claude, session 6f571e07; see LANES.md) || CLAIMED 2026-09-29 |
-| B3 | Auto-seat Calliope/CPX parts | `bw-circuit-ui` infer-seated has no Calliope or CPX footprint/pad mapping. Add both. | queued |
+| B2 | Visible LED matrix in labwired | labwired cannot trace nRF GPIO, so an emulated micro:bit's 5×5 display is not visible. Add nRF GPIO tracing in labwired and wire the matrix into Lite's board face. | CLAIMED 2026-09-29 (VPS Claude, session 6f571e07; see LANES.md) |
+| B3 | Auto-seat Calliope/CPX parts | `bw-circuit-ui` infer-seated has no Calliope or CPX footprint/pad mapping. Add both. | CLAIMED 2026-09-29 |
 | B4 | EV3 import into Lite's dialect | MakeCode EV3 programs → Lite's EV3/LEGO dialect and blocks, like the micro:bit importer, with a round-trip census. | queued |
 
 ## C — infrastructure and RISC-V (before D)
