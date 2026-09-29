@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| Arcade export gaps: broadcasts, costume/backdrop switching, clones, sounds, pen, lists, mouse (task A4 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/a4-arcade-export*` | base `99e8a46bf`; the Scratch → MakeCode Arcade exporter (upstream first if vendored) with focused tests; Lite: pin-bump surfaces if any, `docs/ARCADE-COMPAT-PLAN.md`, this row and the task file. Not the MakeCode micro:bit importer (A2) and not the Arcade firmware-base build. | **CLAIMED 2026-09-29.** Map each doable construct; keep a named refusal for the rest. |
+
 
 | MakeCode census: the remaining 15 partial micro:bit programs (task A2 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/a2-makecode-partials*` | base `5c23e08c5`; upstream sb3-creator MakeCode/TypeScript importer + dialect (objects/classes, runtime images, radio packet fields, returns/break) with focused tests; Lite: sb3-creator pin-bump surfaces, `docs/generated/MAKECODE-CENSUS.md` regeneration, this row and the task file | **CLAIMED 2026-09-29.** Census 2026-09-28: 190 full / 15 partial / 7 needs-extension / 1 recompile of 215. Each partial becomes full or keeps a specific named refusal. |
 
