@@ -1443,6 +1443,26 @@ Verilog — xyflow does not).
   because scratch-webpack-configuration hashes every `.css` and React Flow's own
   global classes must survive.
 
+## xterm.js (@xterm/xterm) — MIT
+
+**xterm.js** (MIT, https://xtermjs.org, https://github.com/xtermjs/xterm.js)
+is the terminal emulator in the Linux-on-RISC-V lesson: it draws what the
+guest's serial console sends (cursor movement, erase, colours, scrolling), so
+busybox `vi`, `top`, `less` and ash's line editing display as on a real
+terminal. The keyboard-to-bytes table the guest receives is this project's own
+(`lib/bw-debug/terminal-keys.js`); xterm.js supplies the screen, text input
+composition and paste.
+
+- **Package:** `@xterm/xterm` 6.0.0 (exact pin, no dependencies)
+- **Licence:** MIT — Copyright (c) 2017-2019, The xterm.js authors;
+  Copyright (c) 2014-2016, SourceLair Private Company; Copyright (c)
+  2012-2013, Christopher Jeffrey
+- **Source:** https://github.com/xtermjs/xterm.js
+- **Usage:** lazy-imported in its own chunk (`bw-xterm`), loaded only when a
+  booted Linux shows its terminal. Its stylesheet is injected GLOBALLY via an
+  inline-loader import (`!!raw-loader!`), because scratch-webpack-configuration
+  hashes every `.css` and xterm's class names are global. No source is modified.
+
 ## rp2040js — MIT
 
 **rp2040js** (MIT License, https://github.com/wokwi/rp2040js) provides the
