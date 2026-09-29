@@ -202,3 +202,47 @@ test('a micro:bit block lights a real LED through the real solver', async () => 
     const mA = -board.branchCurrent('d1', 'anode') * 1000;
     assert.ok(mA > 4 && mA < 6.5, `${mA.toFixed(2)} mA is not a 220R red LED at 3.3 V`);
 });
+
+test("the micro:bit's own GND pad closes the loop at 3.3 V (task A1)", async () => {
+    // The circuit exactly as a learner draws it in the Circuit tab: P0, 220R,
+    // red LED, back to the micro:bit's OWN gnd pad — no separate ground part —
+    // on the designer's 5 V board. The kind reaches the engine the way
+    // bw-circuit-ui's engineKindFor sends it: a registered device model keeps
+    // its identity, anything else collapses to the generic `mcu`. Measured on
+    // bw-board d9a967ca (no `microbit` model): 0.000 mA, every node at 5 V.
+    const B = 'bw-board';
+    const {BoardImpl} = await importPackageSource(`${B}/index.js`);
+    const {registerAllDevices} = await importPackageSource(`${B}/register-all.js`);
+    const {getDevice} = await importPackageSource(`${B}/devices.js`);
+    registerAllDevices();
+    const kind = getDevice('microbit') ? 'microbit' : 'mcu';
+
+    const board = new BoardImpl(5.0);
+    board.setNetlist([
+        {id: 'mb', kind, terminals: ['p0', '3v', 'gnd']},
+        {id: 'r1', kind: 'resistor', params: {ohms: 220}, terminals: ['a', 'b']},
+        {id: 'd1', kind: 'led', params: {color: 'red'}, terminals: ['anode', 'cathode']}
+    ], [
+        {id: 'n1', terminals: [{part: 'mb', terminal: 'p0'}, {part: 'r1', terminal: 'a'}]},
+        {id: 'n2', terminals: [{part: 'r1', terminal: 'b'}, {part: 'd1', terminal: 'anode'}]},
+        {id: 'n3', terminals: [{part: 'd1', terminal: 'cathode'}, {part: 'mb', terminal: 'gnd'}]}
+    ]);
+
+    const Extension = loadExtensionClass('microbitplus');
+    const runtime = stubRuntime();
+    runtime.circuitBoard = board;
+    const ext = new Extension(runtime);
+
+    ext.digitalwrite({PIN: '0', LEVEL: '1'});
+    assert.ok(Math.abs(board.nodeVoltage('n3')) < 0.005,
+        `the micro:bit GND pad sits at ${board.nodeVoltage('n3').toFixed(4)} V — not a ground`);
+    const mA = -board.branchCurrent('d1', 'anode') * 1000;
+    // 0 mA = the pad floats (unregistered); ~12.5 mA = the pin drove 5 V.
+    assert.ok(mA > 4 && mA < 7, `${mA.toFixed(3)} mA is not a 220R red LED on a 3.3 V pin`);
+    const vPin = board.nodeVoltage('n1');
+    assert.ok(vPin > 3.0 && vPin < 3.3, `P0 at ${vPin.toFixed(3)} V is not a 3.3 V pin`);
+    assert.ok(board.ledBrightness('d1') > 0.1, 'the LED is lit');
+
+    ext.digitalwrite({PIN: '0', LEVEL: '0'});
+    assert.equal(board.ledBrightness('d1'), 0, 'pin low darkens it');
+});
