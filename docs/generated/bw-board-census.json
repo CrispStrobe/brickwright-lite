@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "d29c3482cbdf726afb1b8fda4aae4b14d3f59988",
+    "sha": "931854479472e683b1f698dff806670ce18af483",
     "read": "2026-09-29"
   },
   "rows": [
@@ -147,7 +147,8 @@
       "via": "ngspice on $PATH at /usr/bin/ngspice",
       "gates": [
         "test/ngspice-neutral-oracle.test.mjs",
-        "test/nonuic-transient.test.mjs"
+        "test/nonuic-transient.test.mjs",
+        "test/pwm-duty-ngspice.test.mjs"
       ],
       "what": "The reference NUMERIC circuit simulator. lcapy is symbolic and exact but cannot model a junction; ngspice models devices, so the two are complementary rather than redundant -- where both agree and we do not, it is us, and where THEY disagree the circuit is ill-posed and belongs in neither corpus. Note that the ngspice GOLDENS under test/golden/ are pre-recorded and need no binary; this row is for the gates that invoke ngspice LIVE."
     },
