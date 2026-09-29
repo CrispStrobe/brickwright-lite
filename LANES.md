@@ -482,6 +482,8 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| E8 un-parked: in-order pipeline, cache and branch-predictor models over the RISC-V core, with a pipeline view in Lite (task C4 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/c4-e8*` | base `841db2e57`; upstream bw-board new timing-model modules fed by a retired-instruction trace (no edits to `src/riscv32.js` until C2's decode-cache PR has landed), bw-board ROADMAP E8 section; Lite: pin-bump surfaces + a pipeline/cache view; focused tests; this row and the task file. | **CLAIMED 2026-09-29.** Owner un-parked E8 (menu, 2026-09-29). |
+
 
 | Faster RISC-V Linux boot in the browser: predecoded-instruction cache and/or post-boot snapshot (task C2 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/c2-linux-boot*` | base `ac529b5cb`; upstream bw-board RV32 core/machine (decode cache, snapshot save/restore) with Spike-lockstep and perf evidence; Lite: pin-bump surfaces, the Linux lesson loader, this row and the task file. | **CLAIMED 2026-09-29.** Goal: lesson opens at a shell prompt in under 1 s. |
 
