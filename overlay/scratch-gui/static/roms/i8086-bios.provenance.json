@@ -22,7 +22,7 @@
     "path": "node_modules/bw-board/src/i8086-asm.js",
     "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
   },
-  "pinAtBuild": "931854479472e683b1f698dff806670ce18af483",
+  "pinAtBuild": "cfacdf6075987a9710feb06821a3d93c46026bda",
   "ancestorOfPinAtBuild": true,
   "behindPinBy": 0
 }

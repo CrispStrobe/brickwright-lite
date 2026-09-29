@@ -15,7 +15,7 @@
     host -> app   {type: 'bw-makecode-state', state}   simulator state changes
     host -> app   {type: 'bw-makecode-serial', data}   what the program printed
     host -> app   {type: 'bw-makecode-error', message}
-    host -> app   {type: 'bw-makecode-pins', pins: {p0: {out, value}, …}}  pin changes
+    host -> app   {type: 'bw-makecode-pins', pins: {p0: {out, analog, value, periodUs?, servo?}, …}}  pin changes
     app  -> host  {type: 'bw-makecode-pin-in', pins: {p1: value, …}}      circuit -> program
 
   THE PIN BRIDGE. The simulator's board keeps every edge pin's mode (digital /
@@ -112,6 +112,31 @@
     return out;
   }
   // bw-pin-names:end
+  // bw-pin-report:begin (test/pwm-followups-reach-the-circuit.test.mjs runs this function)
+  // One output pin's report. Beside the mode and 0..1023 value, the analog
+  // PERIOD (pins.analogSetPeriod; the micro:bit's 20 ms default when unset) and,
+  // for a servo, its ANGLE. pxsim's servoWritePin sets the period to 20 ms and
+  // pin.servoAngle but leaves pin.value alone — reported as a value alone it was
+  // a 0 % PWM, and the servo on the pin got no pulse. So a pin is a servo from
+  // the poll where its servoAngle changed, or its period became 20 ms, while its
+  // value did not; an analog or digital write (the value changes) makes it a
+  // plain pin again. `prev` is this pin's state from the previous poll (updated
+  // here). Not distinguished: an analogSetPeriod(20000) with no write reads as a
+  // servo at its last angle.
+  function pinReport (p, prev) {
+    var servo = !!prev.servo;
+    if (prev.seen && p.value !== prev.value) servo = false;
+    else if (prev.seen ? (p.servoAngle !== prev.angle || (p.period === 20000 && prev.period !== 20000))
+      : (p.period === 20000 && p.servoAngle > 0)) servo = true;
+    if (!(p.mode & 2)) servo = false;
+    prev.seen = true; prev.value = p.value; prev.angle = p.servoAngle; prev.period = p.period; prev.servo = servo;
+    var r = {out: !!(p.mode & 8), analog: !!(p.mode & 2), value: p.value};
+    if (r.analog && p.period > 0) r.periodUs = p.period;
+    if (servo) r.servo = Math.max(0, Math.min(180, Number(p.servoAngle) || 0));
+    return r;
+  }
+  // bw-pin-report:end
+  var pinPrev = {};
   function poll () {
     var w = simWindow();
     var b = simBoard(w);
@@ -126,11 +151,11 @@
       if (!name) continue;
       // PinFlags: 1 Digital, 2 Analog, 4 Input, 8 Output.
       if (pendingIn[name] !== undefined && (p.mode & 4 || !p.mode)) p.value = pendingIn[name];
-      var out = !!(p.mode & 8);
-      var key = (out ? 'o' : 'i') + (p.mode & 2 ? 'a' : 'd') + p.value;
+      var r = pinReport(p, pinPrev[name] || (pinPrev[name] = {}));
+      var key = (r.out ? 'o' : 'i') + (r.analog ? 'a' : 'd') + r.value + '/' + (r.periodUs || '') + '/' + (r.servo === undefined ? '' : r.servo);
       if (lastPins[name] !== key) {
         lastPins[name] = key;
-        changed[name] = {out: out, analog: !!(p.mode & 2), value: p.value};
+        changed[name] = r;
         any = true;
       }
     }
@@ -138,6 +163,7 @@
   }
   function startPins () {
     lastPins = {};
+    pinPrev = {};
     if (!pollTimer) pollTimer = setInterval(poll, 33);
   }
 

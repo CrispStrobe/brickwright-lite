@@ -12,12 +12,16 @@
  * existed this bridge drove the pin on/off at half scale (`value >= 512`):
  * `analog write pin P0 to 256` lit an LED 0 mA, and 768 lit it fully.
  *
- * The carrier is 50 Hz: MakeCode's default analog period on the micro:bit and
- * Calliope is 20 ms (`pins.analogSetPeriod` changes it on silicon; the host
- * page does not report the period, so a program that changes it still reads
- * at 50 Hz here — its duty is what reaches the circuit either way). 20 ms is
- * also exactly one LED-brightness window, so the average has no window-phase
- * error.
+ * The carrier is the pin's analog period as the host reports it (`periodUs`,
+ * set by `pins.analogSetPeriod`), else 50 Hz: MakeCode's default analog period
+ * on the micro:bit and Calliope is 20 ms, exactly one LED-brightness window.
+ * Before the host reported the period (task B5) every analog pin ran at 50 Hz.
+ *
+ * A SERVO (`pins.servoWritePin`) is reported as `servo: angle`, and goes out as
+ * the micro:bit's servo frame: 50 Hz, a 500 + angle * 2000 / 180 us pulse
+ * (CODAL setServoValue, range 2000 about a 1500 us centre). pxsim leaves the
+ * pin's value at 0 for a servo write, so before the host reported the angle a
+ * servo pin was a 0 % PWM and the servo got no pulse (measured task B5).
  *
  * A board without setPwm (a bw-board pin before it) keeps the old half-scale
  * drive rather than dropping the write.
@@ -29,13 +33,19 @@ export const MAKECODE_ANALOG_HZ = 50;
 /**
  * @param {{setPin: Function, setPwm?: Function}} board
  * @param {string} name the pad name (p0, a1, ...)
- * @param {{analog?: boolean, value: number}} p the host page's report
- * @returns {'pwm'|'level'} which drive was used
+ * @param {{analog?: boolean, value: number, periodUs?: number, servo?: number}} p the host page's report
+ * @returns {'servo'|'pwm'|'level'} which drive was used
  */
 export function driveMakeCodeOutput (board, name, p) {
     if (p.analog && typeof board.setPwm === 'function') {
+        if (p.servo !== undefined && p.servo !== null) {
+            const deg = Math.max(0, Math.min(180, Number(p.servo) || 0));
+            if (board.setPwm(name, 0, {hz: 50, pulseUs: 500 + deg * 2000 / 180})) return 'servo';
+        }
         const value = Math.max(0, Math.min(1023, Number(p.value) || 0));
-        if (board.setPwm(name, value / 1023 * 100, {hz: MAKECODE_ANALOG_HZ})) return 'pwm';
+        const periodUs = Number(p.periodUs);
+        const hz = periodUs > 0 ? 1e6 / periodUs : MAKECODE_ANALOG_HZ;
+        if (board.setPwm(name, value / 1023 * 100, {hz})) return 'pwm';
     }
     board.setPin(name, 'pushpull', p.value >= 512);
     return 'level';
