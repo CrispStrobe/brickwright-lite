@@ -57,6 +57,11 @@ Then read the CLAIMS table below and compare scopes by overlapping paths or
 package boundary, not by vague task title. If your work is already claimed or
 landed, say so and pick something else.
 
+Give a new local worktree its dependencies with
+`node scripts/worktree-deps.mjs link` (Node 22), not a fresh ~1 GB install and
+never another worktree's `node_modules`. See "OPERATIONAL — shared node_modules
+for local worktrees" below.
+
 **2. Merge a claim-only commit to the canonical remote `main` before changing
 implementation.** A local row or unmerged branch owns nothing. Record at least
 owner/session, isolated worktree, exact scope, base SHA and status. Two writers
@@ -429,9 +434,55 @@ it should know it is on a stack anyone can pop.
 **Keeping a stash "just in case" is not free when the stack is shared.** If work is worth
 keeping, it is worth a branch.
 
+## OPERATIONAL — shared node_modules for local worktrees (2026-09-29)
+
+A fresh install puts about 1 GB into every Lite worktree: 130 MB at the root
+and 890 MB in `packages/scratch-gui`, which grows to 1.4–1.9 GB once builds add
+caches. With many sessions, that refills the disk. Borrowing another worktree's
+`node_modules` (a symlink or `cp -al`) saves the space, but it silently runs
+whatever that worktree installed. Old bw-board and bw-circuit-ui pins caused
+several false local reds on 2026-09-29.
+
+`scripts/worktree-deps.mjs` replaces both. It keeps a store keyed on every
+input that decides the install: both lockfiles, both `package.json` files,
+`vendor-pins.json`, and the Node and npm majors. It populates the store once,
+using CI's own commands, and hardlinks the store into each worktree.
+
+```bash
+export PATH=$HOME/.local/node22/bin:$PATH        # Node 22: the key includes the major
+node scripts/worktree-deps.mjs link              # integrate + install-if-missing + link + overlays + verify
+node scripts/worktree-deps.mjs verify            # before you trust a local red or green
+node scripts/worktree-deps.mjs link --replace    # swap an existing private/borrowed tree for links
+node scripts/worktree-deps.mjs list              # store keys, sizes, which are still linked
+node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and linked by no worktree
+```
+
+- **Cost per worktree:** about 80 MB instead of about 1 GB. That 80 MB is the
+  directory entries plus private copies of the packages the overlay scripts
+  write (`OWNED` in the script). A cache hit links in about 10 s.
+- **The store is read-only.** A write into a linked file fails with `EACCES`
+  instead of editing every worktree at once. `verify` also re-derives a digest
+  of the store, so a chmod followed by a write is caught too. New files, such
+  as webpack's `node_modules/.cache`, land in the worktree's own directories.
+- **`verify` fails with the remedy** in these cases: the lockfiles or pins moved
+  after linking (STALE), the store was modified, a file is no longer the
+  store's inode, or a bw-* package is not at `vendor-pins.json`. On an unlinked
+  worktree it still checks the installed tree against the lockfile and pins,
+  so it also catches a stale borrowed tree.
+- **Never** run `npm install` inside a store directory. Never symlink or
+  `cp -al` another worktree's `node_modules`. Never `chmod -R u+w` a linked
+  tree. To edit a dependency in place (for example `mutation-proof.mjs` on
+  `node_modules/bw-circuit-ui`), delete that worktree's `node_modules` and do a
+  normal private install.
+- The store defaults to `.bw-lite-deps` beside the main checkout
+  (`$BW_LITE_DEPS_STORE` overrides it). It must be on the worktree's
+  filesystem, because hardlinks cannot cross filesystems.
+- CI does not use this tool. Its install steps in `.github/workflows/` are
+  unchanged.
+
 ## CLAIMS — work in progress
 
-| Shared node_modules for Lite worktrees: a lockfile-keyed shared install + guideline (task C1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c1-shared-node-modules` | base `3fffb12f6`; new `scripts/worktree-deps.mjs` (or similar), `CLAUDE.md` / `LANES.md` guideline section, focused tests; no change to CI install behaviour. | **CLAIMED 2026-09-29.** Each session's Lite worktree installs ~2 GB of node_modules; /mnt/volume1 keeps filling. |
+| Shared node_modules for Lite worktrees: a lockfile-keyed shared install + guideline (task C1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c1-shared-node-modules` | base `3fffb12f6`; new `scripts/worktree-deps.mjs` (or similar), `CLAUDE.md` / `LANES.md` guideline section, focused tests; no change to CI install behaviour. | **DONE 2026-09-29 — PR #547** (branch `lane/c1-shared-node-modules`). `scripts/worktree-deps.mjs` `link` / `verify` / `list` / `gc`: the store is keyed on both lockfiles, both package.json files (the gui's bw-* entries are normalised out, because integrate derives them), `vendor-pins.json` and the Node/npm majors. It is populated with CI's own commands (`npm ci` / `npm install --legacy-peer-deps`) and hardlinked read-only. The overlay targets (scratch-vm, scratch-paint, scratch-render, `scratch-blocks/msg/scratch_msgs.js`) are private copies. **Measured:** a fresh install is 130 MB + 892 MB. A linked worktree adds 2.4 MB + 77.7 MB of new blocks (`du` over store and worktree in one invocation; `du -l` still shows 1022 MB), and a cache-hit link takes 9.3 s. **Parity:** the same 14-file subset (declared-pins-wired, notices-coverage, pinned-packages, 3× package-adoption, overlay-packages-pairs, package-upstream-notices, pseudocode-game-examples (real scratch-vm), example-vm-execution, circuit-engine-surface, gui-scope-resolution, board-pin-functions-data, bw-parts-conformance) gave 414/414 pass with identical per-test verdicts on a fresh install, on the same worktree relinked, and on a second worktree linked with no install. `verify` stayed OK afterwards, so the store was unmodified. **Test:** `test/worktree-deps.test.mjs` has 9 cases and needs no network or npm. All 9 mutations of the guards were caught: read-only, owned copy, key check, store digest, gc link check, bw normalisation, OWNED list, pin check and inode check. Live mutation: one lockfile byte made `verify` report STALE (exit 1); restoring it made it OK again. `verify` on `wt/lite-audit` (a borrowed tree) named bw-board `d29c3482` and bw-circuit-ui `6e72117a` against pins `cfacdf60` and `e9ebcf11`. CI: this PR's exact-head run. |
 
 | Arcade export: `stop` block semantics (task A5 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/a5-arcade-stop` | base `206ffac67`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` (+ `arcade-runtime.js`), `test/makecode-export-arcade-constructs.test.mjs`, `docs/ARCADE-COMPAT-PLAN.md`, this row and the task file. | **DONE 2026-09-29 — PR #545** (branch `lane/a5-arcade-stop`, impl `184991bc1`). Lite only: the exporter is not vendored, so there was no upstream or pin step. Before, every `stop` option was `game.over(false)`, silently. After: `this script` → `return` (from a custom block, back to its caller); `other scripts in sprite/stage` → per-run tokens with a per-target mark (per instance for clones), ending the other runs at their next yield and keeping this one; `all` → `_stopAll()` (all runs end, clones deleted, sounds stopped, bubbles cleared, the game goes on; `control.reset()` measured and rejected); an unknown option is a named refusal. Receipts: `test/makecode-export-arcade-constructs.test.mjs`, 5 new tests in pxt-arcade's own simulator with 10 mutations that go red (18/18 locally); `test/makecode-export-arcade.test.mjs` corpus 42/42; stop census `game.over` 8 → 0, `unsupported` 176 → 176 (the only option in the corpus is `stop all`). The matrix and the named remainder are in `docs/ARCADE-COMPAT-PLAN.md`. |
 
