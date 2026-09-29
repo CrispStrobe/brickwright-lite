@@ -127,6 +127,12 @@ const TRANSFORMS = {
     'input.onGesture': 'input.isGesture',
     'input.onPinPressed': 'input.pinIsPressed',
     'input.onLogoEvent': 'input.logoIsPressed',
+    // A pulse handler is polled on the pin's level (microbit-translate.js,
+    // HANDLERS: pins.onPulsed), so the way back reads the pin.
+    'pins.onPulsed': 'pins.digitalReadPin',
+    // In a polled handler the event's time is the time the poll saw it
+    // (microbit-translate.js, control.eventTimestamp), read off the clock.
+    'control.eventTimestamp': 'input.runningTime',
     // pxt-microbit defines one as the other (libs/core/soundexpressions.ts:
     // createSoundExpression(...) is `new SoundExpression(createSoundEffect(...))`),
     // and the dialect's one sound-effect block goes back as createSoundEffect.

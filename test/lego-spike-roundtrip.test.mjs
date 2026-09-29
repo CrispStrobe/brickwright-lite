@@ -159,8 +159,13 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // no SPIKE line this round trip reads can have moved. Assertions re-ran at
     // the pin regardless, because an empty src/ diff is the reason to believe
     // that and not a substitute for checking.
+    // PIN MOVED 041ec7dc -> 5c20cc83 (2026-09-29, sb3-creator#38): MakeCode's
+    // images as values, radio serial numbers, the sound hat, plotBrightness/
+    // point and parseFloat — micro:bit MicroPython and dialect words only,
+    // plus the arrays shim's `set` growing the array. The SPIKE path is
+    // untouched, and the assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '041ec7dc1c4741538c7cf6eb92f9fe7dd9bc0d81');
+        '5c20cc836da753db866a62f24f7498e7e2972447');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

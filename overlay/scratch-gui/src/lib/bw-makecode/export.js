@@ -55,7 +55,8 @@ const BOOLEAN_REPORTERS = new Set([
     'operator_gt', 'operator_lt', 'operator_equals', 'operator_contains',
     'sensing_keypressed', 'sensing_touchingobject',
     'microbitplus_spritetouching', 'microbitplus_spritetouchingedge', 'microbitplus_spritedeleted',
-    'microbitplus_isgameover', 'microbitplus_isrunning', 'microbitplus_ispaused'
+    'microbitplus_isgameover', 'microbitplus_isrunning', 'microbitplus_ispaused',
+    'microbitplus_imagepixel', 'microbitplus_point'
 ]);
 
 /** The dialect's sprite property word -> MakeCode's LedSpriteProperty member. */
@@ -149,6 +150,29 @@ class Emitter {
         const slot = input && input[1];
         const r = typeof slot === 'string' ? this.block(slot) : null;
         return r && BOOLEAN_REPORTERS.has(r.opcode) ? this.reporter(r) : null;
+    }
+
+    /**
+     * An input read as TEXT: a text variable or literal as it is, anything
+     * else made text the way a join is (`("" + n)`), so `.length` and `[i]`
+     * typecheck whatever the value was.
+     */
+    textOperand (b, name) {
+        const value = this.value(b, name, '""');
+        const input = b.inputs && b.inputs[name] && b.inputs[name][1];
+        const r = typeof input === 'string' ? this.block(input) : null;
+        if (/^"/.test(value)) return value;
+        const variable = Array.isArray(input) && input[0] === 12 ? this.variableName(input[1]) :
+            r && r.opcode === 'data_variable' ? this.variableName(r.fields.VARIABLE[0]) : null;
+        if (variable && this.textVars && this.textVars.has(variable)) return value;
+        if (r && r.opcode === 'operator_join') return value;
+        return `("" + ${value})`;
+    }
+
+    /** An array block's VALUE, with 0 read as null when the array holds sprites or images. */
+    handleValue (b) {
+        const value = this.value(b, 'VALUE');
+        return value === '0' && this.spriteArrays && this.spriteArrays.has(this.arrayName(b)) ? 'null' : value;
     }
 
     /** The block plugged into this input, or null for a literal/empty slot. */
@@ -301,6 +325,19 @@ class Emitter {
         // operand is already "" needs only the one.
         case 'operator_join':
             return v('STRING1') === '""' ? `("" + ${v('STRING2')})` : `("" + ${v('STRING1')} + ${v('STRING2')})`;
+        // A character of a text, and a text's length. `letter` counts from 1
+        // and TypeScript's index from 0; `letter (i + 1)` — how the importer
+        // reads `s[i]` — goes back as `s[i]`, so a round trip stays put.
+        case 'operator_letter_of': {
+            const text = this.textOperand(b, 'STRING');
+            const at = this.inputBlock(b, 'LETTER');
+            const slot = b.inputs && b.inputs.LETTER && b.inputs.LETTER[1];
+            if (Array.isArray(slot) && /^\d+$/.test(String(slot[1]))) return `${text}[${Number(slot[1]) - 1}]`;
+            const one = at && at.opcode === 'operator_add' && at.inputs.NUM2 && Array.isArray(at.inputs.NUM2[1]) &&
+                String(at.inputs.NUM2[1][1]) === '1';
+            return one ? `${text}[${this.value(at, 'NUM1')}]` : `${text}[${v('LETTER')} - 1]`;
+        }
+        case 'operator_length': return `${this.textOperand(b, 'STRING')}.length`;
         case 'operator_gt': return this.booleanCompare(b, '>') || `(${v('OPERAND1')} > ${v('OPERAND2')})`;
         case 'operator_lt': return this.booleanCompare(b, '<') || `(${v('OPERAND1')} < ${v('OPERAND2')})`;
         case 'operator_equals': {
@@ -350,6 +387,14 @@ class Emitter {
         case 'microbitplus_tempo': return 'music.tempo()';
         case 'microbitplus_islogo': return 'input.logoIsPressed()';
         case 'microbitplus_radiorssi': return 'radio.receivedPacket(RadioPacketProperty.SignalStrength)';
+        case 'microbitplus_radiolastserial': return 'radio.receivedPacket(RadioPacketProperty.SerialNumber)';
+        case 'microbitplus_deviceserial': return 'control.deviceSerialNumber()';
+        // An image is MakeCode's Image; its variables and arrays are typed so
+        // (imageNames).
+        case 'microbitplus_createimage': return `images.createImage(\`\n${ledsOf(f('MATRIX'))}\n    \`)`;
+        case 'microbitplus_imagepixel': return `${v('IMAGE')}.pixel(${v('X')}, ${v('Y')})`;
+        case 'microbitplus_point': return `led.point(${v('X')}, ${v('Y')})`;
+        case 'microbitplus_parsenumber': return `parseFloat(${this.textOperand(b, 'TEXT')})`;
         case 'planetemaths_pow': return `Math.pow(${v('NUM1')}, ${v('NUM2')})`;
         case 'sensing_timer': return '(input.runningTime() / 1000)';
         // Inside a DEFINE, a parameter is read through one of these.
@@ -502,7 +547,8 @@ class Emitter {
             // A sprite variable's "none" is null on MakeCode's side, not 0.
             const name = this.variableName(f('VARIABLE'));
             const value = v('VALUE');
-            push(`${name} = ${this.spriteVars && this.spriteVars.has(name) && value === '0' ? 'null' : value}`);
+            const handle = (this.spriteVars && this.spriteVars.has(name)) || (this.imageVars && this.imageVars.has(name));
+            push(`${name} = ${handle && value === '0' ? 'null' : value}`);
             return;
         }
         case 'data_changevariableby':
@@ -521,7 +567,12 @@ class Emitter {
             // input, and stripping only the outer quotes left `[\"cat\"]`
             // escaped — a string array MakeCode could not read.
             const slot = b.inputs && b.inputs.JSON && b.inputs.JSON[1];
-            const json = Array.isArray(slot) ? String(slot[1]) : this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
+            let json = Array.isArray(slot) ? String(slot[1]) : this.value(b, 'JSON', '[]').replace(/^["']|["']$/g, '');
+            // A sprite array's placeholder 0 (a record's "no sprite") is
+            // MakeCode's null: its array is game.LedSprite[].
+            if (this.spriteArrays && this.spriteArrays.has(this.arrayName(b)) && /^\[\s*0(\s*,\s*0)*\s*\]$/.test(json)) {
+                json = json.replace(/0/g, 'null');
+            }
             push(`${this.arrayName(b)} = ${json}`);
             return;
         }
@@ -530,11 +581,12 @@ class Emitter {
             push(`for (let i = ${v('START')}; i <= ${v('END')}; i++) ` +
                 `{ ${this.arrayName(b)}.push(i) }`);
             return;
+        // In an array of sprites or images, 0 is "none" — MakeCode's null.
         case 'arrays_push':
-            push(`${this.arrayName(b)}.push(${v('VALUE')})`);
+            push(`${this.arrayName(b)}.push(${this.handleValue(b)})`);
             return;
         case 'arrays_set':
-            push(`${this.arrayName(b)}[${v('INDEX')}] = ${v('VALUE')}`);
+            push(`${this.arrayName(b)}[${v('INDEX')}] = ${this.handleValue(b)}`);
             return;
         case 'arrays_insert':
             push(`${this.arrayName(b)}.insertAt(${v('INDEX')}, ${v('VALUE')})`);
@@ -608,6 +660,17 @@ class Emitter {
         case 'stc12_print': {
             const value = v('VALUE');
             const input = this.inputBlock(b, 'VALUE');
+            // `print ("Accel:" join n)` is how the importer reads MakeCode's
+            // serial.writeValue("Accel", n) — the same line on the wire — and
+            // it goes back as that, while the value is a number: a text value
+            // after the colon stays a writeLine (writeValue takes a number).
+            const label = input && input.opcode === 'operator_join' ? input.inputs.STRING1 && input.inputs.STRING1[1] : null;
+            const rest = input && input.opcode === 'operator_join' ? this.inputBlock(input, 'STRING2') : null;
+            if (Array.isArray(label) && /^[^:]+:$/.test(String(label[1])) && rest &&
+                !['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr'].includes(rest.opcode)) {
+                push(`serial.writeValue(${JSON.stringify(String(label[1]).slice(0, -1))}, ${this.value(input, 'STRING2')})`);
+                return;
+            }
             const isText = /^"/.test(value) || (input && input.opcode === 'operator_join');
             push(`serial.writeLine(${isText ? value : `("" + ${value})`})`);
             return;
@@ -622,6 +685,31 @@ class Emitter {
             return;
         case 'microbitplus_toggle':
             push(`led.toggle(${v('X')}, ${v('Y')})`);
+            return;
+        case 'microbitplus_plotbrightness':
+            push(`led.plotBrightness(${v('X')}, ${v('Y')}, ${v('BRIGHTNESS')})`);
+            return;
+        // setPixel takes a boolean; the dialect's truth is 1 and 0, and
+        // `v != 0` is read back as v.
+        case 'microbitplus_imagesetpixel': {
+            const slot = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
+            const lit = Array.isArray(slot) ? String(slot[1]) : null;
+            const truth = lit === '1' || lit === 'true' ? 'true' : lit === '0' || lit === 'false' ? 'false' :
+                this.booleanInput(b, 'VALUE') || `${v('VALUE')} != 0`;
+            push(`${v('IMAGE')}.setPixel(${v('X')}, ${v('Y')}, ${truth})`);
+            return;
+        }
+        case 'microbitplus_showimage':
+            push(`${v('IMAGE')}.showImage(${v('OFFSET')})`);
+            return;
+        case 'microbitplus_plotimage':
+            push(`${v('IMAGE')}.plotImage(${v('OFFSET')})`);
+            return;
+        case 'microbitplus_radioserial':
+            push(`radio.setTransmitSerialNumber(${f('STATE') === 'off' ? 'false' : 'true'})`);
+            return;
+        case 'microbitplus_soundthreshold':
+            push(`input.setSoundThreshold(SoundThreshold.${f('LEVEL') === 'quiet' ? 'Quiet' : 'Loud'}, ${v('THRESHOLD')})`);
             return;
         case 'microbitplus_setbrightness':
             push(`led.setBrightness(${v('BRIGHTNESS')})`);
@@ -817,7 +905,8 @@ function spriteNames (blocks, emitter) {
                 if (r && r.opcode === 'arrays_get') arrays.add(arrayNameOf(r, blocks, emitter));
             }
             const value = block(slot(b, 'VALUE'));
-            if (b.opcode === 'arrays_push' && value && value.opcode === 'microbitplus_createsprite') {
+            // pushed, or put at an index (a record's sprite field is set so)
+            if (/^arrays_(push|set|insert)$/.test(b.opcode) && value && value.opcode === 'microbitplus_createsprite') {
                 arrays.add(arrayNameOf(b, blocks, emitter));
             }
             if (b.opcode === 'data_setvariableto' && value && (value.opcode === 'microbitplus_createsprite' ||
@@ -827,6 +916,43 @@ function spriteNames (blocks, emitter) {
             // `set o to item i of array "obs"` with o used as a sprite: obs holds sprites.
             if (b.opcode === 'data_setvariableto' && value && value.opcode === 'arrays_get' &&
                 vars.has(emitter.variableName(b.fields.VARIABLE[0]))) arrays.add(arrayNameOf(value, blocks, emitter));
+        }
+    }
+    return {vars, arrays};
+}
+
+/**
+ * The variables and arrays that hold IMAGES (the dialect's `create image`):
+ * MakeCode types them Image / Image[]. A variable holds one when it is set
+ * to a new image or to an item of an image array, or is used where an image
+ * goes; an array, when a new image is pushed onto it or put in it, or one of
+ * its items is used where an image goes.
+ */
+function imageNames (blocks, emitter) {
+    const vars = new Set();
+    const arrays = new Set();
+    const IMAGE_SLOTS = ['microbitplus_imagepixel', 'microbitplus_imagesetpixel', 'microbitplus_showimage', 'microbitplus_plotimage'];
+    const slot = (b, name) => {
+        const input = b.inputs && b.inputs[name];
+        return input ? input[1] : null;
+    };
+    const block = s => (typeof s === 'string' ? blocks[s] : null);
+    for (let pass = 0; pass < 3; pass++) {
+        for (const b of Object.values(blocks)) {
+            if (!b) continue;
+            if (IMAGE_SLOTS.includes(b.opcode)) {
+                const s = slot(b, 'IMAGE');
+                if (Array.isArray(s) && s[0] === 12) vars.add(emitter.variableName(s[1]));
+                const r = block(s);
+                if (r && r.opcode === 'data_variable') vars.add(emitter.variableName(r.fields.VARIABLE[0]));
+                if (r && r.opcode === 'arrays_get') arrays.add(arrayNameOf(r, blocks, emitter));
+            }
+            const value = block(slot(b, 'VALUE'));
+            const isImage = value && (value.opcode === 'microbitplus_createimage' ||
+                (value.opcode === 'arrays_get' && arrays.has(arrayNameOf(value, blocks, emitter))) ||
+                (value.opcode === 'data_variable' && vars.has(emitter.variableName(value.fields.VARIABLE[0]))));
+            if (/^arrays_(push|set|insert)$/.test(b.opcode) && isImage) arrays.add(arrayNameOf(b, blocks, emitter));
+            if (b.opcode === 'data_setvariableto' && isImage) vars.add(emitter.variableName(b.fields.VARIABLE[0]));
         }
     }
     return {vars, arrays};
@@ -887,13 +1013,18 @@ export function projectToMakeCodeTs (project) {
         const textArrays = textArrayNames(blocks, emitter);
         const text = textVariables(blocks, emitter, textArrays);
         const sprites = spriteNames(blocks, emitter);
+        const images = imageNames(blocks, emitter);
         emitter.spriteVars = sprites.vars;
+        emitter.spriteArrays = new Set([...sprites.arrays, ...images.arrays]);
+        emitter.imageVars = images.vars;
+        emitter.textVars = text;
         for (const entry of Object.values(target.variables || {})) {
             const name = emitter.variableName(Array.isArray(entry) ? entry[0] : entry);
             if (declared.has(name)) continue;
             declared.add(name);
             lines.push(sprites.vars.has(name) ? `let ${name}: game.LedSprite = null` :
-                `let ${name} = ${text.has(name) ? '""' : '0'}`);
+                images.vars.has(name) ? `let ${name}: Image = null` :
+                    `let ${name} = ${text.has(name) ? '""' : '0'}`);
         }
 
         // The body is emitted first because an array's name is only met
@@ -922,6 +1053,14 @@ export function projectToMakeCodeTs (project) {
             }
             // A radio hat is MakeCode's handler, registered where it stands:
             // the importer reads each handler back into a hat in the same order.
+            // MakeCode's onSound handler, where it stands, as the radio hats are.
+            if (block.opcode === 'microbitplus_whensound') {
+                const level = emitter.field(block, 'LEVEL') === 'quiet' ? 'Quiet' : 'Loud';
+                emitter.inFunction = true;
+                body.push(`input.onSound(DetectedSound.${level}, function () {`, ...emitter.stack(block.next, 1), '})');
+                emitter.inFunction = false;
+                continue;
+            }
             if (RADIO_HATS[block.opcode]) {
                 const {call, param} = RADIO_HATS[block.opcode];
                 emitter.radioHat = block.opcode;
@@ -947,8 +1086,8 @@ export function projectToMakeCodeTs (project) {
         while (body.length) {
             const m = /^([A-Za-z_][A-Za-z0-9_]*) = (-?\d+(?:\.\d+)?|"[^"\\]*"|null)$/.exec(body[0]);
             if (m && m[2] === 'null') {
-                // A sprite variable's leading `= null` is its declaration already.
-                if (!lines.includes(`let ${m[1]}: game.LedSprite = null`)) break;
+                // A sprite or image variable's leading `= null` is its declaration already.
+                if (!lines.includes(`let ${m[1]}: game.LedSprite = null`) && !lines.includes(`let ${m[1]}: Image = null`)) break;
                 body.shift();
                 continue;
             }
@@ -961,7 +1100,8 @@ export function projectToMakeCodeTs (project) {
         for (const name of emitter.arrays) {
             if (declared.has(name)) continue;
             declared.add(name);
-            lines.push(`let ${name}: ${sprites.arrays.has(name) ? 'game.LedSprite' : textArrays.has(name) ? 'string' : 'number'}[] = []`);
+            lines.push(`let ${name}: ${sprites.arrays.has(name) ? 'game.LedSprite' : images.arrays.has(name) ? 'Image' :
+                textArrays.has(name) ? 'string' : 'number'}[] = []`);
         }
         lines.push(...body);
         unsupported.push(...emitter.unsupported);

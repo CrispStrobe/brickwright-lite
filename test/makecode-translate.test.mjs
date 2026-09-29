@@ -101,10 +101,11 @@ test('event handlers become polling scripts of their own', () => {
 });
 
 test('a call with no mapping is reported, not swallowed', () => {
-    // (serial.writeLine was the example here until it got a mapping — `print`.)
-    const out = microbitToPseudocode('serial.writeValue("x", 1)\nbasic.clearScreen()');
-    assert.match(out.code, /# unsupported: serial\.writeValue\(\)/);
-    assert.ok(out.unsupported.some(u => /serial\.writeValue/.test(u)));
+    // (serial.writeLine, then serial.writeValue, was the example here until
+    // each got a mapping — `print`.)
+    const out = microbitToPseudocode('serial.redirectToUSB()\nbasic.clearScreen()');
+    assert.match(out.code, /# unsupported: serial\.redirectToUSB\(\)/);
+    assert.ok(out.unsupported.some(u => /serial\.redirectToUSB/.test(u)));
     assert.match(out.code, /clear display/, 'the rest of the program still translates');
 });
 
@@ -470,15 +471,19 @@ test('radio.sendValue says the name is not sent (it sent the bare number as if t
     assert.ok(unsupported.some(u => /radio\.sendValue\(\) — the name is not sent/.test(u)), unsupported.join('\n'));
 });
 
-test('a class and an object literal are refused by name, with the calls inside them', () => {
+test('a class that cannot be lowered, and an untyped object literal, are refused by name, with the calls inside them', () => {
+    // An accessor (`get kind()`) has no lowering to arrays and procedures, so
+    // this class is refused whole, saying why and naming what it calls.
     const {unsupported} = microbitToPseudocode([
         'class Message {',
+        '    private d: Buffer',
         '    constructor() { this.d = control.createBuffer(13) }',
+        '    get kind(): number { return this.d.getNumber(NumberFormat.Int8LE, 0) }',
         '    send() { radio.sendBuffer(this.d) }',
         '}',
         'let c = { sprite: game.createSprite(0, 0) }'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /class Message.*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
+    assert.ok(unsupported.some(u => /class Message \(a get accessor \(kind\)\).*control\.createBuffer\(\).*radio\.sendBuffer\(\)/.test(u)),
         unsupported.join('\n'));
     assert.ok(!unsupported.some(u => /constructor\(\)|send\(\),/.test(u)), 'a method definition was read as a call');
     assert.ok(unsupported.some(u => /object literal.*game\.createSprite\(\)/.test(u)), unsupported.join('\n'));
@@ -523,26 +528,47 @@ for (const [ts, line, opcode] of BATCH_3) {
     });
 }
 
-test('the logo handler is polled like the buttons; a long press and a release are refused by name', () => {
+test('the logo handler is polled like the buttons; a long press and a release are timed by the touch', () => {
+    // Alone, Pressed runs at the touch (as a button's does).
+    assert.match(microbitToPseudocode('input.onLogoEvent(TouchButtonEvent.Pressed, function () {\n    basic.showNumber(1)\n})').code,
+        /IF logo touched THEN:\n {6}show number 1\n {6}wait until not \(logo touched\)/);
+    // With a long-press handler beside it, both wait for the release and time
+    // the touch: CODAL sends LONG_CLICK for 1000 ms or more, CLICK for less —
+    // never both.
     const {code, unsupported} = microbitToPseudocode([
         'input.onLogoEvent(TouchButtonEvent.Pressed, function () {',
         '    basic.showNumber(1)',
         '})',
         'input.onLogoEvent(TouchButtonEvent.LongPressed, function () {',
         '    basic.showNumber(2)',
+        '})',
+        'input.onLogoEvent(TouchButtonEvent.Released, function () {',
+        '    basic.showNumber(3)',
         '})'
     ].join('\n'));
-    assert.match(code, /IF logo touched THEN:\n {6}show number 1\n {6}wait until not \(logo touched\)/);
-    assert.deepEqual(unsupported, ['input.onLogoEvent(TouchButtonEvent.LongPressed) — polling sees the logo held, not a long press']);
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /IF logo touched THEN:\n {6}set (_held\d+) to timer\n {6}wait until not \(logo touched\)\n {6}IF \(timer - \1\) < 1 THEN:\n {8}show number 1/);
+    assert.match(code, /IF logo touched THEN:\n {6}set (_held\d+) to timer\n {6}wait until not \(logo touched\)\n {6}IF not \(\(timer - \1\) < 1\) THEN:\n {8}show number 2/);
+    assert.match(code, /IF logo touched THEN:\n {6}wait until not \(logo touched\)\n {6}show number 3/);
 });
 
-test('what MicroPython\'s radio does not have is refused with the reason', () => {
+test('what MicroPython\'s radio does not have is refused with the reason; serial numbers are carried now', () => {
+    // A packet's send time is not in a MicroPython packet: the time and the
+    // packet dump that prints it stay refused, by name.
     const {unsupported} = microbitToPseudocode([
-        'radio.setTransmitSerialNumber(true)',
-        'let s = radio.receivedPacket(RadioPacketProperty.SerialNumber)'
+        'let t = radio.receivedPacket(RadioPacketProperty.Time)',
+        'radio.writeReceivedPacketToSerial()'
     ].join('\n'));
-    assert.ok(unsupported.some(u => /setTransmitSerialNumber\(\) — MicroPython's radio has no serial number/.test(u)), unsupported.join('\n'));
-    assert.ok(unsupported.some(u => /SerialNumber\) — a MicroPython radio packet carries no serial number/.test(u)), unsupported.join('\n'));
+    assert.ok(unsupported.some(u => /Time\) — a MicroPython radio packet carries no send time/.test(u)), unsupported.join('\n'));
+    assert.ok(unsupported.some(u => /writeReceivedPacketToSerial\(\) — the dump prints each packet's send time/.test(u)), unsupported.join('\n'));
+    // Serial numbers ride in the packet (sb3-creator: `radio transmit serial number on`).
+    const serial = microbitToPseudocode([
+        'radio.setTransmitSerialNumber(true)',
+        'let s = radio.receivedPacket(RadioPacketProperty.SerialNumber)',
+        'let me = control.deviceSerialNumber()'
+    ].join('\n'));
+    assert.deepEqual(serial.unsupported, []);
+    assert.match(serial.code, /radio transmit serial number on\n {2}set s to last radio serial number\n {2}set me to device serial number/);
 });
 
 test('a function that returns a value hands it back in <name>_result; the caller calls, then reads it',
@@ -737,3 +763,95 @@ test('basic.showNumber is `show number`, which waits while shown; its interval r
         assert.doesNotMatch(code, /^\s*display /m);
         assert.ok(opcodesOf(code).has('microbitplus_shownumber'));
     });
+
+// ── census A2 (2026-09-29): the shapes the side-by-side test cannot drive ──
+
+test('pins.onPulsed is polled on the level, and runs as the pulse ENDS (a High pulse at the fall)', () => {
+    const {code, unsupported} = microbitToPseudocode([
+        'pins.onPulsed(DigitalPin.P0, PulseValue.High, function () {',
+        '    led.plot(0, 0)',
+        '})',
+        'pins.onPulsed(DigitalPin.P1, PulseValue.Low, function () {',
+        '    led.plot(1, 0)',
+        '})'].join('\n'));
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /IF not \(pin P0 digital = 0\) THEN:\n {6}wait until pin P0 digital = 0\n {6}plot x 0 y 0 on/);
+    assert.match(code, /IF pin P1 digital = 0 THEN:\n {6}wait until not \(pin P1 digital = 0\)\n {6}plot x 1 y 0 on/);
+});
+
+test('control.eventTimestamp is the time the poll saw the event, in µs; outside a handler it is refused', () => {
+    const {code, unsupported} = microbitToPseudocode([
+        'let t0 = 0',
+        'input.onPinPressed(TouchPin.P0, function () {',
+        '    t0 = control.eventTimestamp()',
+        '})'].join('\n'));
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /IF pin P0 touched THEN:\n {6}set (_evt\d+) to round \(timer \* 1000000\)\n {6}set t0 to \1/);
+    assert.deepEqual(microbitToPseudocode('let t = control.eventTimestamp()\n').unsupported,
+        ['control.eventTimestamp() outside an event handler']);
+});
+
+test('a function whose name is a dialect word is renamed, and called by the new name (gameofLife\'s show)', () => {
+    const {code} = microbitToPseudocode('function show() {\n    basic.showNumber(1)\n}\nshow()\n');
+    assert.match(code, /DEFINE show_:/);
+    assert.match(code, /WHEN flag clicked:\n {2}show_\n/);
+    assert.match(code, /# the function "show" is written as "show_" here/);
+});
+
+test('a choice inside a loop\'s condition is still refused (it would be made once, before the loop)', () => {
+    const {unsupported} = microbitToPseudocode('let i = 0\nwhile ((i < 3 ? 1 : 2) > i) {\n    i += 1\n}\n');
+    assert.ok(unsupported.includes('a ? b : c inside an expression'), unsupported.join('\n'));
+});
+
+test('an array assigned to another is copied only when the source is a local made anew each call', () => {
+    // a global array, used again after the assignment: no copy would be the same program
+    const {unsupported} = microbitToPseudocode('let a = [1, 2]\nlet b = [3]\nfunction f() {\n    a = b\n    b.push(4)\n}\nf()\n');
+    assert.ok(unsupported.some(u => /an array assigned to another \(a = b\)/.test(u)), unsupported.join('\n'));
+    const ok = microbitToPseudocode('let a = [1, 2]\nfunction f() {\n    let r: number[] = []\n    r.push(5)\n    a = r\n}\nf()\n');
+    assert.deepEqual(ok.unsupported, []);
+    assert.match(ok.code, /new array "a"\n {2}set (_i\d+) to 0\n {2}REPEAT UNTIL not \(\1 < length of array "r"\):\n {4}push item \1 of array "r" to array "a"/);
+});
+
+test('a function given something that is not a named array is refused by name', () => {
+    const {unsupported} = microbitToPseudocode('function f(arr: number[]) {\n    basic.showNumber(arr[0])\n}\nf([1, 2])\n');
+    assert.ok(unsupported.includes('f() given an array that is not a named array'), unsupported.join('\n'));
+});
+
+test('two array items side by side are parenthesised (they were read as one item whose index ran on)', () => {
+    const {code} = microbitToPseudocode('let a = [1, 2]\nlet s = a[0] + a[1]\nif (a[0] == a[1]) {\n    s = 0\n}\n');
+    assert.match(code, /set s to \(item 0 of array "a"\) \+ \(item 1 of array "a"\)/);
+    assert.match(code, /IF \(item 0 of array "a"\) = \(item 1 of array "a"\) THEN:/);
+});
+
+test('a constant table is read where it is used (infection\'s GameIcons.Dead is IconNames.Skull)', () => {
+    const {code, unsupported} = microbitToPseudocode('const Icons = {\n    Dead: IconNames.Skull,\n    Alive: IconNames.Happy\n}\nbasic.showIcon(Icons.Dead)\n');
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /show icon /);
+    assert.doesNotMatch(code, /Icons/);
+});
+
+test('serial.writeValue with a computed name is refused by name', () => {
+    assert.deepEqual(microbitToPseudocode('let k = "a"\nserial.writeValue(k, 1)\n').unsupported,
+        ['serial.writeValue() with a computed or colon-bearing name']);
+});
+
+test('an image shown with its own interval draws, then waits that interval; without one it is `show image` (400 ms)', () => {
+    const {code, unsupported} = microbitToPseudocode([
+        'let img = images.createImage(`',
+        '    # . . . .',
+        '    . . . . .',
+        '    . . . . .',
+        '    . . . . .',
+        '    . . . . .',
+        '    `)',
+        'img.showImage(2)',
+        'img.showImage(0, 100)'].join('\n'));
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /show image img offset 2\n {2}plot image img offset 0\n {2}wait 0\.1 seconds/);
+});
+
+test('setPixel of `v != 0` (how the export writes the dialect\'s 1/0) reads back as v', () => {
+    const {code} = microbitToPseudocode('let v = 1\nlet img = images.createImage(`\n. . . . .\n. . . . .\n. . . . .\n. . . . .\n. . . . .\n`)\n' +
+        'img.setPixel(1, 2, v != 0)\n');
+    assert.match(code, /set pixel x 1 y 2 of image img to v\n/);
+});
