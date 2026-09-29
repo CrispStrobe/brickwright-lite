@@ -134,9 +134,9 @@ function survey () {
     return {rows, skipped};
 }
 
-test('every PWM pin the corpus declares dims its LED linearly with duty', () => {
+test('every PWM pin the corpus declares dims its LED linearly with duty', t => {
     const {rows, skipped} = survey();
-    console.log(`${rows.length} PWM-driven LEDs across `
+    t.diagnostic(`${rows.length} PWM-driven LEDs across `
         + `${new Set(rows.map(r => r.id)).size} examples; skips: `
         + `${[...skipped].map(([k, n]) => `${n} ${k}`).join('; ')}`);
     assert.ok(rows.length >= 8,
