@@ -150,19 +150,6 @@ export async function activateConfig(config, opts = {}) {
     if (!bootSlotId) throw new Error('functional config has no boot slot to activate');
     const bootRef = cfg.slots[bootSlotId];
 
-    const resolved = await resolveSlot(bootRef, fetcher, bootSlotId);
-    const bootMedia = {
-        slot: bootSlotId,
-        bytes: resolved.bytes,
-        name: cfg.title || bootSlotId,
-        profile: SLOT_PROFILE[bootSlotId] || null
-    };
-    if (cfg.machine === 'i80386') bootMedia.nativeBlocks = cfg.nativeBlocks === true;
-    if (bootRef.geometry) bootMedia.geometry = {...bootRef.geometry};
-    // A ROM image states its own load address via the config; carry it so the
-    // reset vector reads from real bytes (debug-runner's romAt path).
-    if (typeof bootRef.romAt === 'number') bootMedia.romAt = bootRef.romAt;
-
     // machineConfig for createDebugRunner is the wired-extractor {regions,chips}
     // — an INLINE object (the Eater 6502 case) passes straight through; a STRING
     // preset name ('PCXT8086') is bw-board's, resolved inside the boot path (the
@@ -177,18 +164,38 @@ export async function activateConfig(config, opts = {}) {
     // BIOS + VGA option ROM (bw-board marks the 386 `bios` slot required). These
     // are resolved here so the caller has every byte a boot needs; the i8086
     // boot path supplies its own XT BIOS and needs none of these.
-    const media = {};
-    const warnings = [];
     // A Linux kernel's initramfs is the same kind of companion: a `kernel`
     // boot needs its `initrd` before the first instruction runs — and its
     // `snapshot`, when the config has one, to open at the shell prompt.
-    for (const extraSlot of ['bios', 'vga-rom', 'initrd', 'snapshot',
-        ...(cfg.machine === 'i80386' && machinePreset === 'freedos-vga'
-            ? ['hdd', 'floppy'] : [])]) {
-        if (extraSlot !== bootSlotId && cfg.slots[extraSlot]) {
-            media[extraSlot] = await resolveSlot(cfg.slots[extraSlot], fetcher, extraSlot);
-        }
-    }
+    const extraSlots = ['bios', 'vga-rom', 'initrd', 'snapshot',
+        ...(cfg.machine === 'i80386' && machinePreset === 'freedos-vga' ? ['hdd', 'floppy'] : [])]
+        .filter(id => id !== bootSlotId && cfg.slots[id]);
+    // ALL AT ONCE. The boot image and every companion are fetched in parallel:
+    // one after the other, the Linux lesson's three files (9.5 MB) cost the sum
+    // of three round trips before the first instruction. They are started in
+    // declaration order and judged in that order, so the first failing slot is
+    // the one reported (by name), and no rejection is left unhandled.
+    const fetches = [bootSlotId, ...extraSlots].map(id => resolveSlot(cfg.slots[id], fetcher, id));
+    const settled = await Promise.allSettled(fetches);
+    const failed = settled.find(r => r.status === 'rejected');
+    if (failed) throw failed.reason;
+    const resolved = settled[0].value;
+    const media = {};
+    extraSlots.forEach((id, i) => { media[id] = settled[i + 1].value; });
+
+    const bootMedia = {
+        slot: bootSlotId,
+        bytes: resolved.bytes,
+        name: cfg.title || bootSlotId,
+        profile: SLOT_PROFILE[bootSlotId] || null
+    };
+    if (cfg.machine === 'i80386') bootMedia.nativeBlocks = cfg.nativeBlocks === true;
+    if (bootRef.geometry) bootMedia.geometry = {...bootRef.geometry};
+    // A ROM image states its own load address via the config; carry it so the
+    // reset vector reads from real bytes (debug-runner's romAt path).
+    if (typeof bootRef.romAt === 'number') bootMedia.romAt = bootRef.romAt;
+
+    const warnings = [];
 
     const targetKind = TARGET_KIND[cfg.machine] || cfg.machine;
     // The i80386 boot path IS wired into lite's debug-runner now (attachI80386:

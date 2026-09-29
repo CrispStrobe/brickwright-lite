@@ -103,6 +103,24 @@ test('activate hands the kernel, the initramfs and the snapshot to the boot path
     assert.equal(new TextDecoder().decode(cold.detail.linuxInitrd), 'bytes:initramfs.cpio');
 });
 
+test('the three media are fetched at once, not one after another', async () => {
+    // Run's wait is the download: three files fetched in turn cost three round
+    // trips before the first instruction. Every fetch must have STARTED before
+    // any of them is allowed to finish.
+    const started = [];
+    const release = [];
+    const fetcher = ref => new Promise(resolve => {
+        started.push(ref.url.split('/').pop());
+        release.push(() => resolve({bytes: new Uint8Array([started.length])}));
+    });
+    const run = runMachineConfig(lesson().config, {fetcher, dispatch: () => {}});
+    for (let i = 0; i < 20 && started.length < 3; i++) await new Promise(r => setTimeout(r, 0));
+    assert.deepEqual(started, ['Image', 'initramfs.cpio', 'linux-shell.snap.gz'], 'all three in flight together, in slot order');
+    release.forEach(f => f());
+    const {detail} = await run;
+    assert.ok(detail.bytes && detail.linuxInitrd && detail.linuxSnapshot);
+});
+
 test('a byte that does not hash to its pin is refused BY SLOT NAME before anything boots', async () => {
     const good = new Uint8Array([1, 2, 3]);
     const cfg = structuredClone(lesson().config);
