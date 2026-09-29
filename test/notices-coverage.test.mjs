@@ -90,6 +90,33 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/amey-thakur-8086.MIT.txt',
     },
     {
+        // Three MakeCode extensions, carried as SOURCE and compiled into the
+        // bundle (scripts/sync-makecode-extensions.mjs, pinned by commit): the
+        // same category as the 8086 programs above — no lockfile sees them.
+        name: 'pxt-microturtle',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-gui/src/lib/bw-makecode/extensions-vendored.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
+    },
+    {
+        name: 'pxt-radio-blockchain',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-gui/src/lib/bw-makecode/extensions-vendored.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
+    },
+    {
+        name: 'pxt-kitronik-motor-driver',
+        licence: 'MIT',
+        holder: 'Kitronik Ltd',
+        evidence: 'overlay/scratch-gui/src/lib/bw-makecode/extensions-vendored.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
+    },
+    {
         // The core compiler, shipped as WASM. BSD-2 clause 2 attaches to
         // BINARY redistribution specifically, which is exactly what a .wasm
         // in the bundle is.
