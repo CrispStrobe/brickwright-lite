@@ -4009,6 +4009,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // is the machine config, which is exactly what happened on run
         // 34063599364.
         debugChipRefusals: () => (chipRefusalsOf ? chipRefusalLines(chipRefusalsOf()) : null),
+        // CPU timing models (E8, bw-board riscv32-debug.js): a pipeline, caches
+        // and a branch predictor fed by the retired instructions. Only a target
+        // that offers them says so; the pane (debug-pipeline.jsx) shows nothing
+        // otherwise. Read at render, like the refusals above.
+        debugTimingSupported: () => !!(target && typeof target.setTiming === 'function'),
+        setDebugTiming: cfg => (target && typeof target.setTiming === 'function'
+            ? target.setTiming(cfg) : {unsupported: 'this target has no timing models'}),
+        debugTiming: lastCycles => (target && typeof target.timing === 'function' ? target.timing(lastCycles) : null),
         debugHistoryAnnotations: () => historyAnnotations.list(),
         addDebugBookmark: request => historyAnnotations.addBookmark(request),
         addDebugAnnotation: request => historyAnnotations.addAnnotation(request),
