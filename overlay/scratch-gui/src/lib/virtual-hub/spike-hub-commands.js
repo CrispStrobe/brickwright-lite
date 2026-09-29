@@ -142,6 +142,42 @@ const STATEMENTS = [
     [/^hub\.motion\.reset_yaw\(\s*\)$/, h => h.resetYaw(0)],
     [new RegExp(`^hub\\.motion\\.preset_yaw\\(\\s*${NUM}\\s*\\)$`), (h, m) => h.resetYaw(num(m[1]))],
     [/^motion_sensor\.reset_yaw\(\s*(-?\d+)?\s*\)$/, (h, m) => h.resetYaw(m[1] === undefined ? 0 : num(m[1]))],
+    // ---- the light matrix, SPIKE 2 style: levels 0-9, pixel (x, y) at y*5+x ----
+    // (the same store the Classic route's scratch.display_* verbs write)
+    [new RegExp(`^hub\\.display\\.pixel\\(\\s*${NUM}\\s*,\\s*${NUM}\\s*,\\s*${NUM}\\s*\\)$`), (h, m) => {
+        const [x, y] = [num(m[1]), num(m[2])];
+        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > 4 || y < 0 || y > 4) return UNHANDLED;
+        const pixels = [...h.data.display];
+        pixels[y * 5 + x] = Math.max(0, Math.min(9, Math.round(num(m[3]))));
+        h.data.display = pixels;
+    }],
+    [/^hub\.display\.show\(\s*" "\s*\)$/, h => { h.data.display = Array(25).fill(0); }],
+    [/^hub\.display\.show\(\s*hub\.Image\(\s*"([0-9:]+)"\s*\)\s*\)$/, (h, m) => {
+        const levels = m[1].replaceAll(':', '').split('').map(Number);
+        if (levels.length !== 25) return UNHANDLED;
+        h.data.display = levels;
+    }],
+    // ---- hub outputs no sensor reports back ------------------------------------
+    [new RegExp(`^hub\\.led\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
+        const n = num(m[1]);
+        if (!Number.isInteger(n) || n < 0 || n > 11) return UNHANDLED;
+        h.data.centerLight = n;
+    }],
+    [new RegExp(`^hub\\.sound\\.volume\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
+        h.data.volume = Math.max(0, Math.min(100, num(m[1])));
+    }],
+    // The extension names the port's device, then sets mode 5 (the lights):
+    // `dist_sensor = hub.port.D.device; dist_sensor.mode(5, bytes([a, b, c, d]))`.
+    [new RegExp(`^(\\w+)\\s*=\\s*hub\\.port\\.${PORT}\\.device$`), (h, m) => {
+        h.deviceNames = {...(h.deviceNames || {}), [m[1]]: m[2]};
+    }],
+    [new RegExp(`^(\\w+)\\.mode\\(\\s*5\\s*,\\s*bytes\\(\\[\\s*${NUM}\\s*,\\s*${NUM}\\s*,\\s*${NUM}\\s*,\\s*${NUM}\\s*\\]\\)\\s*\\)$`), (h, m) => {
+        const port = (h.deviceNames || {})[m[1]];
+        if (!port) return UNHANDLED;
+        const lights = [...h.data.distanceLights];
+        lights['ABCDEF'.indexOf(port)] = [m[2], m[3], m[4], m[5]].map(v => Math.max(0, Math.min(9, Math.round(num(v)))));
+        h.data.distanceLights = lights;
+    }],
     // ---- whole-hub stops ------------------------------------------------------
     [/^\[hub\.port\[p\]\.motor\.stop\(\) for p in "ABCDEF" if hasattr\(hub\.port\[p\], "motor"\)\]$/, h => h.motors.stopAll()]
 ];
