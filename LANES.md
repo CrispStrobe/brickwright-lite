@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| Main red: rp2040 Arcade base not reproducible (`__DATE__` embedded) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/open-tasks`, branch `fix/arcade-rp2040-source-date` | base `76d21c170`; paths `scripts/build-makecode-arcade-bases.mjs` (build env), its focused test, this row | **CLAIMED 2026-09-29.** makecode-arcade-bases on main run 36544779170 red: rp2040 hex differs from pin 369643c3 in ONE record — the embedded `__DATE__` (`Sep 27 2026` vs `Sep 29 2026`); every source commit and the toolchain are identical in both manifests. Fix: fixed `SOURCE_DATE_EPOCH` = the pin's build day. |
+
 | Arcade export gaps: broadcasts, costume/backdrop switching, clones, sounds, pen, lists, mouse (task A4 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/a4-arcade-export*` | base `99e8a46bf`; the Scratch → MakeCode Arcade exporter (upstream first if vendored) with focused tests; Lite: pin-bump surfaces if any, `docs/ARCADE-COMPAT-PLAN.md`, this row and the task file. Not the MakeCode micro:bit importer (A2) and not the Arcade firmware-base build. | **CLAIMED 2026-09-29.** Map each doable construct; keep a named refusal for the rest. |
 
 
