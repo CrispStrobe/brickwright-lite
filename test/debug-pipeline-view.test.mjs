@@ -7,10 +7,10 @@
 // target must exist.
 //
 // Mutations that go red here (measured when this was written): the pane
-// rendering held cells upper-case (no stall marking) reds the diagram row;
-// the runner's debugTiming returning null reds the render case; dropping the
-// <DebugPipeline> element from the panel, or a DE key, reds the wiring and
-// parity cases.
+// rendering held cells upper-case (no stall marking) reds the render case;
+// the runner's debugTiming returning null, or the <DebugPipeline> element
+// dropped from the panel, reds the wiring case; a DE key removed reds the
+// parity case.
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
