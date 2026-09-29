@@ -47,7 +47,7 @@ lands there first; Lite then advances the exact pin.
 
 | # | task | scope / done-when | status |
 | --- | --- | --- | --- |
-| D1 | SPIKE 3 Python: close refusals | 34 of 73 SPIKE 3 functions are refused by name. Map the ones the arena or the dialect can support (sensors, motor modes, light matrix). | queued |
+| D1 | SPIKE 3 Python: close refusals | 34 of 73 SPIKE 3 functions are refused by name. Map the ones the arena or the dialect can support (sensors, motor modes, light matrix). | CLAIMED 2026-09-29 |
 | D2 | More arena units | Units beyond "Rover basics": sensors in depth, gyro turns, mapping, a capstone mission. Original content, EN and DE, reference and wrong solutions auto-checked. | queued |
 | D3 | 3D view of the arena | A three.js view over the same arena snapshot state, as a toggle beside the 2D view. No new physics. | queued |
 | D4 | Pybricks header PR | Send the held clean-room MIT `pb_kwarg_helper.h` upstream (bug-fix PR already sent). Goes out under the owner's account. | HELD — owner ticked it but gave no place in the order; earlier instruction was to hold it back |

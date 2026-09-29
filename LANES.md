@@ -482,6 +482,8 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| SPIKE 3 Python importer: close refusals the arena/dialect can support (task D1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/d1-spike3-refusals*` | base `ac3650e8e`; upstream sb3-creator SPIKE 3 importer/dialect words (+ extensions spikeprime blocks if needed), Lite virtual hub/arena support for new words, focused tests; this row and the task file. | **CLAIMED 2026-09-29.** 34 of 73 SPIKE 3 functions are refused by name. |
+
 | E8 un-parked: in-order pipeline, cache and branch-predictor models over the RISC-V core, with a pipeline view in Lite (task C4 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/c4-e8*` | base `841db2e57`; upstream bw-board new timing-model modules fed by a retired-instruction trace (no edits to `src/riscv32.js` until C2's decode-cache PR has landed), bw-board ROADMAP E8 section; Lite: pin-bump surfaces + a pipeline/cache view; focused tests; this row and the task file. | **CLAIMED 2026-09-29.** Owner un-parked E8 (menu, 2026-09-29). |
 
 
