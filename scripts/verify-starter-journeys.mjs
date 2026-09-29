@@ -89,10 +89,22 @@ try {
             check(await page.getByText(/Python syntax alone/).isVisible(),
                 'a learner can switch to language-specific guidance');
         }
+        // The editor tab switch is its own React commit, after the dialog has
+        // closed and the lesson has mounted: reading the selected tab once
+        // raced it (lego read red on Lite #554, run 36594815958 attempt 2).
+        // Wait for exactly the predicate asserted below, then assert it.
+        const expected = id === 'lego' ? 'code' : 'circuit';
+        const reached = await page.waitForFunction(want => [
+            ...document.querySelectorAll('[role="tab"][aria-selected="true"]')
+        ].map(tab => tab.textContent).join(' ').toLowerCase().includes(want), expected, {timeout: 10000})
+            .then(() => true, error => {
+                if (error.name !== 'TimeoutError') throw error;
+                return false;
+            });
         const selected = (await page.locator('[role="tab"][aria-selected="true"]')
             .allTextContents()).join(' ').toLowerCase();
-        const expected = id === 'lego' ? 'code' : 'circuit';
-        check(selected.includes(expected), `${id} opens the ${expected} editor`);
+        check(reached && selected.includes(expected),
+            `${id} opens the ${expected} editor${reached ? '' : ` (selected after 10 s: "${selected}")`}`);
         await page.screenshot({path: join(artifacts, `${id}-guided-lesson.png`)});
         await context.close();
     }
