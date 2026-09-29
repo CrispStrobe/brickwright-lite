@@ -323,6 +323,7 @@ class Parser {
         if (this.at('function')) return this.parseFunction();
         if (this.at('if')) return this.parseIf();
         if (this.at('while')) return this.parseWhile();
+        if (this.at('do')) return this.parseDoWhile();
         if (this.at('for')) return this.parseFor();
         if (this.at('enum')) return this.parseEnum();
         if (this.at('namespace')) return this.parseNamespace();
@@ -637,6 +638,24 @@ class Parser {
         const test = this.parseExpression();
         this.expect('punct', ')');
         return {type: 'While', test, body: this.parseBlockOrStatement()};
+    }
+
+    /**
+     * `do BODY while (TEST)` as the loop it is: `while (true) { BODY; if
+     * (!(TEST)) break }`, which the translators already lower (the body runs
+     * once before the test). It used to be an Unknown statement followed by
+     * the `while (TEST);` read as a SEPARATE, empty loop (pxt-ev3's gyroboy).
+     */
+    parseDoWhile () {
+        this.expect('do');
+        const body = this.parseBlockOrStatement();
+        this.expect('while');
+        this.expect('punct', '(');
+        const test = this.parseExpression();
+        this.expect('punct', ')');
+        this.eat('punct', ';');
+        const exit = {type: 'If', test: {type: 'Unary', op: '!', argument: test}, consequent: [{type: 'Break'}], alternate: null};
+        return {type: 'While', test: {type: 'Boolean', value: true}, body: [...body, exit]};
     }
 
     parseFor () {

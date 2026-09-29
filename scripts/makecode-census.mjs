@@ -36,10 +36,23 @@
  *                re-export nor the unsupported list: dropped without a word
  *   lite programs: parse -> export -> recompile (+ the export's own unsupported list).
  *
+ * A THIRD CORPUS, the EV3 (task B4): every ```blocks / ```typescript program
+ * in the pinned pxt-ev3 package's docs, imported into the DEVICE EV3 dialect
+ * (ev3-translate.js), whose words are the ev3comprehensive blocks:
+ *     baseline   pxt-ev3's own compiler (pxt-core 9.3.19) compiles the original
+ *     import     ev3ToPseudocode: how many calls were named unsupported
+ *     parse      SB3Creator parses it WITH NO WARNING (a line it could not
+ *                read would otherwise be a block that silently is not there)
+ *     export     blocks -> pxt-ev3 TypeScript (export-ev3.js)
+ *     recompile  pxt-ev3 compiles the re-export
+ *     SILENT     as above, over pxt-ev3's namespaces
+ *   There is no `sim` stage: Lite has no EV3 runtime to run the blocks on
+ *   (docs/LEGO-ARCHITECTURE.md), so round trip + recompile is the proof.
+ *
  * Needs the synced runtime (npm run sync:makecode). Writes
  * docs/generated/MAKECODE-CENSUS.md and test-results/makecode-census.json.
  *
- *   node scripts/makecode-census.mjs [--snippets] [--limit N] [--only makecode|lite] [--match REGEX]
+ *   node scripts/makecode-census.mjs [--snippets] [--limit N] [--only makecode|lite|ev3] [--match REGEX]
  * (--match keeps only the programs whose id matches, and writes the report to
  * test-results/ only — a partial census is not the generated doc.)
  */
@@ -57,6 +70,8 @@ const imp = rel => import(pathToFileURL(path.join(SRC, rel)).href);
 const {PXT_GLUE_JS} = await imp('bw-makecode/pxt-runtime.js');
 const {microbitToPseudocode} = await imp('bw-makecode/microbit-translate.js');
 const {exportToMakeCode} = await imp('bw-makecode/export.js');
+const {ev3ToPseudocode} = await imp('bw-makecode/ev3-translate.js');
+const {exportToMakeCodeEv3} = await imp('bw-makecode/export-ev3.js');
 const {default: SB3Creator} = await imp('sb3-creator.js');
 const {untar, CACHE_DIR} = await import(pathToFileURL(path.join(ROOT, 'scripts/sync-makecode-runtime.mjs')).href);
 const {runOnMicrobitFirmware} = await import(pathToFileURL(path.join(ROOT, 'scripts/lib/microbit-firmware.mjs')).href);
@@ -228,7 +243,7 @@ function litePrograms () {
 const t0 = Date.now();
 const results = {makecode: [], lite: []};
 
-if (ONLY !== 'lite') {
+if (!ONLY || ONLY === 'makecode') {
     const programs = makecodePrograms().filter(p => !MATCH || MATCH.test(p.id)).slice(0, LIMIT);
     let n = 0;
     for (const p of programs) {
@@ -289,7 +304,7 @@ if (ONLY !== 'lite') {
     }
 }
 
-if (ONLY !== 'makecode') {
+if (!ONLY || ONLY === 'lite') {
     for (const p of litePrograms().filter(p => !MATCH || MATCH.test(p.id)).slice(0, LIMIT)) {
         const row = {id: p.id, device: p.device};
         let project;
@@ -302,6 +317,161 @@ if (ONLY !== 'makecode') {
         if (!re.ok) row.recompileError = re.error;
         row.stage = !re.ok ? 'recompile' : (row.exportUnsupported.length ? 'partial' : 'full');
         results.lite.push(row);
+    }
+}
+
+// ── the EV3: pxt-ev3's docs -> DEVICE EV3 -> ev3comprehensive blocks -> pxt-ev3 ──
+const EV3_TARGET = 'ev3';
+let ev3Sandbox = null;
+function ev3Pxt () {
+    if (ev3Sandbox) return ev3Sandbox;
+    const dir = path.join(STATIC, EV3_TARGET);
+    const e = {
+        setTimeout, clearTimeout, setInterval, clearInterval, setImmediate, clearImmediate,
+        TextEncoder: util.TextEncoder, TextDecoder: util.TextDecoder, Buffer,
+        console: {log () {}, debug () {}, info () {}, warn () {}, error () {}},
+        pxtTargetBundle: JSON.parse(fs.readFileSync(path.join(dir, 'target.json'), 'utf8'))
+    };
+    e.global = e;
+    e.self = e;
+    e.eval = src => vm.runInContext(src, e, {filename: 'eval'});
+    vm.createContext(e, {codeGeneration: {strings: false, wasm: false}});
+    vm.runInContext(fs.readFileSync(path.join(dir, 'pxtworker.js'), 'utf8'), e, {filename: 'pxtworker.js'});
+    vm.runInContext(PXT_GLUE_JS, e, {filename: 'pxt-glue.js'});
+    ev3Sandbox = e;
+    return e;
+}
+const EV3_PXT_JSON = JSON.stringify({name: 'census', dependencies: {ev3: '*'}, files: ['main.ts']});
+async function ev3Compile (ts) {
+    try {
+        const r = JSON.parse(JSON.stringify(await ev3Pxt().bwMakeCode.compile({'pxt.json': EV3_PXT_JSON, 'main.ts': ts}, {})));
+        return {ok: r.success, error: r.success ? '' : ((r.diagnostics[0] || {}).message || 'failed'), net: r.netAttempts.length};
+    } catch (e) {
+        return {ok: false, error: String(e && e.message || e).slice(0, 160), net: 0};
+    }
+}
+/**
+ * An EV3 call, with its port and motor size abstracted: `sensors.color3.light`
+ * is `sensors.colorN.light`, `motors.mediumBC.run` is `motors.M.run`. The
+ * port numbers round-trip exactly (the blocks carry them); what this removes
+ * is the one DESIGNED loss the importer names on every use — a medium motor
+ * comes back as a large one — so the table below measures calls, not sizes.
+ */
+const ev3Normal = name => String(name)
+    .replace(/\bsensors\.(touch|color|ultrasonic|gyro|infrared)[1-4]\b/g, 'sensors.$1N')
+    .replace(/\bmotors\.(large|medium)(A|B|C|D|AB|BC|CD|AD)\b/g, 'motors.M')
+    .replace(/\bcontrol\.timer[1-8]\b/g, 'control.timerN');
+const EV3_NAMESPACES = ['motors', 'sensors', 'brick', 'music', 'control', 'console', 'screen', 'loops', 'Math', 'moods'];
+function ev3Calls (source) {
+    const ts = withoutComments(source);
+    const out = new Set();
+    for (const m of ts.matchAll(/\b([a-zA-Z_]+(?:\.[a-zA-Z_]\w*)+)\s*\(/g)) {
+        if (EV3_NAMESPACES.includes(m[1].split('.')[0])) out.add(ev3Normal(m[1]));
+    }
+    for (const m of ts.matchAll(/(^|[^.\w])(forever|pause|pauseUntil|randint)\s*\(/g)) out.add(m[2]);
+    return out;
+}
+/** pxt-ev3 calls and what the round trip designedly turns them into (ev3-translate.js). */
+const EV3_TRANSFORMS = {
+    // Handlers are polled on the reading they wait for.
+    'sensors.touchN.onEvent': 'sensors.touchN.isPressed',
+    'sensors.touchN.pauseUntil': 'sensors.touchN.isPressed',
+    'sensors.colorN.onColorDetected': 'sensors.colorN.color',
+    'sensors.colorN.pauseUntilColorDetected': 'sensors.colorN.color',
+    'sensors.colorN.isColorDetected': 'sensors.colorN.color',
+    'sensors.colorN.onLightDetected': 'sensors.colorN.light',
+    'sensors.colorN.pauseUntilLightDetected': 'sensors.colorN.light',
+    'sensors.colorN.reflectedLight': 'sensors.colorN.light',
+    'sensors.colorN.ambientLight': 'sensors.colorN.light',
+    'sensors.ultrasonicN.onEvent': 'sensors.ultrasonicN.distance',
+    'sensors.ultrasonicN.pauseUntil': 'sensors.ultrasonicN.distance',
+    'sensors.infraredN.onEvent': 'sensors.infraredN.proximity',
+    'sensors.infraredN.pauseUntil': 'sensors.infraredN.proximity',
+    'sensors.gyroN.pauseUntilRotated': 'sensors.gyroN.angle',
+    'brick.buttonEnter.onEvent': 'brick.buttonEnter.isPressed',
+    'brick.buttonLeft.onEvent': 'brick.buttonLeft.isPressed',
+    'brick.buttonRight.onEvent': 'brick.buttonRight.isPressed',
+    'brick.buttonUp.onEvent': 'brick.buttonUp.isPressed',
+    'brick.buttonDown.onEvent': 'brick.buttonDown.isPressed',
+    'brick.buttonEnter.pauseUntil': 'brick.buttonEnter.isPressed',
+    'brick.buttonLeft.pauseUntil': 'brick.buttonLeft.isPressed',
+    'brick.buttonRight.pauseUntil': 'brick.buttonRight.isPressed',
+    'brick.buttonUp.pauseUntil': 'brick.buttonUp.isPressed',
+    'brick.buttonDown.pauseUntil': 'brick.buttonDown.isPressed',
+    // One call under two names, or its newer spelling.
+    'loops.forever': 'forever',
+    'loops.pause': 'pause',
+    'music.rest': 'pause',
+    'brick.printString': 'brick.showString',
+    'brick.printNumber': 'brick.showNumber',
+    'brick.printValue': 'brick.showValue',
+    'control.timerN.seconds': 'control.timerN.millis',
+    'control.timerN.pauseUntil': 'control.timerN.millis',
+    'music.noteFrequency': 'music.playTone',
+    // The dialect's `pick random`, which the export writes as randint.
+    'Math.randomRange': 'randint',
+    // BatteryProperty.Level is brick.batteryLevel() (pxt-ev3 libs/core/battery.ts).
+    'brick.batteryInfo': 'brick.batteryLevel'
+};
+function ev3Programs () {
+    const tar = untar(fs.readFileSync(path.join(CACHE_DIR, 'pxt-ev3-1.4.41.tgz')));
+    const programs = [];
+    const seen = new Set();
+    for (const [name, bytes] of [...tar.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+        if (!name.startsWith('docs/') || !name.endsWith('.md')) continue;
+        const text = bytes.toString('utf8');
+        const blocks = [...text.matchAll(/```(blocks|typescript|block)\n([\s\S]*?)```/g)].map(m => m[2]);
+        blocks.forEach((code, i) => {
+            const key = code.replace(/\s+/g, ' ').trim();
+            if (!key || seen.has(key)) return;
+            seen.add(key);
+            programs.push({id: `${name.replace(/^docs\//, '').replace(/\.md$/, '')}#${i}`, ts: code});
+        });
+    }
+    return programs;
+}
+if (!ONLY || ONLY === 'ev3') {
+    results.ev3 = [];
+    const programs = ev3Programs().filter(p => !MATCH || MATCH.test(p.id)).slice(0, LIMIT);
+    let n = 0;
+    for (const p of programs) {
+        const row = {id: p.id};
+        const base = await ev3Compile(p.ts);
+        if (!base.ok) {
+            row.stage = base.net ? 'needs-extension' : 'not-a-program';
+            row.detail = base.error;
+            results.ev3.push(row);
+            continue;
+        }
+        let imported;
+        try { imported = ev3ToPseudocode(p.ts, {name: p.id}); } catch (e) { row.stage = 'import-threw'; row.detail = e.message; results.ev3.push(row); continue; }
+        row.unsupported = imported.unsupported.map(String);
+        let project;
+        try {
+            const creator = new SB3Creator();
+            project = creator.parse(imported.code);
+            // "Empty body" is a lint on the blocks, not a line the parser could
+            // not read: the original's body was empty, or everything in it was
+            // named unsupported. Any OTHER warning is a failed line.
+            const warnings = (creator.warnings || []).filter(w => !/Empty body:/.test(w));
+            if (warnings.length) throw new Error(`parse warning: ${warnings[0]}`);
+        } catch (e) { row.stage = 'parse'; row.detail = e.message.slice(0, 200); results.ev3.push(row); continue; }
+        row.ev3Blocks = project.targets.reduce((k, t) => k + Object.values(t.blocks).filter(b => /^ev3comprehensive_(?!menu_)/.test(b.opcode)).length, 0);
+        let ex;
+        try { ex = exportToMakeCodeEv3(project, {name: 'rt'}); } catch (e) { row.stage = 'export-threw'; row.detail = e.message; results.ev3.push(row); continue; }
+        row.exportUnsupported = ex.unsupported.map(String);
+        const re = await ev3Compile(ex.ts);
+        row.recompiles = re.ok;
+        if (!re.ok) row.recompileError = re.error;
+        const before = ev3Calls(withoutNamedCalls(p.ts, row.unsupported));
+        const after = ev3Calls(ex.ts);
+        const said = ev3Normal([...row.unsupported, ...row.exportUnsupported].join(' '));
+        row.lost = [...before].filter(c => !after.has(c));
+        row.transformed = row.lost.filter(c => EV3_TRANSFORMS[c] && after.has(EV3_TRANSFORMS[c]));
+        row.silent = row.lost.filter(c => !row.transformed.includes(c) && !said.includes(c));
+        row.stage = !re.ok ? 'recompile' : row.silent.length ? 'silent-loss' : (row.unsupported.length ? 'partial' : 'full');
+        results.ev3.push(row);
+        if (++n % 25 === 0) console.error(`  ev3 ${n}/${programs.length} (${Math.round((Date.now() - t0) / 1000)} s)`);
     }
 }
 
@@ -326,7 +496,7 @@ const lines = [
         `(${Math.round((Date.now() - t0) / 1000)} s). Stage definitions are in the script header. Do not edit by hand.`,
     ''
 ];
-if (ONLY !== 'lite') {
+if (!ONLY || ONLY === 'makecode') {
     lines.push(
         `## MakeCode's own programs (pxt-microbit 9.1.1 docs) — ${mc.length} programs, ${programs.length} compile as MakeCode wrote them`,
         '',
@@ -353,7 +523,7 @@ if (ONLY !== 'lite') {
         ''
     );
 }
-if (ONLY !== 'makecode') {
+if (!ONLY || ONLY === 'lite') {
     const lite = results.lite;
     lines.push(
         `## lite's own pseudocode, retargeted to the micro:bit — ${lite.length} programs`, '',
@@ -369,7 +539,45 @@ if (ONLY !== 'makecode') {
         top(hist(lite.filter(r => r.recompileError).map(r => ({e: [r.recompileError]})), 'e', normError)), ''
     );
 }
+if (results.ev3) {
+    const ev3 = results.ev3;
+    // Ports abstracted as the calls are; `EV3` itself keeps its digit.
+    const normEv3 = u => ev3Normal(u).replace(/"[^"]*"/g, '"…"').replace(/\b\d+\b/g, 'N').slice(0, 110);
+    const compiled = ev3.filter(r => !['needs-extension', 'not-a-program'].includes(r.stage));
+    lines.push(
+        `## MakeCode EV3 programs (pxt-ev3 1.4.41 docs) -> DEVICE EV3 blocks — ${ev3.length} programs, ${compiled.length} compile as MakeCode wrote them`,
+        '',
+        'Every ```blocks / ```typescript program on every page (the EV3 docs are small enough to take whole). ' +
+        'Imported into the DEVICE EV3 dialect, whose words are the `ev3comprehensive` blocks (sb3-creator `ev3Dialect.js`), ' +
+        'exported back to pxt-ev3 TypeScript and recompiled by pxt-ev3\'s own compiler. There is no simulator stage: ' +
+        'Lite has no EV3 runtime to run the blocks on.',
+        '',
+        '| outcome | programs |', '|---|---|', table(tally(ev3)), '',
+        `EV3 blocks made: ${compiled.reduce((k, r) => k + (r.ev3Blocks || 0), 0)}.`,
+        '',
+        '`full` = imported with nothing unsupported, parsed with no warning, re-exported and recompiled by pxt-ev3, no call lost. ' +
+        '`partial` = the same, with unsupported calls NAMED. `silent-loss` = a call vanished without being named.',
+        '',
+        '### What import names unsupported, most common first', '', '| programs | unsupported |', '|---|---|',
+        top(hist(compiled, 'unsupported', normEv3), 40), '',
+        '### Calls lost SILENTLY (in neither the re-export nor any unsupported list)', '', '| programs | call |', '|---|---|',
+        top(hist(compiled, 'silent', s => s)), '',
+        '### Calls transformed by design (a handler polled on its reading, a newer spelling), not lost', '',
+        '| programs | call |', '|---|---|',
+        top(hist(compiled, 'transformed', s => s)), '',
+        '### What the export names unsupported', '', '| programs | unsupported |', '|---|---|',
+        top(hist(compiled, 'exportUnsupported', normEv3)), '',
+        '### Why a re-export does not recompile', '', '| programs | MakeCode error |', '|---|---|',
+        top(hist(compiled.filter(r => r.recompileError).map(r => ({e: [r.recompileError]})), 'e', normError)), '',
+        '### Why a program does not parse', '', '| program | detail |', '|---|---|',
+        ...ev3.filter(r => ['parse', 'import-threw', 'export-threw'].includes(r.stage))
+            .map(r => `| ${r.id} | ${String(r.detail).replace(/\|/g, '\\|').replace(/\n/g, ' ')} |`),
+        ''
+    );
+}
 fs.mkdirSync(path.join(ROOT, 'test-results'), {recursive: true});
-fs.writeFileSync(path.join(ROOT, MATCH ? 'test-results/makecode-census-match.json' : 'test-results/makecode-census.json'), JSON.stringify(results, null, 1));
-fs.writeFileSync(MATCH ? path.join(ROOT, 'test-results/makecode-census-match.md') : path.join(ROOT, 'docs/generated/MAKECODE-CENSUS.md'), lines.join('\n') + '\n');
+// A partial census (--match, or the EV3 section alone) is not the generated doc.
+const partial = MATCH || ONLY === 'ev3';
+fs.writeFileSync(path.join(ROOT, partial ? 'test-results/makecode-census-match.json' : 'test-results/makecode-census.json'), JSON.stringify(results, null, 1));
+fs.writeFileSync(partial ? path.join(ROOT, 'test-results/makecode-census-match.md') : path.join(ROOT, 'docs/generated/MAKECODE-CENSUS.md'), lines.join('\n') + '\n');
 console.log(lines.slice(0, 16).join('\n'));

@@ -101,6 +101,7 @@ const L10N = {
         arduboyRunning: f => `Running ${f} on the Arduboy console. Arrow keys move, Z is A, X is B.`,
         mcPython: (f, n) => `${f} carried a MicroPython program (${n}) — loaded, and the simulator can run it.`,
         mcMicrobit: (f, n) => `Imported "${n}" from ${f} — MakeCode micro:bit, translated to blocks.`,
+        mcEv3: (f, n) => `Imported "${n}" from ${f} — MakeCode LEGO EV3, translated to EV3 blocks.`,
         mcPartial: (f, n, k) => `Imported "${n}" from ${f}. ${k} thing(s) from MakeCode have no equivalent here; each is marked "# unsupported" in the code.`,
         mcArcade: (f, n, s, c, button) => `Imported the Arcade game "${n}" from ${f}: ${s} sprite(s), ${c} costume(s). Press ${button} to build it.`,
         mcNoSource: (f, k) => `${f} is a ${k} file with no project source embedded in it — nothing to import.`,
@@ -409,6 +410,7 @@ const L10N = {
         arduboyRunning: f => `${f} läuft auf der Arduboy-Konsole. Pfeiltasten bewegen, Z ist A, X ist B.`,
         mcPython: (f, n) => `${f} enthielt ein MicroPython-Programm (${n}) — geladen, der Simulator kann es ausführen.`,
         mcMicrobit: (f, n) => `„${n}" aus ${f} importiert — MakeCode micro:bit, in Blöcke übersetzt.`,
+        mcEv3: (f, n) => `„${n}" aus ${f} importiert — MakeCode LEGO EV3, in EV3-Blöcke übersetzt.`,
         mcPartial: (f, n, k) => `„${n}" aus ${f} importiert. Für ${k} Element(e) aus MakeCode gibt es hier keine Entsprechung; jede ist im Code mit „# unsupported" markiert.`,
         mcArcade: (f, n, s, c, button) => `Arcade-Spiel „${n}" aus ${f} importiert: ${s} Sprite(s), ${c} Kostüm(e). Mit „${button}" bauen.`,
         mcNoSource: (f, k) => `${f} ist eine ${k}-Datei ohne eingebetteten Projekt-Quelltext — nichts zu importieren.`,
@@ -1778,7 +1780,8 @@ class PseudocodeImporter extends React.Component {
         } else {
             status = unsupported ?
                 this.L.mcPartial(label, res.project.name, unsupported) :
-                this.L.mcMicrobit(label, res.project.name);
+                res.note === 'ev3' ? this.L.mcEv3(label, res.project.name) :
+                    this.L.mcMicrobit(label, res.project.name);
         }
         this.setState({
             lang: res.lang,

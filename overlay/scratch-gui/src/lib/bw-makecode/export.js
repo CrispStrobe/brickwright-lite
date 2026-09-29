@@ -102,7 +102,12 @@ const MAKECODE_GLOBALS = new Set([
     'pauseUntil', 'parseInt', 'parseFloat', 'convertToText'
 ]);
 
-class Emitter {
+/**
+ * Blocks -> MakeCode TypeScript for the micro:bit. Exported so another
+ * MakeCode target (export-ev3.js) can reuse the walk and override the
+ * vocabulary: `isBoolean`, `reporter`, `statement` and `globals`.
+ */
+export class Emitter {
     constructor (blocks) {
         this.blocks = blocks;
         this.unsupported = [];
@@ -111,6 +116,11 @@ class Emitter {
 
     block (id) {
         return id ? this.blocks[id] : null;
+    }
+
+    /** Is this opcode a reporter whose value is already true/false? */
+    isBoolean (opcode) {
+        return BOOLEAN_REPORTERS.has(opcode);
     }
 
     field (block, name) {
@@ -138,7 +148,7 @@ class Emitter {
             // A boolean reporter in a VALUE slot (set A to <button A pressed>)
             // is a number here, as in the dialect; Static TypeScript will not
             // assign a boolean to a number variable or compare it with one.
-            if (b && BOOLEAN_REPORTERS.has(b.opcode)) return `(${this.reporter(b)} ? 1 : 0)`;
+            if (b && this.isBoolean(b.opcode)) return `(${this.reporter(b)} ? 1 : 0)`;
             return this.reporter(b);
         }
         return fallback;
@@ -149,7 +159,7 @@ class Emitter {
         const input = b.inputs && b.inputs[name];
         const slot = input && input[1];
         const r = typeof slot === 'string' ? this.block(slot) : null;
-        return r && BOOLEAN_REPORTERS.has(r.opcode) ? this.reporter(r) : null;
+        return r && this.isBoolean(r.opcode) ? this.reporter(r) : null;
     }
 
     /**
@@ -220,7 +230,7 @@ class Emitter {
 
     variableName (name) {
         const id = String(name).replace(/[^A-Za-z0-9_]/g, '_') || 'v';
-        return MAKECODE_GLOBALS.has(id) ? `${id}_` : id;
+        return (this.globals || MAKECODE_GLOBALS).has(id) ? `${id}_` : id;
     }
 
     /**
@@ -248,7 +258,7 @@ class Emitter {
         const left = b.inputs.OPERAND1;
         const id = Array.isArray(left) ? left.find(part => typeof part === 'string') : null;
         const reporter = id ? this.block(id) : null;
-        if (!reporter || !BOOLEAN_REPORTERS.has(reporter.opcode)) return null;
+        if (!reporter || !this.isBoolean(reporter.opcode)) return null;
         return this.reporter(reporter);
     }
 
@@ -455,6 +465,16 @@ class Emitter {
             this.unsupported.push(`${b.opcode} as a value`);
             return '0';
         }
+    }
+
+    /**
+     * One `WHEN flag clicked` script, the `n`th of its target. On the
+     * micro:bit every script is written where it stands: its handlers come
+     * back as basic.forever, which never blocks what follows.
+     */
+    flagScript (hat, n) {
+        void n;
+        return this.stack(hat.next, 0);
     }
 
     /** A stack of blocks, as TypeScript statements. */
@@ -996,7 +1016,8 @@ function ledsOf (matrix) {
  * @param {object} project an sb3 project (SB3Creator.parse's output)
  * @returns {{ts: string, unsupported: Array<string>}}
  */
-export function projectToMakeCodeTs (project) {
+export function projectToMakeCodeTs (project, opts = {}) {
+    const EmitterClass = opts.Emitter || Emitter;
     const targets = (project && project.targets) || [];
     const lines = [];
     const declared = new Set();
@@ -1004,7 +1025,7 @@ export function projectToMakeCodeTs (project) {
 
     for (const target of targets) {
         const blocks = target.blocks || {};
-        const emitter = new Emitter(blocks);
+        const emitter = new EmitterClass(blocks);
 
         // Variables first: MakeCode is TypeScript, and TypeScript wants
         // them declared before the code that assigns them — with a TYPE. A
@@ -1035,6 +1056,7 @@ export function projectToMakeCodeTs (project) {
         // hat, not something the walk reaches from the green flag.
         const definitions = [];
         const body = [];
+        let flagScripts = 0;
         for (const [id, block] of Object.entries(blocks)) {
             if (!block || !block.topLevel) continue;
             if (block.opcode === 'procedures_definition') {
@@ -1076,7 +1098,7 @@ export function projectToMakeCodeTs (project) {
                 }
                 continue;
             }
-            body.push(...emitter.stack(block.next, 0));
+            body.push(...emitter.flagScript(block, flagScripts++));
             void id;
         }
         // The importer turns MakeCode's `let x = 5` into a leading `set x to 5`

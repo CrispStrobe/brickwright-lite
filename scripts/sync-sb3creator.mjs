@@ -89,7 +89,9 @@ const FILES = [
     ['src/utils/cHostRuntime.js', path.join(lib, 'sb3-creator-chostruntime.js')],
     ['src/utils/cHostToPseudocode.js', path.join(lib, 'sb3-creator-chost.js')],
     ['src/utils/basicToPseudocode.js', path.join(lib, 'sb3-creator-basic.js')],
-    ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')]
+    ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')],
+    // The DEVICE EV3 word table, read by sb3Creator.js in both directions.
+    ['src/utils/ev3Dialect.js', path.join(lib, 'ev3Dialect.js')]
 ];
 
 // Downstream-only modules imported by synced compiler files. EMPTY, with no stated

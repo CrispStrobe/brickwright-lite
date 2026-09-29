@@ -1023,10 +1023,11 @@ carries both.
 
 ## sb3-creator — MPL-2.0
 
-**Location in this repo:** `overlay/scratch-gui/src/lib/sb3-creator*.js`
-and `overlay/scratch-gui/src/lib/cubeDirections.js`
+**Location in this repo:** `overlay/scratch-gui/src/lib/sb3-creator*.js`,
+`overlay/scratch-gui/src/lib/cubeDirections.js` and
+`overlay/scratch-gui/src/lib/ev3Dialect.js`
 
-These 11 files are vendored from **sb3-creator** (the Code tab's pseudocode
+These 12 files are vendored from **sb3-creator** (the Code tab's pseudocode
 compiler: Scratch blocks to/from C, Python, MicroPython, JavaScript, and
 the runtime registries), relicensed to **MPL-2.0** as of commit `f72f1e7`.
 

@@ -427,7 +427,8 @@ export class BaseTranslator {
             this.unsupported.push(`an object literal${callList(node.calls)}`);
             return '0';
         default:
-            this.unsupported.push(`${node.type || 'an expression'} as a value`);
+            // With the calls it made, so a call inside it is named, not lost.
+            this.unsupported.push(`${node.type || 'an expression'} as a value${callList(this.callsIn(node))}`);
             return '0';
         }
     }

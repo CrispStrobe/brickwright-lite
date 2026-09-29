@@ -118,6 +118,7 @@ export const SB3_CREATOR_FILES = Object.freeze([
     ['sb3-creator-chost.js', 'src/utils/cHostToPseudocode.js'],
     ['sb3-creator-basic.js', 'src/utils/basicToPseudocode.js'],
     ['cubeDirections.js', 'src/utils/cubeDirections.js'],
+    ['ev3Dialect.js', 'src/utils/ev3Dialect.js'],
 ]);
 
 /**
