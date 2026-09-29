@@ -35,7 +35,7 @@ const exportOf = (src, uploads = []) => {
     return projectToArcade(cr.project, {costumeSvg: (t, c) => {
         const a = cr.assets.get(c.assetId);
         return a && a.type === 'svg' ? a.data : null;
-    }});
+    }, soundData: (t, s) => cr.assets.get(s.assetId)?.data || null});
 };
 
 test('the model mapping: coordinates, keys, touching', () => {
@@ -120,9 +120,11 @@ test('the CLI reads version 2 and animated version 3 palettes for exact Arcade i
 });
 
 test('what has no Arcade counterpart is named and left as a comment where it stood', () => {
-    const {ts, unsupported} = exportOf('SPRITE s:\nWHEN flag clicked:\n  switch backdrop to night\n  wait 1 seconds\n');
-    assert.ok(unsupported.some(u => /backdrop/.test(u)), JSON.stringify(unsupported));
-    assert.match(ts, /\/\/ looks_switchbackdropto/);
+    // (Backdrops were the example here until they were mapped — task A4; the
+    // mapped constructs are held by test/makecode-export-arcade-constructs.)
+    const {ts, unsupported} = exportOf('SPRITE s:\nWHEN flag clicked:\n  think hmm\n  wait 1 seconds\n');
+    assert.ok(unsupported.some(u => /looks_think/.test(u)), JSON.stringify(unsupported));
+    assert.match(ts, /\/\/ looks_think/);
 });
 
 // ── MakeCode's own compiler, over the whole corpus ─────────────────────────
