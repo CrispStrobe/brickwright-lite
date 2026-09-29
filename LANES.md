@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| Arcade export: `stop` block semantics (task A5 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/a5-arcade-stop` | base `206ffac67`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` (+ `arcade-runtime.js`), `test/makecode-export-arcade-constructs.test.mjs`, `docs/ARCADE-COMPAT-PLAN.md`, this row and the task file. | **CLAIMED 2026-09-29.** Every `stop` becomes `game.over(false)`, so `stop this script` ends the whole game, unnamed (found by A4, #534). |
+
 | PWM follow-ups named by B1: stc12 VM pin blocks reach the board; micro:bit+ analogwrite/servo; motor speed; servo canvas; meter average (task B5 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b5-pwm-followups*` | base `83ebfd14c`; upstream CrispStrobe/extensions (micro:bit+ analogwrite/servo), bw-board (motor speed input, meter averaging), bw-circuit-ui (servo canvas signal), Lite stc12 VM pin-block wiring + pin-bump surfaces; focused tests; this row and the task file. | **CLAIMED 2026-09-29.** B1 landed PARTIAL (bw-board #138, Lite #538) with these routes named as gaps. |
 
 
