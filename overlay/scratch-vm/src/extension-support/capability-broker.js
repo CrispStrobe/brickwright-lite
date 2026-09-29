@@ -46,6 +46,12 @@ const OPERATIONS = Object.freeze({
         args.address <= 0xffffffff && Number.isInteger(args.length) && args.length >= 1 && args.length <= 4096}),
     'renode.ev3.state.read': Object.freeze({validate: args =>
         isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.button.set': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['button', 'pressed']) &&
+        ['center', 'left', 'back', 'right', 'down', 'up'].includes(args.button) && typeof args.pressed === 'boolean'}),
+    'renode.ev3.analog.set-channel': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['channel', 'value']) && Number.isInteger(args.channel) && args.channel >= 0 &&
+        args.channel <= 15 && Number.isInteger(args.value) && args.value >= 0 && args.value <= 1023}),
     'renode.ev3.breakpoint.set': Object.freeze({validate: args => isPlainRecord(args) &&
         hasOnlyKeys(args, ['address']) && Number.isInteger(args.address) && args.address >= 0 &&
         args.address <= 0xffffffff}),

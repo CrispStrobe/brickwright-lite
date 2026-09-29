@@ -208,12 +208,26 @@ remaining motors. Register/wiring facts come from the public
 [AM1808/EV3 board descriptions](https://github.com/torvalds/linux/blob/master/arch/arm/boot/dts/ti/davinci/da850-lego-ev3.dts)
 and [TI ADS7957 datasheet](https://www.ti.com/lit/ds/symlink/ads7957.pdf).
 
-The live EV3 observer must also extend Lite's target-specific `brick-state/v1`
-decoder: it currently accepts SPIKE identities and at most 64x64 display
-samples, while EV3 needs bounded 178x128 luminance samples. The existing EV3
-debugger snapshot reports only UART/AINTC smoke evidence. CP12 completion
-requires actual model observations and constrained inputs, with sequence,
-transport and frame-size checks retained. UART sensors on inputs3/4 need
+The CP12 integration extends Lite's target-specific `brick-state/v1` decoder:
+EV3 uses `brickwright-ev3-smoke`, transport `none`, and exactly178x128
+integer luminance samples0..255 (or an explicit unavailable empty display).
+The debugger requests fresh paused-model observations, rather than treating
+UART smoke text as motor/sensor/display state. Target identity cannot change
+within a stream; replay, loopback, frame and collection bounds remain enforced.
+Only named buttons and raw ten-bit ADC channel inputs are accepted; no caller
+text becomes a monitor command. Full frames exceed the ordinary native broker
+reply budget, so only the three exact correlated EV3 state/button/analog
+operations get a bounded272KiB outbound envelope/256KiB result string.
+Inbound and all other operation limits remain unchanged.
+
+Preliminary local proofs passed5EV3 observer/schema tests,32prior SPIKE tests,
+62Rust boundary/debugger/transport tests and29JavaScript broker tests. A real
+Renode/IronPython run observed black/white display pixels, button press/release,
+ADC channel3=777 and rejected out-of-range/replayed/stale inputs. The actual
+Lite packaged debugger contract passed21.23seconds with full frames and named
+inputs. These preliminary runs use the ADC/display development model; final
+combined motor-model pin and qualification are still required before CP12 DONE.
+UART sensors on inputs3/4 need
 the PRU software-UART path, and sensor I2C is GPIO-driven; these cannot be
 claimed from the existing NS16550 or EEPROM I2C support alone.
 
