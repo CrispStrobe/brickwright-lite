@@ -38,7 +38,7 @@ lands there first; Lite then advances the exact pin.
 
 | # | task | scope / done-when | status |
 | --- | --- | --- | --- |
-| C1 | Shared node_modules guideline | Every session's Lite worktree installs ~2 GB of `node_modules`, and `/mnt/volume1` keeps filling. A documented helper (script + `CLAUDE.md`) that links a shared, lockfile-keyed install instead. | queued |
+| C1 | Shared node_modules guideline | Every session's Lite worktree installs ~2 GB of `node_modules`, and `/mnt/volume1` keeps filling. A documented helper (script + `CLAUDE.md`) that links a shared, lockfile-keyed install instead. | CLAIMED 2026-09-29 |
 | C2 | Faster Linux boot | Browser Linux boot is ~9 s. Predecoded-instruction cache and/or a post-boot snapshot so the lesson opens at the prompt in under 1 s. | queued |
 | C3 | Better Linux console | Raw keys, Ctrl-C and arrow keys in the Linux lesson console (a proper terminal), not line input only. | queued |
 | C4 | Un-park E8 (CPU internals) | In-order pipeline, cache and branch-predictor models over the RISC-V core, with a pipeline diagram in Lite. | queued |

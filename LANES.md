@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| Shared node_modules for Lite worktrees: a lockfile-keyed shared install + guideline (task C1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c1-shared-node-modules` | base `3fffb12f6`; new `scripts/worktree-deps.mjs` (or similar), `CLAUDE.md` / `LANES.md` guideline section, focused tests; no change to CI install behaviour. | **CLAIMED 2026-09-29.** Each session's Lite worktree installs ~2 GB of node_modules; /mnt/volume1 keeps filling. |
+
 | Arcade export: `stop` block semantics (task A5 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/a5-arcade-stop` | base `206ffac67`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` (+ `arcade-runtime.js`), `test/makecode-export-arcade-constructs.test.mjs`, `docs/ARCADE-COMPAT-PLAN.md`, this row and the task file. | **CLAIMED 2026-09-29.** Every `stop` becomes `game.over(false)`, so `stop this script` ends the whole game, unnamed (found by A4, #534). |
 
 
