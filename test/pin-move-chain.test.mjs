@@ -38,6 +38,18 @@
  *     is an ancestor of the pin and that behindPinBy is the true count. On
  *     main today that field is 7b8d1404, the one non-pin sha outside prose and
  *     ledgers. Every other sha in that manifest must be the pin.
+ *   - dated run receipts (docs/receipts/*.json) are their own role, and it
+ *     is NARROWER than a ledger. A receipt is evidence of what was measured
+ *     at a named pin (the Doom browser receipt's boardPin is the bw-board pin
+ *     it ran against, which a later bump replaced). Rewriting that sha on a
+ *     pin bump would falsify the receipt: it would claim a measurement at a
+ *     pin nobody measured. So a receipt may carry the current pin OR any
+ *     previous pin of a vendored repo. What it may NOT carry is a vendored-
+ *     repo commit that was never a pin: that is a receipt citing a source the
+ *     lite tree never shipped, and it stays red. The limit, stated: "never a
+ *     pin" is only recognisable when the repo-history half runs (the three
+ *     *_DIR checkouts or BW_VENDOR_HISTORY_DIR); without it such a sha is an
+ *     unknown hex string, invisible here as it is in every other role.
  *   - packages/** is not scanned: packages/scratch-gui/src is a byte-identical
  *     mirror of overlay/ (test/overlay-packages-pairs holds it) and the rest is
  *     upstream Scratch, whose CHANGELOGs carry thousands of shas of their own.
@@ -118,11 +130,22 @@ export const parsePreviousPins = (logText, currentShas = new Set(), allowedKeys 
     return prev;
 };
 
-/** Role of a tracked file for this test: 'ledger' | 'docs-prose' | 'skip' | 'code'. */
+/** Role of a tracked file for this test: 'ledger' | 'receipt' | 'docs-prose' | 'skip' | 'code'. */
 export const roleOf = file => {
     if (/^(LANES|HISTORY|ROADMAP|PLAN|BLOCKED|HANDOFF)\.md$/.test(file)) return 'ledger';
     if (/^docs\/generated\//.test(file)) return 'code';
+    // A dated run receipt records the pin it was MEASURED at; moving that sha
+    // on a pin bump would falsify the evidence. Its own role rather than
+    // 'ledger' because it is still judged: previous pins pass, a vendored
+    // commit that was never a pin does not (see the header).
+    if (/^docs\/receipts\/[^/]+\.json$/.test(file)) return 'receipt';
     if (/^docs\/.*\.md$/.test(file)) return 'docs-prose';
+    // An example's prose cites where its circuit was generated and
+    // bench-verified, e.g. "verified in bw-circuit-ui at revision <sha>". That
+    // is narrative about a commit, which is exactly why docs/**.md is exempt;
+    // the only difference is which directory the prose lives in. Moving the sha
+    // on a pin bump would claim a verification nobody performed.
+    if (/^overlay\/scratch-gui\/examples\/.*\.md$/.test(file)) return 'docs-prose';
     if (/^packages\//.test(file)) return 'skip';
     return 'code';
 };
@@ -138,7 +161,7 @@ const CODE_EXT = /\.(m?js|cjs|jsx|ts|yml|yaml|sh)$/;
  */
 export const judgeFile = (file, text, known) => {
     const role = roleOf(file);
-    if (role !== 'code') return [];
+    if (role !== 'code' && role !== 'receipt') return [];
     let body = text;
     if (file === PROVENANCE) {
         // the one history FIELD, exempt by role (see header); everything else in the manifest must be the pin
@@ -151,9 +174,11 @@ export const judgeFile = (file, text, known) => {
             const sha = m[0];
             if (known.current.has(sha)) continue;
             const p = known.previous.get(sha);
+            if (p && role === 'receipt') continue;   // the pin it was measured at: history, kept as evidence
             const repo = p ? p.repo : known.history.get(sha);
             if (!repo) continue;
-            out.push({file, line: i + 1, sha, repo, was: p ? `the ${p.repo} pin until lite ${p.replacedIn} (${p.on})` : `a ${repo} commit that was never a pin`});
+            out.push({file, line: i + 1, sha, repo, was: p ? `the ${p.repo} pin until lite ${p.replacedIn} (${p.on})`
+                : `a ${repo} commit that was never a pin${role === 'receipt' ? ' (a receipt may record only a pin, current or previous)' : ''}`});
         }
     });
     return out;
@@ -223,14 +248,17 @@ test('no tracked file outside a history role carries a vendored-repo sha other t
     const skipped = {role: 0, unreadable: []};
     const all = git(ROOT, 'ls-files', '-z').split('\0').filter(Boolean);
     let scanned = 0;
+    let receipts = 0;
     for (const file of all) {
-        if (roleOf(file) !== 'code') { skipped.role++; continue; }
+        const role = roleOf(file);
+        if (role !== 'code' && role !== 'receipt') { skipped.role++; continue; }
+        if (role === 'receipt') receipts++;
         let text;
         try { text = readFileSync(path.join(ROOT, file), 'utf8'); } catch (e) { skipped.unreadable.push(`${file} (${e.code || e.message})`); continue; }
         scanned++;
         findings.push(...judgeFile(file, text, known));
     }
-    t.diagnostic(`judged ${scanned} files; skipped ${skipped.role} by role (ledgers, docs prose, packages/) and ${skipped.unreadable.length} unreadable${skipped.unreadable.length ? ': ' + skipped.unreadable.join(', ') : ''}`);
+    t.diagnostic(`judged ${scanned} files (${receipts} receipts, which may also carry a previous pin); skipped ${skipped.role} by role (ledgers, docs prose, packages/) and ${skipped.unreadable.length} unreadable${skipped.unreadable.length ? ': ' + skipped.unreadable.join(', ') : ''}`);
     assert.deepEqual(skipped.unreadable, [], 'tracked files this gate could not read — it cannot say they are clean');
     assert.ok(scanned > 1000, `only ${scanned} files scanned — the walk collapsed`);
     assert.deepEqual(findings, [],
@@ -286,9 +314,40 @@ test('the same sha in a ledger, in docs prose, or on a comment line is history a
     const [sha] = [...previous.entries()][0];
     assert.deepEqual(judgeFile('LANES.md', `| row | ${sha} |`, known), []);
     assert.deepEqual(judgeFile('docs/SOMETHING.md', `measured at ${sha}`, known), []);
+    assert.deepEqual(judgeFile('overlay/scratch-gui/examples/example/intro.md',
+        `bench-verified at ${sha}`, known), []);
     assert.deepEqual(judgeFile('test/x.test.mjs', `// pin moved ${sha} -> now`, known), []);
     assert.equal(judgeFile('test/x.test.mjs', `const PIN = '${sha}';`, known).length, 1, 'the code line beside the comment is not exempt');
     assert.equal(judgeFile('docs/generated/report.md', `Vendored engine: \`x@${sha}\``, known).length, 1, 'docs/generated is not prose');
+});
+
+test('a receipt keeps the previous pin it was measured at; the same sha outside a receipt is still red', () => {
+    const [sha, meta] = [...previous.entries()][0];
+    const receipt = `{\n  "boardPin": "${sha}"\n}`;
+    assert.equal(roleOf('docs/receipts/2026-01-01-run.json'), 'receipt');
+    assert.deepEqual(judgeFile('docs/receipts/2026-01-01-run.json', receipt, known), [], 'a receipt recording a previous pin is evidence, not staleness');
+    // the real receipt that motivated the role: it was measured at a bw-board pin a later bump replaced
+    const doom = 'docs/receipts/2026-09-28-i80386-doom-widgets-browser.json';
+    const doomText = readFileSync(path.join(ROOT, doom), 'utf8');
+    const doomPin = JSON.parse(doomText).source.boardPin;
+    assert.ok(previous.has(doomPin) || current.has(doomPin), `fixture: ${doom} boardPin ${doomPin.slice(0, 9)} is no longer a known pin, so this case proves nothing`);
+    assert.deepEqual(judgeFile(doom, doomText, known), []);
+    // the same bytes anywhere that must carry the CURRENT pin are still reported
+    for (const file of ['docs/generated/run.json', 'scripts/run.json', 'docs/receipts/nested/run.json', 'docs/receipts-2026.json']) {
+        const f = judgeFile(file, receipt, known);
+        assert.equal(f.length, 1, `${file} is not a receipt and must not inherit its exemption`);
+        assert.match(f[0].was, new RegExp(`the ${meta.repo} pin until lite ${meta.replacedIn}`));
+    }
+});
+
+test('a receipt still may not carry a vendored-repo commit that was never a pin', () => {
+    // synthetic history so this runs with or without the *_DIR checkouts
+    const neverPin = 'f'.repeat(40);
+    const k = {...known, history: new Map([...known.history, [neverPin, 'bw-board']])};
+    assert.ok(!k.current.has(neverPin) && !k.previous.has(neverPin), 'fixture: the planted sha must be neither a current nor a previous pin');
+    const f = judgeFile('docs/receipts/2026-01-01-run.json', `{"boardPin":"${neverPin}"}`, k);
+    assert.equal(f.length, 1);
+    assert.match(f[0].was, /a bw-board commit that was never a pin \(a receipt may record only a pin/);
 });
 
 test('the provenance manifest: lastTouchedBy.sha is exempt by role, any other non-pin sha is not', () => {

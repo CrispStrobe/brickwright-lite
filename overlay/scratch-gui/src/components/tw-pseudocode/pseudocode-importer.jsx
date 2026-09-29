@@ -65,6 +65,7 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 import {lowerableLines} from '../../lib/bw-fpga/pseudocode-expr.js';
 import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
 import {isPybricksProgram} from '../../lib/pybricks-sim/pybricks-hub-host.js';
+import {isSpike3Program, runSpike3OnVirtualHub} from '../../lib/spike3-python-run.js';
 import {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
@@ -278,6 +279,21 @@ const L10N = {
         runOnSimulator: '▶ Run on Simulator',
         runOnSpike: '▶ Run on SPIKE (Pybricks)',
         runOnSpikeTitle: 'Run this Pybricks program on a simulated SPIKE Prime hub: Pybricks MicroPython itself, compiled to WebAssembly, with simulated motors and sensors',
+        openSpikeArena: '🪐 SPIKE arena',
+        openSpikeArenaTitle: 'Open the SPIKE arena: a virtual driving base on a mat, with challenges, driven by this program through the virtual SPIKE hub',
+        runOnSpike3: '▶ Run on SPIKE 3 (Python)',
+        runOnSpike3Title: 'Read this LEGO SPIKE App 3 Python program into SPIKE blocks and run them on the virtual SPIKE hub (and in the arena, when it is open)',
+        spike3Console: 'SPIKE 3 Python console',
+        spike3Stop: '■ Stop',
+        spike3Running: 'Running on the virtual SPIKE hub…',
+        spike3Stopped: 'Stopped.',
+        spike3NoHub: 'The virtual SPIKE hub is not available in this build.',
+        spike3NoConnect: 'Could not connect the SPIKE extension to the virtual hub.',
+        spike3Unsupported: n => `${n} call(s) have no SPIKE block and were left out; each is marked "# unsupported" in the blocks' source.`,
+        spike3Note: 'Note',
+        spike3Error: 'Error',
+        spike3Out: 'print',
+        spike3Clear: 'Clear',
         runSpikeUsb: '▶ Run on SPIKE USB',
         probeSpikeUsb: 'Identify A–F',
         spikeUsbDirect: 'USB on this computer', spikeUsbBridge: 'USB via Mac on WLAN',
@@ -565,6 +581,21 @@ const L10N = {
         runOnSimulator: '▶ Im Simulator ausführen',
         runOnSpike: '▶ Auf SPIKE ausführen (Pybricks)',
         runOnSpikeTitle: 'Dieses Pybricks-Programm auf einem simulierten SPIKE-Prime-Hub ausführen: Pybricks-MicroPython selbst, nach WebAssembly übersetzt, mit simulierten Motoren und Sensoren',
+        openSpikeArena: '🪐 SPIKE-Arena',
+        openSpikeArenaTitle: 'Die SPIKE-Arena öffnen: eine virtuelle Fahrbasis auf einer Matte, mit Aufgaben, gesteuert von diesem Programm über den virtuellen SPIKE-Hub',
+        runOnSpike3: '▶ Auf SPIKE 3 ausführen (Python)',
+        runOnSpike3Title: 'Dieses LEGO-SPIKE-App-3-Python-Programm in SPIKE-Blöcke übersetzen und auf dem virtuellen SPIKE-Hub ausführen (und in der Arena, wenn sie offen ist)',
+        spike3Console: 'SPIKE-3-Python-Konsole',
+        spike3Stop: '■ Stopp',
+        spike3Running: 'Läuft auf dem virtuellen SPIKE-Hub …',
+        spike3Stopped: 'Gestoppt.',
+        spike3NoHub: 'Der virtuelle SPIKE-Hub ist in diesem Build nicht verfügbar.',
+        spike3NoConnect: 'Die SPIKE-Erweiterung konnte sich nicht mit dem virtuellen Hub verbinden.',
+        spike3Unsupported: n => `${n} Aufruf(e) haben keinen SPIKE-Block und wurden weggelassen; jeder ist im Blockquelltext mit „# unsupported“ markiert.`,
+        spike3Note: 'Hinweis',
+        spike3Error: 'Fehler',
+        spike3Out: 'print',
+        spike3Clear: 'Leeren',
         runSpikeUsb: '▶ Auf SPIKE über USB ausführen',
         probeSpikeUsb: 'A–F erkennen',
         spikeUsbDirect: 'USB an diesem Computer', spikeUsbBridge: 'USB über Mac im WLAN',
@@ -1203,6 +1234,18 @@ class PseudocodeImporter extends React.Component {
             if (detail && detail.id) this._lastCatalogExample = detail;
         };
         window.addEventListener('bw-example-loaded', this._onExampleLoaded);
+        // The SPIKE arena's "load reference solution" (spike-arena-pane.jsx):
+        // the code replaces the pseudocode buffer and is built into blocks,
+        // exactly as loading a gallery example does.
+        this._onLoadPseudocode = event => {
+            const code = event && event.detail && event.detail.code;
+            if (typeof code !== 'string') return;
+            this.setState({lang: 'pseudocode', output: null, status: '',
+                buffers: {...this.state.buffers, pseudocode: code}}, () => {
+                Promise.resolve(this.compile()).catch(e => this.setState({status: e.message}));
+            });
+        };
+        window.addEventListener('bw-load-pseudocode', this._onLoadPseudocode);
         // A browser load can land before this component mounts (the Circuit tab
         // is the entry point for a journey). The publisher stashes the last one,
         // so replay it rather than starting blind.
@@ -2075,6 +2118,7 @@ class PseudocodeImporter extends React.Component {
         }
         window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
         window.removeEventListener('bw-example-loaded', this._onExampleLoaded);
+        window.removeEventListener('bw-load-pseudocode', this._onLoadPseudocode);
         window.removeEventListener('bw-project-bundle-loaded', this._onBundleLoaded);
         window.removeEventListener('bw-microbit-run-request', this._onMicrobitRunRequest);
         // A pending debounce would otherwise lose the last edits on unmount.
@@ -3762,6 +3806,59 @@ class PseudocodeImporter extends React.Component {
         window.dispatchEvent(new CustomEvent('bw-pybricks-run', {detail}));
     }
 
+    // Open the SPIKE arena (spike-arena-pane.jsx) in the right column. The
+    // program reaches it through the virtual SPIKE hub, not through this call.
+    openSpikeArena () {
+        const values = {'bw-right-pane-hidden': '0', 'bw-debug-dock': 'spikearena'};
+        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
+        Object.entries(values).forEach(([k, v]) => {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
+        });
+    }
+
+    /**
+     * LEGO SPIKE App 3 Python: read it into SPIKE blocks (the vendored reader,
+     * through compile()), then run those blocks on the virtual SPIKE hub —
+     * the one hub the arena, the word blocks and the panel share. print()
+     * lands in the console below via the VM's say events; what the reader could
+     * not express, and what it approximated, is listed there too.
+     */
+    async runOnSpike3 () {
+        const code = this.activeCode();
+        if (!isSpike3Program(code)) return;
+        const log = [];
+        const push = (kind, text) => { log.push({kind, text}); this.setState({spike3Log: log.slice()}); };
+        this.setState({spike3Log: [], spike3Running: false});
+        let report = null;
+        try {
+            report = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(code);
+        } catch (e) {
+            push('err', `${this.L.spike3Error}: ${e.message}`);
+            return;
+        }
+        if (report.unsupported && report.unsupported.length) push('err', this.L.spike3Unsupported(report.unsupported.length));
+        (report.unsupported || []).forEach(u => push('err', `# unsupported: ${u}`));
+        (report.notes || []).forEach(n => push('note', `${this.L.spike3Note}: ${n}`));
+        await this.compile();
+        const result = await runSpike3OnVirtualHub(this.props.vm, {
+            onPrint: text => push('out', String(text))
+        });
+        if (!result.ok) {
+            push('err', result.reason === 'no-hub' ? this.L.spike3NoHub : `${this.L.spike3NoConnect} ${result.detail || ''}`.trim());
+            return;
+        }
+        this._spike3Stop = result.stop;
+        this.setState({spike3Running: true, status: this.L.spike3Running});
+    }
+
+    stopSpike3 () {
+        if (this._spike3Stop) {
+            try { this._spike3Stop(); } catch { /* teardown must not throw at the user */ }
+            this._spike3Stop = null;
+        }
+        this.setState({spike3Running: false, status: this.L.spike3Stopped});
+    }
+
     _onMicrobitRunRequest (event) {
         this.flashMicrobitSim(event && event.detail);
     }
@@ -4760,7 +4857,17 @@ class PseudocodeImporter extends React.Component {
         return (
             <div style={wrap} data-testid="bw-code-editor">
                 {/* ── Single merged row: language tabs (left) + compact controls (right) ── */}
-                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0}}
+                {/* paddingRight reserves the top-right corner for the floating
+                    "Show right panel" button, which is absolutely positioned at
+                    z-index 20 over this very area. The two did not collide while
+                    the editor chrome was 92px tall and this row sat at y=109;
+                    shrinking the chrome to one row moved the row to y=52 and the
+                    maximize button landed under it — measured, ⊞ at x=980 with
+                    the floating button at x=992, covered and untappable. The
+                    room is reserved unconditionally because the overlay is there
+                    at every chrome height; it was only ever luck that they
+                    missed each other. */}
+                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0, paddingRight: 40}}
                     data-testid="bw-lang-row">
                     {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
                         // The tab follows the DEVICE line, except when a
@@ -5238,6 +5345,27 @@ class PseudocodeImporter extends React.Component {
                 </div>
                 )}
 
+                {this.state.spike3Log && this.state.spike3Log.length ? (
+                    <div data-testid="bw-spike3-console" role="log" aria-label={this.L.spike3Console}
+                        style={{marginTop: 6, maxHeight: 140, overflowY: 'auto', flexShrink: 0, padding: '4px 8px',
+                            background: '#101820', color: '#e6edf3', borderRadius: 6,
+                            font: '12px ui-monospace,SFMono-Regular,Menlo,monospace'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', color: '#8b98a5', marginBottom: 2}}>
+                            <span>{this.L.spike3Console}</span>
+                            <button type="button" onClick={() => this.setState({spike3Log: []})}
+                                style={{background: 'none', border: 'none', color: '#8b98a5', cursor: 'pointer', padding: 0}}>
+                                {this.L.spike3Clear}
+                            </button>
+                        </div>
+                        {this.state.spike3Log.map((entry, i) => (
+                            <div key={i} data-kind={entry.kind} style={{whiteSpace: 'pre-wrap',
+                                color: entry.kind === 'err' ? '#ff8787' : entry.kind === 'note' ? '#ffd43b' : '#e6edf3'}}>
+                                {entry.text}
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
+
                 {/* Bottom controls row — hidden in maximize mode (compact To/From are in the tab row) */}
                 <div data-testid="bw-code-action-row" style={{marginTop: max ? 4 : 8, display: max ? 'none' : 'flex',
                     alignItems: 'center', gap: 6, flexWrap: 'nowrap', flexShrink: 0, minWidth: 0,
@@ -5489,6 +5617,26 @@ class PseudocodeImporter extends React.Component {
                             style={{...actionBtn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
                             data-testid="bw-pybricks-run-on-spike">
                             {this.L.runOnSpike}
+                        </button>
+                    ) : null}
+                    {this.currentDevice() === 'spike' ? (
+                        <button onClick={() => this.openSpikeArena()} title={this.L.openSpikeArenaTitle}
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#e8590c,#c2410c)'}}
+                            data-testid="bw-open-spike-arena">
+                            {this.L.openSpikeArena}
+                        </button>
+                    ) : null}
+                    {this.state.lang === 'python' && isSpike3Program(this.activeCode()) ? (
+                        <button onClick={() => this.runOnSpike3()} title={this.L.runOnSpike3Title} disabled={this.state.busy}
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
+                            data-testid="bw-spike3-run">
+                            {this.L.runOnSpike3}
+                        </button>
+                    ) : null}
+                    {this.state.spike3Running ? (
+                        <button onClick={() => this.stopSpike3()} data-testid="bw-spike3-stop"
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#fa5252,#e03131)'}}>
+                            {this.L.spike3Stop}
                         </button>
                     ) : null}
                     {this.state.picoSimRunning ? (

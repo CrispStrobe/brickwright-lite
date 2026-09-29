@@ -2662,6 +2662,20 @@ continuous_sensor_loop()
             break;
           }
 
+          case SPIKE3.DEV_MATRIX_3X3: {
+            // Type, port and nine pixel bytes, as emitted by the SPIKE 3 hub.
+            if (remaining < 11) return;
+            const port = SpikePorts[data[offset + 1]];
+            if (port) {
+              this._portValues[port] = {
+                type: "matrix3",
+                pixels: Array.from(data.slice(offset + 2, offset + 11)),
+              };
+            }
+            offset += 11;
+            break;
+          }
+
           default:
             // An unknown record has an unknown width, so the rest of the
             // payload cannot be walked safely. Stop rather than guess.
@@ -3088,7 +3102,11 @@ continuous_sensor_loop()
       return this.active._movementMotors;
     }
     set _movementMotors(value) {
-      this.active._movementMotors = value;
+      // The pair is the project's choice, not one hub's: both hubs hold it,
+      // so a pair set before connecting survives whichever route AUTO settles
+      // on, and movementMotors reads the same pair on either firmware.
+      this._repl._movementMotors = value;
+      this._spike3._movementMotors = value;
     }
     get _timer() {
       return this.active._timer;
@@ -6234,37 +6252,142 @@ continuous_sensor_loop()
       const portA = Cast.toString(args.PORT_A).trim().toUpperCase();
       const portB = Cast.toString(args.PORT_B).trim().toUpperCase();
       this._peripheral._movementMotors = [portA, portB];
+      // Tell the hub too: motors.move/start/... drive whatever the hub's own
+      // motors pair is, and recording the ports here alone left it unchanged.
+      return this._peripheral.sendPythonCommand(this._motorPairPython(false));
+    }
+
+    /**
+     * One line of hub Python that defines motors = MotorPair(A, B) for the
+     * current movement pair. With onlyIfMissing it leaves an existing motors
+     * alone, which is what lets every movement command carry it: a project
+     * that never ran "set movement motors" still has a pair on the hub. exec
+     * keeps the try/except on one REPL line; SPIKE Prime firmware names the
+     * module spike and Robot Inventor names it mindstorms.
+     */
+    _motorPairPython(onlyIfMissing) {
+      const [portA, portB] = this._peripheral.movementMotors;
+      const define =
+        "try:\\n from spike import MotorPair\\n" +
+        "except ImportError:\\n from mindstorms import MotorPair\\n" +
+        `motors = MotorPair('${portA}', '${portB}')`;
+      if (!onlyIfMissing) return `exec("${define}")`;
+      const indented = define.replace(/\\n/g, "\\n ");
+      return `exec("try:\\n motors\\nexcept NameError:\\n ${indented}")`;
+    }
+
+    /** A MotorPair command, preceded by the definition of motors if absent. */
+    _sendMotorPairCommand(code) {
+      return this._peripheral.sendPythonCommand(
+        `${this._motorPairPython(true)}; ${code}`
+      );
+    }
+
+    /**
+     * The hub's counted position for a motor port, or null when the hub has
+     * reported none. SPIKE 3 notifications land in _sensors.motorPositions;
+     * the 2.x status stream lands in portValues.
+     */
+    _countedPosition(port) {
+      const alt = this._peripheral._sensors.motorPositions[port];
+      const reading =
+        alt && alt.relativePosition !== undefined
+          ? alt.relativePosition
+          : this._peripheral.portValues[port]?.relativePosition;
+      return typeof reading === "number" && Number.isFinite(reading)
+        ? reading
+        : null;
+    }
+
+    /**
+     * Resolve once every movement motor the hub reports on has turned the
+     * commanded degrees (within a few), as a word block on a real SPIKE does.
+     * The time estimate is the fallback, so a hub that reports no positions,
+     * or a robot stalled against a wall, still lets the script go on.
+     */
+    _waitForMovement(ports, degrees, speed) {
+      const target = Math.abs(degrees);
+      const degPerSecond = Math.abs(speed) * 6;
+      const estimateMs =
+        degPerSecond > 0 ? (target / degPerSecond) * 1000 : Infinity;
+      const starts = ports
+        .map((port) => ({ port, start: this._countedPosition(port) }))
+        .filter((entry) => entry.start !== null);
+      // Without readings the estimate is the whole wait, as in motorRunFor.
+      // With them it is only a safety net, so it is looser: the estimate is
+      // a guess at the hub's speed scale and must not cut a real move short.
+      const fallbackMs = starts.length
+        ? Math.min(estimateMs * 2 + 1000, 30000)
+        : Math.min(estimateMs + 500, 10000);
+      return new Promise((resolve) => {
+        let poll = null;
+        const done = () => {
+          clearTimeout(timeout);
+          if (poll !== null) clearInterval(poll);
+          resolve();
+        };
+        const timeout = setTimeout(done, fallbackMs);
+        if (!starts.length) return;
+        const arrived = () =>
+          starts.every(({ port, start }) => {
+            const now = this._countedPosition(port);
+            return now !== null && Math.abs(now - start) >= target - 5;
+          });
+        poll = setInterval(() => {
+          if (arrived()) done();
+        }, 20);
+      });
+    }
+
+    /** The unit names MotorPair.move accepts, from either spelling. */
+    _moveUnit(unit) {
+      const text = Cast.toString(unit).trim().toLowerCase();
+      const plural = {
+        rotation: "rotations",
+        degree: "degrees",
+        second: "seconds",
+      };
+      return plural[text] || text;
     }
 
     moveForward(args) {
       const direction = Cast.toString(args.DIRECTION);
       const value = Cast.toNumber(args.VALUE);
-      const unit = Cast.toString(args.UNIT);
-      const [portA] = this._peripheral._movementMotors;
-      const speed = this._peripheral.motorSettings[portA].speed;
+      const unit = this._moveUnit(args.UNIT);
+      const ports = this._peripheral.movementMotors;
+      const speed = this._peripheral.motorSettings[ports[0]].speed;
       const dirMultiplier = direction === "forward" ? 1 : -1;
+      let amount = value;
+      let sentUnit = unit;
       if (unit === "cm") {
-        const rotations = value / 17.6;
-        return this._peripheral.sendPythonCommand(
-          `motors.move(${rotations * dirMultiplier}, 'rotations', speed=${speed})`
-        );
+        amount = value / 17.6;
+        sentUnit = "rotations";
       } else if (unit === "in") {
-        const rotations = value / 6.93;
-        return this._peripheral.sendPythonCommand(
-          `motors.move(${rotations * dirMultiplier}, 'rotations', speed=${speed})`
+        amount = value / 6.93;
+        sentUnit = "rotations";
+      }
+      const sent = this._sendMotorPairCommand(
+        `motors.move(${amount * dirMultiplier}, '${sentUnit}', speed=${speed})`
+      );
+      // Wait for the move to end, as the SPIKE word block does, so the next
+      // block does not override it mid-way.
+      let wait;
+      if (sentUnit === "seconds") {
+        wait = new Promise((resolve) =>
+          setTimeout(resolve, Math.max(0, value) * 1000)
         );
       } else {
-        return this._peripheral.sendPythonCommand(
-          `motors.move(${value * dirMultiplier}, '${unit}', speed=${speed})`
-        );
+        const degrees = sentUnit === "rotations" ? amount * 360 : amount;
+        wait = this._waitForMovement(ports, degrees, speed);
       }
+      return Promise.all([sent, wait]).then(() => {});
     }
 
     steer(args) {
       const steering = Cast.toNumber(args.STEERING);
-      const [portA] = this._peripheral._movementMotors;
+      const [portA] = this._peripheral.movementMotors;
       const speed = this._peripheral.motorSettings[portA].speed;
-      return this._peripheral.sendPythonCommand(
+      return this._sendMotorPairCommand(
         `motors.start(${steering}, speed=${speed})`
       );
     }
@@ -6272,23 +6395,21 @@ continuous_sensor_loop()
     startTank(args) {
       const leftSpeed = Cast.toNumber(args.LEFT_SPEED);
       const rightSpeed = Cast.toNumber(args.RIGHT_SPEED);
-      return this._peripheral.sendPythonCommand(
+      return this._sendMotorPairCommand(
         `motors.start_tank(${leftSpeed}, ${rightSpeed})`
       );
     }
 
     setMovementSpeed(args) {
       const speed = Cast.toNumber(args.SPEED);
-      const [portA, portB] = this._peripheral._movementMotors;
+      const [portA, portB] = this._peripheral.movementMotors;
       this._peripheral.motorSettings[portA].speed = speed;
       this._peripheral.motorSettings[portB].speed = speed;
-      return this._peripheral.sendPythonCommand(
-        `motors.set_default_speed(${speed})`
-      );
+      return this._sendMotorPairCommand(`motors.set_default_speed(${speed})`);
     }
 
     stopMovement() {
-      return this._peripheral.sendPythonCommand("motors.stop()");
+      return this._sendMotorPairCommand("motors.stop()");
     }
 
     // Motor implementations

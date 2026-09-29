@@ -1,11 +1,13 @@
-//! The first, and so far only, semantic native operation: `platform.kind.read`.
+//! Closed semantic native operations for platform inspection and emulation.
 //!
 //! Transport lives in `native_broker_adapter`; policy lives in `native_policy`. This module is
 //! the seam between them, and it is deliberately thin — it binds the caller label, hands the
-//! decision to the policy core, and executes exactly one side-effect-free read. Nothing here
+//! decision to the policy core, and executes only reviewed semantic actions. Nothing here
 //! interprets caller-supplied capability, and no reusable invoke handle is ever returned.
 
 use crate::native_policy::{LeaseId, NativePolicyState, Operation, RedactedAuditRow, StateError};
+use crate::renode_debugger::{RenodeDebugger, RenodeTarget};
+use crate::renode_supervisor::RenodeSupervisor;
 use serde_json::Value;
 use tauri::{State, WebviewWindow};
 
@@ -27,18 +29,137 @@ fn opaque(_: StateError) -> String {
     "capability refused".into()
 }
 
-/// The single executor. Side-effect free, argument free, and constant per build — reading it
-/// twice cannot reveal anything a caller did not already know from the binary it is running.
-fn execute(operation: Operation) -> &'static str {
+/// Closed semantic executor. Platform inspection stays side-effect free; Renode operations can
+/// only reach the target-matched managed debugger and its build-pinned supervisor.
+/// No caller string becomes a path, process argument, monitor command, port or token.
+fn execute(
+    operation: Operation,
+    args: &Value,
+    debugger: &RenodeDebugger,
+    supervisor: &RenodeSupervisor,
+) -> Result<String, String> {
+    let spike = || debugger.ensure_target(RenodeTarget::SpikePrime);
+    let ev3 = || debugger.ensure_target(RenodeTarget::Ev3);
     match operation {
-        Operation::PlatformKindRead => {
-            if cfg!(target_os = "macos") {
-                "macos"
-            } else if cfg!(target_os = "windows") {
-                "windows"
-            } else {
-                "linux"
-            }
+        Operation::PlatformKindRead => Ok(if cfg!(target_os = "macos") {
+            "macos"
+        } else if cfg!(target_os = "windows") {
+            "windows"
+        } else {
+            "linux"
+        }
+        .to_owned()),
+        Operation::RenodeSpikeStart => debugger.start(supervisor).map(str::to_owned),
+        Operation::RenodeSpikeClose => {
+            spike()?;
+            debugger.close(supervisor).map(str::to_owned)
+        }
+        Operation::RenodeSpikeRun => {
+            spike()?;
+            debugger.run().map(str::to_owned)
+        }
+        Operation::RenodeSpikePause => {
+            spike()?;
+            debugger.pause().map(str::to_owned)
+        }
+        Operation::RenodeSpikeReset => {
+            spike()?;
+            debugger.reset(supervisor).map(str::to_owned)
+        }
+        Operation::RenodeSpikeStep => {
+            spike()?;
+            debugger.step().map(str::to_owned)
+        }
+        Operation::RenodeSpikeRegistersRead => {
+            spike()?;
+            debugger.registers().map(|value| value.to_string())
+        }
+        Operation::RenodeSpikeMemoryRead => {
+            spike()?;
+            debugger.read_memory(
+                u32::try_from(args["address"].as_u64().expect("validated address"))
+                    .expect("bounded address"),
+                usize::try_from(args["length"].as_u64().expect("validated length"))
+                    .expect("bounded length"),
+            )
+        }
+        Operation::RenodeSpikeStateRead => {
+            spike()?;
+            debugger.state().map(|value| value.to_string())
+        }
+        Operation::RenodeSpikeBreakpointSet => {
+            spike()?;
+            debugger
+                .set_breakpoint(
+                    u32::try_from(args["address"].as_u64().expect("validated address"))
+                        .expect("bounded address"),
+                )
+                .map(str::to_owned)
+        }
+        Operation::RenodeSpikeBreakpointClear => {
+            spike()?;
+            debugger
+                .clear_breakpoint(
+                    u32::try_from(args["address"].as_u64().expect("validated address"))
+                        .expect("bounded address"),
+                )
+                .map(str::to_owned)
+        }
+        Operation::RenodeEv3Start => debugger.start_ev3(supervisor).map(str::to_owned),
+        Operation::RenodeEv3Close => {
+            ev3()?;
+            debugger.close(supervisor).map(str::to_owned)
+        }
+        Operation::RenodeEv3Run => {
+            ev3()?;
+            debugger.run().map(str::to_owned)
+        }
+        Operation::RenodeEv3Pause => {
+            ev3()?;
+            debugger.pause().map(str::to_owned)
+        }
+        Operation::RenodeEv3Reset => {
+            ev3()?;
+            debugger.reset(supervisor).map(str::to_owned)
+        }
+        Operation::RenodeEv3Step => {
+            ev3()?;
+            debugger.step().map(str::to_owned)
+        }
+        Operation::RenodeEv3RegistersRead => {
+            ev3()?;
+            debugger.registers().map(|value| value.to_string())
+        }
+        Operation::RenodeEv3MemoryRead => {
+            ev3()?;
+            debugger.read_memory(
+                u32::try_from(args["address"].as_u64().expect("validated address"))
+                    .expect("bounded address"),
+                usize::try_from(args["length"].as_u64().expect("validated length"))
+                    .expect("bounded length"),
+            )
+        }
+        Operation::RenodeEv3StateRead => {
+            ev3()?;
+            debugger.state().map(|value| value.to_string())
+        }
+        Operation::RenodeEv3BreakpointSet => {
+            ev3()?;
+            debugger
+                .set_breakpoint(
+                    u32::try_from(args["address"].as_u64().expect("validated address"))
+                        .expect("bounded address"),
+                )
+                .map(str::to_owned)
+        }
+        Operation::RenodeEv3BreakpointClear => {
+            ev3()?;
+            debugger
+                .clear_breakpoint(
+                    u32::try_from(args["address"].as_u64().expect("validated address"))
+                        .expect("bounded address"),
+                )
+                .map(str::to_owned)
         }
     }
 }
@@ -63,9 +184,12 @@ pub(crate) fn native_broker_lease(
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)] // Tauri injects the three managed State parameters.
 pub(crate) fn native_broker_invoke(
     window: WebviewWindow,
     policy: State<'_, NativePolicyState>,
+    debugger: State<'_, RenodeDebugger>,
+    supervisor: State<'_, RenodeSupervisor>,
     lease: String,
     sequence: u64,
     operation: String,
@@ -80,7 +204,7 @@ pub(crate) fn native_broker_invoke(
     let call = policy
         .authorize_broker_call(window.label(), id, sequence, &operation, &resource, &args)
         .map_err(opaque)?;
-    Ok(execute(call.operation).to_owned())
+    execute(call.operation, &args, &debugger, &supervisor)
 }
 
 /// Diagnostics. Readable from the MAIN webview because that is where the learner sees it, and

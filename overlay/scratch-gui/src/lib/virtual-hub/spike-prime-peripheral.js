@@ -3,6 +3,7 @@
 // protocol/js/spike-codec.js and its Apache-2.0 conformance fixtures.
 import {registerVirtualPeripheral} from './web-bluetooth-shim.js';
 import VirtualSpikeHubState from './spike-hub-state.js';
+import {applyHubPython} from './spike-hub-commands.js';
 
 export const SPIKE_SERVICE = '0000fd02-0000-1000-8000-00805f9b34fb';
 export const SPIKE_RX = '0000fd02-0001-1000-8000-00805f9b34fb';
@@ -283,20 +284,11 @@ export class VirtualSpikePrimePeripheral {
     }
 
     _translatePythonTunnel (text) {
-        // Deliberately a tiny parser for extension-generated calls. Never eval.
-        const run = /\bmotor\.run\(port\.([A-F]),\s*(-?\d+(?:\.\d+)?)\)/.exec(text);
-        if (run) {
-            const port = 'ABCDEF'.indexOf(run[1]);
-            this.hubState.setMotorSpeed(port, clampInt(run[2], -1000, 1000) / 10);
-            return true;
-        }
-        const stop = /\bmotor\.stop\(port\.([A-F])\)/.exec(text);
-        if (stop) {
-            this.hubState.setMotorSpeed(stop[1], 0);
-            return true;
-        }
-        this.state.lastUnsupportedPythonTunnel = text;
-        return false;
+        // Deliberately a pattern matcher over extension-generated statements
+        // (spike-hub-commands.js). Never eval.
+        const {recognised, unhandled} = applyHubPython(this.hubState, text);
+        if (unhandled.length) this.state.lastUnsupportedPythonTunnel = text;
+        return recognised > 0;
     }
 }
 

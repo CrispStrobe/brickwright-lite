@@ -1,0 +1,16 @@
+DEVICE SPIKE
+
+# Rover basics 3 - turn around (reference solution).
+# Two quarter turns make a half turn. The yaw is reset before each, because it
+# only runs from -180 to 180.
+DEFINE quarter turn right:
+  set movement speed 15
+  reset yaw
+  start moving steering 100
+  wait until spike angle yaw > 87
+  stop movement
+
+WHEN flag clicked:
+  set movement motors A B
+  quarter turn right
+  quarter turn right

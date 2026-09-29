@@ -198,10 +198,13 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 24 device-specific benches. The three Arduino examples whose authored
     // circuits reserve PC4/PC5 for an external EEPROM are deliberately absent:
     // remapping those wires would change the lesson rather than retarget it.
+    // 1216 -> 1217 on 2026-09-28: sb3-creator's PRECHIN A2 learning-board
+    // preset (board-prechin-a2-learning-board/circuit.json), which arrives with
+    // the pin that brings SPIKE App 3 Python.
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1216, 'the gate must cover the complete vendored corpus');
+    assert.equal(files.length, 1217, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -348,4 +351,39 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         retargeted: 907,
         total: 1023
     });
+});
+
+test('every shipped part is placed: it has coordinates or a breadboard seat', () => {
+    // THE A2 BOARD SHIPPED WITH ALL 29 PARTS AT (0,0) and nothing said so. What
+    // eventually said so was "potentiometer controls do not cover neighbouring
+    // parts", reporting `pot_a0 covers mcu by 60.0x52.0` — which is what a stack
+    // of 29 parts looks like through a gate that only inspects potentiometers.
+    // i8086-blink had the same defect in 18 of its 25 parts and was invisible,
+    // because it contains no potentiometer. A gate that catches this by accident
+    // catches it only when the example happens to hold the right component.
+    //
+    // A part is PLACED if it carries coordinates or a `seat` naming the
+    // breadboard holes its leads sit in — the pc* examples use seats and leave
+    // x/y at 0 legitimately, which is why the seat is not merely tolerated here
+    // but is the other half of the rule.
+    const unplaced = [];
+    for (const rel of circuitFiles()) {
+        const doc = JSON.parse(readFileSync(path.join(examples, rel), 'utf8'));
+        const parts = doc.parts || [];
+        // THE THRESHOLD IS ONE, AND THAT IS MEASURED, NOT ASSUMED. This started
+        // at "three or more", on the reasoning that a single part sitting at the
+        // origin might be a real placement rather than a pile. Nothing in the
+        // corpus needs that tolerance: all 2161 shipped circuit files have ZERO
+        // parts with neither coordinate nor seat, so a threshold of 3 was slack
+        // no example was using, and it let a two-part regression through in
+        // silence. If a part ever does belong at exactly (0,0), say so with a
+        // seat or with x: 0, y: 0 made explicit by a neighbouring offset — the
+        // rule asks for evidence of placement, not for a particular coordinate.
+        const loose = parts.filter(p =>
+            !(p.x || p.y) && !p.seat);
+        if (loose.length >= 1) unplaced.push(`${rel}: ${loose.length}/${parts.length} parts have neither coordinates nor a seat`);
+    }
+    assert.deepEqual(unplaced, [],
+        'example(s) whose parts are stacked at the origin — they render as one pile:\n  '
+        + unplaced.join('\n  '));
 });

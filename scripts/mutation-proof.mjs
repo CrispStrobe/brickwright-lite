@@ -163,8 +163,14 @@ const MUTATIONS = [
     {
         layer: 'realm: the operation table has a null prototype',
         file: 'apps/tauri/src-tauri/src/native_broker_bootstrap.js',
-        find: "Object.freeze({__proto__: null, 'platform.kind.read': 'platform/default'})",
-        with: "Object.freeze({'platform.kind.read': 'platform/default'})",
+        // ANCHOR ONLY THE THING THE MUTATION IS ABOUT. This used to quote the
+        // whole one-entry table, so every lane that added a capability name
+        // (#481, #487, #504) silently invalidated it — the runner then reported
+        // SKIP ... the mutation is stale and exited 1, which reads as a broken
+        // gate rather than an out-of-date quotation. `__proto__: null` is what
+        // this mutation removes; the entries after it are not its subject.
+        find: "Object.freeze({__proto__: null,",
+        with: "Object.freeze({",
         suite: 'test/native-broker-bootstrap.test.mjs',
         expect: 'green-known',
         because: 'the `typeof resource !== "string"` guard is independently sufficient — a ' +
@@ -184,6 +190,7 @@ const runSuite = suite => {
 };
 
 let failures = 0;
+let stale = 0;
 const results = [];
 for (const m of MUTATIONS) {
     if (only && !m.layer.includes(only)) continue;
@@ -193,6 +200,7 @@ for (const m of MUTATIONS) {
     if (count !== 1) {
         console.log(`SKIP  ${m.layer}\n      anchor occurs ${count} times in ${m.file} — the mutation is stale`);
         failures++;
+        stale++;
         continue;
     }
     writeFileSync(full, original.replace(m.find, m.with));
@@ -213,8 +221,19 @@ for (const m of MUTATIONS) {
     }
 }
 
-console.log(`\n${results.filter(r => r.ok).length}/${results.length} mutations behaved as documented`);
-if (failures) {
-    console.log('A mutation that does not turn its suite red is a gate that cannot fail.');
-    process.exit(1);
+// REPORT THE STALE ONES IN THE RATIO, NOT ONLY IN THE EXIT CODE. A stale
+// mutation `continue`s before joining `results`, so it used to be invisible
+// here while still counting toward `failures`: the run printed
+// "14/14 mutations behaved as documented" and exited 1. That reads as a
+// runner bug, and it cost a real investigation — the honest line says how
+// many never ran, and names the different remedy, because a stale anchor is
+// a quotation to update, not a guard that failed to fire.
+console.log(`\n${results.filter(r => r.ok).length}/${results.length} mutations behaved as documented`
+    + (stale ? `, and ${stale} did not run at all (stale anchor)` : ''));
+if (stale) {
+    console.log('A mutation whose anchor no longer matches proves nothing: requote it against the current source.');
 }
+if (failures > stale) {
+    console.log('A mutation that does not turn its suite red is a gate that cannot fail.');
+}
+if (failures) process.exit(1);

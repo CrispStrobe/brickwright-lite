@@ -12,6 +12,14 @@ mod native_broker_adapter;
 // the command at all, rather than carry it and be refused by an ACL.
 #[cfg(desktop)]
 mod native_capability;
+#[cfg(desktop)]
+mod renode_brick_state;
+#[cfg(desktop)]
+mod renode_debugger;
+#[cfg(desktop)]
+mod renode_rsp;
+#[cfg(desktop)]
+mod renode_supervisor;
 // Compiled on every target so the staged relay stays warning-clean. It has no
 // command registration or runtime consumer until the authenticated adapter lands.
 #[allow(dead_code)]
@@ -72,6 +80,10 @@ pub fn run() {
     let builder = builder.manage(native_policy.clone());
     #[cfg(desktop)]
     let builder = builder.manage(native_broker_adapter::NativeBrokerAdapter::new());
+    #[cfg(desktop)]
+    let builder = builder.manage(renode_supervisor::RenodeSupervisor::new());
+    #[cfg(desktop)]
+    let builder = builder.manage(renode_debugger::RenodeDebugger::new());
 
     builder
         .invoke_handler(tauri::generate_handler![
@@ -141,6 +153,9 @@ pub fn run() {
                         handle
                             .state::<native_broker_adapter::NativeBrokerAdapter>()
                             .revoke_main();
+                        handle
+                            .state::<renode_supervisor::RenodeSupervisor>()
+                            .teardown(renode_supervisor::TeardownReason::AppExit);
                         if let Some(broker) = handle.get_webview_window("capability-broker") {
                             if broker
                                 .eval(native_broker_adapter::dispose_all_javascript())

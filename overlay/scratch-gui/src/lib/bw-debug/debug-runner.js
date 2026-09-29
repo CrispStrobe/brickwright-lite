@@ -99,6 +99,7 @@ function uiLang () {
 /** Status text in the reader's language. `S('boot.media', {name})`. */
 const S = (key, vars) => statusT(uiLang(), key, vars);
 import { localCompilerRequest, localToolchainEnabled } from '../sdcc-wasm/toolchain-source.js';
+import {withI80386MouseCmos} from '../bw-machines/i80386-cmos.js';
 
 /**
  * How many suppressed breakpoint hits one frame will absorb before yielding to
@@ -1903,7 +1904,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         return session;
     }
 
-    /** STM32F030 or ATmega328P on the HEAVY tier (labwired-wasm).
+    /** Native firmware on the HEAVY tier (labwired-wasm).
      *
      *  STM32F030 uses the same raw flash image as attachStm32F0Target. AVR
      *  compiler output is Intel HEX, converted below to little-endian flash
@@ -1943,12 +1944,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         const stc = projectStc(null);
         const device = String(stc?.device || '').toLowerCase();
         const isAvr = ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device);
-        if (!isAvr && device !== 'stm32f030') {
-            throw new Error('LabWired is admitted here only for STM32F030 and '
-                + 'ATmega328P/Arduino Uno/Nano. ATtiny85/88 stay on avr8js.');
+        const chipKind = isAvr ? 'arduino_uno'
+            : device === 'stm32f030' ? 'stm32f030'
+                : device === 'microbit' || device === 'microbit-v2' ? 'microbit_v2'
+                    : ['pybadge', 'pybadge-lc', 'samd51', 'arcade'].includes(device) ? 'pybadge' : null;
+        if (!chipKind) {
+            throw new Error(`LabWired has no admitted board model for '${device || 'this project'}'. `
+                + 'ATtiny85/88 stay on avr8js.');
         }
-        const chipKind = isAvr ? 'arduino_uno' : 'stm32f030';
-        const chip = isAvr ? LABWIRED_CHIPS.arduino_uno : STM32F0;
+        const chip = chipKind === 'stm32f030' ? STM32F0 : LABWIRED_CHIPS[chipKind];
+        if (!chip) throw new Error(`this bw-board build does not carry the LabWired '${chipKind}' model`);
         const clockHz = built.f_cpu || built.clockHz || chip.clockHz;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
@@ -1981,7 +1986,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         let lwTarget, lwAdapter, refusals;
         try {
             ({ target: lwTarget, adapter: lwAdapter, refusals } = await createDebugTarget('labwired', {
-                wasm, board, firmware: program, chipKind, clockHz,
+                wasm, board, firmware: program, firmwareAddress: built.firmwareAddress,
+                chipKind, clockHz,
             }));
         } catch (e) {
             // The bridge throws with a `refusals` array when the bench cannot be
@@ -2005,10 +2011,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // level-pended timer interrupt when its source deasserts inside the
             // handler, measured 0.97 entries per update event on both tiers —
             // the same instrument that ledgered 1.95.
-            'Analog inputs are not injected on this tier: the engine now EXPORTS a '
+            ...(chipKind === 'stm32f030' ? ['Analog inputs are not injected on this tier: the engine now EXPORTS a '
             + 'per-channel ADC entry point, but this adapter does not feed it yet, so a '
             + 'pot or LDR still reads the engine\'s own counter instead of the voltage '
-            + 'this board solves. Use the light tier (Simulated STM32F030) for analog work.',
+            + 'this board solves. Use the light tier (Simulated STM32F030) for analog work.'] : []),
+            ...(built.omittedFirmwareBytes ? [
+                `${built.omittedFirmwareBytes} non-flash configuration byte(s) were omitted from the image`
+            ] : []),
             ...(refusals || []).map(r => `${r.subject}: ${r.reason}`)
         ];
 
@@ -3106,7 +3115,6 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             [0x23, g.sectors & 0xff],
             [0x39, 0x00],
         ])(hdGeom) : [];
-        const hdCmosIdx = new Set(hdCmos.map(([i]) => i));
         const config = {
             ...base,
             a20: {...base.a20, mouse: true},
@@ -3115,15 +3123,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 ...base.regions.filter(r => !(r.kind === 'rom' && r.start === 0xc0000)),
                 { kind: 'rom', start: 0xc0000, end: 0xc9fff },
             ],
-            ...(isHdd ? {
-                chips: base.chips.map(chip => chip.kind === 'rtc' ? {
-                    ...chip,
-                    initialCmos: [
-                        ...chip.initialCmos.filter(([i]) => i !== 0x3d && i !== 0x12 && !hdCmosIdx.has(i)),
-                        [0x3d, 0x21], [0x12, 0xf0], ...hdCmos,
-                    ],
-                } : chip),
-            } : {}),
+            chips: withI80386MouseCmos(base.chips,
+                isHdd ? [[0x3d, 0x21], [0x12, 0xf0], ...hdCmos] : []),
         };
 
         const targetOpts = { config };
@@ -3394,7 +3395,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     // run/pause/step-insn, pins, board and serial all still work.
     let userFirmware = null; // {name, bytes: Uint8Array|null, text: string|null}
 
-    function builtFromUserFirmware(kind) {
+    async function builtFromUserFirmware(kind) {
         const fw = userFirmware;
         blockOf = new Map();
         yieldOf = new Map();
@@ -3434,33 +3435,59 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 bytes: bytes.length, f_cpu: null, format: 'bin' };
         }
         if (kind === 'labwired') {
-            // The heavy tier runs the user's image on a catalog chip (see
-            // attachLabwiredFirmwareOnly). ELF only: it says where every byte
-            // loads, which a raw .bin cannot, and the chips differ (STM32 flash
-            // at 0x0800_0000, nRF at 0, RP2040 XIP at 0x1000_0000).
-            const bytes = fw.bytes || new Uint8Array(0);
-            const isElf = bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 &&
-                bytes[2] === 0x4c && bytes[3] === 0x46;
-            // UF2 (a Pico's drag-and-drop image): every block names its flash
-            // address, so bw-board converts it without guessing an origin.
-            const isUf2 = bytes.length >= 8 && bytes[0] === 0x55 && bytes[1] === 0x46 &&
-                bytes[2] === 0x32 && bytes[3] === 0x0a;
-            // A .hex is taken for an S110 board (micro:bit V1 / Calliope): bw-board
-            // keeps only its application window and the engine emulates the
-            // SoftDevice. For any other chip a .hex is refused as before.
-            const hexText = fw.text || (!isElf && !isUf2 && bytes.length && bytes[0] === 0x3a
-                ? new TextDecoder().decode(bytes) : null);
-            if (hexText && String(labwiredChip || '').startsWith('board:')) {
-                return { hex: hexText, image: new TextEncoder().encode(hexText), symbols: null, c: null,
-                    bytes: hexText.length, f_cpu: null, format: 'hex' };
+            // A chip or board picked in the Debug panel: the user's own image on a
+            // catalog chip, no circuit (attachLabwiredFirmwareOnly).
+            if (labwiredChip) {
+                // The heavy tier runs the user's image on a catalog chip (see
+                // attachLabwiredFirmwareOnly). ELF only: it says where every byte
+                // loads, which a raw .bin cannot, and the chips differ (STM32 flash
+                // at 0x0800_0000, nRF at 0, RP2040 XIP at 0x1000_0000).
+                const bytes = fw.bytes || new Uint8Array(0);
+                const isElf = bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 &&
+                    bytes[2] === 0x4c && bytes[3] === 0x46;
+                // UF2 (a Pico's drag-and-drop image): every block names its flash
+                // address, so bw-board converts it without guessing an origin.
+                const isUf2 = bytes.length >= 8 && bytes[0] === 0x55 && bytes[1] === 0x46 &&
+                    bytes[2] === 0x32 && bytes[3] === 0x0a;
+                // A .hex is taken for an S110 board (micro:bit V1 / Calliope): bw-board
+                // keeps only its application window and the engine emulates the
+                // SoftDevice. For any other chip a .hex is refused as before.
+                const hexText = fw.text || (!isElf && !isUf2 && bytes.length && bytes[0] === 0x3a
+                    ? new TextDecoder().decode(bytes) : null);
+                if (hexText && String(labwiredChip || '').startsWith('board:')) {
+                    return { hex: hexText, image: new TextEncoder().encode(hexText), symbols: null, c: null,
+                        bytes: hexText.length, f_cpu: null, format: 'hex' };
+                }
+                if (!isElf && !isUf2) {
+                    throw new Error(`${fw.name}: the LabWired engine takes an ELF (.elf) or a UF2 (.uf2) — ` +
+                        'a raw .bin or .hex does not say where its bytes load on this chip ' +
+                        '(a micro:bit V1 / Calliope .hex runs on the micro:bit V1 board)');
+                }
+                return { hex: null, image: bytes, symbols: null, c: null,
+                    bytes: bytes.length, f_cpu: null, format: isElf ? 'elf' : 'uf2' };
             }
-            if (!isElf && !isUf2) {
-                throw new Error(`${fw.name}: the LabWired engine takes an ELF (.elf) or a UF2 (.uf2) — ` +
-                    'a raw .bin or .hex does not say where its bytes load on this chip ' +
-                    '(a micro:bit V1 / Calliope .hex runs on the micro:bit V1 board)');
+            // Otherwise the project's own device on its bench.
+            const device = String(projectStc(null)?.device || '').toLowerCase();
+            const chipKind = device === 'microbit' || device === 'microbit-v2' ? 'microbit_v2'
+                : ['pybadge', 'pybadge-lc', 'samd51', 'arcade'].includes(device) ? 'pybadge'
+                    : device === 'stm32f030' ? 'stm32f030'
+                        : ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device) ? 'arduino_uno' : null;
+            if (!chipKind) throw new Error(`LabWired cannot identify the chip for '${device || fw.name}'`);
+            // AVR remains on the long-standing Intel-HEX path above. ARM
+            // containers retain their own address here: a PyBadge UF2 starts
+            // at the bootloader's application offset, not at flash zero.
+            if (chipKind === 'arduino_uno') {
+                const text = fw.text || (fw.bytes ? new TextDecoder().decode(fw.bytes) : '');
+                if (!/^\s*:/.test(text)) throw new Error(`${fw.name}: the ATmega328P LabWired target takes Intel HEX`);
+                return {hex: text, image: null, symbols: null, c: null,
+                    bytes: text.length, f_cpu: fw.fCpu || null, format: 'ihx'};
             }
-            return { hex: null, image: bytes, symbols: null, c: null,
-                bytes: bytes.length, f_cpu: null, format: isElf ? 'elf' : 'uf2' };
+            const {labwiredFirmwareImage} = await import(
+                /* webpackChunkName: "labwired-firmware" */ './labwired-firmware.js');
+            const parsed = labwiredFirmwareImage(fw, chipKind);
+            return {hex: null, image: parsed.image, symbols: null, c: null,
+                bytes: parsed.image.length, f_cpu: fw.fCpu || null, format: parsed.format,
+                firmwareAddress: parsed.address, omittedFirmwareBytes: parsed.omitted};
         }
         throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
     }
@@ -3504,7 +3531,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     const built = (selectedKind === 'z80' || selectedKind === 'eater6502' ||
                         selectedKind === 'riscv32' ||
                         ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia)) ? null
-                        : userFirmware ? builtFromUserFirmware(selectedKind)
+                        : userFirmware ? await builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);
                     if (destroyed) {

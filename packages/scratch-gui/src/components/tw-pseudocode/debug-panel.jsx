@@ -714,7 +714,7 @@ class DebugPanel extends React.Component {
      */
     _runSketch (detail) {
         const {firmware, kind} = detail || {};
-        if (!firmware || !firmware.text) return;
+        if (!firmware || (!firmware.text && !(firmware.bytes && firmware.bytes.length))) return;
         this._userFirmware = firmware;
         this._teardownRunner();
         return new Promise(resolve => this.setState({

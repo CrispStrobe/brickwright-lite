@@ -1,0 +1,13 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: one quarter turn is only 90 degrees.
+DEFINE quarter turn right:
+  set movement speed 15
+  reset yaw
+  start moving steering 100
+  wait until spike angle yaw > 87
+  stop movement
+
+WHEN flag clicked:
+  set movement motors A B
+  quarter turn right

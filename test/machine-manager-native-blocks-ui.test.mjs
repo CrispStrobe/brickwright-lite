@@ -123,12 +123,21 @@ test('FreeDOS VGA action selects the named profile and keeps four local files in
         await renderer.root.findByProps({'data-testid': 'bw-mm-free386-run'}).props.onClick();
     });
     assert.equal(runs.length, 1);
+    assert.equal(runs[0].cfg.nativeBlocks, false);
     assert.equal(runs[0].cfg.machineConfig, 'freedos-vga');
     assert.equal(runs[0].cfg.bootOrder[0], 'floppy');
     for (const [slot, value] of [['floppy', 1], ['hdd', 2], ['bios', 3], ['vga-rom', 4]]) {
         const fetched = await runs[0].opts.fetcher({url: `local-media:${slot}`});
         assert.equal(fetched.bytes[0], value);
     }
+    const nativeToggle = renderer.root.findByProps({'data-testid': 'bw-mm-free386-native-blocks'});
+    assert.equal(nativeToggle.props.checked, false);
+    await act(async () => { nativeToggle.props.onChange({target: {checked: true}}); });
+    await act(async () => {
+        await renderer.root.findByProps({'data-testid': 'bw-mm-free386-run'}).props.onClick();
+    });
+    assert.equal(runs[1].cfg.nativeBlocks, true);
+    assert.equal(runs[1].cfg.machineConfig, 'freedos-vga');
     renderer.unmount();
 });
 

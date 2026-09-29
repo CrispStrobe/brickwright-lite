@@ -1,0 +1,17 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: turning LEFT at the corners drives the square
+# the other way round and out through the top of the mat.
+DEFINE quarter turn left:
+  set movement speed 15
+  reset yaw
+  start moving steering -100
+  wait until spike angle yaw < -87
+  stop movement
+
+WHEN flag clicked:
+  set movement motors A B
+  REPEAT 4:
+    set movement speed 50
+    move forward 50 cm
+    quarter turn left

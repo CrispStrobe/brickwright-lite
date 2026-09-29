@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+// The hub contract (who writes what, units, the clock) is docs/SPIKE-ARENA.md.
+import SpikeMotorModel from './spike-motor-model.js';
+
 const makeData = () => ({
     connected: false, simulationEnabled: false, notificationIntervalMs: null, battery: 100,
     firmwareTarget: 'official-v3',
@@ -10,13 +13,46 @@ const makeData = () => ({
         acceleration: {x: 0, y: 0, z: 1000}, angularVelocity: {x: 0, y: 0, z: 0}},
     buttons: {left: false, center: false, right: false}, lastCommand: null, lastPython: null
 });
+const wrap180 = degrees => {
+    const wrapped = ((degrees + 180) % 360 + 360) % 360 - 180;
+    return wrapped === -180 ? 180 : wrapped;
+};
 const indexOf = port => {
     const index = typeof port === 'string' ? 'ABCDEF'.indexOf(port.toUpperCase()) : Number(port);
     if (!Number.isInteger(index) || index < 0 || index > 5) throw new RangeError('SPIKE port must be A-F or 0-5');
     return index;
 };
 export default class VirtualSpikeHubState {
-    constructor () { this.data = makeData(); this.listeners = new Set(); this.transports = new Set(); }
+    constructor () {
+        this.data = makeData(); this.listeners = new Set(); this.transports = new Set();
+        // What a motor does with a command: see spike-motor-model.js. Positions
+        // advance only when the world's owner calls stepMotors().
+        this.motors = new SpikeMotorModel(this);
+        // The movement pair `motors.*` commands address: [left, right]. The left
+        // motor is mounted mirrored, as on the SPIKE driving base.
+        this.movementPair = ['A', 'B'];
+        // Whether a program has defined the hub's `motors` (MotorPair) yet;
+        // a guarded definition only takes effect while it has not.
+        this.motorPairDefined = false;
+        this._heading = 0;
+        this._yawZero = 0;
+    }
+    /** Advances every commanded motor by dtMs of simulated time; returns whether any moved. */
+    stepMotors (dtMs) { return this.motors.step(dtMs); }
+    /** The world's heading of the hub, degrees, clockwise positive seen from above. Sets imu.yaw. */
+    setHeading (degrees, {rate = 0} = {}) {
+        this._heading = Number(degrees) || 0;
+        this.data.imu.yaw = wrap180(this._heading - this._yawZero);
+        this.data.imu.angularVelocity.z = Number(rate) || 0;
+    }
+    /** hub.motion.reset_yaw / preset_yaw: from now on yaw reads `value` at the current heading. */
+    resetYaw (value = 0) {
+        this._yawZero = this._heading - (Number(value) || 0);
+        this.data.imu.yaw = wrap180(this._heading - this._yawZero);
+        this.changed();
+    }
+    /** Forgets any heading and yaw offset (a fresh hub). */
+    resetHeading (degrees = 0) { this._heading = Number(degrees) || 0; this._yawZero = this._heading; this.data.imu.yaw = 0; }
     subscribe (listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
     registerTransport (kind, disconnect) {
         if (!['ble', 'classic'].includes(kind) || typeof disconnect !== 'function') {
@@ -48,14 +84,15 @@ export default class VirtualSpikeHubState {
         this.changed();
     }
     setImu (value) { Object.assign(this.data.imu, value); this.changed(); }
-    setPort (port, kind, value = {}) {
-        const index = indexOf(port);
+    /** Writes a sensor port's value WITHOUT notifying listeners, for a caller
+     *  that batches (the arena writes every sensor, then calls changed() once). */
+    updateSensor (port, kind, value = {}) {
+        if (kind === 'motor') throw new TypeError('updateSensor is for sensors; motors are commanded');
+        this._applySensor(indexOf(port), kind, value);
+    }
+    _applySensor (index, kind, value) {
         this.data.sensors[index] = kind === 'none' ? null : {kind, ...value};
-        if (kind === 'motor') {
-            Object.assign(this.data.motors[index], value);
-            this.setMotorSpeed(index, value.speed || 0);
-        }
-        else if (kind === 'distance') this.data.classicPorts[index] = [62, [value.distance ?? -1]];
+        if (kind === 'distance') this.data.classicPorts[index] = [62, [value.distance ?? -1]];
         else if (kind === 'color') this.data.classicPorts[index] = [61, [value.color ?? -1, value.reflection ?? 0,
             value.ambient ?? 0, value.red ?? 0, value.green ?? 0, value.blue ?? 0]];
         else if (kind === 'force') this.data.classicPorts[index] = [63, [value.force ?? 0, value.pressed ? 1 : 0]];
@@ -63,22 +100,34 @@ export default class VirtualSpikeHubState {
             this.data.classicPorts[index] = [value.deviceId || 0, []];
         }
         else if (kind === 'none') this.data.classicPorts[index] = [0, []];
+    }
+    setPort (port, kind, value = {}) {
+        const index = indexOf(port);
+        if (kind === 'motor') {
+            this.data.sensors[index] = {kind, ...value};
+            Object.assign(this.data.motors[index], value);
+            this.setMotorSpeed(index, value.speed || 0);
+        } else this._applySensor(index, kind, value);
         this.changed();
     }
     setMotorSpeed (port, value) {
         const index = indexOf(port);
         const speed = Math.max(-100, Math.min(100, Number(value) || 0));
-        this.data.motors[index].speed = speed;
         this.data.sensors[index] = {...this.data.sensors[index], kind: 'motor'};
-        this.data.classicPorts[index] = [this.data.sensors[index].deviceId || 48,
-            [speed, this.data.motors[index].position, 0, speed]];
+        // Percent of this motor's full speed, run until told otherwise.
+        if (speed === 0) this.motors.stop(index);
+        else this.motors.runAtSpeed(index, this.motors.percentToDps(index, speed));
+        this.data.motors[index].speed = speed;
         this.changed();
     }
     setDisplay (pixels) { this.data.display = Array.from(pixels).slice(0, 25); while (this.data.display.length < 25) this.data.display.push(0); this.changed(); }
-    _stopAllSilent () { this.data.motors.forEach((motor, index) => {
-        motor.speed = 0;
-        if ([48, 49].includes(this.data.classicPorts[index][0])) this.data.classicPorts[index][1][0] = 0;
-    }); }
+    _stopAllSilent () {
+        this.motors.stopAll();
+        this.data.motors.forEach((motor, index) => {
+            motor.speed = 0;
+            if ([48, 49].includes(this.data.classicPorts[index][0])) this.data.classicPorts[index][1][0] = 0;
+        });
+    }
     stopAll () { this._stopAllSilent(); this.changed(); }
     snapshot () { return JSON.parse(JSON.stringify(this.data)); }
 }

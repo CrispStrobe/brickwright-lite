@@ -75,6 +75,9 @@ const FILES = [
     // entry point, which routes on the import line, so the importer's Python
     // tab takes either without the user choosing.
     ['src/utils/micropythonToPseudocode.js', path.join(lib, 'sb3-creator-micropython.js')],
+    // LEGO SPIKE App 3 Python, reached the same way: the Python entry point
+    // routes a program that imports runloop / hub / motor… here.
+    ['src/utils/spike3Python.js', path.join(lib, 'sb3-creator-spike3.js')],
     // The MicroPython raw-REPL deploy protocol (transport-agnostic; the
     // app supplies webSerialTransport(port) — Chromium only, so the UI
     // must degrade to a main.py download elsewhere).

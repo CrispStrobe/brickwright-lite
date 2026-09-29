@@ -1,0 +1,185 @@
+# Board targets and emulator performance
+
+Baseline measured 2026-09-28 from Lite `dec8f2a`, bw-board `7a4b1e1`, and
+LabWired `1cf3d3b8`. The exact-board follow-up uses LabWired engine commit
+`cdd2f1fa` (merged as `313252d4`) and bw-board `bdffe947` (the exact target
+bridge landed at ancestor `47e0cb0b`). RTx means simulated
+seconds per wall second; 1.0x is real time. Functional and throughput evidence
+remain separate.
+The in-process figures below are three-pass medians from the quiet GitHub
+Ubuntu 24.04 runner in [run 36404517587](https://github.com/CrispStrobe/brickwright-lite/actions/runs/36404517587).
+Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
+`LABWIRED_CORE` to add the heavy-tier rows.
+
+## What runs now
+
+| Target | Shipped execution path | Measured RTx / status | LabWired | avr8js | Renode |
+|---|---|---:|---|---|---|
+| Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
+| Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
+| Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.04x | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; display/sensors incomplete | no | no exact target |
+| MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
+| PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
+| SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 **1.770x median, 1.383x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded active-workload RTx, and Lite semantic debugger adapter qualified** |
+| EV3 | MakeCode source simulator where source is present; real-brick transport; optional build-pinned native Renode debugger on desktop | **1.361x median, 1.207x minimum** on an active ARM926 loop in hosted CI | no ARM9/AM1808 | no | **exact AM1808 foundation and Lite semantic debugger adapter qualified**: 300 MHz ARM926, high-vector SRAM, UART1, AINTC, GDB and guarded throughput; not yet full EV3 hardware |
+
+The 2026-09-28 hosted core receipt remains the less noisy comparison for the
+already integrated CPU engines: Z80 186x, 6502 150x, avr8js ATmega328P 13.3x,
+8051 5.23x, RP2040 1.66x, and LabWired STM32F0 24.2x. The lower AVR values in
+this document are intentional: they include timers, peripherals, debug-event
+instrumentation, time conversion, and board callbacks rather than timing only
+the instruction decoder.
+
+The same target harness on the shared four-vCPU host ranged widely. Its first
+usable pass put Arduboy at 1.55x; while unrelated browser/OCR/test jobs pushed
+load average to 19.5 it fell to 0.50x. That is oversubscription, not an engine
+regression, and is why release RTx gates run on an isolated hosted runner.
+The removed Renode F411/F412 proxy figures were useful capability estimates,
+but they are not measurements of Prime's F413 platform and are no longer used
+as target claims. The exact F413 qualification now retires 96 million active
+guest instructions in each of five hosted passes and retains both the JSON
+receipt and UART proof in [run 36440006278](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36440006278).
+
+“Intentionally wall-paced” is not a failed benchmark. Those engines model an
+API and animation timeline, not chip cycles, and their browser loop sleeps to
+keep one simulated second equal to one user-visible second. A CPU RTx number
+would be invented. Pybricks exposes an unpaced mode, which is why SPIKE has
+both a throughput figure and a UI figure.
+
+The exact Cortex-M receipt is
+[`2026-09-28-labwired-cortex-m-self-branch.json`](receipts/2026-09-28-labwired-cortex-m-self-branch.json).
+It builds the released Node WASM on a Kaggle worker, applies the same
+`recommended_tick_interval()` contract as the bw-board adapter, boots the
+public micro:bit v2 and ATSAMD51 smoke ELFs until each prints `OK`, then measures
+their terminal `b .` steady state. It is evidence for post-boot real-time
+capacity, not for the still-unimplemented display, sensor, QSPI, USB or audio
+devices.
+
+The complete packaged SPIKE debugger contract also passed locally against the
+exact Renode `06d86c51` source tree and the source-built public workload: all
+ten operations (start, registers, memory, breakpoint set/clear, step, run,
+pause, state, reset and close) completed in 29.91 seconds. That first real
+package run exposed and fixed the cold-start timeout, Renode path-token, initial
+GDB stop-frame, asynchronous stop-frame and Cortex-M xPSR assumptions in
+Brickwright Lite PR 497. The independent hosted reproduction is isolated in
+[run 36472620755](https://github.com/CrispStrobe/brickwright-lite/actions/runs/36472620755);
+it was still waiting for GitHub runner capacity when this checkpoint was
+recorded, rather than being treated as a passing receipt.
+
+The equivalent packaged EV3 contract passed locally against the same exact
+Renode `06d86c51` tree and the public, source-built MIT smoke firmware: 1/1 in
+21.29 seconds. Its UART receipt is emitted only after the ARM926 payload has
+acknowledged AM1808 AINTC IRQ 53, so the state assertion cannot pass on boot or
+idle output alone. The immutable post-merge hosted reproduction is isolated in
+[run 36476481543](https://github.com/CrispStrobe/brickwright-lite/actions/runs/36476481543);
+it was queued for GitHub runner capacity when CP06 was closed and is likewise
+not represented as a passing result.
+
+The DA8xx Timer64 checkpoint is a separate hardware proof. Five focused NUnit
+tests cover the TI-documented reset and writable masks, coherent 64-bit reads,
+one-shot stop behavior, W1C status independent of interrupt masking, reset
+gating, and the physical Timer64P0-to-AINTC route. The MIT ARM926 payload then
+programs Timer64P0 at `0x01c20000`; only its IRQ handler emits
+`EV3 TIMER64 IRQ`, after exact AINTC event 21 arrives. Both that payload and the
+prior EV3 smoke passed against the source-built Release tree locally. The
+post-merge hosted reproduction is [run 36479706220](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36479706220),
+which was queued rather than represented as passing when CP07 was closed.
+
+The clock, power and pinmux checkpoint models the next public handoff boundary
+without distributing or pretending to execute the EV3 boot ROM or EEPROM
+loader. Fourteen focused NUnit tests cover both DA8xx PSCs, both PLLCs and
+SYSCFG0, including cold reset, domain isolation, DIV1/DIV2 change tracking,
+GO completion, action-only CFGCHIP4 and the documented revision-2.2 behavior
+where KICK writes do not lock pinmux. The board preset contains only the
+publicly established post-EEPROM values; in particular, it does not invent an
+EV3 PLL1 frequency. An independently authored 684-byte MIT ARM926 payload
+mutates and restores PLL DIV2, PSC0 module 6, PINMUX, SUSPSRC and CFGCHIP, then
+emits `EV3 PSC PLL PINMUX OK`. The full source build and that exact UART proof
+passed locally. The post-merge hosted reproduction is
+[run 36483611342](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36483611342),
+which was queued rather than represented as passing when CP08 was closed.
+
+The EDMA checkpoint adds the exact AM1808 EDMA0/EDMA1 CC and transfer-controller
+topology, including all six completion/error routes into AINTC. Thirteen
+focused NUnit tests cover DRAE and shadow-region gating, six-event A-sync,
+AB-sync with signed indexes, STATIC and both link encodings, fixed 32-bit FIFO
+accesses, event and interrupt W1C behavior, null versus dummy PaRAM sets, and
+TC-owned bus errors. The exact-pin all-translator and managed Release build
+completed with zero errors. Two independently authored 636-byte MIT ARM926
+images then proved both paths: software channel 0 emitted `EV3 EDMA IRQ`, and
+a request injected on the public MMC0 RX line 16 before CPU start was latched
+while disabled, drained on EESR, and emitted `EV3 EDMA HW16 IRQ`. The latter is
+request-line coverage, not a claim of MMC controller integration. Transfers
+are functional and immediate; QDMA execution, arbitration and cycle timing
+remain explicit exclusions. The post-merge hosted reproduction is
+[run 36489661477](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36489661477),
+which was queued rather than represented as passing when CP09 was closed.
+
+The MMC/SD checkpoint replaces that injected-request boundary with a real
+AM1808 MMC/SD0 controller at `0x01c40000`. A native-mode CMD8 fix first passed
+4/4 focused tests and the complete peripheral suite (199 passed, 5 skipped).
+Nine controller tests then cover reset and mask behavior, no-card response
+semantics, TI short/long response ordering, CMD17/CMD18 and fixed-length data,
+32/64-byte DMA thresholds, reset cancellation, rejected-write non-mutation,
+and a real 512-byte EDMA channel-16 transfer with completion IRQ. The exact-pin
+all-translator and managed Release build completed with zero errors. Two
+independently authored MIT ARM926 payloads read the generated, nonpersistent
+1 MiB SDSC image and emitted exactly `EV3 MMC PIO READ OK` and
+`EV3 MMC EDMA READ OK`; the image remained byte-identical at SHA-256
+`8e8b458d4c0b8ee96c726f78962fd63fb109f78b1dc073da15a8fc53df28c637`.
+MMC/SD1 remains absent because EV3 does not enable it, and card writes/TX DMA,
+cycle timing and Linux boot remain explicit exclusions. The post-merge hosted
+reproduction is [run 36494374026](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36494374026),
+which was queued rather than represented as passing when CP10 was closed.
+
+## Circuit audit
+
+The private repo contains 314 project-example directories. Every Lite
+worktree on this VPS has exactly the same directory-name set as remote main,
+and none has modified or untracked example files. The other apparent corpus is
+the 49 JSON circuits in `bw-circuit-ui/gallery`; Lite already consumes that
+gallery at pinned commit `1510d38`, and its gallery is byte-unchanged through
+current upstream `6d6a464`. Copying those JSON files into Scratch project
+examples would duplicate a different format, not integrate missing circuits.
+
+The remaining `.hex` files found outside those repos are FPGA/toolchain test
+firmware under `apicula/examples`; they are not Brickwright circuits. There
+was therefore no orphan circuit to import from this VPS.
+
+## Ordered target checkpoints
+
+This table is the execution order, not a wish list. Work starts on the first
+`NEXT` row. A checkpoint becomes `DONE` only when its definition of done is
+met and the evidence column names an immutable commit, PR or hosted run. Later
+rows must not be marked complete while an earlier row remains open.
+
+| ID | State | Checkpoint | Definition of done | Evidence |
+|---|---|---|---|---|
+| CP01 | DONE | Reconcile the target ledger | Every currently claimed target has an exact engine, workload and non-idle result; stale EV3 VPS and F412-proxy claims are removed. | Renode [run 36437429134](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36437429134), docs `7a5d4173`; LabWired `bdffe947` |
+| CP02 | DONE | Enforce ordered evidence | A repository test rejects fewer than ten checkpoints, malformed IDs/states, completion without immutable evidence, and any completed row after the first open row. | Brickwright Lite [PR 472](https://github.com/CrispStrobe/brickwright-lite/pull/472) |
+| CP03 | DONE | Qualify exact SPIKE Prime RTx | The STM32F413VG platform runs a source-built public firmware workload; five non-idle passes report exact instruction deltas, median/minimum RTx, UART/brick-state proof, and median plus minimum are at least 1.0x. | Renode [PR 7](https://github.com/CrispStrobe/renode-spike-prime/pull/7), [run 36440006278](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36440006278), merge `06d86c51` |
+| CP04 | DONE | Supervise Renode as an optional native backend | The desktop Tauri host owns a build-pinned Renode executable without a shell, reserves a random loopback port and token, enforces time/output limits, and always kills the process tree through the shared reset, project-close and app-exit teardown path. The raw supervisor is deliberately not exposed as a Tauri command; CP05 attaches the isolated semantic broker and debugger adapter. | Brickwright Lite [PR 476](https://github.com/CrispStrobe/brickwright-lite/pull/476), merge `1fc5a602`; 112 Rust library tests passed locally |
+| CP05 | DONE | Connect SPIKE Prime to Lite | The debugger can load the public simulation firmware, run/pause/reset/step, inspect registers and memory, set a breakpoint, and receive bounded `brick-state/v1` updates through CP04. | Brickwright Lite [PR 487](https://github.com/CrispStrobe/brickwright-lite/pull/487), [PR 488](https://github.com/CrispStrobe/brickwright-lite/pull/488), [PR 493](https://github.com/CrispStrobe/brickwright-lite/pull/493), [PR 497](https://github.com/CrispStrobe/brickwright-lite/pull/497), merge `46380dba`; exact packaged test 1/1 locally |
+| CP06 | DONE | Connect EV3 to Lite | The same debugger contract operates the source-built EV3 smoke image through Renode/GDB, including UART and AINTC IRQ evidence, without private recovery firmware. | Brickwright Lite [PR 504](https://github.com/CrispStrobe/brickwright-lite/pull/504), merge `cb2e03ee`; exact packaged test 1/1 locally |
+| CP07 | DONE | Model DA8xx Timer64 | Exact documented register behavior and IRQ routing are covered by unit tests and exercised by a source-built ARM926 payload. | Infrastructure [PR 3](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/3), merge `7feaab14`; Renode [PR 8](https://github.com/CrispStrobe/renode-spike-prime/pull/8), merge `bbaf76d4`; 5/5 model tests and executable IRQ proof passed locally |
+| CP08 | DONE | Model EV3 boot clocks and pinmux | PSC, PLL and pinmux behavior required by the public DA850/EV3 boot path is modeled with mutation-sensitive tests. | Infrastructure [PR 4](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/4), merge `ad68f7601`; Renode [PR 9](https://github.com/CrispStrobe/renode-spike-prime/pull/9), merge `07a1bd6d`; 14/14 model tests, full Release build and exact executable UART proof passed locally |
+| CP09 | DONE | Model AM1808 EDMA | The required EDMA channels, completion/error interrupts and memory transfers pass peripheral and executable payload tests. | Infrastructure [PR 5](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/5), merge `ecf4d0ac`; Renode [PR 10](https://github.com/CrispStrobe/renode-spike-prime/pull/10), merge `546300f7`; 13/13 model tests, exact-pin full Release build and both executable IRQ paths passed locally |
+| CP10 | DONE | Model MMC/SD boot storage | A redistributable test image is read through the modeled AM1808 MMC/SD path with bounded media input and deterministic block receipts. | Infrastructure [PR 6](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/6), merge `0c92bedf`; Infrastructure [PR 7](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/7), merge `94ec6e91`; Renode [PR 11](https://github.com/CrispStrobe/renode-spike-prime/pull/11), merge `0b5d9cc3`; 9/9 model tests, exact-pin full Release build, both executable read paths and media non-mutation passed locally |
+| CP11 | NEXT | Model EV3 GPIO and SPI display | GPIO direction/edge IRQs and the physical 178x128 monochrome SPI1 display path (CS GPIO44, A0 GPIO43, reset GPIO80) are observable in tests and through the debugger; the disabled AM1808 LCDC is not misrepresented as the EV3 display. | pending |
+| CP12 | TODO | Model EV3 motors and sensors | Permissive front ends cover the extension-visible motor and sensor subset and publish it through the neutral brick-state contract. | pending |
+| CP13 | TODO | Complete micro:bit v2 board I/O | The LabWired target drives the 5x5 display, buttons and selected sensor/audio paths with board-level tests while retaining >=1.0x hosted RTx. | pending |
+| CP14 | TODO | Complete PyBadge board I/O | ST7735, button mux, NeoPixels, audio and QSPI are exercised by public firmware and debugger-visible tests; USB is either implemented or explicitly isolated, while hosted RTx remains >=1.0x. | pending |
+
+CP07–CP12 are intentionally ordered by the public EV3 boot path. PRU support is
+not promoted ahead of those dependencies. PXT/MicroPython remain the complete
+source-level experiences while CP13 and CP14 are partial.
+
+The immutable integration points are bw-board `bdffe947` for the exact
+LabWired target bridge, Renode `06d86c51` for SPIKE Prime, Renode `0b5d9cc3`
+for EV3 through MMC/SD and its active-workload 300-MIPS qualification, and
+Infrastructure `94ec6e91` for the corresponding peripheral models. Public
+simulation firmware is kept in its separate MIT repository; no private
+recovery image is read, copied, bundled or required by these source-only gates.
+The public simulation firmware used by the current SPIKE qualification is
+`b4cfe1fa`.

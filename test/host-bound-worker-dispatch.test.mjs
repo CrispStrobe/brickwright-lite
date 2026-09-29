@@ -61,6 +61,10 @@ const compileBroker = () => {
             return Module.prototype.require.call(brokerModule,
                 path.join(root, 'overlay/scratch-vm/src/extension-support/native-platform-capability.js'));
         }
+        if (request === '../extension-support/native-renode-capability') {
+            return Module.prototype.require.call(brokerModule,
+                path.join(root, 'overlay/scratch-vm/src/extension-support/native-renode-capability.js'));
+        }
         return Module.prototype.require.call(brokerModule, request);
     };
     brokerModule._compile(centralSource, filename);
@@ -102,6 +106,29 @@ test('host-bound capability request returns only the semantic broker result', as
     } finally {
         if (typeof previousWorker === 'undefined') delete globalThis.Worker;
         else globalThis.Worker = previousWorker;
+    }
+});
+
+test('desktop construction installs the complete Renode semantic handler set', () => {
+    const previous = globalThis.__TAURI_INTERNALS__;
+    globalThis.__TAURI_INTERNALS__ = {invoke: async () => { throw new Error('not called'); }};
+    try {
+        const broker = compileBroker();
+        for (const operation of [
+            'renode.spike.session.start', 'renode.spike.session.close', 'renode.spike.run',
+            'renode.spike.pause', 'renode.spike.reset', 'renode.spike.step',
+            'renode.spike.registers.read', 'renode.spike.memory.read', 'renode.spike.state.read',
+            'renode.spike.breakpoint.set', 'renode.spike.breakpoint.clear',
+            'renode.ev3.session.start', 'renode.ev3.session.close', 'renode.ev3.run',
+            'renode.ev3.pause', 'renode.ev3.reset', 'renode.ev3.step',
+            'renode.ev3.registers.read', 'renode.ev3.memory.read', 'renode.ev3.state.read',
+            'renode.ev3.breakpoint.set', 'renode.ev3.breakpoint.clear'
+        ]) {
+            assert.equal(typeof broker.capabilityBroker._handlers[operation], 'function', operation);
+        }
+    } finally {
+        if (typeof previous === 'undefined') delete globalThis.__TAURI_INTERNALS__;
+        else globalThis.__TAURI_INTERNALS__ = previous;
     }
 });
 

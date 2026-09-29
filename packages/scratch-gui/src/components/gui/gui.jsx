@@ -34,6 +34,9 @@ const MakeCodeSimPane = React.lazy(() =>
 // SPIKE Prime running Pybricks MicroPython compiled to wasm (build-pybricks-wasm.sh).
 const PybricksSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-pybricks-sim" */ '../tw-pseudocode/pybricks-sim-pane.jsx'));
+// A 2D arena for a SPIKE Prime driving base on lite's virtual SPIKE hub (docs/SPIKE-ARENA.md).
+const SpikeArenaPane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-spike-arena" */ '../tw-pseudocode/spike-arena-pane.jsx'));
 const ControllerPanelView = React.lazy(() =>
     import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
 );
@@ -301,6 +304,8 @@ const GUIComponent = props => {
             // Same for the Pybricks SPIKE simulator: it holds no program of
             // its own across a reload, so it opens only when one is pending.
             if (dock === 'pybricks' && !window.__bwPybricksPending) return 'top';
+            // The arena restores only for a SPIKE project.
+            if (dock === 'spikearena' && props.vm?.runtime?.stc?.device !== 'spike') return 'top';
             if (dock === 'arcade' && !['arcade', 'pybadge', 'pybadge-lc', 'samd51']
                 .includes(props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device)) return 'top';
             return dock;
@@ -331,7 +336,7 @@ const GUIComponent = props => {
                 // collapsed pane is indistinguishable from nothing loading
                 // (measured: the calculator's shipped layout, present in
                 // the DOM, invisible on screen).
-                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade' || detail.value === 'makecode' || detail.value === 'pybricks') {
+                if (detail.value === 'right' || detail.value === 'controller' || detail.value === 'microbit' || detail.value === 'arcade' || detail.value === 'makecode' || detail.value === 'pybricks' || detail.value === 'spikearena') {
                     setStagePaneVisible(true);
                     try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
                 }
@@ -1141,7 +1146,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' || dockMode === 'makecode' || dockMode === 'pybricks' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
+                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' || dockMode === 'makecode' || dockMode === 'pybricks' || dockMode === 'spikearena' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -1167,6 +1172,12 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'SPIKE-Simulator wird geladen…' : 'Loading SPIKE simulator…'}</div>}>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
                                         <PybricksSimPane />
+                                    </div>
+                                </React.Suspense>
+                            ) : dockMode === 'spikearena' ? (
+                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'SPIKE-Arena wird geladen…' : 'Loading SPIKE arena…'}</div>}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
+                                        <SpikeArenaPane vm={vm} locale={intl.locale} />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'makecode' ? (
@@ -1200,6 +1211,7 @@ const GUIComponent = props => {
                                             locale={intl.locale}
                                             isFullScreen={isFullScreen}
                                             onExitFullScreen={props.onExitFullScreen}
+                                            onEnterFullScreen={props.onEnterFullScreen}
                                         />
                                     </div>
                                 </React.Suspense>
@@ -1263,6 +1275,7 @@ GUIComponent.propTypes = {
     onClickLogo: PropTypes.func,
     onCloseAccountNav: PropTypes.func,
     onExtensionButtonClick: PropTypes.func,
+    onEnterFullScreen: PropTypes.func,
     onExitFullScreen: PropTypes.func,
     onLogOut: PropTypes.func,
     onOpenRegistration: PropTypes.func,
@@ -1321,6 +1334,7 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = dispatch => ({
     onSetPaneSize: (column, size) => dispatch(setPaneSize(column, size)),
+    onEnterFullScreen: () => dispatch(setFullScreen(true)),
     onExitFullScreen: () => dispatch(setFullScreen(false))
 });
 

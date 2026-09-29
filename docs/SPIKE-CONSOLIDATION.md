@@ -152,6 +152,7 @@ asking before it arrives means sending at the wrong MTU.
 | Applied at load | `overlay/scratch-gui/src/lib/spike-project-migration.js`, hooked in `vm-manager-hoc.jsx` |
 | Legacy id resolution | `extension-manager.js` (`resolveExtensionId`) |
 | Code-tab round trip | `overlay/scratch-gui/src/lib/spike-runtime-ops.js`, merged at `sb3-creator-register-art.js` |
+| LEGO SPIKE App 3 Python (import, export, Run on SPIKE 3) | `sb3-creator-spike3.js` (vendored), `spike3-python-run.js`; see `docs/SPIKE3-PYTHON.md` |
 | What must not be lost | `test/fixtures/spike-legacy-ledger.json` — the frozen 236 |
 
 ### Why there is no local source file

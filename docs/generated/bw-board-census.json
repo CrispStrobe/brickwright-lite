@@ -2,10 +2,22 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "d348541e9f19fd311f87d04c0b92308f6f510140",
+    "sha": "d9a967cadb194309a1c192882110b99e1f930af9",
     "read": "2026-09-28"
   },
   "rows": [
+    {
+      "id": "i80386-win16-qemu",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI does not install the pinned QEMU executable; the test skips there",
+      "via": "/usr/bin/qemu-system-i386",
+      "gates": [
+        "test/i80386-win16-io-boundary-oracle.test.mjs"
+      ],
+      "what": "Pinned QEMU 8.2.2 TCG 486 supplies protected-16 CPU-state checkpoints for the owned branch-to-I/O fixture. The test requires the exact executable SHA-256 before running; mere file presence is not acceptance."
+    },
     {
       "id": "harris-native-wasm",
       "kind": "fixture",
@@ -350,6 +362,18 @@
         "test/dos-boot-compiled-com.test.mjs"
       ],
       "what": "MASM 1.10 + LINK + EXE2BIN (Microsoft, MIT-relicensed 1982 binaries), an independent assembler toolchain. The differential oracle for MASM compatibility in src/i8086-asm.js — that our .COM is byte-identical to MASM's and that our ASSUME/segment-override and simplified-directive handling matches a real MASM. VERIFIED GREEN 2026-09-05 (10/10). Present on this box at /tmp/msdosbin."
+    },
+    {
+      "id": "doom-vga-report",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — public CI has no private source-bound Doom snapshot report; this specific browser raster comparison is explicitly optional.",
+      "via": "tried $I80386_DOOM_SNAPSHOT_REPORT",
+      "gates": [
+        "test/i80386-vga-browser-frame.test.mjs"
+      ],
+      "what": "Pinned source-bound Doom VGA snapshot report. Checks that the browser target raster matches the strict independent decoder at the first and latest observed graphics frames; it does not establish live Doom gameplay or include media pixels."
     },
     {
       "id": "doom-short-report",

@@ -107,6 +107,16 @@ describe('the labwired attach path', () => {
             'the panel stopped rendering engineNotes');
     });
 
+    test('micro:bit V2 and PyBadge route to their exact LabWired board kinds', () => {
+        const src = readFileSync(RUNNER, 'utf8');
+        assert.match(src, /device === 'microbit'[\s\S]{0,100}'microbit_v2'/,
+            'micro:bit firmware is no longer routed to the nRF52833 board model');
+        assert.match(src, /'pybadge-lc'[\s\S]{0,100}'pybadge'/,
+            'PyBadge/SAMD51 firmware is no longer routed to the PyBadge board model');
+        assert.match(src, /firmwareAddress:\s*built\.firmwareAddress/,
+            'the addressed-container load address is lost before the LabWired adapter');
+    });
+
     test('both tier caveats are stated where the engine is picked', () => {
         // Measured facts with a control, not hedges: LABWIRED-BRIDGE.md §4 and
         // §4c. Each produces a plausible wrong answer a learner blames on their
