@@ -5,6 +5,7 @@ import {drawArena} from '../../lib/spike-arena/arena-render.js';
 import {loadUnit, loadSolution} from '../../lib/spike-arena/arena-units.js';
 import {ARENA_L10N, arenaT, arenaLocale, localText, verdictText} from '../../lib/spike-arena/l10n.js';
 import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
+import {VmStepClock} from '../../lib/spike-arena/arena-clock.js';
 
 /**
  * SpikeArenaPane — a top-down arena for a SPIKE Prime driving base, docked in
@@ -21,6 +22,10 @@ import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
  * Test hook: window.__bwSpikeArena exposes the verdict and the snapshot.
  */
 
+// Only the VM-LESS fallback below uses this now. While a VM exists the arena is
+// driven by VmStepClock (lib/spike-arena/arena-clock.js), because a wall-clock
+// frame delta and a program the VM schedules are two clocks and the verdict used
+// to depend on which one won.
 const MAX_FRAME_MS = 100;
 const STEP_BUTTON_MS = 100;
 
@@ -43,6 +48,7 @@ class SpikeArenaPane extends React.Component {
         this.frame = this.frame.bind(this);
         this.onSelectEvent = this.onSelectEvent.bind(this);
         this.lastFrame = null;
+        this.clock = new VmStepClock();
         this.lastReadout = 0;
     }
 
@@ -69,6 +75,7 @@ class SpikeArenaPane extends React.Component {
     componentWillUnmount () {
         window.removeEventListener('bw-spike-arena-select', this.onSelectEvent);
         cancelAnimationFrame(this.raf);
+        this.clock.uninstall();
         if (window.__bwSpikeArena && window.__bwSpikeArena._pane === this) delete window.__bwSpikeArena;
     }
 
@@ -120,6 +127,9 @@ class SpikeArenaPane extends React.Component {
         if (!this.bridge) return;
         if (this.state.status === 'paused' && this.bridge.verdict.status === 'running') {
             this.lastFrame = null;
+            // Resuming must not spend time that accrued while paused.
+            this.clock.clear();
+            if (this.vm) this.clock.install(this.vm.runtime);
             this.setState({status: 'running'});
             return;
         }
@@ -139,10 +149,13 @@ class SpikeArenaPane extends React.Component {
             this.vm.greenFlag();
         } else message = this.t('noProgram');
         this.lastFrame = null;
+        this.clock.clear();
+        if (this.vm) this.clock.install(this.vm.runtime);
         this.setState({status: 'running', verdict: this.bridge.verdict, message});
     }
 
     stopProgram () {
+        this.clock.uninstall();
         if (this.vm && this.spikeLoaded()) {
             try { this.vm.stopAll(); } catch { /* the VM may be mid-load */ }
         }
@@ -183,7 +196,14 @@ class SpikeArenaPane extends React.Component {
 
     frame (now) {
         if (this.bridge && this.state.status === 'running') {
-            const dt = this.lastFrame === null ? 0 : Math.min(MAX_FRAME_MS, now - this.lastFrame);
+            // ONE CLOCK. With a VM, simulated time is what the VM actually
+            // stepped — starve it and the mission slows with it, so the verdict
+            // is a fact about the program rather than about runner load. With no
+            // VM there is no program to be fair to, and the wall clock is all
+            // there is.
+            const dt = this.clock.installed
+                ? this.clock.take()
+                : (this.lastFrame === null ? 0 : Math.min(MAX_FRAME_MS, now - this.lastFrame));
             this.lastFrame = now;
             if (dt > 0) this.advance(dt);
         }
