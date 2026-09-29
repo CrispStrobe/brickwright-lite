@@ -1,6 +1,6 @@
 # bw-bundle — blocked items (campaign: circuit parity)
 
-## OPEN — the SPIKE arena gate is decided by two independently scheduled clocks (2026-09-28)
+## ~~OPEN~~ — FIXED (2026-09-29): the SPIKE arena gate was decided by two independently scheduled clocks (2026-09-28)
 
 `scripts/verify-lego-spike-roundtrip.mjs` failed once in CI with
 
@@ -74,12 +74,66 @@ can only ever make sim time run SLOW, which would make a mission easier, not
 fail it. So the clamp protects against the harmless direction and not the harmful
 one.
 
-**What this costs everyone right now:** a green on this gate carries about one
-bit of information and half of it is luck. Re-running until it passes would
-launder that, so this note exists instead. Still not repaired here: the fix is
-the design decision named above and it belongs to the arena lane, which has work
-in flight (`feat/spike-arena-pins-2`). Redesigning another lane's clock coupling
-underneath it would be worse than the flake.
+**What this cost everyone while it was open:** a green on this gate carried about
+one bit of information and half of it was luck. Re-running until it passed would
+have laundered that, so this note was written instead.
+
+**FIXED 2026-09-29 — one clock, and it is the VM's.**
+`overlay/scratch-gui/src/lib/spike-arena/arena-clock.js` (`VmStepClock`) counts
+the VM's executed steps and gives the pane `runtime.currentStepTime` per step in
+place of a wall-clock frame delta. Simulated time is now a function of what the
+VM actually ran: N steps always buy N x stepTime of mission time, so starving the
+VM slows the mission with it, and the verdict is a fact about the program rather
+than about runner load.
+
+The interval is NOMINAL, not the measured duration of a step. Using the real
+elapsed time would put the wall clock straight back in, and the flake with it.
+
+Details that matter to anyone touching it:
+
+  - the hook WRAPS `runtime._step` rather than replacing it, so any other wrapper
+    in the chain still runs, and `uninstall()` REFUSES to restore over a later
+    wrapper somebody else installed — it stops counting instead of silently
+    deleting their behaviour;
+  - installing twice is a no-op, because a pane re-entering `start()` must not
+    make time run at double speed;
+  - `clear()` on resume, so a pause cannot later be spent as mission time;
+  - with NO vm there is no program to be fair to, and the clamped wall clock
+    stays as the fallback. `MAX_FRAME_MS` survives for exactly that path.
+
+**The hook's one dependency, and the guard for it.** scratch-vm drives the loop as
+`setInterval(() => { this._step(); }, interval)` — a property lookup at call
+time, which is the only reason reassigning `runtime._step` is seen at all
+(verified in both the tracked mirror and the copy that actually executes). If
+upstream ever changes that to `setInterval(this._step.bind(this))` the hook goes
+silently inert, and silence is the DANGEROUS direction here: no steps counted
+means mission time frozen, missions that never time out, and a gate that cannot
+fail — strictly worse than the flake. `isInert()` catches exactly that (installed,
+asked 30+ times, never counted a step) and the pane falls back to the wall clock
+rather than freezing.
+
+Thirteen tests in `test/spike-arena-clock.test.mjs`, in the fast suite. The one
+that states the defect is a measurement rather than prose: over 301 frames of a
+50 ms loop with a stalled VM, the old rule spends the entire 15 s budget and the
+step clock spends ZERO. Falsified three ways — accruing in `take()` instead of per
+step fails 4 of the 13, dropping the double-install guard fails 1, and disabling
+`isInert()` fails 2.
+
+**The instrument for re-checking this:**
+`scripts/measure-arena-clock-stability.mjs` runs the same mission the gate runs,
+once per CDP CPU-throttling rate (default 1x 2x 4x 6x 8x), and exits 1 if the
+verdicts disagree. That is exactly the experiment the original note asked for,
+pointed the other way: before the fix the verdict was expected to flip, now it
+must not. It also prints the arena's own `timeMs` per rate, which is the number
+that used to track the wall clock. Deliberately NOT a CI gate — it launches the
+mission once per rate and runs for minutes; it is what you reach for after
+touching either clock, or when somebody doubts the coupling.
+
+**What this does NOT claim.** The gate has not been observed green over many runs
+under load. The coin flip was 4/4 across eight runs, so a handful of passes now
+would prove little by itself; the case for the fix is the mechanism, and the
+measurement above is what pins it. It also leaves the arena lane's own work
+(`feat/spike-arena-pins-2`) untouched apart from this coupling.
 
 
 ## OPEN, FLEET-WIDE: main's per-sha concurrency group lets superseded runs accumulate until they starve every PR (2026-09-28)
