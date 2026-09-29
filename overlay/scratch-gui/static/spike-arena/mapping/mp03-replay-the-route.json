@@ -1,0 +1,151 @@
+{
+  "id": "mp03-replay-the-route",
+  "title": {
+    "en": "Replay the route",
+    "de": "Die Route nachfahren"
+  },
+  "intro": {
+    "en": "Three coloured tiles on the path are a route written on the ground: red means turn right, green means turn left. Drive over them in 20 cm steps and add each colour to a list. Then replay the list: for each entry turn that way and drive 25 cm. The route ends at the camp.",
+    "de": "Drei farbige Fliesen auf dem Weg sind eine auf den Boden geschriebene Route: Rot heißt rechts abbiegen, Grün heißt links abbiegen. Fahre in 20-cm-Schritten darüber und füge jede Farbe einer Liste hinzu. Fahre dann die Liste nach: Für jeden Eintrag biege in diese Richtung ab und fahre 25 cm. Die Route endet im Lager."
+  },
+  "hints": [
+    {
+      "en": "One variable can only remember the last tile. A list remembers all three, in order.",
+      "de": "Eine Variable merkt sich nur die letzte Fliese. Eine Liste merkt sich alle drei, der Reihe nach."
+    },
+    {
+      "en": "Use a counter i from 1 to 3 and read \"item i of route\".",
+      "de": "Nimm einen Zähler i von 1 bis 3 und lies „Element i von Route“."
+    }
+  ],
+  "mat": {
+    "width": 130,
+    "height": 90,
+    "background": "white",
+    "paint": "#f1e3c6",
+    "shapes": [
+      {
+        "color": "white",
+        "paint": "#e6d3ad",
+        "shape": {
+          "type": "rect",
+          "x": 45,
+          "y": 20,
+          "w": 90,
+          "h": 16
+        }
+      },
+      {
+        "color": "red",
+        "shape": {
+          "type": "rect",
+          "x": 42,
+          "y": 20,
+          "w": 10,
+          "h": 16
+        }
+      },
+      {
+        "color": "red",
+        "shape": {
+          "type": "rect",
+          "x": 62,
+          "y": 20,
+          "w": 10,
+          "h": 16
+        }
+      },
+      {
+        "color": "green",
+        "shape": {
+          "type": "rect",
+          "x": 82,
+          "y": 20,
+          "w": 10,
+          "h": 16
+        }
+      },
+      {
+        "color": "white",
+        "paint": "#d3f9d8",
+        "shape": {
+          "type": "circle",
+          "x": 50,
+          "y": 70,
+          "r": 8
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "turn-1",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 75,
+        "y": 45,
+        "r": 6
+      },
+      "label": {
+        "en": "first corner",
+        "de": "erste Ecke"
+      }
+    },
+    {
+      "id": "turn-2",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 50,
+        "y": 45,
+        "r": 6
+      },
+      "label": {
+        "en": "second corner",
+        "de": "zweite Ecke"
+      }
+    },
+    {
+      "id": "camp",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 50,
+        "y": 70,
+        "r": 7
+      },
+      "label": {
+        "en": "camp",
+        "de": "Lager"
+      }
+    }
+  ],
+  "start": {
+    "x": 15,
+    "y": 20,
+    "heading": 0
+  },
+  "timeLimitMs": 40000,
+  "success": [
+    {
+      "type": "sequence",
+      "zones": [
+        "turn-1",
+        "turn-2",
+        "camp"
+      ]
+    },
+    {
+      "type": "stopIn",
+      "zone": "camp"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "mp03-replay-the-route.bw",
+  "wrong": "mp03-replay-the-route.wrong.bw"
+}

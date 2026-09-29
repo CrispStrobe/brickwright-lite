@@ -2,7 +2,7 @@ import React from 'react';
 import {browserLocale} from '../../lib/bw-i18n.js';
 import {ArenaHubBridge} from '../../lib/spike-arena/arena-hub-bridge.js';
 import {drawArena} from '../../lib/spike-arena/arena-render.js';
-import {loadUnit, loadSolution} from '../../lib/spike-arena/arena-units.js';
+import {DEFAULT_UNIT, loadUnit, loadUnitIndex, loadSolution} from '../../lib/spike-arena/arena-units.js';
 import {ARENA_L10N, arenaT, arenaLocale, localText, verdictText} from '../../lib/spike-arena/l10n.js';
 import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
 import {VmStepClock, frameSimMs} from '../../lib/spike-arena/arena-clock.js';
@@ -18,8 +18,10 @@ import {VmStepClock, frameSimMs} from '../../lib/spike-arena/arena-clock.js';
  * loaded, presses the green flag, and owns simulated time: each animation
  * frame it steps the hub's motor model and the world together, in fixed steps.
  *
- * Window events: 'bw-spike-arena-select' {id} picks a challenge.
- * Test hook: window.__bwSpikeArena exposes the verdict and the snapshot.
+ * Window events: 'bw-spike-arena-select' {id, unit?} picks a challenge (of
+ * another unit when `unit` names one: the pane opens that unit first).
+ * Test hook: window.__bwSpikeArena exposes the verdict, the snapshot and the
+ * open unit.
  */
 
 // The per-frame rule, frameSimMs, lives in lib/spike-arena/arena-clock.js with
@@ -40,7 +42,7 @@ class SpikeArenaPane extends React.Component {
         this.ownHub = !this.hubState;
         if (!this.hubState) this.hubState = new VirtualSpikeHubState();
         this.state = {
-            status: 'loading', message: '', unit: null, challenges: [], index: 0,
+            status: 'loading', message: '', units: [], unit: null, challenges: [], index: 0,
             verdict: null, readout: null, hintsOpen: false
         };
         this.canvas = React.createRef();
@@ -58,18 +60,34 @@ class SpikeArenaPane extends React.Component {
             get verdict () { return this._pane.bridge ? this._pane.bridge.verdict : null; },
             get snapshot () { return this._pane.bridge ? this._pane.bridge.snapshot() : null; },
             get status () { return this._pane.state.status; },
+            get unit () { return this._pane.state.unit ? this._pane.state.unit.id : null; },
             _pane: this
         };
-        try {
-            const {unit, challenges, folder} = await loadUnit();
-            this.folder = folder;
-            const wanted = window.__bwSpikeArenaPending;
-            const index = Math.max(0, wanted ? challenges.findIndex(c => c.id === wanted) : 0);
-            this.setState({unit, challenges, status: 'ready'}, () => this.select(index));
-        } catch (error) {
-            this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
-        }
+        // The unit list is a convenience: without it the pane still opens the
+        // default unit, as it did before there was more than one.
+        loadUnitIndex().then(units => this.setState({units}), () => {});
+        const pending = window.__bwSpikeArenaPending;
+        const wantedUnit = (pending && typeof pending === 'object' && pending.unit) || DEFAULT_UNIT;
+        const wanted = pending && typeof pending === 'object' ? pending.id : pending;
+        await this.openUnit(wantedUnit, wanted);
         this.raf = requestAnimationFrame(this.frame);
+    }
+
+    /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */
+    async openUnit (unitId, wanted) {
+        this.stopProgram();
+        const token = this.unitToken = {};
+        this.setState({status: 'loading', message: ''});
+        try {
+            const {unit, challenges, folder} = await loadUnit(unitId);
+            if (token !== this.unitToken) return;
+            this.folder = folder;
+            const index = Math.max(0, wanted ? challenges.findIndex(c => c.id === wanted) : 0);
+            this.bridge = null;
+            this.setState({unit, challenges, index, readout: null, status: 'ready'}, () => this.select(index));
+        } catch (error) {
+            if (token === this.unitToken) this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
+        }
     }
 
     componentWillUnmount () {
@@ -81,9 +99,14 @@ class SpikeArenaPane extends React.Component {
 
     onSelectEvent (event) {
         const id = event.detail && event.detail.id;
+        const unit = event.detail && event.detail.unit;
+        if (unit && (!this.state.unit || this.state.unit.id !== unit)) {
+            this.openUnit(unit, id);
+            return;
+        }
         const index = this.state.challenges.findIndex(c => c.id === id);
         if (index >= 0) this.select(index);
-        else window.__bwSpikeArenaPending = id;
+        else window.__bwSpikeArenaPending = unit ? {unit, id} : id;
     }
 
     get world () { return this.state.challenges[this.state.index] || null; }
@@ -240,7 +263,7 @@ class SpikeArenaPane extends React.Component {
     renderReadout () {
         const t = this.t;
         const snap = this.state.readout;
-        if (!snap) return null;
+        if (!snap || !this.bridge) return null;
         const hub = this.hubState.data;
         const colors = ARENA_L10N[this.locale].colors;
         const rows = [[t('time'), `${(snap.timeMs / 1000).toFixed(1)} s`],
@@ -270,9 +293,25 @@ class SpikeArenaPane extends React.Component {
         );
     }
 
+    /** A staged mission's checklist: which stages were met so far (partial credit). */
+    renderStages (world) {
+        if (!Array.isArray(world.stages)) return null;
+        const met = (this.bridge && this.bridge.verdict && this.bridge.verdict.stages) || [];
+        return (
+            <ol data-testid="bw-spike-arena-stages" aria-label={this.t('stages')}
+                style={{margin: '6px 0 0', paddingLeft: 20, fontSize: 12, color: '#475569'}}>
+                {world.stages.map((stage, i) => (
+                    <li key={i} data-met={met[i] ? 'true' : 'false'} style={{fontWeight: met[i] ? 700 : 400, color: met[i] ? '#2b8a3e' : undefined}}>
+                        {`${met[i] ? '✓' : '○'} ${localText(stage, this.locale)}`}
+                    </li>
+                ))}
+            </ol>
+        );
+    }
+
     render () {
         const t = this.t;
-        const {status, challenges, index, verdict, message, hintsOpen, unit} = this.state;
+        const {status, challenges, index, verdict, message, hintsOpen, unit, units} = this.state;
         const world = this.world;
         const decided = verdict && verdict.status !== 'running' ? verdict : null;
         const btn = {padding: '5px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff',
@@ -281,7 +320,14 @@ class SpikeArenaPane extends React.Component {
             <div data-testid="bw-spike-arena-pane" style={{display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto',
                 background: '#f8fafc', fontFamily: 'system-ui, sans-serif', color: '#1e293b'}}>
                 <div style={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '8px 10px', borderBottom: '1px solid #e2e8f0'}}>
-                    <strong style={{fontSize: 13, marginRight: 4}}>{t('title')}{unit ? ` · ${localText(unit.title, this.locale)}` : ''}</strong>
+                    <strong style={{fontSize: 13, marginRight: 4}}>{t('title')}</strong>
+                    <select value={unit ? unit.id : ''} aria-label={t('unit')} data-testid="bw-spike-arena-unit"
+                        onChange={e => this.openUnit(e.target.value)} style={{flex: '1 1 140px', minWidth: 0, minHeight: 32}}
+                        disabled={status === 'loading' || units.length < 2}>
+                        {(units.length ? units : unit ? [unit] : []).map(u => (
+                            <option key={u.id} value={u.id}>{localText(u.title, this.locale)}</option>
+                        ))}
+                    </select>
                     <select value={index} aria-label={t('challenge')} data-testid="bw-spike-arena-select"
                         onChange={e => this.select(Number(e.target.value))} style={{flex: '1 1 160px', minWidth: 0, minHeight: 32}}
                         disabled={!challenges.length}>
@@ -312,6 +358,7 @@ class SpikeArenaPane extends React.Component {
                                 {(world.hints || []).map((hint, i) => <li key={i}>{localText(hint, this.locale)}</li>)}
                             </ol>
                         ) : null}
+                        {this.renderStages(world)}
                     </div>
                 ) : null}
                 {decided ? (
@@ -321,6 +368,11 @@ class SpikeArenaPane extends React.Component {
                             color: decided.status === 'pass' ? '#2b8a3e' : '#c92a2a',
                             border: `1px solid ${decided.status === 'pass' ? '#8ce99a' : '#ffa8a8'}`}}>
                         {verdictText(decided, world, this.locale)}
+                        {Array.isArray(decided.stages) ? (
+                            <div data-testid="bw-spike-arena-stages-done" style={{fontWeight: 500, fontSize: 12, marginTop: 2}}>
+                                {t('stagesDone', {done: decided.stages.filter(Boolean).length, of: decided.stages.length})}
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
                 {message || status === 'loading' || this.ownHub ? (

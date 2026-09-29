@@ -3,8 +3,9 @@
 A top-down robot arena for LEGO SPIKE Prime: a driving base on a mat, with
 walls, rocks and zones, a colour sensor looking down, a distance sensor looking
 ahead and a force sensor on the front. It ships with an original starter unit,
-**Rover basics** (a Mars-rover theme), and a checker that says pass or fail and
-why.
+**Rover basics** (a Mars-rover theme), four more units (**Sensors in depth**,
+**Gyro turns**, **Mapping** and a staged **Capstone**; see "The units"), and a
+checker that says pass or fail and why.
 
 The arena never talks to a program. It talks to the **virtual SPIKE hub**
 (`overlay/scratch-gui/src/lib/virtual-hub/`), and every programming route talks
@@ -24,7 +25,8 @@ in by honouring the contract below, without touching the arena.
 | `lib/spike-arena/arena-checker.js` | pass/fail with a reason |
 | `lib/spike-arena/arena-hub-bridge.js` | couples the world to the hub; owns simulated time |
 | `lib/spike-arena/arena-render.js`, `l10n.js`, `arena-units.js` | canvas drawing, EN/DE strings, loading a unit |
-| `static/spike-arena/rover-basics/` | the starter unit: challenges, reference and wrong solutions |
+| `static/spike-arena/units.json` | the units, in the order the pane's unit picker offers them |
+| `static/spike-arena/<unit>/` | one unit: `unit.json`, challenges, reference and wrong solutions (`rover-basics` is the starter unit; see "The units") |
 | `components/tw-pseudocode/spike-arena-pane.jsx` | the dockable pane |
 
 ## The hub contract
@@ -135,7 +137,11 @@ axle track 11.2 cm, left motor A mounted counterclockwise, right motor B
 All configurable per challenge (`robot`). Body: a 17 x 14 cm rectangle, 9 cm
 ahead of the axle. Colour sensor 7 cm ahead of the axle, centred, port C;
 distance sensor on the front face, port D; force sensor button 0.8 cm proud of
-the front, 3 cm right of centre, port E.
+the front, 3 cm right of centre, port E. A challenge may mount the sensors
+elsewhere (`robot.sensors`, e.g. a distance sensor looking sideways with
+`heading: -90`) and may give one side its own `wheelDiameter` (a worn tyre:
+the base then drifts off a straight line, and only feedback such as the gyro
+keeps it straight).
 
 **Kinematics.** Ideal differential drive from the change in the two motors'
 counted degrees: `travel = delta / 360 * pi * d` per wheel (negated for the
@@ -211,16 +217,32 @@ solid), `line` (a stroked polyline, for mat lines and corridors).
 | `stayIn {zone}` | failure | the centre leaves the zone |
 | `noWallContact` | failure | the body touches a wall or the border |
 | `noTouch {object}` | failure | the body touches the object |
+| `noStopIn {zone, holdMs=600}` | failure | centre inside and stopped for `holdMs` (a report given by where the rover parks, in the wrong bay) |
 | `timeLimitMs` | failure | time runs out first |
 
 The run passes on the first tick at which every success condition is met, and
 fails on the first failure. Verdicts carry a reason key (`pass.stoppedIn`,
 `fail.enteredZone`, …) translated in `lib/spike-arena/l10n.js`.
 
-## Rover basics (the starter unit)
+**Stages (partial credit).** A challenge may label its success conditions
+`"stages": [{en, de}, …]`, one per condition, in order. It is judged exactly
+as above; the verdict also carries `stages: [bool, …]`, which stages are met
+when the run is decided, and the pane shows them as a checklist and "Stages
+completed: n of m" on the banner. A stage counts as the run leaves it, like
+the pass itself: a latched kind (`sequence`, `touch`, `reach`) stays met, a
+state kind (`push`, `stopIn`) counts only if it still holds — a crate pushed
+onto the depot and off again is not delivered.
 
-Original missions, written for this arena; the text is in each challenge file
-in English and German. Files: `static/spike-arena/rover-basics/`.
+## The units
+
+The pane's unit picker offers every unit in `static/spike-arena/units.json`.
+All missions are original, written for this arena (inspired by the idea of a
+virtual SPIKE curriculum, with no text, mats or mission designs taken from
+one); the text is in each challenge file, in English and German.
+
+### Rover basics (the starter unit)
+
+A Mars-rover theme. Files: `static/spike-arena/rover-basics/`.
 
 | # | Challenge | Skill | Judged by |
 |---|---|---|---|
@@ -244,6 +266,59 @@ every reference passes, every wrong one fails, and the checker is
 mutation-checked by replaying the recorded runs with each evaluator replaced
 by always-false and always-true. The browser gate is the third half of
 `scripts/verify-lego-spike-roundtrip.mjs`.
+
+### Sensors in depth (`sensors-in-depth/`)
+
+A polar station on an ice moon.
+
+| # | Challenge | Skill | Judged by | Wrong solution, and why it fails |
+|---|---|---|---|---|
+| 1 | The blue marker | colour sensor: stop on ONE colour among several | `stopIn` blue stripe, `avoid` thin ice | stops on the first non-white colour (yellow): time is up |
+| 2 | Trail to the red flag | line follower that ends: `REPEAT UNTIL` red | `stopIn` mast, `stayIn` trail corridor | a follower with no exit steers off the trail: left the corridor |
+| 3 | Docking distance | distance sensor: stop below 20 cm | `stopIn` charging range, `noWallContact` | `distance = 20` is skipped between readings: hits the wall |
+| 4 | The door in the wall | a side-mounted distance sensor finds a gap | `stopIn` storeroom, `noWallContact` | turns at the door's first edge: scrapes the frame |
+| 5 | Feel the way | force sensor: bump, back off, turn, three times; a defined block | `touch` two crates and the beacon, `noWallContact` | turns without backing off: the corner jams, time is up |
+
+### Gyro turns (`gyro-turns/`)
+
+A greenhouse dome.
+
+| # | Challenge | Skill | Judged by | Wrong solution, and why it fails |
+|---|---|---|---|---|
+| 1 | Half a right angle | a slow, precise 45° turn with yaw | `heading 45` (±3) | the same turn at full speed overshoots to ~55°: time is up |
+| 2 | The worn wheel | driving straight by gyro feedback: steering = yaw × -3 | `stopIn` green mat, `stayIn` path (left tyre 5.4 cm) | "straight ahead" with no correction curves off the path |
+| 3 | Hexagon patrol | a polygon, turn = 360 / 6 in a variable | `sequence` of six posts, `avoid` pond, `noWallContact` | turns by the inside angle (120°): the triangle's corner is the pond |
+| 4 | About turn | yaw wraps at 180: compare `abs of yaw` | `sequence` bench, door; `stopIn` door | waits for `yaw > 180`, which never happens: time is up |
+
+### Mapping (`mapping/`)
+
+An excavation site. The rover explores, remembers in variables and a list,
+and reports by where it drives.
+
+| # | Challenge | Skill | Judged by | Wrong solution, and why it fails |
+|---|---|---|---|---|
+| 1 | Count the finds | count markers on the rising edge; report = park in bay N | `stopIn` bay 3, `noStopIn` bays 1, 2, 4, `noWallContact` | counts every reading of yellow: drives into the wall |
+| 2 | Back to the find | explore in steps, remember the step; return (steps - found) × 5 cm | `stopIn` over the find, `noStopIn` rest of the trench | goes back found × 5 cm (from the start, not from here): stopped in the wrong place |
+| 3 | Replay the route | record colours into a list, replay them as turns | `sequence` two corners and camp, `stopIn` camp, `noWallContact` | one variable keeps only the last tile: three left turns into the fence |
+
+### Capstone (`capstone/`)
+
+| # | Challenge | Skill | Judged by (stages) | Wrong solution, and why it fails |
+|---|---|---|---|---|
+| 1 | Supply run | line following, absolute gyro headings, force sensor, pushing, distance sensor | 1 `sequence` along the track, 2 `touch` call button, 3 `push` crate onto depot, 4 `stopIn` garage; `noWallContact` | turns at the button without backing off: jammed, time is up, **2 of 4 stages** |
+
+Every unit's missions are run by `test/spike-arena-units.test.mjs` in the same
+real-VM path as the starter unit: every reference passes; every wrong one fails
+for its stated reason (the test pins the reason key); every program parses
+without a dialect warning; each reference also passes, with the same finishing
+time, through the pane's frame loop with the VM stalled past the time limit
+(one clock); the checker is mutation-checked over the recorded runs, including
+a capstone run that pushes the crate past the depot and still parks (the run
+that tells a broken `push` evaluator from the real one, and holds partial
+credit to "met at the end"). `test/spike-arena-pane-units.test.mjs` renders
+the pane: the unit picker lists every unit, a unit opens, a mission starts and
+runs to a verdict, a staged mission shows its stages. The browser gate opens
+Gyro turns from the picker and runs its first mission to a pass.
 
 ## For a later 3D view
 
@@ -271,9 +346,13 @@ did not wait and the dialect had no steering words. Those were fixed upstream
 (CrispStrobe/extensions#22, CrispStrobe/sb3-creator#34) and the solutions
 moved to the words above.
 
-Two limits remain, both outside the arena:
+Three limits remain, all outside the arena:
 - `spike motor position` reports the position modulo 360, so it cannot
   measure a distance beyond one rotation;
 - on the SPIKE 3 route the colour sensor's reflection is not transmitted (the
-  protocol record has no field for it), so the solutions use colour ids.
+  protocol record has no field for it), so the solutions use colour ids;
+- a statement's number must be ONE token: `move forward (finds * 15) cm` is
+  not understood, and the dialect drops the line with only a warning. The
+  solutions set a variable first (`set distance to (finds * 15)`,
+  `move forward distance cm`); the units test fails on any parse warning.
 

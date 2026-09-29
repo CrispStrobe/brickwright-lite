@@ -49,6 +49,9 @@ export const ARENA_L10N = {
         'fail.hitWall': 'Mission failed: the rover hit a wall.',
         'fail.touched': 'Mission failed: the rover touched the {object}.',
         'fail.timeLimit': 'Mission failed: time is up after {seconds} s.',
+        'fail.stoppedIn': 'Mission failed: the rover stopped in the {zone}.',
+        stages: 'Stages',
+        stagesDone: 'Stages completed: {done} of {of}',
         colors: {black: 'black', magenta: 'magenta', violet: 'violet', blue: 'blue', azure: 'azure',
             turquoise: 'turquoise', green: 'green', yellow: 'yellow', orange: 'orange', red: 'red', white: 'white'}
     },
@@ -95,6 +98,9 @@ export const ARENA_L10N = {
         'fail.hitWall': 'Mission gescheitert: Der Rover ist gegen eine Wand gefahren.',
         'fail.touched': 'Mission gescheitert: Der Rover hat {object} berührt.',
         'fail.timeLimit': 'Mission gescheitert: Die Zeit ist nach {seconds} s abgelaufen.',
+        'fail.stoppedIn': 'Mission gescheitert: Der Rover hat im Bereich „{zone}“ angehalten.',
+        stages: 'Etappen',
+        stagesDone: 'Etappen geschafft: {done} von {of}',
         colors: {black: 'schwarz', magenta: 'magenta', violet: 'violett', blue: 'blau', azure: 'azurblau',
             turquoise: 'türkis', green: 'grün', yellow: 'gelb', orange: 'orange', red: 'rot', white: 'weiß'}
     }

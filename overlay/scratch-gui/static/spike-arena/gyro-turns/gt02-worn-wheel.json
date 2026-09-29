@@ -1,0 +1,129 @@
+{
+  "id": "gt02-worn-wheel",
+  "title": {
+    "en": "The worn wheel",
+    "de": "Das abgenutzte Rad"
+  },
+  "intro": {
+    "en": "The rover's left tyre is worn, so it is a little smaller than the right one, and \"move forward\" pulls to the left. Drive down the narrow path between the plant beds to the green mat without leaving the path: let the gyro tell you when you drift, and steer against it.",
+    "de": "Der linke Reifen des Rovers ist abgenutzt und darum etwas kleiner als der rechte, deshalb zieht „fahre vorwärts“ nach links. Fahre den schmalen Weg zwischen den Beeten entlang bis zur grünen Matte, ohne den Weg zu verlassen: Lass dir vom Kreiselsensor sagen, wann du abdriftest, und lenke dagegen."
+  },
+  "hints": [
+    {
+      "en": "Drifting left makes the yaw negative. Steering is positive to the right. So steer by the yaw times a negative number, again and again in a loop.",
+      "de": "Driftest du nach links, wird der Gierwinkel negativ. Lenken nach rechts ist positiv. Lenke also mit dem Gierwinkel mal einer negativen Zahl, immer wieder in einer Schleife."
+    },
+    {
+      "en": "Stop when the colour sensor sees the green mat.",
+      "de": "Halte an, wenn der Farbsensor die grüne Matte sieht."
+    }
+  ],
+  "mat": {
+    "width": 200,
+    "height": 70,
+    "background": "white",
+    "paint": "#e9ecef",
+    "shapes": [
+      {
+        "color": "white",
+        "paint": "#fff9db",
+        "shape": {
+          "type": "rect",
+          "x": 100,
+          "y": 35,
+          "w": 200,
+          "h": 20
+        }
+      },
+      {
+        "color": "green",
+        "shape": {
+          "type": "rect",
+          "x": 185,
+          "y": 35,
+          "w": 10,
+          "h": 20
+        }
+      },
+      {
+        "color": "green",
+        "paint": "#b2f2bb",
+        "shape": {
+          "type": "rect",
+          "x": 95,
+          "y": 10,
+          "w": 190,
+          "h": 20
+        }
+      },
+      {
+        "color": "green",
+        "paint": "#b2f2bb",
+        "shape": {
+          "type": "rect",
+          "x": 95,
+          "y": 60,
+          "w": 190,
+          "h": 20
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "path",
+      "role": "area",
+      "shape": {
+        "type": "rect",
+        "x": 100,
+        "y": 35,
+        "w": 200,
+        "h": 20
+      },
+      "label": {
+        "en": "path",
+        "de": "Weg"
+      }
+    },
+    {
+      "id": "finish",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 174,
+        "y": 35,
+        "w": 10,
+        "h": 20
+      },
+      "label": {
+        "en": "green mat",
+        "de": "grüne Matte"
+      }
+    }
+  ],
+  "robot": {
+    "left": {
+      "wheelDiameter": 5.4
+    }
+  },
+  "start": {
+    "x": 18,
+    "y": 35,
+    "heading": 0
+  },
+  "timeLimitMs": 25000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "finish"
+    }
+  ],
+  "failure": [
+    {
+      "type": "stayIn",
+      "zone": "path"
+    }
+  ],
+  "solution": "gt02-worn-wheel.bw",
+  "wrong": "gt02-worn-wheel.wrong.bw"
+}

@@ -1,0 +1,12 @@
+DEVICE SPIKE
+
+# Gyro turns 1 - half a right angle (reference solution).
+# A slow turn, stopped just before the target: the rover coasts no further
+# than one gyro reading.
+WHEN flag clicked:
+  set movement motors A B
+  reset yaw
+  set movement speed 10
+  start moving steering 100
+  wait until spike angle yaw > 43
+  stop movement

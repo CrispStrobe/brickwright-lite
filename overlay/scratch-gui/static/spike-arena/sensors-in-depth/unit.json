@@ -1,0 +1,18 @@
+{
+  "id": "sensors-in-depth",
+  "title": {
+    "en": "Sensors in depth",
+    "de": "Sensoren im Detail"
+  },
+  "intro": {
+    "en": "Five missions at a polar research station on an ice moon: stop on one colour among many, follow a trail to its end, hold a distance, slow down as you close in, and feel your way past crates with the force sensor.",
+    "de": "Fünf Missionen an einer Polarstation auf einem Eismond: auf einer bestimmten Farbe unter vielen halten, einer Spur bis zu ihrem Ende folgen, einen Abstand einhalten, beim Annähern langsamer werden und sich mit dem Kraftsensor an Kisten vorbeitasten."
+  },
+  "challenges": [
+    "sd01-blue-beacon",
+    "sd02-trail-to-the-flag",
+    "sd03-docking-distance",
+    "sd04-door-in-the-wall",
+    "sd05-crate-maze"
+  ]
+}

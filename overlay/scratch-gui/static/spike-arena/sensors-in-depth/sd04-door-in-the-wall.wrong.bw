@@ -1,0 +1,18 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: it turns the moment the sensor sees the
+# door's first edge. The rover is then not in front of the door, and its
+# side scrapes the door frame.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until spike distance D > 25
+  stop movement
+  set movement speed 15
+  reset yaw
+  start moving steering -100
+  wait until spike angle yaw < -87
+  stop movement
+  set movement speed 30
+  move forward 40 cm

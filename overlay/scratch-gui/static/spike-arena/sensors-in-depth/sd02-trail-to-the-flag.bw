@@ -1,0 +1,12 @@
+DEVICE SPIKE
+
+# Sensors in depth 2 - trail to the red flag (reference solution).
+# The rb08 edge follower, with an exit: repeat until the sensor sees red.
+WHEN flag clicked:
+  set movement motors A B
+  REPEAT UNTIL spike color C is red:
+    IF spike color C is black THEN:
+      start tank 8 30
+    ELSE:
+      start tank 30 8
+  stop movement
