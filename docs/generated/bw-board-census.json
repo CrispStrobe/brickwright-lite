@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "542fb29efb099ebecdc589edada4674805620826",
+    "sha": "5eeb4922583c2233df9881c4837a9d8bac8bf423",
     "read": "2026-09-29"
   },
   "rows": [
@@ -197,7 +197,8 @@
         "test/labwired-adapter.test.mjs",
         "test/labwired-roundtrip.test.mjs",
         "test/pad-drive-parity.test.mjs",
-        "test/labwired-firmware-only.test.mjs"
+        "test/labwired-firmware-only.test.mjs",
+        "test/labwired-microbit-matrix.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
     },
@@ -352,10 +353,10 @@
     {
       "id": "masm",
       "kind": "oracle",
-      "present": false,
+      "present": true,
       "ciAvailable": false,
       "ci": "no — the binaries live at an absolute /tmp path, the same blind spot as the ehBASIC ROM: audit-clean-checkout strips untracked REPO files by archiving HEAD and cannot reach /tmp, so their absence in a fresh checkout is invisible to it. Can only stand in CI if the job fetches them explicitly.",
-      "via": "tried $MSDOS_BIN_DIR, /tmp/msdosbin",
+      "via": "$MSDOS_BIN_DIR=/mnt/volume1/code/msdos-v2-bin",
       "gates": [
         "test/oracle-masm.test.mjs",
         "scripts/oracle-masm.mjs",

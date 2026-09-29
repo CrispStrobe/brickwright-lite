@@ -48,10 +48,24 @@ function uf2Image (bytes) {
     return {image, address};
 }
 
-function ihexImage (text, flashBytes) {
+/** nRF UICR: configuration words an nRF .hex programs beside flash. */
+const UICR_START = 0x10001000;
+const UICR_END = 0x10002000;
+/** micro:bit universal-hex board IDs (the Block Start record, type 0x0A). */
+const V2_BOARD_IDS = new Set([0x9903, 0x9904, 0x9905, 0x9906]);
+
+function ihexImage (text, flashBytes, boardIds = null) {
     const data = new Map();
+    const uicr = new Map();
     let upper = 0;
     let omitted = 0;
+    // A micro:bit UNIVERSAL hex carries one section per board family, each
+    // opened by a Block Start record (type 0x0A) naming its board ID; the V2
+    // section's data rides in type 0x0D records. Only the sections for this
+    // chip load: taking the first section's type-00 data put the V1 image on
+    // an nRF52833. A plain hex (no Block Start) loads as it always did.
+    let section = null;
+    let sawSection = false;
     for (const [index, raw] of String(text).split(/\r?\n/).entries()) {
         const line = raw.trim();
         if (!line) continue;
@@ -67,13 +81,19 @@ function ihexImage (text, flashBytes) {
         const count = octets[0];
         const offset = (octets[1] << 8) | octets[2];
         const type = octets[3];
-        if (type === 0) {
+        if (type === 0x0a) {
+            sawSection = true;
+            section = (octets[4] << 8) | octets[5];
+        } else if (type === 0 || type === 0x0d) {
+            if (sawSection && !(boardIds && boardIds.has(section))) continue;
             for (let i = 0; i < count; i++) {
                 const address = upper + offset + i;
-                // nRF HEX files can carry UICR at 0x10001000. LabWired's
-                // current loader has one PT_LOAD flash segment, so retain the
-                // executable flash and omit configuration records explicitly.
                 if (address < flashBytes) data.set(address, octets[4 + i]);
+                // The MBR reads UICR at reset (NRFFW[0], the bootloader
+                // address); left erased, CODAL places its flash storage at
+                // 0xFFFFFFFF - 3 * 4096 and hard-faults. It travels as its own
+                // load segment beside the flash image.
+                else if (address >= UICR_START && address < UICR_END) uicr.set(address, octets[4 + i]);
                 else omitted++;
             }
         } else if (type === 1) {
@@ -89,13 +109,23 @@ function ihexImage (text, flashBytes) {
     for (const at of data.keys()) end = Math.max(end, at + 1);
     const image = new Uint8Array(end).fill(0xff);
     for (const [at, byte] of data) image[at] = byte;
-    return {image, address: 0, omitted};
+    const extraSegments = [];
+    if (uicr.size) {
+        let lo = Infinity, hi = -1;
+        for (const at of uicr.keys()) { lo = Math.min(lo, at); hi = Math.max(hi, at); }
+        const bytes = new Uint8Array(hi - lo + 1).fill(0xff);
+        for (const [at, byte] of uicr) bytes[at - lo] = byte;
+        extraSegments.push({address: lo, bytes});
+    }
+    return {image, address: 0, omitted, extraSegments};
 }
 
 /**
  * @param {{name?:string,bytes?:Uint8Array|null,text?:string|null}} firmware
  * @param {'microbit_v2'|'pybadge'|'stm32f030'|'arduino_uno'} chipKind
- * @returns {{image:Uint8Array,address?:number,format:string,omitted:number}}
+ * @returns {{image:Uint8Array,address?:number,format:string,omitted:number,
+ *   extraSegments?:Array<{address:number,bytes:Uint8Array}>}} `extraSegments`:
+ *   records to load beside the image (an nRF .hex's UICR words)
  */
 export function labwiredFirmwareImage (firmware, chipKind) {
     const bytes = firmware && firmware.bytes instanceof Uint8Array ? firmware.bytes : null;
@@ -108,7 +138,7 @@ export function labwiredFirmwareImage (firmware, chipKind) {
     if ((text && /^\s*:/.test(text)) || (bytes && bytes[0] === 0x3a)) {
         const source = text || new TextDecoder().decode(bytes);
         const flashBytes = chipKind === 'microbit_v2' ? 512 * 1024 : 2 * 1024 * 1024;
-        const out = ihexImage(source, flashBytes);
+        const out = ihexImage(source, flashBytes, chipKind === 'microbit_v2' ? V2_BOARD_IDS : null);
         return {...out, format: 'hex'};
     }
     if (bytes && bytes.length) {
