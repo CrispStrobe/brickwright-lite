@@ -108,11 +108,12 @@ test('pull mode reaches the board as a pull mode', () => {
     assert.equal(board.calls[0].driveHigh, true, 'a pull-up holds the pin high');
 });
 
-test('analog write is a threshold, and says so', () => {
-    // There is no PWM in the solver — a duty cycle is a time average and
-    // the board is solved per instant. Driving high above half is right at
-    // both ends of the range and wrong in the middle; the test pins the
-    // behaviour so nobody later reads it as dimming.
+test('analog write on a board WITHOUT setPwm falls back to a threshold', () => {
+    // A board that predates setPwm can only take a level: high above half,
+    // low below — right at both ends of the range and wrong in the middle.
+    // On a board with setPwm the pin is a real PWM (task B5; held against
+    // the real board in pwm-followups-reach-the-circuit.test.mjs). This
+    // recording board has no setPwm, so it pins the fallback.
     const board = recordingBoard();
     const ext = withBoard(board);
     for (const pct of [0, 49, 50, 100]) ext.analogwrite({PIN: '0', PCT: pct});
