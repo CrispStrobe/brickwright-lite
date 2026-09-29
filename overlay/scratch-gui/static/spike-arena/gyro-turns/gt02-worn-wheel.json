@@ -46,8 +46,8 @@
         }
       },
       {
-        "color": "green",
-        "paint": "#b2f2bb",
+        "color": "turquoise",
+        "paint": "#96f2d7",
         "shape": {
           "type": "rect",
           "x": 95,
@@ -57,8 +57,8 @@
         }
       },
       {
-        "color": "green",
-        "paint": "#b2f2bb",
+        "color": "turquoise",
+        "paint": "#96f2d7",
         "shape": {
           "type": "rect",
           "x": 95,

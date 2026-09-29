@@ -18,8 +18,8 @@
       "de": "Setze vor jeder Drehung zurück, die an einem Hindernis beginnt: Die Ecken des Rovers stehen vor."
     },
     {
-      "en": "The crate hides the distance sensor while you push, so push a fixed distance: the depot is about 30 cm past the crate's starting place.",
-      "de": "Beim Schieben verdeckt die Kiste den Abstandssensor, darum schiebe eine feste Strecke: Das Depot liegt etwa 30 cm hinter der Startstelle der Kiste."
+      "en": "The crate hides the distance sensor while you push, so push a fixed distance: the depot is about 25 cm past the crate's starting place.",
+      "de": "Beim Schieben verdeckt die Kiste den Abstandssensor, darum schiebe eine feste Strecke: Das Depot liegt etwa 25 cm hinter der Startstelle der Kiste."
     }
   ],
   "mat": {
