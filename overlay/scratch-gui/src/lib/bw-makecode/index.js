@@ -31,6 +31,7 @@ import {decodePng} from './png.js';
 import {extractMicroPython} from './micropython-hex.js';
 import {microbitToPseudocode} from './microbit-translate.js';
 import {arcadeToPseudocode} from './arcade-translate.js';
+import {ev3ToPseudocode} from './ev3-translate.js';
 import {fetchSharedProject} from './share.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
@@ -40,6 +41,8 @@ export {lzmaDecode} from './lzma.js';
 export {parseShareId, fetchSharedProject} from './share.js';
 export {microbitToPseudocode} from './microbit-translate.js';
 export {arcadeToPseudocode} from './arcade-translate.js';
+export {ev3ToPseudocode} from './ev3-translate.js';
+export {exportToMakeCodeEv3, projectToEv3Ts} from './export-ev3.js';
 export {parseImageLiteral, parseJres, imageToSvg, ARCADE_PALETTE} from './arcade-assets.js';
 export {exportToMakeCode, projectToMakeCodeTs, makeCodeSourceHex} from './export.js';
 export {parseMakeCodeTs} from './ts-import.js';
@@ -63,7 +66,9 @@ export function inferTarget (files = {}, hint = '') {
     if (/arcade/.test(hint)) return 'arcade';
     if (/microbit/.test(hint)) return 'microbit';
     if (/calliope/.test(hint)) return 'calliopemini';
+    if (/ev3/.test(hint)) return 'ev3';
     const source = files['main.ts'] || '';
+    if (/\b(motors\.(large|medium)[A-D]|sensors\.(touch|color|ultrasonic|gyro|infrared)[1-4]|brick\.(show|button|setStatusLight))/.test(source)) return 'ev3';
     if (/\b(sprites\.create|scene\.|controller\.|tiles\.|info\.setScore)/.test(source)) return 'arcade';
     if (/\b(basic\.|input\.on|pins\.digital|radio\.|led\.plot)/.test(source)) return 'microbit';
     return 'unknown';
@@ -123,6 +128,22 @@ export function importProjectFiles (files = {}, opts = {}) {
             files,
             project: {target, name, version: opts.version || ''},
             note: 'arcade'
+        };
+    }
+    // A LEGO EV3 program becomes DEVICE EV3 pseudocode, whose words are the
+    // ev3comprehensive blocks (ev3-translate.js); what has no block is named.
+    if (target === 'ev3' && files['main.ts']) {
+        const translated = ev3ToPseudocode(files['main.ts'], {name});
+        return {
+            kind: 'makecode',
+            lang: 'pseudocode',
+            code: translated.code,
+            source: main,
+            unsupported: translated.unsupported,
+            costumes: [],
+            files,
+            project: {target, name, version: opts.version || ''},
+            note: 'ev3'
         };
     }
     return {
