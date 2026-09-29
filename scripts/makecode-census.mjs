@@ -16,8 +16,13 @@
  *
  * STAGES (each program goes as far as it can; the first failure is its row)
  *   makecode programs:
- *     baseline   pxt compiles the original (else: needs an extension, or a
- *                snippet that is not a whole program — excluded from the rest)
+ *     baseline   pxt compiles the original, with the packages its page's
+ *                ```package block names: pxt-microbit's own (datalogger…) from
+ *                the target bundle, a GitHub extension from the source vendored
+ *                at an exact commit (scripts/sync-makecode-extensions.mjs) —
+ *                never the network. Else: needs an extension (the one it names
+ *                is not carried, or names no package there is), or a snippet
+ *                that is not a whole program — excluded from the rest.
  *     import     microbitToPseudocode: how many calls were named unsupported
  *     parse      the pseudocode parses (SB3Creator)
  *     sim        generateMicroPython succeeds AND the program runs: five virtual
@@ -34,7 +39,9 @@
  * Needs the synced runtime (npm run sync:makecode). Writes
  * docs/generated/MAKECODE-CENSUS.md and test-results/makecode-census.json.
  *
- *   node scripts/makecode-census.mjs [--snippets] [--limit N] [--only makecode|lite]
+ *   node scripts/makecode-census.mjs [--snippets] [--limit N] [--only makecode|lite] [--match REGEX]
+ * (--match keeps only the programs whose id matches, and writes the report to
+ * test-results/ only — a partial census is not the generated doc.)
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -60,6 +67,7 @@ const arg = name => process.argv.includes(name);
 const argVal = (name, dflt) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : dflt; };
 const LIMIT = Number(argVal('--limit', 0)) || Infinity;
 const ONLY = argVal('--only', null);
+const MATCH = argVal('--match', null) ? new RegExp(argVal('--match')) : null;
 
 if (!fs.existsSync(path.join(STATIC, 'microbit/pxtworker.js'))) {
     console.error('MakeCode runtime not synced: run `npm run sync:makecode` first');
@@ -79,13 +87,34 @@ sb.eval = src => vm.runInContext(src, sb, {filename: 'eval'});
 vm.createContext(sb, {codeGeneration: {strings: false, wasm: false}});
 vm.runInContext(fs.readFileSync(path.join(STATIC, 'microbit/pxtworker.js'), 'utf8'), sb, {filename: 'pxtworker.js'});
 vm.runInContext(PXT_GLUE_JS, sb, {filename: 'pxt-glue.js'});
-const PXT_JSON = JSON.stringify({name: 'census', dependencies: {core: '*', radio: '*', microphone: '*'}, files: ['main.ts']});
-async function pxtCompile (ts) {
+const DEFAULT_DEPENDENCIES = {core: '*', radio: '*', microphone: '*'};
+const pxtJson = deps => JSON.stringify({name: 'census', dependencies: deps, files: ['main.ts']});
+const PXT_JSON = pxtJson(DEFAULT_DEPENDENCIES);
+/** pxt-microbit's own packages: the ones its target bundle carries. */
+const BUNDLED = new Set(Object.keys(sb.pxtTargetBundle.bundledpkgs || {}));
+/**
+ * The dependencies a doc page's ```package block asks for, on top of the default
+ * set: `name` is one of pxt-microbit's packages, `name=github:…` an extension
+ * (resolved by the pxt glue from the vendored source, or refused by name).
+ * `unknown`: a bare name that is no package here — the page's own error.
+ */
+function projectDependencies (packages) {
+    const deps = {...DEFAULT_DEPENDENCIES};
+    const unknown = [];
+    for (const line of packages) {
+        const at = line.indexOf('=');
+        if (at > 0) deps[line.slice(0, at)] = line.slice(at + 1);
+        else if (BUNDLED.has(line)) deps[line] = '*';
+        else unknown.push(line);
+    }
+    return {deps, unknown};
+}
+async function pxtCompile (ts, json = PXT_JSON) {
     try {
-        const r = JSON.parse(JSON.stringify(await sb.bwMakeCode.compile({'pxt.json': PXT_JSON, 'main.ts': ts}, {})));
+        const r = JSON.parse(JSON.stringify(await sb.bwMakeCode.compile({'pxt.json': json, 'main.ts': ts}, {})));
         return {ok: r.success, error: r.success ? '' : ((r.diagnostics[0] || {}).message || 'failed'), net: r.netAttempts.length};
     } catch (e) {
-        return {ok: false, error: String(e && e.message || e).slice(0, 160), net: 0};
+        return {ok: false, error: String(e && e.message || e).slice(0, 160), net: 0, code: e && e.code};
     }
 }
 
@@ -170,13 +199,15 @@ function makecodePrograms () {
         const blocks = [...text.matchAll(/```(blocks|typescript|block)\n([\s\S]*?)```/g)].map(m => m[2]);
         if (!blocks.length) continue;
         const needsPackage = /```package\n/.test(text);
+        const packages = [...text.matchAll(/```package\n([\s\S]*?)```/g)]
+            .flatMap(m => m[1].split('\n').map(l => l.trim()).filter(Boolean));
         const isApp = /^docs\/(projects|lessons|courses|tutorials|examples)\//.test(name);
         const pick = arg('--snippets') ? blocks.map((b, i) => [b, i]) : (isApp ? [[blocks[blocks.length - 1], blocks.length - 1]] : []);
         for (const [code, i] of pick) {
             const key = code.replace(/\s+/g, ' ').trim();
             if (!key || seen.has(key)) continue;
             seen.add(key);
-            programs.push({id: `${name.replace(/^docs\//, '').replace(/\.md$/, '')}#${i}`, ts: code, needsPackage, isApp});
+            programs.push({id: `${name.replace(/^docs\//, '').replace(/\.md$/, '')}#${i}`, ts: code, needsPackage, packages, isApp});
         }
     }
     return programs;
@@ -198,14 +229,19 @@ const t0 = Date.now();
 const results = {makecode: [], lite: []};
 
 if (ONLY !== 'lite') {
-    const programs = makecodePrograms().slice(0, LIMIT);
+    const programs = makecodePrograms().filter(p => !MATCH || MATCH.test(p.id)).slice(0, LIMIT);
     let n = 0;
     for (const p of programs) {
         const row = {id: p.id, app: p.isApp};
-        const base = await pxtCompile(p.ts);
+        const {deps, unknown} = projectDependencies(p.packages);
+        const extra = p.packages.filter(l => !['radio', 'microphone'].includes(l));
+        if (extra.length) row.packages = extra;
+        const base = await pxtCompile(p.ts, pxtJson(deps));
         if (!base.ok) {
-            row.stage = p.needsPackage || base.net ? 'needs-extension' : 'not-a-program';
-            row.detail = base.error;
+            row.stage = p.needsPackage || base.net || base.code === 'NO_EXTENSION' ? 'needs-extension' : 'not-a-program';
+            row.detail = unknown.length ?
+                `its package block names ${unknown.map(u => `\`${u}\``).join(', ')}, which is no pxt-microbit package ` +
+                `and no vendored extension; pxt: ${base.error}` : base.error;
             results.makecode.push(row);
             continue;
         }
@@ -254,7 +290,7 @@ if (ONLY !== 'lite') {
 }
 
 if (ONLY !== 'makecode') {
-    for (const p of litePrograms().slice(0, LIMIT)) {
+    for (const p of litePrograms().filter(p => !MATCH || MATCH.test(p.id)).slice(0, LIMIT)) {
         const row = {id: p.id, device: p.device};
         let project;
         try { project = new SB3Creator().parse(p.src); } catch (e) { row.stage = 'parse'; row.detail = e.message.slice(0, 160); results.lite.push(row); continue; }
@@ -307,7 +343,14 @@ if (ONLY !== 'lite') {
         '### Why a re-export does not recompile', '', '| programs | MakeCode error |', '|---|---|',
         top(hist(programs.filter(r => r.recompileError).map(r => ({e: [r.recompileError]})), 'e', normError)), '',
         '### Why a translation does not run in our simulator', '', '| programs | reason |', '|---|---|',
-        top(hist(programs.filter(r => r.simReasons), 'simReasons', normError)), ''
+        top(hist(programs.filter(r => r.simReasons), 'simReasons', normError)), '',
+        '### Programs whose page names a package beyond the default set', '',
+        'Default set: core, radio, microphone. A GitHub extension compiles from the source vendored at an exact commit ' +
+        '(`scripts/sync-makecode-extensions.mjs`); pxt-microbit\'s own packages come from its target bundle.', '',
+        '| program | packages | outcome | import names unsupported / why not |', '|---|---|---|---|',
+        ...mc.filter(r => r.packages).map(r => `| ${r.id} | ${r.packages.map(x => `\`${x}\``).join(' ')} | ${r.stage} | ` +
+            `${(r.detail || (r.unsupported || []).map(normUnsupported).join('; ') || '—').replace(/\|/g, '\\|').replace(/\n/g, ' ')} |`),
+        ''
     );
 }
 if (ONLY !== 'makecode') {
@@ -327,6 +370,6 @@ if (ONLY !== 'makecode') {
     );
 }
 fs.mkdirSync(path.join(ROOT, 'test-results'), {recursive: true});
-fs.writeFileSync(path.join(ROOT, 'test-results/makecode-census.json'), JSON.stringify(results, null, 1));
-fs.writeFileSync(path.join(ROOT, 'docs/generated/MAKECODE-CENSUS.md'), lines.join('\n') + '\n');
+fs.writeFileSync(path.join(ROOT, MATCH ? 'test-results/makecode-census-match.json' : 'test-results/makecode-census.json'), JSON.stringify(results, null, 1));
+fs.writeFileSync(MATCH ? path.join(ROOT, 'test-results/makecode-census-match.md') : path.join(ROOT, 'docs/generated/MAKECODE-CENSUS.md'), lines.join('\n') + '\n');
 console.log(lines.slice(0, 16).join('\n'));

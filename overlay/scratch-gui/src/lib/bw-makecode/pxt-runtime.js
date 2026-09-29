@@ -38,6 +38,23 @@
  */
 
 import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
+import {VENDORED_EXTENSIONS} from './extensions-vendored.js';
+
+/**
+ * The third-party extensions this build carries (extensions-vendored.js, written
+ * by scripts/sync-makecode-extensions.mjs at exact commits), as the glue reads
+ * them: the source files pxt compiles, and what a pxt.json may call each one —
+ * `github:<owner>/<repo>#<tag>` or `#<commit>`, owner/repo in any case, the way
+ * MakeCode's editor writes it. For the micro:bit only: they were published for
+ * pxt-microbit, and are not proved on another target.
+ */
+export const EXTENSION_TABLE = Object.freeze(VENDORED_EXTENSIONS.map(e => ({
+    id: e.id,
+    repo: e.repo.toLowerCase(),
+    refs: [e.tag, e.commit],
+    targets: ['microbit'],
+    files: Object.fromEntries(Object.entries(e.files).map(([name, f]) => [name, f.text]))
+})));
 
 /**
  * The MakeCode targets whose runtime sync-makecode-runtime serves, by pxt
@@ -71,6 +88,33 @@ export const PXT_GLUE_JS = `
 var bwMakeCode = {
     netAttempts: [],
     configured: false,
+    extensions: ${JSON.stringify(EXTENSION_TABLE)},
+    // id -> files, for the compile in progress: what pkgOverrideAsync answers.
+    overrides: {},
+    // A project's dependencies against the vendored extensions. Every
+    // github: dependency is either served from the vendored source (its own
+    // github: dependencies too) or listed as unresolved — pxt then asks the
+    // network for it, is refused and counted, and compile() names it.
+    resolveExtensions: function (deps, target) {
+        var overrides = {}, unresolved = [], queue = [];
+        var push = function (d) { for (var k in d) queue.push([k, String(d[k])]); };
+        push(deps || {});
+        while (queue.length) {
+            var dep = queue.shift(), id = dep[0], spec = dep[1];
+            var m = /^github:([^#]+?)(?:#(.+))?$/i.exec(spec);
+            if (!m || overrides[id]) continue;
+            var repo = m[1].toLowerCase().replace(/\\.git$/, ''), ref = m[2] || '';
+            var hit = null;
+            for (var i = 0; i < bwMakeCode.extensions.length; i++) {
+                var e = bwMakeCode.extensions[i];
+                if (e.repo === repo && e.refs.indexOf(ref) >= 0 && e.targets.indexOf(target) >= 0) { hit = e; break; }
+            }
+            if (!hit) { unresolved.push(id + ' (' + spec + ')'); continue; }
+            overrides[id] = hit.files;
+            push(JSON.parse(hit.files['pxt.json']).dependencies);
+        }
+        return {overrides: overrides, unresolved: unresolved};
+    },
     configure: function () {
         if (bwMakeCode.configured) return;
         pxt.setupSimpleCompile({
@@ -80,7 +124,9 @@ var bwMakeCode = {
                 bwMakeCode.netAttempts.push(o && o.url);
                 return Promise.reject(new Error('offline: ' + (o && o.url)));
             },
-            pkgOverrideAsync: function () { return Promise.resolve(null); }
+            // A vendored extension's source, else pxt's own lookup (the target
+            // bundle for core, radio…; the network — refused — for anything else).
+            pkgOverrideAsync: function (id) { return Promise.resolve(bwMakeCode.overrides[id] || null); }
         });
         // The package config is fetched from the cloud on every compile otherwise.
         pxt.packagesConfigAsync = function () { return Promise.resolve({}); };
@@ -111,16 +157,32 @@ var bwMakeCode = {
         cfg.binaryonly = true;
         files = Object.assign({}, files, {'pxt.json': JSON.stringify(cfg, null, 4)});
         if (files['main.ts'] === undefined) files['main.ts'] = '';
-        if (pxt.simpleInstallPackagesAsync) await pxt.simpleInstallPackagesAsync(files);
-        // Arcade hardware: 'rp2040', 'samd51'... selects the hw---<variant> package
-        // (and with it the C++ runtime and the firmware base). '' = the default.
-        pxt.setHwVariant(opts.hwVariant || '');
-        // A multi-variant target (micro:bit: mbdal = V1, mbcodal = V2) builds
-        // EVERY variant into one universal .hex by default; 'mbcodal' builds only
-        // that one — the emulator runs a V2 image, on a Bluetooth-free base
-        // (compileMakeCodeForEmulator), and has no use for the V1 half. null = all.
-        pxt.setAppTargetVariant(opts.appVariant || null);
-        var copts = await pxt.simpleGetCompileOptionsAsync(files, {native: !!opts.native});
+        var ext = bwMakeCode.resolveExtensions(cfg.dependencies, pxt.appTarget && pxt.appTarget.id);
+        bwMakeCode.overrides = ext.overrides;
+        var copts;
+        try {
+            if (pxt.simpleInstallPackagesAsync) await pxt.simpleInstallPackagesAsync(files);
+            // Arcade hardware: 'rp2040', 'samd51'... selects the hw---<variant> package
+            // (and with it the C++ runtime and the firmware base). '' = the default.
+            pxt.setHwVariant(opts.hwVariant || '');
+            // A multi-variant target (micro:bit: mbdal = V1, mbcodal = V2) builds
+            // EVERY variant into one universal .hex by default; 'mbcodal' builds only
+            // that one — the emulator runs a V2 image, on a Bluetooth-free base
+            // (compileMakeCodeForEmulator), and has no use for the V1 half. null = all.
+            pxt.setAppTargetVariant(opts.appVariant || null);
+            copts = await pxt.simpleGetCompileOptionsAsync(files, {native: !!opts.native});
+        } catch (err) {
+            // A GitHub extension this build does not carry: pxt went to the
+            // network for it (refused, counted above). Say which one.
+            if (ext.unresolved.length && bwMakeCode.netAttempts.length > before) {
+                var ne = new Error('MakeCode extension not available offline: ' + ext.unresolved.join(', ') +
+                    ' — this build vendors ' + bwMakeCode.extensions.map(function (x) { return x.repo; }).join(', '));
+                ne.code = 'NO_EXTENSION';
+                ne.extensions = ext.unresolved;
+                throw ne;
+            }
+            throw err;
+        }
         if (opts.native && copts.extinfo && copts.extinfo.sha) {
             var infos = [copts.extinfo].concat((copts.otherMultiVariants || []).map(function (v) { return v.extinfo; }));
             for (var i = 0; i < infos.length; i++) {
