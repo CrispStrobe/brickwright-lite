@@ -23,6 +23,10 @@ const SwitchPanel = React.lazy(() =>
     import(/* webpackChunkName: "bw-debug-faces" */ 'bw-circuit-ui/components/SwitchPanel.jsx')
         .then(m => ({default: m.SwitchPanel}))
 );
+// The Linux lesson's terminal (xterm.js) — lazy, its own chunk, only for a booted Linux.
+const LinuxTerminal = React.lazy(() =>
+    import(/* webpackChunkName: "bw-xterm" */ './linux-terminal.jsx')
+);
 const VdpScreen = React.lazy(() =>
     import(/* webpackChunkName: "bw-debug-faces" */ 'bw-circuit-ui/components/VdpScreen.jsx')
         .then(m => ({default: m.VdpScreen}))
@@ -59,6 +63,8 @@ const L10N = {
         error: 'error',
         stepHint: 'Run to the next block boundary',
         serialHint: 'type a line, Enter sends it',
+        terminalHint: 'Click the terminal and type: every key goes straight to Linux. ' +
+            'Ctrl-C interrupts, arrows recall history, Ctrl-Shift-V pastes. 80×24.',
         serialSend: 'Send this line to the machine (ends with CR)',
         modem: 'Blinkenrocket audio modem',
         modemHint: 'message for the badge',
@@ -116,6 +122,8 @@ const L10N = {
         error: 'Fehler',
         stepHint: 'Bis zur nächsten Blockgrenze laufen',
         serialHint: 'Zeile eingeben, Enter sendet',
+        terminalHint: 'Ins Terminal klicken und tippen: jede Taste geht direkt an Linux. ' +
+            'Strg-C bricht ab, Pfeiltasten holen frühere Befehle, Strg-Umschalt-V fügt ein. 80×24.',
         serialSend: 'Diese Zeile an die Maschine senden (endet mit CR)',
         modem: 'Blinkenrocket-Audiomodem',
         modemHint: 'Nachricht für das Badge',
@@ -1849,45 +1857,60 @@ class DebugPanel extends React.Component {
                 {(ui.serialOutput && ui.serialOutput.length) || canSendSerial ? (
                     <div style={{borderTop: '1px solid #2c3e50', paddingTop: 8}}>
                         <div style={{color: '#7f8c8d', marginBottom: 4}}>
-                            {'Serial'}
-                            {ui.serialOutput && ui.serialOutput.length
+                            {this.state.runner && this.state.runner.terminal
+                                ? `Terminal ${this.state.runner.terminal.cols}×${this.state.runner.terminal.rows}`
+                                : 'Serial'}
+                            {ui.serialOutput && ui.serialOutput.length &&
+                                !(this.state.runner && this.state.runner.terminal)
                                 ? ` (${ui.serialOutput.length})` : ''}
                         </div>
-                        <pre
-                            data-testid="bw-serial-console"
-                            style={{
-                                margin: 0, padding: 6, maxHeight: 120, overflow: 'auto',
-                                background: '#0d1117', color: '#2ecc71', fontSize: 11,
-                                borderRadius: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
-                                fontFamily: 'monospace'
-                            }}
-                        >{(ui.serialOutput || []).join('\n')}</pre>
-                        {canSendSerial ? (
-                            <div style={{display: 'flex', gap: 6, marginTop: 4, alignItems: 'center'}}>
-                                <span style={{color: '#2ecc71'}}>{'>'}</span>
-                                <input
-                                    data-testid="bw-serial-input"
-                                    type="text"
-                                    value={this.state.serialInput}
-                                    onChange={this.onSerialInput}
-                                    onKeyDown={this.onSerialKeyDown}
-                                    placeholder={this.tx('serialHint')}
-                                    aria-label={this.tx('serialSend')}
-                                    style={{
-                                        flex: '1 1 auto', minWidth: 0, padding: '4px 6px',
-                                        background: '#0d1117', color: '#2ecc71',
-                                        border: '1px solid #2c3e50', borderRadius: 4,
-                                        fontFamily: 'monospace', fontSize: 11
-                                    }}
+                        {this.state.runner && this.state.runner.terminal ? (
+                            // A booted Linux: a real terminal, keys straight
+                            // to the guest's tty (linux-terminal.jsx).
+                            <React.Suspense fallback={<div data-testid="bw-linux-terminal-loading">{'…'}</div>}>
+                                <LinuxTerminal
+                                    key={this.state.runner.terminal.id}
+                                    terminal={this.state.runner.terminal}
+                                    hint={this.tx('terminalHint')}
                                 />
-                                <button
-                                    data-testid="bw-serial-send"
-                                    style={{...BTN, padding: '3px 10px'}}
-                                    onClick={this.onSerialSend}
-                                    title={this.tx('serialSend')}
-                                >{'⏎'}</button>
-                            </div>
-                        ) : null}
+                            </React.Suspense>
+                        ) : <React.Fragment>
+                            <pre
+                                data-testid="bw-serial-console"
+                                style={{
+                                    margin: 0, padding: 6, maxHeight: 120, overflow: 'auto',
+                                    background: '#0d1117', color: '#2ecc71', fontSize: 11,
+                                    borderRadius: 4, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+                                    fontFamily: 'monospace'
+                                }}
+                            >{(ui.serialOutput || []).join('\n')}</pre>
+                            {canSendSerial ? (
+                                <div style={{display: 'flex', gap: 6, marginTop: 4, alignItems: 'center'}}>
+                                    <span style={{color: '#2ecc71'}}>{'>'}</span>
+                                    <input
+                                        data-testid="bw-serial-input"
+                                        type="text"
+                                        value={this.state.serialInput}
+                                        onChange={this.onSerialInput}
+                                        onKeyDown={this.onSerialKeyDown}
+                                        placeholder={this.tx('serialHint')}
+                                        aria-label={this.tx('serialSend')}
+                                        style={{
+                                            flex: '1 1 auto', minWidth: 0, padding: '4px 6px',
+                                            background: '#0d1117', color: '#2ecc71',
+                                            border: '1px solid #2c3e50', borderRadius: 4,
+                                            fontFamily: 'monospace', fontSize: 11
+                                        }}
+                                    />
+                                    <button
+                                        data-testid="bw-serial-send"
+                                        style={{...BTN, padding: '3px 10px'}}
+                                        onClick={this.onSerialSend}
+                                        title={this.tx('serialSend')}
+                                    >{'⏎'}</button>
+                                </div>
+                            ) : null}
+                        </React.Fragment>}
                     </div>
                 ) : null}
 

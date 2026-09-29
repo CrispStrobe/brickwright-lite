@@ -39,7 +39,7 @@ import {
     setCondition, conditionOf, allConditions
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
-import {createReadyGatedInput} from './ready-gated-input.js';
+import {createLinuxConsole} from './linux-console.js';
 import {cpmFileName} from './cpm-z80.js';
 import { canRecordDebugInput } from 'bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
@@ -794,6 +794,13 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      */
     let serialTerminal = false;
     let serialEsc = 0;                 // 0 text, 1 after ESC, 2 inside CSI
+    /**
+     * The RAW byte stream for a terminal emulator (the Linux lesson's xterm),
+     * or null. The line buffer above flattens escape sequences away; a real
+     * terminal needs every byte — cursor moves, erases, colours — to draw
+     * `vi`, `top` and ash's line editing. Delivered once per frame.
+     */
+    let terminalOutput = null;
     /** Per-frame boot-progress hook for the Linux lesson, or null. */
     let linuxProgressWatch = null;
     /**
@@ -1490,6 +1497,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         engineNotes = [];
         serialTerminal = false;
         serialEsc = 0;
+        terminalOutput = null;
+        delete runner.terminal;
         linuxProgressWatch = null;
         const device = String(projectStc(null)?.device || '').toLowerCase();
         const selectedTargetKind = selectDebugTargetKind(device, targetKind);
@@ -2312,6 +2321,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // LINE-buffer the byte stream: one array entry per byte rendered
             // "B\nB\nC\n…" in the console. CR is display noise; LF ends a line.
             adapter.onSerial((byte) => {
+                if (terminalOutput) terminalOutput.push(byte);
                 const ch = String.fromCharCode(byte & 0x7f);
                 if (serialTerminal) {
                     // ESC [ params final — swallowed whole (the final byte is
@@ -2739,30 +2749,32 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         serialTerminal = true;
         serialEsc = 0;
+        // THE CONSOLE IS A TERMINAL (linux-console.js — the same module the
+        // Node test boots Linux under). Input: raw key bytes, HELD until the
+        // shell is listening (bytes sent while the kernel boots are dropped:
+        // the 8250 driver clears the receive FIFO at port start-up), then fed
+        // to the 16550A a FIFO's worth at a time as the guest drains it.
+        // Output: the raw byte stream, for the panel's terminal emulator.
+        // BUILT BEFORE THE BENCH IS WIRED: a machine restored from the
+        // snapshot hands its boot log (the prompt included) to the FIRST
+        // serial listener, which wireMachineBench registers — terminalOutput
+        // must already be there, or the terminal opens blank.
+        const linuxConsole = createLinuxConsole({target: result.target, adapter: result.adapter || result});
+        terminalOutput = linuxConsole.output;
         wireMachineBench(result, createDebugSession);
-        // HOLD console input until the shell is listening. Bytes sent while
-        // the kernel boots are dropped (the 8250 driver clears the receive FIFO
-        // at port start-up; nothing reads the tty before init opens it), so
-        // they are queued here and flushed, in order, the frame the prompt is
-        // up. See ready-gated-input.js.
-        const linuxTarget = target;
-        const gatedInput = createReadyGatedInput({
-            isReady: () => !!(linuxTarget.linuxProgress() || {}).ready,
-            send: byte => linuxTarget.sendSerial(byte)
-        });
-        runner.sendSerial = (data) => {
-            if (typeof data === 'number') return gatedInput.push(data);
-            const text = String(data);
-            for (let i = 0; i < text.length; i++) {
-                if (gatedInput.push(text.charCodeAt(i)) === false) return false;
-            }
-            return true;
+        runner.sendSerial = data => linuxConsole.send(data);
+        runner.terminal = {
+            id: linuxConsole.id,
+            cols: linuxConsole.cols,
+            rows: linuxConsole.rows,
+            subscribe: sink => linuxConsole.output.subscribe(sink),
+            send: data => linuxConsole.send(data)
         };
         let shown = '';
         linuxProgressWatch = () => {
             const p = target && typeof target.linuxProgress === 'function' ? target.linuxProgress() : null;
             if (!p) return;
-            gatedInput.flush();
+            linuxConsole.frame();
             const key = `${p.phase}:${p.percent}`;
             if (key === shown) return;
             shown = key;
