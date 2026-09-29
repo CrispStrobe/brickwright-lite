@@ -353,10 +353,16 @@ async function arenaPane () {
         const verdict = await banner.getAttribute('data-verdict');
         const text = await banner.textContent();
         await pane.screenshot({path: resolve(artifacts, 'spike-arena-pass.png'), fullPage: true});
-        await dumpTrace(verdict);
-        if (verdict !== 'pass') throw new Error(`the reference solution did not pass in the browser: ${verdict} "${text}"`);
+        // Printed on failure only: on a pass it is noise in every run's log.
+        if (verdict !== 'pass') {
+            await dumpTrace(verdict);
+            throw new Error(`the reference solution did not pass in the browser: ${verdict} "${text}"`);
+        }
         console.log(`  ok: pass banner: "${text}"`);
-        if (errors.length) throw new Error(`SPIKE arena page errors: ${errors.join(' | ')}`);
+        if (errors.length) {
+            await dumpTrace('page errors');
+            throw new Error(`SPIKE arena page errors: ${errors.join(' | ')}`);
+        }
         console.log('SPIKE arena pane passed.');
     } finally {
         await pane.close();

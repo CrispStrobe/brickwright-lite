@@ -120,7 +120,9 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
  * @param {function} [options.vmStepsOn] run the browser pane's frame loop
  *   instead of lockstep: animation frames arrive every FRAME_MS of wall time,
  *   and the VM gets a step only on frames where vmStepsOn(frameIndex) is true
- *   (a loaded runner whose VM interval stalls or falls behind its rAF). Each
+ *   (a loaded runner whose VM interval stalls or falls behind its rAF). A
+ *   number is a step COUNT for that frame: 2 is two VM steps in the same
+ *   millisecond (a loaded browser firing its setInterval back to back). Each
  *   frame's simulated time comes from the pane's own rule, frameSimMs
  *   (lib/spike-arena/arena-clock.js).
  * @param {number} [options.maxFrames] frame budget for the pane loop
@@ -210,7 +212,11 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
         let lastFrame = null;
         for (let frame = 0; frame < maxFrames; frame++) {
             await clock.advance(FRAME_MS);
-            if (!pane || vmStepsOn(frame)) {
+            // vmStepsOn may return a COUNT: a loaded browser's setInterval can
+            // fire twice with almost no wall time between, and those steps see
+            // the same Date.now().
+            const steps = pane ? Number(vmStepsOn(frame)) : 1;
+            for (let i = 0; i < steps; i++) {
                 vm.runtime._step();
                 await settle();
             }
