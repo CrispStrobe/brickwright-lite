@@ -356,6 +356,8 @@ class DebugPanel extends React.Component {
         // `kernel` + `initrd` slots, both sha256-checked by activateConfig).
         // Its own line, for the same fixed-field-list reason as above.
         const {linuxInitrd} = e.detail || {};
+        // Its post-boot snapshot (the lesson's default Run), likewise.
+        const {linuxSnapshot} = e.detail || {};
         const {nativeBlocks, machinePreset, i80386Media} = e.detail || {};
         if (!bytes && !riscvImage) return;
         // THE SAME LOAD, DELIVERED TWICE. circuit-tab stashes every media-load
@@ -374,6 +376,8 @@ class DebugPanel extends React.Component {
             riscvEcallTraps: riscvEcallTraps || false,
             linuxInitrd: linuxInitrd
                 ? (linuxInitrd instanceof Uint8Array ? linuxInitrd : new Uint8Array(linuxInitrd)) : null,
+            linuxSnapshot: linuxSnapshot
+                ? (linuxSnapshot instanceof Uint8Array ? linuxSnapshot : new Uint8Array(linuxSnapshot)) : null,
             profile: profile || null,
             name: name || null,
             nativeBlocks: kind === 'i80386' && nativeBlocks === true,

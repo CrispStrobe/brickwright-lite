@@ -180,8 +180,9 @@ export async function activateConfig(config, opts = {}) {
     const media = {};
     const warnings = [];
     // A Linux kernel's initramfs is the same kind of companion: a `kernel`
-    // boot needs its `initrd` before the first instruction runs.
-    for (const extraSlot of ['bios', 'vga-rom', 'initrd',
+    // boot needs its `initrd` before the first instruction runs — and its
+    // `snapshot`, when the config has one, to open at the shell prompt.
+    for (const extraSlot of ['bios', 'vga-rom', 'initrd', 'snapshot',
         ...(cfg.machine === 'i80386' && machinePreset === 'freedos-vga'
             ? ['hdd', 'floppy'] : [])]) {
         if (extraSlot !== bootSlotId && cfg.slots[extraSlot]) {

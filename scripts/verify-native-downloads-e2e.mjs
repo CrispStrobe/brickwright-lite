@@ -175,7 +175,7 @@ try {
                 const toolchainBytes = toolchainDownload.bytes.byteLength;
                 const kernelDownload = await download(
                     'https://raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/' +
-                    '5b257a33fb748885bd952d8b8b281c76f0b36516/riscv32-linux/Image', 'machine image', 40000);
+                    '07132874ee064fa782f80ccae64af8d75cae65c8/riscv32-linux/Image', 'machine image', 40000);
                 const kernelResponse = kernelDownload.response;
                 const kernel = kernelDownload.bytes;
                 stage = 'machine image digest';

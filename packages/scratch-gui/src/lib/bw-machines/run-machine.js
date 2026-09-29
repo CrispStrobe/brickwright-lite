@@ -69,6 +69,11 @@ export async function runMachineConfig(config, opts = {}) {
     if (activated.media && activated.media.initrd && activated.media.initrd.bytes) {
         detail.linuxInitrd = activated.media.initrd.bytes;
     }
+    // ...and, with a `snapshot` slot, opens at the shell prompt (bw-board
+    // restores the snapshot on top of exactly these kernel + initramfs bytes).
+    if (activated.media && activated.media.snapshot && activated.media.snapshot.bytes) {
+        detail.linuxSnapshot = activated.media.snapshot.bytes;
+    }
     if (activated.targetKind === 'i80386') {
         for (const slot of ['bios', 'vga-rom', 'hdd', 'floppy']) {
             const bytes = activated.media?.[slot]?.bytes;

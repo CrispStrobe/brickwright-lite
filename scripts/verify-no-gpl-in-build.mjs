@@ -18,6 +18,7 @@
  */
 import {existsSync, readdirSync, readFileSync, statSync, openSync, readSync, closeSync} from 'node:fs';
 import {join, relative, resolve} from 'node:path';
+import {gunzipSync, constants as zlibConstants} from 'node:zlib';
 import {contentOffences} from './lib/lgpl-sparse-tripwire.mjs';
 
 const build = resolve(process.argv[2] || 'packages/scratch-gui/build');
@@ -44,9 +45,16 @@ const FORBIDDEN_FILES = new Map([
  * from brickwright-media-lab (lib/bw-machines/lessons.js) and must never be
  * copied into this output under any filename. A RISC-V Linux `Image` carries
  * the magic "RSC\x05" at byte 0x38 (Documentation/riscv/boot-image-header);
- * a newc initramfs starts "070701" (or "070702" with checksums).
+ * a newc initramfs starts "070701" (or "070702" with checksums). The lesson's
+ * post-boot SNAPSHOT (the machine at the shell prompt, holding kernel and
+ * BusyBox memory) starts "BWRV32S1" (bw-board src/riscv32-snapshot.js) — and is
+ * shipped gzip'd, so a gzip stream is opened far enough to read that magic.
  */
+const SNAPSHOT_MAGIC = 'BWRV32S1';
 const bootMediaOffence = head => {
+    if (head.length >= 8 && String.fromCharCode(...head.subarray(0, 8)) === SNAPSHOT_MAGIC) {
+        return 'a RISC-V Linux machine snapshot (kernel + BusyBox memory, GPL-2.0) — fetched at run time, never bundled';
+    }
     if (head.length >= 0x3c && head[0x38] === 0x52 && head[0x39] === 0x53 && head[0x3a] === 0x43 &&
         head[0x3b] === 0x05) {
         return 'a RISC-V Linux kernel Image (GPL-2.0) — fetched at run time from brickwright-media-lab, never bundled';
@@ -61,7 +69,18 @@ const headOf = file => {
     try {
         const buf = new Uint8Array(64);
         const n = readSync(fd, buf, 0, 64, 0);
-        return buf.subarray(0, n);
+        if (n < 2 || buf[0] !== 0x1f || buf[1] !== 0x8b) return buf.subarray(0, n);
+        // gzip: what matters is what it inflates to. The first 64 KiB of the
+        // stream is plenty for a 64-byte head; a truncated stream is fine
+        // with SYNC_FLUSH, and anything that will not inflate is judged raw.
+        const big = new Uint8Array(65536);
+        const m = readSync(fd, big, 0, big.length, 0);
+        try {
+            const out = gunzipSync(big.subarray(0, m), {finishFlush: zlibConstants.Z_SYNC_FLUSH});
+            return new Uint8Array(out.buffer, out.byteOffset, Math.min(64, out.length));
+        } catch {
+            return buf.subarray(0, n);
+        }
     } finally { closeSync(fd); }
 };
 

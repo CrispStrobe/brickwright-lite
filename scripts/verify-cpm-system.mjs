@@ -180,19 +180,32 @@ try {
 
 // ─── LINUX ON RISC-V — the Machine Manager's lesson row ─────────────────────
 // Same surface, second machine: a fresh page (no CP/M state), the built-in
-// "Linux on RISC-V" row, its GPL licence line and source link, Run. The kernel
-// and initramfs are fetched from brickwright-media-lab (raw CDN at a pinned
-// commit) and sha256-checked by the app before anything boots — nothing GPL is
-// in this build. Then the real Linux 6.1 boots to the `bwb# ` prompt, `uname
-// -a` is typed into the serial input and "Linux … riscv32" is read back. Every
-// wait is a condition (waitForFunction), none a sleep. The boot time printed
-// here is the one a learner sees: Run click → prompt, fetch included.
+// "Linux on RISC-V" row, its GPL licence line and source link, Run. The kernel,
+// initramfs and post-boot snapshot are fetched from brickwright-media-lab (raw
+// CDN at a pinned commit) and sha256-checked by the app before anything runs —
+// nothing GPL is in this build. Run OPENS AT THE PROMPT: bw-board restores the
+// snapshot (a refusal would fall back to a cold boot and log it — that log is a
+// failure here). The replayed boot log must be in the console, `uname -a` is
+// typed into the serial input and "Linux … riscv32" read back. Then "Boot from
+// scratch" on a fresh page boots the real kernel all the way to the prompt.
+// Every wait is a condition (waitForFunction), none a sleep. The times printed
+// are the ones a learner sees: button click → prompt, fetch included.
 const LINUX_ARTIFACTS = join(root, 'artifacts', 'linux-riscv');
-try {
+const PROMPT_UP = `(() => {
+    const el = document.querySelector('[data-testid="bw-serial-console"]');
+    const now = el ? el.textContent : '';
+    const prev = window.__bwLinuxPrev;
+    window.__bwLinuxPrev = now;
+    return now.includes('BWB-LINUX-USERSPACE-UP') && /bwb# $/.test(now) && prev === now;
+})()`;
+const timing = {};
+// One lesson start: fresh page, the row, a button, wait for the prompt.
+async function startLinux(button, inspectRow = null) {
     const page = await browser.newPage({viewport: {width: 1440, height: 960}});
-    const linuxErrors = [];
+    const errors = [], warnings = [];
     page.on('dialog', d => d.accept());
-    page.on('pageerror', e => linuxErrors.push(`pageerror: ${e.stack || e.message}`));
+    page.on('pageerror', e => errors.push(`pageerror: ${e.stack || e.message}`));
+    page.on('console', m => { if (/Linux snapshot refused/.test(m.text())) warnings.push(m.text()); });
     await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('bw-starter-v1-complete', '1'); indexedDB.deleteDatabase('bw-machines'); } catch { /* */ } });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
@@ -201,21 +214,14 @@ try {
     await device.selectOption('__manage__');
     const row = page.getByTestId('bw-mm-lesson').filter({hasText: 'Linux on RISC-V'});
     await row.waitFor({state: 'visible', timeout: 15000});
-    const licence = await row.getByTestId('bw-mm-lesson-licence').textContent();
-    check(/GPL-2\.0/.test(licence) && /LGPL-2\.1/.test(licence) && /brickwright-media-lab/.test(licence),
-        'the Linux lesson row carries its GPL/LGPL licence line and names where the media come from',
-        licence.replace(/\s+/g, ' ').slice(0, 160));
-    const href = await row.getByTestId('bw-mm-lesson-source').getAttribute('href');
-    check(href === 'https://github.com/CrispStrobe/brickwright-media-lab/releases/tag/riscv32-linux-v1',
-        'the source link points at the release that carries the corresponding source', href || '(none)');
-
+    if (inspectRow) await inspectRow(row);
     const t0 = Date.now();
-    await row.getByTestId('bw-mm-lesson-run').click();
+    await row.getByTestId(button).click();
     // The modal closes once the media are fetched and verified; a refusal
     // (a sha256 mismatch names the slot) keeps it open with the reason.
     await page.getByTestId('bw-machine-manager').waitFor({state: 'detached', timeout: 60000}).catch(async () => {
         const why = await page.getByTestId('bw-mm-status').textContent().catch(() => '');
-        throw new Error(`the Linux lesson did not start: ${why}`);
+        throw new Error(`the Linux lesson did not start (${button}): ${why}`);
     });
     const fetched = (Date.now() - t0) / 1000;
     const openDebugger = page.getByTestId('bw-open-circuit-debugger');
@@ -225,15 +231,29 @@ try {
     // anywhere in the scrollback proves nothing about now; the prompt must end
     // the console and the text must have stopped growing (the shell is waiting,
     // not mid-print). Only then is the command typed.
-    await page.waitForFunction(`(() => {
-        const el = document.querySelector('[data-testid="bw-serial-console"]');
-        const now = el ? el.textContent : '';
-        const prev = window.__bwLinuxPrev;
-        window.__bwLinuxPrev = now;
-        return now.includes('BWB-LINUX-USERSPACE-UP') && /bwb# $/.test(now) && prev === now;
-    })()`, null, {timeout: 120000, polling: 100});
-    const booted = (Date.now() - t0) / 1000;
-    check(true, `Linux booted to the bwb# prompt in the browser — ${booted.toFixed(1)} s from Run (media fetched + verified in ${fetched.toFixed(1)} s)`);
+    await page.waitForFunction(PROMPT_UP, null, {timeout: 120000, polling: 100});
+    const prompt = (Date.now() - t0) / 1000;
+    return {page, errors, warnings, fetched, prompt};
+}
+try {
+    // ── Run: the snapshot ──
+    const run = await startLinux('bw-mm-lesson-run', async row => {
+        const licence = await row.getByTestId('bw-mm-lesson-licence').textContent();
+        check(/GPL-2\.0/.test(licence) && /LGPL-2\.1/.test(licence) && /brickwright-media-lab/.test(licence),
+            'the Linux lesson row carries its GPL/LGPL licence line and names where the media come from',
+            licence.replace(/\s+/g, ' ').slice(0, 160));
+        const href = await row.getByTestId('bw-mm-lesson-source').getAttribute('href');
+        check(href === 'https://github.com/CrispStrobe/brickwright-media-lab/releases/tag/riscv32-linux-v1',
+            'the source link points at the release that carries the corresponding source', href || '(none)');
+        check(await row.getByTestId('bw-mm-lesson-cold').count() === 1, 'the row offers "Boot from scratch" beside Run');
+    });
+    const {page} = run;
+    timing.snapshot = {fetchedSeconds: run.fetched, promptSeconds: run.prompt};
+    check(!run.warnings.length, 'Run opened the post-boot snapshot (no refusal, no fallback to a cold boot)', run.warnings.join(' | '));
+    check(true, `Linux at the bwb# prompt from the snapshot — ${run.prompt.toFixed(1)} s from Run (media fetched + verified in ${run.fetched.toFixed(1)} s)`);
+    const log = await page.evaluate(SERIAL);
+    check(/Linux version 6\.1\.\d+/.test(log) && /Run \/init as init process/.test(log),
+        'the boot log is in the console (replayed from the snapshot), not only the prompt', JSON.stringify(log.slice(0, 120)));
 
     // THE ANSWER MUST BE NEW. Mark the console before typing and read only
     // what arrives after the mark: the echoed command, then a line that is
@@ -260,11 +280,23 @@ try {
     check(ANSWER.test(after),
         'uname -a typed into the serial console answers "Linux … riscv32 GNU/Linux" on a NEW line after the command',
         JSON.stringify(after.slice(-200)) || '(nothing after the command)');
-    check(!linuxErrors.length, 'no page errors during the Linux boot', linuxErrors.slice(0, 2).join(' | '));
+    check(!run.errors.length, 'no page errors while opening Linux from the snapshot', run.errors.slice(0, 2).join(' | '));
     await mkdir(LINUX_ARTIFACTS, {recursive: true});
     await writeFile(join(LINUX_ARTIFACTS, 'serial.txt'), unameText || '(no serial output)');
-    await writeFile(join(LINUX_ARTIFACTS, 'timing.json'), JSON.stringify({fetchedSeconds: fetched, promptSeconds: booted}, null, 2));
     await page.screenshot({path: join(LINUX_ARTIFACTS, 'linux-riscv.png'), fullPage: true});
+    await page.close();
+
+    // ── Boot from scratch: the whole kernel boot ──
+    const cold = await startLinux('bw-mm-lesson-cold');
+    timing.cold = {fetchedSeconds: cold.fetched, promptSeconds: cold.prompt};
+    check(true, `Boot from scratch reached the bwb# prompt — ${cold.prompt.toFixed(1)} s from the click (media fetched + verified in ${cold.fetched.toFixed(1)} s)`);
+    check(!cold.errors.length, 'no page errors during the cold Linux boot', cold.errors.slice(0, 2).join(' | '));
+    // Relative, so a slow runner cannot flip it: the snapshot must beat a real
+    // boot by a wide margin, or it is not what reached the prompt.
+    check(run.prompt < cold.prompt / 2,
+        `the snapshot opens at the prompt in under half the cold boot's time (${run.prompt.toFixed(1)} s vs ${cold.prompt.toFixed(1)} s)`);
+    await cold.page.close();
+    await writeFile(join(LINUX_ARTIFACTS, 'timing.json'), JSON.stringify(timing, null, 2));
 } catch (e) {
     check(false, 'the Linux lesson flow ran without throwing', String(e.message || e).slice(0, 200));
 } finally {
