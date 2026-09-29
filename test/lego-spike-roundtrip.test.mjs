@@ -168,8 +168,15 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // EV3 words (ev3Dialect.js). Its command words exist on DEVICE EV3 only and
     // its reporters all start `ev3`, so no SPIKE line can read differently;
     // the assertions re-ran at the pin.
+    // PIN MOVED b58a2254 -> a2032f71 (2026-09-29, sb3-creator#40, task D1):
+    // this one DOES touch the SPIKE path. It adds five SPIKE words (gyro rate,
+    // raw colour channel, centre light, volume, distance lights) and closes
+    // seven SPIKE 3 Python refusals. It changes no existing spelling: every word
+    // this fixture uses parses and decompiles as before, and
+    // test/spike3-python-arena-d1.test.mjs runs the new ones in the arena.
+    // The assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'b58a2254c3b16280a52e5ce4d8a8a5da1d1fa525');
+        'a2032f71ba3f6af6f98df69d2dfa9f43a7eb1327');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

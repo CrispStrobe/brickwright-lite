@@ -577,6 +577,14 @@ export default {
                 "PORT"
             ]
         },
+        "getColorRGB": {
+            "kind": "reporter",
+            "method": "getColorRGB",
+            "args": [
+                "PORT",
+                "CHANNEL"
+            ]
+        },
         "getForce": {
             "kind": "reporter",
             "method": "getForce",
