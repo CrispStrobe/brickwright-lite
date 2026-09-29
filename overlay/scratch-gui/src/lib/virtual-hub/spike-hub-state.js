@@ -11,7 +11,12 @@ const makeData = () => ({
     classicPorts: Array.from({length: 6}, () => [0, []]),
     imu: {faceUp: 0, yaw: 0, pitch: 0, roll: 0,
         acceleration: {x: 0, y: 0, z: 1000}, angularVelocity: {x: 0, y: 0, z: 0}},
-    buttons: {left: false, center: false, right: false}, lastCommand: null, lastPython: null
+    buttons: {left: false, center: false, right: false}, lastCommand: null, lastPython: null,
+    // What a program set on the hub's outputs that no sensor reports back:
+    // the centre button light (the hub LED palette number, 0-11), the speaker
+    // volume (percent) and each distance sensor's four eye lights (0-9, in
+    // top-left, top-right, bottom-left, bottom-right order), by port index.
+    centerLight: 0, volume: 100, distanceLights: Array.from({length: 6}, () => null)
 });
 const wrap180 = degrees => {
     const wrapped = ((degrees + 180) % 360 + 360) % 360 - 180;

@@ -113,7 +113,7 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
  * Runs one program against one challenge.
  * @param {string} source DEVICE SPIKE .bw text
  * @param {object} world a validated challenge world
- * @returns {Promise<{verdict, snapshot, frames, calls, hub, unsupported}>}
+ * @returns {Promise<{verdict, snapshot, frames, calls, hub, unsupported, variables}>}
  */
 /**
  * @param {object} [options]
@@ -232,7 +232,12 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
             if (verdict.status !== 'running') break;
         }
         paneClock.uninstall();
-        return {verdict, snapshot: bridge.snapshot(), frames, calls, hub, unsupported, views};
+        // The program's variables at the end, by name: what its reporters read.
+        const variables = {};
+        for (const target of vm.runtime.targets) {
+            for (const variable of Object.values(target.variables || {})) variables[variable.name] = variable.value;
+        }
+        return {verdict, snapshot: bridge.snapshot(), frames, calls, hub, unsupported, views, variables};
     } finally {
         try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }
         try { if (registration) registration.unregister(); } catch { /* noop */ }

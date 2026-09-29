@@ -42,6 +42,7 @@ else.
 | `data.sensors[i]` for colour, distance, force | the arena, via `hubState.updateSensor` | every route |
 | `data.imu.yaw`, `angularVelocity.z` | the arena, via `hubState.setHeading` | every route |
 | yaw zero | the program, via `hubState.resetYaw(value)` (`hub.motion.reset_yaw()`, `motion_sensor.reset_yaw(0)`) | `setHeading` |
+| `data.display` (25 levels 0-9, pixel (x, y) at `y*5+x`), `centerLight` (hub LED palette 0-11), `volume` (%), `distanceLights[i]` (four levels 0-9: top-left, top-right, bottom-left, bottom-right) | the program's statements (`spike-hub-commands.js`); no sensor reports them back | panels, tests |
 | simulated time | **the arena**, while it is running: `bridge.tick(ms)` calls `hubState.stepMotors(dt)` in fixed 5 ms steps | — |
 
 **One clock.** Motor positions advance only inside `hubState.stepMotors(dtMs)`.
@@ -117,7 +118,12 @@ spikeprime extension actually sends, so both of its routes reach the model:
   and the extension's `exec("…motors = MotorPair('A', 'B')")` definition and
   its guarded form (`try: motors / except NameError: …`), which sets the pair
   only while the hub has none (`hubState.motorPairDefined`),
-  `hub.motion.{reset_yaw, preset_yaw}`, `motion_sensor.reset_yaw`.
+  `hub.motion.{reset_yaw, preset_yaw}`, `motion_sensor.reset_yaw`,
+  and the hub's outputs (task D1): `hub.display.pixel(x, y, level)`,
+  `hub.display.show(" ")` (clear), `hub.display.show(hub.Image("…"))`,
+  `hub.led(n)`, `hub.sound.volume(v)`, and a distance sensor's lights
+  as the extension sends them (`dist_sensor = hub.port.X.device;
+  dist_sensor.mode(5, bytes([tl, tr, bl, br]))`).
 - SPIKE 2 route (Classic): the same REPL lines, plus JSON-RPC
   `scratch.motor_{start, stop, run_for_degrees, run_timed,
   go_to_relative_position}`, `scratch.move_{start_speeds, tank_degrees,
@@ -165,7 +171,24 @@ while in contact and stop at walls; they do not rotate.
   force then reads 60 %. The pressed button counts as the robot touching
   that thing (`touch`, `noTouch`, `noWallContact`).
 - IMU: yaw follows the world heading, clockwise positive, zeroed at start and on
-  `reset_yaw`; pitch and roll stay 0 (the mat is flat).
+  `reset_yaw`; pitch and roll stay 0 (the mat is flat). `angularVelocity.z` is
+  the world's turn rate in deg/s, clockwise positive (the drive base turning in
+  place at 20 % reads 111 deg/s); x and y stay 0.
+
+**SPIKE 3 Python functions the arena and hub carry since task D1** (the full
+before -> after table of all 34 former refusals is in `docs/SPIKE3-PYTHON.md`):
+
+| SPIKE 3 Python | Before | After | What produces it |
+|---|---|---|---|
+| `color_sensor.rgbi(p)[0..2]` | refused | mapped | the arena's raw RGB of the mat colour under the sensor |
+| `motion_sensor.angular_velocity()[i]` | refused | approximate | the arena's turn rate (`angularVelocity.z`), in decidegrees/s, SPIKE 3 sign |
+| `light_matrix.show([25])` | refused | approximate | `data.display` |
+| `light.color(light.POWER, c)` | refused | approximate | `data.centerLight` |
+| `sound.volume(v)` | refused | mapped | `data.volume` |
+| `distance_sensor.show / clear` | refused | approximate / mapped | `data.distanceLights` |
+
+`test/spike3-python-arena-d1.test.mjs` runs each from imported Python in the
+arena, mutation-checked.
 
 **Not modelled:** acceleration and inertia, wheel slip in free driving, motor
 stall, sensor noise, ambient light, a sloped or bumpy mat, objects rotating.
