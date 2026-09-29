@@ -20,11 +20,12 @@ export const CONDITION_TYPES = Object.freeze({
     avoid: ['zone'],
     stayIn: ['zone'],
     noWallContact: [],
-    noTouch: ['object']
+    noTouch: ['object'],
+    noStopIn: ['zone']
 });
 
 const SUCCESS_TYPES = new Set(['reach', 'stopIn', 'heading', 'sequence', 'touch', 'push']);
-const FAILURE_TYPES = new Set(['avoid', 'stayIn', 'noWallContact', 'noTouch']);
+const FAILURE_TYPES = new Set(['avoid', 'stayIn', 'noWallContact', 'noTouch', 'noStopIn']);
 const SHAPE_TYPES = new Set(['rect', 'circle', 'polygon', 'line']);
 
 const isNumber = value => typeof value === 'number' && Number.isFinite(value);
@@ -103,6 +104,12 @@ export const validateWorld = world => {
     checkConditions(world.success, SUCCESS_TYPES, 'success');
     if (Array.isArray(world.success) && !world.success.length) errors.push('success: at least one condition');
     checkConditions(world.failure || [], FAILURE_TYPES, 'failure');
+    if (world.stages !== undefined) {
+        // One label per success condition, in the same order: stage i is success[i].
+        if (!Array.isArray(world.stages) || !Array.isArray(world.success) || world.stages.length !== world.success.length) {
+            errors.push('stages: one label per success condition');
+        } else world.stages.forEach((stage, i) => checkText(stage, `stages[${i}]`, errors));
+    }
     return errors;
 };
 

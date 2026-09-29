@@ -1,0 +1,20 @@
+DEVICE SPIKE
+
+# Mapping 2 - back to the find (reference solution).
+GLOBAL steps
+GLOBAL found
+GLOBAL back
+
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  set steps to 0
+  set found to 0
+  REPEAT UNTIL spike distance D < 10:
+    move forward 5 cm
+    change steps by 1
+    IF spike color C is yellow THEN:
+      IF found = 0 THEN:
+        set found to steps
+  set back to ((steps - found) * 5)
+  move backward back cm

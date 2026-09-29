@@ -11,7 +11,13 @@
 //   - success conditions of the "latched" kinds (reach, touch, sequence) stay
 //     met once met; the "state" kinds (stopIn, heading, push) must hold NOW;
 //   - the run passes on the first tick at which every success condition is met;
-//   - it fails when the time limit passes first.
+//   - it fails when the time limit passes first;
+//   - a world with `stages` (one label per success condition) is judged the
+//     same way, and its verdict also lists which stages are met, for partial
+//     credit: a run that fails still says how far it got. A stage counts as
+//     the run leaves it, exactly as the pass is judged: a latched kind once
+//     met stays met, a state kind (a crate on the depot) counts only if it
+//     still holds - a crate pushed on and off again is not delivered.
 
 import {wrap180, convexPieces, pointInShape, polygonOverlapsPieces} from './geometry.js';
 
@@ -22,6 +28,13 @@ export const DEFAULT_HOLD_MS = 600;
 const stopped = view => Math.abs(view.speed) < STOPPED.speed && Math.abs(view.turnRate) < STOPPED.turnRate;
 const centre = view => [view.pose.x, view.pose.y];
 
+/** Centre inside the zone and stopped there for holdMs. */
+const parkedIn = (c, view, memory, ctx) => {
+    const inside = pointInShape(centre(view), ctx.zone(c.zone).shape) && stopped(view);
+    memory.since = inside ? (memory.since ?? view.timeMs) : null;
+    return inside && view.timeMs - memory.since >= (c.holdMs ?? DEFAULT_HOLD_MS);
+};
+
 /**
  * One evaluator per condition type. Each gets (condition, view, memory, ctx)
  * and returns true when the condition is met (success) or VIOLATED (failure).
@@ -29,11 +42,7 @@ const centre = view => [view.pose.x, view.pose.y];
  */
 export const EVALUATORS = {
     reach: (c, view, memory, ctx) => pointInShape(centre(view), ctx.zone(c.zone).shape),
-    stopIn: (c, view, memory, ctx) => {
-        const inside = pointInShape(centre(view), ctx.zone(c.zone).shape) && stopped(view);
-        memory.since = inside ? (memory.since ?? view.timeMs) : null;
-        return inside && view.timeMs - memory.since >= (c.holdMs ?? DEFAULT_HOLD_MS);
-    },
+    stopIn: (c, view, memory, ctx) => parkedIn(c, view, memory, ctx),
     heading: (c, view, memory, ctx) => {
         const drift = Math.hypot(view.pose.x - ctx.start.x, view.pose.y - ctx.start.y);
         const ok = Math.abs(wrap180(view.pose.heading - (ctx.start.heading || 0) - c.target)) <= (c.tolerance ?? 6) &&
@@ -54,7 +63,10 @@ export const EVALUATORS = {
     avoid: (c, view, memory, ctx) => polygonOverlapsPieces(view.footprint, ctx.pieces(c.zone)),
     stayIn: (c, view, memory, ctx) => !pointInShape(centre(view), ctx.zone(c.zone).shape),
     noWallContact: (c, view) => view.touching.includes('wall'),
-    noTouch: (c, view) => view.touching.includes(c.object)
+    noTouch: (c, view) => view.touching.includes(c.object),
+    // Parking in the wrong place: a report given by where the rover stops
+    // (a count, a position) is wrong the moment it settles in another bay.
+    noStopIn: (c, view, memory, ctx) => parkedIn(c, view, memory, ctx)
 };
 
 const LATCHED = new Set(['reach', 'touch', 'sequence']);
@@ -64,7 +76,7 @@ export const REASONS = {
     reach: 'pass.reached', stopIn: 'pass.stoppedIn', heading: 'pass.heading', sequence: 'pass.sequence',
     touch: 'pass.touched', push: 'pass.pushed',
     avoid: 'fail.enteredZone', stayIn: 'fail.leftZone', noWallContact: 'fail.hitWall', noTouch: 'fail.touched',
-    timeLimit: 'fail.timeLimit'
+    noStopIn: 'fail.stoppedIn', timeLimit: 'fail.timeLimit'
 };
 
 export class ArenaChecker {
@@ -85,7 +97,12 @@ export class ArenaChecker {
         this.memory = (this.world.success || []).map(() => ({}));
         this.failMemory = (this.world.failure || []).map(() => ({}));
         this.met = (this.world.success || []).map(() => false);
-        this.verdict = {status: 'running', reason: null, params: {}, timeMs: 0};
+        this.verdict = {status: 'running', reason: null, params: {}, timeMs: 0, ...this._stages()};
+    }
+
+    /** Partial credit: which stages are met now. Only a world with stages reports them. */
+    _stages () {
+        return Array.isArray(this.world.stages) ? {stages: this.met.slice()} : {};
     }
 
     /** Evaluates one snapshot; returns (and keeps) the verdict. A decided verdict does not change. */
@@ -111,14 +128,15 @@ export class ArenaChecker {
         if (view.timeMs >= this.world.timeLimitMs) {
             return this._decide('fail', REASONS.timeLimit, {seconds: Math.round(this.world.timeLimitMs / 1000)}, view);
         }
-        this.verdict = {...this.verdict, timeMs: view.timeMs, progress: this.met.filter(Boolean).length, of: this.met.length};
+        this.verdict = {...this.verdict, timeMs: view.timeMs, progress: this.met.filter(Boolean).length, of: this.met.length,
+            ...this._stages()};
         return this.verdict;
     }
 
     _decide (status, reason, condition, view) {
         const params = {};
         for (const key of ['zone', 'object', 'target', 'seconds']) if (condition[key] !== undefined) params[key] = condition[key];
-        this.verdict = {status, reason, params, timeMs: view.timeMs};
+        this.verdict = {status, reason, params, timeMs: view.timeMs, ...this._stages()};
         return this.verdict;
     }
 }

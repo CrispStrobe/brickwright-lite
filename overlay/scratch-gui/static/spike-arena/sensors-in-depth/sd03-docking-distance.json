@@ -1,0 +1,75 @@
+{
+  "id": "sd03-docking-distance",
+  "title": {
+    "en": "Docking distance",
+    "de": "Andockabstand"
+  },
+  "intro": {
+    "en": "The charging arm on the station wall reaches exactly 20 cm. Drive towards the wall and stop when the distance sensor reads less than 20 cm - close enough for the arm, without touching the wall.",
+    "de": "Der Ladearm an der Stationswand reicht genau 20 cm weit. Fahre auf die Wand zu und halte an, sobald der Abstandssensor weniger als 20 cm misst - nah genug für den Arm, ohne die Wand zu berühren."
+  },
+  "hints": [
+    {
+      "en": "A moving rover never reads exactly 20: between two readings it has already moved on. Compare with \"less than\".",
+      "de": "Ein fahrender Rover misst nie genau 20: Zwischen zwei Messungen ist er schon weitergefahren. Vergleiche mit „kleiner als“."
+    },
+    {
+      "en": "The distance sensor measures from the front of the rover, in centimetres.",
+      "de": "Der Abstandssensor misst von der Vorderseite des Rovers aus, in Zentimetern."
+    }
+  ],
+  "mat": {
+    "width": 170,
+    "height": 80,
+    "background": "white",
+    "paint": "#e7eff6",
+    "shapes": []
+  },
+  "walls": [
+    {
+      "shape": {
+        "type": "rect",
+        "x": 158,
+        "y": 40,
+        "w": 8,
+        "h": 80
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "dock",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 125,
+        "y": 40,
+        "w": 8,
+        "h": 80
+      },
+      "label": {
+        "en": "charging range",
+        "de": "Ladebereich"
+      }
+    }
+  ],
+  "start": {
+    "x": 20,
+    "y": 40,
+    "heading": 0
+  },
+  "timeLimitMs": 15000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "dock"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "sd03-docking-distance.bw",
+  "wrong": "sd03-docking-distance.wrong.bw"
+}

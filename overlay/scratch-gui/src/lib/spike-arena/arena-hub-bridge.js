@@ -71,12 +71,16 @@ export class ArenaHubBridge {
         this.verdict = this.checker.evaluate(this.sim.snapshot());
     }
 
-    /** Cm of wheel travel for a motor's position change, forward positive. */
+    /**
+     * Cm of wheel travel for a motor's position change, forward positive. A
+     * side may carry its own wheelDiameter (a worn or mismatched wheel, so the
+     * base drifts off a straight line); otherwise the base's applies.
+     */
     _wheelTravel (side) {
         const position = Number(this.hubState.data.motors[PORTS.indexOf(side.port)].position) || 0;
         const delta = position - this.lastPositions[side.port];
         this.lastPositions[side.port] = position;
-        return (side.reversed ? -delta : delta) / 360 * Math.PI * this.robot.wheelDiameter;
+        return (side.reversed ? -delta : delta) / 360 * Math.PI * (side.wheelDiameter ?? this.robot.wheelDiameter);
     }
 
     /** One fixed step: motors, then the world. */

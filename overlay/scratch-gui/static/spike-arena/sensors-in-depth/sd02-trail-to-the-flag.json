@@ -1,0 +1,145 @@
+{
+  "id": "sd02-trail-to-the-flag",
+  "title": {
+    "en": "Trail to the red flag",
+    "de": "Spur zur roten Fahne"
+  },
+  "intro": {
+    "en": "A black cable trail leads from the station to a weather mast marked by a red disc. Follow the left edge of the trail and stop as soon as the colour sensor sees red. Keep going past the end and you are lost in the snow.",
+    "de": "Eine schwarze Kabelspur führt von der Station zu einem Wettermast, der mit einer roten Scheibe markiert ist. Folge der linken Kante der Spur und halte an, sobald der Farbsensor Rot sieht. Fährst du über das Ende hinaus, verirrst du dich im Schnee."
+  },
+  "hints": [
+    {
+      "en": "A line follower is a loop that keeps choosing between two steerings. Make it a loop that repeats UNTIL the sensor sees red.",
+      "de": "Ein Linienfolger ist eine Schleife, die immer wieder zwischen zwei Lenkungen wählt. Mach daraus eine Schleife, die wiederholt, BIS der Sensor Rot sieht."
+    },
+    {
+      "en": "After the loop, stop the motors: leaving a loop does not stop them.",
+      "de": "Halte nach der Schleife die Motoren an: Das Verlassen einer Schleife hält sie nicht an."
+    }
+  ],
+  "mat": {
+    "width": 180,
+    "height": 110,
+    "background": "white",
+    "paint": "#e7eff6",
+    "shapes": [
+      {
+        "color": "black",
+        "shape": {
+          "type": "line",
+          "points": [
+            [
+              14,
+              85
+            ],
+            [
+              55,
+              85
+            ],
+            [
+              85,
+              72
+            ],
+            [
+              110,
+              48
+            ],
+            [
+              140,
+              36
+            ],
+            [
+              168,
+              36
+            ]
+          ],
+          "width": 2.5
+        }
+      },
+      {
+        "color": "red",
+        "shape": {
+          "type": "circle",
+          "x": 168,
+          "y": 36,
+          "r": 6
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "trail",
+      "role": "area",
+      "shape": {
+        "type": "line",
+        "points": [
+          [
+            14,
+            85
+          ],
+          [
+            55,
+            85
+          ],
+          [
+            85,
+            72
+          ],
+          [
+            110,
+            48
+          ],
+          [
+            140,
+            36
+          ],
+          [
+            168,
+            36
+          ]
+        ],
+        "width": 28
+      },
+      "label": {
+        "en": "trail corridor",
+        "de": "Spurkorridor"
+      }
+    },
+    {
+      "id": "mast",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 160,
+        "y": 36,
+        "r": 7
+      },
+      "label": {
+        "en": "weather mast",
+        "de": "Wettermast"
+      }
+    }
+  ],
+  "start": {
+    "x": 18,
+    "y": 82,
+    "heading": 0
+  },
+  "timeLimitMs": 40000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "mast"
+    }
+  ],
+  "failure": [
+    {
+      "type": "stayIn",
+      "zone": "trail"
+    }
+  ],
+  "solution": "sd02-trail-to-the-flag.bw",
+  "wrong": "sd02-trail-to-the-flag.wrong.bw"
+}

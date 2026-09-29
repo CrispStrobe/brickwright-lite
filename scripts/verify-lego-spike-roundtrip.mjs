@@ -13,7 +13,9 @@
  *  4. the SPIKE arena pane (docs/SPIKE-ARENA.md): the Code tab opens the arena,
  *     the arena loads a challenge's reference solution into the Code tab, and
  *     Start runs it as blocks in the Scratch VM, through the spikeprime
- *     extension and the virtual hub, until the pass banner shows.
+ *     extension and the virtual hub, until the pass banner shows. Then the
+ *     unit picker lists every unit, opens a later one (Gyro turns), and its
+ *     first mission's reference solution passes the same way.
  * All four are SPIKE, so they share this gate and its one CI shard.
  */
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
@@ -240,6 +242,11 @@ async function spike3Python () {
 const ARENA_CHALLENGE = 'rb07-stop-at-the-line';
 const arenaSolution = await readFile(resolve('overlay/scratch-gui/static/spike-arena/rover-basics',
     `${ARENA_CHALLENGE}.bw`), 'utf8');
+// The later unit: opened from the pane's unit picker, its first mission run.
+const ARENA_UNIT = 'gyro-turns';
+const arenaUnits = JSON.parse(await readFile(resolve('overlay/scratch-gui/static/spike-arena/units.json'), 'utf8')).units;
+const arenaUnitFirst = JSON.parse(await readFile(resolve('overlay/scratch-gui/static/spike-arena', ARENA_UNIT, 'unit.json'), 'utf8')).challenges[0];
+const arenaUnitSolution = await readFile(resolve('overlay/scratch-gui/static/spike-arena', ARENA_UNIT, `${arenaUnitFirst}.bw`), 'utf8');
 const arenaStarter = `DEVICE SPIKE
 
 WHEN flag clicked:
@@ -359,6 +366,44 @@ async function arenaPane () {
             throw new Error(`the reference solution did not pass in the browser: ${verdict} "${text}"`);
         }
         console.log(`  ok: pass banner: "${text}"`);
+
+        // A later unit, from the unit picker: every unit is offered, and the
+        // opened unit's first mission runs to a pass as the first one did.
+        await pane.waitForFunction(count => document.querySelectorAll('[data-testid="bw-spike-arena-unit"] option').length === count,
+            arenaUnits.length, {timeout: 15000});
+        await pane.locator('[data-testid="bw-spike-arena-unit"]').selectOption(ARENA_UNIT);
+        await pane.waitForFunction(([unit, id]) => window.__bwSpikeArena?.unit === unit && window.__bwSpikeArena?._pane?.world?.id === id &&
+            window.__bwSpikeArena.status === 'ready' && !document.querySelector('[data-testid="bw-spike-arena-banner"]'),
+        [ARENA_UNIT, arenaUnitFirst], {timeout: 15000});
+        console.log(`  ok: the unit picker lists ${arenaUnits.length} units and opened ${ARENA_UNIT}, mission ${arenaUnitFirst}`);
+        await pane.locator('[data-testid="bw-spike-arena-load-solution"]').click();
+        const unitLine = arenaUnitSolution.split('\n').map(line => line.trim()).find(line => line.startsWith('wait until'));
+        await pane.waitForFunction(line => (document.querySelector('.cm-content')?.textContent || '').includes(line),
+            unitLine, {timeout: 30000});
+        await pane.waitForFunction(() => {
+            const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+            const opcodes = new Set((vm?.runtime?.targets || []).flatMap(target =>
+                Object.values(target.blocks?._blocks || {}).map(block => block.opcode)));
+            return opcodes.has('spikeprime_getAngle') && opcodes.has('spikeprime_resetYaw') && !opcodes.has('spikeprime_isColor');
+        }, null, {timeout: 45000});
+        await pane.locator('[data-testid="bw-spike-arena-start"]').click();
+        try {
+            await pane.waitForFunction(() => document.querySelector('[data-testid="bw-spike-arena-banner"]')?.dataset.verdict,
+                null, {timeout: 60000});
+        } catch (error) {
+            await pane.screenshot({path: resolve(artifacts, 'spike-arena-unit-failure.png'), fullPage: true});
+            await dumpTrace('later unit never decided');
+            throw new Error(`the ${ARENA_UNIT} mission never decided`, {cause: error});
+        }
+        const unitBanner = pane.locator('[data-testid="bw-spike-arena-banner"]');
+        const unitVerdict = await unitBanner.getAttribute('data-verdict');
+        const unitText = await unitBanner.textContent();
+        await pane.screenshot({path: resolve(artifacts, 'spike-arena-unit-pass.png'), fullPage: true});
+        if (unitVerdict !== 'pass') {
+            await dumpTrace(`later unit ${unitVerdict}`);
+            throw new Error(`the ${ARENA_UNIT} reference solution did not pass in the browser: ${unitVerdict} "${unitText}"`);
+        }
+        console.log(`  ok: ${arenaUnitFirst} pass banner: "${unitText}"`);
         if (errors.length) {
             await dumpTrace('page errors');
             throw new Error(`SPIKE arena page errors: ${errors.join(' | ')}`);
