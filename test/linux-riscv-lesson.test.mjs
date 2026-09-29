@@ -1,10 +1,11 @@
 // The "Linux on RISC-V" lesson, headless: the offer (a Machine Manager row with
-// a licence line and a source link), the pins (two raw.githubusercontent URLs at
-// a 40-hex media-lab commit, two SHA-256s), the refusal (a byte that does not
-// hash to its pin is refused BY SLOT NAME before anything boots), and the
+// a licence line and a source link), the pins (three raw.githubusercontent URLs
+// at a 40-hex media-lab commit, three SHA-256s), the refusal (a byte that does
+// not hash to its pin is refused BY SLOT NAME before anything boots), and the
 // hand-off (activate → run-machine → the media-load event carries the kernel as
-// `bytes` and the initramfs as `linuxInitrd`, for debug-runner's
-// attachRiscV32Linux). Then bw-board's own half, the one debug-runner drives:
+// `bytes`, the initramfs as `linuxInitrd` and the post-boot snapshot as
+// `linuxSnapshot`, for debug-runner's attachRiscV32Linux; "Boot from scratch"
+// carries no snapshot). Then bw-board's own half, the one debug-runner drives:
 // createDebugTarget('riscv32', {linux}) under a debug session, console input in
 // and out. The live boot of the real kernel in a browser is the CP/M + Linux
 // Machine Manager gate (scripts/verify-cpm-system.mjs, build.yml).
@@ -14,7 +15,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 
 import {
-    lessonMachines, lessonT, LESSON_STRINGS, LINUX_RISCV_MEDIA, LINUX_DOWNLOAD_BYTES, mediaSize
+    lessonMachines, lessonT, LESSON_STRINGS, LINUX_RISCV_MEDIA, LINUX_DOWNLOAD_BYTES, LINUX_COLD_DOWNLOAD_BYTES, mediaSize
 } from '../overlay/scratch-gui/src/lib/bw-machines/lessons.js';
 import {validateMachineConfig, MACHINE_KINDS} from '../overlay/scratch-gui/src/lib/bw-machines/machine-config.js';
 import {activateConfig, defaultImageFetcher} from '../overlay/scratch-gui/src/lib/bw-machines/activate.js';
@@ -27,14 +28,18 @@ import {assembleRiscv} from 'bw-board/riscv-asm.js';
 const sha = b => createHash('sha256').update(b).digest('hex');
 const lesson = () => lessonMachines('en')[0];
 
-test('the lesson is a valid riscv32 machine whose two slots are pinned media-lab URLs', () => {
-    const {config} = lesson();
+test('the lesson is a valid riscv32 machine whose three slots are pinned media-lab URLs', () => {
+    const {config, coldConfig} = lesson();
     assert.ok(MACHINE_KINDS.includes('riscv32'));
     assert.deepEqual(validateMachineConfig(config), {ok: true, errors: []});
+    assert.deepEqual(validateMachineConfig(coldConfig), {ok: true, errors: []});
     assert.equal(config.machine, 'riscv32');
-    assert.deepEqual(config.bootOrder, ['kernel', 'initrd']);
-    const RAW = /^https:\/\/raw\.githubusercontent\.com\/CrispStrobe\/brickwright-media-lab\/([0-9a-f]{40})\/riscv32-linux\/[\w.]+$/;
-    for (const slot of ['kernel', 'initrd']) {
+    assert.equal(config.bootOrder[0], 'kernel', 'the kernel is the boot slot; initrd and snapshot ride along');
+    assert.deepEqual(Object.keys(config.slots).sort(), ['initrd', 'kernel', 'snapshot']);
+    assert.deepEqual(Object.keys(coldConfig.slots).sort(), ['initrd', 'kernel'], 'Boot from scratch has no snapshot');
+    assert.equal(coldConfig.id, config.id);
+    const RAW = /^https:\/\/raw\.githubusercontent\.com\/CrispStrobe\/brickwright-media-lab\/([0-9a-f]{40})\/riscv32-linux\/[\w.-]+$/;
+    for (const slot of ['kernel', 'initrd', 'snapshot']) {
         const ref = config.slots[slot];
         const m = RAW.exec(ref.url);
         assert.ok(m, `${slot} is fetched from a commit-addressed media-lab URL: ${ref.url}`);
@@ -42,7 +47,12 @@ test('the lesson is a valid riscv32 machine whose two slots are pinned media-lab
         assert.match(ref.sha256, /^[0-9a-f]{64}$/, `${slot} carries a SHA-256 pin`);
         assert.equal(ref.sha256, LINUX_RISCV_MEDIA[slot].sha256);
     }
-    assert.equal(mediaSize(LINUX_DOWNLOAD_BYTES), '7.5 MB');
+    assert.equal(mediaSize(LINUX_DOWNLOAD_BYTES), '9.5 MB');
+    assert.equal(mediaSize(LINUX_COLD_DOWNLOAD_BYTES), '7.5 MB');
+    // The snapshot's pin is the one bw-board's linux-riscv workflow re-checks
+    // (test/linux-riscv/snapshot-pin.env): the same file, the same commit.
+    assert.equal(LINUX_RISCV_MEDIA.snapshot.sha256, '7b82fc38525d36e8a98fb9aa112e804813e7d3a456fcca2ace220129357a272c');
+    assert.match(LINUX_RISCV_MEDIA.snapshot.url, /\/07132874ee064fa782f80ccae64af8d75cae65c8\/riscv32-linux\/linux-shell\.snap\.gz$/);
 });
 
 test('the offer travels with the binary: GPL/LGPL licence line and the source link, in EN and DE', () => {
@@ -51,7 +61,9 @@ test('the offer travels with the binary: GPL/LGPL licence line and the source li
         assert.match(row.licence, /GPL-2\.0/);
         assert.match(row.licence, /LGPL-2\.1/);
         assert.match(row.licence, /brickwright-media-lab/);
-        assert.match(row.licence, /7\.5 MB/);
+        assert.match(row.licence, /9\.5 MB/);
+        assert.equal(row.coldSize, '7.5 MB');
+        assert.ok(row.coldLabel && row.coldLabel !== 'lessons.cold');
         assert.equal(row.source, 'https://github.com/CrispStrobe/brickwright-media-lab/releases/tag/riscv32-linux-v1');
     }
     assert.deepEqual(Object.keys(LESSON_STRINGS.de).sort(), Object.keys(LESSON_STRINGS.en).sort());
@@ -62,24 +74,52 @@ test('the offer travels with the binary: GPL/LGPL licence line and the source li
     assert.equal(lessonMachines('de')[0].config.title, 'Linux auf RISC-V');
 });
 
-test('activate hands the kernel and the initramfs to the boot path', async () => {
+test('activate hands the kernel, the initramfs and the snapshot to the boot path', async () => {
     const seen = [];
     // Keyed by the WHOLE url: a final-segment match would accept an Image from
     // any repository at any commit.
-    const NAME = {[LINUX_RISCV_MEDIA.kernel.url]: 'Image', [LINUX_RISCV_MEDIA.initrd.url]: 'initramfs.cpio'};
+    const NAME = {[LINUX_RISCV_MEDIA.kernel.url]: 'Image', [LINUX_RISCV_MEDIA.initrd.url]: 'initramfs.cpio',
+        [LINUX_RISCV_MEDIA.snapshot.url]: 'linux-shell.snap.gz'};
     const fetcher = async ref => {
         seen.push(NAME[ref.url] || ref.url);
         return {bytes: new TextEncoder().encode(`bytes:${NAME[ref.url] || ref.url}`)};
     };
     const events = [];
     const {activated, detail} = await runMachineConfig(lesson().config, {fetcher, dispatch: d => events.push(d)});
-    assert.deepEqual(seen, ['Image', 'initramfs.cpio'], 'both images fetched, the kernel first');
+    assert.deepEqual(seen, ['Image', 'initramfs.cpio', 'linux-shell.snap.gz'], 'all three fetched, the kernel first');
     assert.equal(activated.targetKind, 'riscv32');
     assert.equal(activated.bootMedia.profile, 'linux', 'a kernel slot selects the Linux boot');
     assert.equal(detail.kind, 'riscv32');
     assert.equal(new TextDecoder().decode(detail.bytes), 'bytes:Image');
     assert.equal(new TextDecoder().decode(detail.linuxInitrd), 'bytes:initramfs.cpio');
+    assert.equal(new TextDecoder().decode(detail.linuxSnapshot), 'bytes:linux-shell.snap.gz');
     assert.equal(events.length, 1);
+
+    // "Boot from scratch": the same machine, no snapshot fetched or handed on.
+    seen.length = 0;
+    const cold = await runMachineConfig(lesson().coldConfig, {fetcher, dispatch: d => events.push(d)});
+    assert.deepEqual(seen, ['Image', 'initramfs.cpio']);
+    assert.equal(cold.detail.linuxSnapshot, undefined);
+    assert.equal(new TextDecoder().decode(cold.detail.linuxInitrd), 'bytes:initramfs.cpio');
+});
+
+test('the three media are fetched at once, not one after another', async () => {
+    // Run's wait is the download: three files fetched in turn cost three round
+    // trips before the first instruction. Every fetch must have STARTED before
+    // any of them is allowed to finish.
+    const started = [];
+    const release = [];
+    const fetcher = ref => new Promise(resolve => {
+        started.push(ref.url);                          // the WHOLE url, as the test above keys it
+        release.push(() => resolve({bytes: new Uint8Array([started.length])}));
+    });
+    const run = runMachineConfig(lesson().config, {fetcher, dispatch: () => {}});
+    for (let i = 0; i < 20 && started.length < 3; i++) await new Promise(r => setTimeout(r, 0));
+    assert.deepEqual(started, [LINUX_RISCV_MEDIA.kernel.url, LINUX_RISCV_MEDIA.initrd.url, LINUX_RISCV_MEDIA.snapshot.url],
+        'all three in flight together, in slot order');
+    release.forEach(f => f());
+    const {detail} = await run;
+    assert.ok(detail.bytes && detail.linuxInitrd && detail.linuxSnapshot);
 });
 
 test('a byte that does not hash to its pin is refused BY SLOT NAME before anything boots', async () => {
@@ -157,7 +197,7 @@ msg:    .string "Linux version 6.1.0\\nRun /init as init process\\nBWB-LINUX-USE
     assert.ok(out.endsWith('bwb# ls\r'), JSON.stringify(out.slice(-12)));
 });
 
-test('the GPL-in-build guard refuses a Linux Image or an initramfs under ANY name, and passes a clean tree', async () => {
+test('the GPL-in-build guard refuses a Linux Image, an initramfs or a machine snapshot under ANY name, and passes a clean tree', async () => {
     const {mkdtempSync, writeFileSync, mkdirSync, rmSync} = await import('node:fs');
     const {tmpdir} = await import('node:os');
     const {join} = await import('node:path');
@@ -175,10 +215,20 @@ test('the GPL-in-build guard refuses a Linux Image or an initramfs under ANY nam
         image.set([0x52, 0x53, 0x43, 0x05], 0x38);
         writeFileSync(join(dir, 'static', 'data.bin'), image);
         writeFileSync(join(dir, 'static', 'blob'), '070701000000000000');
+        // The post-boot snapshot, as shipped (gzip) and raw, renamed innocently;
+        // and an unrelated gzip that must pass.
+        const {gzipSync} = await import('node:zlib');
+        const snap = new TextEncoder().encode('BWRV32S1' + '\0'.repeat(200));
+        writeFileSync(join(dir, 'static', 'cache.dat'), gzipSync(snap));
+        writeFileSync(join(dir, 'static', 'raw.dat'), snap);
+        writeFileSync(join(dir, 'static', 'ok.json.gz'), gzipSync(new TextEncoder().encode('{"fine": true}')));
         const dirty = spawnSync(process.execPath, [guard, dir], {encoding: 'utf8'});
         assert.equal(dirty.status, 1);
         assert.match(dirty.stderr, /static\/data\.bin — a RISC-V Linux kernel Image \(GPL-2\.0\)/);
         assert.match(dirty.stderr, /static\/blob — a cpio archive \(an initramfs/);
+        assert.match(dirty.stderr, /static\/cache\.dat — a RISC-V Linux machine snapshot/);
+        assert.match(dirty.stderr, /static\/raw\.dat — a RISC-V Linux machine snapshot/);
+        assert.doesNotMatch(dirty.stderr, /ok\.json\.gz/);
     } finally {
         rmSync(dir, {recursive: true, force: true});
     }

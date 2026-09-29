@@ -2728,21 +2728,40 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             await import(/* webpackChunkName: "bw-board" */ 'bw-board');
         const kernel = bootMedia.bytes;
         if (!(kernel instanceof Uint8Array) || !kernel.length) throw new Error(S('linux.noKernel'));
-        setStatus('attaching', S('linux.starting'));
-        const result = await createDebugTarget('riscv32', {
-            linux: {kernel, initrd: bootMedia.linuxInitrd || undefined}
-        });
+        const initrd = bootMedia.linuxInitrd || undefined;
+        // THE LESSON'S DEFAULT RUN OPENS AT THE PROMPT: bw-board restores the
+        // post-boot snapshot on top of these exact kernel + initramfs bytes
+        // (it refuses a snapshot of other media by name, code snapshot-*).
+        // A refusal is not the end of the lesson: it boots from scratch and
+        // says why. "Boot from scratch" sends no snapshot at all.
+        const snapshot = bootMedia.linuxSnapshot instanceof Uint8Array && bootMedia.linuxSnapshot.length
+            ? bootMedia.linuxSnapshot : null;
+        setStatus('attaching', S(snapshot ? 'linux.restoring' : 'linux.starting'));
+        let result;
+        try {
+            result = await createDebugTarget('riscv32', {linux: {kernel, initrd, snapshot: snapshot || undefined}});
+        } catch (e) {
+            if (!snapshot || !/^snapshot-/.test((e && e.code) || '')) throw e;
+            // eslint-disable-next-line no-console
+            console.warn('[bw-debug] Linux snapshot refused, booting from scratch:', e.message);
+            setStatus('attaching', S('linux.snapshotRefused', {reason: e.message}));
+            result = await createDebugTarget('riscv32', {linux: {kernel, initrd}});
+        }
         serialTerminal = true;
         serialEsc = 0;
-        wireMachineBench(result, createDebugSession);
         // THE CONSOLE IS A TERMINAL (linux-console.js — the same module the
         // Node test boots Linux under). Input: raw key bytes, HELD until the
         // shell is listening (bytes sent while the kernel boots are dropped:
         // the 8250 driver clears the receive FIFO at port start-up), then fed
         // to the 16550A a FIFO's worth at a time as the guest drains it.
         // Output: the raw byte stream, for the panel's terminal emulator.
-        const linuxConsole = createLinuxConsole({target, adapter: result.adapter || result});
+        // BUILT BEFORE THE BENCH IS WIRED: a machine restored from the
+        // snapshot hands its boot log (the prompt included) to the FIRST
+        // serial listener, which wireMachineBench registers — terminalOutput
+        // must already be there, or the terminal opens blank.
+        const linuxConsole = createLinuxConsole({target: result.target, adapter: result.adapter || result});
         terminalOutput = linuxConsole.output;
+        wireMachineBench(result, createDebugSession);
         runner.sendSerial = data => linuxConsole.send(data);
         runner.terminal = {
             id: linuxConsole.id,
