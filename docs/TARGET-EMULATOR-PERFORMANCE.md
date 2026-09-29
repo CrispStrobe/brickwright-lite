@@ -209,22 +209,22 @@ remaining motors. Register/wiring facts come from the public
 and [TI ADS7957 datasheet](https://www.ti.com/lit/ds/symlink/ads7957.pdf).
 
 The CP12 integration extends Lite's target-specific `brick-state/v1` decoder:
-EV3 uses `brickwright-ev3-smoke`, transport `none`, and exactly178x128
-integer luminance samples0..255 (or an explicit unavailable empty display).
+EV3 uses `brickwright-ev3-smoke`, transport `none`, and exactly 178x128
+integer luminance samples 0..255 (or an explicit unavailable empty display).
 The debugger requests fresh paused-model observations, rather than treating
 UART smoke text as motor/sensor/display state. Target identity cannot change
 within a stream; replay, loopback, frame and collection bounds remain enforced.
 Only named buttons and raw ten-bit ADC channel inputs are accepted; no caller
 text becomes a monitor command. Full frames exceed the ordinary native broker
 reply budget, so only the three exact correlated EV3 state/button/analog
-operations get a bounded272KiB outbound envelope/256KiB result string.
+operations get a bounded 272 KiB outbound envelope/256 KiB result string.
 Inbound and all other operation limits remain unchanged.
 
-Preliminary local proofs passed5EV3 observer/schema tests,32prior SPIKE tests,
-62Rust boundary/debugger/transport tests and29JavaScript broker tests. A real
+Preliminary local proofs passed 5 EV3 observer/schema tests, 32 prior SPIKE tests,
+62 Rust boundary/debugger/transport tests and 29 JavaScript broker tests. A real
 Renode/IronPython run observed black/white display pixels, button press/release,
-ADC channel3=777 and rejected out-of-range/replayed/stale inputs. The actual
-Lite packaged debugger contract passed21.23seconds with full frames and named
+ADC channel 3=777 and rejected out-of-range/replayed/stale inputs. The actual
+Lite packaged debugger contract passed in 21.23 seconds with full frames and named
 inputs. These preliminary runs use the ADC/display development model; final
 combined motor-model pin and qualification are still required before CP12 DONE.
 UART sensors on inputs3/4 need
