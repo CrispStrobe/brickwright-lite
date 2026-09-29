@@ -465,7 +465,11 @@ export function gc (store, {days = 14, dryRun = false, evict = null, now = Date.
             if (!alive) { if (!dryRun) removeTree(final); out.evicted.push(name); }
             continue;
         }
-        if (!existsSync(path.join(final, 'manifest.json'))) continue;
+        if (!existsSync(path.join(final, 'manifest.json'))) {
+            // A pid lock (<key>.lock) or something foreign: never removed, but reported.
+            out.kept.push(`${name} (not a store entry: no manifest.json)`);
+            continue;
+        }
         const lu = path.join(final, 'last-used');
         const last = existsSync(lu) ? statSync(lu).mtimeMs : statSync(path.join(final, 'manifest.json')).mtimeMs;
         const idleDays = (now - last) / 86400e3;
@@ -523,7 +527,7 @@ function main (argv) {
         if (!existsSync(store)) { console.log(`(empty) ${store}`); return 0; }
         for (const name of readdirSync(store).sort()) {
             const mf = path.join(store, name, 'manifest.json');
-            if (!existsSync(mf)) continue;
+            if (!existsSync(mf)) { console.log(`${name}  (not a store entry: no manifest.json)`); continue; }
             const m = readJson(mf);
             const mb = Object.values(m.trees).reduce((a, t) => a + t.bytes, 0) / 1e6;
             console.log(`${name}  ${mb.toFixed(0)} MB  created ${m.createdAt}  ${inUse(path.join(store, name)) ? 'LINKED' : 'unlinked'}  ` +
