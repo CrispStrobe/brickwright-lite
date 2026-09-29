@@ -220,7 +220,10 @@ export const REFUSED = Object.freeze({
         'i8086', 'i8088', 'mcu',
         // The MakeCode boards (bw-board #44): a MakeCode program drives them
         // from the MakeCode pane's runtime bridge, not from the Code tab.
-        'calliopemini', 'circuit_playground_express', 'pybadge'
+        'calliopemini', 'circuit_playground_express', 'pybadge',
+        // The micro:bit, bare and in a breakout (bw-board, task A1): the same
+        // board-model registration the Calliope got, driven the same way.
+        'microbit', 'microbit_breakout'
     ],
     'dip-surface': [
         'i8251', 'i8253', 'i8254', 'i8255', 'i8259', 'i8284', 'm6532', 'mc6850',
