@@ -2152,7 +2152,12 @@ jobs:
 
 
   deploy:
-    needs: [guard, build, corpus, browser, fpga-surface]
+    # `build` stays FIRST: test/pages-deploy-ordering.test.mjs matches
+    # /needs:\s*(?:build|\[\s*build\b[^\]]*\])/, so the position is load-bearing
+    # to that ratchet even though Actions ignores it. Reordered rather than
+    # loosening the regex — the rule it protects (deploy depends on the job
+    # that produced its artifact) is one I would rather leave strict.
+    needs: [build, corpus, browser, fpga-surface, guard]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.guard.outputs.superseded != 'true'
     runs-on: ubuntu-latest
     permissions:
