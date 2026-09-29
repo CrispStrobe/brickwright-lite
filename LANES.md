@@ -57,6 +57,11 @@ Then read the CLAIMS table below and compare scopes by overlapping paths or
 package boundary, not by vague task title. If your work is already claimed or
 landed, say so and pick something else.
 
+Give a new local worktree its dependencies with
+`node scripts/worktree-deps.mjs link` (Node 22), not a fresh ~1 GB install and
+never another worktree's `node_modules`. See "OPERATIONAL — shared node_modules
+for local worktrees" below.
+
 **2. Merge a claim-only commit to the canonical remote `main` before changing
 implementation.** A local row or unmerged branch owns nothing. Record at least
 owner/session, isolated worktree, exact scope, base SHA and status. Two writers
@@ -428,6 +433,52 @@ it should know it is on a stack anyone can pop.
 
 **Keeping a stash "just in case" is not free when the stack is shared.** If work is worth
 keeping, it is worth a branch.
+
+## OPERATIONAL — shared node_modules for local worktrees (2026-09-29)
+
+A fresh install puts about 1 GB into every Lite worktree: 130 MB at the root
+and 890 MB in `packages/scratch-gui`, which grows to 1.4–1.9 GB once builds add
+caches. With many sessions, that refills the disk. Borrowing another worktree's
+`node_modules` (a symlink or `cp -al`) saves the space, but it silently runs
+whatever that worktree installed. Old bw-board and bw-circuit-ui pins caused
+several false local reds on 2026-09-29.
+
+`scripts/worktree-deps.mjs` replaces both. It keeps a store keyed on every
+input that decides the install: both lockfiles, both `package.json` files,
+`vendor-pins.json`, and the Node and npm majors. It populates the store once,
+using CI's own commands, and hardlinks the store into each worktree.
+
+```bash
+export PATH=$HOME/.local/node22/bin:$PATH        # Node 22: the key includes the major
+node scripts/worktree-deps.mjs link              # integrate + install-if-missing + link + overlays + verify
+node scripts/worktree-deps.mjs verify            # before you trust a local red or green
+node scripts/worktree-deps.mjs link --replace    # swap an existing private/borrowed tree for links
+node scripts/worktree-deps.mjs list              # store keys, sizes, which are still linked
+node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and linked by no worktree
+```
+
+- **Cost per worktree:** about 80 MB instead of about 1 GB. That 80 MB is the
+  directory entries plus private copies of the packages the overlay scripts
+  write (`OWNED` in the script). A cache hit links in about 10 s.
+- **The store is read-only.** A write into a linked file fails with `EACCES`
+  instead of editing every worktree at once. `verify` also re-derives a digest
+  of the store, so a chmod followed by a write is caught too. New files, such
+  as webpack's `node_modules/.cache`, land in the worktree's own directories.
+- **`verify` fails with the remedy** in these cases: the lockfiles or pins moved
+  after linking (STALE), the store was modified, a file is no longer the
+  store's inode, or a bw-* package is not at `vendor-pins.json`. On an unlinked
+  worktree it still checks the installed tree against the lockfile and pins,
+  so it also catches a stale borrowed tree.
+- **Never** run `npm install` inside a store directory. Never symlink or
+  `cp -al` another worktree's `node_modules`. Never `chmod -R u+w` a linked
+  tree. To edit a dependency in place (for example `mutation-proof.mjs` on
+  `node_modules/bw-circuit-ui`), delete that worktree's `node_modules` and do a
+  normal private install.
+- The store defaults to `.bw-lite-deps` beside the main checkout
+  (`$BW_LITE_DEPS_STORE` overrides it). It must be on the worktree's
+  filesystem, because hardlinks cannot cross filesystems.
+- CI does not use this tool. Its install steps in `.github/workflows/` are
+  unchanged.
 
 ## CLAIMS — work in progress
 
