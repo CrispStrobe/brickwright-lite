@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           repository: CrispStrobe/labwired-core
-          ref: d76ee833fc2c812f36752b28085d5092fe88ee36
+          ref: a7c7cbdfac7988ffc11a1d3fa1f5af2ecce57e18
           path: .bench/labwired-core
       - name: Fetch the exact LabWired node artifact
         env:
@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .bench/labwired-wasm
-          gh release download labwired-wasm-d76ee833 --repo CrispStrobe/bw-board \
+          gh release download labwired-wasm-a7c7cbdf --repo CrispStrobe/bw-board \
             --pattern 'nodejs-*' --dir .bench/labwired-wasm
           mv .bench/labwired-wasm/nodejs-labwired_wasm.js .bench/labwired-wasm/labwired_wasm.js
           mv .bench/labwired-wasm/nodejs-labwired_wasm_bg.wasm .bench/labwired-wasm/labwired_wasm_bg.wasm
