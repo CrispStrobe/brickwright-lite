@@ -110,12 +110,13 @@ test('the three media are fetched at once, not one after another', async () => {
     const started = [];
     const release = [];
     const fetcher = ref => new Promise(resolve => {
-        started.push(ref.url.split('/').pop());
+        started.push(ref.url);                          // the WHOLE url, as the test above keys it
         release.push(() => resolve({bytes: new Uint8Array([started.length])}));
     });
     const run = runMachineConfig(lesson().config, {fetcher, dispatch: () => {}});
     for (let i = 0; i < 20 && started.length < 3; i++) await new Promise(r => setTimeout(r, 0));
-    assert.deepEqual(started, ['Image', 'initramfs.cpio', 'linux-shell.snap.gz'], 'all three in flight together, in slot order');
+    assert.deepEqual(started, [LINUX_RISCV_MEDIA.kernel.url, LINUX_RISCV_MEDIA.initrd.url, LINUX_RISCV_MEDIA.snapshot.url],
+        'all three in flight together, in slot order');
     release.forEach(f => f());
     const {detail} = await run;
     assert.ok(detail.bytes && detail.linuxInitrd && detail.linuxSnapshot);

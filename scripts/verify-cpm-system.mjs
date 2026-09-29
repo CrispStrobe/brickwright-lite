@@ -195,6 +195,18 @@ try {
 // condition (waitForFunction), none a sleep. The times printed are the ones a
 // learner sees: button click → prompt, fetch included.
 const LINUX_ARTIFACTS = join(root, 'artifacts', 'linux-riscv');
+// The terminal's visible rows, as drawn (xterm's DOM renderer), trailing blanks trimmed.
+const SCREEN = `(() => {
+    const rows = document.querySelectorAll('[data-testid="bw-linux-terminal"] .xterm-rows > div');
+    return Array.from(rows, r => r.textContent.replace(/\\u00a0/g, ' ').replace(/\\s+$/, '')).join('\\n');
+})()`;
+/** Wait until the rendered screen, with the prompt on its last non-empty row, matches `re`. */
+const screenShows = (page, re, timeout = 60000) => page.waitForFunction(`(() => {
+    const screen = ${SCREEN}.replace(/\\n+$/, '');
+    const prev = window.__bwScreenPrev;
+    window.__bwScreenPrev = screen;
+    return ${re}.test(screen) && /bwb#$/.test(screen) && prev === screen;
+})()`, null, {timeout, polling: 100}).then(() => true, () => false);
 const timing = {};
 // One lesson start: a fresh page, the row, a button, the terminal ready and the
 // prompt at its tail — still there one poll later (the shell is waiting, not
