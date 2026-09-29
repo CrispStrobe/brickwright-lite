@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "d9a967cadb194309a1c192882110b99e1f930af9",
-    "read": "2026-09-28"
+    "sha": "3f9644324e2ac4ee24849b01299b6b0e3afc7ba3",
+    "read": "2026-09-29"
   },
   "rows": [
     {
@@ -195,7 +195,8 @@
       "gates": [
         "test/labwired-adapter.test.mjs",
         "test/labwired-roundtrip.test.mjs",
-        "test/pad-drive-parity.test.mjs"
+        "test/pad-drive-parity.test.mjs",
+        "test/labwired-firmware-only.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
     },
