@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {VmStepClock, NOMINAL_STEP_MS} from
+import {VmStepClock, NOMINAL_STEP_MS, INERT_AFTER_FRAMES} from
     '../overlay/scratch-gui/src/lib/spike-arena/arena-clock.js';
 
 /** A stand-in runtime: counts its own calls so we can prove we did not replace it. */
@@ -139,4 +139,38 @@ test('a stalled VM drains no mission budget, where the wall clock drained 15 s o
     // independent of how fast or slow the frames arrived.
     for (let i = 0; i < 100; i++) rt._step();
     assert.equal(clock.take(), 3300);
+});
+
+test('an installed-but-never-called hook is reported inert, not silently frozen', () => {
+    const clock = new VmStepClock();
+    const rt = fakeRuntime(33);
+    clock.install(rt);
+    // Simulate upstream binding _step at start(): our reassignment is never seen.
+    for (let i = 0; i < INERT_AFTER_FRAMES - 1; i++) {
+        assert.equal(clock.take(), 0);
+        assert.equal(clock.isInert(), false, 'a slow start is not yet evidence of inertness');
+    }
+    clock.take();
+    assert.equal(clock.isInert(), true,
+        'a clock that never counted a step must say so, or a frozen mission clock ' +
+        'makes every mission pass by never timing out');
+});
+
+test('a hook that IS called is never reported inert, however long the run', () => {
+    const clock = new VmStepClock();
+    const rt = fakeRuntime(33);
+    clock.install(rt);
+    rt._step();
+    for (let i = 0; i < INERT_AFTER_FRAMES * 3; i++) clock.take();
+    assert.equal(clock.isInert(), false);
+});
+
+test('clear() re-arms the inert detector so a fresh run is judged on its own frames', () => {
+    const clock = new VmStepClock();
+    const rt = fakeRuntime(33);
+    clock.install(rt);
+    for (let i = 0; i < INERT_AFTER_FRAMES; i++) clock.take();
+    assert.equal(clock.isInert(), true);
+    clock.clear();
+    assert.equal(clock.isInert(), false, 'a restart must not inherit the last run s verdict');
 });

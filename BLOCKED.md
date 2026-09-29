@@ -101,11 +101,23 @@ Details that matter to anyone touching it:
   - with NO vm there is no program to be fair to, and the clamped wall clock
     stays as the fallback. `MAX_FRAME_MS` survives for exactly that path.
 
-Ten tests in `test/spike-arena-clock.test.mjs`, in the fast suite. The one that
-states the defect is a measurement rather than prose: over 301 frames of a 50 ms
-loop with a stalled VM, the old rule spends the entire 15 s budget and the step
-clock spends ZERO. Falsified — accruing in `take()` instead of per step fails 4
-of the 10; dropping the double-install guard fails 1.
+**The hook's one dependency, and the guard for it.** scratch-vm drives the loop as
+`setInterval(() => { this._step(); }, interval)` — a property lookup at call
+time, which is the only reason reassigning `runtime._step` is seen at all
+(verified in both the tracked mirror and the copy that actually executes). If
+upstream ever changes that to `setInterval(this._step.bind(this))` the hook goes
+silently inert, and silence is the DANGEROUS direction here: no steps counted
+means mission time frozen, missions that never time out, and a gate that cannot
+fail — strictly worse than the flake. `isInert()` catches exactly that (installed,
+asked 30+ times, never counted a step) and the pane falls back to the wall clock
+rather than freezing.
+
+Thirteen tests in `test/spike-arena-clock.test.mjs`, in the fast suite. The one
+that states the defect is a measurement rather than prose: over 301 frames of a
+50 ms loop with a stalled VM, the old rule spends the entire 15 s budget and the
+step clock spends ZERO. Falsified three ways — accruing in `take()` instead of per
+step fails 4 of the 13, dropping the double-install guard fails 1, and disabling
+`isInert()` fails 2.
 
 **What this does NOT claim.** The gate has not been observed green over many runs
 under load. The coin flip was 4/4 across eight runs, so a handful of passes now

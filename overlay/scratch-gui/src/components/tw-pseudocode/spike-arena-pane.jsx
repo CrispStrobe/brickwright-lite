@@ -201,7 +201,12 @@ class SpikeArenaPane extends React.Component {
             // is a fact about the program rather than about runner load. With no
             // VM there is no program to be fair to, and the wall clock is all
             // there is.
-            const dt = this.clock.installed
+            // isInert(): installed, asked many times, never counted a step. That
+            // cannot happen against a running VM, so the hook is not being called
+            // and freezing mission time would make every mission pass by never
+            // timing out. Degrade loudly-in-behaviour rather than silently.
+            const stepClock = this.clock.installed && !this.clock.isInert();
+            const dt = stepClock
                 ? this.clock.take()
                 : (this.lastFrame === null ? 0 : Math.min(MAX_FRAME_MS, now - this.lastFrame));
             this.lastFrame = now;

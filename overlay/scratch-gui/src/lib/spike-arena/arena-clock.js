@@ -29,6 +29,20 @@
 /** scratch-vm's default thread step interval, used when the VM has not started. */
 export const NOMINAL_STEP_MS = 1000 / 30;
 
+// Frames the caller may ask about before an installed-but-silent hook is treated
+// as inert. A run legitimately starts with a frame or two before the first step.
+export const INERT_AFTER_FRAMES = 30;
+
+// WHAT THIS HOOK DEPENDS ON, and how to check it. scratch-vm drives the loop as
+//     this._steppingInterval = setInterval(() => { this._step(); }, interval);
+// — a PROPERTY LOOKUP at call time, which is why reassigning runtime._step is
+// seen at all. If upstream ever changes that to setInterval(this._step.bind(this))
+// the hook goes silently inert, and silence here is the dangerous direction: no
+// steps counted means mission time frozen, missions that never time out, and a
+// gate that cannot fail. isInert() below exists so that becomes visible instead.
+// Verify with:
+//     grep -A2 '_steppingInterval = setInterval' <vm>/src/engine/runtime.js
+
 export class VmStepClock {
     /**
      * @param {object} [options]
@@ -41,6 +55,7 @@ export class VmStepClock {
         this.runtime = null;
         this.wrapped = null;
         this.original = null;
+        this.framesAsked = 0;
     }
 
     /** True while this clock is driving a runtime. */
@@ -70,6 +85,7 @@ export class VmStepClock {
         this.runtime = runtime;
         this.original = original;
         this.wrapped = wrapped;
+        this.framesAsked = 0;
         return true;
     }
 
@@ -96,11 +112,26 @@ export class VmStepClock {
      * @returns {number}
      */
     take () {
+        this.framesAsked += 1;
         const ms = this.pending;
         this.pending = 0;
         return ms;
     }
 
+    /**
+     * True when this clock is installed, has been asked for time many times, and
+     * has never counted a single step — which cannot happen against a running VM
+     * and therefore means the hook is not being called at all.
+     *
+     * The caller must fall back to the wall clock when this is true. Freezing
+     * mission time would make every mission pass by never timing out, and a gate
+     * that cannot fail is worse than the flake this clock was written to remove.
+     * @returns {boolean}
+     */
+    isInert () {
+        return this.installed && this.steps === 0 && this.framesAsked >= INERT_AFTER_FRAMES;
+    }
+
     /** Forget owed time without spending it — for a reset or a fresh run. */
-    clear () { this.pending = 0; this.steps = 0; }
+    clear () { this.pending = 0; this.steps = 0; this.framesAsked = 0; }
 }
