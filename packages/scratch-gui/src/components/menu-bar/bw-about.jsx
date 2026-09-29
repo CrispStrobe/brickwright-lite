@@ -29,6 +29,8 @@ const BUNDLED_LICENCES = [
     ['Scrub (BSD-3-Clause)', 'static/licenses/scrub.BSD-3-Clause.txt'],
     ['labwired-core (MIT)', 'static/licenses/labwired-core.MIT.txt'],
     ['8086 example programs (MIT)', 'static/licenses/amey-thakur-8086.MIT.txt'],
+    ['MakeCode extensions: pxt-microturtle, pxt-radio-blockchain, pxt-kitronik-motor-driver (MIT)',
+        'static/licenses/makecode-extensions.MIT.txt'],
     ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
     ['Pybricks + MicroPython (MIT)', 'static/licenses/pybricks-micropython.MIT.txt'],
     ['Bochs BIOS + VGABios firmware (LGPL-2.1)', 'static/licenses/free-386-firmware.LGPL-2.1.txt'],

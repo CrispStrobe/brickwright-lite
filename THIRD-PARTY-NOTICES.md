@@ -1600,6 +1600,28 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   to say whose files these are; this project is not affiliated with or endorsed by
   Microsoft.
 
+### MakeCode extensions (vendored source) — MIT
+
+Three third-party MakeCode extensions ("packages") that MakeCode's own micro:bit
+documentation projects depend on, vendored as SOURCE so a project naming one
+compiles and simulates offline: `scripts/sync-makecode-extensions.mjs` fetches each
+at an exact commit, checks every file against the git blob sha in that commit's
+tree and the LICENSE against the pin (anything not redistributable is refused by
+name), and writes them to `overlay/scratch-gui/src/lib/bw-makecode/extensions-vendored.js`,
+compiled into the bundle. `lib/bw-makecode/pxt-runtime.js` hands them to MakeCode's
+compiler when a project's pxt.json names them. Unmodified:
+
+- **pxt-microturtle** v0.0.9 — `microsoft/pxt-microturtle` at
+  `b8a0289980fcaff3b5e7ea6560b85b24f2b1492e`. MIT, Copyright (c) Microsoft Corporation.
+- **pxt-radio-blockchain** v0.1.4 — `microsoft/pxt-radio-blockchain` at
+  `fec2d45d8b514aff2c9c398a3e41711ecdca4e21`. MIT, Copyright (c) Microsoft Corporation.
+- **pxt-kitronik-motor-driver** v0.0.3 — `KitronikLtd/pxt-kitronik-motor-driver` at
+  `be38482e6a7a97dae80ef51b8b7e98767900dc00`. MIT, Copyright (c) 2017 Kitronik Ltd.
+
+Full texts: `overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt`,
+shipped with the app and reachable from the About dialog offline.
+"Kitronik" is a trademark of Kitronik Ltd, named here only to say whose files these are.
+
 ### micro:bit emulator firmware bases (built from source) — MIT, Apache-2.0, newlib
 
 Bluetooth-free CODAL V2 builds of pxt-microbit's {core, radio} and

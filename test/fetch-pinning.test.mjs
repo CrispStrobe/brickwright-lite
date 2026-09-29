@@ -368,6 +368,16 @@ const CENSUS = [
             'someone makes and reviews.'
     },
     {
+        file: 'scripts/sync-makecode-extensions.mjs',
+        kind: 'raw',
+        text: 'raw.githubusercontent.com/${repo}/${commit}/${file}',
+        class: 'sha-const',
+        why: '`commit` is a 40-hex literal in the EXTENSIONS pin table of the same file (the ' +
+            'script refuses one that is not), never the tag it records; every file is also ' +
+            'checked against the git blob sha in that commit\'s tree before anything is written. ' +
+            'test/makecode-extensions.test.mjs re-derives the committed blob shas offline.'
+    },
+    {
         file: 'scripts/sync-gallery-pins.mjs',
         kind: 'raw',
         text: 'raw.githubusercontent.com/${REPO}/${commit}/build-snippets/${name}.js',
