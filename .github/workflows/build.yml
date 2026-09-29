@@ -2152,12 +2152,17 @@ jobs:
 
 
   deploy:
-    # `build` stays FIRST: test/pages-deploy-ordering.test.mjs matches
-    # /needs:\s*(?:build|\[\s*build\b[^\]]*\])/, so the position is load-bearing
-    # to that ratchet even though Actions ignores it. Reordered rather than
-    # loosening the regex — the rule it protects (deploy depends on the job
-    # that produced its artifact) is one I would rather leave strict.
     needs: [build, corpus, browser, fpga-surface, guard]
+    # TWO RATCHETS READ THESE EXACT CHARACTERS, so the line's shape is load-bearing
+    # even though Actions treats `needs` as an unordered set and ignores comments:
+    #   - pages-deploy-ordering matches /needs:\s*(?:build|\[\s*build\b...)/, so
+    #     `build` must come FIRST in the list;
+    #   - debug-ci-resource-policy walks from `deploy:` to `needs:` through lines
+    #     matching /\s+\w/, which a `#` comment does not match — so a comment
+    #     ABOVE this line makes it read an empty needs list and fail.
+    # Both were hit while adding `guard`. Reordered and moved rather than widening
+    # either regex: one keeps deploy tied to the job that produced its artifact,
+    # the other keeps browser acceptance a hard requirement for publication.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.guard.outputs.superseded != 'true'
     runs-on: ubuntu-latest
     permissions:
