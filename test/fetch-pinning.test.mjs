@@ -543,7 +543,7 @@ const CENSUS = [
         why: 'The native-downloads end-to-end proof downloads the Linux-on-RISC-V kernel Image the way '
            + 'the lesson does, to show the packaged app may fetch machine images. Not part of any build: '
            + 'a verification script. The URL is split over two literals, and the second names commit '
-           + '5b257a33… in full — the same commit as lessons.js LINUX_MEDIA_COMMIT; SHA_CONSTANTS below '
+           + '07132874… in full — the same commit as lessons.js LINUX_MEDIA_COMMIT; SHA_CONSTANTS below '
            + 'asserts it is 40-hex. The proof also compares the downloaded bytes with a sha256 constant '
            + '(kernelSha256) and fails on a mismatch.'
     }

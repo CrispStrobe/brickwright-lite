@@ -180,17 +180,20 @@ try {
 
 // ─── LINUX ON RISC-V — the Machine Manager's lesson row ─────────────────────
 // Same surface, second machine: a fresh page (no CP/M state), the built-in
-// "Linux on RISC-V" row, its GPL licence line and source link, Run. The kernel
-// and initramfs are fetched from brickwright-media-lab (raw CDN at a pinned
-// commit) and sha256-checked by the app before anything boots — nothing GPL is
-// in this build. Then the real Linux 6.1 boots to the `bwb# ` prompt in the
-// lesson's TERMINAL (xterm.js, linux-terminal.jsx), and a person's keys are
-// typed into it: `uname -a`, Ctrl-C into a running `sleep`, Up to recall
-// history, Backspace, a paste into `wc -c`, and output that only a terminal
-// emulator draws right (SGR colour, `clear`, a carriage return). What is read
-// back is the RENDERED screen — xterm's rows — not a transcript. Every wait is
-// a condition (waitForFunction), none a sleep. The boot time printed here is
-// the one a learner sees: Run click → prompt, fetch included.
+// "Linux on RISC-V" row, its GPL licence line and source link, Run. The kernel,
+// initramfs and post-boot snapshot are fetched from brickwright-media-lab (raw
+// CDN at a pinned commit) and sha256-checked by the app before anything runs —
+// nothing GPL is in this build. Run OPENS AT THE PROMPT: bw-board restores the
+// snapshot (a refusal would fall back to a cold boot and log it — that log is a
+// failure here), and the boot log is replayed into the lesson's TERMINAL
+// (xterm.js, linux-terminal.jsx). Then a person's keys are typed into it:
+// `uname -a`, Ctrl-C into a running `sleep`, Up to recall history, Backspace,
+// a paste into `wc -c`, and output that only a terminal emulator draws right
+// (SGR colour, `clear`, a carriage return). What is read back is the RENDERED
+// screen — xterm's rows — not a transcript. Last, "Boot from scratch" on a
+// fresh page boots the real kernel all the way to the prompt. Every wait is a
+// condition (waitForFunction), none a sleep. The times printed are the ones a
+// learner sees: button click → prompt, fetch included.
 const LINUX_ARTIFACTS = join(root, 'artifacts', 'linux-riscv');
 // The terminal's visible rows, as drawn (xterm's DOM renderer), trailing blanks trimmed.
 const SCREEN = `(() => {
@@ -204,11 +207,16 @@ const screenShows = (page, re, timeout = 60000) => page.waitForFunction(`(() => 
     window.__bwScreenPrev = screen;
     return ${re}.test(screen) && /bwb#$/.test(screen) && prev === screen;
 })()`, null, {timeout, polling: 100}).then(() => true, () => false);
-try {
+const timing = {};
+// One lesson start: a fresh page, the row, a button, the terminal ready and the
+// prompt at its tail — still there one poll later (the shell is waiting, not
+// mid-print).
+async function startLinux(button, inspectRow = null) {
     const page = await browser.newPage({viewport: {width: 1440, height: 960}});
-    const linuxErrors = [];
+    const errors = [], warnings = [];
     page.on('dialog', d => d.accept());
-    page.on('pageerror', e => linuxErrors.push(`pageerror: ${e.stack || e.message}`));
+    page.on('pageerror', e => errors.push(`pageerror: ${e.stack || e.message}`));
+    page.on('console', m => { if (/Linux snapshot refused/.test(m.text())) warnings.push(m.text()); });
     await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('bw-starter-v1-complete', '1'); indexedDB.deleteDatabase('bw-machines'); } catch { /* */ } });
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
@@ -217,37 +225,51 @@ try {
     await device.selectOption('__manage__');
     const row = page.getByTestId('bw-mm-lesson').filter({hasText: 'Linux on RISC-V'});
     await row.waitFor({state: 'visible', timeout: 15000});
-    const licence = await row.getByTestId('bw-mm-lesson-licence').textContent();
-    check(/GPL-2\.0/.test(licence) && /LGPL-2\.1/.test(licence) && /brickwright-media-lab/.test(licence),
-        'the Linux lesson row carries its GPL/LGPL licence line and names where the media come from',
-        licence.replace(/\s+/g, ' ').slice(0, 160));
-    const href = await row.getByTestId('bw-mm-lesson-source').getAttribute('href');
-    check(href === 'https://github.com/CrispStrobe/brickwright-media-lab/releases/tag/riscv32-linux-v1',
-        'the source link points at the release that carries the corresponding source', href || '(none)');
-
+    if (inspectRow) await inspectRow(row);
     const t0 = Date.now();
-    await row.getByTestId('bw-mm-lesson-run').click();
+    await row.getByTestId(button).click();
     // The modal closes once the media are fetched and verified; a refusal
     // (a sha256 mismatch names the slot) keeps it open with the reason.
     await page.getByTestId('bw-machine-manager').waitFor({state: 'detached', timeout: 60000}).catch(async () => {
         const why = await page.getByTestId('bw-mm-status').textContent().catch(() => '');
-        throw new Error(`the Linux lesson did not start: ${why}`);
+        throw new Error(`the Linux lesson did not start (${button}): ${why}`);
     });
     const fetched = (Date.now() - t0) / 1000;
     const openDebugger = page.getByTestId('bw-open-circuit-debugger');
     if (await openDebugger.count()) await openDebugger.first().click();
-    const term = page.getByTestId('bw-linux-terminal');
     await page.waitForFunction(`(() => {
         const el = document.querySelector('[data-testid="bw-linux-terminal"]');
         return !!el && el.dataset.terminalState === 'ready';
     })()`, null, {timeout: 60000, polling: 100});
+    const up = await screenShows(page, /BWB-LINUX-USERSPACE-UP|bwb#/, 120000);
+    const prompt = (Date.now() - t0) / 1000;
+    return {page, errors, warnings, fetched, prompt, up};
+}
+try {
+    // ── Run: the post-boot snapshot ──
+    const run = await startLinux('bw-mm-lesson-run', async row => {
+        const licence = await row.getByTestId('bw-mm-lesson-licence').textContent();
+        check(/GPL-2\.0/.test(licence) && /LGPL-2\.1/.test(licence) && /brickwright-media-lab/.test(licence),
+            'the Linux lesson row carries its GPL/LGPL licence line and names where the media come from',
+            licence.replace(/\s+/g, ' ').slice(0, 160));
+        const href = await row.getByTestId('bw-mm-lesson-source').getAttribute('href');
+        check(href === 'https://github.com/CrispStrobe/brickwright-media-lab/releases/tag/riscv32-linux-v1',
+            'the source link points at the release that carries the corresponding source', href || '(none)');
+        check(await row.getByTestId('bw-mm-lesson-cold').count() === 1, 'the row offers "Boot from scratch" beside Run');
+    });
+    const {page} = run;
+    const linuxErrors = run.errors;
+    const term = page.getByTestId('bw-linux-terminal');
     check(await page.getByTestId('bw-serial-input').count() === 0,
         'the Linux console is a terminal: no line-input box beside it');
-    // THE PROMPT, AT THE TAIL, AND STILL THERE ONE POLL LATER: the shell is
-    // waiting, not mid-print. Only then is anything typed.
-    const up = await screenShows(page, /BWB-LINUX-USERSPACE-UP|bwb#/, 120000);
-    const booted = (Date.now() - t0) / 1000;
-    check(up, `Linux booted to the bwb# prompt in the terminal — ${booted.toFixed(1)} s from Run (media fetched + verified in ${fetched.toFixed(1)} s)`);
+    check(!run.warnings.length, 'Run opened the post-boot snapshot (no refusal, no fallback to a cold boot)', run.warnings.join(' | '));
+    check(run.up, `Linux at the bwb# prompt in the terminal from the snapshot — ${run.prompt.toFixed(1)} s from Run (media fetched + verified in ${run.fetched.toFixed(1)} s)`);
+    timing.snapshot = {fetchedSeconds: run.fetched, promptSeconds: run.prompt};
+    // The restored machine printed nothing yet: what is on screen above the
+    // prompt is the boot log the snapshot carries, replayed into the terminal.
+    const opened = await page.evaluate(SCREEN);
+    check(/BWB-LINUX-USERSPACE-UP/.test(opened),
+        'the boot log is in the terminal (replayed from the snapshot), not only the prompt', JSON.stringify(opened.slice(-160)));
 
     // KEYS, NOT A LINE. Click the terminal (xterm takes focus), then type as a
     // person does: each key a keydown the terminal turns into bytes for the
@@ -328,11 +350,23 @@ try {
         `a ${pasted.length}-byte paste arrives whole (wc -c says ${pasted.length})`,
         JSON.stringify((await screen()).slice(-200)));
 
-    check(!linuxErrors.length, 'no page errors during the Linux boot', linuxErrors.slice(0, 2).join(' | '));
+    check(!linuxErrors.length, 'no page errors while opening Linux from the snapshot and typing into it', linuxErrors.slice(0, 2).join(' | '));
     await mkdir(LINUX_ARTIFACTS, {recursive: true});
     await writeFile(join(LINUX_ARTIFACTS, 'screen.txt'), (await screen()) || '(empty screen)');
-    await writeFile(join(LINUX_ARTIFACTS, 'timing.json'), JSON.stringify({fetchedSeconds: fetched, promptSeconds: booted}, null, 2));
     await page.screenshot({path: join(LINUX_ARTIFACTS, 'linux-riscv.png'), fullPage: true});
+    await page.close();
+
+    // ── Boot from scratch: the whole kernel boot ──
+    const cold = await startLinux('bw-mm-lesson-cold');
+    timing.cold = {fetchedSeconds: cold.fetched, promptSeconds: cold.prompt};
+    check(cold.up, `Boot from scratch reached the bwb# prompt — ${cold.prompt.toFixed(1)} s from the click (media fetched + verified in ${cold.fetched.toFixed(1)} s)`);
+    check(!cold.errors.length, 'no page errors during the cold Linux boot', cold.errors.slice(0, 2).join(' | '));
+    // Relative, so a slow runner cannot flip it: the snapshot must beat a real
+    // boot by a wide margin, or it is not what reached the prompt.
+    check(run.prompt < cold.prompt / 2,
+        `the snapshot opens at the prompt in under half the cold boot's time (${run.prompt.toFixed(1)} s vs ${cold.prompt.toFixed(1)} s)`);
+    await cold.page.close();
+    await writeFile(join(LINUX_ARTIFACTS, 'timing.json'), JSON.stringify(timing, null, 2));
 } catch (e) {
     check(false, 'the Linux lesson flow ran without throwing', String(e.message || e).slice(0, 200));
 } finally {

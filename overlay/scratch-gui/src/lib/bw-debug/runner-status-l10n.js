@@ -98,6 +98,8 @@ const TABLE = {
 
         // ---- Linux on RISC-V (the Machine Manager lesson)
         'linux.starting': 'starting Linux on RISC-V…',
+        'linux.restoring': 'opening Linux on RISC-V at the shell prompt (post-boot snapshot)…',
+        'linux.snapshotRefused': 'the Linux snapshot was refused ({reason}); booting from scratch instead',
         'linux.booting': 'booting Linux on RISC-V — {phase} ({percent}%)',
         'linux.phase.starting': 'the kernel is starting up',
         'linux.phase.kernel': 'the kernel is running',
@@ -190,6 +192,8 @@ const TABLE = {
         'ready.riscv': 'RISC-V (RV32IMA) — {label} läuft',
 
         'linux.starting': 'Linux auf RISC-V wird gestartet…',
+        'linux.restoring': 'Linux auf RISC-V wird am Shell-Prompt geöffnet (Abbild nach dem Start)…',
+        'linux.snapshotRefused': 'das Linux-Abbild wurde abgelehnt ({reason}); es wird von Grund auf gebootet',
         'linux.booting': 'Linux auf RISC-V startet — {phase} ({percent} %)',
         'linux.phase.starting': 'der Kernel fährt hoch',
         'linux.phase.kernel': 'der Kernel läuft',

@@ -107,12 +107,13 @@ export default function MachineManager({store, onRun, onClose, locale}) {
     // an unhandled rejection behind a closed modal.
     const lessons = React.useMemo(() => lessonMachines(locale), [locale]);
     const [lessonBusy, setLessonBusy] = React.useState(null);
-    const runLesson = async lesson => {
+    // `cold`: the lesson's "Boot from scratch" config (no snapshot slot).
+    const runLesson = async (lesson, cold = false) => {
         const title = lesson.config.title;
         setLessonBusy(lesson.config.id);
-        setStatus(lessonT(locale, 'lessons.fetching', {title, size: lesson.size}));
+        setStatus(lessonT(locale, 'lessons.fetching', {title, size: cold ? lesson.coldSize : lesson.size}));
         try {
-            if (onRun) await onRun(lesson.config);
+            if (onRun) await onRun(cold ? lesson.coldConfig : lesson.config);
             setLessonBusy(null);
             if (onClose) onClose();
         } catch (e) {
@@ -192,9 +193,16 @@ export default function MachineManager({store, onRun, onClose, locale}) {
                                         data-testid="bw-mm-lesson-source">{lesson.sourceLabel}</a>
                                 </div>
                             </div>
-                            <button onClick={() => runLesson(lesson)} style={primary}
-                                disabled={lessonBusy === lesson.config.id}
-                                data-testid="bw-mm-lesson-run">{lessonT(locale, 'lessons.run')}</button>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
+                                <button onClick={() => runLesson(lesson)} style={primary}
+                                    disabled={lessonBusy === lesson.config.id}
+                                    data-testid="bw-mm-lesson-run">{lessonT(locale, 'lessons.run')}</button>
+                                {lesson.coldConfig ? (
+                                    <button onClick={() => runLesson(lesson, true)} style={btn}
+                                        disabled={lessonBusy === lesson.config.id}
+                                        data-testid="bw-mm-lesson-cold">{lesson.coldLabel}</button>
+                                ) : null}
+                            </div>
                         </div>
                     ))}
                     {machines.length === 0 ? (
