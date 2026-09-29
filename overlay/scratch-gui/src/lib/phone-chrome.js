@@ -8,19 +8,33 @@
  * 36 and 34 takes it to 70px: 64pt, 14.8%. Every tab stays clickable and no tab
  * falls below the 32px touch floor.
  *
- * WHY NOT ONE ROW, WHICH WOULD BE BETTER: the menu bar has 509px of free width
- * (its items end at x=481, the next sits at 996) and the tab strip is only
- * 250px wide, so the tabs would fit beside them. Moving them there with CSS was
- * tried and DOES reclaim the whole 44px — `panelTop` goes 92 -> 48 — but the
- * relocated tabs become unclickable: lifted out of their parent's box they are
- * clipped by an ancestor's `overflow: hidden`, which is not a stacking problem
- * (z-index 492 over the menu bar's 491 changes nothing) and cannot be fixed by
- * raising it, because that same overflow is what makes the panes scroll.
- * Verified with elementsFromPoint: the tab list does not appear in the hit
- * stack at all. Doing it properly means rendering the tab list inside the menu
- * bar row in JSX, which react-tabs makes awkward — TabList must be a child of
- * Tabs, so a portal breaks it. That is a bigger change than this one and is
- * left for its own lane.
+ * AND IT IS ONE ROW NOW. The menu bar has 509px of free width (its items end at
+ * x=481, the next sits at 996) and the tab strip is only 250px wide, so the tabs
+ * fit beside them. The first attempt moved the strip with `position: absolute`
+ * and DID reclaim the 44px — `panelTop` 92 -> 48 — but the relocated tabs were
+ * 0 of 6 clickable. That was not a stacking problem: z-index 492 over the menu
+ * bar's 491 changed nothing, and elementsFromPoint showed the tab list absent
+ * from the hit stack entirely. Lifted out of its parent's box it was CLIPPED by
+ * an ancestor's `overflow: hidden`, which cannot simply be relaxed because that
+ * same overflow is what makes the panes scroll.
+ *
+ * `position: fixed` is the answer, because a fixed box is positioned against the
+ * viewport and ESCAPES ancestor overflow clipping altogether. Measured with it:
+ * chrome 92 -> 36px, tabs 6 of 6 hittable AND 6 of 6 actually switchable, in
+ * both orientations, with zero overlap against the menu items.
+ *
+ * Two things that had to be checked before trusting it, because a fixed element
+ * floats over everything by nature:
+ *   - The File menu still opens and its dropdown is reachable (186x312, hit
+ *     test lands inside it), so the strip does not cover the menus it sits
+ *     beside.
+ *   - FULL SCREEN is unaffected: the app already removes the tab strip there
+ *     (measured rect [0,0,0,0]), so there is no floating tab bar over a
+ *     full-screen stage or widgets pane.
+ *
+ * A fixed element is also only safe while no ancestor is transformed — a
+ * transform makes it position against that ancestor instead. Checked: none of
+ * the tab list's ancestors carries transform, filter or will-change.
  *
  * Keyed on the same `data-bw-touch` flag as the tap-target floor, for the same
  * reason: a width media query cannot fire when the layout viewport is 1024 on
@@ -36,6 +50,14 @@ const ATTR = 'data-bw-touch';
 export const MENU_H = 36;
 /** Tab strip height on a touch screen, in CSS pixels. */
 export const TABS_H = 34;
+/** Distance from the right edge, clearing the menu bar's right-hand item. */
+export const TABS_RIGHT = 48;
+/**
+ * Floor for the editor column, in CSS pixels — upstream's own flex-basis.
+ * It is a FLOOR and not a fixed width: the point is to let that column shrink
+ * back to it so the right-hand pane can have some width. See the note below.
+ */
+export const EDITOR_MIN = 598;
 /**
  * Tab height. Stays at or above the 32px touch floor deliberately — shrinking
  * the row must not shrink the thing you tap.
@@ -55,14 +77,40 @@ html[${ATTR}] [class*="gui_menu-bar-position"] {
     min-height: ${MENU_H}px;
 }
 html[${ATTR}] [class*="gui_tab-list"] {
+    /* fixed, not absolute: see the note above on ancestor overflow clipping. */
+    position: fixed;
+    top: 1px;
+    right: ${TABS_RIGHT}px;
     height: ${TABS_H}px;
     min-height: ${TABS_H}px;
+    margin: 0;
+    /* above the menu bar's 491, which is a sibling in the root stacking context */
+    z-index: 492;
+    background: transparent;
 }
 html[${ATTR}] [class*="gui_tab"][role="tab"] {
     height: ${TAB_H}px;
     min-height: ${TAB_H}px;
     padding-top: 0;
     padding-bottom: 0;
+}
+/* LET THE EDITOR COLUMN SHRINK, so the pane beside it can exist.
+   Upstream gives it 'flex: 1 0 598px' -- grow freely, NEVER shrink. On a 1024
+   layout that starves its neighbour: measured on the Circuit tab in landscape,
+   where the parts rail is open, the editor grew to 942px and the stage column
+   (which is what the debugger is portaled into) collapsed to its 120px
+   min-width and then overflowed the layout, right edge 1071 against 1024. A
+   120px debugger is not a debugger.
+   With shrink enabled and 598 kept as a floor: editor 942 -> 660, debugger
+   120 -> 355, right edge 1071 -> 1024. The designer keeps its bench — the
+   canvas stays 700 wide inside an overflow-x: auto pane (scrollWidth 700,
+   client 418), which is how it already behaved, and its right edge is inside
+   the layout.
+   Portrait is unaffected: the rail starts closed there, so the editor was
+   already 660 and the column already 355. */
+html[${ATTR}] [class*="gui_editor-wrapper"] {
+    flex: 1 1 ${EDITOR_MIN}px;
+    min-width: ${EDITOR_MIN}px;
 }
 `;
 
