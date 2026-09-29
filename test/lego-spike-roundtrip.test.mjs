@@ -164,8 +164,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // point and parseFloat — micro:bit MicroPython and dialect words only,
     // plus the arrays shim's `set` growing the array. The SPIKE path is
     // untouched, and the assertions re-ran at the pin.
+    // PIN MOVED 5c20cc83 -> b58a2254 (2026-09-29, sb3-creator#39): the DEVICE
+    // EV3 words (ev3Dialect.js). Its command words exist on DEVICE EV3 only and
+    // its reporters all start `ev3`, so no SPIKE line can read differently;
+    // the assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '5c20cc836da753db866a62f24f7498e7e2972447');
+        'b58a2254c3b16280a52e5ce4d8a8a5da1d1fa525');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

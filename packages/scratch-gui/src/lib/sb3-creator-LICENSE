@@ -18,3 +18,4 @@ CrispStrobe/sb3-creator (relicensed to MPL-2.0 as of f72f1e7):
   sb3-creator-runtime.js
   sb3-creator-scratchruntime.js
   cubeDirections.js
+  ev3Dialect.js

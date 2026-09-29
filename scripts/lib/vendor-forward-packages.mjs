@@ -80,7 +80,7 @@ const LIBRARIES = [
     'sb3-creator.js', 'trace-oracle.js', 'sb3-creator-examples.js', 'sb3-creator-python.js',
     'sb3-creator-micropython.js', 'sb3-creator-spike3.js', 'pico-repl.js', 'sb3-creator-javascript.js', 'sb3-creator-c.js',
     'sb3-creator-runtime.js', 'sb3-creator-scratchruntime.js', 'sb3-creator-chostruntime.js',
-    'sb3-creator-chost.js', 'sb3-creator-basic.js', 'cubeDirections.js', 'bw-matrix/census-snapshot.js'
+    'sb3-creator-chost.js', 'sb3-creator-basic.js', 'cubeDirections.js', 'ev3Dialect.js', 'bw-matrix/census-snapshot.js'
 ];
 const ARTIFACTS = [
     ...LIBRARIES.map(name => `src/lib/${name}`),
