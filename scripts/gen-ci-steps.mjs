@@ -31,6 +31,17 @@ import {parseStepPointers, judgeSteps} from './lib/skip-pointers.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const READINGS = path.join(ROOT, 'docs', 'generated', 'ci-step-census.json');
 const RUNS_PER_WORKFLOW = 20, GREEN_MAIN = 20;
+// FETCH WINDOW for build.yml, which is sampled as "the last GREEN_MAIN green
+// main runs plus every branch run in the window". 60 was enough until a busy day
+// filled the window with branch runs and red main runs: a regeneration on
+// 2026-09-28 found only 17 build.yml runs and NOT ONE in which `deploy` or
+// `verify-gui` had executed, because those only run on a green main build. The
+// readings then classified both as "nobody runs" and the census test went red on
+// a different assertion than the one the regeneration was fixing — one state
+// failing coverage, the other failing step classification, with no correct
+// version available. The window has to reach back far enough to contain
+// GREEN_MAIN actual green main runs, not merely 60 runs of any kind.
+const BUILD_WINDOW = 200;
 const HOUSEKEEPING = /^(Set up job|Complete job|Post |Run actions\/|Initialize containers|Stop containers)/;
 const gh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 256 << 20});
 
@@ -121,7 +132,7 @@ const fetchAll = () => {
         // branch. Chicken and egg, with the tooling holding both.
         let list = [];
         try {
-            list = JSON.parse(gh(['run', 'list', '--repo', repo, '--workflow', wf, '--limit', String(wf === 'build.yml' ? 60 : RUNS_PER_WORKFLOW), '--json', 'databaseId,headSha,headBranch,status,conclusion,createdAt']))
+            list = JSON.parse(gh(['run', 'list', '--repo', repo, '--workflow', wf, '--limit', String(wf === 'build.yml' ? BUILD_WINDOW : RUNS_PER_WORKFLOW), '--json', 'databaseId,headSha,headBranch,status,conclusion,createdAt']))
                 .filter(r => r.status === 'completed' && r.conclusion !== 'cancelled');
         } catch (e) {
             if (!/404|not found/i.test(String(e.stderr || e.message || e))) throw e;
