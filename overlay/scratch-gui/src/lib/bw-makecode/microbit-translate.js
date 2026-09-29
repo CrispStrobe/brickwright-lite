@@ -87,6 +87,7 @@ const isPinEnum = name => /^(DigitalPin|AnalogPin|TouchPin|PwmPin)$/.test(name);
 class MicrobitTranslator extends BaseTranslator {
     /** A member expression that names an enum member, resolved to its token. */
     enumToken (node) {
+        node = this.resolveConst(node);
         if (!node || node.type !== 'Member') return null;
         const owner = node.object;
         if (!owner || owner.type !== 'Identifier') return null;
@@ -158,6 +159,8 @@ class MicrobitTranslator extends BaseTranslator {
             /^read button_/.test(value) ||
             / happening$/.test(value) ||
             / touched$/.test(value) ||
+            /^point x .+ y .+$/.test(value) ||
+            /^pixel x .+ of image .+$/.test(value) ||
             /^sprite .+ (touching sprite .+|touching edge|deleted)$/.test(value) ||
             /^game is (over|running|paused)$/.test(value) ||
             value === 'false';
@@ -236,6 +239,12 @@ class MicrobitTranslator extends BaseTranslator {
     /** Does this expression hold a sprite (a handle)? */
     isSprite (node) {
         if (!node || !this.sprites) return false;
+        // A record's sprite field: `client.sprite` (records are lowered to
+        // arrays, so the field holds the handle like any other variable).
+        if (node.type === 'Member') {
+            const f = this.recordField(node);
+            return !!f && this.recordTypes.get(f.type).spriteFields.has(node.name);
+        }
         if (node.type === 'Identifier') return this.sprites.has(node.name);
         if (node.type === 'Index') return node.object.type === 'Identifier' && this.spriteArrays.has(node.object.name);
         if (node.type === 'Call') {
@@ -324,10 +333,71 @@ class MicrobitTranslator extends BaseTranslator {
         return true;
     }
 
+    // ── images ──────────────────────────────────────────────────────
+    //
+    // MakeCode's Image methods, on an image kept anywhere (a variable, an
+    // array item, a record's field). A record whose own method has one of
+    // these names is the record's, not an image's.
+
+    /** Is this call a method of an Image (and not a record's or a sprite's)? */
+    imageMethod (node) {
+        const c = node && node.callee;
+        if (!c || c.type !== 'Member' || !IMAGE_METHODS.has(c.name)) return false;
+        if (c.object && c.object.type === 'Identifier' && MAKECODE_NAMESPACES.has(c.object.name)) return false;
+        if (this.isSprite(c.object)) return false;
+        const rt = this.recordTypes && this.recordTypes.get(this.recordTypeOfNode(c.object));
+        return !(rt && rt.methods.has(c.name));
+    }
+
+    /** An Image method used as a statement, or false. */
+    imageCommand (node, push, out, pad) {
+        if (!this.imageMethod(node)) return false;
+        const c = node.callee;
+        const a = node.args || [];
+        if (c.name === 'showImage' || c.name === 'plotImage') {
+            // Made and shown on the spot: the fixed pattern it is.
+            const made = c.object && c.object.type === 'Call' &&
+                /^images\.(createImage|iconImage|arrowImage)$/.test(this.path(c.object.callee) || '');
+            const pattern = made ? /^\(?create image ([0-9:]+)\)?$|^"([0-9:]+)"$/.exec(this.expr(c.object)) : null;
+            if (pattern) {
+                push(`show pattern ${pattern[1] || pattern[2]}`);
+                return true;
+            }
+            const image = this.operand(c.object);
+            const offset = a[0] ? this.operand(a[0]) : '0';
+            // showImage waits its interval (400 ms unless given) after drawing.
+            const interval = c.name === 'showImage' ? (a[1] ? this.literalNumber(a[1]) : '400') : null;
+            if (c.name === 'plotImage' || interval === '400') {
+                push(`${c.name === 'showImage' ? 'show' : 'plot'} image ${image} offset ${offset}`);
+                return true;
+            }
+            push(`plot image ${image} offset ${offset}`);
+            push(`wait ${seconds(a[1], this)} seconds`);
+            return true;
+        }
+        if (c.name === 'setPixel') {
+            // A truth value: `v != 0` is how the export writes the dialect's
+            // 1/0 back, so it is read as that value again.
+            let v = a[2];
+            if (v && v.type === 'Binary' && v.op === '!=' && v.right.type === 'Number' && Number(v.right.value) === 0) v = v.left;
+            push(`set pixel x ${this.operand(a[0])} y ${this.operand(a[1])} of image ${this.operand(c.object)} to ${this.single(v, out, pad)}`);
+            return true;
+        }
+        push(this.note(`${this.path(c) || c.name}() — an image method with no block here`));
+        return true;
+    }
+
     /** Reporter calls: MakeCode's sensors and maths in our spelling. */
     callExpression (node) {
         const sprite = this.spriteCall(node, null);
         if (sprite) return sprite;
+        if (this.imageMethod(node)) {
+            const c = node.callee;
+            const a = node.args || [];
+            if (c.name === 'pixel') return `pixel x ${this.operand(a[0])} y ${this.operand(a[1])} of image ${this.operand(c.object)}`;
+            this.unsupported.push(`${this.path(c) || c.name}() — an image method with no block here`);
+            return '0';
+        }
         const name = this.path(node.callee);
         const a = node.args || [];
         const arg = i => this.expr(a[i]);
@@ -362,10 +432,24 @@ class MicrobitTranslator extends BaseTranslator {
         case 'radio.receivedPacket': {
             const prop = a[0] && a[0].type === 'Member' ? a[0].name : '';
             if (prop === 'SignalStrength') return 'last radio signal strength';
+            // The sender's serial number rides in the packet when the sender
+            // turned it on (`radio transmit serial number on`); else 0, as in MakeCode.
+            if (prop === 'SerialNumber') return 'last radio serial number';
             this.unsupported.push(`radio.receivedPacket(RadioPacketProperty.${prop || '…'}) — ` +
-                'a MicroPython radio packet carries no serial number or send time');
+                'a MicroPython radio packet carries no send time');
             return '0';
         }
+        case 'control.deviceSerialNumber': return 'device serial number';
+        // MakeCode's "parse to number": the number a text spells.
+        case 'parseFloat': return `number from text ${this.operand(a[0])}`;
+        case 'led.point': return `point x ${this.operand(a[0])} y ${this.operand(a[1])}`;
+        // The time of the event the handler runs for, in µs. The handler is
+        // POLLED here, so it is the time the poll saw the event, read into a
+        // variable as the handler starts (microbitToPseudocode).
+        case 'control.eventTimestamp':
+            if (this.eventTime) return this.eventTime;
+            this.unsupported.push('control.eventTimestamp() outside an event handler');
+            return '0';
         case 'radio.receivedString': return 'read last radio text';
         // MakeCode's music reporters, as the blocks they are. music.beat was
         // read as its 120 bpm length (a number), which ran — until the program
@@ -427,13 +511,21 @@ class MicrobitTranslator extends BaseTranslator {
         // handed is a pattern, so that is what it becomes: `"0101…"`. It
         // survives being stored in an array, which is how these programs
         // actually use them (`uhrbilder[i].showImage(0)`).
-        case 'images.createImage': return `"${ledPattern(a[0])}"`;
+        // An image is a VALUE — the dialect's `create image`, which is
+        // MicroPython's Image — so it can be kept in a variable, an array or a
+        // record's field, changed pixel by pixel and shown at run time
+        // (gameofLife, karel). An image made and shown on the spot is still
+        // `show pattern` (command(), showImage).
+        case 'images.createImage': return `(create image ${ledPattern(a[0])})`;
         case 'images.iconImage':
         case 'images.arrowImage': {
             const table = name === 'images.arrowImage' ? MICROBIT_ARROWS : MICROBIT_ICONS;
-            const member = a[0] && a[0].type === 'Member' ? a[0].name : null;
+            const icon = this.resolveConst(a[0]);
+            const member = icon && icon.type === 'Member' ? icon.name : null;
             const pattern = member ? table[member] : null;
-            if (pattern) return `"${pattern}"`;
+            // An image VALUE, like createImage's (MakeCode's icon image is an
+            // Image): kept in an array and shown later, it is the image blocks'.
+            if (pattern) return `(create image ${pattern})`;
             this.unsupported.push(`${name}(${member || '…'}) — not an icon we have a pattern for`);
             return '0';
         }
@@ -493,7 +585,8 @@ class MicrobitTranslator extends BaseTranslator {
             // MicroPython's built-in images are the same bitmaps, and
             // `show pattern` lowers to display.show().
             const table = name === 'basic.showArrow' ? MICROBIT_ARROWS : MICROBIT_ICONS;
-            const member = a[0] && a[0].type === 'Member' ? a[0].name : null;
+            const icon = this.resolveConst(a[0]);
+            const member = icon && icon.type === 'Member' ? icon.name : null;
             const pattern = member ? table[member] : null;
             if (!pattern) {
                 push(this.note(`${name}(${member || '…'}) — not an icon we have a pattern for`));
@@ -528,6 +621,18 @@ class MicrobitTranslator extends BaseTranslator {
         // board (MicroPython's print() on the micro:bit), and it goes back as
         // serial.writeLine — the census found it refused in two apps, and
         // lite's own STC programs' `print` unexportable in 41.
+        // `name:value` on one line, as MakeCode's writeValue writes it; the
+        // export reads a `print` of a literal "name:" joined with a value
+        // back as writeValue.
+        case 'serial.writeValue': {
+            const label = this.literalString(a[0]);
+            if (label === null || !/^[^:]+$/.test(label)) {
+                push(this.note('serial.writeValue() with a computed or colon-bearing name'));
+                return;
+            }
+            push(`print ("${label}:" join ${this.joinOperand(a[1])})`);
+            return;
+        }
         case 'serial.writeLine': {
             const literal = a[0] && a[0].type === 'String' ? this.literalString(a[0]) : null;
             push(literal !== null ? `print "${literal}"` : `print ${this.expr(a[0])}`);
@@ -547,6 +652,9 @@ class MicrobitTranslator extends BaseTranslator {
             return;
         case 'led.toggle':
             push(`toggle x ${this.operand(a[0])} y ${this.operand(a[1])}`);
+            return;
+        case 'led.plotBrightness':
+            push(`plot x ${this.operand(a[0])} y ${this.operand(a[1])} brightness ${this.operand(a[2])}`);
             return;
         case 'led.setBrightness':
             push(`set display brightness to ${this.operand(a[0])}`);
@@ -733,6 +841,23 @@ class MicrobitTranslator extends BaseTranslator {
             this.radioLine = {out, index: out.length - 1, pad};
             return;
         }
+        case 'radio.setTransmitSerialNumber': {
+            const on = a[0] && a[0].type === 'Boolean' ? a[0].value : null;
+            if (on !== null) {
+                push(`radio transmit serial number ${on ? 'on' : 'off'}`);
+                return;
+            }
+            push(`IF ${this.condition(a[0])} THEN:`);
+            out.push(`${pad}  radio transmit serial number on`);
+            push('ELSE:');
+            out.push(`${pad}  radio transmit serial number off`);
+            return;
+        }
+        case 'input.setSoundThreshold': {
+            const level = a[0] && a[0].type === 'Member' && a[0].name === 'Quiet' ? 'quiet' : 'loud';
+            push(`set ${level} sound threshold to ${this.operand(a[1])}`);
+            return;
+        }
         case 'radio.sendNumber':
             push(`radio send number ${this.single(a[0], out, pad)}`);
             return;
@@ -771,33 +896,26 @@ class MicrobitTranslator extends BaseTranslator {
                 push(this.note(`${name}() — ${NO_MICROPYTHON[name]}`));
                 return;
             }
-            if (node.callee && node.callee.type === 'Member' &&
-                (node.callee.name === 'showImage' || node.callee.name === 'plotImage')) {
-                const image = this.expr(node.callee.object);
-                const literal = /^"([0-9:]+)"$/.exec(image);
-                if (literal) {
-                    push(`show pattern ${literal[1]}`);
-                    return;
-                }
-                // MATRIX is a FIELD on the block, not an input, so a
-                // computed pattern cannot be put there at all — this is a
-                // limit of the block, not a gap in the grammar.
-                push(this.note(`${image}.showImage() — the display block takes a fixed pattern, ` +
-                    'so an image chosen at runtime cannot be shown'));
-                return;
-            }
+            if (this.imageCommand(node, push, out, pad)) return;
             super.command(node, indent, out);
         }
     }
 }
+
+/** MakeCode's namespaces: `led.clear` is not an image's clear(). */
+const MAKECODE_NAMESPACES = new Set(['basic', 'input', 'led', 'music', 'radio', 'pins', 'game', 'images', 'serial',
+    'control', 'Math', 'bluetooth', 'datalogger', 'servos', 'power', 'loops', 'logic', 'text', 'console']);
+
+/** MakeCode's Image methods (pxt-microbit 9.1.1 libs/core/images.cpp). */
+const IMAGE_METHODS = new Set(['setPixel', 'pixel', 'showImage', 'plotImage', 'scrollImage', 'clear',
+    'setPixelBrightness', 'pixelBrightness', 'width', 'height', 'plotFrame', 'showFrame']);
 
 /**
  * MakeCode calls with NO MicroPython counterpart at all — refused with the
  * reason, because "unsupported" alone reads like a gap someone forgot.
  */
 const NO_MICROPYTHON = {
-    'radio.setTransmitSerialNumber': 'MicroPython\'s radio has no serial number to send, and its packets carry none',
-    'radio.writeReceivedPacketToSerial': 'MicroPython\'s radio has no packet-to-serial dump'
+    'radio.writeReceivedPacketToSerial': 'the dump prints each packet\'s send time, and a MicroPython radio packet carries none'
 };
 
 /**
@@ -889,6 +1007,9 @@ function returnsValue (body) {
     return found;
 }
 
+/** Does this body read control.eventTimestamp()? */
+const usesEventTime = body => JSON.stringify(body).includes('"object":{"type":"Identifier","name":"control"},"name":"eventTimestamp"');
+
 /** Does this statement list assign `name` anywhere? */
 function writes (body, name) {
     let found = false;
@@ -934,10 +1055,33 @@ const HANDLERS = {
     // The V2 touch logo. Pressed and Touched both fire as the logo is
     // touched, which polling can say; Released and LongPressed need the timing
     // of the touch, which a poll does not keep — refused, by name.
+    //
+    // A release and a long press are what the touch's DURATION says, so for
+    // those the poll waits for the release and times the touch (CODAL: on
+    // release, held 1000 ms or more is LONG_CLICK, less is CLICK). When a
+    // program has a long-press handler, its Pressed handler is timed too —
+    // a long press must not also fire it at the touch, as MakeCode's does
+    // not.
     'input.onLogoEvent': translator => a => {
         const event = a[0] && a[0].type === 'Member' ? a[0].name : 'Pressed';
-        if (event === 'Pressed' || event === 'Touched') return {test: 'logo touched', release: 'logo touched'};
-        return {refuse: `input.onLogoEvent(TouchButtonEvent.${event}) — polling sees the logo held, not a ${event === 'Released' ? 'release' : 'long press'}`};
+        if (event === 'Touched' || (event === 'Pressed' && !translator.logoTimed)) return {test: 'logo touched', release: 'logo touched'};
+        if (event === 'Released') return {test: 'logo touched', wait: 'not (logo touched)'};
+        if (event === 'Pressed' || event === 'LongPressed') {
+            const held = translator.freshName('_held');
+            return {test: 'logo touched', start: `set ${held} to timer`, wait: 'not (logo touched)',
+                guard: event === 'Pressed' ? `(timer - ${held}) < 1` : `not ((timer - ${held}) < 1)`};
+        }
+        return {refuse: `input.onLogoEvent(TouchButtonEvent.${event}) — no such logo event`};
+    },
+    // A pulse ends when the pin leaves the level: a High pulse at the fall,
+    // a Low pulse at the rise — so the poll sees the level, then waits for
+    // it to end, then runs the body (MakeCode's onPulsed fires as the pulse
+    // ends). Its duration (pins.pulseDuration) is not kept.
+    'pins.onPulsed': translator => a => {
+        const pin = translator.pin(a[0]) || 'P0';
+        const high = !(a[1] && a[1].type === 'Member' && a[1].name === 'Low');
+        const level = `pin ${pin} digital = 0`;
+        return high ? {test: `not (${level})`, wait: level} : {test: level, wait: `not (${level})`};
     }
 };
 
@@ -946,9 +1090,7 @@ const HANDLERS = {
  * than approximated: a shake handler that silently never fires would be
  * worse than one the user is told about.
  */
-const UNPOLLABLE_HANDLERS = {
-    'input.onSound': 'no sound-event reporter in pseudocode'
-};
+const UNPOLLABLE_HANDLERS = {};
 
 /**
  * Translate a MakeCode micro:bit project.
@@ -966,12 +1108,21 @@ export function microbitToPseudocode (source, opts = {}) {
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
     t.claimSprites(ast);
+    // Classes, interfaces and object literals, lowered to parallel arrays
+    // (translate-base.js, records). Before the functions are listed: a
+    // class's methods become procedures of their own.
+    t.claimRecords(ast);
+    // A long-press handler on the logo makes its Pressed handler a timed one.
+    t.logoTimed = JSON.stringify(ast).includes('"object":{"type":"Identifier","name":"TouchButtonEvent"},"name":"LongPressed"');
 
     // Enums and functions first: a call can precede its definition, and
     // an enum member can be referenced before the enum is declared.
     for (const st of ast.body) {
         if (st.type === 'Enum') t.statement(st, 0, []);
-        if (st.type === 'FunctionDeclaration') t.functions.push({name: st.name, params: st.params, body: st.body});
+        if (st.type === 'FunctionDeclaration') {
+            t.functions.push({name: t.procName(st.name), source: st.name, params: st.params, paramTypes: st.paramTypes,
+                returnType: st.returnType, body: st.body, scope: st.name});
+        }
     }
     // A function that returns a value hands it back in a variable of its own,
     // `<name>_result`, which its callers read after calling it.
@@ -998,7 +1149,7 @@ export function microbitToPseudocode (source, opts = {}) {
         // hats are how that is said here.
         if (callName === 'basic.forever') {
             const lines = ['WHEN flag clicked:', '  FOREVER:'];
-            t.block(bodyOf(call.args[0]), 2, lines);
+            t.block(t.leavable(bodyOf(call.args[0]), 'forever'), 2, lines);
             scripts.push(lines);
             continue;
         }
@@ -1016,15 +1167,40 @@ export function microbitToPseudocode (source, opts = {}) {
                 scripts.push([`# unsupported: ${shape.refuse}`]);
                 continue;
             }
-            const handlerBody = bodyOf(call.args[call.args.length - 1]);
+            const handlerBody = t.leavable(bodyOf(call.args[call.args.length - 1]), callName.split('.').pop());
             const lines = [
                 `# ${callName} — MakeCode fires this on an event; here it is polled.`,
                 'WHEN flag clicked:',
                 '  FOREVER:',
                 `    IF ${shape.test} THEN:`
             ];
-            t.block(handlerBody, 3, lines);
+            // control.eventTimestamp(): the time the poll saw the event.
+            t.eventTime = usesEventTime(handlerBody) ? t.freshName('_evt') : null;
+            if (t.eventTime) lines.push(`      set ${t.eventTime} to round (timer * 1000000)`);
+            // Timed shapes (a release, a long press, a pulse): wait for the
+            // event's end first, and run the body only if its guard holds.
+            if (shape.start) lines.push(`      ${shape.start}`);
+            if (shape.wait) lines.push(`      wait until ${shape.wait}`);
+            if (shape.guard) {
+                lines.push(`      IF ${shape.guard} THEN:`);
+                t.block(handlerBody, 4, lines);
+            } else t.block(handlerBody, 3, lines);
             if (shape.release) lines.push(`      wait until not (${shape.release})`);
+            t.eventTime = null;
+            scripts.push(lines);
+            continue;
+        }
+
+        // MakeCode's input.onSound, a hat as in MakeCode (it has no sound-event
+        // reporter to poll with).
+        if (callName === 'input.onSound') {
+            const level = call.args[0] && call.args[0].type === 'Member' && call.args[0].name === 'Quiet' ? 'quiet' : 'loud';
+            const body = t.leavable(bodyOf(call.args[call.args.length - 1]), 'onSound');
+            const lines = [`WHEN ${level} sound:`];
+            t.eventTime = usesEventTime(body) ? t.freshName('_evt') : null;
+            if (t.eventTime) lines.push(`  set ${t.eventTime} to round (timer * 1000000)`);
+            t.block(body, 1, lines);
+            t.eventTime = null;
             scripts.push(lines);
             continue;
         }
@@ -1070,6 +1246,41 @@ export function microbitToPseudocode (source, opts = {}) {
         out.push('');
     }
 
+    // The procedures are translated BEFORE the scripts are assembled: a
+    // method's body can be the first use of a record type, whose arrays the
+    // main script then has to create.
+    const defines = [];
+    t.inProcedure = true;
+    for (const fn of t.functions) {
+        // A function that takes an array exists only as its specialisations
+        // (translate-base.js, specialize), which this loop reaches as they are made.
+        if (fn.generic || (!fn.specialOf && (fn.params || []).some(p => fn.paramTypes && fn.paramTypes[p] && fn.paramTypes[p].isArray))) continue;
+        // A parameter is read in the body under the name the body uses for it
+        // (`x` is `x_`: a bare `x` is Scratch's x position), so it is declared so.
+        const signature = fn.params && fn.params.length ?
+            `${fn.name} ${fn.params.map(p => `(${t.varName(p)})`).join(' ')}` : fn.name;
+        const lines = [`DEFINE ${signature}:`];
+        t.returnable = {result: fn.result || null};
+        // A method: `this` is the instance it was called on, its first argument.
+        if (fn.record) {
+            t.selfRecord = fn.record;
+            t.aliases.set('this', 'self');
+        }
+        t.arrayAliases = fn.arrayAliases || null;
+        t.scope = fn.scope || null;
+        t.block(fn.body, 1, lines);
+        t.scope = null;
+        t.arrayAliases = null;
+        t.selfRecord = null;
+        t.aliases.delete('this');
+        t.returnable = null;
+        defines.push(...lines, '');
+    }
+    // Every record array starts with index 0, "no record", before anything runs.
+    const prelude = t.recordPrelude().map(line => `  ${line}`);
+    if (prelude.length) main.unshift(...prelude);
+
+    // After every body, procedures included: a rename made in one is announced too.
     const renames = t.renameNotes();
     if (renames.length) out.push(...renames, '');
 
@@ -1077,16 +1288,7 @@ export function microbitToPseudocode (source, opts = {}) {
         out.push('WHEN flag clicked:', ...main, '');
     }
     for (const script of scripts) out.push(...script, '');
-
-    for (const fn of t.functions) {
-        const signature = fn.params && fn.params.length ?
-            `${fn.name} ${fn.params.map(p => `(${p})`).join(' ')}` : fn.name;
-        const lines = [`DEFINE ${signature}:`];
-        t.returnable = {result: fn.result || null};
-        t.block(fn.body, 1, lines);
-        t.returnable = null;
-        out.push(...lines, '');
-    }
+    out.push(...defines);
 
     // Nothing at all ran: better an empty hat than a file with no script.
     if (!main.length && !scripts.length) out.push('WHEN flag clicked:', '  # (nothing translatable in this project)', '');
