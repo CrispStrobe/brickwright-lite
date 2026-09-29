@@ -465,6 +465,13 @@ const ABOUT_GROUPS = [
                 role: 'Code editor (view, state, language, commands, search, lang-cpp, lang-python, lang-javascript)'
             },
             {
+                name: 'xterm.js',
+                url: 'https://github.com/xtermjs/xterm.js',
+                license: 'MIT',
+                licenseUrl: 'https://github.com/xtermjs/xterm.js/blob/master/LICENSE',
+                role: 'Terminal emulator for the Linux-on-RISC-V lesson console'
+            },
+            {
                 name: 'React + ReactDOM',
                 url: 'https://github.com/facebook/react',
                 license: 'MIT',

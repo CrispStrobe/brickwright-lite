@@ -183,11 +183,27 @@ try {
 // "Linux on RISC-V" row, its GPL licence line and source link, Run. The kernel
 // and initramfs are fetched from brickwright-media-lab (raw CDN at a pinned
 // commit) and sha256-checked by the app before anything boots — nothing GPL is
-// in this build. Then the real Linux 6.1 boots to the `bwb# ` prompt, `uname
-// -a` is typed into the serial input and "Linux … riscv32" is read back. Every
-// wait is a condition (waitForFunction), none a sleep. The boot time printed
-// here is the one a learner sees: Run click → prompt, fetch included.
+// in this build. Then the real Linux 6.1 boots to the `bwb# ` prompt in the
+// lesson's TERMINAL (xterm.js, linux-terminal.jsx), and a person's keys are
+// typed into it: `uname -a`, Ctrl-C into a running `sleep`, Up to recall
+// history, Backspace, a paste into `wc -c`, and output that only a terminal
+// emulator draws right (SGR colour, `clear`, a carriage return). What is read
+// back is the RENDERED screen — xterm's rows — not a transcript. Every wait is
+// a condition (waitForFunction), none a sleep. The boot time printed here is
+// the one a learner sees: Run click → prompt, fetch included.
 const LINUX_ARTIFACTS = join(root, 'artifacts', 'linux-riscv');
+// The terminal's visible rows, as drawn (xterm's DOM renderer), trailing blanks trimmed.
+const SCREEN = `(() => {
+    const rows = document.querySelectorAll('[data-testid="bw-linux-terminal"] .xterm-rows > div');
+    return Array.from(rows, r => r.textContent.replace(/\\u00a0/g, ' ').replace(/\\s+$/, '')).join('\\n');
+})()`;
+/** Wait until the rendered screen, with the prompt on its last non-empty row, matches `re`. */
+const screenShows = (page, re, timeout = 60000) => page.waitForFunction(`(() => {
+    const screen = ${SCREEN}.replace(/\\n+$/, '');
+    const prev = window.__bwScreenPrev;
+    window.__bwScreenPrev = screen;
+    return ${re}.test(screen) && /bwb#$/.test(screen) && prev === screen;
+})()`, null, {timeout, polling: 100}).then(() => true, () => false);
 try {
     const page = await browser.newPage({viewport: {width: 1440, height: 960}});
     const linuxErrors = [];
@@ -220,49 +236,101 @@ try {
     const fetched = (Date.now() - t0) / 1000;
     const openDebugger = page.getByTestId('bw-open-circuit-debugger');
     if (await openDebugger.count()) await openDebugger.first().click();
-    await page.getByTestId('bw-serial-console').waitFor({state: 'attached', timeout: 30000});
-    // THE PROMPT, AT THE TAIL, AND STILL THERE ONE POLL LATER. A `bwb#`
-    // anywhere in the scrollback proves nothing about now; the prompt must end
-    // the console and the text must have stopped growing (the shell is waiting,
-    // not mid-print). Only then is the command typed.
+    const term = page.getByTestId('bw-linux-terminal');
     await page.waitForFunction(`(() => {
-        const el = document.querySelector('[data-testid="bw-serial-console"]');
-        const now = el ? el.textContent : '';
-        const prev = window.__bwLinuxPrev;
-        window.__bwLinuxPrev = now;
-        return now.includes('BWB-LINUX-USERSPACE-UP') && /bwb# $/.test(now) && prev === now;
-    })()`, null, {timeout: 120000, polling: 100});
+        const el = document.querySelector('[data-testid="bw-linux-terminal"]');
+        return !!el && el.dataset.terminalState === 'ready';
+    })()`, null, {timeout: 60000, polling: 100});
+    check(await page.getByTestId('bw-serial-input').count() === 0,
+        'the Linux console is a terminal: no line-input box beside it');
+    // THE PROMPT, AT THE TAIL, AND STILL THERE ONE POLL LATER: the shell is
+    // waiting, not mid-print. Only then is anything typed.
+    const up = await screenShows(page, /BWB-LINUX-USERSPACE-UP|bwb#/, 120000);
     const booted = (Date.now() - t0) / 1000;
-    check(true, `Linux booted to the bwb# prompt in the browser — ${booted.toFixed(1)} s from Run (media fetched + verified in ${fetched.toFixed(1)} s)`);
+    check(up, `Linux booted to the bwb# prompt in the terminal — ${booted.toFixed(1)} s from Run (media fetched + verified in ${fetched.toFixed(1)} s)`);
 
-    // THE ANSWER MUST BE NEW. Mark the console before typing and read only
-    // what arrives after the mark: the echoed command, then a line that is
-    // uname's answer, then the prompt again. The boot log is full of lines
-    // containing "Linux", so a match anywhere in the scrollback is not an
-    // answer — that is how this check once reported the kernel's ALSA line.
-    const mark = await page.evaluate(`(() => {
-        const el = document.querySelector('[data-testid="bw-serial-console"]');
-        return (window.__bwLinuxMark = el ? el.textContent.length : 0);
+    // KEYS, NOT A LINE. Click the terminal (xterm takes focus), then type as a
+    // person does: each key a keydown the terminal turns into bytes for the
+    // guest, which echoes and edits. `clear` first, so every answer below is
+    // read off a screen that held nothing else — and `clear` itself only works
+    // if ESC [ H / ESC [ J are drawn as cursor-home and erase.
+    await term.click();
+    const kb = page.keyboard;
+    const cmd = async line => { await kb.type(line); await kb.press('Enter'); };
+    const screen = () => page.evaluate(SCREEN);
+    await cmd('clear');
+    check(await screenShows(page, /^bwb#$/), 'clear (ESC[H ESC[J) leaves only the prompt on the rendered screen',
+        JSON.stringify((await screen()).slice(0, 120)));
+
+    await cmd('uname -a');
+    const UNAME = /bwb# uname -a\nLinux \S+ 6\.1\.\d+ [^\n]*riscv32 GNU\/Linux\n/;
+    check(await screenShows(page, UNAME),
+        'uname -a typed into the terminal answers "Linux … riscv32 GNU/Linux" on the next row',
+        JSON.stringify((await screen()).slice(-240)));
+
+    await cmd('clear');
+    await screenShows(page, /^bwb#$/);
+    await cmd('echo SLEEPING; sleep 100');
+    await page.waitForFunction(`/\\nSLEEPING\\n?$/.test(${SCREEN}.replace(/\\n+$/, ''))`, null, {timeout: 30000, polling: 100});
+    await kb.press('Control+c');
+    check(await screenShows(page, /sleep 100\nSLEEPING\n\^C\nbwb#$/, 30000),
+        'Ctrl-C in the terminal interrupts a running sleep 100: ^C and a fresh prompt',
+        JSON.stringify((await screen()).slice(-200)));
+
+    await cmd('clear');
+    await screenShows(page, /^bwb#$/);
+    await cmd('echo hist-$((6*7))');
+    await screenShows(page, /\nhist-42\nbwb#$/);
+    await kb.press('ArrowUp');
+    await kb.press('Enter');
+    check(await screenShows(page, /hist-42\nbwb# echo hist-\$\(\(6\*7\)\)\nhist-42\nbwb#$/),
+        'Up in the terminal recalls the last command from ash\'s history, and Enter runs it again',
+        JSON.stringify((await screen()).slice(-200)));
+
+    await kb.type('echo abX');
+    await kb.press('Backspace');
+    await kb.type('c');
+    await kb.press('Enter');
+    check(await screenShows(page, /bwb# echo abc\nabc\nbwb#$/),
+        'Backspace erases on the guest\'s line (the screen shows echo abc, and abc)',
+        JSON.stringify((await screen()).slice(-200)));
+
+    // What only an emulator draws: colour (SGR 31 → a red cell) and a bare CR
+    // returning to column 0 so X overwrites the a.
+    await cmd('clear');
+    await screenShows(page, /^bwb#$/);
+    await cmd("printf '\\033[31mRED\\033[0m abc\\rX\\n'");
+    check(await screenShows(page, /\nXED abc\nbwb#$/),
+        'a carriage return overwrites the row in place (RED abc, then \\r X → "XED abc")',
+        JSON.stringify((await screen()).slice(-200)));
+    const red = await page.evaluate(`(() => {
+        const spans = document.querySelectorAll('[data-testid="bw-linux-terminal"] .xterm-rows span');
+        const hit = Array.from(spans).find(s => s.textContent.includes('ED') && s.classList.contains('xterm-fg-1'));
+        return hit ? hit.className : null;
     })()`);
-    const input = page.getByTestId('bw-serial-input');
-    await input.fill('uname -a');
-    await page.getByTestId('bw-serial-send').click();
-    const ANSWER = /uname -a\s*\n(?:[^\n]*\n)*?Linux \S+ 6\.1\.\d+ [^\n]*riscv32 GNU\/Linux\s*\n[\s\S]*bwb# $/;
-    try {
-        await page.waitForFunction(`(() => {
-            const el = document.querySelector('[data-testid="bw-serial-console"]');
-            const after = (el ? el.textContent : '').slice(window.__bwLinuxMark || 0);
-            return ${ANSWER}.test(after);
-        })()`, null, {timeout: 60000, polling: 100});
-    } catch { /* checked below on whatever arrived */ }
-    const unameText = await page.evaluate(SERIAL);
-    const after = unameText.slice(mark);
-    check(ANSWER.test(after),
-        'uname -a typed into the serial console answers "Linux … riscv32 GNU/Linux" on a NEW line after the command',
-        JSON.stringify(after.slice(-200)) || '(nothing after the command)');
+    check(!!red, 'SGR 31 is drawn as colour: the RED cells carry xterm-fg-1', String(red));
+
+    // A PASTE, as the browser delivers one (a clipboard event on the terminal's
+    // textarea): 2048 bytes in 32 lines, fed to the guest a FIFO at a time.
+    await cmd('clear');
+    await screenShows(page, /^bwb#$/);
+    await cmd('stty -echo; echo PASTE-NOW; wc -c; stty echo');
+    await page.waitForFunction(`/\\nPASTE-NOW$/.test(${SCREEN}.replace(/\\n+$/, ''))`, null, {timeout: 30000, polling: 100});
+    const pasted = Array.from({length: 32}, (_, i) => `${String(i).padStart(4, '0')}${'-'.repeat(59)}\n`).join('');
+    await page.evaluate(text => {
+        const ta = document.querySelector('[data-testid="bw-linux-terminal"] textarea');
+        const data = new DataTransfer();
+        data.setData('text/plain', text);
+        ta.dispatchEvent(new ClipboardEvent('paste', {clipboardData: data, bubbles: true, cancelable: true}));
+    }, pasted);
+    await kb.press('Control+d');
+    check(await screenShows(page, new RegExp(`PASTE-NOW\\n${pasted.length}\\nbwb#$`), 60000),
+        `a ${pasted.length}-byte paste arrives whole (wc -c says ${pasted.length})`,
+        JSON.stringify((await screen()).slice(-200)));
+
     check(!linuxErrors.length, 'no page errors during the Linux boot', linuxErrors.slice(0, 2).join(' | '));
     await mkdir(LINUX_ARTIFACTS, {recursive: true});
-    await writeFile(join(LINUX_ARTIFACTS, 'serial.txt'), unameText || '(no serial output)');
+    await writeFile(join(LINUX_ARTIFACTS, 'screen.txt'), (await screen()) || '(empty screen)');
     await writeFile(join(LINUX_ARTIFACTS, 'timing.json'), JSON.stringify({fetchedSeconds: fetched, promptSeconds: booted}, null, 2));
     await page.screenshot({path: join(LINUX_ARTIFACTS, 'linux-riscv.png'), fullPage: true});
 } catch (e) {
@@ -274,4 +342,4 @@ try {
 
 if (diagnostics.length) console.log('\n--- diagnostics ---\n' + diagnostics.slice(0, 8).join('\n'));
 if (failures.length) { console.error(`\n${failures.length} check(s) failed`); process.exit(1); }
-console.log('\nCP/M 2.2 boots to A>, and Linux on RISC-V to a shell that answers uname -a, in the browser.');
+console.log('\nCP/M 2.2 boots to A>, and Linux on RISC-V to a terminal that takes keys, Ctrl-C, history and a paste, in the browser.');
