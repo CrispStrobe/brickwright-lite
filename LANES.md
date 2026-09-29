@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| EV3 import: MakeCode EV3 programs into Lite's EV3/LEGO dialect and blocks (task B4 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b4-ev3-import*` | base `8efed9e8c`; Lite `overlay/scratch-gui/src/lib/bw-makecode/` EV3 translate path (+ upstream sb3-creator dialect words if needed), an EV3 round-trip census section, focused tests, this row and the task file. | **CLAIMED 2026-09-29.** MakeCode EV3 programs run in MakeCode's EV3 sim but do not become Lite blocks. |
+
 | Auto-seat Calliope and CPX board parts in the circuit editor (task B3 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b3-autoseat*` | base `899124725`; upstream bw-circuit-ui infer-seated footprint/pad mapping for Calliope mini and Circuit Playground Express, focused tests; Lite: bw-circuit-ui pin-bump surfaces, this row and the task file. | **CLAIMED 2026-09-29.** A Calliope or CPX program does not auto-place its board part (no footprint/pad mapping). Our duplicate B2 claim (#536) is retracted in this commit: session 6f571e07 claimed B2 first (76d21c170) and owns it. |
 
 
