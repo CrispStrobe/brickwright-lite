@@ -119,6 +119,16 @@ step clock spends ZERO. Falsified three ways — accruing in `take()` instead of
 step fails 4 of the 13, dropping the double-install guard fails 1, and disabling
 `isInert()` fails 2.
 
+**The instrument for re-checking this:**
+`scripts/measure-arena-clock-stability.mjs` runs the same mission the gate runs,
+once per CDP CPU-throttling rate (default 1x 2x 4x 6x 8x), and exits 1 if the
+verdicts disagree. That is exactly the experiment the original note asked for,
+pointed the other way: before the fix the verdict was expected to flip, now it
+must not. It also prints the arena's own `timeMs` per rate, which is the number
+that used to track the wall clock. Deliberately NOT a CI gate — it launches the
+mission once per rate and runs for minutes; it is what you reach for after
+touching either clock, or when somebody doubts the coupling.
+
 **What this does NOT claim.** The gate has not been observed green over many runs
 under load. The coin flip was 4/4 across eight runs, so a handful of passes now
 would prove little by itself; the case for the fix is the mechanism, and the
