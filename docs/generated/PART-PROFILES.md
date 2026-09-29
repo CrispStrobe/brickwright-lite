@@ -108,7 +108,7 @@ By category (the closed `REASON` vocabulary). These carry no verbs.
 
 - **passive** (37): adp151, adp7118, ams1117_33, ams1117_50, battery, battery_9v, battery_aa, battery_coin, capacitor, crystal, diode, fuse, gnd, header, inductor, isource, ld1117v33, ldr, level_shifter4, light_bulb, lm7805, lm7809, lm7812, lt1763, ntc, osc_can, polarized_cap, potentiometer, resistor, rnet_sip, solar_cell, transformer, usb_a, vcc, vreg, vsource, zener
 - **instrument** (4): ammeter, analog_meter, logic_probe, voltmeter
-- **host** (18): arduino_mega, arduino_nano, arduino_uno, attiny85, attiny88, attiny88_qfn32, calliopemini, circuit_playground_express, eater6502, i8086, i8088, mcu, pi_pico, pybadge, stc15_mcu, stm32f030, w65c02, z80
+- **host** (20): arduino_mega, arduino_nano, arduino_uno, attiny85, attiny88, attiny88_qfn32, calliopemini, circuit_playground_express, eater6502, i8086, i8088, mcu, microbit, microbit_breakout, pi_pico, pybadge, stc15_mcu, stm32f030, w65c02, z80
 - **dip-surface** (20): ay8912, i8251, i8253, i8254, i8255, i8259, i8284, isd1820, kd9561, m6532, mc6850, ns16c550, ps2, ps2mouse, simplevga_card, tms9918, um245r, um66t, w65c22, w65c51
 - **analog-only** (45): 555, 556, ad711, ad711_channel, ad8541, ad8541_channel, ad8602, ad8602_channel, ada4522_1, ada4522_1_channel, adtl082, adtl082_channel, clock_display, darlington_driver, lm324, lm339, lm358, lm3915, lm393, lm741, lt1001, lt1006, lt1007, lt1007_channel, lt1014, lt1014_channel, lt1678, lt1678_channel, ltspice_universal_opamp2, msgeq7, nmos, npn, op07, op27, op747, op747_channel, opamp, optocoupler, pmos, pnp, spectrum_display, tcs3200, timer_555, timer_556, tip120
 - **mechanical** (5): dip_switch, dip_switch_dpst, dip_switch_spst, reed_switch, slide_switch
