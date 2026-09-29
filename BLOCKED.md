@@ -129,10 +129,36 @@ that used to track the wall clock. Deliberately NOT a CI gate — it launches th
 mission once per rate and runs for minutes; it is what you reach for after
 touching either clock, or when somebody doubts the coupling.
 
-**What this does NOT claim.** The gate has not been observed green over many runs
-under load. The coin flip was 4/4 across eight runs, so a handful of passes now
-would prove little by itself; the case for the fix is the mechanism, and the
-measurement above is what pins it. It also leaves the arena lane's own work
+**MEASURED 2026-09-29, with a control.** Both builds were downloaded as CI
+`github-pages` artifacts and served locally; each bundle was grepped first to
+confirm which one it was (`VmStepClock` present in the treatment, absent in the
+control), because measuring a stale build is the classic way to get a clean
+meaningless number.
+
+| build | 1x | 4x | 8x | spread |
+|---|---|---|---|---|
+| `c2de17777` (pre-fix, control) | 5195 ms | 5245 ms | 5395 ms | **200 ms**, monotonic with throttling |
+| `0d71e9062` (fixed) | 5165 ms | 5165 ms | 5165 ms | **0 ms** |
+
+Simulated time in the old build tracks CPU speed; in the new build it is
+bit-identical under an 8x slowdown. At 1x vs 8x alone the control drifts 315 ms.
+
+**What this does NOT show: the verdict flipping.** The control returned `pass` at
+all three rates, because this mission finishes in ~5.2 s of a 15 s budget and had
+the headroom to absorb 200 ms. So the failure itself was not reproduced — what was
+reproduced and quantified is the DRIFT that causes it, and its elimination. CI is
+a far harsher environment than an 8x throttle on an idle box (the flake was
+observed with ~78 jobs queued), and a mission with less slack is where drift
+becomes a flip.
+
+That distinction also fixed a defect in the instrument: its first version treated
+agreeing verdicts as proof of one clock, and would have called the drifting
+control healthy. Drift is now a first-class finding — the control exits 1, the
+fixed build exits 0.
+
+**Still not claimed:** the gate has not been watched green across many loaded CI
+runs. The coin flip was 4/4 over eight runs, so a handful of passes proves little
+on its own. It also leaves the arena lane's own work
 (`feat/spike-arena-pins-2`) untouched apart from this coupling.
 
 
