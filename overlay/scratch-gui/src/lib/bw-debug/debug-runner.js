@@ -1996,6 +1996,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         try {
             ({ target: lwTarget, adapter: lwAdapter, refusals } = await createDebugTarget('labwired', {
                 wasm, board, firmware: program, firmwareAddress: built.firmwareAddress,
+                // An nRF .hex's UICR words, loaded beside the image: the MBR
+                // reads them at reset (labwired-firmware.js).
+                extraSegments: built.extraSegments,
                 chipKind, clockHz,
             }));
         } catch (e) {
@@ -3514,7 +3517,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const parsed = labwiredFirmwareImage(fw, chipKind);
             return {hex: null, image: parsed.image, symbols: null, c: null,
                 bytes: parsed.image.length, f_cpu: fw.fCpu || null, format: parsed.format,
-                firmwareAddress: parsed.address, omittedFirmwareBytes: parsed.omitted};
+                firmwareAddress: parsed.address, omittedFirmwareBytes: parsed.omitted,
+                extraSegments: parsed.extraSegments};
         }
         throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
     }
