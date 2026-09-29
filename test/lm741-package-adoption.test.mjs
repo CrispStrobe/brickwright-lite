@@ -12,7 +12,7 @@ const terminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 
 
 test('the exact installed packages expose and solve the physical LM741', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
-    assert.equal(pins['bw-board'], 'd29c3482cbdf726afb1b8fda4aae4b14d3f59988');
+    assert.equal(pins['bw-board'], '931854479472e683b1f698dff806670ce18af483');
     assert.equal(pins['bw-circuit-ui'], 'c8b72ad88c93b325cd02ecfa1ab76da6206e0f8f');
 
     const sidecar = JSON.parse(readFileSync(

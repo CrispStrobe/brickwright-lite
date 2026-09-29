@@ -20,12 +20,14 @@
  * (vm.runtime.circuitBoard), an output pin drives the board part's terminal of
  * that name — the same setPin the micro:bit+ extension uses — and every pin the
  * program reads is sampled from the circuit and written back, so a button on
- * the breadboard reaches `pins.digitalReadPin`. bw-board has no PWM duty on
- * setPin, so an ANALOG output is driven on/off at half scale for now.
+ * the breadboard reaches `pins.digitalReadPin`. An ANALOG output is a PWM and
+ * goes to the board's setPwm (lib/bw-makecode/pin-drive.js), so an LED dims and
+ * a motor slows with the program's duty.
  */
 import PropTypes from 'prop-types';
 import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
+import {driveMakeCodeOutput} from '../../lib/bw-makecode/pin-drive.js';
 
 const L10N = {
     en: {
@@ -144,7 +146,7 @@ class MakeCodeSimPane extends React.Component {
                 this.inputs.delete(name);
                 if (!board) continue;
                 try {
-                    board.setPin(name, 'pushpull', p.value >= 512);
+                    driveMakeCodeOutput(board, name, p);
                     driven++;
                 } catch (e) { /* no such terminal on this circuit's board part */ }
             } else {
