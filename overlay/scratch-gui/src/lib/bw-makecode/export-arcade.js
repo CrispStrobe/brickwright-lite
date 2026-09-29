@@ -29,6 +29,9 @@
  *   - pen lines go on a transparent layer sprite under the others;
  *   - a sound that is one steady tone is music.playTone; notes, rests and
  *     tempo are music calls.
+ *   - `stop` keeps Scratch's three meanings (see `stop`): this script returns;
+ *     other scripts in sprite ends that sprite's (or clone's) other runs;
+ *     all ends every run, deletes clones and silences — and the game goes on.
  * What has no Arcade counterpart is NAMED in `unsupported` and becomes a
  * comment where it stood — nothing vanishes in silence (the census rule).
  * docs/ARCADE-COMPAT-PLAN.md is the construct-by-construct matrix.
@@ -159,11 +162,22 @@ class ArcadeEmitter {
         this.penUsers = new Set();
         this.usesBackdrops = false;
         this.usesPen = false;
+        this.usesStopAll = false;
+        this.usesSay = false;
+        this.stopOthers = new Set();        // targets whose scripts can be stopped by one of their own
+        this.soundWaiters = new Set();      // targets that wait on a tone
         const names = new Set(this.sprites.map(t => t.name));
         for (const t of this.project.targets) {
             const blocks = t.blocks || {};
             for (const b of Object.values(blocks)) {
                 if (!b || !b.opcode) continue;
+                if (b.opcode === 'control_stop') {
+                    const option = b.fields && b.fields.STOP_OPTION ? b.fields.STOP_OPTION[0] : '';
+                    if (option === 'all') this.usesStopAll = true;
+                    if (/^other scripts in (sprite|stage)$/.test(option)) this.stopOthers.add(t);
+                }
+                if (/^looks_say/.test(b.opcode)) this.usesSay = true;
+                if (/^(sound_playuntildone|music_playNoteForBeats)$/.test(b.opcode)) this.soundWaiters.add(t);
                 if (b.opcode === 'control_create_clone_of') {
                     const input = b.inputs && b.inputs.CLONE_OPTION;
                     const menu = input && input[0] === 1 && typeof input[1] === 'string' ? blocks[input[1]] : null;
@@ -185,6 +199,47 @@ class ArcadeEmitter {
 
     isClonable (target = this.target) {
         return !!target && !target.isStage && this.clonable.has(target.name);
+    }
+
+    /**
+     * Does a script of `target` carry a run token (`_t`)? Only when something
+     * can stop it from outside: a `stop all` anywhere, or a `stop other
+     * scripts` in its own sprite. `stop this script` needs none (a return).
+     */
+    tokened (target = this.target) {
+        return this.usesStopAll || this.stopOthers.has(target);
+    }
+
+    /** The globals holding a non-cloned target's `stop other scripts` mark and the run it kept. */
+    stopMarks (target = this.target) {
+        const id = ident(target.isStage ? 'stage' : target.name);
+        return [`_som_${id}`, `_sok_${id}`];
+    }
+
+    /**
+     * What every script of the current target starts with and checks at each
+     * yield, beyond its restart/clone guards: its run token, and whether a
+     * `stop all` or a `stop other scripts` has ended it since it started.
+     */
+    stopGuards () {
+        const guards = [];
+        if (!this.tokened()) return guards;
+        this.use('tok');
+        if (this.usesStopAll) guards.push('_dead(_t)');
+        if (this.stopOthers.has(this.target)) {
+            if (this.isClonable()) {
+                this.use('others');
+                guards.push('_othersStopped(self, _t)');
+            } else {
+                const [mark, kept] = this.stopMarks();
+                guards.push(`(_t <= ${mark} && _t != ${kept})`);
+            }
+        }
+        return guards;
+    }
+
+    tokenLine () {
+        return this.tokened() ? ['    const _t = _tok()'] : [];
     }
 
     kindOf (name) { return `_kind_${ident(name)}`; }
@@ -503,6 +558,8 @@ class ArcadeEmitter {
         let b = this.block(id);
         while (b) {
             this.stmt(b, depth, out);
+            // `stop all` and `stop this script` are caps: nothing after them runs.
+            if (b.opcode === 'control_stop' && /^(all|this script)$/.test(this.field(b, 'STOP_OPTION'))) return;
             b = this.block(b.next);
         }
     }
@@ -570,7 +627,7 @@ class ArcadeEmitter {
             this.guardLine().forEach(line => push(`    ${line}`));
             push('}');
             return;
-        case 'control_stop': push('game.over(false)'); return;
+        case 'control_stop': this.stop(b, push); return;
         // A sprite that draws moves through _penTo, which draws the line it moved along.
         case 'motion_changexby':
             if (me && pen) push(this.use('pen', `_penTo(${me}, ${me}.x + ${v('DX')} / 3, ${me}.y)`));
@@ -611,13 +668,59 @@ class ArcadeEmitter {
             const fn = this.fnNames.get(`${this.target.name}:${code}`) || this.fnNames.get(`:${code}`);
             const ids = b.mutation ? JSON.parse(b.mutation.argumentids || '[]') : [];
             const args = ids.map(a => this.value(b, a));
+            // A custom block runs in its caller's thread: it gets the caller's run token.
+            if (this.tokened()) args.unshift('_t');
             if (this.isClonable()) args.unshift('self');
-            if (fn) push(`${fn}(${args.join(', ')})`);
-            else push(`// ${this.note(`call ${code}`)}`);
+            if (fn) {
+                push(`${fn}(${args.join(', ')})`);
+                // It may have yielded: if this script was ended meanwhile, end here too.
+                this.guardLine().forEach(push);
+            } else push(`// ${this.note(`call ${code}`)}`);
             return;
         }
         default:
             push(`// ${this.note(b.opcode)}`);
+        }
+    }
+
+    /**
+     * Scratch's `stop` block, option by option (scratch-vm control.stop):
+     *   - `this script` returns — from the script, or, inside a custom block,
+     *     from that block only (Thread.stopThisScript pops to the call);
+     *   - `other scripts in sprite/stage` ends every other running script of
+     *     THIS sprite or clone and carries on: the target's mark moves past
+     *     every run token issued so far, keeping this run's own;
+     *   - `all` ends every script everywhere (all run tokens so far are dead),
+     *     deletes the clones, stops the sounds and clears speech bubbles, as
+     *     Runtime.stopAll does — and the game keeps running, so a key or a
+     *     broadcast starts its scripts again, as in Scratch. Not `game.over`,
+     *     which shows a lose screen and restarts the program on a button.
+     * A script ended from outside stops at its next yield; Arcade switches
+     * threads only there, so it runs no further block, as in Scratch.
+     */
+    stop (b, push) {
+        const option = this.field(b, 'STOP_OPTION');
+        if (option === 'this script') {
+            push('return  // stop this script');
+        } else if (option === 'all') {
+            this.use('tok');
+            push('_stopAll()');
+            push('return');
+        } else if (/^other scripts in (sprite|stage)$/.test(option)) {
+            this.use('tok');
+            if (this.isClonable()) {
+                this.use('others');
+                push('_stopOthers(self, _t)');
+            } else {
+                const [mark, kept] = this.stopMarks();
+                push(`${mark} = _tokens  // stop ${option}`);
+                push(`${kept} = _t`);
+            }
+            if (this.soundWaiters && this.soundWaiters.has(this.target)) {
+                this.warn(`stop other scripts in ${this.target.name}: a tone a stopped script was waiting on plays to its end (Arcade has one sound voice; Scratch stops that sprite's sound)`);
+            }
+        } else {
+            push(`// ${this.note(`stop ${option || '…'}`)}`);
         }
     }
 
@@ -898,8 +1001,8 @@ class ArcadeEmitter {
         const n = this.scriptSeq++;
         const fn = `_${prefix}_${ident(t.isStage ? 'stage' : t.name)}_${n}`;
         const clonable = this.isClonable();
-        const guards = [];
-        const pre = [];
+        const guards = this.stopGuards();
+        const pre = this.tokenLine();
         if (clonable) {
             this.use('gone');
             guards.push('_gone(self)');
@@ -968,7 +1071,8 @@ class ArcadeEmitter {
                 if (b.opcode === 'event_whenflagclicked') {
                     // The green flag starts the ORIGINAL sprite's scripts; clones do not exist yet.
                     if (clonable) this.use('gone');
-                    script = this.body(b.next, clonable ? ['_gone(self)'] : []);
+                    script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]);
+                    if (script.length) script.unshift(...this.tokenLine());
                     if (script.length) {
                         body.push(`control.runInParallel(function () {\n${clonable ? `    const self = ${sv}\n` : ''}${script.join('\n')}\n})`);
                     }
@@ -983,7 +1087,7 @@ class ArcadeEmitter {
                         this.use('wait');
                         handlers.push(`${btn}.onEvent(ControllerButtonEvent.Pressed, function () {\n    const w = new _Wait()\n    for (const s of ${this.allOf(t.name)}) _spawnFor(w, ${fn}, s)\n})`);
                     } else {
-                        this.stmts(b.next, 1, script);
+                        script = this.body(b.next, this.stopGuards(), this.tokenLine());
                         handlers.push(`${btn}.onEvent(ControllerButtonEvent.Pressed, function () {\n${script.join('\n')}\n})`);
                     }
                 } else if (b.opcode === 'event_whenbroadcastreceived') {
@@ -1006,11 +1110,13 @@ class ArcadeEmitter {
                     if (!proto || !proto.mutation) continue;
                     const names = JSON.parse(proto.mutation.argumentnames || '[]').map(ident);
                     const params = names.map(n => `${n}: any`);
+                    // It runs in its caller's thread, so it checks the caller's run token.
+                    if (this.tokened()) params.unshift('_t: number');
                     if (clonable) {
                         this.use('gone');
                         params.unshift('self: Sprite');
                     }
-                    script = this.body(b.next, clonable ? ['_gone(self)'] : []);
+                    script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]);
                     const fn = this.fnNames.get(`${t.isStage ? '' : t.name}:${proto.mutation.proccode}`);
                     functions.push(`function ${fn} (${params.join(', ')}) {\n${script.join('\n')}\n}`);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
@@ -1083,6 +1189,25 @@ class ArcadeEmitter {
                 '    c.z = src.z',
                 `    for (const k of ${JSON.stringify(keys)}) c.data[k] = src.data[k]`,
                 ...(this.cloneScripts.get(name) || []).map(fn => `    control.runInParallel(function () { ${fn}(c) })`),
+                '}'
+            ].join('\n'));
+        }
+        for (const t of this.stopOthers) {
+            if (this.isClonable(t)) continue;
+            const [mark, kept] = this.stopMarks(t);
+            pre.push(`let ${mark} = 0  // stop other scripts in ${t.isStage ? 'stage' : t.name}: runs up to here are ended`);
+            pre.push(`let ${kept} = 0  // ... except this one, the run that stopped them`);
+        }
+        if (this.usesStopAll) {
+            // Scratch's Runtime.stopAll: every script ends, clones are deleted,
+            // sounds stop, speech bubbles clear. The sprites, the pen, the
+            // variables and the game loop stay — so hats still start scripts.
+            generated.push([
+                'function _stopAll () {',
+                '    _stopMark = _tokens',
+                ...[...this.clonable].map(name => `    sprites.destroyAllSpritesOfKind(${this.kindOf(name)})`),
+                '    music.stopAllSounds()',
+                ...(this.usesSay ? this.sprites.map(t => `    ${this.spriteVar.get(t.name)}.sayText("")`) : []),
                 '}'
             ].join('\n'));
         }

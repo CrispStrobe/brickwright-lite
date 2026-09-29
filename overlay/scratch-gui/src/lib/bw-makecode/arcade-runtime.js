@@ -10,6 +10,8 @@
  *     nothing, and `item # of` / `contains` compare case-insensitively;
  *   - costumes and pen state live in each sprite's `data`, so a clone keeps
  *     its own (its creator's values are copied when it is made);
+ *   - `stop`: every script run holds a token; `stop all` and `stop other
+ *     scripts` mark tokens dead, and a script checks its own at each yield;
  *   - pen lines are drawn on one transparent 160x120 layer sprite under every
  *     other sprite, so a backdrop switch does not erase them (Scratch's pen
  *     layer sits between the backdrop and the sprites too).
@@ -53,6 +55,30 @@ function _genOf (s: Sprite, k: string): number {
 function _genBumpFor (s: Sprite, k: string): number {
     s.data[k] = _genOf(s, k) + 1
     return s.data[k]
+}`},
+    // Run tokens, for Scratch's stop block. Every script run takes the next
+    // token; \`stop all\` marks every token issued so far dead, so each running
+    // script ends at its next yield while a script started later (a key, a
+    // broadcast) runs.
+    tok: {deps: [], ts: `let _tokens = 0
+let _stopMark = 0
+function _tok (): number {
+    _tokens++
+    return _tokens
+}
+function _dead (t: number): boolean {
+    return t <= _stopMark
+}`},
+    // \`stop other scripts in sprite\` for a sprite that is cloned: the mark and
+    // the run it kept live in each instance's data, so it ends the other
+    // scripts of THAT clone only (a new clone starts with no mark).
+    others: {deps: ['tok'], ts: `function _stopOthers (s: Sprite, t: number) {
+    s.data["_sm"] = _tokens
+    s.data["_sk"] = t
+}
+function _othersStopped (s: Sprite, t: number): boolean {
+    const m = s.data["_sm"]
+    return m ? t <= m && t != s.data["_sk"] : false
 }`},
     gone: {deps: [], ts: `function _gone (s: Sprite): boolean {
     return (s.flags & sprites.Flag.Destroyed) != 0
