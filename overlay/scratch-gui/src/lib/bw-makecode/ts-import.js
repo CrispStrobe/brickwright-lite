@@ -262,9 +262,16 @@ class Parser {
         if (!this.eat('punct', ':')) return false;
         let depth = 0;
         let isArray = false;
+        let prev = this.toks[this.pos - 1];
         for (;;) {
             const t = this.peek();
             if (t.type === 'eof') return isArray;
+            // A type ends at its line unless the line ends mid-type (`A |`):
+            // `let p: Player` then `const all: Player[] = []` on the next line
+            // are two declarations (the second was read as part of the type).
+            if (depth === 0 && prev && t.line > prev.line && this.lastType &&
+                !(prev.type === 'punct' && ['|', '&', '.', '<', ',', '=>', ':'].includes(prev.value))) return isArray;
+            prev = t;
             // A return type ends at the function body: `): void {`.
             if (depth === 0 && t.type === 'punct' && t.value === '{') return isArray;
             if (t.type === 'punct' && '<[('.includes(t.value)) depth++;
@@ -319,26 +326,27 @@ class Parser {
         if (this.at('for')) return this.parseFor();
         if (this.at('enum')) return this.parseEnum();
         if (this.at('namespace')) return this.parseNamespace();
-        if (this.at('interface') || this.at('type')) {
-            // Declarations with no runtime behaviour.
+        if (this.at('interface')) {
+            // No runtime behaviour, but its field names and types say what a
+            // record of that type holds (radio-dashboard's `interface Client`
+            // is what its object literals are).
+            return this.parseInterface();
+        }
+        if (this.at('type')) {
+            // A type alias: no runtime behaviour.
             this.next();
             this.skipBalanced();
             return null;
         }
-        if (this.at('class')) {
-            // A class HAS behaviour, which we cannot express — so it is kept
-            // as a node the translator names, with the calls inside it, rather
-            // than dropped in silence (census 2026-09-27: control.createBuffer
-            // and radio.sendBuffer vanished inside one).
-            this.next();
-            const name = this.at('ident') ? this.peek().value : '';
-            const calls = this.skipBalanced();
-            return {type: 'Class', name, calls};
-        }
+        if (this.at('class')) return this.parseClass();
+        if (this.at('switch')) return this.parseSwitch();
         if (this.at('return')) {
-            this.next();
+            const ret = this.next();
             let value = null;
-            if (!this.at('punct', ';') && !this.at('punct', '}')) value = this.parseExpression();
+            // A bare `return` ends at its line (automatic semicolon insertion):
+            // `return` then `default:` on the next line is not `return default`.
+            if (!this.at('punct', ';') && !this.at('punct', '}') && !this.at('case') && !this.at('default') &&
+                this.peek().line === ret.line) value = this.parseExpression();
             this.eat('punct', ';');
             return {type: 'Return', value};
         }
@@ -376,6 +384,171 @@ class Parser {
         return seen.calls();
     }
 
+    /** The dotted calls in the tokens from `start` to here, for a refusal that names them. */
+    callsSince (start) {
+        const seen = new CallSpotter();
+        for (let i = start; i < this.pos; i++) seen.push(this.toks[i]);
+        return seen.calls();
+    }
+
+    /**
+     * A field's type, `id: number` — on ONE line, because a class body may
+     * leave out the semicolons (`id: number` then `icon: number` on the
+     * next line), and the ordinary annotation skipper would read both lines
+     * as one type.
+     */
+    skipFieldType () {
+        this.lastType = '';
+        if (!this.eat('punct', ':')) return;
+        const line = this.peek().line;
+        let depth = 0;
+        while (!this.at('eof')) {
+            const t = this.peek();
+            if (depth === 0 && (t.line !== line || (t.type === 'punct' && ['=', ';', '}', ','].includes(t.value)))) return;
+            if (t.type === 'punct' && '<[('.includes(t.value)) depth++;
+            if (t.type === 'punct' && '>])'.includes(t.value)) depth--;
+            this.lastType += this.next().value;
+        }
+    }
+
+    /**
+     * `interface Client { id: number; sprite: game.LedSprite }` — the field
+     * names and their types, which is what a record of that type holds.
+     */
+    parseInterface () {
+        const start = this.pos;
+        this.expect('interface');
+        const name = this.at('ident') ? this.next().value : '';
+        if (!this.at('punct', '{')) {
+            this.skipBalanced();
+            return null;
+        }
+        this.next();
+        const fields = [];
+        while (!this.at('punct', '}') && !this.at('eof')) {
+            if (this.eat('punct', ';') || this.eat('punct', ',')) continue;
+            if (!this.at('ident')) {
+                // A method signature or an index signature: no data field.
+                this.pos = start;
+                this.skipBalanced();
+                return {type: 'Interface', name, fields, opaque: true};
+            }
+            const field = this.next().value;
+            this.eat('punct', '?');
+            if (this.at('punct', '(')) {
+                this.pos = start;
+                this.skipBalanced();
+                return {type: 'Interface', name, fields, opaque: true};
+            }
+            this.skipFieldType();
+            fields.push({name: field, typeName: this.lastType});
+        }
+        this.expect('punct', '}');
+        return {type: 'Interface', name, fields};
+    }
+
+    /**
+     * A class: its fields (with their initialisers), its constructor and its
+     * methods. The translator lowers a class to parallel arrays — one per
+     * field, an instance being its index — and its methods to procedures
+     * that take the instance first; what it cannot lower it refuses by name,
+     * so `calls` (every call inside) rides along for that refusal (census
+     * 2026-09-27: control.createBuffer and radio.sendBuffer vanished inside
+     * one when a class was skipped whole).
+     */
+    parseClass () {
+        const start = this.pos;
+        this.expect('class');
+        const name = this.at('ident') ? this.next().value : '';
+        const node = {type: 'Class', name, fields: [], methods: [], ctor: null, unsupported: []};
+        if (!this.at('punct', '{')) {
+            // `class A extends B`, `implements`, generics: no lowering here.
+            node.unsupported.push(`class ${name} with a heritage clause`);
+            this.skipBalanced();
+            node.calls = this.callsSince(start);
+            return node;
+        }
+        this.next();
+        const MODIFIERS = new Set(['public', 'private', 'protected', 'readonly']);
+        while (!this.at('punct', '}') && !this.at('eof')) {
+            if (this.eat('punct', ';')) continue;
+            let isStatic = false;
+            for (;;) {
+                const t = this.peek();
+                const nextIsName = this.peek(1).type === 'ident' || MODIFIERS.has(this.peek(1).value) ||
+                    ['get', 'set', 'constructor'].includes(this.peek(1).value);
+                if ((t.type === 'public' || t.type === 'private' || t.type === 'static' ||
+                    (t.type === 'ident' && MODIFIERS.has(t.value))) && nextIsName) {
+                    if (t.type === 'static') isStatic = true;
+                    this.next();
+                    continue;
+                }
+                break;
+            }
+            const t = this.next();
+            const member = t.value;
+            // `get kind(): number {` / `set kind(x) {`
+            if ((member === 'get' || member === 'set') && this.at('ident') && this.peek(1).type === 'punct' &&
+                this.peek(1).value === '(') {
+                const prop = this.next().value;
+                const params = this.parseParams();
+                const paramTypes = this.lastParamTypes;
+                this.skipTypeAnnotation();
+                const returnType = this.lastType;
+                const body = this.parseBlock();
+                node.methods.push({name: prop, kind: member, params, paramTypes, returnType, body, isStatic});
+                continue;
+            }
+            if (this.at('punct', '(')) {
+                const params = this.parseParams();
+                const paramTypes = this.lastParamTypes;
+                this.skipTypeAnnotation();
+                const returnType = this.lastType;
+                const body = this.parseBlock();
+                if (member === 'constructor') node.ctor = {params, paramTypes, body};
+                else node.methods.push({name: member, kind: 'method', params, paramTypes, returnType, body, isStatic});
+                continue;
+            }
+            this.eat('punct', '?');
+            this.skipFieldType();
+            const typeName = this.lastType;
+            let init = null;
+            if (this.eat('punct', '=')) init = this.parseExpression();
+            node.fields.push({name: member, typeName, init, isStatic});
+        }
+        this.expect('punct', '}');
+        node.calls = this.callsSince(start);
+        return node;
+    }
+
+    /**
+     * `switch (d) { case A: … break; default: … }`. It was not read at all:
+     * `switch` became an Unknown statement and every case label a stray
+     * Number statement (census 2026-09-28: gameofLife, karel, infection).
+     */
+    parseSwitch () {
+        this.expect('switch');
+        this.expect('punct', '(');
+        const discriminant = this.parseExpression();
+        this.expect('punct', ')');
+        this.expect('punct', '{');
+        const cases = [];
+        while (!this.at('punct', '}') && !this.at('eof')) {
+            let test = null;
+            if (this.eat('case')) test = this.parseExpression();
+            else this.expect('default');
+            this.expect('punct', ':');
+            const body = [];
+            while (!this.at('case') && !this.at('default') && !this.at('punct', '}') && !this.at('eof')) {
+                const st = this.parseStatement();
+                if (st) body.push(st);
+            }
+            cases.push({test, body});
+        }
+        this.expect('punct', '}');
+        return {type: 'Switch', discriminant, cases};
+    }
+
     parseDeclaration () {
         const kind = this.next().value;
         const decls = [];
@@ -394,6 +567,9 @@ class Parser {
     parseParams () {
         this.expect('punct', '(');
         const params = [];
+        // Each parameter's type text, by name (`p: Player`, `arr: boolean[]`):
+        // what a record or an array parameter is known by.
+        const types = {};
         while (!this.at('punct', ')') && !this.at('eof')) {
             // `radio.onDataPacketReceived(({receivedString: text}) => ...)`
             // binds a destructured object. The names that reach the body are
@@ -402,13 +578,17 @@ class Parser {
                 params.push(...this.parseObjectPatternNames());
             } else {
                 const name = this.next().value;
-                this.skipTypeAnnotation();
+                // `input?: Buffer` — an optional parameter.
+                this.eat('punct', '?');
+                const isArray = this.skipTypeAnnotation();
+                types[name] = {text: this.lastType, isArray};
                 if (this.eat('punct', '=')) this.parseExpression();
                 params.push(name);
             }
             if (!this.eat('punct', ',')) break;
         }
         this.expect('punct', ')');
+        this.lastParamTypes = types;
         return params;
     }
 
@@ -431,9 +611,11 @@ class Parser {
         this.expect('function');
         const name = this.at('ident') ? this.next().value : null;
         const params = this.parseParams();
+        const paramTypes = this.lastParamTypes;
         this.skipTypeAnnotation();
+        const returnType = this.lastType;
         const body = this.parseBlock();
-        return {type: 'FunctionDeclaration', name, params, body};
+        return {type: 'FunctionDeclaration', name, params, paramTypes, returnType, body};
     }
 
     parseIf () {
@@ -610,6 +792,27 @@ class Parser {
         return node;
     }
 
+    /** `{a: 1, b}` as [{key, value}], or null (position unspecified) when it is not that shape. */
+    tryObjectProps () {
+        try {
+            this.expect('punct', '{');
+            const props = [];
+            while (!this.at('punct', '}')) {
+                const k = this.next();
+                if (!['ident', 'string', 'number'].includes(k.type) && !KEYWORDS.has(k.type)) return null;
+                if (this.eat('punct', ':')) props.push({key: k.value, value: this.parseExpression()});
+                else if (k.type === 'ident' && (this.at('punct', ',') || this.at('punct', '}'))) {
+                    props.push({key: k.value, value: {type: 'Identifier', name: k.value}});
+                } else return null;
+                if (!this.eat('punct', ',')) break;
+            }
+            this.expect('punct', '}');
+            return props;
+        } catch (e) {
+            return null;
+        }
+    }
+
     parseArguments () {
         this.expect('punct', '(');
         const args = [];
@@ -651,8 +854,12 @@ class Parser {
             return {type: 'FunctionExpression', params, body};
         }
         if (t.type === 'new') {
+            // `new Player()`: a call, marked, so the translator knows it
+            // constructs (a class lowered to records allocates one).
             this.next();
-            return this.parsePostfix();
+            const made = this.parsePostfix();
+            if (made && made.type === 'Call') made.isNew = true;
+            return made;
         }
         if (t.type === 'ident') {
             this.next();
@@ -692,10 +899,16 @@ class Parser {
             this.expect('punct', ']');
             return {type: 'Array', items};
         }
-        if (this.eat('punct', '{')) {
-            // Object literals appear in a few library calls; their shape
-            // is never something we translate, so they become opaque — but
-            // the calls inside are kept, so the refusal can name them.
+        if (this.at('punct', '{')) {
+            // `{id: id, sprite: game.createSprite(0, 0)}`: the properties,
+            // which the translator can lower as a record. Anything else in
+            // braces (a spread, a method) is kept opaque, with the calls
+            // inside it, so the refusal can name them.
+            const start = this.pos;
+            const props = this.tryObjectProps();
+            if (props) return {type: 'Object', props, calls: this.callsSince(start)};
+            this.pos = start;
+            this.next();
             const seen = new CallSpotter();
             let depth = 1;
             while (depth > 0 && !this.at('eof')) {

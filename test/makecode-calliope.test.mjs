@@ -140,13 +140,17 @@ test('an icon used as a value becomes a pattern the display can show', {skip: !c
     assert.ok(compile(code).opcodes.has('microbitplus_showmatrix'));
 });
 
-test('an image chosen at runtime is refused, because MATRIX is a field', () => {
-    // Not a grammar gap: microbitplus_showmatrix carries the pattern as a
-    // FIELD, and a field cannot hold a reporter at all.
-    const {unsupported} = microbitToPseudocode(
+test('an image chosen at runtime is shown with the image blocks (it was refused: MATRIX is a field)', {skip: !canCompile}, () => {
+    // show pattern's MATRIX is a FIELD and cannot hold a reporter; an image
+    // kept in an array is a VALUE — `create image` — which `show image` takes.
+    const {code, unsupported} = microbitToPseudocode(
         `let bilder = [images.iconImage(IconNames.Heart)]\nlet i = 0\n${
             forever('  bilder[i].showImage(0)')}`);
-    assert.ok(unsupported.some(u => /fixed pattern/.test(u)), unsupported.join(' | '));
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /push \(create image 09090:99999:99999:09990:00900\) to array "bilder"/);
+    assert.match(code, /show image \(item i of array "bilder"\) offset 0/);
+    const {opcodes} = compile(code);
+    assert.ok(opcodes.has('microbitplus_createimage') && opcodes.has('microbitplus_showimage'), [...opcodes].join(' '));
 });
 
 // ── the Calliope's own hardware ─────────────────────────────────────────
