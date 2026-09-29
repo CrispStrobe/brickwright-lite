@@ -5,6 +5,7 @@ import {connect} from 'react-redux';
 
 import DebugDrawer from './debug-drawer.jsx';
 import DebugInspector from './debug-inspector.jsx';
+import DebugPipeline from './debug-pipeline.jsx';
 import DebugFrames from './debug-frames.jsx';
 import DebugTimingWaveform from './debug-timing-waveform.jsx';
 import DebugSessionTransfer from './debug-session-transfer.jsx';
@@ -1828,6 +1829,14 @@ class DebugPanel extends React.Component {
                         kind={this.state.kind}
                         locale={this.props.locale}
                     />
+                ) : null}
+
+                {/* CPU internals (E8): a pipeline diagram with cache and
+                    branch-predictor statistics, for a target that offers timing
+                    models (the RISC-V bench). An instrument, so it lives here in
+                    Debug; closed by default, and off until the user turns it on. */}
+                {this.state.runner ? (
+                    <DebugPipeline runner={this.state.runner} locale={this.props.locale} />
                 ) : null}
 
                 {/* Parity with emu8051's TUI, closed by default: opening it is
