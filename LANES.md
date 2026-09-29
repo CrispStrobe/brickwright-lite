@@ -431,6 +431,8 @@ keeping, it is worth a branch.
 
 ## CLAIMS — work in progress
 
+| PWM duty in bw-board: analog outputs follow the program's duty cycle (task B1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b1-pwm-duty*` | base `eaa7776f9`; upstream bw-board pin/PWM state + circuit drive (averaged duty into LEDs, motors, servos) with focused tests; Lite: bw-board pin-bump surfaces, this row and the task file. Not bw-board i80386 files. | **CLAIMED 2026-09-29.** analogWrite/servo/LED dimming are on/off in the circuit today. |
+
 | Arcade export gaps: broadcasts, costume/backdrop switching, clones, sounds, pen, lists, mouse (task A4 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/a4-arcade-export*` | base `99e8a46bf`; the Scratch → MakeCode Arcade exporter (upstream first if vendored) with focused tests; Lite: pin-bump surfaces if any, `docs/ARCADE-COMPAT-PLAN.md`, this row and the task file. Not the MakeCode micro:bit importer (A2) and not the Arcade firmware-base build. | **CLAIMED 2026-09-29.** Map each doable construct; keep a named refusal for the rest. |
 
 
