@@ -363,6 +363,222 @@ WHEN flag clicked:
         seen => seen.line && !seen.upLine && seen.cleared);
 });
 
+// ── stop (task A5) ────────────────────────────────────────────────────────
+// Every option used to be game.over(false): a lose screen that ends the whole
+// game. Each mutation below puts that emission (or the one step that makes the
+// option work) back, and must come out different.
+
+/** Run without asserting: a mutated program may stop the simulator, and that is a reading too. */
+const runLoose = async (ts, tail, ms) => {
+    const r = await runArcadeSim(await compileArcade(`${ts}\n${tail}\n`), {ms});
+    return {r, trace: traced(r), error: r.error};
+};
+const OLD_STOP = 'game.over(false)';
+
+test('stop this script returns from the script — or from the custom block — and the game goes on', {skip, timeout: 300000}, async () => {
+    const {out} = exportOf(`STAGE:
+GLOBAL trace = ""
+GLOBAL n = 0
+SPRITE a:
+WHEN flag clicked:
+  FOREVER:
+    set trace to (join trace "f")
+    IF n > 1 THEN:
+      stop this script
+    change n by 1
+    wait 0.1 seconds
+WHEN flag clicked:
+  wait 0.5 seconds
+  jump
+  set trace to (join trace "J")
+  broadcast "go"
+  wait 0.3 seconds
+  broadcast "go"
+WHEN I receive "go":
+  set trace to (join trace "g")
+  stop this script
+DEFINE jump:
+  set trace to (join trace "j")
+  stop this script
+SPRITE b:
+WHEN flag clicked:
+  wait 1 seconds
+  set trace to (join trace "B")
+`);
+    assert.deepEqual(out.unsupported, []);
+    assert.doesNotMatch(out.ts, /game\.over/);
+    const observe = async ts => {
+        // The trace, and how many sprites the game's scene still shows: a
+        // game-over pushes a new scene, so the game's own two are gone from it.
+        const {trace, error} = await runLoose(ts, traceAt(1500, '"" + trace + " sprites " + sprites.allOfKind(SpriteKind.Player).length'), 1600);
+        return error ? `error: ${error}` : trace[0];
+    };
+    // The forever loop ends after its third pass; `stop this script` in `jump`
+    // returns to the caller (J runs); a receiver stopped once starts again on
+    // the next broadcast; another sprite's script is untouched; the game goes on.
+    const ok = seen => seen === 'fffjJggB sprites 2';
+    await holds('stop this script (was game.over)', out.ts, ts => ts.split('return  // stop this script').join(OLD_STOP), observe, ok);
+    await holds('stop this script (no return)', out.ts, ts => ts.split('return  // stop this script').join(''), observe, ok);
+});
+
+test('stop other scripts in sprite ends that sprite\'s other scripts, keeps this one, and hats start them again', {skip, timeout: 300000}, async () => {
+    const {out} = exportOf(`STAGE:
+GLOBAL trace = ""
+GLOBAL na = 0
+GLOBAL nb = 0
+SPRITE a:
+WHEN flag clicked:
+  FOREVER:
+    change na by 1
+    wait 0.1 seconds
+WHEN flag clicked:
+  wait 0.25 seconds
+  stop other scripts in sprite
+  set trace to (join trace "S")
+  wait 0.2 seconds
+  set trace to (join trace "s")
+  broadcast "go"
+WHEN I receive "go":
+  set trace to (join trace "g")
+SPRITE b:
+WHEN flag clicked:
+  FOREVER:
+    change nb by 1
+    wait 0.1 seconds
+`);
+    assert.deepEqual(out.unsupported, []);
+    const observe = async ts => {
+        const {trace, error} = await runLoose(ts, [traceAt(500, '"" + trace + " " + na + " " + nb'), traceAt(1000, '"" + trace + " " + na + " " + nb')].join('\n'), 1100);
+        if (error) return `error: ${error}`;
+        const [early, late] = trace.map(t => t.split(' '));
+        return `${late[0]} a ${early[1] === late[1] ? 'stopped' : 'running'} b ${early[2] === late[2] ? 'stopped' : 'running'}`;
+    };
+    // a's forever loop stopped; the stopping script ran on (s) and its
+    // broadcast started a's receiver afresh (g); b never noticed.
+    const ok = seen => seen === 'Ssg a stopped b running';
+    await holds('stop other scripts (was game.over)', out.ts,
+        ts => ts.replace(/_som_a = _tokens {2}\/\/ stop other scripts in sprite\n\s*_sok_a = _t/, OLD_STOP), observe, ok);
+    await holds('stop other scripts (the others are not checked)', out.ts, ts => ts.split('(_t <= _som_a && _t != _sok_a)').join('false'), observe, ok);
+    await holds('stop other scripts (this one not kept)', out.ts, ts => ts.replace('_sok_a = _t', '_sok_a = 0'), observe, ok);
+});
+
+test('stop other scripts in a clone ends that clone\'s scripts only', {skip, timeout: 300000}, async () => {
+    const {out} = exportOf(`STAGE:
+GLOBAL n0 = 0
+GLOBAL n1 = 0
+GLOBAL n2 = 0
+SPRITE c:
+LOCAL id = 0
+WHEN flag clicked:
+  set id to 1
+  create clone of myself
+  set id to 2
+  create clone of myself
+  set id to 0
+  FOREVER:
+    change n0 by 1
+    wait 0.1 seconds
+WHEN I start as a clone:
+  FOREVER:
+    IF id = 1 THEN:
+      change n1 by 1
+    IF id = 2 THEN:
+      change n2 by 1
+    wait 0.1 seconds
+WHEN I receive "cut":
+  IF id = 1 THEN:
+    stop other scripts in sprite
+SPRITE d:
+WHEN flag clicked:
+  wait 0.3 seconds
+  broadcast "cut"
+`);
+    assert.deepEqual(out.unsupported, []);
+    const observe = async ts => {
+        const at = ms => traceAt(ms, '"" + n0 + " " + n1 + " " + n2');
+        const {trace, error} = await runLoose(ts, [at(500), at(1000)].join('\n'), 1100);
+        if (error) return `error: ${error}`;
+        const [early, late] = trace.map(t => t.split(' '));
+        return early.map((v, i) => (v === late[i] ? 'stopped' : 'running')).join(' ');
+    };
+    // The original and clone 2 run on; clone 1's loop is ended.
+    const ok = seen => seen === 'running stopped running';
+    await holds('stop other scripts in a clone (one mark for every instance)', out.ts,
+        ts => ts.replace('    s.data["_sm"] = _tokens\n    s.data["_sk"] = t\n',
+            '    for (const x of _all_c()) {\n        x.data["_sm"] = _tokens\n        x.data["_sk"] = t\n    }\n'), observe, ok);
+});
+
+test('stop all ends every script, deletes the clones, clears bubbles — and the game goes on', {skip, timeout: 300000}, async () => {
+    const {out} = exportOf(`STAGE:
+GLOBAL trace = ""
+GLOBAL ticks = 0
+GLOBAL starts = 0
+SPRITE a:
+WHEN flag clicked:
+  change starts by 1
+  create clone of myself
+  create clone of myself
+  FOREVER:
+    change ticks by 1
+    wait 0.1 seconds
+WHEN I start as a clone:
+  FOREVER:
+    change ticks by 1
+    wait 0.1 seconds
+WHEN I receive "again":
+  set trace to (join trace "R")
+SPRITE b:
+WHEN flag clicked:
+  say "hi"
+  wait 0.35 seconds
+  set trace to (join trace "X")
+  stop all
+`);
+    assert.deepEqual(out.unsupported, []);
+    assert.doesNotMatch(out.ts, /game\.over/);
+    const observe = async ts => {
+        // After the stop, something starts a hat (a key press in a game; the
+        // sim has no keys, so the tail broadcasts): its script must run.
+        const tail = [
+            'control.runInParallel(function () {\n    pause(700)\n    _broadcast("again")\n})',
+            traceAt(500, '"" + ticks'),
+            traceAt(1000, '"" + trace + " ticks " + ticks + " clones " + sprites.allOfKind(_kind_a).length + " starts " + starts + " sprites " + sprites.allOfKind(SpriteKind.Player).length')
+        ].join('\n');
+        const {r, trace, error} = await runLoose(ts, tail, 1100);
+        if (error) return `error: ${error}`;
+        const [t1, state] = trace;
+        // A speech bubble is a box in colour 1 (white); nothing else here uses it
+        // (its text is colour 15, black, which reads back as the black of 0).
+        const bubble = r.screen().some(c => c === 1) ? 1 : 0;
+        return state && `${state.replace(/ticks (\d+)/, (m, n) => `ticks ${n === t1 ? 'stopped' : 'running'}`)} bubble ${bubble}`;
+    };
+    // The game's two sprites stay in the game's scene (not a game-over scene),
+    // the flag scripts did not run again (not a restart), and the hat ran.
+    const ok = seen => seen === 'XR ticks stopped clones 0 starts 1 sprites 2 bubble 0';
+    await holds('stop all (was game.over)', out.ts, ts => ts.replace('    _stopAll()\n    return\n', `    ${OLD_STOP}\n`), observe, ok);
+    await holds('stop all (scripts not ended)', out.ts, ts => ts.replace('    _stopMark = _tokens\n', ''), observe, ok);
+    await holds('stop all (clones kept)', out.ts, ts => ts.replace('    sprites.destroyAllSpritesOfKind(_kind_a)\n', ''), observe, ok);
+    await holds('stop all (bubbles kept)', out.ts, ts => ts.replace('    bSprite.sayText("")\n', ''), observe, ok);
+});
+
+test('stop other scripts in stage keeps the stage\'s own mark; an option the exporter does not know is named', {skip, timeout: 300000}, async () => {
+    const {out} = exportOf(`STAGE:
+WHEN flag clicked:
+  stop other scripts in sprite
+SPRITE a:
+WHEN flag clicked:
+  stop this script
+`, project => {
+        const stops = opcodeOf(project, 'control_stop');
+        stops[0].fields.STOP_OPTION = ['other scripts in stage', null];
+        stops[1].fields.STOP_OPTION = ['everything else', null];
+    });
+    assert.match(out.ts, /_som_stage = _tokens {2}\/\/ stop other scripts in stage\n\s*_sok_stage = _t/);
+    assert.deepEqual(out.unsupported, ['stop everything else']);
+    const r = await compileArcadeFiles(out.files);
+    assert.ok(r.success, JSON.stringify(r.diagnostics.slice(0, 3)));
+});
+
 // ── the mouse: a named refusal ───────────────────────────────────────────
 test('the mouse is refused by name, with the reason, and the program still compiles', {skip, timeout: 300000}, async () => {
     const {out} = exportOf(`SPRITE a:
