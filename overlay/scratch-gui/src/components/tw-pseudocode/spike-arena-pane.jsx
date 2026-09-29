@@ -5,7 +5,7 @@ import {drawArena} from '../../lib/spike-arena/arena-render.js';
 import {loadUnit, loadSolution} from '../../lib/spike-arena/arena-units.js';
 import {ARENA_L10N, arenaT, arenaLocale, localText, verdictText} from '../../lib/spike-arena/l10n.js';
 import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
-import {VmStepClock} from '../../lib/spike-arena/arena-clock.js';
+import {VmStepClock, frameSimMs} from '../../lib/spike-arena/arena-clock.js';
 
 /**
  * SpikeArenaPane — a top-down arena for a SPIKE Prime driving base, docked in
@@ -22,11 +22,11 @@ import {VmStepClock} from '../../lib/spike-arena/arena-clock.js';
  * Test hook: window.__bwSpikeArena exposes the verdict and the snapshot.
  */
 
-// Only the VM-LESS fallback below uses this now. While a VM exists the arena is
-// driven by VmStepClock (lib/spike-arena/arena-clock.js), because a wall-clock
-// frame delta and a program the VM schedules are two clocks and the verdict used
-// to depend on which one won.
-const MAX_FRAME_MS = 100;
+// The per-frame rule, frameSimMs, lives in lib/spike-arena/arena-clock.js with
+// the VM-less fallback's MAX_FRAME_MS: while a VM exists the arena is driven by
+// VmStepClock, because a wall-clock frame delta and a program the VM schedules
+// are two clocks and the verdict used to depend on which one won. The headless
+// end-to-end test (test/spike-arena-starved-vm.test.mjs) runs the same rule.
 const STEP_BUTTON_MS = 100;
 
 const virtualSpike = () => (typeof window !== 'undefined' && window.__brickwrightVirtualSpike) || null;
@@ -205,10 +205,7 @@ class SpikeArenaPane extends React.Component {
             // cannot happen against a running VM, so the hook is not being called
             // and freezing mission time would make every mission pass by never
             // timing out. Degrade loudly-in-behaviour rather than silently.
-            const stepClock = this.clock.installed && !this.clock.isInert();
-            const dt = stepClock
-                ? this.clock.take()
-                : (this.lastFrame === null ? 0 : Math.min(MAX_FRAME_MS, now - this.lastFrame));
+            const dt = frameSimMs(this.clock, this.lastFrame, now);
             this.lastFrame = now;
             if (dt > 0) this.advance(dt);
         }

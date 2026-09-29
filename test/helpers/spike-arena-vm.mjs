@@ -57,6 +57,7 @@ const {default: installWebBluetooth, clearVirtualPeripheralsForTest} =
 const {registerVirtualSpikePrime} = await import(path.join(LIB, 'virtual-hub', 'spike-prime-peripheral.js'));
 export const {default: HubState} = await import(path.join(LIB, 'virtual-hub', 'spike-hub-state.js'));
 export const {ArenaHubBridge} = await import(path.join(LIB, 'spike-arena', 'arena-hub-bridge.js'));
+const {VmStepClock, frameSimMs} = await import(path.join(LIB, 'spike-arena', 'arena-clock.js'));
 
 const SPIKE_DIR = bundledExtensionIds().get('spikeprime');
 if (!SPIKE_DIR) throw new Error('no bundled spikeprime extension');
@@ -114,7 +115,20 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
  * @param {object} world a validated challenge world
  * @returns {Promise<{verdict, snapshot, frames, calls, hub, unsupported}>}
  */
-export async function runOnArena (source, world, {extraMs = 0, record = false} = {}) {
+/**
+ * @param {object} [options]
+ * @param {function} [options.vmStepsOn] run the browser pane's frame loop
+ *   instead of lockstep: animation frames arrive every FRAME_MS of wall time,
+ *   and the VM gets a step only on frames where vmStepsOn(frameIndex) is true
+ *   (a loaded runner whose VM interval stalls or falls behind its rAF). Each
+ *   frame's simulated time comes from the pane's own rule, frameSimMs
+ *   (lib/spike-arena/arena-clock.js).
+ * @param {number} [options.maxFrames] frame budget for the pane loop
+ * @param {boolean} [options.stepClock] with vmStepsOn: install the pane's
+ *   VmStepClock (true, what ships) or leave it off so frameSimMs falls back to
+ *   wall-clock frame deltas (false, the rule before #518)
+ */
+export async function runOnArena (source, world, {extraMs = 0, record = false, vmStepsOn = null, maxFrames: paneFrames = 0, stepClock = true} = {}) {
     const clock = new FakeClock(1.7e12);
     clock.install();
     const calls = new Map();
@@ -183,22 +197,35 @@ export async function runOnArena (source, world, {extraMs = 0, record = false} =
         bridge.reset();
         await clock.advance(FRAME_MS);
 
+        const paneClock = new VmStepClock();
+        const pane = typeof vmStepsOn === 'function';
+        if (pane && stepClock) paneClock.install(vm.runtime);
         vm.greenFlag();
         let frames = 0;
-        const limit = world.timeLimitMs + extraMs + 1000;
         let verdict = bridge.verdict;
         const peripheralState = hub.data;
-        for (let elapsed = 0; elapsed < limit; elapsed += FRAME_MS) {
+        // Lockstep bounds the loop by simulated time; the starved pane loop takes
+        // its bound from the caller, who knows how long the VM is starved.
+        const maxFrames = pane && paneFrames ? paneFrames : Math.ceil((world.timeLimitMs + extraMs + 1000) / FRAME_MS);
+        let lastFrame = null;
+        for (let frame = 0; frame < maxFrames; frame++) {
             await clock.advance(FRAME_MS);
-            vm.runtime._step();
-            await settle();
-            verdict = bridge.tick(FRAME_MS);
+            if (!pane || vmStepsOn(frame)) {
+                vm.runtime._step();
+                await settle();
+            }
+            if (pane) {
+                const now = clock.now;
+                verdict = bridge.tick(frameSimMs(paneClock, lastFrame, now));
+                lastFrame = now;
+            } else verdict = bridge.tick(FRAME_MS);
             frames++;
             if (peripheralState.lastUnsupportedPythonTunnel && !unsupported.includes(peripheralState.lastUnsupportedPythonTunnel)) {
                 unsupported.push(peripheralState.lastUnsupportedPythonTunnel);
             }
             if (verdict.status !== 'running') break;
         }
+        paneClock.uninstall();
         return {verdict, snapshot: bridge.snapshot(), frames, calls, hub, unsupported, views};
     } finally {
         try { if (vm) { vm.stopAll(); vm.quit(); } } catch { /* noop */ }

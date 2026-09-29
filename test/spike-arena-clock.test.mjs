@@ -7,7 +7,9 @@ import {VmStepClock, NOMINAL_STEP_MS, INERT_AFTER_FRAMES} from
 const fakeRuntime = (currentStepTime = 33) => ({
     currentStepTime,
     ran: 0,
-    _step () { this.ran += 1; return 'original'; }
+    // scratch-vm's _step assigns a fresh _lastStepDoneThreads on every step;
+    // isInert() reads it as evidence that the VM stepped.
+    _step () { this.ran += 1; this._lastStepDoneThreads = []; return 'original'; }
 });
 
 test('simulated time comes from steps the VM actually took, not from elapsed time', () => {
@@ -144,16 +146,33 @@ test('a stalled VM drains no mission budget, where the wall clock drained 15 s o
 test('an installed-but-never-called hook is reported inert, not silently frozen', () => {
     const clock = new VmStepClock();
     const rt = fakeRuntime(33);
+    // Simulate upstream binding _step at start(): our reassignment is never seen,
+    // but the VM does step — through the bound original.
+    const bound = rt._step.bind(rt);
     clock.install(rt);
-    // Simulate upstream binding _step at start(): our reassignment is never seen.
     for (let i = 0; i < INERT_AFTER_FRAMES - 1; i++) {
+        bound();
         assert.equal(clock.take(), 0);
         assert.equal(clock.isInert(), false, 'a slow start is not yet evidence of inertness');
     }
+    bound();
     clock.take();
     assert.equal(clock.isInert(), true,
         'a clock that never counted a step must say so, or a frozen mission clock ' +
         'makes every mission pass by never timing out');
+});
+
+// Found by test/spike-arena-starved-vm.test.mjs: counting silent frames alone
+// cannot tell a bypassed hook from a STARVED VM, and calling a starved VM inert
+// sends the pane back to wall-clock frame deltas — the #518 flake again.
+test('a VM starved for many frames is NOT inert: no step anywhere keeps mission time frozen', () => {
+    const clock = new VmStepClock();
+    const rt = fakeRuntime(33);
+    clock.install(rt);
+    for (let i = 0; i < INERT_AFTER_FRAMES * 30; i++) assert.equal(clock.take(), 0);
+    assert.equal(clock.isInert(), false, 'silence is not evidence: the VM may simply not have run yet');
+    rt._step();
+    assert.equal(clock.take(), 33, 'and when it finally runs, time flows at the nominal rate');
 });
 
 test('a hook that IS called is never reported inert, however long the run', () => {
@@ -168,8 +187,9 @@ test('a hook that IS called is never reported inert, however long the run', () =
 test('clear() re-arms the inert detector so a fresh run is judged on its own frames', () => {
     const clock = new VmStepClock();
     const rt = fakeRuntime(33);
+    const bound = rt._step.bind(rt);
     clock.install(rt);
-    for (let i = 0; i < INERT_AFTER_FRAMES; i++) clock.take();
+    for (let i = 0; i < INERT_AFTER_FRAMES; i++) { bound(); clock.take(); }
     assert.equal(clock.isInert(), true);
     clock.clear();
     assert.equal(clock.isInert(), false, 'a restart must not inherit the last run s verdict');

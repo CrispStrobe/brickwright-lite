@@ -42,6 +42,8 @@ export const INERT_AFTER_FRAMES = 30;
 // gate that cannot fail. isInert() below exists so that becomes visible instead.
 // Verify with:
 //     grep -A2 '_steppingInterval = setInterval' <vm>/src/engine/runtime.js
+// isInert() in turn reads `this._lastStepDoneThreads = doneThreads;`, which _step
+// assigns on every step: grep '_lastStepDoneThreads =' in the same file.
 
 export class VmStepClock {
     /**
@@ -86,6 +88,7 @@ export class VmStepClock {
         this.original = original;
         this.wrapped = wrapped;
         this.framesAsked = 0;
+        this.doneMark = runtime._lastStepDoneThreads;
         return true;
     }
 
@@ -119,19 +122,52 @@ export class VmStepClock {
     }
 
     /**
-     * True when this clock is installed, has been asked for time many times, and
-     * has never counted a single step — which cannot happen against a running VM
-     * and therefore means the hook is not being called at all.
+     * True when this clock is installed, has never counted a step, and the
+     * runtime has demonstrably stepped anyway — which means our hook is not
+     * being called (see the note above install()).
      *
      * The caller must fall back to the wall clock when this is true. Freezing
      * mission time would make every mission pass by never timing out, and a gate
      * that cannot fail is worse than the flake this clock was written to remove.
+     *
+     * EVIDENCE, NOT SILENCE. This used to be "asked for time INERT_AFTER_FRAMES
+     * times and never counted a step" — and that is also exactly what a STARVED
+     * VM looks like. A VM that got no step for the first half second after the
+     * green flag tripped it, the pane fell back to wall-clock frame deltas, and
+     * the stall drained the mission budget: the #518 flake, reintroduced by its
+     * own safety valve (measured by test/spike-arena-starved-vm.test.mjs). So
+     * inertness now needs positive evidence that the VM stepped behind our back:
+     * scratch-vm's _step assigns a fresh `_lastStepDoneThreads` array on every
+     * step, whoever called it. A starved VM leaves it untouched and is never
+     * called inert; a bypassed hook changes it and is.
      * @returns {boolean}
      */
     isInert () {
-        return this.installed && this.steps === 0 && this.framesAsked >= INERT_AFTER_FRAMES;
+        if (!this.installed || this.steps !== 0 || this.framesAsked < INERT_AFTER_FRAMES) return false;
+        return this.runtime._lastStepDoneThreads !== this.doneMark;
     }
 
     /** Forget owed time without spending it — for a reset or a fresh run. */
-    clear () { this.pending = 0; this.steps = 0; this.framesAsked = 0; }
+    clear () {
+        this.pending = 0; this.steps = 0; this.framesAsked = 0;
+        if (this.runtime) this.doneMark = this.runtime._lastStepDoneThreads;
+    }
 }
+
+/** The wall-clock fallback's per-frame cap (the pane's old rule). */
+export const MAX_FRAME_MS = 100;
+
+/**
+ * The simulated milliseconds one animation frame buys: the VM's steps when the
+ * step clock is driving, else the clamped wall-clock delta. This IS the pane's
+ * rule (spike-arena-pane.jsx calls it), kept here so the headless end-to-end
+ * test runs the same decision the browser does.
+ * @param {VmStepClock} clock
+ * @param {number|null} lastFrame previous frame's timestamp, null on the first
+ * @param {number} now this frame's timestamp
+ * @returns {number}
+ */
+export const frameSimMs = (clock, lastFrame, now) => {
+    if (clock && clock.installed && !clock.isInert()) return clock.take();
+    return lastFrame === null ? 0 : Math.min(MAX_FRAME_MS, now - lastFrame);
+};
