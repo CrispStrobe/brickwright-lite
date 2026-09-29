@@ -65,6 +65,15 @@ const L10N = {
         modemSend: 'Encode and transmit this message on PA0/ADC6',
         modemSent: 'transmitted',
         firmwareRunning: 'running',
+        savePoint: 'Save point',
+        engineReverse: 'Reverse (slower)',
+        engineReverseTitle: 'Record every instruction so Reverse Step / Reverse Continue work here — the run is much slower while this is on',
+        savePointTitle: 'Remember this exact moment; ↺ returns here',
+        restorePointTitle: 'Return the chip to this save point',
+        engineFault: 'Firmware fault',
+        engineFidelity: 'The engine skipped something here — the run may not match the chip',
+        labwiredChipProject: 'project board',
+        labwiredChipTitle: 'Run your own firmware (.elf or .uf2) on this chip, with no circuit — or the project\'s board',
         firmwareBack: 'Blocks',
         firmwareBackTitle: 'Stop running this image and go back to debugging the blocks program',
         firmwareBareChip: 'No circuit is drawn, so this image runs on the bare chip: pins, serial and stepping all work. Draw a circuit in the Circuit tab to wire parts to its pins.',
@@ -113,6 +122,15 @@ const L10N = {
         modemSend: 'Diese Nachricht kodieren und an PA0/ADC6 senden',
         modemSent: 'gesendet',
         firmwareRunning: 'läuft',
+        savePoint: 'Speicherpunkt',
+        engineReverse: 'Rückwärts (langsamer)',
+        engineReverseTitle: 'Jeden Befehl aufzeichnen, damit Rückwärts-Schritt / -Fortsetzen hier gehen — der Lauf ist dabei deutlich langsamer',
+        savePointTitle: 'Diesen Moment merken; ↺ kehrt hierher zurück',
+        restorePointTitle: 'Den Chip auf diesen Speicherpunkt zurücksetzen',
+        engineFault: 'Firmware-Fehler',
+        engineFidelity: 'Die Engine hat hier etwas übersprungen — der Lauf entspricht evtl. nicht dem Chip',
+        labwiredChipProject: 'Projekt-Board',
+        labwiredChipTitle: 'Eigene Firmware (.elf oder .uf2) auf diesem Chip ausführen, ohne Schaltung — oder das Board des Projekts',
         firmwareBack: 'Blöcke',
         firmwareBackTitle: 'Dieses Abbild beenden und wieder das Blockprogramm debuggen',
         firmwareBareChip: 'Es ist keine Schaltung gezeichnet, daher läuft dieses Abbild auf dem nackten Chip: Pins, Seriell und Einzelschritte funktionieren. Zeichne im Circuit-Tab eine Schaltung, um Bauteile an seine Pins anzuschließen.',
@@ -164,6 +182,7 @@ class DebugPanel extends React.Component {
         // than in the runner: picking "Live board" and then pressing Run is the
         // order a user works in.
         this.state = {runner: null, ui: {phase: 'idle', message: ''}, kind: 'emulator', kinds: null,
+            labwiredChip: '', labwiredChips: null,
             machineConfig: null, serialInput: '', modemInput: '', modemStatus: null,
             firmwareName: null,
             recordingStatus: null, reverseStatus: null, timelineStatus: null,
@@ -596,6 +615,31 @@ class DebugPanel extends React.Component {
     componentDidUpdate (prevProps) {
         this.syncDeviceKind();
         this.syncProjectTokens(prevProps, false);
+        this.ensureLabwiredChips();
+    }
+
+    // The chip list for "your own firmware on the LabWired engine" — the
+    // engine's own chip descriptors, a 160 KB chunk, so fetched only once the
+    // LabWired engine is actually picked. Failure leaves the picker absent
+    // (the project-board route still works) and says why in the console.
+    ensureLabwiredChips () {
+        if (this.state.kind !== 'labwired' || this.state.labwiredChips || this._labwiredChipsLoading) return;
+        this._labwiredChipsLoading = true;
+        import(/* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js')
+            .then(m => {
+                const chips = [
+                    ...Object.values(m.LABWIRED_CATALOG || {}).map(c => ({value: c.name, label: `${c.name} (${c.arch})`})),
+                    // Boards: the chip plus the devices its manifest wires, a
+                    // display among them — what the firmware draws reaches Widgets.
+                    ...Object.values(m.LABWIRED_BOARDS || {}).map(b => ({value: `board:${b.name}`,
+                        label: b.softdevice
+                            ? `${b.name} (${b.chip}, emulated ${b.softdevice.toUpperCase()} SoftDevice — .hex)`
+                            : `${b.name} (${b.chip} + ${b.displays.map(d => d.type).join(', ')})`}))
+                ];
+                this.setState({labwiredChips: chips});
+            })
+            .catch(e => console.warn('[brickwright] LabWired chip list unavailable:', e))
+            .finally(() => { this._labwiredChipsLoading = false; });
     }
 
     // When the project's DEVICE declaration changes, switch the default
@@ -751,6 +795,7 @@ class DebugPanel extends React.Component {
             targetKind: this.state.kind,
             machineConfig: this.state.machineConfig,
             bootMedia: this._bootMedia,
+            labwiredChip: this.state.kind === 'labwired' ? (this.state.labwiredChip || null) : null,
             onChange: (ui) => {
                 // Runner notifications arrive from rAF/target callbacks, outside
                 // React 16's event batching. The local panel and its CircuitTab
@@ -781,7 +826,23 @@ class DebugPanel extends React.Component {
         const runner = await this.runner();
         const phase = this.state.ui.phase;
         if (phase === 'paused') runner.resume();
-        else await runner.start();
+        else {
+            await runner.start();
+            this.mirrorLabwiredDisplay(runner);
+        }
+    }
+
+    // A LabWired board with a display: its screen is a widget (the same mirror
+    // a machine's VGA uses), sized from the first frame the engine reports.
+    mirrorLabwiredDisplay (runner) {
+        if (this.state.kind !== 'labwired' || !String(this.state.labwiredChip || '').startsWith('board:')) return;
+        if (typeof runner.video !== 'function' || typeof window === 'undefined' ||
+            typeof window.bwMirrorMachineVideo !== 'function') return;
+        const first = runner.video();
+        window.bwMirrorMachineVideo({videoFn: () => runner.video(), widget: {
+            name: 'LabWired display', type: 'simplevga', source: 'video',
+            config: {width: (first && first.width) || 128, height: (first && first.height) || 64}
+        }});
     }
 
     onSerialInput (e) { this.setState({serialInput: e.target.value}); }
@@ -1252,11 +1313,14 @@ class DebugPanel extends React.Component {
                         — pins, board, serial and stepping stay. */}
                     <span style={{display: 'inline-flex', alignItems: 'center', gap: 4}}>
                         <label style={{...BTN, padding: '3px 6px', cursor: 'pointer'}}
-                            title={'Load a firmware file (.bin for Pico/STM32, .hex/.ihx for 8051/AVR) and run it instead of the blocks'}>
+                            title={'Load a firmware file (.bin for Pico/STM32, .hex/.ihx for 8051/AVR' +
+                                (this.state.kind === 'labwired' ? ', .elf/.uf2 for a chip picked on LabWired' : '') +
+                                ') and run it instead of the blocks'}>
                             {'📂'}
                             <input
                                 type="file"
-                                accept=".bin,.hex,.ihx"
+                                accept={this.state.kind === 'labwired'
+                                    ? '.elf,.uf2,.bin,.hex,.ihx' : '.bin,.hex,.ihx'}
                                 style={{display: 'none'}}
                                 disabled={running || paused || busy}
                                 onChange={e => this.onFirmwareFile(e)}
@@ -1299,6 +1363,26 @@ class DebugPanel extends React.Component {
                                     <option key={k.kind} value={k.kind}>{k.label}</option>
                                 ))}
                             </select>
+                            {this.state.kind === 'labwired' && this.state.labwiredChips ? (
+                                <select
+                                    value={this.state.labwiredChip}
+                                    disabled={running || paused || busy}
+                                    title={this.tx('labwiredChipTitle')}
+                                    onChange={e => {
+                                        // A different chip is a different machine:
+                                        // the next Start must attach fresh.
+                                        this._teardownRunner();
+                                        this.setState({labwiredChip: e.target.value, runner: null,
+                                            ui: {phase: 'idle', message: ''}});
+                                    }}
+                                    style={{...BTN, padding: '3px 6px'}}
+                                >
+                                    <option value="">{this.tx('labwiredChipProject')}</option>
+                                    {this.state.labwiredChips.map(c => (
+                                        <option key={c.value} value={c.value}>{c.label}</option>
+                                    ))}
+                                </select>
+                            ) : null}
                         </span>
                     ) : null}
 
@@ -1522,6 +1606,74 @@ class DebugPanel extends React.Component {
                     <div style={{color: '#f39c12', fontSize: 11}}>
                         {ui.engineNotes.map((n, i) => (
                             <div key={i}>{`• ${n}`}</div>
+                        ))}
+                    </div>
+                ) : null}
+
+                {/* WHAT THE ENGINE KNOWS AND THE RUN DOES NOT SHOW. A fault looks
+                    like firmware idling in its handler, and a skipped instruction
+                    like firmware running correctly — the engine knows both, so
+                    say them. Red for the fault (the run stopped because of it),
+                    amber for the skipped instructions (the run may be wrong). */}
+                {ui.engineDiagnostics && ui.engineDiagnostics.fault ? (
+                    <div data-engine-fault style={{color: '#e74c3c', fontSize: 11}}>
+                        {`${this.tx('engineFault')}: ${ui.engineDiagnostics.fault.summary}`}
+                    </div>
+                ) : null}
+                {/* SAVE POINTS (LabWired, your own firmware on a chip). The engine
+                    rebuilds the machine and replays to the point, refusing when
+                    the replay does not match — so a restore either lands exactly
+                    or says why. Shown only while stopped; a bench with a circuit
+                    gets none (the circuit cannot be rewound with the firmware). */}
+                {ui.savePoints && !ui.savePoints.unavailable && this.state.runner ? (
+                    <div data-save-points style={{display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', fontSize: 11}}>
+                        <button
+                            style={{...BTN, padding: '2px 6px'}}
+                            title={this.tx('savePointTitle')}
+                            onClick={() => {
+                                const r = this.state.runner.saveSnapshot(`#${ui.savePoints.points.length + 1}`);
+                                if (r && r.unsupported) this.setState({savePointError: r.unsupported});
+                                else this.setState({savePointError: null});
+                            }}
+                        >{`💾 ${this.tx('savePoint')}`}</button>
+                        {ui.savePoints.points.map(p => (
+                            <button
+                                key={p.id}
+                                style={{...BTN, padding: '2px 6px'}}
+                                title={`${this.tx('restorePointTitle')} (${p.cycles} cycles)`}
+                                onClick={() => {
+                                    const r = this.state.runner.restoreSnapshot(p.id);
+                                    this.setState({savePointError: r && r.unsupported ? r.unsupported : null});
+                                }}
+                            >{`↺ ${p.label || p.id}`}</button>
+                        ))}
+                        <label style={{display: 'inline-flex', alignItems: 'center', gap: 3}}
+                            title={this.tx('engineReverseTitle')}>
+                            <input
+                                type="checkbox"
+                                checked={!!this.state.runner.engineRecording}
+                                onChange={e => {
+                                    const r = this.state.runner.setEngineRecording(e.target.checked);
+                                    this.setState({savePointError: r && r.unsupported ? r.unsupported : null});
+                                }}
+                            />
+                            {this.tx('engineReverse')}
+                        </label>
+                        {this.state.savePointError ? (
+                            <span style={{color: '#e74c3c'}}>{this.state.savePointError}</span>
+                        ) : null}
+                    </div>
+                ) : null}
+                {ui.engineDiagnostics && ui.engineDiagnostics.consoleMismatch ? (
+                    <div data-engine-console style={{color: '#f39c12', fontSize: 11}}>
+                        {`• ${ui.engineDiagnostics.consoleMismatch}`}
+                    </div>
+                ) : null}
+                {ui.engineDiagnostics && ui.engineDiagnostics.fidelityGapCount ? (
+                    <div data-engine-fidelity style={{color: '#f39c12', fontSize: 11}}>
+                        <div>{`${this.tx('engineFidelity')} (${ui.engineDiagnostics.fidelityGapCount})`}</div>
+                        {ui.engineDiagnostics.fidelityGaps.map((g, i) => (
+                            <div key={i}>{`• ${typeof g === 'string' ? g : JSON.stringify(g)}`}</div>
                         ))}
                     </div>
                 ) : null}

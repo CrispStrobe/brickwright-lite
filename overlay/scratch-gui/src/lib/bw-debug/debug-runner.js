@@ -170,7 +170,11 @@ export function codeListingRows (target, addr, count = 16) {
                 if (typeof target.readMem !== 'function') return [];
                 const head = target.readMem('code', current, 1);
                 if (!head || typeof head[Symbol.iterator] !== 'function' || head.length < 1) return [];
-                length = instructionLength(head[0]);
+                // The TARGET's length when it knows its architecture (Thumb 2/4,
+                // RISC-V, Xtensa 2/3...); the table is 8-bit-opcode lore.
+                length = typeof target.instructionLength === 'function'
+                    ? target.instructionLength(current) : instructionLength(head[0]);
+                if (!Number.isSafeInteger(length) || length < 1) return [];
                 const read = target.readMem('code', current, length);
                 if (!read || typeof read[Symbol.iterator] !== 'function') return [];
                 bytes = [...read];
@@ -559,7 +563,7 @@ export function toggleTargetCodeBreakpoint ({target, addrBps, addr}) {
  *   names the machine shape a preset image was built for; absent, the
  *   extracted config (or the target's default map) is used.
  */
-export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, onChange = () => {} }) {
+export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, labwiredChip = null, onChange = () => {} }) {
     let session = null;
     let target = null;
     let i8086ExecutionResult = null;
@@ -839,6 +843,30 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
      * a question asked after the program is running, not during the build.
      */
     let imageProvenance = null;
+    /** See `savePoints` in the snapshot. */
+    function savePointsNow () {
+        if (!target || typeof target.snapshotUnavailable !== 'function') return undefined;
+        if (typeof target.state === 'function' && target.state() === 'running') return undefined;
+        let unavailable;
+        try { unavailable = target.snapshotUnavailable(); } catch (e) { unavailable = String(e.message || e); }
+        if (unavailable) return {unavailable, points: []};
+        let points = [];
+        try { points = target.listSnapshots() || []; } catch (e) { points = []; }
+        return {unavailable: null, points};
+    }
+    /** See `engineDiagnostics` in the snapshot. */
+    function engineDiagnosticsNow () {
+        if (!target || typeof target.diagnostics !== 'function') return undefined;
+        if (typeof target.state === 'function' && target.state() === 'running') return undefined;
+        let d;
+        try { d = target.diagnostics(); } catch (e) { return undefined; }
+        const fault = d && d.fault && d.fault.summary ? {summary: String(d.fault.summary)} : null;
+        const gaps = d && Array.isArray(d.fidelityGaps) ? d.fidelityGaps : [];
+        const consoleMismatch = d && typeof d.consoleMismatch === 'string' && d.consoleMismatch
+            ? d.consoleMismatch : null;
+        if (!fault && !gaps.length && !consoleMismatch) return undefined;
+        return {fault, fidelityGaps: gaps.slice(0, 20), fidelityGapCount: gaps.length, consoleMismatch};
+    }
     /** How many conditional hits were skipped, so the UI can show it happened. */
     let skipped = 0;
     /** Set by the halt handler when a stop should not be shown; read by pumpFrame. */
@@ -1139,6 +1167,21 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
              * nothing rather than an empty warning box.
              */
             engineNotes: engineNotes.length ? [...engineNotes] : undefined,
+            /**
+             * What the engine knows that the run does not show (targets that
+             * offer `diagnostics()`, i.e. LabWired): the fault verdict — why
+             * and where the firmware faulted, one sentence — and the
+             * instructions it silently skipped or addresses nothing claimed.
+             * Read only while stopped, so a running frame costs nothing.
+             * undefined when there is nothing to say.
+             */
+            engineDiagnostics: engineDiagnosticsNow(),
+            /**
+             * Engine save points (LabWired, firmware-only): `unavailable` is the
+             * reason when there are none to offer (a bench cannot rewind its
+             * circuit), else `points` oldest first. Read only while stopped.
+             */
+            savePoints: savePointsNow(),
             /**
              * The prebuilt-image sentence, or undefined when the image was
              * compiled for this session. See `imageProvenance` above.
@@ -1894,6 +1937,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 '. Run `npm run sync:labwiredwasm` and rebuild, or pick another engine.');
         }
 
+        // A chip picked in the panel means "my firmware on that chip", with no
+        // circuit — whatever the project's own device is.
+        if (labwiredChip) return attachLabwiredFirmwareOnly(built, wasm, createDebugTarget, createDebugSession);
+
         const stc = projectStc(null);
         const device = String(stc?.device || '').toLowerCase();
         const isAvr = ['arduino-uno', 'arduino-nano', 'atmega328p'].includes(device);
@@ -1974,6 +2021,59 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             ...(refusals || []).map(r => `${r.subject}: ${r.reason}`)
         ];
 
+        return finishLabwiredAttach(lwTarget, lwAdapter, program.length, stc.pins || [], createDebugSession);
+    }
+
+
+    /** The user's own ELF on a labwired catalog chip, with no circuit.
+     *
+     *  No netlist, so no board, no pins and no bench refusals: the Circuit tab
+     *  is not told a board is ready, because there is none. The panel offers
+     *  the chip list (bw-board/labwired-catalog.js, the engine's own chip
+     *  descriptors at the wasm build pin) only on the LabWired engine. */
+    async function attachLabwiredFirmwareOnly (built, wasm, createDebugTarget, createDebugSession) {
+        const { LABWIRED_CATALOG, LABWIRED_BOARDS } = await import(
+            /* webpackChunkName: "labwired-catalog" */ 'bw-board/labwired-catalog.js');
+        // `board:<name>` is a labwired BOARD — its chip plus the devices its
+        // manifest wires, a display among them; a bare name is just the chip.
+        const labBoard = labwiredChip.startsWith('board:')
+            ? (LABWIRED_BOARDS || {})[labwiredChip.slice(6)] : null;
+        if (labwiredChip.startsWith('board:') && !labBoard) {
+            throw new Error(`'${labwiredChip.slice(6)}' is not a board the LabWired engine offers`);
+        }
+        const chip = LABWIRED_CATALOG[labBoard ? labBoard.chip : labwiredChip];
+        if (!chip) throw new Error(`'${labwiredChip}' is not a chip the LabWired engine offers`);
+        // A .hex only for an S110 board (the SoftDevice-emulated app region).
+        const formats = labBoard && labBoard.softdevice === 's110' ? ['elf', 'uf2', 'hex'] : ['elf', 'uf2'];
+        if (!built || !formats.includes(built.format) || !(built.image instanceof Uint8Array)) {
+            throw new Error(`the ${chip.name} runs your own firmware: load an .elf or .uf2 with Firmware… first ` +
+                '(a block project compiles for its own device, not for this chip)');
+        }
+        const { target: lwTarget, adapter: lwAdapter } = await createDebugTarget('labwired', {
+            wasm, chip, firmware: built.image, labwiredBoard: labBoard || undefined,
+        });
+        board = null;
+        engineNotes = [
+            labBoard && labBoard.softdevice
+                ? `Your ${labBoard.name} application on the ${chip.name}, with the Nordic ` +
+                  `${labBoard.softdevice.toUpperCase()} SoftDevice EMULATED (only the application region of the ` +
+                  'image is loaded — no Nordic byte). Serial console and buttons A/B work; there is no circuit.'
+                : labBoard
+                ? `Your firmware on the ${labBoard.name} board (${chip.name}, ${chip.arch}), with its ` +
+                  `${labBoard.displays.map(d => d.type).join(', ')} display shown in Widgets; other pins ` +
+                  'are not wired to a circuit here.'
+                : `Your firmware on the ${chip.name} (${chip.arch}, ${chip.clockHz / 1e6} MHz), with no circuit: ` +
+                  'pins are not wired to anything here, so this is for stepping, breakpoints, registers, ' +
+                  'memory and the serial console.'
+        ];
+        emit();
+        return finishLabwiredAttach(lwTarget, lwAdapter, built.image.length, [], createDebugSession);
+    }
+
+    /** What every labwired attach does once it has a target: the console (out
+     *  AND in), the runner's target/session, and the ready line. Shared by the
+     *  bench attach and the firmware-only one so the two cannot drift. */
+    function finishLabwiredAttach (lwTarget, lwAdapter, programBytes, pins, createDebugSession) {
         if (lwAdapter && lwAdapter.onSerial) {
             let lineBuf = '';
             serialLines = [];
@@ -1989,6 +2089,27 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             });
         }
 
+        // RTT / semihosting / ITM: other ways firmware prints. Same console,
+        // one line buffer per channel, each line labelled so a reader knows
+        // which stream said it (a UART line has no label, as before).
+        if (lwAdapter && typeof lwAdapter.onTrace === 'function') {
+            const partial = new Map();
+            lwAdapter.onTrace((channel, bytes) => {
+                let buf = partial.get(channel) || '';
+                for (const byte of bytes) {
+                    const ch = String.fromCharCode(byte);
+                    if (ch === '\n') {
+                        serialLines.push(`[${channel}] ${buf}`);
+                        buf = '';
+                        if (serialLines.length > 200) serialLines.shift();
+                    } else if (ch !== '\r') {
+                        buf += ch;
+                    }
+                }
+                partial.set(channel, buf);
+            });
+        }
+
         // RX into the program, the half the other tiers already had: without a
         // `sendSerial` the panel hides its input line (it asks for the
         // capability), so on this tier the console was output-only even though
@@ -1997,14 +2118,29 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // at a time. Deleted when absent so an earlier attach's input line
         // cannot outlive it and type into a different engine.
         if (lwAdapter && typeof lwAdapter.feedSerial === 'function') {
+            // Through the TARGET when it offers feedSerial: it records each byte
+            // as an input fact on the instruction clock, which is what lets a
+            // reverse replay put the byte back at the same instruction.
+            const feed = lwTarget && typeof lwTarget.feedSerial === 'function'
+                ? b => lwTarget.feedSerial(b)
+                : b => lwAdapter.feedSerial(b);
             runner.sendSerial = (data) => {
                 const bytes = typeof data === 'number'
                     ? [data & 0xff]
                     : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff);
-                for (const b of bytes) lwAdapter.feedSerial(b);
+                for (const b of bytes) feed(b);
             };
         } else {
             delete runner.sendSerial;
+        }
+
+        // The board's display (a labwired board picked with its display): the
+        // Widgets mirror polls this. Deleted otherwise, so an earlier machine's
+        // screen cannot outlive it.
+        if (lwTarget && typeof lwTarget.video === 'function' && lwTarget.video() !== null) {
+            runner.video = () => lwTarget.video();
+        } else {
+            delete runner.video;
         }
 
         // `target` and `session` are the RUNNER's, not locals. Declaring them
@@ -2018,7 +2154,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // names this run cannot resolve — readings that look right and are not.
         symbols = null;
         variableTable = [];
-        pinTable = stc.pins || [];
+        pinTable = pins;
         if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
 
         session = createDebugSession(target, {
@@ -2029,7 +2165,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
         // Said in the status line rather than left for the user to infer from a
         // greyed-out button.
-        setStatus('ready', S('built.labwired', {bytes: program.length}));
+        setStatus('ready', S('built.labwired', {bytes: programBytes}));
         return session;
     }
 
@@ -3299,6 +3435,38 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 bytes: bytes.length, f_cpu: null, format: 'bin' };
         }
         if (kind === 'labwired') {
+            // A chip or board picked in the Debug panel: the user's own image on a
+            // catalog chip, no circuit (attachLabwiredFirmwareOnly).
+            if (labwiredChip) {
+                // The heavy tier runs the user's image on a catalog chip (see
+                // attachLabwiredFirmwareOnly). ELF only: it says where every byte
+                // loads, which a raw .bin cannot, and the chips differ (STM32 flash
+                // at 0x0800_0000, nRF at 0, RP2040 XIP at 0x1000_0000).
+                const bytes = fw.bytes || new Uint8Array(0);
+                const isElf = bytes.length >= 4 && bytes[0] === 0x7f && bytes[1] === 0x45 &&
+                    bytes[2] === 0x4c && bytes[3] === 0x46;
+                // UF2 (a Pico's drag-and-drop image): every block names its flash
+                // address, so bw-board converts it without guessing an origin.
+                const isUf2 = bytes.length >= 8 && bytes[0] === 0x55 && bytes[1] === 0x46 &&
+                    bytes[2] === 0x32 && bytes[3] === 0x0a;
+                // A .hex is taken for an S110 board (micro:bit V1 / Calliope): bw-board
+                // keeps only its application window and the engine emulates the
+                // SoftDevice. For any other chip a .hex is refused as before.
+                const hexText = fw.text || (!isElf && !isUf2 && bytes.length && bytes[0] === 0x3a
+                    ? new TextDecoder().decode(bytes) : null);
+                if (hexText && String(labwiredChip || '').startsWith('board:')) {
+                    return { hex: hexText, image: new TextEncoder().encode(hexText), symbols: null, c: null,
+                        bytes: hexText.length, f_cpu: null, format: 'hex' };
+                }
+                if (!isElf && !isUf2) {
+                    throw new Error(`${fw.name}: the LabWired engine takes an ELF (.elf) or a UF2 (.uf2) — ` +
+                        'a raw .bin or .hex does not say where its bytes load on this chip ' +
+                        '(a micro:bit V1 / Calliope .hex runs on the micro:bit V1 board)');
+                }
+                return { hex: null, image: bytes, symbols: null, c: null,
+                    bytes: bytes.length, f_cpu: null, format: isElf ? 'elf' : 'uf2' };
+            }
+            // Otherwise the project's own device on its bench.
             const device = String(projectStc(null)?.device || '').toLowerCase();
             const chipKind = device === 'microbit' || device === 'microbit-v2' ? 'microbit_v2'
                 : ['pybadge', 'pybadge-lc', 'samd51', 'arcade'].includes(device) ? 'pybadge'
@@ -3564,6 +3732,45 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         },
 
         /** Raw bytes, for the hex view. Returns [] rather than throwing. */
+        /**
+         * Opt the engine into reverse (LabWired): every instruction is then
+         * single-stepped so it can be announced, so the run is much slower.
+         * Once on, the Record / Reverse controls appear (they read the target's
+         * capabilities afresh). undefined or {unsupported}.
+         */
+        setEngineRecording(on) {
+            if (!target || typeof target.setRecording !== 'function') {
+                return {unsupported: 'this engine has no opt-in reverse'};
+            }
+            const r = target.setRecording(!!on);
+            emit();
+            return r;
+        },
+        get engineRecording() {
+            return !!(target && typeof target.isRecording === 'function' && target.isRecording());
+        },
+
+        /** Save the engine's current point (LabWired). {id,label,cycles} or {unsupported}. */
+        saveSnapshot(label) {
+            if (!target || typeof target.saveSnapshot !== 'function') {
+                return {unsupported: 'this engine has no save points'};
+            }
+            const r = target.saveSnapshot(label);
+            emit();
+            return r;
+        },
+
+        /** Return to a save point; the target halts first. undefined or {unsupported}. */
+        restoreSnapshot(id) {
+            if (!target || typeof target.restoreSnapshot !== 'function') {
+                return {unsupported: 'this engine has no save points'};
+            }
+            const r = target.restoreSnapshot(id);
+            if (!r) setStatus('paused');
+            emit();
+            return r;
+        },
+
         readMem(space, addr, len) {
             if (!target) return [];
             const out = target.readMem(space, addr, len);
@@ -3582,6 +3789,19 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
          * the whole app from "under the hood" on the pendant (owner report,
          * 2026-08-16). */
         disasm(addr) { return (target && typeof target.disasm === 'function') ? target.disasm(addr) : ''; },
+
+        /** Whether the attached target can write a register (LabWired with a newer engine). */
+        canWriteRegs() { return !!(target && typeof target.writeReg === 'function'); },
+
+        /** Write register `name` (the target's own name). undefined or {unsupported}. */
+        writeReg(name, value) {
+            if (!target || typeof target.writeReg !== 'function') {
+                return {unsupported: 'this engine cannot write registers'};
+            }
+            const r = target.writeReg(name, value);
+            emit();
+            return r;
+        },
 
         /**
          * A short listing from `addr`, walking with the opcode length table.

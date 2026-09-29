@@ -74,7 +74,9 @@ export function createTrace({ capacity = DEFAULT_CAPACITY, eventStream = null, c
         record(target, why = 'halt', extra = null) {
             const regs = target.regs();
             const pc = regs.pc;
-            const len = instructionLength(target.readMem('code', pc, 1)[0]);
+            const own = typeof target.instructionLength === 'function' ? target.instructionLength(pc) : null;
+            const len = Number.isSafeInteger(own) && own > 0
+                ? own : instructionLength(target.readMem('code', pc, 1)[0]);
             const bytes = [...target.readMem('code', pc, len)];
 
             const row = {

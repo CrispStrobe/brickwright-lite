@@ -79,16 +79,33 @@ test('missing, malformed, throwing and non-progressing progression all fail clos
     }, 0x1234, 2), [], 'a malformed object row must not fall through to the 8051 string path');
 });
 
-test('LabWired remains explicitly non-listable despite its PC-only disassembler', () => {
+test('LabWired lists nothing on an engine whose disassembler knows only the PC', () => {
     const target = createLabwiredDebugTarget({adapter: {
         clockHz: 48_000_000,
         timeNs: () => 0n,
         sim: {get_pc: () => 0x08000000}
     }});
     assert.equal(typeof target.disasm, 'function');
-    assert.equal(typeof target.readMem, 'function');
-    assert.equal(typeof target.nextCodeAddress, 'undefined');
-    assert.deepEqual(codeListingRows(target, 0x08000000, 2), []);
+    assert.deepEqual(codeListingRows(target, 0x08000000, 2), [],
+        'blank rows for every non-PC address would be a listing that is not one');
+});
+
+test('LabWired lists with an engine that decodes any address, stepping by the Thumb length', () => {
+    const mem = new Map([[0x08000000, 0x00], [0x08000001, 0xf0], [0x08000002, 0x00], [0x08000003, 0xf8],
+        [0x08000004, 0x00], [0x08000005, 0xbf]]);                     // BL (4 bytes), then NOP (2)
+    const target = createLabwiredDebugTarget({adapter: {
+        clockHz: 48_000_000,
+        timeNs: () => 0n,
+        sim: {
+            get_pc: () => 0x08000000,
+            read_memory: (a, n) => Array.from({length: n}, (_, k) => mem.get(a + k) ?? 0),
+            disassemble_at: a => `op@${a.toString(16)}`
+        }
+    }});
+    const rows = codeListingRows(target, 0x08000000, 2);
+    assert.deepEqual(rows.map(r => [r.addr, r.bytes.length, r.text]),
+        [[0x08000000, 4, 'op@8000000'], [0x08000004, 2, 'op@8000004']],
+        'the target\'s own instruction length, not the 8051 opcode table');
 });
 
 test('code-address formatting is lossless while the 16-bit formatter stays deliberate', () => {

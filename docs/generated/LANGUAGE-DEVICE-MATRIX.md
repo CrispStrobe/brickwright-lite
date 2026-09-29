@@ -136,7 +136,7 @@ question from whether the row agrees with the code.
 
 ## Oracles the tiers rest on (bw-board census at the pinned sha)
 
-Joined from `docs/generated/bw-board-census.json` (bw-board `d9a967cad`, read 2026-09-28).
+Joined from `docs/generated/bw-board-census.json` (bw-board `3f9644324`, read 2026-09-29).
 **standing** = bw-board's CI runs the oracle on every push (the census reports bw-board's gates only — a cell whose
 standing check lives in lite's own CI, like the labwired heavy tier, says so in its row); **recorded** = measured once
 on the box the census was read on; **absent** = not present there; a **service** row is reachability, never probed.
@@ -148,7 +148,7 @@ The last column is bw-board's description AS AUTHORED: a stable string, not a re
 | z80-vectors | oracle | standing | test/z80-disasm.test.mjs<br>scripts/grind-z80.mjs | SingleStepTests z80 — 1,604 opcode files with full undocumented state (X/Y flags, Q latch, R per-M1, WZ). |
 | 65c02-vectors | oracle | standing | test/w65c02.test.mjs<br>test/w65c02-disasm.test.mjs<br>scripts/grind-w65c02.mjs | SingleStepTests 65x02, WDC variant — ~10k vectors per opcode including cycle counts. |
 | emu8051 | oracle | standing | test/emu8051-idle-fastforward.test.mjs<br>test/brightness-emu8051.test.js<br>test/emu8051-debug.test.js<br>test/emu8051-checkpoint-refusal-shape.test.mjs<br>test/emu8051-debug-events.test.mjs<br>test/conformance-real-wasm.test.js<br>test/device-drivers-e2e.test.js<br>test/end-to-end-dimmer.test.js<br>test/motor-e2e.test.js<br>test/rung8-serial-reads.test.js<br>test/servo-e2e.test.js | A second 8051 implementation (MIT sibling repo), built to WASM. |
-| labwired-wasm | oracle | absent | test/labwired-adapter.test.mjs<br>test/labwired-roundtrip.test.mjs<br>test/pad-drive-parity.test.mjs | The labwired engine as WASM — the differential oracle for the labwired bridge. |
+| labwired-wasm | oracle | absent | test/labwired-adapter.test.mjs<br>test/labwired-roundtrip.test.mjs<br>test/pad-drive-parity.test.mjs<br>test/labwired-firmware-only.test.mjs | The labwired engine as WASM — the differential oracle for the labwired bridge. |
 | elks-image | fixture | recorded | test/i8086-elks-boot.test.mjs | An ELKS 1. |
 | retro-corpus-8086 | fixture | recorded | test/oracle-nasm.test.mjs | Four real DOS assembly programs (Snake, typing-balloon, Maze Runner, retro-dos-graphics) that the NASM oracle assembles with both nasm and src/i8086-asm. |
 | nasm | oracle | standing | test/oracle-nasm.test.mjs | NASM (BSD-2), an independent assembler. |

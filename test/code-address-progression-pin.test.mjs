@@ -4,9 +4,8 @@ import {importPackageSource} from './helpers/package-source.mjs';
  *
  * This is a pin/graft proof: three 16-bit engines wrap at their bus boundary,
  * while i8086 keeps a 20-bit linear address and advances the 16-bit IP inside
- * its segment. LabWired is deliberately absent because its disassembler can
- * decode only the current PC; method presence would falsely advertise a
- * listable address space to the later GUI consumer.
+ * its segment. LabWired answers null (not listable) unless its engine can
+ * decode any address, not only the current PC; see the LabWired tests below.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -89,11 +88,27 @@ test('progression rejects malformed values at each shipped target', () => {
     assert.equal(typeof targets.at(-1).nextCodeAddress(0x100000, 1), 'object');
 });
 
-test('LabWired stays non-listable because it can only disassemble its current PC', () => {
-    const target = createLabwiredDebugTarget({adapter: {
-        clockHz: 48_000_000,
-        timeNs: () => 0n,
-        sim: {get_pc: () => 0x08000000}
-    }});
-    assert.equal(typeof target.nextCodeAddress, 'undefined');
+// LabWired's target always has the method now; listability is its ANSWER.
+// An engine that can only disassemble its current PC answers null, so the GUI
+// consumer still sees no listable address space; one that decodes any address
+// (`disassemble_at`, labwired-core d76ee833) steps by the instruction length.
+const labwiredTarget = sim => createLabwiredDebugTarget({adapter: {
+    clockHz: 48_000_000,
+    timeNs: () => 0n,
+    sim: {get_pc: () => 0x08000000, ...sim}
+}});
+
+test('LabWired stays non-listable when it can only disassemble its current PC', () => {
+    const target = labwiredTarget({});
+    assert.equal(target.nextCodeAddress(0x08000000, 2), null);
+    assert.equal(target.nextCodeAddress(0x08000000, 0), null);
+});
+
+test('LabWired lists once the engine decodes any address', () => {
+    const target = labwiredTarget({disassemble_at: () => 'Nop'});
+    assert.equal(target.nextCodeAddress(0x08000000, 2), 0x08000002);
+    assert.equal(target.nextCodeAddress(0x08000000, 0), 0x08000000);
+    for (const length of [undefined, -1, 1.5, Number.NaN]) {
+        assert.equal(target.nextCodeAddress(0x08000000, length), null, `length ${String(length)}`);
+    }
 });
