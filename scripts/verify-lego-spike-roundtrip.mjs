@@ -286,6 +286,53 @@ async function arenaPane () {
                 opcodes.has('spikeprime_stopMovement') && !opcodes.has('spikeprime_displayText');
         }, null, {timeout: 45000});
         console.log('  ok: the reference solution was loaded into the Code tab and built into blocks');
+        // A timeline of what the pane, its clock, the VM and the hub did, sampled
+        // in the page every 250 ms from Start. It is printed when the arena does
+        // not pass: a "time is up" alone cannot say whether the program never
+        // ran, ran and was not heard, or ran on a clock that left it behind.
+        await pane.evaluate(() => {
+            const trace = window.__bwArenaTrace = [];
+            const t0 = performance.now();
+            let doneToken = null;
+            let doneChanges = 0;
+            window.__bwArenaTraceTimer = setInterval(() => {
+                const arena = window.__bwSpikeArena;
+                const p = arena && arena._pane;
+                const vm = p && p.vm;
+                const rt = vm && vm.runtime;
+                if (rt && rt._lastStepDoneThreads !== doneToken) { doneToken = rt._lastStepDoneThreads; doneChanges++; }
+                const hub = window.__brickwrightVirtualSpike && window.__brickwrightVirtualSpike.hubState;
+                const c = p && p.clock;
+                trace.push({
+                    t: Math.round(performance.now() - t0),
+                    status: p && p.state.status,
+                    simMs: p && p.bridge ? p.bridge.sim.timeMs : null,
+                    clock: c ? {installed: c.installed, steps: c.steps, asked: c.framesAsked, inert: c.isInert(),
+                        hooked: Boolean(rt && rt._step === c.wrapped)} : null,
+                    vm: rt ? {threads: rt.threads.length, interval: Boolean(rt._steppingInterval),
+                        stepMs: rt.currentStepTime, doneChanges,
+                        connected: vm.getPeripheralIsConnected ? vm.getPeripheralIsConnected('spikeprime') : null} : null,
+                    hub: hub ? {sim: hub.data.simulationEnabled, notify: hub.data.notificationIntervalMs,
+                        A: Math.round(hub.data.motors[0].position), B: Math.round(hub.data.motors[1].position),
+                        pair: hub.movementPair.join(''), tunnel: hub.data.lastTunnelCommand ? JSON.stringify(hub.data.lastTunnelCommand) : null,
+                        unsupported: hub.data.lastUnsupportedPythonTunnel || null} : null,
+                    message: document.querySelector('[data-testid="bw-spike-arena-message"]')?.textContent || ''
+                });
+                if (trace.length > 400) trace.shift();
+            }, 250);
+        });
+        const consoleLines = [];
+        pane.on('console', message => {
+            const text = message.text();
+            if (/SPIKE|spike|arena|error/i.test(text)) consoleLines.push(`${message.type()}: ${text.slice(0, 200)}`);
+            if (consoleLines.length > 200) consoleLines.shift();
+        });
+        const dumpTrace = async label => {
+            const trace = await pane.evaluate(() => window.__bwArenaTrace || []);
+            const lines = trace.filter((row, i) => i % 4 === 0 || i === trace.length - 1).map(row => JSON.stringify(row));
+            console.log(`  arena trace (${label}), one row per second:\n    ${lines.join('\n    ')}`);
+            console.log(`  arena console (last 60):\n    ${consoleLines.slice(-60).join('\n    ')}`);
+        };
         await pane.locator('[data-testid="bw-spike-arena-start"]').click();
         try {
             await pane.waitForFunction(() => {
@@ -299,12 +346,14 @@ async function arenaPane () {
                 hub: window.__brickwrightVirtualSpike?.snapshot?.()?.motors
             }));
             await pane.screenshot({path: resolve(artifacts, 'spike-arena-failure.png'), fullPage: true});
+            await dumpTrace('never decided');
             throw new Error(`the arena never decided: ${JSON.stringify(state)}`, {cause: error});
         }
         const banner = await pane.locator('[data-testid="bw-spike-arena-banner"]');
         const verdict = await banner.getAttribute('data-verdict');
         const text = await banner.textContent();
         await pane.screenshot({path: resolve(artifacts, 'spike-arena-pass.png'), fullPage: true});
+        await dumpTrace(verdict);
         if (verdict !== 'pass') throw new Error(`the reference solution did not pass in the browser: ${verdict} "${text}"`);
         console.log(`  ok: pass banner: "${text}"`);
         if (errors.length) throw new Error(`SPIKE arena page errors: ${errors.join(' | ')}`);
