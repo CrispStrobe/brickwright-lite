@@ -105,8 +105,14 @@ preserve that exact source and runner; this is not a cross-runner gain or a
 new exact-main all-chip result. A separate countdown candidate's isolated
 EPYC 7763 A/B gains **7.79%**, with all ten candidate windows above real time;
 fresh composition qualification is pending. The optimization candidate cleared all 40 synthetic RTx fixtures,
-but six pre-existing Nordic relative step-cost gates remain tracked without
-threshold changes. Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
+but six pre-existing Nordic relative step-cost gates remain tracked for main
+without threshold changes. GPIO-only PR137 head `72f8b4cf`
+[passed all 40 RTx and unchanged relative-cost gates](https://github.com/CrispStrobe/labwired-core/actions/runs/36726333551),
+but [its native run](https://github.com/CrispStrobe/labwired-core/actions/runs/36726335356)
+passed 331 functional executions and **failed motion real time (0.995903x median
+on EPYC 7763)**. New combined head `464bd0ed` native/CorePerf/controlled-A/B
+qualification is queued; it is not landed or a main/browser promotion.
+Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
 qualification remains pending. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
