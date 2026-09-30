@@ -73,18 +73,41 @@ const ghHeaders = () => {
  * raw.githubusercontent rate-limits CI bursts — HTTP 429 killed two deploys on
  * 2026-08-17 after the ancestry check had already passed.
  */
-export async function fetchRetry (url, {headers = {}, attempts = 4, log = console.log} = {}) {
+// `baseDelayMs` exists so the retry RULE can be tested without waiting a
+// minute for the backoff: the production default is unchanged, and a test
+// that had to sleep 60 s to check which statuses retry would not be written.
+export async function fetchRetry (url, {headers = {}, attempts = 4, log = console.log,
+    baseDelayMs = 20_000} = {}) {
     for (let attempt = 1; ; attempt++) {
         const res = await fetch(url, {headers});
         if (res.ok) return res;
-        const retryable = res.status === 429 || res.status >= 500;
+        // GITHUB RATE-LIMITS WITH 403, NOT ONLY 429. The commits API answers a
+        // secondary rate limit with 403 and `x-ratelimit-remaining: 0`, so the
+        // 429-only rule failed CLOSED on the first attempt: on 2026-09-29 that
+        // reddened `runtime extension gallery content pins` on three unrelated
+        // PRs within an hour, each reporting "HTTP 403 (after 1 attempt)".
+        //
+        // A bare 403 is NOT retried — that is a credentials or permissions answer
+        // and waiting 20 s changes nothing. The distinction is in the headers: a
+        // rate-limited 403 carries an exhausted budget or tells you when to come
+        // back. Retrying only those keeps the fail-fast behaviour for real
+        // refusals, which is what makes a 403 worth trusting when it survives.
+        const rateLimited = res.status === 403
+            && (res.headers.get('x-ratelimit-remaining') === '0' || res.headers.has('retry-after'));
+        const retryable = res.status === 429 || res.status >= 500 || rateLimited;
         if (!retryable || attempt >= attempts) {
-            const e = new Error(`HTTP ${res.status} (after ${attempt} attempt${attempt > 1 ? 's' : ''})`);
+            // Name WHY it was not retried, so "after 1 attempt" on a 403 is no
+            // longer ambiguous between "we refused to retry" and "rate limits are
+            // not handled here".
+            const why = res.status === 403 && !rateLimited
+                ? ' — a 403 without an exhausted rate-limit budget is a permissions answer, not retried'
+                : '';
+            const e = new Error(`HTTP ${res.status} (after ${attempt} attempt${attempt > 1 ? 's' : ''})${why}`);
             e.status = res.status;
             throw e;
         }
         const ra = Number(res.headers.get('retry-after')) || 0;
-        const delay = Math.max(ra * 1000, attempt * 20_000);
+        const delay = Math.max(ra * 1000, attempt * baseDelayMs);
         log(`  retry ${url}: HTTP ${res.status}, waiting ${Math.round(delay / 1000)}s (attempt ${attempt}/${attempts - 1})`);
         await new Promise(r => setTimeout(r, delay));
     }
