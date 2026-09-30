@@ -204,10 +204,20 @@ source-level experiences while CP13 and CP14 are partial.
 
 CP13 is in progress in draft [LabWired PR 126](https://github.com/CrispStrobe/labwired-core/pull/126).
 The existing micro:bit v2 matrix and active-low buttons are already implemented;
-this checkpoint qualifies a source-built guest scanning all five rows and both
-buttons, including correcting the real GPIO P1 register addresses. Selected
-sensor/audio paths and >=1.0x active board-I/O RTx remain pending. The earlier
-3.32x terminal self-branch receipt does not close this checkpoint.
+the first slice qualifies an original MIT source-built guest scanning all five
+rows, verifying all 25 samples of a diagonal frame and reading both buttons,
+including correcting the real GPIO P1 register addresses. The initial
+[hosted native run](https://github.com/CrispStrobe/labwired-core/actions/runs/36672006439)
+passed at `d420d65e`, 64 MHz, with median 2.284273x and minimum 1.536789889x.
+This measures the native Rust core and event scheduler with active
+GPIO/matrix/button work; it is
+not a browser WASM or full Lite application receipt. A stronger GPIOTE input
+latch/scheduler test was added afterward; its
+[final candidate run](https://github.com/CrispStrobe/labwired-core/actions/runs/36674476161)
+at candidate `87553ec2` is still awaiting qualification here. Selected
+motion-sensor, microphone/audio paths and browser active board-I/O RTx remain
+pending. The earlier 3.32x terminal
+self-branch receipt does not close this checkpoint, and CP13 remains NEXT.
 
 CP12's hardware sequence starts with SPI0 (`0x01c41000`, AINTC20, PSC0
 module4) and its chip-select-3 ADS7957. The ADC has 16 channels and 10-bit
