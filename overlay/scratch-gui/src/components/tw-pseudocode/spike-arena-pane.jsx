@@ -20,8 +20,13 @@ import {VmStepClock, frameSimMs} from '../../lib/spike-arena/arena-clock.js';
  *
  * Window events: 'bw-spike-arena-select' {id, unit?} picks a challenge (of
  * another unit when `unit` names one: the pane opens that unit first).
- * Test hook: window.__bwSpikeArena exposes the verdict, the snapshot and the
- * open unit.
+ * Test hook: window.__bwSpikeArena exposes the verdict, the snapshot, the
+ * open unit and the view ('2d'/'3d', and the 3D view's state).
+ *
+ * The 3D view (docs/SPIKE-ARENA.md, "The 3D view") draws the same snapshot as
+ * the 2D canvas, in place of it; it is loaded on first use as its own chunk
+ * (three.js), and without WebGL the pane stays in 2D and says why. Which view
+ * is open never touches the bridge: time is the clock's, not the renderer's.
  */
 
 // The per-frame rule, frameSimMs, lives in lib/spike-arena/arena-clock.js with
@@ -43,9 +48,12 @@ class SpikeArenaPane extends React.Component {
         if (!this.hubState) this.hubState = new VirtualSpikeHubState();
         this.state = {
             status: 'loading', message: '', units: [], unit: null, challenges: [], index: 0,
-            verdict: null, readout: null, hintsOpen: false
+            verdict: null, readout: null, hintsOpen: false,
+            view: '2d', view3dState: 'off', view3dMessage: '', cameraMode: 'orbit'
         };
         this.canvas = React.createRef();
+        this.view3dBox = React.createRef();
+        this.view3d = null;
         this.box = React.createRef();
         this.frame = this.frame.bind(this);
         this.onSelectEvent = this.onSelectEvent.bind(this);
@@ -61,6 +69,8 @@ class SpikeArenaPane extends React.Component {
             get snapshot () { return this._pane.bridge ? this._pane.bridge.snapshot() : null; },
             get status () { return this._pane.state.status; },
             get unit () { return this._pane.state.unit ? this._pane.state.unit.id : null; },
+            get view () { return this._pane.state.view; },
+            get view3d () { return this._pane.state.view3dState; },
             _pane: this
         };
         // The unit list is a convenience: without it the pane still opens the
@@ -94,6 +104,8 @@ class SpikeArenaPane extends React.Component {
         window.removeEventListener('bw-spike-arena-select', this.onSelectEvent);
         cancelAnimationFrame(this.raf);
         this.clock.uninstall();
+        this.view3dToken = null;
+        this.disposeView3D();
         if (window.__bwSpikeArena && window.__bwSpikeArena._pane === this) delete window.__bwSpikeArena;
     }
 
@@ -116,7 +128,76 @@ class SpikeArenaPane extends React.Component {
         const world = this.state.challenges[index];
         if (!world) return;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
-        this.setState({index, verdict: null, status: 'ready', message: '', hintsOpen: false}, () => this.draw());
+        this.setState({index, verdict: null, status: 'ready', message: '', hintsOpen: false}, () => {
+            // A new world needs a new scene; the renderer is not reused across worlds.
+            if (this.view3d) this.mountView3D();
+            this.draw();
+        });
+    }
+
+    /** Opens the 3D view: loads its chunk once, then builds it for the current world. */
+    async openView3D () {
+        const token = this.view3dToken = {};
+        this.setState({view: '3d', view3dState: 'loading', view3dMessage: ''});
+        let loaded = this.view3dModule;
+        if (!loaded) {
+            try {
+                loaded = await import(/* webpackChunkName: "bw-arena-3d" */ '../../lib/spike-arena/arena-view3d.js');
+            } catch (error) {
+                if (token === this.view3dToken) this.fallback2D(this.t('view3dFailed', {error: error.message}));
+                return;
+            }
+            this.view3dModule = loaded;
+        }
+        if (token === this.view3dToken) this.mountView3D();
+    }
+
+    mountView3D () {
+        const loaded = this.view3dModule;
+        const box = this.view3dBox.current;
+        if (!loaded || !box || !this.bridge || !this.world) return;
+        this.disposeView3D();
+        try {
+            this.view3d = loaded.createArenaView3D({
+                container: box, world: this.world, robot: this.bridge.robot, mode: this.state.cameraMode,
+                onContextLost: () => this.fallback2D(this.t('view3dFailed', {error: 'WebGL context lost'}))
+            });
+            this.view3d.canvas.setAttribute('aria-label', this.t('canvas3dLabel'));
+        } catch (error) {
+            this.fallback2D(error && error.code === 'no-webgl' ? this.t('webglUnavailable') :
+                this.t('view3dFailed', {error: error && error.message}));
+            return;
+        }
+        this.setState({view3dState: 'webgl'}, () => this.draw());
+    }
+
+    /** Back to 2D because the 3D view cannot run here; the message says why. */
+    fallback2D (message) {
+        this.view3dToken = null;
+        this.disposeView3D();
+        this.setState({view: '2d', view3dState: 'fallback', view3dMessage: message}, () => this.draw());
+    }
+
+    closeView3D () {
+        this.view3dToken = null;
+        this.disposeView3D();
+        this.setState({view: '2d', view3dState: 'off', view3dMessage: ''}, () => this.draw());
+    }
+
+    disposeView3D () {
+        if (!this.view3d) return;
+        try { this.view3d.dispose(); } catch { /* a lost context may already be gone */ }
+        this.view3d = null;
+    }
+
+    toggleView () {
+        if (this.state.view === '3d') this.closeView3D();
+        else this.openView3D();
+    }
+
+    setCameraMode (mode) {
+        this.setState({cameraMode: mode});
+        if (this.view3d) this.view3d.setMode(mode);
     }
 
     get vm () { return this.props.vm || null; }
@@ -241,6 +322,11 @@ class SpikeArenaPane extends React.Component {
     }
 
     draw () {
+        // One snapshot, one reader per frame: the 3D view when it is open, else the canvas.
+        if (this.view3d && this.bridge && this.state.view === '3d') {
+            this.view3d.render(this.bridge.snapshot());
+            return;
+        }
         const canvas = this.canvas.current;
         const box = this.box.current;
         const world = this.world;
@@ -311,7 +397,8 @@ class SpikeArenaPane extends React.Component {
 
     render () {
         const t = this.t;
-        const {status, challenges, index, verdict, message, hintsOpen, unit, units} = this.state;
+        const {status, challenges, index, verdict, message, hintsOpen, unit, units, view, view3dState, view3dMessage, cameraMode} = this.state;
+        const showing3d = view === '3d' && view3dState === 'webgl';
         const world = this.world;
         const decided = verdict && verdict.status !== 'running' ? verdict : null;
         const btn = {padding: '5px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff',
@@ -342,6 +429,18 @@ class SpikeArenaPane extends React.Component {
                         )}
                         <button type="button" style={btn} disabled={!world} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>
                         <button type="button" style={btn} disabled={!world} onClick={() => this.reset()} data-testid="bw-spike-arena-reset">{t('reset')}</button>
+                        <button type="button" style={btn} disabled={!world} onClick={() => this.toggleView()}
+                            aria-pressed={view === '3d'} title={t('viewToggleTitle')} data-testid="bw-spike-arena-view-toggle">
+                            {view === '3d' ? t('view2d') : t('view3d')}
+                        </button>
+                        {view === '3d' ? (
+                            <select value={cameraMode} aria-label={t('camera')} data-testid="bw-spike-arena-camera"
+                                onChange={e => this.setCameraMode(e.target.value)} style={{minHeight: 32, maxWidth: '100%'}}>
+                                <option value="orbit">{t('cameraOrbit')}</option>
+                                <option value="follow">{t('cameraFollow')}</option>
+                                <option value="top">{t('cameraTop')}</option>
+                            </select>
+                        ) : null}
                     </div>
                 </div>
                 {world ? (
@@ -380,9 +479,18 @@ class SpikeArenaPane extends React.Component {
                         {[status === 'loading' ? t('loading') : '', this.ownHub ? t('noHub') : '', message].filter(Boolean).join(' ')}
                     </div>
                 ) : null}
+                {view3dMessage || view3dState === 'loading' ? (
+                    <div role="status" style={{margin: '6px 10px 0', fontSize: 12, color: view3dMessage ? '#9a3412' : '#64748b'}}
+                        data-testid="bw-spike-arena-3d-message">
+                        {view3dMessage || t('view3dLoading')}
+                    </div>
+                ) : null}
                 <div ref={this.box} style={{padding: 10}}>
                     <canvas ref={this.canvas} role="img" aria-label={t('canvasLabel')} data-testid="bw-spike-arena-canvas"
-                        style={{width: '100%', display: 'block', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)'}} />
+                        hidden={showing3d}
+                        style={{width: '100%', display: showing3d ? 'none' : 'block', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)'}} />
+                    <div ref={this.view3dBox} data-testid="bw-spike-arena-3d" data-state={view3dState}
+                        style={{display: showing3d ? 'block' : 'none', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)'}} />
                 </div>
                 <div style={{fontSize: 11, color: '#64748b', padding: '0 10px'}} data-testid="bw-spike-arena-status">
                     {t(status === 'running' ? 'running' : status === 'paused' ? 'paused' : 'ready')}

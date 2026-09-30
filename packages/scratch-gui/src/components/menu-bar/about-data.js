@@ -472,6 +472,13 @@ const ABOUT_GROUPS = [
                 role: 'Terminal emulator for the Linux-on-RISC-V lesson console'
             },
             {
+                name: 'three.js',
+                url: 'https://github.com/mrdoob/three.js',
+                license: 'MIT',
+                licenseUrl: 'https://github.com/mrdoob/three.js/blob/dev/LICENSE',
+                role: 'The SPIKE arena\'s 3D view (renderer, scene, orbit camera)'
+            },
+            {
                 name: 'React + ReactDOM',
                 url: 'https://github.com/facebook/react',
                 license: 'MIT',

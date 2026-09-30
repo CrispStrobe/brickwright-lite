@@ -11,6 +11,9 @@
  *     speed, its print() reaches the console with the distance the hub holds,
  *     and Stop ends it.
  *  4. the SPIKE arena pane (docs/SPIKE-ARENA.md): the Code tab opens the arena,
+ *     its 3D view toggles on and off (WebGL, or the fallback when the page has
+ *     no WebGL 2 — asserted by what the page reports, and the fallback also
+ *     forced, so both paths run every time),
  *     the arena loads a challenge's reference solution into the Code tab, and
  *     Start runs it as blocks in the Scratch VM, through the spikeprime
  *     extension and the virtual hub, until the pass banner shows. Then the
@@ -367,6 +370,59 @@ async function arenaPane () {
         }
         console.log(`  ok: pass banner: "${text}"`);
 
+        // The 3D view (task D3). The page's own WebGL 2 answer is read FIRST, by
+        // a probe independent of the arena, and decides which state the toggle
+        // must reach: a headless runner without a GPU path gets the fallback, one
+        // with SwiftShader gets a WebGL canvas, and each is asserted exactly.
+        const state3d = () => pane.evaluate(() => document.querySelector('[data-testid="bw-spike-arena-3d"]')?.dataset.state);
+        const toggle3d = pane.locator('[data-testid="bw-spike-arena-view-toggle"]');
+        const fallbackText = 'The 3D view needs WebGL, which this browser does not offer. The arena stays in 2D.';
+        // (a) The fallback, forced: no WebGL 2 means 2D and a message, never a blank pane.
+        await pane.evaluate(() => { window.__bwArenaForceNoWebGL = true; });
+        await toggle3d.click();
+        await pane.waitForFunction(() => document.querySelector('[data-testid="bw-spike-arena-3d"]')?.dataset.state === 'fallback',
+            null, {timeout: 60000});
+        const forcedMessage = await pane.locator('[data-testid="bw-spike-arena-3d-message"]').textContent();
+        if (forcedMessage !== fallbackText) throw new Error(`forced fallback: message ${JSON.stringify(forcedMessage)}`);
+        if (!await pane.locator('[data-testid="bw-spike-arena-canvas"]').isVisible()) throw new Error('forced fallback: the 2D canvas is not visible');
+        if (await pane.locator('[data-testid="bw-spike-arena-3d-canvas"]').count()) throw new Error('forced fallback: a 3D canvas was created');
+        await pane.evaluate(() => { delete window.__bwArenaForceNoWebGL; });
+        console.log('  ok: 3D view without WebGL (forced): stays in 2D with the message');
+        // (b) The real toggle.
+        const hasWebgl2 = await pane.evaluate(() => {
+            try { return Boolean(document.createElement('canvas').getContext('webgl2')); } catch { return false; }
+        });
+        const want3d = hasWebgl2 ? 'webgl' : 'fallback';
+        await toggle3d.click();
+        try {
+            await pane.waitForFunction(want => document.querySelector('[data-testid="bw-spike-arena-3d"]')?.dataset.state === want,
+                want3d, {timeout: 60000});
+        } catch (error) {
+            await pane.screenshot({path: resolve(artifacts, 'spike-arena-3d-failure.png'), fullPage: true});
+            throw new Error(`the 3D view did not reach "${want3d}" (WebGL 2: ${hasWebgl2}); state ${await state3d()}`, {cause: error});
+        }
+        if (hasWebgl2) {
+            const box = await pane.locator('[data-testid="bw-spike-arena-3d-canvas"]').boundingBox();
+            if (!box || box.width < 100 || box.height < 50) throw new Error(`3D canvas not laid out: ${JSON.stringify(box)}`);
+            if (await pane.locator('[data-testid="bw-spike-arena-canvas"]').isVisible()) throw new Error('3D view: the 2D canvas is still showing');
+            const context = await pane.evaluate(() => {
+                const canvas = document.querySelector('[data-testid="bw-spike-arena-3d-canvas"]');
+                const gl = canvas && canvas.getContext('webgl2');
+                return gl ? {lost: gl.isContextLost(), width: gl.drawingBufferWidth} : null;
+            });
+            if (!context || context.lost || !context.width) throw new Error(`3D canvas has no live WebGL 2 context: ${JSON.stringify(context)}`);
+            for (const mode of ['follow', 'top', 'orbit']) await pane.locator('[data-testid="bw-spike-arena-camera"]').selectOption(mode);
+            await pane.screenshot({path: resolve(artifacts, 'spike-arena-3d.png'), fullPage: true});
+            console.log(`  ok: 3D view: WebGL canvas ${Math.round(box.width)}x${Math.round(box.height)}, camera modes switched`);
+        } else {
+            const message = await pane.locator('[data-testid="bw-spike-arena-3d-message"]').textContent();
+            if (message !== fallbackText) throw new Error(`no WebGL 2 in this browser: message ${JSON.stringify(message)}`);
+            console.log('  ok: 3D view: this browser reports no WebGL 2; the pane fell back to 2D with the message');
+        }
+        // With WebGL the 3D view stays open for the next mission, which must
+        // still pass: a new world rebuilds the scene, and the view is only a
+        // reader of the one clock's snapshot.
+
         // A later unit, from the unit picker: every unit is offered, and the
         // opened unit's first mission runs to a pass as the first one did.
         await pane.waitForFunction(count => document.querySelectorAll('[data-testid="bw-spike-arena-unit"] option').length === count,
@@ -403,7 +459,17 @@ async function arenaPane () {
             await dumpTrace(`later unit ${unitVerdict}`);
             throw new Error(`the ${ARENA_UNIT} reference solution did not pass in the browser: ${unitVerdict} "${unitText}"`);
         }
-        console.log(`  ok: ${arenaUnitFirst} pass banner: "${unitText}"`);
+        console.log(`  ok: ${arenaUnitFirst} pass banner: "${unitText}"${hasWebgl2 ? ' (with the 3D view open)' : ''}`);
+        if (hasWebgl2 && await state3d() !== 'webgl') throw new Error(`the 3D view closed during the mission: ${await state3d()}`);
+        // Back to 2D: the canvas returns and no WebGL canvas is left behind.
+        if (hasWebgl2) {
+            await toggle3d.click();
+            await pane.waitForFunction(() => document.querySelector('[data-testid="bw-spike-arena-3d"]')?.dataset.state === 'off' &&
+                !document.querySelector('[data-testid="bw-spike-arena-3d-canvas"]'), null, {timeout: 10000});
+        }
+        if (!await pane.locator('[data-testid="bw-spike-arena-canvas"]').isVisible()) throw new Error('back in 2D: the canvas is not visible');
+        if (await pane.evaluate(() => window.__bwSpikeArena?.view) !== '2d') throw new Error('back in 2D: the pane says otherwise');
+        console.log('  ok: toggled back to the 2D view');
         if (errors.length) {
             await dumpTrace('page errors');
             throw new Error(`SPIKE arena page errors: ${errors.join(' | ')}`);

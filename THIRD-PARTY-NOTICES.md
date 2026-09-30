@@ -1463,6 +1463,22 @@ composition and paste.
   inline-loader import (`!!raw-loader!`), because scratch-webpack-configuration
   hashes every `.css` and xterm's class names are global. No source is modified.
 
+## three.js (three) — MIT
+
+**three.js** (MIT, https://threejs.org, https://github.com/mrdoob/three.js)
+draws the SPIKE arena's 3D view: the mat (textured with the 2D view's own
+drawing), walls, crates and the rover, from the same simulation snapshot the
+2D canvas draws. The scene graph is this project's own
+(`lib/spike-arena/arena-scene3d.js`); three.js supplies the renderer, the
+geometry and materials, and the orbit camera control (`OrbitControls`, from
+the same package's `examples/jsm`, same licence).
+
+- **Package:** `three` 0.186.1 (exact pin, no dependencies)
+- **Licence:** MIT — Copyright © 2010-2026 three.js authors
+- **Source:** https://github.com/mrdoob/three.js
+- **Usage:** lazy-imported in its own chunk (`bw-arena-3d`), loaded only when
+  the arena's 3D view is opened. No source is modified.
+
 ## rp2040js — MIT
 
 **rp2040js** (MIT License, https://github.com/wokwi/rp2040js) provides the

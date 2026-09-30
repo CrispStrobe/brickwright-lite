@@ -69,6 +69,19 @@ const LAZY = [
         // eager-byte prohibition; require the marker in emitted lazy JS too.
         sharedLazy: true,
         why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-board")'},
+    // three.js and the arena's 3D view (task D3): fetched when a learner opens
+    // the 3D view, not with the arena pane (chunk bw-spike-arena), and never at
+    // boot. The marker is a string in three's WebGLRenderer, the one class the
+    // view cannot be without; the second is the view's own canvas test id.
+    // webpack's splitChunks moves the three package itself into an anonymous
+    // vendor chunk that only bw-arena-3d requests (measured on a production
+    // build: 589 KiB raw, 144 KiB gz), so its marker is looked for in lazy JS.
+    {what: 'three.js (the arena 3D view\'s renderer)', marker: 'WebGL 1 is not supported since r163.', chunk: 'bw-arena-3d',
+        sharedLazy: true, notInChunks: ['bw-spike-arena'],
+        why: 'the dynamic import in overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx (webpackChunkName "bw-arena-3d")'},
+    {what: 'the arena 3D view', marker: 'bw-spike-arena-3d-canvas', chunk: 'bw-arena-3d',
+        notInChunks: ['bw-spike-arena'],
+        why: 'the dynamic import in spike-arena-pane.jsx (webpackChunkName "bw-arena-3d")'},
     {what: 'lesson waves', marker: '"journeyId":"lesson-waves', altMarkers: ['journeyId:"lesson-waves'], chunk: 'guided-lessons',
         why: 'React.lazy(GuidedLessons) in src/components/gui/gui.jsx',
         // The core lessons.json IS eager (gui.jsx needs it for journey routing), so the
@@ -177,6 +190,14 @@ for (const m of LAZY) {
     }
     check(`nothing preloads ${m.what} into the first load`, !html.includes(m.chunk),
         `index.html must not reference chunks/${m.chunk}*`);
+    // A lazy chunk that must not carry it either: loaded for something else.
+    for (const other of m.notInChunks || []) {
+        const otherChunks = chunkFiles.filter(f => f.endsWith('.js') && (f === `${other}.js` || f.startsWith(`${other}.`)));
+        const carrying = otherChunks.filter(f => has(readFileSync(join(chunksDir, f), 'utf8'), m));
+        check(`${m.what} are not in chunks/${other}*.js`, otherChunks.length > 0 && carrying.length === 0,
+            !otherChunks.length ? `no chunks/${other}*.js to inspect — the check would be vacuous`
+                : carrying.length ? `${carrying.join(', ')} contains ${JSON.stringify(m.marker)} — check ${m.why}` : `${otherChunks.join(', ')} clean`);
+    }
 }
 for (const m of PRESENT) {
     const where = eagerSources.filter(({src}) => has(src, m)).map(({p}) => basename(p));

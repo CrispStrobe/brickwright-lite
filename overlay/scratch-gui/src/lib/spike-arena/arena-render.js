@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Draws an arena snapshot on a 2D canvas context. It reads only the world and
-// ArenaSim.snapshot(), so any other view (three.js later) can draw the same
-// state; nothing here feeds back into the simulation.
+// ArenaSim.snapshot(), so any other view can draw the same state; nothing here
+// feeds back into the simulation. The printed mat (drawMat) is also the 3D
+// view's mat texture (arena-scene3d.js), so both views show the same mat.
 
 import {MAT_COLORS} from './arena-sim.js';
 import {convexPieces, toWorld} from './geometry.js';
@@ -47,15 +48,14 @@ const polygon = (ctx, points) => {
 };
 
 /**
+ * The printed mat: background, mat shapes (lines, bays, markers) and zones.
+ * Leaves the context scaled to cm (the caller saves and restores it).
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} world the challenge
- * @param {object} snapshot ArenaSim.snapshot() (+ verdict)
- * @param {object} robot the driving base (bridge.robot)
  * @param {number} scale canvas pixels per cm
  */
-export const drawArena = (ctx, world, snapshot, robot, scale) => {
+export const drawMat = (ctx, world, scale) => {
     const {mat} = world;
-    ctx.save();
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.fillStyle = mat.paint || (MAT_COLORS[mat.background] || MAT_COLORS.white).draw;
     ctx.fillRect(0, 0, mat.width, mat.height);
@@ -74,6 +74,18 @@ export const drawArena = (ctx, world, snapshot, robot, scale) => {
         } else fillShape(ctx, zone.shape, style.fill, style.stroke, 0.5);
         ctx.setLineDash([]);
     }
+};
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {object} world the challenge
+ * @param {object} snapshot ArenaSim.snapshot() (+ verdict)
+ * @param {object} robot the driving base (bridge.robot)
+ * @param {number} scale canvas pixels per cm
+ */
+export const drawArena = (ctx, world, snapshot, robot, scale) => {
+    ctx.save();
+    drawMat(ctx, world, scale);
     for (const wall of world.walls || []) fillShape(ctx, wall.shape, '#4a3f3a', '#2b2421', 0.4);
     for (const object of snapshot.objects || []) {
         const source = (world.objects || []).find(o => o.id === object.id) || {};
