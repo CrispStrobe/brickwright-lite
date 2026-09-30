@@ -18,7 +18,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
 | Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
-| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; latest hosted native active matrix/button guest **2.376x median, 2.272x minimum**; selected-LSM303AGR native workload second-optimization PR **1.127x median, 1.123x minimum** (first optimization exact-main **1.031x / 1.027x**, earlier PR **1.758x / 1.734x**), hosted-qualified/upstream landed; historical shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons and bounded analog routing qualified, native motion upstream-landed/not app-shipped; sensor/audio qualification pending | no | no exact target |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; latest hosted native active matrix/button guest **2.376x median, 2.272x minimum**; selected-LSM303AGR native workload latest current-main **0.890x median, 0.887x minimum**, >=1x gate FAILED (historical second PR **1.127x / 1.123x**, first exact-main **1.031x / 1.027x**, earlier PR **1.758x / 1.734x**); upstream landed, current motion RTx unmet; historical shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons and bounded analog routing qualified, native motion upstream-landed/not app-shipped; sensor/audio qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
@@ -326,10 +326,29 @@ GPIO-only workload measured **3.7836838863482463x median**. Both
 retain tested PR merge-ref `9e4e5f83586f7c94bc989a44399821401078ab37`,
 qualified head `143402d6`, CPU source `ab501cdf`, and landed main `3456c048`
 as separate provenance. Qualified CPU, all 11 CPU regression tests and all
-three guest sources are byte-identical to landed main. The exact-new-main
-post-merge benchmark was still queued and is **not claimed passed** here.
+three guest sources are byte-identical to landed main. The later exact-main
+post-merge benchmark **failed** its motion real-time gate, as recorded below.
 The first optimization's exact-main and PR-qualified results above remain
 historical, not a controlled wall-time A/B against this second optimization.
+
+The latest exact-main
+[run 36694881019](https://github.com/CrispStrobe/labwired-core/actions/runs/36694881019)
+at `3456c048894f194bbabc9c414932a752d89da999` passed functional checks but
+**failed the >=1.0x motion gate**: median **0.8898152593409774x**, minimum
+**0.8871067576500745x**, with all five samples below 1.0x. The
+[full failed motion receipt](receipts/2026-09-30-microbit-motion-hosted-main-failed.json)
+preserves exact-main provenance, guest/source hashes, conversions, DMA counts,
+matrix/button observations and all timing samples. GPIO-only reached
+**2.5459589767695143x median** in that job; its
+[full receipt](receipts/2026-09-30-microbit-active-hosted-main-motion-failed.json)
+is a separate workload and does not establish sensor real-time performance.
+
+Current main's selected native motion workload **has not met >=1.0x** in its
+latest measurement. Earlier PR **1.126555x / 1.123001x**, first-optimization
+exact-main **1.030645x / 1.027010x**, and earlier PR **1.758214x / 1.733954x**
+remain historical observations, not controlled wall-time A/Bs. Further CPU
+optimization is unqualified; this failure does not weaken the assertions,
+change the threshold, promote a browser pin, or complete CP13.
 
 Callgrind recorded **1,375,692,554** host instructions for the first
 optimization's native functional proof and **1,300,205,720** for the second,

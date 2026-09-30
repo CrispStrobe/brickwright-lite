@@ -81,18 +81,18 @@ concurrent build load reached only **0.337x median**; an uncontrolled repeat
 varied widely, so this is not a universal real-time guarantee. These receipts
 are separate from browser WASM/full-application performance; browser, sensor
 and continuous microphone/audio qualification remains in progress.
-The selected LSM303AGR motion-sensor candidate now passes hosted functional and
-real-time checks: latest qualified second CPU optimization **1.127x median**,
-**1.123x minimum** for the active matrix/button/sensor guest. The first
+The latest current-main LSM303AGR motion workload **fails the >=1.0x gate**:
+**0.890x median**, **0.887x minimum**, all five samples below real time despite
+passing functional checks. The earlier second-optimization PR observation
+**1.127x median**, **1.123x minimum** remains historical. The first
 optimization's exact-main result remains **1.031x / 1.027x**, and its earlier
 PR result **1.758x / 1.734x**; these are not controlled wall-time A/B runs.
-All latest samples exceeded 1.0x, but runner variation still leaves limited margin,
-not a universal host guarantee. The earlier **0.327x**
+Runner variation is not a controlled wall-time A/B or universal host guarantee.
+The earlier **0.327x**
 failed hosted baseline and **0.312x** optimized shared-VPS result remain separate
 evidence, not controlled wall-time A/B measurements. The bounded native model
 and both CPU optimizations landed upstream in LabWired `3456c048`. The latest
-receipt tests a PR merge-ref whose CPU/tests/guest sources match landed main;
-the exact-new-main benchmark was still queued, not claimed passed. Lite's WASM pin
+receipt measures that exact main commit and records the failure. Lite's WASM pin
 and browser integration are not upgraded by this result. Full board/audio/browser
 qualification remains pending. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
