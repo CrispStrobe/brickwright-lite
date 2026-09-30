@@ -233,7 +233,11 @@ requires every motor to report Forward, direction 1, duty 0.5 and positive signe
 counts and emitted edges. Source validation passed 29 Python state tests,
 62 Rust boundary/debugger/transport tests and 57 JavaScript broker tests.
 The [hosted Renode reproduction](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36669748932)
-was queued when this evidence was recorded; it is not claimed green.
+passed. The first [hosted Lite reproduction](https://github.com/CrispStrobe/brickwright-lite/actions/runs/36670127225)
+failed before the debugger tests because Renode's build script was invoked from
+the Lite checkout directory. The specialized job now builds from the Renode root
+and installs the same required Tauri system libraries as the ordinary test job;
+its replacement hosted result remains pending.
 CP12 closes this functional subset; it does not establish >=1.0x RTx for the
 expanded board. Performance qualification remains separate from these proofs.
 UART sensors on inputs3/4 need
