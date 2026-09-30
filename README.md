@@ -74,8 +74,11 @@ loop reaches **1.548x median** with a **1.298x minimum**. Both packaged EV3
 debugger/model-input contracts passed hosted CI. Full Linux boot and complete
 motor/peripheral workload RTx remain pending. CP13's first micro:bit matrix/button
 slice has landed: the active native Rust/event-scheduler guest reaches
-**2.512x median**, **2.511x minimum** at 64 MHz. This is separate from browser
-WASM/full-application performance; browser, sensor and microphone/audio
+**2.512x hosted median**, **2.511x minimum** at 64 MHz. A shared VPS run under
+concurrent build load reached only **0.337x median**; an uncontrolled repeat
+varied widely, so this is not a universal real-time guarantee. These receipts
+are separate from browser WASM/full-application performance; browser, sensor
+and microphone/audio
 qualification remains in progress. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
