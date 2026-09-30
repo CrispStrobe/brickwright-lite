@@ -18,7 +18,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
 | Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
-| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; latest hosted native active matrix/button guest **2.376x median, 2.272x minimum**; historical shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons and bounded analog routing qualified, sensor/audio qualification pending | no | no exact target |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; latest hosted native active matrix/button guest **2.376x median, 2.272x minimum**; selected-LSM303AGR native workload **1.758x median, 1.734x minimum**, hosted-qualified/upstream landed; historical shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons and bounded analog routing qualified, native motion upstream-landed/not app-shipped; sensor/audio qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
@@ -256,6 +256,65 @@ documented START versus per-SAMPLE behavior with scan-buffer appends, RUNMIC
 control/bias semantics, selected motion-sensor/audio paths and browser
 WASM/full Lite application qualification. The earlier 3.32x terminal
 self-branch receipt does not close this checkpoint, and CP13 remains NEXT.
+
+### CP13 selected motion-sensor slice: native hosted-qualified, landed upstream
+
+[LabWired PR 129](https://github.com/CrispStrobe/labwired-core/pull/129), merged
+as `ce60a49941f9fa94d83aca6859bc27ae1c5b9e0b`, adds the selected
+LSM303AGR-equipped micro:bit v2 variant, not the alternative FXOS8700 board.
+An original MIT model attaches separate accelerometer/magnetometer components
+on internal TWIM0 at 7-bit addresses `0x19` / `0x1e`. An original MIT ARM guest
+polls both sensors through EasyDMA while scanning all five matrix rows and
+reading buttons. Held physical input poses alternate; guest results verify
+the signed accelerometer/magnetometer conversions, complete diagonal frame,
+button mask, progressing sample/scan counts, and exact DMA amounts.
+
+The first [hosted motion run 36683869753](https://github.com/CrispStrobe/labwired-core/actions/runs/36683869753)
+passed its functional checks but **failed the >=1.0x performance gate**. Five
+64-million-cycle samples at 64 MHz measured median **0.3269082176558117x** and
+minimum **0.32213465036135147x**. The
+[complete failed-speed baseline receipt](receipts/2026-09-30-microbit-motion-hosted-baseline.json)
+preserves raw observations, firmware hash, framed source-bundle hash and
+compiler flags, and records `realtimeTargetMet: false`. GPIO/matrix/buttons
+alone in that same hosted job measured **2.340300x median**; it is a distinct
+workload, not evidence that sensor polling meets real time. The previously
+landed **2.376x** GPIO-only receipt remains separate qualified history.
+
+A Cortex-M fast-block structural-admission/barrier optimization at runtime
+source `e32b4a35` passed the replacement
+[hosted run 36687935898](https://github.com/CrispStrobe/labwired-core/actions/runs/36687935898):
+motion median **1.7582140503340078x**, minimum **1.7339540271462885x**, all five
+samples above 1.0x. The separately measured GPIO-only guest reached
+**5.531283760017577x median** in the same job. Recorded receipt commit
+`199af713794f9b2135f931bced3835203882bd76` is GitHub's tested PR merge-ref;
+PR head `3c831043` changes only documentation after the runtime source. This is
+**hosted-qualified and landed upstream**. The subsequent documentation-only
+PR head `d05043dd` did not change runtime source `e32b4a35`; no later
+lazy-construction candidate is included in that qualification. The
+[full hosted motion receipt](receipts/2026-09-30-microbit-motion-hosted-optimized.json)
+preserves the tested merge-ref and PR-head/runtime provenance, rather than
+relabeling measurements as a post-merge run. Broad post-merge CI was still
+pending when this documentation was prepared.
+
+The same first optimization reduced Callgrind's total native functional-test
+host instruction work by **46.2%**, including configuration/guest startup.
+Its shared-VPS motion receipt remained below real time: **0.31243952566997163x
+median**, **0.288592214098303x minimum**. Contention was not controlled;
+instruction-work reduction is not a proportional wall-time speedup or a
+stable VPS real-time guarantee. The
+[full optimized VPS receipt](receipts/2026-09-30-microbit-motion-vps-optimized.json)
+retains all five observations and source/executable provenance.
+
+This candidate does not change Lite's package pins, add an app
+dependency, or introduce GPL model/guest code. It is not a claim that Lite
+ships the sensor model: a WASM pin/build and browser/full-app
+qualification remain necessary.
+
+This native workload is polled: no shared P0.25 sensor IRQ, active ADC guest,
+RUNMIC control/bias, continuous microphone, speaker audio, or browser-WASM
+qualification is included. Functional simulated cycles are not silicon-cycle-
+accurate measurements, and no sensor silicon capture is claimed. CP13 remains
+in progress with state **NEXT**, not DONE.
 
 CP12's hardware sequence starts with SPI0 (`0x01c41000`, AINTC20, PSC0
 module4) and its chip-select-3 ADS7957. The ADC has 16 channels and 10-bit
