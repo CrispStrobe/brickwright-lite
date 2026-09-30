@@ -104,10 +104,10 @@ now passed native board qualification on EPYC 9V74: motion **1.290x median /
 preserve that exact source and runner; this is not a cross-runner gain or a
 new exact-main all-chip result. Countdown PR136 landed at `8736e1ff`; its isolated
 EPYC 7763 A/B gains **7.79%**, with all ten candidate windows above real time;
-qualification remains historical. Current main `8b1cd3f5` contains countdown but
-not the GPIO runtime candidate; the exact `ede33fb4` receipt is not a measurement
+qualification remains historical. Current main `5fb3d7d4` contains countdown and
+the landed GPIO runtime; the exact `ede33fb4` receipt is not a measurement
 of that current main. The earlier optimization cleared all 40 synthetic RTx fixtures,
-but six pre-existing Nordic relative step-cost gates remain tracked for main
+while the six historical Nordic relative step-cost failures remain tracked
 without threshold changes. GPIO-only PR137 head `72f8b4cf`
 [passed all 40 RTx and unchanged relative-cost gates](https://github.com/CrispStrobe/labwired-core/actions/runs/36726333551),
 but [its native run](https://github.com/CrispStrobe/labwired-core/actions/runs/36726335356)
@@ -123,15 +123,21 @@ Fresh head `8c745a68` [also passed native qualification on EPYC 7763](https://gi
 motion **1.116x median / 1.051x minimum**, all five samples >=1x with zero
 transport errors; its [fresh paired A/B](https://github.com/CrispStrobe/labwired-core/actions/runs/36772744288)
 passed. This is separate from the earlier EPYC 9V74 observation, not a
-cross-runner gain. Current PR137 head `bd05656f` changes CI only; production is
+cross-runner gain. Final PR137 head `bd05656f` changes CI only; production is
 identical to qualified `8c745a68`. That earlier head's three workspace shards and aggregate
 passed, but the original twenty-minute gate timed out compiling feature-off
 core after Clippy/default-member checks passed. The
 [fresh split CI run](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919591)
 keeps the commands, twenty-minute budgets and fail-closed aggregate unchanged
-and is still in progress, not all green. These
-candidate results claim neither landing nor exact post-merge main measurement,
-browser pin promotion or issue 120 closure.
+and **passed full Core CI**, including all three shards and aggregate. PR137
+now **landed at `5fb3d7d44cc1487fdab757906ae62222e8798e93`**. Its final-head
+[native qualification](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919418)
+passed on EPYC 7763: motion **1.127x median / 1.117x minimum**, all five >=1x
+with zero transport errors; 349 overlapping functional executions plus both
+benchmarks passed. [Final paired A/B](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919437)
+also passed. Additional final-head CorePerf is still measuring; exact post-merge
+main measurement remains pending. No browser pin promotion or issue 120 closure
+is claimed.
 Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
 qualification remains pending. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)

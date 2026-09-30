@@ -18,7 +18,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
 | Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
-| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; native active matrix/button guest **2.376x median, 2.272x minimum**. Predecessor main motion **0.890x / 0.887x FAILED**. Landed discovery/pull-mask candidate controlled EPYC 7763 medians **1.037x / 1.023x PASS**, versus predecessor **0.880x / 0.883x**; exact successor-main `ede33fb4` motion **1.290x median / 1.261x minimum PASS**, all five samples above 1x on EPYC 9V74. Proper ADC scan guest qualified/landed; countdown landed `8736e1ff`; historical isolated A/B **+7.79%**. Qualified combined GPIO candidate motion **1.396x / 1.369x**, controlled A/B **+8.396746%**, all ten candidate windows >=1x, all 40 RTx and strict relative-cost gates pass; fresh EPYC 7763 rebase motion **1.116x / 1.051x**, all five >=1x, fresh A/B PASS. GPIO PR137 not yet landed; remaining integration CI in progress. Six Nordic costs remain tracked on main, not declared closed here. Historical shared VPS under load **0.337x**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons, bounded analog routing, real ARM ADC scan and selected motion qualified upstream, not app-shipped; timed microphone/audio/browser qualification pending | no | no exact target |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; native active matrix/button guest **2.376x median, 2.272x minimum**. Predecessor main motion **0.890x / 0.887x FAILED**. Landed discovery/pull-mask candidate controlled EPYC 7763 medians **1.037x / 1.023x PASS**, versus predecessor **0.880x / 0.883x**; exact successor-main `ede33fb4` motion **1.290x median / 1.261x minimum PASS**, all five samples above 1x on EPYC 9V74. Proper ADC scan guest qualified/landed; countdown landed `8736e1ff`; historical isolated A/B **+7.79%**. Qualified combined GPIO candidate motion **1.396x / 1.369x**, controlled A/B **+8.396746%**, all ten candidate windows >=1x, all 40 RTx and strict relative-cost gates pass; fresh EPYC 7763 rebase motion **1.116x / 1.051x**, all five >=1x, fresh A/B PASS. GPIO PR137 landed `5fb3d7d4`, final-head native **1.127x / 1.117x** and full Core CI/A/B PASS; exact post-merge main measurement pending. Historical Nordic issue not declared closed here. Historical shared VPS under load **0.337x**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons, bounded analog routing, real ARM ADC scan and selected motion qualified upstream, not app-shipped; timed microphone/audio/browser qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
@@ -390,17 +390,18 @@ not the historical predecessor failure. It is not a controlled cross-runner
 gain, a post-main all-forty-chip result, browser qualification or a pin update.
 
 The [PR 136 countdown change](https://github.com/CrispStrobe/labwired-core/pull/136)
-landed at `8736e1ff`. Current main `8b1cd3f5` includes this countdown change
-and CI-only follow-up, but not PR137's GPIO runtime. Its earlier candidate
+landed at `8736e1ff`. Earlier main `8b1cd3f5` included countdown and CI-only
+follow-up but not the GPIO changes; current main `5fb3d7d4` includes both.
+Its earlier countdown candidate
 passed all nine new whole-engine regressions. Its
 [isolated run 36723407331](https://github.com/CrispStrobe/labwired-core/actions/runs/36723407331)
 compares against exact optimized baseline `307541bd`, on EPYC 7763:
 **7.79%** gain, candidate medians **1.092111x / 1.123578x**, minimum **1.087533x**,
 all ten candidate windows >=1x. These are historical source-bound results,
-not a current-main `8b1cd3f5` measurement or a Lite package promotion.
+not a current-main `5fb3d7d4` measurement or a Lite package promotion.
 
 All 40 chip synthetic RTx fixtures passed for the landed optimization source,
-but six pre-existing Nordic single-step instruction-cost failures remain in
+while six historical Nordic single-step instruction-cost failures remain tracked in
 [issue 120](https://github.com/CrispStrobe/labwired-core/issues/120). An empty
 CAN-service guard did not reduce those costs. The isolated no-pull GPIO probe
 saved approximately five host instructions per GPIO port and reduced the six
@@ -442,19 +443,29 @@ passed; the 8.396746% figure above belongs only to run 36731892881.
 Browser CI, all three workspace shards and their aggregate passed for
 `8c745a68`. Its original twenty-minute PR gate timed out during feature-off
 core compilation after Clippy/default-member checks passed. Current PR137
-head `bd05656f9af2f4fa536db8834bccb9aa08b7b400` changes CI and its contract
+final head `bd05656f9af2f4fa536db8834bccb9aa08b7b400` changes CI and its contract
 test only; production source is identical to qualified `8c745a68`. The
 [fresh Core CI run 36778919591](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919591)
 splits default-member and feature-off jobs while preserving all commands,
 their twenty-minute budgets and the fail-closed original aggregate. That run
-is in progress, not an all-gates-green claim. Passing
+**passed full Core CI**, including all three workspace shards and aggregate. Passing
 browser CI is not an active-browser performance measurement or package-pin
 promotion.
 
 The old `72f8b4cf` 0.995903x motion failure remains predecessor evidence,
-not the newer combined candidate's result. GPIO PR137 is not yet landed;
-remaining integration CI is in progress. No exact post-merge main measurement, browser/package
-promotion or issue 120 closure is claimed here. Historical exact-main
+not the newer combined source's result. **GPIO PR137 landed at main
+`5fb3d7d44cc1487fdab757906ae62222e8798e93`**. Final-head
+[native run 36778919418](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919418)
+passed on EPYC 7763: motion median **1.1267179334518453x**, minimum
+**1.1174671337969828x**, all five samples >=1x with zero transport errors;
+GPIO-only median **5.278344943272967x**, minimum **4.983698993391979x**.
+All 349 overlapping functional executions and two benchmarks passed, with actual
+guest executable hashes retained by the source qualification. The
+[final paired A/B 36778919437](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919437)
+passed too. The previously qualified engine's strict forty-chip/78-mode result
+remains separate evidence; [additional final-head CorePerf 36779028846](https://github.com/CrispStrobe/labwired-core/actions/runs/36779028846)
+is still measuring. Exact post-merge main `5fb3d7d4` measurement is pending;
+no browser/package promotion or issue 120 closure is claimed here. Historical exact-main
 `ede33fb4` 1.290x/1.261x and every retained receipt above remain separate
 evidence, and CP13 remains NEXT. No benchmark, 1x floor or 3% relative-cost gate
 was weakened or re-baselined. Neither this native evidence nor these merges
