@@ -2295,7 +2295,16 @@ class PseudocodeImporter extends React.Component {
         }
         const existing = this.state.buffers[to];
         const src = this.state.buffers[from];
-        if ((existing && existing.trim()) || !src || !src.trim()) { this.setState({lang: to, output: null, status: ''}); return; }
+        // Leaving the ASM tab is not a conversion: assembly is not a source the
+        // other languages are derived from (deriveBuffer has no `asm` reader),
+        // and deriving used to parse the assembly AS PSEUDOCODE — every line was
+        // dropped and the tab filled with an empty program. Since D5 the parser
+        // refuses a line it cannot read, so that became an error that kept the
+        // learner on the ASM tab. Just switch.
+        if (from === 'asm' || (existing && existing.trim()) || !src || !src.trim()) {
+            this.setState({lang: to, output: null, status: ''});
+            return;
+        }
         this.setState({busy: true, status: this.L.stConverting(to)});
         this.deriveBuffer(src, from, to).then(({code, error}) => {
             if (error) { this.setState({busy: false, status: this.L.stCantShow(to, error)}); return; }
