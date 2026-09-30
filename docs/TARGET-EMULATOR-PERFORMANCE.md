@@ -18,7 +18,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
 | Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
-| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; latest hosted native active matrix/button guest **2.376x median, 2.272x minimum**; selected-LSM303AGR native workload **1.758x median, 1.734x minimum**, hosted-qualified/upstream landed; historical shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons and bounded analog routing qualified, native motion upstream-landed/not app-shipped; sensor/audio qualification pending | no | no exact target |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; latest hosted native active matrix/button guest **2.376x median, 2.272x minimum**; selected-LSM303AGR native workload second-optimization PR **1.127x median, 1.123x minimum** (first optimization exact-main **1.031x / 1.027x**, earlier PR **1.758x / 1.734x**), hosted-qualified/upstream landed; historical shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons and bounded analog routing qualified, native motion upstream-landed/not app-shipped; sensor/audio qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
@@ -293,8 +293,49 @@ PR head `d05043dd` did not change runtime source `e32b4a35`; no later
 lazy-construction candidate is included in that qualification. The
 [full hosted motion receipt](receipts/2026-09-30-microbit-motion-hosted-optimized.json)
 preserves the tested merge-ref and PR-head/runtime provenance, rather than
-relabeling measurements as a post-merge run. Broad post-merge CI was still
-pending when this documentation was prepared.
+relabeling measurements as a post-merge run.
+
+The subsequent exact-main
+[run 36690708740](https://github.com/CrispStrobe/labwired-core/actions/runs/36690708740)
+at `ce60a49941f9fa94d83aca6859bc27ae1c5b9e0b` **passed** native board/model,
+eight CPU regression tests, input-routing, and RTx gates. The motion workload
+measured **1.0306447307567719x median**, **1.0270104540205454x minimum**,
+with all five samples above 1.0x. GPIO-only measured **3.355509706840291x
+median** in that same job. The full
+[exact-main motion receipt](receipts/2026-09-30-microbit-motion-hosted-main.json)
+and [GPIO-only receipt](receipts/2026-09-30-microbit-active-hosted-main.json)
+retain original hashes and observations. Motion guest source bundle
+`e6b8c239dc7ee1aca736671350cda8101f4bf8d6c89d91e2a9e787c85b553939`
+and runtime code are unchanged from the earlier PR-qualified run. These
+different runner observations are not a runtime code regression or controlled
+A/B speedup. That exact-main margin is thin; it does not establish stable real-time
+performance on arbitrary hosts or a browser/full Lite application. This
+success is the scoped native qualification lane, not a claim that every broad
+repository CI job or target is green.
+
+A second optimization, lazy successful-candidate construction, landed through
+[LabWired PR 131](https://github.com/CrispStrobe/labwired-core/pull/131) as
+`3456c048894f194bbabc9c414932a752d89da999`. The
+[qualified PR run 36691941435](https://github.com/CrispStrobe/labwired-core/actions/runs/36691941435)
+passed full functional/model/DMA, 11 CPU regression tests, native WASM input
+routing, and real-time gates. Motion median was **1.1265547370697286x**,
+minimum **1.1230014365962186x**; all five samples exceeded 1.0x. The separate
+GPIO-only workload measured **3.7836838863482463x median**. Both
+[full motion](receipts/2026-09-30-microbit-motion-hosted-lazy.json) and
+[GPIO-only](receipts/2026-09-30-microbit-active-hosted-lazy.json) receipts
+retain tested PR merge-ref `9e4e5f83586f7c94bc989a44399821401078ab37`,
+qualified head `143402d6`, CPU source `ab501cdf`, and landed main `3456c048`
+as separate provenance. Qualified CPU, all 11 CPU regression tests and all
+three guest sources are byte-identical to landed main. The exact-new-main
+post-merge benchmark was still queued and is **not claimed passed** here.
+The first optimization's exact-main and PR-qualified results above remain
+historical, not a controlled wall-time A/B against this second optimization.
+
+Callgrind recorded **1,375,692,554** host instructions for the first
+optimization's native functional proof and **1,300,205,720** for the second,
+about **5.5% less recorded instruction work** including configuration/guest
+startup. This instrumentation result is neither a simulated ARM instruction
+count nor a proportional wall-clock improvement.
 
 The same first optimization reduced Callgrind's total native functional-test
 host instruction work by **46.2%**, including configuration/guest startup.
