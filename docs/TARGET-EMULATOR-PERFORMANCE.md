@@ -18,7 +18,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
 | Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
-| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; native active matrix/button guest **2.512x median, 2.511x minimum**; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; matrix/buttons qualified natively, sensor/audio qualification pending | no | no exact target |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; hosted native active matrix/button guest **2.512x median, 2.511x minimum**; shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; matrix/buttons qualified natively, sensor/audio qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
@@ -215,12 +215,33 @@ and the explicit active-throughput benchmark. Five samples at 64 MHz measured
 median 2.51244807473315x, minimum 2.510862493318595x and maximum
 2.622815650932696x; all five exceeded 1.0x. The source-built guest SHA-256 is
 `c570d6af4748e0788069a09362af904e974780c4509c754980cb6b8e64b14839`.
-This measures the native Rust core and event scheduler with active
+
+A second [hosted run](https://github.com/CrispStrobe/labwired-core/actions/runs/36675423739)
+at `24719d90` also passed: median 2.812974211x, minimum 2.743114803x and maximum
+3.155284579x. Its intervening changes were documentation only; this variation
+is not an optimization result. The same executable source passed local guest
+functional checks, but the shared VPS under concurrent build load measured
+five 4-million-cycle samples at median 0.33661187736571163x, minimum
+0.23030896234724468x and maximum 0.43397617680486633x. The
+[complete VPS receipt](receipts/2026-09-30-microbit-active-vps.json) retains
+every raw sample, display/button observations and source/ELF hashes, and records
+`realtimeTargetMet: false`. CPU availability and contention were not isolated.
+A repeat of the same binary without optimization or host isolation produced
+median 1.567935483544028x, minimum 0.24086111370502475x and maximum
+1.7200998956958944x. End-to-end GNU time reported 1.98 seconds elapsed,
+0.31 seconds user CPU and 0.06 seconds system CPU (19% CPU), including guest
+compilation, warmup and measurements. These uncontrolled VPS runs do not
+establish stable >=1.0x performance there; the hosted result is not a universal
+host guarantee.
+
+These throughput receipts measure the native Rust core and event scheduler with active
 GPIO/matrix/button work; browser WASM and full Lite application qualification
 remain pending. Selected motion-sensor and microphone/audio paths are also
 pending. The bounded SAADC/DMA follow-up is still
 [draft PR 127](https://github.com/CrispStrobe/labwired-core/pull/127), not qualified
-audio support. The earlier 3.32x terminal self-branch receipt does not close this
+audio support; its longer 64-million-cycle benchmark at candidate `38d0102f`
+is awaiting [hosted qualification](https://github.com/CrispStrobe/labwired-core/actions/runs/36676944828).
+The earlier 3.32x terminal self-branch receipt does not close this
 checkpoint, and CP13 remains NEXT.
 
 CP12's hardware sequence starts with SPI0 (`0x01c41000`, AINTC20, PSC0
