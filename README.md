@@ -81,7 +81,7 @@ concurrent build load reached only **0.337x median**; an uncontrolled repeat
 varied widely, so this is not a universal real-time guarantee. These receipts
 are separate from browser WASM/full-application performance; browser, sensor
 and continuous microphone/audio qualification remains in progress.
-The latest current-main LSM303AGR motion workload **fails the >=1.0x gate**:
+The predecessor-main `3456c048` LSM303AGR motion workload **failed the >=1.0x gate**:
 **0.890x median**, **0.887x minimum**, all five samples below real time despite
 passing functional checks. The earlier second-optimization PR observation
 **1.127x median**, **1.123x minimum** remains historical. The first
@@ -91,9 +91,17 @@ Runner variation is not a controlled wall-time A/B or universal host guarantee.
 The earlier **0.327x**
 failed hosted baseline and **0.312x** optimized shared-VPS result remain separate
 evidence, not controlled wall-time A/B measurements. The bounded native model
-and both CPU optimizations landed upstream in LabWired `3456c048`. The latest
-receipt measures that exact main commit and records the failure. Lite's WASM pin
-and browser integration are not upgraded by this result. Full board/audio/browser
+and both earlier CPU optimizations landed upstream in LabWired `3456c048`.
+Successors now landed at `96b739c2` (discovery miss caching/Nordic pull masks)
+and `ede33fb4` (proper START-latched cumulative ADC scan DMA). Controlled EPYC
+7763 candidate medians **1.037x / 1.023x** clear the floor versus predecessor
+**0.880x / 0.883x**. The combined native qualification passed **314 selected
+executions**, including a real source-built ARM ADC scan guest. Exact successor-
+main remeasurement remains pending. A separate countdown candidate's isolated
+EPYC 7763 A/B gains **7.79%**, with all ten candidate windows above real time;
+fresh composition qualification is pending. The optimization candidate cleared all 40 synthetic RTx fixtures,
+but six pre-existing Nordic relative step-cost gates remain tracked without
+threshold changes. Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
 qualification remains pending. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
