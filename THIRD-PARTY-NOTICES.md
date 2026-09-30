@@ -1314,6 +1314,13 @@ Their covered portions are MIT licensed. The build also includes lwrb
 Science / The Pybricks Authors, BSD-3-Clause), and Brickwright components
 (BSD-3-Clause). Emscripten and musl use MIT / NCSA and other permissive
 terms; compiler-rt uses Apache-2.0 WITH LLVM-exception.
+The linked musl math routines include Sun/fdlibm notice-preservation grants;
+dlmalloc is public-domain/CC0 code with Emscripten changes. Their individual
+notices are retained alongside the repository licences. A traced relink of
+the shipped WASM selected 90 members from four runtime archives and produced
+the identical binary; `firmware/pybricks-wasm/runtime-inputs.json` records
+those sources and hashes. This artifact-specific review supplements the
+compiler dependency inventory, which does not enumerate prebuilt archives.
 
 Full licence texts and attribution are bundled offline in
 `static/licenses/pybricks-micropython.MIT.txt`. The filename is retained for

@@ -1,0 +1,660 @@
+{
+  "date": "2026-09-30",
+  "toolchain": "emsdk 6.0.6",
+  "wasm_sha256": "84e022bbfede2ad7fd397e0176e9cfc25d55270872a7466c8f29031d65be8133",
+  "scope": "Linker --trace records selected archive members before garbage collection; conservative superset of final runtime code. Relinked WASM is byte-identical to shipped artifact. Sources mapped using pinned system_libs.py non-debug single-thread default variants and case-insensitive object-name collision handling. This manifest is specific to this artifact, not a dynamic link gate.",
+  "archives": [
+    {
+      "path": "cache/sysroot/lib/wasm32-emscripten/libc.a",
+      "sha256": "0b42873964dc6bd57e0409dfec3d9506b024b41e217db6b64b23418836470404",
+      "selected_members": 79
+    },
+    {
+      "path": "cache/sysroot/lib/wasm32-emscripten/libclang_rt.builtins.a",
+      "sha256": "9635451de4b43f6a11a755000ee7b5a17c0adfccc94a2048f09c08444fe5b346",
+      "selected_members": 8
+    },
+    {
+      "path": "cache/sysroot/lib/wasm32-emscripten/libdlmalloc.a",
+      "sha256": "f162c7c71155e61477d544e8df2e40c60b17c6ec76eaef8423ba39127027069e",
+      "selected_members": 2
+    },
+    {
+      "path": "cache/sysroot/lib/wasm32-emscripten/libstubs.a",
+      "sha256": "a7ead37670614579743107bd78b3e8d8103588946c85403dbbaa3cb7e3ce90ae",
+      "selected_members": 1
+    }
+  ],
+  "inputs": [
+    {
+      "archive": "libc.a",
+      "member": "acosf.o",
+      "source": "system/lib/libc/musl/src/math/acosf.c",
+      "sha256": "b20b3dcb58ce7cc55963945f8cb83efbf064b29d2da3011f2cec5d08459f2aa7",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "asinf.o",
+      "source": "system/lib/libc/musl/src/math/asinf.c",
+      "sha256": "6bc9b2392b81efa4c6a80c8602a2c0898d3b5c77444f6d3266ac71c18df222c5",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "atan2f.o",
+      "source": "system/lib/libc/musl/src/math/atan2f.c",
+      "sha256": "31a61a0a4c7b00db625b708525f24673a83df868a3e363042c9cc9dcf0aaeec8",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "atanf.o",
+      "source": "system/lib/libc/musl/src/math/atanf.c",
+      "sha256": "e0533d7b72aabce311a758a1f94fd15e5d4067be73b716cb1f425df5bc9039d6",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "cosf.o",
+      "source": "system/lib/libc/musl/src/math/cosf.c",
+      "sha256": "33cf828e8e733da2b72c723b9ff20057b9a4f10df72a3923dadcb626c23d222c",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__cosdf.o",
+      "source": "system/lib/libc/musl/src/math/__cosdf.c",
+      "sha256": "0ba872cc7e26b93bb9784d19fee84b263e1fa3543a76ec3c0893aea47453a2a7",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__sindf.o",
+      "source": "system/lib/libc/musl/src/math/__sindf.c",
+      "sha256": "de7026bcd159b7d06a8cbcc162df722014f3b1a3cc4183116b6b7829eef1d118",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__rem_pio2f.o",
+      "source": "system/lib/libc/musl/src/math/__rem_pio2f.c",
+      "sha256": "b73a0219ba4a34e39ed904b5008126ff1b12dfa1a4a380941363c8db5088d756",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__rem_pio2_large.o",
+      "source": "system/lib/libc/musl/src/math/__rem_pio2_large.c",
+      "sha256": "b97f19fb5951c83a0c10506fab35646caefde13bd03100ad2af55ef00af0b9fb",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "emscripten_scan_stack.o",
+      "source": "system/lib/libc/emscripten_scan_stack.c",
+      "sha256": "f8bd7b2e47d1f1bd445ecbcd18d2109a4f016e60be4b1f1133e5ffb56ca9ca6f",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "expf.o",
+      "source": "system/lib/libc/musl/src/math/expf.c",
+      "sha256": "225123b9b3a47a083c06f2580c6b73d5cadae5cec545f9e928f7041ff837b4b4",
+      "licence": "MIT"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__math_oflowf.o",
+      "source": "system/lib/libc/musl/src/math/__math_oflowf.c",
+      "sha256": "69414934bb798f5261e2d80f4b878e2bbe4dfa6025adbd06586195ba5554b04a",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__math_xflowf.o",
+      "source": "system/lib/libc/musl/src/math/__math_xflowf.c",
+      "sha256": "38da031cfed0ba90e68a14dfbc57404ebcb827c9ac34648161c7d11cb212c9ba",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__math_uflowf.o",
+      "source": "system/lib/libc/musl/src/math/__math_uflowf.c",
+      "sha256": "2371ed08fc95e48833a67122b5ef538ce7fc87f40fc7a4df451d71e1787d1d42",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "exp2f_data.o",
+      "source": "system/lib/libc/musl/src/math/exp2f_data.c",
+      "sha256": "3da38c471cc5eb8dc1c2e283c6c00a36b1d353ba5c8ca1e82d95180948e26bd5",
+      "licence": "MIT"
+    },
+    {
+      "archive": "libc.a",
+      "member": "fabsf.o",
+      "source": "system/lib/libc/musl/src/math/fabsf.c",
+      "sha256": "0d49f81e5f9abff1d0a72d16bb0fc5f55cb950623627abac0402ee4c900a1734",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "floor.o",
+      "source": "system/lib/libc/musl/src/math/floor.c",
+      "sha256": "c72285ce3c43df30ccc737a1a91d65144f28c7777cae23f1b526806fb1b1188a",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "fmodf.o",
+      "source": "system/lib/libc/musl/src/math/fmodf.c",
+      "sha256": "eecc1cf499f143181880a33a95f1614be323aca704815a7b57d4969a7cacc2d4",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "frexpf.o",
+      "source": "system/lib/libc/musl/src/math/frexpf.c",
+      "sha256": "508dff44e12172d6f43002c8cddedcbaa0e327a9dcf16bfcaebdfda76a4696bc",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "ldexpf.o",
+      "source": "system/lib/libc/musl/src/math/ldexpf.c",
+      "sha256": "4edbe502fab04f8dc618550f4418a636606842deefdbb997103e3d8a39d03094",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "logf.o",
+      "source": "system/lib/libc/musl/src/math/logf.c",
+      "sha256": "eecf8e5dd0afd5f64f938ccae07c85b0a8e82919f5d4269936a3b8493fb64e47",
+      "licence": "MIT"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__math_divzerof.o",
+      "source": "system/lib/libc/musl/src/math/__math_divzerof.c",
+      "sha256": "194c95f6cd238ffa14e78087b9acffca3a064f2fe46320d67b090bb7a559b1ca",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__math_invalidf.o",
+      "source": "system/lib/libc/musl/src/math/__math_invalidf.c",
+      "sha256": "d2af8360271109d77dfab3c538eb158e34633454707dea4efa9f2f1e7e2bd0c7",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "logf_data.o",
+      "source": "system/lib/libc/musl/src/math/logf_data.c",
+      "sha256": "60b08342fcef877b393a76fc36d92c576d6340ce153459aad03aad3d4716f9b5",
+      "licence": "MIT"
+    },
+    {
+      "archive": "libc.a",
+      "member": "lroundf.o",
+      "source": "system/lib/libc/musl/src/math/lroundf.c",
+      "sha256": "585d7cc9e92ddd8f622e687ccbfd1865757981620e25391e0a181c1ad8a2f0d9",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "memchr.o",
+      "source": "system/lib/libc/musl/src/string/memchr.c",
+      "sha256": "67bfc48f1d29368c9d0ba806112eab32b7a4c1376a7de42e64761a170d7c2dfc",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "memcmp.o",
+      "source": "system/lib/libc/musl/src/string/memcmp.c",
+      "sha256": "2514492fc7e9249713857dfd12c1a3630661aa163f16bc40a6f59f8cd8e76aeb",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "modff.o",
+      "source": "system/lib/libc/musl/src/math/modff.c",
+      "sha256": "a22d1b522e59fc08400cf79523fd631891bc67ff60099df7b651887811e05112",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "powf.o",
+      "source": "system/lib/libc/musl/src/math/powf.c",
+      "sha256": "74069b3a380cf954361e0243b38de2094ae680e2ecfb3e50af61ab576f13babf",
+      "licence": "MIT"
+    },
+    {
+      "archive": "libc.a",
+      "member": "powf_data.o",
+      "source": "system/lib/libc/musl/src/math/powf_data.c",
+      "sha256": "136f491b0f904842b926784134d0adba7a9103d2ce8a226276dd6e9260457398",
+      "licence": "MIT"
+    },
+    {
+      "archive": "libc.a",
+      "member": "roundf.o",
+      "source": "system/lib/libc/musl/src/math/roundf.c",
+      "sha256": "3f8cc14771a866a06184a3d9d654f63de9a077316a4905aae19884cc9b292d2e",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "scalbn.o",
+      "source": "system/lib/libc/musl/src/math/scalbn.c",
+      "sha256": "a2e766283ed30c2b30c71e01dbdabef58faf92cc9aa84a01c1ce1069b6625696",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "scalbnf.o",
+      "source": "system/lib/libc/musl/src/math/scalbnf.c",
+      "sha256": "3fb36f1cf8d9c118bfe85b462e6e0c034543835e5ffee4661f5ab8de997813e5",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sinf.o",
+      "source": "system/lib/libc/musl/src/math/sinf.c",
+      "sha256": "2583af55446f07da3225186c368a7aae5a0a0a0edab268967f4122b92e222b87",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "snprintf.o",
+      "source": "system/lib/libc/musl/src/stdio/snprintf.c",
+      "sha256": "be661cb258170863a1372b8e5998ef345bb8ef8e3f06d38a603dfda77eed4d4d",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sqrt.o",
+      "source": "system/lib/libc/musl/src/math/sqrt.c",
+      "sha256": "320a4405c11e39024193c279f41d7c43d892a58ece2e0917343f40cd977279e0",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sqrtf.o",
+      "source": "system/lib/libc/musl/src/math/sqrtf.c",
+      "sha256": "76e660944d71691d1eedd83dc59341dceb70d903094cd2832db3a446c34bd035",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "strchr.o",
+      "source": "system/lib/libc/musl/src/string/strchr.c",
+      "sha256": "629d401b95d07ddff9560eb5a9cfbda1652caaec273dc6a79013a56b1790af53",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "strchrnul.o",
+      "source": "system/lib/libc/musl/src/string/strchrnul.c",
+      "sha256": "4282311b1e837ac63df0b091a30bc912e3dc25293f19169ca878bd8d4c329e7c",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "strcmp.o",
+      "source": "system/lib/libc/musl/src/string/strcmp.c",
+      "sha256": "3e1793ea2dd358e5c884c4dd232083605d0f6775f7ebe19d03d64fe97068a78f",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "strlen.o",
+      "source": "system/lib/libc/musl/src/string/strlen.c",
+      "sha256": "152cbbb4bf1b99ea4853a0e244e895e2a9c4446cf52b4d6a0c1d4bad5f0106b2",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "strncmp.o",
+      "source": "system/lib/libc/musl/src/string/strncmp.c",
+      "sha256": "df801c43304b27dcda67f219a7a3ca34a8fb06f4e63d21e8a6bcb36b03c3c012",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "strncpy.o",
+      "source": "system/lib/libc/musl/src/string/strncpy.c",
+      "sha256": "88301f7a48004250e1833e9155c7d2fa607ffdddca3b1b1804774d93c82acb96",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "stpncpy.o",
+      "source": "system/lib/libc/musl/src/string/stpncpy.c",
+      "sha256": "4aa7816aeb8e9f0093ec014fed56dc7b9d4808a2ab58adad60d53dc7eddc0255",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "emscripten_memset.o",
+      "source": "system/lib/libc/emscripten_memset.c",
+      "sha256": "7f345bf7ffbb49e3d7e1691538a243471e67e0e11c9e06b518c2b691295b1cdf",
+      "licence": "MIT / NCSA (Emscripten repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "tanf.o",
+      "source": "system/lib/libc/musl/src/math/tanf.c",
+      "sha256": "38b39aaf03d33341e606b67b3743ee5fa436b7e8338af155994d4b794b366003",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__tandf.o",
+      "source": "system/lib/libc/musl/src/math/__tandf.c",
+      "sha256": "60455f3cc0ac743f3eaf0017a3a4f0adbab37c0ee30d29397852d22904c40444",
+      "licence": "Sun fdlibm permissive notice-preservation grant"
+    },
+    {
+      "archive": "libc.a",
+      "member": "vsnprintf.o",
+      "source": "system/lib/libc/musl/src/stdio/vsnprintf.c",
+      "sha256": "b307baae1675cf93bab514457dcb6446db7e3bd058d56c209880fc033e7b7668",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "vfprintf.o",
+      "source": "system/lib/libc/musl/src/stdio/vfprintf.c",
+      "sha256": "580c3fbf10264b0cd422da755afe963d54785a433c6ee4b607e00560dbf92b2d",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__towrite.o",
+      "source": "system/lib/libc/musl/src/stdio/__towrite.c",
+      "sha256": "b9cb9369502a6d10165bc4b959b4be6a11cfcd43af62d2132d521f860c9bfa4f",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__stdio_exit.o",
+      "source": "system/lib/libc/musl/src/stdio/__stdio_exit.c",
+      "sha256": "9862e7c37e38efca52e0174401c717afc49c327fcd6954e8a0d241252ff4ee56",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "ofl.o",
+      "source": "system/lib/libc/musl/src/stdio/ofl.c",
+      "sha256": "0cc470e24f70349bc897db361266a6f0b59f64d29e1ccba5ff770e603242deb3",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "library_pthread_stub.o",
+      "source": "system/lib/pthread/library_pthread_stub.c",
+      "sha256": "1c00d6be4d4780405ac4cfbd0523dbeca911d9e33b16c2515b8a6c5109799e98",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "pthread_self.o",
+      "source": "system/lib/libc/musl/src/thread/pthread_self.c",
+      "sha256": "aaaa2602892e93074240ed6017c4c7c1a3fdb65aa69fa975e6e89818ea2fc1f6",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "pthread_self_stub.o",
+      "source": "system/lib/pthread/pthread_self_stub.c",
+      "sha256": "d1cff7b24162d6c473553447239fa104b4f7faf9453ef14eb41f08c1bdee6ad3",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "getpid.o",
+      "source": "system/lib/libc/musl/src/unistd/getpid.c",
+      "sha256": "17b3add7a6d6f26d1a97b627bbeb2078a9c863d57a74d0fed2405174f3ba3b3d",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libstubs.a",
+      "member": "emscripten_syscall_stubs.o",
+      "source": "system/lib/libc/emscripten_syscall_stubs.c",
+      "sha256": "d8c72d693625453052734fd6705287e32745135852ec095599facbcd01cc33d3",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "default_attr.o",
+      "source": "system/lib/libc/musl/src/thread/default_attr.c",
+      "sha256": "99be8ab4db8a5ca9278af138db6b3bb7132170c3715f82628acc1d772e3d2680",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "raise.o",
+      "source": "system/lib/libc/raise.c",
+      "sha256": "abef26efb040b66d5350ff91060025711835451a6361b731dd9e66a264f36fa5",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "abort.o",
+      "source": "system/lib/libc/musl/src/exit/abort.c",
+      "sha256": "dab1cb2741a6890a8d16591457969c6c0d6e7b5fc34d0bf0d663593dee0ee627",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "_Exit__1.o",
+      "source": "system/lib/libc/musl/src/exit/_Exit.c",
+      "sha256": "7a3f141fb48d3e8dec67380d7da86eac0b97cd224ec7c060d6fe15b161b4d4c9",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "pthread_sigmask.o",
+      "source": "system/lib/libc/pthread_sigmask.c",
+      "sha256": "90f597346d8655727e23164338702bea9497a0eabf348f0d1842ebd11b73016f",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sigismember.o",
+      "source": "system/lib/libc/musl/src/signal/sigismember.c",
+      "sha256": "48f40fc6e8a1b64d54c4084a083ea177ee1c1d5779d9f2b5a26de40ab72bf21f",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sigorset.o",
+      "source": "system/lib/libc/musl/src/signal/sigorset.c",
+      "sha256": "0854f8628777b4838675c6d16811517333ceea4e703cd1a6458e6631cb394af7",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sigandset.o",
+      "source": "system/lib/libc/musl/src/signal/sigandset.c",
+      "sha256": "bcd164c99adacddff60cdba5ab1a4a89fb61a5504cc8f8631da2ef07485807f3",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sigdelset.o",
+      "source": "system/lib/libc/musl/src/signal/sigdelset.c",
+      "sha256": "ee067941f4f10964594a45f2c01d626562512b41e0cb1436cd0d55d3009d688a",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "__errno_location.o",
+      "source": "system/lib/libc/musl/src/errno/__errno_location.c",
+      "sha256": "9ffd4bac0f2da08307dd277d9517d9f38c0f939f9b3124e7caa65ada81756c67",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sigaddset.o",
+      "source": "system/lib/libc/musl/src/signal/sigaddset.c",
+      "sha256": "cd1ca87b0c108ddb9fbb90f0fb869c9f051aacb0b483d542d2a7588873f7e558",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "sigaction.o",
+      "source": "system/lib/libc/sigaction.c",
+      "sha256": "5033f83e68fe8514fef2a35287bca69c87459f998ee7deb10273eda5203b8bee",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "emscripten_yield_stub.o",
+      "source": "system/lib/libc/emscripten_yield_stub.c",
+      "sha256": "007ccb726f3199a0b74c6c8525bdb9df093df234354afb38c6cfb8018a0e84b6",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "strnlen.o",
+      "source": "system/lib/libc/musl/src/string/strnlen.c",
+      "sha256": "3a72ef5250b314ca0d8ff0fed2f6aa10c8b2b26605806c759faf0d1a9b835a9e",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "frexp.o",
+      "source": "system/lib/libc/musl/src/math/frexp.c",
+      "sha256": "58a2973f80f9def7940708850e97f8080da38be2496cd473f7cb9023e9d59e94",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "fwrite.o",
+      "source": "system/lib/libc/musl/src/stdio/fwrite.c",
+      "sha256": "91b1cbf23660e909dfe788f1c7cc46e19a937342dbaa357eda1946d2daf5c9c8",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "emscripten_memcpy.o",
+      "source": "system/lib/libc/emscripten_memcpy.c",
+      "sha256": "1eed22a14ee2143283ad19a0494355734bd9d48a19b318b605c86f274642afa0",
+      "licence": "MIT / NCSA (Emscripten repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "emscripten_memcpy_bulkmem.o",
+      "source": "system/lib/libc/emscripten_memcpy_bulkmem.S",
+      "sha256": "39af87c7ef0479fa2c4863838b4012a8ed86e89d6e37035c1054666731ffc016",
+      "licence": "MIT / NCSA (Emscripten repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "wctomb.o",
+      "source": "system/lib/libc/musl/src/multibyte/wctomb.c",
+      "sha256": "046e38f206c7203d0b1295dcdcd3080e3b1c335ff2e1433f0626066a73e8befc",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "wcrtomb.o",
+      "source": "system/lib/libc/musl/src/multibyte/wcrtomb.c",
+      "sha256": "a8f5bfa624c88f1e3214bcd46d909fb9c5b172ac9b634fb32a101161ab680693",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "uselocale.o",
+      "source": "system/lib/libc/musl/src/locale/uselocale.c",
+      "sha256": "0db2e64fba01994aaf6196e0476c71d640388853d5788560bdedec7f9841b080",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "libc.o",
+      "source": "system/lib/libc/musl/src/internal/libc.c",
+      "sha256": "bae9969eb415ba23bdae8ae7f80e346f6a2c1e5c9d17dc373fd3bba04bc03fa5",
+      "licence": "MIT (musl repository grant)"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "emscripten_exception_builtins.o",
+      "source": "system/lib/compiler-rt/emscripten_exception_builtins.c",
+      "sha256": "48e70458a6cc487f78b2406931cc6da9f12b81f72b2cd5098ff9216c6cd65f16",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "emscripten_setjmp.o",
+      "source": "system/lib/compiler-rt/emscripten_setjmp.c",
+      "sha256": "9f085d529add34394f30fc2ffd3d53ba129ed23bfc32b87a5bd0ae43af05cabd",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "emscripten_tempret.o",
+      "source": "system/lib/compiler-rt/emscripten_tempret.s",
+      "sha256": "4e24aadf1832b97bbf0b3e31ec684ed5dee2abc7469bf4fa8334482fc35eeebf",
+      "licence": "Apache-2.0 WITH LLVM-exception / legacy permissive grants"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "stack_limits.o",
+      "source": "system/lib/compiler-rt/stack_limits.S",
+      "sha256": "e6867a21e15ccf50b4526b1754a44df40f391c6249450b144c96a9ccd9e9a2a7",
+      "licence": "Apache-2.0 WITH LLVM-exception / legacy permissive grants"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "stack_ops.o",
+      "source": "system/lib/compiler-rt/stack_ops.S",
+      "sha256": "f99c53c18be77b978f2255c5ef9c1c31798fe17dea87ca87f34ae39a2f237045",
+      "licence": "Apache-2.0 WITH LLVM-exception / legacy permissive grants"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "trunctfdf2.o",
+      "source": "system/lib/compiler-rt/lib/builtins/trunctfdf2.c",
+      "sha256": "46a8ca78c3d3c44a0eb8eff7a86739349cbd26cb7f61e3b5784fb096a5420871",
+      "licence": "Apache-2.0 WITH LLVM-exception"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "ashlti3.o",
+      "source": "system/lib/compiler-rt/lib/builtins/ashlti3.c",
+      "sha256": "39afba4710d9b24c9c27cccdc8e18a18db10ce3616dc60cdcfa494f0a49a3a60",
+      "licence": "Apache-2.0 WITH LLVM-exception"
+    },
+    {
+      "archive": "libclang_rt.builtins.a",
+      "member": "lshrti3.o",
+      "source": "system/lib/compiler-rt/lib/builtins/lshrti3.c",
+      "sha256": "89da91e31e33c3c62128c32ed1c740856a413c17ac1e7cd75702da37d1cf9fa4",
+      "licence": "Apache-2.0 WITH LLVM-exception"
+    },
+    {
+      "archive": "libdlmalloc.a",
+      "member": "dlmalloc.o",
+      "source": "system/lib/dlmalloc.c",
+      "sha256": "175ef7cab6d59b858471ad8ba16ee8a2f0536ddf666742b5e044b187171695d6",
+      "licence": "Public domain / CC0 with MIT / NCSA Emscripten changes"
+    },
+    {
+      "archive": "libdlmalloc.a",
+      "member": "sbrk.o",
+      "source": "system/lib/libc/sbrk.c",
+      "sha256": "c5240534df9773b524c3385452e9ec7d45eb1d6c7c37c441cfbea156f0f7fa0e",
+      "licence": "MIT OR NCSA (Emscripten)"
+    },
+    {
+      "archive": "libc.a",
+      "member": "emscripten_get_heap_size.o",
+      "source": "system/lib/libc/emscripten_get_heap_size.c",
+      "sha256": "f642e9c8e89121b3c379535996cb78d8a7fa0626ef8351d7b00c1824dcdb1dbe",
+      "licence": "MIT OR NCSA (Emscripten)"
+    }
+  ]
+}

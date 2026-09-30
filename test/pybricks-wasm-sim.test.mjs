@@ -57,9 +57,13 @@ test('shipped assets match their provenance record', () => {
     assert.equal(provenance.provenance_review.old_replacement_compiled, false);
     const notices = readFileSync(resolve(assetDir, '../licenses/pybricks-micropython.MIT.txt'), 'utf8');
     for (const holder of ['British Broadcasting Corporation', 'Tilen MAJERLE',
-        'Swedish Institute of Computer Science', 'LEGO System A/S', 'Mbed TLS Contributors']) {
+        'Swedish Institute of Computer Science', 'LEGO System A/S', 'Mbed TLS Contributors',
+        'Sun Microsystems', 'Arm Limited', 'Doug Lea']) {
         assert.ok(notices.includes(holder), `offline simulator notices omit ${holder}`);
     }
+    assert.ok(notices.includes('software is freely granted, provided that this notice'));
+    const runtime = provenance.runtime_archive_review;
+    assert.equal(runtime.wasm_sha256, provenance.assets['pybricks-hub.wasm'].sha256);
     for (const input of provenance.licence_gate.inputs) {
         for (const raw of input.copyright) {
             const declaration = raw.replace(/^\s*(?:\/\/|\*)\s*/, '');

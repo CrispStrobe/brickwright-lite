@@ -156,6 +156,7 @@ json.dump({
     "not_included": ["pybricks/util_mp/pb_kwarg_helper.h", "pybricks/iodevices/pb_type_iodevices_xbox_controller.c", "lib/btstack", "lib/ble5stack", "lib/BlueNRG-MS", "lib/STM32_USB_Device_Library",
                      "lib/umm_malloc", "lib/lsm6ds3tr_c_STdC", "lib/tiam1808", "LEGO firmware", "TI Bluetooth patch"],
     "licence_gate": gate,
+    "runtime_archive_review": json.load(open("$WASM_DIR/runtime-inputs.json")),
     "assets": {
         "pybricks-hub.js": {"sha256": "$js_sha"},
         "pybricks-hub.wasm": {"sha256": "$wasm_sha"},

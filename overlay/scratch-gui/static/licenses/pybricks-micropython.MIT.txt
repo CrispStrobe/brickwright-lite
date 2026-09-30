@@ -869,6 +869,188 @@ THE SOFTWARE.
 
 
 
+=== Linked runtime source notices (generated) ===
+
+Pinned Emscripten 6.0.6 runtime source notices; see firmware/pybricks-wasm/runtime-inputs.json.
+
+  system/lib/libc/musl/src/math/__cosdf.c
+  system/lib/libc/musl/src/math/__rem_pio2f.c
+  system/lib/libc/musl/src/math/__sindf.c
+  system/lib/libc/musl/src/math/acosf.c
+  system/lib/libc/musl/src/math/asinf.c
+  system/lib/libc/musl/src/math/atan2f.c
+  system/lib/libc/musl/src/math/atanf.c
+  system/lib/libc/musl/src/math/cosf.c
+  system/lib/libc/musl/src/math/sinf.c
+  system/lib/libc/musl/src/math/tanf.c
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunPro, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+  system/lib/libc/musl/src/math/__rem_pio2_large.c
+/*
+ * ====================================================
+ * Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+ *
+ * Developed at SunSoft, a Sun Microsystems, Inc. business.
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+  system/lib/libc/musl/src/math/__tandf.c
+/*
+ * ====================================================
+ * Copyright 2004 Sun Microsystems, Inc.  All Rights Reserved.
+ *
+ * Permission to use, copy, modify, and distribute this
+ * software is freely granted, provided that this notice
+ * is preserved.
+ * ====================================================
+ */
+
+  system/lib/libc/musl/src/math/powf.c
+/*
+ * Copyright (c) 2017-2018, Arm Limited.
+ * SPDX-License-Identifier: MIT
+ */
+
+  system/lib/compiler-rt/emscripten_exception_builtins.c
+/*
+ * Copyright 2018 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * Support functions for emscripten setjmp/longjmp and exception handling
+ * support. References to the things below are generated in the LLVM backend.
+ * See: https://llvm.org/doxygen/WebAssemblyLowerEmscriptenEHSjLj_8cpp.html
+ */
+
+  system/lib/libc/sbrk.c
+/*
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+*/
+
+  system/lib/pthread/library_pthread_stub.c
+/*
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+  system/lib/libc/emscripten_scan_stack.c
+/*
+ * Copyright 2020 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+  system/lib/libc/emscripten_syscall_stubs.c
+/*
+ * Copyright 2021 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * Unimplemented/dummy syscall implementations. These fall into 3 categories.
+ *
+ * 1. Fake it, use dummy/placeholder values and return success.
+ * 2. Fake it, as above but warn at runtime if called.
+ * 3. Return ENOSYS and warn at runtime if called.
+ */
+
+  system/lib/libc/emscripten_get_heap_size.c
+  system/lib/libc/pthread_sigmask.c
+  system/lib/libc/raise.c
+  system/lib/libc/sigaction.c
+  system/lib/pthread/pthread_self_stub.c
+/*
+ * Copyright 2021 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+  system/lib/libc/emscripten_yield_stub.c
+/*
+ * Copyright 2026 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+  system/lib/libc/musl/src/math/logf_data.c
+/*
+ * Data definition for logf.
+ *
+ * Copyright (c) 2017-2018, Arm Limited.
+ * SPDX-License-Identifier: MIT
+ */
+
+  system/lib/libc/musl/src/math/powf_data.c
+/*
+ * Data definition for powf.
+ *
+ * Copyright (c) 2017-2018, Arm Limited.
+ * SPDX-License-Identifier: MIT
+ */
+
+  system/lib/libc/musl/src/math/exp2f_data.c
+/*
+ * Shared data between expf, exp2f and powf.
+ *
+ * Copyright (c) 2017-2018, Arm Limited.
+ * SPDX-License-Identifier: MIT
+ */
+
+  system/lib/libc/musl/src/math/expf.c
+/*
+ * Single-precision e^x function.
+ *
+ * Copyright (c) 2017-2018, Arm Limited.
+ * SPDX-License-Identifier: MIT
+ */
+
+  system/lib/libc/musl/src/math/logf.c
+/*
+ * Single-precision log function.
+ *
+ * Copyright (c) 2017-2018, Arm Limited.
+ * SPDX-License-Identifier: MIT
+ */
+
+  system/lib/dlmalloc.c
+/*
+ This is a version (aka dlmalloc) of malloc/free/realloc written by
+ Doug Lea and released to the public domain, as explained at
+ http://creativecommons.org/publicdomain/zero/1.0/ Send questions,
+ comments, complaints, performance data, etc to dl@cs.oswego.edu
+ */
+
+  system/lib/compiler-rt/emscripten_setjmp.c
+/*
+* Copyright 2020 The Emscripten Authors.  All rights reserved.
+* Emscripten is available under two separate licenses, the MIT license and the
+* University of Illinois/NCSA Open Source License.  Both these licenses can be
+* found in the LICENSE file.
+*/
+
+
 === Compiler input copyright declarations (generated) ===
 
 The full licence texts above accompany these file-level notices.

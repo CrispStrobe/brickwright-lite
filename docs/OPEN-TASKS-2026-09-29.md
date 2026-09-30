@@ -245,3 +245,35 @@ uses the prepared source, escaped exact test names and a 30-second timeout.
 Replay component tests with `python3 firmware/pybricks-wasm/verify_contracts.py`;
 archived access records remain unchanged. After restoring the shipped assets,
 the final simulator, About-data and notice checks pass again.
+
+
+## Shipped WASM licence recheck — 2026-09-30
+
+The repeated compiler-dependency gate matches the shipped manifest exactly:
+580 application inputs and 55 toolchain headers. The shipped WASM remains
+SHA-256 `84e022bbfede2ad7fd397e0176e9cfc25d55270872a7466c8f29031d65be8133`.
+A separate `--trace` relink produced the identical WASM and identified 90
+selected members from libc, compiler-rt builtins, dlmalloc and syscall stubs
+(before garbage collection, thus a conservative superset of final runtime
+code). All 90 were mapped to pinned toolchain sources and their notices
+reviewed. Their source/archive hashes and grants are recorded in
+`firmware/pybricks-wasm/runtime-inputs.json` and shipped PROVENANCE.json.
+
+No non-permissive compiled input was identified. Besides MIT/BSD/Apache,
+linked runtime terms include Sun/fdlibm notice-preservation grants, NCSA,
+LLVM exceptions and public-domain/CC0 dlmalloc. The offline notice bundle
+had omitted individual Sun/fdlibm grants and some runtime copyright notices;
+these are now retained by bundle_notices.py, with runtime source hashes
+verified on generation. The runtime inventory is artifact-specific, not
+a dynamic gate proving the linkage of arbitrary future build changes.
+
+The remaining Stack Overflow question reference in MicroPython readline.c
+concerns an MSVC-only warning pragma. Actual WASM preprocessing excludes
+that branch. The Contiki-derived scheduler's “all rights reserved” phrase
+is followed by the complete BSD-3-Clause grant. Neither is an identified
+non-permissive compiled component.
+
+Validation: 11 simulator tests and five About-data tests passed; repeated
+notice generation is byte-identical. Two unrelated format-knowledge notice
+tests could not run because bw-circuit-ui is not installed in this worktree.
+WASM and loader bytes are unchanged by this notice/inventory correction.
