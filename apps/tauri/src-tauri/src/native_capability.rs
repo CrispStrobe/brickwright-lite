@@ -143,6 +143,18 @@ fn execute(
             ev3()?;
             debugger.state().map(|value| value.to_string())
         }
+        Operation::RenodeEv3ButtonSet => {
+            ev3()?;
+            debugger
+                .ev3_input("ev3.button.set", args.clone())
+                .map(|value| value.to_string())
+        }
+        Operation::RenodeEv3AnalogSet => {
+            ev3()?;
+            debugger
+                .ev3_input("ev3.analog.set-channel", args.clone())
+                .map(|value| value.to_string())
+        }
         Operation::RenodeEv3BreakpointSet => {
             ev3()?;
             debugger

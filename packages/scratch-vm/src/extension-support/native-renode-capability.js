@@ -21,6 +21,8 @@ const OPERATIONS = Object.freeze({
     ev3Registers: 'renode.ev3.registers.read',
     ev3Memory: 'renode.ev3.memory.read',
     ev3State: 'renode.ev3.state.read',
+    ev3Button: 'renode.ev3.button.set',
+    ev3Analog: 'renode.ev3.analog.set-channel',
     ev3SetBreakpoint: 'renode.ev3.breakpoint.set',
     ev3ClearBreakpoint: 'renode.ev3.breakpoint.clear'
 });

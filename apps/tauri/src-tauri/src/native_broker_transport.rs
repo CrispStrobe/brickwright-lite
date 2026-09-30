@@ -106,6 +106,7 @@ struct Pending {
     request_id: u64,
     deadline: u64,
     expected: ReplyKind,
+    ev3_state_reply: bool,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -163,6 +164,11 @@ enum EditorRequest {
 }
 
 impl EditorRequest {
+    fn ev3_state_reply(&self) -> bool {
+        matches!(self, Self::Capability { operation, .. } if matches!(operation.as_str(),
+            "renode.ev3.state.read" | "renode.ev3.button.set" | "renode.ev3.analog.set-channel"))
+    }
+
     fn expected(&self) -> ReplyKind {
         match self {
             Self::Load { .. } => ReplyKind::Load,
@@ -273,6 +279,14 @@ impl BrokerTransportCore {
     }
 
     fn validate_value(&self, value: &Value) -> Result<(), RelayError> {
+        self.validate_value_with_limits(value, self.limits)
+    }
+
+    fn validate_value_with_limits(
+        &self,
+        value: &Value,
+        limits: RelayLimits,
+    ) -> Result<(), RelayError> {
         fn walk(
             value: &Value,
             depth: usize,
@@ -300,7 +314,7 @@ impl BrokerTransportCore {
                 }),
             }
         }
-        walk(value, 0, &mut 0, self.limits)
+        walk(value, 0, &mut 0, limits)
     }
 
     fn parse_strict(&self, payload: &[u8]) -> Result<Value, RelayError> {
@@ -417,9 +431,13 @@ impl BrokerTransportCore {
         Ok((request, canonical))
     }
 
-    fn decode_reply(&self, payload: &[u8]) -> Result<(BrokerReply, String), RelayError> {
+    fn decode_reply(
+        &self,
+        payload: &[u8],
+        limits: RelayLimits,
+    ) -> Result<(BrokerReply, String), RelayError> {
         let parsed = self.parse_strict(payload)?;
-        self.validate_value(&parsed)?;
+        self.validate_value_with_limits(&parsed, limits)?;
         let reply: BrokerReply =
             serde_json::from_value(parsed).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
         match &reply {
@@ -444,7 +462,7 @@ impl BrokerTransportCore {
         }
         let value =
             serde_json::to_value(&reply).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
-        self.validate_value(&value)?;
+        self.validate_value_with_limits(&value, limits)?;
         let canonical =
             serde_json::to_string(&reply).map_err(|_| refuse(RelayErrorCode::InvalidRequest))?;
         Ok((reply, canonical))
@@ -580,6 +598,7 @@ impl BrokerTransportCore {
                 request_id,
                 deadline,
                 expected: typed_request.expected(),
+                ev3_state_reply: typed_request.ev3_state_reply(),
             },
         );
         state.used_correlations.insert(correlation.clone());
@@ -604,15 +623,11 @@ impl BrokerTransportCore {
             return Err(refuse(RelayErrorCode::WrongCaller));
         }
         self.observe_now(now)?;
-        if payload.len() > self.limits.max_payload_bytes {
-            return Err(refuse(RelayErrorCode::PayloadTooLarge));
-        }
-        let (typed_reply, payload) = self.decode_reply(payload)?;
         let id = SessionId::parse(session)?;
         let correlation = CorrelationId::parse(correlation)?;
         let state = self
             .sessions
-            .get_mut(&id)
+            .get(&id)
             .ok_or_else(|| refuse(RelayErrorCode::InvalidSession))?;
         if now >= state.deadline {
             return Err(refuse(RelayErrorCode::Expired));
@@ -627,12 +642,28 @@ impl BrokerTransportCore {
         if request_id != pending.request_id || request_id > JS_MAX_SAFE_INTEGER {
             return Err(refuse(RelayErrorCode::InvalidRequest));
         }
+        // Full EV3 framebuffer snapshots are larger than ordinary broker
+        // strings. Only these exact correlated outbound operations get this
+        // allowance; inbound requests and every other response stay unchanged.
+        let mut reply_limits = self.limits;
+        if pending.ev3_state_reply {
+            reply_limits.max_payload_bytes = 272 * 1024;
+            reply_limits.max_string_bytes = 256 * 1024;
+        }
+        if payload.len() > reply_limits.max_payload_bytes {
+            return Err(refuse(RelayErrorCode::PayloadTooLarge));
+        }
+        let expected = pending.expected;
+        let (typed_reply, payload) = self.decode_reply(payload, reply_limits)?;
         // Wrong/reflected kinds leave pending intact for one correct, bounded retry.
-        if typed_reply.kind() != pending.expected {
+        if typed_reply.kind() != expected {
             return Err(refuse(RelayErrorCode::InvalidRequest));
         }
-        let request_id = pending.request_id;
-        state.pending.remove(&correlation);
+        self.sessions
+            .get_mut(&id)
+            .expect("validated session")
+            .pending
+            .remove(&correlation);
         Ok(Reply {
             request_id,
             payload,
@@ -822,11 +853,122 @@ mod tests {
     const CALL: &[u8] =
         br#"{"kind":"call","worker_id":0,"extension_id":0,"method":"probe","args":{"x":1}}"#;
     const TERMINATE: &[u8] = br#"{"kind":"terminate","worker_id":0}"#;
-    const CAPABILITY: &[u8] = br#"{"kind":"capability","operation":"platform.kind.read","args":{}}"#;
+    const CAPABILITY: &[u8] =
+        br#"{"kind":"capability","operation":"platform.kind.read","args":{}}"#;
     const CAPABILITY_REPLY: &[u8] = br#"{"kind":"capability","result":"linux"}"#;
     const LOAD_REPLY: &[u8] = br#"{"kind":"load","worker_id":0,"extension_ids":[0]}"#;
     const CALL_REPLY: &[u8] = br#"{"kind":"call","result":{"ok":true}}"#;
     const TERMINATE_REPLY: &[u8] = br#"{"kind":"terminate","terminated":true}"#;
+
+    #[test]
+    fn full_ev3_frame_has_only_correlated_outbound_allowance() {
+        let snapshot = serde_json::json!({"target":{"board":"ev3"},
+            "display":{"width":178,"height":128,"pixels":vec![255;178*128]}})
+        .to_string();
+        let reply = serde_json::json!({"kind":"capability","result":snapshot}).to_string();
+        assert!(reply.len() > 65_536);
+        for (index, operation) in [
+            "renode.ev3.state.read",
+            "renode.ev3.button.set",
+            "renode.ev3.analog.set-channel",
+        ]
+        .iter()
+        .enumerate()
+        {
+            let mut core = BrokerTransportCore::new(limits()).unwrap();
+            let session = session(&mut core, 1);
+            let request = serde_json::json!({"kind":"capability","operation":operation,"args":{}})
+                .to_string();
+            let delivery = core
+                .request(
+                    MAIN_LABEL,
+                    session.as_str(),
+                    0,
+                    request.as_bytes(),
+                    0,
+                    rng(11),
+                )
+                .unwrap();
+            assert!(core
+                .reply(
+                    MAIN_LABEL,
+                    session.as_str(),
+                    delivery.correlation.as_str(),
+                    0,
+                    reply.as_bytes(),
+                    0
+                )
+                .is_err());
+            let oversized =
+                serde_json::json!({"kind":"capability","result":"x".repeat(256*1024+1)})
+                    .to_string();
+            assert_eq!(
+                core.reply(
+                    BROKER_LABEL,
+                    session.as_str(),
+                    delivery.correlation.as_str(),
+                    0,
+                    oversized.as_bytes(),
+                    0
+                )
+                .unwrap_err()
+                .code,
+                RelayErrorCode::PayloadTooLarge
+            );
+            let result = core
+                .reply(
+                    BROKER_LABEL,
+                    session.as_str(),
+                    delivery.correlation.as_str(),
+                    0,
+                    reply.as_bytes(),
+                    0,
+                )
+                .unwrap();
+            assert_eq!(result.request_id, 0, "operation {index}");
+            assert!(core
+                .reply(
+                    BROKER_LABEL,
+                    session.as_str(),
+                    delivery.correlation.as_str(),
+                    0,
+                    reply.as_bytes(),
+                    0
+                )
+                .is_err());
+        }
+        let mut core = BrokerTransportCore::new(limits()).unwrap();
+        let session = session(&mut core, 1);
+        let delivery = core
+            .request(MAIN_LABEL, session.as_str(), 0, CAPABILITY, 0, rng(11))
+            .unwrap();
+        assert_eq!(
+            core.reply(
+                BROKER_LABEL,
+                session.as_str(),
+                delivery.correlation.as_str(),
+                0,
+                reply.as_bytes(),
+                0
+            )
+            .unwrap_err()
+            .code,
+            RelayErrorCode::PayloadTooLarge
+        );
+        assert_eq!(
+            core.request(
+                MAIN_LABEL,
+                session.as_str(),
+                1,
+                reply.as_bytes(),
+                0,
+                rng(12)
+            )
+            .unwrap_err()
+            .code,
+            RelayErrorCode::PayloadTooLarge
+        );
+    }
     fn session(core: &mut BrokerTransportCore, byte: u8) -> SessionId {
         core.open_session(MAIN_LABEL, 0, rng(byte)).unwrap()
     }
@@ -1095,14 +1237,28 @@ mod tests {
 
         // A worker-shaped reply must not answer it, and must not consume the pending request.
         assert_eq!(
-            c.reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CALL_REPLY, 1)
-                .unwrap_err()
-                .code,
+            c.reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                CALL_REPLY,
+                1
+            )
+            .unwrap_err()
+            .code,
             RelayErrorCode::InvalidRequest
         );
         // Still pending, so the correct reply is still accepted afterwards.
         assert!(c
-            .reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CAPABILITY_REPLY, 1)
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                CAPABILITY_REPLY,
+                1
+            )
             .is_ok());
     }
 
@@ -1116,13 +1272,27 @@ mod tests {
             .request(MAIN_LABEL, s.as_str(), 0, CALL, 0, rng(73))
             .unwrap();
         assert_eq!(
-            c.reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CAPABILITY_REPLY, 1)
-                .unwrap_err()
-                .code,
+            c.reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                CAPABILITY_REPLY,
+                1
+            )
+            .unwrap_err()
+            .code,
             RelayErrorCode::InvalidRequest
         );
         assert!(c
-            .reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0, CALL_REPLY, 1)
+            .reply(
+                BROKER_LABEL,
+                s.as_str(),
+                d.correlation.as_str(),
+                0,
+                CALL_REPLY,
+                1
+            )
             .is_ok());
     }
 

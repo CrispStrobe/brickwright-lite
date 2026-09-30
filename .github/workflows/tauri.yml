@@ -312,10 +312,13 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi
-          renode/build.sh --net --no-gui --external-lib-only
-          renode/build.sh --net --no-gui --skip-fetch
-          cd renode/tests/platforms/SPIKE_Prime
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev
+          cd renode
+          ./build.sh --net --no-gui --external-lib-only
+          ./build.sh --net --no-gui --skip-fetch
+          cd tests/platforms/SPIKE_Prime
           arm-none-eabi-gcc -mcpu=cortex-m4 -mthumb -nostdlib \
             -Wl,-T,stm32f413-throughput.ld -o stm32f413-throughput.elf \
             stm32f413-throughput.S
@@ -386,7 +389,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: CrispStrobe/renode-spike-prime
-          ref: 06d86c517d2d295745748833171906176aa8dd54
+          ref: e0e38e7a87072dc6e1dcf4f2718678f4350de423
           path: renode
           submodules: recursive
           fetch-depth: 1
@@ -401,12 +404,17 @@ jobs:
         shell: bash
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi
-          renode/build.sh --net --no-gui --external-lib-only
-          renode/build.sh --net --no-gui --skip-fetch
-          cd renode/tests/platforms/LEGO_EV3
-          arm-none-eabi-gcc -mcpu=arm926ej-s -nostdlib \
-            -Wl,-T,am1808-smoke.ld -o am1808-smoke.elf am1808-smoke.S
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi \
+            libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev \
+            libayatana-appindicator3-dev patchelf libdbus-1-dev libudev-dev
+          cd renode
+          ./build.sh --net --no-gui --external-lib-only
+          ./build.sh --net --no-gui --skip-fetch
+          cd tests/platforms/LEGO_EV3
+          for guest in am1808-smoke am1808-motor-smoke; do
+            arm-none-eabi-gcc -mcpu=arm926ej-s -nostdlib \
+              -Wl,-T,am1808-smoke.ld -o "$guest.elf" "$guest.S"
+          done
           test "$(arm-none-eabi-readelf -h am1808-smoke.elf | awk '/Entry point/{print $4}')" = 0xffff0000
 
       - name: Export exact EV3 Renode package pins
@@ -416,6 +424,8 @@ jobs:
           executable="$root/renode"
           platform="$root/platforms/boards/lego-ev3.repl"
           firmware="$root/tests/platforms/LEGO_EV3/am1808-smoke.elf"
+          state_script="$root/scripts/spike-state-server.py"
+          state_config="$root/contracts/brick-state/renode-ev3.example.json"
           {
             echo "BW_RENODE_EXECUTABLE=$executable"
             echo "BW_RENODE_SHA256=$(sha256sum "$executable" | awk '{print $1}')"
@@ -424,6 +434,10 @@ jobs:
             echo "BW_RENODE_EV3_PLATFORM_SHA256=$(sha256sum "$platform" | awk '{print $1}')"
             echo "BW_RENODE_EV3_FIRMWARE=$firmware"
             echo "BW_RENODE_EV3_FIRMWARE_SHA256=$(sha256sum "$firmware" | awk '{print $1}')"
+            echo "BW_RENODE_EV3_STATE_SCRIPT=$state_script"
+            echo "BW_RENODE_EV3_STATE_SCRIPT_SHA256=$(sha256sum "$state_script" | awk '{print $1}')"
+            echo "BW_RENODE_EV3_STATE_CONFIG=$state_config"
+            echo "BW_RENODE_EV3_STATE_CONFIG_SHA256=$(sha256sum "$state_config" | awk '{print $1}')"
           } >> "$GITHUB_ENV"
 
       - name: Drive the complete Lite EV3 semantic debugger contract
@@ -434,15 +448,28 @@ jobs:
             renode_debugger::tests::packaged_ev3_session_drives_the_complete_cpu_and_evidence_contract \
             -- --ignored --exact --nocapture
 
+      - name: Observe all four guest-driven motors through the Lite debugger
+        shell: bash
+        run: |
+          export BW_RENODE_EV3_FIRMWARE="$GITHUB_WORKSPACE/renode/tests/platforms/LEGO_EV3/am1808-motor-smoke.elf"
+          export BW_RENODE_EV3_FIRMWARE_SHA256="$(sha256sum "$BW_RENODE_EV3_FIRMWARE" | awk '{print $1}')"
+          cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib \
+            renode_debugger::tests::packaged_ev3_motor_guest_drives_observed_motion_and_inputs \
+            -- --ignored --exact --nocapture
+          echo "BW_RENODE_EV3_MOTOR_FIRMWARE_SHA256=$BW_RENODE_EV3_FIRMWARE_SHA256" >> "$GITHUB_ENV"
+
       - name: Write immutable EV3 integration receipt
         shell: bash
         run: |
           jq -n \
             --arg lite "$GITHUB_SHA" \
-            --arg renode "06d86c517d2d295745748833171906176aa8dd54" \
+            --arg renode "e0e38e7a87072dc6e1dcf4f2718678f4350de423" \
             --arg firmware_sha256 "$BW_RENODE_EV3_FIRMWARE_SHA256" \
+            --arg motor_firmware_sha256 "$BW_RENODE_EV3_MOTOR_FIRMWARE_SHA256" \
+            --arg state_script_sha256 "$BW_RENODE_EV3_STATE_SCRIPT_SHA256" \
+            --arg state_config_sha256 "$BW_RENODE_EV3_STATE_CONFIG_SHA256" \
             --arg uart "EV3 ARM9 IRQ" \
-            '{schema:1,target:"ev3",architecture:"arm926ej-s",lite_commit:$lite,renode_commit:$renode,firmware_sha256:$firmware_sha256,operations:["start","registers-cpsr","memory","breakpoint-set-arm32","breakpoint-clear-arm32","step","run","pause","state","reset","close"],evidence:{uart:$uart,aintc_irq_53_acknowledged:true},result:"pass"}' \
+            '{schema:1,target:"ev3",architecture:"arm926ej-s",lite_commit:$lite,renode_commit:$renode,firmware_sha256:$firmware_sha256,motor_firmware_sha256:$motor_firmware_sha256,state_script_sha256:$state_script_sha256,state_config_sha256:$state_config_sha256,operations:["start","registers-cpsr","memory","breakpoint-set-arm32","breakpoint-clear-arm32","step","run","pause","state","button-press-release","analog-set-channel","analog-bounds-rejection","reset","close"],evidence:{uart:$uart,aintc_irq_53_acknowledged:true,display_width:178,display_height:128,display_samples:22784,motor_ports:["A","B","C","D"],all_motor_edges_positive:true,motor_direction:1,motor_duty_cycle:0.5,adc_channels:16,analog_channel_3:777},result:"pass"}' \
             > ev3-renode-e2e.json
           cat ev3-renode-e2e.json >> "$GITHUB_STEP_SUMMARY"
 

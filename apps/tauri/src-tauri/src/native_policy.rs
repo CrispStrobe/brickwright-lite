@@ -89,6 +89,8 @@ impl NativePolicyState {
                 (Operation::RenodeEv3RegistersRead, Resource::RenodeEv3),
                 (Operation::RenodeEv3MemoryRead, Resource::RenodeEv3),
                 (Operation::RenodeEv3StateRead, Resource::RenodeEv3),
+                (Operation::RenodeEv3ButtonSet, Resource::RenodeEv3),
+                (Operation::RenodeEv3AnalogSet, Resource::RenodeEv3),
                 (Operation::RenodeEv3BreakpointSet, Resource::RenodeEv3),
                 (Operation::RenodeEv3BreakpointClear, Resource::RenodeEv3),
             ],
@@ -176,6 +178,8 @@ pub(crate) enum Operation {
     RenodeEv3RegistersRead,
     RenodeEv3MemoryRead,
     RenodeEv3StateRead,
+    RenodeEv3ButtonSet,
+    RenodeEv3AnalogSet,
     RenodeEv3BreakpointSet,
     RenodeEv3BreakpointClear,
 }
@@ -204,6 +208,8 @@ impl Operation {
             "renode.ev3.registers.read" => Some(Self::RenodeEv3RegistersRead),
             "renode.ev3.memory.read" => Some(Self::RenodeEv3MemoryRead),
             "renode.ev3.state.read" => Some(Self::RenodeEv3StateRead),
+            "renode.ev3.button.set" => Some(Self::RenodeEv3ButtonSet),
+            "renode.ev3.analog.set-channel" => Some(Self::RenodeEv3AnalogSet),
             "renode.ev3.breakpoint.set" => Some(Self::RenodeEv3BreakpointSet),
             "renode.ev3.breakpoint.clear" => Some(Self::RenodeEv3BreakpointClear),
             _ => None,
@@ -215,6 +221,24 @@ impl Operation {
             return false;
         };
         match self {
+            Self::RenodeEv3ButtonSet => {
+                map.len() == 2
+                    && map.get("button").and_then(Value::as_str).is_some_and(|v| {
+                        matches!(v, "center" | "left" | "back" | "right" | "down" | "up")
+                    })
+                    && map.get("pressed").and_then(Value::as_bool).is_some()
+            }
+            Self::RenodeEv3AnalogSet => {
+                map.len() == 2
+                    && map
+                        .get("channel")
+                        .and_then(Value::as_u64)
+                        .is_some_and(|v| v <= 15)
+                    && map
+                        .get("value")
+                        .and_then(Value::as_u64)
+                        .is_some_and(|v| v <= 1023)
+            }
             Self::RenodeSpikeMemoryRead | Self::RenodeEv3MemoryRead => {
                 map.len() == 2
                     && map
@@ -407,6 +431,8 @@ impl RedactedAuditRow {
                 Operation::RenodeEv3RegistersRead => "renode.ev3.registers.read",
                 Operation::RenodeEv3MemoryRead => "renode.ev3.memory.read",
                 Operation::RenodeEv3StateRead => "renode.ev3.state.read",
+                Operation::RenodeEv3ButtonSet => "renode.ev3.button.set",
+                Operation::RenodeEv3AnalogSet => "renode.ev3.analog.set-channel",
                 Operation::RenodeEv3BreakpointSet => "renode.ev3.breakpoint.set",
                 Operation::RenodeEv3BreakpointClear => "renode.ev3.breakpoint.clear",
             }),
@@ -859,6 +885,22 @@ mod tests {
 
     #[test]
     fn debugger_argument_shapes_are_exact_and_bounded_for_both_targets() {
+        assert!(
+            Operation::RenodeEv3ButtonSet.valid_args(&json!({"button":"center","pressed":true}))
+        );
+        assert!(Operation::RenodeEv3AnalogSet.valid_args(&json!({"channel":15,"value":1023})));
+        for args in [
+            json!({"channel":16,"value":0}),
+            json!({"channel":true,"value":0}),
+            json!({"channel":0,"value":1024}),
+            json!({"channel":0,"value":0,"code":"eval"}),
+        ] {
+            assert!(!Operation::RenodeEv3AnalogSet.valid_args(&args));
+        }
+        assert!(
+            !Operation::RenodeEv3ButtonSet.valid_args(&json!({"button":"sysbus","pressed":true}))
+        );
+        assert!(!Operation::RenodeEv3ButtonSet.valid_args(&json!({"button":"center","pressed":1})));
         assert!(Operation::RenodeSpikeMemoryRead.valid_args(&json!({"address": 0, "length": 1})));
         assert!(Operation::RenodeSpikeBreakpointSet.valid_args(&json!({"address": u32::MAX})));
         for args in [

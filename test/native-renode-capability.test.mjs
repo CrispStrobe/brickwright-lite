@@ -41,6 +41,8 @@ test('Renode debugger operations use the broker transport and share an ordered s
         [OPERATIONS.ev3Start, {}], [OPERATIONS.ev3Run, {}], [OPERATIONS.ev3Pause, {}],
         [OPERATIONS.ev3Reset, {}], [OPERATIONS.ev3Step, {}], [OPERATIONS.ev3Registers, {}],
         [OPERATIONS.ev3Memory, {address: 0xffff0000, length: 32}], [OPERATIONS.ev3State, {}],
+        [OPERATIONS.ev3Button, {button: 'center', pressed: true}],
+        [OPERATIONS.ev3Analog, {channel: 3, value: 777}],
         [OPERATIONS.ev3SetBreakpoint, {address: 0xffff0040}],
         [OPERATIONS.ev3ClearBreakpoint, {address: 0xffff0040}], [OPERATIONS.ev3Close, {}]
     ];
