@@ -1,0 +1,6 @@
+MUTANT matrix: KILLED — failing tests:
+    light matrix: pixels the program sets are the pixels the page reads
+MUTANT motor: KILLED — failing tests:
+    motor: run_target moves the simulated shaft to the target and angle() reads it back
+MUTANT distance: KILLED — failing tests:
+    sensor: a program waiting on the distance sensor wakes when the page changes it

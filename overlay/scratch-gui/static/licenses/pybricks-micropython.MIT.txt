@@ -1,36 +1,22 @@
-Pybricks MicroPython, compiled to WebAssembly for the Brickwright SPIKE Prime simulator
-(static/pybricks-sim/pybricks-hub.wasm). Built from pybricks-micropython v4.0.1,
-commit 4104553405decb0384bcfb030fbfcb4b5a9854cc, and its MicroPython submodule,
-commit 13580b6ad057173f62e8b2363e01d6851bcc6699. Recipe: build-pybricks-wasm.sh.
+Pybricks MicroPython / Brickwright SPIKE Prime WebAssembly simulator
+Pinned Pybricks v4.0.1: 4104553405decb0384bcfb030fbfcb4b5a9854cc
+Pinned MicroPython: 13580b6ad057173f62e8b2363e01d6851bcc6699
+Build recipe: build-pybricks-wasm.sh; compiler input manifest: PROVENANCE.json.
 
-This build contains NO BTstack, no other Bluetooth stack, no vendor HAL and no
-file from MicroPython's lib/ directory; build-pybricks-wasm.sh checks the licence
-of every file the compiler read (firmware/pybricks-wasm/licence_gate.py).
-Argument-header provenance review, 2026-09-30:
-The previous MIT-only / clean-room claim for the replacement of
-pybricks/util_mp/pb_kwarg_helper.h is unverified and is withdrawn pending
-review. The existing wasm bytes are unchanged. The overlay source changed
-only in notices after that build. Rebuilds under the permissive policy are held.
+The prepared build excludes the argument helper and non-free Xbox module.
+Argument callers use explicit MicroPython APIs. Two cited numeric snippets
+are removed and replaced by BSD-3-Clause contract-only components.
+The new components have separate recorded implementation inputs and tests.
+The earlier PR #508 authorship assertion remains unverified; the earlier
+replacement is not used in this build. Historical evidence stays in the audit
+repository, outside the shipped payload.
 
-Original notice retained conservatively:
-Copyright (c) 2018-2020 The Pybricks Authors
-The Pybricks Authors include Laurens Valk, David Lechner and LEGO System A/S.
-Original source:
-https://github.com/pybricks/pybricks-micropython/blob/4104553405decb0384bcfb030fbfcb4b5a9854cc/pybricks/util_mp/pb_kwarg_helper.h
-Upstream credits gratzdhg (argument counting):
-https://stackoverflow.com/a/50371430
-and Marvin (variadic iteration):
-https://stackoverflow.com/a/11994395
-The macro implementation was replaced in September 2026; attribution and the
-original MIT and CC-BY-SA-4.0 terms were restored conservatively on 2026-09-30.
-https://creativecommons.org/licenses/by-sa/4.0/
-Full CC-BY-SA-4.0 text is bundled as static/licenses/CC-BY-SA-4.0.txt.
-These notices do not establish derivation or clearance for redistribution.
-
-The separate pbio_int_math_mult_then_div() stand-in declares BSD-3-Clause,
-Copyright (c) 2026 Brickwright contributors. Its authorship assertion has not
-been independently audited here. No blanket absence of share-alike terms is
-asserted for the simulator.
+Permissive source components: Pybricks / MicroPython (MIT), lwrb (MIT), BBC
+light-matrix font (MIT), LEGO control code (BSD-3-Clause), Contiki-derived
+scheduler (BSD-3-Clause), Brickwright components (BSD-3-Clause). Emscripten,
+musl and compiler-rt notices are included below. No Bluetooth stacks,
+hardware vendor HALs or GPL/MPL NXT/EV3 drivers enter this simulator build.
+This statement concerns this simulator, not every other Brickwright component.
 
 === pybricks-micropython ===
 
@@ -92,3 +78,1848 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+
+=== lwrb ===
+
+MIT License
+
+Copyright (c) 2020 Tilen MAJERLE
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+=== BBC light-matrix font ===
+
+The MIT License (MIT)
+
+Copyright (c) 2016 British Broadcasting Corporation.
+This software is provided by Lancaster University by arrangement with the BBC.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+
+=== Contiki-derived scheduler / The Pybricks Authors (2025) ===
+
+Copyright (c) 2004-2005, Swedish Institute of Computer Science.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. Neither the name of the Institute nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE INSTITUTE AND CONTRIBUTORS ``AS IS'' AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE INSTITUTE OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUASYNCION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+Author: Adam Dunkels <adam@sics.se>
+
+Implementation of local continuations based on switch() statement
+
+This implementation of local continuations uses the C switch()
+statement to resume execution of a function somewhere inside the
+function's body. The implementation is based on the fact that
+switch() statements are able to jump directly into the bodies of
+control structures such as if() or while() statements.
+
+This implementation borrows heavily from Simon Tatham's coroutines
+implementation in C:
+http://www.chiark.greenend.org.uk/~sgtatham/coroutines.html
+
+---------------------------------------------------------------------------
+
+The code in this file stems from Contiki's implementation of protothreads as
+listed above. This adaptation changes the API to work better with Pybricks.
+
+Caution: it is conceptually very similar to Contiki but it cannot be used as
+a drop-in replacement.
+
+
+=== LEGO control code ===
+
+BSD 3-Clause License
+
+Copyright (c) 2020-2023 LEGO System A/S
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+=== Brickwright contract-only components ===
+
+BSD 3-Clause License
+
+Copyright (c) 2026 Brickwright contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+=== Emscripten 6.0.6 ===
+
+Emscripten is available under 2 licenses, the MIT license and the
+University of Illinois/NCSA Open Source License.
+
+Both are permissive open source licenses, with little if any
+practical difference between them.
+
+The reason for offering both is that (1) the MIT license is
+well-known, while (2) the University of Illinois/NCSA Open Source
+License allows Emscripten's code to be integrated upstream into
+LLVM, which uses that license, should the opportunity arise.
+
+The full text of both licenses follows.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+==============================================================================
+
+Copyright (c) 2010-2014 Emscripten authors, see AUTHORS file.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal with the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+    Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimers.
+
+    Redistributions in binary form must reproduce the above
+    copyright notice, this list of conditions and the following disclaimers
+    in the documentation and/or other materials provided with the
+    distribution.
+
+    Neither the names of Mozilla,
+    nor the names of its contributors may be used to endorse
+    or promote products derived from this Software without specific prior
+    written permission.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR
+ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE SOFTWARE.
+
+==============================================================================
+
+This program uses portions of Node.js source code located in src/library_path.js,
+in accordance with the terms of the MIT license. Node's license follows:
+
+    """
+        Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        Permission is hereby granted, free of charge, to any person obtaining a copy
+        of this software and associated documentation files (the "Software"), to
+        deal in the Software without restriction, including without limitation the
+        rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        sell copies of the Software, and to permit persons to whom the Software is
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in
+        all copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        IN THE SOFTWARE.
+    """
+
+The musl libc project is bundled in this repo, and it has the MIT license, see
+system/lib/libc/musl/COPYRIGHT
+
+The third_party/ subdirectory contains code with other licenses. None of it is
+used by default, but certain options use it (e.g., the optional closure compiler
+flag will run closure compiler from third_party/).
+
+
+
+
+=== musl libc ===
+
+musl as a whole is licensed under the following standard MIT license:
+
+----------------------------------------------------------------------
+Copyright © 2005-2020 Rich Felker, et al.
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+----------------------------------------------------------------------
+
+Authors/contributors include:
+
+A. Wilcox
+Ada Worcester
+Alex Dowad
+Alex Suykov
+Alexander Monakov
+Andre McCurdy
+Andrew Kelley
+Anthony G. Basile
+Aric Belsito
+Arvid Picciani
+Bartosz Brachaczek
+Benjamin Peterson
+Bobby Bingham
+Boris Brezillon
+Brent Cook
+Chris Spiegel
+Clément Vasseur
+Daniel Micay
+Daniel Sabogal
+Daurnimator
+David Carlier
+David Edelsohn
+Denys Vlasenko
+Dmitry Ivanov
+Dmitry V. Levin
+Drew DeVault
+Emil Renner Berthing
+Fangrui Song
+Felix Fietkau
+Felix Janda
+Gianluca Anzolin
+Hauke Mehrtens
+He X
+Hiltjo Posthuma
+Isaac Dunham
+Jaydeep Patil
+Jens Gustedt
+Jeremy Huntwork
+Jo-Philipp Wich
+Joakim Sindholt
+John Spencer
+Julien Ramseier
+Justin Cormack
+Kaarle Ritvanen
+Khem Raj
+Kylie McClain
+Leah Neukirchen
+Luca Barbato
+Luka Perkov
+Lynn Ochs
+M Farkas-Dyck (Strake)
+Mahesh Bodapati
+Markus Wichmann
+Masanori Ogino
+Michael Clark
+Michael Forney
+Mikhail Kremnyov
+Natanael Copa
+Nicholas J. Kain
+orc
+Pascal Cuoq
+Patrick Oppenlander
+Petr Hosek
+Petr Skocik
+Pierre Carrier
+Reini Urban
+Rich Felker
+Richard Pennington
+Ryan Fairfax
+Samuel Holland
+Segev Finer
+Shiz
+sin
+Solar Designer
+Stefan Kristiansson
+Stefan O'Rear
+Szabolcs Nagy
+Timo Teräs
+Trutz Behn
+Will Dietz
+William Haddon
+William Pitcock
+
+Portions of this software are derived from third-party works licensed
+under terms compatible with the above MIT license:
+
+The TRE regular expression implementation (src/regex/reg* and
+src/regex/tre*) is Copyright © 2001-2008 Ville Laurikari and licensed
+under a 2-clause BSD license (license text in the source files). The
+included version has been heavily modified by Rich Felker in 2012, in
+the interests of size, simplicity, and namespace cleanliness.
+
+Much of the math library code (src/math/* and src/complex/*) is
+Copyright © 1993,2004 Sun Microsystems or
+Copyright © 2003-2011 David Schultz or
+Copyright © 2003-2009 Steven G. Kargl or
+Copyright © 2003-2009 Bruce D. Evans or
+Copyright © 2008 Stephen L. Moshier or
+Copyright © 2017-2018 Arm Limited
+and labelled as such in comments in the individual source files. All
+have been licensed under extremely permissive terms.
+
+The ARM memcpy code (src/string/arm/memcpy.S) is Copyright © 2008
+The Android Open Source Project and is licensed under a two-clause BSD
+license. It was taken from Bionic libc, used on Android.
+
+The AArch64 memcpy and memset code (src/string/aarch64/*) are
+Copyright © 1999-2019, Arm Limited.
+
+The implementation of DES for crypt (src/crypt/crypt_des.c) is
+Copyright © 1994 David Burren. It is licensed under a BSD license.
+
+The implementation of blowfish crypt (src/crypt/crypt_blowfish.c) was
+originally written by Solar Designer and placed into the public
+domain. The code also comes with a fallback permissive license for use
+in jurisdictions that may not recognize the public domain.
+
+The smoothsort implementation (src/stdlib/qsort.c) is Copyright © 2011
+Lynn Ochs and is licensed under an MIT-style license.
+
+The x86_64 port was written by Nicholas J. Kain and is licensed under
+the standard MIT terms.
+
+The mips and microblaze ports were originally written by Richard
+Pennington for use in the ellcc project. The original code was adapted
+by Rich Felker for build system and code conventions during upstream
+integration. It is licensed under the standard MIT terms.
+
+The mips64 port was contributed by Imagination Technologies and is
+licensed under the standard MIT terms.
+
+The powerpc port was also originally written by Richard Pennington,
+and later supplemented and integrated by John Spencer. It is licensed
+under the standard MIT terms.
+
+All other files which have no copyright comments are original works
+produced specifically for use as part of this library, written either
+by Rich Felker, the main author of the library, or by one or more
+contibutors listed above. Details on authorship of individual files
+can be found in the git version control history of the project. The
+omission of copyright and license comments in each file is in the
+interest of source tree size.
+
+In addition, permission is hereby granted for all public header files
+(include/* and arch/*/bits/*) and crt files intended to be linked into
+applications (crt/*, ldso/dlstart.c, and arch/*/crt_arch.h) to omit
+the copyright notice and permission notice otherwise required by the
+license, and to use these files without any requirement of
+attribution. These files include substantial contributions from:
+
+Bobby Bingham
+John Spencer
+Nicholas J. Kain
+Rich Felker
+Richard Pennington
+Stefan Kristiansson
+Szabolcs Nagy
+
+all of whom have explicitly granted such permission.
+
+This file previously contained text expressing a belief that most of
+the files covered by the above exception were sufficiently trivial not
+to be subject to copyright, resulting in confusion over whether it
+negated the permissions granted in the license. In the spirit of
+permissive licensing, and of not having licensing issues being an
+obstacle to adoption, that text has been removed.
+
+
+
+=== compiler-rt ===
+
+==============================================================================
+The LLVM Project is under the Apache License v2.0 with LLVM Exceptions:
+==============================================================================
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+    1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+    2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+    3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+    4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+    5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+    6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+    7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+    8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+    9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+    END OF TERMS AND CONDITIONS
+
+    APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+    Copyright [yyyy] [name of copyright owner]
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+
+---- LLVM Exceptions to the Apache 2.0 License ----
+
+As an exception, if, as a result of your compiling your source code, portions
+of this Software are embedded into an Object form of such source code, you
+may redistribute such embedded portions in such Object form without complying
+with the conditions of Sections 4(a), 4(b) and 4(d) of the License.
+
+In addition, if you combine or link compiled forms of this Software with
+software that is licensed under the GPLv2 ("Combined Software") and if a
+court of competent jurisdiction determines that the patent provision (Section
+3), the indemnity provision (Section 9) or other Section of the License
+conflicts with the conditions of the GPLv2, you may retroactively and
+prospectively choose to deem waived or otherwise exclude such Section(s) of
+the License, but only in their entirety and only with respect to the Combined
+Software.
+
+==============================================================================
+Software from third parties included in the LLVM Project:
+==============================================================================
+The LLVM Project contains third party software which is under different license
+terms. All such code will be identified clearly using at least one of two
+mechanisms:
+1) It will be in a separate directory tree with its own `LICENSE.txt` or
+   `LICENSE` file at the top containing the specific license and restrictions
+   which apply to that software, or
+2) It will contain specific license and restriction terms at the top of every
+   file.
+
+==============================================================================
+Legacy LLVM License (https://llvm.org/docs/DeveloperPolicy.html#legacy):
+==============================================================================
+
+The compiler_rt library is dual licensed under both the University of Illinois
+"BSD-Like" license and the MIT license.  As a user of this code you may choose
+to use it under either license.  As a contributor, you agree to allow your code
+to be used under both.
+
+Full text of the relevant licenses is included below.
+
+==============================================================================
+
+University of Illinois/NCSA
+Open Source License
+
+Copyright (c) 2009-2019 by the contributors listed in CREDITS.TXT
+
+All rights reserved.
+
+Developed by:
+
+    LLVM Team
+
+    University of Illinois at Urbana-Champaign
+
+    http://llvm.org
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal with
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+    * Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimers.
+
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimers in the
+      documentation and/or other materials provided with the distribution.
+
+    * Neither the names of the LLVM Team, University of Illinois at
+      Urbana-Champaign, nor the names of its contributors may be used to
+      endorse or promote products derived from this Software without specific
+      prior written permission.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH THE
+SOFTWARE.
+
+==============================================================================
+
+Copyright (c) 2009-2015 by the contributors listed in CREDITS.TXT
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+
+
+=== Compiler input copyright declarations (generated) ===
+
+The full licence texts above accompany these file-level notices.
+
+Copyright (c) 2024 Damien P. George
+Licence: Apache-2.0
+  micropython/extmod/mbedtls/mbedtls_alt.c
+
+Copyright The Mbed TLS Contributors
+Licence: Apache-2.0
+  micropython/extmod/mbedtls/mbedtls_alt.c
+
+Copyright (c) 2004-2005, Swedish Institute of Computer Science
+Licence: BSD-3-Clause
+  lib/pbio/include/pbio/os.h
+
+Copyright (c) 2004-2005, Swedish Institute of Computer Science.
+Licence: BSD-3-Clause
+  lib/pbio/include/pbio/os.h
+
+Copyright (c) 2025 The Pybricks Authors
+Licence: BSD-3-Clause
+  lib/pbio/include/pbio/os.h
+
+Copyright (c) 2026 Brickwright contributors
+Licence: BSD-3-Clause
+  brickwright:contract-only/integer_width.h
+  brickwright:contract-only/numeric_scale.c
+  lib/lego/device.c
+
+Copyright (c) 2018-2023 The Pybricks Authors
+Licence: BSD-3-Clause AND MIT
+  lib/pbio/include/pbio/control.h
+  lib/pbio/include/pbio/control_settings.h
+  lib/pbio/include/pbio/dcmotor.h
+  lib/pbio/include/pbio/drivebase.h
+  lib/pbio/include/pbio/int_math.h
+  lib/pbio/include/pbio/integrator.h
+  lib/pbio/include/pbio/servo.h
+  lib/pbio/include/pbio/tacho.h
+  lib/pbio/include/pbio/trajectory.h
+  lib/pbio/src/control.c
+  lib/pbio/src/control_settings.c
+  lib/pbio/src/dcmotor.c
+  lib/pbio/src/drivebase.c
+  lib/pbio/src/integrator.c
+  lib/pbio/src/motor/servo_settings.c
+  lib/pbio/src/servo.c
+  lib/pbio/src/tacho.c
+  lib/pbio/src/trajectory.c
+
+Copyright (c) 2019-2023 The Pybricks Authors
+Licence: BSD-3-Clause AND MIT
+  lib/pbio/include/pbio/observer.h
+  lib/pbio/src/observer.c
+
+Copyright (c) 2020-2023 LEGO System A/S
+Licence: BSD-3-Clause AND MIT
+  lib/pbio/include/pbio/control.h
+  lib/pbio/include/pbio/control_settings.h
+  lib/pbio/include/pbio/dcmotor.h
+  lib/pbio/include/pbio/drivebase.h
+  lib/pbio/include/pbio/int_math.h
+  lib/pbio/include/pbio/integrator.h
+  lib/pbio/include/pbio/observer.h
+  lib/pbio/include/pbio/servo.h
+  lib/pbio/include/pbio/tacho.h
+  lib/pbio/include/pbio/trajectory.h
+  lib/pbio/src/control.c
+  lib/pbio/src/control_settings.c
+  lib/pbio/src/dcmotor.c
+  lib/pbio/src/drivebase.c
+  lib/pbio/src/integrator.c
+  lib/pbio/src/motor/servo_settings.c
+  lib/pbio/src/observer.c
+  lib/pbio/src/servo.c
+  lib/pbio/src/tacho.c
+  lib/pbio/src/trajectory.c
+
+Copyright (c) 2021-2023 LEGO System A/S
+Licence: BSD-3-Clause AND MIT
+  lib/pbio/include/pbio/battery.h
+  lib/pbio/include/pbio/parent.h
+  lib/pbio/src/battery.c
+  lib/pbio/src/parent.c
+
+Copyright (c) 2021-2023 The Pybricks Authors
+Licence: BSD-3-Clause AND MIT
+  lib/pbio/include/pbio/battery.h
+  lib/pbio/include/pbio/parent.h
+  lib/pbio/src/battery.c
+  lib/pbio/src/parent.c
+
+Copyright (c) 2022-2023 LEGO System A/S
+Licence: BSD-3-Clause AND MIT
+  lib/pbio/include/pbio/angle.h
+  lib/pbio/include/pbio/differentiator.h
+  lib/pbio/src/angle.c
+  lib/pbio/src/differentiator.c
+
+Copyright (c) 2022-2023 The Pybricks Authors
+Licence: BSD-3-Clause AND MIT
+  lib/pbio/include/pbio/angle.h
+  lib/pbio/include/pbio/differentiator.h
+  lib/pbio/src/angle.c
+  lib/pbio/src/differentiator.c
+
+Copyright 2012 The Emscripten Authors.  All rights reserved.
+Licence: Emscripten MIT / NCSA; musl; LLVM Apache with exception
+  toolchain:emscripten/cache/sysroot/include/emscripten/em_types.h
+  toolchain:emscripten/cache/sysroot/include/emscripten/emscripten.h
+  toolchain:emscripten/cache/sysroot/include/emscripten/wget.h
+
+Copyright 2017 The Emscripten Authors.  All rights reserved.
+Licence: Emscripten MIT / NCSA; musl; LLVM Apache with exception
+  toolchain:emscripten/cache/sysroot/include/emscripten/em_asm.h
+
+Copyright 2018 The Emscripten Authors.  All rights reserved.
+Licence: Emscripten MIT / NCSA; musl; LLVM Apache with exception
+  toolchain:emscripten/cache/sysroot/include/emscripten/em_js.h
+
+Copyright 2020 The Emscripten Authors.  All rights reserved.
+Licence: Emscripten MIT / NCSA; musl; LLVM Apache with exception
+  toolchain:emscripten/cache/sysroot/include/emscripten/em_macros.h
+
+Copyright 2023 The Emscripten Authors.  All rights reserved.
+Licence: Emscripten MIT / NCSA; musl; LLVM Apache with exception
+  toolchain:emscripten/cache/sysroot/include/emscripten/promise.h
+
+Copyright (c) 2013 FastLED
+Licence: MIT
+  lib/pbio/src/color/conversion.c
+
+Copyright (c) 2013, 2014 Damien P. George
+Licence: MIT
+  bricks/_common/mphalport.c
+  brickwright:wasm_main.c
+
+Copyright (c) 2016 British Broadcasting Corporation
+Licence: MIT
+  pybricks/common/pb_type_lightmatrix_fonts.c
+
+Copyright (c) 2018-2020 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/uart/uart_debug_first_port.h
+  lib/pbio/include/pbdrv/battery.h
+  lib/pbio/include/pbdrv/button.h
+  lib/pbio/include/pbdrv/config.h
+  lib/pbio/include/pbdrv/core.h
+  lib/pbio/include/pbdrv/gpio.h
+  lib/pbio/include/pbdrv/uart.h
+  lib/pbio/src/light/light_matrix.c
+  pybricks/common/pb_type_lightmatrix_fonts.c
+  pybricks/ev3devices/pb_module_ev3devices.c
+  pybricks/iodevices/pb_module_iodevices.c
+  pybricks/nxtdevices/pb_module_nxtdevices.c
+  pybricks/parameters.h
+  pybricks/parameters/pb_module_parameters.c
+  pybricks/robotics/pb_module_robotics.c
+  pybricks/tools.h
+  pybricks/tools/pb_type_task.c
+  pybricks/util_mp/pb_obj_helper.h
+  pybricks/util_mp/pb_type_enum.c
+  pybricks/util_mp/pb_type_enum.h
+  pybricks/util_pb/pb_color_map.c
+  pybricks/util_pb/pb_color_map.h
+  pybricks/util_pb/pb_error.h
+
+Copyright (c) 2018-2020,2022 The Pybricks Authors
+Licence: MIT
+  lib/pbio/include/pbdrv/motor_driver.h
+
+Copyright (c) 2018-2021 The Pybricks Authors
+Licence: MIT
+  bricks/_common/mphalport.c
+  bricks/_common/mphalport.h
+  lib/pbio/include/pbio/main.h
+  lib/pbio/src/error.c
+  lib/pbio/sys/status.c
+  pybricks/common/pb_type_battery.c
+  pybricks/experimental/pb_module_experimental.c
+  pybricks/hubs.h
+  pybricks/hubs/pb_module_hubs.c
+  pybricks/messaging/pb_module_messaging.c
+
+Copyright (c) 2018-2022 The Pybricks Authors
+Licence: MIT
+  lib/pbio/include/pbdrv/reset.h
+  lib/pbio/include/pbio/button.h
+  lib/pbio/include/pbio/error.h
+  lib/pbio/include/pbio/light.h
+  lib/pbio/include/pbio/light_matrix.h
+  lib/pbio/include/pbio/logger.h
+  lib/pbio/src/color/util.c
+  lib/pbio/sys/storage.c
+  lib/pbio/sys/storage_settings.c
+  pybricks/common/pb_type_system.c
+  pybricks/robotics.h
+  pybricks/util_pb/pb_error.c
+
+Copyright (c) 2018-2023 The Pybricks Authors
+Licence: MIT
+  bricks/_common/micropython.c
+  lib/pbio/include/pbsys/program_stop.h
+  lib/pbio/src/logger.c
+  lib/pbio/sys/program_stop.c
+  pybricks/common.h
+  pybricks/common/pb_type_colorlight_external.c
+  pybricks/common/pb_type_colorlight_internal.c
+  pybricks/common/pb_type_control.c
+  pybricks/common/pb_type_device.c
+  pybricks/common/pb_type_device.h
+  pybricks/common/pb_type_keypad.c
+  pybricks/common/pb_type_lightarray.c
+  pybricks/common/pb_type_logger.c
+  pybricks/common/pb_type_motor.c
+  pybricks/common/pb_type_motor_model.c
+  pybricks/common/pb_type_speaker.c
+  pybricks/ev3devices/pb_type_ev3devices_gyrosensor.c
+  pybricks/ev3devices/pb_type_ev3devices_infraredsensor.c
+  pybricks/ev3devices/pb_type_ev3devices_touchsensor.c
+  pybricks/ev3devices/pb_type_ev3devices_ultrasonicsensor.c
+  pybricks/hubs/pb_type_cityhub.c
+  pybricks/hubs/pb_type_essentialhub.c
+  pybricks/hubs/pb_type_ev3brick.c
+  pybricks/hubs/pb_type_movehub.c
+  pybricks/hubs/pb_type_nxtbrick.c
+  pybricks/hubs/pb_type_primehub.c
+  pybricks/hubs/pb_type_technichub.c
+  pybricks/iodevices/pb_type_iodevices_analogsensor.c
+  pybricks/iodevices/pb_type_iodevices_pupdevice.c
+  pybricks/nxtdevices/pb_type_nxtdevices_colorsensor.c
+  pybricks/nxtdevices/pb_type_nxtdevices_lightsensor.c
+  pybricks/parameters/pb_type_axis.c
+  pybricks/parameters/pb_type_button.c
+  pybricks/parameters/pb_type_button.h
+  pybricks/parameters/pb_type_color.c
+  pybricks/parameters/pb_type_direction.c
+  pybricks/parameters/pb_type_port.c
+  pybricks/parameters/pb_type_side.c
+  pybricks/parameters/pb_type_stop.c
+  pybricks/pupdevices.h
+  pybricks/pupdevices/pb_module_pupdevices.c
+  pybricks/pupdevices/pb_type_pupdevices_colordistancesensor.c
+  pybricks/pupdevices/pb_type_pupdevices_colorlightmatrix.c
+  pybricks/pupdevices/pb_type_pupdevices_colorsensor.c
+  pybricks/pupdevices/pb_type_pupdevices_forcesensor.c
+  pybricks/pupdevices/pb_type_pupdevices_infraredsensor.c
+  pybricks/pupdevices/pb_type_pupdevices_light.c
+  pybricks/pupdevices/pb_type_pupdevices_pfmotor.c
+  pybricks/pupdevices/pb_type_pupdevices_tiltsensor.c
+  pybricks/pupdevices/pb_type_pupdevices_ultrasonicsensor.c
+  pybricks/pybricks.c
+  pybricks/robotics/pb_type_car.c
+  pybricks/robotics/pb_type_drivebase.c
+  pybricks/tools/pb_module_tools.c
+  pybricks/tools/pb_type_matrix.h
+  pybricks/tools/pb_type_stopwatch.c
+
+Copyright (c) 2018-2025 The Pybricks Authors
+Licence: MIT
+  brickwright:wasm_main.c
+  lib/pbio/include/pbdrv/adc.h
+  lib/pbio/include/pbdrv/bluetooth.h
+  lib/pbio/include/pbio/port.h
+  lib/pbio/include/pbio/port_dcm.h
+  lib/pbio/include/pbio/port_interface.h
+  lib/pbio/include/pbio/port_lump.h
+  lib/pbio/src/busy_count.c
+  lib/pbio/src/motor_process.c
+  lib/pbio/src/port.c
+  lib/pbio/src/port_dcm_pup.c
+  lib/pbio/src/port_lump.c
+  lib/pbio/sys/battery.c
+  lib/pbio/sys/hmi_ev3.c
+  lib/pbio/sys/hmi_ev3_ui.c
+  lib/pbio/sys/hmi_none.c
+  lib/pbio/sys/hmi_nxt.c
+  lib/pbio/sys/hmi_pup.c
+  lib/pbio/sys/hmi_virtual.c
+  pybricks/ev3devices/pb_type_ev3devices_colorsensor.c
+  pybricks/iodevices/iodevices.h
+  pybricks/iodevices/pb_type_i2c_device.c
+  pybricks/iodevices/pb_type_uart_device.c
+  pybricks/nxtdevices/pb_type_nxtdevices_energymeter.c
+  pybricks/nxtdevices/pb_type_nxtdevices_soundsensor.c
+  pybricks/nxtdevices/pb_type_nxtdevices_temperaturesensor.c
+  pybricks/nxtdevices/pb_type_nxtdevices_touchsensor.c
+  pybricks/nxtdevices/pb_type_nxtdevices_ultrasonicsensor.c
+  pybricks/nxtdevices/pb_type_nxtdevices_vernieradapter.c
+
+Copyright (c) 2018-2026 The Pybricks Authors
+Licence: MIT
+  lib/pbio/src/main.c
+
+Copyright (c) 2019-2020 The Pybricks Authors
+Licence: MIT
+  lib/lego/lego/lump.h
+  lib/pbio/drv/counter/counter.h
+  lib/pbio/include/pbdrv/counter.h
+  lib/pbio/include/pbio/config.h
+
+Copyright (c) 2019-2022 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/ioport/ioport.c
+  lib/pbio/include/pbio/util.h
+
+Copyright (c) 2019-2023 The Pybricks Authors
+Licence: MIT
+  bricks/_common/mpconfigport.h
+  brickwright:mpconfigport.h
+  pybricks/util_mp/pb_obj_helper.c
+
+Copyright (c) 2019-2024 The Pybricks Authors
+Licence: MIT
+  lib/pbio/include/pbio/version.h
+
+Copyright (c) 2019-2025 The Pybricks Authors
+Licence: MIT
+  brickwright:platform/pbioconfig.h
+  brickwright:platform/platform.c
+  lib/lego/lego/device.h
+
+Copyright (c) 2020 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/battery/battery.h
+  lib/pbio/drv/bluetooth/bluetooth.h
+  lib/pbio/drv/led/led.h
+  lib/pbio/drv/led/led_array.c
+  lib/pbio/drv/led/led_array.h
+  lib/pbio/drv/led/led_array_pwm.c
+  lib/pbio/drv/led/led_array_pwm.h
+  lib/pbio/drv/led/led_core.c
+  lib/pbio/drv/led/led_dual.h
+  lib/pbio/drv/pwm/pwm.h
+  lib/pbio/drv/pwm/pwm_ev3.h
+  lib/pbio/drv/pwm/pwm_stm32_tim.h
+  lib/pbio/drv/pwm/pwm_test.h
+  lib/pbio/drv/pwm/pwm_tlc5955_stm32.h
+  lib/pbio/drv/sound/sound.h
+  lib/pbio/include/pbdrv/led.h
+  lib/pbio/include/pbdrv/pwm.h
+  lib/pbio/include/pbdrv/sound.h
+  lib/pbio/include/pbio/light_animation.h
+  lib/pbio/include/pbsys/battery.h
+  lib/pbio/include/pbsys/config.h
+  lib/pbio/include/pbsys/light.h
+  lib/pbio/src/color/conversion.c
+  lib/pbio/src/light/animation.c
+  lib/pbio/src/light/color_light.c
+  lib/pbio/src/light/color_light.h
+  lib/pbio/sys/light.h
+
+Copyright (c) 2020,2022 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/led/led_pwm.c
+  lib/pbio/drv/led/led_pwm.h
+  lib/pbio/include/pbio/color.h
+  lib/pbio/sys/light.c
+
+Copyright (c) 2020-2021 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/pwm/pwm_core.c
+  lib/pbio/include/pbsys/status.h
+
+Copyright (c) 2020-2022 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/battery/battery_test.c
+  lib/pbio/include/pbdrv/imu.h
+
+Copyright (c) 2020-2023 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/core.c
+  lib/pbio/sys/host.c
+  pybricks/common/pb_type_imu.c
+  pybricks/common/pb_type_lightmatrix.c
+  pybricks/tools/pb_type_matrix.c
+
+Copyright (c) 2020-2025 The Pybricks Authors
+Licence: MIT
+  brickwright:platform/pbsysconfig.h
+
+Copyright (c) 2020-2026 The Pybricks Authors
+Licence: MIT
+  lib/pbio/include/pbsys/hmi.h
+
+Copyright (c) 2021 The Pybricks Authors
+Licence: MIT
+  lib/lego/lego/lwp3.h
+  lib/pbio/drv/clock/clock.h
+  lib/pbio/drv/pwm/pwm_lp50xx_stm32.h
+  lib/pbio/drv/reset/reset.h
+  lib/pbio/drv/watchdog/watchdog.h
+  lib/pbio/include/pbdrv/watchdog.h
+  lib/pbio/src/protocol/nus.c
+  lib/pbio/src/util.c
+
+Copyright (c) 2021-2022 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/charger/charger.h
+  lib/pbio/include/pbdrv/charger.h
+  lib/pbio/include/pbdrv/clock.h
+  lib/pbio/src/protocol/pybricks.c
+  pybricks/util_pb/pb_conversions.c
+  pybricks/util_pb/pb_conversions.h
+
+Copyright (c) 2021-2023 The Pybricks Authors
+Licence: MIT
+  lib/pbio/include/pbio/protocol.h
+  pybricks/common/pb_type_charger.c
+  pybricks/parameters/pb_type_icon.c
+  pybricks/robotics/pb_type_spikebase.c
+
+Copyright (c) 2021-2024 The Pybricks Authors
+Licence: MIT
+  lib/pbio/include/pbsys/command.h
+  lib/pbio/sys/program_stop.h
+  pybricks/iodevices/pb_type_iodevices_lwp3device.c
+
+Copyright (c) 2021-2025 The Pybricks Authors
+Licence: MIT
+  lib/pbio/src/debug.c
+
+Copyright (c) 2022 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/block_device/block_device.h
+  lib/pbio/drv/button/button.h
+  lib/pbio/drv/imu/imu.h
+  lib/pbio/drv/motor_driver/motor_driver.h
+  lib/pbio/drv/usb/usb.h
+  lib/pbio/include/pbdrv/block_device.h
+  lib/pbio/include/pbdrv/usb.h
+  lib/pbio/include/pbsys/core.h
+  lib/pbio/include/pbsys/main.h
+  lib/pbio/sys/core.c
+  lib/pbio/sys/main.c
+  lib/pbio/sys/storage.h
+
+Copyright (c) 2022-2023 The Pybricks Authors
+Licence: MIT
+  lib/pbio/src/imu.c
+  lib/pbio/sys/command.c
+  pybricks/hubs/pb_type_virtualhub.c
+
+Copyright (c) 2022-2024 The Pybricks Authors
+Licence: MIT
+  lib/pbio/include/pbsys/storage.h
+
+Copyright (c) 2022-2025 The Pybricks Authors
+Licence: MIT
+  brickwright:hal/motor_sim.c
+  brickwright:platform/pbdrvconfig.h
+  pybricks/tools/pb_type_async.c
+
+Copyright (c) 2023 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/random/random.h
+  lib/pbio/drv/uart/uart.h
+  lib/pbio/include/pbdrv/ioport.h
+  lib/pbio/include/pbio/geometry.h
+  lib/pbio/include/pbio/imu.h
+  lib/pbio/include/pbio/motor_process.h
+  lib/pbio/src/geometry.c
+  pybricks/messaging/pb_type_ble_radio.c
+
+Copyright (c) 2024 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/adc/adc.h
+  lib/pbio/drv/display/display.h
+  lib/pbio/include/pbsys/storage_settings.h
+  lib/pbio/sys/telemetry.c
+  lib/pbio/sys/telemetry.h
+  pybricks/messaging/pb_type_app_data.c
+
+Copyright (c) 2025 Nicolas Schodet
+Licence: MIT
+  lib/pbio/include/pbio/font.h
+  lib/pbio/include/pbio/image.h
+  lib/pbio/src/image/image.c
+
+Copyright (c) 2025 The Pybricks Authors
+Licence: MIT
+  brickwright:hal/usb_wasm.c
+  lib/pbio/drv/i2c/i2c.h
+  lib/pbio/drv/rproc/rproc.h
+  lib/pbio/drv/usb/usb.c
+  lib/pbio/include/pbdrv/display.h
+  lib/pbio/include/pbdrv/i2c.h
+  lib/pbio/include/pbdrv/stack.h
+  lib/pbio/include/pbio/busy_count.h
+  lib/pbio/include/pbio/debug.h
+  lib/pbio/include/pbsys/host.h
+  lib/pbio/src/os.c
+  lib/pbio/src/port_dcm_ev3.c
+  lib/pbio/sys/storage_data.h
+  pybricks/parameters/pb_type_font.c
+  pybricks/parameters/pb_type_image.c
+  pybricks/tools/pb_type_async.h
+
+Copyright (c) 2025-2026 The Pybricks Authors
+Licence: MIT
+  pybricks/hubs/pb_type_buildhat.c
+
+Copyright (c) 2026 Brickwright contributors
+Licence: MIT
+  brickwright:compat/sys/cdefs.h
+  brickwright:hal/block_device_wasm.c
+  brickwright:hal/button_wasm.c
+  brickwright:hal/clock_wasm.c
+  brickwright:hal/imu_wasm.c
+  brickwright:hal/motor_sim.c
+  brickwright:hal/pwm_wasm.c
+  brickwright:hal/sound_wasm.c
+  brickwright:hal/uart_lump_sim.c
+  brickwright:hal/usb_wasm.c
+  brickwright:hal/wasm_hub.h
+  brickwright:mpconfigport.h
+  brickwright:platform/pbdrvconfig.h
+  brickwright:platform/pbio_os_config.h
+  brickwright:platform/pbioconfig.h
+  brickwright:platform/pbsysconfig.h
+  brickwright:platform/platform.c
+  brickwright:wasm_main.c
+
+Copyright (c) 2026 The Pybricks Authors
+Licence: MIT
+  lib/pbio/drv/pwm/pwm_pico.h
+  pybricks/messaging/messaging.h
+
+Copyright (c) 2013, 2014 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_mem.c
+  micropython/extmod/modnetwork.h
+  micropython/extmod/vfs_fat_diskio.c
+  micropython/extmod/vfs_fat_file.c
+  micropython/py/argcheck.c
+  micropython/py/asmarm.c
+  micropython/py/asmthumb.c
+  micropython/py/asmthumb.h
+  micropython/py/asmx64.c
+  micropython/py/bc.h
+  micropython/py/bc0.h
+  micropython/py/builtin.h
+  micropython/py/builtinevex.c
+  micropython/py/compile.h
+  micropython/py/emit.h
+  micropython/py/emitcommon.c
+  micropython/py/emitglue.c
+  micropython/py/emitglue.h
+  micropython/py/emitinlinethumb.c
+  micropython/py/formatfloat.c
+  micropython/py/formatfloat.h
+  micropython/py/gc.c
+  micropython/py/gc.h
+  micropython/py/lexer.c
+  micropython/py/lexer.h
+  micropython/py/malloc.c
+  micropython/py/map.c
+  micropython/py/misc.h
+  micropython/py/modarray.c
+  micropython/py/modbuiltins.c
+  micropython/py/modcmath.c
+  micropython/py/modcollections.c
+  micropython/py/modgc.c
+  micropython/py/modio.c
+  micropython/py/modmicropython.c
+  micropython/py/modstruct.c
+  micropython/py/modsys.c
+  micropython/py/mpconfig.h
+  micropython/py/mpprint.h
+  micropython/py/mpz.c
+  micropython/py/mpz.h
+  micropython/py/obj.c
+  micropython/py/obj.h
+  micropython/py/objarray.c
+  micropython/py/objarray.h
+  micropython/py/objbool.c
+  micropython/py/objboundmeth.c
+  micropython/py/objcell.c
+  micropython/py/objclosure.c
+  micropython/py/objcomplex.c
+  micropython/py/objdict.c
+  micropython/py/objenumerate.c
+  micropython/py/objexcept.c
+  micropython/py/objfilter.c
+  micropython/py/objfloat.c
+  micropython/py/objfun.c
+  micropython/py/objfun.h
+  micropython/py/objgenerator.h
+  micropython/py/objgetitemiter.c
+  micropython/py/objint.c
+  micropython/py/objint.h
+  micropython/py/objint_longlong.c
+  micropython/py/objint_mpz.c
+  micropython/py/objlist.c
+  micropython/py/objlist.h
+  micropython/py/objmap.c
+  micropython/py/objnamedtuple.c
+  micropython/py/objnone.c
+  micropython/py/objobject.c
+  micropython/py/objproperty.c
+  micropython/py/objrange.c
+  micropython/py/objsingleton.c
+  micropython/py/objslice.c
+  micropython/py/objstr.c
+  micropython/py/objstr.h
+  micropython/py/objstringio.c
+  micropython/py/objstrunicode.c
+  micropython/py/objtuple.c
+  micropython/py/objtuple.h
+  micropython/py/objtype.h
+  micropython/py/objzip.c
+  micropython/py/opmethods.c
+  micropython/py/parse.h
+  micropython/py/parsenum.c
+  micropython/py/parsenum.h
+  micropython/py/parsenumbase.c
+  micropython/py/parsenumbase.h
+  micropython/py/qstr.c
+  micropython/py/qstr.h
+  micropython/py/repl.h
+  micropython/py/runtime.c
+  micropython/py/runtime.h
+  micropython/py/runtime0.h
+  micropython/py/scope.c
+  micropython/py/scope.h
+  micropython/py/sequence.c
+  micropython/py/showbc.c
+  micropython/py/smallint.c
+  micropython/py/smallint.h
+  micropython/py/stream.h
+  micropython/py/unicode.c
+  micropython/py/vstr.c
+  micropython/shared/libc/printf.c
+  micropython/shared/readline/readline.c
+  micropython/shared/readline/readline.h
+  micropython/shared/runtime/pyexec.c
+  micropython/shared/runtime/pyexec.h
+
+Copyright (c) 2013-2015 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/mpprint.c
+  micropython/py/repl.c
+
+Copyright (c) 2013-2016 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modtime.h
+  micropython/py/builtinhelp.c
+  micropython/py/emitinlinextensa.c
+  micropython/py/persistentcode.h
+  micropython/py/reader.c
+  micropython/py/reader.h
+  micropython/shared/runtime/interrupt_char.c
+  micropython/shared/runtime/interrupt_char.h
+
+Copyright (c) 2013-2017 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/vfs_reader.c
+  micropython/py/modmath.c
+  micropython/py/nlrmips.c
+  micropython/py/nlrthumb.c
+  micropython/py/nlrx64.c
+  micropython/py/nlrx86.c
+  micropython/py/objset.c
+  micropython/py/parse.c
+
+Copyright (c) 2013-2018 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/vfs_posix_file.c
+  micropython/py/objtype.c
+
+Copyright (c) 2013-2019 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modlwip.c
+  micropython/extmod/vfs_blockdev.c
+  micropython/py/builtinimport.c
+  micropython/py/emitbc.c
+  micropython/py/nativeglue.h
+  micropython/py/objgenerator.c
+  micropython/py/objmodule.c
+  micropython/py/objmodule.h
+  micropython/py/vm.c
+  micropython/shared/runtime/sys_stdio_mphal.c
+
+Copyright (c) 2013-2020 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/compile.c
+  micropython/py/grammar.h
+  micropython/py/persistentcode.c
+
+Copyright (c) 2013-2021 Ibrahim Abdelkader <iabdalkader@openmv.io>
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modplatform.c
+  micropython/extmod/modplatform.h
+  micropython/extmod/network_ninaw10.c
+
+Copyright (c) 2013-2023 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modtime.c
+  micropython/py/nlr.c
+  micropython/py/nlr.h
+  micropython/py/nlrsetjmp.c
+
+Copyright (c) 2014 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modheapq.c
+  micropython/extmod/modnetwork.c
+  micropython/extmod/modsocket.c
+  micropython/extmod/network_lwip.c
+  micropython/extmod/network_wiznet5k.c
+  micropython/extmod/vfs_fat.c
+  micropython/py/asmx86.c
+  micropython/py/bc.c
+  micropython/py/mpstate.c
+  micropython/py/mpstate.h
+  micropython/py/nativeglue.c
+  micropython/py/objexcept.h
+  micropython/py/objreversed.c
+  micropython/py/stream.c
+  micropython/py/unicode.h
+  micropython/py/warning.c
+
+Copyright (c) 2014 Fabian Vogt
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/asmarm.c
+
+Copyright (c) 2014 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modbinascii.c
+  micropython/extmod/modhashlib.c
+  micropython/extmod/modre.c
+  micropython/py/bc.c
+  micropython/py/bc.h
+  micropython/py/binary.h
+  micropython/py/builtinimport.c
+  micropython/py/cstack.c
+  micropython/py/cstack.h
+  micropython/py/gc.c
+  micropython/py/modstruct.c
+  micropython/py/objarray.c
+  micropython/py/objarray.h
+  micropython/py/objfun.c
+  micropython/py/objint_longlong.c
+  micropython/py/objnamedtuple.c
+  micropython/py/sequence.c
+  micropython/py/stackctrl.c
+  micropython/py/stackctrl.h
+  micropython/py/vstr.c
+
+Copyright (c) 2014-2015 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/objmodule.c
+  micropython/py/vm.c
+
+Copyright (c) 2014-2016 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/misc.h
+
+Copyright (c) 2014-2016 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/moddeflate.c
+  micropython/py/objexcept.c
+  micropython/py/objstrunicode.c
+  micropython/py/stream.c
+  micropython/py/stream.h
+
+Copyright (c) 2014-2017 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/binary.h
+  micropython/py/nlrxtensa.c
+
+Copyright (c) 2014-2017 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/binary.c
+  micropython/py/modsys.c
+  micropython/py/objdict.c
+  micropython/py/objgenerator.c
+  micropython/py/objnamedtuple.h
+  micropython/py/objstringio.c
+  micropython/py/objtuple.c
+
+Copyright (c) 2014-2018 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/moductypes.c
+  micropython/py/objstr.c
+  micropython/py/objtype.c
+  micropython/py/runtime.c
+
+Copyright (c) 2014-2019 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modjson.c
+  micropython/py/binary.c
+
+Copyright (c) 2014-2023 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modselect.c
+
+Copyright (c) 2015 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/mphal.h
+  micropython/py/objattrtuple.c
+
+Copyright (c) 2015 Galen Hazelwood
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modlwip.c
+
+Copyright (c) 2015 Josef Gajdusek
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/runtime_utils.c
+
+Copyright (c) 2015 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/frozenmod.c
+  micropython/py/frozenmod.h
+  micropython/py/objpolyiter.c
+  micropython/py/runtime_utils.c
+
+Copyright (c) 2015-2017 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modonewire.c
+
+Copyright (c) 2015-2017 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modlwip.c
+  micropython/extmod/modselect.c
+
+Copyright (c) 2015-2018 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/warning.c
+
+Copyright (c) 2015-2019 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modtls_axtls.c
+
+Copyright (c) 2016 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_i2c.c
+  micropython/extmod/machine_pulse.c
+  micropython/extmod/machine_spi.c
+  micropython/extmod/modframebuf.c
+  micropython/py/asmbase.c
+  micropython/py/asmbase.h
+  micropython/py/asmxtensa.c
+  micropython/py/asmxtensa.h
+  micropython/py/frozenmod.c
+  micropython/py/frozenmod.h
+  micropython/py/moderrno.c
+  micropython/py/mperrno.h
+  micropython/py/objstringio.h
+
+Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/modthread.c
+  micropython/py/mpthread.h
+
+Copyright (c) 2016 Linaro Ltd.
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modtls_mbedtls.c
+
+Copyright (c) 2016 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_pinbase.c
+  micropython/extmod/misc.h
+  micropython/extmod/modbtree.c
+  micropython/extmod/modrandom.c
+  micropython/extmod/modtime.c
+  micropython/extmod/modtime.h
+  micropython/extmod/modwebrepl.c
+  micropython/extmod/modwebsocket.c
+  micropython/extmod/os_dupterm.c
+  micropython/extmod/vfs_fat.c
+  micropython/extmod/virtpin.c
+  micropython/extmod/virtpin.h
+  micropython/py/ringbuf.h
+
+Copyright (c) 2016-2022 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modos.c
+
+Copyright (c) 2017 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/vfs.c
+  micropython/extmod/vfs.h
+  micropython/py/pystack.c
+  micropython/py/pystack.h
+  micropython/py/scheduler.c
+
+Copyright (c) 2017 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_signal.c
+
+Copyright (c) 2017-2018 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/vfs_posix.c
+
+Copyright (c) 2017-2018 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modcryptolib.c
+
+Copyright (c) 2017-2019 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/os_dupterm.c
+
+Copyright (c) 2018 Ayke van Laethem
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modbluetooth.c
+  micropython/extmod/modbluetooth.h
+
+Copyright (c) 2018 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/vfs_posix.h
+
+Copyright (c) 2018 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/objdeque.c
+
+Copyright (c) 2018 Yonatan Goldschmidt
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modcryptolib.c
+
+Copyright (c) 2018-2019 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/network_cyw43.c
+
+Copyright (c) 2019 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_timer.c
+  micropython/shared/runtime/gchelper.h
+
+Copyright (c) 2019 Jim Mussared
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/ringbuf.c
+
+Copyright (c) 2019 Paul Sokolovsky
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modtls_mbedtls.c
+
+Copyright (c) 2019, Michael Neuling, IBM Corporation.
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/nlrpowerpc.c
+
+Copyright (c) 2019-2020 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/vfs_lfs.c
+
+Copyright (c) 2019-2020 Jim Mussared
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modbluetooth.c
+  micropython/extmod/modbluetooth.h
+
+Copyright (c) 2020 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modasyncio.c
+  micropython/py/pairheap.c
+  micropython/py/pairheap.h
+
+Copyright (c) 2020 Tilen MAJERLE
+Licence: permissive (licence text, no SPDX tag)
+  lib/lwrb/src/include/lwrb/lwrb.h
+  lib/lwrb/src/lwrb/lwrb.c
+
+Copyright (c) 2020-2021 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_pwm.c
+
+Copyright (c) 2020-2023 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_wdt.c
+
+Copyright (c) 2021 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_bitstream.c
+  micropython/shared/runtime/stdout_helpers.c
+
+Copyright (c) 2021 Jim Mussared
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_bitstream.c
+  micropython/py/builtinimport.c
+  micropython/py/frozenmod.c
+
+Copyright (c) 2021 Jonathan Hogg
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_adc_block.c
+
+Copyright (c) 2021 Mike Teachman
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_i2s.c
+
+Copyright (c) 2021 Yonatan Goldschmidt
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/nlraarch64.c
+
+Copyright (c) 2021-2023 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/moddeflate.c
+
+Copyright (c) 2023 Arduino SA
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/network_esp_hosted.c
+
+Copyright (c) 2023 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_adc.c
+  micropython/extmod/machine_adc_block.c
+  micropython/extmod/machine_i2s.c
+  micropython/extmod/machine_uart.c
+  micropython/extmod/modmachine.c
+  micropython/extmod/modmachine.h
+  micropython/extmod/modtls_axtls.c
+  micropython/extmod/modtls_mbedtls.c
+  micropython/extmod/modvfs.c
+
+Copyright (c) 2023 Jim Mussared
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/moddeflate.c
+
+Copyright (c) 2023-2024 Arduino SA
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/modopenamp.c
+  micropython/extmod/modopenamp_remoteproc.c
+  micropython/extmod/modopenamp_remoteproc_store.c
+
+Copyright (c) 2024 Alessandro Gatti
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/asmrv32.c
+  micropython/py/emitinlinerv32.c
+  micropython/py/emitnrv32.c
+  micropython/py/nlrrv32.c
+  micropython/py/nlrrv64.c
+
+Copyright (c) 2024 Andrew Leech
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/objringio.c
+
+Copyright (c) 2024 Angus Gratton
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_usb_device.c
+  micropython/py/cstack.h
+
+Copyright (c) 2024 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/network_ppp_lwip.c
+
+Copyright (c) 2025 Damien P. George
+Licence: permissive (licence text, no SPDX tag)
+  micropython/extmod/machine_i2c_target.c
+  micropython/extmod/modmarshal.c
+  micropython/py/objcode.c
+  micropython/py/objcode.h
+
+Copyright (c) SatoshiLabs
+Licence: permissive (licence text, no SPDX tag)
+  micropython/py/profile.c
+  micropython/py/profile.h

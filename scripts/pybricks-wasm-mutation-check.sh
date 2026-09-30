@@ -14,8 +14,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC_DIR="${PYBRICKS_SRC_DIR:-$ROOT/out/pybricks-micropython}"
+UPSTREAM_SRC_DIR="${PYBRICKS_SRC_DIR:-$ROOT/out/pybricks-micropython}"
 BASE_BUILD="${PYBRICKS_BUILD_DIR:-$ROOT/out/pybricks-wasm-build}"
+SRC_DIR="$BASE_BUILD/source"
+[[ -f "$SRC_DIR/argument-conversion.json" ]] || { echo "FATAL: prepared contract-only source missing" >&2; exit 1; }
 EMSDK="${EMSDK:-$HOME/emsdk}"
 STATIC="$ROOT/overlay/scratch-gui/static/pybricks-sim"
 WORK="$ROOT/out/pybricks-mutants"
@@ -54,11 +56,16 @@ assert text.count(old + "\n") == 1, f"mutation site not found exactly once in {p
 open(path, "w").write(text.replace(old + "\n", new + "\n"))
 EOF
   touch "$src/$file"
-  make -C "$src" -j1 PBTOP="$SRC_DIR" BUILD="$build" >"$WORK/$name/make.log" 2>&1
+  make -C "$src" -j1 PBTOP="$SRC_DIR" UPSTREAM_PBTOP="$UPSTREAM_SRC_DIR" BUILD="$build" >"$WORK/$name/make.log" 2>&1
   cmp -s "$build/pybricks-hub.wasm" "$BASE_BUILD/pybricks-hub.wasm" && { echo "MUTANT $name: wasm unchanged, mutation did not compile in" >&2; status=1; continue; }
   cp "$build/pybricks-hub.js" "$build/pybricks-hub.wasm" "$STATIC/"
   tap="$WORK/$name/tap.txt"
-  node --test --test-reporter=tap --import "$ROOT/scripts/lib/register-gui-scope.mjs" \
+  test_pattern=$(python3 - "$must_fail" <<'PATTERN'
+import re, sys
+print("^" + re.escape(sys.argv[1]) + "$")
+PATTERN
+)
+  node --test --test-reporter=tap --test-name-pattern="$test_pattern" --test-timeout=30000 --import "$ROOT/scripts/lib/register-gui-scope.mjs" \
     "$ROOT/test/pybricks-wasm-sim.test.mjs" >"$tap" 2>&1 || true
   restore
   failed=$(grep -E '^not ok [0-9]+ - ' "$tap" | sed -E 's/^not ok [0-9]+ - //' || true)

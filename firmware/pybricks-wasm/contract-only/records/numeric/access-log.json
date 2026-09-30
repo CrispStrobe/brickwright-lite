@@ -1,0 +1,446 @@
+{
+  "role": "contract-only numeric implementer",
+  "permitted_inputs": [
+    "contract.txt",
+    "inputs.json"
+  ],
+  "accesses": [
+    {
+      "action": "read supplied contract and input manifest",
+      "tool": "exec_command",
+      "command": "cat contract.txt inputs.json",
+      "workdir": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric"
+    },
+    {
+      "action": "create independent implementation, license, tests and access log",
+      "tool": "apply_patch",
+      "files": [
+        "LICENSE",
+        "numeric_scale.c",
+        "integer_width.h",
+        "test_contracts.py",
+        "access-log.json"
+      ]
+    },
+    {
+      "action": "run authored synthetic tests",
+      "tool": "exec_command",
+      "command": "python3 test_contracts.py",
+      "workdir": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric"
+    },
+    {
+      "action": "test runner inputs",
+      "details": [
+        "test_contracts.py",
+        "access-log.json"
+      ]
+    },
+    {
+      "action": "generated synthetic fixture",
+      "details": "test-build/pbio/int_math.h"
+    },
+    {
+      "action": "generated synthetic fixture",
+      "details": "test-build/width_test.c"
+    },
+    {
+      "action": "public compiler executable discovery",
+      "details": "clang"
+    },
+    {
+      "action": "public compiler executable discovery",
+      "details": "gcc"
+    },
+    {
+      "action": "compiler invocation",
+      "details": [
+        "/usr/bin/clang",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width_test.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width-clang"
+      ]
+    },
+    {
+      "action": "test runner inputs",
+      "details": [
+        "test_contracts.py",
+        "access-log.json"
+      ]
+    },
+    {
+      "action": "generated synthetic fixture",
+      "details": "test-build/pbio/int_math.h"
+    },
+    {
+      "action": "generated synthetic fixture",
+      "details": "test-build/width_test.c"
+    },
+    {
+      "action": "public compiler executable discovery",
+      "details": "clang"
+    },
+    {
+      "action": "public compiler executable discovery",
+      "details": "gcc"
+    },
+    {
+      "action": "compiler invocation",
+      "details": [
+        "/usr/bin/clang",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width_test.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width-clang"
+      ]
+    },
+    {
+      "action": "generated test executable invocation",
+      "details": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width-clang"
+    },
+    {
+      "action": "compiler invocation",
+      "details": [
+        "/usr/bin/clang",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/numeric_scale.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-clang-O0.so"
+      ]
+    },
+    {
+      "action": "ctypes load of generated synthetic library",
+      "details": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-clang-O0.so"
+    },
+    {
+      "action": "compiler invocation",
+      "details": [
+        "/usr/bin/clang",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/numeric_scale.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-clang-O2.so"
+      ]
+    },
+    {
+      "action": "ctypes load of generated synthetic library",
+      "details": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-clang-O2.so"
+    },
+    {
+      "action": "compiler invocation",
+      "details": [
+        "/usr/bin/gcc",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width_test.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width-gcc"
+      ]
+    },
+    {
+      "action": "generated test executable invocation",
+      "details": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/width-gcc"
+    },
+    {
+      "action": "compiler invocation",
+      "details": [
+        "/usr/bin/gcc",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/numeric_scale.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-gcc-O0.so"
+      ]
+    },
+    {
+      "action": "ctypes load of generated synthetic library",
+      "details": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-gcc-O0.so"
+    },
+    {
+      "action": "compiler invocation",
+      "details": [
+        "/usr/bin/gcc",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/numeric_scale.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-gcc-O2.so"
+      ]
+    },
+    {
+      "action": "ctypes load of generated synthetic library",
+      "details": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/test-build/numeric-gcc-O2.so"
+    },
+    {
+      "action": "test completion",
+      "details": {
+        "numeric_cases_per_build": 20000,
+        "unsigned_widths": 65,
+        "compilers": [
+          "clang",
+          "gcc"
+        ]
+      }
+    },
+    {
+      "action": "correct zero constant-expression handling and document initial failed test",
+      "tool": "apply_patch",
+      "files": [
+        "integer_width.h",
+        "access-log.json"
+      ]
+    },
+    {
+      "action": "repeat authored synthetic tests after correction",
+      "tool": "exec_command",
+      "command": "python3 test_contracts.py",
+      "workdir": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric"
+    },
+    {
+      "action": "record compiler identities and final access details",
+      "tool": "exec_command",
+      "inputs": [
+        "access-log.json"
+      ],
+      "output": "access-log.json"
+    },
+    {
+      "action": "public compiler identity query",
+      "command": [
+        "/usr/bin/clang",
+        "--version"
+      ]
+    },
+    {
+      "action": "public compiler identity query",
+      "command": [
+        "/usr/bin/gcc",
+        "--version"
+      ]
+    },
+    {
+      "tool": "exec_command",
+      "action": "save exact additional delegated contract and update access log",
+      "inputs": [
+        "delegated additional contract message",
+        "access-log.json"
+      ],
+      "outputs": [
+        "device-timing-contract.txt",
+        "access-log.json"
+      ]
+    },
+    {
+      "action": "run synthetic timing tests",
+      "tool": "exec_command",
+      "inputs": [
+        "test_device_timing.py",
+        "device_timing.c",
+        "access-log.json"
+      ]
+    },
+    {
+      "action": "write independent synthetic header",
+      "output": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/lego/device.h"
+    },
+    {
+      "action": "discover public compiler executable",
+      "driver": "clang"
+    },
+    {
+      "action": "compile authored timing component",
+      "command": [
+        "/usr/bin/clang",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/device_timing.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-clang-O0.so"
+      ]
+    },
+    {
+      "action": "load generated native timing library",
+      "input": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-clang-O0.so"
+    },
+    {
+      "action": "compile authored timing component",
+      "command": [
+        "/usr/bin/clang",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/device_timing.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-clang-O2.so"
+      ]
+    },
+    {
+      "action": "load generated native timing library",
+      "input": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-clang-O2.so"
+    },
+    {
+      "action": "discover public compiler executable",
+      "driver": "gcc"
+    },
+    {
+      "action": "compile authored timing component",
+      "command": [
+        "/usr/bin/gcc",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O0",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/device_timing.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-gcc-O0.so"
+      ]
+    },
+    {
+      "action": "load generated native timing library",
+      "input": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-gcc-O0.so"
+    },
+    {
+      "action": "compile authored timing component",
+      "command": [
+        "/usr/bin/gcc",
+        "-std=c99",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-pedantic",
+        "-O2",
+        "-shared",
+        "-fPIC",
+        "-I",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/device_timing.c",
+        "-o",
+        "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-gcc-O2.so"
+      ]
+    },
+    {
+      "action": "load generated native timing library",
+      "input": "/Users/christianstrobele/code/lego/cleanroom-pybricks-numeric/timing-test-build/timing-gcc-O2.so"
+    },
+    {
+      "action": "record authorized timing input/output hashes and successful tests",
+      "sha256": {
+        "device-timing-contract.txt": "f5f447979e7bf66381ee504957eda9954b64fd94b8760b38b5057c4d9bf6da47",
+        "device_timing.c": "580fadbde1dd5f3016abaae125821a6698da3244dd109937837bc47825668a07",
+        "test_device_timing.py": "1d8924a289916c50d760d8b07127052e837884307c1129e9f3cf961de4442599",
+        "timing-test-build/lego/device.h": "7bbdfcdbb5e3500b52df163f642802aebd54801c8e730da67d71708e738854ca"
+      },
+      "builds": 4,
+      "id_mode_pairs_per_build": 3584
+    },
+    {
+      "tool": "apply_patch",
+      "action": "create independent additional component and synthetic tests",
+      "outputs": [
+        "device_timing.c",
+        "test_device_timing.py"
+      ]
+    },
+    {
+      "tool": "exec_command",
+      "action": "record final timing delivery access",
+      "inputs": [
+        "access-log.json"
+      ],
+      "output": "access-log.json"
+    }
+  ],
+  "isolation_limitations": [
+    "File and tool isolation is instruction enforced; there is no OS filesystem jail.",
+    "Public Python facilities, compiler executables, C standard headers and native runtime libraries are used for testing; no upstream or external source is inspected.",
+    "Agent received only the delegated restriction/task message and the two supplied files; no parent conversation was intentionally inspected.",
+    "Both available compiler drivers identify as Apple Clang 17. GCC itself and WebAssembly were not tested."
+  ],
+  "validation_notes": [
+    "Initial strict Clang C99 compile rejected clzll(0) in the unused conditional branch as a non-constant expression. Updated the argument to OR with 1 before counting, retaining zero behavior and avoiding undefined arguments in every branch.",
+    "The initial failing Python subprocess printed standard runtime traceback paths; no runtime source was opened or inspected."
+  ],
+  "accidental_exposure": [],
+  "compiler_identities": {
+    "clang": "Apple clang version 17.0.0 (clang-1700.6.3.2)",
+    "gcc": "Apple clang version 17.0.0 (clang-1700.6.3.2)"
+  },
+  "final_log_edit": {
+    "tool": "apply_patch",
+    "action": "record compiler coverage limitation and this final log edit",
+    "file": "access-log.json"
+  },
+  "additional_contract_sha256": "f5f447979e7bf66381ee504957eda9954b64fd94b8760b38b5057c4d9bf6da47"
+}

@@ -1,0 +1,38 @@
+missing-class <class 'TypeError'> 'port' argument required
+unknown-class <class 'TypeError'> extra keyword arguments given
+duplicate-class <class 'TypeError'> extra keyword arguments given
+extra-class <class 'TypeError'> extra positional arguments given
+function-pos ok None
+function-kw ok None
+function-missing <class 'TypeError'> 'time' argument required
+function-extra <class 'TypeError'> extra positional arguments given
+function-unknown <class 'TypeError'> 'time' argument required
+function-duplicate <class 'TypeError'> extra keyword arguments given
+control-get ok (1000, 2000, 199)
+control-none ok (1000, 2000, 199)
+control-kw ok None
+control-get-after ok (500, 1000, 199)
+control-unknown <class 'TypeError'> extra keyword arguments given
+control-extra <class 'TypeError'> extra positional arguments given
+control-duplicate <class 'TypeError'> extra keyword arguments given
+pid-get ok (15117, 7558, 1889, 8, 15)
+pid-none <class 'TypeError'> extra positional arguments given
+tolerance-get ok (50, 11)
+stall-get ok (20, 200)
+method-required <class 'TypeError'> 'speed' argument required
+method-keyword ok None
+method-unknown <class 'TypeError'> 'speed' argument required
+method-duplicate <class 'TypeError'> extra keyword arguments given
+method-extra <class 'TypeError'> extra positional arguments given
+method-stop ok None
+reset-int ok None
+reset-kw ok None
+reset-result ok 20
+drive-get ok (195, 733, 166, 750)
+drive-none ok (195, 733, 166, 750)
+drive-kw ok None
+drive-after ok (200, 733, 166, 750)
+pixel-required <class 'TypeError'> 'row' argument required
+pixel-default ok None
+pixel-kw ok None
+stopwatch-default ok 0

@@ -33,18 +33,11 @@ PYBRICKS_SHA="4104553405decb0384bcfb030fbfcb4b5a9854cc"
 # The only submodule the build reads: Pybricks' MicroPython fork.
 MICROPYTHON_SHA="13580b6ad057173f62e8b2363e01d6851bcc6699"
 EMSDK_VERSION="6.0.6"
-# Disputed replacement for pybricks/util_mp/pb_kwarg_helper.h (PR #508).
-# Independent authorship has not been verified. Original attribution and
-# terms are restored conservatively; permissive builds are held below.
-# Include-path isolation proves which file is compiled, not its provenance.
-KWARG_OVERLAY_REL="upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h"
-KWARG_OVERLAY_SHA256="ff7eed639216a9655ab28dc1edb689df60e7a103afb2f36e723e21deee3307c4"
-# The other Stack Overflow (CC BY-SA 4.0) piece: the body of
-# pbio_int_math_mult_then_div() in lib/pbio/src/int_math.c. The Makefile
-# compiles int_math.c with that function removed (strip_function.py) and this
-# stand-in, written from the documented contract and Pybricks' own test.
-INTMATH_OVERLAY_REL="upstream-overlay/lib/pbio/src/int_math_mult_then_div.c"
-INTMATH_OVERLAY_SHA256="16774c6fb7b901cec9e1949a9adf73277669c8cf2a57a95c044d2692d677ac34"
+# The argument-helper dependency is eliminated from a private prepared tree:
+# call sites become explicit MicroPython API calls. The original checkout is
+# unchanged, and no header with the old basename exists in the prepared tree.
+# Contract-only component hashes are verified before conversion/compilation.
+CONTRACT_MANIFEST_REL="contract-only/implementation.json"
 
 SRC_DIR="${PYBRICKS_SRC_DIR:-$SCRIPT_DIR/out/pybricks-micropython}"
 BUILD_DIR="${PYBRICKS_BUILD_DIR:-$SCRIPT_DIR/out/pybricks-wasm-build}"
@@ -56,15 +49,25 @@ MIN_AVAIL_MB=700
 die()  { echo "FATAL: $*" >&2; exit 1; }
 info() { echo ">>> $*"; }
 
-die "Pybricks wasm rebuild held: pb_kwarg_helper.h provenance is unresolved (PR #508). See docs/OPEN-TASKS-2026-09-29.md."
-
-avail=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+if [[ -r /proc/meminfo ]]; then
+  avail=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
+else
+  avail=$(python3 - <<'PYMEM'
+import subprocess
+import re
+page = int(subprocess.check_output(["sysctl", "-n", "hw.pagesize"], text=True))
+vm = subprocess.check_output(["vm_stat"], text=True)
+counts = {k: int(v) for k, v in re.findall(r"^(Pages [^:]+):\s*(\d+)\.", vm, re.M)}
+print((counts.get("Pages free", 0) + counts.get("Pages inactive", 0)) * page // (1024 * 1024))
+PYMEM
+)
+fi
 (( avail >= MIN_AVAIL_MB )) || die "Only ${avail} MB available (need >= ${MIN_AVAIL_MB}). Aborting to avoid OOM."
 info "Memory OK: ${avail} MB available"
 
 # ---------- source -----------------------------------------------------------
 
-if [[ ! -d "$SRC_DIR/.git" ]]; then
+if [[ ! -e "$SRC_DIR/.git" ]]; then
   info "Cloning $PYBRICKS_REPO"
   git clone --filter=blob:none --no-checkout "$PYBRICKS_REPO" "$SRC_DIR"
 fi
@@ -85,12 +88,16 @@ tag_sha=$(git -C "$SRC_DIR" rev-parse "refs/tags/$PYBRICKS_TAG^{commit}" 2>/dev/
 grep -q "^MIT License" "$SRC_DIR/LICENSE" || die "pybricks-micropython LICENSE is not MIT"
 grep -q "The MIT License (MIT)" "$SRC_DIR/micropython/LICENSE" || die "micropython LICENSE is not MIT"
 info "Source verified: pybricks-micropython $PYBRICKS_TAG ($head_sha), micropython $mp_sha"
-for pair in "$KWARG_OVERLAY_REL=$KWARG_OVERLAY_SHA256" "$INTMATH_OVERLAY_REL=$INTMATH_OVERLAY_SHA256"; do
-  rel=${pair%%=*}; want=${pair#*=}
-  got=$(sha256sum "$WASM_DIR/$rel" | awk '{print $1}')
-  [[ "$got" == "$want" ]] || die "$rel sha256 $got != pinned $want"
-  info "Overlay verified: $rel ($got)"
-done
+python3 - "$WASM_DIR/$CONTRACT_MANIFEST_REL" "$WASM_DIR" <<'PYVERIFY'
+import hashlib, json, pathlib, sys
+manifest = json.loads(pathlib.Path(sys.argv[1]).read_text())
+root = pathlib.Path(sys.argv[2])
+for path, want in manifest["implementation_sha256"].items():
+    got = hashlib.sha256((root / path).read_bytes()).hexdigest()
+    if got != want:
+        raise SystemExit(f"Contract-only implementation changed: {path}: {got} != {want}")
+print("Contract-only implementation hashes verified")
+PYVERIFY
 
 # ---------- toolchain --------------------------------------------------------
 
@@ -106,10 +113,13 @@ info "Toolchain: $emcc_version"
 # ---------- build ------------------------------------------------------------
 
 rm -rf "$BUILD_DIR"
-make -C "$WASM_DIR" -j1 PBTOP="$SRC_DIR" BUILD="$BUILD_DIR"
+python3 "$WASM_DIR/prepare_source.py" "$SRC_DIR" "$BUILD_DIR/source"
+make -C "$WASM_DIR" -j1 PBTOP="$BUILD_DIR/source" UPSTREAM_PBTOP="$SRC_DIR" BUILD="$BUILD_DIR"
 
 info "Licence gate over every file the compiler read"
-python3 "$WASM_DIR/licence_gate.py" "$BUILD_DIR" "$SRC_DIR" "$WASM_DIR" --json "$BUILD_DIR/licence-gate.json" >/dev/null
+python3 "$WASM_DIR/licence_gate.py" "$BUILD_DIR" "$BUILD_DIR/source" "$WASM_DIR" --toolchain-root "$EMSDK/upstream" --json "$BUILD_DIR/licence-gate.json" >"$BUILD_DIR/licence-gate.log"
+
+python3 "$WASM_DIR/bundle_notices.py" "$BUILD_DIR/licence-gate.json" "$SCRIPT_DIR/overlay/scratch-gui/static/licenses/pybricks-micropython.MIT.txt" "$EMSDK/upstream"
 
 # ---------- install + provenance ---------------------------------------------
 
@@ -129,22 +139,21 @@ json.dump({
     },
     "toolchain": {"emsdk": "$EMSDK_VERSION", "emcc": "$emcc_version"},
     "brickwright_sources": "firmware/pybricks-wasm (HAL, platform, Makefile)",
-    "upstream_overlay": {
-        "pybricks/util_mp/pb_kwarg_helper.h": {
-            "path": "firmware/pybricks-wasm/$KWARG_OVERLAY_REL",
-            "sha256": "$KWARG_OVERLAY_SHA256",
-            "license": "MIT AND CC-BY-SA-4.0",
-            "provenance_status": "unverified",
-            "why": "disputed replacement; original terms retained conservatively pending review of PR #508",
-        },
-        "lib/pbio/src/int_math.c": {
-            "path": "firmware/pybricks-wasm/$INTMATH_OVERLAY_REL",
-            "sha256": "$INTMATH_OVERLAY_SHA256",
-            "license": "BSD-3-Clause",
-            "why": "int_math.c is compiled with pbio_int_math_mult_then_div() removed (its body is adapted from a CC BY-SA 4.0 Stack Overflow answer) and this stand-in in its place",
-        },
+    "dependency_elimination": {
+        "removed_header": "pybricks/util_mp/pb_kwarg_helper.h",
+        "strategy": "MIT caller sources converted to explicit MicroPython API calls; no replacement helper header",
+        "caller_conversion": json.load(open("$BUILD_DIR/source/argument-conversion.json")),
+        "contract_only_implementation": json.load(open("$WASM_DIR/$CONTRACT_MANIFEST_REL")),
+        "numeric_components": ["contract-only/numeric_scale.c", "contract-only/integer_width.h"],
+        "device_timing": "contract-only/device_timing.c",
     },
-    "not_included": ["lib/btstack", "lib/ble5stack", "lib/BlueNRG-MS", "lib/STM32_USB_Device_Library",
+    "provenance_review": {
+        "date": "2026-09-30",
+        "status": "documented contract-only replacement; previous PR #508 remains unverified",
+        "claim_scope": "fresh agent contexts, recorded input/tool restrictions and separate reviewer integration; no OS filesystem jail or assertion about model training data",
+        "old_replacement_compiled": False,
+    },
+    "not_included": ["pybricks/util_mp/pb_kwarg_helper.h", "pybricks/iodevices/pb_type_iodevices_xbox_controller.c", "lib/btstack", "lib/ble5stack", "lib/BlueNRG-MS", "lib/STM32_USB_Device_Library",
                      "lib/umm_malloc", "lib/lsm6ds3tr_c_STdC", "lib/tiam1808", "LEGO firmware", "TI Bluetooth patch"],
     "licence_gate": gate,
     "assets": {
@@ -157,7 +166,7 @@ EOF
 
 echo ""
 echo "============================================"
-echo "  pybricks-hub.js   : $(stat -c%s "$DEST_DIR/pybricks-hub.js") bytes  sha256 $js_sha"
-echo "  pybricks-hub.wasm : $(stat -c%s "$DEST_DIR/pybricks-hub.wasm") bytes  sha256 $wasm_sha"
+echo "  pybricks-hub.js   : $(wc -c < "$DEST_DIR/pybricks-hub.js") bytes  sha256 $js_sha"
+echo "  pybricks-hub.wasm : $(wc -c < "$DEST_DIR/pybricks-hub.wasm") bytes  sha256 $wasm_sha"
 echo "============================================"
 info "Installed into $DEST_DIR"

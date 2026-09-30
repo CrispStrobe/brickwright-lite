@@ -50,32 +50,35 @@ test('shipped assets match their provenance record', () => {
     }
     assert.equal(provenance.upstream['pybricks-micropython'].commit, '4104553405decb0384bcfb030fbfcb4b5a9854cc');
     assert.ok(provenance.licence_gate.files > 400, 'licence gate must have judged the compiled file set');
-    // Preserve the historical scan, but do not mistake its licence labels
-    // for independent-authorship evidence or present-day clearance.
-    assert.deepEqual(provenance.licence_gate.replaced, [
-        'lib/pbio/src/int_math.c -> brickwright:upstream-overlay/lib/pbio/src/int_math_mult_then_div.c',
-        'pybricks/util_mp/pb_kwarg_helper.h -> brickwright:upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h'
-    ]);
-    assert.equal(provenance.provenance_review.status, 'unresolved');
-    assert.equal(provenance.provenance_review.independent_authorship_verified, false);
-    assert.equal(provenance.provenance_review.permissive_rebuild_allowed, false);
-    assert.equal(provenance.provenance_review.asset_bytes_changed, false);
-    const header = provenance.upstream_overlay['pybricks/util_mp/pb_kwarg_helper.h'];
-    assert.equal(header.source_at_build_sha256, '3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10');
-    assert.equal(header.declared_license_at_build, 'MIT');
-    assert.equal(header.provenance_status, 'unverified');
-    assert.equal(header.license, 'MIT AND CC-BY-SA-4.0');
-    assert.deepEqual(Object.keys(provenance.upstream_overlay).sort(),
-        ['lib/pbio/src/int_math.c', 'pybricks/util_mp/pb_kwarg_helper.h']);
-    for (const [upstream, overlay] of Object.entries(provenance.upstream_overlay)) {
-        const sha = createHash('sha256').update(readFileSync(resolve(here, '..', overlay.path))).digest('hex');
-        assert.equal(sha, overlay.sha256, `the stand-in for ${upstream} is the one the assets were built from`);
+    const elimination = provenance.dependency_elimination;
+    assert.equal(elimination.removed_header, 'pybricks/util_mp/pb_kwarg_helper.h');
+    assert.match(elimination.strategy, /explicit MicroPython API/);
+    assert.ok(elimination.caller_conversion.files.length > 40);
+    assert.equal(provenance.provenance_review.old_replacement_compiled, false);
+    const notices = readFileSync(resolve(assetDir, '../licenses/pybricks-micropython.MIT.txt'), 'utf8');
+    for (const holder of ['British Broadcasting Corporation', 'Tilen MAJERLE',
+        'Swedish Institute of Computer Science', 'LEGO System A/S', 'Mbed TLS Contributors']) {
+        assert.ok(notices.includes(holder), `offline simulator notices omit ${holder}`);
+    }
+    for (const input of provenance.licence_gate.inputs) {
+        for (const raw of input.copyright) {
+            const declaration = raw.replace(/^\s*(?:\/\/|\*)\s*/, '');
+            if (/^Copyright\b/i.test(declaration)) {
+                assert.ok(notices.includes(declaration), `offline notices omit ${input.path}: ${declaration}`);
+            }
+        }
+    }
+    assert.ok(!provenance.licence_gate.inputs.some(input => input.path.includes('xbox_controller')));
+
+    assert.ok(provenance.licence_gate.inputs.every(input => !input.path.endsWith('/pb_kwarg_helper.h')));
+    assert.ok(!Object.keys(provenance.licence_gate.by_licence).some(key => /unresolved|CC-BY-SA/i.test(key)));
+    for (const [path, want] of Object.entries(elimination.contract_only_implementation.implementation_sha256)) {
+        const source = readFileSync(resolve(here, '../firmware/pybricks-wasm', path));
+        assert.equal(createHash('sha256').update(source).digest('hex'), want, `${path} differs from recorded contract-only implementation`);
     }
 });
 
-test('licence gate: refuses unresolved provenance even behind a permissive label', () => {
-    // A label-only MIT stand-in must fail by path. Other policy failures
-    // must still be diagnosed individually alongside the provenance hold.
+test('licence gate: removed helper, share-alike material and answer references cannot pass via MIT labels', () => {
     const gate = resolve(here, '../firmware/pybricks-wasm/licence_gate.py');
     const root = mkdtempSync(resolve(tmpdir(), 'pb-gate-'));
     try {
@@ -88,40 +91,38 @@ test('licence gate: refuses unresolved provenance even behind a permissive label
             return path;
         };
         const ok = file(resolve(pbtop, 'pybricks/ok.h'), '// SPDX-License-Identifier: MIT\n');
-        const standin = file(resolve(wasm, 'upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h'),
-            '// SPDX-License-Identifier: MIT\n');
-        const standin2 = file(resolve(wasm, 'upstream-overlay/lib/pbio/src/int_math_mult_then_div.c'),
-            '// SPDX-License-Identifier: BSD-3-Clause\n');
-        const upstream = file(resolve(pbtop, 'pybricks/util_mp/pb_kwarg_helper.h'),
-            '// SPDX-License-Identifier: MIT\n');
-        const prose = file(resolve(pbtop, 'pybricks/sa.h'),
-            '// SPDX-License-Identifier: MIT\n// A macro adapted from an answer licensed CC BY-SA 4.0.\n');
+        const numeric = file(resolve(wasm, 'contract-only/numeric_scale.c'), '// SPDX-License-Identifier: BSD-3-Clause\n');
+        const width = file(resolve(wasm, 'contract-only/integer_width.h'), '// SPDX-License-Identifier: BSD-3-Clause\n');
+        const removed = file(resolve(pbtop, 'pybricks/util_mp/pb_kwarg_helper.h'), '// SPDX-License-Identifier: MIT\n');
+        const prose = file(resolve(pbtop, 'pybricks/sa.h'), '// SPDX-License-Identifier: MIT\n// CC BY-SA 4.0\n');
+        const answer = file(resolve(pbtop, 'pybricks/answer.h'), '// SPDX-License-Identifier: MIT\n// https://stackoverflow.com/a/12345\n');
+        const unmarked = file(resolve(pbtop, 'pybricks/unmarked.h'), '// no per-file terms\n');
+        const outside = file(resolve(root, 'outside.h'), '// SPDX-License-Identifier: MIT\n');
+        const titleOnly = file(resolve(pbtop, 'pybricks/title.h'), '// The MIT License\n');
         const run = deps => {
             rmSync(build, {recursive: true, force: true});
             file(resolve(build, 'x.d'), `x.o: ${deps.join(' ')}\n`);
-            // python3 from PATH is the binding the subject has in production (build-pybricks-wasm.sh
-            // runs this gate with python3 from PATH). A missing python3 gives status null, which
-            // fails the precondition below, never a silent pass.
-            // gate-shapes-allow: same interpreter binding as the build that runs the gate
+            // gate-shapes-allow: same python3 interpreter binding as the production build
             return spawnSync('python3', [gate, build, pbtop, wasm], {encoding: 'utf8'});
         };
-
-        const clean = run([ok, standin, standin2]);
-        assert.equal(clean.status, 1, `a permissive label cannot clear disputed provenance\n${clean.stderr}`);
-        assert.match(clean.stderr, /pb_kwarg_helper\.h: unresolved provenance \(PR #508\)/);
-        assert.equal(clean.stderr.trim().split('\n').length, 2, 'baseline has only the named provenance failure');
-
-        const shareAlike = run([ok, standin, standin2, prose]);
-        assert.equal(shareAlike.status, 1);
-        assert.match(shareAlike.stderr, /pybricks\/sa\.h: share-alike \(CC-BY-SA\)/);
-
-        const replaced = run([ok, standin, standin2, upstream]);
-        assert.equal(replaced.status, 1);
-        assert.match(replaced.stderr, /pybricks\/util_mp\/pb_kwarg_helper\.h: replaced upstream file was compiled/);
-
+        const clean = run([ok, numeric, width]);
+        assert.equal(clean.status, 0, `baseline must pass\n${clean.stderr}`);
+        for (const [input, diagnostic] of [
+            [removed, /removed argument-helper dependency was compiled/],
+            [prose, /share-alike \(CC-BY-SA\)/],
+            [answer, /answer reference requires provenance review/],
+            [unmarked, /no licence marker; Pybricks repository default is insufficient/],
+            [titleOnly, /no licence marker/],
+            [outside, /outside audited source and pinned toolchain roots/]
+        ]) {
+            const result = run([ok, numeric, width, input]);
+            assert.equal(result.status, 1);
+            assert.match(result.stderr, diagnostic);
+        }
         const missing = run([ok]);
         assert.equal(missing.status, 1);
-        assert.match(missing.stderr, /stand-in for pybricks\/util_mp\/pb_kwarg_helper\.h was not compiled/);
+        assert.match(missing.stderr, /numeric_scale\.c: stand-in/);
+        assert.match(missing.stderr, /integer_width\.h: required contract-only component/);
     } finally {
         rmSync(root, {recursive: true, force: true});
     }

@@ -1302,63 +1302,39 @@ Self-hosted under `static/microbit-sim/` (built from source with emscripten).
   device is selected. The built assets (firmware.js, firmware.wasm,
   simulator.js) are vendored; the source repo provides the build recipe.
 
-## Pybricks MicroPython (SPIKE Prime simulator) — MIT; header provenance unresolved
+## Pybricks MicroPython (SPIKE Prime simulator) — permissive components
 
-**pybricks-micropython**, Copyright (c) 2018-2026 The Pybricks Authors
-(MIT License, https://github.com/pybricks/pybricks-micropython), with its
-**MicroPython** submodule, Copyright (c) 2013-2025 Damien P. George and MicroPython contributors
-(MIT License, https://github.com/pybricks/micropython), compiled to
-WebAssembly on Brickwright's own hardware layer. Self-hosted under
-`static/pybricks-sim/`.
+Pybricks v4.0.1 (`4104553405decb0384bcfb030fbfcb4b5a9854cc`), Copyright
+(c) 2018-2026 The Pybricks Authors, and MicroPython
+(`13580b6ad057173f62e8b2363e01d6851bcc6699`), Copyright (c) 2013-2025
+Damien P. George and contributors, provide the SPIKE Prime Python simulator.
+Their covered portions are MIT licensed. The build also includes lwrb
+(Tilen MAJERLE, MIT), the BBC font (MIT), LEGO control components
+(BSD-3-Clause), Contiki-derived scheduling (Swedish Institute of Computer
+Science / The Pybricks Authors, BSD-3-Clause), and Brickwright components
+(BSD-3-Clause). Emscripten and musl use MIT / NCSA and other permissive
+terms; compiler-rt uses Apache-2.0 WITH LLVM-exception.
 
-- **Version:** pybricks-micropython v4.0.1, commit
-  `4104553405decb0384bcfb030fbfcb4b5a9854cc`; micropython submodule
-  `13580b6ad057173f62e8b2363e01d6851bcc6699`
-- **Licence:** MIT for the Pybricks and MicroPython portions covered by their
-  notices. The argument-header replacement has unresolved provenance; the
-  original MIT and CC-BY-SA-4.0 terms are retained conservatively. Full texts
-  and attribution ship offline in `static/licenses/pybricks-micropython.MIT.txt`
-  and `static/licenses/CC-BY-SA-4.0.txt`.
-- **Build:** `build-pybricks-wasm.sh` (emsdk 6.0.6, pinned shas verified).
-  The Brickwright HAL, platform and Makefile are in `firmware/pybricks-wasm/`.
-  Asset sha256s are in `static/pybricks-sim/PROVENANCE.json`.
-- **What is not included:** Pybricks' LICENSE notes that its firmware builds
-  pull in code under other terms, naming BTstack. This build compiles in
-  none of it: no BTstack or other Bluetooth stack, no ST/TI vendor HAL,
-  no umm_malloc, no LEGO firmware, no TI Bluetooth patch, and no file from
-  MicroPython's `lib/` (emscripten's libc provides libm).
-  The Makefile drops Pybricks' GPL-2.0/MPL-1.0 NXT/EV3 drivers before compiling.
-- **Argument header review (2026-09-30):** the previous assertion of an
-  independently authored MIT-only replacement is withdrawn pending evidence.
-  The source and shipped binary use the September replacement of
-  `pybricks/util_mp/pb_kwarg_helper.h`; the upstream file is shadowed, but that
-  establishes the compiler input, not independent authorship. The original
-  Copyright (c) 2018-2020 The Pybricks Authors notice and source references
-  are restored in the overlay. The Pybricks Authors include Laurens Valk,
-  David Lechner and LEGO System A/S. Upstream credits gratzdhg's
-  [argument-counting answer](https://stackoverflow.com/a/50371430) and Marvin's
-  [variadic-iteration answer](https://stackoverflow.com/a/11994395).
-  The replacement changes the macro implementation; attribution was restored
-  on 2026-09-30 without changing its macros or rebuilding the assets.
-  [Original header](https://github.com/pybricks/pybricks-micropython/blob/4104553405decb0384bcfb030fbfcb4b5a9854cc/pybricks/util_mp/pb_kwarg_helper.h),
-  [CC-BY-SA-4.0 terms](https://creativecommons.org/licenses/by-sa/4.0/).
-  Retaining these notices is a precaution, not a finding about derivation or
-  clearance for redistribution. `build-pybricks-wasm.sh` holds new builds;
-  the licence gate rejects this input even if its SPDX label is changed to MIT.
-- **Integer helper:** `lib/pbio/src/int_math.c` is compiled with
-  `pbio_int_math_mult_then_div()` removed and a BSD-3-Clause Brickwright
-  stand-in. Its separate authorship assertion has not been independently
-  audited in the PR #508 review. No blanket “no share-alike code” assertion
-  is made for the simulator. See `docs/OPEN-TASKS-2026-09-29.md` for evidence
-  limits and remaining work.
-- **Toolchain runtime:** the emscripten glue (`pybricks-hub.js`) and the
-  musl libc / compiler-rt parts linked into the wasm are emscripten's
-  (MIT / University of Illinois NCSA; compiler-rt Apache-2.0 WITH
-  LLVM-exception).
-- **Usage:** the SPIKE Prime pane runs Pybricks Python programs from the
-  Code tab on a simulated hub: 5x5 light matrix, status light, buttons,
-  IMU, speaker and ports A–F with simulated motors and colour, distance
-  and force sensors.
+Full licence texts and attribution are bundled offline in
+`static/licenses/pybricks-micropython.MIT.txt`. The filename is retained for
+existing links; it includes the additional component licences.
+
+`build-pybricks-wasm.sh` prepares a private source tree and checks every
+compiler dependency before installing assets. It excludes the argument
+helper, the non-free Xbox controller module, hardware vendor HALs, Bluetooth
+stacks, and GPL/MPL NXT/EV3 drivers. Argument callers use explicit
+MicroPython APIs. Two cited numeric snippets are removed and replaced by
+BSD-3-Clause components implemented by fresh agents from recorded contracts.
+The process records are in `firmware/pybricks-wasm/contract-only/records/`.
+Access restrictions were instruction based; no claim about model pretraining
+or OS isolation is made. The earlier PR #508 authorship claim remains
+unverified and the earlier replacement is not a build input.
+
+The pinned toolchain is emsdk 6.0.6. Source and asset hashes, licence inventory,
+and conversion manifest are in `static/pybricks-sim/PROVENANCE.json`.
+The review and remaining full-dependency replacement work are documented in
+`docs/OPEN-TASKS-2026-09-29.md`. These conclusions cover this simulator,
+not all other components of Brickwright.
 
 ## avr8js — MIT
 

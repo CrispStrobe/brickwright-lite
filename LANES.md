@@ -1140,3 +1140,14 @@ runs, 169 steps: nothing needed a line; the section exists so the first one has 
 - build.yml :: Measure — time every browser wait (manual runs only) :: manual dispatch only — its `if:` is `github.event_name == 'workflow_dispatch' && matrix.shard == 'light'`, so no `push`/`pull_request` run ever executes it and it is `never` in any window without a hand-dispatched light-shard run. The 2026-09-07 readings caught 57 branch dispatches that ran it; the window read 2026-09-22 (when the ack-z80-cpm.yml workflow was added and the census regenerated) holds 47 build.yml runs, none a manual light-shard dispatch, so it is pointed here rather than judged. It is a measurement aid, not a gate — nothing depends on it running.
 
 - appstore-screenshots.yml :: Replace the App Store screenshot sets :: optional manual dispatch with `upload: true` satisfies `if: inputs.upload`; the five completed runs in the 2026-09-28 readings all left upload off. This step replaces App Store assets only after a person opts in; it is not a screenshot capture gate (2026-09-28).
+
+Pybricks local permissive cleanup (2026-09-30): branch `fix/pybricks-contract-api`
+removes the argument helper through a fresh contract-only converter, replaces
+two numeric snippets and unmarked device timing code, excludes the non-free
+Xbox module, and rebuilds the simulator with 580 permissive application inputs
+and 55 pinned-toolchain headers. 11 simulator + 5 About-data + 3 notice checks
+pass; 38 argument probes match both reference builds. Source/access records
+and limitations are in `docs/OPEN-TASKS-2026-09-29.md` and
+`firmware/pybricks-wasm/contract-only/records/`. PR #508 provenance remains
+unresolved. Full Pybricks removal and a whole-application permissive migration
+are not delivered. Local work only; nothing posted or pushed.

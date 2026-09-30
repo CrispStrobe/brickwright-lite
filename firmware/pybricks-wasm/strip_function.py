@@ -31,7 +31,7 @@ def main():
     while lines[end] != "}":
         end += 1
     removed = "\n".join(lines[start:end + 1])
-    kept = lines[:start] + ["// " + func + "() removed here; see upstream-overlay/."] + lines[end + 1:]
+    kept = lines[:start] + ["// " + func + "() removed here; see contract-only/numeric_scale.c."] + lines[end + 1:]
     out = "\n".join(kept)
     if marker not in removed:
         sys.exit("strip_function: marker not found in the removed range")

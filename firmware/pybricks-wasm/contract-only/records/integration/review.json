@@ -1,0 +1,68 @@
+{
+  "date": "2026-09-30",
+  "reviewer_exposed_to_original_implementations": true,
+  "agent_isolation": "Fresh contexts and instruction-enforced input restrictions, not OS isolation; no assertion about pretraining.",
+  "build": {
+    "toolchain": "emsdk 6.0.6",
+    "application_inputs": 580,
+    "toolchain_header_inputs": 55,
+    "by_licence": {
+      "Apache-2.0": 1,
+      "BSD-3-Clause": 4,
+      "BSD-3-Clause AND MIT": 28,
+      "MIT": 274,
+      "no per-file marker (MicroPython repository LICENSE: MIT)": 9,
+      "permissive (licence text, no SPDX tag)": 264
+    },
+    "known_warning": "wasm-ld pbio_main_start_application_resources signature mismatch also present in reference build; not resolved by this change.",
+    "full_gui_build_run": false
+  },
+  "validation": {
+    "simulator_tests": 11,
+    "about_data_tests": 5,
+    "bundled_notice_tests": 3,
+    "converter_tests": 18,
+    "numeric_random_cases_per_optimization": 20000,
+    "numeric_width_cases": "k=0..64, plus signed/enum/static cases",
+    "device_timing_pairs_per_optimization": 3584,
+    "argument_probe_cases": 38,
+    "argument_probe_outputs_equal": true,
+    "mutation_checks": [
+      "matrix",
+      "motor",
+      "distance"
+    ],
+    "mutation_runner": "Each changed wasm fails its exact intended test; patterns escaped and timeout bounded."
+  },
+  "probe_sha256": {
+    "contract-only-arguments.txt": "8836c6ce8ca560550c05c1662fc5805e5f06f737a4bc6124da215b8680105e5d",
+    "before-arguments.txt": "8836c6ce8ca560550c05c1662fc5805e5f06f737a4bc6124da215b8680105e5d",
+    "upstream-reference-arguments.txt": "8836c6ce8ca560550c05c1662fc5805e5f06f737a4bc6124da215b8680105e5d"
+  },
+  "caller_conversion": {
+    "format_version": 1,
+    "removed_includes": 60,
+    "rewritten_calls": {
+      "PB_PARSE_ARGS_CLASS": 46,
+      "PB_PARSE_ARGS_FUNCTION": 7,
+      "PB_PARSE_ARGS_METHOD": 93,
+      "PB_PARSE_ARGS_METHOD_ALL_NONE": 6,
+      "PB_PARSE_ARGS_METHOD_SKIP_SELF": 0
+    }
+  },
+  "replaced_or_excluded": [
+    "pybricks/util_mp/pb_kwarg_helper.h",
+    "lib/pbio/src/int_math.c::pbio_int_math_mult_then_div",
+    "micropython/py/smallint.h::MP_IMAX_BITS",
+    "lib/lego/device.c",
+    "pybricks/iodevices/pb_type_iodevices_xbox_controller.c"
+  ],
+  "limitations": [
+    "Original PR #508 authorship remains unverified.",
+    "Focused behavioural tests do not prove every API combination.",
+    "Pybricks still provides control, trajectory, IMU, scheduling and Python APIs.",
+    "Other app components include MPL/LGPL and need separate migration.",
+    "Published releases are unchanged by local work."
+  ],
+  "replay_command": "python3 firmware/pybricks-wasm/verify_contracts.py"
+}

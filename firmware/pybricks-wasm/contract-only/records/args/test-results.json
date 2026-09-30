@@ -1,0 +1,15 @@
+{
+  "command": "python3 -m unittest -v test_remove_arg_macros.py",
+  "tests_run": 18,
+  "result": "OK",
+  "compiler_check": "PASS: C11 syntax check with braced ROM constructors; compile and run conditional descriptor fixtures with SYNTHETIC_OPTION=0 and 1, including static index assertions and synthetic parsed-result checks.",
+  "real_callers_tested": false,
+  "accidental_exposure": false,
+  "deliverable_sha256": {
+    "remove_arg_macros.py": "0a84d95f5cd4cb80d647cbfd7f2ddee3d7f186d92d0bcab672545576cac44411",
+    "test_remove_arg_macros.py": "8a76405868a11078fa294d1c6b8943ead2c07e28cb05f60588e25988f9ff9ae7",
+    "contract-clarifications.json": "195e89317b5d6bdc37dc48a1c6d48cb7940859ce184c4c814238eb32e851805a"
+  },
+  "reviewer_synthetic_regression": "PASS: directive-aware boundaries and preservation; all unbraced control-body cases rejected",
+  "conditional_descriptor_regression": "PASS: table entries and output locals retain directives; later unconditional index is 2 when disabled and 4 when enabled; balanced if/ifdef/ifndef/elif/else groups and explicit unsupported-shape errors covered."
+}

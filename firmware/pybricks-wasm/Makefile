@@ -17,6 +17,8 @@ ifeq ($(PBTOP),)
 $(error PBTOP must point at a pybricks-micropython checkout)
 endif
 
+UPSTREAM_PBTOP ?= $(PBTOP)
+
 PBIO_PLATFORM = wasm_hub
 WASM_DIR := $(abspath .)
 
@@ -46,10 +48,9 @@ SRC_QSTR := $(filter-out $(UNUSED_EXTMOD_SRC_C), $(SRC_QSTR))
 INC += -I.
 INC += -I$(WASM_DIR)/platform
 INC += -I$(WASM_DIR)/compat
-# Overlay headers are found before $(PBTOP). Include-path isolation does
-# not establish provenance. The kwarg header is disputed (PR #508); the
-# build script and licence gate hold permissive rebuilds pending review.
-INC += -I$(WASM_DIR)/upstream-overlay
+# Contract-only numeric components. Argument callers are explicit C in
+# the prepared PBTOP tree; there is no argument-helper header.
+INC += -I$(WASM_DIR)/contract-only
 INC += -I$(TOP)
 INC += -I$(PBTOP)/lib/lego
 INC += -I$(PBTOP)/lib/lwrb/src/include
@@ -64,6 +65,9 @@ CFLAGS += -Os -DNDEBUG -fdata-sections -ffunction-sections
 # MicroPython's lib/libm is not used: emscripten's libc (musl) provides libm.
 
 include $(PBTOP)/bricks/_common/sources.mk
+
+# This module has no permissive grant, even when its feature is disabled.
+PYBRICKS_PYBRICKS_SRC_C := $(filter-out pybricks/iodevices/pb_type_iodevices_xbox_controller.c,$(PYBRICKS_PYBRICKS_SRC_C))
 
 # Every source that is not permissively licensed is dropped here rather than
 # relied on to compile to nothing: the NXT/EV3-only drivers under GPL-2.0-only
@@ -103,10 +107,10 @@ PBIO_SRC_C := $(filter-out lib/pbio/drv/%,$(PBIO_SRC_C)) $(PBIO_DRV_KEEP)
 # of pbio_int_math_mult_then_div() is adapted from a Stack Overflow answer
 # (CC BY-SA 4.0). Compile a copy with that one function removed, and a
 # Brickwright stand-in for it. The licence gate checks the upstream file was
-# not read and the stand-in was.
+# not compiled and the contract-only component was.
 PBIO_SRC_C := $(filter-out lib/pbio/src/int_math.c,$(PBIO_SRC_C))
 INT_MATH_STRIPPED = $(BUILD)/stripped/int_math.c
-WASM_SRC_C_OVERLAY = upstream-overlay/lib/pbio/src/int_math_mult_then_div.c
+WASM_SRC_C_OVERLAY = contract-only/numeric_scale.c
 
 WASM_SRC_C = \
 	platform/platform.c \
@@ -155,8 +159,8 @@ SRC_QSTR += $(PY_EXTRA_SRC_C) $(PYBRICKS_PYBRICKS_SRC_C) $(WASM_SRC_C)
 SRC_QSTR_AUTO_DEPS +=
 
 # Firmware identity, as common.mk derives it.
-PYBRICKS_GIT_HASH := $(shell cd $(PBTOP) && git rev-parse --short HEAD)
-export MICROPY_GIT_TAG := $(shell cd $(PBTOP) && git describe --tags --always --exclude "@pybricks/*")
+PYBRICKS_GIT_HASH := $(shell cd $(UPSTREAM_PBTOP) && git rev-parse --short HEAD)
+export MICROPY_GIT_TAG := $(shell cd $(UPSTREAM_PBTOP) && git describe --tags --always --exclude "@pybricks/*")
 export MICROPY_GIT_HASH := $(PYBRICKS_GIT_HASH)
 
 $(BUILD)/pbio_version_hash.h: FORCE

@@ -58,7 +58,7 @@ lands there first; Lite then advances the exact pin.
 
 ## PR #508 review — 2026-09-30
 
-**Finding:** a replacement was implemented, but the available record does not
+**Finding about the earlier PR:** a replacement was implemented, but the available record does not
 establish a clean-room process. We withdraw the assertions of verified
 independent authorship and permissive-only clearance pending evidence. This
 is an engineering/provenance finding, not a determination of infringement
@@ -106,7 +106,7 @@ Evidence:
   by itself prove reading the implementation. Neither observation resolves
   the absolute “never opened/read/diffed” claim.
 
-Local corrections:
+Initial local corrections (commit `4fd368544`, before the new replacement below):
 
 - Restore original attribution, source references and terms conservatively in
   the overlay; keep macro code unchanged. Preserve the historical asset hashes
@@ -122,7 +122,7 @@ Local corrections:
   the attachment are preserved locally in `brickwright-firmware-private`,
   under `pybricks/2026-09-30-pr508/`.
 
-Remaining decisions and work:
+Decisions at the initial correction (items 2–4 addressed by the new local implementation below):
 
 1. Recover the original VPS authoring records. Until then the answer to “did
    we do a verified clean-room rewrite?” is **not established**.
@@ -151,10 +151,81 @@ adapted material ([legal code, section 3](https://creativecommons.org/licenses/b
 Its scope depends on material and rights involved; this audit does not decide
 whether the replacement or whole firmware is adapted material.
 
-Validation of the local correction: all 11 shipped-simulator tests pass; three
+Validation of the initial local correction: all 11 shipped-simulator tests pass; three
 relevant bundled-notice tests pass; both edited About modules parse; overlay
 and tracked package copies match. Removing the path-based provenance guard
 makes its named test fail. The build script exits with the provenance hold
 before any source/toolchain/build mutation. The overlay macro code is identical
 before and after removing comment/blank lines, and both binary hashes match
 the preserved build record. No wasm rebuild or full GUI build was performed.
+
+## Documented contract-only replacement — 2026-09-30
+
+The local branch `fix/pybricks-contract-api` removes the argument-helper
+dependency through a documented new process. Two agents started with
+`fork_turns=none`, functional contracts, and input/access restrictions. The
+reviewer, who had seen the old implementations, integrated their deliveries
+only afterward. Contracts, clarifications, access records, hashes and test
+results are under `firmware/pybricks-wasm/contract-only/records/`.
+Restrictions were instruction based, without an OS jail; no claim about model
+pretraining is made. The earlier PR #508 authorship claim remains unverified.
+
+The prepared source converts 60 MIT caller files (152 calls) to explicit
+MicroPython argument tables and API calls. Neither old helper enters that
+source tree. Two cited numeric snippets (scaling and integer width) are
+removed and replaced with contract-only BSD-3-Clause components. Unmarked
+`lib/lego/device.c` has no verified permissive grant under Pybricks' limited
+repository licence; its timing functions are replaced from a separate factual
+contract. The non-free Xbox module is disabled and excluded from source and
+compiler lists. Historical evidence stays in the private audit repository and
+git history; obsolete overlays and their CC licence payload are removed.
+
+The new simulator passes the gate for 580 application source/header inputs
+and records 55 headers from the pinned SDK separately. The gate rejects
+unmarked Pybricks files, unknown outside dependencies, removed helper files,
+non-allowlisted SPDX identifiers, CC-BY-SA material and source answer
+references. MicroPython's own MIT licence covers its unmarked core files.
+Source hashes and copyright declarations are in the shipped PROVENANCE.json.
+The offline licence bundle includes BBC, lwrb, LEGO, Contiki, MicroPython
+contributors and compiler runtime notices. A licence label alone does not
+resolve questionable provenance.
+
+Validation: 11 simulator tests, five About-data checks and three relevant
+bundled-notice checks pass. All 38 argument probe outputs match across the old
+shipped build, an upstream reference build, and the new build. The converter
+has 18 synthetic tests; numeric tests cover 20,000 randomized cases at each
+optimization level and constant widths 0–64; device timing tests cover 3,584
+synthetic ID/mode pairs at each optimization level. The available native cc
+and gcc drivers both resolve to Apple Clang 17. The integrated build compiles
+the replacements with Emscripten 6.0.6. These are focused behavior checks,
+not proof of every Pybricks API combination. The existing reference-build
+linker warning about `pbio_main_start_application_resources` remains. No full
+GUI bundle was built. The initial build hold is superseded by the audited
+replacement; the earlier correction's unchanged-byte statements describe
+that initial commit, not the current rebuilt simulator.
+
+### Removing all Pybricks
+
+This change retains Pybricks' permissively licensed simulator inputs. Full
+removal is feasible as a separate compatibility project. Swapping in the
+existing SpikeMotorModel cannot retain all behavior: it applies speed
+instantly without Pybricks acceleration profiles, load/stall behavior or an
+equivalent controller. Independent specifications and coverage are also
+needed for drive bases, IMU/calibration, control settings/logging, sensor/device
+modes, scheduling/awaitables, parameters, tools and system APIs before claiming
+functional parity.
+
+The broader Pybricks tree contains GPL/MPL drivers, chip-restricted libraries
+and unmarked files; it cannot be retained wholesale. The compiled simulator
+set is the audited boundary. Other Brickwright components explicitly use
+MPL/LGPL and other terms. A whole-application permissive-only migration needs
+a complete package, asset and binary inventory and replacements; it has not
+been delivered by this simulator task. Published releases are unchanged.
+No remote posts, edits, pushes or PR operations were performed.
+
+Final mutation validation: deliberately broken matrix, motor and distance
+sensor builds each fail their exact intended behavioral test. The runner now
+uses the prepared source, escaped exact test names and a 30-second timeout.
+Replay component tests with `python3 firmware/pybricks-wasm/verify_contracts.py`;
+archived access records remain unchanged. After restoring the shipped assets,
+the final simulator, About-data and notice checks pass again.
