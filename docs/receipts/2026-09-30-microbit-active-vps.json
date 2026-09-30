@@ -1,0 +1,58 @@
+{
+  "commit": "24719d902f2b8a6c126bef00afb505b74412233d",
+  "cpuHz": 64000000,
+  "engine": "native Rust event-scheduler",
+  "firmwareSha256": "9ddaee7302b01bd6deeeca3ff8636f0d0dfd4c52bc1aa9c2e191cecbedac4da6",
+  "guestSourceSha256": "e21c93f9c163d2280461a31a0cb1adf47c273e08539a62c60d5b2938e09063f2",
+  "limitations": [
+    "no browser-WASM measurement",
+    "no sensor/audio qualification",
+    "functional cycle model, not silicon-cycle-accurate timing"
+  ],
+  "medianRtx": 0.33661187736571163,
+  "realtimeTargetMet": false,
+  "samples": [
+    {
+      "cycles": 4000000,
+      "guestButtonMask": 0,
+      "pass": 1,
+      "pixels": [253,0,0,0,0,0,254,0,0,0,0,0,255,0,0,0,0,0,253,0,0,0,0,0,254],
+      "rtxAt64MHz": 0.41325774485513117,
+      "wallSeconds": 0.151237335
+    },
+    {
+      "cycles": 4000000,
+      "guestButtonMask": 1,
+      "pass": 2,
+      "pixels": [253,0,0,0,0,0,253,0,0,0,0,0,253,0,0,0,0,0,255,0,0,0,0,0,254],
+      "rtxAt64MHz": 0.33661187736571163,
+      "wallSeconds": 0.185673781
+    },
+    {
+      "cycles": 4000000,
+      "guestButtonMask": 0,
+      "pass": 3,
+      "pixels": [255,0,0,0,0,0,253,0,0,0,0,0,253,0,0,0,0,0,253,0,0,0,0,0,254],
+      "rtxAt64MHz": 0.26325304602623173,
+      "wallSeconds": 0.237414157
+    },
+    {
+      "cycles": 4000000,
+      "guestButtonMask": 1,
+      "pass": 4,
+      "pixels": [253,0,0,0,0,0,253,0,0,0,0,0,255,0,0,0,0,0,253,0,0,0,0,0,254],
+      "rtxAt64MHz": 0.23030896234724468,
+      "wallSeconds": 0.271374589
+    },
+    {
+      "cycles": 4000000,
+      "guestButtonMask": 0,
+      "pass": 5,
+      "pixels": [253,0,0,0,0,0,253,0,0,0,0,0,253,0,0,0,0,0,253,0,0,0,0,0,255],
+      "rtxAt64MHz": 0.43397617680486633,
+      "wallSeconds": 0.144017122
+    }
+  ],
+  "schema": "labwired.microbit.active-board.v1",
+  "workload": "guest five-row GPIO scan including silicon P1.05 and active-low button reads"
+}

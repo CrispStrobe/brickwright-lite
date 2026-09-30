@@ -66,13 +66,20 @@ address-preserving ELF, Intel HEX and UF2 loading. The optimized, adapter-
 equivalent hosted smoke receipt reaches **3.32x** and **3.78x** respectively
 (seven-run medians, both booted to `OK`); missing board peripherals remain
 explicit rather than being hidden by the CPU result. The public Renode fork now has a qualified exact
-STM32F413VG SPIKE Prime platform. Its hosted active-loop receipt reaches
-**1.770x median** with a **1.383x minimum**, rather than inferring performance
-from the old F412 proxy. The EV3 work now has a source-built
-AM1808/ARM926 Renode boundary for reset, UART1, AINTC interrupts and GDB. Its
-hosted active-loop qualification reaches **1.361x median** with a **1.207x
-minimum**, but it does not yet have the Linux boot peripherals or a Lite
-process adapter. See
+STM32F413VG SPIKE Prime platform. Its latest hosted CPU instruction-loop receipt
+reaches **2.182x median** with a **1.962x minimum**. The EV3 work has a source-built
+AM1808/ARM926 Renode boundary with a native Lite process/debugger adapter, live
+178x128 display, raw ADC and ideal four-motor state. Its hosted CPU instruction
+loop reaches **1.548x median** with a **1.298x minimum**. Both packaged EV3
+debugger/model-input contracts passed hosted CI. Full Linux boot and complete
+motor/peripheral workload RTx remain pending. CP13's first micro:bit matrix/button
+slice has landed: the active native Rust/event-scheduler guest reaches
+**2.512x hosted median**, **2.511x minimum** at 64 MHz. A shared VPS run under
+concurrent build load reached only **0.337x median**; an uncontrolled repeat
+varied widely, so this is not a universal real-time guarantee. These receipts
+are separate from browser WASM/full-application performance; browser, sensor
+and microphone/audio
+qualification remains in progress. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
 
