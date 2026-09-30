@@ -129,8 +129,11 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
  * @param {boolean} [options.stepClock] with vmStepsOn: install the pane's
  *   VmStepClock (true, what ships) or leave it off so frameSimMs falls back to
  *   wall-clock frame deltas (false, the rule before #518)
+ * @param {function} [options.onFrame] called after every frame's tick with
+ *   (bridge, frameIndex): a VIEW of the run (the 3D view test renders each
+ *   frame's snapshot through it). It must only read.
  */
-export async function runOnArena (source, world, {extraMs = 0, record = false, vmStepsOn = null, maxFrames: paneFrames = 0, stepClock = true} = {}) {
+export async function runOnArena (source, world, {extraMs = 0, record = false, vmStepsOn = null, maxFrames: paneFrames = 0, stepClock = true, onFrame = null} = {}) {
     const clock = new FakeClock(1.7e12);
     clock.install();
     const calls = new Map();
@@ -225,6 +228,7 @@ export async function runOnArena (source, world, {extraMs = 0, record = false, v
                 verdict = bridge.tick(frameSimMs(paneClock, lastFrame, now));
                 lastFrame = now;
             } else verdict = bridge.tick(FRAME_MS);
+            if (onFrame) onFrame(bridge, frames);
             frames++;
             if (peripheralState.lastUnsupportedPythonTunnel && !unsupported.includes(peripheralState.lastUnsupportedPythonTunnel)) {
                 unsupported.push(peripheralState.lastUnsupportedPythonTunnel);

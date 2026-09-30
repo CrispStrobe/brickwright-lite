@@ -8,6 +8,7 @@ import {spawnSync} from 'node:child_process';
 test('boot payload accepts shared lazy engine bytes but rejects eager, absent and map-only markers', () => {
     const build = mkdtempSync(join(tmpdir(), 'boot-payload-'));
     const marker = 'no RAM, ROM, VIA or ACIA on the board';
+    const three = 'THREE.WebGLRenderer: WebGL 1 is not supported since r163.';
     const put = (name, text) => writeFileSync(join(build, name), text);
     const run = () => spawnSync(process.execPath, [resolve('scripts/verify-boot-payload.mjs')], {
         env: {...process.env, BW_BUILD: build}, encoding: 'utf8'
@@ -21,7 +22,9 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'ext-legonxt': 'ID: legonxt', 'ext-spikeprime': 'ID: spikeprime\n',
             'asset-library-index': '"name":"Abby"',
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
-            'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker
+            'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
+            // The arena's 3D view: its own chunk, three in a shared lazy chunk, and the arena pane's chunk without either.
+            'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-arena': 'the 2D arena pane'
         })) put(`chunks/${name}.js`, bytes);
         let result = run();
         assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -42,5 +45,19 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         put('index.html', '<script src="gui.js"></script>');
         rmSync(join(build, 'chunks/bw-board.js'));
         assert.equal(run().status, 1, 'the named entry chunk is still required');
+        put('chunks/bw-board.js', 'entry');
+        assert.equal(run().status, 0, 'restored');
+        // three.js belongs to the 3D view, not to the arena pane that offers it.
+        put('chunks/bw-spike-arena.js', `the 2D arena pane ${three}`);
+        result = run();
+        assert.equal(result.status, 1);
+        assert.match(result.stdout, /FAIL three\.js .* are not in chunks\/bw-spike-arena\*\.js/);
+        rmSync(join(build, 'chunks/bw-spike-arena.js'));
+        result = run();
+        assert.equal(result.status, 1, 'no arena chunk to inspect is a failure, not a vacuous pass');
+        assert.match(result.stdout, /FAIL .*no chunks\/bw-spike-arena\*\.js to inspect/);
+        put('chunks/bw-spike-arena.js', 'the 2D arena pane');
+        put('chunks/1380.hash.js', 'renamed');
+        assert.equal(run().status, 1, 'three\'s marker must be found in lazy JS');
     } finally {rmSync(build, {recursive: true, force: true});}
 });

@@ -19,5 +19,18 @@
       "test/shipped-lesson-images.test.mjs"
     ],
     "why": "owned RP2040 adapter/debug sources execute the GUI package's rp2040js core"
+  },
+  "three": {
+    "tests": [
+      "test/spike-arena-3d-pane.test.mjs",
+      "test/spike-arena-3d.test.mjs"
+    ],
+    "why": "the SPIKE arena's 3D scene builder (lib/spike-arena/arena-scene3d.js) and view import three, a GUI-package dependency lazy-loaded with the 3D view; the tests build the scene headless"
+  },
+  "three/addons/controls/OrbitControls.js": {
+    "tests": [
+      "test/spike-arena-3d-pane.test.mjs"
+    ],
+    "why": "the pane test loads the real 3D view module (arena-view3d.js), which imports three's orbit control, and asserts its no-WebGL fallback"
   }
 }
