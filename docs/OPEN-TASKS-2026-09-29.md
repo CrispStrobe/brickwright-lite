@@ -52,17 +52,22 @@ lands there first; Lite then advances the exact pin.
 | D1 | SPIKE 3 Python: close refusals | 34 of 73 SPIKE 3 functions are refused by name. Map the ones the arena or the dialect can support (sensors, motor modes, light matrix). | DONE 2026-09-29 — Lite PR #555; CrispStrobe/extensions#27 (`e82ebcd`) and sb3-creator#40 (`a2032f71`). Before → after: `color_sensor.rgbi()[0..2]` refused → mapped; `motion_sensor.angular_velocity()` refused → approximate; `light.color` refused → approximate; `sound.volume` refused → mapped; `distance_sensor.show` refused → approximate; `distance_sensor.clear` refused → mapped; `light_matrix.show` refused → approximate. The other 27 stay refused, each with a named reason: `motor.get_duty_cycle/status/info`, `distance_sensor.get_pixel/set_pixel`, `force_sensor.raw`, `light_matrix.get_pixel/set_orientation/get_orientation`, `motion_sensor.gesture/stable/quaternion/get_yaw_face/set_yaw_face/tap_count/reset_tap_count`, and `hub.temperature/battery_voltage/battery_current/battery_temperature/usb_charge_current/device_uuid/hardware_id/power_off/reset/soft_reset/bootloader`. 34 → 27 refused; full table in `docs/SPIKE3-PYTHON.md`. |
 | D2 | More arena units | Units beyond "Rover basics": sensors in depth, gyro turns, mapping, a capstone mission. Original content, EN and DE, reference and wrong solutions auto-checked. | DONE 2026-09-29 — Lite #557. Sensors in depth: sd01 blue marker, sd02 trail to the red flag, sd03 docking distance, sd04 door in the wall (side-mounted distance sensor), sd05 feel the way (force). Gyro turns: gt01 half a right angle, gt02 worn wheel, gt03 hexagon patrol, gt04 about turn. Mapping: mp01 count the finds, mp02 back to the find, mp03 replay the route (list). Capstone: cp01 supply run, 4 stages with partial credit. Every reference passes and every wrong solution fails for a pinned reason in the real VM path; mission table in docs/SPIKE-ARENA.md "The units". |
 | D3 | 3D view of the arena | A three.js view over the same arena snapshot state, as a toggle beside the 2D view. No new physics. | DONE 2026-09-30 — Lite PR #568: three 0.186.1 (MIT, exact pin, lazy chunk `bw-arena-3d`, held out of the first load by verify-boot-payload), scene built headless from the one snapshot and asserted against it (every mission; a driven path; the capstone reference in the real VM with identical verdict/time), no-WebGL fallback EN/DE, browser gate toggles 3D and runs gt01 with it open. |
-| D4 | Pybricks header PR | Review the disputed `pb_kwarg_helper.h` provenance; no further external action authorized. | CLOSED / PROVENANCE UNRESOLVED 2026-09-30 — sent as pybricks/pybricks-micropython#508 (head CrispStrobe:cleanroom-kwarg-helper-v2 `9120e981`, on upstream master 81bb7272). Re-verified against current master first: upstream had added `PB_PARSE_ARGS_METHOD_SKIP_SELF` (used in the new hub_network file, compiled out of the virtual hub), which the Sep-25 draft lacked and which would have broken the EV3/Prime/Essential builds; added reportedly from its one call site; independent authorship is unverified. Reported equivalence evidence (not reproduced in this audit): virtualhub 12/12 tests (58 cases) identical, 34-call argprobe identical, 85/85 call sites + 205 table entries identical, hub_network on primehub_f4 (ARM, LTO off) 5 tables byte-identical, text -104 B. Fork CI could not be used (fork workflows need a one-time UI enable). Bug-fix PR #507 still open. |
+| D4 | Pybricks header PR | Review the disputed `pb_kwarg_helper.h` provenance; no further external action authorized. | CLOSED / PROVENANCE UNRESOLVED 2026-09-30 — sent as pybricks/pybricks-micropython#508 (head CrispStrobe:cleanroom-kwarg-helper-v2 `9120e981`, on upstream master 81bb7272). Re-verified against current master first: upstream had added `PB_PARSE_ARGS_METHOD_SKIP_SELF` (used in the new hub_network file, compiled out of the virtual hub), which the Sep-25 draft lacked and which would have broken the EV3/Prime/Essential builds; added reportedly from its one call site; VPS logs confirm a separate restricted-source implementer, but not contract-only or OS/network isolation. Reported equivalence evidence (not reproduced in this audit): virtualhub 12/12 tests (58 cases) identical, 34-call argprobe identical, 85/85 call sites + 205 table entries identical, hub_network on primehub_f4 (ARM, LTO off) 5 tables byte-identical, text -104 B. Fork CI could not be used (fork workflows need a one-time UI enable). Bug-fix PR #507 still open. |
 | D5 | Dialect drops a statement whose argument is a spaced expression (found by D2) | `move forward (finds * 15) cm` is dropped with only a parse WARNING — a silent loss for any program not checking warnings (the Rover-basics unit test doesn't). Find every statement word whose argument parser can drop an expression, make them accept it (or refuse loudly as an error), and add an anti-silent-loss gate over the arena units + example corpus. | DONE 2026-09-30 — sb3-creator #41 (`fa96f5f5`) + #42 (`b4eb4073`), Lite PR #564. Root cause: statement rules matched `line.match` with `(\S+)` / lazy `(.+?)` slots, and `parse()` turned every unread line into a warning. Now every rule matches through `matchTopLevel` (a slot is one term; a (parenthesised expression) is a term), positional slots are one term each, and an unread line is refused (`UnparsedLinesError`). Word-family table over all 211 statement rules (155 value slots × 6 probes) + 37 EV3 slots, before → after: SPIKE ok 48 / DROPPED 80 / wrong-block 16 → ok 112 / refused 32; micro:bit ok 267 / DROPPED 26 / wrong-block 16 / wrong-value 3 → ok 303 / refused 21; circuit/MCU ok 552 / wrong-value 120 / DROPPED 32 / wrong-block 34 → ok 658 / refused 79 / wrong-value 1; Scratch core ok 286 / DROPPED 2 → ok 287 / refused 1; EV3 unparenthesised DROPPED 73 + 1 wrong variable → refused 74 (full table in #564). Gate: `test/dialect-no-dropped-lines.test.mjs` (331 .bw + example modules + SPIKE 3 fixtures, 0 unread lines). MakeCode census raw counts: micro:bit apps 204/8/2/1 → 204/8/2/1; EV3 100 full/157 partial/1 → unchanged (1208 blocks); lite→micro:bit 218 full/83 partial/30 recompile → 150/130/29 + 22 retarget (the old DEVICE-line swap dropped Arduino pins silently: 39 "full" did nothing). |
 | D6 | Dialect remainders found by D5 | (1) ~40 declaration refusals in `parseStcDeclaration` still warn-and-skip the declaration (statements using it are refused, but the declaration line itself is lost with a warning) — make them errors like D5's `DIALECT_UNPARSED_LINES`; (2) escaped quotes in text literals (`"a \"b\""`) are not unescaped by the value parser (and the exporter must escape them back: round-trip fixed point); (3) `set voxel pick random 1 to 10 1 1 to 1` misreads: an unbracketed multi-word reporter fills adjacent positional slots — refuse unbracketed reporters in multi-slot rules. | CLAIMED 2026-09-30 |
 
 ## PR #508 review — 2026-09-30
 
-**Finding about the earlier PR:** a replacement was implemented, but the available record does not
-establish a clean-room process. We withdraw the assertions of verified
-independent authorship and permissive-only clearance pending evidence. This
-is an engineering/provenance finding, not a determination of infringement
-or intentional deception.
+**Finding about the earlier PR, updated after VPS transcript recovery:** the
+parent did task a separate agent, expressly prohibiting access to the old
+helper body. The recorded process supports a restricted-source rewrite
+attempt. It does not support the stronger description “only a functional
+contract” or “cut off from web/file access”: the implementer read permitted
+caller/API source and had repository/network tools. No recorded display of
+the old helper macro body was identified, but broad searches included the
+file and later compilation/comparisons mechanically processed it. We do
+not assert absolute absence of file reads, verified legal clearance, or a
+finding of infringement or intentional deception.
 
 [Pybricks PR #508](https://github.com/pybricks/pybricks-micropython/pull/508)
 was closed without merge at 2026-09-30 14:00:54 UTC. The maintainer disputes
@@ -88,19 +93,29 @@ Evidence:
   then commit `576d58b5706d50ccc48052139bd47de6514c6508` introduced the
   replacement. Both record Claude session
   `df930874-a977-40f8-996f-8689b428942c`; Lite merged the lane as `50445efea`.
-  That is not evidence of an isolated implementer. A compiler reading the
-  file does not itself prove that its contents entered the author's context.
+  That shared parent-session identifier alone did not establish implementer
+  separation. Recovered VPS logs now establish a distinct rewrite subagent
+  `ac322c2e8df53df20`. A compiler reading the file does not itself prove that
+  its contents entered the author's context.
 - The PR claims behavior and argument-table comparisons, including `-E`/`-S`
   output. These are equivalence evidence, not provenance evidence. The logs
-  and comparison script were not present in the checkouts reviewed here;
-  those claimed checks have not been independently reproduced in this audit.
-- No matching authoring transcript was found in the local Claude project
-  logs. The recorded drafting checkout is on the VPS at
-  `/mnt/volume1/code/wt/pybricks-upstream-drafts/`; recover its original session
-  and subagent logs before asserting what was or was not read. Check reads,
-  tool output, diffs, inherited context and summaries, with timestamps before
-  and after the first implementation. This audit itself has read both headers
-  and must not be presented as an isolated implementer of a future rewrite.
+  and comparison script were absent from the initial local checkouts. The
+  recovered VPS transcript records the compiler/comparison commands; those
+  historical checks have not been independently rerun in this audit.
+- No matching authoring transcript was found initially in local Claude logs.
+  It was subsequently recovered read-only from the owner's VPS, together
+  with the rewrite subagent log. Full snapshots are retained outside git;
+  task-relevant excerpts and snapshot hashes are in the private firmware
+  evidence repository, `pybricks/2026-09-30-pr508/vps-transcript-audit.json`
+  and `vps-transcript-excerpts.json`. The first draft predates the explicit
+  old-header extraction and assembly comparisons. A pre-draft copyright
+  search nevertheless included the header in its scope. No OS/network
+  isolation was configured. This reviewer has read both headers.
+- The recovered parent log records the September 25 hold on upstream posts,
+  its relay to the implementer, and the September 30 instruction “go on with
+  the still opens”, which the parent interpreted as including D4. Whether
+  the owner intended that instruction to release the earlier hold is not
+  established by this record.
 - The maintainer's attachment shows the fork with upstream history. Possession
   of history does not prove a source read. Knowing a licence label does not
   by itself prove reading the implementation. Neither observation resolves
