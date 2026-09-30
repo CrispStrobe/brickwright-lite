@@ -80,7 +80,16 @@ sampling. A historical shared VPS run under
 concurrent build load reached only **0.337x median**; an uncontrolled repeat
 varied widely, so this is not a universal real-time guarantee. These receipts
 are separate from browser WASM/full-application performance; browser, sensor
-and continuous microphone/audio qualification remains in progress. See
+and continuous microphone/audio qualification remains in progress.
+The selected LSM303AGR motion-sensor candidate now passes hosted functional and
+real-time checks: **1.758x median**, **1.734x minimum** for the active
+matrix/button/sensor guest after an engine optimization. The earlier **0.327x**
+failed hosted baseline and **0.312x** optimized shared-VPS result remain separate
+evidence, not controlled wall-time A/B measurements. The bounded native model
+and CPU optimization landed upstream in LabWired `ce60a499`; Lite's WASM pin
+and browser integration are not upgraded by this result. Full board/audio/browser
+qualification remains
+pending. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
 
