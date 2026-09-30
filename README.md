@@ -96,8 +96,13 @@ Successors now landed at `96b739c2` (discovery miss caching/Nordic pull masks)
 and `ede33fb4` (proper START-latched cumulative ADC scan DMA). Controlled EPYC
 7763 candidate medians **1.037x / 1.023x** clear the floor versus predecessor
 **0.880x / 0.883x**. The combined native qualification passed **314 selected
-executions**, including a real source-built ARM ADC scan guest. Exact successor-
-main remeasurement remains pending. A separate countdown candidate's isolated
+executions**, including a real source-built ARM ADC scan guest. Exact remote-main
+`ede33fb4` [run 36725594408](https://github.com/CrispStrobe/labwired-core/actions/runs/36725594408)
+now passed native board qualification on EPYC 9V74: motion **1.290x median /
+1.261x minimum**, all five samples above 1x. The
+[full receipt and retained-ELF provenance](docs/receipts/2026-09-30-microbit-exact-main-ede33/qualification-context.json)
+preserve that exact source and runner; this is not a cross-runner gain or a
+new exact-main all-chip result. A separate countdown candidate's isolated
 EPYC 7763 A/B gains **7.79%**, with all ten candidate windows above real time;
 fresh composition qualification is pending. The optimization candidate cleared all 40 synthetic RTx fixtures,
 but six pre-existing Nordic relative step-cost gates remain tracked without
