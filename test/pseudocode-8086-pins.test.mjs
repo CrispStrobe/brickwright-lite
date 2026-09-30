@@ -127,7 +127,9 @@ test('a PART is still refused, and the message says why a PIN is different', asy
     // component with a protocol, and driving one is not a port write.
     await assert.rejects(() => run([
         'DEVICE i8086',
-        'PART lcd = LCD1602 ON P1',
+        // A declaration the parser reads (LCD1602 ON P1 is none: since D5 it
+        // is refused as an unreadable line before this back end runs).
+        'PART leds = 74HC595 DATA P1.0 CLOCK P1.1 LATCH P1.2',
         'WHEN flag clicked:',
         '  say "hi"',
     ]), /a PIN is one wire and works|device with a protocol/);

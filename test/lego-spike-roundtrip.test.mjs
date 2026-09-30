@@ -175,8 +175,18 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // this fixture uses parses and decompiles as before, and
     // test/spike3-python-arena-d1.test.mjs runs the new ones in the arena.
     // The assertions re-ran at the pin.
+    // PIN MOVED a2032f71 -> b4eb4073 (2026-09-30, sb3-creator#41 + #42, task D5):
+    // this one touches the SPIKE PARSER, not the emitter. Every statement rule
+    // now matches through matchTopLevel, so an argument may be a parenthesised
+    // expression (`move forward (finds * 15) cm` reads; it was dropped), and a
+    // line the dialect cannot read is refused (UnparsedLinesError) instead of
+    // dropped with a warning. This fixture's words all parse as before — the
+    // `assert.deepEqual(creator.warnings, [])` below still holds, and a dropped
+    // line would now throw before it — and the artifact assertions re-ran.
+    // #42 only narrows #41's cut-short-reporter check (a variable named
+    // `item`); no SPIKE word is involved.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'a2032f71ba3f6af6f98df69d2dfa9f43a7eb1327');
+        'b4eb407351b0f3d4eb3c347a0ac541adacae17cc');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

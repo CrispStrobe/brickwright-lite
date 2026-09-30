@@ -89,9 +89,14 @@ async function verify () {
             await page.keyboard.press('Control+a');
             await page.keyboard.press('Backspace');
             await page.waitForTimeout(300);
-            await page.keyboard.type(
-                'DEVICE MICROBIT\nPIN led = P0 OUTPUT\n\nSPRITE Cat:\n  WHEN flag clicked:\n    forever:\n      turn on led\n      wait 0.5 seconds\n      turn off led\n      wait 0.5 seconds\n      print "blink"',
-                { delay: 10 }
+            // insertText, not type(): typing a newline makes the editor
+            // auto-indent, and the typed spaces then stack on top, so the
+            // program the gate ran was not the program written — its later
+            // lines were over-indented and the parser dropped them (a
+            // warning). Since D5 such lines are refused, and the gate would
+            // test nothing; insertText puts in exactly this text.
+            await page.keyboard.insertText(
+                'DEVICE MICROBIT\nPIN led = P0 OUTPUT\n\nSPRITE Cat:\n  WHEN flag clicked:\n    forever:\n      turn on led\n      wait 0.5 seconds\n      turn off led\n      wait 0.5 seconds\n      print "blink"'
             );
             await page.waitForTimeout(500);
             pass('Typed blink program');

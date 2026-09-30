@@ -46,7 +46,12 @@ test('the exact 282-program post-production print census is disjoint and exhaust
         assert.equal(report.invariants.sourceNumericOrComputedPrograms, 38);
         assert.equal(report.invariants.sourceOutputPrograms, 41);
         assert.equal(report.invariants.sourceProgramCount, 282);
-        assert.equal(report.invariants.opcodeProgramCount, 151);
+        // 151 -> 150 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row's
+        // `light only led step on leds` names a LEDBANK8, which i8086 does not
+        // have, so the line was DROPPED with a warning and the program counted
+        // as parsed with no output opcode. An unreadable line is refused now;
+        // the program is parseFailed, named, instead of hollow.
+        assert.equal(report.invariants.opcodeProgramCount, 150);
         assert.equal(report.invariants.sourceProgramExhaustive, true);
         assert.equal(report.invariants.opcodeProgramExhaustive, true);
         assert.equal(report.invariants.currentOutputCount, 41);
@@ -54,7 +59,7 @@ test('the exact 282-program post-production print census is disjoint and exhaust
         assert.deepEqual(report.currentOutput.counts,
             {notReached: 0, hostC: 15, refused: 21, emitted: 5, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
-            retargetRefused: 131, parseFailed: 0, noOutputOpcode: 110, hostC: 15,
+            retargetRefused: 131, parseFailed: 1, noOutputOpcode: 109, hostC: 15,
             printRefused: 1, remainingChoke: 20, waitRefused: 0, int16Refused: 0,
             longLeaked: 0, emitted: 5, commentOnly: 0
         });

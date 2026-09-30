@@ -70,7 +70,11 @@ const auditReach = (receipt, {compiled}) => {
     // c593574 adds lesson 56's numeric-only STC12 program. Its two literal
     // waits make it one new emitted/compiled program and one new wait program.
     assert.equal(s.programs, 282);
-    assert.equal(s.waitLiteralPrograms, 122);
+    // 122 -> 121 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row (a literal
+    // `wait 150 ms`) names a LEDBANK8, which i8086 does not have; its LED line
+    // was DROPPED with a warning and the rest counted as reached. An unreadable
+    // line is refused now, so the program is parseFailed (1, named) instead.
+    assert.equal(s.waitLiteralPrograms, 121);
     assert.equal(s.waitComputedPrograms, 2);
     assert.equal(s.waitLiteralRefused, 0);
     assert.equal(s.waitComputedRefused, 1);
@@ -104,8 +108,9 @@ const auditReach = (receipt, {compiled}) => {
         assert.equal(s.compileFailed, 0);
     }
     assert.equal(s.longLeaked, 0);
-    assert.equal(s.parseFailed, 0);
-    assert.equal(s.retargetRefused + s.choke + s.printRefused + s.loweringRefused + s.hostC
+    assert.equal(s.parseFailed, 1);
+    assert.deepEqual(receipt.parseFailed.map(row => row.split(': ')[0]), ['82-a2-led-row']);
+    assert.equal(s.retargetRefused + s.parseFailed + s.choke + s.printRefused + s.loweringRefused + s.hostC
         + s.int16Refused + s.waitLiteralRefused + s.waitComputedRefused + s.emits, s.programs,
     'every gallery program must land in exactly one outcome bucket');
 };

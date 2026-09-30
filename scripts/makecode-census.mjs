@@ -34,7 +34,16 @@
  *     recompile  pxt compiles the re-export (simulator build)
  *     SILENT     a MakeCode call in the original that is in neither the
  *                re-export nor the unsupported list: dropped without a word
- *   lite programs: parse -> export -> recompile (+ the export's own unsupported list).
+ *   lite programs: retarget -> parse -> export -> recompile (+ the export's own
+ *   unsupported list). `retarget` is SB3Creator.retargetPseudocode(src,
+ *   'microbit'), which maps the pins onto the micro:bit's edge; a program it
+ *   refuses (a part the micro:bit does not have) stops there, NAMED. A program
+ *   with no hardware declarations only has its DEVICE line replaced.
+ *   Before task D5 the DEVICE line was replaced for every program, so an
+ *   Arduino `PIN led1 = D13 OUTPUT` was refused on the micro:bit and every
+ *   statement using it was DROPPED by the parser with a warning nobody read —
+ *   39 programs counted `full` while doing nothing. The parser now refuses an
+ *   unreadable line (UnparsedLinesError), so that loss can no longer count.
  *
  * A THIRD CORPUS, the EV3 (task B4): every ```blocks / ```typescript program
  * in the pinned pxt-ev3 package's docs, imported into the DEVICE EV3 dialect
@@ -234,8 +243,15 @@ function litePrograms () {
     return files.map(f => {
         const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
         const device = (src.match(/^DEVICE\s+([^\s:]+)/m) || [])[1] || '(none)';
-        const retargeted = /^DEVICE\s+/m.test(src) ? src.replace(/^DEVICE\s+[^\n]*/m, 'DEVICE MICROBIT') : `DEVICE MICROBIT\n${src}`;
-        return {id: f.replace(/^overlay\/scratch-gui\/examples\//, '').replace(/\/program\.bw$/, ''), device: device.toUpperCase(), src: retargeted};
+        const id = f.replace(/^overlay\/scratch-gui\/examples\//, '').replace(/\/program\.bw$/, '');
+        const renamed = /^DEVICE\s+/m.test(src) ? src.replace(/^DEVICE\s+[^\n]*/m, 'DEVICE MICROBIT') : `DEVICE MICROBIT\n${src}`;
+        // The real retarget (pins mapped onto the edge connector). A source with
+        // no hardware declarations has nothing to map: its DEVICE line is enough.
+        let r;
+        try { r = SB3Creator.retargetPseudocode(src, 'microbit'); } catch (e) { r = {ok: false, reasons: [e.message]}; }
+        if (r.ok) return {id, device: device.toUpperCase(), src: r.pseudocode};
+        if ((r.reasons || []).some(x => /no hardware declarations/.test(x))) return {id, device: device.toUpperCase(), src: renamed};
+        return {id, device: device.toUpperCase(), refused: r.reasons || []};
     });
 }
 
@@ -307,8 +323,22 @@ if (!ONLY || ONLY === 'makecode') {
 if (!ONLY || ONLY === 'lite') {
     for (const p of litePrograms().filter(p => !MATCH || MATCH.test(p.id)).slice(0, LIMIT)) {
         const row = {id: p.id, device: p.device};
+        if (p.refused) {
+            row.stage = 'retarget';
+            row.detail = p.refused.map(x => String(x).split('\n')[0]).join('; ').slice(0, 200);
+            results.lite.push(row);
+            continue;
+        }
         let project;
-        try { project = new SB3Creator().parse(p.src); } catch (e) { row.stage = 'parse'; row.detail = e.message.slice(0, 160); results.lite.push(row); continue; }
+        try { project = new SB3Creator().parse(p.src); } catch (e) {
+            row.stage = 'parse';
+            // The refusal names every line it could not read; the first is the row.
+            row.detail = (e.lines && e.lines.length)
+                ? `${e.lines.length} unread; line ${e.lines[0].line}: ${e.lines[0].text} — ${e.lines[0].reason}`.slice(0, 200)
+                : e.message.slice(0, 160);
+            results.lite.push(row);
+            continue;
+        }
         let ex;
         try { ex = exportToMakeCode(project, {name: 'lite'}); } catch (e) { row.stage = 'export-threw'; row.detail = e.message.slice(0, 160); results.lite.push(row); continue; }
         row.exportUnsupported = ex.unsupported.map(String);
@@ -536,7 +566,11 @@ if (!ONLY || ONLY === 'lite') {
         '### What the export names unsupported', '', '| programs | unsupported |', '|---|---|',
         top(hist(lite, 'exportUnsupported', normUnsupported)), '',
         '### Why an export does not compile', '', '| programs | MakeCode error |', '|---|---|',
-        top(hist(lite.filter(r => r.recompileError).map(r => ({e: [r.recompileError]})), 'e', normError)), ''
+        top(hist(lite.filter(r => r.recompileError).map(r => ({e: [r.recompileError]})), 'e', normError)), '',
+        '### Why a program does not retarget or parse', '', '| program | stage | detail |', '|---|---|---|',
+        ...lite.filter(r => ['retarget', 'parse', 'export-threw'].includes(r.stage))
+            .map(r => `| ${r.id} | ${r.stage} | ${String(r.detail).replace(/\|/g, '\\|').replace(/\n/g, ' ')} |`),
+        ''
     );
 }
 if (results.ev3) {

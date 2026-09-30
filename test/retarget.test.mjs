@@ -3,35 +3,44 @@ import assert from 'node:assert/strict';
 
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
+// These fixtures were written as `WHEN green flag clicked` / `FOREVER` /
+// `END FOREVER`, which is not the dialect: the parser dropped the FOREVER and
+// every line of its body with a warning, so each test retargeted a program
+// with no statements at all and passed on its declarations alone. Since D5
+// an unreadable line is refused, which is how that came to light; they are
+// written in the dialect now, and the blink body is asserted to survive.
+
 test('retargetPseudocode rewrites STC blink to Pico with GP25', () => {
     const src = `DEVICE STC12C5A60S2
 
 PIN led1 = P1.0 OUTPUT ACTIVE LOW
 
-WHEN green flag clicked
-FOREVER
-  turn on led1
-  wait 0.5 seconds
-  turn off led1
-  wait 0.5 seconds
-END FOREVER`;
+WHEN flag clicked:
+  FOREVER:
+    turn on led1
+    wait 0.5 seconds
+    turn off led1
+    wait 0.5 seconds
+`;
     const result = SB3Creator.retargetPseudocode(src, 'pico');
     assert.equal(result.ok, true, `should succeed: ${result.reasons}`);
     assert.ok(result.pseudocode.includes('DEVICE PICO'), 'should have DEVICE PICO');
     assert.ok(result.pseudocode.includes('GP25'), 'should use GP25 for the LED');
     assert.ok(!result.pseudocode.includes('P1.0'), 'should not keep P1.0');
+    assert.match(result.pseudocode, /FOREVER:\n\s+turn on led1\n\s+wait 0\.5 seconds\n\s+turn off led1/, 'the blink body survives');
 });
 
 test('retargetPseudocode rewrites STC blink to Arduino Nano with D13', () => {
-    const src = `DEVICE STC12C5A60S2\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\nWHEN green flag clicked\nFOREVER\n  turn on led1\n  wait 0.5 seconds\nEND FOREVER`;
+    const src = `DEVICE STC12C5A60S2\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\nWHEN flag clicked:\n  FOREVER:\n    turn on led1\n    wait 0.5 seconds\n`;
     const result = SB3Creator.retargetPseudocode(src, 'arduino-nano');
     assert.equal(result.ok, true, `should succeed: ${result.reasons}`);
     assert.ok(result.pseudocode.includes('DEVICE ARDUINO-NANO'));
     assert.ok(result.pseudocode.includes('D13'));
+    assert.match(result.pseudocode, /turn on led1/, 'the body survives');
 });
 
 test('retargetPseudocode refuses ADC on STC89C52RC', () => {
-    const src = `DEVICE STC12C5A60S2\nPIN pot = P1.3 ANALOG\nWHEN green flag clicked\nFOREVER\n  set x to read pot\nEND FOREVER`;
+    const src = `DEVICE STC12C5A60S2\nPIN pot = P1.3 ANALOG\nWHEN flag clicked:\n  FOREVER:\n    set x to read pot\n`;
     const result = SB3Creator.retargetPseudocode(src, 'stc89c52rc');
     assert.equal(result.ok, false);
     assert.ok(result.reasons.some(r => /ADC/i.test(r)), `should mention ADC: ${result.reasons}`);

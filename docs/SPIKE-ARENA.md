@@ -369,13 +369,18 @@ did not wait and the dialect had no steering words. Those were fixed upstream
 (CrispStrobe/extensions#22, CrispStrobe/sb3-creator#34) and the solutions
 moved to the words above.
 
-Three limits remain, all outside the arena:
+Two limits remain, both outside the arena:
 - `spike motor position` reports the position modulo 360, so it cannot
   measure a distance beyond one rotation;
 - on the SPIKE 3 route the colour sensor's reflection is not transmitted (the
-  protocol record has no field for it), so the solutions use colour ids;
-- a statement's number must be ONE token: `move forward (finds * 15) cm` is
-  not understood, and the dialect drops the line with only a warning. The
-  solutions set a variable first (`set distance to (finds * 15)`,
-  `move forward distance cm`); the units test fails on any parse warning.
+  protocol record has no field for it), so the solutions use colour ids.
+
+A third is closed (task D5, sb3-creator#41): a statement's argument may be an
+expression in parentheses — `move forward (finds * 15) cm` reads — and a line
+the dialect cannot read (`move forward finds * 15 cm`, whose expression is not
+parenthesised) is refused by name (`UnparsedLinesError`), never dropped with a
+warning. The solutions written before that still set a variable first
+(`set distance to (finds * 15)`, `move forward distance cm`), which reads either
+way; `test/dialect-no-dropped-lines.test.mjs` holds every shipped program,
+these units included, to zero unread lines.
 
