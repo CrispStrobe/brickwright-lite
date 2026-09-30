@@ -62,6 +62,7 @@ pkg.dependencies['avr8js'] = pkg.dependencies['avr8js'] || '^0.21.0';           
 pkg.dependencies['rp2040js'] = pkg.dependencies['rp2040js'] || '1.3.3';                // MIT — RP2040/Pico emulator (lazy-imported)
 pkg.dependencies['@xyflow/react'] = pkg.dependencies['@xyflow/react'] || '^12.3.0';  // MIT — node/wire canvas for the FPGA gate builder (lazy-imported, flag-gated)
 pkg.dependencies['@xterm/xterm'] = '6.0.0';                       // MIT — the Linux lesson's terminal emulator (lazy-imported, exact pin)
+pkg.dependencies['three'] = '0.186.1';                               // MIT — the SPIKE arena's 3D view (lazy-imported, exact pin)
 // The board engine and the circuit designer are OUR upstream repos, taken as git-sha
 // dependencies rather than copied in: vendor-pins.json stays the single authority for the
 // sha (the same file every pin gate reads), and the package.json spec is DERIVED from it

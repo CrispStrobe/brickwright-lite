@@ -131,6 +131,10 @@ export class ArenaSim {
         this.pushed = new Set();
         this.trail = [[this.pose.x, this.pose.y]];
         this._trailAcc = 0;
+        // Wheel travel as commanded, cm, forward positive: what the wheels
+        // turned, including while a blocked rover slips. Read by views only
+        // (the 3D view spins its wheels by it); nothing here depends on it.
+        this.wheelTravel = {left: 0, right: 0};
     }
 
     /** The body outline on the mat, for a pose. */
@@ -196,6 +200,8 @@ export class ArenaSim {
      */
     advanceWheels (dl, dr, dtMs) {
         const from = this.pose;
+        this.wheelTravel.left += dl;
+        this.wheelTravel.right += dr;
         let target = this.integrate(from, dl, dr);
         this.blocked = false;
         this.blockedBy = null;
@@ -338,6 +344,7 @@ export class ArenaSim {
             objects: this.objects.map(object => ({id: object.id, shape: object.shape, centre: shapeCentre(object.shape)})),
             sensors: this.readSensors(),
             sensorPoses: this.robot.sensors.map(sensor => ({...sensor, ...this.sensorPose(sensor)})),
+            wheelTravel: {...this.wheelTravel},
             trail: this.trail
         };
     }

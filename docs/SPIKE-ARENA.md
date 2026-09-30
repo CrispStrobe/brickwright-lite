@@ -343,14 +343,52 @@ the pane: the unit picker lists every unit, a unit opens, a mission starts and
 runs to a verdict, a staged mission shows its stages. The browser gate opens
 Gyro turns from the picker and runs its first mission to a pass.
 
-## For a later 3D view
+## The 3D view
 
-`ArenaSim.snapshot()` is the whole render state: pose, footprint, object
-shapes and centres, sensor poses and readings, trail, verdict. A three.js view
-maps the mat plane to x/z (`x -> x`, `y -> z`, heading -> rotation about -y),
-extrudes walls and objects, and consumes the same snapshot; nothing in the
-simulation is 2D-renderer specific. `docs/SIM-LAB-PLAN.md`'s physics world can
-replace `ArenaSim` behind the same bridge: the hub contract does not change.
+A **3D view** button beside Start/Step/Reset shows the same arena in three.js
+(task D3). It is a second reader of the one snapshot, not a second world:
+
+- **One snapshot.** `ArenaSim.snapshot()` is the whole render state: pose,
+  footprint, object shapes and centres, sensor poses and readings, trail,
+  `wheelTravel` (cm each wheel has turned, slip included; added for the view,
+  read by nothing in the simulation), verdict. Each frame the pane hands it to
+  exactly one view: the 3D view when it is open, else the canvas. The printed
+  mat is drawn once by the 2D view's own `drawMat` and becomes the 3D mat's
+  texture, so both views show the same lines, bays and zones.
+- **Frames.** The scene is metres, y up: arena `(x, y)` cm → scene
+  `(x, 0, y) × 0.01`, heading → rotation about −y (`rotation.y = −heading`).
+  The rover's frame keeps the arena's: x forward, z to its right. Walls and
+  objects are the world's own convex pieces (the ones collisions use) extruded
+  up: walls 6 cm, objects 5 cm (heights the 2D world does not have). A pushed
+  crate is placed by its snapshot centre; wheels spin by `wheelTravel` over
+  their radius; the colour spot takes the colour read, the distance beam the
+  distance read, the force tip turns red when pressed.
+- **Cameras.** Orbit (drag, pinch), follow-behind, and top-down: an
+  orthographic camera straight down that puts every mat point where the 2D
+  canvas draws it.
+- **One clock.** The view never calls the simulation and never writes the
+  snapshot; which view is open cannot change a run.
+- **Lazy.** `lib/spike-arena/arena-view3d.js` (renderer, cameras,
+  `OrbitControls`) and `arena-scene3d.js` (the scene graph) reach the app only
+  through the pane's dynamic import, chunk `bw-arena-3d`, so three.js (MIT,
+  exact pin `three` 0.186.1; `THIRD-PARTY-NOTICES.md`, the About dialog) is
+  downloaded the first time someone opens the 3D view. `verify-boot-payload`
+  holds it out of the first load and out of the arena's own chunk.
+- **No WebGL 2** (three.js has required it since r163): the pane stays in 2D
+  and says why, in English or German; the button can be pressed again. A page
+  can take that path on purpose with `window.__bwArenaForceNoWebGL = true`.
+
+Held by `test/spike-arena-3d.test.mjs` (the scene built headless for every
+mission; the rover, sensors, wheels and a pushed crate against the snapshot
+over a driven path and over the capstone reference in the real VM; the
+top-down camera against the canvas mapping; the same verdict, finishing time
+and pose with the view rendering every few frames) and
+`test/spike-arena-3d-pane.test.mjs` (the pane's toggle, fallback, camera
+modes, a render per frame, the same verdict and time as in 2D). The browser
+gate (`scripts/verify-lego-spike-roundtrip.mjs`) toggles the 3D view in a
+real page and asserts WebGL or the fallback by what the page itself reports.
+`docs/SIM-LAB-PLAN.md`'s physics world can replace `ArenaSim` behind the same
+bridge and snapshot: neither the hub contract nor the views change.
 
 ## Programming the rover
 
