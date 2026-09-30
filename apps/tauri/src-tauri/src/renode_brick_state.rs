@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 pub(crate) const MAX_BRICK_STATE_LINE_BYTES: usize = 256 * 1024;
 const MAX_COLLECTION_ITEMS: usize = 16;
 const MAX_CAPABILITIES: usize = 128;
-const MAX_PIXELS: usize = 4096;
+const EV3_PIXELS: usize = 178 * 128;
 const READ_BYTES: usize = 16 * 1024;
 const IO_TIMEOUT: Duration = Duration::from_millis(250);
 
@@ -53,6 +53,7 @@ pub(crate) struct BrickStateSnapshot {
 #[derive(Default)]
 pub(crate) struct BrickStateDecoder {
     last_seq: Option<u64>,
+    identity: Option<(String, String, Option<String>)>,
 }
 
 impl BrickStateDecoder {
@@ -65,16 +66,25 @@ impl BrickStateDecoder {
         if snapshot.schema_version != 1 || snapshot.message_type != "snapshot" {
             return Err("brick-state version or kind is unsupported".into());
         }
-        if snapshot.target.board != "spike-prime"
+        if !matches!(snapshot.target.board.as_str(), "spike-prime" | "ev3")
             || snapshot.target.transport != "none"
             || snapshot.target.transport.len() > 32
         {
-            return Err("brick-state identity is not SPIKE Prime simulation".into());
+            return Err("brick-state identity is not a supported simulation".into());
         }
-        if !matches!(
-            snapshot.target.firmware.as_str(),
-            "lego-prime-v2" | "lego-prime-v3" | "pybricks-prime" | "spike-nx" | "brickwright-nuttx"
-        ) {
+        let valid_firmware = if snapshot.target.board == "ev3" {
+            snapshot.target.firmware == "brickwright-ev3-smoke"
+        } else {
+            matches!(
+                snapshot.target.firmware.as_str(),
+                "lego-prime-v2"
+                    | "lego-prime-v3"
+                    | "pybricks-prime"
+                    | "spike-nx"
+                    | "brickwright-nuttx"
+            )
+        };
+        if !valid_firmware {
             return Err("brick-state firmware identity is unsupported".into());
         }
         if snapshot.ports.len() > MAX_COLLECTION_ITEMS
@@ -118,11 +128,21 @@ impl BrickStateDecoder {
             .display
             .get("height")
             .and_then(serde_json::Value::as_u64);
-        if pixels.len() > MAX_PIXELS
-            || !display_width.is_some_and(|value| value <= 64)
-            || !display_height.is_some_and(|value| value <= 64)
-            || pixels.iter().any(|value| !value.is_number())
-        {
+        let valid_display = if snapshot.target.board == "ev3" {
+            (display_width == Some(178)
+                && display_height == Some(128)
+                && pixels.len() == EV3_PIXELS
+                && pixels
+                    .iter()
+                    .all(|value| value.as_u64().is_some_and(|v| v <= 255)))
+                || (display_width == Some(0) && display_height == Some(0) && pixels.is_empty())
+        } else {
+            pixels.len() <= 4096
+                && display_width.is_some_and(|value| value <= 64)
+                && display_height.is_some_and(|value| value <= 64)
+                && pixels.iter().all(serde_json::Value::is_number)
+        };
+        if !valid_display {
             return Err("brick-state display exceeds its bounds".into());
         }
         if !snapshot.lifecycle.is_object()
@@ -158,6 +178,19 @@ impl BrickStateDecoder {
         if self.last_seq.is_some_and(|last| snapshot.seq <= last) {
             return Err("brick-state frame was replayed or reordered".into());
         }
+        let identity = (
+            snapshot.target.board.clone(),
+            snapshot.target.firmware.clone(),
+            snapshot.target.image_sha256.clone(),
+        );
+        if self
+            .identity
+            .as_ref()
+            .is_some_and(|prior| prior != &identity)
+        {
+            return Err("brick-state target changed within a session".into());
+        }
+        self.identity = Some(identity);
         self.last_seq = Some(snapshot.seq);
         Ok(snapshot)
     }
@@ -168,6 +201,7 @@ pub(crate) struct BrickStateFeed {
     healthy: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
     stream: TcpStream,
+    command_lock: Mutex<()>,
     thread: Option<JoinHandle<()>>,
 }
 
@@ -180,6 +214,9 @@ impl BrickStateFeed {
             .map_err(|_| "brick-state endpoint unavailable".to_owned())?;
         stream
             .set_read_timeout(Some(IO_TIMEOUT))
+            .map_err(|_| "brick-state endpoint unavailable".to_owned())?;
+        stream
+            .set_write_timeout(Some(IO_TIMEOUT))
             .map_err(|_| "brick-state endpoint unavailable".to_owned())?;
         let mut reader = stream
             .try_clone()
@@ -205,6 +242,24 @@ impl BrickStateFeed {
                         while let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
                             let mut remainder = pending.split_off(newline + 1);
                             pending.truncate(newline);
+                            let is_result = serde_json::from_slice::<serde_json::Value>(&pending)
+                                .ok()
+                                .is_some_and(|value| {
+                                    value["schemaVersion"] == 1
+                                        && value["type"] == "result"
+                                        && value["accepted"].as_bool() == Some(true)
+                                        && value["seq"].as_u64() == decoder.last_seq
+                                        && value["requestId"].as_str().is_some_and(|request| {
+                                            decoder.last_seq.is_some_and(|seq| {
+                                                request == format!("input-{seq}")
+                                            })
+                                        })
+                                });
+                            if is_result {
+                                pending.clear();
+                                pending.append(&mut remainder);
+                                continue;
+                            }
                             let result = decoder.decode(&pending);
                             pending.clear();
                             pending.append(&mut remainder);
@@ -243,6 +298,7 @@ impl BrickStateFeed {
             healthy,
             stop,
             stream,
+            command_lock: Mutex::new(()),
             thread: Some(thread),
         })
     }
@@ -256,6 +312,60 @@ impl BrickStateFeed {
             .map_err(|_| "brick-state snapshot unavailable".to_owned())?
             .clone()
             .ok_or_else(|| "brick-state snapshot unavailable".to_owned())
+    }
+
+    /// Request one fresh paused-model observation over the existing bounded
+    /// loopback stream. No arbitrary monitor or program text can be sent.
+    pub(crate) fn sample(&self) -> Result<BrickStateSnapshot, String> {
+        self.command("state.sample", serde_json::json!({}))
+    }
+
+    pub(crate) fn command(
+        &self,
+        name: &str,
+        arguments: serde_json::Value,
+    ) -> Result<BrickStateSnapshot, String> {
+        match name {
+            "state.sample" if arguments.as_object().is_some_and(|args| args.is_empty()) => {}
+            "ev3.button.set"
+                if arguments.as_object().is_some_and(|args| args.len() == 2)
+                    && arguments["button"].as_str().is_some_and(|name| {
+                        matches!(name, "center" | "left" | "back" | "right" | "down" | "up")
+                    })
+                    && arguments["pressed"].is_boolean() => {}
+            "ev3.analog.set-channel"
+                if arguments.as_object().is_some_and(|args| args.len() == 2)
+                    && arguments["channel"].as_u64().is_some_and(|v| v <= 15)
+                    && arguments["value"].as_u64().is_some_and(|v| v <= 1023) => {}
+            _ => return Err("brick-state input is unsupported".into()),
+        }
+        let _lock = self
+            .command_lock
+            .lock()
+            .map_err(|_| "brick-state command unavailable".to_owned())?;
+        let prior = self.latest()?;
+        if prior.target.board != "ev3" {
+            return Err("brick-state input target mismatch".into());
+        }
+        let command = serde_json::json!({"schemaVersion":1,"type":"command",
+            "requestId":format!("input-{}",prior.seq),"expectedSeq":prior.seq,
+            "command":name,"arguments":arguments});
+        let mut wire = serde_json::to_vec(&command)
+            .map_err(|_| "brick-state command unavailable".to_owned())?;
+        wire.push(b'\n');
+        let mut stream = &self.stream;
+        stream
+            .write_all(&wire)
+            .map_err(|_| "brick-state command unavailable".to_owned())?;
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            let current = self.latest()?;
+            if current.seq > prior.seq {
+                return Ok(current);
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        Err("brick-state sample timed out".into())
     }
 
     pub(crate) fn wait_ready(&self, timeout: Duration) -> Result<(), String> {
@@ -297,6 +407,93 @@ mod tests {
         let mut decoder = BrickStateDecoder::default();
         assert_eq!(decoder.decode(frame(0).as_bytes()).unwrap().seq, 0);
         assert_eq!(decoder.decode(frame(1).as_bytes()).unwrap().clock_ns, 42);
+    }
+
+    #[test]
+    fn accepts_full_ev3_frame_and_rejects_cross_target_or_malformed_pixels() {
+        let mut value: serde_json::Value = serde_json::from_str(&frame(0)).unwrap();
+        value["target"]["board"] = "ev3".into();
+        value["target"]["firmware"] = "brickwright-ev3-smoke".into();
+        value["display"] =
+            serde_json::json!({"width":178,"height":128,"pixels":vec![255;EV3_PIXELS]});
+        assert!(BrickStateDecoder::default()
+            .decode(&serde_json::to_vec(&value).unwrap())
+            .is_ok());
+        value["display"]["pixels"][0] = 256.into();
+        assert!(BrickStateDecoder::default()
+            .decode(&serde_json::to_vec(&value).unwrap())
+            .is_err());
+        value["display"]["pixels"][0] = 0.5.into();
+        assert!(BrickStateDecoder::default()
+            .decode(&serde_json::to_vec(&value).unwrap())
+            .is_err());
+        value["display"]["pixels"][0] = 0.into();
+        value["display"]["width"] = 179.into();
+        assert!(BrickStateDecoder::default()
+            .decode(&serde_json::to_vec(&value).unwrap())
+            .is_err());
+        value["target"]["board"] = "spike-prime".into();
+        assert!(BrickStateDecoder::default()
+            .decode(&serde_json::to_vec(&value).unwrap())
+            .is_err());
+    }
+
+    #[test]
+    fn target_identity_cannot_change_midstream() {
+        let mut decoder = BrickStateDecoder::default();
+        decoder.decode(frame(0).as_bytes()).unwrap();
+        assert!(decoder
+            .decode(
+                frame(1)
+                    .replace("brickwright-nuttx", "pybricks-prime")
+                    .as_bytes()
+            )
+            .is_err());
+        assert_eq!(decoder.decode(frame(1).as_bytes()).unwrap().seq, 1);
+    }
+
+    #[test]
+    fn ev3_sample_handles_fragmented_result_and_refreshes_actual_snapshot() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            let ev3_frame = |seq| {
+                frame(seq)
+                    .replace("spike-prime", "ev3")
+                    .replace("brickwright-nuttx", "brickwright-ev3-smoke")
+                    .replace("\"width\":5,\"height\":5", "\"width\":0,\"height\":0")
+            };
+            stream
+                .write_all(format!("{}\n", ev3_frame(0)).as_bytes())
+                .unwrap();
+            let mut request = Vec::new();
+            loop {
+                let mut byte = [0];
+                stream.read_exact(&mut byte).unwrap();
+                if byte[0] == b'\n' {
+                    break;
+                }
+                request.push(byte[0]);
+                assert!(request.len() <= 1024);
+            }
+            let command: serde_json::Value = serde_json::from_slice(&request).unwrap();
+            assert_eq!(command["command"], "state.sample");
+            assert_eq!(command["expectedSeq"], 0);
+            let reply = format!("{{\"schemaVersion\":1,\"type\":\"result\",\"accepted\":true,\"seq\":0,\"requestId\":\"input-0\"}}\n{}\n", ev3_frame(1));
+            for chunk in reply.as_bytes().chunks(13) {
+                stream.write_all(chunk).unwrap();
+            }
+            thread::sleep(Duration::from_millis(100));
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();
+        feed.wait_ready(Duration::from_secs(2)).unwrap();
+        assert_eq!(feed.sample().unwrap().seq, 1);
+        assert!(feed.command("host.shell", serde_json::json!({})).is_err());
+        server.join().unwrap();
     }
 
     #[test]
