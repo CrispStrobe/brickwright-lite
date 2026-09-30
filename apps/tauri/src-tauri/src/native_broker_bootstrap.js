@@ -41,6 +41,8 @@ const CAPABILITY_RESOURCE = Object.freeze({__proto__: null,
     'renode.ev3.registers.read': 'renode/ev3',
     'renode.ev3.memory.read': 'renode/ev3',
     'renode.ev3.state.read': 'renode/ev3',
+    'renode.ev3.button.set': 'renode/ev3',
+    'renode.ev3.analog.set-channel': 'renode/ev3',
     'renode.ev3.breakpoint.set': 'renode/ev3',
     'renode.ev3.breakpoint.clear': 'renode/ev3'
 });

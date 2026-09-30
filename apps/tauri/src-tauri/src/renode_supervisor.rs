@@ -161,12 +161,23 @@ impl RenodeSupervisor {
             option_env!("BW_RENODE_EV3_FIRMWARE"),
             option_env!("BW_RENODE_EV3_FIRMWARE_SHA256"),
         )?;
-        for path in [&platform, &firmware] {
+        let state_script = pinned_file(
+            "EV3 state service",
+            option_env!("BW_RENODE_EV3_STATE_SCRIPT"),
+            option_env!("BW_RENODE_EV3_STATE_SCRIPT_SHA256"),
+        )?;
+        let state_config = pinned_file(
+            "EV3 state config",
+            option_env!("BW_RENODE_EV3_STATE_CONFIG"),
+            option_env!("BW_RENODE_EV3_STATE_CONFIG_SHA256"),
+        )?;
+        for path in [&platform, &firmware, &state_script, &state_config] {
             if !path.starts_with(&root) {
                 return Err("EV3 model artifact escaped its packaged root".into());
             }
         }
-        let arguments = ev3_arguments(&platform, &firmware)?;
+        let arguments =
+            ev3_arguments_with_state(&platform, &firmware, &state_script, &state_config)?;
         let executable = option_env!("BW_RENODE_EXECUTABLE")
             .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
         let digest = option_env!("BW_RENODE_SHA256")
@@ -493,6 +504,25 @@ fn ev3_arguments(platform: &Path, firmware: &Path) -> Result<Vec<String>, String
         "-e".into(),
         "machine StartGdbServer {BW_GDB_PORT}".into(),
     ])
+}
+
+fn ev3_arguments_with_state(
+    platform: &Path,
+    firmware: &Path,
+    script: &Path,
+    config: &Path,
+) -> Result<Vec<String>, String> {
+    let mut arguments = ev3_arguments(platform, firmware)?;
+    arguments.extend([
+        "-e".into(),
+        format!("include {}", monitor_path(script)?),
+        "-e".into(),
+        format!(
+            "spike_state_start \"127.0.0.1\" {{BW_STATE_PORT}} {}",
+            monitor_path(config)?
+        ),
+    ]);
+    Ok(arguments)
 }
 
 fn random_token() -> Result<String, String> {

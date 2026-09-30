@@ -7,6 +7,7 @@ use crate::renode_brick_state::BrickStateFeed;
 use crate::renode_rsp::{Arm32Architecture, RenodeRsp, RenodeRspInterrupt};
 use crate::renode_supervisor::{RenodeSupervisor, TeardownReason};
 use serde_json::{json, Value};
+use std::io::Read;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -19,7 +20,6 @@ use std::time::{Duration, Instant};
 // seconds on a cold CI worker. Keep this below the supervisor's hard session
 // limit while allowing the real packaged model to finish starting.
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
-const EV3_EVIDENCE_TIMEOUT: Duration = Duration::from_secs(2);
 const EV3_UART_EVIDENCE: &[u8] = b"EV3 ARM9 IRQ\n";
 
 struct Session {
@@ -54,7 +54,7 @@ impl RenodeTarget {
 
 enum TargetState {
     Spike(BrickStateFeed),
-    Ev3(PathBuf),
+    Ev3 { feed: BrickStateFeed, uart: PathBuf },
 }
 
 pub(crate) struct RenodeDebugger {
@@ -136,12 +136,40 @@ impl RenodeDebugger {
                 };
                 TargetState::Spike(feed)
             }
-            RenodeTarget::Ev3 => TargetState::Ev3(
-                endpoint
-                    .uart_evidence()
-                    .ok_or_else(|| "EV3 UART evidence unavailable".to_owned())?
-                    .to_path_buf(),
-            ),
+            RenodeTarget::Ev3 => {
+                let state_address =
+                    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.state_port);
+                let state_deadline = Instant::now() + STARTUP_TIMEOUT;
+                let feed = loop {
+                    match BrickStateFeed::connect(state_address) {
+                        Ok(feed) => {
+                            if let Err(error) = feed.wait_ready(Duration::from_secs(2)) {
+                                supervisor.teardown(TeardownReason::Reset);
+                                return Err(error);
+                            }
+                            if feed.latest()?.target.board != "ev3" {
+                                supervisor.teardown(TeardownReason::Reset);
+                                return Err("EV3 state target mismatch".into());
+                            }
+                            break feed;
+                        }
+                        Err(_) if Instant::now() < state_deadline => {
+                            thread::sleep(Duration::from_millis(25))
+                        }
+                        Err(error) => {
+                            supervisor.teardown(TeardownReason::Reset);
+                            return Err(error);
+                        }
+                    }
+                };
+                TargetState::Ev3 {
+                    feed,
+                    uart: endpoint
+                        .uart_evidence()
+                        .ok_or_else(|| "EV3 UART evidence unavailable".to_owned())?
+                        .to_path_buf(),
+                }
+            }
         };
         *session = Some(Session {
             rsp: Arc::new(Mutex::new(rsp)),
@@ -324,28 +352,36 @@ impl RenodeDebugger {
         match &active.state {
             TargetState::Spike(state) => serde_json::to_value(state.latest()?)
                 .map_err(|_| "brick-state snapshot unavailable".to_owned()),
-            TargetState::Ev3(path) => {
-                let deadline = Instant::now() + EV3_EVIDENCE_TIMEOUT;
-                loop {
-                    match std::fs::read(path) {
-                        Ok(uart) if uart == EV3_UART_EVIDENCE => break,
-                        Ok(uart) if EV3_UART_EVIDENCE.starts_with(&uart) => {}
-                        Ok(_) => return Err("EV3 UART/AINTC evidence is invalid".into()),
-                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                        Err(_) => return Err("EV3 UART evidence unavailable".into()),
-                    }
-                    if Instant::now() >= deadline {
-                        return Err("EV3 UART/AINTC evidence is incomplete".into());
-                    }
-                    thread::sleep(Duration::from_millis(5));
+            TargetState::Ev3 { feed, uart: path } => {
+                let mut state = serde_json::to_value(feed.sample()?)
+                    .map_err(|_| "EV3 snapshot unavailable".to_owned())?;
+                state["target"]["architecture"] = "arm926ej-s".into();
+                // UART is optional bounded diagnostic evidence, never the
+                // authority for GPIO/display/motor/sensor state.
+                let mut uart = Vec::new();
+                if let Ok(file) = std::fs::File::open(path) {
+                    let _ = file.take(1024).read_to_end(&mut uart);
                 }
-                Ok(json!({
-                    "schemaVersion": 1,
-                    "type": "snapshot",
-                    "target": {"board": "ev3", "architecture": "arm926ej-s"},
-                    "evidence": {"uart": "EV3 ARM9 IRQ\n", "aintcIrq": true}
-                }))
+                if uart == EV3_UART_EVIDENCE {
+                    state["evidence"] = json!({"uart":"EV3 ARM9 IRQ\n","aintcIrq":true});
+                }
+                Ok(state)
             }
+        }
+    }
+
+    pub(crate) fn ev3_input(&self, name: &str, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        match &active.state {
+            TargetState::Ev3 { feed, .. } => serde_json::to_value(feed.command(name, arguments)?)
+                .map_err(|_| "EV3 snapshot unavailable".to_owned()),
+            _ => Err("EV3 input target mismatch".into()),
         }
     }
 
@@ -425,7 +461,91 @@ mod tests {
         assert_eq!(state["target"]["architecture"], "arm926ej-s");
         assert_eq!(state["evidence"]["uart"], "EV3 ARM9 IRQ\n");
         assert_eq!(state["evidence"]["aintcIrq"], true);
+        assert_eq!(state["display"]["width"], 178);
+        assert_eq!(state["display"]["height"], 128);
+        assert_eq!(
+            state["display"]["pixels"].as_array().unwrap().len(),
+            178 * 128
+        );
+        assert_eq!(
+            state["sensors"][0]["values"]["channels"]
+                .as_array()
+                .unwrap()
+                .len(),
+            16
+        );
+        let motors = state["motors"].as_array().unwrap();
+        assert_eq!(motors.len(), 4);
+        for port in ["A", "B", "C", "D"] {
+            assert!(motors.iter().any(|motor| motor["port"] == port));
+        }
+        let pressed = debugger
+            .ev3_input("ev3.button.set", json!({"button":"center","pressed":true}))
+            .unwrap();
+        assert_eq!(pressed["buttons"]["center"], true);
+        let released = debugger
+            .ev3_input("ev3.button.set", json!({"button":"center","pressed":false}))
+            .unwrap();
+        assert_eq!(released["buttons"]["center"], false);
+        let analog = debugger
+            .ev3_input("ev3.analog.set-channel", json!({"channel":3,"value":777}))
+            .unwrap();
+        assert_eq!(analog["sensors"][0]["values"]["channels"][3], 777);
+        assert!(debugger
+            .ev3_input("ev3.analog.set-channel", json!({"channel":16,"value":0}))
+            .is_err());
         assert_eq!(debugger.reset(&supervisor).unwrap(), "reset");
+        assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned source-built EV3 motor guest"]
+    fn packaged_ev3_motor_guest_drives_observed_motion_and_inputs() {
+        assert!(option_env!("BW_RENODE_EV3_FIRMWARE").is_some());
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        assert_eq!(debugger.start_ev3(&supervisor).unwrap(), "ready");
+        assert_eq!(debugger.run().unwrap(), "running");
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let state = loop {
+            let state = debugger.state().unwrap();
+            let motors = state["motors"].as_array().unwrap();
+            if motors.len() == 4
+                && motors.iter().all(|motor| {
+                    motor["emittedEdges"]
+                        .as_u64()
+                        .is_some_and(|edges| edges > 0)
+                })
+            {
+                break state;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "guest did not produce all four motor edges: {state}"
+            );
+            thread::sleep(Duration::from_millis(20));
+        };
+        assert_eq!(debugger.pause().unwrap(), "paused");
+        for port in ["A", "B", "C", "D"] {
+            let motor = state["motors"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|motor| motor["port"] == port)
+                .unwrap();
+            assert_eq!(motor["state"], "Forward");
+            assert_eq!(motor["direction"], 1);
+            assert_eq!(motor["dutyCycle"], 0.5);
+            assert!(motor["tachometerCount"].as_i64().unwrap() > 0);
+        }
+        let pressed = debugger
+            .ev3_input("ev3.button.set", json!({"button":"center","pressed":true}))
+            .unwrap();
+        assert_eq!(pressed["buttons"]["center"], true);
+        let analog = debugger
+            .ev3_input("ev3.analog.set-channel", json!({"channel":3,"value":777}))
+            .unwrap();
+        assert_eq!(analog["sensors"][0]["values"]["channels"][3], 777);
         assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
     }
 }
