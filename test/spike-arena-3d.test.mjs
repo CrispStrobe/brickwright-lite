@@ -204,7 +204,9 @@ test('the top-down camera shows the mat as the 2D canvas draws it', () => {
     const {position, target} = followPose({pose});
     const back = new Vector3(pose.x * S, 0, pose.y * S).sub(position);
     assert.ok(back.x * Math.cos(30 * DEG) + back.z * Math.sin(30 * DEG) > 0, 'the rover is ahead of the follow camera');
-    assert.ok(target.distanceTo(new Vector3(pose.x * S, 0, pose.y * S)) < 0.2, 'looking at the rover');
+    const ahead = target.clone().sub(new Vector3(pose.x * S, 0, pose.y * S));
+    assert.ok(ahead.x * Math.cos(30 * DEG) + ahead.z * Math.sin(30 * DEG) > 0 && ahead.length() < 0.4,
+        'looking just ahead of the rover, along its heading');
 });
 
 test('the 3D mat texture is the 2D view\'s own mat drawing', async () => {

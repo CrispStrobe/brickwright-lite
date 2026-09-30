@@ -33,7 +33,8 @@ export const M_PER_CM = 0.01;
 /** Heights the 2D world does not have. Walls are a LEGO-brick fence; crates a box. */
 export const WALL_HEIGHT_CM = 6;
 export const OBJECT_HEIGHT_CM = 5;
-/** The rover's body, above the wheel axles: a SPIKE hub on a driving base. */
+/** The rover's body, sitting just above the wheel axles (a SPIKE hub on a
+ *  driving base), so the lower half of each wheel shows beneath it. */
 const BODY_HEIGHT_CM = 5.5;
 const BODY_CLEARANCE_CM = 1.2;
 const SENSOR_SIZE_CM = 1.6;
@@ -139,12 +140,13 @@ export const buildArenaScene = (world, robot, {matCanvas = null} = {}) => {
     const bodyMaterial = new MeshStandardMaterial({color: BODY_COLOR, roughness: 0.5});
     const body = new Mesh(new BoxGeometry((front + back) * M_PER_CM, BODY_HEIGHT_CM * M_PER_CM, 2 * halfWidth * M_PER_CM),
         bodyMaterial);
-    body.position.copy(toScene((front - back) / 2, 0, BODY_CLEARANCE_CM + robot.wheelDiameter / 2));
+    const bodyBottom = robot.wheelDiameter / 2 + BODY_CLEARANCE_CM;
+    body.position.copy(toScene((front - back) / 2, 0, bodyBottom + BODY_HEIGHT_CM / 2));
     body.name = 'body';
     rover.add(body);
     const notch = new Mesh(new ConeGeometry(1.6 * M_PER_CM, 3 * M_PER_CM, 16), new MeshStandardMaterial({color: '#f59f00'}));
     notch.geometry.rotateZ(-Math.PI / 2); // point along +x, forward
-    notch.position.copy(toScene(front - 2, 0, BODY_CLEARANCE_CM + robot.wheelDiameter / 2 + BODY_HEIGHT_CM / 2 + 0.3));
+    notch.position.copy(toScene(front - 2, 0, bodyBottom + BODY_HEIGHT_CM + 0.8));
     rover.add(notch);
 
     const wheelMaterial = new MeshStandardMaterial({color: '#343a40', roughness: 0.9});
@@ -169,7 +171,8 @@ export const buildArenaScene = (world, robot, {matCanvas = null} = {}) => {
 
     // Sensors, at their mount points in the rover frame, facing their heading.
     const sensors = new Map();
-    const mountHeight = BODY_CLEARANCE_CM + robot.wheelDiameter / 2 - BODY_HEIGHT_CM / 2;
+    // Sensors hang low at the front of the body, as on the driving base.
+    const mountHeight = 2;
     for (const sensor of robot.sensors || []) {
         const group = new Group();
         group.name = `sensor-${sensor.port}`;
@@ -298,7 +301,7 @@ export const followPose = snapshot => {
     const c = Math.cos(pose.heading * DEG);
     const s = Math.sin(pose.heading * DEG);
     return {
-        position: toScene(pose.x - 38 * c, pose.y - 38 * s, 26),
-        target: toScene(pose.x + 12 * c, pose.y + 12 * s, 2)
+        position: toScene(pose.x - 45 * c, pose.y - 45 * s, 38),
+        target: toScene(pose.x + 25 * c, pose.y + 25 * s, 0)
     };
 };

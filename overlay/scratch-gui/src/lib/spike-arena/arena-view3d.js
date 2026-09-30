@@ -99,7 +99,7 @@ export const createArenaView3D = ({container, world, robot, mode = 'orbit', onCo
     canvas.addEventListener('webglcontextlost', onLost);
 
     const resize = () => {
-        const width = Math.max(160, container.clientWidth || 0);
+        const width = Math.max(1, container.clientWidth || 0);
         // The mat's own aspect, as the 2D canvas: the pane does not jump when the view toggles.
         const height = Math.round(width / aspect);
         renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
