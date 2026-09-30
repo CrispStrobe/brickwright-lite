@@ -31,7 +31,7 @@ import {REPO} from './helpers/bw-integrated.mjs';
 
 const ARENA_DIR = path.join(REPO, 'overlay', 'scratch-gui', 'static', 'spike-arena');
 const LIB = path.join(REPO, 'overlay', 'scratch-gui', 'src', 'lib', 'spike-arena');
-const {buildArenaScene, topDownCamera, followPose, WALL_HEIGHT_CM, OBJECT_HEIGHT_CM} = await import(path.join(LIB, 'arena-scene3d.js'));
+const {buildArenaScene, topDownCamera, followPose, orbitStart, perspectiveCamera, WALL_HEIGHT_CM, OBJECT_HEIGHT_CM} = await import(path.join(LIB, 'arena-scene3d.js'));
 const {ArenaSim} = await import(path.join(LIB, 'arena-sim.js'));
 const {assertValidWorld} = await import(path.join(LIB, 'arena-world.js'));
 const {convexPieces} = await import(path.join(LIB, 'geometry.js'));
@@ -184,6 +184,19 @@ test('the top-down camera shows the mat as the 2D canvas draws it', () => {
             // The canvas maps (x, y) cm to (x / width, y / height) of its box, y down.
             close(ndc.x, x / width * 2 - 1, 1e-9, `${world.id} (${x}, ${y}) across`);
             close(ndc.y, 1 - y / height * 2, 1e-9, `${world.id} (${x}, ${y}) down`);
+        }
+    }
+    // The orbit camera starts with the whole mat in view, for every mission.
+    for (const {world} of missions) {
+        const {width, height} = world.mat;
+        const camera = perspectiveCamera(width / height);
+        const {position, target} = orbitStart(world);
+        camera.position.copy(position);
+        camera.lookAt(target);
+        camera.updateMatrixWorld();
+        for (const [x, y] of [[0, 0], [width, 0], [0, height], [width, height]]) {
+            const ndc = new Vector3(x * S, 0, y * S).project(camera);
+            assert.ok(Math.abs(ndc.x) < 1 && Math.abs(ndc.y) < 1 && ndc.z < 1, `${world.id}: mat corner (${x}, ${y}) in the orbit view`);
         }
     }
     // The follow camera sits behind the rover: opposite its heading.

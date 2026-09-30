@@ -285,11 +285,11 @@ export const topDownCamera = (world, aspect = world.mat.width / world.mat.height
 /** A perspective camera for the orbit and follow modes. */
 export const perspectiveCamera = aspect => new PerspectiveCamera(45, aspect, 0.01, 50);
 
-/** Where the orbit camera starts: south of the mat, looking at its centre. */
+/** Where the orbit camera starts: south of the mat and above it, the whole mat in view. */
 export const orbitStart = world => {
     const {width, height} = world.mat;
     const reach = Math.max(width, height);
-    return {position: toScene(width / 2, height + reach * 0.45, reach * 0.55), target: toScene(width / 2, height / 2)};
+    return {position: toScene(width / 2, height / 2 + reach * 1.2, reach * 1.2), target: toScene(width / 2, height / 2)};
 };
 
 /** The follow camera: behind and above the rover, looking a little ahead of it. */
