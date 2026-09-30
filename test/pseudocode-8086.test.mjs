@@ -391,7 +391,11 @@ const REFUSALS = {
     // an 8051 pin program reseats onto an 8086 unchanged. A PART still is
     // not, and the distinction is real: a PIN is one wire and this bench has
     // a chip to hang it on; a PART is a component with a protocol.
-    'part declared': `DEVICE i8086\nPART lcd = LCD1602 ON P1\nWHEN flag clicked:\n  say "hi"\n`
+    // A part the parser READS on i8086 (a 74HC595) and this bench does not
+    // model. (`PART lcd = LCD1602 ON P1` was used here; it is no declaration at
+    // all, so since D5 the parser refuses it before this back end sees it —
+    // see the next test.)
+    'part declared': `DEVICE i8086\nPART leds = 74HC595 DATA P1.0 CLOCK P1.1 LATCH P1.2\nWHEN flag clicked:\n  say "hi"\n`
 };
 
 for (const [what, source] of Object.entries(REFUSALS)) {
@@ -426,7 +430,15 @@ test('a program whose only block is unsupported is REFUSED, never silently empti
     // refusal had to be made against the TEXT: there was no block to refuse.
     // The PART refusal is made against the text for the same reason and the
     // same caveat applies.
-    const source = `DEVICE i8086\nPART lcd = LCD1602 ON P1\nWHEN flag clicked:\n  say "hi"\n`;
+    //
+    // SINCE D5 THE PARSER HOLDS THE FIRST HALF ITSELF: a line it cannot read
+    // is refused (UnparsedLinesError), not dropped, so the unreadable PART
+    // line never reaches this back end as an emptied program.
+    assert.throws(() => new SB3Creator().parse(`DEVICE i8086\nPART lcd = LCD1602 ON P1\nWHEN flag clicked:\n  say "hi"\n`),
+        (err) => err.code === 'DIALECT_UNPARSED_LINES' && err.lines[0].text === 'PART lcd = LCD1602 ON P1');
+    // A part the parser does read, and this bench does not model, is this
+    // back end's refusal.
+    const source = `DEVICE i8086\nPART leds = 74HC595 DATA P1.0 CLOCK P1.1 LATCH P1.2\nWHEN flag clicked:\n  say "hi"\n`;
     const e = await refusalFor(source);
     assert.ok(e, 'a program declaring an unmodelled component was accepted');
     assert.equal(e.what, 'part declared');

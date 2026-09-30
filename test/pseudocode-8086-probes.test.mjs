@@ -166,22 +166,20 @@ test('`IF cond:` without THEN drops the branch — but no longer in silence', as
     // table again, every program starts shouting and this goes red first.
     assert.deepEqual(good.out.warnings, [], 'the correct form is clean');
 
-    // STILL PINNED: the branch is dropped. If the parser ever learns to accept
-    // a bare colon, this goes red and the test should assert the branch RUNS.
-    assert.ok(!parsedOpcodes(without).includes('control_if'),
-        'if this now parses, the language decision was made — assert 111 prints instead');
-    const bad = await run(without);
-    assert.deepEqual(bad.screen, ['222'], 'the branch is still gone: 111 never printed');
-
-    // NO LONGER SILENT, and this is the half that was worth fixing. The
-    // learner is told the line, the problem, and the correction.
-    assert.ok(bad.out.warnings.length > 0, 'the build now reports what the parser found');
-    assert.ok(bad.out.warnings.some((w) => /Malformed IF/.test(w) && /THEN/.test(w)),
-        `a warning must name the fix, got: ${JSON.stringify(bad.out.warnings)}`);
-    assert.ok(bad.out.warnings.some((w) => /unexpected indentation/i.test(w)),
-        'and the orphaned body is reported too, so the dropped lines are visible');
-    assert.ok(bad.out.warnings.every((w) => /^Line \d+:/.test(w)),
-        'every warning carries a line number — a diagnostic without one is a riddle');
+    // SINCE D5 THE BRANCH IS NOT DROPPED AT ALL: the program is refused. It
+    // used to build without the branch (and ran, printing only 222) with the
+    // diagnosis as a warning; a line the dialect cannot read is now refused
+    // by name (UnparsedLinesError), so nothing runs that is not what was
+    // written. The learner is still told the line, the problem and the fix.
+    await assert.rejects(() => run(without), (e) => {
+        assert.equal(e.code, 'DIALECT_UNPARSED_LINES');
+        assert.deepEqual(e.lines.map((l) => [l.line, l.text]), [[5, 'IF n = 1:'], [6, 'say 111']]);
+        assert.match(e.lines[0].reason, /malformed IF/);
+        assert.match(e.lines[0].reason, /THEN/, 'the refusal must name the fix');
+        assert.match(e.lines[1].reason, /unexpected indentation/i,
+            'and the orphaned body is named too');
+        return true;
+    });
 });
 
 test('KNOWN DEFECT: a variable named x or y loses to the motion block', async () => {
@@ -217,7 +215,18 @@ test('KNOWN DEFECT: a variable named x or y loses to the motion block', async ()
 // does something other than what it looks like, with nothing said.
 // ---------------------------------------------------------------------------
 
-const warnsOf = (source) => { const c = new SB3Creator(); c.parse(source); return c.warnings; };
+// What the parser says about `source`: its warnings, and — since D5, when a
+// line cannot be read — the refusal's lines (`Line N: reason`) before them.
+const warnsOf = (source) => {
+    const c = new SB3Creator();
+    try {
+        c.parse(source);
+        return c.warnings;
+    } catch (e) {
+        if (e.code !== 'DIALECT_UNPARSED_LINES') throw e;
+        return [...e.lines.map((l) => `Line ${l.line}: ${l.reason}`), ...e.warnings];
+    }
+};
 const HDR = 'DEVICE i8086\nGLOBAL n\nWHEN flag clicked:\n  set n to 0\n';
 
 test('an UNDER-INDENTED body is reported — it used to be silent', async () => {
@@ -255,13 +264,15 @@ test('the plausible typos that already warned well — regression cover', () => 
     // Ten of twelve probed cases were already diagnosed properly. Reporting
     // that is part of the point: a designed probe that finds nothing is
     // evidence, where no probe is not. Pinned so they stay diagnosed.
+    // Since D5 each is a refusal (the line is not built), worded as the parser
+    // words it now: "no statement of this dialect reads it", "ELSE without an IF".
     const cases = [
-        ['  REPEAT 3\n    say 111\n', /Unknown command/],
-        ['  ELSE:\n    say 111\n', /ELSE block without matching IF/],
-        ['  say\n', /Unknown command/],
-        ['  set n to\n', /Unknown command/],
-        ['  wiggle 5\n', /Unknown command/],
-        ['  REPEAT UNTIL n = 3\n    change n by 1\n', /Unknown command/],
+        ['  REPEAT 3\n    say 111\n', /no statement of this dialect reads it/],
+        ['  ELSE:\n    say 111\n', /ELSE without an IF/],
+        ['  say\n', /no statement of this dialect reads it/],
+        ['  set n to\n', /no statement of this dialect reads it/],
+        ['  wiggle 5\n', /no statement of this dialect reads it/],
+        ['  REPEAT UNTIL n = 3\n    change n by 1\n', /no statement of this dialect reads it/],
     ];
     for (const [body, re] of cases) {
         const w = warnsOf(HDR + body);
