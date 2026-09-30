@@ -1,5 +1,18 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT AND CC-BY-SA-4.0
+// Copyright (c) 2018-2020 The Pybricks Authors
 // Copyright (c) 2026 The Pybricks Authors
+//
+// Attribution restored conservatively pending provenance review (PR #508).
+// The earlier MIT-only / clean-room assertion is unverified. This notice
+// preserves the upstream terms; it does not establish independent authorship.
+// Pybricks authors: Laurens Valk, David Lechner, LEGO System A/S.
+// Upstream source: https://github.com/pybricks/pybricks-micropython/blob/4104553405decb0384bcfb030fbfcb4b5a9854cc/pybricks/util_mp/pb_kwarg_helper.h
+// Upstream credits gratzdhg: https://stackoverflow.com/a/50371430
+// and Marvin: https://stackoverflow.com/a/11994395
+// Original header replaced in September 2026; attribution restored on
+// 2026-09-30. The macro implementation below is unchanged by this correction.
+// Licence: https://creativecommons.org/licenses/by-sa/4.0/
+// Review and remaining work: docs/OPEN-TASKS-2026-09-29.md (PR #508 review).
 
 // Keyword argument parsing helpers for MicroPython functions and methods.
 //

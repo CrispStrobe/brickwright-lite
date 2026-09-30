@@ -52,6 +52,109 @@ lands there first; Lite then advances the exact pin.
 | D1 | SPIKE 3 Python: close refusals | 34 of 73 SPIKE 3 functions are refused by name. Map the ones the arena or the dialect can support (sensors, motor modes, light matrix). | DONE 2026-09-29 — Lite PR #555; CrispStrobe/extensions#27 (`e82ebcd`) and sb3-creator#40 (`a2032f71`). Before → after: `color_sensor.rgbi()[0..2]` refused → mapped; `motion_sensor.angular_velocity()` refused → approximate; `light.color` refused → approximate; `sound.volume` refused → mapped; `distance_sensor.show` refused → approximate; `distance_sensor.clear` refused → mapped; `light_matrix.show` refused → approximate. The other 27 stay refused, each with a named reason: `motor.get_duty_cycle/status/info`, `distance_sensor.get_pixel/set_pixel`, `force_sensor.raw`, `light_matrix.get_pixel/set_orientation/get_orientation`, `motion_sensor.gesture/stable/quaternion/get_yaw_face/set_yaw_face/tap_count/reset_tap_count`, and `hub.temperature/battery_voltage/battery_current/battery_temperature/usb_charge_current/device_uuid/hardware_id/power_off/reset/soft_reset/bootloader`. 34 → 27 refused; full table in `docs/SPIKE3-PYTHON.md`. |
 | D2 | More arena units | Units beyond "Rover basics": sensors in depth, gyro turns, mapping, a capstone mission. Original content, EN and DE, reference and wrong solutions auto-checked. | DONE 2026-09-29 — Lite #557. Sensors in depth: sd01 blue marker, sd02 trail to the red flag, sd03 docking distance, sd04 door in the wall (side-mounted distance sensor), sd05 feel the way (force). Gyro turns: gt01 half a right angle, gt02 worn wheel, gt03 hexagon patrol, gt04 about turn. Mapping: mp01 count the finds, mp02 back to the find, mp03 replay the route (list). Capstone: cp01 supply run, 4 stages with partial credit. Every reference passes and every wrong solution fails for a pinned reason in the real VM path; mission table in docs/SPIKE-ARENA.md "The units". |
 | D3 | 3D view of the arena | A three.js view over the same arena snapshot state, as a toggle beside the 2D view. No new physics. | DONE 2026-09-30 — Lite PR #568: three 0.186.1 (MIT, exact pin, lazy chunk `bw-arena-3d`, held out of the first load by verify-boot-payload), scene built headless from the one snapshot and asserted against it (every mission; a driven path; the capstone reference in the real VM with identical verdict/time), no-WebGL fallback EN/DE, browser gate toggles 3D and runs gt01 with it open. |
-| D4 | Pybricks header PR | Send the held clean-room MIT `pb_kwarg_helper.h` upstream (bug-fix PR already sent). Goes out under the owner's account. | DONE 2026-09-30 — sent as pybricks/pybricks-micropython#508 (head CrispStrobe:cleanroom-kwarg-helper-v2 `9120e981`, on upstream master 81bb7272). Re-verified against current master first: upstream had added `PB_PARSE_ARGS_METHOD_SKIP_SELF` (used in the new hub_network file, compiled out of the virtual hub), which the Sep-25 draft lacked and which would have broken the EV3/Prime/Essential builds; added clean-room from its one call site. Evidence: virtualhub 12/12 tests (58 cases) identical, 34-call argprobe identical, 85/85 call sites + 205 table entries identical, hub_network on primehub_f4 (ARM, LTO off) 5 tables byte-identical, text -104 B. Fork CI could not be used (fork workflows need a one-time UI enable). Bug-fix PR #507 still open. |
+| D4 | Pybricks header PR | Review the disputed `pb_kwarg_helper.h` provenance; no further external action authorized. | CLOSED / PROVENANCE UNRESOLVED 2026-09-30 — sent as pybricks/pybricks-micropython#508 (head CrispStrobe:cleanroom-kwarg-helper-v2 `9120e981`, on upstream master 81bb7272). Re-verified against current master first: upstream had added `PB_PARSE_ARGS_METHOD_SKIP_SELF` (used in the new hub_network file, compiled out of the virtual hub), which the Sep-25 draft lacked and which would have broken the EV3/Prime/Essential builds; added reportedly from its one call site; independent authorship is unverified. Reported equivalence evidence (not reproduced in this audit): virtualhub 12/12 tests (58 cases) identical, 34-call argprobe identical, 85/85 call sites + 205 table entries identical, hub_network on primehub_f4 (ARM, LTO off) 5 tables byte-identical, text -104 B. Fork CI could not be used (fork workflows need a one-time UI enable). Bug-fix PR #507 still open. |
 | D5 | Dialect drops a statement whose argument is a spaced expression (found by D2) | `move forward (finds * 15) cm` is dropped with only a parse WARNING — a silent loss for any program not checking warnings (the Rover-basics unit test doesn't). Find every statement word whose argument parser can drop an expression, make them accept it (or refuse loudly as an error), and add an anti-silent-loss gate over the arena units + example corpus. | DONE 2026-09-30 — sb3-creator #41 (`fa96f5f5`) + #42 (`b4eb4073`), Lite PR #564. Root cause: statement rules matched `line.match` with `(\S+)` / lazy `(.+?)` slots, and `parse()` turned every unread line into a warning. Now every rule matches through `matchTopLevel` (a slot is one term; a (parenthesised expression) is a term), positional slots are one term each, and an unread line is refused (`UnparsedLinesError`). Word-family table over all 211 statement rules (155 value slots × 6 probes) + 37 EV3 slots, before → after: SPIKE ok 48 / DROPPED 80 / wrong-block 16 → ok 112 / refused 32; micro:bit ok 267 / DROPPED 26 / wrong-block 16 / wrong-value 3 → ok 303 / refused 21; circuit/MCU ok 552 / wrong-value 120 / DROPPED 32 / wrong-block 34 → ok 658 / refused 79 / wrong-value 1; Scratch core ok 286 / DROPPED 2 → ok 287 / refused 1; EV3 unparenthesised DROPPED 73 + 1 wrong variable → refused 74 (full table in #564). Gate: `test/dialect-no-dropped-lines.test.mjs` (331 .bw + example modules + SPIKE 3 fixtures, 0 unread lines). MakeCode census raw counts: micro:bit apps 204/8/2/1 → 204/8/2/1; EV3 100 full/157 partial/1 → unchanged (1208 blocks); lite→micro:bit 218 full/83 partial/30 recompile → 150/130/29 + 22 retarget (the old DEVICE-line swap dropped Arduino pins silently: 39 "full" did nothing). |
 | D6 | Dialect remainders found by D5 | (1) ~40 declaration refusals in `parseStcDeclaration` still warn-and-skip the declaration (statements using it are refused, but the declaration line itself is lost with a warning) — make them errors like D5's `DIALECT_UNPARSED_LINES`; (2) escaped quotes in text literals (`"a \"b\""`) are not unescaped by the value parser (and the exporter must escape them back: round-trip fixed point); (3) `set voxel pick random 1 to 10 1 1 to 1` misreads: an unbracketed multi-word reporter fills adjacent positional slots — refuse unbracketed reporters in multi-slot rules. | CLAIMED 2026-09-30 |
+
+## PR #508 review — 2026-09-30
+
+**Finding:** a replacement was implemented, but the available record does not
+establish a clean-room process. We withdraw the assertions of verified
+independent authorship and permissive-only clearance pending evidence. This
+is an engineering/provenance finding, not a determination of infringement
+or intentional deception.
+
+[Pybricks PR #508](https://github.com/pybricks/pybricks-micropython/pull/508)
+was closed without merge at 2026-09-30 14:00:54 UTC. The maintainer disputes
+its provenance statement. No messages, edits, pushes or other writes to
+GitHub were made during this local review.
+
+Evidence:
+
+- Submitted commit `9120e9813cdb113467c5524dd60c7bfbf8d04386` changes only
+  `pb_kwarg_helper.h`: 147 additions, 95 deletions. The replacement uses
+  enum indices and five-element descriptors; the old implementation uses
+  indexed expansion and three-element descriptors. Both use a variadic
+  count/dispatch and a finite chain of expansion macros. Those similarities
+  alone establish neither copying nor independence.
+- The submitted header retains “The Pybricks Authors”, changes the copyright
+  years from 2018–2020 to 2026, and removes the CC-BY-SA marker and the two
+  Stack Overflow source references. Saying all human attribution was removed
+  is inaccurate; the missing original notices and source credits still matter.
+- The shipped header hash is `3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10`.
+  The submitted header hash is `b1ee51dd1f0fddbd47e0b08d2c48ba82c9e5054d2cf3ec8f15c69ed72a36409e`.
+  They differ only by the submitted `PB_PARSE_ARGS_METHOD_SKIP_SELF` addition.
+- Lite PR #334 first built the original header under a recorded exception,
+  then commit `576d58b5706d50ccc48052139bd47de6514c6508` introduced the
+  replacement. Both record Claude session
+  `df930874-a977-40f8-996f-8689b428942c`; Lite merged the lane as `50445efea`.
+  That is not evidence of an isolated implementer. A compiler reading the
+  file does not itself prove that its contents entered the author's context.
+- The PR claims behavior and argument-table comparisons, including `-E`/`-S`
+  output. These are equivalence evidence, not provenance evidence. The logs
+  and comparison script were not present in the checkouts reviewed here;
+  those claimed checks have not been independently reproduced in this audit.
+- No matching authoring transcript was found in the local Claude project
+  logs. The recorded drafting checkout is on the VPS at
+  `/mnt/volume1/code/wt/pybricks-upstream-drafts/`; recover its original session
+  and subagent logs before asserting what was or was not read. Check reads,
+  tool output, diffs, inherited context and summaries, with timestamps before
+  and after the first implementation. This audit itself has read both headers
+  and must not be presented as an isolated implementer of a future rewrite.
+- The maintainer's attachment shows the fork with upstream history. Possession
+  of history does not prove a source read. Knowing a licence label does not
+  by itself prove reading the implementation. Neither observation resolves
+  the absolute “never opened/read/diffed” claim.
+
+Local corrections:
+
+- Restore original attribution, source references and terms conservatively in
+  the overlay; keep macro code unchanged. Preserve the historical asset hashes
+  and the header hash at build time separately from the corrected source hash.
+- Correct THIRD-PARTY-NOTICES, bundled notices, About and PROVENANCE.json.
+  The historical licence scan is retained and its evidentiary limit is stated.
+- Hold `build-pybricks-wasm.sh` before any fetch, toolchain installation or
+  build-directory removal. The licence gate rejects the disputed input by
+  path even if someone changes its label back to MIT. No bypass is added.
+- Restore the original upstream header on a local fork branch by reverting
+  `9120e9813`; keep the disputed commit in history. Do not force-push or erase
+  records. Public PR/timeline JSON, both original replacement versions and
+  the attachment are preserved locally in `brickwright-firmware-private`,
+  under `pybricks/2026-09-30-pr508/`.
+
+Remaining decisions and work:
+
+1. Recover the original VPS authoring records. Until then the answer to “did
+   we do a verified clean-room rewrite?” is **not established**.
+2. For continued distribution, either restore the actual upstream header and
+   rebuild with its original notices/terms, after reviewing the obligations
+   for the combined firmware, or replace the helper through a documented
+   independent process. Simply adding credits does not settle distribution
+   obligations or repair prior releases. Retained simulator bytes are not
+   newly cleared for release by this local correction.
+3. If permissive-only code is required, use a separate implementer with no
+   old source, old replacement, source diffs or inherited source context.
+   Provide an interface specification and black-box fixtures derived from
+   permitted sources; retain input/access records. Review provenance before
+   removing the build hold. Direct MicroPython parsing at call sites is also
+   a possible redesign, subject to the same provenance discipline.
+4. Audit the separate integer-helper stand-in before making any blanket claim
+   about the absence of share-alike material. Its test results do not establish
+   its authorship either.
+5. Any future external response needs the owner's separate instruction. If
+   requested, acknowledge the unsupported absolute claim, state only facts
+   verified from the record, and avoid asserting either proven innocence or
+   proven intentional copying.
+
+The original CC-BY-SA-4.0 licence requires attribution and conditions for
+adapted material ([legal code, section 3](https://creativecommons.org/licenses/by-sa/4.0/legalcode)).
+Its scope depends on material and rights involved; this audit does not decide
+whether the replacement or whole firmware is adapted material.
+
+Validation of the local correction: all 11 shipped-simulator tests pass; three
+relevant bundled-notice tests pass; both edited About modules parse; overlay
+and tracked package copies match. Removing the path-based provenance guard
+makes its named test fail. The build script exits with the provenance hold
+before any source/toolchain/build mutation. The overlay macro code is identical
+before and after removing comment/blank lines, and both binary hashes match
+the preserved build record. No wasm rebuild or full GUI build was performed.

@@ -1302,7 +1302,7 @@ Self-hosted under `static/microbit-sim/` (built from source with emscripten).
   device is selected. The built assets (firmware.js, firmware.wasm,
   simulator.js) are vendored; the source repo provides the build recipe.
 
-## Pybricks MicroPython (SPIKE Prime simulator) — MIT
+## Pybricks MicroPython (SPIKE Prime simulator) — MIT; header provenance unresolved
 
 **pybricks-micropython**, Copyright (c) 2018-2026 The Pybricks Authors
 (MIT License, https://github.com/pybricks/pybricks-micropython), with its
@@ -1314,8 +1314,11 @@ WebAssembly on Brickwright's own hardware layer. Self-hosted under
 - **Version:** pybricks-micropython v4.0.1, commit
   `4104553405decb0384bcfb030fbfcb4b5a9854cc`; micropython submodule
   `13580b6ad057173f62e8b2363e01d6851bcc6699`
-- **Licence:** MIT (both). Full texts ship offline in
-  `static/licenses/pybricks-micropython.MIT.txt`.
+- **Licence:** MIT for the Pybricks and MicroPython portions covered by their
+  notices. The argument-header replacement has unresolved provenance; the
+  original MIT and CC-BY-SA-4.0 terms are retained conservatively. Full texts
+  and attribution ship offline in `static/licenses/pybricks-micropython.MIT.txt`
+  and `static/licenses/CC-BY-SA-4.0.txt`.
 - **Build:** `build-pybricks-wasm.sh` (emsdk 6.0.6, pinned shas verified).
   The Brickwright HAL, platform and Makefile are in `firmware/pybricks-wasm/`.
   Asset sha256s are in `static/pybricks-sim/PROVENANCE.json`.
@@ -1324,22 +1327,30 @@ WebAssembly on Brickwright's own hardware layer. Self-hosted under
   none of it: no BTstack or other Bluetooth stack, no ST/TI vendor HAL,
   no umm_malloc, no LEGO firmware, no TI Bluetooth patch, and no file from
   MicroPython's `lib/` (emscripten's libc provides libm).
-  `firmware/pybricks-wasm/licence_gate.py` checks the licence of every file
-  the compiler read and fails the build on anything non-permissive; it
-  drops Pybricks' GPL-2.0/MPL-1.0 NXT/EV3 drivers before compiling.
-- **No share-alike code:** two pieces of upstream Pybricks are adapted
-  from Stack Overflow answers (CC BY-SA 4.0), and this build compiles
-  neither of them. Upstream's `pybricks/util_mp/pb_kwarg_helper.h` (tagged
-  `MIT AND CC-BY-SA-4.0`) is shadowed on the include path by a clean-room
-  MIT rewrite (Copyright (c) 2026 The Pybricks Authors). It was written
-  without reading the upstream file and is being prepared as an upstream
-  contribution. `lib/pbio/src/int_math.c` is compiled from a copy with
-  `pbio_int_math_mult_then_div()` removed; a BSD-3-Clause Brickwright
-  stand-in, written from its documented contract and Pybricks' own test,
-  replaces it. Both stand-ins live in `firmware/pybricks-wasm/upstream-overlay/`
-  and are pinned by sha256 in `build-pybricks-wasm.sh`. The licence gate
-  fails the build if either upstream original, or any file carrying
-  CC-BY-SA text, is compiled.
+  The Makefile drops Pybricks' GPL-2.0/MPL-1.0 NXT/EV3 drivers before compiling.
+- **Argument header review (2026-09-30):** the previous assertion of an
+  independently authored MIT-only replacement is withdrawn pending evidence.
+  The source and shipped binary use the September replacement of
+  `pybricks/util_mp/pb_kwarg_helper.h`; the upstream file is shadowed, but that
+  establishes the compiler input, not independent authorship. The original
+  Copyright (c) 2018-2020 The Pybricks Authors notice and source references
+  are restored in the overlay. The Pybricks Authors include Laurens Valk,
+  David Lechner and LEGO System A/S. Upstream credits gratzdhg's
+  [argument-counting answer](https://stackoverflow.com/a/50371430) and Marvin's
+  [variadic-iteration answer](https://stackoverflow.com/a/11994395).
+  The replacement changes the macro implementation; attribution was restored
+  on 2026-09-30 without changing its macros or rebuilding the assets.
+  [Original header](https://github.com/pybricks/pybricks-micropython/blob/4104553405decb0384bcfb030fbfcb4b5a9854cc/pybricks/util_mp/pb_kwarg_helper.h),
+  [CC-BY-SA-4.0 terms](https://creativecommons.org/licenses/by-sa/4.0/).
+  Retaining these notices is a precaution, not a finding about derivation or
+  clearance for redistribution. `build-pybricks-wasm.sh` holds new builds;
+  the licence gate rejects this input even if its SPDX label is changed to MIT.
+- **Integer helper:** `lib/pbio/src/int_math.c` is compiled with
+  `pbio_int_math_mult_then_div()` removed and a BSD-3-Clause Brickwright
+  stand-in. Its separate authorship assertion has not been independently
+  audited in the PR #508 review. No blanket “no share-alike code” assertion
+  is made for the simulator. See `docs/OPEN-TASKS-2026-09-29.md` for evidence
+  limits and remaining work.
 - **Toolchain runtime:** the emscripten glue (`pybricks-hub.js`) and the
   musl libc / compiler-rt parts linked into the wasm are emscripten's
   (MIT / University of Illinois NCSA; compiler-rt Apache-2.0 WITH

@@ -33,15 +33,12 @@ PYBRICKS_SHA="4104553405decb0384bcfb030fbfcb4b5a9854cc"
 # The only submodule the build reads: Pybricks' MicroPython fork.
 MICROPYTHON_SHA="13580b6ad057173f62e8b2363e01d6851bcc6699"
 EMSDK_VERSION="6.0.6"
-# Clean-room, MIT-only replacement for pybricks/util_mp/pb_kwarg_helper.h,
-# whose upstream copy is tagged MIT AND CC-BY-SA-4.0 (macros adapted from
-# Stack Overflow). Written without reading that file, from its MIT call sites
-# and MicroPython's mp_arg_parse_all API, and offered to Pybricks upstream.
-# The Makefile puts upstream-overlay/ ahead of the Pybricks tree, so the
-# compiler never opens the upstream header; the licence gate checks that.
-# Drop this once a pinned Pybricks release ships an MIT-only header.
+# Disputed replacement for pybricks/util_mp/pb_kwarg_helper.h (PR #508).
+# Independent authorship has not been verified. Original attribution and
+# terms are restored conservatively; permissive builds are held below.
+# Include-path isolation proves which file is compiled, not its provenance.
 KWARG_OVERLAY_REL="upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h"
-KWARG_OVERLAY_SHA256="3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10"
+KWARG_OVERLAY_SHA256="ff7eed639216a9655ab28dc1edb689df60e7a103afb2f36e723e21deee3307c4"
 # The other Stack Overflow (CC BY-SA 4.0) piece: the body of
 # pbio_int_math_mult_then_div() in lib/pbio/src/int_math.c. The Makefile
 # compiles int_math.c with that function removed (strip_function.py) and this
@@ -58,6 +55,8 @@ MIN_AVAIL_MB=700
 
 die()  { echo "FATAL: $*" >&2; exit 1; }
 info() { echo ">>> $*"; }
+
+die "Pybricks wasm rebuild held: pb_kwarg_helper.h provenance is unresolved (PR #508). See docs/OPEN-TASKS-2026-09-29.md."
 
 avail=$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)
 (( avail >= MIN_AVAIL_MB )) || die "Only ${avail} MB available (need >= ${MIN_AVAIL_MB}). Aborting to avoid OOM."
@@ -134,8 +133,9 @@ json.dump({
         "pybricks/util_mp/pb_kwarg_helper.h": {
             "path": "firmware/pybricks-wasm/$KWARG_OVERLAY_REL",
             "sha256": "$KWARG_OVERLAY_SHA256",
-            "license": "MIT",
-            "why": "clean-room replacement for the upstream header tagged MIT AND CC-BY-SA-4.0; the upstream copy is not compiled",
+            "license": "MIT AND CC-BY-SA-4.0",
+            "provenance_status": "unverified",
+            "why": "disputed replacement; original terms retained conservatively pending review of PR #508",
         },
         "lib/pbio/src/int_math.c": {
             "path": "firmware/pybricks-wasm/$INTMATH_OVERLAY_REL",

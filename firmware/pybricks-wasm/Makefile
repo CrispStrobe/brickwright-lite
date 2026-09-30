@@ -46,8 +46,9 @@ SRC_QSTR := $(filter-out $(UNUSED_EXTMOD_SRC_C), $(SRC_QSTR))
 INC += -I.
 INC += -I$(WASM_DIR)/platform
 INC += -I$(WASM_DIR)/compat
-# Clean-room MIT replacements for upstream Pybricks headers, found before
-# $(PBTOP) so the upstream copy is never opened. Pinned in build-pybricks-wasm.sh.
+# Overlay headers are found before $(PBTOP). Include-path isolation does
+# not establish provenance. The kwarg header is disputed (PR #508); the
+# build script and licence gate hold permissive rebuilds pending review.
 INC += -I$(WASM_DIR)/upstream-overlay
 INC += -I$(TOP)
 INC += -I$(PBTOP)/lib/lego
@@ -98,7 +99,7 @@ PBIO_DRV_KEEP = $(addprefix lib/pbio/drv/,\
 PBIO_SRC_C := $(filter-out $(NON_PERMISSIVE_SRC) lib/pbio/platform/%,$(PBIO_SRC_C))
 PBIO_SRC_C := $(filter-out lib/pbio/drv/%,$(PBIO_SRC_C)) $(PBIO_DRV_KEEP)
 
-# No share-alike code. lib/pbio/src/int_math.c is MIT, except that the body
+# Integer helper overlay. lib/pbio/src/int_math.c is MIT, except that the body
 # of pbio_int_math_mult_then_div() is adapted from a Stack Overflow answer
 # (CC BY-SA 4.0). Compile a copy with that one function removed, and a
 # Brickwright stand-in for it. The licence gate checks the upstream file was

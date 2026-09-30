@@ -6,8 +6,8 @@
 Reads the compiler's dependency files (*.P) from the build directory, so the
 set it judges is every source and header the compiler actually opened -- not a
 list someone maintains. Each file from the Pybricks tree or from this
-directory must carry a permissive licence. Exits non-zero, naming the files,
-when one does not.
+directory must carry a permissive licence and must not be a disputed input.
+Exits non-zero, naming the files, when one does not.
 
 usage: licence_gate.py BUILD_DIR PBTOP WASM_DIR [--json OUT]
 """
@@ -35,8 +35,8 @@ FORBIDDEN_DIRS = (
 
 # Share-alike licences are refused outright, not reviewed case by case: a
 # CC-BY-SA file in the compiled set fails the build whether it says so in an
-# SPDX line or only in prose. Pybricks' pb_kwarg_helper.h was the one such
-# file (MIT AND CC-BY-SA-4.0); it is replaced below and must not come back.
+# SPDX line or only in prose. A replacement with a permissive label does
+# not establish independent authorship; disputed inputs also fail by path.
 SHARE_ALIKE = re.compile(r"CC[- ]BY[- ]SA|creativecommons\.org/licenses/by-sa", re.IGNORECASE)
 
 # Upstream files that must NOT be compiled, each with the Brickwright file
@@ -90,7 +90,7 @@ def main():
         i = args.index("--json")
         out_json = args[i + 1]
         del args[i:i + 2]
-    build, pbtop, wasm_dir = (os.path.abspath(a) for a in args)
+    build, pbtop, wasm_dir = (os.path.realpath(a) for a in args)
 
     seen = {}
     for dep in dep_files(build):
@@ -126,6 +126,8 @@ def main():
             continue
         summary["files"] += 1
         read.add(rel)
+        if rel == REPLACED["pybricks/util_mp/pb_kwarg_helper.h"]:
+            failures.append(f"{rel}: unresolved provenance (PR #508); permissive label is not clearance")
         for bad in FORBIDDEN_DIRS:
             if rel.startswith(bad):
                 failures.append(f"{rel}: forbidden directory {bad}")

@@ -6,12 +6,31 @@ commit 13580b6ad057173f62e8b2363e01d6851bcc6699. Recipe: build-pybricks-wasm.sh.
 This build contains NO BTstack, no other Bluetooth stack, no vendor HAL and no
 file from MicroPython's lib/ directory; build-pybricks-wasm.sh checks the licence
 of every file the compiler read (firmware/pybricks-wasm/licence_gate.py).
-No file compiled into this build carries share-alike terms. Upstream's
-pybricks/util_mp/pb_kwarg_helper.h (tagged MIT AND CC-BY-SA-4.0) is replaced
-by a clean-room MIT rewrite by The Pybricks Authors. The one function of
-lib/pbio/src/int_math.c adapted from a share-alike source,
-pbio_int_math_mult_then_div(), is replaced by a Brickwright stand-in
-(BSD-3-Clause, Copyright (c) 2026 Brickwright contributors).
+Argument-header provenance review, 2026-09-30:
+The previous MIT-only / clean-room claim for the replacement of
+pybricks/util_mp/pb_kwarg_helper.h is unverified and is withdrawn pending
+review. The existing wasm bytes are unchanged. The overlay source changed
+only in notices after that build. Rebuilds under the permissive policy are held.
+
+Original notice retained conservatively:
+Copyright (c) 2018-2020 The Pybricks Authors
+The Pybricks Authors include Laurens Valk, David Lechner and LEGO System A/S.
+Original source:
+https://github.com/pybricks/pybricks-micropython/blob/4104553405decb0384bcfb030fbfcb4b5a9854cc/pybricks/util_mp/pb_kwarg_helper.h
+Upstream credits gratzdhg (argument counting):
+https://stackoverflow.com/a/50371430
+and Marvin (variadic iteration):
+https://stackoverflow.com/a/11994395
+The macro implementation was replaced in September 2026; attribution and the
+original MIT and CC-BY-SA-4.0 terms were restored conservatively on 2026-09-30.
+https://creativecommons.org/licenses/by-sa/4.0/
+Full CC-BY-SA-4.0 text is bundled as static/licenses/CC-BY-SA-4.0.txt.
+These notices do not establish derivation or clearance for redistribution.
+
+The separate pbio_int_math_mult_then_div() stand-in declares BSD-3-Clause,
+Copyright (c) 2026 Brickwright contributors. Its authorship assertion has not
+been independently audited here. No blanket absence of share-alike terms is
+asserted for the simulator.
 
 === pybricks-micropython ===
 

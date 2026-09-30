@@ -43,10 +43,10 @@ const ABOUT_GROUPS = [
             {
                 name: 'pybricks-micropython',
                 url: 'https://github.com/pybricks/pybricks-micropython',
-                license: 'MIT',
+                license: 'MIT; header under review',
                 licenseUrl: 'static/licenses/pybricks-micropython.MIT.txt',
                 role: 'SPIKE Prime simulator: Pybricks MicroPython compiled to WASM',
-                note: 'By The Pybricks Authors; includes MicroPython (MIT, Damien P. George)'
+                note: 'By The Pybricks Authors; includes MicroPython (MIT, Damien P. George). Argument-header provenance under review; original CC-BY-SA-4.0 terms and credits retained.'
             },
             {
                 name: 'rp2040js',

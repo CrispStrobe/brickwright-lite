@@ -50,16 +50,21 @@ test('shipped assets match their provenance record', () => {
     }
     assert.equal(provenance.upstream['pybricks-micropython'].commit, '4104553405decb0384bcfb030fbfcb4b5a9854cc');
     assert.ok(provenance.licence_gate.files > 400, 'licence gate must have judged the compiled file set');
-    // The two upstream pieces adapted from Stack Overflow (CC BY-SA 4.0) are
-    // not compiled: pb_kwarg_helper.h is shadowed by a clean-room MIT header,
-    // and int_math.c is compiled with mult_then_div swapped for a stand-in.
+    // Preserve the historical scan, but do not mistake its licence labels
+    // for independent-authorship evidence or present-day clearance.
     assert.deepEqual(provenance.licence_gate.replaced, [
         'lib/pbio/src/int_math.c -> brickwright:upstream-overlay/lib/pbio/src/int_math_mult_then_div.c',
         'pybricks/util_mp/pb_kwarg_helper.h -> brickwright:upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h'
     ]);
-    assert.equal(provenance.licence_gate.reviewed, undefined, 'no licence exceptions remain');
-    assert.ok(!Object.keys(provenance.licence_gate.by_licence).some(k => /CC-BY-SA/i.test(k)),
-        `no CC-BY-SA file in the compiled set: ${Object.keys(provenance.licence_gate.by_licence)}`);
+    assert.equal(provenance.provenance_review.status, 'unresolved');
+    assert.equal(provenance.provenance_review.independent_authorship_verified, false);
+    assert.equal(provenance.provenance_review.permissive_rebuild_allowed, false);
+    assert.equal(provenance.provenance_review.asset_bytes_changed, false);
+    const header = provenance.upstream_overlay['pybricks/util_mp/pb_kwarg_helper.h'];
+    assert.equal(header.source_at_build_sha256, '3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10');
+    assert.equal(header.declared_license_at_build, 'MIT');
+    assert.equal(header.provenance_status, 'unverified');
+    assert.equal(header.license, 'MIT AND CC-BY-SA-4.0');
     assert.deepEqual(Object.keys(provenance.upstream_overlay).sort(),
         ['lib/pbio/src/int_math.c', 'pybricks/util_mp/pb_kwarg_helper.h']);
     for (const [upstream, overlay] of Object.entries(provenance.upstream_overlay)) {
@@ -68,9 +73,9 @@ test('shipped assets match their provenance record', () => {
     }
 });
 
-test('licence gate: refuses share-alike files and the replaced upstream header', () => {
-    // Drive the real gate over a constructed dependency set. The clean case
-    // must pass first, so the two failures below are caused by what each adds.
+test('licence gate: refuses unresolved provenance even behind a permissive label', () => {
+    // A label-only MIT stand-in must fail by path. Other policy failures
+    // must still be diagnosed individually alongside the provenance hold.
     const gate = resolve(here, '../firmware/pybricks-wasm/licence_gate.py');
     const root = mkdtempSync(resolve(tmpdir(), 'pb-gate-'));
     try {
@@ -102,7 +107,9 @@ test('licence gate: refuses share-alike files and the replaced upstream header',
         };
 
         const clean = run([ok, standin, standin2]);
-        assert.equal(clean.status, 0, `precondition: the clean set passes\n${clean.stderr}`);
+        assert.equal(clean.status, 1, `a permissive label cannot clear disputed provenance\n${clean.stderr}`);
+        assert.match(clean.stderr, /pb_kwarg_helper\.h: unresolved provenance \(PR #508\)/);
+        assert.equal(clean.stderr.trim().split('\n').length, 2, 'baseline has only the named provenance failure');
 
         const shareAlike = run([ok, standin, standin2, prose]);
         assert.equal(shareAlike.status, 1);

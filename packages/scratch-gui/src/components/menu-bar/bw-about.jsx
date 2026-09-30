@@ -32,7 +32,8 @@ const BUNDLED_LICENCES = [
     ['MakeCode extensions: pxt-microturtle, pxt-radio-blockchain, pxt-kitronik-motor-driver (MIT)',
         'static/licenses/makecode-extensions.MIT.txt'],
     ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
-    ['Pybricks + MicroPython (MIT)', 'static/licenses/pybricks-micropython.MIT.txt'],
+    ['Pybricks + MicroPython (MIT; header under review)', 'static/licenses/pybricks-micropython.MIT.txt'],
+    ['Argument header: original CC-BY-SA-4.0 terms', 'static/licenses/CC-BY-SA-4.0.txt'],
     ['Bochs BIOS + VGABios firmware (LGPL-2.1)', 'static/licenses/free-386-firmware.LGPL-2.1.txt'],
     ['bw-circuit-ui (MPL-2.0)', 'static/licenses/bw-circuit-ui.MPL-2.0.txt'],
     ['NQC (MPL-2.0)', 'static/licenses/nqc.MPL-2.0.txt']
@@ -93,7 +94,8 @@ const L10N = {
             '8086 Assembly Language Programs collection, Copyright (c) 2021 Amey Thakur and ' +
             'Mega Satish, MIT. The SPIKE Prime simulator is Pybricks MicroPython, Copyright (c) ' +
             '2018-2026 The Pybricks Authors, and MicroPython, Copyright (c) 2013-2025 Damien P. ' +
-            'George, both MIT, compiled to WebAssembly.',
+            'George, compiled to WebAssembly. The argument-header replacement is under review; ' +
+            'original credits to gratzdhg and Marvin and CC-BY-SA-4.0 terms are retained.',
         thanksTexts: 'Licence texts (offline):',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
@@ -145,7 +147,9 @@ const L10N = {
             'ASM-Tab stammen unveraendert aus der Sammlung 8086 Assembly Language Programs, ' +
             'Copyright (c) 2021 Amey Thakur und Mega Satish, MIT. Der SPIKE-Prime-Simulator ist ' +
             'Pybricks MicroPython, Copyright (c) 2018-2026 The Pybricks Authors, und MicroPython, ' +
-            'Copyright (c) 2013-2025 Damien P. George, beide MIT, nach WebAssembly uebersetzt.',
+            'Copyright (c) 2013-2025 Damien P. George, nach WebAssembly uebersetzt. Der ' +
+            'Argument-Header wird geprueft; gratzdhg und Marvin sowie die urspruenglichen ' +
+            'CC-BY-SA-4.0-Bedingungen werden weiterhin genannt.',
         thanksTexts: 'Lizenztexte (offline):',
         licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT, MPL-2.0 und LGPL-2.1. Brickwright nutzt ' +
             'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',

@@ -22,9 +22,12 @@
   "upstream_overlay": {
     "pybricks/util_mp/pb_kwarg_helper.h": {
       "path": "firmware/pybricks-wasm/upstream-overlay/pybricks/util_mp/pb_kwarg_helper.h",
-      "sha256": "3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10",
-      "license": "MIT",
-      "why": "clean-room replacement for the upstream header tagged MIT AND CC-BY-SA-4.0; the upstream copy is not compiled"
+      "sha256": "ff7eed639216a9655ab28dc1edb689df60e7a103afb2f36e723e21deee3307c4",
+      "license": "MIT AND CC-BY-SA-4.0",
+      "why": "Disputed replacement (PR #508); original attribution and terms restored conservatively. Source changed only in notices after the recorded build; binary assets have not been rebuilt.",
+      "source_at_build_sha256": "3e47942a39a7191647cc169e4e1aa72ed9570e4a1f5f846067d17b4c7010ca10",
+      "declared_license_at_build": "MIT",
+      "provenance_status": "unverified"
     },
     "lib/pbio/src/int_math.c": {
       "path": "firmware/pybricks-wasm/upstream-overlay/lib/pbio/src/int_math_mult_then_div.c",
@@ -67,5 +70,14 @@
     "pybricks-hub.wasm": {
       "sha256": "fbc52f192127de2ecee41fbcbfef61dd6715ad5cb6dbfa9081f2ba31d36ae3ff"
     }
+  },
+  "provenance_review": {
+    "date": "2026-09-30",
+    "status": "unresolved",
+    "independent_authorship_verified": false,
+    "permissive_rebuild_allowed": false,
+    "asset_bytes_changed": false,
+    "licence_gate_scope": "Historical file-label and compiler-dependency scan; not evidence of independent authorship.",
+    "review": "docs/OPEN-TASKS-2026-09-29.md (PR #508 review)"
   }
 }
