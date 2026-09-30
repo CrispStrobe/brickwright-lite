@@ -72,14 +72,15 @@ AM1808/ARM926 Renode boundary with a native Lite process/debugger adapter, live
 178x128 display, raw ADC and ideal four-motor state. Its hosted CPU instruction
 loop reaches **1.548x median** with a **1.298x minimum**. Both packaged EV3
 debugger/model-input contracts passed hosted CI. Full Linux boot and complete
-motor/peripheral workload RTx remain pending. CP13's first micro:bit matrix/button
-slice has landed: the active native Rust/event-scheduler guest reaches
-**2.512x hosted median**, **2.511x minimum** at 64 MHz. A shared VPS run under
+motor/peripheral workload RTx remain pending. CP13's micro:bit matrix/button and
+bounded analog-routing slices have landed. The longer active native
+Rust/event-scheduler guest reaches **2.376x hosted median**, **2.272x minimum**
+at 64 MHz; its performance workload exercises GPIO/matrix/buttons, not ADC
+sampling. A historical shared VPS run under
 concurrent build load reached only **0.337x median**; an uncontrolled repeat
 varied widely, so this is not a universal real-time guarantee. These receipts
 are separate from browser WASM/full-application performance; browser, sensor
-and microphone/audio
-qualification remains in progress. See
+and continuous microphone/audio qualification remains in progress. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
 for the exact shipped/candidate matrix and the gaps that remain.
 
