@@ -149,9 +149,8 @@ observed pixel (0,0) black, pixel (1,0) white, and visible-frame FNV-1a
 LED output, button input, cleared IRQ status and SPI configuration. All
 seven prior EV3 UART paths also passed, including non-mutating MMC reads.
 The [post-merge hosted run](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36644899583)
-was queued at closeout and is not represented as passing. The panel is
-observable through Renode's video/debugger interface; delivery into Lite's
-live neutral state/UI remains CP12 work. SPI wire timing, slave/multibuffer
+subsequently passed. The panel is observable through Renode's video/debugger
+interface and CP12's live neutral state feed into Lite. SPI wire timing, slave/multibuffer
 modes, hardware chip-select and EDMA requests remain explicit exclusions
 of this display-oriented functional slice.
 
@@ -189,8 +188,8 @@ rows must not be marked complete while an earlier row remains open.
 | CP09 | DONE | Model AM1808 EDMA | The required EDMA channels, completion/error interrupts and memory transfers pass peripheral and executable payload tests. | Infrastructure [PR 5](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/5), merge `ecf4d0ac`; Renode [PR 10](https://github.com/CrispStrobe/renode-spike-prime/pull/10), merge `546300f7`; 13/13 model tests, exact-pin full Release build and both executable IRQ paths passed locally |
 | CP10 | DONE | Model MMC/SD boot storage | A redistributable test image is read through the modeled AM1808 MMC/SD path with bounded media input and deterministic block receipts. | Infrastructure [PR 6](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/6), merge `0c92bedf`; Infrastructure [PR 7](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/7), merge `94ec6e91`; Renode [PR 11](https://github.com/CrispStrobe/renode-spike-prime/pull/11), merge `0b5d9cc3`; 9/9 model tests, exact-pin full Release build, both executable read paths and media non-mutation passed locally |
 | CP11 | DONE | Model EV3 GPIO and SPI display | GPIO direction/edge IRQs and the physical 178x128 monochrome SPI1 display path (CS GPIO44, A0 GPIO43, reset GPIO80) are observable in tests and through the debugger; the disabled AM1808 LCDC is not misrepresented as the EV3 display. | Infrastructure [PR 8](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/8), [PR 9](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/9), [PR 10](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/10), merge `f3f7a7ec`; Renode [PR 12](https://github.com/CrispStrobe/renode-spike-prime/pull/12), merge `1484844e`; 135/135 model tests, full Release build, actual GPIO/display UARTs, pixels/checksum and GDB reads passed locally |
-| CP12 | NEXT | Model EV3 motors and sensors | Permissive front ends cover the extension-visible motor and sensor subset and publish it through the neutral brick-state contract. | pending |
-| CP13 | TODO | Complete micro:bit v2 board I/O | The LabWired target drives the 5x5 display, buttons and selected sensor/audio paths with board-level tests while retaining >=1.0x hosted RTx. | pending |
+| CP12 | DONE | Model EV3 motors and sensors | Permissive front ends cover raw ten-bit analog channels and ideal PWM/bridge/quadrature motors and publish actual model output through the neutral brick-state contract. | Infrastructure [PR 11](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/11), [PR 12](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/pull/12), merge `f864d7ce`; Renode [PR 13](https://github.com/CrispStrobe/renode-spike-prime/pull/13), merge `e0e38e7a`; 89/89 model tests, ADC injections, four-motor guest IRQ phases, full Release build, live model feed and both actual Lite packaged debugger contracts passed locally |
+| CP13 | NEXT | Complete micro:bit v2 board I/O | The LabWired target drives the 5x5 display, buttons and selected sensor/audio paths with board-level tests while retaining >=1.0x hosted RTx. | pending |
 | CP14 | TODO | Complete PyBadge board I/O | ST7735, button mux, NeoPixels, audio and QSPI are exercised by public firmware and debugger-visible tests; USB is either implemented or explicitly isolated, while hosted RTx remains >=1.0x. | pending |
 
 CP07–CP12 are intentionally ordered by the public EV3 boot path. PRU support is
@@ -200,11 +199,11 @@ source-level experiences while CP13 and CP14 are partial.
 CP12's hardware sequence starts with SPI0 (`0x01c41000`, AINTC20, PSC0
 module4) and its chip-select-3 ADS7957. The ADC has 16 channels and 10-bit
 samples; it requires 16-bit SPI frames and a two-frame manual-selection
-pipeline, unlike CP11's byte-oriented display. The first sensor proof should
-read input1 channel6 at deterministic raw samples 0, 341 and 1023 through
-the ARM926 guest. The next motor proof should exercise eHRPWM1 output B
-(motor A), direction GPIO63/54 and encoder GPIO91/4 before extending the
-remaining motors. Register/wiring facts come from the public
+pipeline, unlike CP11's byte-oriented display. The sensor proof reads input1
+channel6 at deterministic raw samples 0, 341 and 1023 through the ARM926
+guest. The motor proof exercises eHRPWM1 outputs B/A (motors A/B), eCAP0/1
+(motors C/D), their physical bridge GPIOs and encoder GPIO interrupts.
+Register/wiring facts come from the public
 [AM1808/EV3 board descriptions](https://github.com/torvalds/linux/blob/master/arch/arm/boot/dts/ti/davinci/da850-lego-ev3.dts)
 and [TI ADS7957 datasheet](https://www.ti.com/lit/ds/symlink/ads7957.pdf).
 
@@ -220,21 +219,31 @@ reply budget, so only the three exact correlated EV3 state/button/analog
 operations get a bounded 272 KiB outbound envelope/256 KiB result string.
 Inbound and all other operation limits remain unchanged.
 
-Preliminary local proofs passed 5 EV3 observer/schema tests, 32 prior SPIKE tests,
-62 Rust boundary/debugger/transport tests and 29 JavaScript broker tests. A real
-Renode/IronPython run observed black/white display pixels, button press/release,
-ADC channel 3=777 and rejected out-of-range/replayed/stale inputs. The actual
-Lite packaged debugger contract passed in 21.23 seconds with full frames and named
-inputs. These preliminary runs use the ADC/display development model; final
-combined motor-model pin and qualification are still required before CP12 DONE.
+Final local proofs use Renode `e0e38e7a` and Infrastructure `f864d7ce`:
+89/89 focused model tests, three ADC guest injections and all four motor
+forward/reverse/brake/coast phases passed. Forward produced five signed edges;
+reverse returned the count to zero after ten emitted edges, with no new edges
+during brake/coast. All nine prior UART proofs, actual GDB reads and four debugger
+protocol tests passed. The live Renode/IronPython feed observed black/white
+display pixels, all four motor edges, button press/release, ADC channel 3=777 and
+rejected out-of-range/replayed/stale inputs. Lite's actual production debugger
+modules passed both packaged contracts: CPU/UART/full-frame/controls in 27.63
+seconds and guest-driven ABCD motion/controls in 37.22 seconds. The latter
+requires every motor to report Forward, direction 1, duty 0.5 and positive signed
+counts and emitted edges. Source validation passed 29 Python state tests,
+62 Rust boundary/debugger/transport tests and 57 JavaScript broker tests.
+The [hosted Renode reproduction](https://github.com/CrispStrobe/renode-spike-prime/actions/runs/36669748932)
+was queued when this evidence was recorded; it is not claimed green.
+CP12 closes this functional subset; it does not establish >=1.0x RTx for the
+expanded board. Performance qualification remains separate from these proofs.
 UART sensors on inputs3/4 need
 the PRU software-UART path, and sensor I2C is GPIO-driven; these cannot be
 claimed from the existing NS16550 or EEPROM I2C support alone.
 
 The immutable integration points are bw-board `bdffe947` for the exact
 LabWired target bridge, Renode `06d86c51` for SPIKE Prime, Renode `1484844e`
-for EV3 through GPIO/SPI display and its active-workload 300-MIPS qualification,
-and Infrastructure `f3f7a7ec` for the corresponding peripheral models. Public
+for EV3's active-workload 300-MIPS qualification, Renode `e0e38e7a` and
+Infrastructure `f864d7ce` for the completed CP12 peripheral and observer subset. Public
 simulation firmware is kept in its separate MIT repository; no private
 recovery image is read, copied, bundled or required by these source-only gates.
 The public simulation firmware used by the current SPIKE qualification is

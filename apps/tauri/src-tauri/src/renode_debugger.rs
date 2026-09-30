@@ -463,16 +463,89 @@ mod tests {
         assert_eq!(state["evidence"]["aintcIrq"], true);
         assert_eq!(state["display"]["width"], 178);
         assert_eq!(state["display"]["height"], 128);
-        assert_eq!(state["display"]["pixels"].as_array().unwrap().len(), 178 * 128);
-        assert_eq!(state["sensors"][0]["values"]["channels"].as_array().unwrap().len(), 16);
-        let pressed = debugger.ev3_input("ev3.button.set", json!({"button":"center","pressed":true})).unwrap();
+        assert_eq!(
+            state["display"]["pixels"].as_array().unwrap().len(),
+            178 * 128
+        );
+        assert_eq!(
+            state["sensors"][0]["values"]["channels"]
+                .as_array()
+                .unwrap()
+                .len(),
+            16
+        );
+        let motors = state["motors"].as_array().unwrap();
+        assert_eq!(motors.len(), 4);
+        for port in ["A", "B", "C", "D"] {
+            assert!(motors.iter().any(|motor| motor["port"] == port));
+        }
+        let pressed = debugger
+            .ev3_input("ev3.button.set", json!({"button":"center","pressed":true}))
+            .unwrap();
         assert_eq!(pressed["buttons"]["center"], true);
-        let released = debugger.ev3_input("ev3.button.set", json!({"button":"center","pressed":false})).unwrap();
+        let released = debugger
+            .ev3_input("ev3.button.set", json!({"button":"center","pressed":false}))
+            .unwrap();
         assert_eq!(released["buttons"]["center"], false);
-        let analog = debugger.ev3_input("ev3.analog.set-channel", json!({"channel":3,"value":777})).unwrap();
+        let analog = debugger
+            .ev3_input("ev3.analog.set-channel", json!({"channel":3,"value":777}))
+            .unwrap();
         assert_eq!(analog["sensors"][0]["values"]["channels"][3], 777);
-        assert!(debugger.ev3_input("ev3.analog.set-channel", json!({"channel":16,"value":0})).is_err());
+        assert!(debugger
+            .ev3_input("ev3.analog.set-channel", json!({"channel":16,"value":0}))
+            .is_err());
         assert_eq!(debugger.reset(&supervisor).unwrap(), "reset");
+        assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned source-built EV3 motor guest"]
+    fn packaged_ev3_motor_guest_drives_observed_motion_and_inputs() {
+        assert!(option_env!("BW_RENODE_EV3_FIRMWARE").is_some());
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        assert_eq!(debugger.start_ev3(&supervisor).unwrap(), "ready");
+        assert_eq!(debugger.run().unwrap(), "running");
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let state = loop {
+            let state = debugger.state().unwrap();
+            let motors = state["motors"].as_array().unwrap();
+            if motors.len() == 4
+                && motors.iter().all(|motor| {
+                    motor["emittedEdges"]
+                        .as_u64()
+                        .is_some_and(|edges| edges > 0)
+                })
+            {
+                break state;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "guest did not produce all four motor edges: {state}"
+            );
+            thread::sleep(Duration::from_millis(20));
+        };
+        assert_eq!(debugger.pause().unwrap(), "paused");
+        for port in ["A", "B", "C", "D"] {
+            let motor = state["motors"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|motor| motor["port"] == port)
+                .unwrap();
+            assert_eq!(motor["state"], "Forward");
+            assert_eq!(motor["direction"], 1);
+            assert_eq!(motor["dutyCycle"], 0.5);
+            assert!(motor["tachometerCount"].as_i64().unwrap() > 0);
+        }
+        let pressed = debugger
+            .ev3_input("ev3.button.set", json!({"button":"center","pressed":true}))
+            .unwrap();
+        assert_eq!(pressed["buttons"]["center"], true);
+        let analog = debugger
+            .ev3_input("ev3.analog.set-channel", json!({"channel":3,"value":777}))
+            .unwrap();
+        assert_eq!(analog["sensors"][0]["values"]["channels"][3], 777);
         assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
     }
 }
