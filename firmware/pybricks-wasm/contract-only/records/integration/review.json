@@ -61,8 +61,8 @@
     "Original PR #508 authorship remains unverified.",
     "Focused behavioural tests do not prove every API combination.",
     "Pybricks still provides control, trajectory, IMU, scheduling and Python APIs.",
-    "Other app components include MPL/LGPL and need separate migration.",
     "Published releases are unchanged by local work."
   ],
-  "replay_command": "python3 firmware/pybricks-wasm/verify_contracts.py"
+  "replay_command": "python3 firmware/pybricks-wasm/verify_contracts.py",
+  "owner_licence_clarification": "MPL and LGPL are acceptable alongside MIT/BSD/Apache and similar licences. Verified provenance and applicable distribution requirements still matter; no whole-application clearance is asserted."
 }

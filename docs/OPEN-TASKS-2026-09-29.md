@@ -217,10 +217,11 @@ functional parity.
 
 The broader Pybricks tree contains GPL/MPL drivers, chip-restricted libraries
 and unmarked files; it cannot be retained wholesale. The compiled simulator
-set is the audited boundary. Other Brickwright components explicitly use
-MPL/LGPL and other terms. A whole-application permissive-only migration needs
-a complete package, asset and binary inventory and replacements; it has not
-been delivered by this simulator task. Published releases are unchanged.
+set is the audited boundary. The owner subsequently clarified that MPL and LGPL are acceptable too.
+Their presence in other Brickwright components does not itself require
+replacement. Those components still need verified provenance, suitable terms
+and the applicable distribution requirements; this simulator audit is not
+a blanket clearance for the whole application. Published releases are unchanged.
 No remote posts, edits, pushes or PR operations were performed.
 
 Final mutation validation: deliberately broken matrix, motor and distance

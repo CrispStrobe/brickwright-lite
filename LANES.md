@@ -1149,5 +1149,6 @@ and 55 pinned-toolchain headers. 11 simulator + 5 About-data + 3 notice checks
 pass; 38 argument probes match both reference builds. Source/access records
 and limitations are in `docs/OPEN-TASKS-2026-09-29.md` and
 `firmware/pybricks-wasm/contract-only/records/`. PR #508 provenance remains
-unresolved. Full Pybricks removal and a whole-application permissive migration
-are not delivered. Local work only; nothing posted or pushed.
+unresolved. Full Pybricks removal is not delivered. The owner subsequently
+accepted MPL/LGPL as well; their presence elsewhere is not itself a migration
+requirement. Local work only; nothing posted or pushed.
