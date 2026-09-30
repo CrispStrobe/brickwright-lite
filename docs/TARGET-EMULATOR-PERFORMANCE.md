@@ -18,7 +18,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
 | Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
-| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; latest hosted native active matrix/button guest **2.376x median, 2.272x minimum**; selected-LSM303AGR native workload latest current-main **0.890x median, 0.887x minimum**, >=1x gate FAILED (historical second PR **1.127x / 1.123x**, first exact-main **1.031x / 1.027x**, earlier PR **1.758x / 1.734x**); upstream landed, current motion RTx unmet; historical shared VPS under load **0.337x median**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons and bounded analog routing qualified, native motion upstream-landed/not app-shipped; sensor/audio qualification pending | no | no exact target |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; native active matrix/button guest **2.376x median, 2.272x minimum**. Predecessor main motion **0.890x / 0.887x FAILED**. New landed discovery/pull-mask candidate controlled EPYC 7763 medians **1.037x / 1.023x PASS**, versus predecessor **0.880x / 0.883x**; exact successor-main remeasurement pending. Proper ADC scan guest qualified/landed; separate countdown isolated A/B **+7.79%**, all ten candidate windows >=1x, fresh ADC composition pending. Six pre-existing Nordic relative step-cost gates remain open. Historical shared VPS under load **0.337x**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons, bounded analog routing, real ARM ADC scan and selected motion qualified upstream, not app-shipped; timed microphone/audio/browser qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
@@ -251,10 +251,10 @@ A/B measurements against this longer receipt.
 
 The performance workload still exercises GPIO/matrix/buttons, not active ADC
 sampling. Bounded analog support does not qualify continuous microphone/audio
-or the full browser. CP13 still needs an actual ARM guest driving the ADC,
-documented START versus per-SAMPLE behavior with scan-buffer appends, RUNMIC
-control/bias semantics, selected motion-sensor/audio paths and browser
-WASM/full Lite application qualification. The earlier 3.32x terminal
+or the full browser. The later ADC scan follow-up below supplies the actual
+ARM guest and documented START versus per-SAMPLE buffer appends; remaining
+work includes RUNMIC control/bias, timed microphone/audio, shared sensor IRQ
+and browser-WASM/full Lite application qualification. The earlier 3.32x terminal
 self-branch receipt does not close this checkpoint, and CP13 remains NEXT.
 
 ### CP13 selected motion-sensor slice: native hosted-qualified, landed upstream
@@ -331,7 +331,7 @@ post-merge benchmark **failed** its motion real-time gate, as recorded below.
 The first optimization's exact-main and PR-qualified results above remain
 historical, not a controlled wall-time A/B against this second optimization.
 
-The latest exact-main
+The historical predecessor exact-main
 [run 36694881019](https://github.com/CrispStrobe/labwired-core/actions/runs/36694881019)
 at `3456c048894f194bbabc9c414932a752d89da999` passed functional checks but
 **failed the >=1.0x motion gate**: median **0.8898152593409774x**, minimum
@@ -343,12 +343,59 @@ matrix/button observations and all timing samples. GPIO-only reached
 [full receipt](receipts/2026-09-30-microbit-active-hosted-main-motion-failed.json)
 is a separate workload and does not establish sensor real-time performance.
 
-Current main's selected native motion workload **has not met >=1.0x** in its
-latest measurement. Earlier PR **1.126555x / 1.123001x**, first-optimization
+That predecessor's selected native motion workload **did not meet >=1.0x** in
+this measurement. Earlier PR **1.126555x / 1.123001x**, first-optimization
 exact-main **1.030645x / 1.027010x**, and earlier PR **1.758214x / 1.733954x**
-remain historical observations, not controlled wall-time A/Bs. Further CPU
-optimization is unqualified; this failure does not weaken the assertions,
+remain historical observations, not controlled wall-time A/Bs. This failure
+does not weaken the assertions,
 change the threshold, promote a browser pin, or complete CP13.
+
+### New landed discovery and ADC successors; remaining performance gates
+
+[PR 134](https://github.com/CrispStrobe/labwired-core/pull/134), main
+`96b739c259a0c09bfa71a499a43d74a96ed2c37c`, adds generation-scoped structural
+discovery miss caching, code-cache invalidation regressions and derived Nordic
+pull masks. The controlled identical-guest
+[EPYC 7763 B/C/C/B run 36719325375](https://github.com/CrispStrobe/labwired-core/actions/runs/36719325375)
+measured predecessor medians **0.8797522055451575x / 0.8827492813240173x** and
+candidate **1.0368249705408994x / 1.0232886257270697x**; both strict candidate
+gates pass. Its immutable
+[source-bound receipt](https://github.com/CrispStrobe/labwired-core/blob/ede33fb4a4778f35cc3398190aaa3d2cf9beb4db/docs/receipts/2026-09-30-microbit-can-ab-36719325375/qualification-context.json)
+distinguishes PR head, tested merge reference and actual guest ELF hashes.
+
+[PR 135](https://github.com/CrispStrobe/labwired-core/pull/135), main
+`ede33fb4a4778f35cc3398190aaa3d2cf9beb4db`, adds the actual original MIT ARM
+ADC scan guest and proper START-latched buffer/PTR/MAXCNT state. One accepted
+SAMPLE converts enabled channels in order, appending cumulative AMOUNT across
+scans; END occurs only when the latched buffer fills. Sparse channels, live
+register edits after START, partial-buffer sentinels and restart are checked
+through the production CPU/bus, not host-side fabricated results.
+[Combined run 36720954929](https://github.com/CrispStrobe/labwired-core/actions/runs/36720954929)
+passed 311 core plus three native WASM selected executions, including 26 SAADC
+tests, the ARM scan guest and four tick512 EasyDMA tests. Its recorded EPYC
+9V45 motion median/min **1.996539x / 1.988887x** is a separate host observation,
+not an ADC speedup measured against another runner. The
+[combined proof and actual ADC ELF provenance](https://github.com/CrispStrobe/labwired-core/blob/ede33fb4a4778f35cc3398190aaa3d2cf9beb4db/docs/receipts/2026-09-30-microbit-saadc-scan-combined-proof.json)
+are retained. Exact successor-main remeasurement remains pending.
+
+The separate [PR 136 countdown candidate](https://github.com/CrispStrobe/labwired-core/pull/136)
+passed all nine new whole-engine regressions. Its
+[isolated run 36723407331](https://github.com/CrispStrobe/labwired-core/actions/runs/36723407331)
+compares against exact optimized baseline `307541bd`, on EPYC 7763:
+**7.79%** gain, candidate medians **1.092111x / 1.123578x**, minimum **1.087533x**,
+all ten candidate windows >=1x. New composition with landed SAADC still needs
+fresh qualification; this candidate is not shipped by Lite.
+
+All 40 chip synthetic RTx fixtures passed for the landed optimization source,
+but six pre-existing Nordic single-step instruction-cost failures remain in
+[issue 120](https://github.com/CrispStrobe/labwired-core/issues/120). An empty
+CAN-service guard did not reduce those costs. The isolated no-pull GPIO probe
+saved approximately five host instructions per GPIO port and reduced the six
+failures to three (nRF5340/nRF54L15/nRF54LM20A, about +3.3%); the subsequent
+[PR 137 snapshot-path candidate](https://github.com/CrispStrobe/labwired-core/pull/137)
+is undergoing qualification. No benchmark, 1x floor or 3% relative-cost gate
+was weakened or re-baselined. Neither this native evidence nor these merges
+change Lite's WASM pin, establish browser performance or complete CP13.
 
 Callgrind recorded **1,375,692,554** host instructions for the first
 optimization's native functional proof and **1,300,205,720** for the second,
@@ -370,9 +417,10 @@ dependency, or introduce GPL model/guest code. It is not a claim that Lite
 ships the sensor model: a WASM pin/build and browser/full-app
 qualification remain necessary.
 
-This native workload is polled: no shared P0.25 sensor IRQ, active ADC guest,
-RUNMIC control/bias, continuous microphone, speaker audio, or browser-WASM
-qualification is included. Functional simulated cycles are not silicon-cycle-
+The motion workload above is polled and does not exercise the separately
+qualified ADC guest. Shared P0.25 sensor IRQ,
+RUNMIC control/bias, continuous microphone, speaker audio and browser-WASM
+qualification remain outside these proofs. Functional simulated cycles are not silicon-cycle-
 accurate measurements, and no sensor silicon capture is claimed. CP13 remains
 in progress with state **NEXT**, not DONE.
 
