@@ -99,7 +99,7 @@ and `ede33fb4` (proper START-latched cumulative ADC scan DMA). Controlled EPYC
 executions**, including a real source-built ARM ADC scan guest. Exact successor-
 main remeasurement remains pending. A separate countdown candidate's isolated
 EPYC 7763 A/B gains **7.79%**, with all ten candidate windows above real time;
-fresh composition qualification is pending. All 40 synthetic RTx fixtures pass,
+fresh composition qualification is pending. The optimization candidate cleared all 40 synthetic RTx fixtures,
 but six pre-existing Nordic relative step-cost gates remain tracked without
 threshold changes. Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
 qualification remains pending. See
