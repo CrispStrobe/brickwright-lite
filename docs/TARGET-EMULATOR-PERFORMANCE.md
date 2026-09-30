@@ -404,7 +404,25 @@ CAN-service guard did not reduce those costs. The isolated no-pull GPIO probe
 saved approximately five host instructions per GPIO port and reduced the six
 failures to three (nRF5340/nRF54L15/nRF54LM20A, about +3.3%); the subsequent
 [PR 137 snapshot-path candidate](https://github.com/CrispStrobe/labwired-core/pull/137)
-is undergoing qualification. No benchmark, 1x floor or 3% relative-cost gate
+has a split result on old GPIO-only head `72f8b4cf`:
+[CorePerf run 36726333551](https://github.com/CrispStrobe/labwired-core/actions/runs/36726333551)
+passed all forty absolute RTx targets and every unchanged relative instruction-
+cost gate. The six Nordic step deltas were +1.3% (nRF52832), +0.1%
+(nRF52833/nRF52840), +0.2% (nRF5340), −1.7% (nRF54L15) and −3.0%
+(nRF54LM20A). Yet [native run 36726335356](https://github.com/CrispStrobe/labwired-core/actions/runs/36726335356)
+passed 331 functional executions and **failed the motion >=1x gate**, median
+**0.995903x on EPYC 7763**. Passing synthetic cost gates does not override
+that workload failure, land the candidate, promote main/browser or establish
+closure of issue 120.
+
+New combined PR137 head `464bd0ed` includes the GPIO snapshot/no-pull changes,
+PR136 countdown optimization and landed ADC source. Its
+[native run 36731897613](https://github.com/CrispStrobe/labwired-core/actions/runs/36731897613),
+[CorePerf run 36731888763](https://github.com/CrispStrobe/labwired-core/actions/runs/36731888763)
+and [controlled A/B run 36731892881 against exact main `ede33fb4`](https://github.com/CrispStrobe/labwired-core/actions/runs/36731892881)
+were queued when this note was prepared; no new combined qualification is
+claimed. Exact-main 1.290x/1.261x and all historical receipts above remain
+separate evidence, and CP13 remains NEXT. No benchmark, 1x floor or 3% relative-cost gate
 was weakened or re-baselined. Neither this native evidence nor these merges
 change Lite's WASM pin, establish browser performance or complete CP13.
 
