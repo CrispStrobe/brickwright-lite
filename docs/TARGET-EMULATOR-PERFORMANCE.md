@@ -464,7 +464,12 @@ guest executable hashes retained by the source qualification. The
 [final paired A/B 36778919437](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919437)
 passed too. The previously qualified engine's strict forty-chip/78-mode result
 remains separate evidence; [additional final-head CorePerf 36779028846](https://github.com/CrispStrobe/labwired-core/actions/runs/36779028846)
-is still measuring. Exact post-merge main `5fb3d7d4` measurement is pending;
+passed on exact final head `bd05656f`: all forty chip medians and minima >=1x,
+all 78 board-modes over eleven memory maps passed unchanged strict relative-
+cost gates, and zero regressions, waivers, skips or contract failures. Baselines
+are unchanged; the faster-than-baseline nRF51 advisory remains. This is final-
+head qualification, not an exact post-merge main result. Exact post-merge main
+`5fb3d7d4` measurement is pending;
 no browser/package promotion or issue 120 closure is claimed here. Historical exact-main
 `ede33fb4` 1.290x/1.261x and every retained receipt above remain separate
 evidence, and CP13 remains NEXT. No benchmark, 1x floor or 3% relative-cost gate

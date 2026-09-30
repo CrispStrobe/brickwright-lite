@@ -135,7 +135,10 @@ now **landed at `5fb3d7d44cc1487fdab757906ae62222e8798e93`**. Its final-head
 passed on EPYC 7763: motion **1.127x median / 1.117x minimum**, all five >=1x
 with zero transport errors; 349 overlapping functional executions plus both
 benchmarks passed. [Final paired A/B](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919437)
-also passed. Additional final-head CorePerf is still measuring; exact post-merge
+also passed. [Final-head CorePerf](https://github.com/CrispStrobe/labwired-core/actions/runs/36779028846)
+passed on `bd05656f`: all forty chip medians/minima >=1x and all 78 relative-
+cost board-modes passed unchanged gates, with no regressions, waivers, skips or
+contract failures. The faster nRF51 advisory remains. Exact post-merge
 main measurement remains pending. No browser pin promotion or issue 120 closure
 is claimed.
 Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
