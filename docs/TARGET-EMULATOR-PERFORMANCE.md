@@ -18,7 +18,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduboy / ATmega32U4 | avr8js, including the real Brickwright adapter | **3.93x** | no 32U4 model | **yes** | no AVR CPU |
 | Blinkenrocket / ATtiny88 | avr8js, including board callbacks | **7.09x** | no ATtiny88 model | **yes** | no AVR CPU |
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
-| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; native active matrix/button guest **2.376x median, 2.272x minimum**. Predecessor main motion **0.890x / 0.887x FAILED**. New landed discovery/pull-mask candidate controlled EPYC 7763 medians **1.037x / 1.023x PASS**, versus predecessor **0.880x / 0.883x**; exact successor-main remeasurement pending. Proper ADC scan guest qualified/landed; separate countdown isolated A/B **+7.79%**, all ten candidate windows >=1x, fresh ADC composition pending. Six pre-existing Nordic relative step-cost gates remain open. Historical shared VPS under load **0.337x**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons, bounded analog routing, real ARM ADC scan and selected motion qualified upstream, not app-shipped; timed microphone/audio/browser qualification pending | no | no exact target |
+| micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; native active matrix/button guest **2.376x median, 2.272x minimum**. Predecessor main motion **0.890x / 0.887x FAILED**. Landed discovery/pull-mask candidate controlled EPYC 7763 medians **1.037x / 1.023x PASS**, versus predecessor **0.880x / 0.883x**; exact successor-main `ede33fb4` motion **1.290x median / 1.261x minimum PASS**, all five samples above 1x on EPYC 9V74. Proper ADC scan guest qualified/landed; separate countdown isolated A/B **+7.79%**, all ten candidate windows >=1x, fresh ADC composition pending. Six pre-existing Nordic relative step-cost gates remain open. Historical shared VPS under load **0.337x**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons, bounded analog routing, real ARM ADC scan and selected motion qualified upstream, not app-shipped; timed microphone/audio/browser qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
 | PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
 | SPIKE Prime | Pybricks MicroPython WASM and the virtual-hub protocol model; optional build-pinned native Renode debugger on desktop | Pybricks **84.63x unpaced**; exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
@@ -376,7 +376,18 @@ tests, the ARM scan guest and four tick512 EasyDMA tests. Its recorded EPYC
 9V45 motion median/min **1.996539x / 1.988887x** is a separate host observation,
 not an ADC speedup measured against another runner. The
 [combined proof and actual ADC ELF provenance](https://github.com/CrispStrobe/labwired-core/blob/ede33fb4a4778f35cc3398190aaa3d2cf9beb4db/docs/receipts/2026-09-30-microbit-saadc-scan-combined-proof.json)
-are retained. Exact successor-main remeasurement remains pending.
+are retained. Exact remote-main `ede33fb4`
+[run 36725594408](https://github.com/CrispStrobe/labwired-core/actions/runs/36725594408)
+subsequently passed native board qualification on EPYC 9V74: motion median
+**1.2900968120384135x**, minimum **1.2610661709163336x**, all five samples above
+1x; GPIO-only median **3.5557664867842327x**. The
+[complete original motion receipt](receipts/2026-09-30-microbit-exact-main-ede33/microbit-motion-throughput.json),
+[GPIO receipt](receipts/2026-09-30-microbit-exact-main-ede33/microbit-active-throughput.json)
+and [source/runner/actual retained-ELF context](receipts/2026-09-30-microbit-exact-main-ede33/qualification-context.json)
+preserve the exact source, unnormalized logs, and verified ADC scan and measured
+motion guest ELF hashes. This supersedes the pending exact-main measurement,
+not the historical predecessor failure. It is not a controlled cross-runner
+gain, a post-main all-forty-chip result, browser qualification or a pin update.
 
 The separate [PR 136 countdown candidate](https://github.com/CrispStrobe/labwired-core/pull/136)
 passed all nine new whole-engine regressions. Its
