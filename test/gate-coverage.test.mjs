@@ -36,6 +36,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
+    'verify-spike-renode-arena-browser.mjs': 'manual/local: requires an immutable locally built own ARM demo, '
+        + 'a pinned Renode package and the compiled tools/renode-arena-proof driver. Execution receipts stay '
+        + 'in the private evidence repo. Five real-guest production GUI checks passed; see docs/SPIKE-ARENA.md '
+        + 'for the staging/build commands and BW_RENODE_ARENA_PROOF_DRIVER. This transport proof does not '
+        + 'replace the wired Tauri webview boundary gates.',
     'verify-i80386-doom-real-browser.mjs': 'manual/local: requires exact external FreeDOS 1.4 '
         + 'floppy and rights-cleared short-demo Doom HDD. It checks Chromium Widgets physical keyboard, '
         + 'a nontrivial 320x200 guest and visible canvas frame, then the 24-gametic timedemo result and C: prompt. '

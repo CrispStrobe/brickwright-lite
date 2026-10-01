@@ -81,6 +81,7 @@ impl BrickStateDecoder {
                     | "lego-prime-v3"
                     | "spike-nx"
                     | "brickwright-nuttx"
+                    | "brickwright-arena-demo"
             )
         };
         if !valid_firmware {
@@ -325,6 +326,7 @@ impl BrickStateFeed {
         arguments: serde_json::Value,
     ) -> Result<BrickStateSnapshot, String> {
         match name {
+            "arena.inputs" if crate::arena_inputs::valid(&arguments) => {}
             "state.sample" if arguments.as_object().is_some_and(|args| args.is_empty()) => {}
             "ev3.button.set"
                 if arguments.as_object().is_some_and(|args| args.len() == 2)
@@ -343,7 +345,21 @@ impl BrickStateFeed {
             .lock()
             .map_err(|_| "brick-state command unavailable".to_owned())?;
         let prior = self.latest()?;
-        if prior.target.board != "ev3" {
+        let target_ok = match name {
+            "state.sample" => true,
+            "arena.inputs" => {
+                prior.target.board == "spike-prime"
+                    && prior.target.transport == "none"
+                    && prior.target.firmware == "brickwright-arena-demo"
+                    && prior
+                        .target
+                        .capabilities
+                        .iter()
+                        .any(|cap| cap == "arena-inputs/v1")
+            }
+            _ => prior.target.board == "ev3",
+        };
+        if !target_ok {
             return Err("brick-state input target mismatch".into());
         }
         let command = serde_json::json!({"schemaVersion":1,"type":"command",

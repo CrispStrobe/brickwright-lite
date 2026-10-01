@@ -73,6 +73,10 @@ impl NativePolicyState {
                 (Operation::RenodeSpikeMemoryRead, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikeStateRead, Resource::RenodeSpikePrime),
                 (
+                    Operation::RenodeSpikeArenaInputs,
+                    Resource::RenodeSpikePrime,
+                ),
+                (
                     Operation::RenodeSpikeBreakpointSet,
                     Resource::RenodeSpikePrime,
                 ),
@@ -167,6 +171,7 @@ pub(crate) enum Operation {
     RenodeSpikeRegistersRead,
     RenodeSpikeMemoryRead,
     RenodeSpikeStateRead,
+    RenodeSpikeArenaInputs,
     RenodeSpikeBreakpointSet,
     RenodeSpikeBreakpointClear,
     RenodeEv3Start,
@@ -197,6 +202,7 @@ impl Operation {
             "renode.spike.registers.read" => Some(Self::RenodeSpikeRegistersRead),
             "renode.spike.memory.read" => Some(Self::RenodeSpikeMemoryRead),
             "renode.spike.state.read" => Some(Self::RenodeSpikeStateRead),
+            "renode.spike.arena.inputs.write" => Some(Self::RenodeSpikeArenaInputs),
             "renode.spike.breakpoint.set" => Some(Self::RenodeSpikeBreakpointSet),
             "renode.spike.breakpoint.clear" => Some(Self::RenodeSpikeBreakpointClear),
             "renode.ev3.session.start" => Some(Self::RenodeEv3Start),
@@ -221,6 +227,7 @@ impl Operation {
             return false;
         };
         match self {
+            Self::RenodeSpikeArenaInputs => crate::arena_inputs::valid(args),
             Self::RenodeEv3ButtonSet => {
                 map.len() == 2
                     && map.get("button").and_then(Value::as_str).is_some_and(|v| {
@@ -420,6 +427,7 @@ impl RedactedAuditRow {
                 Operation::RenodeSpikeRegistersRead => "renode.spike.registers.read",
                 Operation::RenodeSpikeMemoryRead => "renode.spike.memory.read",
                 Operation::RenodeSpikeStateRead => "renode.spike.state.read",
+                Operation::RenodeSpikeArenaInputs => "renode.spike.arena.inputs.write",
                 Operation::RenodeSpikeBreakpointSet => "renode.spike.breakpoint.set",
                 Operation::RenodeSpikeBreakpointClear => "renode.spike.breakpoint.clear",
                 Operation::RenodeEv3Start => "renode.ev3.session.start",
@@ -1155,5 +1163,13 @@ mod tests {
         })
         .join();
         assert_eq!(state.revoke_all(BROKER_LABEL), Err(StateError::Unavailable));
+    }
+    #[test]
+    fn arena_operation_never_accepts_monitor_text_or_memory_addresses() {
+        let operation = Operation::parse("renode.spike.arena.inputs.write").unwrap();
+        assert!(operation.valid_args(&json!({"sensors":[],"loads":[{"port":"A","percent":100}]})));
+        assert!(!operation.valid_args(&json!({"sensors":[],"loads":[],"address":0x20040000})));
+        assert!(!operation.valid_args(&json!({"sensors":[],"loads":[],"command":"run"})));
+        assert!(!operation.valid_args(&json!({"sensors":[],"loads":[{"port":"A","percent":true}]})));
     }
 }

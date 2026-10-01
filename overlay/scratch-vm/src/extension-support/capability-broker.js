@@ -2,6 +2,7 @@
  * Closed, semantic capability vocabulary. Values describe public broker operations, never native
  * command names. Adding an operation is a security review: unknown names and wildcards fail closed.
  */
+const {validArenaInputs} = require('./arena-inputs');
 const VOCABULARY_VERSION = 1;
 const MAX_DIAGNOSTICS = 256;
 const OPERATIONS = Object.freeze({
@@ -23,6 +24,7 @@ const OPERATIONS = Object.freeze({
     'renode.spike.memory.read': Object.freeze({validate: args => isPlainRecord(args) &&
         hasOnlyKeys(args, ['address', 'length']) && Number.isInteger(args.address) && args.address >= 0 &&
         args.address <= 0xffffffff && Number.isInteger(args.length) && args.length >= 1 && args.length <= 4096}),
+    'renode.spike.arena.inputs.write': Object.freeze({validate: validArenaInputs}),
     'renode.spike.state.read': Object.freeze({validate: args =>
         isPlainRecord(args) && hasOnlyKeys(args, [])}),
     'renode.spike.breakpoint.set': Object.freeze({validate: args => isPlainRecord(args) &&

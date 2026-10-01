@@ -32,7 +32,9 @@ async function loadPane () {
     // Beside the source, so its relative imports of lib/ resolve to the real modules.
     const tempUrl = new URL(`./spike-arena-pane-test-${randomUUID()}.mjs`, sourceUrl);
     const reactUrl = pathToFileURL(guiRequire.resolve('react')).href;
-    const source = (await readFile(sourceUrl, 'utf8')).replace("from 'react'", `from '${reactUrl}'`);
+    const source = (await readFile(sourceUrl, 'utf8')).replace("from 'react'", `from '${reactUrl}'`)
+        .replace("from 'scratch-vm/src/extension-support/native-renode-capability.js'",
+            `from '${new URL('../overlay/scratch-vm/src/extension-support/native-renode-capability.js', import.meta.url).href}'`);
     const transformed = babel.transformSync(source, {
         filename: 'spike-arena-pane.jsx', babelrc: false, configFile: false,
         presets: [[guiRequire.resolve('@babel/preset-react'), {runtime: 'classic'}]]

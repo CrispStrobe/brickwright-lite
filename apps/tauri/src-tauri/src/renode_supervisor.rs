@@ -142,7 +142,46 @@ impl RenodeSupervisor {
                 return Err("SPIKE model artifact escaped its packaged root".into());
             }
         }
-        let arguments = spike_arguments(&scenario, &firmware, &state_script, &state_config)?;
+        let mut arguments = spike_arguments(&scenario, &firmware, &state_script, &state_config)?;
+        let config: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(&state_config)
+                .map_err(|_| "SPIKE state config unavailable".to_owned())?,
+        )
+        .map_err(|_| "SPIKE state config malformed".to_owned())?;
+        if config["identity"]["firmware"] == "brickwright-arena-demo" {
+            let manifest = pinned_file(
+                "arena package manifest",
+                option_env!("BW_RENODE_SPIKE_MANIFEST"),
+                option_env!("BW_RENODE_SPIKE_MANIFEST_SHA256"),
+            )?;
+            verify_arena_manifest(&root, &manifest)?;
+            let mut header = [0u8; 52];
+            File::open(&firmware)
+                .and_then(|mut file| file.read_exact(&mut header))
+                .map_err(|_| "arena ELF header unavailable".to_owned())?;
+            if &header[..6] != b"\x7fELF\x01\x01" || header[18..20] != [40, 0] {
+                return Err("arena guest must be a little-endian ARM ELF32".into());
+            }
+            let entry = u32::from_le_bytes(header[24..28].try_into().unwrap());
+            if !(0x08008000..0x08010000).contains(&entry) {
+                return Err("arena guest entry outside demo flash".into());
+            }
+            let commands = [
+                "cpu VectorTableOffset 0x08008000".to_owned(),
+                "cpu SP 0x20050000".to_owned(),
+                format!("cpu PC {entry}"),
+                "emulation RunFor \"0.002\"".to_owned(),
+            ];
+            let index = arguments
+                .iter()
+                .position(|arg| arg == "machine StartGdbServer {BW_GDB_PORT}")
+                .ok_or_else(|| "SPIKE startup sequence unavailable".to_owned())?
+                - 1;
+            for command in commands.into_iter().rev() {
+                arguments.splice(index..index, ["-e".to_owned(), command.to_owned()]);
+            }
+        }
+
         self.start(&arguments, &root)
     }
 
@@ -442,6 +481,64 @@ fn pinned_file(
     pinned_path(label, path, Some(expected_digest))
 }
 
+// All executable support files are verified before starting this optional demo.
+fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
+    let required = [
+        "arena-demo.elf",
+        "arena-demo.repl",
+        "arena-demo.resc",
+        "state-config.json",
+        "scripts/spike-state-server.py",
+        "tools/spike_state_monitor_protocol.py",
+        "tools/ev3_state_observer.py",
+        "tools/spike_arena_inputs.py",
+        "tools/spike_arena_mailbox.py",
+    ];
+    if !manifest.starts_with(root) {
+        return Err("arena manifest escaped its package".into());
+    }
+    let mut bytes = Vec::new();
+    File::open(manifest)
+        .and_then(|file| file.take(65537).read_to_end(&mut bytes))
+        .map_err(|_| "arena manifest unavailable".to_owned())?;
+    if bytes.len() > 65536 {
+        return Err("arena manifest exceeds bounds".into());
+    }
+    let map: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| "arena manifest malformed".to_owned())?;
+    let map = map.as_object().ok_or("arena manifest malformed")?;
+    if map.len() > 32 || !required.iter().all(|name| map.contains_key(*name)) {
+        return Err("arena manifest is incomplete".into());
+    }
+    for (name, digest) in map {
+        if !required.contains(&name.as_str())
+            && !matches!(
+                name.as_str(),
+                "licenses/renode-MIT.txt" | "licenses/arena-BSD-3-Clause.txt"
+            )
+        {
+            return Err("arena manifest contains an unsupported file".into());
+        }
+        let file = root
+            .join(name)
+            .canonicalize()
+            .map_err(|_| "arena package file unavailable".to_owned())?;
+        if !file.starts_with(root) {
+            return Err("arena package file escaped its root".into());
+        }
+        let expected = digest.as_str().ok_or("arena digest malformed")?;
+        if expected.len() != 64
+            || !expected.bytes().all(|c| c.is_ascii_hexdigit())
+            || !sha256(&file)
+                .map_err(|_| "arena file cannot be verified".to_owned())?
+                .eq_ignore_ascii_case(expected)
+        {
+            return Err("arena support file digest mismatch".into());
+        }
+    }
+    Ok(())
+}
+
 fn monitor_path(path: &Path) -> Result<String, String> {
     let value = path
         .to_str()
@@ -702,5 +799,50 @@ mod tests {
         assert!(!arguments
             .iter()
             .any(|value| matches!(value.as_str(), "sh" | "bash" | "cmd" | "powershell")));
+    }
+    #[test]
+    fn arena_support_manifest_detects_changed_helpers_and_escaped_names() {
+        let root =
+            std::env::temp_dir().join(format!("bw-arena-manifest-{}", random_token().unwrap()));
+        std::fs::create_dir(&root).unwrap();
+        let names = [
+            "arena-demo.elf",
+            "arena-demo.repl",
+            "arena-demo.resc",
+            "state-config.json",
+            "scripts/spike-state-server.py",
+            "tools/spike_state_monitor_protocol.py",
+            "tools/ev3_state_observer.py",
+            "tools/spike_arena_inputs.py",
+            "tools/spike_arena_mailbox.py",
+        ];
+        let mut map = serde_json::Map::new();
+        for name in names {
+            let file = root.join(name);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(&file, b"synthetic fixture").unwrap();
+            map.insert(
+                name.to_owned(),
+                serde_json::Value::String(sha256(&file).unwrap()),
+            );
+        }
+        let manifest = root.join("manifest.json");
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert!(verify_arena_manifest(&root, &manifest).is_ok());
+        std::fs::write(root.join("tools/spike_arena_mailbox.py"), b"changed helper").unwrap();
+        assert_eq!(
+            verify_arena_manifest(&root, &manifest).unwrap_err(),
+            "arena support file digest mismatch"
+        );
+        map.insert(
+            "../outside.py".to_owned(),
+            serde_json::Value::String("a".repeat(64)),
+        );
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert_eq!(
+            verify_arena_manifest(&root, &manifest).unwrap_err(),
+            "arena manifest contains an unsupported file"
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 }
