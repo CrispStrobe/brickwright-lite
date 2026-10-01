@@ -79,6 +79,23 @@ const ARITH = {'*': 2, '/': 2, '%': 2, '+': 1, '-': 1};
 const isEmptyString = node => !!node && node.type === 'String' && node.value === '';
 
 /**
+ * The text of a TypeScript string literal. The tokenizer keeps its escapes raw
+ * (`it\'s`, `say \"hi\"`), and they used to be copied into the dialect's
+ * `"…"` as they stood — `'say "hi"'` became `"say "hi""`, which reads back as
+ * something else. Undone here; the dialect's own escapes (task D6: \" \\ \n
+ * \r \t, JSON's) are written with JSON.stringify.
+ */
+const TS_ESCAPES = {n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', 0: '\0'};
+const tsText = raw => String(raw).replace(/\\(u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[\s\S])/g, (m, e) => {
+    if (/^u\{/.test(e)) return String.fromCodePoint(parseInt(e.slice(2, -1), 16));
+    if (/^[ux][0-9a-fA-F]/.test(e)) return String.fromCharCode(parseInt(e.slice(1), 16));
+    return e in TS_ESCAPES ? TS_ESCAPES[e] : e;
+});
+// A line break in a MakeCode text is shown as a space (the dialect's displays
+// scroll one line), as it always was.
+const tsTextLiteral = node => JSON.stringify(tsText(node.value).replace(/\n/g, ' '));
+
+/**
  * Does this statement list `break` out of THE loop it is in — not out of a
  * loop nested inside it, whose break is its own?
  */
@@ -279,7 +296,7 @@ export class BaseTranslator {
             if (/^0[bB]/.test(v)) return String(parseInt(v.slice(2), 2));
             return v;
         }
-        case 'String': return `"${node.value.replace(/\\n/g, ' ')}"`;
+        case 'String': return tsTextLiteral(node);
         // A VALUE: the dialect's truth is 1 and 0 (its conditions read a
         // variable as `not (v = 0)`), so `let A = false` is `set A to 0`.
         // The word `false` here became the string "false" on the way back out,
@@ -611,7 +628,8 @@ export class BaseTranslator {
     /** The literal text of a string argument, or null if it is computed. */
     literalString (node) {
         if (!node) return null;
-        if (node.type === 'String') return node.value.replace(/\\n/g, ' ').replace(/"/g, '');
+        // The text itself: a caller writes it with JSON.stringify.
+        if (node.type === 'String') return tsText(node.value).replace(/\n/g, ' ');
         if (node.type === 'Number') return String(node.value);
         return null;
     }

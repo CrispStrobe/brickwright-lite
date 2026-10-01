@@ -855,3 +855,29 @@ test('setPixel of `v != 0` (how the export writes the dialect\'s 1/0) reads back
         'img.setPixel(1, 2, v != 0)\n');
     assert.match(code, /set pixel x 1 y 2 of image img to v\n/);
 });
+
+test('a MakeCode text with quotes, backslashes and escapes reaches the blocks as written', {skip: !canCompile}, () => {
+    // The tokenizer keeps a string's escapes raw, and they were copied into the
+    // dialect's `"…"` as they stood: `'say "hi"'` became `"say "hi""`, and
+    // `'it\'s'` the text `it\'s` (task D6: the dialect's text escapes are
+    // JSON's, written with JSON.stringify).
+    const code = translate([
+        'basic.showString("say \\"hi\\" C:\\\\dir")',
+        "radio.sendString('it\\'s')",
+        'serial.writeLine("a\\tb")',
+        "let s = 'q \"r\"'",
+    ].join('\n'));
+    const creator = new SB3Creator();
+    const project = creator.parse(code);
+    const texts = [];
+    for (const target of project.targets) {
+        for (const block of Object.values(target.blocks || {})) {
+            for (const input of Object.values(block.inputs || {})) {
+                if (Array.isArray(input[1]) && input[1][0] === 10 && /[a-z]/.test(input[1][1])) texts.push(input[1][1]);
+            }
+        }
+    }
+    for (const want of ['say "hi" C:\\dir', "it's", 'a\tb', 'q "r"']) {
+        assert.ok(texts.includes(want), `${JSON.stringify(want)} not among ${JSON.stringify(texts)}\n${code}`);
+    }
+});
