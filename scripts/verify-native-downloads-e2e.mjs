@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** Launch a real Tauri binary and exercise the normal allow-profile download paths in its WebView. */
-import {spawn} from 'node:child_process';
+import {spawnOwnedDriver} from './lib/owned-driver.mjs';
 import {existsSync} from 'node:fs';
 import path from 'node:path';
 
@@ -37,14 +37,14 @@ const call = async (method, route, body, timeout = 10000) => {
 };
 
 const logs = [];
-const driver = spawn(driverBin, ['--port', String(port), '--native-driver', nativeDriver],
+const {child: driver, stop: stopDriver} = spawnOwnedDriver(driverBin, ['--port', String(port), '--native-driver', nativeDriver],
     {stdio: ['ignore', 'pipe', 'pipe']});
 driver.stdout.on('data', chunk => logs.push(String(chunk)));
 driver.stderr.on('data', chunk => logs.push(String(chunk)));
 let session;
 const finish = async () => {
     if (session) await call('DELETE', `/session/${session}`, undefined, 5000).catch(() => {});
-    driver.kill('SIGTERM');
+    stopDriver();
 };
 const fail = async message => {
     await finish();
@@ -57,7 +57,7 @@ try {
     let startupExpired = false;
     const startupWatchdog = setTimeout(() => {
         startupExpired = true;
-        driver.kill('SIGTERM');
+        stopDriver();
     }, 30000);
     while (!startupExpired && !ready) {
         // Match the working broker harness exactly here. Passing even a long AbortSignal makes

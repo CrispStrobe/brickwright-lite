@@ -26,7 +26,7 @@
  *
  * Usage: node scripts/verify-native-broker-e2e.mjs <path-to-app-binary>
  */
-import {spawn} from 'node:child_process';
+import {spawnOwnedDriver} from './lib/owned-driver.mjs';
 import {existsSync} from 'node:fs';
 import path from 'node:path';
 
@@ -70,7 +70,7 @@ if (!driverBin) {
     process.exit(2);
 }
 console.log(`driver binary: ${driverBin}`);
-const driver = spawn(driverBin, ['--port', String(DRIVER_PORT), '--native-driver', nativeDriver],
+const {child: driver, stop: stopDriver} = spawnOwnedDriver(driverBin, ['--port', String(DRIVER_PORT), '--native-driver', nativeDriver],
     {stdio: ['ignore', 'pipe', 'pipe']});
 /**
  * Which binaries produced this verdict. A gate that fails closed on a tool's ABSENCE still says
@@ -103,7 +103,7 @@ driver.stderr.on('data', chunk => driverLog.push(String(chunk)));
 let session = null;
 const shutdown = async () => {
     if (session) await call('DELETE', `/session/${session}`).catch(() => {});
-    driver.kill('SIGTERM');
+    stopDriver();
 };
 
 const fail = async message => {
