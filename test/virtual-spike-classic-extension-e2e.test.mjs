@@ -90,6 +90,7 @@ test('bundled Classic extension uses corrected base64 RFCOMM end to end', async 
     assert.equal(extension._peripheral.isConnected(), true);
     extension.motorSetSpeed({PORT: 'C', SPEED: 55});
     await extension.motorStart({PORT: 'C', DIRECTION: 1});
+    hubState.stepMotors(1000);
     assert.equal(hubState.data.motors[2].speed, 55);
     await extension.setPixel({X: 2, Y: 3, BRIGHTNESS: 100});
     assert.equal(hubState.data.display[11], 9);

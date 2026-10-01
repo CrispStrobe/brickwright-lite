@@ -407,3 +407,7 @@ Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or
 Raspberry Pi, nor by the makers of the circuit file formats the Circuit tab
 imports and exports (KiCad, EasyEDA, EAGLE, LTspice). Those names describe
 file formats only. Trademarks belong to their owners.
+
+The virtual SPIKE hub uses an [independent simulator backend](docs/independent-spike/README.md)
+for Scratch/native programs, with shared arena state and deterministic motor control.
+Pybricks Python retains the separate audited WASM execution path.

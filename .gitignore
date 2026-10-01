@@ -49,3 +49,6 @@ CLAUDE.md
 # and by CI for the Node gates. It must never be committed here again.
 overlay/scratch-gui/src/lib/sdcc-wasm/dist/
 packages/scratch-gui/src/lib/sdcc-wasm/dist/
+
+# SPIKE audit records and execution transcripts belong in the private evidence repository.
+/docs/independent-spike/evidence/

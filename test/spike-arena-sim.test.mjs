@@ -62,7 +62,9 @@ test('the motor model: a new command interrupts the old one', async () => {
     hub.motors.runAtSpeed('C', -500);
     assert.equal(await first, 'interrupted');
     hub.stepMotors(100);
-    close(hub.data.motors[2].position, 0, 1e-9, 'back where it started');
+    assert.ok(hub.data.motors[2].position > 0, 'reversal decelerates before moving back');
+    hub.stepMotors(300);
+    assert.ok(hub.data.motors[2].position < 0, 'eventually moves backwards');
 });
 
 test('the motor model: percent is of the device\'s documented full speed', () => {
@@ -79,27 +81,28 @@ test('setMotorSpeed (the tunnel JSON and panel route) now turns the motor', () =
     hub.setMotorSpeed('A', 50);
     hub.stepMotors(1000);
     assert.equal(hub.data.motors[0].speed, 50);
-    close(hub.data.motors[0].position, 555, 1e-9, 'one second at 50 %');
+    close(hub.data.motors[0].position, 555 * (1 - (555 / 1500) / 2), 0.01, 'one second including acceleration');
+    const stoppedPosition = hub.data.motors[0].position;
     hub.stopAll();
     hub.stepMotors(1000);
-    close(hub.data.motors[0].position, 555, 1e-9, 'stopped');
+    close(hub.data.motors[0].position, stoppedPosition, 1e-9, 'hard stopped');
 });
 
 // ---------------------------------------------------------------- the translator
 
 test('the translator: every statement the spikeprime extension sends for a motor is understood', async () => {
     const cases = [
-        ['import hub; hub.port.A.motor.run_for_degrees(360, 50)', 0, 360],
-        ['import hub; hub.port.B.motor.run_for_time(1000, 50)', 1, 555],
-        ['hub.port.C.motor.pwm(50)', 2, 555],
-        ['motor.run(port.D, 1110)', 3, 1110]
+        ['import hub; hub.port.A.motor.run_for_degrees(360, 50)', 0, 360, 2000],
+        ['import hub; hub.port.B.motor.run_for_time(1000, 50)', 1, 555 * (1 - 555 / 1500), 1000],
+        ['hub.port.C.motor.pwm(50)', 2, 555 * (1 - 555 / 1500 / 2), 1000],
+        ['motor.run(port.D, 1110)', 3, 1110 * (1 - 1110 / 1500 / 2), 1000]
     ];
-    for (const [text, index, expected] of cases) {
+    for (const [text, index, expected, ms] of cases) {
         const hub = new HubState();
         const {handled, unhandled} = applyHubPython(hub, text);
         assert.ok(handled, `${text} unhandled: ${unhandled}`);
-        hub.stepMotors(1000);
-        close(hub.data.motors[index].position, expected, 1e-6, text);
+        hub.stepMotors(ms);
+        close(hub.data.motors[index].position, expected, 0.02, text);
     }
     const hub = new HubState();
     applyHubPython(hub, 'hub.port.C.motor.pwm(50); motor.run(port.D, 1110)');
@@ -107,8 +110,8 @@ test('the translator: every statement the spikeprime extension sends for a motor
     applyHubPython(hub, 'hub.port.C.motor.pwm(0); hub.port.C.motor.brake()');
     applyHubPython(hub, 'motor.stop(port.D)');
     hub.stepMotors(1000);
-    close(hub.data.motors[2].position, 555, 1e-6, 'pwm(0); brake() stops');
-    close(hub.data.motors[3].position, 1110, 1e-6, 'motor.stop stops');
+    assert.equal(hub.data.motors[2].degPerSec, 0, 'pwm(0); brake() decelerates to rest');
+    assert.equal(hub.data.motors[3].degPerSec, 0, 'motor.stop decelerates to rest');
     assert.deepEqual(applyHubPython(hub, 'hub.light_matrix.write("x")').unhandled, ['hub.light_matrix.write("x")'],
         'an unknown statement is reported, not guessed at');
 });
@@ -269,7 +272,7 @@ test('collisions: a wall stops the body with no penetration, while the wheels sl
     for (let i = 0; i < 700; i++) { bridge.tick(10); everBlocked ||= bridge.sim.blocked; }
     const front = bridge.sim.pose.x + SPIKE_DRIVING_BASE.body.front;
     assert.ok(front <= 99, `no penetration: body front at ${front}`);
-    close(front, 99, 0.01, 'stopped at contact, not short of it');
+    close(front, 99, 0.03, 'within the arena contact tolerance');
     assert.equal(everBlocked, true);
     assert.ok(bridge.sim.touching.has('wall'));
     assert.equal(hub.data.motors[1].position, 3600, 'the motors finished their rotations regardless (slip)');

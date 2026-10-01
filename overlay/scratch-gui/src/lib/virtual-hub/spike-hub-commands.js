@@ -88,7 +88,7 @@ const STATEMENTS = [
         h.motors.runAtSpeed(m[1], h.motors.percentToDps(m[1], clampPercent(value)));
     }],
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(brake|float|hold|stop)\\(\\s*\\)$`), (h, m) =>
-        h.motors.stop(m[1], {float: 'coast'}[m[2]] || (m[2] === 'stop' ? 'brake' : m[2]))],
+        h.motors.stop(m[1], {float: 'coast'}[m[2]] || (m[2] === 'stop' ? undefined : m[2]))],
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.run_for_degrees\\(\\s*${NUM}\\s*,\\s*(?:speed\\s*=\\s*)?${NUM}\\s*\\)$`), (h, m) =>
         h.motors.runForDegrees(m[1], num(m[2]), h.motors.percentToDps(m[1], num(m[3])))],
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.run_for_time\\(\\s*${NUM}\\s*,\\s*(?:speed\\s*=\\s*)?${NUM}\\s*\\)$`), (h, m) =>
@@ -97,10 +97,12 @@ const STATEMENTS = [
         h.motors.runToPosition(m[1], num(m[2]), h.motors.percentToDps(m[1], num(m[3])))],
     [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.(?:preset|set_degrees_counted)\\(\\s*${NUM}\\s*\\)$`), (h, m) =>
         h.motors.resetPosition(m[1], num(m[2]))],
+    [new RegExp(`^hub\\.port\\.${PORT}\\.motor\\.set_stop_action\\(\\s*['"](coast|brake|hold)['"]\\s*\\)$`), (h, m) =>
+        h.backend.setStopAction(m[1], m[2])],
     // ---- one motor, SPIKE 3 style: motor.run(port.A, velocity) ---------------
     // velocity in deg/s; the emulator has always read it as tenths of percent.
     [new RegExp(`^motor\\.run\\(\\s*port\\.${PORT}\\s*,\\s*${NUM}\\s*\\)$`), (h, m) =>
-        h.motors.runAtSpeed(m[1], h.motors.percentToDps(m[1], clampPercent(num(m[2]) / 10)))],
+        h.motors.runAtSpeed(m[1], num(m[2]))],
     [new RegExp(`^motor\\.stop\\(\\s*port\\.${PORT}\\s*\\)$`), (h, m) => h.motors.stop(m[1])],
     // ---- the movement pair, SPIKE 2 MotorPair style: motors.<verb>(...) -------
     [/^(?:\w+\s*=\s*)?MotorPair\(\s*['"]([A-F])['"]\s*,\s*['"]([A-F])['"]\s*\)$/, (h, m) => {
@@ -157,6 +159,9 @@ const STATEMENTS = [
         if (levels.length !== 25) return UNHANDLED;
         h.data.display = levels;
     }],
+    [new RegExp(`^hub\\.sound\\.beep\\(\\s*${NUM}\\s*,\\s*${NUM}(?:\\s*,\\s*hub\\.sound\\.SOUND_(SIN|SQUARE|TRIANGLE|SAWTOOTH))?\\s*\\)$`), (h, m) =>
+        h.backend.beep(num(m[1]), num(m[2]), {waveform: (m[3] || 'SIN').toLowerCase()})],
+    [/^hub\.sound\.stop\(\s*\)$/, h => h.backend.stopSound()],
     // ---- hub outputs no sensor reports back ------------------------------------
     [new RegExp(`^hub\\.led\\(\\s*${NUM}\\s*\\)$`), (h, m) => {
         const n = num(m[1]);
@@ -244,6 +249,9 @@ export const applyScratchVerb = (hubState, method, params = {}) => {
     const dps = value => model.percentToDps(port, value);
     let result = null;
     switch (method) {
+    case 'scratch.sound_beep':
+        result = hubState.backend.beep(Number(params.frequency), Number(params.duration));
+        break;
     case 'scratch.motor_start':
     case 'scratch.motor_set_speed':
         if (!hasPort) return null;
@@ -251,7 +259,7 @@ export const applyScratchVerb = (hubState, method, params = {}) => {
         return {done: null};
     case 'scratch.motor_stop':
         if (!hasPort) return null;
-        model.stop(port, STOP_ACTIONS[params.stop] || 'brake');
+        model.stop(port, STOP_ACTIONS[params.stop]);
         break;
     case 'scratch.motor_run_for_degrees':
         if (!hasPort) return null;
@@ -275,7 +283,7 @@ export const applyScratchVerb = (hubState, method, params = {}) => {
         result = movePair(hubState, {amount: Number(params.time) / 1000, unit: 'seconds', leftSpeed: params.lspeed, rightSpeed: params.rspeed});
         break;
     case 'scratch.move_stop':
-        for (const motor of hubState.movementPair) model.stop(motor, STOP_ACTIONS[params.stop] || 'brake');
+        for (const motor of hubState.movementPair) model.stop(motor, STOP_ACTIONS[params.stop]);
         break;
     default:
         return null;

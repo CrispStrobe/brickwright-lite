@@ -43,7 +43,7 @@ class SpikeArenaPane extends React.Component {
         super(props);
         this.locale = arenaLocale(props.locale || browserLocale());
         this.t = arenaT(this.locale);
-        this.hubState = virtualSpike()?.hubState || null;
+        this.hubState = props.hubState || virtualSpike()?.hubState || null;
         this.ownHub = !this.hubState;
         if (!this.hubState) this.hubState = new VirtualSpikeHubState();
         this.state = {
@@ -65,6 +65,15 @@ class SpikeArenaPane extends React.Component {
     async componentDidMount () {
         window.addEventListener('bw-spike-arena-select', this.onSelectEvent);
         window.__bwSpikeArena = {
+            get bridge () { return this._pane.bridge; },
+            beginExternal: () => {
+                this.clock.uninstall();
+                this.setState({status: 'running'});
+            },
+            advanceExternal: ms => { if (this.bridge) this.advance(ms); },
+            endExternal: () => {
+                if (this.state.status === 'running') this.setState({status: 'paused'});
+            },
             get verdict () { return this._pane.bridge ? this._pane.bridge.verdict : null; },
             get snapshot () { return this._pane.bridge ? this._pane.bridge.snapshot() : null; },
             get status () { return this._pane.state.status; },
@@ -85,7 +94,7 @@ class SpikeArenaPane extends React.Component {
 
     /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */
     async openUnit (unitId, wanted) {
-        this.stopProgram();
+        await this.stopProgram();
         const token = this.unitToken = {};
         this.setState({status: 'loading', message: ''});
         try {
@@ -123,8 +132,8 @@ class SpikeArenaPane extends React.Component {
 
     get world () { return this.state.challenges[this.state.index] || null; }
 
-    select (index) {
-        this.stopProgram();
+    async select (index) {
+        await this.stopProgram();
         const world = this.state.challenges[index];
         if (!world) return;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
@@ -132,6 +141,7 @@ class SpikeArenaPane extends React.Component {
             // A new world needs a new scene; the renderer is not reused across worlds.
             if (this.view3d) this.mountView3D();
             this.draw();
+            this.props.onReady?.();
         });
     }
 
@@ -228,6 +238,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
+        if (this.props.backend === 'pybricks') return;
         if (!this.bridge) return;
         if (this.state.status === 'paused' && this.bridge.verdict.status === 'running') {
             this.lastFrame = null;
@@ -237,7 +248,7 @@ class SpikeArenaPane extends React.Component {
             this.setState({status: 'running'});
             return;
         }
-        this.stopProgram();
+        await this.stopProgram();
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
         let message = '';
@@ -258,23 +269,31 @@ class SpikeArenaPane extends React.Component {
         this.setState({status: 'running', verdict: this.bridge.verdict, message});
     }
 
-    stopProgram () {
+    stopProgram ({restart = false} = {}) {
         this.clock.uninstall();
+        if (restart) this.setState({status: 'ready'});
+        const external = this.hubState?.externalBackend;
+        if (external) external.cancel();
         if (this.vm && this.spikeLoaded()) {
             try { this.vm.stopAll(); } catch { /* the VM may be mid-load */ }
         }
+        return external?.completion?.catch(() => {});
     }
 
-    pause () { this.setState({status: 'paused'}); }
+    async pause () {
+        if (this.hubState?.externalBackend) await this.stopProgram();
+        this.setState({status: 'paused'});
+    }
 
-    reset () {
-        this.stopProgram();
+    async reset () {
+        await this.stopProgram();
         if (this.bridge) this.bridge.reset();
         this.setState({status: 'ready', verdict: null, message: ''}, () => this.draw());
     }
 
-    step () {
+    async step () {
         if (!this.bridge) return;
+        if (this.hubState?.externalBackend) await this.stopProgram();
         this.advance(STEP_BUTTON_MS);
         this.setState({status: 'paused'});
     }
@@ -299,7 +318,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     frame (now) {
-        if (this.bridge && this.state.status === 'running') {
+        if (this.bridge && this.state.status === 'running' && this.hubState.clockOwner !== 'pybricks') {
             // ONE CLOCK. With a VM, simulated time is what the VM actually
             // stepped — starve it and the mission slows with it, so the verdict
             // is a fact about the program rather than about runner load. With no
@@ -425,7 +444,7 @@ class SpikeArenaPane extends React.Component {
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}
-                                disabled={!world} onClick={() => this.start()} data-testid="bw-spike-arena-start">{t('start')}</button>
+                                disabled={!world || this.props.backend === 'pybricks'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{t('start')}</button>
                         )}
                         <button type="button" style={btn} disabled={!world} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>
                         <button type="button" style={btn} disabled={!world} onClick={() => this.reset()} data-testid="bw-spike-arena-reset">{t('reset')}</button>

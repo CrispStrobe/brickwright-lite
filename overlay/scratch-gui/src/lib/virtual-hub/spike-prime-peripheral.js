@@ -277,7 +277,10 @@ export class VirtualSpikePrimePeripheral {
         if (command && command.m === 'motor') {
             const port = Number(command.p && command.p.port);
             if (Number.isInteger(port) && port >= 0 && port < 6) {
-                this.hubState.setMotorSpeed(port, command.p.speed);
+                if (Number(command.p.speed) === 0 && command.p.end_state !== undefined) {
+                    this.hubState.motors.stop(port, {0: 'coast', 1: 'brake', 2: 'hold'}[command.p.end_state]);
+                    this.hubState.changed();
+                } else this.hubState.setMotorSpeed(port, command.p.speed);
             }
         }
         this.state.lastTunnelCommand = command;

@@ -43,7 +43,11 @@ test('translates bounded motor REPL and stops motors on close', async () => {
     socket.send(JSON.stringify({jsonrpc: '2.0', id: 1, method: 'send', params: {
         message, encoding: 'base64'
     }}));
-    assert.deepEqual(socket.state.classicPorts[2], [48, [-50, 0, 0, -50]]);
+    assert.equal(socket.state.motors[2].speed, 0, 'speed ramps only with simulated time');
+    socket.hubState.stepMotors(1000);
+    assert.equal(socket.state.classicPorts[2][0], 48);
+    assert.equal(socket.state.classicPorts[2][1][0], -50);
+    assert.ok(socket.state.classicPorts[2][1][1] < 0);
     socket.close();
     assert.equal(socket.state.classicPorts[2][1][0], 0);
 });
@@ -66,6 +70,7 @@ test('Classic input and base64 payloads are bounded and recover after partial ov
     assert.equal(socket._input, '');
     assert.throws(() => send(Buffer.alloc(CLASSIC_MESSAGE_MAX_BYTES + 1)), /message is too large/);
     send('hub.port.A.motor.pwm(12)\r\n');
+    socket.hubState.stepMotors(1000);
     assert.equal(socket.state.motors[0].speed, 12);
     socket.close();
 });

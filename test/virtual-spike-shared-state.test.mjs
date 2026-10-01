@@ -16,6 +16,7 @@ test('BLE and Classic adapters share one neutral state and failsafe', () => {
     const ble = new VirtualSpikePrimePeripheral({hubState});
     const classic = new VirtualSpikeClassicSocket('ws://127.0.0.1:20111/scratch/bt', {hubState});
     ble.setPort('D', 'motor', {speed: 60, position: 45});
+    hubState.stepMotors(1000);
     assert.equal(classic.state.classicPorts[3][1][0], 60);
     hubState.setPort('B', 'distance', {distance: 321});
     assert.equal(ble.state.sensors[1].distance, 321);

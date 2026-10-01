@@ -12,11 +12,12 @@
 //
 // Units, stated once: distance in mm both sides; force in the panel is
 // 0-100 % of the sensor's 10 N range; display pixels are 0-100 brightness;
-// motor speed is written back as percent of 1000 deg/s; colour RGB in the hub
+// motor speed is written back as percent of the attached device speed limit; colour RGB in the hub
 // state is the SPIKE 3 protocol's raw 0-1024 (docs/SPIKE-ARENA.md, "Units"),
 // scaled here to the 0-255 the simulator's surface colour takes.
 
 import {PORTS} from './pybricks-hub-host.js';
+import {MAX_DEG_PER_S, DEFAULT_MAX_DEG_PER_S} from '../spike-sim/independent-backend.js';
 
 const KIND = {motor: 'motor-m', distance: 'distance', color: 'color', force: 'force'};
 
@@ -31,7 +32,8 @@ export const applyHubStateToSim = (host, data) => {
     if (!data) return;
     PORTS.forEach((port, i) => {
         const sensor = data.sensors?.[i];
-        const kind = sensor ? KIND[sensor.kind] || 'none' : 'none';
+        const kind = sensor?.kind === 'motor' ? ({65: 'motor-s', 49: 'motor-l', 76: 'motor-l'}[sensor.deviceId] || 'motor-m') :
+            (sensor ? KIND[sensor.kind] || 'none' : 'none');
         if (host.device(port) !== kind) host.setDevice(port, kind);
         if (!sensor) return;
         if (sensor.kind === 'distance') host.setDistance(port, Number(sensor.distance ?? -1));
@@ -52,12 +54,17 @@ export const applyHubStateToSim = (host, data) => {
 export const mirrorSimToHubState = (host, hubState) => {
     if (!hubState?.data) return;
     const data = hubState.data;
-    data.display = host.pixels();
+    if (host.speaker) data.speaker = {...data.speaker, ...host.speaker()};
+    data.display = host.pixels().map(value => Math.round(value * 9 / 100));
     PORTS.forEach((port, i) => {
         if (!host.device(port).startsWith('motor')) return;
         const motor = data.motors[i];
-        motor.position = Math.round(host.motorAngle(port));
-        motor.speed = Math.max(-100, Math.min(100, Math.round(host.motorSpeed(port) / 10)));
+        motor.position = host.motorAngle(port);
+        motor.degPerSec = host.motorSpeed(port);
+        const max = MAX_DEG_PER_S[data.sensors[i]?.deviceId] || DEFAULT_MAX_DEG_PER_S;
+        motor.speed = Math.max(-100, Math.min(100, Math.round(motor.degPerSec / max * 100)));
+        const deviceId = data.sensors[i]?.deviceId || 48;
+        data.classicPorts[i] = [deviceId, [motor.speed, Math.round(motor.position), 0, motor.speed]];
     });
     hubState.changed();
 };

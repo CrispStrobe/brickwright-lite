@@ -162,3 +162,34 @@ test('a staged mission shows its stages and the partial credit; the select event
         browser.restore();
     }
 });
+
+test('pane clock yields to Python and controls await external cancellation',async()=>{
+    const browser=installBrowser();let renderer;
+    try{
+        const Pane=await loadPane();
+        await act(async()=>{renderer=create(React.createElement(Pane,{locale:'en'}));});
+        await settle(()=>browser.win.__bwSpikeArena.status==='ready','ready arena');
+        const pane=browser.win.__bwSpikeArena._pane,hub=pane.hubState;
+        let cancellations=0;
+        const claim=()=>{
+            let resolve;
+            const completion=new Promise(r=>{resolve=r;});
+            hub.clockOwner='pybricks';
+            hub.externalBackend={completion,cancel:()=>{
+                cancellations++;hub.clockOwner=null;hub.externalBackend=null;resolve({result:'stopped'});
+            }};
+            browser.win.__bwSpikeArena.beginExternal();
+        };
+        await act(async()=>claim());
+        const before=pane.bridge.sim.timeMs;
+        await browser.frames(10);assert.equal(pane.bridge.sim.timeMs,before,'frame clock cannot double-step Python world');
+        await act(async()=>{await pane.pause();});
+        assert.equal(cancellations,1);assert.equal(pane.state.status,'paused');assert.equal(hub.clockOwner,null);
+        await act(async()=>claim());
+        await act(async()=>{await pane.step();});
+        assert.equal(cancellations,2);assert.ok(pane.bridge.sim.timeMs>before);
+        await act(async()=>claim());
+        await act(async()=>{await pane.reset();});
+        assert.equal(cancellations,3);assert.equal(pane.bridge.sim.timeMs,0);assert.equal(pane.state.status,'ready');
+    }finally{if(renderer)await act(async()=>renderer.unmount());browser.restore();}
+});

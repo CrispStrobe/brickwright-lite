@@ -49,6 +49,7 @@ test('Widgets follows the shared virtual hub when no physical hub is attached', 
         'SPIKE Essential motor', 'Boost color/distance'
     ]);
     state.setMotorSpeed('D', 35);
+    state.stepMotors(1000);
     assert.match(snapshotSpikePorts({}, state).ports[3].detail, /35%/);
     state.setSimulationEnabled(false);
     assert.equal(snapshotSpikePorts({}, state).mode, 'offline');

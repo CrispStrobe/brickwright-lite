@@ -1,6 +1,7 @@
 import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 
+import {createSpikeBackend} from '../../lib/spike-sim/backends.js';
 import {createPybricksHost, PORTS} from '../../lib/pybricks-sim/pybricks-hub-host.js';
 import {applyHubStateToSim, mirrorSimToHubState} from '../../lib/pybricks-sim/pybricks-hub-bridge.js';
 
@@ -71,9 +72,10 @@ class PybricksSimPane extends React.Component {
         super(props);
         this.L = L10N[pickLocale(props.locale || browserLocale(), L10N)];
         this.host = null;
+        this.hubState = props.hubState || virtualSpike()?.hubState || null;
         this.state = {
             status: 'loading', output: '', snapshot: null, program: null,
-            follow: Boolean(virtualSpike()?.hubState),
+            follow: Boolean(this.hubState),
             ports: {...DEFAULT_PORTS},
             sensors: {C: {r: 200, g: 30, b: 30}, D: 500, E: 0},
             imu: {pitch: 0, roll: 0, yaw: 0},
@@ -87,33 +89,49 @@ class PybricksSimPane extends React.Component {
     async componentDidMount () {
         window.addEventListener('bw-pybricks-run', this.onRunEvent);
         try {
-            const factory = await loadFactory();
-            this.host = await createPybricksHost({
+            const factory = await (this.props.loadFactory || loadFactory)();
+            if (this.disposed) return;
+            const hubState = this.hubState;
+            const createHost = hubState ? options => createSpikeBackend({kind: 'pybricks', hubState,
+                arena: () => window.__bwSpikeArena ? {tick: ms => window.__bwSpikeArena.advanceExternal(ms)} : null,
+                onStart: () => window.__bwSpikeArena?.beginExternal(),
+                onEnd: () => window.__bwSpikeArena?.endExternal(), ...options}) : createPybricksHost;
+            this.sharedBackend = Boolean(hubState);
+            this.host = await createHost({
                 factory,
                 locateFile: name => `${ASSET_BASE}${name}`,
                 realtime: true,
-                onOutput: text => this.setState(s => ({output: (s.output + text).slice(-20000)})),
+                onOutput: text => { if (!this.disposed) this.setState(s => ({output: (s.output + text).slice(-20000)})); },
                 onBeep: frequency => this.beep(frequency)
             });
+            if (this.disposed) { this.host.stop(); return; }
             this.applyInputs();
             await this.host.boot();
-            this.setState({status: 'ready'});
+            if (this.disposed) { this.host.stop(); return; }
+            this.setState({status: 'ready'}, () => {
+                const pending = window.__bwPybricksPending;
+                if (pending && !this.disposed) { window.__bwPybricksPending = null; this.run(pending.code); }
+            });
             this.raf = requestAnimationFrame(this.frame);
-            this.unsubscribe = virtualSpike()?.hubState?.subscribe?.(() => {
+            this.unsubscribe = this.hubState?.subscribe?.(() => {
                 if (this.state.follow && !this.mirroring) this.applyInputs();
             });
-            const pending = window.__bwPybricksPending;
-            if (pending) { window.__bwPybricksPending = null; this.run(pending.code); }
         } catch (error) {
+            if (this.disposed) return;
             this.setState({status: 'failed', output: `${this.L.failed}: ${error.message}\n`});
         }
     }
 
     componentWillUnmount () {
+        this.disposed = true;
         window.removeEventListener('bw-pybricks-run', this.onRunEvent);
         cancelAnimationFrame(this.raf);
         if (this.unsubscribe) this.unsubscribe();
-        if (this.host?.running) this.host.stop();
+        this.host?.stop();
+        if (this.hubState && Object.values(this.state.buttons).some(Boolean)) {
+            for (const name of Object.keys(this.state.buttons)) this.hubState.data.buttons[name] = false;
+            this.hubState.changed();
+        }
         if (this.audio) { try { this.audio.ctx.close(); } catch { /* closed */ } }
     }
 
@@ -126,7 +144,7 @@ class PybricksSimPane extends React.Component {
     applyInputs () {
         const host = this.host;
         if (!host) return;
-        const hubState = this.state.follow ? virtualSpike()?.hubState : null;
+        const hubState = this.state.follow ? this.hubState : null;
         if (hubState) { applyHubStateToSim(host, hubState.data); return; }
         const {ports, sensors, imu, buttons} = this.state;
         for (const port of PORTS) {
@@ -141,24 +159,29 @@ class PybricksSimPane extends React.Component {
     }
 
     async run (code) {
+        if (this.disposed) return;
         if (!this.host || this.state.status === 'loading') { window.__bwPybricksPending = {code}; return; }
-        if (this.host.running) { this.host.stop(); return; }
+        if (this.runCompletion) { this.host.stop(); return; }
         this.applyInputs();
         this.setState({status: 'running', program: code, output: ''});
         try {
-            await this.host.run(code);
+            this.runCompletion = this.host.run(code);
+            await this.runCompletion;
         } catch (error) {
-            this.setState(s => ({output: `${s.output}${error.message}\n`}));
+            if (!this.disposed) this.setState(s => ({output: `${s.output}${error.message}\n`}));
+        } finally {
+            this.runCompletion = null;
         }
-        this.setState({status: 'ready'});
+        if (!this.disposed) this.setState({status: 'ready'});
     }
 
     frame () {
+        if (this.disposed) return;
         if (this.host) {
             const snapshot = this.host.snapshot();
             this.setState({snapshot});
-            const hubState = this.state.follow ? virtualSpike()?.hubState : null;
-            if (hubState && snapshot.running) {
+            const hubState = this.state.follow ? this.hubState : null;
+            if (hubState && snapshot.running && !this.sharedBackend) {
                 this.mirroring = true;
                 try { mirrorSimToHubState(this.host, hubState); } finally { this.mirroring = false; }
             }
@@ -203,6 +226,10 @@ class PybricksSimPane extends React.Component {
     }
 
     pressButton (name, down) {
+        if (this.state.follow && this.hubState) {
+            this.hubState.data.buttons[name] = down;
+            this.hubState.changed();
+        }
         this.setState(s => ({buttons: {...s.buttons, [name]: down}}), () => this.host?.setButtons(this.state.buttons));
     }
 
@@ -241,7 +268,7 @@ class PybricksSimPane extends React.Component {
         const L = this.L;
         const snap = this.state.snapshot?.ports?.[index];
         const kind = snap?.device || 'none';
-        const locked = this.state.follow && virtualSpike()?.hubState;
+        const locked = this.state.follow && this.hubState;
         const value = this.state.sensors[port];
         let control = null;
         if (kind.startsWith('motor')) {
@@ -275,7 +302,8 @@ class PybricksSimPane extends React.Component {
     render () {
         const L = this.L;
         const {status, output, program} = this.state;
-        const hasVirtual = Boolean(virtualSpike()?.hubState);
+        const hasVirtual = Boolean(this.hubState);
+        const imu = this.state.follow && this.hubState ? this.hubState.data.imu : this.state.imu;
         const btn = {padding: '4px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff',
             cursor: 'pointer', fontSize: 12, fontWeight: 600};
         return (
@@ -295,7 +323,7 @@ class PybricksSimPane extends React.Component {
                 <div style={{padding: '0 10px'}}>
                     {hasVirtual ? (
                         <label style={{display: 'flex', gap: 6, fontSize: 12, alignItems: 'center'}} title={L.followHint}>
-                            <input type="checkbox" checked={this.state.follow}
+                            <input type="checkbox" disabled={this.sharedBackend} checked={this.state.follow}
                                 onChange={e => this.setState({follow: e.target.checked}, () => this.applyInputs())} />
                             {L.follow}
                         </label>
@@ -305,8 +333,8 @@ class PybricksSimPane extends React.Component {
                     <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 8, fontSize: 11}}>
                         {[['pitch', -90, 90], ['roll', -180, 180], ['yaw', -180, 180]].map(([axis, min, max]) => (
                             <label key={axis} style={{display: 'flex', flexDirection: 'column'}}>
-                                {L[axis]} {this.state.imu[axis]}°
-                                <input type="range" min={min} max={max} value={this.state.imu[axis]}
+                                {L[axis]} {imu[axis]}°
+                                <input type="range" min={min} max={max} value={imu[axis]} disabled={this.sharedBackend}
                                     onChange={e => this.setImu(axis, e.target.value)} aria-label={L[axis]} />
                             </label>
                         ))}

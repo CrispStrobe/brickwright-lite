@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // The hub contract (who writes what, units, the clock) is docs/SPIKE-ARENA.md.
-import SpikeMotorModel from './spike-motor-model.js';
+import IndependentSpikeBackend from '../spike-sim/independent-backend.js';
 
 const makeData = () => ({
     connected: false, simulationEnabled: false, notificationIntervalMs: null, battery: 100,
     firmwareTarget: 'official-v3',
     display: Array(25).fill(0),
-    motors: Array.from({length: 6}, () => ({speed: 0, position: 0})),
+    motors: Array.from({length: 6}, () => ({speed: 0, position: 0, degPerSec: 0})),
     sensors: Array.from({length: 6}, () => null),
     classicPorts: Array.from({length: 6}, () => [0, []]),
     imu: {faceUp: 0, yaw: 0, pitch: 0, roll: 0,
@@ -28,11 +28,14 @@ const indexOf = port => {
     return index;
 };
 export default class VirtualSpikeHubState {
-    constructor () {
+    constructor (options = {}) {
         this.data = makeData(); this.listeners = new Set(); this.transports = new Set();
-        // What a motor does with a command: see spike-motor-model.js. Positions
+        // Independent motion, outputs and waits: see spike-sim/independent-backend.js. Positions
         // advance only when the world's owner calls stepMotors().
-        this.motors = new SpikeMotorModel(this);
+        this.backend = new IndependentSpikeBackend(this, options);
+        this.backend.kind = 'native';
+        this.motors = this.backend;
+        this.clockOwner = null;
         // The movement pair `motors.*` commands address: [left, right]. The left
         // motor is mounted mirrored, as on the SPIKE driving base.
         this.movementPair = ['A', 'B'];
@@ -122,12 +125,12 @@ export default class VirtualSpikeHubState {
         // Percent of this motor's full speed, run until told otherwise.
         if (speed === 0) this.motors.stop(index);
         else this.motors.runAtSpeed(index, this.motors.percentToDps(index, speed));
-        this.data.motors[index].speed = speed;
         this.changed();
     }
     setDisplay (pixels) { this.data.display = Array.from(pixels).slice(0, 25); while (this.data.display.length < 25) this.data.display.push(0); this.changed(); }
     _stopAllSilent () {
-        this.motors.stopAll();
+        this.externalBackend?.cancel();
+        this.motors.cancel({notify: false});
         this.data.motors.forEach((motor, index) => {
             motor.speed = 0;
             if ([48, 49].includes(this.data.classicPorts[index][0])) this.data.classicPorts[index][1][0] = 0;

@@ -1869,3 +1869,21 @@ not linked, and not distributed** in any form:
 
 - **Acorn BBC BASIC ROM** — Crown Copyright, not redistributable
 - **Enhanced BASIC (ehBASIC)** by Lee Davison — licence unclear, not used
+
+## Independent SPIKE simulator backend — BSD-3-Clause
+
+`overlay/scratch-gui/src/lib/spike-sim/independent-backend.js`, its backend
+selection adapter, `spike-simulator-pane.jsx`, and newly authored validation tooling are Copyright (c)
+2026 Brickwright contributors, BSD-3-Clause (see LICENSE). The controller was
+authored by a fresh implementation agent from functional contracts and
+synthetic black-box observations, with an audited instruction-based access
+boundary; see `docs/independent-spike/INDEPENDENCE.md`. It contains no Pybricks
+runtime code and requires no Pybricks assets or build steps.
+
+It reuses the existing Apache-2.0 virtual hub/protocol adapters and BSD-3-Clause
+arena through their documented shared-state interfaces. Scratch and native
+program readers retain their BSD-3-Clause/MPL-2.0 licences and source
+availability obligations. The audited Pybricks WASM and its notices remain
+separate, required only for Pybricks Python. Evidence for retained component
+licences is recorded in the private SPIKE audit archive; this addition does
+not relicense any retained component.

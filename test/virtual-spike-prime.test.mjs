@@ -35,11 +35,14 @@ test('maps JSON motor tunnels and safely retains the Python subset', () => {
         ])));
     };
     tunnel('{"m":"motor","p":{"port":2,"speed":75}}');
+    hub.hubState.stepMotors(1000);
     assert.equal(hub.state.motors[2].speed, 75);
     tunnel('import motor; motor.stop(port.A)');
     assert.equal(hub.state.lastPythonTunnel, 'import motor; motor.stop(port.A)');
     tunnel('import motor; motor.run(port.C, 750)');
-    assert.equal(hub.state.motors[2].speed, 75);
+    hub.hubState.stepMotors(1000);
+    assert.equal(hub.state.motors[2].degPerSec, 750);
+    assert.equal(hub.state.motors[2].speed, 68);
     hub.disconnect();
     assert.equal(hub.state.motors[2].speed, 0);
 });
@@ -70,4 +73,14 @@ test('rejects an oversized complete BLE frame before decoding and recovers', () 
         /frame too large/);
     assert.equal(hub._frame.length, 0);
     hub.onWrite(SPIKE_RX, packSpikeFrame(Uint8Array.of(0)));
+});
+
+test('BLE motor end_state preserves coast, brake and hold actions',()=>{
+    for(const [end,action] of [[0,'coast'],[1,'brake'],[2,'hold']]){
+        const hub=new VirtualSpikePrimePeripheral();hub.hubState.setMotorSpeed('A',30);hub.hubState.stepMotors(500);
+        const body=new TextEncoder().encode(JSON.stringify({m:'motor',p:{port:0,speed:0,end_state:end}}));
+        hub.onWrite(SPIKE_RX,packSpikeFrame(Uint8Array.from([0x32,body.length&255,body.length>>8,...body])));
+        assert.equal(hub.state.motors[0].lastStopAction,action);
+        hub.hubState.stepMotors(1000);assert.equal(hub.state.motors[0].degPerSec,0);
+    }
 });

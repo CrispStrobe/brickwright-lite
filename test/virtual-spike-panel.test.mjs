@@ -14,6 +14,7 @@ test('dashboard inputs update the shared neutral state', () => {
     applyVirtualPortInput(state, 'A', 'motor', '75');
     applyVirtualPortInput(state, 'B', 'distance', '240');
     applyVirtualPortInput(state, 'C', 'force', '42');
+    state.stepMotors(1000);
     assert.equal(state.data.motors[0].speed, 75);
     assert.equal(state.data.classicPorts[1][1][0], 240);
     assert.equal(state.data.sensors[2].pressed, true);

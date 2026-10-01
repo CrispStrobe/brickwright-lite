@@ -10,8 +10,8 @@
   },
   "hints": [
     {
-      "en": "A moving rover never reads exactly 20: between two readings it has already moved on. Compare with \"less than\".",
-      "de": "Ein fahrender Rover misst nie genau 20: Zwischen zwei Messungen ist er schon weitergefahren. Vergleiche mit „kleiner als“."
+      "en": "A moving rover can skip exactly 20 between two readings. Compare with \"less than\" so you stop even when that exact value is missed.",
+      "de": "Ein fahrender Rover kann den Wert genau 20 zwischen zwei Messungen überspringen. Vergleiche mit „kleiner als“, damit er auch dann anhält, wenn dieser genaue Wert fehlt."
     },
     {
       "en": "The distance sensor measures from the front of the rover, in centimetres.",

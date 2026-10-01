@@ -130,6 +130,7 @@ test('bundled direct BLE extension runs through the virtual hub and reconnects',
         'auto should have detected Web Bluetooth');
     assert.equal(extension.isConnected(), true);
     await extension.startMotor({PORT: 'C', SPEED: 65});
+    state.stepMotors(1000);
     assert.equal(state.data.motors[2].speed, 65);
     // The hub reports millimetres. spikeprimeble's getDistance returned them
     // raw; the unified getDistance means centimetres, because that is what it

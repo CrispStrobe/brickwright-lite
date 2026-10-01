@@ -16,7 +16,7 @@ in by honouring the contract below, without touching the arena.
 
 | Module | Role |
 |---|---|
-| `lib/virtual-hub/spike-motor-model.js` | what a motor does with a command (new) |
+| `lib/spike-sim/independent-backend.js` | independent motor controller, shared inputs/outputs and scheduler |
 | `lib/virtual-hub/spike-hub-commands.js` | the motion statements and verbs the hub understands, on either transport (new) |
 | `lib/virtual-hub/spike-hub-state.js` | the hub state: ports, motors, IMU (extended) |
 | `lib/spike-arena/geometry.js` | 2D shapes, overlap, rays |
@@ -28,6 +28,16 @@ in by honouring the contract below, without touching the arena.
 | `static/spike-arena/units.json` | the units, in the order the pane's unit picker offers them |
 | `static/spike-arena/<unit>/` | one unit: `unit.json`, challenges, reference and wrong solutions (`rover-basics` is the starter unit; see "The units") |
 | `components/tw-pseudocode/spike-arena-pane.jsx` | the dockable pane |
+
+## Choosing a simulator
+
+Open **SPIKE arena** from a SPIKE program in the Code tab. The **Simulator backend**
+selector offers Brickwright for Scratch/native and imported SPIKE 3 programs, or
+Pybricks for Python programs. The latter loads its runtime only when selected.
+Both use the same mounted world, hub and 2D/3D views. Switching stops the active
+program and preserves the current world; the next native Start resets the mission.
+A missing optional Pybricks runtime leaves the Brickwright choice usable. See
+[the backend documentation](independent-spike/README.md) for coverage and limits.
 
 ## The hub contract
 
@@ -50,8 +60,9 @@ else.
 **One clock.** Motor positions advance only inside `hubState.stepMotors(dtMs)`.
 While the arena runs, the arena calls it and nothing else may. A route that
 needs "wait until the motor finished" awaits the promise the motor model
-returns; it never steps motors itself. With no arena running, nothing steps and
-motors hold their position (as before this module existed).
+returns; it never steps motors itself. With no arena running, a standalone native caller can own the clock with
+`hubState.backend.pace(ms, {realtime})`. Without an explicit clock owner,
+positions do not advance. Never call pace while the arena owns stepping.
 
 ### Units and signs
 
@@ -76,11 +87,16 @@ All positions and speeds in the units above; a port is `'A'..'F'` or `0..5`.
 motors.runAtSpeed(port, degPerSec)                 // until told otherwise
 motors.runForDegrees(port, degrees, degPerSec)     // -> Promise<'completed'|'interrupted'>
 motors.runForTime(port, ms, degPerSec)             // -> Promise<'completed'|'interrupted'>
-motors.runToPosition(port, position, degPerSec)    // -> Promise<'completed'|'interrupted'>
-motors.stop(port, 'brake'|'hold'|'coast')          // all stop dead: no inertia is modelled
+motors.runToPosition(port, position, degPerSec)    // -> Promise<'completed'|'interrupted'|'stalled'>
+motors.stop(port, 'brake'|'hold'|'coast')          // finite deceleration; hold retains position
 motors.resetPosition(port, value = 0)
 motors.percentToDps(port, percent)                 // the device's full speed * percent / 100
 motors.busy(port)
+motors.setStopAction(port, 'brake'|'hold'|'coast')
+motors.configure(port, {acceleration: 1500, deceleration: 1500})
+motors.setLoad(port, fraction)                    // synthetic load, 0..1
+hubState.backend.wait(ms, {signal})              // same simulated clock
+hubState.backend.cancel()                        // hard stop and interrupt
 hubState.stepMotors(dtMs)                          // ONLY the clock owner calls this
 ```
 
@@ -93,11 +109,14 @@ SPIKE's steering (the inner wheel slows linearly, stops at ±50, reverses at
 ±100) and the mirrored left motor (wheel-forward is left counterclockwise,
 right clockwise).
 
-**Pybricks.** The Pybricks pane mirrors its own motor angles into
-`data.motors[i].position`; the arena reads position DELTAS, so it follows a
-Pybricks run too. Start the Pybricks program after the arena's Reset: Reset
-zeroes the drive motors' positions, and a mirror that then writes its old
-angle back reads as one large wheel turn.
+**Pybricks.** `createSpikeBackend({kind: 'pybricks', hubState, arena, factory, ...})`
+lazy-loads the existing host and mirrors shaft positions at each simulated tick.
+The arena uses those same position deltas. During Python execution,
+`hubState.clockOwner = 'pybricks'`: native stepping is inert and native motor
+commands are rejected. The pane's VM/frame clock yields to the Python clock.
+Arena sensors and heading are fed back before the next Python tick. Backend
+selection does not load or require WASM for native programs. Matrix brightness
+is converted from Pybricks 0..100 to the shared hub's 0..9.
 
 **For a SPIKE 3 Python runtime** (runloop, `motor`, `motor_pair`,
 `color_sensor`, `distance_sensor`, `force_sensor`, `motion_sensor`): map each
@@ -155,9 +174,15 @@ mirrored motor), heading change `(left - right) / track`, integrated exactly
 along the arc, so the step size does not change the path. Tested against the
 closed forms.
 
-**Motors.** Reach commanded speed instantly; no acceleration, no load, no stall;
-a degrees target lands exactly. Percent is of the device's documented full
-speed.
+**Motors.** Native commands use the independent backend: default acceleration
+and deceleration 1500 deg/s², finite speed/position control, timed trajectories,
+and configured coast/brake/hold. Disconnect/reset/cancel hard-stop for safety.
+An explicit synthetic load API reduces achievable speed; a locked shaft makes
+finite position tasks resolve `stalled`. Arena collisions still model wheel
+slip and do not automatically lock shafts. Percent uses the device speed limit.
+See [the tested contract](independent-spike/CONTRACT.md) and
+[coverage and limits](independent-spike/README.md). Pybricks remains a separate
+behavioral oracle; neither backend establishes physical SPIKE accuracy.
 
 **Collisions.** The body is a rectangle; walls, the mat border and fixed
 objects are convex solids. A step that would overlap one is cut back to contact
@@ -196,8 +221,9 @@ before -> after table of all 34 former refusals is in `docs/SPIKE3-PYTHON.md`):
 `test/spike3-python-arena-d1.test.mjs` runs each from imported Python in the
 arena, mutation-checked.
 
-**Not modelled:** acceleration and inertia, wheel slip in free driving, motor
-stall, sensor noise, ambient light, a sloped or bumpy mat, objects rotating.
+**Not modelled:** physical motor electrical dynamics, collision-induced shaft
+stall, wheel slip in free driving, sensor noise, ambient light, a sloped or
+bumpy mat, objects rotating. Synthetic motor load/stall is exposed separately.
 
 ## World and challenge format
 

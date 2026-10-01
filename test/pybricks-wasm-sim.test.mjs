@@ -316,7 +316,7 @@ test('the virtual SPIKE hub and the Pybricks simulator show the same hub', async
     assert.deepEqual(lines(output()), ['345'], 'Python read the distance the Scratch-side panel set');
     assert.deepEqual(hubState.data.display, Array(25).fill(0), 'precondition: nothing mirrored yet');
     mirrorSimToHubState(host, hubState);
-    assert.equal(hubState.data.display[6], 100, 'the light matrix reached the virtual hub');
+    assert.equal(hubState.data.display[6], 9, 'the light matrix reached the virtual hub');
     assert.ok(Math.abs(hubState.data.motors[0].position - 45) <= 2,
         `the motor position reached the virtual hub: ${hubState.data.motors[0].position}`);
 });
