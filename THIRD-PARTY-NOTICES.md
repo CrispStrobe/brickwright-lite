@@ -1872,7 +1872,8 @@ not linked, and not distributed** in any form:
 
 ## Independent SPIKE simulator backend — BSD-3-Clause
 
-`overlay/scratch-gui/src/lib/spike-sim/independent-backend.js`, its backend
+`overlay/scratch-gui/src/lib/spike-sim/independent-backend.js`,
+`speed-envelope.mjs`, its backend
 selection adapter, `spike-simulator-pane.jsx`, and newly authored validation tooling are Copyright (c)
 2026 Brickwright contributors, BSD-3-Clause (see LICENSE). The controller was
 authored by a fresh implementation agent from functional contracts and

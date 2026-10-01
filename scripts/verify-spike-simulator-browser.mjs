@@ -63,6 +63,16 @@ try {
     check('actual Scratch VM reference mission completes through the native backend', mission);
     await page.screenshot({path: `${evidence}/native-mission.png`, fullPage: true});
     await page.getByTestId('bw-spike-arena-reset').click();
+    const nativeEnvelope = await page.evaluate(() => {
+        const hub = window.__bwSpikeArena._pane.hubState;
+        hub.setMotorSpeed('B', 100);
+        hub.backend.step(1000);
+        return {nominalLimit: hub.backend.maxSpeed('B'), shaftSpeed: hub.data.motors[1].degPerSec};
+    });
+    assert.equal(nativeEnvelope.nominalLimit, 1110);
+    assert.equal(nativeEnvelope.shaftSpeed, 950);
+    check('shared GUI hub applies the measured envelope to a full-speed native command', nativeEnvelope);
+    await page.getByTestId('bw-spike-arena-reset').click();
     await page.evaluate(() => { window.__spikeProofArena = window.__bwSpikeArena.bridge; });
     await selector.selectOption('pybricks');
     await page.getByTestId('bw-pybricks-status').filter({hasText: 'Ready'}).waitFor({timeout: 60000});

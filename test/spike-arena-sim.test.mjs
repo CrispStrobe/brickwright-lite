@@ -95,7 +95,8 @@ test('the translator: every statement the spikeprime extension sends for a motor
         ['import hub; hub.port.A.motor.run_for_degrees(360, 50)', 0, 360, 2000],
         ['import hub; hub.port.B.motor.run_for_time(1000, 50)', 1, 555 * (1 - 555 / 1500), 1000],
         ['hub.port.C.motor.pwm(50)', 2, 555 * (1 - 555 / 1500 / 2), 1000],
-        ['motor.run(port.D, 1110)', 3, 1110 * (1 - 1110 / 1500 / 2), 1000]
+        // Nominal 1110 request reaches the measured device-48 shaft envelope.
+        ['motor.run(port.D, 1110)', 3, 950 * (1 - 950 / 1500 / 2), 1000]
     ];
     for (const [text, index, expected, ms] of cases) {
         const hub = new HubState();

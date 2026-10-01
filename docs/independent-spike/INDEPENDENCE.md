@@ -13,3 +13,14 @@ Functional corrections supplied during implementation (no original code): extern
 The additional implementation turn received only functional stop-default and beep requirements. The contract addendum preserves them. Its further tools only edited/tested the handoff backend/tests and appended the contract/worklog. Final artifact hashes are in `evidence/independence-audit.json`.
 
 All referenced evidence paths in this record refer to the [private execution archive](https://github.com/CrispStrobe/brickwright-firmware-private/tree/audit/independent-spike-20260930/audits/independent-spike/2026-09-30), not files in this public repository. The controller itself and its functional contract remain public.
+
+Followup on 2026-10-01: a fresh, history-free agent authored `speed-envelope.mjs`
+from a neutral function scaffold and normalized external observations. Its five
+actual tool calls each launched shell commands through a bubblewrap wrapper with
+only the handoff directory, standard binaries/libraries and Node mounted. A
+coordinator probe verified absent repository/home paths and network failure
+(ENETUNREACH). All five calls were reviewed; no unwrapped execution, web access,
+repository reads, oracle binary loads or delegation occurred. The tool layer was
+instruction restricted; executed shell processes used OS namespaces. The
+coordinator's controller changes only dispatch requests through the new function.
+Evidence is private under `2026-10-01-followup/` in the linked archive.

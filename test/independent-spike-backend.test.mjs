@@ -58,16 +58,7 @@ const compare=(record,actual)=>{
     });
 };
 for(const record of fixture?.records||[]) {
-    if(record.id.startsWith('speed-limit')) {
-        test(`characterized oracle difference: ${record.id}`,t=>{
-            const actual=trace(record),last=actual.at(-1),oracle=record.samples.at(-1);
-            assert.throws(()=>compare(record,actual),/speed-limit-.*angle/,'strict contract comparison must expose the known gap');
-            near(Math.abs(last.a.degPerSec),1110,5,'native documented request clamp');
-            near(Math.abs(oracle.speed),942,5,'observed oracle steady saturation');
-            assert.ok(Math.abs(last.a.position-oracle.angle)>100,'high-speed trajectory gap remains visible');
-            t.diagnostic(`Known difference: native ${last.a.degPerSec} deg/s, oracle ${oracle.speed} deg/s at 1500ms; angle difference ${last.a.position-oracle.angle} degrees`);
-        });
-    } else test(`independent vs audited WASM: ${record.id}`,()=>compare(record,trace(record)));
+    test(`independent vs audited WASM: ${record.id}`,()=>compare(record,trace(record)));
 }
 
 test('oracle comparisons detect disabled motion and removed acceleration',{skip:privateEvidenceSkip},t=>{

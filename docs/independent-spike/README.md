@@ -50,7 +50,7 @@ code is licensed infrastructure, outside the independent controller authorship c
 | Sensors | Shared arena colour/reflection/raw RGB, distance mm, force, IMU and buttons; copy isolation and mismatched-device errors |
 | Outputs | Matrix 0..9, centre light, volume, distance lights, timed beeps/waveforms and sound cancellation |
 | Program integration | Real Scratch VM, shipped extension, BLE and Classic adapters, native `.bw` missions, imported SPIKE 3 Python, same arena for Pybricks Python |
-| Oracle | Thirteen matching motor scenarios, two characterized oversized-speed differences, plus normalized sensors/IMU/buttons/matrix/beep, observable failure/stop cases; fixtures pinned to shipped WASM hash |
+| Oracle | Fifteen matching motor scenarios and twelve further speed-sweep scenarios, plus normalized sensors/IMU/buttons/matrix/beep, observable failure/stop cases; fixtures pinned to shipped WASM hash |
 
 Motor observations come from `probe-independent-spike-oracle.mjs`, using the
 shipped audited WASM, explicit acceleration 1500 deg/s² and speed limit 1110 deg/s.
@@ -61,7 +61,8 @@ control algorithms. Sensor comparisons explicitly normalize units and colour ids
 
 Position comparisons allow 12° during motion, 15° during reversal, and 2° after
 settling. Transient speeds allow 110°/s because the oracle's reported speed lags
-shaft angle observations; steady/settled comparisons use 5°/s. Finite completion
+shaft angle observations; settled finite-motion and original low-speed steady comparisons use 5°/s.
+The expanded continuous-speed sweep uses the existing 110°/s moving-speed bound. Finite completion
 bounds allow 150 ms beyond the oracle's sampled transition interval. Synthetic
 physics checks additionally test signs, limits, target settlement, deterministic
 chunking and shared state. These tolerances detect disabled motion and removed
@@ -82,13 +83,16 @@ Intentional differences and limits:
 - Native coast travels farther than brake, and hold returns to its captured angle.
   In the shipped oracle's measured stop/coast/brake cases, travel coincides. Only
   eventual rest and action observability are compared for those scenarios.
-- Oversized requests of ±5000°/s expose a further measured difference: the native
-  controller clamps to its published 1110°/s device limit, whereas the oracle
-  plateaus near ±942°/s even with a configured limit of 1110. At 1500 ms the shaft
-  positions differ by about 132°. Strict comparisons fail; their original failed
-  TAP log is retained as the private `oracle-expanded.tap`. Characterization tests explicitly
-  assert that the gap remains detectable; these two cases do **not** pass the
-  matching trajectory contract and no saturation equivalence is claimed.
+- Medium motor device 48 now applies an independently authored synthetic shaft
+  envelope of 950°/s while retaining the nominal 1110°/s API/percent scale. All
+  fifteen original trajectories and twelve speed-sweep scenarios match the moving
+  tolerances. The sweep covers negative and positive requests through ±5000°/s,
+  with 60 samples through 2500 ms; maximum shaft-angle error is 4.812° and speed
+  error is 81°/s. The oracle's reported high-speed velocity remains about 942°/s;
+  exact velocity-estimator equivalence is not claimed. This measured envelope is
+  specific to synthetic device 48; unmeasured devices retain their nominal bounds.
+  Original failed observations remain archived, and removing the new envelope
+  causes the unchanged trajectory comparisons to fail.
 - Load/stall is a synthetic normalized control, not an electrical or torque model.
   Arena contact retains the existing wheel-slip model; it does not automatically
   lock the shaft. No measured load/stall equivalence is claimed.
@@ -117,7 +121,7 @@ its normal vendor/integration workflow for VM/pane tests; the independent backen
 and controller tests themselves need no packages. No WASM rebuild is required.
 
 ```sh
-export BW_SPIKE_EVIDENCE_DIR=/path/to/brickwright-firmware-private/audits/independent-spike/2026-09-30/evidence
+export BW_SPIKE_EVIDENCE_DIR=/path/to/brickwright-firmware-private/audits/independent-spike/2026-10-01-relocation/evidence
 export BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1
 node scripts/probe-independent-spike-oracle.mjs
 node scripts/probe-independent-spike-sensors.mjs
@@ -136,7 +140,7 @@ convention in this worktree, plus the already-declared `three@0.186.1` package
 installed locally for pane tests; no other worktree was modified.
 
 Validation results and exact artifact hashes are in the private archive
-(`evidence/validation.json` and `evidence/independence-audit.json`). **317 broader SPIKE checks passed**; the final absence-gate count is recorded in
+(`evidence/validation.json` and `evidence/independence-audit.json`). **317 broader SPIKE checks passed before the speed-envelope followup**; the final absence-gate count is recorded in
 that validation file. Full-suite and assets-absent TAP logs preserve
 coverage and mutation diagnostics. No changes were posted to Pybricks upstream.
 
@@ -182,3 +186,15 @@ required, the absence gate passed 123 checks, and 12 focused GUI checks passed.
 The arena now invalidates pending unit loads on unmount, preventing late scene
 publication. The public evidence-path guard tests also passed. New receipts are
 in the private archive under `2026-10-01-relocation/evidence/`.
+
+The 2026-10-01 speed-envelope followup uses a fresh agent with no inherited
+history. Its five actual shell calls ran through a verified bubblewrap filesystem
+and network namespace wrapper. The coordinator audited all five calls; the tool
+layer remained instruction restricted. The agent received only a functional
+contract, normalized synthetic observations and a neutral pure-function scaffold.
+The coordinator wired the authored function into continuous, position and timed
+commands. Its operational transcript, five authored tests, wrapper, observations,
+source hash and mutation receipt are private under `2026-10-01-followup/`.
+
+The final post-envelope SPIKE suite passed **319 checks**, with private evidence
+required and no skipped comparisons.
