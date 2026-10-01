@@ -5,10 +5,13 @@ import {resolve, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 export const privateSpikeEvidenceDirectory = () => {
-    if (!process.env.BW_SPIKE_EVIDENCE_DIR) {
-        throw new Error('Set BW_SPIKE_EVIDENCE_DIR to a directory in the private evidence repository before capturing evidence');
+    // Public CI writes execution receipts outside the checkout without claiming
+    // that its output directory contains the private reference fixtures.
+    const destination = process.env.BW_SPIKE_RECEIPT_DIR || process.env.BW_SPIKE_EVIDENCE_DIR;
+    if (!destination) {
+        throw new Error('Set BW_SPIKE_EVIDENCE_DIR to the private evidence repository, or BW_SPIKE_RECEIPT_DIR to an external receipt directory before capturing evidence');
     }
-    const directory = resolve(process.env.BW_SPIKE_EVIDENCE_DIR);
+    const directory = resolve(destination);
     const publicRoot = resolve(fileURLToPath(new URL('../../', import.meta.url)));
     if (directory === publicRoot || directory.startsWith(`${publicRoot}${sep}`)) {
         throw new Error('SPIKE evidence must be written outside this public repository');

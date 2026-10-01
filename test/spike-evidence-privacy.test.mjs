@@ -9,9 +9,9 @@ import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 const publicRoot = fileURLToPath(new URL('../', import.meta.url));
 const helper = new URL('../scripts/lib/private-spike-evidence.mjs', import.meta.url).href;
-const run = directory => {
-    const env = {...process.env}; delete env.BW_SPIKE_EVIDENCE_DIR;
-    if (directory !== undefined) env.BW_SPIKE_EVIDENCE_DIR = directory;
+const run = (directory, variable = 'BW_SPIKE_EVIDENCE_DIR') => {
+    const env = {...process.env}; delete env.BW_SPIKE_EVIDENCE_DIR; delete env.BW_SPIKE_RECEIPT_DIR;
+    if (directory !== undefined) env[variable] = directory;
     return spawnSync(process.execPath, ['--input-type=module', '-e',
         `const {privateSpikeEvidenceDirectory}=await import(${JSON.stringify(helper)}); privateSpikeEvidenceDirectory();`],
     {env, encoding: 'utf8'});
@@ -32,4 +32,13 @@ test('SPIKE captures reject external symlinks pointing into the public checkout'
 test('SPIKE captures accept an explicitly configured external archive directory', () => {
     const temp = mkdtempSync(join(tmpdir(), 'spike-private-output-'));
     try { assert.equal(run(temp).status, 0); } finally { rmSync(temp, {recursive: true, force: true}); }
+});
+test('CI receipts use an external output directory without supplying private reference fixtures', () => {
+    const temp = mkdtempSync(join(tmpdir(), 'spike-ci-output-'));
+    try {
+        assert.equal(run(temp, 'BW_SPIKE_RECEIPT_DIR').status, 0);
+        const rejected = run(publicRoot, 'BW_SPIKE_RECEIPT_DIR');
+        assert.equal(rejected.status, 1);
+        assert.match(rejected.stderr, /outside this public repository/);
+    } finally { rmSync(temp, {recursive: true, force: true}); }
 });

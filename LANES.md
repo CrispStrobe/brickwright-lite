@@ -1098,6 +1098,14 @@ who you are and who you are talking to before broadcasting either.
 - test/owned-driver.test.mjs :: process-tree assertion requires Linux /proc :: box lego-vps Linux 2026-10-01 codex-independent-spike; real inherited-pipe descendant cleanup passed locally and runs on Ubuntu in the regular fast Node suite
 
 
+- test/engineering-input-route-wasm.test.mjs :: real engineering-input proof needs original WEB glue and WASM paths :: box lego-vps 2026-10-01, four tests passed with zero skips using original historical release labwired-wasm-0c0cd0ec assets and again using fresh build-B assets from BW workflow run 36816537489 at LabWired source 4d944d2d; BW_PACKAGE_ROOT selected the paired BW source explicitly, BW_REQUIRE_ENGINE_INPUT_PROOF=1 made missing assets fail. See docs/LABWIRED-ENGINEERING-INPUT-ROUTE.md. This proves generic held inputs/recording subscription under Node, not selected motion or browser RTx.
+
+The independent SPIKE comparisons also have the earlier 324-check private/local
+strict fixture receipt from lego-vps 2026-10-01 codex-independent-spike in
+brickwright-firmware-private at
+`audits/independent-spike/2026-10-01-runtime-retirement/main-validation/brickwright-retirement-main-full.tap`.
+The newer 39-test run above re-executed the relocated fixtures on this branch.
+
 - test/vendor-forward-packages.test.mjs :: BW_BOARD_DIR unset — actual forward BIOS CLI not exercised :: workflow .github/workflows/build.yml step 'Fetch the pinned bw-board tree for the pin-reader tests' supplies the exact engine input for the unit suite; also explicitly run against takeover app/7fbdfa9 checkout on lego-vps 2026-09-12 codex-app-adoption-audit
 
 Every test CI skips must point at the ONE place it executes (plan T13). One line per file and
