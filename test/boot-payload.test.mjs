@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync, mkdirSync, writeFileSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -60,4 +60,13 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         put('chunks/1380.hash.js', 'renamed');
         assert.equal(run().status, 1, 'three\'s marker must be found in lazy JS');
     } finally {rmSync(build, {recursive: true, force: true});}
+});
+
+test('3D isolation checks name the simulator chunk the GUI actually imports', () => {
+    const gui = readFileSync('overlay/scratch-gui/src/components/gui/gui.jsx', 'utf8');
+    const script = readFileSync('scripts/verify-boot-payload.mjs', 'utf8');
+    const name = gui.match(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/tw-pseudocode\/spike-simulator-pane\.jsx'/)?.[1];
+    assert.equal(name, 'bw-spike-simulator');
+    assert.equal(script.split(`notInChunks: ['${name}']`).length - 1, 2,
+        'both three.js and the 3D view must be excluded from the actual simulator chunk');
 });

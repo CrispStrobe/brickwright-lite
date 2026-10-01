@@ -40,6 +40,7 @@ import {
 } from './breakpoints.js';
 import { parseCondition } from './condition.js';
 import {createLinuxConsole} from './linux-console.js';
+import {createEngineeringInputRoute} from './engineering-input-route.js';
 import {cpmFileName} from './cpm-z80.js';
 import { canRecordDebugInput } from 'bw-board/debug-replay-contract.js';
 import { createTrace, IO_SFRS, TIMER_SFRS } from './trace.js';
@@ -563,7 +564,7 @@ export function toggleTargetCodeBreakpoint ({target, addrBps, addr}) {
  *   names the machine shape a preset image was built for; absent, the
  *   extracted config (or the target's default map) is used.
  */
-export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, labwiredChip = null, onChange = () => {} }) {
+export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.vercel.app', targetKind = 'emulator', machineConfig = null, bootMedia = null, labwiredChip = null, labwiredBoardVariant = null, onChange = () => {} }) {
     let session = null;
     let target = null;
     let i8086ExecutionResult = null;
@@ -1948,7 +1949,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
 
         // A chip picked in the panel means "my firmware on that chip", with no
         // circuit — whatever the project's own device is.
-        if (labwiredChip) return attachLabwiredFirmwareOnly(built, wasm, createDebugTarget, createDebugSession);
+        if (labwiredChip) {
+            if (labwiredBoardVariant !== null) {
+                throw new Error('a selected on-module variant needs a circuit-derived board, not a catalog override');
+            }
+            return attachLabwiredFirmwareOnly(built, wasm, createDebugTarget, createDebugSession);
+        }
 
         const stc = projectStc(null);
         const device = String(stc?.device || '').toLowerCase();
@@ -1963,6 +1969,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         const chip = chipKind === 'stm32f030' ? STM32F0 : LABWIRED_CHIPS[chipKind];
         if (!chip) throw new Error(`this bw-board build does not carry the LabWired '${chipKind}' model`);
+        if (labwiredBoardVariant !== null && (typeof labwiredBoardVariant !== 'string' ||
+            !Object.hasOwn(chip.onBoardVariants ?? {}, labwiredBoardVariant))) {
+            throw new Error(`this bw-board build has no selected '${labwiredBoardVariant}' variant for '${chipKind}'`);
+        }
         const clockHz = built.f_cpu || built.clockHz || chip.clockHz;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
@@ -1999,7 +2009,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                 // An nRF .hex's UICR words, loaded beside the image: the MBR
                 // reads them at reset (labwired-firmware.js).
                 extraSegments: built.extraSegments,
-                chipKind, clockHz,
+                chipKind, clockHz, boardVariant: labwiredBoardVariant,
             }));
         } catch (e) {
             // The bridge throws with a `refusals` array when the bench cannot be
@@ -3523,6 +3533,18 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         throw new Error(`arbitrary firmware is not wired for the '${kind}' engine yet`);
     }
 
+    const engineeringInputs = createEngineeringInputRoute({
+        getTarget: () => target,
+        beforeWrite: () => {
+            const forked = beginForwardBranch();
+            if (forked.accepted) {
+                reverseCursor = null;
+                reverseContinue.reset();
+            }
+            return forked;
+        },
+        onApplied: () => emit()
+    });
     let reverseContinue;
     let eventBreakpointDispatcher;
     let replayBreakpointDispatcher;
@@ -3530,6 +3552,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     const runner = {
         /** Use this image instead of compiling the blocks. */
         setFirmware(fw) { userFirmware = fw || null; },
+        /** Engineering-unit channels and one atomic pose on the live target. */
+        discoverInputs: () => engineeringInputs.discoverInputs(),
+        setInputs: sets => engineeringInputs.setInputs(sets),
         clearFirmware() { userFirmware = null; },
         get firmwareName() { return userFirmware ? userFirmware.name : null; },
 
