@@ -103,8 +103,9 @@ try {
         null, {timeout: 60000});
     const contact = await page.evaluate(() => ({snapshot: window.__bwSpikeArena.snapshot, motors: window.__bwSpikeArena._pane.hubState.data.motors}));
     assert.equal(contact.motors[1].degPerSec, 0); check('arena wall load stalls the real guest motor without native controller stepping');
-    await page.getByTestId('bw-spike-arena-stop').click();
-    await page.waitForFunction(() => window.__bwSpikeArena._pane.hubState.clockOwner !== 'renode');
+    await page.evaluate(() => window.__bwSpikeArena._pane.hubState.stopAll());
+    await page.waitForFunction(() => !window.__bwSpikeArena._pane.firmwareSession && window.__bwSpikeArena._pane.hubState.clockOwner !== 'renode');
+    check('shared hub Stop cancels the managed guest and clears the GUI session');
     await page.getByTestId('bw-spike-arena-execution').selectOption('native');
     await page.getByTestId('bw-spike-sandbox-drive-back').click();
     const x = await page.evaluate(() => window.__bwSpikeArena.snapshot.pose.x);
