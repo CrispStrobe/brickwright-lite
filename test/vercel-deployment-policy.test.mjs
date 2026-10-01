@@ -13,12 +13,17 @@ test('Vercel Git integration cannot deploy pushes or pull requests', () => {
         'the obsolete automatic-deployment workaround returned');
 });
 
-test('Vercel production deploy is manual plus nightly at 02:00 Berlin time', () => {
+test('Vercel production deploy is validated main plus manual and nightly at 02:00 Berlin time', () => {
     assert.match(workflow, /^\s{2}workflow_dispatch:\s*$/m);
     assert.match(workflow, /^\s{2}schedule:\s*$/m);
     assert.match(workflow, /^\s{4}- cron: ['"]0 2 \* \* \*['"]\s*$/m);
     assert.match(workflow, /^\s{6}timezone: Europe\/Berlin\s*$/m);
     assert.doesNotMatch(workflow, /^\s{2}push:\s*$/m);
+    assert.match(workflow, /workflows: \["Build \(permissive base\)", "debugger-focused", "vendor-freshness"\]/);
+    assert.match(workflow, /workflow_run\.event == 'push'/);
+    assert.match(workflow, /workflow_run\.head_repository\.full_name == github\.repository/);
+    assert.match(workflow, /node scripts\/verify-vercel-main-checks\.mjs "\$local_sha"/);
+    assert.match(workflow, /node scripts\/verify-vercel-live-version\.mjs "\$local_sha"/);
 });
 
 test('every Vercel production run deploys the current main checkout', () => {

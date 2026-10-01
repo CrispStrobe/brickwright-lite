@@ -2,11 +2,15 @@ name: Vercel production deploy
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Build (permissive base)", "debugger-focused", "vendor-freshness"]
+    types: [completed]
+    branches: [main]
   schedule:
     - cron: '0 2 * * *'
       timezone: Europe/Berlin
 
-# A manual run and the nightly run must never race to assign the production
+# Automatic, manual and nightly runs must never race to assign the production
 # domains. Keep the earlier deployment running and queue the later request.
 concurrency:
   group: vercel-production
@@ -14,10 +18,18 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   deploy:
     name: Deploy current BrickWright Lite
+    # Never run privileged deployment from a pull-request validation event.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -27,7 +39,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # workflow_dispatch allows choosing a ref in the UI. Production does
-          # not: both trigger types always publish the canonical current main.
+          # not: every trigger publishes the canonical current main.
           ref: main
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -69,6 +81,7 @@ jobs:
       - name: Build and publish the current main, retrying while main advances
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           attempts=3
@@ -76,6 +89,7 @@ jobs:
             git fetch --quiet origin main
             git checkout --quiet --force FETCH_HEAD
             local_sha=$(git rev-parse HEAD)
+            node scripts/verify-vercel-main-checks.mjs "$local_sha"
             echo "::group::attempt $attempt/$attempts — building $local_sha"
             vercel build --prod --token="$VERCEL_TOKEN"
             echo "::endgroup::"
@@ -85,6 +99,7 @@ jobs:
             echo "checkout=$local_sha remote-main=$remote_sha"
             if [ "$local_sha" = "$remote_sha" ]; then
               vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+              node scripts/verify-vercel-live-version.mjs "$local_sha"
               echo "::notice::published $local_sha to the production domains"
               exit 0
             fi
