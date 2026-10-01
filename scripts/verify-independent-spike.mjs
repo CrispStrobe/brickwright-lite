@@ -12,7 +12,7 @@ const assets=resolve(root,'overlay/scratch-gui/static/pybricks-sim');
 const hidden=`${assets}.independent-test-hidden`;
 if(existsSync(hidden))throw new Error('previous hidden asset directory exists; restore it before testing');
 if(!existsSync(assets))throw new Error('expected shipped assets for the reversible absence check');
-const tests=['independent-spike-controller','independent-spike-backend','spike-simulator-pane','spike-arena-sim','spike-arena-challenges',
+const tests=['independent-spike-controller','independent-spike-backend','independent-spike-speed-envelope','spike-simulator-pane','spike-arena-sim','spike-arena-challenges',
  'spike3-python-arena','spike3-python-arena-d1','virtual-spike-extension-e2e','virtual-spike-classic-extension-e2e',
  'virtual-spike-prime','virtual-spike-classic','virtual-spike-panel','virtual-spike-shared-state'];
 renameSync(assets,hidden);
