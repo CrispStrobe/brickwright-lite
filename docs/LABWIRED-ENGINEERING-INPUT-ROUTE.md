@@ -56,8 +56,9 @@ median / 0.653157× minimum); publication stayed blocked and pins are unchanged.
 
 The Lite branch incorporates main's virtual-SPIKE-only runtime retirement.
 CI follow-up wires both existing independent SPIKE gates, separates receipt
-outputs from private fixture inputs, corrects the notice heading and removes
-an unused compatibility re-export. Focused follow-up tests passed 59/59;
+outputs from private fixture inputs and corrects the notice heading. Main's
+subsequent compatibility-interface consumer is preserved; the re-export is
+therefore retained rather than left missing. Focused follow-up tests passed 59/59;
 backend/controller/speed-envelope tests executed against the relocated private
 fixtures and passed 39/39 with zero skips. Full hosted CI still must pass before
 merging Lite PR #588; local missing GUI dependencies are not a passing gate.
