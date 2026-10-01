@@ -91,5 +91,7 @@ test('sandbox does not wait for challenge downloads and late downloads cannot re
         await settle(() => browser.win.__bwSpikeArena._pane.state.units.length > 0, 'late unit index');
         assert.equal(browser.win.__bwSpikeArena.bridge, bridge);
         assert.equal(browser.win.__bwSpikeArena.mode, 'sandbox');
+        await act(async () => { await one(renderer, 'bw-spike-arena-challenges').props.onClick(); });
+        await settle(() => browser.win.__bwSpikeArena.mode === 'challenge', 'challenges available after downloads recover');
     } finally { release(); if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup(); }
 });

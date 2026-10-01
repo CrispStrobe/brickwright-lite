@@ -538,7 +538,7 @@ class SpikeArenaPane extends React.Component {
                     <button type="button" style={btn} aria-pressed={Boolean(this.state.sandbox)}
                         data-testid="bw-spike-arena-sandbox" onClick={() => this.openSandbox()}>{t('sandbox')}</button>
                     <button type="button" style={btn} aria-pressed={!this.state.sandbox} disabled={status === 'loading'}
-                        data-testid="bw-spike-arena-challenges" onClick={() => this.select(index)}>{t('challenges')}</button>
+                        data-testid="bw-spike-arena-challenges" onClick={() => this.state.challenges.length ? this.select(index) : this.openUnit(DEFAULT_UNIT)}>{t('challenges')}</button>
                     {this.state.sandbox ? null : <><select value={unit ? unit.id : ''} aria-label={t('unit')} data-testid="bw-spike-arena-unit"
                         onChange={e => this.openUnit(e.target.value)} style={{flex: '1 1 140px', minWidth: 0, minHeight: 32}}
                         disabled={status === 'loading' || units.length < 2}>
