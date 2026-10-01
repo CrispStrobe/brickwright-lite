@@ -1095,6 +1095,10 @@ who you are and who you are talking to before broadcasting either.
 
 ## Skips that execute elsewhere
 
+- test/independent-spike-backend.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: private/local strict fixture run on lego-vps 2026-10-01 codex-independent-spike; 324-check receipt in brickwright-firmware-private audits/independent-spike/2026-10-01-runtime-retirement/main-validation/brickwright-retirement-main-full.tap; reproduce with BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1 and private BW_SPIKE_EVIDENCE_DIR
+- test/independent-spike-controller.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: private/local strict fixture run on lego-vps 2026-10-01 codex-independent-spike; 324-check receipt in brickwright-firmware-private audits/independent-spike/2026-10-01-runtime-retirement/main-validation/brickwright-retirement-main-full.tap; reproduce with BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1 and private BW_SPIKE_EVIDENCE_DIR
+- test/independent-spike-speed-envelope.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: private/local strict fixture run on lego-vps 2026-10-01 codex-independent-spike; 324-check receipt in brickwright-firmware-private audits/independent-spike/2026-10-01-runtime-retirement/main-validation/brickwright-retirement-main-full.tap; reproduce with BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1 and private BW_SPIKE_EVIDENCE_DIR
+
 - test/vendor-forward-packages.test.mjs :: BW_BOARD_DIR unset — actual forward BIOS CLI not exercised :: workflow .github/workflows/build.yml step 'Fetch the pinned bw-board tree for the pin-reader tests' supplies the exact engine input for the unit suite; also explicitly run against takeover app/7fbdfa9 checkout on lego-vps 2026-09-12 codex-app-adoption-audit
 
 Every test CI skips must point at the ONE place it executes (plan T13). One line per file and

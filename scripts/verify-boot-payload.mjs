@@ -70,17 +70,17 @@ const LAZY = [
         sharedLazy: true,
         why: 'the guarded load in circuit-tab.jsx (webpackChunkName "bw-board")'},
     // three.js and the arena's 3D view (task D3): fetched when a learner opens
-    // the 3D view, not with the arena pane (chunk bw-spike-arena), and never at
+    // the 3D view, not with the simulator pane (chunk bw-spike-simulator), and never at
     // boot. The marker is a string in three's WebGLRenderer, the one class the
     // view cannot be without; the second is the view's own canvas test id.
     // webpack's splitChunks moves the three package itself into an anonymous
     // vendor chunk that only bw-arena-3d requests (measured on a production
     // build: 589 KiB raw, 144 KiB gz), so its marker is looked for in lazy JS.
     {what: 'three.js (the arena 3D view\'s renderer)', marker: 'WebGL 1 is not supported since r163.', chunk: 'bw-arena-3d',
-        sharedLazy: true, notInChunks: ['bw-spike-arena'],
+        sharedLazy: true, notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx (webpackChunkName "bw-arena-3d")'},
     {what: 'the arena 3D view', marker: 'bw-spike-arena-3d-canvas', chunk: 'bw-arena-3d',
-        notInChunks: ['bw-spike-arena'],
+        notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in spike-arena-pane.jsx (webpackChunkName "bw-arena-3d")'},
     {what: 'lesson waves', marker: '"journeyId":"lesson-waves', altMarkers: ['journeyId:"lesson-waves'], chunk: 'guided-lessons',
         why: 'React.lazy(GuidedLessons) in src/components/gui/gui.jsx',

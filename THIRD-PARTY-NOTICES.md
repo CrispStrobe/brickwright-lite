@@ -1830,7 +1830,7 @@ not linked, and not distributed** in any form:
 - **Acorn BBC BASIC ROM** — Crown Copyright, not redistributable
 - **Enhanced BASIC (ehBASIC)** by Lee Davison — licence unclear, not used
 
-## Independent SPIKE simulator backend — BSD-3-Clause
+## spike-sim — Independent SPIKE simulator backend — BSD-3-Clause
 
 `overlay/scratch-gui/src/lib/spike-sim/independent-backend.js`,
 `speed-envelope.mjs`, its backend
