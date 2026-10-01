@@ -102,16 +102,45 @@ now passed native board qualification on EPYC 9V74: motion **1.290x median /
 1.261x minimum**, all five samples above 1x. The
 [full receipt and retained-ELF provenance](docs/receipts/2026-09-30-microbit-exact-main-ede33/qualification-context.json)
 preserve that exact source and runner; this is not a cross-runner gain or a
-new exact-main all-chip result. A separate countdown candidate's isolated
+new exact-main all-chip result. Countdown PR136 landed at `8736e1ff`; its isolated
 EPYC 7763 A/B gains **7.79%**, with all ten candidate windows above real time;
-fresh composition qualification is pending. The optimization candidate cleared all 40 synthetic RTx fixtures,
-but six pre-existing Nordic relative step-cost gates remain tracked for main
+qualification remains historical. Current main `5fb3d7d4` contains countdown and
+the landed GPIO runtime; the exact `ede33fb4` receipt is not a measurement
+of that current main. The earlier optimization cleared all 40 synthetic RTx fixtures,
+while the six historical Nordic relative step-cost failures remain tracked
 without threshold changes. GPIO-only PR137 head `72f8b4cf`
 [passed all 40 RTx and unchanged relative-cost gates](https://github.com/CrispStrobe/labwired-core/actions/runs/36726333551),
 but [its native run](https://github.com/CrispStrobe/labwired-core/actions/runs/36726335356)
 passed 331 functional executions and **failed motion real time (0.995903x median
-on EPYC 7763)**. New combined head `464bd0ed` native/CorePerf/controlled-A/B
-qualification is queued; it is not landed or a main/browser promotion.
+on EPYC 7763)**; that is predecessor evidence, not the newer candidate result.
+Fresh PR137 head `8c745a68` has the qualified combined engine:
+[native motion **1.396x median / 1.369x minimum**](https://github.com/CrispStrobe/labwired-core/actions/runs/36733437798),
+all five samples >=1x on EPYC 9V74;
+[all 40 RTx and unchanged relative-cost gates pass](https://github.com/CrispStrobe/labwired-core/actions/runs/36733427626),
+including the six Nordic regressions. Controlled A/B against runtime-main
+`ede33fb4` measured **+8.396746%**, all ten candidate windows >=1x.
+Fresh head `8c745a68` [also passed native qualification on EPYC 7763](https://github.com/CrispStrobe/labwired-core/actions/runs/36772744347):
+motion **1.116x median / 1.051x minimum**, all five samples >=1x with zero
+transport errors; its [fresh paired A/B](https://github.com/CrispStrobe/labwired-core/actions/runs/36772744288)
+passed. This is separate from the earlier EPYC 9V74 observation, not a
+cross-runner gain. Final PR137 head `bd05656f` changes CI only; production is
+identical to qualified `8c745a68`. That earlier head's three workspace shards and aggregate
+passed, but the original twenty-minute gate timed out compiling feature-off
+core after Clippy/default-member checks passed. The
+[fresh split CI run](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919591)
+keeps the commands, twenty-minute budgets and fail-closed aggregate unchanged
+and **passed full Core CI**, including all three shards and aggregate. PR137
+now **landed at `5fb3d7d44cc1487fdab757906ae62222e8798e93`**. Its final-head
+[native qualification](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919418)
+passed on EPYC 7763: motion **1.127x median / 1.117x minimum**, all five >=1x
+with zero transport errors; 349 overlapping functional executions plus both
+benchmarks passed. [Final paired A/B](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919437)
+also passed. [Final-head CorePerf](https://github.com/CrispStrobe/labwired-core/actions/runs/36779028846)
+passed on `bd05656f`: all forty chip medians/minima >=1x and all 78 relative-
+cost board-modes passed unchanged gates, with no regressions, waivers, skips or
+contract failures. The faster nRF51 advisory remains. Exact post-merge
+main measurement remains pending. No browser pin promotion or issue 120 closure
+is claimed.
 Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
 qualification remains pending. See
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
