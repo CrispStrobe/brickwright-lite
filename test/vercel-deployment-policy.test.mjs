@@ -22,6 +22,8 @@ test('Vercel production deploy is validated main plus manual and nightly at 02:0
     assert.match(workflow, /workflows: \["Build \(permissive base\)", "debugger-focused", "vendor-freshness"\]/);
     assert.match(workflow, /workflow_run\.event == 'push'/);
     assert.match(workflow, /workflow_run\.head_repository\.full_name == github\.repository/);
+    assert.match(workflow, /needs\.eligible\.outputs\.ready == 'true'/);
+    assert.match(workflow, /--eligibility >> \"\$GITHUB_OUTPUT\"/);
     assert.match(workflow, /node scripts\/verify-vercel-main-checks\.mjs "\$local_sha"/);
     assert.match(workflow, /node scripts\/verify-vercel-live-version\.mjs "\$local_sha"/);
 });

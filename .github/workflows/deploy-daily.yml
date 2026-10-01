@@ -21,15 +21,37 @@ permissions:
   actions: read
 
 jobs:
+  eligible:
+    name: Check automatic deployment eligibility
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-vercel-main-checks.mjs "$(git rev-parse HEAD)" --eligibility >> "$GITHUB_OUTPUT"
+
   deploy:
     name: Deploy current BrickWright Lite
-    # Never run privileged deployment from a pull-request validation event.
+    needs: eligible
+    # Earlier completed supporting checks are eligibility decisions, not failed
+    # publications. The last successful validation event schedules the deploy.
     if: >-
-      github.event_name != 'workflow_run' ||
-      (github.event.workflow_run.event == 'push' &&
-       github.event.workflow_run.head_branch == 'main' &&
-       github.event.workflow_run.head_repository.full_name == github.repository &&
-       github.event.workflow_run.conclusion == 'success')
+      !cancelled() && (github.event_name != 'workflow_run' || needs.eligible.outputs.ready == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

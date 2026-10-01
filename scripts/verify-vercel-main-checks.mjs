@@ -49,6 +49,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         .sort((a, b) => b.id - a.id)[0];
     const jobs = build ? await githubPages(repo, `actions/runs/${build.id}/jobs?filter=latest`, 'jobs', token) : [];
     const problems = validationProblems(runs, jobs, sha);
+    if (process.argv.includes('--eligibility')) {
+        console.log(`ready=${problems.length === 0}`);
+        if (problems.length) console.error(`Production job skipped while validation is incomplete: ${problems.join('; ')}`);
+        process.exit(0);
+    }
     if (problems.length) throw new Error(`Refusing production publication of ${sha}: ${problems.join('; ')}`);
     console.log(`Validated main ${sha}: complete build and all applicable supporting workflows succeeded`);
 }
