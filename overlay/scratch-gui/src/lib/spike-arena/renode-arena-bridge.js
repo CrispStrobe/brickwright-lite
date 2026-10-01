@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 // Observed guest encoders drive the existing world; the native controller never steps here.
+import {writeObservedMotor} from '../virtual-hub/motor-telemetry.js';
 const PORTS = 'ABCDEF';
 const REQUIRED = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1'];
 export class RenodeArenaBridge {
@@ -25,6 +26,9 @@ export class RenodeArenaBridge {
             !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) throw new Error('Invalid guest clock or sequence');
         const sides = [this.bridge.robot.left, this.bridge.robot.right];
         const motors = sides.map(side => {
+            if (this.bridge.hubState.data.sensors[PORTS.indexOf(side.port)]?.kind !== 'motor') {
+                throw new Error('Arena drive motor is no longer attached');
+            }
             const matches = frame.motors?.filter(motor => motor.port === side.port);
             if (matches?.length !== 1) throw new Error('Guest drive motor is unavailable');
             const motor = matches[0];
@@ -59,9 +63,7 @@ export class RenodeArenaBridge {
             for (let i = 0; i < count; i++) this.bridge.sim.advanceWheels(travels[0] / count, travels[1] / count, ms / count);
         }
         for (const motor of motors) {
-            Object.assign(hub.data.motors[PORTS.indexOf(motor.port)], {
-                position: motor.position, speed: motor.speedDps / 3, degPerSec: motor.speedDps, stalled: motor.stalled
-            });
+            writeObservedMotor(hub, motor.port, motor);
             this.bridge.lastPositions[motor.port] = motor.position;
         }
         this.last = {identity, seq: frame.seq, clockNs: frame.clockNs, motors};

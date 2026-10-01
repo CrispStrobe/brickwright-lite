@@ -547,7 +547,12 @@ establishes an encoder baseline without teleporting the rover. Later frames
 must preserve the image hash and connection generation and have increasing
 sequence numbers, nondecreasing time, finite motor outputs and gaps at most
 2 seconds. Wheel deltas are interpolated into world steps of at most 5 ms.
-This is a sampled trajectory, not a guarantee of the unsampled path.
+This is a sampled trajectory, not a guarantee of the unsampled path. Guest
+encoders are quantized to 0.001 degree; accepted deltas allow 0.002 degree
+rounding tolerance above the guest's 300 degrees/s bound. Hub/legacy speed
+percentages are derived from the configured hub motor's nominal speed, while
+the guest stream's own percentage uses its synthetic 300 degrees/s target.
+Both encoder and legacy motor packets are updated before one hub notification.
 
 Color/reflection, distance in millimetres, force/touch and motor load percent
 return through the closed `renode.spike.arena.inputs.write` broker operation.

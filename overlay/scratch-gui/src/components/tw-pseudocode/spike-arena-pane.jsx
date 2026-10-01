@@ -390,6 +390,7 @@ class SpikeArenaPane extends React.Component {
     async startFirmware () {
         if (!this.bridge) return;
         await this.stopProgram();
+        this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
         const internals = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
         const capabilities = this.props.renodeCapabilities || createNativeRenodeCapabilities({

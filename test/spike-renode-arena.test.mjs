@@ -28,6 +28,7 @@ test('guest clock and encoders drive the shared arena without stepping native mo
     assert.ok(bridge.sim.pose.x > x + 2);
     assert.equal(bridge.sim.timeMs, 200);
     assert.equal(hub.data.motors[1].position, 90);
+    assert.deepEqual(hub.data.classicPorts[1], [48, [27, 90, 0, 27]]);
     assert.equal(hub.clockOwner, 'renode');
     assert.equal(inputs.sensors.find(s => s.port === 'D').kind, 'distance');
     assert.equal(hub.data.sensors[3].distance, inputs.sensors.find(s => s.port === 'D').values.distanceMillimeters);
