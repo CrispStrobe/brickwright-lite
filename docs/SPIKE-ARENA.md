@@ -544,7 +544,7 @@ Both routes use the same `ArenaHubBridge`, arena geometry, sensors, hub and
 2D/3D renderer. The Renode adapter reads guest encoder degrees and the guest
 millisecond clock; it does not step the native controller. Its first frame
 establishes an encoder baseline without teleporting the rover. Later frames
-must preserve the image hash and connection generation and have increasing
+require the three arena capabilities plus `state-sample/v1`, preserve the image hash and connection generation and have increasing
 sequence numbers, nondecreasing time, finite motor outputs and gaps at most
 2 seconds. Wheel deltas are interpolated into world steps of at most 5 ms.
 This is a sampled trajectory, not a guarantee of the unsampled path. Guest

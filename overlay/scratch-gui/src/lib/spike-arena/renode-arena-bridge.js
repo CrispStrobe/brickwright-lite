@@ -3,7 +3,7 @@
 // Observed guest encoders drive the existing world; the native controller never steps here.
 import {writeObservedMotor} from '../virtual-hub/motor-telemetry.js';
 const PORTS = 'ABCDEF';
-const REQUIRED = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1'];
+const REQUIRED = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1'];
 export class RenodeArenaBridge {
     constructor (bridge) {
         if (!bridge?.hubState || !bridge.sim) throw new TypeError('A shared arena bridge is required');

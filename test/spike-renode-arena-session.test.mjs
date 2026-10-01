@@ -37,7 +37,7 @@ test('hub Stop cancels the externally owned guest and clears its ownership after
     const b = bridge(); let stops = 0;
     const frame = {schemaVersion: 1, type: 'snapshot', seq: 1, clockNs: 1000000,
         target: {board: 'spike-prime', firmware: 'brickwright-arena-demo', transport: 'none', imageSha256: 'a'.repeat(64),
-            capabilities: ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1']}, lifecycle: {connectionGeneration: 1},
+            capabilities: ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1']}, lifecycle: {connectionGeneration: 1},
         ports: [{id: 'C', attached: true, kind: 'color'}, {id: 'D', attached: true, kind: 'distance'}, {id: 'E', attached: true, kind: 'force'}],
         motors: [{port: 'A', position: 0, speedDps: -2, demandDirection: -1, stalled: false},
             {port: 'B', position: 0, speedDps: 2, demandDirection: 1, stalled: false}]};

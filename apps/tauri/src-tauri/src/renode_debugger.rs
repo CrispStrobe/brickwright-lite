@@ -350,8 +350,21 @@ impl RenodeDebugger {
             .as_ref()
             .ok_or_else(|| "Renode debugger is not started".to_owned())?;
         match &active.state {
-            TargetState::Spike(state) => serde_json::to_value(state.sample()?)
-                .map_err(|_| "brick-state snapshot unavailable".to_owned()),
+            TargetState::Spike(state) => {
+                let latest = state.latest()?;
+                let snapshot = if latest
+                    .target
+                    .capabilities
+                    .iter()
+                    .any(|cap| cap == "state-sample/v1")
+                {
+                    state.sample()?
+                } else {
+                    latest
+                };
+                serde_json::to_value(snapshot)
+                    .map_err(|_| "brick-state snapshot unavailable".to_owned())
+            }
             TargetState::Ev3 { feed, uart: path } => {
                 let mut state = serde_json::to_value(feed.sample()?)
                     .map_err(|_| "EV3 snapshot unavailable".to_owned())?;

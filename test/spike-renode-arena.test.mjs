@@ -8,7 +8,7 @@ import {RenodeArenaBridge} from '../overlay/scratch-gui/src/lib/spike-arena/reno
 import {sandboxWorld} from '../overlay/scratch-gui/src/lib/spike-arena/arena-sandbox.js';
 const frame = (seq, ms, position = 0) => ({schemaVersion: 1, type: 'snapshot', seq, clockNs: ms * 1e6,
     target: {board: 'spike-prime', firmware: 'brickwright-arena-demo', transport: 'none', imageSha256: 'a'.repeat(64),
-        capabilities: ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1']},
+        capabilities: ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1']},
     lifecycle: {connectionGeneration: 1},
     ports: [{id: 'C', attached: true, kind: 'color'}, {id: 'D', attached: true, kind: 'distance'}, {id: 'E', attached: true, kind: 'force'}],
     motors: [{port: 'A', position: -position, speedDps: -300, demandDirection: -1, stalled: false},
