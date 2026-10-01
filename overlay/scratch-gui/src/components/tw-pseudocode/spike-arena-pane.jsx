@@ -93,8 +93,9 @@ class SpikeArenaPane extends React.Component {
         const pending = window.__bwSpikeArenaPending;
         const wantedUnit = (pending && typeof pending === 'object' && pending.unit) || DEFAULT_UNIT;
         const wanted = pending && typeof pending === 'object' ? pending.id : pending;
+        // Free play must animate even if challenge downloads never finish.
+        this.raf = requestAnimationFrame(this.frame);
         await this.openUnit(wantedUnit, wanted);
-        if (!this.disposed) this.raf = requestAnimationFrame(this.frame);
     }
 
     /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */

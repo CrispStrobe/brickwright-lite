@@ -84,6 +84,9 @@ test('sandbox does not wait for challenge downloads and late downloads cannot re
         await act(async () => { await button.props.onClick(); });
         assert.equal(browser.win.__bwSpikeArena.mode, 'sandbox');
         const bridge = browser.win.__bwSpikeArena.bridge;
+        await act(async () => { await one(renderer, 'bw-spike-sandbox-drive-forward').props.onClick(); });
+        await browser.frames(10);
+        assert.ok(bridge.sim.pose.x > bridge.world.start.x, 'free play animates before downloads finish');
         await act(async () => { release(); });
         await settle(() => browser.win.__bwSpikeArena._pane.state.units.length > 0, 'late unit index');
         assert.equal(browser.win.__bwSpikeArena.bridge, bridge);

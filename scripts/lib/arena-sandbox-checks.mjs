@@ -55,7 +55,7 @@ export async function verifyEmptyArena (browser, url, check, evidence) {
     page.on('pageerror', error => errors.push(error.message));
     try {
         await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
-        await page.route('**/static/spike-arena/**', route => route.abort());
+        await page.route('**/static/spike-arena/**', () => {}); // Deliberately keep challenge requests pending.
         await page.goto(url, {waitUntil: 'domcontentloaded'});
         await page.getByRole('tab', {name: 'Code', exact: true}).click();
         const devices = page.getByTestId('bw-device-select');
