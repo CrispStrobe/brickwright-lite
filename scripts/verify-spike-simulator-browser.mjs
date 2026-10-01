@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import {verifyArenaSandbox} from './lib/arena-sandbox-checks.mjs';
+import {verifyArenaSandbox, verifyEmptyArena} from './lib/arena-sandbox-checks.mjs';
 import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
@@ -93,6 +93,7 @@ try {
     check('3D arena renders the shared virtual world');
     await page.screenshot({path: `${evidence}/native-3d-arena.png`, fullPage: true});
     await verifyArenaSandbox(page, check, evidence);
+    await verifyEmptyArena(browser, page.url(), check, evidence);
     assert.deepEqual(firmwareRequests, [], 'the complete virtual SPIKE flow uses no firmware binaries');
     assert.deepEqual(errors, [], 'no uncaught browser exceptions');
 } catch (error) {

@@ -12,7 +12,7 @@ import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 const browserName = process.env.BW_BROWSER || 'chromium';
 assert.ok(['chromium', 'firefox'].includes(browserName));
 const mutation = process.env.BW_EDITOR_MUTATION || '';
-assert.ok(['', 'rigid-column'].includes(mutation));
+assert.ok(['', 'rigid-column', 'lost-image-draft'].includes(mutation));
 const evidence = `${privateSpikeEvidenceDirectory()}/editor-responsive-${browserName}${mutation ? `-${mutation}` : ''}`;
 await mkdir(evidence, {recursive: true});
 let server;

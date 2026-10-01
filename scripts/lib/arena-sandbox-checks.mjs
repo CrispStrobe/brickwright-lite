@@ -47,3 +47,27 @@ export async function verifyArenaSandbox (page, check, evidence) {
     await page.screenshot({path: `${evidence}/sandbox-3d.png`});
     check('3D cameras use the same edited sandbox world');
 }
+
+export async function verifyEmptyArena (browser, url, check, evidence) {
+    const context = await browser.newContext({viewport: {width: 1100, height: 800}, serviceWorkers: 'block'});
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    try {
+        await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
+        await page.route('**/static/spike-arena/**', route => route.abort());
+        await page.goto(url, {waitUntil: 'domcontentloaded'});
+        await page.getByRole('tab', {name: 'Code', exact: true}).click();
+        const devices = page.getByTestId('bw-device-select');
+        await devices.waitFor({timeout: 60000});
+        await page.getByTestId('bw-open-spike-arena').click();
+        await page.getByTestId('bw-spike-arena-sandbox').click();
+        await page.waitForFunction(() => window.__bwSpikeArena?.mode === 'sandbox');
+        await page.getByTestId('bw-spike-sandbox-drive-forward').click();
+        await page.waitForFunction(() => window.__bwSpikeArena.snapshot.pose.x > 35);
+        await page.getByTestId('bw-spike-sandbox-drive-stop').click();
+        assert.deepEqual(errors, []);
+        await page.screenshot({path: `${evidence}/empty-project-sandbox.png`});
+        check('empty project sandbox is usable with all challenge downloads unavailable');
+    } finally { await context.close(); }
+}

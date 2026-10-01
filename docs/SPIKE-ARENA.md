@@ -438,7 +438,8 @@ these units included, to zero unread lines.
 
 ## Free sandbox
 
-Open **Code → SPIKE → 🪐 SPIKE arena → Free sandbox**. No lesson, challenge,
+Open **Code → 🪐 SPIKE arena → Free sandbox**. The arena button is available
+regardless of the selected chip or the current program. No lesson, challenge,
 reference solution or program is needed. The sandbox can open while challenge
 files are still loading. Challenges remains a separate mode with its original
 scoring and deadlines.

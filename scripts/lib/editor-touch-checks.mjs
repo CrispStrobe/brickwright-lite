@@ -47,6 +47,15 @@ export async function verifyEditorTouch (browser, url, evidence, check) {
             await canvas.tap({position: {x: 30, y: 30}});
             const drawn = await canvas.evaluate(element => element.toDataURL());
             assert.notEqual(drawn, before, 'a real touch tap draws pixels');
+            if (process.env.BW_EDITOR_MUTATION === 'lost-image-draft') {
+                await canvas.evaluate(element => {
+                    const key = Object.keys(element).find(name => /^__react(?:Fiber|InternalInstance)\$/.test(name));
+                    let fiber = element[key];
+                    while (fiber && typeof fiber.stateNode?.hasUnsavedChanges !== 'function') fiber = fiber.return;
+                    if (!fiber) throw new Error('The pixel editor instance was not found for the mutation');
+                    fiber.stateNode.save = () => {};
+                });
+            }
             // No Save click: changing the target must preserve the draft.
             await page.getByTestId('bw-pixel-more-toggle').tap();
             await targets.selectOption(backdrop.id);
