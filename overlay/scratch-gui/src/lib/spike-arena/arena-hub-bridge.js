@@ -8,7 +8,7 @@
 //   IN  (hub -> world)  motors[port].position, degrees counted, for the two
 //                       drive ports. Whoever turned them (the hub's motor model
 //                       answering Scratch blocks or SPIKE 3 Python, or the
-//                       Pybricks simulator mirroring its own motors) is not
+//                       external simulator mirroring its motors) is not
 //                       this module's business: a position delta is a wheel
 //                       turning.
 //   OUT (world -> hub)  sensors[port] for each mounted sensor, imu.yaw through

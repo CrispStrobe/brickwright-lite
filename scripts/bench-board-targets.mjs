@@ -3,7 +3,7 @@
  * Target-level simulator benchmark.
  *
  * Unlike bw-board's core dispatch benchmark, this measures the adapter that
- * Brickwright actually drives for AVR boards and the shipped Pybricks hub.
+ * Brickwright actually drives for AVR boards.
  * When LABWIRED_WASM and LABWIRED_CORE are set it also measures the exact
  * LabWired nRF52833 and ATSAMD51 descriptors from the pinned engine source.
  *
@@ -51,27 +51,6 @@ async function benchAvr () {
     }
 }
 
-async function benchPybricks () {
-    const assetDir = resolve(root, 'overlay/scratch-gui/static/pybricks-sim');
-    const {createPybricksHost} = await import(pathToFileURL(resolve(root,
-        'overlay/scratch-gui/src/lib/pybricks-sim/pybricks-hub-host.js')));
-    const require = createRequire(import.meta.url);
-    const factory = require(resolve(assetDir, 'pybricks-hub.js'));
-    const wasmBinary = readFileSync(resolve(assetDir, 'pybricks-hub.wasm'));
-    const host = await createPybricksHost({factory, wasmBinary, realtime: false});
-    await host.boot();
-    // Longer single idles can trip Pybricks' own shutdown horizon; repeat this
-    // stable window instead of turning a benchmark into a firmware-lifecycle test.
-    const simulatedMs = 10_000;
-    const samples = [];
-    for (let pass = 0; pass < passes; pass++) {
-        const seconds = await timed(() => host.idle(simulatedMs));
-        samples.push((simulatedMs / 1000) / seconds);
-    }
-    rows.push({target: 'SPIKE Prime', engine: 'Pybricks WASM', samples, medianRtx: median(samples),
-        note: 'Unpaced throughput; the browser deliberately selects realtime=true.'});
-}
-
 function cortexImage (loadAddress) {
     const words = loadAddress === 0
         ? [0x1000, 0x2000, 0x0009, 0x0000, 0x2000, 0x2120, 0x0609, 0x3001, 0x6008, 0x680a, 0xe7fb]
@@ -115,7 +94,7 @@ async function benchLabwired () {
     }
 }
 
-for (const bench of [benchAvr, benchPybricks, benchLabwired]) {
+for (const bench of [benchAvr, benchLabwired]) {
     try {
         await bench();
     } catch (error) {

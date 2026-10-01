@@ -13,7 +13,7 @@ import {VmStepClock, frameSimMs} from '../../lib/spike-arena/arena-clock.js';
  *
  * The program is whatever drives lite's virtual SPIKE hub: the spikeprime
  * blocks in the Scratch VM (and so the SPIKE dialect and every two-way language
- * that becomes them), SPIKE 3 Python, or Pybricks. The pane never talks to a
+ * that becomes them), LEGO SPIKE 3 Python. The pane never talks to a
  * program. It connects the spikeprime blocks to the virtual hub when they are
  * loaded, presses the green flag, and owns simulated time: each animation
  * frame it steps the hub's motor model and the world together, in fixed steps.
@@ -242,7 +242,6 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
-        if (this.props.backend === 'pybricks') return;
         if (!this.bridge) return;
         if (this.state.status === 'paused' && this.bridge.verdict.status === 'running') {
             this.lastFrame = null;
@@ -323,7 +322,7 @@ class SpikeArenaPane extends React.Component {
 
     frame (now) {
         if (this.disposed) return;
-        if (this.bridge && this.state.status === 'running' && this.hubState.clockOwner !== 'pybricks') {
+        if (this.bridge && this.state.status === 'running' && (!this.hubState.clockOwner || this.hubState.clockOwner === 'native')) {
             // ONE CLOCK. With a VM, simulated time is what the VM actually
             // stepped — starve it and the mission slows with it, so the verdict
             // is a fact about the program rather than about runner load. With no
@@ -449,7 +448,7 @@ class SpikeArenaPane extends React.Component {
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}
-                                disabled={!world || this.props.backend === 'pybricks'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{t('start')}</button>
+                                disabled={!world} onClick={() => this.start()} data-testid="bw-spike-arena-start">{t('start')}</button>
                         )}
                         <button type="button" style={btn} disabled={!world} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>
                         <button type="button" style={btn} disabled={!world} onClick={() => this.reset()} data-testid="bw-spike-arena-reset">{t('reset')}</button>

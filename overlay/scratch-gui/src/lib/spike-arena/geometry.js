@@ -3,7 +3,7 @@
 //
 // Coordinates are centimetres on the mat, x to the right and y DOWN (the
 // canvas convention), so a heading that increases turns clockwise as seen from
-// above, which is the sign SPIKE's yaw and Pybricks' heading both use.
+// above, which is the sign SPIKE's yaw and the arena heading both use.
 // Headings are degrees; 0 faces +x.
 //
 // Shapes (the world format, docs/SPIKE-ARENA.md):

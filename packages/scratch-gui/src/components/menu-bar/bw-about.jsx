@@ -32,7 +32,6 @@ const BUNDLED_LICENCES = [
     ['MakeCode extensions: pxt-microturtle, pxt-radio-blockchain, pxt-kitronik-motor-driver (MIT)',
         'static/licenses/makecode-extensions.MIT.txt'],
     ['SmallerC + ucpp (BSD-2-Clause / BSD)', 'static/licenses/smallerc.BSD-2-Clause.txt'],
-    ['SPIKE simulator (MIT / BSD / Apache)', 'static/licenses/pybricks-micropython.MIT.txt'],
     ['Bochs BIOS + VGABios firmware (LGPL-2.1)', 'static/licenses/free-386-firmware.LGPL-2.1.txt'],
     ['bw-circuit-ui (MPL-2.0)', 'static/licenses/bw-circuit-ui.MPL-2.0.txt'],
     ['NQC (MPL-2.0)', 'static/licenses/nqc.MPL-2.0.txt']
@@ -91,10 +90,7 @@ const L10N = {
             'avr8js and rp2040js (MIT, Wokwi) are the AVR and Cortex-M0 cores; emu8051 (MIT) ' +
             'the 8051. The ASM tab\'s 8086 example programs are carried verbatim from the ' +
             '8086 Assembly Language Programs collection, Copyright (c) 2021 Amey Thakur and ' +
-            'Mega Satish, MIT. The SPIKE Prime simulator is Pybricks MicroPython, Copyright (c) ' +
-            '2018-2026 The Pybricks Authors, and MicroPython, Copyright (c) 2013-2025 Damien P. ' +
-            'George, compiled to WebAssembly, with MIT, BSD and Apache licensed components. ' +
-            'Full component notices are available offline.',
+            'Mega Satish, MIT. The virtual SPIKE Prime hub and arena use Brickwright’s independent simulator.',
         thanksTexts: 'Licence texts (offline):',
         notices: 'Full third-party notices',
         affil: 'Affiliation',
@@ -144,10 +140,7 @@ const L10N = {
             'Simulator mit voller Genauigkeit. avr8js und rp2040js (MIT, Wokwi) sind die AVR- ' +
             'und Cortex-M0-Kerne; emu8051 (MIT) der 8051. Die 8086-Beispielprogramme im ' +
             'ASM-Tab stammen unveraendert aus der Sammlung 8086 Assembly Language Programs, ' +
-            'Copyright (c) 2021 Amey Thakur und Mega Satish, MIT. Der SPIKE-Prime-Simulator ist ' +
-            'Pybricks MicroPython, Copyright (c) 2018-2026 The Pybricks Authors, und MicroPython, ' +
-            'Copyright (c) 2013-2025 Damien P. George, nach WebAssembly uebersetzt, mit ' +
-            'Komponenten unter MIT, BSD und Apache. Vollstaendige Hinweise sind offline verfuegbar.',
+            'Copyright (c) 2021 Amey Thakur und Mega Satish, MIT. Der virtuelle SPIKE-Prime-Hub und die Arena nutzen Brickwrights eigenen Simulator.',
         thanksTexts: 'Lizenztexte (offline):',
         licenseNote: 'Quelloffen unter BSD-3-Clause, Apache-2.0, MIT, MPL-2.0 und LGPL-2.1. Brickwright nutzt ' +
             'den letzten BSD-Scratch-Stack sowie eigene Editoren und Engines; es ist kein TurboWarp-Fork.',

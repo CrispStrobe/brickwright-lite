@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright 2026 Brickwright contributors.
+import {effectiveMotorSpeed} from './speed-envelope.mjs';
+
 export const MAX_DEG_PER_S = Object.freeze({
     48: 1110,
     75: 1110,
@@ -81,6 +83,11 @@ export default class IndependentSpikeBackend {
         return MAX_DEG_PER_S[id] ?? DEFAULT_MAX_DEG_PER_S;
     }
 
+    _effectiveSpeed(i, dps) {
+        const id = this.data.sensors[i]?.deviceId ?? this.data.classicPorts[i]?.[0];
+        return effectiveMotorSpeed(dps, {deviceId: id > 0 ? id : 48, limitDps: this.maxSpeed(i)});
+    }
+
     percentToDps(port, percent) {
         const i = this._port(port);
         return clamp(finite(percent), -100, 100) * this.maxSpeed(i) / 100;
@@ -136,13 +143,13 @@ export default class IndependentSpikeBackend {
         const i = this._port(port);
         finite(dps);
         this._start(i, 'speed', {
-            requested: clamp(dps, -this.maxSpeed(i), this.maxSpeed(i))
+            requested: this._effectiveSpeed(i, dps)
         });
     }
 
     _position(i, target, dps) {
         this._assertClock();
-        const speed = Math.min(Math.abs(dps), this.maxSpeed(i));
+        const speed = Math.abs(this._effectiveSpeed(i, dps));
         if (target !== this.data.motors[i].position && speed === 0) return Promise.reject(new RangeError('Position motion needs nonzero speed'));
         const c = this._start(i, 'position', {
             target, requested: speed
@@ -178,7 +185,7 @@ export default class IndependentSpikeBackend {
         nonnegative(ms);
         finite(dps);
         const c = this._start(i, 'time', {
-            remaining: ms, requested: clamp(dps, -this.maxSpeed(i), this.maxSpeed(i))
+            remaining: ms, requested: this._effectiveSpeed(i, dps)
         });
         if (ms === 0) {
             this.data.motors[i].degPerSec = 0;

@@ -439,4 +439,4 @@ file formats only. Trademarks belong to their owners.
 
 The virtual SPIKE hub uses an [independent simulator backend](docs/independent-spike/README.md)
 for Scratch/native programs, with shared arena state and deterministic motor control.
-Pybricks Python retains the separate audited WASM execution path.
+Supported LEGO SPIKE App 3 Python imports run through the same virtual hub.

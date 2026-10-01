@@ -1,8 +1,0 @@
-{
-  "role": "contract-only numeric implementer",
-  "conversation_history": "none",
-  "files": {
-    "contract.txt": "1505efa6fe0c462410eb1489870ea310c7d85d1590170def2c4664c9d4db9a54"
-  },
-  "isolation": "fresh agent context with explicitly restricted file/tool access; no OS filesystem jail"
-}
