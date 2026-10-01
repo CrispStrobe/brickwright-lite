@@ -1,9 +1,0 @@
-{
-  "role": "contract-only implementer",
-  "conversation_history": "none",
-  "input_files": {
-    "contract.txt": "84879015701647b9f4000105fd6f83f3806e76ffb56ba100a93701f2a22eadfc"
-  },
-  "excluded": "both helper implementations, old rewrite, history, upstream source, session context",
-  "isolation_limit": "Separate agent context and explicit access restrictions; tools are not an OS filesystem jail."
-}

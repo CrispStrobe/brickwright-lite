@@ -16,6 +16,8 @@
  * @module
  */
 
+import {VmStepClock} from './spike-arena/arena-clock.js';
+
 /**
  * The import lines that make a file SPIKE App 3 Python. The same expression as
  * the vendored reader's SPIKE3_IMPORT (sb3-creator-spike3.js), restated here so
@@ -80,12 +82,27 @@ export async function runSpike3OnVirtualHub (vm, options = {}) {
     vm.runtime.on('SAY', onSay);
     vm.greenFlag();
     let stopped = false;
+    // The Code tab can run without an arena pane. Spend VM steps on the same
+    // hub in that case; an active arena already spends those steps itself.
+    const hub = virtualHub.hubState;
+    const clock = new VmStepClock();
+    const installed = hub && clock.install(vm.runtime);
+    const timer = installed ? setInterval(() => {
+        const ms = clock.take();
+        if (!ms || stopped || win.__bwSpikeArena?.status === 'running') return;
+        const arena = win.__bwSpikeArena?.bridge;
+        if (arena && win.__bwSpikeArena?._pane?.hubState === hub) arena.tick(ms);
+        else { hub.stepMotors(ms); hub.changed(); }
+    }, 20) : null;
     return {
         ok: true,
         stop () {
             if (stopped) return;
             stopped = true;
+            if (timer !== null) clearInterval(timer);
+            clock.uninstall();
             vm.stopAll();
+            hub?.stopAll();
             vm.runtime.removeListener('SAY', onSay);
             for (const listener of bubbles) vm.runtime.on('SAY', listener);
         }

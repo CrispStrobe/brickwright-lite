@@ -11,7 +11,7 @@ The arena never talks to a program. It talks to the **virtual SPIKE hub**
 (`overlay/scratch-gui/src/lib/virtual-hub/`), and every programming route talks
 to that same hub: Scratch blocks (and the dialect and two-way languages that
 become them) through the spikeprime extension's protocol emulators, SPIKE 3
-Python, and Pybricks. So the arena works for all of them, and a new route plugs
+Python. So the arena works for all of them, and a new route plugs
 in by honouring the contract below, without touching the arena.
 
 | Module | Role |
@@ -29,15 +29,11 @@ in by honouring the contract below, without touching the arena.
 | `static/spike-arena/<unit>/` | one unit: `unit.json`, challenges, reference and wrong solutions (`rover-basics` is the starter unit; see "The units") |
 | `components/tw-pseudocode/spike-arena-pane.jsx` | the dockable pane |
 
-## Choosing a simulator
+## Opening the simulator
 
-Open **SPIKE arena** from a SPIKE program in the Code tab. The **Simulator backend**
-selector offers Brickwright for Scratch/native and imported SPIKE 3 programs, or
-Pybricks for Python programs. The latter loads its runtime only when selected.
-Both use the same mounted world, hub and 2D/3D views. Switching stops the active
-program and preserves the current world; the next native Start resets the mission.
-A missing optional Pybricks runtime leaves the Brickwright choice usable. See
-[the backend documentation](independent-spike/README.md) for coverage and limits.
+Open **SPIKE arena** from a SPIKE program in the Code tab. Press **Start** to
+run Scratch/native or imported LEGO SPIKE 3 programs through the independent
+controller. No firmware runtime, backend selection or firmware download is needed.
 
 ## The hub contract
 
@@ -50,7 +46,7 @@ else.
 | State | Written by | Read by |
 |---|---|---|
 | motor commands | the programming route (a protocol emulator, a SPIKE 3 Python runtime) via `hubState.motors.*` or `hubState.setMotorSpeed` | the motor model |
-| `data.motors[i].position`, `.speed` | the motor model (in `stepMotors`), or a route that runs its own motor physics (the Pybricks mirror) | the arena, the extension (via device notifications), panels |
+| `data.motors[i].position`, `.speed` | the motor model (in `stepMotors`), or a route that runs its own motor physics (an external state owner) | the arena, the extension (via device notifications), panels |
 | `data.sensors[i]` for colour, distance, force | the arena, via `hubState.updateSensor` | every route |
 | `data.imu.yaw`, `angularVelocity.z` | the arena, via `hubState.setHeading` | every route |
 | yaw zero | the program, via `hubState.resetYaw(value)` (`hub.motion.reset_yaw()`, `motion_sensor.reset_yaw(0)`) | `setHeading` |
@@ -109,15 +105,6 @@ SPIKE's steering (the inner wheel slows linearly, stops at ±50, reverses at
 ±100) and the mirrored left motor (wheel-forward is left counterclockwise,
 right clockwise).
 
-**Pybricks.** `createSpikeBackend({kind: 'pybricks', hubState, arena, factory, ...})`
-lazy-loads the existing host and mirrors shaft positions at each simulated tick.
-The arena uses those same position deltas. During Python execution,
-`hubState.clockOwner = 'pybricks'`: native stepping is inert and native motor
-commands are rejected. The pane's VM/frame clock yields to the Python clock.
-Arena sensors and heading are fed back before the next Python tick. Backend
-selection does not load or require WASM for native programs. Matrix brightness
-is converted from Pybricks 0..100 to the shared hub's 0..9.
-
 **For a SPIKE 3 Python runtime** (runloop, `motor`, `motor_pair`,
 `color_sensor`, `distance_sensor`, `force_sensor`, `motion_sensor`): map each
 awaitable onto the promise above, and read sensors from `data.sensors[i]` and
@@ -155,10 +142,9 @@ An unrecognised statement is recorded (`lastUnsupportedPythonTunnel`), not guess
 
 ## The model
 
-**Driving base.** Pybricks' SPIKE Prime drive base: wheel diameter 5.6 cm,
+**Driving base.** The virtual driving base: wheel diameter 5.6 cm,
 axle track 11.2 cm, left motor A mounted counterclockwise, right motor B
-(`DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)`,
-[Pybricks robotics docs](https://docs.pybricks.com/en/latest/robotics.html)).
+(dimensions are expressed in cm).
 All configurable per challenge (`robot`). Body: a 17 x 14 cm rectangle, 9 cm
 ahead of the axle. Colour sensor 7 cm ahead of the axle, centred, port C;
 distance sensor on the front face, port D; force sensor button 0.8 cm proud of
@@ -181,8 +167,8 @@ An explicit synthetic load API reduces achievable speed; a locked shaft makes
 finite position tasks resolve `stalled`. Arena collisions still model wheel
 slip and do not automatically lock shafts. Percent uses the device speed limit.
 See [the tested contract](independent-spike/CONTRACT.md) and
-[coverage and limits](independent-spike/README.md). Pybricks remains a separate
-behavioral oracle; neither backend establishes physical SPIKE accuracy.
+[coverage and limits](independent-spike/README.md). Archived external reference observations cover only the documented contract;
+the virtual backend does not establish physical SPIKE accuracy.
 
 **Collisions.** The body is a rectangle; walls, the mat border and fixed
 objects are convex solids. A step that would overlap one is cut back to contact

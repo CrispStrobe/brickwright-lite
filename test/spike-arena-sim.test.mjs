@@ -349,18 +349,6 @@ test('the checker: stopIn needs the robot stopped inside for the hold time; a fa
     assert.equal(late.evaluate(view(5100, 50, 50)).status, 'fail', 'a decided verdict does not change');
 });
 
-test('the Pybricks bridge reads the arena\'s colour RGB in the hub\'s 0-1024 range', async () => {
-    const {applyHubStateToSim} = await import(resolve(lib, 'pybricks-sim/pybricks-hub-bridge.js'));
-    const hub = new HubState();
-    const bridge = new ArenaHubBridge({hubState: hub, world: world({mat: {background: 'red'}})});
-    void bridge;
-    const colours = [];
-    const host = {device: () => 'none', setDevice () {}, setDistance () {}, setForce () {},
-        setColor: (port, rgb) => colours.push([port, rgb]), setOrientation () {}, setButtons () {}};
-    applyHubStateToSim(host, hub.data);
-    assert.deepEqual(colours.map(([port, {r, g, b}]) => [port, r, g, b]), [['C', 224, 37, 37]], 'red, 900/150/150 of 1024');
-});
-
 test('the translator: the extension\'s exec(...) MotorPair lines set the pair; the guarded one only if none is set', () => {
     // Exactly what CrispStrobe/extensions#22's _motorPairPython builds (as sent on the wire).
     const define = (a, b) => 'try:\\n from spike import MotorPair\\nexcept ImportError:\\n from mindstorms import MotorPair\\n' +

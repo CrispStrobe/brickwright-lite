@@ -23,7 +23,7 @@ These do two things: **connect** to a real hub, and **transpile** the Scratch bl
 that produce the on-brick code live in a separate repo, `github.com/CrispStrobe/extensions`
 (e.g. `ev3dev_py_transpile.js` → real ev3dev2); `sb3Creator.js` already knows this split —
 its emitter distinguishes a `simulator` mode from an `ondevice` mode, and `ondevice`
-(ev3dev/pybricks) defers to those per-hardware transpilers.
+(ev3dev) defers to those per-hardware transpilers.
 
 ### The RCX is the odd one out, and it is worth saying how
 

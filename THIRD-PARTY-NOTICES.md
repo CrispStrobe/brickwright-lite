@@ -1302,46 +1302,6 @@ Self-hosted under `static/microbit-sim/` (built from source with emscripten).
   device is selected. The built assets (firmware.js, firmware.wasm,
   simulator.js) are vendored; the source repo provides the build recipe.
 
-## Pybricks MicroPython (SPIKE Prime simulator) — permissive components
-
-Pybricks v4.0.1 (`4104553405decb0384bcfb030fbfcb4b5a9854cc`), Copyright
-(c) 2018-2026 The Pybricks Authors, and MicroPython
-(`13580b6ad057173f62e8b2363e01d6851bcc6699`), Copyright (c) 2013-2025
-Damien P. George and contributors, provide the SPIKE Prime Python simulator.
-Their covered portions are MIT licensed. The build also includes lwrb
-(Tilen MAJERLE, MIT), the BBC font (MIT), LEGO control components
-(BSD-3-Clause), Contiki-derived scheduling (Swedish Institute of Computer
-Science / The Pybricks Authors, BSD-3-Clause), and Brickwright components
-(BSD-3-Clause). Emscripten and musl use MIT / NCSA and other permissive
-terms; compiler-rt uses Apache-2.0 WITH LLVM-exception.
-The linked musl math routines include Sun/fdlibm notice-preservation grants;
-dlmalloc is public-domain/CC0 code with Emscripten changes. Their individual
-notices are retained alongside the repository licences. A traced relink of
-the shipped WASM selected 90 members from four runtime archives and produced
-the identical binary; `firmware/pybricks-wasm/runtime-inputs.json` records
-those sources and hashes. This artifact-specific review supplements the
-compiler dependency inventory, which does not enumerate prebuilt archives.
-
-Full licence texts and attribution are bundled offline in
-`static/licenses/pybricks-micropython.MIT.txt`. The filename is retained for
-existing links; it includes the additional component licences.
-
-`build-pybricks-wasm.sh` prepares a private source tree and checks every
-compiler dependency before installing assets. It excludes the argument
-helper, the non-free Xbox controller module, hardware vendor HALs, Bluetooth
-stacks, and GPL/MPL NXT/EV3 drivers. Argument callers use explicit
-MicroPython APIs. Two cited numeric snippets are removed and replaced by
-BSD-3-Clause components implemented by fresh agents from recorded contracts.
-The process records are in `firmware/pybricks-wasm/contract-only/records/`.
-Access restrictions were instruction based; no claim about model pretraining
-or OS isolation is made. The earlier PR #508 authorship claim remains
-unverified and the earlier replacement is not a build input.
-
-The pinned toolchain is emsdk 6.0.6. Source and asset hashes, licence inventory,
-and conversion manifest are in `static/pybricks-sim/PROVENANCE.json`.
-The review and remaining full-dependency replacement work are documented in
-`docs/OPEN-TASKS-2026-09-29.md`. These conclusions cover this simulator,
-not all other components of Brickwright.
 
 ## avr8js — MIT
 
@@ -1884,7 +1844,6 @@ runtime code and requires no Pybricks assets or build steps.
 It reuses the existing Apache-2.0 virtual hub/protocol adapters and BSD-3-Clause
 arena through their documented shared-state interfaces. Scratch and native
 program readers retain their BSD-3-Clause/MPL-2.0 licences and source
-availability obligations. The audited Pybricks WASM and its notices remain
-separate, required only for Pybricks Python. Evidence for retained component
+availability obligations. The virtual simulator ships without an external firmware runtime. Evidence for retained component
 licences is recorded in the private SPIKE audit archive; this addition does
 not relicense any retained component.

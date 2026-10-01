@@ -164,7 +164,7 @@ test('a staged mission shows its stages and the partial credit; the select event
     }
 });
 
-test('pane clock yields to Python and controls await external cancellation',async()=>{
+test('pane clock yields to an external owner and controls await external cancellation',async()=>{
     const browser=installBrowser();let renderer;
     try{
         const Pane=await loadPane();
@@ -175,7 +175,7 @@ test('pane clock yields to Python and controls await external cancellation',asyn
         const claim=()=>{
             let resolve;
             const completion=new Promise(r=>{resolve=r;});
-            hub.clockOwner='pybricks';
+            hub.clockOwner='external';
             hub.externalBackend={completion,cancel:()=>{
                 cancellations++;hub.clockOwner=null;hub.externalBackend=null;resolve({result:'stopped'});
             }};

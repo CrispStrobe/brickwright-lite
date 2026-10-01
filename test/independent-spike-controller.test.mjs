@@ -37,7 +37,7 @@ test('load and stall behavior; configuration validation',async()=>{
 test('waits, signals, cancel, disposal and asynchronous pace',async()=>{
  const {hub,b}=fixture();const a=b.wait(100),c=b.wait(200);const signal=new AbortController();const d=b.wait(300,{signal:signal.signal});b.step(100);assert.equal(await a,'completed');signal.abort();assert.equal(await d,'interrupted');b.cancel();assert.equal(await c,'interrupted');assert.equal(await b.wait(5,{signal:signal.signal}),'interrupted');
  const motion=b.runForTime(0,100,300),wait=b.wait(100);b.dispose();assert.equal(await motion,'interrupted');assert.equal(await wait,'interrupted');assert.equal(hub.data.motors[0].degPerSec,0);
- const paced=fixture();assert.equal(await paced.b.pace(25),'completed');assert.equal(paced.b.simulatedMs,25);const ongoing=paced.b.pace(1000);await assert.rejects(paced.b.pace(10),/already active/);setTimeout(()=>paced.b.cancel(),2);assert.equal(await ongoing,'interrupted');const handover=fixture();const pace=handover.b.pace(1000);setTimeout(()=>{handover.hub.clockOwner='pybricks';},2);assert.equal(await pace,'interrupted');
+ const paced=fixture();assert.equal(await paced.b.pace(25),'completed');assert.equal(paced.b.simulatedMs,25);const ongoing=paced.b.pace(1000);await assert.rejects(paced.b.pace(10),/already active/);setTimeout(()=>paced.b.cancel(),2);assert.equal(await ongoing,'interrupted');const handover=fixture();const pace=handover.b.pace(1000);setTimeout(()=>{handover.hub.clockOwner='external';},2);assert.equal(await pace,'interrupted');
 });
 test('shared data and idle preservation; outputs and copies',()=>{
  const {hub,b}=fixture();hub.data.sensors[1]={kind:'distance',deviceId:62,distance:456};hub.data.motors[1]={position:17,speed:23,degPerSec:42};const idle=structuredClone(hub.data.motors[1]);b.runAtSpeed(0,300);b.step(100);b.stopAll();assert.deepEqual(hub.data.motors[1],idle);assert.equal(hub.data.sensors[1].kind,'distance');assert.equal(b.readSensor(1,'distance').distance,456);const sensor=b.readSensor(1,'distance');sensor.distance=0;assert.equal(hub.data.sensors[1].distance,456);assert.throws(()=>b.readSensor(1,'color'));const imu=b.imu();imu.acceleration[0]=99;assert.equal(hub.data.imu.acceleration[0],1);
@@ -49,7 +49,7 @@ test('deterministic physics under arbitrary chunking',()=>{
  one.b.step(712.5);for(let i=0;i<2850;i++)many.b.step(.25);assert.deepEqual(one.hub.data,many.hub.data);assert.equal(one.b.simulatedMs,many.b.simulatedMs);
 });
 test('external clock ownership prevents native motion and stepping',async()=>{
- const {hub,b}=fixture();hub.clockOwner='pybricks';assert.throws(()=>b.runAtSpeed(0,100),Error);await assert.rejects(b.pace(100),Error);await assert.rejects(b.wait(100),Error);assert.equal(b._waits.size,0);assert.equal(b.step(100),false);assert.equal(b.simulatedMs,0);b.cancel();hub.clockOwner='native';b.runAtSpeed(0,100);assert.equal(b.step(100),true);
+ const {hub,b}=fixture();hub.clockOwner='external';assert.throws(()=>b.runAtSpeed(0,100),Error);await assert.rejects(b.pace(100),Error);await assert.rejects(b.wait(100),Error);assert.equal(b._waits.size,0);assert.equal(b.step(100),false);assert.equal(b.simulatedMs,0);b.cancel();hub.clockOwner='native';b.runAtSpeed(0,100);assert.equal(b.step(100),true);
 });
 test('synthetic black-box observation comparisons',{skip:privateEvidenceSkip},async()=>{
  const observations=readPrivateSpikeEvidence('implementer-observations.json');
@@ -118,5 +118,5 @@ test('beep replacement, stop, cancellation and disposal resolve exactly once',as
 test('silent beep cases and simultaneous motor/wait/speaker scheduling',async()=>{
  const f=fixture();assert.equal(await f.b.beep(440,0),'completed');assert.equal(f.hub.data.speaker.frequency,0);assert.equal(f.hub.data.speaker.beeps,1);const silent=f.b.beep(0,100);f.b.step(99);assert.notEqual(f.b._sound,null);assert.equal(f.hub.data.speaker.frequency,0);f.b.step(1);assert.equal(await silent,'completed');
  const tone=f.b.beep(440,100),wait=f.b.wait(50),motion=f.b.runForTime(0,200,300);f.b.step(50);assert.equal(await wait,'completed');assert.equal(f.hub.data.speaker.frequency,440);f.b.step(50);assert.equal(await tone,'completed');assert.equal(f.b.busy(0),true);f.b.step(100);assert.equal(await motion,'completed');
- f.hub.clockOwner='pybricks';const snapshot=structuredClone(f.hub.data);await assert.rejects(f.b.beep(440,10),Error);assert.deepEqual(f.hub.data,snapshot);const empty=fixture();empty.b.stopSound();assert.equal(empty.hub.data.speaker.frequency,0);
+ f.hub.clockOwner='external';const snapshot=structuredClone(f.hub.data);await assert.rejects(f.b.beep(440,10),Error);assert.deepEqual(f.hub.data,snapshot);const empty=fixture();empty.b.stopSound();assert.equal(empty.hub.data.speaker.frequency,0);
 });
