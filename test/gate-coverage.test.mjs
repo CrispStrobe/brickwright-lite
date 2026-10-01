@@ -37,7 +37,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  */
 const KNOWN_UNWIRED = {
     'verify-independent-spike.mjs': 'private/local: requires BW_SPIKE_EVIDENCE_DIR outside the public repo '
-        + 'and strict private fixtures. Executed 2026-10-01 in the private firmware audit repository; '
+        + 'for validation receipts. Executed 2026-10-01 in the private firmware audit repository; '
         + 'receipts under audits/independent-spike/2026-10-01-runtime-retirement/main-validation. '
         + 'Public CI must not fetch or publish the private fixtures or transcripts.',
     'verify-spike-simulator-browser.mjs': 'private/local: requires a private BW_SPIKE_EVIDENCE_DIR '

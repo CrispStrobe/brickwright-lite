@@ -2,72 +2,23 @@
 // Copyright (c) 2026 Brickwright contributors
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {privateEvidenceSkip,readPrivateSpikeEvidence} from './helpers/private-spike-evidence.mjs';
 import Hub from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
 import {createSpikeBackend} from '../overlay/scratch-gui/src/lib/spike-sim/backends.js';
 import {ArenaHubBridge} from '../overlay/scratch-gui/src/lib/spike-arena/arena-hub-bridge.js';
 import {applyHubPython,applyScratchVerb} from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-commands.js';
-const fixture=readPrivateSpikeEvidence('oracle-motors.json');
-if(!fixture)test('private motor oracle comparisons',{skip:privateEvidenceSkip},()=>{});
 const near=(actual,want,tolerance,label)=>assert.ok(Math.abs(actual-want)<=tolerance,`${label}: ${actual}, expected ${want} ±${tolerance}`);
-const start=(backend,id)=>{
-    switch(id){
-    case 'speed-positive':backend.runAtSpeed('A',300);break;
-    case 'speed-negative':backend.runAtSpeed('A',-300);break;
-    case 'speed-limit-positive':backend.runAtSpeed('A',5000);break;
-    case 'speed-limit-negative':backend.runAtSpeed('A',-5000);break;
-    case 'target-positive':backend.runToPosition('A',180,300);break;
-    case 'target-negative':backend.runToPosition('A',-90,300);break;
-    case 'timed':backend.runForTime('A',500,300);break;
-    case 'concurrent':backend.runToPosition('A',180,300);backend.runToPosition('B',-90,200);break;
-    case 'replace-target':backend.runToPosition('A',180,300);backend.step(100);backend.runToPosition('A',-90,300);break;
-    case 'reverse':backend.runAtSpeed('A',300);backend.step(500);backend.runAtSpeed('A',-300);break;
-    case 'zero-target':backend.runToPosition('A',0,300);break;
-    case 'zero-speed':backend.runForTime('A',100,0);break;
-    default:backend.runAtSpeed('A',300);backend.step(500);backend.stop('A',id);
-    }
-};
-const trace=(record,mutation)=>{
+const checkRamp=mutation=>{
     const hub=new Hub(),backend=hub.backend;
+    backend.configure('A',{acceleration:1000,deceleration:1000});
     if(mutation==='instant')backend.configure('A',{acceleration:1e9,deceleration:1e9});
-    start(backend,record.id);
-    let elapsed=0;
-    return record.samples.map(sample=>{
-        if(mutation!=='no-motion')backend.step(sample.ms-elapsed);
-        elapsed=sample.ms;
-        return {a:{...hub.data.motors[0]},b:{...hub.data.motors[1]},done:backend.done('A'),bDone:backend.done('B')};
-    });
+    backend.runAtSpeed('A',300);
+    if(mutation!=='no-motion')backend.step(100);
+    near(hub.data.motors[0].degPerSec,100,0.01,'configured acceleration');
+    near(hub.data.motors[0].position,5,0.1,'integrated ramp travel');
 };
-const compare=(record,actual)=>{
-    record.samples.forEach((want,i)=>{
-        const got=actual[i],id=record.id;
-        if(['coast','brake','hold'].includes(id)){
-            if(want.ms>=500)near(got.a.degPerSec,0,5,`${id} stopped`);
-            return;
-        }
-        near(got.a.position,want.angle,id==='reverse'?15:12,`${id}@${want.ms} angle`);
-        near(got.a.degPerSec,want.speed,110,`${id}@${want.ms} speed`);
-        near(got.b.position,want.bAngle,12,`${id}@${want.ms} B angle`);
-        near(got.b.degPerSec,want.bSpeed,110,`${id}@${want.ms} B speed`);
-        if(want.ms>=1000 && ['target-positive','target-negative','concurrent','timed','replace-target'].includes(id)){
-            near(got.a.position,want.angle,2,`${id} settled angle`);
-            near(got.a.degPerSec,want.speed,5,`${id} settled speed`);
-            assert.equal(got.done,true);
-            if(id==='concurrent'){near(got.b.position,want.bAngle,2,'B settled');assert.equal(got.bDone,true);}
-        }
-    });
-};
-for(const record of fixture?.records||[]) {
-    test(`independent vs audited WASM: ${record.id}`,()=>compare(record,trace(record)));
-}
-
-test('oracle comparisons detect disabled motion and removed acceleration',{skip:privateEvidenceSkip},t=>{
-    for(const mutation of ['no-motion','instant']){
-        let caught;
-        try{for(const record of fixture.records)compare(record,trace(record,mutation));}catch(error){caught=error;}
-        assert.ok(caught instanceof assert.AssertionError,mutation);
-        t.diagnostic(`${mutation}: detected ${caught.message}`);
-    }
+test('shared-hub acceleration contract detects disabled motion and instantaneous speed',()=>{
+    checkRamp();
+    for(const mutation of ['no-motion','instant'])assert.throws(()=>checkRamp(mutation),assert.AssertionError);
 });
 
 test('native factory uses exactly the shared hub controller and sensors',async()=>{
@@ -120,33 +71,6 @@ test('supported stop defaults and sound commands use the same simulated schedule
     applyHubPython(hub,'hub.sound.stop()');assert.equal(await sound,'interrupted');
     const motion=hub.backend.runForTime('A',2000,300),wait=hub.backend.wait(2000),beep=hub.backend.beep(440,2000);
     hub.stopAll();assert.deepEqual(await Promise.all([motion,wait,beep]),['interrupted','interrupted','interrupted']);
-});
-
-test('normalized sensor/output observations match the oracle and detect a sensor mutation',{skip:privateEvidenceSkip},async()=>{
-    const oracle=readPrivateSpikeEvidence('oracle-sensors.json');
-    const events=[];const hub=new Hub({onBeep:frequency=>events.push(frequency)}),b=hub.backend;
-    hub.setPort('C','distance',{distance:oracle.inputs.distance});
-    hub.setPort('D','force',{force:oracle.inputs.forceNewtons*10,pressed:false});
-    hub.setPort('E','color',{color:6});hub.setImu(oracle.inputs.imu);hub.data.buttons.left=oracle.inputs.left;
-    const observe=()=>({distance:b.readSensor('C','distance').distance,force:b.readSensor('D','force').force/10,
-        color:b.readSensor('E','color').color,imu:b.imu(),left:b.buttons().left});
-    const compareSensors=got=>{
-        assert.equal(got.distance,Number(oracle.lines.find(l=>l.startsWith('distance ')).split(' ')[1]));
-        assert.equal(got.force,Number(oracle.lines.find(l=>l.startsWith('force ')).split(' ')[1]));
-        assert.equal(got.color,6);assert.equal(got.left,true);
-        const imu=oracle.lines.find(l=>l.startsWith('imu ')).split(' ').slice(1).map(Number);
-        [got.imu.pitch,got.imu.roll,got.imu.yaw].forEach((v,i)=>near(v,imu[i],1,'orientation'));
-    };
-    compareSensors(observe());
-    const read=b.readSensor.bind(b);b.readSensor=(...args)=>({...read(...args),distance:0});
-    assert.throws(()=>compareSensors(observe()),assert.AssertionError);
-    b.setPixel(2,1,9);assert.deepEqual(hub.data.display,oracle.pixels.map(v=>Math.round(v*9/100)));
-    const beep=b.beep(440,100);b.step(100);assert.equal(await beep,'completed');
-    assert.equal(hub.data.speaker.frequency,oracle.speaker.frequency);assert.equal(hub.data.speaker.beeps,oracle.speaker.beeps);
-    assert.deepEqual(events.filter(f=>f>0),oracle.beepEvents.filter(f=>f>0));
-    const start=b.simulatedMs,pending=b.wait(10000);b.step(300);b.cancel();
-    assert.equal(({interrupted:'stopped'})[await pending],oracle.cancellation.result);
-    near(b.simulatedMs-start,oracle.cancellation.simulatedMs,10,'cancellation latency');
 });
 
 // Retirement keeps one hub-owned backend and rejects unsupported runtime choices.

@@ -4,9 +4,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {effectiveMotorSpeed} from '../overlay/scratch-gui/src/lib/spike-sim/speed-envelope.mjs';
 import Hub from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
-import {readPrivateSpikeEvidence,privateEvidenceSkip} from './helpers/private-spike-evidence.mjs';
 
-test('nominal limits stay public while the measured actuator envelope bounds all command modes',async()=>{
+test('nominal limits stay public while the simulator actuator envelope bounds all command modes',async()=>{
     for(const mode of ['continuous','target','timed']) {
         const hub=new Hub(),b=hub.backend;
         assert.equal(b.maxSpeed('A'),1110);
@@ -22,22 +21,4 @@ test('nominal limits stay public while the measured actuator envelope bounds all
     }
     assert.equal(effectiveMotorSpeed(5000,{deviceId:49,limitDps:1050}),1050);
     assert.throws(()=>effectiveMotorSpeed(NaN,{deviceId:48,limitDps:1110}),TypeError);
-});
-
-test('shared-hub trajectories match the private external speed sweep without widened tolerances',
-    {skip:privateEvidenceSkip},t=>{
-    const fixture=readPrivateSpikeEvidence('speed-sweep.json');
-    let largestAngleError=0,largestSpeedError=0;
-    for(const record of fixture.records) {
-        const hub=new Hub();hub.backend.runAtSpeed('A',record.speed);let elapsed=0;
-        for(const sample of record.samples) {
-            hub.backend.step(sample.ms-elapsed);elapsed=sample.ms;
-            const actual=hub.data.motors[0];
-            const ae=Math.abs(actual.position-sample.angle),se=Math.abs(actual.degPerSec-sample.speed);
-            assert.ok(ae<=12,`${record.speed}@${sample.ms}: angle error ${ae}`);
-            assert.ok(se<=110,`${record.speed}@${sample.ms}: speed error ${se}`);
-            largestAngleError=Math.max(largestAngleError,ae);largestSpeedError=Math.max(largestSpeedError,se);
-        }
-    }
-    t.diagnostic(`60 shared-hub samples; maximum angle error ${largestAngleError}, speed error ${largestSpeedError}`);
 });

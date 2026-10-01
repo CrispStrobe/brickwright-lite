@@ -194,8 +194,10 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // decompiles as before; the assertions re-ran at the pin. #44 names the
     // refused line in a retarget reason; #45 makes DEVICE 8086/8088/i8088 the
     // 8086. Neither touches a SPIKE word.
+    // PIN MOVED 82c04190 -> 3250c2ca: generic driver wording cleanup; this
+    // virtual SPIKE fixture keeps the same parser and generated program.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '82c04190a3d9b8aadbf1957e1a9f1c6725f54125');
+        '3250c2cad0d76cd4cad564461ae39b33055539e2');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

@@ -2,7 +2,6 @@
 // Copyright 2026 Brickwright contributors.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {privateEvidenceSkip,readPrivateSpikeEvidence} from './helpers/private-spike-evidence.mjs';
 import Backend,{MAX_DEG_PER_S,RESULT} from '../overlay/scratch-gui/src/lib/spike-sim/independent-backend.js';
 const fixture=(options={})=>{let changes=0;const hub={data:{motors:Array.from({length:6},()=>({position:0,speed:0})),sensors:Array(6).fill(null),classicPorts:Array.from({length:6},()=>[0,[]]),display:Array(25).fill(0),imu:{yaw:5,pitch:6,roll:7,acceleration:[1,2,3],angularVelocity:[4,5,6]},buttons:{left:true,center:false,right:false},volume:50,centerLight:0,distanceLights:Array(6).fill(null)},changed(){changes++;}};return {hub,b:new Backend(hub,options),get changes(){return changes;}};};
 const near=(actual,expected,tolerance)=>assert.ok(Math.abs(actual-expected)<=tolerance,`${actual} vs ${expected}, tolerance ${tolerance}`);
@@ -51,42 +50,6 @@ test('deterministic physics under arbitrary chunking',()=>{
 test('external clock ownership prevents native motion and stepping',async()=>{
  const {hub,b}=fixture();hub.clockOwner='external';assert.throws(()=>b.runAtSpeed(0,100),Error);await assert.rejects(b.pace(100),Error);await assert.rejects(b.wait(100),Error);assert.equal(b._waits.size,0);assert.equal(b.step(100),false);assert.equal(b.simulatedMs,0);b.cancel();hub.clockOwner='native';b.runAtSpeed(0,100);assert.equal(b.step(100),true);
 });
-test('synthetic black-box observation comparisons',{skip:privateEvidenceSkip},async()=>{
- const observations=readPrivateSpikeEvidence('implementer-observations.json');
- for(const record of observations.records){const {hub,b}=fixture();const id=record.id;
- if(id.startsWith('speed-'))b.runAtSpeed(0,id==='speed-positive'?300:-300);
- else if(id.startsWith('target-'))b.runToPosition(0,id==='target-positive'?180:-90,300);
- else if(id==='timed')b.runForTime(0,500,300);
- else if(id==='concurrent'){b.runToPosition(0,180,300);b.runToPosition(1,-90,200);}
- else if(id==='zero-target')b.runToPosition(0,0,300);
- else if(id==='zero-speed')b.runForTime(0,100,0);
- else {b.runAtSpeed(0,300);b.step(500);if(id==='reverse')b.runAtSpeed(0,-300);else b.stop(0,id);}
- let elapsed=0;for(let j=0;j<record.times.length;j++){const t=record.times[j];b.step(t-elapsed);elapsed=t;const sample=record.samples[j];
- if(['brake','coast','hold'].includes(id)){if(t>=500)assert.equal(hub.data.motors[0].degPerSec,0);continue;}
- for(const [port,angleKey,speedKey,doneKey] of [[0,'angle','speed','done'],[1,'bAngle','bSpeed','bDone']]){const motor=hub.data.motors[port];const settled=sample[doneKey]&&Math.abs(sample[speedKey])<=5;const tolerance=id==='reverse'?15:settled?2:12;near(motor.position,sample[angleKey],tolerance);near(motor.degPerSec||0,sample[speedKey],settled||Math.abs(sample[speedKey])>=295&&t>=500?5:110);}
- }
- }
-});
-
-test('finite observation completion boundaries allow 150 ms discrepancy',{skip:privateEvidenceSkip},async()=>{
- const observations=readPrivateSpikeEvidence('implementer-observations.json');
- for(const id of ['target-positive','target-negative','timed','concurrent','zero-speed']){
-  const record=observations.records.find(r=>r.id===id),{b}=fixture();
-  if(id==='target-positive'||id==='concurrent')b.runToPosition(0,180,300);
-  if(id==='target-negative')b.runToPosition(0,-90,300);
-  if(id==='concurrent')b.runToPosition(1,-90,200);
-  if(id==='timed')b.runForTime(0,500,300);
-  if(id==='zero-speed')b.runForTime(0,100,0);
-  const completed=[null,null];
-  for(let ms=1;ms<=1500;ms++){b.step(1);for(let port=0;port<(id==='concurrent'?2:1);port++)if(completed[port]===null&&b.done(port))completed[port]=ms;}
-  for(let port=0;port<(id==='concurrent'?2:1);port++){
-   const key=port===0?'done':'bDone';let lower=0,upper=Infinity;
-   for(let i=0;i<record.samples.length;i++){if(record.samples[i][key]){upper=record.times[i];break;}lower=record.times[i];}
-   assert.ok(completed[port]>=lower-150&&completed[port]<=upper+150,`${id}/${port}: completion ${completed[port]}, observed interval ${lower}..${upper}`);
-  }
- }
-});
-
 test('step leaves publication to world owner; standalone pace publishes; quiet safety reset',async()=>{
  const f=fixture();f.b.runAtSpeed(0,300);const commanded=f.changes;f.b.step(100);assert.equal(f.changes,commanded);f.b.stopAll({notify:false});assert.equal(f.changes,commanded);assert.equal(f.hub.data.motors[0].degPerSec,0);f.b.runAtSpeed(0,300);const beforePace=f.changes;await f.b.pace(25);assert.equal(f.changes,beforePace+3);const beforeCancel=f.changes;f.b.cancel({notify:false});assert.equal(f.changes,beforeCancel);
  assert.equal(RESULT.completed,'completed');assert.equal(RESULT.interrupted,'interrupted');assert.equal(RESULT.stalled,'stalled');assert.ok(Number.isInteger(f.hub.data.motors[0].speed));

@@ -26,14 +26,14 @@ const server = createServer(async (request, response) => {
 await new Promise(done => server.listen(0, '127.0.0.1', done));
 await mkdir(evidence, {recursive: true});
 let browser, page;
-const checks = [], errors = [], pybricksRequests = [];
+const checks = [], errors = [], firmwareRequests = [];
 const check = (name, detail = null) => { checks.push({name, passed: true, detail}); console.log(`PASS ${name}`); };
 try {
     browser = await chromium.launch({headless: true, args: ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader']});
     page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', dialog => dialog.accept());
-    page.on('request', request => { if (request.url().includes('/pybricks-sim/')) pybricksRequests.push(request.url()); });
+    page.on('request', request => { if (/\.(wasm|mpy)(?:[?#]|$)/i.test(request.url())) firmwareRequests.push(request.url()); });
     await page.addInitScript(() => {
         localStorage.clear(); sessionStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
@@ -50,8 +50,8 @@ try {
     await page.getByTestId('bw-spike-simulator').waitFor();
     assert.equal(await page.getByTestId('bw-spike-backend').count(), 0);
     await page.waitForFunction(() => window.__bwSpikeArena?.bridge);
-    assert.equal(pybricksRequests.length, 0);
-    check('native GUI opens without requesting Pybricks assets');
+    assert.equal(firmwareRequests.length, 0);
+    check('native GUI opens without requesting firmware binaries');
     await page.getByTestId('bw-spike-arena-load-solution').click();
     // Loading the solution includes compilation; wait for the native VM project.
     await page.waitForFunction(() => window.__bwSpikeArena?._pane.spikeLoaded(), null, {timeout: 60000});
@@ -70,7 +70,7 @@ try {
     });
     assert.equal(nativeEnvelope.nominalLimit, 1110);
     assert.equal(nativeEnvelope.shaftSpeed, 950);
-    check('shared GUI hub applies the measured envelope to a full-speed native command', nativeEnvelope);
+    check('shared GUI hub applies the simulator envelope to a full-speed native command', nativeEnvelope);
     await page.getByTestId('bw-spike-arena-reset').click();
     await page.getByTestId('bw-spike-arena-view-toggle').click();
     await page.waitForFunction(() => ['webgl','fallback'].includes(window.__bwSpikeArena?.view3d));
@@ -78,6 +78,7 @@ try {
     assert.equal(view3d, 'webgl', 'software WebGL must render the shared world');
     check('3D arena renders the shared virtual world');
     await page.screenshot({path: `${evidence}/native-3d-arena.png`, fullPage: true});
+    assert.deepEqual(firmwareRequests, [], 'the complete virtual SPIKE flow uses no firmware binaries');
     assert.deepEqual(errors, [], 'no uncaught browser exceptions');
 } catch (error) {
     checks.push({name: 'browser proof', passed: false, detail: error.stack});
@@ -88,7 +89,7 @@ try {
     process.exitCode = 1; console.error(error);
 } finally {
     await writeFile(`${evidence}/result.json`, JSON.stringify({node: process.version, checks, errors,
-        pybricksRequests, build, success: !process.exitCode}, null, 2) + '\n');
+        firmwareRequests, build, success: !process.exitCode}, null, 2) + '\n');
     if (browser) await browser.close();
     await new Promise(done => server.close(done));
 }
