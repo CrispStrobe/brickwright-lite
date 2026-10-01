@@ -490,13 +490,32 @@ portrait/landscape touch interaction and preserving unsaved pixel edits when
 switching between costumes and backdrops. Browser receipts belong outside the
 public checkout.
 
-Remaining model limits: contact can stop rover translation while the wheels
-slip; wall contact does not automatically impose a shaft torque or stall load.
-Motor load is an explicit simulator input, not a measured physical load. Mat
-editing currently uses fixed-size items; arbitrary polygons and robot geometry
-are available in the world format rather than through drag-resize handles.
-Browser storage is local to that browser, not part of the Scratch project;
-export the mat to transfer it alongside a project.
+The free sandbox defaults to `robot.contactModel: "stall"`: before each fixed
+step the bridge probes the unloaded wheel demand against solid geometry and
+applies full environmental resistance to both drive motors when blocked.
+Finite position moves then report `stalled` using the configured stall timer;
+reversing or turning toward free space releases the resistance. Explicit motor
+load combines with contact load and is never overwritten. Cancelling arena
+ownership clears environmental resistance. This is a deterministic traction
+model, not calibrated shaft torque or physical SPIKE accuracy. Select Slip at
+walls to retain wheel slip; existing challenges retain their original slip
+model unless they explicitly select stall.
+
+Choose Move / select and drag a painted shape, wall or crate on the 2D mat.
+Smaller and Larger resize the selected shape uniformly, including imported
+polygons and lines. Invalid moves leave the current world intact. Mat shape
+sizes are bounded at 1000 cm. The saved mat is now a validated `spikeArena`
+section in the existing bounded transactional `.sb3` project bundle. Loading
+a project replaces the mounted sandbox too; legacy projects clear the previous
+mat. Separate Save mat / Open mat remains available. Older readers preserve
+this optional section as unknown project content.
+
+`test/spike-arena-contact.test.mjs` checks stalled completion, escape, explicit
+load, cancellation and exact frame-chunk determinism; suppressing collision
+feedback makes the completion comparison fail. `test/spike-arena-project-editing.test.mjs`
+and the real ZIP attach/extract test cover transforms and bounded project
+round trips. The pane and production browser checks exercise pointer dragging,
+resizing and manual wall contact.
 
 The optional desktop Renode debugger runs our own ARM firmware separately.
 Its bounded brick-state stream provides identity, emulated time, sequence

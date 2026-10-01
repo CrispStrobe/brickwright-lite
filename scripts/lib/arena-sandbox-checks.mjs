@@ -22,6 +22,25 @@ export async function verifyArenaSandbox (page, check, evidence) {
     await page.getByTestId('bw-spike-sandbox-tool').selectOption('wall');
     await canvas.click({position: {x: box.width * 65 / 180, y: box.height * 40 / 120}});
     await page.waitForFunction(() => window.__bwSpikeArena._pane.hubState.backend.readSensor('D', 'distance').distance < 300);
+    if (await page.getByTestId('bw-spike-sandbox-contact').count()) {
+        await page.getByTestId('bw-spike-sandbox-tool').selectOption('move');
+        await page.mouse.move(box.x + box.width * 90 / 180, box.y + box.height * 100 / 120);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width * 110 / 180, box.y + box.height * 90 / 120, {steps: 8});
+        await page.mouse.up();
+        await page.waitForFunction(() => Math.abs(window.__bwSpikeArena.bridge.world.objects[0].shape.x - 110) < 1);
+        await page.getByTestId('bw-spike-sandbox-larger').click();
+        await page.waitForFunction(() => window.__bwSpikeArena.bridge.world.objects[0].shape.w === 15);
+        check('pointer dragging and resizing update the shared sandbox geometry');
+        await page.getByTestId('bw-spike-sandbox-drive-forward').click();
+        await page.waitForFunction(() => window.__bwSpikeArena._pane.hubState.data.motors[1].stalled === true);
+        const atWall = await page.evaluate(() => window.__bwSpikeArena.snapshot.pose.x);
+        await page.getByTestId('bw-spike-sandbox-drive-back').click();
+        await page.waitForFunction(x => window.__bwSpikeArena.snapshot.pose.x < x - 3, atWall);
+        await page.getByTestId('bw-spike-sandbox-drive-stop').click();
+        await page.getByTestId('bw-spike-arena-reset').click();
+        check('manual contact stalls the wheels and reversing releases them');
+    }
     const world = await page.evaluate(() => window.__bwSpikeArena.bridge.world);
     assert.equal(world.success.length, 0);
     assert.equal(world.timeLimitMs, undefined);

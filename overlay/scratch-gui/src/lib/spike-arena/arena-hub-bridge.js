@@ -54,6 +54,7 @@ export class ArenaHubBridge {
         const hub = this.hubState;
         const {left, right} = this.robot;
         hub.motors.stopAll();
+        for (const side of [left, right]) hub.backend.setArenaLoad(side.port, 0);
         this.sim.reset();
         this.checker.reset();
         this.accumulator = 0;
@@ -86,8 +87,15 @@ export class ArenaHubBridge {
     /** One fixed step: motors, then the world. */
     step () {
         const {left, right} = this.robot;
+        const backend = this.hubState.backend;
+        const probe = side => backend.demandSpeed(side.port) * (side.reversed ? -1 : 1) / 360 *
+            Math.PI * (side.wheelDiameter ?? this.robot.wheelDiameter) * this.stepMs / 1000;
+        const contact = this.robot.contactModel === 'stall' && this.sim.wouldBlockWheels(probe(left), probe(right));
+        backend.setArenaLoad(left.port, contact ? 1 : 0);
+        backend.setArenaLoad(right.port, contact ? 1 : 0);
         this.hubState.stepMotors(this.stepMs);
         this.sim.advanceWheels(this._wheelTravel(left), this._wheelTravel(right), this.stepMs);
+        if (contact) { this.sim.blocked = true; this.sim.blockedBy = 'contact'; }
     }
 
     /**

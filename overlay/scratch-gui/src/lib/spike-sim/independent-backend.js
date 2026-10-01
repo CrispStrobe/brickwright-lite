@@ -46,7 +46,7 @@ export default class IndependentSpikeBackend {
         this._controllers = Array.from({
             length: 6
         }, () => ({
-            mode: 'idle', load: 0, config: defaults(), resolve: null, stallElapsed: 0,
+            mode: 'idle', load: 0, arenaLoad: 0, config: defaults(), resolve: null, stallElapsed: 0,
             defaultStopAction: 'brake'
         }));
         this._waits = new Set();
@@ -243,6 +243,7 @@ export default class IndependentSpikeBackend {
 
     cancel(options) {
         this._cancelEpoch++;
+        for (const controller of this._controllers) controller.arenaLoad = 0;
         this.stopAll(options);
         this._finishSound(RESULT.INTERRUPTED, options);
         for (const w of [...this._waits]) this._finishWait(w, RESULT.INTERRUPTED);
@@ -269,7 +270,7 @@ export default class IndependentSpikeBackend {
         const m = this.data.motors[i];
         if (c.mode === 'hold') return Math.abs(m.position - c.target) <= 0.5 && Math.abs(m.degPerSec || 0) <= 1;
         if (['position', 'time', 'stop'].includes(c.mode)) return false;
-        if (c.mode === 'speed') return Math.abs((m.degPerSec || 0) - c.requested * (1 - c.load)) <= 1;
+        if (c.mode === 'speed') return Math.abs((m.degPerSec || 0) - c.requested * (1 - Math.max(c.load, c.arenaLoad))) <= 1;
         return true;
     }
 
@@ -292,6 +293,22 @@ export default class IndependentSpikeBackend {
         finite(fraction);
         if (fraction < 0 || fraction > 1) throw new RangeError('Invalid load');
         this._controllers[i].load = fraction;
+    }
+
+    /** Environmental resistance combines with, rather than replaces, explicit load. */
+    setArenaLoad(port, fraction) {
+        const i = this._port(port);
+        finite(fraction);
+        if (fraction < 0 || fraction > 1) throw new RangeError('Invalid arena load');
+        this._controllers[i].arenaLoad = fraction;
+    }
+
+    /** Unloaded requested direction lets the arena release contact when reversing. */
+    demandSpeed(port) {
+        const i = this._port(port), c = this._controllers[i];
+        if (c.mode === 'speed' || c.mode === 'time') return c.requested;
+        if (c.mode === 'position' || c.mode === 'hold') return Math.sign(c.target - this.data.motors[i].position) * c.requested;
+        return 0;
     }
 
     _complete(c, result = RESULT.COMPLETED) {
@@ -323,12 +340,12 @@ export default class IndependentSpikeBackend {
             let desired = 0;
             let rate = cfg.deceleration;
             const positionMode = c.mode === 'position' || c.mode === 'hold';
-            if (c.mode === 'speed') desired = c.requested * (1 - c.load);
+            if (c.mode === 'speed') desired = c.requested * (1 - Math.max(c.load, c.arenaLoad));
             // Reserve the final portion of timed motion for deceleration.
             if (c.mode === 'time') {
                 c.remaining = Math.max(0, c.remaining - 1);
                 desired = Math.sign(c.requested) * Math.min(
-                    Math.abs(c.requested) * (1 - c.load),
+                    Math.abs(c.requested) * (1 - Math.max(c.load, c.arenaLoad)),
                     cfg.deceleration * c.remaining / 1000
                 );
             }
@@ -338,7 +355,7 @@ export default class IndependentSpikeBackend {
                 const dec = c.mode === 'hold' ? cfg.brakeDeceleration : cfg.deceleration;
                 rate = dec;
                 desired = Math.sign(distance) * Math.min(
-                    c.requested * (1 - c.load),
+                    c.requested * (1 - Math.max(c.load, c.arenaLoad)),
                     Math.sqrt(2 * dec * Math.abs(distance))
                 );
             }
@@ -347,14 +364,14 @@ export default class IndependentSpikeBackend {
                 && Math.abs(desired) > Math.abs(v);
             if (accelerating || (v === 0 && desired !== 0)) rate = cfg.acceleration;
             let next = v + clamp(desired - v, -rate / 1000, rate / 1000);
-            if (c.load === 1) {
+            if (Math.max(c.load, c.arenaLoad) === 1) {
                 next = 0;
                 v = 0;
             }
             const previous = m.position;
             m.position += (v + next) / 2000;
             m.degPerSec = next;
-            m.stalled = c.load === 1 && ['position', 'speed', 'time'].includes(c.mode) && c.requested !== 0;
+            m.stalled = Math.max(c.load, c.arenaLoad) === 1 && ['position', 'speed', 'time'].includes(c.mode) && c.requested !== 0;
             if (c.mode === 'position' && m.stalled && Math.abs(next) <= cfg.stallSpeed) {
                 c.stallElapsed++;
                 if (c.stallElapsed >= cfg.stallMs) this._complete(c, RESULT.STALLED);

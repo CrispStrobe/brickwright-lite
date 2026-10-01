@@ -6,7 +6,7 @@ import {drawArena} from '../../lib/spike-arena/arena-render.js';
 import {DEFAULT_UNIT, loadUnit, loadUnitIndex, loadSolution} from '../../lib/spike-arena/arena-units.js';
 import {ARENA_L10N, arenaT, arenaLocale, localText, verdictText} from '../../lib/spike-arena/l10n.js';
 import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
-import {sandboxWorld, editSandbox, SANDBOX_STORAGE_KEY} from '../../lib/spike-arena/arena-sandbox.js';
+import {sandboxWorld, editSandbox, selectSandboxItem, transformSandboxItem, SANDBOX_STORAGE_KEY} from '../../lib/spike-arena/arena-sandbox.js';
 import downloadBlob from '../../lib/download-blob.js';
 import {VmStepClock, frameSimMs} from '../../lib/spike-arena/arena-clock.js';
 
@@ -52,7 +52,7 @@ class SpikeArenaPane extends React.Component {
         this.state = {
             status: 'loading', message: '', units: [], unit: null, challenges: [], index: 0,
             verdict: null, readout: null, hintsOpen: false,
-            sandbox: null, sandboxTool: 'none', sandboxColor: 'blue', driveSpeed: 30,
+            sandbox: null, sandboxTool: 'none', sandboxSelection: null, sandboxColor: 'blue', driveSpeed: 30,
             view: '2d', view3dState: 'off', view3dMessage: '', cameraMode: 'orbit'
         };
         this.sandboxFile = React.createRef();
@@ -69,6 +69,7 @@ class SpikeArenaPane extends React.Component {
 
     async componentDidMount () {
         window.addEventListener('bw-spike-arena-select', this.onSelectEvent);
+        window.addEventListener('bw-project-bundle-loaded', this.onProjectLoaded);
         window.__bwSpikeArena = {
             get bridge () { return this._pane.bridge; },
             beginExternal: () => {
@@ -121,6 +122,7 @@ class SpikeArenaPane extends React.Component {
         this.disposed = true;
         this.unitToken = null;
         window.removeEventListener('bw-spike-arena-select', this.onSelectEvent);
+        window.removeEventListener('bw-project-bundle-loaded', this.onProjectLoaded);
         cancelAnimationFrame(this.raf);
         this.clock.uninstall();
         this.view3dToken = null;
@@ -181,11 +183,45 @@ class SpikeArenaPane extends React.Component {
     }
 
     async sandboxTap (event) {
-        if (!this.state.sandbox || this.state.sandboxTool === 'none') return;
+        if (!this.state.sandbox || ['none', 'move'].includes(this.state.sandboxTool)) return;
         const box = event.currentTarget.getBoundingClientRect();
         const x = (event.clientX - box.left) / box.width * this.world.mat.width;
         const y = (event.clientY - box.top) / box.height * this.world.mat.height;
         try { await this.setSandbox(editSandbox(this.world, this.state.sandboxTool, x, y, this.state.sandboxColor)); }
+        catch (error) { this.setState({message: error.message}); }
+    }
+
+    onProjectLoaded = async () => {
+        if (this.state.sandbox) await this.openSandbox();
+    };
+
+    sandboxPoint (event) {
+        const box = event.currentTarget.getBoundingClientRect();
+        return {x: (event.clientX - box.left) / box.width * this.world.mat.width,
+            y: (event.clientY - box.top) / box.height * this.world.mat.height};
+    }
+
+    sandboxPointerDown = event => {
+        if (!this.state.sandbox || this.state.sandboxTool !== 'move') return;
+        const point = this.sandboxPoint(event);
+        const selection = selectSandboxItem(this.world, point.x, point.y);
+        this.setState({sandboxSelection: selection});
+        this.sandboxDrag = selection ? {...point, selection, world: this.world} : null;
+        if (selection) event.currentTarget.setPointerCapture?.(event.pointerId);
+    };
+
+    sandboxPointerUp = async event => {
+        const drag = this.sandboxDrag;
+        this.sandboxDrag = null;
+        if (!drag || drag.world !== this.world) return;
+        const point = this.sandboxPoint(event);
+        try { await this.setSandbox(transformSandboxItem(drag.world, drag.selection,
+            {dx: point.x - drag.x, dy: point.y - drag.y})); }
+        catch (error) { this.setState({message: error.message}); }
+    };
+
+    async resizeSandboxSelection (scale) {
+        try { await this.setSandbox(transformSandboxItem(this.world, this.state.sandboxSelection, {scale})); }
         catch (error) { this.setState({message: error.message}); }
     }
 
@@ -237,11 +273,20 @@ class SpikeArenaPane extends React.Component {
                 </label>
                 <select aria-label={t('sandboxTool')} data-testid="bw-spike-sandbox-tool" value={this.state.sandboxTool}
                     style={{minHeight: 32, maxWidth: '100%'}} onChange={event => this.setState({sandboxTool: event.target.value})}>
-                    {['none', 'start', 'paint', 'wall', 'crate', 'erase'].map(tool => <option key={tool} value={tool}>{t(`tool.${tool}`)}</option>)}
+                    {['none', 'move', 'start', 'paint', 'wall', 'crate', 'erase'].map(tool => <option key={tool} value={tool}>{t(`tool.${tool}`)}</option>)}
                 </select>
                 <select aria-label={t('sandboxColor')} value={this.state.sandboxColor} style={{minHeight: 32, maxWidth: '100%'}}
                     onChange={event => this.setState({sandboxColor: event.target.value})}>
                     {Object.entries(ARENA_L10N[this.locale].colors).map(([color, title]) => <option key={color} value={color}>{title}</option>)}
+                </select>
+                <button type="button" style={btn} disabled={!this.state.sandboxSelection}
+                    data-testid="bw-spike-sandbox-smaller" onClick={() => this.resizeSandboxSelection(0.8)}>{t('sandboxSmaller')}</button>
+                <button type="button" style={btn} disabled={!this.state.sandboxSelection}
+                    data-testid="bw-spike-sandbox-larger" onClick={() => this.resizeSandboxSelection(1.25)}>{t('sandboxLarger')}</button>
+                <select aria-label={t('sandboxContact')} value={this.world.robot.contactModel}
+                    data-testid="bw-spike-sandbox-contact" onChange={event => this.setSandbox(sandboxWorld({...this.world,
+                        robot: {...this.world.robot, contactModel: event.target.value}}))}>
+                    {['stall', 'slip'].map(value => <option key={value} value={value}>{t(`contact.${value}`)}</option>)}
                 </select>
                 <button type="button" style={btn} data-testid="bw-spike-sandbox-save" onClick={() => this.exportSandbox()}>{t('sandboxSave')}</button>
                 <button type="button" style={btn} onClick={() => this.sandboxFile.current.click()}>{t('sandboxOpen')}</button>
@@ -615,7 +660,8 @@ class SpikeArenaPane extends React.Component {
                 ) : null}
                 <div ref={this.box} style={{padding: 10}}>
                     <canvas ref={this.canvas} role="img" aria-label={t('canvasLabel')} data-testid="bw-spike-arena-canvas"
-                        onClick={event => this.sandboxTap(event)}
+                        onClick={event => this.sandboxTap(event)} onPointerDown={this.sandboxPointerDown}
+                        onPointerUp={this.sandboxPointerUp} onPointerCancel={() => { this.sandboxDrag = null; }}
                         hidden={showing3d}
                         style={{width: '100%', display: showing3d ? 'none' : 'block', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)'}} />
                     <div ref={this.view3dBox} data-testid="bw-spike-arena-3d" data-state={view3dState}
