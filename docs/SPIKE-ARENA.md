@@ -530,3 +530,52 @@ registered peripheral belonging to the shared virtual hub. The virtual-only
 chooser flag prevents a missing device, unsupported filter or cancelled
 selection from falling back to physical Bluetooth. Physical hardware execution
 remains an explicit separate action.
+
+## Optional desktop firmware demonstration
+
+The arena's Execution selector defaults to Simulator. That route executes
+Scratch/Brickwright programs through the independent virtual hub. Firmware
+demo (desktop) instead runs the built-in driving guest from
+`brickwright-spike-prime-fw/simulation/arena-demo`; it does not execute Code
+tab programs. The browser keeps this choice disabled because it has no managed
+Renode runtime. Manual driving switches back to Simulator.
+
+Both routes use the same `ArenaHubBridge`, arena geometry, sensors, hub and
+2D/3D renderer. The Renode adapter reads guest encoder degrees and the guest
+millisecond clock; it does not step the native controller. Its first frame
+establishes an encoder baseline without teleporting the rover. Later frames
+must preserve the image hash and connection generation and have increasing
+sequence numbers, nondecreasing time, finite motor outputs and gaps at most
+2 seconds. Wheel deltas are interpolated into world steps of at most 5 ms.
+This is a sampled trajectory, not a guarantee of the unsampled path.
+
+Color/reflection, distance in millimetres, force/touch and motor load percent
+return through the closed `renode.spike.arena.inputs.write` broker operation.
+It accepts bounded semantic readings only. The native supervisor verifies the
+build-pinned guest, state service, configuration and the package manifest of
+all imported helpers/platform files before starting the demo. Caller data
+cannot supply paths, monitor commands, memory addresses or firmware images.
+
+Run starts a fresh demonstration. Stop, reset, changing the mat/execution
+route and closing the pane close the session owned by the arena; a failed
+start never closes someone else's pre-existing debugger. The desktop process
+supervisor still imposes its existing 120-second session limit. The guest's
+synthetic motion is bounded to one simulated hour. The model/guest units are
+not physically calibrated, the demo is not full NuttX/SPIKE API compatibility,
+and full NuttX driver-to-arena integration remains separate work.
+
+Build the source-only guest, then use `renode-spike-prime`'s
+`tools/stage_spike_arena_demo.py` to produce a new immutable local package.
+Supply its `pins.json` values as compile-time environment variables for the
+desktop build. The manifest and every `BW_RENODE_*_SHA256` pin must match.
+Generated packages and execution evidence belong outside this public checkout.
+
+For reproducible GUI/guest qualification, build
+`tools/renode-arena-proof/Cargo.toml` with those same pins. Set
+`BW_RENODE_ARENA_PROOF_DRIVER` to its executable, `BW_SPIKE_BUILD_ROOT` to the
+production GUI build and `BW_SPIKE_EVIDENCE_DIR` to the private evidence
+repository, then run `node scripts/verify-spike-renode-arena-browser.mjs`.
+This proof uses a test broker transport to drive the actual managed guest;
+it does not substitute for the Tauri webview ACL/broker boundary tests.
+New adapters, validators and proof tools use BSD-3-Clause. Retained native
+supervisor, GDB transport and Renode components retain their original licences.

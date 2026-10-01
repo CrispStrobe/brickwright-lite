@@ -17,6 +17,8 @@ export async function loadSimulator () {
         for (const name of names) {
             let source = await readFile(new URL(`${name}.jsx`, sourceRoot), 'utf8');
             source = source.replace("from 'react'", `from '${pathToFileURL(guiRequire.resolve('react')).href}'`);
+            source = source.replace("from 'scratch-vm/src/extension-support/native-renode-capability.js'",
+                `from '${new URL('../../overlay/scratch-vm/src/extension-support/native-renode-capability.js', import.meta.url).href}'`);
             for (const child of names) source = source.replaceAll(`'./${child}.jsx'`, `'${urls[child].href}'`);
             await writeFile(urls[name], babel.transformSync(source, {filename: `${name}.jsx`, babelrc: false,
                 configFile: false, presets: [[guiRequire.resolve('@babel/preset-react'), {runtime: 'classic'}]]}).code);

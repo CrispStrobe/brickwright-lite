@@ -1,5 +1,7 @@
 //! Brickwright native app (Tauri 2) — shared entry point for desktop and mobile.
 
+#[cfg(desktop)]
+mod arena_inputs;
 mod assetserver;
 mod downloads;
 mod fileio;

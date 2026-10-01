@@ -48,6 +48,8 @@ export async function runSpike3OnVirtualHub (vm, options = {}) {
         if (typeof fn !== 'function') throw new Error(`the spikeprime extension has no ${op} block loaded`);
         return fn(args, {runtime: vm.runtime, target: vm.runtime.getEditingTarget && vm.runtime.getEditingTarget()});
     };
+    // An explicit program Run releases the optional firmware demo first.
+    if (virtualHub.hubState?.externalBackend) await virtualHub.hubState.externalBackend.cancel();
     virtualHub.enable(true);
     try {
         await connectVirtualSpike({host: win, hubState: virtualHub.hubState,

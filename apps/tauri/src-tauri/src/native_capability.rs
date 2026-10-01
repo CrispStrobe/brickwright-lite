@@ -83,6 +83,12 @@ fn execute(
                     .expect("bounded length"),
             )
         }
+        Operation::RenodeSpikeArenaInputs => {
+            spike()?;
+            debugger
+                .spike_arena_inputs(args.clone())
+                .map(|value| value.to_string())
+        }
         Operation::RenodeSpikeStateRead => {
             spike()?;
             debugger.state().map(|value| value.to_string())

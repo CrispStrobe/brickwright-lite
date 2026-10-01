@@ -350,7 +350,7 @@ impl RenodeDebugger {
             .as_ref()
             .ok_or_else(|| "Renode debugger is not started".to_owned())?;
         match &active.state {
-            TargetState::Spike(state) => serde_json::to_value(state.latest()?)
+            TargetState::Spike(state) => serde_json::to_value(state.sample()?)
                 .map_err(|_| "brick-state snapshot unavailable".to_owned()),
             TargetState::Ev3 { feed, uart: path } => {
                 let mut state = serde_json::to_value(feed.sample()?)
@@ -367,6 +367,23 @@ impl RenodeDebugger {
                 }
                 Ok(state)
             }
+        }
+    }
+
+    pub(crate) fn spike_arena_inputs(&self, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                serde_json::to_value(feed.command("arena.inputs", arguments)?)
+                    .map_err(|_| "SPIKE snapshot unavailable".to_owned())
+            }
+            _ => Err("SPIKE arena input target mismatch".into()),
         }
     }
 
@@ -402,6 +419,31 @@ mod tests {
         assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
         assert_eq!(debugger.close(&supervisor).unwrap(), "closed");
         assert!(!debugger.has_endpoint());
+    }
+
+    #[test]
+    #[ignore = "requires the pinned simulation-only ARM arena guest"]
+    fn packaged_arena_guest_observes_motion_and_accepts_bounded_inputs() {
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        debugger.start(&supervisor).unwrap();
+        let first = debugger.state().unwrap();
+        assert_eq!(first["target"]["firmware"], "brickwright-arena-demo");
+        debugger.run().unwrap();
+        thread::sleep(Duration::from_millis(200));
+        debugger.pause().unwrap();
+        let moved = debugger.state().unwrap();
+        assert!(
+            moved["motors"][1]["position"].as_f64().unwrap()
+                > first["motors"][1]["position"].as_f64().unwrap()
+        );
+        debugger.spike_arena_inputs(json!({"sensors":[{"port":"D","kind":"distance","values":{"distanceMillimeters":100}}],"loads":[]})).unwrap();
+        debugger.run().unwrap();
+        thread::sleep(Duration::from_millis(200));
+        debugger.pause().unwrap();
+        let stopped = debugger.state().unwrap();
+        assert_eq!(stopped["motors"][1]["speedDps"], 0);
+        debugger.close(&supervisor).unwrap();
     }
 
     /// Hosted/manual proof against the exact build-pinned Renode tree. The ordinary library
