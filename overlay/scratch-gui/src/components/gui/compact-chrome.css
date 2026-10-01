@@ -53,7 +53,7 @@
     min-height: 0;
 }
 
-.responsive-editor :global([class*="gui_tab-list"]) {
+:global(html:not([data-bw-touch])) .responsive-editor :global([class*="gui_tab-list"]) {
     width: calc(100% - 36px);
     height: auto;
     min-height: 44px;
@@ -66,6 +66,24 @@
     min-height: 32px;
     margin: 0;
     padding: 0 10px;
+}
+
+/* A shrinking circuit column must keep its toolbar and overflow menu above
+   the canvas, which otherwise covers their hit targets. */
+.responsive-editor :global([data-circuit-toolbar]) {
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+}
+
+/* Anchor the dropdown to the whole toolbar so a narrow button does not place
+   secondary controls outside the canvas column, under the parts rail. */
+.responsive-editor :global([data-toolbar-more]) {
+    position: static !important;
+}
+
+.responsive-editor :global([data-toolbar-more-menu]) {
+    top: 100% !important;
 }
 
 /* The menu bar hides entirely — its functionality is one click away via the

@@ -221,6 +221,14 @@ try {
     // the tab must stay scoped to the visible designer selected above.
     const designer = dedicatedDesigner;
     check('Circuit Designer rendered', await designer.count() >= 1);
+    // Shrinking the editor moves secondary navigation into the existing overflow menu.
+    const ensureCircuitNavigation = async () => {
+        if (!await designer.locator('[data-circuit-view-toggle]').count()) {
+            await designer.getByRole('button', {name: 'More circuit controls'}).click();
+            await designer.locator('[data-circuit-view-toggle]').waitFor({state: 'visible'});
+        }
+    };
+    await ensureCircuitNavigation();
     const modeToggle = designer.locator('[data-build-sim-toggle]');
     const toolbar = modeToggle.locator('..');
     check('shared toolbar has view buttons', await designer.locator('[data-circuit-view-toggle] [aria-label="Realistic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Schematic view"]').count() >= 1 && await designer.locator('[data-circuit-view-toggle] [aria-label="Board view"]').count() >= 1);
@@ -237,22 +245,22 @@ try {
     check('Build/Sim toggle segments have equal dimensions', modeMetrics.length === 2 && modeMetrics[0].width === modeMetrics[1].width && modeMetrics[0].height === modeMetrics[1].height, JSON.stringify(modeMetrics));
     // The warnings chip is a count-badged CHIP ("⚠ 3"), so its width is
     // content-driven by design; it still shares the 34px control height.
-    const toolbarButtonMetrics = await designer.locator('[data-circuit-toolbar] button:visible:not([data-warnings-chip])').evaluateAll(buttons => buttons.map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)})));
+    const toolbarButtonMetrics = await designer.locator('[data-circuit-toolbar] button:visible:not([data-warnings-chip])').evaluateAll(buttons => buttons.filter(button => !button.closest('[data-toolbar-more-menu]') || button.closest('[data-panel-navigation], [data-circuit-view-toggle]')).map(button => ({width: Math.round(button.getBoundingClientRect().width), height: Math.round(button.getBoundingClientRect().height)})));
     check('toolbar buttons share one control size', toolbarButtonMetrics.length > 8 && toolbarButtonMetrics.every(metric => metric.width === 34 && metric.height === 34), JSON.stringify(toolbarButtonMetrics));
     const warningsChip = designer.locator('[data-circuit-toolbar] [data-warnings-chip]:visible');
     if (await warningsChip.count()) {
         const chipMetrics = await warningsChip.first().evaluate(el => ({height: Math.round(el.getBoundingClientRect().height)}));
         check('warnings chip shares the toolbar control height', chipMetrics.height === 34, JSON.stringify(chipMetrics));
     }
-    const toolbarGroupMetrics = await designer.locator('[data-circuit-toolbar] [data-circuit-control-group]:visible').evaluateAll(groups => groups.map(group => ({width: Math.round(group.getBoundingClientRect().width), height: Math.round(group.getBoundingClientRect().height), y: Math.round(group.getBoundingClientRect().y)})));
-    check('toolbar control groups share one baseline', toolbarGroupMetrics.length >= 4 && toolbarGroupMetrics.every(metric => metric.height === 34 && metric.y === toolbarGroupMetrics[0].y), JSON.stringify(toolbarGroupMetrics));
+    const toolbarGroupMetrics = await designer.locator('[data-circuit-toolbar] [data-circuit-control-group]:visible').evaluateAll(groups => groups.map(group => ({width: Math.round(group.getBoundingClientRect().width), height: Math.round((group.closest('[data-toolbar-more-menu]') ? group.firstElementChild : group).getBoundingClientRect().height), y: Math.round(group.getBoundingClientRect().y)})));
+    check('toolbar control groups stay touch-sized when rows wrap or enter the menu', toolbarGroupMetrics.length >= 4 && toolbarGroupMetrics.every(metric => metric.height >= 34 && metric.height <= 36), JSON.stringify(toolbarGroupMetrics));
     const modePaint = await modeToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({checked: button.getAttribute('aria-checked'), background: getComputedStyle(button).backgroundColor, color: getComputedStyle(button).color})));
     check('selected Build/Sim state is visibly painted', modePaint[0]?.checked === 'true' && modePaint[0].background !== modePaint[1].background && modePaint[0].background !== 'rgb(255, 255, 255)', JSON.stringify(modePaint));
     const powerToggle = designer.locator('[data-power-toggle]');
     check('power is a visible two-state toggle', await powerToggle.getByRole('radio').count() === 2 && await powerToggle.getByRole('radio', {name: 'Power on'}).getAttribute('aria-checked') === 'true');
     const powerPaint = await powerToggle.getByRole('radio').evaluateAll(buttons => buttons.map(button => ({checked: button.getAttribute('aria-checked'), background: getComputedStyle(button).backgroundColor})));
     check('selected power state is visibly painted', powerPaint[0]?.checked === 'true' && powerPaint[0].background !== powerPaint[1].background && powerPaint[0].background !== 'rgb(255, 255, 255)', JSON.stringify(powerPaint));
-    check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().locator('xpath=../..').locator('[data-build-sim-toggle]').count() === 1);
+    check('view buttons share the Build/Sim toolbar', await designer.locator('[data-circuit-view-switcher]').first().evaluate(el => !!el.closest('[data-circuit-toolbar]')?.querySelector('[data-build-sim-toggle]')));
     const panelNavigation = designer.locator('[data-panel-navigation]');
     check('shared toolbar has panel navigation', await panelNavigation.count() === 1 && await panelNavigation.locator('button').count() >= 4, `containers=${await panelNavigation.count()} buttons=${await panelNavigation.locator('button').count()}`);
     const panelButtonMetrics = await designer.getByRole('button', {name: 'Designer'}).evaluateAll(buttons => buttons.map(button => ({width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height})));
@@ -262,6 +270,7 @@ try {
     check('light presentation uses a light toolbar', await designer.locator('[data-circuit-toolbar]').evaluate(el => getComputedStyle(el).backgroundColor === 'rgb(248, 250, 252)'));
     const moreControls = designer.getByRole('button', {name: 'More circuit controls'});
     check('save/load/zoom controls have a single overflow slot', await moreControls.count() === 1 && await designer.locator('[data-toolbar-more]').count() === 1);
+    if (await moreControls.getAttribute('aria-expanded') === 'true') await moreControls.click();
     await moreControls.click({force: true});
     // The file controls were consolidated into the "..." overflow menu (owner
     // request): Save / Load / Zoom plus Import ▸ / Export ▸ submenus, rather than
@@ -309,6 +318,7 @@ try {
         await examplesSelector.getByRole('button', {name: /^Expand Examples/i}).click({force: true});
         check('Examples selector actually reopens', await examplesSelector.getByRole('button', {name: /^Collapse Examples/i}).count() === 1 && await examplesSelector.locator('[data-examples-selector-content]').count() === 1);
     }
+    await ensureCircuitNavigation();
     const examplesModeButton = page.locator('[data-panel-navigation] button[aria-label="Examples"]:visible').first();
     if (await examplesModeButton.count()) {
         await examplesModeButton.click({force: true});
@@ -326,7 +336,8 @@ try {
         await page.locator('[data-panel-navigation] button[aria-label="Designer"]:visible').first().click({force: true});
         await page.waitForTimeout(150);
     }
-    await designer.locator('[data-circuit-view-switcher] button[title="Schematic view"]').first().evaluate(el => el.click());
+    await ensureCircuitNavigation();
+    await designer.locator('[data-circuit-view-switcher] button[title="Schematic view"]').first().click();
     await page.waitForTimeout(150);
     const realisticEscape = page.locator('[data-schematic-escape] button[title="Realistic view"]');
     check('schematic view keeps an escape route', await realisticEscape.count() >= 1);

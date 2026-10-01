@@ -170,9 +170,7 @@ try {
     // wait accepted the placeholder and the fallback filled a textarea the editor had replaced.
     await typeIntoEditor(page, PROGRAM);
     check('the Code editor mounted and holds the program', true);
-    for (const label of ['To blocks', 'Import', 'Zu Blöcken']) {
-        try { await page.locator('button', {hasText: label}).first().click({timeout: 8000}); break; } catch {}
-    }
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({timeout: 8000});
     // To-blocks moves the app to the Blocks view (its status even says "Switch to
     // the Code tab"), and the device picker + language tabs live in the Code
     // view — so come back BEFORE reading them, or the dropdown is not in the DOM.
@@ -343,9 +341,7 @@ try {
     // Python buffer and the second To-blocks conversion never happens.
     await page.locator('[data-testid="bw-lang-row"] button').filter({hasText: 'Pseudo'}).first().click();
     await typeIntoEditor(page, SECOND_PROGRAM);
-    for (const label of ['To blocks', 'Import', 'Zu Blöcken']) {
-        try { await page.locator('button', {hasText: label}).first().click({timeout: 8000}); break; } catch {}
-    }
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({timeout: 8000});
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
     await pyTab.click();
     const secondReady = await waitFor(

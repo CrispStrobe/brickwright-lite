@@ -214,6 +214,8 @@ class PaneDivider extends React.Component {
             this.pending = null;
             return;
         }
+        // Consecutive drags are resizing, not a double-click to collapse.
+        this.lastDownAt = 0;
         // Land on the exact final position rather than wherever the last frame
         // happened to fall.
         this.pending = this.fractionForPointer(e.clientX);

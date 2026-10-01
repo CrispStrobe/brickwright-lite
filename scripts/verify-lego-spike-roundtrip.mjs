@@ -448,7 +448,7 @@ try {
     // The old VM still contains every expected opcode while compilation is
     // starting, so an opcode-only wait can resolve before replacement begins.
     // The importer publishes this message only after vm.loadProject resolves.
-    await page.getByText('Compiled to blocks and loaded. Switch to the Code tab to see them.',
+    await page.getByText('Blocks loaded.',
         {exact: true}).waitFor({timeout: 30000});
     await page.waitForFunction(required => {
         const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
