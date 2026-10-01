@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import assert from 'node:assert/strict';
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, writeFile, readFile} from 'node:fs/promises';
+import {createServer} from 'node:http';
+import {resolve, extname, sep} from 'node:path';
 import {chromium, firefox} from 'playwright';
 import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 
@@ -12,7 +14,27 @@ const mutation = process.env.BW_EDITOR_MUTATION || '';
 assert.ok(['', 'rigid-column'].includes(mutation));
 const evidence = `${privateSpikeEvidenceDirectory()}/editor-responsive-${browserName}${mutation ? `-${mutation}` : ''}`;
 await mkdir(evidence, {recursive: true});
-const browser = await (browserName === 'firefox' ? firefox : chromium).launch({headless: true,
+let server;
+let proofUrl = process.env.PROOF_URL;
+if (!proofUrl) {
+    const build = resolve(process.env.BW_EDITOR_BUILD_ROOT || 'packages/scratch-gui/build');
+    const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
+        '.json': 'application/json', '.wasm': 'application/wasm', '.svg': 'image/svg+xml', '.png': 'image/png'};
+    server = createServer(async (request, response) => {
+        try {
+            const path = decodeURIComponent(request.url.split('?')[0]);
+            const file = resolve(build, `.${path.endsWith('/') ? `${path}index.html` : path}`);
+            if (!file.startsWith(`${build}${sep}`)) throw new Error('invalid path');
+            const data = await readFile(file);
+            response.writeHead(200, {'content-type': types[extname(file)] || 'application/octet-stream'});
+            response.end(data);
+        } catch { response.writeHead(404); response.end('not found'); }
+    });
+    await new Promise(done => server.listen(0, '127.0.0.1', done));
+    proofUrl = `http://127.0.0.1:${server.address().port}/`;
+}
+const headless = process.env.BW_HEADLESS !== '0';
+const browser = await (browserName === 'firefox' ? firefox : chromium).launch({headless,
     ...(browserName === 'chromium' ? {args: ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader']} : {})});
 const page = await browser.newPage({viewport: {width: 1400, height: 1000}, serviceWorkers: 'block'});
 const errors = [], checks = [];
@@ -25,7 +47,7 @@ try {
         localStorage.setItem('bw-starter-v1-complete', '1');
         localStorage.setItem('bw-right-pane-hidden', '0');
     });
-    await page.goto(process.env.PROOF_URL || 'http://127.0.0.1:8617/', {waitUntil: 'domcontentloaded'});
+    await page.goto(proofUrl, {waitUntil: 'domcontentloaded'});
     await page.getByRole('tab', {name: /Costumes|Backdrops/, exact: true}).click();
     const targets = page.getByTestId('bw-image-target');
     await targets.waitFor({timeout: 60000});
@@ -49,6 +71,8 @@ try {
     await page.getByTestId('bw-open-spike-arena').waitFor();
     await page.getByRole('button', {name: /To blocks/}).click();
     await page.getByTestId('bw-conversion-report').waitFor({timeout: 60000});
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+        null, {timeout: 60000});
     assert.match(await page.getByTestId('bw-code-status').innerText(), /Blocks loaded/);
     if (mutation === 'rigid-column') {
         await page.addStyleTag({content: '[data-editor-pane] {flex: 1 0 620px !important; min-width: 620px !important;}'});
@@ -126,6 +150,8 @@ try {
     await page.screenshot({path: `${evidence}/failure.png`}).catch(() => {});
     checks.push({failure: error.stack});
 } finally {
-    await writeFile(`${evidence}/result.json`, JSON.stringify({browserName, mutation, checks, errors, success: !process.exitCode}, null, 2));
+    await writeFile(`${evidence}/result.json`, JSON.stringify({browserName, version: browser.version(), headless,
+        mutation, checks, errors, success: !process.exitCode}, null, 2));
     await browser.close();
+    if (server) await new Promise(done => server.close(done));
 }
