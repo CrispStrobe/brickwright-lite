@@ -39,3 +39,59 @@ test('closing the simulator interrupts pending motion and waits on the shared hu
         assert.equal(hub.data.motors[0].degPerSec, 0);
     } finally { if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup(); }
 });
+
+test('free sandbox works with no program, survives reopening and reset cancels pending waits', async () => {
+    const browser = installBrowser(), {Pane, cleanup} = await loadSimulator();
+    const hub = new Hub(); let renderer;
+    try {
+        await act(async () => { renderer = create(React.createElement(Pane, {hubState: hub, locale: 'en'})); });
+        await settle(() => browser.win.__bwSpikeArena?.bridge, 'arena ready');
+        await act(async () => { await one(renderer, 'bw-spike-arena-sandbox').props.onClick(); });
+        assert.equal(browser.win.__bwSpikeArena.mode, 'sandbox');
+        assert.equal(browser.win.__bwSpikeArena.bridge.hubState, hub);
+        await act(async () => { await one(renderer, 'bw-spike-sandbox-drive-forward').props.onClick(); });
+        await browser.frames(20);
+        assert.ok(browser.win.__bwSpikeArena.snapshot.pose.x > 30);
+        assert.equal(browser.win.__bwSpikeArena.verdict.status, 'running');
+        const pending = hub.backend.wait(5000);
+        await act(async () => { await one(renderer, 'bw-spike-arena-reset').props.onClick(); });
+        assert.equal(await pending, 'interrupted');
+        assert.equal(browser.win.__bwSpikeArena.snapshot.pose.x, 30);
+        const original = browser.win.__bwSpikeArena.bridge;
+        await act(async () => { await browser.win.__bwSpikeArena._pane.importSandbox({target: {value: 'bad.json', files: [
+            {size: 2, text: async () => '{}'}]}}); });
+        assert.equal(browser.win.__bwSpikeArena.bridge, original, 'failed import retains the working arena');
+        assert.match(one(renderer, 'bw-spike-arena-message').props.children, /Could not open the mat/);
+        await act(async () => { await one(renderer, 'bw-spike-arena-challenges').props.onClick(); });
+        assert.equal(browser.win.__bwSpikeArena.mode, 'challenge');
+        await act(async () => { await one(renderer, 'bw-spike-arena-sandbox').props.onClick(); });
+        assert.equal(browser.win.__bwSpikeArena.mode, 'sandbox');
+        assert.equal(browser.scripts.length, 0);
+    } finally { if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup(); }
+});
+
+test('sandbox does not wait for challenge downloads and late downloads cannot replace it', async () => {
+    const browser = installBrowser(), {Pane, cleanup} = await loadSimulator();
+    const fetchWorld = globalThis.fetch;
+    let release;
+    const hold = new Promise(resolve => { release = resolve; });
+    globalThis.fetch = async url => { await hold; return fetchWorld(url); };
+    let renderer;
+    try {
+        await act(async () => { renderer = create(React.createElement(Pane, {hubState: new Hub(), locale: 'en'})); });
+        const button = one(renderer, 'bw-spike-arena-sandbox');
+        assert.notEqual(button.props.disabled, true);
+        await act(async () => { await button.props.onClick(); });
+        assert.equal(browser.win.__bwSpikeArena.mode, 'sandbox');
+        const bridge = browser.win.__bwSpikeArena.bridge;
+        await act(async () => { await one(renderer, 'bw-spike-sandbox-drive-forward').props.onClick(); });
+        await browser.frames(10);
+        assert.ok(bridge.sim.pose.x > bridge.world.start.x, 'free play animates before downloads finish');
+        await act(async () => { release(); });
+        await settle(() => browser.win.__bwSpikeArena._pane.state.units.length > 0, 'late unit index');
+        assert.equal(browser.win.__bwSpikeArena.bridge, bridge);
+        assert.equal(browser.win.__bwSpikeArena.mode, 'sandbox');
+        await act(async () => { await one(renderer, 'bw-spike-arena-challenges').props.onClick(); });
+        await settle(() => browser.win.__bwSpikeArena.mode === 'challenge', 'challenges available after downloads recover');
+    } finally { release(); if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup(); }
+});

@@ -8,7 +8,7 @@ import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
 const root=fileURLToPath(new URL('../',import.meta.url));
-const tests=['independent-spike-controller','independent-spike-backend','independent-spike-speed-envelope','spike-simulator-pane','spike-arena-sim','spike-arena-challenges',
+const tests=['spike-virtual-connection','virtual-hub-shim','spike3-python-import','spike-long-sequences','spike-sandbox','independent-spike-controller','independent-spike-backend','independent-spike-speed-envelope','spike-simulator-pane','spike-arena-sim','spike-arena-challenges',
  'spike3-python-arena','spike3-python-arena-d1','virtual-spike-extension-e2e','virtual-spike-classic-extension-e2e',
  'virtual-spike-prime','virtual-spike-classic','virtual-spike-panel','virtual-spike-shared-state'];
 let result;

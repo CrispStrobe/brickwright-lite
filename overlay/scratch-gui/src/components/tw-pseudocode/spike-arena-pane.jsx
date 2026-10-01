@@ -1,10 +1,13 @@
 import React from 'react';
+import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
 import {browserLocale} from '../../lib/bw-i18n.js';
 import {ArenaHubBridge} from '../../lib/spike-arena/arena-hub-bridge.js';
 import {drawArena} from '../../lib/spike-arena/arena-render.js';
 import {DEFAULT_UNIT, loadUnit, loadUnitIndex, loadSolution} from '../../lib/spike-arena/arena-units.js';
 import {ARENA_L10N, arenaT, arenaLocale, localText, verdictText} from '../../lib/spike-arena/l10n.js';
 import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
+import {sandboxWorld, editSandbox, SANDBOX_STORAGE_KEY} from '../../lib/spike-arena/arena-sandbox.js';
+import downloadBlob from '../../lib/download-blob.js';
 import {VmStepClock, frameSimMs} from '../../lib/spike-arena/arena-clock.js';
 
 /**
@@ -49,8 +52,10 @@ class SpikeArenaPane extends React.Component {
         this.state = {
             status: 'loading', message: '', units: [], unit: null, challenges: [], index: 0,
             verdict: null, readout: null, hintsOpen: false,
+            sandbox: null, sandboxTool: 'none', sandboxColor: 'blue', driveSpeed: 30,
             view: '2d', view3dState: 'off', view3dMessage: '', cameraMode: 'orbit'
         };
+        this.sandboxFile = React.createRef();
         this.canvas = React.createRef();
         this.view3dBox = React.createRef();
         this.view3d = null;
@@ -78,6 +83,7 @@ class SpikeArenaPane extends React.Component {
             get snapshot () { return this._pane.bridge ? this._pane.bridge.snapshot() : null; },
             get status () { return this._pane.state.status; },
             get unit () { return this._pane.state.unit ? this._pane.state.unit.id : null; },
+            get mode () { return this._pane.world?.mode === 'sandbox' ? 'sandbox' : 'challenge'; },
             get view () { return this._pane.state.view; },
             get view3d () { return this._pane.state.view3dState; },
             _pane: this
@@ -88,8 +94,9 @@ class SpikeArenaPane extends React.Component {
         const pending = window.__bwSpikeArenaPending;
         const wantedUnit = (pending && typeof pending === 'object' && pending.unit) || DEFAULT_UNIT;
         const wanted = pending && typeof pending === 'object' ? pending.id : pending;
+        // Free play must animate even if challenge downloads never finish.
+        this.raf = requestAnimationFrame(this.frame);
         await this.openUnit(wantedUnit, wanted);
-        if (!this.disposed) this.raf = requestAnimationFrame(this.frame);
     }
 
     /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */
@@ -97,7 +104,7 @@ class SpikeArenaPane extends React.Component {
         await this.stopProgram();
         if (this.disposed) return;
         const token = this.unitToken = {};
-        this.setState({status: 'loading', message: ''});
+        this.setState({status: 'loading', sandbox: null, message: ''});
         try {
             const {unit, challenges, folder} = await loadUnit(unitId);
             if (token !== this.unitToken) return;
@@ -133,7 +140,7 @@ class SpikeArenaPane extends React.Component {
         else window.__bwSpikeArenaPending = unit ? {unit, id} : id;
     }
 
-    get world () { return this.state.challenges[this.state.index] || null; }
+    get world () { return this.state.sandbox || this.state.challenges[this.state.index] || null; }
 
     async select (index) {
         await this.stopProgram();
@@ -141,12 +148,109 @@ class SpikeArenaPane extends React.Component {
         const world = this.state.challenges[index];
         if (!world) return;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
-        this.setState({index, verdict: null, status: 'ready', message: '', hintsOpen: false}, () => {
+        this.setState({index, sandbox: null, readout: null, verdict: null, status: 'ready', message: '', hintsOpen: false}, () => {
             // A new world needs a new scene; the renderer is not reused across worlds.
             if (this.view3d) this.mountView3D();
             this.draw();
             this.props.onReady?.();
         });
+    }
+
+    async setSandbox (world) {
+        this.unitToken = null;
+        await this.stopProgram();
+        if (this.disposed) return;
+        this.unitToken = null;
+        this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
+        this.lastFrame = null;
+        this.clock.clear();
+        try { localStorage.setItem(SANDBOX_STORAGE_KEY, JSON.stringify(world)); } catch { /* local storage may be unavailable */ }
+        this.setState({sandbox: world, status: 'ready', verdict: null, readout: null, message: ''}, () => {
+            if (this.view3d) this.mountView3D();
+            this.draw();
+        });
+    }
+
+    async openSandbox () {
+        let world;
+        try {
+            const saved = localStorage.getItem(SANDBOX_STORAGE_KEY);
+            world = sandboxWorld(saved ? JSON.parse(saved) : undefined);
+        } catch { world = sandboxWorld(); }
+        await this.setSandbox(world);
+    }
+
+    async sandboxTap (event) {
+        if (!this.state.sandbox || this.state.sandboxTool === 'none') return;
+        const box = event.currentTarget.getBoundingClientRect();
+        const x = (event.clientX - box.left) / box.width * this.world.mat.width;
+        const y = (event.clientY - box.top) / box.height * this.world.mat.height;
+        try { await this.setSandbox(editSandbox(this.world, this.state.sandboxTool, x, y, this.state.sandboxColor)); }
+        catch (error) { this.setState({message: error.message}); }
+    }
+
+    async manualDrive (direction) {
+        if (!this.state.sandbox || !this.bridge) return;
+        await this.stopProgram();
+        if (this.disposed) return;
+        this.hubState.setSimulationEnabled(true);
+        const speeds = {forward: [1, 1], back: [-1, -1], left: [-1, 1], right: [1, -1], stop: [0, 0]}[direction];
+        if (!speeds) return;
+        for (const [i, side] of [this.bridge.robot.left, this.bridge.robot.right].entries()) {
+            const speed = this.hubState.backend.percentToDps(side.port, this.state.driveSpeed * speeds[i] * (side.reversed ? -1 : 1));
+            this.hubState.backend.runAtSpeed(side.port, speed);
+        }
+        this.lastFrame = null;
+        this.setState({status: 'running', message: ''});
+    }
+
+    async importSandbox (event) {
+        const file = event.target.files && event.target.files[0];
+        event.target.value = '';
+        if (!file) return;
+        try {
+            if (file.size > 1024 * 1024) throw new RangeError(this.t('sandboxFileTooLarge'));
+            const world = sandboxWorld(JSON.parse(await file.text()));
+            await this.setSandbox(world);
+        } catch (error) { this.setState({message: this.t('sandboxImportFailed', {error: error.message})}); }
+    }
+
+    async exportSandbox () {
+        if (!this.state.sandbox) return;
+        try {
+            await downloadBlob('spike-sandbox.json', new Blob([JSON.stringify(this.state.sandbox, null, 2)], {type: 'application/json'}));
+        } catch (error) { this.setState({message: error.message}); }
+    }
+
+    renderSandboxTools (btn) {
+        if (!this.state.sandbox) return null;
+        const t = this.t;
+        return (
+            <div data-testid="bw-spike-sandbox-tools" style={{display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px'}}>
+                {[['forward', '↑'], ['back', '↓'], ['left', '↶'], ['right', '↷'], ['stop', '■']].map(([direction, icon]) => (
+                    <button key={direction} type="button" style={btn} data-testid={`bw-spike-sandbox-drive-${direction}`}
+                        aria-label={t(`drive.${direction}`)} title={t(`drive.${direction}`)} onClick={() => this.manualDrive(direction)}>{icon}</button>
+                ))}
+                <label style={{display: 'flex', alignItems: 'center', gap: 4, fontSize: 12}}>{t('sandboxSpeed')}
+                    <input type="range" min="0" max="100" value={this.state.driveSpeed} aria-label={t('sandboxSpeed')}
+                        onChange={event => this.setState({driveSpeed: Number(event.target.value)})} style={{width: 90}} />
+                </label>
+                <select aria-label={t('sandboxTool')} data-testid="bw-spike-sandbox-tool" value={this.state.sandboxTool}
+                    style={{minHeight: 32, maxWidth: '100%'}} onChange={event => this.setState({sandboxTool: event.target.value})}>
+                    {['none', 'start', 'paint', 'wall', 'crate', 'erase'].map(tool => <option key={tool} value={tool}>{t(`tool.${tool}`)}</option>)}
+                </select>
+                <select aria-label={t('sandboxColor')} value={this.state.sandboxColor} style={{minHeight: 32, maxWidth: '100%'}}
+                    onChange={event => this.setState({sandboxColor: event.target.value})}>
+                    {Object.entries(ARENA_L10N[this.locale].colors).map(([color, title]) => <option key={color} value={color}>{title}</option>)}
+                </select>
+                <button type="button" style={btn} data-testid="bw-spike-sandbox-save" onClick={() => this.exportSandbox()}>{t('sandboxSave')}</button>
+                <button type="button" style={btn} onClick={() => this.sandboxFile.current.click()}>{t('sandboxOpen')}</button>
+                <input ref={this.sandboxFile} type="file" accept=".json,application/json" style={{display: 'none'}}
+                    data-testid="bw-spike-sandbox-file" onChange={event => this.importSandbox(event)} />
+                <button type="button" style={btn} onClick={() => this.setSandbox(sandboxWorld({mat: {width: 180, height: 120, background: 'white'},
+                    start: {x: 30, y: 40, heading: 0}}))}>{t('sandboxClear')}</button>
+            </div>
+        );
     }
 
     /** Opens the 3D view: loads its chunk once, then builds it for the current world. */
@@ -224,21 +328,15 @@ class SpikeArenaPane extends React.Component {
     /** Connects the spikeprime blocks to the virtual hub over Web Bluetooth, picking it without a chooser. */
     async connect () {
         const vm = this.vm;
-        if (vm.getPeripheralIsConnected && vm.getPeripheralIsConnected('spikeprime')) return;
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
         if (!peripheral) throw new Error('spikeprime has no peripheral');
-        const previous = window.__brickwrightChooseVirtualBluetooth;
-        window.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
-        try {
-            if (typeof peripheral.setMode === 'function') peripheral.setMode('web-ble');
-            await peripheral.scan();
-            for (let i = 0; i < 60 && !vm.getPeripheralIsConnected('spikeprime'); i++) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-        } finally {
-            window.__brickwrightChooseVirtualBluetooth = previous;
-        }
-        if (!vm.getPeripheralIsConnected('spikeprime')) throw new Error('no connection');
+        await connectVirtualSpike({host: window, hubState: this.hubState,
+            connected: () => vm.getPeripheralIsConnected('spikeprime'),
+            disconnect: () => vm.disconnectPeripheral('spikeprime'),
+            connect: async () => {
+                if (typeof peripheral.setMode === 'function') peripheral.setMode('web-ble');
+                await peripheral.scan();
+            }});
     }
 
     async start () {
@@ -277,6 +375,7 @@ class SpikeArenaPane extends React.Component {
         if (restart) this.setState({status: 'ready'});
         const external = this.hubState?.externalBackend;
         if (external) external.cancel();
+        this.hubState.backend.cancel();
         if (this.vm && this.spikeLoaded()) {
             try { this.vm.stopAll(); } catch { /* the VM may be mid-load */ }
         }
@@ -431,7 +530,11 @@ class SpikeArenaPane extends React.Component {
                 background: '#f8fafc', fontFamily: 'system-ui, sans-serif', color: '#1e293b'}}>
                 <div style={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, padding: '8px 10px', borderBottom: '1px solid #e2e8f0'}}>
                     <strong style={{fontSize: 13, marginRight: 4}}>{t('title')}</strong>
-                    <select value={unit ? unit.id : ''} aria-label={t('unit')} data-testid="bw-spike-arena-unit"
+                    <button type="button" style={btn} aria-pressed={Boolean(this.state.sandbox)}
+                        data-testid="bw-spike-arena-sandbox" onClick={() => this.openSandbox()}>{t('sandbox')}</button>
+                    <button type="button" style={btn} aria-pressed={!this.state.sandbox} disabled={status === 'loading'}
+                        data-testid="bw-spike-arena-challenges" onClick={() => this.state.challenges.length ? this.select(index) : this.openUnit(DEFAULT_UNIT)}>{t('challenges')}</button>
+                    {this.state.sandbox ? null : <><select value={unit ? unit.id : ''} aria-label={t('unit')} data-testid="bw-spike-arena-unit"
                         onChange={e => this.openUnit(e.target.value)} style={{flex: '1 1 140px', minWidth: 0, minHeight: 32}}
                         disabled={status === 'loading' || units.length < 2}>
                         {(units.length ? units : unit ? [unit] : []).map(u => (
@@ -443,6 +546,7 @@ class SpikeArenaPane extends React.Component {
                         disabled={!challenges.length}>
                         {challenges.map((c, i) => <option key={c.id} value={i}>{`${i + 1}. ${localText(c.title, this.locale)}`}</option>)}
                     </select>
+                    </>}
                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
                         {status === 'running' ? (
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
@@ -466,10 +570,11 @@ class SpikeArenaPane extends React.Component {
                         ) : null}
                     </div>
                 </div>
+                {this.renderSandboxTools(btn)}
                 {world ? (
                     <div style={{padding: '8px 10px 0', fontSize: 13, lineHeight: 1.45}} data-testid="bw-spike-arena-intro">
                         {localText(world.intro, this.locale)}
-                        <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6}}>
+                        {this.state.sandbox ? null : <><div style={{display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6}}>
                             <button type="button" style={{...btn, fontWeight: 500}} onClick={() => this.setState({hintsOpen: !hintsOpen})}
                                 aria-expanded={hintsOpen}>{t('hints')}</button>
                             <button type="button" style={{...btn, fontWeight: 500}} title={t('loadSolutionTitle')}
@@ -480,7 +585,7 @@ class SpikeArenaPane extends React.Component {
                                 {(world.hints || []).map((hint, i) => <li key={i}>{localText(hint, this.locale)}</li>)}
                             </ol>
                         ) : null}
-                        {this.renderStages(world)}
+                        {this.renderStages(world)}</>}
                     </div>
                 ) : null}
                 {decided ? (
@@ -510,6 +615,7 @@ class SpikeArenaPane extends React.Component {
                 ) : null}
                 <div ref={this.box} style={{padding: 10}}>
                     <canvas ref={this.canvas} role="img" aria-label={t('canvasLabel')} data-testid="bw-spike-arena-canvas"
+                        onClick={event => this.sandboxTap(event)}
                         hidden={showing3d}
                         style={{width: '100%', display: showing3d ? 'none' : 'block', borderRadius: 6, boxShadow: '0 1px 4px rgba(0,0,0,0.25)'}} />
                     <div ref={this.view3dBox} data-testid="bw-spike-arena-3d" data-state={view3dState}

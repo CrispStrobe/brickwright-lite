@@ -16,6 +16,7 @@
  * @module
  */
 
+import {connectVirtualSpike} from './virtual-hub/connect-virtual-spike.js';
 import {VmStepClock} from './spike-arena/arena-clock.js';
 
 /**
@@ -49,24 +50,13 @@ export async function runSpike3OnVirtualHub (vm, options = {}) {
     };
     virtualHub.enable(true);
     try {
-        if (!call('isConnected')) {
-            // The virtual hub is reached over Web Bluetooth. Naming the route skips
-            // the Scratch Link probe; answering the chooser skips the dialog that
-            // would otherwise ask whether this virtual device is the one meant.
-            const previousChooser = win.__brickwrightChooseVirtualBluetooth;
-            win.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
-            try {
+        await connectVirtualSpike({host: win, hubState: virtualHub.hubState,
+            connected: () => call('isConnected'), disconnect: () => call('disconnectHub'),
+            timeoutMs: CONNECT_WAIT_MS,
+            connect: async () => {
                 call('setConnectionMode', {MODE: 'web-ble'});
                 await call('connectHub');
-                const started = Date.now();
-                while (!call('isConnected') && Date.now() - started < CONNECT_WAIT_MS) {
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                }
-            } finally {
-                win.__brickwrightChooseVirtualBluetooth = previousChooser;
-            }
-            if (!call('isConnected')) return {ok: false, reason: 'no-connect'};
-        }
+            }});
     } catch (error) {
         return {ok: false, reason: 'no-connect', detail: error && error.message};
     }

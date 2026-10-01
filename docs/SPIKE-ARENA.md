@@ -434,3 +434,80 @@ warning. The solutions written before that still set a variable first
 way; `test/dialect-no-dropped-lines.test.mjs` holds every shipped program,
 these units included, to zero unread lines.
 
+
+
+## Free sandbox
+
+Open **Code → 🪐 SPIKE arena → Free sandbox**. The arena button is available
+regardless of the selected chip or the current program. No lesson, challenge,
+reference solution or program is needed. The sandbox can open while challenge
+files are still loading. Challenges remains a separate mode with its original
+scoring and deadlines.
+
+Use the arrow controls to drive the rover, the square to stop,
+and the speed slider for the next manual command. Manual driving stops the
+current program without resetting the rover. Start runs the current Scratch
+project; Reset stops outstanding motion, waits and sounds and returns the rover
+to its saved start. Pause freezes simulated time. A sandbox has no automatic
+success, failure or time limit. Walls remain solid and crates remain pushable.
+
+In 2D, choose a mat tool and tap the canvas: place the rover start, paint an
+8 cm colour patch, add a 4 × 24 cm wall or a 12 × 12 cm pushable crate, or erase
+the top item under the pointer. Editing stops the program and resets the rover
+to the start, so sensor inputs and motor encoders agree with the edited world.
+Save mat and Open mat exchange the arena world as a local JSON file; they do
+not contain programs or audit evidence. Invalid files leave the current mat
+intact. The last edited mat is also retained in local browser storage; Empty
+mat creates a blank 180 × 120 cm mat. The editor and imported mats cap items at 300, shape points at 256, and mat
+dimensions at 1000 cm; file imports are capped at 1 MB. Invalid robot ports or
+geometry are rejected before the current world is replaced. Editing happens in 2D; 3D orbit, follow and top cameras display
+the same world and sensor state.
+
+The world format adds `mode: "sandbox"`, with empty `success` and `failure`
+lists and no `timeLimitMs`. Ordinary challenge worlds still require at least
+one success condition and a positive deadline. `ArenaChecker` keeps a sandbox
+running regardless of elapsed time or contacts; `ArenaHubBridge` still owns
+fixed physics steps and publishes to the existing `VirtualSpikeHubState`.
+There is no second hub, motor model or physics engine for free play.
+
+## Additional validation and current limits
+
+`test/spike-long-sequences.test.mjs` runs 30 rounds of concurrent finite motor
+moves, waits, sounds, cancellation and load-induced stalls. The complete trace
+must match exactly for 5 ms calls and irregular 1/17/33/2/101 ms calls. A lost
+cancellation mutation must fail. These are synthetic contracts for our
+simulator, not a physical SPIKE calibration or an equivalence claim.
+
+`test/spike-sandbox.test.mjs` checks a two-minute unlimited run, solid walls,
+shared colour/distance readings after mat edits, reset and validation failures.
+`test/spike-simulator-pane.test.mjs` additionally checks manual driving without
+a program, reset cancellation, persistence across mode changes, failed imports
+and a sandbox opening before delayed challenge downloads finish.
+
+The production browser gates exercise Scratch execution, real mat placement,
+save/open and 3D cameras. Editor checks additionally cover keyboard resizing,
+portrait/landscape touch interaction and preserving unsaved pixel edits when
+switching between costumes and backdrops. Browser receipts belong outside the
+public checkout.
+
+Remaining model limits: contact can stop rover translation while the wheels
+slip; wall contact does not automatically impose a shaft torque or stall load.
+Motor load is an explicit simulator input, not a measured physical load. Mat
+editing currently uses fixed-size items; arbitrary polygons and robot geometry
+are available in the world format rather than through drag-resize handles.
+Browser storage is local to that browser, not part of the Scratch project;
+export the mat to transfer it alongside a project.
+
+The optional desktop Renode debugger runs our own ARM firmware separately.
+Its bounded brick-state stream provides identity, emulated time, sequence
+numbers and peripheral observations; it is not an arena motor-command backend.
+Before connecting it to this world, it needs reviewed motor-output and
+sensor-input capabilities, explicit clock ownership and cancellation, and
+integration tests under the same external scenarios. The existing JS sandbox
+requires neither a Renode installation nor a firmware image.
+
+Simulator execution disconnects any previous SPIKE session and selects the
+registered peripheral belonging to the shared virtual hub. The virtual-only
+chooser flag prevents a missing device, unsupported filter or cancelled
+selection from falling back to physical Bluetooth. Physical hardware execution
+remains an explicit separate action.

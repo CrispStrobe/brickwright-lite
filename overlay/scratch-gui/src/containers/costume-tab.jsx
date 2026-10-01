@@ -86,6 +86,7 @@ messages = {...messages, ...sharedMessages};
 class CostumeTab extends React.Component {
     constructor (props) {
         super(props);
+        this.pixelEditor = React.createRef();
         bindAll(this, [
             'handleSelectCostume',
             'handleDeleteCostume',
@@ -334,7 +335,10 @@ class CostumeTab extends React.Component {
                     data-testid={pixel ? 'bw-image-target-pixel' : 'bw-image-target'}
                     aria-label={intl.locale.startsWith('de') ? 'Bildziel wählen' : 'Choose image target'}
                     value={vm.editingTarget.id}
-                    onChange={event => vm.setEditingTarget(event.target.value)}
+                    onChange={event => {
+                        if (pixel && this.pixelEditor.current?.hasUnsavedChanges()) this.pixelEditor.current.save();
+                        vm.setEditingTarget(event.target.value);
+                    }}
                     className={styles.targetSelect}
                 >
                     <optgroup label={intl.locale.startsWith('de') ? 'Kostüme' : 'Costumes'}>
@@ -451,6 +455,7 @@ class CostumeTab extends React.Component {
                             {this.state.pixelMode ? (
                                 <React.Suspense fallback={null}>
                                     <PixelArtEditor
+                                        ref={this.pixelEditor}
                                         costumeIndex={this.state.selectedCostumeIndex}
                                         vm={vm}
                                         editorTools={editorTools(true)}

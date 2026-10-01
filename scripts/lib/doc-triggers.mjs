@@ -48,6 +48,10 @@ const PRINTED_AS_MARKDOWN = /\\`[^`]*\\`/g;
 const walk = dir => readdirSync(dir, {withFileTypes: true}).flatMap(e => {
     const p = path.join(dir, e.name);
     if (e.isDirectory()) return e.name === 'node_modules' ? [] : walk(p);
+    // React pane tests compile these UUID modules beside their source so
+    // relative imports resolve. They disappear concurrently and are never
+    // shipped; the original JSX remains in this census.
+    if (/^spike-(?:arena|simulator)-pane-test-[0-9a-f-]{36}\.mjs$/.test(e.name)) return [];
     return SCAN_FILES.test(e.name) ? [p] : [];
 });
 

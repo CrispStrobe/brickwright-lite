@@ -239,8 +239,9 @@ export default function installVirtualWebBluetooth () {
         __brickwrightVirtualShim: {value: true},
         requestDevice: {
             value: async options => {
+                const virtualOnly = globalThis.__brickwrightChooseVirtualBluetooth?.virtualOnly === true;
                 if (hasUnsupportedVirtualFilters(options)) {
-                    if (realRequest) return realRequest(options);
+                    if (realRequest && !virtualOnly) return realRequest(options);
                     const error = new Error('No Bluetooth devices matched the requested filters.');
                     error.name = 'NotFoundError';
                     throw error;
@@ -249,7 +250,7 @@ export default function installVirtualWebBluetooth () {
                 const candidates = created.filter(p => matches(p, options || {}));
                 for (const peripheral of created) if (!candidates.includes(peripheral)) dispose(peripheral);
                 if (candidates.length === 0) {
-                    if (realRequest) return realRequest(options);
+                    if (realRequest && !virtualOnly) return realRequest(options);
                     const error = new Error('No Bluetooth devices matched the requested filters.');
                     error.name = 'NotFoundError';
                     throw error;
@@ -260,8 +261,8 @@ export default function installVirtualWebBluetooth () {
                     throw error;
                 }
                 for (const candidate of candidates) if (candidate !== selected) dispose(candidate);
-                if (selected) return new VirtualDevice(selected);
-                if (realRequest) return realRequest(options);
+                if (selected && candidates.includes(selected)) return new VirtualDevice(selected);
+                if (realRequest && !virtualOnly) return realRequest(options);
                 const error = new Error('User cancelled the requestDevice() chooser.');
                 error.name = 'NotFoundError';
                 throw error;

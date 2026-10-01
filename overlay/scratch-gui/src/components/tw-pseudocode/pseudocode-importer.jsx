@@ -278,7 +278,7 @@ const L10N = {
         micropythonImported: 'Imported from a .hex — the simulator runs this as it is.',
         runOnSimulator: '▶ Run',
         openSpikeArena: '🪐 SPIKE arena',
-        openSpikeArenaTitle: 'Open the SPIKE arena: a virtual driving base on a mat, with challenges, driven by this program through the virtual SPIKE hub',
+        openSpikeArenaTitle: 'Explore a free virtual SPIKE sandbox or run a program in the arena challenges',
         runOnSpike3: '▶ Run on SPIKE 3 (Python)',
         runOnSpike3Title: 'Read this LEGO SPIKE App 3 Python program into SPIKE blocks and run them on the virtual SPIKE hub (and in the arena, when it is open)',
         spike3Console: 'SPIKE 3 Python console',
@@ -580,7 +580,7 @@ const L10N = {
         micropythonImported: 'Aus einer .hex importiert — der Simulator führt das direkt aus.',
         runOnSimulator: '▶ Ausführen',
         openSpikeArena: '🪐 SPIKE-Arena',
-        openSpikeArenaTitle: 'Die SPIKE-Arena öffnen: eine virtuelle Fahrbasis auf einer Matte, mit Aufgaben, gesteuert von diesem Programm über den virtuellen SPIKE-Hub',
+        openSpikeArenaTitle: 'Eine freie virtuelle SPIKE-Arena erkunden oder ein Programm in den Arena-Aufgaben ausführen',
         runOnSpike3: '▶ Auf SPIKE 3 ausführen (Python)',
         runOnSpike3Title: 'Dieses LEGO-SPIKE-App-3-Python-Programm in SPIKE-Blöcke übersetzen und auf dem virtuellen SPIKE-Hub ausführen (und in der Arena, wenn sie offen ist)',
         spike3Console: 'SPIKE-3-Python-Konsole',
@@ -5609,13 +5609,13 @@ class PseudocodeImporter extends React.Component {
                         </button>
                     ) : null}
 
-                    {this.currentDevice() === 'spike' ? (
+                    {
                         <button onClick={() => this.openSpikeArena()} title={this.L.openSpikeArenaTitle}
                             style={{...actionBtn, background: 'linear-gradient(135deg,#e8590c,#c2410c)'}}
                             data-testid="bw-open-spike-arena">
                             {this.L.openSpikeArena}
                         </button>
-                    ) : null}
+                    }
                     {this.state.lang === 'python' && isSpike3Program(this.activeCode()) ? (
                         <button onClick={() => this.runOnSpike3()} title={this.L.runOnSpike3Title} disabled={this.state.busy}
                             style={{...actionBtn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}

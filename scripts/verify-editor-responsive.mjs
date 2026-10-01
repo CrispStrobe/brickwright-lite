@@ -6,12 +6,13 @@ import {mkdir, writeFile, readFile} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {resolve, extname, sep} from 'node:path';
 import {chromium, firefox} from 'playwright';
+import {verifyEditorTouch} from './lib/editor-touch-checks.mjs';
 import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 
 const browserName = process.env.BW_BROWSER || 'chromium';
 assert.ok(['chromium', 'firefox'].includes(browserName));
 const mutation = process.env.BW_EDITOR_MUTATION || '';
-assert.ok(['', 'rigid-column'].includes(mutation));
+assert.ok(['', 'rigid-column', 'lost-image-draft'].includes(mutation));
 const evidence = `${privateSpikeEvidenceDirectory()}/editor-responsive-${browserName}${mutation ? `-${mutation}` : ''}`;
 await mkdir(evidence, {recursive: true});
 let server;
@@ -99,6 +100,14 @@ try {
         check(`right pane reaches ${fraction * 100}% with conversion messages visible`, widths);
     }
     await page.screenshot({path: `${evidence}/right-pane-75-percent.png`});
+    const rightWidth = () => page.locator('[data-right-pane]').evaluate(element => element.getBoundingClientRect().width);
+    const originalWidth = await rightWidth();
+    await divider.focus();
+    await page.keyboard.press('ArrowLeft');
+    assert.ok(await rightWidth() > originalWidth + 5);
+    await page.keyboard.press('ArrowRight');
+    assert.ok(Math.abs(await rightWidth() - originalWidth) < 2);
+    check('keyboard divider adjustment grows and shrinks the right pane');
     await page.getByTestId('bw-dismiss-code-status').click();
     assert.equal(await page.getByTestId('bw-code-status').count(), 0);
     await page.getByTestId('bw-dismiss-conversion-report').click();
@@ -152,6 +161,7 @@ try {
     check('simulator Run is compact and firmware export is clearly labelled in the file menu');
     assert.equal(await page.getByTestId('bw-global-undo').locator('svg').count(), 1);
     assert.deepEqual(errors, [], 'no uncaught browser exceptions');
+    if (browserName === 'chromium') await verifyEditorTouch(browser, proofUrl, evidence, check);
 } catch (error) {
     process.exitCode = 1;
     console.error(error);
