@@ -64,7 +64,6 @@ for (const g of DEVICE_GROUPS) for (const d of g.devices) DEVICE_BY_ID[d.id] = {
 // functions for interpolation. To add a language, add its column.
 import {lowerableLines} from '../../lib/bw-fpga/pseudocode-expr.js';
 import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
-import {isPybricksProgram} from '../../lib/pybricks-sim/pybricks-hub-host.js';
 import {isSpike3Program, runSpike3OnVirtualHub} from '../../lib/spike3-python-run.js';
 import {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
 
@@ -278,8 +277,6 @@ const L10N = {
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
         micropythonImported: 'Imported from a .hex — the simulator runs this as it is.',
         runOnSimulator: '▶ Run on Simulator',
-        runOnSpike: '▶ Run on SPIKE (Pybricks)',
-        runOnSpikeTitle: 'Run this Pybricks program on a simulated SPIKE Prime hub: Pybricks MicroPython itself, compiled to WebAssembly, with simulated motors and sensors',
         openSpikeArena: '🪐 SPIKE arena',
         openSpikeArenaTitle: 'Open the SPIKE arena: a virtual driving base on a mat, with challenges, driven by this program through the virtual SPIKE hub',
         runOnSpike3: '▶ Run on SPIKE 3 (Python)',
@@ -581,8 +578,6 @@ const L10N = {
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
         micropythonImported: 'Aus einer .hex importiert — der Simulator führt das direkt aus.',
         runOnSimulator: '▶ Im Simulator ausführen',
-        runOnSpike: '▶ Auf SPIKE ausführen (Pybricks)',
-        runOnSpikeTitle: 'Dieses Pybricks-Programm auf einem simulierten SPIKE-Prime-Hub ausführen: Pybricks-MicroPython selbst, nach WebAssembly übersetzt, mit simulierten Motoren und Sensoren',
         openSpikeArena: '🪐 SPIKE-Arena',
         openSpikeArenaTitle: 'Die SPIKE-Arena öffnen: eine virtuelle Fahrbasis auf einer Matte, mit Aufgaben, gesteuert von diesem Programm über den virtuellen SPIKE-Hub',
         runOnSpike3: '▶ Auf SPIKE 3 ausführen (Python)',
@@ -3803,25 +3798,6 @@ class PseudocodeImporter extends React.Component {
     // Flash the micro:bit simulator with the current MicroPython code.
     // Activates the simulator pane (stage-header dock='microbit') and posts
     // the code via the CustomEvent bus; the MicrobitSimPane picks it up.
-    // Run a Pybricks program on the SPIKE Prime simulator (pybricks-sim-pane.jsx):
-    // dock the pane, then hand it the code. Same latch as the micro:bit pane,
-    // because opening the dock mounts the pane in this very tick.
-    runOnPybricksSim () {
-        const code = this.activeCode();
-        if (!isPybricksProgram(code)) return;
-        const values = {
-            'bw-right-pane-hidden': '0',
-            'bw-debug-dock': 'pybricks'
-        };
-        const detail = {code};
-        try { window.__bwPybricksPending = detail; } catch { /* noop */ }
-        try { Object.entries(values).forEach(([k, v]) => localStorage.setItem(k, v)); } catch { /* noop */ }
-        Object.entries(values).forEach(([k, v]) => {
-            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: k, value: v}}));
-        });
-        window.dispatchEvent(new CustomEvent('bw-pybricks-run', {detail}));
-    }
-
     // Open the SPIKE arena (spike-arena-pane.jsx) in the right column. The
     // program reaches it through the virtual SPIKE hub, not through this call.
     openSpikeArena () {
@@ -5628,13 +5604,7 @@ class PseudocodeImporter extends React.Component {
                             ▶ {this.L.run} {this.state.lang === 'python' ? 'Python' : 'JavaScript'}
                         </button>
                     ) : null}
-                    {this.state.lang === 'python' && isPybricksProgram(this.activeCode()) ? (
-                        <button onClick={() => this.runOnPybricksSim()} title={this.L.runOnSpikeTitle}
-                            style={{...actionBtn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}
-                            data-testid="bw-pybricks-run-on-spike">
-                            {this.L.runOnSpike}
-                        </button>
-                    ) : null}
+
                     {this.currentDevice() === 'spike' ? (
                         <button onClick={() => this.openSpikeArena()} title={this.L.openSpikeArenaTitle}
                             style={{...actionBtn, background: 'linear-gradient(135deg,#e8590c,#c2410c)'}}

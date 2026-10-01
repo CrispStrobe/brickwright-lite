@@ -148,3 +148,13 @@ test('normalized sensor/output observations match the oracle and detect a sensor
     assert.equal(({interrupted:'stopped'})[await pending],oracle.cancellation.result);
     near(b.simulatedMs-start,oracle.cancellation.simulatedMs,10,'cancellation latency');
 });
+
+// Retirement keeps one hub-owned backend and rejects unsupported runtime choices.
+test('backend factory reuses the hub controller and rejects unknown runtimes without mutation', async () => {
+    const hub = new Hub();
+    assert.equal(await createSpikeBackend({hubState: hub}), hub.backend);
+    const before = structuredClone(hub.data);
+    await assert.rejects(createSpikeBackend({kind: 'unknown-firmware', hubState: hub}), RangeError);
+    assert.deepEqual(hub.data, before);
+    await assert.rejects(createSpikeBackend(), TypeError);
+});

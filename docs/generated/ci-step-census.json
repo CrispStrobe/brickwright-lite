@@ -977,12 +977,6 @@
    "sha": "3797757d0"
   },
   {
-   "run": 36239974473,
-   "workflow": "makecode-arcade-bases.yml",
-   "branch": "lane/pybricks-wasm-sim",
-   "sha": "8d4a76ded"
-  },
-  {
    "run": 36237451920,
    "workflow": "makecode-arcade-bases.yml",
    "branch": "v0.1.18",

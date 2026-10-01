@@ -23,9 +23,6 @@ a program reaches it the same way whichever language it was written in.
 
 ## Why an importer and not a second MicroPython
 
-The first plan was to run SPIKE 3 Python in MicroPython-in-wasm, on top of the Pybricks build lite
-already ships. The owner redirected it before anything was built.
-
 A second runtime would have been a second route into the virtual hub, with its own motor model and
 its own sensor reads. That makes two worlds to keep agreeing. The importer puts SPIKE 3 Python on
 the same footing as the dialect's other two-way languages, and every guarantee the blocks already

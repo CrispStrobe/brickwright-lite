@@ -11,7 +11,7 @@ const babel = guiRequire('@babel/core');
 const sourceRoot = new URL('../../overlay/scratch-gui/src/components/tw-pseudocode/', import.meta.url);
 
 export async function loadSimulator () {
-    const names = ['spike-arena-pane', 'pybricks-sim-pane', 'spike-simulator-pane'];
+    const names = ['spike-arena-pane', 'spike-simulator-pane'];
     const urls = Object.fromEntries(names.map(name => [name, new URL(`${name}-test-${randomUUID()}.mjs`, sourceRoot)]));
     try {
         for (const name of names) {
