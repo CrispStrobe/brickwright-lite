@@ -41,8 +41,11 @@ The reused assets have SHA256
 and `ea1e375ae2f29decc2dbf5774f0266ab6d9343fdd5213066f7dba58e98db0a47`
 (WASM). These are generic held-input tests under Node: not LSM303AGR, guest
 execution, browser rendering or throughput proof. Direct twin-file comparisons
-passed; the full mirror checker could not run because child-process Git was
-blocked in this session.
+passed. The initial restricted session blocked the full mirror checker; it
+passed after access was restored. Full build CI exposed a stale 3D isolation
+guard expecting the retired `bw-spike-arena` chunk. The guard now inspects the
+actual `bw-spike-simulator` chunk and still rejects missing chunks or eager
+3D payloads; its negative-control and source-drift tests pass locally.
 
 Next: land the paired BW/Lite slices; qualify BW's fresh selected-motion NODEJS
 guest and all five unchanged ≥1× windows without publishing; then browser
