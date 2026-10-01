@@ -1,3 +1,4 @@
+import {sandboxWorld, SANDBOX_STORAGE_KEY} from './spike-arena/arena-sandbox.js';
 /**
  * Carry the Circuit, Code and Widgets tabs inside the .sb3, in ONE format.
  *
@@ -34,8 +35,8 @@ const BUNDLE_FORMAT = 'brickwright-state';
 const BUNDLE_VERSION = 2;
 const MAX_BUNDLE_BYTES = 2 * 1024 * 1024;
 const SECTION_LIMITS = Object.freeze({code: 512 * 1024, circuit: 1024 * 1024,
-    controller: 512 * 1024});
-const KNOWN_SECTIONS = Object.freeze(['code', 'circuit', 'controller', 'legacyWidgets']);
+    controller: 512 * 1024, spikeArena: 1024 * 1024});
+const KNOWN_SECTIONS = Object.freeze(['code', 'circuit', 'controller', 'legacyWidgets', 'spikeArena']);
 let preservedBundle = null;
 const utf8Size = value => new TextEncoder().encode(value).byteLength;
 
@@ -45,7 +46,7 @@ const utf8Size = value => new TextEncoder().encode(value).byteLength;
  * deliberately NOT carried: they belong to the person and the screen, not the
  * project, and copying them between machines would be a surprise.
  */
-const EXACT_KEYS = ['bw-circuit-autosave', 'bw-code-autosave', 'bw-ctl-widgets'];
+const EXACT_KEYS = ['bw-circuit-autosave', 'bw-code-autosave', 'bw-ctl-widgets', SANDBOX_STORAGE_KEY];
 // The old per-widget prefix stays on the allowlist so a file saved while it
 // was documented (nothing ever wrote such keys, but a hand-built bundle
 // might) still restores; the panel itself serializes to ONE key above.
@@ -71,6 +72,7 @@ const decodeSection = (name, value) => {
     if (name === 'controller' && !Array.isArray(value.widgets)) {
         throw new Error('controller must contain a widgets array');
     }
+    if (name === 'spikeArena') return sandboxWorld(value);
     return value;
 };
 
@@ -82,6 +84,7 @@ const decodeStored = (name, value) => {
 /** Convert allowlisted storage strings into the typed v2 state. */
 const encodeProjectState = raw => {
     const state = {};
+    if (raw[SANDBOX_STORAGE_KEY] !== undefined) state.spikeArena = decodeStored('spikeArena', raw[SANDBOX_STORAGE_KEY]);
     if (raw['bw-code-autosave'] !== undefined) {
         state.code = decodeStored('code', raw['bw-code-autosave']);
     }
@@ -102,6 +105,7 @@ const encodeProjectState = raw => {
 const decodeProjectState = state => {
     if (!isRecord(state)) throw new Error('state must be an object');
     const raw = {};
+    if (state.spikeArena !== undefined) raw[SANDBOX_STORAGE_KEY] = JSON.stringify(decodeSection('spikeArena', state.spikeArena));
     if (state.code !== undefined) raw['bw-code-autosave'] = JSON.stringify(decodeSection('code', state.code));
     if (state.circuit !== undefined) {
         raw['bw-circuit-autosave'] = JSON.stringify(decodeSection('circuit', state.circuit));

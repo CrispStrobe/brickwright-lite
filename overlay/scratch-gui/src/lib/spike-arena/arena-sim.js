@@ -195,6 +195,13 @@ export class ArenaSim {
      * @param {number} dr right wheel travel, cm
      * @param {number} dtMs simulated time this covers
      */
+    /** A read-only contact probe; it never pushes objects or spends time. */
+    wouldBlockWheels (dl, dr) {
+        if (dl === 0 && dr === 0) return false;
+        const target = this.integrate(this.pose, dl, dr);
+        return Boolean(this._blockedAt(target) || this._wouldPushBlocked(target, this.pose));
+    }
+
     advanceWheels (dl, dr, dtMs) {
         const from = this.pose;
         this.wheelTravel.left += dl;

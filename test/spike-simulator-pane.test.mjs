@@ -95,3 +95,27 @@ test('sandbox does not wait for challenge downloads and late downloads cannot re
         await settle(() => browser.win.__bwSpikeArena.mode === 'challenge', 'challenges available after downloads recover');
     } finally { release(); if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup(); }
 });
+
+test('sandbox item drag and resize update sensors; project load replaces the mounted mat', async () => {
+    const browser = installBrowser(), {Pane, cleanup} = await loadSimulator();
+    const hub = new Hub(); let renderer;
+    try {
+        await act(async () => { renderer = create(React.createElement(Pane, {hubState: hub, locale: 'en'})); });
+        await settle(() => browser.win.__bwSpikeArena?.bridge, 'arena ready');
+        await act(async () => { await one(renderer, 'bw-spike-arena-sandbox').props.onClick(); });
+        const pane = browser.win.__bwSpikeArena._pane;
+        act(() => pane.setState({sandboxTool: 'move'}));
+        const target = {getBoundingClientRect: () => ({left: 0, top: 0, width: 180, height: 120}), setPointerCapture () {}};
+        act(() => pane.sandboxPointerDown({currentTarget: target, clientX: 90, clientY: 100, pointerId: 1}));
+        await act(async () => {await pane.sandboxPointerUp({currentTarget: target, clientX: 110, clientY: 90});});
+        assert.ok(Math.abs(pane.world.objects[0].shape.x - 110) < 1e-9);
+        await act(async () => {await one(renderer, 'bw-spike-sandbox-larger').props.onClick();});
+        assert.equal(pane.world.objects[0].shape.w, 15);
+        const loaded = structuredClone(pane.world); loaded.start.x = 45;
+        localStorage.setItem('bw-spike-sandbox-v1', JSON.stringify(loaded));
+        await act(async () => {browser.win.dispatchEvent(new CustomEvent('bw-project-bundle-loaded'));});
+        await settle(() => pane.world.start.x === 45, 'project mat restored');
+        assert.equal(pane.bridge.hubState, hub);
+        localStorage.removeItem?.('bw-spike-sandbox-v1');
+    } finally {if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup();}
+});

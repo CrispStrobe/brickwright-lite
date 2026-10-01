@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
+import {sandboxWorld, SANDBOX_STORAGE_KEY} from '../overlay/scratch-gui/src/lib/spike-arena/arena-sandbox.js';
 import {ControllerPanel} from 'bw-board/controller.js';
 
 const module = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
@@ -39,10 +40,12 @@ test('real attach/extract is deterministic and preserves all typed project surfa
     speed.binding = {kind: 'variable', name: 'speed'};
     panel.setMode('play');
     const controller = panel.toJSON();
+    const spikeArena = sandboxWorld();
     const expectedRaw = {
         'bw-code-autosave': JSON.stringify(code),
         'bw-circuit-autosave': JSON.stringify(circuit),
-        'bw-ctl-widgets': JSON.stringify(controller)
+        'bw-ctl-widgets': JSON.stringify(controller),
+        [SANDBOX_STORAGE_KEY]: JSON.stringify(spikeArena)
     };
 
     global.localStorage = storage(expectedRaw);
@@ -62,7 +65,7 @@ test('real attach/extract is deterministic and preserves all typed project surfa
         const document = JSON.parse(firstText);
         assert.equal(document.format, module.BUNDLE_FORMAT);
         assert.equal(document.version, module.BUNDLE_VERSION);
-        assert.deepEqual(document.state, {code, circuit, controller});
+        assert.deepEqual(document.state, {code, circuit, controller, spikeArena});
         const project = JSON.parse(await firstZip.file('project.json').async('text'));
         assert.deepEqual(project.extensions, ['spikeprime']);
         assert.match(project.extensionURLs.spikeprime, /legospike_turbowarp_transpile/);

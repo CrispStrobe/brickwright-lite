@@ -7,6 +7,8 @@ import {makeT, pickLocale} from '../bw-i18n.js';
 
 export const ARENA_L10N = {
     en: {
+        'tool.move': 'Move / select', sandboxSmaller: 'Smaller', sandboxLarger: 'Larger',
+        sandboxContact: 'Wheel contact', 'contact.stall': 'Grip: stall at walls', 'contact.slip': 'Slip at walls',
         title: 'SPIKE arena',
         sandbox: 'Free sandbox', challenges: 'Challenges',
         sandboxSpeed: 'Speed', sandboxTool: 'Edit mat', sandboxColor: 'Paint colour',
@@ -76,6 +78,8 @@ export const ARENA_L10N = {
             turquoise: 'turquoise', green: 'green', yellow: 'yellow', orange: 'orange', red: 'red', white: 'white'}
     },
     de: {
+        'tool.move': 'Verschieben / auswählen', sandboxSmaller: 'Kleiner', sandboxLarger: 'Größer',
+        sandboxContact: 'Radkontakt', 'contact.stall': 'Haftung: Wand blockiert', 'contact.slip': 'An Wänden durchdrehen',
         title: 'SPIKE-Arena',
         sandbox: 'Freie Arena', challenges: 'Aufgaben',
         sandboxSpeed: 'Tempo', sandboxTool: 'Matte bearbeiten', sandboxColor: 'Farbe',

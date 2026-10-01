@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 import {assertValidWorld} from './arena-world.js';
 import {COLOR_IDS} from './arena-sim.js';
-import {pointInShape} from './geometry.js';
+import {pointInShape, shapeCentre, translateShape} from './geometry.js';
 
 export const SANDBOX_STORAGE_KEY = 'bw-spike-sandbox-v1';
 
@@ -14,6 +14,10 @@ function checkSandboxBounds (world) {
     if (items.length > 300) throw new RangeError('A sandbox mat supports at most 300 items');
     for (const {shape} of items) {
         if (shape?.points?.length > 256) throw new RangeError('A shape supports at most 256 points');
+        if (shape?.points?.length && [0, 1].some(axis => {
+            const values = shape.points.map(point => point[axis]);
+            return Math.max(...values) - Math.min(...values) > 1000;
+        })) throw new RangeError('Shape dimensions must be at most 1000 cm');
         for (const key of ['r', 'w', 'h', 'width']) {
             if (shape?.[key] !== undefined && !positive(shape[key])) throw new RangeError('Shape sizes must be positive and at most 1000 cm');
         }
@@ -52,6 +56,9 @@ export function sandboxWorld (source) {
         walls: [{shape: {type: 'rect', x: 150, y: 45, w: 4, h: 50}}],
         objects: [{id: 'crate-1', pushable: true, color: 'orange', shape: {type: 'rect', x: 90, y: 100, w: 12, h: 12}}]
     };
+    world.robot ||= {};
+    world.robot.contactModel ||= 'stall';
+    if (!['stall', 'slip'].includes(world.robot.contactModel)) throw new RangeError('Unknown contact model');
     world.id = 'free-sandbox';
     world.mode = 'sandbox';
     world.title = {en: 'Free sandbox', de: 'Freie Arena'};
@@ -100,4 +107,36 @@ export function editSandbox (source, tool, x, y, color = 'blue') {
         } else throw new RangeError('Unknown sandbox tool');
     }
     return assertValidWorld(world);
+}
+
+
+/** Select the top visible item using the same order as erase. */
+export function selectSandboxItem (world, x, y) {
+    for (const collection of ['objects', 'walls', 'paint']) {
+        const list = collection === 'paint' ? world.mat.shapes || [] : world[collection] || [];
+        const index = list.findLastIndex(item => pointInShape([x, y], item.shape));
+        if (index >= 0) return {collection, index};
+    }
+    return null;
+}
+
+/** Move or uniformly resize any supported shape, including lines and polygons. */
+export function transformSandboxItem (source, selection, {dx = 0, dy = 0, scale = 1} = {}) {
+    if (source.mode !== 'sandbox') throw new TypeError('Open the sandbox before editing');
+    if (![dx, dy, scale].every(Number.isFinite) || scale <= 0 || scale > 100) throw new RangeError('Invalid item transform');
+    if (!selection || !['objects', 'walls', 'paint'].includes(selection.collection) || !Number.isInteger(selection.index)) {
+        throw new RangeError('Select an arena item first');
+    }
+    const world = structuredClone(source);
+    const list = selection.collection === 'paint' ? world.mat.shapes : world[selection.collection];
+    const item = list?.[selection.index];
+    if (!item) throw new RangeError('The selected item no longer exists');
+    const [cx, cy] = shapeCentre(item.shape);
+    const x = cx + dx, y = cy + dy;
+    if (x < 0 || y < 0 || x > world.mat.width || y > world.mat.height) throw new RangeError('Place items inside the mat');
+    let shape = translateShape(item.shape, dx, dy);
+    for (const key of ['r', 'w', 'h', 'width']) if (shape[key] !== undefined) shape[key] *= scale;
+    if (shape.points) shape.points = shape.points.map(([px, py]) => [x + (px - x) * scale, y + (py - y) * scale]);
+    item.shape = shape;
+    return sandboxWorld(world);
 }
