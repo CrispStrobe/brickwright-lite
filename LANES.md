@@ -1095,6 +1095,8 @@ who you are and who you are talking to before broadcasting either.
 
 ## Skips that execute elsewhere
 
+- test/owned-driver.test.mjs :: process-tree assertion requires Linux /proc :: box lego-vps Linux 2026-10-01 codex-independent-spike; real inherited-pipe descendant cleanup passed locally and runs on Ubuntu in the regular fast Node suite
+
 - test/independent-spike-backend.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: private/local strict fixture run on lego-vps 2026-10-01 codex-independent-spike; 324-check receipt in brickwright-firmware-private audits/independent-spike/2026-10-01-runtime-retirement/main-validation/brickwright-retirement-main-full.tap; reproduce with BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1 and private BW_SPIKE_EVIDENCE_DIR
 - test/independent-spike-controller.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: private/local strict fixture run on lego-vps 2026-10-01 codex-independent-spike; 324-check receipt in brickwright-firmware-private audits/independent-spike/2026-10-01-runtime-retirement/main-validation/brickwright-retirement-main-full.tap; reproduce with BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1 and private BW_SPIKE_EVIDENCE_DIR
 - test/independent-spike-speed-envelope.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: private/local strict fixture run on lego-vps 2026-10-01 codex-independent-spike; 324-check receipt in brickwright-firmware-private audits/independent-spike/2026-10-01-runtime-retirement/main-validation/brickwright-retirement-main-full.tap; reproduce with BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1 and private BW_SPIKE_EVIDENCE_DIR
