@@ -84,17 +84,18 @@ class SpikeArenaPane extends React.Component {
         };
         // The unit list is a convenience: without it the pane still opens the
         // default unit, as it did before there was more than one.
-        loadUnitIndex().then(units => this.setState({units}), () => {});
+        loadUnitIndex().then(units => { if (!this.disposed) this.setState({units}); }, () => {});
         const pending = window.__bwSpikeArenaPending;
         const wantedUnit = (pending && typeof pending === 'object' && pending.unit) || DEFAULT_UNIT;
         const wanted = pending && typeof pending === 'object' ? pending.id : pending;
         await this.openUnit(wantedUnit, wanted);
-        this.raf = requestAnimationFrame(this.frame);
+        if (!this.disposed) this.raf = requestAnimationFrame(this.frame);
     }
 
     /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */
     async openUnit (unitId, wanted) {
         await this.stopProgram();
+        if (this.disposed) return;
         const token = this.unitToken = {};
         this.setState({status: 'loading', message: ''});
         try {
@@ -110,6 +111,8 @@ class SpikeArenaPane extends React.Component {
     }
 
     componentWillUnmount () {
+        this.disposed = true;
+        this.unitToken = null;
         window.removeEventListener('bw-spike-arena-select', this.onSelectEvent);
         cancelAnimationFrame(this.raf);
         this.clock.uninstall();
@@ -134,6 +137,7 @@ class SpikeArenaPane extends React.Component {
 
     async select (index) {
         await this.stopProgram();
+        if (this.disposed) return;
         const world = this.state.challenges[index];
         if (!world) return;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
@@ -318,6 +322,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     frame (now) {
+        if (this.disposed) return;
         if (this.bridge && this.state.status === 'running' && this.hubState.clockOwner !== 'pybricks') {
             // ONE CLOCK. With a VM, simulated time is what the VM actually
             // stepped — starve it and the mission slows with it, so the verdict

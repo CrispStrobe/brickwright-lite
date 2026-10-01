@@ -31,12 +31,9 @@ const ArduboyPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-arduboy" */ '../tw-pseudocode/arduboy-pane.jsx'));
 const MakeCodeSimPane = React.lazy(() =>
     import(/* webpackChunkName: "bw-makecode-sim" */ '../tw-pseudocode/makecode-sim-pane.jsx'));
-// SPIKE Prime running Pybricks MicroPython compiled to wasm (build-pybricks-wasm.sh).
-const PybricksSimPane = React.lazy(() =>
-    import(/* webpackChunkName: "bw-pybricks-sim" */ '../tw-pseudocode/pybricks-sim-pane.jsx'));
-// A 2D arena for a SPIKE Prime driving base on lite's virtual SPIKE hub (docs/SPIKE-ARENA.md).
-const SpikeArenaPane = React.lazy(() =>
-    import(/* webpackChunkName: "bw-spike-arena" */ '../tw-pseudocode/spike-arena-pane.jsx'));
+// One persistent SPIKE world, with independently selected execution backends.
+const SpikeSimulatorPane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-spike-simulator" */ '../tw-pseudocode/spike-simulator-pane.jsx'));
 const ControllerPanelView = React.lazy(() =>
     import(/* webpackChunkName: "bw-controller-panel" */ '../tw-pseudocode/controller-panel-view.jsx')
 );
@@ -1168,16 +1165,11 @@ const GUIComponent = props => {
                                         <MicrobitSimPane />
                                     </div>
                                 </React.Suspense>
-                            ) : dockMode === 'pybricks' ? (
+                            ) : dockMode === 'pybricks' || dockMode === 'spikearena' ? (
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'SPIKE-Simulator wird geladen…' : 'Loading SPIKE simulator…'}</div>}>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
-                                        <PybricksSimPane />
-                                    </div>
-                                </React.Suspense>
-                            ) : dockMode === 'spikearena' ? (
-                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'SPIKE-Arena wird geladen…' : 'Loading SPIKE arena…'}</div>}>
-                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
-                                        <SpikeArenaPane vm={vm} locale={intl.locale} />
+                                        <SpikeSimulatorPane vm={vm} locale={intl.locale}
+                                            initialBackend={dockMode === 'pybricks' ? 'pybricks' : 'native'} />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'makecode' ? (

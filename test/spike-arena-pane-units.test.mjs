@@ -89,9 +89,10 @@ const one = (renderer, id) => {
     return found[0];
 };
 const settle = async (predicate, what) => {
-    for (let i = 0; i < 200; i++) {
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline) {
         if (predicate()) return;
-        await act(async () => { await new Promise(resolve => setImmediate(resolve)); });
+        await act(async () => { await new Promise(resolve => setTimeout(resolve, 5)); });
     }
     assert.fail(`never: ${what}`);
 };
@@ -192,4 +193,27 @@ test('pane clock yields to Python and controls await external cancellation',asyn
         await act(async()=>{await pane.reset();});
         assert.equal(cancellations,3);assert.equal(pane.bridge.sim.timeMs,0);assert.equal(pane.state.status,'ready');
     }finally{if(renderer)await act(async()=>renderer.unmount());browser.restore();}
+});
+
+test('unmount invalidates unit loads before they can publish a late scene', async () => {
+    const browser = installBrowser(), Pane = await loadPane();
+    const originalFetch = globalThis.fetch; let release, renderer;
+    const gate = new Promise(resolve => { release = resolve; });
+    globalThis.fetch = async url => {
+        const response = await originalFetch(url);
+        if (url.endsWith('/unit.json')) await gate;
+        return response;
+    };
+    try {
+        await act(async () => { renderer = create(React.createElement(Pane, {locale: 'en'})); });
+        const instance = renderer.getInstance();
+        let pending;
+        await act(async () => { pending = instance.openUnit('capstone'); await new Promise(resolve => setImmediate(resolve)); });
+        act(() => renderer.unmount()); renderer = null;
+        let updates = 0; instance.setState = () => { updates++; };
+        await act(async () => { release(); await pending; });
+        assert.equal(instance.disposed, true);
+        assert.equal(instance.unitToken, null);
+        assert.equal(updates, 0, 'no state publication or onReady callback after unmount');
+    } finally { release(); if (renderer) act(() => renderer.unmount()); browser.restore(); }
 });

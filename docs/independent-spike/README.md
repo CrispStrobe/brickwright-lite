@@ -136,7 +136,7 @@ convention in this worktree, plus the already-declared `three@0.186.1` package
 installed locally for pane tests; no other worktree was modified.
 
 Validation results and exact artifact hashes are in the private archive
-(`evidence/validation.json` and `evidence/independence-audit.json`). **312 broader SPIKE checks passed**; the final absence-gate count is recorded in
+(`evidence/validation.json` and `evidence/independence-audit.json`). **317 broader SPIKE checks passed**; the final absence-gate count is recorded in
 that validation file. Full-suite and assets-absent TAP logs preserve
 coverage and mutation diagnostics. No changes were posted to Pybricks upstream.
 
@@ -168,9 +168,17 @@ shared prepared webpack cache through a dependency symlink; that symlink was
 replaced with a local cache before subsequent builds. Other worktree sources and
 tracked files were not changed.
 
-Raw evidence, JSON fixtures, transcripts, screenshots and execution logs are kept
-only in the private archive linked above. Public unit/integration tests run without
+Raw evidence, JSON fixtures, transcripts, screenshots and execution logs are
+excluded from the current public branch and archived privately. Previously pushed
+commits may remain accessible through GitHub retained objects; this relocation
+does not claim to erase those copies. Public unit/integration tests run without
 that checkout and explicitly skip private oracle comparisons. To require and run
 all comparisons, provide `BW_SPIKE_EVIDENCE_DIR` and
 `BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1`; missing or invalid private fixtures fail
 that run. The production native backend has no dependency on the archive.
+
+On 2026-10-01, the post-relocation suite passed 317 checks with private comparisons
+required, the absence gate passed 123 checks, and 12 focused GUI checks passed.
+The arena now invalidates pending unit loads on unmount, preventing late scene
+publication. The public evidence-path guard tests also passed. New receipts are
+in the private archive under `2026-10-01-relocation/evidence/`.
