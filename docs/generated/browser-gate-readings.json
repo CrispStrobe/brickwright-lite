@@ -6757,12 +6757,6 @@
       "max": null,
       "readings": []
     },
-    "Browser gate \u2014 vector independent handles": {
-      "n": 0,
-      "p95": 0,
-      "max": null,
-      "readings": []
-    },
     "Browser gate \u2014 independent vector handles drag separately on desktop and iPad": {
       "n": 0,
       "p95": 0,
