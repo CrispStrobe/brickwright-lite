@@ -5,22 +5,16 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {chromium} from 'playwright';
 
-/**
- * Wait for a mode-tools button to leave its disabled state.
- *
- * REPLACES a fixed 300 ms sleep. The click that selects a node and the class
- * change that enables the button are separate turns, so asserting straight after
- * the click read `mod-disabled` and failed. Sleeping covered it by accident and
- * cost that time on every run; this waits for the condition and fails the gate by
- * TIMEOUT if the feature is genuinely broken, which is the same verdict the
- * assertion below gives, reached honestly.
- */
-const enabled = (page, title, timeout = 15000) => page.waitForFunction(name => {
-    const el = document.querySelector(`[title="${name}"]`);
-    if (!el) return false;
-    const holder = el.closest('[class*="button_button"]') || el;
-    return !/mod-disabled/.test(holder.className || '');
-}, title, {timeout});
+// Poll the same accessible locator used for the subsequent assertion.
+const enabled = async (locator, label, timeout = 15000) => {
+    const deadline = Date.now() + timeout;
+    for (;;) {
+        const cls = (await locator.getAttribute('class')) || '';
+        if (!/mod-disabled/.test(cls)) return;
+        if (Date.now() > deadline) throw new Error(`${label} stayed disabled (class: ${cls})`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+};
 
 const browser = await chromium.launch(process.env.BW_BROWSER ?
     {executablePath: process.env.BW_BROWSER} : {});

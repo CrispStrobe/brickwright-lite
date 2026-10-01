@@ -34,6 +34,44 @@ const enabled = async (locator, label, timeout = 15000) => {
     }
 };
 
+const browser = await chromium.launch(process.env.BW_BROWSER ?
+    {executablePath: process.env.BW_BROWSER} : {});
+const url = process.env.PROOF_URL || 'http://127.0.0.1:8620/';
+const work = mkdtempSync(path.join(tmpdir(), 'bw-pen-'));
+const saved = path.join(work, 'pen.sb3');
+const splitSaved = path.join(work, 'split.sb3');
+const penButton = page => page.locator('[class*="paint-editor_mode-selector"] [role="button"][title^="Pen"]');
+const canvas = page => page.locator('canvas[resize="true"]:visible');
+const points = box => [[.15, .12], [.23, .12], [.25, .24]].map(([x, y]) => ({
+    x: box.x + box.width * x,
+    y: box.y + box.height * y
+}));
+const lastPath = page => page.evaluate(() => {
+    const costume = window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getCostumes()[0];
+    const svg = new TextDecoder().decode(costume.asset.data);
+    const paths = [...new DOMParser().parseFromString(svg, 'image/svg+xml').querySelectorAll('path')];
+    return paths.at(-1)?.getAttribute('d');
+});
+const pathCount = page => page.evaluate(() => {
+    const costume = window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getCostumes()[0];
+    const svg = new TextDecoder().decode(costume.asset.data);
+    return new DOMParser().parseFromString(svg, 'image/svg+xml').querySelectorAll('path').length;
+});
+const openCostumeEditor = async page => {
+    await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
+    await page.goto(url, {waitUntil: 'domcontentloaded'});
+    // Prove the canvas is ABSENT first, then that opening the tab brings it. A
+    // lone waitFor() proves only an appearance, and appearance is a transition —
+    // test/gate-shapes calls that EVENT-AS-STATE, because the defects live in the
+    // steady state either side of it. Asserting the absence also means this helper
+    // fails loudly if some future starter leaves the editor already open, instead
+    // of silently passing a gate that never opened anything.
+    assert.equal(await canvas(page).count(), 0,
+        'the costume canvas must not exist before the Costume tab is opened');
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    await canvas(page).waitFor({state: 'visible'});
+};
+
 try {
     const page = await browser.newPage({viewport: {width: 1194, height: 834}, acceptDownloads: true});
     const errors = [];

@@ -1326,10 +1326,6 @@ jobs:
         timeout-minutes: 3  # derived: p95 25 s × 3 → 3 min over 20 green runs to 36413884486; max 26 s in run 34112210638 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-service-worker.mjs
-      - name: Browser gate — vector independent handles
-        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
-        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-vector-independent-handles.mjs
       - name: Browser gate — independent vector handles drag separately on desktop and iPad
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
