@@ -2,7 +2,7 @@ import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 const evidenceDirectory = privateSpikeEvidenceDirectory();
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
-// Reversible absent-assets gate, scoped to this checkout; always restores files.
+// Verify native execution in a checkout with the retired firmware assets absent.
 import {existsSync,mkdirSync,writeFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';

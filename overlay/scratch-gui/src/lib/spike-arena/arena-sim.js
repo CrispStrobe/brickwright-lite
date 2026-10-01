@@ -25,12 +25,9 @@ import {DEG, wrap180, toWorld, convexPieces, pointInShape, distanceToPieces,
     polygonOverlapsPieces, rayToPieces, translatePieces, translateShape, shapeCentre} from './geometry.js';
 
 /**
- * The SPIKE Prime driving base, with the configured virtual geometry:
- * `DriveBase(left_motor, right_motor, wheel_diameter=56, axle_track=112)`,
- * left motor on port A mounted counterclockwise (virtual driving base
- * module, "Driving straight and turning in place"). The SPIKE Prime wheel is
- * 56 mm. Body outline and sensor places are this arena's own choice for a
- * compact rover, all configurable.
+ * Virtual driving base: 56 mm wheels, 112 mm axle track, with the left
+ * motor on port A mounted counterclockwise. Body outline and sensor places
+ * are this arena's choices for a compact rover; all dimensions are configurable.
  */
 export const SPIKE_DRIVING_BASE = Object.freeze({
     wheelDiameter: 5.6, // cm
