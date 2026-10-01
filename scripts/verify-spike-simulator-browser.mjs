@@ -53,15 +53,21 @@ try {
         code: 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 1 cm\n', source: 'spike-browser-proof'
     }})));
     await page.getByTestId('bw-open-spike-arena').waitFor({timeout: 60000});
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+        null, {timeout: 60000});
     await page.getByTestId('bw-open-spike-arena').click();
     await page.getByTestId('bw-spike-simulator').waitFor();
     assert.equal(await page.getByTestId('bw-spike-backend').count(), 0);
     await page.waitForFunction(() => window.__bwSpikeArena?.bridge);
     assert.equal(firmwareRequests.length, 0);
     check('native GUI opens without requesting firmware binaries');
+    // The extension can already be loaded by the preceding stub program.
+    // Clear its completion notice so only the reference solution can satisfy this wait.
+    await page.getByTestId('bw-dismiss-code-status').click();
     await page.getByTestId('bw-spike-arena-load-solution').click();
-    // Loading the solution includes compilation; wait for the native VM project.
-    await page.waitForFunction(() => window.__bwSpikeArena?._pane.spikeLoaded(), null, {timeout: 60000});
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+        null, {timeout: 60000});
+    assert.equal(await page.evaluate(() => window.__bwSpikeArena?._pane.spikeLoaded()), true);
     await page.getByTestId('bw-spike-arena-start').click();
     await page.waitForFunction(() => window.__bwSpikeArena?.verdict?.status === 'pass', null, {timeout: 60000});
     const mission = await page.evaluate(() => ({verdict: window.__bwSpikeArena.verdict,
