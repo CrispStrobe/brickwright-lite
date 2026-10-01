@@ -86,7 +86,7 @@ try {
         await page.mouse.down();
         await page.mouse.move(row.x + row.width * (1 - fraction), grab.y + grab.height / 2, {steps: 12});
         await page.mouse.up();
-        await page.waitForTimeout(500);
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         const widths = await page.locator('[data-workspace-columns]').evaluate(element => ({
             row: element.getBoundingClientRect().width,
             right: element.querySelector('[data-right-pane]').getBoundingClientRect().width,
@@ -105,7 +105,7 @@ try {
     assert.equal(await page.getByTestId('bw-conversion-report').count(), 0);
     check('status and conversion report can both be dismissed');
     await page.setViewportSize({width: 900, height: 800});
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => window.innerWidth === 900);
     const narrow = await editor.evaluate(element => ({width: element.clientWidth, scroll: element.scrollWidth,
         codeHeight: element.querySelector('.cm-editor')?.getBoundingClientRect().height}));
     assert.ok(narrow.scroll <= narrow.width + 2, JSON.stringify(narrow));

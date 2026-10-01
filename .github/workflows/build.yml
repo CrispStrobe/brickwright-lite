@@ -1110,7 +1110,7 @@ jobs:
         run: node scripts/verify-spike-simulator-browser.mjs
 
       - name: Browser gate — responsive editor, dismissible messages, movable lessons and image targets
-        timeout-minutes: 3  # PROVISIONAL — new rendered UI regression
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         env:
           BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/editor-responsive-receipts
