@@ -58,7 +58,7 @@ test('the button\'s detection is the reader\'s own expression', () => {
     assert.ok(m, 'the vendored reader declares SPIKE3_IMPORT');
     assert.equal(String(SPIKE3_IMPORT), m[1]);
     for (const src of [inMain('pass'), 'from hub import light_matrix\n', 'import motor_pair\n',
-        'from pybricks.hubs import PrimeHub\n', 'from spike import PrimeHub\n', 'from microbit import *\n', 'print(1)\n']) {
+        'from unsupported_hub import PrimeHub\n', 'from spike import PrimeHub\n', 'from microbit import *\n', 'print(1)\n']) {
         assert.equal(isSpike3Program(src), isSpike3Python(src), src);
     }
 });
@@ -259,4 +259,33 @@ test('the Code tab offers the run, a stop and a console, in English and German',
         assert.match(de, new RegExp(`\\b${key}:`), `de.${key}`);
     }
     assert.match(de, /runOnSpike3: '▶ Auf SPIKE 3 ausführen \(Python\)'/);
+});
+
+
+test('Code-tab run advances the shared hub only when the VM steps and cancels on Stop', async () => {
+    const {default: Hub} = await import(resolve(LIB, 'virtual-hub/spike-hub-state.js'));
+    const hub = new Hub();
+    const vm = {runtime: {_step () {}, currentStepTime: 100,
+        _primitives: {spikeprime_isConnected: () => true},
+        on () {}, removeListener () {}, listeners: () => []},
+        greenFlag () {hub.backend.runAtSpeed('A', 300);}, stopAll () {}};
+    const original = vm.runtime._step;
+    const win = {__brickwrightVirtualSpike: {enable () {}, hubState: hub}};
+    const run = await runSpike3OnVirtualHub(vm, {window: win});
+    await new Promise(resolve => setTimeout(resolve, 40));
+    assert.equal(hub.data.motors[0].position, 0, 'wall time alone buys no physics');
+    vm.runtime._step(); vm.runtime._step();
+    await new Promise(resolve => setTimeout(resolve, 40));
+    assert.equal(hub.data.motors[0].degPerSec, 300);
+    assert.ok(hub.data.motors[0].position > 0);
+    win.__bwSpikeArena = {status: 'running'};
+    const before = hub.data.motors[0].position;
+    vm.runtime._step();
+    await new Promise(resolve => setTimeout(resolve, 40));
+    assert.equal(hub.data.motors[0].position, before, 'an active arena owns advancement');
+    const wait = hub.backend.wait(10000);
+    run.stop();
+    assert.equal(await wait, 'interrupted');
+    assert.equal(hub.data.motors[0].degPerSec, 0);
+    assert.equal(vm.runtime._step, original);
 });

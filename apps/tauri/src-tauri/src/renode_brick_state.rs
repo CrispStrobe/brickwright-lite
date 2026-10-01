@@ -79,7 +79,6 @@ impl BrickStateDecoder {
                 snapshot.target.firmware.as_str(),
                 "lego-prime-v2"
                     | "lego-prime-v3"
-                    | "pybricks-prime"
                     | "spike-nx"
                     | "brickwright-nuttx"
             )
@@ -445,7 +444,7 @@ mod tests {
         assert!(decoder
             .decode(
                 frame(1)
-                    .replace("brickwright-nuttx", "pybricks-prime")
+                    .replace("brickwright-nuttx", "unsupported-prime")
                     .as_bytes()
             )
             .is_err());

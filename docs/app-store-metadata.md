@@ -342,53 +342,21 @@ Projekt anhängen, falls ein gespeicherter Block nicht wieder geöffnet wird.
 
 ## What to Test — 0.1.21 en-US
 
-**SPIKE Prime simulator — Pybricks MicroPython, in the browser**
+**Virtual SPIKE Prime simulator**
 
-This build runs real Pybricks MicroPython (v4.0.1) compiled to WebAssembly,
-one layer above the chip: no chip emulation, no Bluetooth, no LEGO firmware.
-
-- Open the Code tab, choose Python, and write a program that imports
-  `pybricks`. "Run on SPIKE" appears; run it and watch the SPIKE pane in the
-  right column.
-- Ports A–F speak the real LUMP protocol from the device side, so motors and
-  the colour, distance and force sensors behave as Pybricks' own drivers
-  expect. Motor movement uses Pybricks' own motor model.
-- The light matrix, status light, buttons, speaker beeps and `print()` output
-  all work. Check that the Scratch (Virtual SPIKE hub) and Python views agree
-  about which ports hold what.
-- No hardware is needed. If you do have a SPIKE hub, the simulated and real
-  behaviour should not contradict each other — tell us where they do.
-
-Everything else in this build is tooling: App Store screenshots are now
-rendered from the shipping app by CI in English and German, and the Android
-job builds again after Google removed a package its setup action asked for.
+Open a SPIKE program in the Code tab, open the SPIKE arena and press Start.
+Test Scratch blocks, native DEVICE SPIKE programs and supported LEGO SPIKE App 3
+Python imports. Check motor motion, sensor readings, cancellation and the 2D/3D
+arena. All use one virtual hub; no firmware runtime or hardware is required.
 
 ## What to Test — 0.1.21 de-DE
 
-**SPIKE-Prime-Simulator — Pybricks MicroPython, im Browser**
+**Virtueller SPIKE-Prime-Simulator**
 
-Dieser Build führt echtes Pybricks MicroPython (v4.0.1) aus, nach
-WebAssembly übersetzt und eine Schicht über dem Chip: keine Chip-Emulation,
-kein Bluetooth, keine LEGO-Firmware.
-
-- Öffne den Code-Reiter, wähle Python und schreibe ein Programm, das
-  `pybricks` importiert. „Auf SPIKE ausführen" erscheint; starte es und sieh
-  dir den SPIKE-Bereich in der rechten Spalte an.
-- Die Anschlüsse A–F sprechen das echte LUMP-Protokoll von der Geräteseite
-  her, sodass Motoren und die Farb-, Abstands- und Kraftsensoren sich so
-  verhalten, wie Pybricks' eigene Treiber es erwarten. Die Motorbewegung nutzt
-  Pybricks' eigenes Motormodell.
-- Lichtmatrix, Statuslicht, Knöpfe, Lautsprechertöne und `print()`-Ausgaben
-  funktionieren. Prüfe, ob die Scratch-Ansicht (virtueller SPIKE-Hub) und die
-  Python-Ansicht sich einig sind, welcher Anschluss was trägt.
-- Es wird keine Hardware gebraucht. Wenn du einen echten SPIKE-Hub hast,
-  sollten simuliertes und echtes Verhalten einander nicht widersprechen — sag
-  uns, wo sie es doch tun.
-
-Alles Übrige in diesem Build ist Werkzeug: App-Store-Screenshots werden jetzt
-von der CI aus der ausgelieferten App auf Englisch und Deutsch gerendert, und
-der Android-Job baut wieder, nachdem Google ein Paket entfernt hatte, das
-seine Setup-Action angefordert hat.
+Öffne ein SPIKE-Programm im Code-Reiter, öffne die SPIKE-Arena und drücke Start.
+Teste Scratch-Blöcke, DEVICE-SPIKE-Programme und unterstützte LEGO-SPIKE-App-3-
+Python-Importe. Prüfe Motorbewegung, Sensorwerte, Stopp und die 2D/3D-Arena.
+Alle verwenden denselben virtuellen Hub; Firmware oder Hardware ist nicht nötig.
 
 ## What to Test — 0.1.20 en-US
 
