@@ -57,6 +57,13 @@ const pathCount = page => page.evaluate(() => {
     const svg = new TextDecoder().decode(costume.asset.data);
     return new DOMParser().parseFromString(svg, 'image/svg+xml').querySelectorAll('path').length;
 });
+const waitForPathCount = async (page, expected) => {
+    const deadline = Date.now() + 15000;
+    while (await pathCount(page) !== expected) {
+        if (Date.now() > deadline) assert.fail(`path count did not become ${expected}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+};
 const openCostumeEditor = async page => {
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     await page.goto(url, {waitUntil: 'domcontentloaded'});
