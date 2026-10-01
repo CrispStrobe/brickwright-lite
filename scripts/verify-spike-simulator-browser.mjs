@@ -26,14 +26,21 @@ const server = createServer(async (request, response) => {
 await new Promise(done => server.listen(0, '127.0.0.1', done));
 await mkdir(evidence, {recursive: true});
 let browser, page;
-const checks = [], errors = [], firmwareRequests = [];
+const checks = [], errors = [], firmwareRequests = [], simulatorBinaryRequests = [];
 const check = (name, detail = null) => { checks.push({name, passed: true, detail}); console.log(`PASS ${name}`); };
 try {
     browser = await chromium.launch({headless: true, args: ['--disable-dev-shm-usage', '--enable-unsafe-swiftshader', '--use-gl=angle', '--use-angle=swiftshader']});
     page = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
     page.on('pageerror', error => errors.push(error.message));
     page.on('dialog', dialog => dialog.accept());
-    page.on('request', request => { if (/\.(wasm|mpy)(?:[?#]|$)/i.test(request.url())) firmwareRequests.push(request.url()); });
+    page.on('request', request => {
+        const url = new URL(request.url());
+        if (!/\.(wasm|mpy)$/i.test(url.pathname)) return;
+        // The shared, independently built interpreter core is an application
+        // library. It is not a hub firmware image or motor-controller runtime.
+        if (url.pathname.endsWith('/labwired_wasm_bg.wasm')) simulatorBinaryRequests.push(request.url());
+        else firmwareRequests.push(request.url());
+    });
     await page.addInitScript(() => {
         localStorage.clear(); sessionStorage.clear();
         localStorage.setItem('bw-starter-v1-complete', '1');
@@ -89,7 +96,7 @@ try {
     process.exitCode = 1; console.error(error);
 } finally {
     await writeFile(`${evidence}/result.json`, JSON.stringify({node: process.version, checks, errors,
-        firmwareRequests, build, success: !process.exitCode}, null, 2) + '\n');
+        firmwareRequests, simulatorBinaryRequests, build, success: !process.exitCode}, null, 2) + '\n');
     if (browser) await browser.close();
     await new Promise(done => server.close(done));
 }
