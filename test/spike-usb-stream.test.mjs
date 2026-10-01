@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {compileSpikeUsbLine, runSpikeUsbBridge} from '../overlay/scratch-gui/src/lib/spike-usb-stream.js';
+import {compileSpikeUsbLine, runSpikeUsbBridge, FriendlyRepl} from '../overlay/scratch-gui/src/lib/spike-usb-stream.js';
+
+test('USB identification times out even when the serial read never settles', {timeout: 1000}, async () => {
+    const repl = new FriendlyRepl({read: () => new Promise(() => {})});
+    await assert.rejects(repl.untilPrompt(20), /timed out waiting for a reply/);
+});
+
+test('USB prompt parsing retains a second already-received response', async () => {
+    let reads = 0;
+    const repl = new FriendlyRepl({read: async () => {
+        reads++;
+        return 'first >>> second >>> ';
+    }});
+    assert.equal(await repl.untilPrompt(), 'first >>> ');
+    assert.equal(await repl.untilPrompt(), 'second >>> ');
+    assert.equal(reads, 1);
+});
 
 test('SPIKE USB pseudocode compiles motor steps and rejects sensor ports', () => {
     const types = {A: 75, B: 63, F: 38};

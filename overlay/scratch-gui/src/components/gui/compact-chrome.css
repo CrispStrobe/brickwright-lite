@@ -42,6 +42,32 @@
 
 /* ---- collapsed ---------------------------------------------------------- */
 
+.responsive-editor {
+    min-width: 0;
+    min-height: 0;
+}
+
+.responsive-editor :global([class*="gui_tabs"]),
+.responsive-editor :global([class*="gui_tab-panel"]) {
+    min-width: 0;
+    min-height: 0;
+}
+
+.responsive-editor :global([class*="gui_tab-list"]) {
+    width: calc(100% - 36px);
+    height: auto;
+    min-height: 44px;
+    flex-wrap: wrap;
+}
+
+.responsive-editor :global([role="tab"]) {
+    flex-grow: 0;
+    height: auto;
+    min-height: 32px;
+    margin: 0;
+    padding: 0 10px;
+}
+
 /* The menu bar hides entirely — its functionality is one click away via the
    hamburger icon that now lives in the tab row. */
 :global(body.bw-compact-chrome) [class*="menu-bar_menu-bar"] {

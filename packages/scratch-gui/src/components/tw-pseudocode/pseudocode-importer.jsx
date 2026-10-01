@@ -87,7 +87,7 @@ const L10N = {
         openBad: e => `Don't know that file type (${e}).`,
         openDone: (f, t) => `Loaded ${f} into the ${t} tab`,
         mcReading: f => `Reading ${f}…`,
-        downloadHex: '⬇ .hex for the board',
+        downloadHex: 'Export firmware (.hex)…',
         microbitNeedFirmware: 'Pick a MicroPython .hex once (from python.microbit.org, or the one that came with the board) — it is kept for this session.',
         microbitFirmwareBad: f => `${f} is not an Intel HEX file.`,
         microbitHexReady: f => `${f} saved. Copy it onto the MICROBIT drive.`,
@@ -229,7 +229,7 @@ const L10N = {
         flashSwdHint: 'Pick the CMSIS-DAP probe wired to SWDIO/SWCLK/GND (a DAPLink board, or a Pico running picoprobe).',
         flashNoWebUsb: 'This browser cannot do WebUSB (Chrome or Edge can — they flash the USBasp directly, here, no extra software). The compiled .hex was downloaded so you can use any external programmer you already have.',
         flashNeedsProgrammer: d => `${d} has no serial bootloader — it needs an ISP/SPI programmer (or, for a 6502/Z80 breadboard, an EEPROM burner). Compiled image downloaded so you can use your own tool.`,
-        stLoaded: 'Compiled to blocks and loaded. Switch to the Code tab to see them.',
+        stLoaded: 'Blocks loaded.',
         stWarn: w => `Loaded with warnings — ${w}`,
         foreverLoop: 'This project has a forever (game) loop, so it runs in the blocks — press the green flag to play it. For a text run, try an algorithmic example (quiz, operators, 2048, …).',
         cNote: 'C for the STC12 / 8051. Paste your own firmware and press ⇦ To blocks, or compile it to a .hex with stc-compiler.vercel.app. One 8051 gap to know: tone (set <buzzer> to N hz) has no STC12 driver yet — it compiles to a SILENT no-op on the 8051 (and on the Pico), with no error; only the Arduino/AVR build makes sound. On the 8086 the C compiles and runs locally (SmallerC + the in-browser assembler); drive the 8255’s pins with the port-I/O primitives bw_outb(port, value) and bw_inb(port) — cdecl, 16-bit args, caller cleans — the same ones the generated C uses. Keep scalar variables and parameters unsigned (word-wide), not unsigned char: reading a byte value makes SmallerC emit MOVZX, an 80386 instruction the 8086 assembler refuses.',
@@ -276,7 +276,7 @@ const L10N = {
         // micro:bit bar
         micropythonReadonly: 'Read-only — generated from your blocks for the micro:bit.',
         micropythonImported: 'Imported from a .hex — the simulator runs this as it is.',
-        runOnSimulator: '▶ Run on Simulator',
+        runOnSimulator: '▶ Run',
         openSpikeArena: '🪐 SPIKE arena',
         openSpikeArenaTitle: 'Open the SPIKE arena: a virtual driving base on a mat, with challenges, driven by this program through the virtual SPIKE hub',
         runOnSpike3: '▶ Run on SPIKE 3 (Python)',
@@ -293,7 +293,8 @@ const L10N = {
         spike3Out: 'print',
         spike3Clear: 'Clear',
         runSpikeUsb: '▶ Run on SPIKE USB',
-        probeSpikeUsb: 'Identify A–F',
+        probeSpikeUsb: 'Read USB ports',
+        probeSpikeUsbTitle: 'Connect a physical LEGO USB hub and read which motors and sensors are attached to ports A–F. This does not inspect the virtual hub.',
         spikeUsbDirect: 'USB on this computer', spikeUsbBridge: 'USB via Mac on WLAN',
         spikeUsbRouteLabel: 'SPIKE USB route', dismissNotice: 'Dismiss notice',
         spikeUsbUrl: 'Mac bridge URL', spikeUsbToken: 'Bridge token',
@@ -394,7 +395,7 @@ const L10N = {
         openBad: e => `Unbekannter Dateityp (${e}).`,
         openDone: (f, t) => `${f} in den ${t}-Tab geladen`,
         mcReading: f => `${f} wird gelesen…`,
-        downloadHex: '⬇ .hex für das Board',
+        downloadHex: 'Firmware exportieren (.hex)…',
         microbitNeedFirmware: 'Einmal eine MicroPython-.hex wählen (von python.microbit.org oder die vom Board) — sie bleibt für diese Sitzung gespeichert.',
         microbitFirmwareBad: f => `${f} ist keine Intel-HEX-Datei.`,
         microbitHexReady: f => `${f} gespeichert. Auf das MICROBIT-Laufwerk kopieren.`,
@@ -537,7 +538,7 @@ const L10N = {
         flashSwdHint: 'Den CMSIS-DAP-Adapter wählen, der an SWDIO/SWCLK/GND hängt (ein DAPLink-Board oder ein Pico mit picoprobe).',
         flashNoWebUsb: 'Dieser Browser kann kein WebUSB (Chrome oder Edge können es — sie flashen den USBasp direkt, hier, ohne Zusatzsoftware). Die kompilierte .hex wurde heruntergeladen, damit ein bereits vorhandenes externes Programmiergerät genutzt werden kann.',
         flashNeedsProgrammer: d => `${d} hat keinen seriellen Bootloader — es braucht einen ISP/SPI-Programmer (oder, für ein 6502/Z80-Steckbrett, ein EEPROM-Brenngerät). Kompiliertes Abbild heruntergeladen.`,
-        stLoaded: 'Zu Blöcken kompiliert und geladen. Wechsle zum Blöcke-Tab, um sie zu sehen.',
+        stLoaded: 'Blöcke geladen.',
         stWarn: w => `Mit Warnungen geladen — ${w}`,
         foreverLoop: 'Dieses Projekt hat eine Endlosschleife (Spiel), es läuft daher in den Blöcken — klicke die grüne Flagge zum Spielen. Für einen Text-Lauf nimm ein algorithmisches Beispiel (Quiz, Operatoren, 2048, …).',
         cNote: 'C für den STC12 / 8051. Eigene Firmware einfügen und „⇦ Zu Blöcken” drücken, oder auf stc-compiler.vercel.app zu .hex kompilieren. Eine 8051-Lücke: tone (set <buzzer> to N hz) hat noch keinen STC12-Treiber — es kompiliert auf dem 8051 (und dem Pico) zu einem STILLEN No-op, ohne Fehler; nur der Arduino/AVR-Build erzeugt Ton. Auf dem 8086 wird das C lokal kompiliert und ausgeführt (SmallerC + der In-Browser-Assembler); die Pins des 8255 werden mit den Port-I/O-Primitiven bw_outb(port, value) und bw_inb(port) angesteuert — cdecl, 16-Bit-Argumente, der Aufrufer räumt auf — dieselben, die das erzeugte C nutzt. Skalare Variablen und Parameter unsigned (wortbreit) halten, nicht unsigned char: das Lesen eines Byte-Werts lässt SmallerC MOVZX erzeugen, eine 80386-Instruktion, die der 8086-Assembler ablehnt.',
@@ -577,7 +578,7 @@ const L10N = {
         // micro:bit bar
         micropythonReadonly: 'Nur-Lesen — aus deinen Blöcken für den micro:bit generiert.',
         micropythonImported: 'Aus einer .hex importiert — der Simulator führt das direkt aus.',
-        runOnSimulator: '▶ Im Simulator ausführen',
+        runOnSimulator: '▶ Ausführen',
         openSpikeArena: '🪐 SPIKE-Arena',
         openSpikeArenaTitle: 'Die SPIKE-Arena öffnen: eine virtuelle Fahrbasis auf einer Matte, mit Aufgaben, gesteuert von diesem Programm über den virtuellen SPIKE-Hub',
         runOnSpike3: '▶ Auf SPIKE 3 ausführen (Python)',
@@ -594,7 +595,8 @@ const L10N = {
         spike3Out: 'print',
         spike3Clear: 'Leeren',
         runSpikeUsb: '▶ Auf SPIKE über USB ausführen',
-        probeSpikeUsb: 'A–F erkennen',
+        probeSpikeUsb: 'USB-Ports lesen',
+        probeSpikeUsbTitle: 'Einen physischen LEGO-USB-Hub verbinden und Motoren und Sensoren an A–F lesen. Dies prüft nicht den virtuellen Hub.',
         spikeUsbDirect: 'USB an diesem Computer', spikeUsbBridge: 'USB über Mac im WLAN',
         spikeUsbRouteLabel: 'SPIKE-USB-Verbindung', dismissNotice: 'Hinweis schließen',
         spikeUsbUrl: 'Mac-Bridge-URL', spikeUsbToken: 'Bridge-Token',
@@ -4675,6 +4677,13 @@ class PseudocodeImporter extends React.Component {
                         title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">
                         {this.L.saveFile}
                     </button>
+                    {this.state.lang === 'micropython' ? (
+                        <button type="button" onClick={() => this.downloadMicrobitHex()} style={item}
+                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
+                            title={this.L.microbitNeedFirmware} data-testid="bw-microbit-download-hex">
+                            {this.L.downloadHex}
+                        </button>
+                    ) : null}
                     <button type="button" onClick={this.openMakeCodeShare} style={item}
                         title={this.L.mcShareTitle} data-testid="bw-makecode-share">
                         {this.L.mcShare}
@@ -4859,7 +4868,7 @@ class PseudocodeImporter extends React.Component {
                     room is reserved unconditionally because the overlay is there
                     at every chrome height; it was only ever luck that they
                     missed each other. */}
-                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'nowrap', flexShrink: 0, paddingRight: 40}}
+                <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0, paddingRight: 40}}
                     data-testid="bw-lang-row">
                     {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
                         // The tab follows the DEVICE line, except when a
@@ -4920,7 +4929,7 @@ class PseudocodeImporter extends React.Component {
                             {'🐞 Debugger'}
                         </button>
                         <select value={this.currentDevice() || ''} onChange={e => this.setDevice(e.target.value)}
-                            style={{...csel, alignSelf: 'center'}} title={this.L.deviceTitle}
+                            style={{...csel, alignSelf: 'center', maxWidth: '100%', minWidth: 0}} title={this.L.deviceTitle}
                             data-testid="bw-device-select">
                             <option value="">{this.L.noChips}</option>
                             {DEVICE_GROUPS.map(g => (
@@ -5139,13 +5148,15 @@ class PseudocodeImporter extends React.Component {
                             data-testid="bw-microbit-debug-level">
                             {['block', 'line'].map(lv => (
                                 <button key={lv} type="button"
+                                    aria-label={lv === 'line' ? this.L.debugLevelLine : this.L.debugLevelBlock}
+                                    aria-pressed={this.state.debugLevel === lv}
                                     onClick={() => this._setDebugLevel(lv)}
                                     title={lv === 'line' ? this.L.debugLineHint : this.L.debugBlockHint}
                                     style={{padding: '3px 10px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
                                         background: this.state.debugLevel === lv ? '#7c3aed' : '#faf5ff',
                                         color: this.state.debugLevel === lv ? '#fff' : '#7c3aed'}}
                                     data-testid={`bw-microbit-debug-level-${lv}`}>
-                                    {lv === 'line' ? this.L.debugLevelLine : this.L.debugLevelBlock}
+                                    <span aria-hidden="true">{lv === 'line' ? '≡' : '▣'}</span>
                                 </button>
                             ))}
                         </div>
@@ -5160,22 +5171,13 @@ class PseudocodeImporter extends React.Component {
                         </button>
                         <button type="button"
                             onClick={() => this.flashMicrobitSim()}
+                            title={pickLocale(this.props.locale) === 'de' ? 'Im Simulator ausführen' : 'Run on Simulator'}
                             disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
                             style={{padding: '4px 12px', borderRadius: 6, border: 'none',
                                 cursor: 'pointer', fontWeight: 600, fontSize: 12,
                                 background: 'linear-gradient(135deg,#16a34a,#15803d)', color: '#fff'}}
                             data-testid="bw-microbit-flash">
                             {this.L.runOnSimulator}
-                        </button>
-                        <button type="button"
-                            onClick={() => this.downloadMicrobitHex()}
-                            disabled={this.state.busy || !this.state.buffers.micropython.trim() || /^# ===/.test(this.state.buffers.micropython)}
-                            title={this.L.microbitNeedFirmware}
-                            style={{padding: '4px 12px', borderRadius: 6, border: '1px solid #0ea5e9',
-                                cursor: 'pointer', fontWeight: 600, fontSize: 12,
-                                background: '#f0f9ff', color: '#0369a1'}}
-                            data-testid="bw-microbit-download-hex">
-                            {this.L.downloadHex}
                         </button>
                         {/* Flash straight to the board over WebUSB (N9) —
                             shown only where WebUSB exists; the handler refuses
@@ -5360,18 +5362,19 @@ class PseudocodeImporter extends React.Component {
 
                 {/* Bottom controls row — hidden in maximize mode (compact To/From are in the tab row) */}
                 <div data-testid="bw-code-action-row" style={{marginTop: max ? 4 : 8, display: max ? 'none' : 'flex',
-                    alignItems: 'center', gap: 6, flexWrap: 'nowrap', flexShrink: 0, minWidth: 0,
-                    overflowX: 'auto', whiteSpace: 'nowrap'}}>
+                    alignItems: 'center', gap: 6, flexWrap: 'wrap', flexShrink: 0, minWidth: 0}}>
                     <button onClick={this.compile}
+                        aria-label={this.L.toBlocks}
                         disabled={this.state.busy || !this.activeCode().trim() || !(TWO_WAY.has(this.state.lang) || this.canLiftAsm())}
                         title={this.L.toBlocksTitle(LANG_LABEL[this.state.lang])}
                         style={actionBtn}>
-                        {this.L.toBlocks}
+                        <span aria-hidden="true">⇦ ▣</span>
                     </button>
                     <button onClick={this.fromBlocks} disabled={this.state.busy}
+                        aria-label={this.L.fromBlocks}
                         title={this.L.fromBlocksTitle}
                         style={{...actionBtn, background: 'linear-gradient(135deg,#a55b80,#8e4a6c)'}}>
-                        {this.L.fromBlocks}
+                        <span aria-hidden="true">▣ ⇨</span>
                     </button>
                     {this.currentDevice() === 'pico' ? (
                         <button onClick={this.deployToPico} disabled={this.state.busy}
@@ -5382,7 +5385,7 @@ class PseudocodeImporter extends React.Component {
                         </button>
                     ) : null}
                     {this.state.lang === 'pseudocode' && showSpikeAction ? (
-                        <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0}}>
+                        <span style={{display: 'inline-flex', gap: 5, alignItems: 'center', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%'}}>
                             <select value={this.state.spikeUsbRoute} disabled={this.state.busy}
                                 aria-label={this.L.spikeUsbRouteLabel} data-testid="bw-spike-usb-route"
                                 onChange={e => this.setState({spikeUsbRoute: e.target.value})}
@@ -5403,6 +5406,7 @@ class PseudocodeImporter extends React.Component {
                                 </React.Fragment>
                             ) : null}
                             <button onClick={() => this.runSpikeUsb(true)} disabled={this.state.busy}
+                                title={this.L.probeSpikeUsbTitle}
                                 data-testid="bw-probe-spike-usb" style={actionBtn}>
                                 {this.L.probeSpikeUsb}
                             </button>
@@ -5680,15 +5684,20 @@ class PseudocodeImporter extends React.Component {
                                 color: this.state.showAsmInfo ? '#fff' : '#475569', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontStyle: 'italic'}}
                             title={this.L.asmInfoTitle} data-testid="bw-asm-info-toggle">i</button>
                     ) : null}
-                    {this.state.status ? <span data-testid="bw-code-status"
-                        style={{fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0}}>
-                        {this.state.status}
-                        {/^(Restored your unsaved |Nicht gespeicherter ).*(?:\.|wiederhergestellt\.)$/.test(this.state.status) ?
-                            <button type="button" data-testid="bw-dismiss-restored" aria-label={this.L.dismissNotice}
-                                onClick={() => this.setState({status: ''})}
-                                style={{border: 0, background: 'transparent', cursor: 'pointer', fontSize: 16, lineHeight: 1}}>×</button> : null}
-                    </span> : null}
                 </div>
+                {this.state.status ? <div data-testid="bw-code-status" role="status"
+                    style={{fontSize: 12, display: 'flex', alignItems: 'flex-start', gap: 6,
+                        minWidth: 0, flexShrink: 0, marginTop: 4, maxHeight: 72, overflowY: 'auto'}}>
+                    <span style={{flex: '1 1 0', minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere'}}>
+                        {this.state.status}
+                    </span>
+                    <button type="button"
+                        data-testid={/^(Restored your unsaved |Nicht gespeicherter )/.test(this.state.status) ?
+                            'bw-dismiss-restored' : 'bw-dismiss-code-status'}
+                        aria-label={this.L.dismissNotice} onClick={() => this.setState({status: ''})}
+                        style={{border: 0, background: 'transparent', cursor: 'pointer', flexShrink: 0,
+                            fontSize: 18, lineHeight: 1, padding: 4}}>×</button>
+                </div> : null}
                 {this.state.conversionReport ? (() => {
                     const report = this.state.conversionReport;
                     const de = pickLocale(this.props.locale) === 'de';
@@ -5697,8 +5706,8 @@ class PseudocodeImporter extends React.Component {
                         <div data-testid="bw-conversion-report" role="status"
                             style={{marginTop: 4, border: '1px solid #cbd5e1',
                                 borderRadius: 6, background: '#f8fafc', fontSize: 12, color: '#334155',
-                                flexShrink: 0}}>
-                            <div style={{display: 'flex', alignItems: 'center', padding: exp ? '7px 10px 4px' : '4px 8px', cursor: 'pointer', fontWeight: 600}}
+                                flexShrink: 0, minWidth: 0, maxHeight: 180, overflowY: 'auto', overflowWrap: 'anywhere'}}>
+                            <div style={{display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', padding: exp ? '7px 10px 4px' : '4px 8px', cursor: 'pointer', fontWeight: 600}}
                                 onClick={() => this.setState(s => ({reportExpanded: !s.reportExpanded}))}>
                                 <span style={{width: 16, display: 'inline-block', fontSize: 10}}>{exp ? '▼' : '▶'}</span>
                                 {de ? 'Umwandlungsbericht' : 'Conversion report'}: {report.direction}
@@ -5710,6 +5719,11 @@ class PseudocodeImporter extends React.Component {
                                         {report.preserved && report.changed.length === 0 && report.unsupported.length === 0 && <span style={{color: '#166534'}}>✓ OK</span>}
                                     </span>
                                 )}
+                                <button type="button" data-testid="bw-dismiss-conversion-report"
+                                    aria-label={this.L.dismissNotice} title={this.L.dismissNotice}
+                                    onClick={event => { event.stopPropagation(); this.setState({conversionReport: null}); }}
+                                    style={{marginLeft: 'auto', border: 0, background: 'transparent', cursor: 'pointer',
+                                        fontSize: 18, lineHeight: 1, padding: 4}}>×</button>
                             </div>
                             {exp && (
                                 <div style={{padding: '0 10px 7px 26px'}}>

@@ -21,6 +21,8 @@ const catalog = {
 
 const UI = {
     en: {library: 'Lessons',
+        collapse: 'Collapse lessons', expand: 'Expand lessons',
+        move: 'Move lessons: drag this header or use the arrow keys',
         close: 'Close lessons',
         back: 'All lessons',
         objective: 'Goal',
@@ -45,6 +47,8 @@ const UI = {
         manualNote: 'Automatic checks are aids, not tests.',
         benchReady: 'Bench ready — mark this step when you have the reading.'},
     de: {library: 'Lektionen',
+        collapse: 'Lektionen einklappen', expand: 'Lektionen ausklappen',
+        move: 'Lektionen verschieben: Kopfzeile ziehen oder Pfeiltasten verwenden',
         close: 'Lektionen schließen',
         back: 'Alle Lektionen',
         objective: 'Ziel',
@@ -142,6 +146,76 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
     const [selectedVariant, setSelectedVariant] = React.useState('');
     const [query, setQuery] = React.useState('');
     const [depthFilter, setDepthFilter] = React.useState('');
+    const [collapsed, setCollapsed] = React.useState(false);
+    const [position, setPosition] = React.useState(() => {
+        try {
+            const saved = JSON.parse(localStorage.getItem('bw-lessons-position'));
+            if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) return saved;
+        } catch { /* use the initial position */ }
+        return {x: 10, y: 52};
+    });
+    const panel = React.useRef(null);
+    const drag = React.useRef(null);
+    const bounded = (x, y) => {
+        const rect = panel.current && panel.current.getBoundingClientRect();
+        return {x: Math.max(0, Math.min(x, window.innerWidth - (rect ? rect.width : 360))),
+            y: Math.max(0, Math.min(y, window.innerHeight - (rect ? rect.height : 48)))};
+    };
+    React.useEffect(() => {
+        const resize = () => setPosition(previous => bounded(previous.x, previous.y));
+        resize();
+        window.addEventListener('resize', resize);
+        return () => window.removeEventListener('resize', resize);
+    }, [collapsed]);
+    const savePosition = point => {
+        try { localStorage.setItem('bw-lessons-position', JSON.stringify(point)); } catch { /* private mode */ }
+    };
+    const headerProps = {
+        className: styles.header, tabIndex: 0, title: text.move, 'aria-label': text.move,
+        'data-testid': 'bw-lessons-drag-handle',
+        onPointerDown: event => {
+            if (event.button !== 0 || event.target.closest('button, input, select, a')) return;
+            event.preventDefault();
+            drag.current = {x: event.clientX, y: event.clientY, start: position, point: position};
+            event.currentTarget.setPointerCapture(event.pointerId);
+        },
+        onPointerMove: event => {
+            if (!drag.current) return;
+            const start = drag.current;
+            start.point = bounded(start.start.x + event.clientX - start.x,
+                start.start.y + event.clientY - start.y);
+            setPosition(start.point);
+        },
+        onPointerUp: event => {
+            if (!drag.current) return;
+            savePosition(drag.current.point);
+            drag.current = null;
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+                event.currentTarget.releasePointerCapture(event.pointerId);
+            }
+        },
+        onPointerCancel: () => { drag.current = null; },
+        onKeyDown: event => {
+            if (event.target !== event.currentTarget || !/^Arrow(Left|Right|Up|Down)$/.test(event.key)) return;
+            event.preventDefault();
+            const delta = event.shiftKey ? 40 : 10;
+            const point = bounded(position.x + (event.key === 'ArrowRight' ? delta : event.key === 'ArrowLeft' ? -delta : 0),
+                position.y + (event.key === 'ArrowDown' ? delta : event.key === 'ArrowUp' ? -delta : 0));
+            setPosition(point);
+            savePosition(point);
+        }
+    };
+    const panelStyle = {left: position.x, top: position.y, bottom: 'auto',
+        maxHeight: `calc(100vh - ${position.y}px - 10px)`, maxWidth: 'calc(100vw - 20px)',
+        ...(collapsed ? {width: 220} : {})};
+    const panelButtons = <div className={styles.headerButtons}>
+        <button type="button" aria-label={collapsed ? text.expand : text.collapse}
+            title={collapsed ? text.expand : text.collapse} aria-expanded={!collapsed}
+            data-testid="bw-lessons-collapse" onClick={() => setCollapsed(value => !value)}>
+            {collapsed ? '+' : '−'}
+        </button>
+        <button type="button" aria-label={text.close} onClick={onClose}>×</button>
+    </div>;
 
     React.useEffect(() => {
         setCompleted(lesson ? loadProgress(lesson) : {});
@@ -207,6 +281,12 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
         }
     }, [complete, initialEvent, lesson]);
 
+    if (collapsed) {
+        return <aside ref={panel} className={styles.drawer} style={panelStyle}
+            aria-label={text.library} data-testid="bw-lessons-collapsed">
+            <header {...headerProps}><h2>{text.library}</h2>{panelButtons}</header>
+        </aside>;
+    }
     if (!lesson) {
         const visibleLessons = catalog.lessons.filter(item => {
             if (depthFilter && item.depth !== depthFilter) return false;
@@ -216,16 +296,14 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
         return (
             <aside
                 className={styles.drawer}
+                ref={panel}
+                style={panelStyle}
                 aria-label={text.library}
                 data-testid="bw-lessons-library"
             >
-                <header className={styles.header}>
+                <header {...headerProps}>
                     <h2>{text.library}</h2>
-                    <button
-                        aria-label={text.close}
-                        type="button"
-                        onClick={onClose}
-                    >{'×'}</button>
+                    {panelButtons}
                 </header>
                 <div className={styles.filters}>
                     <input
@@ -301,19 +379,17 @@ const GuidedLessons = ({initialEvent, lessonId, locale, onClose, onSelectLesson}
     return (
         <aside
             className={styles.drawer}
+            ref={panel}
+            style={panelStyle}
             aria-label={copy.title}
             data-testid="bw-guided-lesson"
         >
-            <header className={styles.header}>
+            <header {...headerProps}>
                 <button
                     type="button"
                     onClick={() => onSelectLesson(null)}
                 >{'‹ '}{text.back}</button>
-                <button
-                    aria-label={text.close}
-                    type="button"
-                    onClick={onClose}
-                >{'×'}</button>
+                {panelButtons}
             </header>
             <div className={styles.lessonBody}>
                 <div className={styles.badges}>

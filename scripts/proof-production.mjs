@@ -82,7 +82,7 @@ async function proveDevice(browser, name, cfg) {
     await page.click('text=Code ⇄ Blocks');
     await page.waitForTimeout(1200);
     await page.locator('textarea').first().fill(cfg.program);
-    await page.click('text=⇦ To blocks');
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).click();
     await page.waitForTimeout(2500);
 
     await page.click('text=🔌 Circuit');

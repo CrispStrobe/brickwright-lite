@@ -730,7 +730,13 @@ class MenuBar extends React.Component {
                         aria-label={this.props.intl.formatMessage({id: 'gui.menuBar.undo', defaultMessage: 'Undo'})}
                         title={`${this.props.intl.formatMessage({id: 'gui.menuBar.undo', defaultMessage: 'Undo'})} (${this.state.undoSurface})`}
                         onClick={this.handleGlobalUndo}
-                    >{'↶'}</button>
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M9 4 4 9l5 5M4 9h10a5.5 5.5 0 0 1 0 11h-3"
+                                fill="none" stroke="currentColor" strokeWidth="2"
+                                strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                    </button>
                     {this.props.canEditTitle ? (
                         <div className={classNames(styles.menuBarItem, styles.growable)}>
                             <MenuBarItemTooltip

@@ -330,6 +330,24 @@ class CostumeTab extends React.Component {
         };
         const editorTools = pixel => (
             <div className={styles.editorTools}>
+                <select
+                    data-testid={pixel ? 'bw-image-target-pixel' : 'bw-image-target'}
+                    aria-label={intl.locale.startsWith('de') ? 'Bildziel wählen' : 'Choose image target'}
+                    value={vm.editingTarget.id}
+                    onChange={event => vm.setEditingTarget(event.target.value)}
+                    className={styles.targetSelect}
+                >
+                    <optgroup label={intl.locale.startsWith('de') ? 'Kostüme' : 'Costumes'}>
+                        {Object.values(this.props.sprites).map(sprite => (
+                            <option key={sprite.id} value={sprite.id}>{sprite.name}</option>
+                        ))}
+                    </optgroup>
+                    {this.props.stage ? (
+                        <option value={this.props.stage.id}>
+                            {intl.locale.startsWith('de') ? 'Hintergründe' : 'Backdrops'}
+                        </option>
+                    ) : null}
+                </select>
                 <button
                     type="button"
                     data-testid={pixel ? 'bw-costume-import-pixel' : 'bw-costume-import'}

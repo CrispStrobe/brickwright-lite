@@ -87,7 +87,7 @@ WHEN flag clicked:
     await page.waitForTimeout(500);
     // "To blocks" is what parses the program and lands it on runtime.stc —
     // typing alone declares nothing.
-    await page.locator('button', {hasText: 'To blocks'}).first().click({force: true});
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true});
     await page.waitForTimeout(1200);
     const blocksTab = page.locator('[role="tab"]', {hasText: 'Blocks'}).first();
     await blocksTab.click();
