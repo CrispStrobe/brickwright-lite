@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // The hub contract (who writes what, units, the clock) is docs/SPIKE-ARENA.md.
-import IndependentSpikeBackend from '../spike-sim/independent-backend.js';
+import IndependentSpikeBackend from './spike-motor-model.js';
 
 const makeData = () => ({
     connected: false, simulationEnabled: false, notificationIntervalMs: null, battery: 100,

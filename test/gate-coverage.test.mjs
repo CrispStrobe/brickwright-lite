@@ -36,6 +36,15 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
+    'verify-independent-spike.mjs': 'private/local: requires BW_SPIKE_EVIDENCE_DIR outside the public repo '
+        + 'and strict private fixtures. Executed 2026-10-01 in the private firmware audit repository; '
+        + 'receipts under audits/independent-spike/2026-10-01-runtime-retirement/main-validation. '
+        + 'Public CI must not fetch or publish the private fixtures or transcripts.',
+    'verify-spike-simulator-browser.mjs': 'private/local: requires a private BW_SPIKE_EVIDENCE_DIR '
+        + 'for JSON and screenshots and a fresh production GUI build. Executed 2026-10-01; '
+        + 'receipts in the private firmware audit repository under the same main-validation directory. '
+        + 'Public browser CI also exercises the hub/arena/importer through verify-lego-spike-roundtrip.mjs.',
+
     'verify-i80386-doom-real-browser.mjs': 'manual/local: requires exact external FreeDOS 1.4 '
         + 'floppy and rights-cleared short-demo Doom HDD. It checks Chromium Widgets physical keyboard, '
         + 'a nontrivial 320x200 guest and visible canvas frame, then the 24-gametic timedemo result and C: prompt. '
