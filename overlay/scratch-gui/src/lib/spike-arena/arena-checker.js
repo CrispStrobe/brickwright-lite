@@ -108,6 +108,10 @@ export class ArenaChecker {
     /** Evaluates one snapshot; returns (and keeps) the verdict. A decided verdict does not change. */
     evaluate (view) {
         if (this.verdict.status !== 'running') return this.verdict;
+        if (this.world.mode === 'sandbox') {
+            this.verdict = {...this.verdict, timeMs: view.timeMs};
+            return this.verdict;
+        }
         const failures = this.world.failure || [];
         for (let i = 0; i < failures.length; i++) {
             const condition = failures[i];

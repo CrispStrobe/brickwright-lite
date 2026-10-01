@@ -297,7 +297,7 @@ class PixelArtEditor extends React.Component {
 
     componentDidMount () { this.load(); }
 
-    componentWillUnmount () { clearTimeout(this.playTimer); }
+    componentWillUnmount () { this.loadToken = null; clearTimeout(this.playTimer); }
 
     componentDidUpdate (prev, prevState) {
         if (prevState.colour !== this.state.colour || prevState.secondaryColour !== this.state.secondaryColour) {
@@ -315,6 +315,8 @@ class PixelArtEditor extends React.Component {
     }
 
     async load (size) {
+        const token = this.loadToken = {};
+        this.setState({image: null});
         clearTimeout(this.playTimer);
         this.sheetRgba = null;
         const costume = this.costume();
@@ -344,6 +346,7 @@ class PixelArtEditor extends React.Component {
         let converted = false;
         if (!image) {
             const {rgba, w, h} = await rasterize(costume);
+            if (this.loadToken !== token) return;
             const tw = size ? size.w : Math.min(64, Math.max(4, Math.round(w / 4)));
             const th = size ? size.h : Math.min(64, Math.max(4, Math.round(h / 4)));
             image = quantizeRgba(rgba, w, h, tw, th, palette);
@@ -1266,6 +1269,12 @@ class PixelArtEditor extends React.Component {
             return {layers, activeLayerId, selection: null,
                 image: composeLayers(layers, state.w, state.h), status: ''};
         });
+    }
+
+    hasUnsavedChanges () {
+        const {original, layers, frames, palette, w, h} = this.state;
+        return Boolean(original && (layers !== original.layers || frames !== original.frames ||
+            palette !== original.palette || w !== original.w || h !== original.h));
     }
 
     save () {

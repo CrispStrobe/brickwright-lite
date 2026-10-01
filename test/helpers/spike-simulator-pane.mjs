@@ -31,9 +31,11 @@ export async function loadSimulator () {
 }
 
 export function installBrowser () {
-    const keys = ['window', 'document', 'fetch', 'CustomEvent', 'requestAnimationFrame', 'cancelAnimationFrame'];
+    const keys = ['window', 'document', 'fetch', 'CustomEvent', 'requestAnimationFrame', 'cancelAnimationFrame', 'localStorage'];
     const saved = Object.fromEntries(keys.map(key => [key, globalThis[key]]));
     const events = new Map(), frames = [], scripts = [], requests = [];
+    const stored = new Map();
+    globalThis.localStorage = {getItem: key => stored.get(key) || null, setItem: (key, value) => stored.set(key, value)};
     const win = {
         devicePixelRatio: 1,
         addEventListener (type, fn) { if (!events.has(type)) events.set(type, new Set()); events.get(type).add(fn); },

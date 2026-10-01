@@ -55,6 +55,8 @@ const checkText = (value, path, errors) => {
 export const validateWorld = world => {
     const errors = [];
     if (!world || typeof world !== 'object') return ['world: must be an object'];
+    const sandbox = world.mode === 'sandbox';
+    if (world.mode !== undefined && !['sandbox', 'challenge'].includes(world.mode)) errors.push('mode: sandbox or challenge');
     if (typeof world.id !== 'string' || !/^[a-z0-9-]+$/.test(world.id)) errors.push('id: lowercase letters, digits and dashes');
     checkText(world.title, 'title', errors);
     checkText(world.intro, 'intro', errors);
@@ -87,7 +89,7 @@ export const validateWorld = world => {
     const start = world.start || {};
     if (!isNumber(start.x) || !isNumber(start.y)) errors.push('start: x and y in cm');
     if (start.heading !== undefined && !isNumber(start.heading)) errors.push('start.heading: degrees');
-    if (!isNumber(world.timeLimitMs) || world.timeLimitMs <= 0) errors.push('timeLimitMs: required, positive');
+    if (!sandbox && (!isNumber(world.timeLimitMs) || world.timeLimitMs <= 0)) errors.push('timeLimitMs: required, positive');
     const checkConditions = (list, allowed, path) => {
         if (!Array.isArray(list)) { errors.push(`${path}: must be a list`); return; }
         list.forEach((condition, i) => {
@@ -102,8 +104,11 @@ export const validateWorld = world => {
         });
     };
     checkConditions(world.success, SUCCESS_TYPES, 'success');
-    if (Array.isArray(world.success) && !world.success.length) errors.push('success: at least one condition');
+    if (!sandbox && Array.isArray(world.success) && !world.success.length) errors.push('success: at least one condition');
     checkConditions(world.failure || [], FAILURE_TYPES, 'failure');
+    if (sandbox && ((world.success || []).length || (world.failure || []).length || world.timeLimitMs !== undefined)) {
+        errors.push('sandbox: no scoring conditions or time limit');
+    }
     if (world.stages !== undefined) {
         // One label per success condition, in the same order: stage i is success[i].
         if (!Array.isArray(world.stages) || !Array.isArray(world.success) || world.stages.length !== world.success.length) {

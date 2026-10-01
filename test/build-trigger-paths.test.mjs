@@ -30,6 +30,22 @@ const pushWouldBuild = (file, paths = entries) => {
     return included;
 };
 
+test('the doc census reads shipped JSX and excludes only UUID pane compilation scratch files', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'bw-doc-pane-'));
+    mkdirSync(path.join(root, 'docs'));
+    mkdirSync(path.join(root, 'overlay'));
+    writeFileSync(path.join(root, 'docs', 'REAL.md'), 'real');
+    writeFileSync(path.join(root, 'docs', 'TEMP.md'), 'temporary');
+    writeFileSync(path.join(root, 'overlay', 'spike-arena-pane.jsx'), "const contract = 'docs/REAL.md';");
+    writeFileSync(path.join(root, 'overlay', 'spike-arena-pane-test-12345678-1234-1234-1234-123456789abc.mjs'),
+        "const generated = 'docs/TEMP.md';");
+    const mentions = censusDocMentions(root);
+    assert.equal(mentions.has('REAL.md'), true);
+    assert.equal(mentions.has('TEMP.md'), false);
+    writeFileSync(path.join(root, 'overlay', 'spike-arena-pane-test-authored.mjs'), "const authored = 'docs/TEMP.md';");
+    assert.equal(censusDocMentions(root).has('TEMP.md'), true, 'an authored test remains authoritative');
+});
+
 const assertHistoryOnlySkipped = paths => {
     assert.equal(pushWouldBuild('HISTORY.md', paths), false,
         'HISTORY.md-only pushes are ledger updates and must skip Build');
