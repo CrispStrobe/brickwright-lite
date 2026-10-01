@@ -24,7 +24,7 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,
             // The arena's 3D view: its own chunk, three in a shared lazy chunk, and the arena pane's chunk without either.
-            'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-arena': 'the 2D arena pane'
+            'bw-arena-3d': 'bw-spike-arena-3d-canvas', '1380.hash': three, 'bw-spike-simulator': 'the 2D arena pane'
         })) put(`chunks/${name}.js`, bytes);
         let result = run();
         assert.equal(result.status, 0, result.stdout + result.stderr);
@@ -48,15 +48,15 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         put('chunks/bw-board.js', 'entry');
         assert.equal(run().status, 0, 'restored');
         // three.js belongs to the 3D view, not to the arena pane that offers it.
-        put('chunks/bw-spike-arena.js', `the 2D arena pane ${three}`);
+        put('chunks/bw-spike-simulator.js', `the 2D arena pane ${three}`);
         result = run();
         assert.equal(result.status, 1);
-        assert.match(result.stdout, /FAIL three\.js .* are not in chunks\/bw-spike-arena\*\.js/);
-        rmSync(join(build, 'chunks/bw-spike-arena.js'));
+        assert.match(result.stdout, /FAIL three\.js .* are not in chunks\/bw-spike-simulator\*\.js/);
+        rmSync(join(build, 'chunks/bw-spike-simulator.js'));
         result = run();
         assert.equal(result.status, 1, 'no arena chunk to inspect is a failure, not a vacuous pass');
-        assert.match(result.stdout, /FAIL .*no chunks\/bw-spike-arena\*\.js to inspect/);
-        put('chunks/bw-spike-arena.js', 'the 2D arena pane');
+        assert.match(result.stdout, /FAIL .*no chunks\/bw-spike-simulator\*\.js to inspect/);
+        put('chunks/bw-spike-simulator.js', 'the 2D arena pane');
         put('chunks/1380.hash.js', 'renamed');
         assert.equal(run().status, 1, 'three\'s marker must be found in lazy JS');
     } finally {rmSync(build, {recursive: true, force: true});}
