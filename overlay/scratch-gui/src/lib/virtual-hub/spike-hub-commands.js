@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // The motion commands the virtual SPIKE hub understands, whichever transport
-// carried them, resolved through the hub's motor model (spike-motor-model.js).
+// carried them, resolved through the hub's independent SPIKE backend.
 //
 // The spikeprime extension reaches the hub two ways: a SPIKE 3 hub gets JSON
 // on the tunnel for motor start/stop and one-line MicroPython for everything

@@ -47,7 +47,22 @@ guard expecting the retired `bw-spike-arena` chunk. The guard now inspects the
 actual `bw-spike-simulator` chunk and still rejects missing chunks or eager
 3D payloads; its negative-control and source-drift tests pass locally.
 
-Next: land the paired BW/Lite slices; qualify BW's fresh selected-motion NODEJS
+The paired BW boundary landed in PR #184. The four generic actual-WASM tests
+also passed with zero skips using fresh build-B WEB assets from workflow
+36816537489 at LabWired `4d944d2d`. This remains Node-based held-input evidence,
+not browser throughput. Corrected selected-motion hosted run 36817423180
+passed its guest assertions but failed all five performance windows (0.686913×
+median / 0.653157× minimum); publication stayed blocked and pins are unchanged.
+
+The Lite branch incorporates main's virtual-SPIKE-only runtime retirement.
+CI follow-up wires both existing independent SPIKE gates, separates receipt
+outputs from private fixture inputs, corrects the notice heading and removes
+an unused compatibility re-export. Focused follow-up tests passed 59/59;
+backend/controller/speed-envelope tests executed against the relocated private
+fixtures and passed 39/39 with zero skips. Full hosted CI still must pass before
+merging Lite PR #588; local missing GUI dependencies are not a passing gate.
+
+Next: land Lite after green CI; qualify BW's fresh selected-motion NODEJS
 guest and all five unchanged ≥1× windows without publishing; then browser
 guest/debugger tests, verified package/artifact promotion, and user-facing
 pose controls. Shared sensor IRQ and timed audio remain separate milestones.

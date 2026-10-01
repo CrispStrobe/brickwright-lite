@@ -1095,6 +1095,12 @@ who you are and who you are talking to before broadcasting either.
 
 ## Skips that execute elsewhere
 
+- test/independent-spike-backend.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: box lego-vps 2026-10-01, executed with BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1 against brickwright-firmware-private audits/independent-spike/2026-10-01-relocation/evidence; backend/controller/speed-envelope combined run passed 39 tests, zero skips. Private reference payloads remain outside the public repository.
+- test/independent-spike-controller.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: box lego-vps 2026-10-01, same required-private-evidence execution against brickwright-firmware-private audits/independent-spike/2026-10-01-relocation/evidence; combined 39 tests passed, zero skips.
+- test/independent-spike-speed-envelope.test.mjs :: Set BW_SPIKE_EVIDENCE_DIR to the private SPIKE evidence checkout :: box lego-vps 2026-10-01, same required-private-evidence execution against brickwright-firmware-private audits/independent-spike/2026-10-01-relocation/evidence; combined 39 tests passed, zero skips; 60 shared-hub samples compared without widened tolerances.
+
+- test/engineering-input-route-wasm.test.mjs :: real engineering-input proof needs original WEB glue and WASM paths :: box lego-vps 2026-10-01, four tests passed with zero skips using original historical release labwired-wasm-0c0cd0ec assets and again using fresh build-B assets from BW workflow run 36816537489 at LabWired source 4d944d2d; BW_PACKAGE_ROOT selected the paired BW source explicitly, BW_REQUIRE_ENGINE_INPUT_PROOF=1 made missing assets fail. See docs/LABWIRED-ENGINEERING-INPUT-ROUTE.md. This proves generic held inputs/recording subscription under Node, not selected motion or browser RTx.
+
 - test/vendor-forward-packages.test.mjs :: BW_BOARD_DIR unset — actual forward BIOS CLI not exercised :: workflow .github/workflows/build.yml step 'Fetch the pinned bw-board tree for the pin-reader tests' supplies the exact engine input for the unit suite; also explicitly run against takeover app/7fbdfa9 checkout on lego-vps 2026-09-12 codex-app-adoption-audit
 
 Every test CI skips must point at the ONE place it executes (plan T13). One line per file and
