@@ -75,7 +75,7 @@ const audit = ({rust, lib, html}) => {
     assert.match(rust, /\.on_new_window\([\s\S]{0,240}(?:false|Deny)/,
         'new-window creation must be denied');
 
-    assert.match(lib, /#\[cfg\(desktop\)\][\s\S]{0,160}mod\s+native_broker\s*;/,
+    assert.match(lib, /#\[cfg\(desktop\)\]\s*mod\s+native_broker\s*;/,
         'the shell module must compile on desktop only');
     assert.match(lib,
         /#\[cfg\(desktop\)\][\s\S]{0,240}native_broker::(?:setup|create)\(\s*(?:app|app\.handle\(\))\s*,\s*native_policy\.clone\(\)\s*\)\s*\?\s*;/,
@@ -173,7 +173,7 @@ test('broker shell gate detects independently weakened controls', () => {
         input => { input.rust = input.rust.replace('    allowed\n}', '    revoke();\n    allowed\n}'); },
         input => { input.lib = input.lib.replace('builder.manage(native_policy.clone())', 'builder'); },
         input => { input.lib = input.lib.replace('fileio::save_project,', 'native_broker::invoke,\n            fileio::save_project,'); },
-        input => { input.lib = input.lib.replace('#[cfg(desktop)]', '#[cfg(mobile)]'); },
+        input => { input.lib = input.lib.replace('#[cfg(desktop)]\nmod native_broker;', '#[cfg(mobile)]\nmod native_broker;'); },
         input => { input.html = input.html.replace("default-src 'none'", "default-src 'self'"); },
         input => { input.html = input.html.replace('script-src blob:', "script-src 'unsafe-eval'"); },
         input => { input.html = input.html.replace('worker-src blob:', "worker-src 'self'"); },
@@ -184,6 +184,7 @@ test('broker shell gate detects independently weakened controls', () => {
     for (const [index, mutate] of mutations.entries()) {
         const input = {...baseline};
         mutate(input);
+        assert.notDeepEqual(input, baseline, `mutation ${index} must change the tested source`);
         assert.throws(() => audit(input), `mutation ${index} must fail the shell audit`);
     }
 });
