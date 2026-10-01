@@ -142,6 +142,14 @@ try {
     assert.ok((await library.boundingBox()).x >= after.x, 'lesson position survives close and reopen');
     check('lesson position supports keyboard movement and survives reopening');
     await page.getByRole('button', {name: 'Close lessons', exact: true}).click();
+    await page.getByTestId('bw-device-select').selectOption('microbit');
+    await page.getByRole('button', {name: '🤖 micro:bit', exact: true}).click();
+    assert.equal(await page.getByTestId('bw-microbit-flash').innerText(), '▶ Run');
+    assert.equal(await page.getByTestId('bw-microbit-download-hex').isVisible(), false);
+    await page.getByTestId('bw-code-actions').locator('summary').click();
+    assert.equal(await page.getByTestId('bw-microbit-download-hex').isVisible(), true);
+    assert.match(await page.getByTestId('bw-microbit-download-hex').innerText(), /Export firmware \(\.hex\)/);
+    check('simulator Run is compact and firmware export is clearly labelled in the file menu');
     assert.equal(await page.getByTestId('bw-global-undo').locator('svg').count(), 1);
     assert.deepEqual(errors, [], 'no uncaught browser exceptions');
 } catch (error) {
