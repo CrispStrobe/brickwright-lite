@@ -328,12 +328,13 @@ test('an ANALOG pin off P1 is refused, because the channels ARE P1.0-P1.7', asyn
     // the back end must not depend on an upstream layer to stay correct.
     const src = ['DEVICE i8086', 'PIN pot = P2.3 ANALOG',
         'WHEN flag clicked:', '  say (read pot)'].join('\n');
-    const c = new SB3();
-    c.parse(src);
-    assert.match((c.warnings || []).join(' '),
-        /ANALOG is only available on P1\.0-P1\.7/,
-        'refused by name, with the range, rather than reading the wrong channel');
-    assert.deepEqual(c.project.stc.pins, [], 'and the bad declaration is not carried forward');
+    // Refused as a line the program cannot be built from (sb3-creator 8f4b6316,
+    // task D6): it used to be a warning, the declaration was skipped, and the
+    // rest of the program built without it.
+    assert.throws(() => new SB3().parse(src), (e) => e.code === 'DIALECT_UNPARSED_LINES'
+        && e.lines.some((l) => l.line === 2 && l.text === 'PIN pot = P2.3 ANALOG'
+            && /ANALOG is only available on P1\.0-P1\.7/.test(l.reason)),
+    'refused by name, with the range, rather than reading the wrong channel');
 });
 
 // ── A LEVEL, AND A TONE ──────────────────────────────────────────────────

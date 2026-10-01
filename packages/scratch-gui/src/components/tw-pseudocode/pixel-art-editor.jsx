@@ -15,10 +15,11 @@
  */
 import PropTypes from 'prop-types';
 import React from 'react';
+import styles from './pixel-art-editor.css';
 import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
-import {blankLayer, clearSelectedPixels, composeLayers, containsCell, lassoSelection, layersDocument, layersToSvg,
+import {blankLayer, clearSelectedPixels, composeLayers, containsCell, cropLayers, lassoSelection, layersDocument, layersToSvg,
     copySelectedPixels, moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels,
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels, wandSelection} from '../../lib/bw-pixel-layers.js';
@@ -26,6 +27,7 @@ import {
     ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
 } from '../../lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
+import {PALETTE_PRESETS} from '../../lib/bw-makecode/palette-presets.js';
 
 const L10N = {
     en: {
@@ -39,6 +41,7 @@ const L10N = {
         'px.showLayer': 'Show layer', 'px.hideLayer': 'Hide layer', 'px.layerUp': 'Move up',
         'px.layerDown': 'Move down', 'px.lockLayer': 'Lock layer', 'px.unlockLayer': 'Unlock layer',
         'px.select': 'Select', 'px.move': 'Move selection', 'px.clearSelection': 'Clear selection',
+        'px.cropSelection': 'Crop to selection',
         'px.deselect': 'Deselect', 'px.opacity': 'Opacity', 'px.renameLayer': 'Rename layer',
         'px.exportPng': 'Export transparent PNG', 'px.circle': 'Circle',
         'px.flipH': 'Flip horizontally', 'px.flipV': 'Flip vertically',
@@ -51,8 +54,16 @@ const L10N = {
         'px.literalHint': 'The imported image becomes a new editable layer. Existing layers are kept.',
         'px.copyLiteral': 'Copy', 'px.literalLabel': 'Arcade img literal',
         'px.paletteColour': 'Edit palette colour',
+        'px.secondaryColour': 'Choose second colour', 'px.swapColours': 'Swap colours (X)',
         'px.resetPalette': 'Reset palette', 'px.paletteHint': 'Change the colour of every pixel with this index.',
         'px.importPalette': 'Import palette',
+        'px.palettePreset': 'Preset', 'px.paletteCustom': 'Custom',
+        'px.palette.Arcade': 'Arcade', 'px.palette.Matte': 'Matte',
+        'px.palette.Pastel': 'Pastel', 'px.palette.Sweet': 'Sweet',
+        'px.palette.Poke': 'Poke', 'px.palette.Adventure': 'Adventure',
+        'px.palette.DIY': 'DIY', 'px.palette.Adafruit': 'Adafruit',
+        'px.palette.StillLife': 'Still Life', 'px.palette.SteamPunk': 'Steam Punk',
+        'px.palette.Grayscale': 'Grayscale',
         'px.invalidPalette': 'Use a 15- or 16-colour .hex, .txt or GIMP .gpl palette.',
         'px.filledRect': 'Filled rectangle', 'px.filledCircle': 'Filled circle',
         'px.brushSize': 'Brush size', 'px.replaceColour': 'Replace colour',
@@ -64,13 +75,16 @@ const L10N = {
         'px.play': 'Play', 'px.pause': 'Pause', 'px.onionSkin': 'Onion skin',
         'px.frameUp': 'Earlier frame', 'px.frameDown': 'Later frame',
         'px.exportSheet': 'Export sprite sheet PNG', 'px.importSheet': 'Import sprite sheet PNG',
+        'px.exportFrames': 'Add frames as costumes', 'px.framesExported': 'Frames added as editable costumes.',
+        'px.framesExportFailed': 'Could not add every frame as a costume.',
         'px.sheetFrameWidth': 'Frame width (PNG px)', 'px.sheetFrameHeight': 'Frame height (PNG px)',
         'px.sheetScale': 'PNG pixels per art pixel', 'px.sheetPreview': 'Preview slices',
         'px.sheetReplace': 'Replace frames with slices', 'px.sheetClose': 'Close sheet import',
         'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 128×128 art pixels.',
         'px.sheetHint': 'Rows are read left to right. Colours match the current palette; replacing frames is undoable.',
-        'px.frameNumber': 'Frame {number}', 'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
-        'px.tolerance': 'Tolerance'
+        'px.frameNumber': 'Frame {number}', 'px.frameName': 'Frame name',
+        'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
+        'px.tolerance': 'Tolerance', 'px.more': 'More options'
     },
     de: {
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
@@ -84,6 +98,7 @@ const L10N = {
         'px.layerUp': 'Nach oben', 'px.layerDown': 'Nach unten', 'px.lockLayer': 'Ebene sperren',
         'px.unlockLayer': 'Ebene entsperren', 'px.select': 'Auswählen',
         'px.move': 'Auswahl verschieben', 'px.clearSelection': 'Auswahl löschen',
+        'px.cropSelection': 'Auf Auswahl zuschneiden',
         'px.deselect': 'Auswahl aufheben', 'px.opacity': 'Deckkraft',
         'px.renameLayer': 'Ebene umbenennen', 'px.exportPng': 'Transparentes PNG exportieren',
         'px.circle': 'Kreis', 'px.flipH': 'Horizontal spiegeln', 'px.flipV': 'Vertikal spiegeln',
@@ -96,8 +111,16 @@ const L10N = {
         'px.literalHint': 'Das importierte Bild wird eine neue bearbeitbare Ebene. Bestehende Ebenen bleiben erhalten.',
         'px.copyLiteral': 'Kopieren', 'px.literalLabel': 'Arcade-img-Literal',
         'px.paletteColour': 'Palettenfarbe bearbeiten',
+        'px.secondaryColour': 'Zweite Farbe wählen', 'px.swapColours': 'Farben tauschen (X)',
         'px.resetPalette': 'Palette zurücksetzen', 'px.paletteHint': 'Die Farbe aller Pixel mit diesem Index ändern.',
         'px.importPalette': 'Palette importieren',
+        'px.palettePreset': 'Vorlage', 'px.paletteCustom': 'Benutzerdefiniert',
+        'px.palette.Arcade': 'Arcade', 'px.palette.Matte': 'Matt',
+        'px.palette.Pastel': 'Pastell', 'px.palette.Sweet': 'Sweet',
+        'px.palette.Poke': 'Poke', 'px.palette.Adventure': 'Abenteuer',
+        'px.palette.DIY': 'DIY', 'px.palette.Adafruit': 'Adafruit',
+        'px.palette.StillLife': 'Stillleben', 'px.palette.SteamPunk': 'Steampunk',
+        'px.palette.Grayscale': 'Graustufen',
         'px.invalidPalette': 'Eine .hex-, .txt- oder GIMP-.gpl-Palette mit 15 oder 16 Farben verwenden.',
         'px.filledRect': 'Gefülltes Rechteck', 'px.filledCircle': 'Gefüllter Kreis',
         'px.brushSize': 'Pinselgröße', 'px.replaceColour': 'Farbe ersetzen',
@@ -109,16 +132,70 @@ const L10N = {
         'px.frameDuration': 'Bilddauer (ms)', 'px.play': 'Abspielen', 'px.pause': 'Pause',
         'px.onionSkin': 'Zwiebelschicht', 'px.frameUp': 'Bild nach vorn', 'px.frameDown': 'Bild nach hinten',
         'px.exportSheet': 'Sprite-Sheet-PNG exportieren', 'px.importSheet': 'Sprite-Sheet-PNG importieren',
+        'px.exportFrames': 'Einzelbilder als Kostüme hinzufügen',
+        'px.framesExported': 'Einzelbilder als bearbeitbare Kostüme hinzugefügt.',
+        'px.framesExportFailed': 'Nicht alle Einzelbilder konnten als Kostüme hinzugefügt werden.',
         'px.sheetFrameWidth': 'Bildbreite (PNG-Pixel)', 'px.sheetFrameHeight': 'Bildhöhe (PNG-Pixel)',
         'px.sheetScale': 'PNG-Pixel pro Grafikpixel', 'px.sheetPreview': 'Schnitte vorschauen',
         'px.sheetReplace': 'Bilder durch Schnitte ersetzen', 'px.sheetClose': 'Import schließen',
         'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 128×128 Grafikpixel verwenden.',
         'px.sheetHint': 'Zeilen werden von links gelesen. Farben nutzen die aktuelle Palette; Ersetzen kann rückgängig gemacht werden.',
-        'px.frameNumber': 'Bild {number}', 'px.lasso': 'Lasso',
-        'px.wand': 'Zauberstab', 'px.tolerance': 'Toleranz'
+        'px.frameNumber': 'Bild {number}', 'px.frameName': 'Bildname',
+        'px.lasso': 'Lasso', 'px.wand': 'Zauberstab',
+        'px.tolerance': 'Toleranz', 'px.more': 'Weitere Optionen'
     }
 };
 const t = makeT(L10N);
+
+// Palette indices are a per-browser tool preference, not costume artwork. Keep
+// them outside the SB3 source document so older projects retain their schema.
+const COLOUR_SLOTS_KEY = 'bw-pixel-colour-slots-v1';
+const validSlot = value => Number.isInteger(value) && value >= 0 && value <= 15;
+const readColourSlots = () => {
+    try {
+        const saved = JSON.parse(globalThis.localStorage?.getItem(COLOUR_SLOTS_KEY) || 'null');
+        return {colour: validSlot(saved?.colour) ? saved.colour : 2,
+            secondaryColour: validSlot(saved?.secondaryColour) ? saved.secondaryColour : 0};
+    } catch {
+        return {colour: 2, secondaryColour: 0};
+    }
+};
+const writeColourSlots = (colour, secondaryColour) => {
+    try {
+        globalThis.localStorage?.setItem(COLOUR_SLOTS_KEY, JSON.stringify({colour, secondaryColour}));
+    } catch { /* Drawing still works when browser storage is unavailable. */ }
+};
+
+const toolIcon = name => {
+    const icons = {
+        pencil: <><path d="M4 20l4.5-1 10-10-3.5-3.5-10 10L4 20z" /><path d="M13.5 7l3.5 3.5" /></>,
+        line: <><path d="M4 20L20 4" /><circle cx="4" cy="20" r="1.5" /><circle cx="20" cy="4" r="1.5" /></>,
+        rect: <rect x="4" y="5" width="16" height="14" rx="1" />,
+        filledRect: <rect x="4" y="5" width="16" height="14" rx="1" fill="currentColor" />,
+        circle: <circle cx="12" cy="12" r="8" />,
+        filledCircle: <circle cx="12" cy="12" r="8" fill="currentColor" />,
+        select: <rect x="4" y="4" width="16" height="16" strokeDasharray="3 3" />,
+        lasso: <><path d="M5 8c2-5 11-6 14-1 3 6-3 11-9 10-5-1-8-5-5-9z" strokeDasharray="2 2" /><path d="M10 17l2 4" /></>,
+        wand: <><path d="M5 19L18 6M14 3v2m7 5h-2m-1 8l-1-2M5 5l1 2" /><path d="M18 3v6m-3-3h6" /></>,
+        move: <><path d="M12 2v20M2 12h20M12 2l-3 3m3-3l3 3m-3 17l-3-3m3 3l3-3M2 12l3-3m-3 3l3 3m17-3l-3-3m3 3l-3 3" /></>,
+        fill: <><path d="M4 13l8-9 8 9-8 8-8-8z" /><path d="M6 14h12" /><path d="M20 17c1 1 2 2 2 3a2 2 0 0 1-4 0c0-1 1-2 2-3z" /></>,
+        erase: <><path d="M3 15L13 4l8 8-8 8H8L3 15z" /><path d="M8 20l-3-5m6 5h10" /></>,
+        pick: <><path d="M14 5l5 5M5 19l8-8m-8 8l-2 2m9-11l4-4a3 3 0 0 1 4 4l-4 4" /></>,
+        hand: <><path d="M6 13V9a1.5 1.5 0 0 1 3 0v3-7a1.5 1.5 0 0 1 3 0v7-5a1.5 1.5 0 0 1 3 0v5-3a1.5 1.5 0 0 1 3 0v7c0 3-2 5-5 5h-3c-2 0-3-1-4-3l-2-3a1.5 1.5 0 0 1 2-2l3 2" /></>,
+        undo: <><path d="M9 7L4 12l5 5" /><path d="M4 12h10a6 6 0 0 1 6 6" /></>,
+        redo: <><path d="M15 7l5 5-5 5" /><path d="M20 12H10a6 6 0 0 0-6 6" /></>,
+        layers: <><path d="M12 3L2 8l10 5 10-5-10-5z" /><path d="M2 12l10 5 10-5M2 16l10 5 10-5" /></>,
+        frames: <><rect x="2" y="5" width="7" height="14" rx="1" /><rect x="10" y="5" width="12" height="14" rx="1" /><path d="M14 9l5 3-5 3V9z" /></>,
+        more: <><circle cx="5" cy="12" r="1.5" fill="currentColor" /><circle cx="12" cy="12" r="1.5" fill="currentColor" /><circle cx="19" cy="12" r="1.5" fill="currentColor" /></>,
+        save: <><path d="M4 3h14l3 3v15H3V3h1z" /><path d="M7 3v7h10V3M7 21v-8h10v8" /></>,
+        palette: <><circle cx="12" cy="12" r="9" /><circle cx="7" cy="9" r="1" fill="currentColor" /><circle cx="12" cy="6" r="1" fill="currentColor" /><circle cx="17" cy="9" r="1" fill="currentColor" /><path d="M15 16a2 2 0 0 0 3 3" /></>,
+        brush: <><path d="M5 20c4 0 4-4 4-6l8-10 3 3-10 8c-2 0-3 1-3 3-1 1-1 2-2 2z" /></>,
+        mirror: <><path d="M12 2v20" strokeDasharray="2 2" /><path d="M9 6L3 12l6 6M15 6l6 6-6 6" /></>
+    };
+    return <svg viewBox="0 0 24 24" width="22" height="22" fill="none"
+        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+        aria-hidden="true">{icons[name]}</svg>;
+};
 
 const thumbnailData = (layers, width, height, palette) => {
     const source = document.createElement('canvas');
@@ -168,11 +245,14 @@ const rasterize = costume => new Promise((resolve, reject) => {
 class PixelArtEditor extends React.Component {
     constructor (props) {
         super(props);
+        const colourSlots = readColourSlots();
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
             palette: [...ARCADE_PALETTE],
-            scale: 4, zoom: 1, colour: 2, replaceFrom: 0, brushSize: 1, tool: 'pencil',
+            scale: 4, zoom: 1, ...colourSlots, choosingSecondary: false,
+            replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null, tolerance: 0,
-            frames: [], activeFrameId: null, framesOpen: false, onionSkin: false, playing: false,
+            frames: [], activeFrameId: null, framesOpen: false, panel: null, exportingFrames: false,
+            onionSkin: false, playing: false,
             sheetMode: false, sheetName: '', sheetWidth: 0, sheetHeight: 0,
             sheetFrameWidth: 16, sheetFrameHeight: 16, sheetPixelScale: 1,
             sheetPreview: [], sheetError: '',
@@ -220,6 +300,9 @@ class PixelArtEditor extends React.Component {
     componentWillUnmount () { clearTimeout(this.playTimer); }
 
     componentDidUpdate (prev, prevState) {
+        if (prevState.colour !== this.state.colour || prevState.secondaryColour !== this.state.secondaryColour) {
+            writeColourSlots(this.state.colour, this.state.secondaryColour);
+        }
         if (prev.costumeIndex !== this.props.costumeIndex || this.loadedCostume !== this.costume()) this.load();
         else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection ||
             prevState.palette !== this.state.palette || prevState.onionSkin !== this.state.onionSkin) this.paint();
@@ -278,6 +361,7 @@ class PixelArtEditor extends React.Component {
         this.redoStack = [];
         this.pixelClipboard = null;
         this.setState({image, layers, activeLayerId, frames, activeFrameId, playing: false,
+            panel: null, framesOpen: false,
             sheetMode: false, sheetPreview: [], sheetError: '',
             selection: null, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: '',
@@ -440,7 +524,8 @@ class PixelArtEditor extends React.Component {
             const frame = {id, durationMs: current.durationMs, layers, activeLayerId: current.activeLayerId};
             frames.splice(frames.indexOf(current) + 1, 0, frame);
             return {frames, activeFrameId: id, layers, activeLayerId: frame.activeLayerId,
-                image: composeLayers(layers, state.w, state.h), selection: null, framesOpen: true, status: ''};
+                image: composeLayers(layers, state.w, state.h), selection: null,
+                framesOpen: true, panel: 'frames', status: ''};
         });
     }
 
@@ -478,6 +563,21 @@ class PixelArtEditor extends React.Component {
         this.remember();
         this.setState(state => ({frames: this.materializeFrames(state).map(item =>
             item.id === state.activeFrameId ? {...item, durationMs} : item), status: ''}));
+    }
+
+    renameFrame (value) {
+        if (!this.frameNameGesture) {
+            this.remember();
+            this.frameNameGesture = true;
+        }
+        this.setState(state => ({frames: this.materializeFrames(state).map(frame =>
+            frame.id === state.activeFrameId ? {...frame, name: value.slice(0, 80)} : frame), status: ''}));
+    }
+
+    finishFrameRename () {
+        this.frameNameGesture = false;
+        this.setState(state => ({frames: this.materializeFrames(state).map(frame =>
+            frame.id === state.activeFrameId ? {...frame, name: (frame.name || '').trim()} : frame)}));
     }
 
     stopPlayback () {
@@ -607,9 +707,14 @@ class PixelArtEditor extends React.Component {
         const cell = this.cellAt(event);
         if (!cell) return;
         const [x, y] = cell;
-        const {image, tool, colour, mirror, brushSize} = this.state;
+        const {image, tool, mirror, brushSize} = this.state;
+        const colour = this.strokeColour ?? this.state.colour;
         const k = (y * image.width) + x;
-        if (tool === 'pick') { this.setState({colour: image.pixels[k], tool: 'pencil'}); return; }
+        if (tool === 'pick') {
+            this.setState({[this.strokeIsSecondary ? 'secondaryColour' : 'colour']: image.pixels[k],
+                tool: 'pencil'});
+            return;
+        }
         const active = this.activeLayer();
         if (!active || active.locked || !active.visible) return;
         if (tool === 'fill') {
@@ -655,7 +760,7 @@ class PixelArtEditor extends React.Component {
         if (!end || !this.shapeStart || !this.shapeBase) return;
         const {width, height} = this.shapeBase;
         const pixels = new Uint8Array(this.shapeBase.pixels);
-        const value = this.state.colour;
+        const value = this.strokeColour ?? this.state.colour;
         const filled = ['filledRect', 'filledCircle'].includes(this.state.tool);
         const plot = (x, y) => stampBrushInto(pixels, width, height, x, y, value,
             filled ? 1 : this.state.brushSize, this.state.mirror);
@@ -721,6 +826,9 @@ class PixelArtEditor extends React.Component {
     }
 
     onPointerDown (event) {
+        if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 2) return;
+        this.strokeIsSecondary = event.pointerType === 'mouse' && event.button === 2;
+        this.strokeColour = this.strokeIsSecondary ? this.state.secondaryColour : this.state.colour;
         this.root.current?.focus({preventScroll: true});
         event.currentTarget.setPointerCapture(event.pointerId);
         this.pointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
@@ -832,6 +940,8 @@ class PixelArtEditor extends React.Component {
         this.lassoPoints = null;
         this.selectionBeforeGesture = null;
         this.gesture = null;
+        this.strokeColour = null;
+        this.strokeIsSecondary = false;
     }
 
     onWheel (event) {
@@ -884,6 +994,9 @@ class PixelArtEditor extends React.Component {
             } else if (/^[0-9]$/.test(event.key)) {
                 event.preventDefault();
                 this.setState({colour: Number(event.key)});
+            } else if (event.key.toLowerCase() === 'x') {
+                event.preventDefault();
+                this.setState(state => ({colour: state.secondaryColour, secondaryColour: state.colour}));
             } else if (event.key.toLowerCase() === 'r') {
                 event.preventDefault();
                 this.replaceColour();
@@ -931,6 +1044,21 @@ class PixelArtEditor extends React.Component {
             const layers = frames.find(frame => frame.id === state.activeFrameId).layers;
             return {frames, layers, image: composeLayers(layers, W, H), w: W, h: H,
                 selection: null, status: ''};
+        });
+    }
+
+    cropToSelection () {
+        const {layers, selection, w, h} = this.state;
+        const first = cropLayers(layers, w, h, selection);
+        if (!first) return;
+        this.remember();
+        this.setState(state => {
+            const frames = this.materializeFrames(state).map(frame => ({...frame,
+                layers: cropLayers(frame.layers, state.w, state.h, state.selection).layers}));
+            const active = frames.find(frame => frame.id === state.activeFrameId);
+            return {frames, layers: active.layers,
+                image: composeLayers(active.layers, first.width, first.height),
+                w: first.width, h: first.height, selection: null, status: ''};
         });
     }
 
@@ -984,7 +1112,7 @@ class PixelArtEditor extends React.Component {
             return;
         }
         this.setState({literalMode: 'export', literalText: toImgLiteral(composeLayers(layers, w, h)),
-            literalError: ''});
+            literalError: '', panel: null});
     }
 
     importLiteral () {
@@ -1039,11 +1167,17 @@ class PixelArtEditor extends React.Component {
         });
     }
 
-    resetPalette () {
-        if (this.state.palette.every((value, index) => value === ARCADE_PALETTE[index])) return;
+    applyPalettePreset (id) {
+        const preset = PALETTE_PRESETS.find(item => item.id === id);
+        if (!preset || (this.state.palette.length === preset.colors.length && this.state.palette.every((value, index) =>
+            (value?.toLowerCase() ?? null) === preset.colors[index]))) return;
         this.remember();
         this.paletteGesture = false;
-        this.setState({palette: [...ARCADE_PALETTE], status: '', paletteError: ''});
+        this.setState({palette: [...preset.colors], status: '', paletteError: ''});
+    }
+
+    resetPalette () {
+        this.applyPalettePreset('Arcade');
     }
 
     async importPalette (event) {
@@ -1183,6 +1317,40 @@ class PixelArtEditor extends React.Component {
         }, 'image/png');
     }
 
+    async exportFramesAsCostumes () {
+        const {image, scale, palette} = this.state;
+        const vm = this.props.vm;
+        const target = vm?.editingTarget;
+        const storage = vm?.runtime?.storage;
+        const frames = this.materializeFrames();
+        if (!image || !target || !storage || frames.length < 2 || this.state.exportingFrames) return;
+        // Keep the complete animation on its original costume. The additional
+        // Scratch costumes have independent pixel documents and flat SVG renders.
+        this.save();
+        const name = this.costume()?.name || 'Costume';
+        const targetId = target.id;
+        this.setState({exportingFrames: true, status: ''});
+        try {
+            for (const [index, frame] of frames.entries()) {
+                const svg = layersToSvg(frame.layers, image.width, image.height, scale, palette);
+                const asset = storage.createAsset(storage.AssetType.ImageVector, storage.DataFormat.SVG,
+                    new TextEncoder().encode(svg), null, true);
+                const costume = {name: `${name} ${frame.name || index + 1}`, asset, assetId: asset.assetId,
+                    dataFormat: storage.DataFormat.SVG, md5: `${asset.assetId}.svg`,
+                    bitmapResolution: 1, rotationCenterX: image.width * scale / 2,
+                    rotationCenterY: image.height * scale / 2};
+                await vm.addCostume(costume.md5, costume, targetId);
+                setCostumeDocument(costume, layersDocument(frame.layers, image.width, image.height,
+                    scale, frame.activeLayerId, palette));
+            }
+            this.setState({status: 'framesExported'});
+        } catch (error) {
+            this.setState({status: 'framesExportFailed'});
+        } finally {
+            this.setState({exportingFrames: false});
+        }
+    }
+
     frameThumbnail (layers, width, height, palette) {
         const cached = this.thumbnailCache.get(layers);
         if (cached?.palette === palette) return cached.url;
@@ -1266,16 +1434,20 @@ class PixelArtEditor extends React.Component {
         this.stopPlayback();
         this.remember();
         const {width, height} = sheetPreview[0].image;
+        const previousFrames = this.materializeFrames();
+        const preserveTimingAndNames = previousFrames.length === sheetPreview.length;
         const frames = sheetPreview.map(({image}, index) => {
             const layer = {...blankLayer('pixels', 'Pixels', width, height), pixels: image.pixels};
-            return {id: `sheet-${Date.now()}-${index}`, durationMs: 100,
+            return {id: `sheet-${Date.now()}-${index}`,
+                durationMs: preserveTimingAndNames ? previousFrames[index].durationMs : 100,
+                name: preserveTimingAndNames ? previousFrames[index].name || '' : '',
                 activeLayerId: 'pixels', layers: [layer]};
         });
         this.sheetRgba = null;
         this.setState({frames, activeFrameId: frames[0].id, layers: frames[0].layers,
             activeLayerId: 'pixels', image: composeLayers(frames[0].layers, width, height),
             w: width, h: height, selection: null, converted: false,
-            sheetMode: false, sheetPreview: [], sheetError: '', framesOpen: true, status: ''});
+            sheetMode: false, sheetPreview: [], sheetError: '', framesOpen: true, panel: 'frames', status: ''});
     }
 
     revert () {
@@ -1285,8 +1457,9 @@ class PixelArtEditor extends React.Component {
 
     render () {
         const locale = this.props.locale || browserLocale();
-        const {image, layers, activeLayerId, selection, colour, replaceFrom, brushSize, tool, tolerance, mirror, converted,
-            frames, activeFrameId, framesOpen, onionSkin, playing, status, w, h, zoom, palette,
+        const {image, layers, activeLayerId, selection, colour, secondaryColour, choosingSecondary,
+            replaceFrom, brushSize, tool, tolerance, mirror, converted,
+            frames, activeFrameId, panel, onionSkin, playing, status, exportingFrames, w, h, zoom, palette,
             sheetMode, sheetName, sheetWidth, sheetHeight, sheetFrameWidth, sheetFrameHeight,
             sheetPixelScale, sheetPreview, sheetError,
             renamingLayerId, renameValue, literalMode, literalText, literalError, paletteError} =
@@ -1295,39 +1468,67 @@ class PixelArtEditor extends React.Component {
         const activeLayer = layers.find(layer => layer.id === activeLayerId);
         const activeFrame = frames.find(frame => frame.id === activeFrameId);
         const frameIndex = frames.findIndex(frame => frame.id === activeFrameId);
+        const palettePreset = PALETTE_PRESETS.find(preset => palette.length === preset.colors.length &&
+            palette.every((value, index) => (value?.toLowerCase() ?? null) === preset.colors[index]))?.id || '';
         const btn = active => ({padding: '8px 10px', minHeight: 44, borderRadius: 6, fontSize: 12,
             whiteSpace: 'nowrap', flexShrink: 0, cursor: 'pointer',
             border: `1px solid ${active ? '#4c97ff' : '#cbd5e1'}`, background: active ? '#e0edff' : '#fff'});
+        const iconBtn = active => ({...btn(active), width: 44, padding: 0, display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center', color: '#243b63'});
+        const popover = {position: 'absolute', zIndex: 20, top: 116, right: 12,
+            width: 'min(520px, calc(100% - 24px))', maxHeight: 'calc(100% - 128px)', overflow: 'auto',
+            background: '#fff', border: '1px solid #cbd5e1', borderRadius: 10, padding: 12,
+            boxShadow: '0 12px 34px rgba(15,23,42,0.2)'};
         return (
-            <div ref={this.root} data-testid="bw-pixel-editor" tabIndex={0}
+            <div ref={this.root} className={styles['bw-pixel-editor']} data-testid="bw-pixel-editor" tabIndex={0}
                 onKeyDown={this.handleKeyDown}
                 style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
-                    height: '100%', boxSizing: 'border-box', overflow: 'auto'}}>
-                <div style={{display: 'flex', gap: 6, flexWrap: 'nowrap', alignItems: 'center',
-                    minHeight: 52, overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain'}}>
-                    {this.props.editorTools}
-                    <button type="button" style={btn(framesOpen)} data-testid="bw-pixel-frames-toggle"
-                        aria-expanded={framesOpen} onClick={() => this.setState({framesOpen: !framesOpen})}>
-                        {t(locale, 'px.frames')} {frames.length}</button>
+                    height: '100%', boxSizing: 'border-box', overflow: 'hidden', position: 'relative'}}>
+                <div data-testid="bw-pixel-primary-toolbar" role="toolbar"
+                    style={{display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0,
+                        minHeight: 48, minWidth: 0}}>
+                    <div data-testid="bw-pixel-tools-strip" style={{display: 'flex', gap: 4,
+                        flex: '1 1 auto', minWidth: 0, overflowX: 'auto', overflowY: 'hidden',
+                        overscrollBehaviorX: 'contain'}}>
                     {['pencil', 'line', 'rect', 'filledRect', 'circle', 'filledCircle', 'select', 'lasso', 'wand', 'move',
-                        'fill', 'erase', 'pick', 'hand'].map(k => (
-                        <button key={k} type="button" style={btn(tool === k)} data-testid={`bw-pixel-tool-${k}`}
-                            onClick={() => this.setState({tool: k})}>{t(locale, `px.${k}`)}</button>
-                    ))}
-                    <button type="button" style={btn(mirror)} aria-pressed={mirror}
-                        onClick={() => this.setState({mirror: !mirror})}>{t(locale, 'px.mirror')}</button>
-                    <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12}}>
-                        {t(locale, 'px.brushSize')} {brushSize}
-                        <input type="range" min="1" max="8" value={brushSize} data-testid="bw-pixel-brush-size"
-                            aria-label={t(locale, 'px.brushSize')}
-                            onChange={event => this.setState({brushSize: Number(event.target.value)})} />
-                    </label>
-                    {tool === 'wand' ? <label style={{display: 'inline-flex', alignItems: 'center', gap: 6,
-                        minHeight: 44, fontSize: 12}}>{t(locale, 'px.tolerance')} {tolerance}
-                        <input type="range" min="0" max="255" value={tolerance}
-                            data-testid="bw-pixel-wand-tolerance"
-                            onChange={event => this.setState({tolerance: Number(event.target.value)})} />
-                    </label> : null}
+                        'fill', 'erase', 'pick', 'hand'].map(k =>
+                        <button key={k} type="button" style={iconBtn(tool === k)}
+                            data-testid={`bw-pixel-tool-${k}`} aria-label={t(locale, `px.${k}`)}
+                            title={t(locale, `px.${k}`)} aria-pressed={tool === k}
+                            onClick={() => this.setState(state => ({tool: k,
+                                panel: k === 'wand' ? 'wand' :
+                                    (state.panel === 'more' || state.panel === 'wand' ? null : state.panel)}))}>
+                            {toolIcon(k)}</button>)}
+                    <span aria-hidden="true" style={{height: 26, borderLeft: '1px solid #cbd5e1', flexShrink: 0}} />
+                    </div>
+                    <div style={{display: 'flex', gap: 4, flexShrink: 0}}>
+                    {[['undo', 'px.undo', this.undo, !this.undoStack.length],
+                        ['redo', 'px.redo', this.redo, !this.redoStack.length]].map(([name, label, action, disabled]) =>
+                        <button key={name} type="button" style={iconBtn(false)} aria-label={t(locale, label)}
+                            title={t(locale, label)} disabled={disabled} onClick={action}>{toolIcon(name)}</button>)}
+                    <button type="button" style={iconBtn(panel === 'layers')} data-testid="bw-pixel-layers-toggle"
+                        aria-label={t(locale, 'px.layers')} title={t(locale, 'px.layers')}
+                        aria-expanded={panel === 'layers'}
+                        onClick={() => this.setState({panel: panel === 'layers' ? null : 'layers'})}>
+                        {toolIcon('layers')}</button>
+                    <button type="button" style={iconBtn(panel === 'frames')} data-testid="bw-pixel-frames-toggle"
+                        aria-label={`${t(locale, 'px.frames')} ${frames.length}`} title={t(locale, 'px.frames')}
+                        aria-expanded={panel === 'frames'}
+                        onClick={() => this.setState({panel: panel === 'frames' ? null : 'frames',
+                            framesOpen: panel !== 'frames'})}>{toolIcon('frames')}</button>
+                    <button type="button" style={iconBtn(panel === 'more')} data-testid="bw-pixel-more-toggle"
+                        aria-label={t(locale, 'px.more')} title={t(locale, 'px.more')}
+                        aria-expanded={panel === 'more'}
+                        onClick={() => this.setState({panel: panel === 'more' ? null : 'more'})}>
+                        {toolIcon('more')}</button>
+                    <button type="button" style={iconBtn(false)} onClick={this.save}
+                        data-testid="bw-pixel-save" aria-label={t(locale, 'px.save')} title={t(locale, 'px.save')}>
+                        {toolIcon('save')}</button>
+                    </div>
+                </div>
+                {panel === 'more' ? <div data-testid="bw-pixel-more-panel" style={{...popover,
+                    display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center'}}>
+                    {this.props.editorTools}
                     <span style={{fontSize: 12, marginLeft: 8}}>{t(locale, 'px.size')}</span>
                     <input type="number" min="1" max="128" value={w} style={{width: 52}} data-testid="bw-pixel-w"
                         onChange={e => this.resize(Number(e.target.value), h)} />
@@ -1337,10 +1538,6 @@ class PixelArtEditor extends React.Component {
                     {converted ? (
                         <button type="button" style={btn(false)} onClick={() => this.load({w, h})}>{t(locale, 'px.reconvert')}</button>
                     ) : null}
-                    <button type="button" style={btn(false)} disabled={!this.undoStack.length}
-                        onClick={this.undo}>{t(locale, 'px.undo')}</button>
-                    <button type="button" style={btn(false)} disabled={!this.redoStack.length}
-                        onClick={this.redo}>{t(locale, 'px.redo')}</button>
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.clearSelection()}
                         data-testid="bw-pixel-clear-selection">{t(locale, 'px.clearSelection')}</button> : null}
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.copySelection()}
@@ -1348,6 +1545,8 @@ class PixelArtEditor extends React.Component {
                     {selection ? <button type="button" style={btn(false)} onClick={() => this.cutSelection()}
                         disabled={!activeLayer || activeLayer.locked || !activeLayer.visible}
                         data-testid="bw-pixel-cut-selection">{t(locale, 'px.cutSelection')}</button> : null}
+                    {selection ? <button type="button" style={btn(false)} onClick={() => this.cropToSelection()}
+                        data-testid="bw-pixel-crop-selection">{t(locale, 'px.cropSelection')}</button> : null}
                     <button type="button" style={btn(false)} onClick={() => this.pasteSelection()}
                         disabled={!this.pixelClipboard} data-testid="bw-pixel-paste-selection">
                         {t(locale, 'px.pasteSelection')}</button>
@@ -1383,11 +1582,14 @@ class PixelArtEditor extends React.Component {
                     <button type="button" style={btn(false)} data-testid="bw-pixel-show-img"
                         onClick={() => this.showLiteral()}>{t(locale, 'px.showLiteral')}</button>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-import-img"
-                        onClick={() => this.setState({literalMode: 'import', literalText: '', literalError: ''})}>
+                        onClick={() => this.setState({literalMode: 'import', literalText: '',
+                            literalError: '', panel: null})}>
                         {t(locale, 'px.importLiteral')}</button>
-                </div>
-                {literalMode ? <div style={{display: 'flex', flexDirection: 'column', gap: 6,
-                    padding: 8, border: '1px solid #cbd5e1', borderRadius: 6}}>
+                    <button type="button" style={btn(false)} onClick={this.exportPng}
+                        data-testid="bw-pixel-export-png">{t(locale, 'px.exportPng')}</button>
+                    <button type="button" style={btn(false)} onClick={this.revert}>{t(locale, 'px.revert')}</button>
+                </div> : null}
+                {literalMode ? <div style={{...popover, display: 'flex', flexDirection: 'column', gap: 6}}>
                     {literalMode === 'import' ? <span style={{fontSize: 12}}>{t(locale, 'px.literalHint')}</span> : null}
                     <textarea value={literalText} rows={7} spellCheck={false}
                         data-testid="bw-pixel-img-literal" aria-label={t(locale, 'px.literalLabel')}
@@ -1407,18 +1609,98 @@ class PixelArtEditor extends React.Component {
                             {t(locale, 'px.closeLiteral')}</button>
                     </div>
                 </div> : null}
-                <div style={{display: 'flex', gap: 8, flexWrap: 'nowrap', alignItems: 'center',
-                    minHeight: 52, overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain'}}>
-                    <div style={{display: 'flex', gap: 4, flexWrap: 'nowrap', flexShrink: 0}} role="radiogroup">
+                <div data-testid="bw-pixel-palette-toolbar" style={{display: 'flex', gap: 4,
+                    flexWrap: 'nowrap', alignItems: 'center', flexShrink: 0, minHeight: 48,
+                    minWidth: 0}}>
+                    <div style={{display: 'flex', gap: 2, flexWrap: 'nowrap', flex: '1 1 auto', minWidth: 0,
+                        overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain'}} role="radiogroup">
                         {palette.map((c, i) => (
                             <button key={i} type="button" role="radio" aria-checked={colour === i}
                                 title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
-                                onClick={() => this.setState({colour: i, tool: tool === 'pick' ? 'pencil' : tool})}
-                                style={{width: 44, height: 44, borderRadius: 4, cursor: 'pointer',
+                                onClick={() => this.setState(state => ({
+                                    [state.choosingSecondary ? 'secondaryColour' : 'colour']: i,
+                                    choosingSecondary: false, tool: state.tool === 'pick' ? 'pencil' : state.tool}))}
+                                onContextMenu={event => {
+                                    event.preventDefault();
+                                    this.setState({secondaryColour: i, choosingSecondary: false});
+                                }}
+                                style={{width: 44, height: 44, flexShrink: 0, borderRadius: 6, cursor: 'pointer',
                                     border: colour === i ? '3px solid #0f172a' : '1px solid #94a3b8',
+                                    outline: secondaryColour === i ? '2px dashed #e58c11' : 'none',
+                                    outlineOffset: '-6px',
                                     background: c || 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
                         ))}
                     </div>
+                    <button type="button" style={{...iconBtn(choosingSecondary), flexShrink: 0,
+                        background: palette[secondaryColour] ||
+                            'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}}
+                        data-testid="bw-pixel-secondary-colour" aria-label={t(locale, 'px.secondaryColour')}
+                        title={t(locale, 'px.secondaryColour')} aria-pressed={choosingSecondary}
+                        onClick={() => this.setState({choosingSecondary: !choosingSecondary})}>
+                        <span aria-hidden="true" style={{width: 20, height: 20, border: '2px solid #0f172a',
+                            borderRadius: 3, background: palette[colour] ||
+                                'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
+                    </button>
+                    <button type="button" style={{...iconBtn(false), flexShrink: 0}}
+                        data-testid="bw-pixel-swap-colours" aria-label={t(locale, 'px.swapColours')}
+                        title={t(locale, 'px.swapColours')}
+                        onClick={() => this.setState(state => ({colour: state.secondaryColour,
+                            secondaryColour: state.colour, choosingSecondary: false}))}>
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor"
+                            strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                            <path d="M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4" />
+                        </svg>
+                    </button>
+                    <button type="button" style={{...iconBtn(panel === 'brush'), flexShrink: 0}} aria-label={t(locale, 'px.brushSize')}
+                        title={`${t(locale, 'px.brushSize')} ${brushSize}`}
+                        data-testid="bw-pixel-brush-toggle" aria-expanded={panel === 'brush'}
+                        onClick={() => this.setState({panel: panel === 'brush' ? null : 'brush'})}>
+                        {toolIcon('brush')}<span style={{fontSize: 10, marginLeft: -4}}>{brushSize}</span></button>
+                    <button type="button" style={{...iconBtn(mirror), flexShrink: 0}} aria-label={t(locale, 'px.mirror')}
+                        title={t(locale, 'px.mirror')} aria-pressed={mirror}
+                        onClick={() => this.setState({mirror: !mirror})}>{toolIcon('mirror')}</button>
+                    <button type="button" style={{...iconBtn(panel === 'palette'), position: 'relative', flexShrink: 0}}
+                        aria-label={t(locale, 'px.paletteColour')}
+                        title={t(locale, 'px.paletteColour')} data-testid="bw-pixel-palette-toggle"
+                        aria-expanded={panel === 'palette'}
+                        onClick={() => this.setState({panel: panel === 'palette' ? null : 'palette'})}>
+                        {toolIcon('palette')}
+                        <span aria-hidden="true" style={{position: 'absolute', right: 3, bottom: 3,
+                            width: 12, height: 12, border: '1px solid #64748b', borderRadius: 3,
+                            background: palette[colour] ||
+                                'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 6px 6px'}} />
+                    </button>
+                </div>
+                {panel === 'brush' ? <div style={{...popover, width: 260}}>
+                    <label style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                        {t(locale, 'px.brushSize')} {brushSize}
+                        <input type="range" min="1" max="8" value={brushSize} data-testid="bw-pixel-brush-size"
+                            aria-label={t(locale, 'px.brushSize')}
+                            onChange={event => this.setState({brushSize: Number(event.target.value)})} />
+                    </label>
+                </div> : null}
+                {panel === 'wand' ? <div style={{...popover, width: 260}}>
+                    <label style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                        {t(locale, 'px.tolerance')} {tolerance}
+                        <input type="range" min="0" max="255" value={tolerance}
+                            data-testid="bw-pixel-wand-tolerance" aria-label={t(locale, 'px.tolerance')}
+                            onChange={event => this.setState({tolerance: Number(event.target.value)})} />
+                    </label>
+                </div> : null}
+                {panel === 'palette' ? <div style={{...popover, width: 300, display: 'flex',
+                    alignItems: 'center', flexWrap: 'wrap', gap: 8}}>
+                    <label style={{display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44,
+                        fontSize: 12}}>{t(locale, 'px.palettePreset')}
+                        <select value={palettePreset} data-testid="bw-pixel-palette-preset"
+                            aria-label={t(locale, 'px.palettePreset')}
+                            style={{maxWidth: 170, minHeight: 44}}
+                            onChange={event => this.applyPalettePreset(event.target.value)}>
+                            <option value="" disabled>{t(locale, 'px.paletteCustom')}</option>
+                            {PALETTE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>
+                                {t(locale, `px.palette.${preset.id}`)}
+                            </option>)}
+                        </select>
+                    </label>
                     <label style={{display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44,
                         fontSize: 12}} title={t(locale, 'px.paletteHint')}>
                         {t(locale, 'px.paletteColour')} {colour}
@@ -1436,14 +1718,10 @@ class PixelArtEditor extends React.Component {
                     <input ref={this.paletteFile} type="file" accept=".hex,.txt,.gpl" style={{display: 'none'}}
                         data-testid="bw-pixel-palette-file" onChange={event => this.importPalette(event)} />
                     {paletteError ? <span role="alert" style={{color: '#b91c1c', fontSize: 12}}>{paletteError}</span> : null}
-                </div>
-                {converted ? (
-                    <div style={{fontSize: 12, color: '#92400e', background: '#fffbeb', padding: '4px 8px', borderRadius: 6}}>
-                        {t(locale, 'px.converted', {w: image.width, h: image.height})}</div>
-                ) : null}
-                <div data-testid="bw-pixel-layers" style={{display: 'flex', flexWrap: 'nowrap', gap: 6,
-                    alignItems: 'center', minHeight: 52, overflowX: 'auto', overflowY: 'hidden',
-                    overscrollBehaviorX: 'contain'}}>
+                </div> : null}
+                {panel === 'layers' ? <div data-testid="bw-pixel-layers" style={{...popover,
+                    width: 'min(420px, calc(100% - 24px))', display: 'flex', flexDirection: 'column',
+                    alignItems: 'flex-start', gap: 8}}>
                     <strong style={{fontSize: 12}}>{t(locale, 'px.layers')}</strong>
                     <button type="button" style={btn(false)} onClick={this.addLayer}
                         data-testid="bw-pixel-add-layer">+ {t(locale, 'px.addLayer')}</button>
@@ -1500,22 +1778,23 @@ class PixelArtEditor extends React.Component {
                                 disabled={layers.length === 1} onClick={() => this.deleteLayer(layer.id)}>×</button>
                         </div>;
                     })}
-                </div>
-                {framesOpen ? <div data-testid="bw-pixel-frames" style={{display: 'flex', flexShrink: 0,
-                    alignItems: 'center', gap: 6, minHeight: 52, overflowX: 'auto', overflowY: 'hidden',
-                    overscrollBehaviorX: 'contain'}}>
+                </div> : null}
+                {panel === 'frames' ? <div data-testid="bw-pixel-frames" style={{...popover,
+                    width: 'min(560px, calc(100% - 24px))', display: 'flex', flexWrap: 'wrap',
+                    alignItems: 'center', gap: 6}}>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-import-sheet"
                         onClick={() => this.sheetFile.current?.click()}>{t(locale, 'px.importSheet')}</button>
                     <input ref={this.sheetFile} type="file" accept="image/png,.png" style={{display: 'none'}}
                         data-testid="bw-pixel-sheet-file" onChange={event => this.loadSheet(event)} />
                     {frames.map((frame, index) => <button key={frame.id} type="button"
                         style={btn(frame.id === activeFrameId)} data-testid={`bw-pixel-frame-${index}`}
-                        aria-label={t(locale, 'px.frameNumber', {number: index + 1})}
+                        aria-label={frame.name || t(locale, 'px.frameNumber', {number: index + 1})}
                         aria-pressed={frame.id === activeFrameId}
                         onClick={() => this.selectFrame(frame.id)}>
                         <img src={this.frameThumbnail(frame.id === activeFrameId ? layers : frame.layers,
                             w, h, palette)} alt="" style={{width: 40, height: 40, display: 'block'}} />
-                        {index + 1}</button>)}
+                        <span style={{display: 'block', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                            {frame.name || index + 1}</span></button>)}
                     <button type="button" style={btn(false)} data-testid="bw-pixel-add-frame"
                         disabled={frames.length >= 64} onClick={() => this.addFrame()}>{t(locale, 'px.addFrame')}</button>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-duplicate-frame"
@@ -1533,20 +1812,34 @@ class PixelArtEditor extends React.Component {
                         <input type="number" min="20" max="10000" step="10" style={{width: 64}}
                             data-testid="bw-pixel-frame-duration" value={activeFrame.durationMs}
                             onChange={event => this.setFrameDuration(event.target.value)} /></label>
+                    {frames.length > 1 ? <label style={{display: 'inline-flex', alignItems: 'center', gap: 4,
+                        fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0}}>{t(locale, 'px.frameName')}
+                        <input type="text" maxLength="80" value={activeFrame.name || ''}
+                            placeholder={t(locale, 'px.frameNumber', {number: frameIndex + 1})}
+                            style={{width: 120, minHeight: 44, boxSizing: 'border-box'}}
+                            data-testid="bw-pixel-frame-name" aria-label={t(locale, 'px.frameName')}
+                            onChange={event => this.renameFrame(event.target.value)}
+                            onBlur={() => this.finishFrameRename()}
+                            onKeyDown={event => {
+                                if (event.key === 'Enter') event.currentTarget.blur();
+                            }} /></label> : null}
                     <button type="button" style={btn(playing)} data-testid="bw-pixel-play-frames"
                         disabled={frames.length < 2} onClick={() => this.togglePlayback()}>
                         {t(locale, playing ? 'px.pause' : 'px.play')}</button>
                     <button type="button" style={btn(false)} data-testid="bw-pixel-export-sheet"
                         disabled={frames.length < 2} onClick={() => this.exportSheet()}>
                         {t(locale, 'px.exportSheet')}</button>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-export-frames"
+                        disabled={frames.length < 2 || exportingFrames}
+                        onClick={() => this.exportFramesAsCostumes()}>{t(locale, 'px.exportFrames')}</button>
                     <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12,
                         whiteSpace: 'nowrap', flexShrink: 0}}>
                         <input type="checkbox" checked={onionSkin} data-testid="bw-pixel-onion-skin"
                             onChange={event => this.setState({onionSkin: event.target.checked})} />
                         {t(locale, 'px.onionSkin')}</label>
                 </div> : null}
-                {sheetMode ? <div data-testid="bw-pixel-sheet-preview" style={{display: 'flex', flexDirection: 'column',
-                    gap: 6, padding: 8, border: '1px solid #cbd5e1', borderRadius: 6, flexShrink: 0}}>
+                {sheetMode ? <div data-testid="bw-pixel-sheet-preview" style={{...popover,
+                    display: 'flex', flexDirection: 'column', gap: 8, width: 'min(680px, calc(100% - 24px))'}}>
                     <span style={{fontSize: 12}}>{sheetName} ({sheetWidth}×{sheetHeight}) — {t(locale, 'px.sheetHint')}</span>
                     <div style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
                         {[[sheetFrameWidth, 'px.sheetFrameWidth', 'width'],
@@ -1577,21 +1870,25 @@ class PixelArtEditor extends React.Component {
                                 style={{width: 40, height: 40, display: 'block'}} />{index + 1}</div>)}
                     </div> : null}
                 </div> : null}
-                <div ref={this.viewport} onWheel={this.onWheel}
-                    style={{flex: '1 1 auto', minHeight: 180, overflow: 'auto', background: '#f1f5f9'}}>
+                <div ref={this.viewport} data-testid="bw-pixel-viewport" onWheel={this.onWheel}
+                    style={{flex: '1 1 auto', minHeight: 180, overflow: 'auto', background: '#f1f5f9',
+                        position: 'relative', borderRadius: 8}}>
                     <canvas ref={this.canvas} data-testid="bw-pixel-canvas"
-                        style={{display: 'block', width: image.width * this.cellSize() * zoom,
+                        style={{display: 'block', margin: '0 auto', width: image.width * this.cellSize() * zoom,
                             height: image.height * this.cellSize() * zoom, imageRendering: 'pixelated',
                             cursor: tool === 'hand' ? 'grab' : 'crosshair', touchAction: 'none'}}
                         onPointerDown={this.onPointerDown} onPointerMove={this.onPointerMove}
+                        onContextMenu={event => event.preventDefault()}
                         onPointerUp={this.onPointerUp} onPointerCancel={this.onPointerUp} />
-                </div>
-                <div style={{display: 'flex', gap: 8, alignItems: 'center'}}>
-                    <button type="button" style={btn(true)} onClick={this.save} data-testid="bw-pixel-save">{t(locale, 'px.save')}</button>
-                    <button type="button" style={btn(false)} onClick={this.exportPng}
-                        data-testid="bw-pixel-export-png">{t(locale, 'px.exportPng')}</button>
-                    <button type="button" style={btn(false)} onClick={this.revert}>{t(locale, 'px.revert')}</button>
-                    {status === 'saved' ? <span style={{fontSize: 12, color: '#15803d'}}>{t(locale, 'px.saved')}</span> : null}
+                    {converted ? <div style={{position: 'absolute', left: 8, bottom: 8, maxWidth: 320,
+                        padding: '6px 8px', borderRadius: 6, fontSize: 11, lineHeight: 1.3,
+                        color: '#78350f', background: 'rgba(255,251,235,0.96)', pointerEvents: 'none'}}>
+                        {t(locale, 'px.converted', {w: image.width, h: image.height})}</div> : null}
+                    {['saved', 'framesExported', 'framesExportFailed'].includes(status) ? <div
+                        style={{position: 'absolute', right: 8, bottom: 8,
+                        padding: '6px 8px', borderRadius: 6, fontSize: 12, color: '#166534',
+                        background: 'rgba(240,253,244,0.96)', pointerEvents: 'none'}}>
+                        {t(locale, `px.${status}`)}</div> : null}
                 </div>
             </div>
         );

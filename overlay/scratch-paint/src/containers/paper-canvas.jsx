@@ -10,6 +10,7 @@ import {performSnapshot} from '../helper/undo';
 import {undoSnapshot, clearUndoState} from '../reducers/undo';
 import {isGroup, ungroupItems} from '../helper/group';
 import {clearRaster, convertBackgroundGuideLayer, getRaster, setupLayers} from '../helper/layer';
+import {loadBitmapLayers} from '../helper/bw/bitmap-layers';
 import {clearSelectedItems} from '../reducers/selected-items';
 import {
     ART_BOARD_WIDTH, ART_BOARD_HEIGHT, CENTER, MAX_WORKSPACE_BOUNDS,
@@ -73,7 +74,8 @@ class PaperCanvas extends React.Component {
         // Make layers.
         setupLayers(this.props.format);
         this.importImage(
-            this.props.imageFormat, this.props.image, this.props.rotationCenterX, this.props.rotationCenterY);
+            this.props.imageFormat, this.props.image, this.props.rotationCenterX, this.props.rotationCenterY,
+            this.props.artworkDocument);
         // Last, so it can never interfere with the initial zoom-to-fit above.
         this.observeCanvasResize();
     }
@@ -116,7 +118,7 @@ class PaperCanvas extends React.Component {
         if (this.props.imageId !== newProps.imageId) {
             this.switchCostume(newProps.imageFormat, newProps.image,
                 newProps.rotationCenterX, newProps.rotationCenterY,
-                this.props.zoomLevelId, newProps.zoomLevelId);
+                this.props.zoomLevelId, newProps.zoomLevelId, newProps.artworkDocument);
         }
         if (this.props.format !== newProps.format) {
             this.recalibrateSize();
@@ -136,6 +138,7 @@ class PaperCanvas extends React.Component {
         paper.remove();
     }
     clearQueuedImport () {
+        this.bitmapImportGeneration = (this.bitmapImportGeneration || 0) + 1;
         if (this.queuedImport) {
             window.clearTimeout(this.queuedImport);
             this.queuedImport = null;
@@ -146,7 +149,8 @@ class PaperCanvas extends React.Component {
             this.queuedImageToLoad = null;
         }
     }
-    switchCostume (format, image, rotationCenterX, rotationCenterY, oldZoomLevelId, newZoomLevelId) {
+    switchCostume (format, image, rotationCenterX, rotationCenterY, oldZoomLevelId, newZoomLevelId,
+        artworkDocument) {
         if (oldZoomLevelId && oldZoomLevelId !== newZoomLevelId) {
             this.props.saveZoomLevel();
         }
@@ -171,9 +175,9 @@ class PaperCanvas extends React.Component {
         this.props.clearSelectedItems();
         this.props.clearHoveredItem();
         this.props.clearPasteOffset();
-        this.importImage(format, image, rotationCenterX, rotationCenterY);
+        this.importImage(format, image, rotationCenterX, rotationCenterY, artworkDocument);
     }
-    importImage (format, image, rotationCenterX, rotationCenterY) {
+    importImage (format, image, rotationCenterX, rotationCenterY, artworkDocument) {
         // Stop any in-progress imports
         this.clearQueuedImport();
 
@@ -194,33 +198,58 @@ class PaperCanvas extends React.Component {
             mask.setPosition(CENTER);
             mask.clipMask = true;
 
-            const imgElement = new Image();
-            this.queuedImageToLoad = imgElement;
-            imgElement.onload = () => {
-                if (!this.queuedImageToLoad) return;
-                this.queuedImageToLoad = null;
+            const generation = this.bitmapImportGeneration;
+            const restoreRenderedBitmap = () => {
+                if (generation !== this.bitmapImportGeneration || !paper.view) return;
+                const imgElement = new Image();
+                this.queuedImageToLoad = imgElement;
+                imgElement.onload = () => {
+                    if (!this.queuedImageToLoad) return;
+                    this.queuedImageToLoad = null;
 
-                if (typeof rotationCenterX === 'undefined') {
-                    rotationCenterX = imgElement.width / 2;
-                }
-                if (typeof rotationCenterY === 'undefined') {
-                    rotationCenterY = imgElement.height / 2;
-                }
+                    if (typeof rotationCenterX === 'undefined') {
+                        rotationCenterX = imgElement.width / 2;
+                    }
+                    if (typeof rotationCenterY === 'undefined') {
+                        rotationCenterY = imgElement.height / 2;
+                    }
 
-                getRaster().drawImage(
-                    imgElement,
-                    (ART_BOARD_WIDTH / 2) - rotationCenterX,
-                    (ART_BOARD_HEIGHT / 2) - rotationCenterY);
-                getRaster().drawImage(
-                    imgElement,
-                    (ART_BOARD_WIDTH / 2) - rotationCenterX,
-                    (ART_BOARD_HEIGHT / 2) - rotationCenterY);
+                    getRaster().drawImage(
+                        imgElement,
+                        (ART_BOARD_WIDTH / 2) - rotationCenterX,
+                        (ART_BOARD_HEIGHT / 2) - rotationCenterY);
+                    getRaster().drawImage(
+                        imgElement,
+                        (ART_BOARD_WIDTH / 2) - rotationCenterX,
+                        (ART_BOARD_HEIGHT / 2) - rotationCenterY);
 
-                this.maybeZoomToFit(true /* isBitmap */);
-                performSnapshot(this.props.undoSnapshot, Formats.BITMAP_SKIP_CONVERT);
-                this.recalibrateSize();
+                    this.maybeZoomToFit(true /* isBitmap */);
+                    performSnapshot(this.props.undoSnapshot, Formats.BITMAP_SKIP_CONVERT);
+                    this.recalibrateSize();
+                };
+                imgElement.src = image;
             };
-            imgElement.src = image;
+            if (artworkDocument?.layers?.length > 0 &&
+                artworkDocument.layers.every(layer => layer.type === 'bitmap' &&
+                    layer.content?.kind === 'data-uri')) {
+                loadBitmapLayers(artworkDocument, () => generation === this.bitmapImportGeneration &&
+                    Boolean(paper.view)).then(loaded => {
+                    if (!loaded) {
+                        restoreRenderedBitmap();
+                        return;
+                    }
+                    this.maybeZoomToFit(true /* isBitmap */);
+                    performSnapshot(this.props.undoSnapshot, Formats.BITMAP_SKIP_CONVERT);
+                    this.recalibrateSize();
+                    this.props.updateViewBounds(paper.view.matrix);
+                }).catch(error => {
+                    log.warn(`Could not restore bitmap layers: ${error.message}`);
+                    restoreRenderedBitmap();
+                });
+                return;
+            }
+
+            restoreRenderedBitmap();
         } else if (format === 'svg') {
             this.props.changeFormat(Formats.VECTOR_SKIP_CONVERT);
             this.importSvg(image, rotationCenterX, rotationCenterY);
@@ -431,6 +460,7 @@ class PaperCanvas extends React.Component {
 }
 
 PaperCanvas.propTypes = {
+    artworkDocument: PropTypes.object,
     canvasRef: PropTypes.func,
     changeFormat: PropTypes.func.isRequired,
     clearHoveredItem: PropTypes.func.isRequired,

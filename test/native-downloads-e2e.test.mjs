@@ -35,7 +35,7 @@ test('native proof is bounded and reports the stage that stalled', () => {
     assert.match(proof, /discovering the editor WebView/);
     assert.match(proof, /starting remote download probe/);
     assert.match(proof, /startupWatchdog = setTimeout/);
-    assert.match(proof, /driver\.kill\('SIGTERM'\)[\s\S]*30000/);
+    assert.match(proof, /stopDriver\(\)[\s\S]*30000/);
     assert.match(proof, /call\('GET', '\/status', undefined, null\)/);
     assert.match(proof, /attempt < 240 && !editor/);
     assert.match(proof, /DELETE[\s\S]*5000/);

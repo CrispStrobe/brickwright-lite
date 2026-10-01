@@ -4,6 +4,7 @@ const vectorModesObj = {
     BRUSH: null,
     ERASER: null,
     LINE: null,
+    PEN: null,
     FILL: null,
     SELECT: null,
     RESHAPE: null,

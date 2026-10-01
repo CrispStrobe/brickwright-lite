@@ -14,6 +14,8 @@
  *                                                  browser gate's timeout-minutes becomes its
  *                                                  derivation, with the derivation in its comment
  *   node scripts/gen-gate-budgets.mjs --check      exit 1 if build.yml disagrees with the readings
+ *   node scripts/gen-gate-budgets.mjs --prune      remove readings for deleted gates; retain all
+ *                                                  measurements and budgets for current gates
  *
  * THE DERIVATION, stated once here and asserted by test/browser-gate-budgets.test.mjs:
  *   budget = ceil(p95(last 20 green readings) × FACTOR / 60), floor FLOOR, cap CAP.
@@ -134,8 +136,21 @@ if (isMain) {
         console.log(`::notice::${path.relative(ROOT, READINGS)} was REWRITTEN by --fetch. It is tracked: commit it on its own, or \`git checkout\` it before committing unrelated work — never sweep it in with \`git add -A\`.`);
         console.log(`readings: ${Object.keys(r.steps).length} step(s) over ${r.runsScanned} runs, newest ${r.newestRun}, written to ${path.relative(ROOT, READINGS)}`);
     }
-    const readings = JSON.parse(readFileSync(READINGS, 'utf8'));
+    const originalReadings = readFileSync(READINGS, 'utf8');
+    const readings = JSON.parse(originalReadings);
     const yml = readFileSync(WORKFLOW, 'utf8');
+    if (process.argv.includes('--prune')) {
+        const names = new Set(gateJob(parseJobs(yml)).steps.map(s => s.name).filter(isBrowserStep));
+        const removed = Object.keys(readings.steps).filter(name => !names.has(name));
+        for (const name of removed) delete readings.steps[name];
+        const indent = originalReadings.match(/^([ \t]+)"/m)?.[1] || ' ';
+        let serialized = JSON.stringify(readings, null, indent);
+        if (/\\u[0-9a-f]{4}/i.test(originalReadings)) {
+            serialized = serialized.replace(/[\u007f-\uffff]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+        }
+        writeFileSync(READINGS, serialized + '\n');
+        console.log(`::notice::${path.relative(ROOT, READINGS)} was REWRITTEN by --prune; removed ${removed.length} deleted gate(s): ${removed.join('; ')}`);
+    }
     const {text, changes, findings} = applyToWorkflow(yml, readings);
     for (const f of findings) console.log(`::warning::${f}`);
     if (process.argv.includes('--check')) {

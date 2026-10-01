@@ -54,7 +54,7 @@ const integerRandomEdges = [{
     inputName: 'VALUE'
 }];
 
-test('N2f production holds device 49 and mixed generation 79 without neutralisation',
+test('N2f production holds device 49 and mixed generation 77 without neutralisation',
     {timeout: 120000}, async () => {
         const report = await measureN2f({examples});
         assert.equal(report.schema, 'n2f-i8086-random-literal-reach-v1');
@@ -74,15 +74,20 @@ test('N2f production holds device 49 and mixed generation 79 without neutralisat
         // i8086 and was DROPPED with a warning, so its host C was generated for
         // a program missing its only output statement. An unreadable line is
         // refused now; the program is parseFailed, named, not a hollow success.
+        // 150 parsed / 30 host / 79 total -> 148 / 28 / 77 at sb3-creator
+        // 8f4b6316 (task D6): 80-a2-lcd-moving-text and 81-8051-lcd1602-parallel
+        // declare a parallel LCD1602, which i8086 cannot take. The declaration
+        // was skipped with a warning and host C was generated for a program
+        // without its display; it is refused now, and both are parseFailed.
         assert.deepEqual(report.variants.baseline.counts, {
-            programs: 282, retargetRefused: 131, parsed: 150, parseFailed: 1,
-            refused: 71, generatedHost: 30, generatedDevice: 49, generatedTotal: 79
+            programs: 282, retargetRefused: 131, parsed: 148, parseFailed: 3,
+            refused: 71, generatedHost: 28, generatedDevice: 49, generatedTotal: 77
         });
-        assert.equal(report.variants.literalOnly.counts.generatedTotal, 79);
+        assert.equal(report.variants.literalOnly.counts.generatedTotal, 77);
         assert.deepEqual(report.delta.literalOnly, [], 'literal neutralisation changed production reach');
-        assert.equal(report.variants.randomOnly.counts.generatedTotal, 79);
+        assert.equal(report.variants.randomOnly.counts.generatedTotal, 77);
         assert.deepEqual(report.delta.randomOnly, [], 'random neutralisation changed production reach');
-        assert.equal(report.variants.randomAndLiteral.counts.generatedTotal, 79);
+        assert.equal(report.variants.randomAndLiteral.counts.generatedTotal, 77);
         assert.equal(report.variants.randomAndLiteral.counts.generatedDevice, 49);
         assert.deepEqual(report.delta.randomAndLiteral, [],
             'combined neutralisation changed production reach');

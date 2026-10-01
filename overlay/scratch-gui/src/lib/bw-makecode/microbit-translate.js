@@ -576,7 +576,7 @@ class MicrobitTranslator extends BaseTranslator {
             }
             // The interval (ms per scroll step) is MakeCode's optional second
             // argument; 150 is its default. Always writing 150 lost a chosen one.
-            push(`scroll text "${literal}" delay ${a[1] ? this.expr(a[1]) : '150'} ms`);
+            push(`scroll text ${JSON.stringify(literal)} delay ${a[1] ? this.expr(a[1]) : '150'} ms`);
             return;
         }
         case 'basic.showIcon':
@@ -630,12 +630,12 @@ class MicrobitTranslator extends BaseTranslator {
                 push(this.note('serial.writeValue() with a computed or colon-bearing name'));
                 return;
             }
-            push(`print ("${label}:" join ${this.joinOperand(a[1])})`);
+            push(`print (${JSON.stringify(`${label}:`)} join ${this.joinOperand(a[1])})`);
             return;
         }
         case 'serial.writeLine': {
             const literal = a[0] && a[0].type === 'String' ? this.literalString(a[0]) : null;
-            push(literal !== null ? `print "${literal}"` : `print ${this.expr(a[0])}`);
+            push(literal !== null ? `print ${JSON.stringify(literal)}` : `print ${this.expr(a[0])}`);
             return;
         }
         // The rest of `led` and `game` that MakeCode's own apps use (census
@@ -874,7 +874,7 @@ class MicrobitTranslator extends BaseTranslator {
                 push(this.note('radio.sendString(<expression>) — the radio text block takes a literal'));
                 return;
             }
-            push(`radio send text "${literal}"`);
+            push(`radio send text ${JSON.stringify(literal)}`);
             return;
         }
 

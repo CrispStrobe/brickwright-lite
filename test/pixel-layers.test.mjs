@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 
 const {blankLayer, clearSelectedPixels, composeLayers, containsCell, copySelectedPixels,
+    cropLayers,
     lassoSelection, layersDocument, layersToSvg, moveSelectedPixels, outlinePixels, pasteSelectedPixels,
     replaceColourPixels, resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels, wandSelection} =
@@ -20,6 +21,34 @@ test('pixel layers compose in order and keep hidden edits in source', () => {
     assert.equal(sourceLayers(doc, 3, 1), null);
     assert.deepEqual([...composeLayers(resizeLayers([bottom, hidden], 2, 1, 3, 1), 3, 1).pixels],
         [2, 3, 0]);
+});
+
+test('cropping keeps each layer and frame editable inside the selected bounds', () => {
+    const bottom = {...blankLayer('bottom', 'Bottom', 4, 3),
+        pixels: Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])};
+    const hidden = {...blankLayer('hidden', 'Hidden', 4, 3), visible: false, locked: true,
+        pixels: Uint8Array.from([0, 0, 0, 0, 0, 13, 14, 0, 0, 15, 0, 0])};
+    const selection = {x: 1, y: 1, width: 2, height: 2, mask: Uint8Array.from([1, 0, 0, 1])};
+    const cropped = cropLayers([bottom, hidden], 4, 3, selection);
+    assert.deepEqual([cropped.width, cropped.height], [2, 2]);
+    assert.deepEqual([...cropped.layers[0].pixels], [6, 7, 10, 11]);
+    assert.deepEqual([...cropped.layers[1].pixels], [13, 14, 15, 0],
+        'crop preserves artwork in the bounding box even outside a lasso mask');
+    assert.deepEqual([cropped.layers[1].id, cropped.layers[1].visible, cropped.layers[1].locked],
+        ['hidden', false, true]);
+    assert.equal(bottom.pixels.length, 12, 'source layers remain available for undo');
+    const frame = {...blankLayer('other-frame', 'Other frame', 4, 3),
+        pixels: Uint8Array.from([0, 0, 0, 0, 0, 2, 3, 0, 0, 4, 5, 0])};
+    const otherFrame = cropLayers([frame], 4, 3, selection);
+    const doc = layersDocument(cropped.layers, 2, 2, 4, 'bottom', ARCADE_PALETTE,
+        {activeFrameId: 'one', frames: [
+            {id: 'one', durationMs: 100, activeLayerId: 'bottom', layers: cropped.layers},
+            {id: 'two', durationMs: 100, activeLayerId: 'other-frame', layers: otherFrame.layers}
+        ]});
+    assert.deepEqual([...sourceFrames(doc, 2, 2)[1].layers[0].pixels], [2, 3, 4, 5]);
+    assert.match(layersToSvg(cropped.layers, 2, 2, 4), /width="8" height="8"/);
+    assert.equal(cropLayers([bottom], 4, 3, {x: 0, y: 0, width: 4, height: 3}), null);
+    assert.equal(cropLayers([bottom], 4, 3, {x: 5, y: 0, width: 1, height: 1}), null);
 });
 
 test('marquee copy/paste retains indices and clips at canvas edges', () => {

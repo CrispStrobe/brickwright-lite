@@ -4,7 +4,7 @@ import {FormattedMessage} from 'react-intl';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 import {inlineSvgFonts} from 'scratch-svg-renderer';
-import {resetCostumeDocument, setCostumeDocument} from '../lib/bw-artwork-bundle';
+import {getCostumeDocument, resetCostumeDocument, setCostumeDocument} from '../lib/bw-artwork-bundle';
 
 import {connect} from 'react-redux';
 import DynamicReducerContext from '../lib/dynamic-reducer-context';
@@ -98,7 +98,7 @@ class PaintEditorWrapper extends React.Component {
     handleUpdateName (name) {
         this.props.vm.renameCostume(this.props.selectedCostumeIndex, name);
     }
-    handleUpdateImage (isVector, image, rotationCenterX, rotationCenterY) {
+    handleUpdateImage (isVector, image, rotationCenterX, rotationCenterY, bitmapDocument) {
         const costume = this.props.vm.editingTarget?.sprite?.costumes?.[this.props.selectedCostumeIndex];
         if (isVector) {
             this.props.vm.updateSvg(
@@ -110,13 +110,14 @@ class PaintEditorWrapper extends React.Component {
                 name: 'Artwork', visible: true, locked: false, opacity: 1,
                 content: {kind: 'svg', value: image}}]});
         } else {
-            resetCostumeDocument(costume);
             this.props.vm.updateBitmap(
                 this.props.selectedCostumeIndex,
                 image,
                 rotationCenterX,
                 rotationCenterY,
                 2 /* bitmapResolution */);
+            if (bitmapDocument) setCostumeDocument(costume, bitmapDocument);
+            else resetCostumeDocument(costume);
         }
     }
     render () {
@@ -144,6 +145,7 @@ class PaintEditorWrapper extends React.Component {
         return (
             <PaintEditor
                 {...componentProps}
+                artworkDocument={getCostumeDocument(vm.editingTarget.sprite.costumes[selectedCostumeIndex])}
                 image={vm.getCostume(selectedCostumeIndex)}
                 onUpdateImage={this.handleUpdateImage}
                 onUpdateName={this.handleUpdateName}

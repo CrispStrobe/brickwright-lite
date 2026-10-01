@@ -169,7 +169,7 @@ const contentHash = page => page.evaluate(() => {
 
 const drawRect = async (page, box, from, to) => {
     const before = await contentHash(page);
-    await page.locator('[aria-label="Rectangle"], [title="Rectangle"]').first().click();
+    await page.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Rectangle"]').first().click();
     await page.mouse.move(box.x + box.width * from, box.y + box.height * from);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * to, box.y + box.height * to, {steps: 12});
@@ -273,7 +273,7 @@ try {
         const wand = await selectionEvidence();
         record('bitmap wand lifts a connected visible region',
             wand.kind === 'wand' && wand.count === 1 && wand.opaque > 0);
-        await page.locator('[aria-label="Rectangle"], [title="Rectangle"]').first().click();
+        await page.locator('[class*="paint-editor_mode-selector"] [role="button"][title="Rectangle"]').first().click();
         await page.mouse.move(0, 0);
         const pixelsAfterSelection = await bitmapCanvas.evaluate(element => element.toDataURL());
         record('committing a wand selection preserves the visible bitmap',
