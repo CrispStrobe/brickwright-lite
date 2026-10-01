@@ -1326,6 +1326,22 @@ jobs:
         timeout-minutes: 3  # derived: p95 25 s × 3 → 3 min over 20 green runs to 36413884486; max 26 s in run 34112210638 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: node scripts/verify-service-worker.mjs
+      - name: Browser gate — independent vector handles drag separately on desktop and iPad
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-vector-independent-handles.mjs
+      - name: Browser gate — paint recent colors
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-paint-recent-colors.mjs
+      - name: Browser gate — pixel crop
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-crop.mjs
+      - name: Browser gate — pixel colour slots
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-colour-slots.mjs
       - name: Browser gate — circuit UX
         timeout-minutes: 3  # derived: p95 22 s × 3 → 3 min over 20 green runs to 36413884486; max 22 s in run 34050397009 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
@@ -1567,6 +1583,22 @@ jobs:
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36413884486; max 6 s in run 36407872441 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-costume-roundtrip.mjs
+      - name: Browser gate — paint workspace and bitmap brush opacity
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-paint-workspace.mjs
+      - name: Browser gate — vector path topology survives save and reopen
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-vector-path-operations.mjs
+      - name: Browser gate — vector pen creates curves on desktop and closes paths on iPad
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-vector-pen.mjs
+      - name: Browser gate — bitmap layers preserve independent pixels and flatten for Scratch
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-bitmap-layers.mjs
       - name: Browser gate — editable pixel source survives save and reopen
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36413884486; max 7 s in run 36357001392 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}

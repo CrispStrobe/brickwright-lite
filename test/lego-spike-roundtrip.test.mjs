@@ -185,8 +185,17 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // line would now throw before it — and the artifact assertions re-ran.
     // #42 only narrows #41's cut-short-reporter check (a variable named
     // `item`); no SPIKE word is involved.
+    // PIN MOVED b4eb4073 -> 82c04190 (2026-09-30, sb3-creator#43 + #44 + #45, task D6):
+    // the parser again, not the emitter. A declaration the device cannot take
+    // is refused instead of warned about and skipped; a text literal reads and
+    // writes the escapes \" \\ \n \r \t (this fixture's `display text` has
+    // none); an unbracketed reporter spilled over positional slots (`set pixel
+    // round a 100`) is refused. Every word this fixture uses parses and
+    // decompiles as before; the assertions re-ran at the pin. #44 names the
+    // refused line in a retarget reason; #45 makes DEVICE 8086/8088/i8088 the
+    // 8086. Neither touches a SPIKE word.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'b4eb407351b0f3d4eb3c347a0ac541adacae17cc');
+        '82c04190a3d9b8aadbf1957e1a9f1c6725f54125');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

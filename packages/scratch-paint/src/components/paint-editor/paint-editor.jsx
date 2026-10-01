@@ -15,6 +15,7 @@ import BitFillMode from '../../containers/bit-fill-mode.jsx';
 import BitEraserMode from '../../containers/bit-eraser-mode.jsx';
 import BitSelectMode from '../../containers/bit-select-mode.jsx';
 import BitmapSelectionControls from '../../containers/bw-bitmap-selection-controls.jsx';
+import BitmapLayersControls from '../../containers/bw-bitmap-layers-controls.jsx';
 import Box from '../box/box.jsx';
 import Button from '../button/button.jsx';
 import ButtonGroup from '../button-group/button-group.jsx';
@@ -27,6 +28,7 @@ import FillColorIndicatorComponent from '../../containers/fill-color-indicator.j
 import FillMode from '../../containers/fill-mode.jsx';
 import InputGroup from '../input-group/input-group.jsx';
 import LineMode from '../../containers/line-mode.jsx';
+import PenMode from '../../containers/pen-mode.jsx';
 import Loupe from '../loupe/loupe.jsx';
 import FixedToolsContainer from '../../containers/fixed-tools.jsx';
 import ModeToolsContainer from '../../containers/mode-tools.jsx';
@@ -46,6 +48,7 @@ import bitmapIcon from './icons/bitmap.svg';
 import zoomInIcon from './icons/zoom-in.svg';
 import zoomOutIcon from './icons/zoom-out.svg';
 import zoomResetIcon from './icons/zoom-reset.svg';
+import eyeDropperIcon from '../color-picker/icons/eye-dropper.svg';
 
 const messages = defineMessages({
     bitmap: {
@@ -57,32 +60,85 @@ const messages = defineMessages({
         defaultMessage: 'Convert to Vector',
         description: 'Label for button that converts the paint editor to vector mode',
         id: 'paint.paintEditor.vector'
+    },
+    canvasOnly: {
+        defaultMessage: 'Focus on canvas',
+        description: 'Hide paint editor tools and panels to focus on the canvas',
+        id: 'paint.paintEditor.canvasOnly'
+    },
+    exitCanvasOnly: {
+        defaultMessage: 'Show paint tools',
+        description: 'Leave the paint editor canvas focus mode',
+        id: 'paint.paintEditor.exitCanvasOnly'
+    },
+    sampleColor: {
+        defaultMessage: 'Sample color',
+        description: 'Bitmap tool that picks a color from the costume canvas',
+        id: 'paint.paintEditor.sampleColor'
     }
 });
 
-const PaintEditorComponent = props => (
+const PaintEditorComponent = props => {
+    const [canvasOnly, setCanvasOnly] = React.useState(false);
+    React.useEffect(() => {
+        const frame = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+        return () => cancelAnimationFrame(frame);
+    }, [canvasOnly]);
+    React.useLayoutEffect(() => {
+        if (!canvasOnly) return undefined;
+        const leaveOnEscape = event => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            event.stopPropagation();
+            setCanvasOnly(false);
+        };
+        document.addEventListener('keydown', leaveOnEscape, true);
+        return () => document.removeEventListener('keydown', leaveOnEscape, true);
+    }, [canvasOnly]);
+    const focusLabel = props.intl.formatMessage(canvasOnly ? messages.exitCanvasOnly : messages.canvasOnly);
+    const focusButton = (
+        <button
+            aria-label={focusLabel}
+            className={styles.canvasFocusButton}
+            data-testid="bw-paint-canvas-focus"
+            title={focusLabel}
+            type="button"
+            onClick={() => setCanvasOnly(!canvasOnly)}
+        >
+            <svg aria-hidden="true" fill="none" height="22" stroke="currentColor" strokeWidth="2"
+                viewBox="0 0 24 24" width="22">
+                {canvasOnly ?
+                    <path d="M4 9h5V4M20 9h-5V4M4 15h5v5m11-5h-5v5" /> :
+                    <path d="M9 4H4v5m11-5h5v5M4 15v5h5m11-5v5h-5" />}
+            </svg>
+        </button>
+    );
+    return (
     <div
-        className={styles.editorContainer}
+        className={classNames(styles.editorContainer, {[styles.canvasOnly]: canvasOnly})}
+        data-testid="bw-paint-workspace"
         dir={props.rtl ? 'rtl' : 'ltr'}
     >
         {props.canvas !== null ? ( // eslint-disable-line no-negated-condition
             <div className={styles.editorContainerTop}>
                 {/* First row */}
-                <div className={styles.row} style={{minWidth: 0, overflowX: 'auto'}}>
-                    <FixedToolsContainer
-                        canRedo={props.canRedo}
-                        canUndo={props.canUndo}
-                        name={props.name}
-                        onRedo={props.onRedo}
-                        onUndo={props.onUndo}
-                        onUpdateImage={props.onUpdateImage}
-                        onUpdateName={props.onUpdateName}
-                    />
-                    {props.editorTools}
+                <div className={styles.commandRow}>
+                    <div className={styles.commandStrip}>
+                        <FixedToolsContainer
+                            canRedo={props.canRedo}
+                            canUndo={props.canUndo}
+                            name={props.name}
+                            onRedo={props.onRedo}
+                            onUndo={props.onUndo}
+                            onUpdateImage={props.onUpdateImage}
+                            onUpdateName={props.onUpdateName}
+                        />
+                    </div>
+                    <div className={styles.fileActions}>{props.editorTools}</div>
                 </div>
                 {/* Second Row */}
                 {isVector(props.format) ?
-                    <div className={styles.row}>
+                    <div className={classNames(styles.row, styles.settingsRow)}>
                         <InputGroup
                             className={classNames(
                                 styles.row,
@@ -111,7 +167,7 @@ const PaintEditorComponent = props => (
                         </InputGroup>
                     </div> :
                     isBitmap(props.format) ?
-                        <div className={styles.row}>
+                        <div className={classNames(styles.row, styles.settingsRow)}>
                             <InputGroup
                                 className={classNames(
                                     styles.row,
@@ -131,12 +187,14 @@ const PaintEditorComponent = props => (
                                 />
                             </InputGroup>
                             <BitmapSelectionControls />
+                            <BitmapLayersControls onUpdateImage={props.onUpdateImage} />
                         </div> : null
                 }
             </div>
         ) : null}
 
         <div className={styles.topAlignRow}>
+            {canvasOnly ? <div className={styles.canvasFocusFloating}>{focusButton}</div> : null}
             {/* Modes */}
             {props.canvas !== null && isVector(props.format) ? ( // eslint-disable-line no-negated-condition
                 <div className={styles.modeSelector}>
@@ -160,6 +218,9 @@ const PaintEditorComponent = props => (
                         onUpdateImage={props.onUpdateImage}
                     />
                     <LineMode
+                        onUpdateImage={props.onUpdateImage}
+                    />
+                    <PenMode
                         onUpdateImage={props.onUpdateImage}
                     />
                     <OvalMode
@@ -187,6 +248,17 @@ const PaintEditorComponent = props => (
                     <BitBrushMode
                         onUpdateImage={props.onUpdateImage}
                     />
+                    <button
+                        aria-label={props.intl.formatMessage(messages.sampleColor)}
+                        aria-pressed={props.isEyeDropping}
+                        className={classNames(styles.samplerButton, {[styles.samplerActive]: props.isEyeDropping})}
+                        data-testid="bw-bitmap-sample-color"
+                        title={props.intl.formatMessage(messages.sampleColor)}
+                        type="button"
+                        onClick={props.onToggleBitmapEyeDropper}
+                    >
+                        <img alt="" draggable={false} src={eyeDropperIcon} />
+                    </button>
                     <BitLineMode
                         onUpdateImage={props.onUpdateImage}
                     />
@@ -221,6 +293,7 @@ const PaintEditorComponent = props => (
                     style={styles.canvasContainer}
                 >
                     <PaperCanvas
+                        artworkDocument={props.artworkDocument}
                         canvasRef={props.setCanvas}
                         image={props.image}
                         imageFormat={props.imageFormat}
@@ -315,6 +388,7 @@ const PaintEditorComponent = props => (
                             </Button>
                         </ButtonGroup>
                     </InputGroup>
+                    {!canvasOnly ? focusButton : null}
                 </div>
             </div>
 
@@ -324,17 +398,19 @@ const PaintEditorComponent = props => (
                 // Renders nothing; it keeps the grid drawn on paper's guide layer in step with
                 // the settings. Vector only, like the panel that controls it.
                 <BwGridLayer key="grid" />,
-                <BwPropertiesPanel
+                canvasOnly ? null : <BwPropertiesPanel
                     key="properties"
                     onUpdateImage={props.onUpdateImage}
                 />
             ] : null}
         </div>
     </div>
-);
+    );
+};
 
 PaintEditorComponent.propTypes = {
     editorTools: PropTypes.node,
+    artworkDocument: PropTypes.object,
     canRedo: PropTypes.func.isRequired,
     canUndo: PropTypes.func.isRequired,
     canvas: PropTypes.instanceOf(Element),
@@ -352,6 +428,7 @@ PaintEditorComponent.propTypes = {
     onRedo: PropTypes.func.isRequired,
     onSwitchToBitmap: PropTypes.func.isRequired,
     onSwitchToVector: PropTypes.func.isRequired,
+    onToggleBitmapEyeDropper: PropTypes.func.isRequired,
     onUndo: PropTypes.func.isRequired,
     onUpdateImage: PropTypes.func.isRequired,
     onUpdateName: PropTypes.func.isRequired,

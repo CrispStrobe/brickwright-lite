@@ -19,6 +19,13 @@ import {emptyCostume} from '../lib/empty-assets';
 import sharedMessages from '../lib/shared-messages';
 import downloadBlob from '../lib/download-blob';
 import {copyCostumeDocument} from '../lib/bw-artwork-bundle';
+import {makeT} from '../lib/bw-i18n';
+import styles from './costume-tab.css';
+
+const editorT = makeT({
+    en: {open: 'Open file…', save: 'Save file', pixel: 'Pixel editor', paint: 'Paint editor'},
+    de: {open: 'Datei öffnen…', save: 'Datei speichern', pixel: 'Pixel-Editor', paint: 'Malprogramm'}
+});
 
 import {
     openCostumeLibrary,
@@ -292,22 +299,67 @@ class CostumeTab extends React.Component {
             details: costume.size ? this.formatCostumeDetails(costume.size, costume.bitmapResolution) : null,
             dragPayload: costume
         })) : [];
-        const toolStyle = {fontSize: 12, padding: '4px 8px', borderRadius: 6, cursor: 'pointer',
-            border: '1px solid #cbd5e1', background: '#fff', whiteSpace: 'nowrap'};
+        const openFileLabel = editorT(intl.locale, 'open');
+        const saveFileLabel = editorT(intl.locale, 'save');
+        const editorLabel = editorT(intl.locale, this.state.pixelMode ? 'paint' : 'pixel');
+        const toolIcon = name => {
+            const paths = {
+                open: <><path d="M3 7V4h7l2 2h9v3" /><path d="M3 10h18l-2 10H5L3 10z" /></>,
+                save: <><path d="M4 3h14l3 3v15H3V3h1z" /><path d="M7 3v7h10V3M7 21v-8h10v8" /></>,
+                pixel: <><rect
+                    x="3"
+                    y="3"
+                    width="18"
+                    height="18"
+                    rx="1"
+                /><path d="M9 3v18M15 3v18M3 9h18M3 15h18" /></>,
+                paint: <><path d="M4 20l4.5-1 10-10-3.5-3.5-10 10L4 20z" /><path d="M13.5 7l3.5 3.5" /></>
+            };
+            return (<svg
+                aria-hidden="true"
+                className={styles.editorToolIcon}
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.8"
+                viewBox="0 0 24 24"
+            >
+                {paths[name]}
+            </svg>);
+        };
         const editorTools = pixel => (
-            <div style={{display: 'inline-flex', alignItems: 'center', gap: 5, marginLeft: 'auto'}}>
-                <button type="button" data-testid={pixel ? 'bw-costume-import-pixel' : 'bw-costume-import'}
+            <div className={styles.editorTools}>
+                <button
+                    type="button"
+                    data-testid={pixel ? 'bw-costume-import-pixel' : 'bw-costume-import'}
                     onClick={this.handleFileUploadClick}
-                    style={toolStyle}>{/^de/i.test(intl.locale) ? 'Datei öffnen…' : 'Open file…'}</button>
-                <button type="button" data-testid={pixel ? 'bw-costume-export-pixel' : 'bw-costume-export'}
+                    className={styles.editorToolButton}
+                    aria-label={openFileLabel}
+                    title={openFileLabel}
+                >
+                    {toolIcon('open')}<span className={styles.editorToolLabel}>
+                        {openFileLabel}</span></button>
+                <button
+                    type="button"
+                    data-testid={pixel ? 'bw-costume-export-pixel' : 'bw-costume-export'}
                     onClick={() => this.handleExportCostume(this.state.selectedCostumeIndex)}
-                    style={toolStyle}>{/^de/i.test(intl.locale) ? 'Datei speichern' : 'Save file'}</button>
-                <button type="button" data-testid={pixel ? 'bw-pixel-toggle-pixel' : 'bw-pixel-toggle'}
+                    className={styles.editorToolButton}
+                    aria-label={saveFileLabel}
+                    title={saveFileLabel}
+                >
+                    {toolIcon('save')}<span className={styles.editorToolLabel}>
+                        {saveFileLabel}</span></button>
+                <button
+                    type="button"
+                    data-testid={pixel ? 'bw-pixel-toggle-pixel' : 'bw-pixel-toggle'}
                     onClick={() => this.setState(state => ({pixelMode: !state.pixelMode}))}
-                    style={{...toolStyle, background: this.state.pixelMode ? '#e0edff' : '#fff'}}>
-                    {this.state.pixelMode ?
-                        (/^de/i.test(intl.locale) ? '✎ Malprogramm' : '✎ Paint editor') :
-                        (/^de/i.test(intl.locale) ? '▦ Pixel-Editor' : '▦ Pixel editor')}
+                    className={styles.editorToolButton}
+                    aria-label={editorLabel}
+                    title={editorLabel}
+                >
+                    {toolIcon(this.state.pixelMode ? 'paint' : 'pixel')}
+                    <span className={styles.editorToolLabel}>{editorLabel}</span>
                 </button>
             </div>
         );
@@ -356,8 +408,15 @@ class CostumeTab extends React.Component {
                 onItemClick={this.handleSelectCostume}
             >
                 {target.costumes ? (
-                    <div style={{display: 'flex', flexDirection: 'column', flex: '1 1 0', width: '100%', minWidth: 0,
-                        height: '100%', minHeight: 0}}>
+                    <div
+                        style={{display: 'flex',
+                            flexDirection: 'column',
+                            flex: '1 1 0',
+                            width: '100%',
+                            minWidth: 0,
+                            height: '100%',
+                            minHeight: 0}}
+                    >
                         {/* scratch-paint has no grid and no palette lock; Arcade
                             art is edited AS pixels in the palette editor. */}
                         <div style={{flex: '1 1 0', minWidth: 0, minHeight: 0}}>

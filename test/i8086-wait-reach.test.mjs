@@ -74,7 +74,10 @@ const auditReach = (receipt, {compiled}) => {
     // `wait 150 ms`) names a LEDBANK8, which i8086 does not have; its LED line
     // was DROPPED with a warning and the rest counted as reached. An unreadable
     // line is refused now, so the program is parseFailed (1, named) instead.
-    assert.equal(s.waitLiteralPrograms, 121);
+    // 121 -> 120 at sb3-creator 8f4b6316 (task D6): 80-a2-lcd-moving-text's
+    // parallel LCD1602 declaration, which i8086 cannot take, was skipped with a
+    // warning; it is refused now, so the program is parseFailed (named below).
+    assert.equal(s.waitLiteralPrograms, 120);
     assert.equal(s.waitComputedPrograms, 2);
     assert.equal(s.waitLiteralRefused, 0);
     assert.equal(s.waitComputedRefused, 1);
@@ -108,8 +111,11 @@ const auditReach = (receipt, {compiled}) => {
         assert.equal(s.compileFailed, 0);
     }
     assert.equal(s.longLeaked, 0);
-    assert.equal(s.parseFailed, 1);
-    assert.deepEqual(receipt.parseFailed.map(row => row.split(': ')[0]), ['82-a2-led-row']);
+    // 1 -> 3 at sb3-creator 8f4b6316 (task D6): the two parallel-LCD1602
+    // programs' declaration is refused on i8086 instead of skipped.
+    assert.equal(s.parseFailed, 3);
+    assert.deepEqual(receipt.parseFailed.map(row => row.split(': ')[0]),
+        ['80-a2-lcd-moving-text', '81-8051-lcd1602-parallel', '82-a2-led-row']);
     assert.equal(s.retargetRefused + s.parseFailed + s.choke + s.printRefused + s.loweringRefused + s.hostC
         + s.int16Refused + s.waitLiteralRefused + s.waitComputedRefused + s.emits, s.programs,
     'every gallery program must land in exactly one outcome bucket');

@@ -13,7 +13,8 @@ import UpdateImageHOC from '../hocs/update-image-hoc.jsx';
 import {changeMode} from '../reducers/modes';
 import {changeFormat} from '../reducers/format';
 import {clearSelectedItems, setSelectedItems} from '../reducers/selected-items';
-import {deactivateEyeDropper} from '../reducers/eye-dropper';
+import {activateEyeDropper, deactivateEyeDropper} from '../reducers/eye-dropper';
+import {changeFillColor} from '../reducers/fill-style';
 import {setTextEditTarget} from '../reducers/text-edit-target';
 import {updateViewBounds} from '../reducers/view-bounds';
 import {setLayout} from '../reducers/layout';
@@ -85,7 +86,8 @@ class PaintEditor extends React.Component {
             'handleSetSelectedItems',
             'handleZoomIn',
             'handleZoomOut',
-            'handleZoomReset'
+            'handleZoomReset',
+            'handleToggleBitmapEyeDropper'
         ]);
         this.state = {
             canvas: null,
@@ -182,6 +184,9 @@ class PaintEditor extends React.Component {
             case Modes.LINE:
                 this.props.changeMode(Modes.BIT_LINE);
                 break;
+            case Modes.PEN:
+                this.props.changeMode(Modes.BIT_LINE);
+                break;
             case Modes.OVAL:
                 this.props.changeMode(Modes.BIT_OVAL);
                 break;
@@ -264,7 +269,8 @@ class PaintEditor extends React.Component {
             this.props.removeTextEditTarget();
         }
     }
-    onMouseUp () {
+    onMouseUp (event) {
+        if (event.target.closest && event.target.closest('[data-testid="bw-bitmap-sample-color"]')) return;
         if (this.props.isEyeDropping) {
             const colorString = this.eyeDropper.colorString;
             const callback = this.props.changeColorToEyeDropper;
@@ -279,6 +285,15 @@ class PaintEditor extends React.Component {
             this.props.onDeactivateEyeDropper();
             this.stopEyeDroppingLoop();
         }
+    }
+    handleToggleBitmapEyeDropper () {
+        if (this.props.isEyeDropping) {
+            if (this.eyeDropper) this.eyeDropper.remove();
+            if (this.props.previousTool) this.props.previousTool.activate();
+            this.props.onDeactivateEyeDropper();
+            return;
+        }
+        this.props.onActivateEyeDropper(paper.tool, this.props.onSampleBitmapColor);
     }
     startEyeDroppingLoop () {
         this.eyeDropper = new EyeDropperTool(
@@ -321,6 +336,7 @@ class PaintEditor extends React.Component {
         return (
             <PaintEditorComponent
                 editorTools={this.props.editorTools}
+                artworkDocument={this.props.artworkDocument}
                 canRedo={this.props.shouldShowRedo}
                 canUndo={this.props.shouldShowUndo}
                 canvas={this.state.canvas}
@@ -341,6 +357,7 @@ class PaintEditor extends React.Component {
                 onRedo={this.props.onRedo}
                 onSwitchToBitmap={this.props.handleSwitchToBitmap}
                 onSwitchToVector={this.props.handleSwitchToVector}
+                onToggleBitmapEyeDropper={this.handleToggleBitmapEyeDropper}
                 onUndo={this.props.onUndo}
                 onUpdateImage={this.props.onUpdateImage}
                 onUpdateName={this.props.onUpdateName}
@@ -354,6 +371,7 @@ class PaintEditor extends React.Component {
 
 PaintEditor.propTypes = {
     editorTools: PropTypes.node,
+    artworkDocument: PropTypes.object,
     changeColorToEyeDropper: PropTypes.func,
     changeMode: PropTypes.func.isRequired,
     clearSelectedItems: PropTypes.func.isRequired,
@@ -371,6 +389,8 @@ PaintEditor.propTypes = {
     mode: PropTypes.oneOf(Object.keys(Modes)).isRequired,
     name: PropTypes.string,
     onDeactivateEyeDropper: PropTypes.func.isRequired,
+    onActivateEyeDropper: PropTypes.func.isRequired,
+    onSampleBitmapColor: PropTypes.func.isRequired,
     onKeyPress: PropTypes.func.isRequired,
     onRedo: PropTypes.func.isRequired,
     onUndo: PropTypes.func.isRequired,
@@ -402,6 +422,8 @@ const mapStateToProps = state => ({
     viewBounds: state.scratchPaint.viewBounds
 });
 const mapDispatchToProps = dispatch => ({
+    onActivateEyeDropper: (tool, callback) => dispatch(activateEyeDropper(tool, callback)),
+    onSampleBitmapColor: color => dispatch(changeFillColor(color)),
     changeMode: mode => {
         dispatch(changeMode(mode));
     },
