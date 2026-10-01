@@ -55,7 +55,7 @@ export function compileSpikeUsbLine (source, speeds, types) {
 
 const clean = output => output.split('\r\n').slice(1).join('\r\n').replace(/>>> $/, '').trim();
 
-class FriendlyRepl {
+export class FriendlyRepl {
     constructor (transport) {
         this.transport = transport;
         this.buffer = '';
@@ -70,7 +70,20 @@ class FriendlyRepl {
                 this.buffer = this.buffer.slice(index + 4);
                 return result;
             }
-            this.buffer += await this.transport.read();
+            // A serial read may never settle. Bound the read itself as well as
+            // the loop so an unresponsive hub cannot leave the toolbar busy.
+            let timer;
+            try {
+                this.buffer += await Promise.race([
+                    this.transport.read(),
+                    new Promise((resolve, reject) => {
+                        timer = setTimeout(() => reject(new Error('SPIKE USB REPL timed out waiting for a reply')),
+                            Math.max(1, deadline - Date.now()));
+                    })
+                ]);
+            } finally {
+                clearTimeout(timer);
+            }
         }
         throw new Error(`SPIKE USB REPL timed out: ${this.buffer.slice(-120)}`);
     }

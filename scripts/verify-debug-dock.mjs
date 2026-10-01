@@ -178,7 +178,7 @@ try {
         `noCodeHint=${freshRight.noCodeHint}`);
     await setDock(page, 'top');
     await typeIntoEditor(page, 'DEVICE STC12C5A60S2\nCLOCK 11059200\nPIN led1 = P1.0 OUTPUT ACTIVE LOW\n\nWHEN flag clicked:\n  FOREVER:\n    toggle led1\n    wait 0.15 seconds\n');
-    await page.locator('button', {hasText: 'To blocks'}).first().click({force: true});
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true});
     await page.waitForTimeout(1500);
     const liveControlWaits = await page.evaluate(() => {
         const store = window.__brickwrightStore;

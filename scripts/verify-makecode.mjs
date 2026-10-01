@@ -281,7 +281,7 @@ try {
         await page.evaluate(() => {
             for (const d of document.querySelectorAll('[data-testid="bw-code-actions"]')) d.open = false;
         });
-        await page.locator('button', {hasText: /To blocks|Zu Blöcken/i}).first().click({force: true}).catch(() => {});
+        await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true}).catch(() => {});
         const built = await waitFor(() => page.evaluate(() => {
             const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
             return vm ? vm.runtime.targets.filter(t => !t.isStage).map(t => t.getName()) : [];

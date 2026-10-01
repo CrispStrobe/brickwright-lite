@@ -16,6 +16,8 @@
  *   node scripts/gen-gate-budgets.mjs --check      exit 1 if build.yml disagrees with the readings
  *   node scripts/gen-gate-budgets.mjs --prune      remove readings for deleted gates; retain all
  *                                                  measurements and budgets for current gates
+ *   node scripts/gen-gate-budgets.mjs --register   register new gates with zero readings;
+ *                                                  preserve existing measurements and budgets
  *
  * THE DERIVATION, stated once here and asserted by test/browser-gate-budgets.test.mjs:
  *   budget = ceil(p95(last 20 green readings) × FACTOR / 60), floor FLOOR, cap CAP.
@@ -139,6 +141,18 @@ if (isMain) {
     const originalReadings = readFileSync(READINGS, 'utf8');
     const readings = JSON.parse(originalReadings);
     const yml = readFileSync(WORKFLOW, 'utf8');
+    if (process.argv.includes('--register')) {
+        const names = gateJob(parseJobs(yml)).steps.map(s => s.name).filter(isBrowserStep);
+        const added = names.filter(name => !readings.steps[name]);
+        for (const name of added) readings.steps[name] = {n: 0, p95: null, max: null, readings: []};
+        const indent = originalReadings.match(/^([ \t]+)"/m)?.[1] || ' ';
+        let serialized = JSON.stringify(readings, null, indent);
+        if (/\\u[0-9a-f]{4}/i.test(originalReadings)) {
+            serialized = serialized.replace(/[\u007f-\uffff]/g, c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+        }
+        writeFileSync(READINGS, serialized + '\n');
+        console.log(`::notice::${path.relative(ROOT, READINGS)} was REWRITTEN by --register; ${added.length} new gate(s) have zero readings and provisional budgets`);
+    }
     if (process.argv.includes('--prune')) {
         const names = new Set(gateJob(parseJobs(yml)).steps.map(s => s.name).filter(isBrowserStep));
         const removed = Object.keys(readings.steps).filter(name => !names.has(name));

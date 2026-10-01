@@ -169,9 +169,7 @@ try {
     // Wait for the CodeMirror editor, type, assert the text is in it (scripts/lib/type-into-editor.mjs).
     await typeIntoEditor(page, PROGRAM);
     await page.waitForTimeout(600);
-    for (const label of ['To blocks', 'Import', 'Zu Blöcken']) {
-        try { await page.locator('button', {hasText: label}).first().click({timeout: 2500}); break; } catch {}
-    }
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({timeout: 2500});
     await page.waitForTimeout(2500);
     // The DEVICE line parses the program; it does not pick the board. That is
     // the device dropdown, and until it is set the runtime has no bwDeviceId —

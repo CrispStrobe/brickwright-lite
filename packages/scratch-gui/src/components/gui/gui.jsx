@@ -61,7 +61,7 @@ import lessonCatalog from './lessons.json';
 import chromeStyles from './compact-chrome.css';
 import PaneDivider from './pane-divider.jsx';
 import PaneStrip from './pane-strip.jsx';
-import {computePaneStyles, isCollapsed} from '../../lib/pane-sizes.js';
+import {computePaneStyles, isCollapsed, isExplicitFraction} from '../../lib/pane-sizes.js';
 import {setPaneSize} from '../../reducers/pane-layout';
 import {setFullScreen} from '../../reducers/mode';
 import CostumeLibrary from '../../containers/costume-library.jsx';
@@ -927,14 +927,18 @@ const GUIComponent = props => {
                         style={stagePaneVisible ? undefined : {display: 'block', width: '100%'}}
                     >
                         <Box
-                            className={styles.editorWrapper}
+                            className={classNames(styles.editorWrapper, chromeStyles.responsiveEditor)}
                             data-editor-pane="true"
-                            style={stageFullScreen ? {display: 'none'} : (stagePaneVisible ? undefined : {
+                            style={stageFullScreen ? {display: 'none'} : (stagePaneVisible ? {
+                                minWidth: 0, minHeight: 0, flexShrink: 1,
+                                ...(isExplicitFraction(rightSize) ? {flex: '1 1 0%'} : {})
+                            } : {
                                 display: 'flex', width: '100%', maxWidth: 'none', height: '100%',
                                 flex: 'none', flexBasis: 'auto', minWidth: 0
                             })}
                         >
                             <Tabs
+                                style={{minWidth: 0, minHeight: 0}}
                                 forceRenderTabPanel
                                 className={tabClassNames.tabs}
                                 selectedIndex={activeTabIndex}

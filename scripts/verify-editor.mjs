@@ -112,7 +112,7 @@ async function verify () {
         }
 
         // Test To blocks compilation
-        const toBlocksBtn = page.locator('button:has-text("To blocks")').first();
+        const toBlocksBtn = page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first();
         if (await toBlocksBtn.count() > 0) {
             // First make sure we have valid pseudocode
             const cmContent2 = page.locator('.cm-content').first();

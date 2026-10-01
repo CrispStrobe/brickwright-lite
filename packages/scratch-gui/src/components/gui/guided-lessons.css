@@ -2,6 +2,10 @@
 .header { position: sticky; z-index: 1; top: 0; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #dbe5f2; background: rgba(248, 251, 255, .96); }
 .header h2 { margin: 0; font-size: 18px; }
 .header button { padding: 6px 9px; border: 0; border-radius: 7px; background: transparent; color: #43516a; font: inherit; font-weight: 700; cursor: pointer; }
+.header { cursor: move; touch-action: none; gap: 8px; }
+.header h2 { min-width: 0; overflow-wrap: anywhere; }
+.header-buttons { display: flex; flex: 0 0 auto; gap: 3px; }
+.header:focus-visible { outline: 2px solid #4c97ff; outline-offset: -2px; }
 .filters { position: sticky; z-index: 1; top: 48px; display: grid; grid-template-columns: 1fr 120px; gap: 7px; padding: 10px 12px 0; background: rgba(248, 251, 255, .96); }
 .filters input, .filters select { min-width: 0; padding: 7px 8px; border: 1px solid #cbd8ea; border-radius: 8px; background: white; color: #172033; font: inherit; font-size: 12px; }
 .catalog { display: grid; gap: 10px; padding: 12px; }

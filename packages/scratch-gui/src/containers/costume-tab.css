@@ -3,6 +3,20 @@
     align-items: center;
     gap: 5px;
     margin-left: auto;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.target-select {
+    min-width: 0;
+    max-width: 150px;
+    min-height: 36px;
+    padding: 4px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    color: #243b63;
+    background: white;
+    font-size: 12px;
 }
 
 .editor-tools .editor-tool-button {

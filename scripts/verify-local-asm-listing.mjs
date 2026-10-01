@@ -93,7 +93,7 @@ WHEN flag clicked:
   turn on led
   wait 0.02 seconds
   turn off led`);
-    await page.locator('button', {hasText: /To blocks/i}).first().click({force: true});
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true});
     const blockCount = await waitFor(() => page.evaluate(() =>
         [...document.querySelectorAll('.blocklyDraggable')].filter(node => !node.closest('.blocklyFlyout')).length),
     count => count >= 3);
@@ -149,7 +149,7 @@ WHEN flag clicked:
     toggle led
     wait 0.01 seconds
   turn off led`);
-    await page.locator('button', {hasText: /To blocks/i}).first().click({force: true});
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true});
     const changedBlocks = await waitFor(() => page.evaluate(() =>
         [...document.querySelectorAll('.blocklyDraggable')].filter(node => !node.closest('.blocklyFlyout')).length),
     count => count > blockCount);

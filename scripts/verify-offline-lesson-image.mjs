@@ -381,7 +381,7 @@ WHEN flag clicked:
     wait 0.25 seconds
     turn off led
     wait 0.25 seconds`);
-    await page.locator('button', {hasText: /To blocks/i}).first().click({force: true});
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true});
     await page.locator('[role="tab"]', {hasText: /^Circuit$/i}).first().click().catch(() => {});
 
     const before = hostedCompilerRequests.length;

@@ -1109,6 +1109,13 @@ jobs:
           BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/spike-browser-receipts
         run: node scripts/verify-spike-simulator-browser.mjs
 
+      - name: Browser gate — responsive editor, dismissible messages, movable lessons and image targets
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        env:
+          BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/editor-responsive-receipts
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor-responsive.mjs
+
       # Keep the debugger acceptance checks at the front of the browser queue.
       # They reuse this job's one build, server and Chromium installation, but
       # now report before the unrelated product journeys rather than after

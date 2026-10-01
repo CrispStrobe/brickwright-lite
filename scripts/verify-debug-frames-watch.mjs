@@ -439,7 +439,7 @@ WHEN flag clicked:
         /DEVICE\s+STC12/i.test(authored) && /FOREVER/i.test(authored) && /change\s+count\s+by\s+1/i.test(authored),
         `${authored.length} chars`);
 
-    await page.locator('button', {hasText: /To blocks/i}).first().click({force: true});
+    await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click({force: true});
     await page.locator('[role="tab"]', {hasText: /^Blocks$/i}).first().click();
 
     // Count blocks in the MAIN workspace, which means excluding the palette.
