@@ -168,5 +168,7 @@ describe('save-what-you-see and the widgets key (2026-08-25)', () => {
             await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
         assert.equal(isContentKey('bw-ctl-widgets'), true);
         assert.equal(isContentKey('bw-theme'), false, 'preferences stay personal');
+        assert.equal(isContentKey('bw-pixel-colour-slots-v1'), false,
+            'pixel tool preferences stay out of project files');
     });
 });

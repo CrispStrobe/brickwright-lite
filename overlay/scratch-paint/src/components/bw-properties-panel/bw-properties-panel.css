@@ -226,6 +226,28 @@
     background: $ui-background-blue;
 }
 
+/* On a tablet the properties docker floats over the canvas. Keeping its spacer
+   in the flex row would make a narrow canvas smaller even while the panel is closed. */
+@media only screen and (max-width: 900px) {
+    .rail-spacer {
+        flex-basis: 0;
+        width: 0;
+    }
+
+    .rail {
+        z-index: 30;
+        width: min(19rem, 65vw);
+        background: white;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+    }
+
+    .rail-collapsed .icon-button,
+    .header .icon-button {
+        width: 44px;
+        height: 44px;
+    }
+}
+
 .toggle {
     display: flex;
     flex-direction: row;

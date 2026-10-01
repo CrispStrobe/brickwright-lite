@@ -1,8 +1,10 @@
 import {combineReducers} from 'redux';
 import modeReducer from './modes';
 import bitBrushSizeReducer from './bit-brush-size';
+import bitBrushOpacityReducer from './bw-bit-brush-opacity';
 import bitEraserSizeReducer from './bit-eraser-size';
 import bwBitmapSelectionReducer from './bw-bitmap-selection';
+import bwIndependentHandlesReducer from './bw-independent-handles';
 import brushModeReducer from './brush-mode';
 import bwGridReducer from './bw-grid';
 import bwPanelReducer from './bw-panel';
@@ -27,8 +29,10 @@ import zoomLevelsReducer from './zoom-levels';
 export default combineReducers({
     mode: modeReducer,
     bitBrushSize: bitBrushSizeReducer,
+    bitBrushOpacity: bitBrushOpacityReducer,
     bitEraserSize: bitEraserSizeReducer,
     bwBitmapSelection: bwBitmapSelectionReducer,
+    bwIndependentHandles: bwIndependentHandlesReducer,
     brushMode: brushModeReducer,
     // Brickwright additions: the properties rail, the grid and snapping, and the parametric
     // shape tools.
