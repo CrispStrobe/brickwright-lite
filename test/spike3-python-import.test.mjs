@@ -218,7 +218,7 @@ test('the run helper connects over Web Bluetooth, starts, forwards print(), and 
             _primitives: {
                 spikeprime_isConnected: () => connected,
                 spikeprime_setConnectionMode: args => { calls.push(['mode', args.MODE]); },
-                spikeprime_connectHub: async () => { calls.push(['connect', typeof globalThis.__brickwrightChooseVirtualBluetooth]); connected = true; }
+                spikeprime_connectHub: async () => { calls.push(['connect', typeof globalThis.__brickwrightChooseVirtualBluetooth]); win.__brickwrightChooseVirtualBluetooth([{hubState: win.__brickwrightVirtualSpike.hubState}]); connected = true; }
             },
             getEditingTarget: () => null,
             on: (name, fn) => listeners.set(name, [...(listeners.get(name) || []), fn]),
@@ -231,7 +231,7 @@ test('the run helper connects over Web Bluetooth, starts, forwards print(), and 
     const bubble = () => {};
     listeners.set('SAY', [bubble]);
     let enabled = null;
-    const win = {__brickwrightVirtualSpike: {enable: v => { enabled = v; }}};
+    const win = {__brickwrightVirtualSpike: {enable: v => { enabled = v; }, hubState: {stopAll () {}}}};
     const printed = [];
     const run = await runSpike3OnVirtualHub(vm, {window: win, onPrint: text => printed.push(text)});
     assert.equal(run.ok, true);
@@ -265,8 +265,11 @@ test('the Code tab offers the run, a stop and a console, in English and German',
 test('Code-tab run advances the shared hub only when the VM steps and cancels on Stop', async () => {
     const {default: Hub} = await import(resolve(LIB, 'virtual-hub/spike-hub-state.js'));
     const hub = new Hub();
+    let connected = true;
     const vm = {runtime: {_step () {}, currentStepTime: 100,
-        _primitives: {spikeprime_isConnected: () => true},
+        _primitives: {spikeprime_isConnected: () => connected,
+            spikeprime_disconnectHub: () => { connected = false; }, spikeprime_setConnectionMode () {},
+            spikeprime_connectHub: () => {win.__brickwrightChooseVirtualBluetooth([{hubState: hub}]); connected = true;}},
         on () {}, removeListener () {}, listeners: () => []},
         greenFlag () {hub.backend.runAtSpeed('A', 300);}, stopAll () {}};
     const original = vm.runtime._step;

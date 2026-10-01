@@ -505,3 +505,9 @@ Before connecting it to this world, it needs reviewed motor-output and
 sensor-input capabilities, explicit clock ownership and cancellation, and
 integration tests under the same external scenarios. The existing JS sandbox
 requires neither a Renode installation nor a firmware image.
+
+Simulator execution disconnects any previous SPIKE session and selects the
+registered peripheral belonging to the shared virtual hub. The virtual-only
+chooser flag prevents a missing device, unsupported filter or cancelled
+selection from falling back to physical Bluetooth. Physical hardware execution
+remains an explicit separate action.

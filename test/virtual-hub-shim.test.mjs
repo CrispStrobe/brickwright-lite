@@ -95,3 +95,16 @@ test('nonmatching virtual devices still delegate to real Bluetooth', async () =>
     install();
     assert.equal((await navigator.bluetooth.requestDevice({filters: [{services: [SERVICE]}]})).id, 'real');
 });
+
+
+test('virtual-only requests never invoke physical Bluetooth for missing, unsupported or cancelled selections', async () => {
+    const chooser = () => null;
+    chooser.virtualOnly = true;
+    globalThis.__brickwrightChooseVirtualBluetooth = chooser;
+    install();
+    await assert.rejects(navigator.bluetooth.requestDevice({acceptAllDevices: true}), {name: 'NotFoundError'});
+    await assert.rejects(navigator.bluetooth.requestDevice({filters: [{manufacturerData: []}]}), {name: 'NotFoundError'});
+    registerVirtualPeripheral(() => ({id: 'virtual', name: 'Virtual', services: []}));
+    await assert.rejects(navigator.bluetooth.requestDevice({acceptAllDevices: true}), {name: 'NotFoundError'});
+    assert.equal(delegated, null, 'no physical request was made');
+});

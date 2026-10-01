@@ -1,4 +1,5 @@
 import React from 'react';
+import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
 import {browserLocale} from '../../lib/bw-i18n.js';
 import {ArenaHubBridge} from '../../lib/spike-arena/arena-hub-bridge.js';
 import {drawArena} from '../../lib/spike-arena/arena-render.js';
@@ -327,21 +328,15 @@ class SpikeArenaPane extends React.Component {
     /** Connects the spikeprime blocks to the virtual hub over Web Bluetooth, picking it without a chooser. */
     async connect () {
         const vm = this.vm;
-        if (vm.getPeripheralIsConnected && vm.getPeripheralIsConnected('spikeprime')) return;
         const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
         if (!peripheral) throw new Error('spikeprime has no peripheral');
-        const previous = window.__brickwrightChooseVirtualBluetooth;
-        window.__brickwrightChooseVirtualBluetooth = candidates => candidates[0];
-        try {
-            if (typeof peripheral.setMode === 'function') peripheral.setMode('web-ble');
-            await peripheral.scan();
-            for (let i = 0; i < 60 && !vm.getPeripheralIsConnected('spikeprime'); i++) {
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-        } finally {
-            window.__brickwrightChooseVirtualBluetooth = previous;
-        }
-        if (!vm.getPeripheralIsConnected('spikeprime')) throw new Error('no connection');
+        await connectVirtualSpike({host: window, hubState: this.hubState,
+            connected: () => vm.getPeripheralIsConnected('spikeprime'),
+            disconnect: () => vm.disconnectPeripheral('spikeprime'),
+            connect: async () => {
+                if (typeof peripheral.setMode === 'function') peripheral.setMode('web-ble');
+                await peripheral.scan();
+            }});
     }
 
     async start () {
