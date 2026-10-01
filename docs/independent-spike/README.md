@@ -39,14 +39,13 @@ Standalone controller tests require no GUI packages:
 
 ```sh
 node --test test/independent-spike-controller.test.mjs test/independent-spike-speed-envelope.test.mjs
-# Private reference comparisons and GUI receipts require an explicit private destination:
+# Validation receipts require an explicit private destination:
 export BW_SPIKE_EVIDENCE_DIR=/absolute/path/outside/brickwright-lite/to/private/evidence
-export BW_SPIKE_REQUIRE_PRIVATE_EVIDENCE=1
 node scripts/verify-independent-spike.mjs
 BW_SPIKE_BUILD_ROOT=/absolute/path/to/current/gui/build node scripts/verify-spike-simulator-browser.mjs
 ```
 
-The verification gate requires retired firmware assets to be absent and runs the
-native controller, shared hub, real Scratch extensions, arena and Python importer
-checks. Reference fixtures must be obtained from the private archive; missing
-fixtures are errors when strict evidence mode is enabled.
+The verification gate runs the standalone controller, shared hub, real Scratch
+extensions, arena and Python importer checks. Public tests are self-contained
+and do not load historical external-reference fixtures. Browser verification
+checks that the virtual SPIKE flow requests no firmware binaries.

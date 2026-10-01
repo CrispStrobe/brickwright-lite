@@ -1838,8 +1838,8 @@ selection adapter, `spike-simulator-pane.jsx`, and newly authored validation too
 2026 Brickwright contributors, BSD-3-Clause (see LICENSE). The controller was
 authored by a fresh implementation agent from functional contracts and
 synthetic black-box observations, with an audited instruction-based access
-boundary; see `docs/independent-spike/INDEPENDENCE.md`. It contains no Pybricks
-runtime code and requires no Pybricks assets or build steps.
+boundary; see `docs/independent-spike/INDEPENDENCE.md`. It is a standalone virtual controller and requires no external firmware runtime,
+assets or build steps.
 
 It reuses the existing Apache-2.0 virtual hub/protocol adapters and BSD-3-Clause
 arena through their documented shared-state interfaces. Scratch and native
