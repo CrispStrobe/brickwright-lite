@@ -27,3 +27,6 @@ cd ../.. && node scripts/apply-vm-overlay.mjs && node scripts/apply-paint-overla
 NODE_ENV=production CI=true NODE_OPTIONS=--max-old-space-size=2560 BW_ENABLE_FPGA=1 BW_SYNTHESIS_ENDPOINT=https://synth.crispstro.be/api npm run build
 cd ../..
 BW_EXPECT_REMOTE_CODE_POLICY=allow node scripts/verify-build-policy.mjs packages/scratch-gui/build
+
+# A public receipt contains only the deployed commit, never audit evidence.
+node -e 'const fs=require("fs"),cp=require("child_process");fs.writeFileSync("packages/scratch-gui/build/brickwright-version.json", JSON.stringify({commit:cp.execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim()})+"\n");'
