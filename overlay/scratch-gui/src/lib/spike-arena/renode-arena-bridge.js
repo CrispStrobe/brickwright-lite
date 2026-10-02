@@ -21,6 +21,7 @@ export class RenodeArenaBridge {
             !REQUIRED.every(cap => target.capabilities?.includes(cap))) {
             throw new Error('Configured simulation firmware does not support the arena contract');
         }
+        const speedLimit = target.capabilities.includes('arena-program/v1') ? 1110 : 300;
         const generation = frame.lifecycle?.connectionGeneration;
         if (!Number.isSafeInteger(frame.seq) || frame.seq < 0 || !Number.isSafeInteger(generation) || generation < 0 ||
             !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) throw new Error('Invalid guest clock or sequence');
@@ -33,7 +34,7 @@ export class RenodeArenaBridge {
             if (matches?.length !== 1) throw new Error('Guest drive motor is unavailable');
             const motor = matches[0];
             if (!Number.isFinite(motor.position) || Math.abs(motor.position) > 1080000 ||
-                !Number.isFinite(motor.speedDps) || Math.abs(motor.speedDps) > 300 ||
+                !Number.isFinite(motor.speedDps) || Math.abs(motor.speedDps) > speedLimit ||
                 ![-1, 0, 1].includes(motor.demandDirection) || typeof motor.stalled !== 'boolean') {
                 throw new Error('Invalid guest motor frame');
             }
@@ -48,7 +49,7 @@ export class RenodeArenaBridge {
         const last = this.last;
         const ms = last ? (frame.clockNs - last.clockNs) / 1e6 : 0;
         if (last && (identity !== last.identity || frame.seq <= last.seq || ms < 0 || ms > 2000 ||
-            motors.some((motor, i) => Math.abs(motor.position - last.motors[i].position) > 300 * ms / 1000 + 0.002))) {
+            motors.some((motor, i) => Math.abs(motor.position - last.motors[i].position) > speedLimit * ms / 1000 + 0.002))) {
             throw new Error('Guest frame is stale, discontinuous or outside the sampling interval');
         }
         const hub = this.bridge.hubState;

@@ -3,9 +3,11 @@
 import {RenodeArenaBridge} from './renode-arena-bridge.js';
 /** Owns only a session it successfully started; stopping invalidates outstanding polls. */
 export class RenodeArenaSession {
-    constructor ({bridge, capabilities, onFrame = () => {}, onError = () => {}, onStopped = () => {}}) {
+    constructor ({bridge, capabilities, program = null, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}}) {
         this.adapter = new RenodeArenaBridge(bridge);
         this.capabilities = capabilities;
+        this.program = program;
+        this.onCompleted = onCompleted;
         this.onFrame = onFrame;
         this.onError = onError;
         this.onStopped = onStopped;
@@ -25,6 +27,13 @@ export class RenodeArenaSession {
             if (this.closed) return;
             const first = JSON.parse(await this.call('state.read'));
             if (this.closed) return;
+            if (this.program && !first.target?.capabilities?.includes('arena-program/v1')) {
+                throw new Error('This desktop package supports the demo only; rebuild with program-capable firmware');
+            }
+            if (this.program) {
+                await this.call('arena.program.load', this.program);
+                if (this.closed) return;
+            }
             const inputs = this.adapter.accept(first);
             this.adapter.bridge.hubState.externalBackend = this;
             await this.call('arena.inputs.write', inputs);
@@ -49,6 +58,17 @@ export class RenodeArenaSession {
         await this.call('arena.inputs.write', inputs);
         if (this.closed) return;
         this.onFrame(this.adapter.bridge.snapshot());
+        if (this.program) {
+            const status = frame.lifecycle?.arenaProgram;
+            if (!status || ![0, 1, 2, 3].includes(status.status)) throw new Error('Missing firmware program status');
+            if (status.status === 3) throw new Error(`Firmware program failed (guest error ${status.error})`);
+            if (status.status === 2) {
+                this.onCompleted();
+                // Poll must return before stop waits for the owned request tail.
+                queueMicrotask(() => this.stop().catch(error => this.onError(error)));
+                return;
+            }
+        }
         this.schedule();
     }
     get completion () { return this.stopping || this.tail; }

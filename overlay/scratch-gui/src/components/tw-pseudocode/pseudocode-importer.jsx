@@ -279,6 +279,7 @@ const L10N = {
         runOnSimulator: '▶ Run',
         openSpikeArena: '🪐 SPIKE arena',
         openSpikeArenaTitle: 'Explore a free virtual SPIKE sandbox or run a program in the arena challenges',
+        spikeFirmwareRunTitle: 'Run the supported code subset in our simulation-only ARM firmware',
         runOnSpike3: '▶ Run on SPIKE 3 (Python)',
         runOnSpike3Title: 'Read this LEGO SPIKE App 3 Python program into SPIKE blocks and run them on the virtual SPIKE hub (and in the arena, when it is open)',
         spike3Console: 'SPIKE 3 Python console',
@@ -581,6 +582,7 @@ const L10N = {
         runOnSimulator: '▶ Ausführen',
         openSpikeArena: '🪐 SPIKE-Arena',
         openSpikeArenaTitle: 'Eine freie virtuelle SPIKE-Arena erkunden oder ein Programm in den Arena-Aufgaben ausführen',
+        spikeFirmwareRunTitle: 'Unterstützten Code in unserer ARM-Firmware für die Simulation ausführen',
         runOnSpike3: '▶ Auf SPIKE 3 ausführen (Python)',
         runOnSpike3Title: 'Dieses LEGO-SPIKE-App-3-Python-Programm in SPIKE-Blöcke übersetzen und auf dem virtuellen SPIKE-Hub ausführen (und in der Arena, wenn sie offen ist)',
         spike3Console: 'SPIKE-3-Python-Konsole',
@@ -3817,6 +3819,24 @@ class PseudocodeImporter extends React.Component {
      * lands in the console below via the VM's say events; what the reader could
      * not express, and what it approximated, is listed there too.
      */
+    async runOnSpikeFirmware () {
+        this.openSpikeArena();
+        this.setState({busy: true});
+        try {
+            await this.compile({strict: true});
+            const deadline = Date.now() + 15000;
+            while (!window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+            const pane = window.__bwSpikeArena?._pane;
+            if (!pane?.bridge) throw new Error('Open the SPIKE arena before running firmware');
+            await new Promise(resolve => pane.setState({execution: 'program'}, resolve));
+            await pane.startFirmware(null, {onCompleted: () => this.setState({spike3Running: false, status: 'Firmware program completed.'})});
+            if (!pane.firmwareSession) throw new Error(pane.state.message || 'Firmware could not start');
+            this._spike3Stop = () => pane.stopProgram();
+            this.setState({spike3Running: true, status: 'Code program running in ARM firmware.'});
+        } catch (error) { this.setState({status: error.message}); }
+        finally { this.setState({busy: false}); }
+    }
+
     async runOnSpike3 () {
         const code = this.activeCode();
         if (!isSpike3Program(code)) return;
@@ -3833,12 +3853,14 @@ class PseudocodeImporter extends React.Component {
         if (report.unsupported && report.unsupported.length) push('err', this.L.spike3Unsupported(report.unsupported.length));
         (report.unsupported || []).forEach(u => push('err', `# unsupported: ${u}`));
         (report.notes || []).forEach(n => push('note', `${this.L.spike3Note}: ${n}`));
-        await this.compile();
+        try { await this.compile({strict: window.__bwSpikeArena?._pane?.state.execution === 'program'}); }
+        catch (error) { push('err', error.message); return; }
         const result = await runSpike3OnVirtualHub(this.props.vm, {
-            onPrint: text => push('out', String(text))
+            onPrint: text => push('out', String(text)),
+            onCompleted: () => this.setState({spike3Running: false, status: 'Firmware program completed.'})
         });
         if (!result.ok) {
-            push('err', result.reason === 'no-hub' ? this.L.spike3NoHub : `${this.L.spike3NoConnect} ${result.detail || ''}`.trim());
+            push('err', result.reason === 'firmware' ? result.detail : result.reason === 'no-hub' ? this.L.spike3NoHub : `${this.L.spike3NoConnect} ${result.detail || ''}`.trim());
             return;
         }
         this._spike3Stop = result.stop;
@@ -3847,7 +3869,7 @@ class PseudocodeImporter extends React.Component {
 
     stopSpike3 () {
         if (this._spike3Stop) {
-            try { this._spike3Stop(); } catch { /* teardown must not throw at the user */ }
+            try { Promise.resolve(this._spike3Stop()).catch(error => this.setState({status: error.message})); } catch { /* teardown must not throw at the user */ }
             this._spike3Stop = null;
         }
         this.setState({spike3Running: false, status: this.L.spike3Stopped});
@@ -4335,7 +4357,7 @@ class PseudocodeImporter extends React.Component {
             asmTargetForDevice(this.currentDevice()) === 'i8086';
     }
 
-    async compile () {
+    async compile ({strict = false} = {}) {
         const lang = this.state.lang;
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
@@ -4353,6 +4375,7 @@ class PseudocodeImporter extends React.Component {
                 parseWarnings = [this.L.asmLifted(res.stats.lifted)];
             } else if (lang === 'python') {
                 const res = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(source);
+                if (strict && res.unsupported?.length) throw new Error(res.unsupported.join(' · '));
                 source = res.pseudocode; parseWarnings = res.warnings || [];
             } else if (lang === 'javascript') {
                 const res = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(source);
@@ -4387,6 +4410,7 @@ class PseudocodeImporter extends React.Component {
                     creator.applyCustomSVG(name, u.svg);
                 if (!ok) missing.push(name);
             });
+            if (strict && (parseWarnings.length || creator.warnings.length)) throw new Error([...parseWarnings, ...creator.warnings].join(' · '));
             const blob = await creator.generateSB3();
             await this.props.vm.loadProject(await blob.arrayBuffer());
             // Auto-select the first sprite with scripts so the Blocks palette
@@ -4487,6 +4511,7 @@ class PseudocodeImporter extends React.Component {
                 direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: false,
                 changed: [], unsupported: [e.message]
             }});
+            if (strict) { this.setState({busy: false}); throw e; }
         }
         this.setState({busy: false});
     }
@@ -5609,13 +5634,18 @@ class PseudocodeImporter extends React.Component {
                         </button>
                     ) : null}
 
-                    {
+                    <React.Fragment>
                         <button onClick={() => this.openSpikeArena()} title={this.L.openSpikeArenaTitle}
                             style={{...actionBtn, background: 'linear-gradient(135deg,#e8590c,#c2410c)'}}
                             data-testid="bw-open-spike-arena">
                             {this.L.openSpikeArena}
                         </button>
-                    }
+                        {window.__TAURI_INTERNALS__ && ((this.state.lang === 'pseudocode' && this.currentDevice() === 'spike') || (this.state.lang === 'python' && isSpike3Program(this.activeCode()))) ? <button type="button" onClick={() => this.runOnSpikeFirmware()}
+                            disabled={this.state.busy} style={actionBtn} data-testid="bw-spike-firmware-run"
+                            title={this.L.spikeFirmwareRunTitle}>
+                            ▶ Firmware
+                        </button> : null}
+                    </React.Fragment>
                     {this.state.lang === 'python' && isSpike3Program(this.activeCode()) ? (
                         <button onClick={() => this.runOnSpike3()} title={this.L.runOnSpike3Title} disabled={this.state.busy}
                             style={{...actionBtn, background: 'linear-gradient(135deg,#f59e0b,#d97706)'}}

@@ -327,6 +327,7 @@ impl BrickStateFeed {
     ) -> Result<BrickStateSnapshot, String> {
         match name {
             "arena.inputs" if crate::arena_inputs::valid(&arguments) => {}
+            "arena.program.load" if crate::arena_inputs::valid_program(&arguments) => {}
             "state.sample" if arguments.as_object().is_some_and(|args| args.is_empty()) => {}
             "ev3.button.set"
                 if arguments.as_object().is_some_and(|args| args.len() == 2)
@@ -347,15 +348,17 @@ impl BrickStateFeed {
         let prior = self.latest()?;
         let target_ok = match name {
             "state.sample" => true,
-            "arena.inputs" => {
+            "arena.inputs" | "arena.program.load" => {
                 prior.target.board == "spike-prime"
                     && prior.target.transport == "none"
                     && prior.target.firmware == "brickwright-arena-demo"
-                    && prior
-                        .target
-                        .capabilities
-                        .iter()
-                        .any(|cap| cap == "arena-inputs/v1")
+                    && prior.target.capabilities.iter().any(|cap| {
+                        cap == if name == "arena.program.load" {
+                            "arena-program/v1"
+                        } else {
+                            "arena-inputs/v1"
+                        }
+                    })
             }
             _ => prior.target.board == "ev3",
         };
