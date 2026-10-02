@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import {RenodeArenaBridge} from './renode-arena-bridge.js';
-import {NuttXProgramClient} from '../spike-nuttx/upload-protocol.js';
+import {NuttXProgramClient, encodePython, encodeInstructions} from '../spike-nuttx/upload-protocol.js';
 /** Owns only a session it successfully started; stopping invalidates outstanding polls. */
 export class RenodeArenaSession {
     constructor ({bridge, capabilities, backend = null, program = null, source = null, onOutput = () => {}, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}}) {
@@ -10,6 +10,8 @@ export class RenodeArenaSession {
         if (backend !== null && !['guest', 'nuttx'].includes(backend)) throw new TypeError('Unknown firmware backend');
         this.backend = backend;
         if (program && source !== null) throw new TypeError('Supply one compiled program or Python source');
+        if (source !== null) encodePython(source);
+        if (program) encodeInstructions(program);
         this.program = program;
         this.source = source;
         this.onOutput = onOutput;

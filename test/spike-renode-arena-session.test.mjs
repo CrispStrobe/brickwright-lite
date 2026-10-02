@@ -102,3 +102,14 @@ test('refused firmware startup preserves a running native motor', async () => {
     await assert.rejects(session.start(),/full NuttX/);
     assert.deepEqual(b.hubState.data.motors[0],before);
 });
+
+test('invalid source or rows fail before a firmware session can replace native activity', () => {
+    const b = bridge(); let calls = 0;
+    const capabilities = {'renode.spike.session.start': async () => {calls++;}};
+    for (const source of ['', 'x'.repeat(4096), 'x\0y']) {
+        assert.throws(() => new RenodeArenaSession({bridge: b, capabilities, source}));
+    }
+    assert.throws(() => new RenodeArenaSession({bridge: b, capabilities,
+        program: {version: 1, instructions: [[1, 0, 9999, 0], [0, 0, 0, 0]]}}));
+    assert.equal(calls, 0); assert.equal(b.hubState.clockOwner, null);
+});

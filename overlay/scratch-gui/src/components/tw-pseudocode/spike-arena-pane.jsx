@@ -1,6 +1,7 @@
 import React from 'react';
 import {compileFirmwareProgram} from '../../lib/spike-arena/firmware-program.js';
 import {RenodeArenaSession} from '../../lib/spike-arena/renode-arena-session.js';
+import {encodePython, encodeInstructions} from '../../lib/spike-nuttx/upload-protocol.js';
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
 import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
 import {browserLocale} from '../../lib/bw-i18n.js';
@@ -392,6 +393,8 @@ class SpikeArenaPane extends React.Component {
         if (!this.bridge) return;
         // Compile before stopping a running session: unsupported blocks never run a demo.
         if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm);
+        if (source !== null) encodePython(source);
+        if (program) encodeInstructions(program);
         await this.stopProgram();
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
