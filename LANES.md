@@ -482,10 +482,28 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+Instantaneous meter operand package adoption — **CLAIM 2026-10-02**, Codex bwcx
+`/root`, clean isolated `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`,
+branch `lane/meter-operand-package-adoption-20261002`, exact base
+`aba652b3bcb56223a56c3f32d8116d1969c5c50a`. Adopt qualified upstream CUI
+`e0aea6bd16b4fcde53f5f7a5b1e21c71c2092916` (all four jobs green in `36999818348`);
+Board and other pins unchanged. Exact scope: vendor-pins, root/GUI package specs
+and locks, generated package notice mirrors, installed-measurement-authority
+test, five existing part-adoption CUI SHA assertions only, this paragraph and
+prior own release status. Prove each invalid raw voltage operand refuses before
+subtraction, preserve genuine zero/signed/averaged readings, byte identity and
+single-engine resolution. No source copy, model/tolerance/expectation/workflow
+change or corpus rerun implied: the historical 300-case source-analysis receipt
+does not exercise this GUI meter fallback. Qualify once, guarded normal landing,
+then verify actual public publication.
+
 Measurement browser package follow-up: Codex bwcx `/root` owns the CUI package
 boundary in `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`, branch
 `lane/measurement-browser-package-adoption-20261002`, exact base
-`7e61141fb1a29ed56f77500a4c6a2d82e818771a`. **DONE candidate 2026-10-02; hosted qualification pending.** Adopt qualified
+`7e61141fb1a29ed56f77500a4c6a2d82e818771a`. **DONE 2026-10-02.** Exact candidate
+`aba652b3b` qualified in `36997024552`, main release `36998505312` all eight jobs
+green, Pages deployment `6807138983` successful. Public package source manifest
+independently verifies the pins; actual live GUI smoke passed. Adopt qualified
 CUI `3a44883095223f33689d0c0e16695c9ba2ee8757` only; Board and other pins remain
 unchanged. Scope: vendor-pins, derived root/GUI specs and locks, generated package
 notices/provenance/report mirrors only where stale, installed measurement
