@@ -482,7 +482,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-Instantaneous meter operand package adoption — **CLAIM 2026-10-02**, Codex bwcx
+Instantaneous meter operand package adoption — **DONE candidate 2026-10-02**, Codex bwcx
 `/root`, clean isolated `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`,
 branch `lane/meter-operand-package-adoption-20261002`, exact base
 `aba652b3bcb56223a56c3f32d8116d1969c5c50a`. Adopt qualified upstream CUI
@@ -496,6 +496,18 @@ single-engine resolution. No source copy, model/tolerance/expectation/workflow
 change or corpus rerun implied: the historical 300-case source-analysis receipt
 does not exercise this GUI meter fallback. Qualify once, guarded normal landing,
 then verify actual public publication.
+Installed regressions first red on each null operand at old package 3a448830;
+updated installed consumer/part/package/mirror surface 26/26, complete
+history/gate surface 27/27, zero skips. Two removed installed-source operand
+guards independently red. One initial package-spec test read old GUI specs while
+integration was still active; after completed integration and derived GUI lock,
+all 26 pass. Root pinned npm-pack bytes verified (3578 Board, 1301 CUI), with
+single-engine resolution; actual GUI installed bytes and browser qualification
+remain hosted prerequisites. Both lock diffs move only CUI spec/resolved/integrity.
+Package notice pair regenerated identically; census, 8086 report, matrix,
+part-profiles, reader coverage and Rust notices unchanged/current. No model or
+physical expectation move. Single exact branch Build required before landing;
+public deployment verification required before claiming published follow-up.
 
 Measurement browser package follow-up: Codex bwcx `/root` owns the CUI package
 boundary in `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`, branch

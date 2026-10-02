@@ -14,6 +14,28 @@ import {readScopeCapture} from 'bw-circuit-ui/model/scope-tools.js';
 registerAllDevices();
 setEngine({BoardImpl, inferNetlist, checkWiring, getDevice});
 
+for (const badNet of ['a', 'b']) {
+    test(`installed instantaneous meter refuses invalid raw operand ${badNet} before subtraction`, () => {
+        const meter = createMeterState(); meter.probeA.netId = 'a'; meter.probeB.netId = 'b';
+        for (const value of [NaN, Infinity, -Infinity, null, undefined, '1', true, false,
+            {}, {valueOf: () => 1}]) {
+            const reading = readMeter(meter, {board: {}, nodeVoltage: net => net === badNet ? value : 0});
+            assert.equal(reading.value, '---', `${badNet}: ${String(value)}`);
+            assert.equal(reading.siValue, null); assert.equal(reading.note, 'Cannot read voltage');
+        }
+    });
+}
+
+test('installed instantaneous meter preserves valid operands without bypassing the averaged path', () => {
+    const meter = createMeterState(); meter.probeA.netId = 'a'; meter.probeB.netId = 'b';
+    for (const [a, b, expected] of [[0, 0, 0], [1, 2, -1], [-2, -3, 1], [1e-15, 0, 1e-15]]) {
+        const reading = readMeter(meter, {board: {}, nodeVoltage: net => net === 'a' ? a : b});
+        assert.equal(reading.siValue, expected); assert.equal(reading.note, null);
+    }
+    assert.equal(readMeter(meter, {board: {}, meterVoltage: () => -2,
+        nodeVoltage: () => {throw new Error('averaged path must not use raw nodes');}}).siValue, -2);
+});
+
 test('installed meter refuses nonfinite and untyped values while preserving true zero and signed values', () => {
     for (const mode of ['voltage', 'current', 'resistance']) {
         const meter = createMeterState(); meter.mode = mode;
