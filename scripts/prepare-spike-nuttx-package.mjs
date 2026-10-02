@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {programStorageAbiAddress} from './lib/spike-program-storage-marker.mjs';
 import {firmwareExtraNotices} from './lib/spike-firmware-notices.mjs';
+import {prepareInitialFlash, initialFlashScenario, INITIAL_FLASH_FILE} from './lib/spike-initial-flash.mjs';
 const args = process.argv.slice(2);
 if (args.length !== 5) throw new Error('Usage: prepare-spike-nuttx-package.mjs FIRMWARE_REPO RENODE_REPO INFRASTRUCTURE_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY');
 const [firmware, models, infrastructure, executable, output] = args.map(p => resolve(p));
@@ -17,6 +18,7 @@ const stage = spawnSync('python3', [join(models, 'tools/stage_prime_runtime.py')
     '--output', output, '--aggregate-display-clock'], {stdio: 'inherit'});
 if (stage.status !== 0) throw new Error('Prime model staging failed');
 await mkdir(join(output, 'scripts')); await mkdir(join(output, 'tools'));
+const seeded = await prepareInitialFlash(firmware, output, {required: extraNotices.some(([source]) => source === 'licenses/NuttX-Tickless-BSD-3-Clause.txt')});
 const kernel = await readFile(join(firmware, 'nuttx/nuttx'));
 const user = await readFile(join(firmware, 'nuttx/nuttx_user.elf'));
 for (const elf of [kernel, user]) {
@@ -60,12 +62,12 @@ const copies = [['nuttx/nuttx', 'nuttx-kernel.elf', firmware], ['nuttx/nuttx_use
         .map(p => [`tools/${p}.py`, `tools/${p}.py`, models])];
 for (const [source, destination, root] of copies) await copyFile(join(root, source), join(output, destination));
 const hash = async file => createHash('sha256').update(await readFile(file)).digest('hex');
-await writeFile(join(output, 'nuttx.resc'), `include @${join(output, 'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(output, 'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n`);
+await writeFile(join(output, 'nuttx.resc'), `include @${join(output, 'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(output, 'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${seeded ? initialFlashScenario(output) : ''}`);
 await writeFile(join(output, 'state-config.json'), JSON.stringify({identity: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none',
     imageSha256: await hash(join(output, 'nuttx-user.elf'))}, programMailbox: mailbox, pythonOutputMailbox: outputMailbox, boot,
     ...(storageAddress === null ? {} : {programStorageAbiAddress: storageAddress}),
 paths: {...Object.fromEntries('ABCDEF'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');
-const files = ['models.cs', 'nuttx.resc', 'state-config.json', ...copies.map(c => c[1]),
+const files = [...(seeded ? [INITIAL_FLASH_FILE] : []), 'models.cs', 'nuttx.resc', 'state-config.json', ...copies.map(c => c[1]),
     'licenses/renode-models-MIT.txt', 'licenses/brickwright-BSD-3-Clause.txt',
     ...['boards/spike-prime.repl', 'boards/spike-prime-brick-devices.repl', 'cpus/stm32f413vg.repl', 'cpus/stm32f4.repl'].map(p => `platforms/${p}`)];
 const manifest = {};

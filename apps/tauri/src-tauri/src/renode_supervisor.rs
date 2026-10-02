@@ -543,7 +543,7 @@ fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "tools/spike_arena_mailbox.py",
     ];
     verify_support_manifest(root, manifest, REQUIRED,
-        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py"])
+        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py"], 32)
 }
 fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
     verify_support_manifest(root, manifest, &[
@@ -559,9 +559,9 @@ fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt",
         "licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt", "licenses/NuttX-Apps-NOTICE.txt",
         "licenses/firmware-Brickwright-BSD-3-Clause.txt", "licenses/NuttX-Tickless-BSD-3-Clause.txt",
-        "licenses/Simulation-Firmware-NOTICES.txt"])
+        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin"], 33)
 }
-fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str]) -> Result<(), String> {
+fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str], max_files: usize) -> Result<(), String> {
     if !manifest.starts_with(root) {
         return Err("arena manifest escaped its package".into());
     }
@@ -575,7 +575,7 @@ fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allo
     let map: serde_json::Value =
         serde_json::from_slice(&bytes).map_err(|_| "arena manifest malformed".to_owned())?;
     let map = map.as_object().ok_or("arena manifest malformed")?;
-    if map.len() > 32 || !required.iter().all(|name| map.contains_key(*name)) {
+    if map.len() > max_files || !required.iter().all(|name| map.contains_key(*name)) {
         return Err("arena manifest is incomplete".into());
     }
     let backport_notices = ["licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt",
@@ -585,6 +585,22 @@ fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allo
         && (!backport_notices.iter().all(|name| map.contains_key(*name))
             || !map.contains_key("licenses/Simulation-Firmware-NOTICES.txt")) {
         return Err("firmware backport notices are incomplete".into());
+    }
+    if allowed.contains(&"initial-flash.bin") {
+        let mut scenario = Vec::new();
+        File::open(root.join("nuttx.resc"))
+            .and_then(|file| file.take(65537).read_to_end(&mut scenario))
+            .map_err(|_| "full firmware scenario unavailable".to_owned())?;
+        if scenario.len() > 65536 { return Err("full firmware scenario exceeds bounds".into()); }
+        let requires_seed = scenario.windows(b"initial-flash.bin".len()).any(|part| part == b"initial-flash.bin");
+        let has_seed = map.contains_key("initial-flash.bin");
+        if requires_seed != has_seed || (backport_notices.iter().any(|name| map.contains_key(*name)) && !has_seed) {
+            return Err("full firmware initial flash seed is incomplete".into());
+        }
+        if has_seed && std::fs::metadata(root.join("initial-flash.bin"))
+            .map_err(|_| "initial flash seed unavailable".to_owned())?.len() != 8192 {
+            return Err("initial flash seed exceeds exact geometry".into());
+        }
     }
     for (name, digest) in map {
         if !required.contains(&name.as_str()) && !allowed.contains(&name.as_str())
@@ -872,6 +888,46 @@ mod tests {
             .iter()
             .any(|value| matches!(value.as_str(), "sh" | "bash" | "cmd" | "powershell")));
     }
+    #[test]
+    fn initial_flash_manifest_requires_exact_seed_even_with_matching_digest() {
+        let root = std::env::temp_dir().join(format!("bw-initial-flash-manifest-{}", random_token().unwrap()));
+        std::fs::create_dir(&root).unwrap();
+        #[cfg(unix)] {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let root = root.canonicalize().unwrap();
+        let manifest = root.join("manifest.json");
+        let mut names = vec!["nuttx.resc".to_owned(), "initial-flash.bin".to_owned()];
+        names.extend((0..31).map(|i| format!("bounded-component-{i}")));
+        for name in &names { std::fs::write(root.join(name), b"synthetic fixture").unwrap(); }
+        std::fs::write(root.join("nuttx.resc"), b"trusted fixed initial-flash.bin boot initialization").unwrap();
+        std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8192]).unwrap();
+        let allowed: Vec<&str> = names.iter().map(String::as_str).collect();
+        let write_manifest = || {
+            let entries: serde_json::Map<String, serde_json::Value> = names.iter().map(|name|
+                (name.clone(), serde_json::Value::String(sha256(&root.join(name)).unwrap()))).collect();
+            std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
+        };
+        write_manifest();
+        assert!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).is_ok());
+        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 32).unwrap_err(), "arena manifest is incomplete");
+        std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8193]).unwrap();
+        write_manifest(); // Correct hash must not bypass the geometry guard.
+        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(), "initial flash seed exceeds exact geometry");
+        std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8192]).unwrap();
+        write_manifest();
+        let mut entries: serde_json::Value = serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
+        entries.as_object_mut().unwrap().remove("initial-flash.bin");
+        std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
+        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(), "full firmware initial flash seed is incomplete");
+        std::fs::write(root.join("nuttx.resc"), b"old seedless baseline scenario").unwrap();
+        entries["nuttx.resc"] = sha256(&root.join("nuttx.resc")).unwrap().into();
+        std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
+        assert!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).is_ok());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
     #[test]
     fn arena_support_manifest_detects_changed_helpers_and_escaped_names() {
         let root =
