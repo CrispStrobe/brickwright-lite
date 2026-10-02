@@ -11,7 +11,10 @@ const element = (tag, attributes = {}, text = '') => {
     return node;
 };
 
+export const canConfigureVirtualHub = hub => !hub.configurationOwner && !hub.externalBackend && hub.clockOwner !== 'renode';
+
 export const applyVirtualPortInput = (hubState, port, kind, value) => {
+    if (!canConfigureVirtualHub(hubState)) return false;
     const number = Number(value);
     if (kind === 'motor') hubState.setPort(port, kind, {speed: number, position: 0});
     else if (kind === 'boostMotor') hubState.setPort(port, kind, {deviceId: 38, duty: number});
@@ -24,6 +27,7 @@ export const applyVirtualPortInput = (hubState, port, kind, value) => {
 };
 
 export const loadSpikeTestRig = hubState => {
+    if (!canConfigureVirtualHub(hubState)) return false;
     hubState.setFirmwareTarget('official-v3');
     hubState.setPort('A', 'boostMotor', {deviceId: 38, duty: 0});
     hubState.setPort('B', 'force', {deviceId: 63, force: 0, pressed: false});
@@ -44,6 +48,11 @@ export const closeVirtualSpikePanel = () => {
 export const openVirtualSpikePanel = hubState => {
     closeVirtualSpikePanel();
     const previousFocus = document.activeElement;
+    const configurationControls = [];
+    const refreshConfiguration = () => {
+        const locked = !canConfigureVirtualHub(hubState);
+        for (const control of configurationControls) control.disabled = locked;
+    };
     const shade = element('div', {role: 'dialog', 'aria-modal': 'true',
         'aria-label': 'Virtual SPIKE Prime controls', tabindex: '-1',
         style: 'position:fixed;inset:0;z-index:2147483500;background:rgba(12,16,22,.72);' +
@@ -56,7 +65,7 @@ export const openVirtualSpikePanel = hubState => {
 
     const enabled = element('input', {type: 'checkbox'});
     enabled.checked = hubState.data.simulationEnabled;
-    enabled.addEventListener('change', () => hubState.setSimulationEnabled(enabled.checked));
+    enabled.addEventListener('change', () => {if (canConfigureVirtualHub(hubState)) hubState.setSimulationEnabled(enabled.checked);});
     const enabledLabel = element('label', {style: 'display:flex;gap:8px;margin-bottom:12px'});
     enabledLabel.append(enabled, document.createTextNode('Enable virtual SPIKE simulation'));
     card.appendChild(enabledLabel);
@@ -69,16 +78,17 @@ export const openVirtualSpikePanel = hubState => {
         ['brickwright', 'Brickwright firmware — Classic + BLE compatibility']
     ]) profile.appendChild(element('option', {value}, label));
     profile.value = hubState.data.firmwareTarget;
-    profile.addEventListener('change', () => hubState.setFirmwareTarget(profile.value));
+    profile.addEventListener('change', () => {if (canConfigureVirtualHub(hubState)) hubState.setFirmwareTarget(profile.value);});
     card.appendChild(profile);
 
     const battery = element('input', {type: 'range', min: '0', max: '100', value: String(hubState.data.battery)});
     const batteryLabel = element('label', {style: 'display:grid;grid-template-columns:110px 1fr 42px;gap:8px'});
     const batteryValue = element('span', {}, `${hubState.data.battery}%`);
-    battery.addEventListener('input', () => { hubState.setBattery(battery.value); batteryValue.textContent = `${battery.value}%`; });
+    battery.addEventListener('input', () => { if (!canConfigureVirtualHub(hubState)) return; hubState.setBattery(battery.value); batteryValue.textContent = `${battery.value}%`; });
     batteryLabel.append(element('span', {}, 'Battery'), battery, batteryValue);
     card.appendChild(batteryLabel);
     const focusable = [enabled, profile, battery];
+    configurationControls.push(enabled, profile, battery);
 
     const brick = element('div', {style: 'margin-top:14px;padding:14px;border-radius:18px;background:#7654c6;' +
         'box-shadow:inset 0 -5px 0 #54379d;color:white'});
@@ -107,7 +117,7 @@ export const openVirtualSpikePanel = hubState => {
         else portLabels[index].textContent = sensor.kind;
     });
     refreshBrick();
-    const unsubscribe = hubState.subscribe(refreshBrick);
+    const unsubscribe = hubState.subscribe(() => {refreshBrick();refreshConfiguration();});
 
     const grid = element('div', {style: 'display:grid;grid-template-columns:40px 140px 1fr;gap:8px;margin-top:14px'});
     const portControls = [];
@@ -123,6 +133,7 @@ export const openVirtualSpikePanel = hubState => {
         kind.addEventListener('change', apply);
         value.addEventListener('input', apply);
         focusable.push(kind, value);
+        configurationControls.push(kind, value);
         portControls.push({kind, value, index});
         grid.append(element('strong', {}, port), kind, value);
     }
@@ -130,6 +141,7 @@ export const openVirtualSpikePanel = hubState => {
     const preset = element('button', {type: 'button', style: 'margin-top:10px;padding:7px 12px'},
         'Load A–F test setup');
     preset.addEventListener('click', () => {
+        if (!canConfigureVirtualHub(hubState)) return;
         loadSpikeTestRig(hubState);
         enabled.checked = true;
         profile.value = 'official-v3';
@@ -140,13 +152,15 @@ export const openVirtualSpikePanel = hubState => {
         }
     });
     focusable.push(preset);
+    configurationControls.push(preset);
     card.appendChild(preset);
 
     const imu = element('div', {style: 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px'});
     for (const axis of ['yaw', 'pitch', 'roll']) {
         const input = element('input', {type: 'number', value: String(hubState.data.imu[axis])});
-        input.addEventListener('input', () => hubState.setImu({[axis]: Number(input.value)}));
+        input.addEventListener('input', () => {if (canConfigureVirtualHub(hubState)) hubState.setImu({[axis]: Number(input.value)});});
         focusable.push(input);
+        configurationControls.push(input);
         const label = element('label', {style: 'display:flex;flex-direction:column;gap:4px'}, axis);
         label.appendChild(input);
         imu.appendChild(label);
@@ -167,6 +181,7 @@ export const openVirtualSpikePanel = hubState => {
         event.preventDefault(); focusable[next].focus();
     });
     panel = {node: shade, unsubscribe, previousFocus};
+    refreshConfiguration();
     enabled.focus();
     return shade;
 };

@@ -24,4 +24,12 @@ native.storage = {upload: native.packets.slice(0, -1), save: Array.from(encodeCo
     replace: replace.map(p => Array.from(p)), load: Array.from(encodeCommand(9, id)),
     start: Array.from(encodeCommand(3, id)), stop: Array.from(encodeCommand(4, id)),
     savedCount: native.program.instructions.length, replacementCount: replacement.length / 16};
+// A separate profile property keeps the legacy default/paired caller unchanged.
+const sixSource = 'import brickwright as b\nfor port in range(6):\n b.motor(port,200)\nwhile True:\n pass\n';
+const sixData = encodePython(sixSource), sixId = 13001;
+const sixPackets = [encodeBegin(sixId, sixData.length, crc32(sixData), true)];
+for (let n = 0; n < sixData.length; n += 10) sixPackets.push(encodeChunk(sixId, n, sixData.subarray(n, n + 10)));
+sixPackets.push(encodeCommand(2, sixId), encodeCommand(3, sixId));
+native.sixMotorProfile = {source: sixSource, packets: sixPackets.map(p => Array.from(p)),
+    status: Array.from(encodeCommand(5, sixId)), stop: Array.from(encodeCommand(4, sixId))};
 writeFileSync(output, JSON.stringify(cases, null, 2), {flag: 'wx', mode: 0o600});

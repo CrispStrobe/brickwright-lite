@@ -72,6 +72,13 @@ test('reopening and closing the dashboard releases its state subscription', () =
             assert.ok(controls.some(node => node['aria-label'] === `Port ${port} device type`));
             assert.ok(controls.some(node => node['aria-label'] === `Port ${port} value`));
         }
+        state.configurationOwner = {};
+        state.changed();
+        assert.ok(controls.every(control => control.disabled === true), 'device and value controls lock during firmware ownership');
+        enabled.checked = true;enabled.listeners.change();
+        assert.equal(state.data.simulationEnabled, false, 'programmatic events cannot bypass the read-only controls');
+        state.configurationOwner = null;state.changed();
+        assert.ok(controls.every(control => control.disabled === false), 'closing firmware unlocks the existing controls');
         enabled.checked = true;
         enabled.listeners.change();
         assert.equal(state.data.simulationEnabled, true);

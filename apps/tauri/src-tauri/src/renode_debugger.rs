@@ -5,7 +5,7 @@
 
 use crate::renode_brick_state::BrickStateFeed;
 use crate::renode_rsp::{Arm32Architecture, RenodeRsp, RenodeRspInterrupt};
-use crate::renode_supervisor::{RenodeSupervisor, TeardownReason};
+use crate::renode_supervisor::{RenodeSupervisor, SpikeTopology, TeardownReason};
 use serde_json::{json, Value};
 use std::io::Read;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -32,6 +32,7 @@ struct Session {
     running: Arc<AtomicBool>,
     target: RenodeTarget,
     backend: Option<String>,
+    topology: SpikeTopology,
     state: TargetState,
 }
 
@@ -74,7 +75,7 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn start(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::SpikePrime, None)
+        self.start_target(supervisor, RenodeTarget::SpikePrime, None, SpikeTopology::Default)
     }
 
     pub(crate) fn start_spike_backend(
@@ -82,11 +83,16 @@ impl RenodeDebugger {
         supervisor: &RenodeSupervisor,
         backend: Option<&str>,
     ) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::SpikePrime, backend)
+        self.start_spike_profile(supervisor, backend, SpikeTopology::Default)
+    }
+
+    pub(crate) fn start_spike_profile(&self, supervisor: &RenodeSupervisor, backend: Option<&str>,
+        topology: SpikeTopology) -> Result<&'static str, String> {
+        self.start_target(supervisor, RenodeTarget::SpikePrime, backend, topology)
     }
 
     pub(crate) fn start_ev3(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::Ev3, None)
+        self.start_target(supervisor, RenodeTarget::Ev3, None, SpikeTopology::Default)
     }
 
     fn start_target(
@@ -94,6 +100,7 @@ impl RenodeDebugger {
         supervisor: &RenodeSupervisor,
         target: RenodeTarget,
         backend: Option<&str>,
+        topology: SpikeTopology,
     ) -> Result<&'static str, String> {
         let mut session = self
             .session
@@ -103,7 +110,7 @@ impl RenodeDebugger {
             return Err("Renode debugger already started".into());
         }
         let endpoint = match target {
-            RenodeTarget::SpikePrime => supervisor.start_spike_backend(backend)?,
+            RenodeTarget::SpikePrime => supervisor.start_spike_profile(backend, topology)?,
             RenodeTarget::Ev3 => supervisor.start_ev3()?,
         };
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
@@ -195,6 +202,7 @@ impl RenodeDebugger {
             running: Arc::new(AtomicBool::new(false)),
             target,
             backend: backend.map(str::to_owned),
+            topology,
             state,
         });
         Ok("ready")
@@ -228,14 +236,14 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn reset(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        let (target, backend) = {
+        let (target, backend, topology) = {
             let mut session = self
                 .session
                 .lock()
                 .map_err(|_| "Renode debugger unavailable".to_owned())?;
             let target = session
                 .as_ref()
-                .map(|active| (active.target, active.backend.clone()));
+                .map(|active| (active.target, active.backend.clone(), active.topology));
             if let Some(active) = session.as_mut() {
                 if active.running.load(Ordering::Acquire) {
                     let _ = active.interrupt.request();
@@ -245,7 +253,7 @@ impl RenodeDebugger {
             target.ok_or_else(|| "Renode debugger is not started".to_owned())?
         };
         supervisor.teardown(TeardownReason::Reset);
-        self.start_target(supervisor, target, backend.as_deref())?;
+        self.start_target(supervisor, target, backend.as_deref(), topology)?;
         Ok("reset")
     }
 
@@ -622,6 +630,78 @@ mod tests {
         }
         debugger.spike_arena_inputs(serde_json::json!({"sensors":[{"port":"E","kind":"force","values":{"forcePercent":70,"pressed":true}}],"loads":[]})).unwrap();
         debugger.close(&supervisor).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned six-motor NuttX package and private caller fixture"]
+    fn packaged_spike_nuttx_six_motor_profile_runs_stops_and_survives_reset() {
+        let elapsed = Instant::now();
+        let supervisor = RenodeSupervisor::new();let debugger = RenodeDebugger::new();
+        let check_profile = |snapshot: &Value| {
+            assert_eq!(snapshot["target"]["firmware"], "brickwright-nuttx");
+            assert!(snapshot["target"]["capabilities"].as_array().unwrap().iter().any(|cap| cap == "nuttx-six-motors/v1"));
+            let motors = snapshot["motors"].as_array().unwrap();assert_eq!(motors.len(),6);
+            for port in ["A","B","C","D","E","F"] {
+                assert_eq!(motors.iter().filter(|motor| motor["port"] == port).count(),1);
+                assert_eq!(snapshot["ports"].as_array().unwrap().iter().filter(|p| p["id"] == port
+                    && p["attached"] == true && p["kind"] == "motor").count(),1);
+            }
+        };
+        eprintln!("six-profile stage=boot elapsed_ms=0");
+        debugger.start_spike_profile(&supervisor,Some("nuttx"),SpikeTopology::SixMotors).unwrap();
+        let first = debugger.state().unwrap();check_profile(&first);
+        assert_eq!(first["lifecycle"]["nuttxProgram"]["state"],0);
+        let positions = |snapshot: &Value| -> Vec<f64> {
+            ["A","B","C","D","E","F"].into_iter().map(|port| snapshot["motors"].as_array().unwrap().iter()
+                .find(|m| m["port"] == port).unwrap()["position"].as_f64().unwrap()).collect()
+        };
+        let initial_positions = positions(&first);
+        let cases: Value = serde_json::from_slice(&std::fs::read(std::env::var("BW_NUTTX_CALLER_FIXTURES")
+            .expect("generate private synthetic caller fixtures first")).unwrap()).unwrap();
+        let native = cases.as_array().unwrap().iter().find(|case| case["python"] == false).unwrap();
+        let fixture = &native["sixMotorProfile"];
+        assert!(fixture["source"].as_str().unwrap().len() <= 4095);
+        debugger.run().unwrap();
+        let send = |stage: &str, request: &Value| {
+            let began = Instant::now();
+            let response = debugger.spike_program_packet(json!({"bytes":request})).unwrap_or_else(|error| {
+                panic!("six-profile stage={stage} op={} packet_ms={} elapsed_ms={} endpoint_owned={} error={error}",
+                    request[2],began.elapsed().as_millis(),elapsed.elapsed().as_millis(),debugger.has_endpoint())
+            });
+            assert_program_reply(&response,request,0);response
+        };
+        let mut response = first;
+        for packet in fixture["packets"].as_array().unwrap() {response=send("upload-python-six",packet);}
+        assert_eq!(response["lifecycle"]["nuttxProgramReply"][3],2);
+        let movement_deadline = Instant::now() + Duration::from_secs(12);
+        loop {
+            response = debugger.state().unwrap();check_profile(&response);
+            assert_eq!(response["lifecycle"]["nuttxProgram"]["state"],2,"six-motor Python unexpectedly completed or faulted");
+            let current = positions(&response);
+            if (2..6).all(|port| current[port] > initial_positions[port] + 1.0) {break;}
+            assert!(Instant::now() < movement_deadline,"C-F did not move under six-profile Python");
+            thread::sleep(Duration::from_millis(50));
+        }
+        response = send("stop-six",&fixture["stop"]);
+        assert_eq!(response["lifecycle"]["nuttxProgramReply"][3],4);
+        let stop_deadline = Instant::now() + Duration::from_secs(8);
+        loop {
+            response=debugger.state().unwrap();check_profile(&response);
+            if response["motors"].as_array().unwrap().iter().all(|m| m["speedDps"].as_f64() == Some(0.0)
+                && m["demandDirection"].as_i64() == Some(0)) {break;}
+            assert!(Instant::now() < stop_deadline,"STOP did not idle all six motors");
+            thread::sleep(Duration::from_millis(50));
+        }
+        eprintln!("six-profile stage=reset elapsed_ms={}",elapsed.elapsed().as_millis());
+        debugger.reset(&supervisor).unwrap();
+        let reset = debugger.state().unwrap();check_profile(&reset);
+        assert_eq!(reset["target"],response["target"]);
+        assert_eq!(reset["lifecycle"]["nuttxProgram"]["state"],0,"reset must not upload or autoexecute");
+        assert!(reset["motors"].as_array().unwrap().iter().all(|m| m["speedDps"].as_f64() == Some(0.0)
+            && m["demandDirection"].as_i64() == Some(0)));
+        assert!(debugger.has_endpoint());
+        debugger.close(&supervisor).unwrap();assert!(!debugger.has_endpoint());
+        eprintln!("six-profile stage=complete elapsed_ms={}",elapsed.elapsed().as_millis());
     }
 
     #[test]

@@ -6,6 +6,7 @@ import {resolve, join} from 'node:path';
 import {mkdir, copyFile, readFile, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {firmwareMotorPorts} from './lib/spike-nuttx-topology.mjs';
 import {programStorageAbiAddress} from './lib/spike-program-storage-marker.mjs';
 import {firmwareExtraNotices} from './lib/spike-firmware-notices.mjs';
 import {prepareInitialFlash, initialFlashScenario, INITIAL_FLASH_FILE} from './lib/spike-initial-flash.mjs';
@@ -14,6 +15,7 @@ if (args.length !== 5) throw new Error('Usage: prepare-spike-nuttx-package.mjs F
 const [firmware, models, infrastructure, executable, output] = args.map(p => resolve(p));
 if ([firmware, models, infrastructure, executable, output].some(p => /[\s"'@;\\]/.test(p))) throw new Error('Package paths must not contain monitor metacharacters');
 const extraNotices = await firmwareExtraNotices(firmware);
+const motorPorts = await firmwareMotorPorts(firmware);
 const stage = spawnSync('python3', [join(models, 'tools/stage_prime_runtime.py'), '--infrastructure', infrastructure,
     '--output', output, '--aggregate-display-clock'], {stdio: 'inherit'});
 if (stage.status !== 0) throw new Error('Prime model staging failed');
@@ -66,6 +68,7 @@ await writeFile(join(output, 'nuttx.resc'), `include @${join(output, 'models.cs'
 await writeFile(join(output, 'state-config.json'), JSON.stringify({identity: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none',
     imageSha256: await hash(join(output, 'nuttx-user.elf'))}, programMailbox: mailbox, pythonOutputMailbox: outputMailbox, boot,
     ...(storageAddress === null ? {} : {programStorageAbiAddress: storageAddress}),
+    ...(motorPorts === null ? {} : {motorPorts}),
 paths: {...Object.fromEntries('ABCDEF'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');
 const files = [...(seeded ? [INITIAL_FLASH_FILE] : []), 'models.cs', 'nuttx.resc', 'state-config.json', ...copies.map(c => c[1]),
     'licenses/renode-models-MIT.txt', 'licenses/brickwright-BSD-3-Clause.txt',
