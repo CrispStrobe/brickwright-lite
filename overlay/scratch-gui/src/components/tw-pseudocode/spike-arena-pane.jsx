@@ -1,6 +1,7 @@
 import React from 'react';
 import {compileFirmwareProgram} from '../../lib/spike-arena/firmware-program.js';
 import {RenodeArenaSession} from '../../lib/spike-arena/renode-arena-session.js';
+import {encodePython, encodeInstructions} from '../../lib/spike-nuttx/upload-protocol.js';
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
 import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
 import {browserLocale} from '../../lib/bw-i18n.js';
@@ -388,10 +389,12 @@ class SpikeArenaPane extends React.Component {
             }});
     }
 
-    async startFirmware (program = null, {onCompleted = () => {}} = {}) {
+    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}} = {}) {
         if (!this.bridge) return;
         // Compile before stopping a running session: unsupported blocks never run a demo.
-        if (this.state.execution === 'program' && !program) program = compileFirmwareProgram(this.vm);
+        if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm);
+        if (source !== null) encodePython(source);
+        if (program) encodeInstructions(program);
         await this.stopProgram();
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
@@ -399,10 +402,11 @@ class SpikeArenaPane extends React.Component {
         const capabilities = this.props.renodeCapabilities || createNativeRenodeCapabilities({
             invoke: typeof internals?.invoke === 'function' ? internals.invoke.bind(internals) : null
         });
-        const session = new RenodeArenaSession({bridge: this.bridge, capabilities, program,
+        const backend = source !== null || this.state.execution === 'nuttx' ? 'nuttx' : 'guest';
+        const session = new RenodeArenaSession({bridge: this.bridge, capabilities, backend, program, source, onOutput,
             onCompleted: () => { onCompleted(); if (!this.disposed) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); },
             onStopped: () => { if (!this.disposed && this.firmwareSession === session) {
-                this.firmwareSession = null; this.setState({execution: program ? 'program' : 'native', status: 'paused'});
+                this.firmwareSession = null; this.setState({execution: backend === 'nuttx' ? 'nuttx' : program ? 'program' : 'renode', status: 'paused'});
             } },
             onFrame: snapshot => { if (!this.disposed && this.firmwareSession === session) {
                 this.setState({status: 'running', readout: snapshot, verdict: snapshot.verdict}); this.draw();
@@ -415,7 +419,7 @@ class SpikeArenaPane extends React.Component {
         this.setState({status: 'starting', message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
         try {
             await session.start();
-            if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: program ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
+            if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: program || source !== null ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
                 'Die eingebaute Fahrdemo läuft.' : 'Running the built-in driving demo.')});
         } catch (error) {
             if (!this.disposed && this.firmwareSession === session) {
@@ -425,7 +429,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
-        if (['renode', 'program'].includes(this.state.execution)) {
+        if (['renode', 'program', 'nuttx'].includes(this.state.execution)) {
             try { return await this.startFirmware(); }
             catch (error) { this.setState({status: 'failed', message: error.message}); return; }
         }
@@ -658,6 +662,9 @@ class SpikeArenaPane extends React.Component {
                             </option>
                             <option value="program" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
                                 {this.locale === 'de' ? 'Firmware-Programm (Desktop)' : 'Firmware program (desktop)'}
+                            </option>
+                            <option value="nuttx" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
+                                {this.locale === 'de' ? 'Vollständiges NuttX (Desktop)' : 'Full NuttX (desktop)'}
                             </option>
                         </select>
                         <button type="button" style={btn} disabled={!world || this.state.execution !== 'native'} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>

@@ -3819,6 +3819,25 @@ class PseudocodeImporter extends React.Component {
      * lands in the console below via the VM's say events; what the reader could
      * not express, and what it approximated, is listed there too.
      */
+    async runOnNuttxPython () {
+        this.openSpikeArena();
+        this.setState({busy: true});
+        try {
+            const source = this.activeCode();
+            const deadline = Date.now() + 15000;
+            while (!window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+            const pane = window.__bwSpikeArena?._pane;
+            if (!pane?.bridge) throw new Error('Open the SPIKE arena before running firmware');
+            await new Promise(resolve => pane.setState({execution: 'nuttx'}, resolve));
+            await pane.startFirmware(null, {source,
+                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]}), onCompleted: () => this.setState({spike3Running: false, status: 'Python firmware program completed.'})});
+            if (!pane.firmwareSession) throw new Error(pane.state.message || 'Full NuttX firmware could not start');
+            this._spike3Stop = () => pane.stopProgram();
+            this.setState({spike3Running: true, status: 'Python running in full NuttX firmware.'});
+        } catch (error) { this.setState({status: error.message}); }
+        finally { this.setState({busy: false}); }
+    }
+
     async runOnSpikeFirmware () {
         this.openSpikeArena();
         this.setState({busy: true});
@@ -3828,7 +3847,7 @@ class PseudocodeImporter extends React.Component {
             while (!window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
             const pane = window.__bwSpikeArena?._pane;
             if (!pane?.bridge) throw new Error('Open the SPIKE arena before running firmware');
-            await new Promise(resolve => pane.setState({execution: 'program'}, resolve));
+            await new Promise(resolve => pane.setState({execution: pane.state.execution === 'nuttx' ? 'nuttx' : 'program'}, resolve));
             await pane.startFirmware(null, {onCompleted: () => this.setState({spike3Running: false, status: 'Firmware program completed.'})});
             if (!pane.firmwareSession) throw new Error(pane.state.message || 'Firmware could not start');
             this._spike3Stop = () => pane.stopProgram();
@@ -3853,7 +3872,7 @@ class PseudocodeImporter extends React.Component {
         if (report.unsupported && report.unsupported.length) push('err', this.L.spike3Unsupported(report.unsupported.length));
         (report.unsupported || []).forEach(u => push('err', `# unsupported: ${u}`));
         (report.notes || []).forEach(n => push('note', `${this.L.spike3Note}: ${n}`));
-        try { await this.compile({strict: window.__bwSpikeArena?._pane?.state.execution === 'program'}); }
+        try { await this.compile({strict: ['program', 'nuttx'].includes(window.__bwSpikeArena?._pane?.state.execution)}); }
         catch (error) { push('err', error.message); return; }
         const result = await runSpike3OnVirtualHub(this.props.vm, {
             onPrint: text => push('out', String(text)),
@@ -5640,6 +5659,13 @@ class PseudocodeImporter extends React.Component {
                             data-testid="bw-open-spike-arena">
                             {this.L.openSpikeArena}
                         </button>
+                        {window.__TAURI_INTERNALS__ && this.state.lang === 'python' && this.activeCode().trim() ?
+                            <button type="button" onClick={() => this.runOnNuttxPython()} disabled={this.state.busy}
+                                style={actionBtn} data-testid="bw-spike-nuttx-python-run"
+                                title={pickLocale(this.props.locale) === 'de' ? 'Python in unserer vollständigen NuttX-Firmware ausführen. Benötigt das Desktop-Paket mit eingebettetem MicroPython; Roboter-API: brickwright.' :
+                                    'Run Python in our full NuttX firmware. Requires the desktop package with embedded MicroPython; robot API: brickwright.'}>
+                                ▶ Python · NuttX
+                            </button> : null}
                         {window.__TAURI_INTERNALS__ && ((this.state.lang === 'pseudocode' && this.currentDevice() === 'spike') || (this.state.lang === 'python' && isSpike3Program(this.activeCode()))) ? <button type="button" onClick={() => this.runOnSpikeFirmware()}
                             disabled={this.state.busy} style={actionBtn} data-testid="bw-spike-firmware-run"
                             title={this.L.spikeFirmwareRunTitle}>

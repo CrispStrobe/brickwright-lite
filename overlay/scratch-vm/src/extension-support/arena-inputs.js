@@ -43,3 +43,14 @@ const validArenaProgram = value => {
     return value.instructions[count - 1].every(word => word === 0);
 };
 module.exports = {validArenaInputs, validArenaProgram};
+
+// Our upload ABI only. No firmware paths, addresses or monitor language.
+module.exports.validNuttxPacket = value => {
+    if (!value || Object.getPrototypeOf(value) !== Object.prototype ||
+        Object.keys(value).length !== 1 || !Array.isArray(value.bytes)) return false;
+    const b = value.bytes;
+    if (b.length < 8 || b.length > 20 || b.some(v => !Number.isInteger(v) || v < 0 || v > 255) ||
+        b[0] !== 0x70 || b[1] !== 1 || b[3] !== 0 || b[2] > 7 ||
+        (b.slice(4, 8).every(v => v === 0) && b[2] !== 5)) return false;
+    return [0, 7].includes(b[2]) ? b.length === 16 : b[2] === 1 ? b.length >= 11 : b.length === 8;
+};

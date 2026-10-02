@@ -41,7 +41,7 @@ const CONNECT_WAIT_MS = 5000;
 export async function runSpike3OnVirtualHub (vm, options = {}) {
     const win = options.window || (typeof window === 'undefined' ? globalThis : window);
     const pane = win.__bwSpikeArena?._pane;
-    if (pane?.state.execution === 'program') {
+    if (['program', 'nuttx'].includes(pane?.state.execution)) {
         try {
             await pane.startFirmware(null, {onCompleted: options.onCompleted});
             if (!pane.firmwareSession) return {ok: false, reason: 'firmware', detail: pane.state.message};

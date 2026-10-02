@@ -2,7 +2,7 @@
  * Closed, semantic capability vocabulary. Values describe public broker operations, never native
  * command names. Adding an operation is a security review: unknown names and wildcards fail closed.
  */
-const {validArenaInputs, validArenaProgram} = require('./arena-inputs');
+const {validArenaInputs, validArenaProgram, validNuttxPacket} = require('./arena-inputs');
 const VOCABULARY_VERSION = 1;
 const MAX_DIAGNOSTICS = 256;
 const OPERATIONS = Object.freeze({
@@ -10,7 +10,7 @@ const OPERATIONS = Object.freeze({
         validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
     }),
     'renode.spike.session.start': Object.freeze({
-        validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
+        validate: args => isPlainRecord(args) && (hasOnlyKeys(args, []) || (hasOnlyKeys(args, ['backend']) && ['guest', 'nuttx'].includes(args.backend)))
     }),
     'renode.spike.session.close': Object.freeze({
         validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
@@ -25,6 +25,7 @@ const OPERATIONS = Object.freeze({
         hasOnlyKeys(args, ['address', 'length']) && Number.isInteger(args.address) && args.address >= 0 &&
         args.address <= 0xffffffff && Number.isInteger(args.length) && args.length >= 1 && args.length <= 4096}),
     'renode.spike.arena.inputs.write': Object.freeze({validate: validArenaInputs}),
+    'renode.spike.program.packet': Object.freeze({validate: validNuttxPacket}),
     'renode.spike.arena.program.load': Object.freeze({validate: validArenaProgram}),
     'renode.spike.state.read': Object.freeze({validate: args =>
         isPlainRecord(args) && hasOnlyKeys(args, [])}),
