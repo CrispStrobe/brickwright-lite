@@ -482,6 +482,23 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+ADP7118 startup installed package adoption — **CLAIMED 2026-10-02**, Codex bwcx
+`/root`, isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`,
+branch `lane/adp7118-startup-package-adoption-20261002`, exact base
+`950f4856fe0fd699e89de28e6a4c23c4e131f94f`. Own Board/CUI package boundary:
+adopt Board `944d1357e093fdb4c65bed65de378e1128dfc1ac` and CUI
+`6471bf44ec64c86384a6f48fdd9df625e6de5512`, qualified upstream before adoption.
+Scope: vendor-pins.json, derived root/GUI package specifications and locks,
+generated package notices/census/reports/controller and ROM provenance mirrors
+only where pin-stale, this paragraph, test/adp7118-package-adoption.test.mjs,
+test/installed-measurement-authority.test.mjs, the other four physical-part
+adoption tests' exact package assertions only, scripts/verify-circuit-rendering.mjs.
+Prove real installed startup waveform and meter mean, honest reactive-overload
+refusal and sticky measurement invalidation, plus production browser startup
+capture. Preserve default DC fixture and all physical expectations. No source
+copy/fork, other pin, solver/model/tolerance/workflow or corpus change. One final
+Build qualification; guarded normal landing and actual Pages publication proof.
+
 Instantaneous meter operand package adoption — **DONE candidate 2026-10-02**, Codex bwcx
 `/root`, clean isolated `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`,
 branch `lane/meter-operand-package-adoption-20261002`, exact base
