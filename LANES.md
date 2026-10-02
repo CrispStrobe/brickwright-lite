@@ -508,6 +508,13 @@ Package notice pair regenerated identically; census, 8086 report, matrix,
 part-profiles, reader coverage and Rust notices unchanged/current. No model or
 physical expectation move. Single exact branch Build required before landing;
 public deployment verification required before claiming published follow-up.
+Qualification base moved while run `37009084856` had no assigned runner:
+main `d8567da0c` landed NuttX GUI work, with no package-pin or lane-path overlap.
+Cancel only that own unstarted obsolete run; preserve `75e8e34c8` and merge
+main forward normally, no force/rebase. Combined focused surface 33/33, zero
+skips; non-LANES lane diff byte-identical (SHA256
+`98c2807c088d1f20997fddaf36ac86077f51b12b44ccdbe39bd096d4b7431807`).
+Fresh exact combined-head qualification is required; old run not evidence.
 
 Measurement browser package follow-up: Codex bwcx `/root` owns the CUI package
 boundary in `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`, branch
