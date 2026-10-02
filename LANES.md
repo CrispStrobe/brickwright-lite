@@ -488,6 +488,16 @@ unstaged-pin diagnostic is not a final receipt); controller/mirror surface
 21/21. Existing part voltages/currents and binary hashes remain unchanged.
 Keep the pre-existing tracked/ignored ROM-mirror boundary: three generated
 ignored provenance copies remain build outputs, not new tracked vendor files.
+Hosted red1 at `12195f7b1`, Build `36981857258`: 5331 tests, 5315 pass,
+one failure and 15 documented skips. Both browser shards, corpus and FPGA green.
+The sole failure is circuit-engine-surface's namespace scanner mistaking nested
+receipt.engine fields and literal field labels for injected engine APIs. Expand
+the evidence envelope by that existing test only: mask comments/quoted text,
+retain executable template interpolations, and distinguish root engine/eng
+receivers from nested receipt fields. No API allowlist or production/pin change.
+Red1 focused scanner/measurement/gate-shape surface 18/18; three actual injected
+API omissions still fail by name. Fresh replacement qualification is required;
+the old red is not a landing or deployment receipt.
 
 | Live measurement truthfulness package adoption and Pages release | Codex bwcx `/root`, worktree `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`, branch `lane/live-measurement-package-adoption-20261002` | exact base `4f8768b26a5f4c9cfe97fe22a8501d5a2d77fbed`; own bw-board/bw-circuit-ui package boundary only: vendor-pins, derived root/GUI package specs and locks, generated census/notices/reports/ROM and controller-bundle provenance and mirrors only where needed, this row, new installed consumer measurement test and five existing part-adoption tests' exact package assertions. Adopt upstream Board `c0dea37a` and CUI `c76dcc4` descendants; no source fork, sb3/flasher/other pin changes, unrelated UI or workflow changes. | **DONE candidate 2026-10-02.** Upstream exact-master Board CI `36978531759` is green; CUI exact `36978807700` all four jobs green. Installed root npm-pack bytes verified against both pinned Git trees (3578 Board/1299 CUI files), with single-engine resolution. Local supported Node 24: adjacent 23/23, part/measurement adoption 11/11; two runtime-injected helper mutants genuinely red (stale meter=1 and false native available=true), then pristine installed tests 2/2. Existing physical expectations unchanged. Both locks regenerated using CI's established GUI peer policy; only the selected packages move (plus identical xterm block reordering). Census is now 34 rows; 8086 report, matrix, profiles, reader coverage, census, package and Rust notices checks pass. Independent hosted-target check cannot reproduce its unchanged snapshot: recorded stc SHA `f1574b0f` is unavailable from that remote; not silently regenerated against another authority. DOS/CP/M/free-386 source directories and controller source unchanged across the pin range; four ROM byte comparisons pass, controller regenerated with unchanged hash. One branch Build qualification, guarded main landing, then Pages deployment/smoke; no deployment claim before evidence. |
 
