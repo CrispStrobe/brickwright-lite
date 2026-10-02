@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 import {RenodeArenaBridge} from './renode-arena-bridge.js';
 import {NuttXProgramClient, encodePython, encodeInstructions} from '../spike-nuttx/upload-protocol.js';
+import {exchangeStorage, DEFERRED_STORAGE_CAPABILITY} from '../spike-nuttx/storage-exchange.js';
 /** Owns only a session it successfully started; stopping invalidates outstanding polls. */
 export class RenodeArenaSession {
     constructor ({bridge, capabilities, backend = null, program = null, source = null, onOutput = () => {}, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}, onProgramState = () => {}}) {
@@ -39,6 +40,8 @@ export class RenodeArenaSession {
             this.outputSequence = first.lifecycle?.nuttxProgramOutput?.sequence;
             this.nuttx = first.target?.firmware === 'brickwright-nuttx' &&
                 first.target?.capabilities?.includes('nuttx-program/v1');
+            this.initialFrame = first;
+            this.storageDeferred = first.target?.capabilities?.includes(DEFERRED_STORAGE_CAPABILITY);
             this.storageSupported = Boolean(this.nuttx && first.target?.capabilities?.includes('nuttx-program-storage/v1'));
             if (this.nuttx && !this.program && this.source === null) {
                 this.program = {version: 1, instructions: [[1, 0, -150, 0], [1, 1, 150, 0], [2, 2000, 0, 0], [0, 0, 0, 0]]};
@@ -59,6 +62,17 @@ export class RenodeArenaSession {
             if (this.closed) return;
             if (this.nuttx && (this.program || this.source !== null)) {
                 this.programClient = new NuttXProgramClient(async bytes => {
+                    if ([8, 9].includes(bytes[2]) && this.storageDeferred) {
+                        return exchangeStorage({packet: bytes, initialFrame: this.initialFrame,
+                            submit: async args => JSON.parse(await this.call('program.storage.submit', args)),
+                            sample: async () => JSON.parse(await this.call('state.read')),
+                            closed: () => this.closed,
+                            onFrame: frame => {
+                                this.adapter.accept(frame);
+                                this.observeOutput(frame);
+                                this.onFrame(this.adapter.bridge.snapshot());
+                            }});
+                    }
                     const frame = JSON.parse(await this.call('program.packet', {bytes: Array.from(bytes)}));
                     if (!this.closed) {
                         this.observeProgram(frame.lifecycle?.nuttxProgram);
@@ -86,7 +100,7 @@ export class RenodeArenaSession {
         this.onOutput(output);
     }
     schedule () {
-        if (this.closed || this.storageBusy || this.uploading) return;
+        if (this.closed || this.storageUncertain || this.storageBusy || this.uploading) return;
         clearTimeout(this.timer);
         this.timer = setTimeout(() => {
             this.tail = this.poll();
@@ -136,6 +150,7 @@ export class RenodeArenaSession {
     async storage (operation) {
         if (!this.storageSupported || !this.programClient || this.closed) throw new Error('Program storage requires a supported live NuttX session');
         if (!['save', 'load'].includes(operation)) throw new TypeError('Unknown storage operation');
+        if (this.storageUncertain) throw new Error('Program storage result is unknown; close this session before continuing');
         if (this.uploading || this.programState === 2 || this.storageBusy) throw new Error('Program storage is busy; stop the program and wait before trying again');
         this.storageBusy = true;
         clearTimeout(this.timer);
@@ -146,12 +161,17 @@ export class RenodeArenaSession {
             if (operation === 'load') this.loaded = true;
             this.observeProgram(reply);
             return reply;
+        } catch (error) {
+            // A correlated errno is complete. A transport/correlation failure
+            // leaves persistence uncertain; do not send another program packet.
+            if (this.storageDeferred && !error.reply) this.storageUncertain = true;
+            throw error;
         } finally { this.storageBusy = false; this.schedule(); }
     }
     async uploadProgram (program, source = null) {
         if (source !== null) encodePython(source);
         else encodeInstructions(program);
-        if (this.closed || !this.storageSupported || !this.programClient || this.storageBusy || this.uploading) throw new Error('NuttX program is unavailable or busy');
+        if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.storageBusy || this.uploading) throw new Error('NuttX program is unavailable or busy');
         this.uploading = true; clearTimeout(this.timer);
         try {
             await this.tail;
@@ -163,12 +183,12 @@ export class RenodeArenaSession {
         } finally { this.uploading = false; this.schedule(); }
     }
     async startProgram () {
-        if (this.closed || !this.storageSupported || !this.programClient || this.uploading || this.storageBusy) throw new Error('NuttX program is unavailable or busy');
+        if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.uploading || this.storageBusy) throw new Error('NuttX program is unavailable or busy');
         this.completed = false;
         return this.controlProgram('start');
     }
     async stopProgram () {
-        if (this.closed || !this.programClient) throw new Error('NuttX program is unavailable');
+        if (this.closed || this.storageUncertain || !this.programClient) throw new Error('NuttX program is unavailable');
         return this.controlProgram('stop');
     }
     async controlProgram (operation) {

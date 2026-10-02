@@ -171,3 +171,75 @@ test('old NuttX package cannot invoke storage and transport errno remains availa
     try { await assert.rejects(session.storage('save'), error => error.result === -16);assert.equal(calls, 1);assert.equal(session.storageBusy, false); }
     finally { clearTimeout(session.timer); }
 });
+
+test('uncertain deferred storage blocks new program commands; errno completion stays reusable', async () => {
+    const session = new RenodeArenaSession({bridge: bridge()});
+    session.storageSupported = true;session.storageDeferred = true;session.programState = 1;
+    let calls = 0;
+    session.programClient = {save: async () => {calls++;throw new Error('endpoint lost');}};
+    await assert.rejects(session.storage('save'), /endpoint lost/);
+    assert.equal(session.storageUncertain, true);assert.equal(session.timer, undefined);
+    await assert.rejects(session.storage('save'), /result is unknown/);
+    await assert.rejects(session.uploadProgram({version:1,instructions:[[0,0,0,0]]}), /unavailable or busy/);
+    await assert.rejects(session.startProgram(), /unavailable or busy/);
+    await assert.rejects(session.stopProgram(), /unavailable/);assert.equal(calls, 1);
+    session.storageUncertain = false;
+    session.programClient.save = async () => {throw Object.assign(new Error('flash busy'), {result: -16, reply: {op: 8}});};
+    try { await assert.rejects(session.storage('save'), e => e.result === -16);assert.equal(session.storageUncertain, false); }
+    finally {clearTimeout(session.timer);}
+});
+
+test('live session selects deferred submit for storage and polls without START or direct storage packets', async () => {
+    let seq = 0, state = 0, metadata, lastReply, storageReads = 0;
+    const calls = [];
+    const makeFrame = () => {
+        const frame = programFrame();frame.seq = ++seq;frame.clockNs = seq * 1000000;
+        frame.target.firmware = 'brickwright-nuttx';
+        frame.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1', 'nuttx-program-storage-deferred/v1');
+        frame.lifecycle.phase = 'ready';frame.lifecycle.generation = 1;
+        frame.lifecycle.nuttxProgram = {state, error: 0};
+        if (metadata) frame.lifecycle.nuttxProgramStorage = {...metadata};
+        if (lastReply) frame.lifecycle.nuttxProgramReply = lastReply;
+        return frame;
+    };
+    const reply = op => [0x71, 1, op, state, 1, 0, 0, 0, ...Array(12).fill(0)];
+    const capabilities = Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write',
+        'program.packet','program.storage.submit'].map(op => [`renode.spike.${op}`, async args => {
+        calls.push([op, args]);
+        if (op === 'program.packet') {
+            assert.ok(args.bytes[2] < 8, 'storage must not use the synchronous path');
+            if (args.bytes[2] === 2) state = 1;
+            if (args.bytes[2] === 3) state = 2;
+            if (args.bytes[2] === 4) state = 4;
+            metadata = undefined;lastReply = reply(args.bytes[2]);return JSON.stringify(makeFrame());
+        }
+        if (op === 'program.storage.submit') {
+            const operation = args.bytes[2];
+            metadata = {requestSeq: operation === 8 ? 12 : 14, replySeq: operation === 8 ? 10 : 12,
+                operation, programId: 1, pending: true};storageReads = 0;
+            return JSON.stringify(makeFrame()); // lastReply remains the old START response
+        }
+        if (op === 'state.read') {
+            if (metadata && ++storageReads === 2) {
+                metadata.pending = false;metadata.replySeq = metadata.requestSeq;
+                if (metadata.operation === 9) state = 1;
+                lastReply = reply(metadata.operation);
+            }
+            return JSON.stringify(makeFrame());
+        }
+        return 'ready';
+    }]));
+    const session = new RenodeArenaSession({bridge: bridge(), capabilities, backend: 'nuttx',
+        program: {version:1,instructions:[[0,0,0,0]]}});
+    try {
+        await session.start();clearTimeout(session.timer);
+        state = 3;session.observeProgram({state});
+        const before = calls.length;
+        await session.storage('save');clearTimeout(session.timer);
+        await session.storage('load');clearTimeout(session.timer);
+        assert.equal(session.loaded, true);assert.equal(session.programState, 1);
+        assert.deepEqual(calls.slice(before).map(c => c[0]), ['program.storage.submit', 'state.read', 'state.read',
+            'program.storage.submit', 'state.read', 'state.read']);
+        assert.equal(session.closed, false);
+    } finally {await session.stop();}
+});

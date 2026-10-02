@@ -172,10 +172,29 @@ pub(crate) fn valid_nuttx_packet(value: &Value) -> bool {
     }
 }
 
+/// Deferred storage submission cannot carry upload or execution instructions.
+pub(crate) fn valid_nuttx_storage_submit(value: &Value) -> bool {
+    valid_nuttx_packet(value)
+        && value["bytes"].as_array().is_some_and(|bytes| bytes.len() == 8)
+        && matches!(value["bytes"][2].as_u64(), Some(8 | 9))
+}
+
 #[cfg(test)]
 mod nuttx_packet_tests {
     use super::valid_nuttx_packet;
     use serde_json::json;
+    #[test]
+    fn deferred_storage_is_a_closed_nonexecution_operation() {
+        for op in [8, 9] {
+            assert!(super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,op,0,1,0,0,0]})));
+            assert!(!super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,op,0,0,0,0,0]})));
+        }
+        for op in [2, 3, 4, 5, 6] {
+            assert!(!super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,op,0,1,0,0,0]})));
+        }
+        assert!(!super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,8,0,1,0,0,0],"path":"program"})));
+    }
+
     #[test]
     fn packets_are_bounded_and_cannot_select_memory_or_monitor_commands() {
         assert!(valid_nuttx_packet(&json!({"bytes":[112,1,5,0,0,0,0,0]})));

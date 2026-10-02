@@ -166,6 +166,13 @@ impl BrickStateDecoder {
         {
             return Err("brick-state snapshot shape is malformed".into());
         }
+        let deferred = snapshot.target.capabilities.iter().any(|cap| cap == "nuttx-program-storage-deferred/v1");
+        if (deferred && (snapshot.target.board != "spike-prime" || snapshot.target.firmware != "brickwright-nuttx"
+            || !snapshot.target.capabilities.iter().any(|cap| cap == "nuttx-program-storage/v1")))
+            || (snapshot.lifecycle.get("nuttxProgramStorage").is_some() && !deferred)
+            || !valid_storage_metadata(&snapshot.lifecycle) {
+            return Err("brick-state storage metadata is malformed".into());
+        }
         if let Some(digest) = &snapshot.target.image_sha256 {
             if digest.len() != 64
                 || !digest
@@ -194,6 +201,29 @@ impl BrickStateDecoder {
         self.last_seq = Some(snapshot.seq);
         Ok(snapshot)
     }
+}
+
+fn valid_storage_metadata(lifecycle: &serde_json::Value) -> bool {
+    let Some(metadata) = lifecycle.get("nuttxProgramStorage") else { return true; };
+    let Some(fields) = metadata.as_object() else { return false; };
+    if fields.len() != 5 { return false; }
+    let request = metadata["requestSeq"].as_u64();
+    let reply = metadata["replySeq"].as_u64();
+    if !request.is_some_and(|v| v > 0 && v <= u32::MAX as u64 && v % 2 == 0)
+        || !reply.is_some_and(|v| v <= u32::MAX as u64 && v % 2 == 0)
+        || !matches!(metadata["operation"].as_u64(), Some(8 | 9))
+        || !metadata["programId"].as_u64().is_some_and(|v| v > 0 && v <= u32::MAX as u64)
+        || metadata["pending"].as_bool() != Some(request != reply) { return false; }
+    if request == reply {
+        let Some(bytes) = lifecycle["nuttxProgramReply"].as_array() else { return false; };
+        if bytes.len() != 20 || bytes.iter().any(|v| !v.as_u64().is_some_and(|v| v <= 255))
+            || bytes[0].as_u64() != Some(0x71) || bytes[1].as_u64() != Some(1)
+            || bytes[2].as_u64() != metadata["operation"].as_u64()
+            || !bytes[3].as_u64().is_some_and(|v| v <= 5) { return false; }
+        let id = (0..4).fold(0u64, |id, i| id | (bytes[4 + i].as_u64().unwrap() << (i * 8)));
+        if Some(id) != metadata["programId"].as_u64() { return false; }
+    }
+    true
 }
 
 pub(crate) struct BrickStateFeed {
@@ -327,6 +357,7 @@ impl BrickStateFeed {
     ) -> Result<BrickStateSnapshot, String> {
         match name {
             "nuttx.program.packet" if crate::arena_inputs::valid_nuttx_packet(&arguments) => {}
+            "nuttx.program.storage.submit" if crate::arena_inputs::valid_nuttx_storage_submit(&arguments) => {}
             "arena.inputs" if crate::arena_inputs::valid(&arguments) => {}
             "arena.program.load" if crate::arena_inputs::valid_program(&arguments) => {}
             "state.sample" if arguments.as_object().is_some_and(|args| args.is_empty()) => {}
@@ -349,10 +380,11 @@ impl BrickStateFeed {
         let prior = self.latest()?;
         let target_ok = match name {
             "state.sample" => true,
-            "nuttx.program.packet" => prior.target.board == "spike-prime"
+            "nuttx.program.packet" | "nuttx.program.storage.submit" => prior.target.board == "spike-prime"
                 && prior.target.transport == "none"
                 && prior.target.firmware == "brickwright-nuttx"
                 && prior.target.capabilities.iter().any(|cap| cap == "nuttx-program/v1")
+                && (name != "nuttx.program.storage.submit" || prior.target.capabilities.iter().any(|cap| cap == "nuttx-program-storage-deferred/v1"))
                 && (arguments["bytes"][2].as_u64().is_some_and(|op| op < 8)
                     || prior.target.capabilities.iter().any(|cap| cap == "nuttx-program-storage/v1")),
             "arena.inputs" | "arena.program.load" => {
@@ -426,6 +458,28 @@ mod tests {
         format!(
             r#"{{"schemaVersion":1,"type":"snapshot","seq":{seq},"clockNs":42,"target":{{"board":"spike-prime","firmware":"brickwright-nuttx","transport":"none","imageSha256":null,"capabilities":[],"limitations":[]}},"lifecycle":{{"phase":"ready","generation":1}},"ports":[],"motors":[],"sensors":[],"display":{{"width":5,"height":5,"pixels":[]}},"buttons":{{}},"battery":{{"percent":100}},"power":{{"state":"on"}},"imu":{{"acceleration":{{"x":0,"y":0,"z":0}},"angularVelocity":{{"x":0,"y":0,"z":0}}}},"audio":{{"active":false}},"storage":{{"ready":true}},"bluetooth":{{"state":"modeled","transport":"none"}}}}"#
         )
+    }
+
+    #[test]
+    fn storage_metadata_requires_bounded_coherent_sequences_and_matching_completion() {
+        let mut lifecycle = serde_json::json!({"nuttxProgramStorage": {
+            "requestSeq": 12, "replySeq": 10, "operation": 8, "programId": 1, "pending": true
+        }, "nuttxProgramReply": [113,1,9,1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]});
+        assert!(super::valid_storage_metadata(&lifecycle)); // prior reply is intentionally ignored
+        for (field, value) in [("requestSeq", serde_json::json!(3)), ("replySeq", serde_json::json!(4294967296u64)),
+            ("pending", serde_json::json!(false)), ("programId", serde_json::json!(0))] {
+            let mut bad = lifecycle.clone();bad["nuttxProgramStorage"][field] = value;
+            assert!(!super::valid_storage_metadata(&bad));
+        }
+        lifecycle["nuttxProgramStorage"]["replySeq"] = serde_json::json!(12);
+        lifecycle["nuttxProgramStorage"]["pending"] = serde_json::json!(false);
+        assert!(!super::valid_storage_metadata(&lifecycle));
+        lifecycle["nuttxProgramReply"][2] = serde_json::json!(8);
+        assert!(!super::valid_storage_metadata(&lifecycle));
+        lifecycle["nuttxProgramReply"][4] = serde_json::json!(1);
+        assert!(super::valid_storage_metadata(&lifecycle));
+        lifecycle["nuttxProgramReply"][8] = serde_json::json!(256);
+        assert!(!super::valid_storage_metadata(&lifecycle));
     }
 
     #[test]
@@ -523,6 +577,57 @@ mod tests {
     }
 
     #[test]
+    fn deferred_storage_submission_returns_pending_then_sampled_completion() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            let mut snapshot: serde_json::Value = serde_json::from_str(&frame(0)).unwrap();
+            snapshot["target"]["capabilities"] = serde_json::json!([
+                "nuttx-program/v1", "nuttx-program-storage/v1", "nuttx-program-storage-deferred/v1"]);
+            writeln!(stream, "{snapshot}").unwrap();
+            for (seq, expected) in [(1, "nuttx.program.storage.submit"), (2, "state.sample")] {
+                let mut wire = Vec::new();let mut byte = [0];
+                loop { stream.read_exact(&mut byte).unwrap();if byte[0] == b'\n' { break; }wire.push(byte[0]);assert!(wire.len() <= 1024); }
+                let command: serde_json::Value = serde_json::from_slice(&wire).unwrap();
+                assert_eq!(command["command"], expected);
+                if seq == 1 { assert_eq!(command["arguments"], serde_json::json!({"bytes":[112,1,8,0,1,0,0,0]})); }
+                snapshot["seq"] = serde_json::json!(seq);
+                snapshot["lifecycle"]["nuttxProgramStorage"] = serde_json::json!({
+                    "requestSeq": 12, "replySeq": if seq == 1 {10} else {12}, "operation": 8, "programId": 1, "pending": seq == 1});
+                if seq == 2 { snapshot["lifecycle"]["nuttxProgramReply"] = serde_json::json!([113,1,8,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]); }
+                writeln!(stream, "{}", serde_json::json!({"schemaVersion":1,"type":"result","accepted":true,
+                    "seq":seq-1,"requestId":format!("input-{}",seq-1)})).unwrap();
+                writeln!(stream, "{snapshot}").unwrap();
+            }
+            thread::sleep(Duration::from_millis(100));
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();feed.wait_ready(Duration::from_secs(2)).unwrap();
+        let pending = feed.command("nuttx.program.storage.submit", serde_json::json!({"bytes":[112,1,8,0,1,0,0,0]})).unwrap();
+        assert_eq!(pending.lifecycle["nuttxProgramStorage"]["pending"], true);
+        assert_eq!(feed.sample().unwrap().lifecycle["nuttxProgramStorage"]["pending"], false);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn synchronous_storage_capability_does_not_authorize_deferred_submission() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            let old = frame(0).replace("\"capabilities\":[]", "\"capabilities\":[\"nuttx-program/v1\",\"nuttx-program-storage/v1\"]");
+            writeln!(stream, "{old}").unwrap();let mut byte = [0];
+            match stream.read(&mut byte) {
+                Ok(0) => {}, Err(error) if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => {},
+                other => panic!("deferred request escaped capability gate: {other:?}"),
+            }
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();feed.wait_ready(Duration::from_secs(2)).unwrap();
+        assert_eq!(feed.command("nuttx.program.storage.submit", serde_json::json!({"bytes":[112,1,8,0,1,0,0,0]})).unwrap_err(), "brick-state input target mismatch");
+        drop(feed);server.join().unwrap();
+    }
+
+    #[test]
     fn older_nuttx_capability_refuses_storage_before_writing_to_backend() {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         let endpoint = listener.local_addr().unwrap();
@@ -542,6 +647,8 @@ mod tests {
         feed.wait_ready(Duration::from_secs(2)).unwrap();
         for operation in [8, 9] {
             assert_eq!(feed.command("nuttx.program.packet", serde_json::json!({"bytes":[112,1,operation,0,1,0,0,0]})).unwrap_err(),
+                "brick-state input target mismatch");
+            assert_eq!(feed.command("nuttx.program.storage.submit", serde_json::json!({"bytes":[112,1,operation,0,1,0,0,0]})).unwrap_err(),
                 "brick-state input target mismatch");
         }
         drop(feed);

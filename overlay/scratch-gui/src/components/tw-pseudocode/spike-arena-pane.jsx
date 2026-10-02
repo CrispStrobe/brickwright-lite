@@ -463,7 +463,10 @@ class SpikeArenaPane extends React.Component {
             } : {'-16': 'Program storage is busy; stop the program and wait before trying again.',
                 '-2': 'No saved program exists in this simulator session.', '-22': 'Program storage rejected invalid data or a mismatched program ID.',
                 '-5': 'Program storage failed: simulator flash I/O error.', '-74': 'Saved program is damaged or invalid.'};
-            if (!this.disposed && this.firmwareSession === session) this.setState({message: messages[error.result ?? (/busy/.test(error.message) ? -16 : null)] || (this.locale === 'de' ? `Programmspeicher: ${error.message}` : error.message)});
+            if (!this.disposed && this.firmwareSession === session) this.setState({message: session.storageUncertain ?
+                (this.locale === 'de' ? 'Ergebnis des Programmspeichers unbekannt. Diese Simulator-Sitzung vor dem Fortfahren schließen.' :
+                    'Program storage result is unknown. Close this simulator session before continuing.') :
+                messages[error.result ?? (/busy/.test(error.message) ? -16 : null)] || (this.locale === 'de' ? `Programmspeicher: ${error.message}` : error.message)});
         } finally { if (!this.disposed) this.setState({storageBusy: false}); }
     }
 

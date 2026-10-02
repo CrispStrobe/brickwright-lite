@@ -421,6 +421,23 @@ impl RenodeDebugger {
         }
     }
 
+    pub(crate) fn spike_program_storage_submit(&self, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                serde_json::to_value(feed.command("nuttx.program.storage.submit", arguments)?)
+                    .map_err(|_| "SPIKE snapshot unavailable".to_owned())
+            }
+            _ => Err("SPIKE program packet target mismatch".into()),
+        }
+    }
+
     pub(crate) fn spike_arena_program(&self, arguments: Value) -> Result<Value, String> {
         let session = self
             .session
@@ -646,10 +663,41 @@ mod tests {
             let id = u32::from_le_bytes(std::array::from_fn(|i| packet[4+i].as_u64().unwrap() as u8));
             let began = Instant::now();
             eprintln!("storage stage={stage} op={op} id={id} elapsed_ms={}", elapsed.elapsed().as_millis());
-            let response = debugger.spike_program_packet(json!({"bytes": request})).unwrap_or_else(|error| {
+            let mut response = if matches!(op, 8 | 9) {
+                assert!(first["target"]["capabilities"].as_array().unwrap().iter()
+                    .any(|cap| cap == "nuttx-program-storage-deferred/v1"), "stage the deferred-storage server package");
+                debugger.spike_program_storage_submit(json!({"bytes": request}))
+            } else {
+                debugger.spike_program_packet(json!({"bytes": request}))
+            }.unwrap_or_else(|error| {
                 panic!("storage stage={stage} op={op} id={id} elapsed_ms={} packet_ms={} endpoint_owned={} error={error}",
                     elapsed.elapsed().as_millis(), began.elapsed().as_millis(), debugger.has_endpoint())
             });
+            if matches!(op, 8 | 9) {
+                let submitted = response["lifecycle"]["nuttxProgramStorage"]["requestSeq"].as_u64().unwrap();
+                loop {
+                    assert!(began.elapsed() < Duration::from_secs(30), "storage stage={stage} completion timed out");
+                    assert!(debugger.has_endpoint(), "storage endpoint lost at {stage}");
+                    assert_eq!(response["target"], first["target"], "storage target changed at {stage}");
+                    for key in ["generation", "connectionGeneration"] {
+                        assert_eq!(response["lifecycle"][key], first["lifecycle"][key], "storage generation changed at {stage}");
+                    }
+                    let metadata = &response["lifecycle"]["nuttxProgramStorage"];
+                    assert_eq!(metadata["requestSeq"].as_u64(), Some(submitted));
+                    assert_eq!(metadata["operation"].as_u64(), Some(op));
+                    assert_eq!(metadata["programId"].as_u64(), Some(id as u64));
+                    if metadata["pending"] == false {
+                        assert_eq!(metadata["replySeq"].as_u64(), Some(submitted));
+                        break;
+                    }
+                    assert!(began.elapsed() < Duration::from_millis(27950), "storage stage={stage} op={op} id={id} completion timed out");
+                    thread::sleep(Duration::from_millis(50));
+                    response = debugger.state().unwrap_or_else(|error| {
+                        panic!("storage stage={stage} op={op} id={id} poll_ms={} endpoint_owned={} error={error}",
+                            began.elapsed().as_millis(), debugger.has_endpoint())
+                    });
+                }
+            }
             let reply = response["lifecycle"]["nuttxProgramReply"].as_array().unwrap();
             let result = i32::from_le_bytes(std::array::from_fn(|i| reply[8+i].as_u64().unwrap() as u8));
             eprintln!("storage stage={stage} complete state={} result={result} packet_ms={} elapsed_ms={}",
