@@ -102,6 +102,7 @@ on:
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SPIKE-ARENA.md'
+      - 'docs/SPIKE-FIRMWARE-PROGRAMS.md'
       - 'docs/TARGET-EMULATOR-PERFORMANCE.md'
       - 'docs/VENDOR-DIVERGENCE-SB3-CREATOR.md'
       - 'docs/WAVE-OPEN-DEFECTS.md'

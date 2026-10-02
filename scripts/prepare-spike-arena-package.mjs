@@ -9,7 +9,7 @@ import {spawnSync} from 'node:child_process';
 const [firmwareArg, modelsArg, renodeArg, outputArg] = process.argv.slice(2);
 if (!outputArg || process.argv.length !== 6) throw new Error('Usage: prepare-spike-arena-package.mjs FIRMWARE_REPO MODELS_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY');
 const [firmware, models, executable, output] = [firmwareArg, modelsArg, renodeArg, outputArg].map(p => resolve(p));
-if ([firmware, models, executable, output].some(p => /[\s"'@]/.test(p))) throw new Error('Package paths must not contain whitespace or monitor metacharacters');
+if ([firmware, models, executable, output].some(p => /[\s"'@;\\]/.test(p))) throw new Error('Package paths must not contain whitespace or monitor metacharacters');
 await mkdir(output); // Never replace an existing qualified package.
 await Promise.all(['scripts','tools','licenses'].map(p => mkdir(join(output,p))));
 const result = spawnSync('sh',[join(firmware,'simulation/arena-demo/build.sh'),output],{stdio:'inherit'});
