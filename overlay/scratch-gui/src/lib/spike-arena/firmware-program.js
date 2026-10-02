@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 /** Compile a deliberately bounded Scratch subset to our simulation guest ABI. */
-export function compileFirmwareProgram (vm) {
+import {validateTopology} from '../spike-nuttx/motor-topology.js';
+export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
+    validateTopology(topology);
+    const six = topology === 'six-motors';
     const targets = vm?.runtime?.targets || [];
     const scripts = targets.filter(t => t.isOriginal !== false).flatMap(target =>
         (target.blocks?.getScripts() || []).map(id => ({target, id})));
@@ -9,7 +12,7 @@ export function compileFirmwareProgram (vm) {
     const {target, id} = scripts[0];
     const blocks = target.blocks._blocks;
     if (blocks[id]?.opcode !== 'event_whenflagclicked') throw new Error('Firmware programs need a green-flag script');
-    const code = [], speeds = [75, 75]; let movementSpeed = 50;
+    const code = [], speeds = Array(six ? 6 : 2).fill(75); let movementSpeed = 50;
     const fail = block => { throw new Error(`Firmware does not support ${block?.opcode || 'missing block'}`); };
     const emit = (...words) => {
         if (code.length >= 256) throw new Error('Firmware program exceeds 256 instructions');
@@ -35,13 +38,16 @@ export function compileFirmwareProgram (vm) {
     };
     const ports = block => {
         const raw = literal(block, 'PORT').toUpperCase();
-        if (!/^(A|B|AB)$/.test(raw)) throw new Error('Firmware guest supports motors A and B only');
-        return [...raw].map(p => p === 'A' ? 0 : 1);
+        if (six ? !/^[A-F]{1,6}$/.test(raw) || new Set(raw).size !== raw.length : !/^(A|B|AB)$/.test(raw)) {
+            throw new Error(six ? 'Firmware motor ports must be distinct literal A–F letters' : 'Firmware guest supports motors A and B only');
+        }
+        return [...raw].sort().map(p => p.charCodeAt(0) - 65);
     };
     const direction = block => number(block, 'DIRECTION', -1, 1) < 0 ? -1 : 1;
     const speed = percent => Math.round(percent * 11.1);
     const stop = port => emit(1, port, 0, 0);
     const predicate = block => {
+        if (six) throw new Error('Six-motor topology has no arena sensors');
         if (block?.opcode === 'spikeprime_isForceSensorPressed') {
             if (literal(block, 'PORT') !== 'E') throw new Error('Firmware force sensor is E');
             return [3, 1];

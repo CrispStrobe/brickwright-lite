@@ -596,11 +596,14 @@ booting. Packages without that declaration keep the default topology; they
 cannot launch the six-motor profile. The first live snapshot must confirm all
 six attachments before a program upload.
 
-Six-motor execution initially uses Python from the Code tab. The own module
+Six-motor execution supports the bounded Scratch compiler and Python from the Code tab. The own module
 `brickwright` exposes `motor(port, speed)` with numeric ports 0–5 for A–F, for
 example `import brickwright as b; b.motor(5, 200)`. A program must keep running to
-maintain that command; completion and Stop idle the motors. Scratch firmware
-compilation still supports A/B only. The existing sandbox uses A/B as the
+maintain that command; completion and Stop idle the motors. Scratch motor speed, start, brake, and timed commands accept distinct literal
+A–F ports. Multiport commands execute as successive firmware instructions,
+without synchronized starts. Relative degrees/rotations moves accept one motor
+only; arbitrary drivebase pairs, absolute positioning, coast, and hold remain
+unsupported. The rover movement commands still use A/B. The existing sandbox uses A/B as the
 rover's wheels; C–F are additional motors observed through the same shared hub.
 This profile has no arena sensors and does not run sensor-based lessons. It
 observes simulated device models; it makes no physical hardware or radio

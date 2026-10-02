@@ -8,6 +8,19 @@ const {validArenaProgram} = createRequire(import.meta.url)('../overlay/scratch-v
 import {crc32, encodeInstructions, encodePython, encodeBegin, encodeChunk, encodeCommand,
     decodeReply, NuttXProgramClient, uploadProgram} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
 const program = {version: 1, instructions: [[1, 0, -1110, 0], [6, 1, -90, 555], [0, 0, 0, 0]]};
+test('six encoder accepts native C–F while default and guest validators remain strict', async () => {
+    const six={version:1,instructions:[[1,2,-1110,0],[6,5,90,555],[0,0,0,0]]};
+    assert.throws(()=>encodeInstructions(six),/ABI bounds/);assert.equal(validArenaProgram(six),false);
+    const data=encodeInstructions(six,{topology:'six-motors'});
+    assert.equal(new DataView(data.buffer).getInt32(20,true),5);
+    for(const row of [[1,6,0,0],[1,5,1111,0],[6,5,36001,1],[6,5,0,0],[3,1,200,0],[5,3,1,0]]) {
+        assert.throws(()=>encodeInstructions({version:1,instructions:[row,[0,0,0,0]]},{topology:'six-motors'}),/ABI bounds/);
+    }
+    let calls=0;const client=new NuttXProgramClient(async request=>{calls++;return reply(request);},1);
+    assert.throws(()=>client.upload(six),/ABI bounds/);assert.equal(calls,0);
+    const sixClient=new NuttXProgramClient(async request=>{calls++;return reply(request);},1,{topology:'six-motors'});
+    await sixClient.upload(six,{start:false});assert.ok(calls>0);
+});
 function reply (request, {result = 0, state = 1, id, pc = 0, count = 3, received = 0, runtimeError = 0} = {}) {
     const data = new Uint8Array(20), v = new DataView(data.buffer);
     data.set([0x71, 1, request[2], state]);

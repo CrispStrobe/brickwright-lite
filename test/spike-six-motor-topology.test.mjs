@@ -57,10 +57,10 @@ test('all six observations enter the one hub; extra motors do not create arena s
     assert.throws(()=>adapter.accept(bad),/stale, discontinuous/);
     assert.equal(hub.data.motors[5].position,1);adapter.close();
 });
-test('six profile refuses non-Python/guest/sensorful setup before invoking transport', () => {
-    for (const options of [{backend:'guest',source:'pass'},{backend:'nuttx',program:{version:1,instructions:[[0,0,0,0]]}},
+test('six profile refuses empty/guest/sensorful setup before invoking transport', () => {
+    for (const options of [{backend:'guest',source:'pass'},{backend:'nuttx'},
         {backend:'nuttx',source:'pass',bridge:new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()})}]) {
-        assert.throws(()=>new RenodeArenaSession({bridge:bridge(),topology:'six-motors',...options}),/NuttX Python/);
+        assert.throws(()=>new RenodeArenaSession({bridge:bridge(),topology:'six-motors',...options}),/NuttX program/);
     }
 });
 test('bad first snapshot closes only acquired session and sends no program upload', async () => {
@@ -109,4 +109,34 @@ test('own Python upload starts only after six-motor verification and retains one
         assert.ok(hub.data.motors.every(m=>m.position===hub.data.motors[0].position));
     } finally {await s.stop();}
     assert.equal(hub.configurationOwner,null);assert.equal(hub.externalBackend,null);
+});
+
+test('compiled six upload verifies attachments and replacement refreshes capability before any packet', async () => {
+    const b=bridge(), calls=[];let seq=0,state=0,bad=null;
+    const program={version:1,instructions:[[1,5,200,0],[0,0,0,0]]};
+    const snapshot=()=>{const f=frame(++seq);f.target.capabilities.push('nuttx-program-storage/v1');
+        f.lifecycle.nuttxProgram.state=state;if(bad==='cap')f.target.capabilities=f.target.capabilities.filter(c=>c!=='nuttx-six-motors/v1');
+        if(bad==='attachment')f.ports[5].attached=false;return f;};
+    const capabilities=Object.fromEntries(['session.start','session.close','state.read','program.packet','run','arena.inputs.write']
+        .map(op=>[`renode.spike.${op}`,async args=>{
+            calls.push([op,args]);if(op==='state.read')return JSON.stringify(snapshot());if(op!=='program.packet')return 'ready';
+            const packet=args.bytes;if(packet[2]===2)state=1;if(packet[2]===3)state=2;if(packet[2]===4)state=4;
+            const f=snapshot(),reply=new Uint8Array(20);reply.set([113,1,packet[2],state,1,0,0,0]);
+            f.lifecycle.nuttxProgramReply=[...reply];return JSON.stringify(f);
+        }]));
+    assert.throws(()=>new RenodeArenaSession({bridge:b,capabilities,backend:'nuttx',program}),/ABI bounds/);
+    const s=new RenodeArenaSession({bridge:b,capabilities,backend:'nuttx',topology:'six-motors',program});
+    try {
+        await s.start();clearTimeout(s.timer);
+        assert.equal(calls.find(c=>c[0]==='program.packet')[1].bytes[2],0,'native BEGIN, not Python');
+        const packets=calls.filter(c=>c[0]==='program.packet').length;
+        for(const mutation of ['cap','attachment']) {
+            bad=mutation;const previous=b.hubState.data.motors.map(m=>m.position);
+            await assert.rejects(s.uploadProgram(program),/six attached motors/);clearTimeout(s.timer);
+            assert.equal(calls.filter(c=>c[0]==='program.packet').length,packets,'no STOP or upload on unsupported replacement');
+            assert.deepEqual(b.hubState.data.motors.map(m=>m.position),previous,'failed verification must not mutate motors');
+        }
+        bad=null;await s.uploadProgram(program);clearTimeout(s.timer);
+        assert.ok(calls.filter(c=>c[0]==='program.packet').length>packets);
+    } finally {bad=false;await s.stop();}
 });
