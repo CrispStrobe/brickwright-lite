@@ -744,7 +744,9 @@ mod tests {
                 let actual=frame["lifecycle"]["nuttxProgram"]["state"].as_u64().unwrap();
                 assert_ne!(actual,5,"compiled-six stage={stage} faulted: {}",frame["lifecycle"]["nuttxProgram"]);
                 if actual==state && idle(&frame) {break frame;}
-                assert!(Instant::now()<deadline,"compiled-six stage={stage} completion/idle timed out");
+                assert!(Instant::now()<deadline,
+                    "compiled-six stage={stage} completion/idle timed out elapsed_ms={} clock_ns={} program={} motors={}",
+                    elapsed.elapsed().as_millis(),frame["clockNs"],frame["lifecycle"]["nuttxProgram"],frame["motors"]);
                 thread::sleep(Duration::from_millis(50));
             }
         };
@@ -758,7 +760,9 @@ mod tests {
             let paused=debugger.state().unwrap();assert!(idle(&paused));
             assert!(positions(&paused).iter().zip(&before).all(|(a,b)|(a-b).abs()<=0.1),"upload must not move motors");
             eprintln!("compiled-six stage={name} before_positions_deg={before:?} elapsed_ms={}",elapsed.elapsed().as_millis());
-            send("start-compiled-six",&fixture["start"]);
+            let started=send("start-compiled-six",&fixture["start"]);
+            eprintln!("compiled-six stage={name}-START clock_ns={} program={} motors={}",
+                started["clockNs"],started["lifecycle"]["nuttxProgram"],started["motors"]);
             if name=="continuous" {
                 let deadline=Instant::now()+Duration::from_secs(12);
                 loop {
