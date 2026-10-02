@@ -64,8 +64,7 @@ const ALLOWED_ABSENT = {
 };
 
 /** Read the object literal circuit-tab passes to setEngine. */
-function injectedKeys () {
-    const src = readFileSync(circuitTab, 'utf8');
+function injectedKeys (src = readFileSync(circuitTab, 'utf8')) {
     const at = src.indexOf('setEngine({');
     assert.ok(at > 0, 'circuit-tab.jsx no longer calls setEngine({...}) — update this test');
     // Walk braces from the opening one so nested objects/comments do not end it early.
@@ -85,7 +84,87 @@ function injectedKeys () {
     return keys;
 }
 
-/** Every `engine.X` / `eng.X` property bw-circuit-ui reads off getEngine(). */
+/** Mask comments/quoted text, retaining executable template interpolations. */
+function engineReadCode(source) {
+    let i = 0, out = '';
+    const quoted = quote => {
+        i++;
+        while (i < source.length) {
+            if (source[i] === '\\') { i += 2; continue; }
+            if (source[i++] === quote) break;
+        }
+        out += ' ';
+    };
+    const scan = (interpolation = false) => {
+        let braces = 0;
+        while (i < source.length) {
+            if (source.startsWith('//', i)) {
+                i = source.indexOf('\n', i + 2);
+                if (i < 0) i = source.length;
+                out += '\n'; continue;
+            }
+            if (source.startsWith('/*', i)) {
+                const end = source.indexOf('*/', i + 2);
+                i = end < 0 ? source.length : end + 2;
+                out += ' '; continue;
+            }
+            if (source[i] === '"' || source[i] === "'") { quoted(source[i]); continue; }
+            if (source[i] === '`') {
+                i++; out += ' ';
+                while (i < source.length) {
+                    if (source[i] === '\\') { i += 2; continue; }
+                    if (source[i] === '`') { i++; break; }
+                    if (source.startsWith('${', i)) {
+                        i += 2; out += '('; scan(true); out += ')';
+                    } else i++;
+                }
+                out += ' '; continue;
+            }
+            if (interpolation && source[i] === '}' && braces === 0) { i++; return; }
+            if (source[i] === '{') braces++;
+            else if (source[i] === '}') braces--;
+            out += source[i++];
+        }
+    };
+    scan(); return out;
+}
+
+function engineReadKeys(source) {
+    const code = engineReadCode(source), keys = new Set();
+    for (const m of code.matchAll(/(?:const|let|var)\s*\{([^}]*)\}\s*=\s*getEngine\s*\(\s*\)/g)) {
+        for (const raw of m[1].split(',')) {
+            const key = raw.split(':')[0].trim();
+            if (/^[A-Za-z_$][\w$]*$/.test(key)) keys.add(key);
+        }
+    }
+    // A receipt's nested `.engine` is data, not the host-injected variable.
+    for (const m of code.matchAll(/(?<![\w$.])(?:engine|eng)\??\.([A-Za-z_$][\w$]*)\b/g)) keys.add(m[1]);
+    return keys;
+}
+
+test('engine read scanner separates receipt fields and literal labels from actual capabilities', () => {
+    const source = `
+        check('engine.selection', receipt.engine.selection, observed.engine.selection);
+        check("engine.jsJsonTreeSha256", receipt.engine.observed.jsJsonTreeSha256);
+        const label = \`engine.declaredPackageSpec\`;
+        // engine.commentOnly
+        /* eng.blockComment */
+        const {BoardImpl: B, checkWiring} = getEngine();
+        const real = engine.runDcSweep;
+        function forwarded(eng) { return eng?.getMaxCurrent; }
+        const dynamic = \`value \${engine.PORT_LIMITS} / \${\`nested \${eng.runAcSweep}\`}\`;
+    `;
+    const keys = engineReadKeys(source);
+    assert.deepEqual([...keys].sort(), ['BoardImpl', 'PORT_LIMITS', 'checkWiring', 'getMaxCurrent', 'runAcSweep', 'runDcSweep'].sort());
+    const injected = new Set(keys);
+    for (const missing of ['BoardImpl', 'runDcSweep', 'runAcSweep', 'PORT_LIMITS', 'getMaxCurrent']) {
+        injected.delete(missing);
+        assert.ok([...keys].filter(key => !injected.has(key)).includes(missing), `${missing} omission must still be detected`);
+        injected.add(missing);
+    }
+});
+
+/** Every root `engine.X` / `eng.X` property bw-circuit-ui reads off getEngine(). */
 function consumedKeys () {
     const files = [];
     (function walk (dir) {
@@ -107,23 +186,31 @@ function consumedKeys () {
         // appears in circuit.js only inside a comment explaining that the engine
         // never exported it; counting prose as a read would demand an injection
         // for a capability that does not exist.
-        const code = readFileSync(f, 'utf8')
-            .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-        // `const {A, B} = getEngine()` and `engine.A` / `eng.A` / `engine?.A`.
-        for (const m of code.matchAll(/(?:const|let|var)\s*\{([^}]*)\}\s*=\s*getEngine\s*\(\s*\)/g)) {
-            for (const raw of m[1].split(',')) {
-                const k = raw.split(':')[0].trim();
-                if (/^[A-Za-z_$][\w$]*$/.test(k)) keys.set(k, (keys.get(k) || []).concat(path.basename(f)));
-            }
-        }
-        for (const m of code.matchAll(/\b(?:engine|eng)\??\.([A-Za-z_$][\w$]*)\b/g)) {
-            keys.set(m[1], (keys.get(m[1]) || []).concat(path.basename(f)));
-        }
+        for (const key of engineReadKeys(readFileSync(f, 'utf8'))) keys.set(key, (keys.get(key) || []).concat(path.basename(f)));
     }
     // `js` is `engine.js` in an import specifier, not a capability.
     keys.delete('js');
     return keys;
 }
+
+function missingCapabilities(injected, consumed) {
+    const missing = [];
+    for (const [key, files] of consumed) {
+        if (injected.has(key) || key in ALLOWED_ABSENT) continue;
+        missing.push(`${key} (read by ${[...new Set(files)].join(', ')})`);
+    }
+    return missing;
+}
+
+test('actual injection omissions still fail the repaired scanner by name', () => {
+    const source = readFileSync(circuitTab, 'utf8'), consumed = consumedKeys();
+    for (const key of ['runDcSweep', 'getMaxCurrent', 'PORT_LIMITS']) {
+        const anchor = new RegExp(`\\b${key}:\\s*engine\\.${key}\\s*,?`, 'g');
+        assert.equal([...source.matchAll(anchor)].length, 1, `${key} mutation has one real injection anchor`);
+        const missing = missingCapabilities(injectedKeys(source.replace(anchor, '')), consumed);
+        assert.ok(missing.some(item => item.startsWith(`${key} (`)), `${key} omission must fail the actual capability judge`);
+    }
+});
 
 test('circuit-tab injects every engine capability bw-circuit-ui reads', () => {
     const injected = injectedKeys();
@@ -135,12 +222,7 @@ test('circuit-tab injects every engine capability bw-circuit-ui reads', () => {
     assert.ok(injected.size >= 8,
         `only ${injected.size} keys parsed out of the setEngine call — the parser stopped working`);
 
-    const missing = [];
-    for (const [key, files] of consumed) {
-        if (injected.has(key)) continue;
-        if (key in ALLOWED_ABSENT) continue;
-        missing.push(`${key} (read by ${[...new Set(files)].join(', ')})`);
-    }
+    const missing = missingCapabilities(injected, consumed);
     assert.deepEqual(missing, [],
         'bw-circuit-ui reads engine capabilities circuit-tab.jsx never injects. Each of '
         + 'these silently takes a fallback in the DEPLOYED app while isolated tests that '

@@ -10,8 +10,8 @@
     "vendoredAs": "i8086-bios.asm",
     "license": "MIT",
     "sha256": "c9cbc1fb86c24d97d7f5c679c85b03df6024d62c33ae6931c2df3ce69fd02a35",
-    "sha": "de39245b0f74ade850e05efb93867c700646b57b",
-    "date": "2026-09-08",
+    "sha": "c0dea37a3bb44b5a425e08ad16389adc5c8bb711",
+    "date": "2026-10-02",
     "lastTouchedBy": {
       "sha": "de39245b0f74ade850e05efb93867c700646b57b",
       "subject": "Add explicit unbuffered BIOS build and reproducible wired POST diagnostics",
@@ -22,7 +22,7 @@
     "path": "node_modules/bw-board/src/i8086-asm.js",
     "sha256": "3270c33885fbb6524ceaa727a1600570fe974e0bb4bc3488d1ecda894fdb0841"
   },
-  "pinAtBuild": "ab87a27cfe31de2507ca60f01fc4c81cf624cd3e",
+  "pinAtBuild": "c0dea37a3bb44b5a425e08ad16389adc5c8bb711",
   "ancestorOfPinAtBuild": true,
   "behindPinBy": 0
 }
