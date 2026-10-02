@@ -712,6 +712,11 @@ mod tests {
             .expect("generate private synthetic caller fixtures first")).unwrap()).unwrap();
         let native=cases.as_array().unwrap().iter().find(|case|case["python"]==false).unwrap();
         let fixtures=&native["compiledSix"];
+        // Optional qualification receipt, supplied explicitly by a local tester.
+        // The ignored test never writes a default or bundled output location.
+        let receipt=std::env::var_os("BW_NUTTX_PRIVATE_FRAME_RECEIPT").map(|path|
+            std::cell::RefCell::new(std::fs::OpenOptions::new().write(true).create_new(true).open(path)
+                .expect("new private frame receipt")));
         let check=|frame:&Value| {
             assert_eq!(frame["target"]["firmware"],"brickwright-nuttx");
             assert!(frame["target"]["capabilities"].as_array().unwrap().iter().any(|c|c=="nuttx-six-motors/v1"));
@@ -719,6 +724,11 @@ mod tests {
             for port in ["A","B","C","D","E","F"] {
                 assert_eq!(frame["motors"].as_array().unwrap().iter().filter(|m|m["port"]==port).count(),1);
                 assert_eq!(frame["ports"].as_array().unwrap().iter().filter(|p|p["id"]==port && p["attached"]==true && p["kind"]=="motor").count(),1);
+            }
+            if let Some(file)=&receipt {
+                use std::io::Write;
+                let mut file=file.borrow_mut();
+                serde_json::to_writer(&mut *file,frame).unwrap();file.write_all(b"\n").unwrap();
             }
         };
         let idle=|frame:&Value|frame["motors"].as_array().unwrap().iter().all(|m|
