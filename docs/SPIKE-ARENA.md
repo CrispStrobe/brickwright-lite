@@ -615,3 +615,11 @@ session; close it before selecting different devices. Native Reset retains the
 selected topology and boots with an empty program without automatic execution.
 The startup, packet, Python source/stack, and process lifetime limits remain
 unchanged. Save/Load still retain a slot only within the live emulator session.
+
+The native position qualification uses one relative 30° move at 333 degrees per
+second, with ±3° final error and completion within two firmware program-clock
+seconds. The accepted relative target range remains ±36000°; this does not
+promise that every target completes within two seconds. Wall time depends on
+simulator pacing; completion bounds use the firmware program clock rather than
+a short wall-clock wait. Qualification uses separate fresh processes for continuous/timed commands and
+position movement, with the production process lifetime unchanged.

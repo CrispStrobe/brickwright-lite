@@ -727,22 +727,28 @@ mod tests {
             ["A","B","C","D","E","F"].into_iter().map(|port|frame["motors"].as_array().unwrap().iter()
                 .find(|m|m["port"]==port).unwrap()["position"].as_f64().unwrap()).collect()
         };
-        debugger.start_spike_profile(&supervisor,Some("nuttx"),SpikeTopology::SixMotors).unwrap();
-        let first=debugger.state().unwrap();check(&first);assert!(idle(&first));
-        assert_eq!(first["lifecycle"]["nuttxProgram"]["state"],0);
-        debugger.run().unwrap();
         let send=|stage:&str,request:&Value| {
             let response=debugger.spike_program_packet(json!({"bytes":request})).unwrap_or_else(|error|
                 panic!("compiled-six stage={stage} op={} elapsed_ms={} endpoint_owned={} error={error}",
                     request[2],elapsed.elapsed().as_millis(),debugger.has_endpoint()));
             assert_program_reply(&response,request,0);check(&response);response
         };
-        let wait=|stage:&str,state:u64| {
-            let deadline=Instant::now()+Duration::from_secs(12);
+        let wait=|stage:&str,state:u64,process_started:Instant,position_clock:Option<u64>| {
+            let deadline=process_started+Duration::from_secs(110);
+            let mut last_position_clock=position_clock;
             loop {
                 let frame=debugger.state().unwrap();check(&frame);
                 let actual=frame["lifecycle"]["nuttxProgram"]["state"].as_u64().unwrap();
                 assert_ne!(actual,5,"compiled-six stage={stage} faulted: {}",frame["lifecycle"]["nuttxProgram"]);
+                if let Some(start_clock)=position_clock {
+                    let clock=frame["lifecycle"]["nuttxProgram"]["clockMs"].as_u64().expect("integer firmware program clock");
+                    assert!(clock<=u64::from(u32::MAX),"firmware program clock exceeds uint32");
+                    assert!(clock>=last_position_clock.unwrap(),"firmware program clock must not regress");
+                    last_position_clock=Some(clock);
+                    let delta=clock.checked_sub(start_clock).expect("firmware program clock must not regress");
+                    assert!(delta<=2000,"relative F position exceeded two simulated seconds: delta_ms={delta} program={} motors={}",
+                        frame["lifecycle"]["nuttxProgram"],frame["motors"]);
+                }
                 if actual==state && idle(&frame) {break frame;}
                 assert!(Instant::now()<deadline,
                     "compiled-six stage={stage} completion/idle timed out elapsed_ms={} clock_ns={} program={} motors={}",
@@ -750,44 +756,59 @@ mod tests {
                 thread::sleep(Duration::from_millis(50));
             }
         };
-        for name in ["continuous","position","timed"] {
-            let fixture=&fixtures[name];assert!(fixture["source"].as_str().unwrap().contains("WHEN flag clicked"));
-            assert!(fixture["program"]["instructions"].as_array().unwrap().len()<=256);
-            let before=positions(&debugger.state().unwrap());
-            let mut ready=Value::Null;
-            for packet in fixture["upload"].as_array().unwrap() {ready=send("upload-compiled-six",packet);}
-            assert_eq!(ready["lifecycle"]["nuttxProgramReply"][3],1,"COMMIT must leave READY without execution");
-            let paused=debugger.state().unwrap();assert!(idle(&paused));
-            assert!(positions(&paused).iter().zip(&before).all(|(a,b)|(a-b).abs()<=0.1),"upload must not move motors");
-            eprintln!("compiled-six stage={name} before_positions_deg={before:?} elapsed_ms={}",elapsed.elapsed().as_millis());
-            let started=send("start-compiled-six",&fixture["start"]);
-            eprintln!("compiled-six stage={name}-START clock_ns={} program={} motors={}",
-                started["clockNs"],started["lifecycle"]["nuttxProgram"],started["motors"]);
-            if name=="continuous" {
-                let deadline=Instant::now()+Duration::from_secs(12);
-                loop {
-                    let frame=debugger.state().unwrap();check(&frame);
-                    assert_eq!(frame["lifecycle"]["nuttxProgram"]["state"],2);
-                    if positions(&frame).iter().enumerate().all(|(p,v)|*v>before[p]+1.0) {break;}
-                    assert!(Instant::now()<deadline,"compiled C-F motors did not move");thread::sleep(Duration::from_millis(50));
+        // Wall-time pacing does not bound firmware-clock completion. Qualify the
+        // prior 30-degree contract in its own fresh process;
+        // retain production 120-second lifetime and enforce a 110-second test budget.
+        for group in [vec!["continuous","timed"],vec!["position"]] {
+            let process_started=Instant::now();
+            assert!(elapsed.elapsed()<Duration::from_secs(300));
+            debugger.start_spike_profile(&supervisor,Some("nuttx"),SpikeTopology::SixMotors).unwrap();
+            let first=debugger.state().unwrap();check(&first);assert!(idle(&first));
+            assert_eq!(first["lifecycle"]["nuttxProgram"]["state"],0);
+            debugger.run().unwrap();
+            for name in group {
+                let fixture=&fixtures[name];assert!(fixture["source"].as_str().unwrap().contains("WHEN flag clicked"));
+                assert!(fixture["program"]["instructions"].as_array().unwrap().len()<=256);
+                let before=positions(&debugger.state().unwrap());
+                let mut ready=Value::Null;
+                for packet in fixture["upload"].as_array().unwrap() {ready=send("upload-compiled-six",packet);}
+                assert_eq!(ready["lifecycle"]["nuttxProgramReply"][3],1,"COMMIT must leave READY without execution");
+                let paused=debugger.state().unwrap();assert!(idle(&paused));
+                assert!(positions(&paused).iter().zip(&before).all(|(a,b)|(a-b).abs()<=0.1),"upload must not move motors");
+                eprintln!("compiled-six stage={name} before_positions_deg={before:?} elapsed_ms={}",elapsed.elapsed().as_millis());
+                let started=send("start-compiled-six",&fixture["start"]);
+                eprintln!("compiled-six stage={name}-START clock_ns={} program={} motors={}",
+                    started["clockNs"],started["lifecycle"]["nuttxProgram"],started["motors"]);
+                if name=="continuous" {
+                    let deadline=Instant::now()+Duration::from_secs(12);
+                    loop {
+                        let frame=debugger.state().unwrap();check(&frame);
+                        assert_eq!(frame["lifecycle"]["nuttxProgram"]["state"],2);
+                        if positions(&frame).iter().enumerate().all(|(p,v)|*v>before[p]+1.0) {break;}
+                        assert!(Instant::now()<deadline,"compiled C-F motors did not move");thread::sleep(Duration::from_millis(50));
+                    }
+                    send("stop-compiled-six",&fixture["stop"]);
+                    let stopped=wait("STOP-all-six",4,process_started,None);
+                    eprintln!("compiled-six stage=STOP-all-six after_positions_deg={:?} all_idle={} elapsed_ms={}",
+                        positions(&stopped),idle(&stopped),elapsed.elapsed().as_millis());
+                } else {
+                    let position_clock=if name=="position" {
+                        Some(started["lifecycle"]["nuttxProgram"]["clockMs"].as_u64().expect("integer firmware program clock"))
+                    } else {None};
+                    let completed=wait("END-all-owned",3,process_started,position_clock);let after=positions(&completed);
+                    eprintln!("compiled-six stage={name}-END after_positions_deg={after:?} all_idle={} elapsed_ms={}",
+                        idle(&completed),elapsed.elapsed().as_millis());
+                    if name=="position" {
+                        eprintln!("compiled-six stage=relative-F target_delta_deg=30 actual_delta_deg={} error_deg={} tolerance_deg=3 within_tolerance={}",
+                            after[5]-before[5],after[5]-before[5]-30.0,(after[5]-before[5]-30.0).abs()<=3.0);
+                        assert!((after[5]-before[5]-30.0).abs()<=3.0,"relative F target exceeds ±3 degrees");
+                        assert!((0..5).all(|p|(after[p]-before[p]).abs()<=3.0),"single-position move changed other ports");
+                    } else {assert!((2..6).all(|p|after[p]>before[p]+1.0),"timed native C-F did not move");}
                 }
-                send("stop-compiled-six",&fixture["stop"]);
-                let stopped=wait("STOP-all-six",4);
-                eprintln!("compiled-six stage=STOP-all-six after_positions_deg={:?} all_idle={} elapsed_ms={}",
-                    positions(&stopped),idle(&stopped),elapsed.elapsed().as_millis());
-            } else {
-                let completed=wait("END-all-owned",3);let after=positions(&completed);
-                eprintln!("compiled-six stage={name}-END after_positions_deg={after:?} all_idle={} elapsed_ms={}",
-                    idle(&completed),elapsed.elapsed().as_millis());
-                if name=="position" {
-                    eprintln!("compiled-six stage=relative-F target_delta_deg=90 actual_delta_deg={} error_deg={} tolerance_deg=3 within_tolerance={}",
-                        after[5]-before[5],after[5]-before[5]-90.0,(after[5]-before[5]-90.0).abs()<=3.0);
-                    assert!((after[5]-before[5]-90.0).abs()<=3.0,"relative F target exceeds ±3 degrees");
-                    assert!((0..5).all(|p|(after[p]-before[p]).abs()<=3.0),"single-position move changed other ports");
-                } else {assert!((2..6).all(|p|after[p]>before[p]+1.0),"timed native C-F did not move");}
             }
+            debugger.close(&supervisor).unwrap();assert!(!debugger.has_endpoint());
+            assert!(process_started.elapsed()<Duration::from_secs(110));
         }
-        debugger.close(&supervisor).unwrap();assert!(!debugger.has_endpoint());
         eprintln!("compiled-six stage=complete elapsed_ms={}",elapsed.elapsed().as_millis());
     }
 

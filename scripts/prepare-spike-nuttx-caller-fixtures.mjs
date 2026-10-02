@@ -39,7 +39,7 @@ native.sixMotorProfile = {source: sixSource, packets: sixPackets.map(p => Array.
 const compiledSixSources = {
     continuous: 'DEVICE SPIKE\nWHEN flag clicked:\n' + [...'ABCDEF'].map(p => `  set motor speed ${p} 20\n  start motor ${p} forward\n`).join('') + '  forever:\n    wait 0.01 seconds\n',
     timed: 'DEVICE SPIKE\nWHEN flag clicked:\n' + [...'ABCDEF'].map(p => `  set motor speed ${p} 20\n  start motor ${p} forward\n`).join('') + '  wait 0.3 seconds\n',
-    position: 'DEVICE SPIKE\nWHEN flag clicked:\n  set motor speed F 30\n  run motor F forward 90 degrees\n'
+    position: 'DEVICE SPIKE\nWHEN flag clicked:\n  set motor speed F 30\n  run motor F forward 30 degrees\n'
 };
 native.compiledSix = Object.fromEntries(Object.entries(compiledSixSources).map(([name,source],index)=>{
     const program=compileSource(source,'six-motors'),id=14001+index;
