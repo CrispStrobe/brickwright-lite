@@ -99,8 +99,15 @@ const audit = ({handler, broker, adapter, capability, transport, capabilities, r
     // wildcard, raw command, path, socket or process primitive is accepted here.
     assert.match(capability, /fn execute\([\s\S]{0,300}operation: Operation[\s\S]{0,700}Operation::PlatformKindRead/,
         'the platform read must remain explicit');
-    assert.match(capability, /Operation::RenodeSpikeStart[\s\S]{0,150}debugger\.start\(supervisor\)/,
-        'SPIKE start must delegate to the managed debugger');
+    const spikeStart = balancedBody(capability, 'Operation::RenodeSpikeStart =>', '{', '}');
+    assert.match(spikeStart, /SpikeTopology::parse\(args\["topology"\]\.as_str\(\)\)\?/,
+        'SPIKE topology must use the closed parser');
+    assert.match(spikeStart, /\(SpikeTopology::Default, None\) => debugger\.start\(supervisor\)/,
+        'default SPIKE start must delegate to the managed debugger');
+    assert.match(spikeStart, /\(SpikeTopology::Default, backend\) => debugger\.start_spike_backend\(supervisor, backend\)/,
+        'explicit default backend must delegate to the managed debugger');
+    assert.match(spikeStart, /\(SpikeTopology::SixMotors, backend\) => debugger\.start_spike_profile\(supervisor, backend, topology\)/,
+        'six-motor SPIKE start must delegate to the managed debugger');
     assert.match(capability, /Operation::RenodeSpikeClose[\s\S]{0,150}debugger\.close\(supervisor\)/,
         'SPIKE close must delegate to the managed debugger');
     assert.doesNotMatch(capability, /std::process|Command::new|fs::(read|write)|reqwest|TcpStream/,
@@ -198,6 +205,10 @@ test('the native broker topology binds every caller and grants transport only on
 
 test('topology contract rejects independently weakened boundaries', () => {
     const mutations = [
+        ...['start(supervisor)', 'start_spike_backend(supervisor, backend)',
+            'start_spike_profile(supervisor, backend, topology)'].map(call => input => {
+            input.capability = input.capability.replace(`debugger.${call}`, 'Ok("ready")');
+        }),
         // Scoped to the acknowledgement's own body rather than a literal pair of adjacent
         // lines: inserting a log line between them silently turned this replace into a no-op,
         // and a mutation that does not mutate proves nothing. The survivors assertion caught it.
