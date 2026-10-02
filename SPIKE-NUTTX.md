@@ -68,8 +68,13 @@ native-reader/Scratch-compiler output, and verifies ARM-side Python output and
 motor movement. The fixture path is a test-only environment variable and is
 never accepted by the desktop runtime's capability interface.
 
-USB OTG, actual BLE transport, external LittleFS formatting and runtime MPU
-isolation still need qualification. Original LEGO and upstream LEGO_HUB_NO6
+The source-built full firmware now formats and mounts blank simulated flash
+as LittleFS. Qualification covers mixed CPU/SPI receive-DMA reads in direct
+and FIFO modes; regression mutations detect stale requests and FIFO overreads.
+See the Renode repository's `docs/prime-nuttx-qualification.md` for commands.
+File operations and persistence across emulator restarts, general DMA FIFO
+packing/bursts, USB OTG, actual BLE transport and runtime MPU isolation still
+need qualification. Original LEGO and upstream LEGO_HUB_NO6
 MicroPython images are separate local CPU-probe paths, not qualified arena
 backends, and are not packaged by these scripts. LabWired would need additional
 SPIKE-specific peripheral/LPF2 integration; Renode is the qualified path here.
