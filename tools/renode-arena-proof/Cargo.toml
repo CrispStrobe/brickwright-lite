@@ -10,3 +10,8 @@ serde_json = "1"
 sha2 = "0.10"
 command-group = "5"
 getrandom = "0.2"
+
+# The proof verifies a large pinned runtime before every launch. Keep SHA-256
+# practical in the development harness; all verification and bounds remain on.
+[profile.dev]
+opt-level = 1

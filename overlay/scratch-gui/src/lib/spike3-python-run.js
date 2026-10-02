@@ -40,6 +40,14 @@ const CONNECT_WAIT_MS = 5000;
  */
 export async function runSpike3OnVirtualHub (vm, options = {}) {
     const win = options.window || (typeof window === 'undefined' ? globalThis : window);
+    const pane = win.__bwSpikeArena?._pane;
+    if (pane?.state.execution === 'program') {
+        try {
+            await pane.startFirmware(null, {onCompleted: options.onCompleted});
+            if (!pane.firmwareSession) return {ok: false, reason: 'firmware', detail: pane.state.message};
+            return {ok: true, stop: () => pane.stopProgram()};
+        } catch (error) { return {ok: false, reason: 'firmware', detail: error.message}; }
+    }
     const virtualHub = win.__brickwrightVirtualSpike;
     if (!virtualHub || typeof virtualHub.enable !== 'function') return {ok: false, reason: 'no-hub'};
     const primitives = (vm && vm.runtime && vm.runtime._primitives) || {};

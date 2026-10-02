@@ -1,4 +1,5 @@
 import React from 'react';
+import {compileFirmwareProgram} from '../../lib/spike-arena/firmware-program.js';
 import {RenodeArenaSession} from '../../lib/spike-arena/renode-arena-session.js';
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
 import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
@@ -387,8 +388,10 @@ class SpikeArenaPane extends React.Component {
             }});
     }
 
-    async startFirmware () {
+    async startFirmware (program = null, {onCompleted = () => {}} = {}) {
         if (!this.bridge) return;
+        // Compile before stopping a running session: unsupported blocks never run a demo.
+        if (this.state.execution === 'program' && !program) program = compileFirmwareProgram(this.vm);
         await this.stopProgram();
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
@@ -396,9 +399,10 @@ class SpikeArenaPane extends React.Component {
         const capabilities = this.props.renodeCapabilities || createNativeRenodeCapabilities({
             invoke: typeof internals?.invoke === 'function' ? internals.invoke.bind(internals) : null
         });
-        const session = new RenodeArenaSession({bridge: this.bridge, capabilities,
+        const session = new RenodeArenaSession({bridge: this.bridge, capabilities, program,
+            onCompleted: () => { onCompleted(); if (!this.disposed) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); },
             onStopped: () => { if (!this.disposed && this.firmwareSession === session) {
-                this.firmwareSession = null; this.setState({execution: 'native', status: 'paused'});
+                this.firmwareSession = null; this.setState({execution: program ? 'program' : 'native', status: 'paused'});
             } },
             onFrame: snapshot => { if (!this.disposed && this.firmwareSession === session) {
                 this.setState({status: 'running', readout: snapshot, verdict: snapshot.verdict}); this.draw();
@@ -411,9 +415,8 @@ class SpikeArenaPane extends React.Component {
         this.setState({status: 'starting', message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
         try {
             await session.start();
-            if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: this.locale === 'de' ?
-                'Die eingebaute Fahrdemo läuft. Programme im Code-Tab laufen mit Simulator.' :
-                'Running the built-in driving demo. Code tab programs run with Simulator.'});
+            if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: program ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
+                'Die eingebaute Fahrdemo läuft.' : 'Running the built-in driving demo.')});
         } catch (error) {
             if (!this.disposed && this.firmwareSession === session) {
                 this.firmwareSession = null; this.setState({status: 'failed', message: error.message});
@@ -422,7 +425,10 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
-        if (this.state.execution === 'renode') return this.startFirmware();
+        if (['renode', 'program'].includes(this.state.execution)) {
+            try { return await this.startFirmware(); }
+            catch (error) { this.setState({status: 'failed', message: error.message}); return; }
+        }
         if (!this.bridge) return;
         if (this.state.status === 'paused' && this.bridge.verdict.status === 'running') {
             this.lastFrame = null;
@@ -481,7 +487,7 @@ class SpikeArenaPane extends React.Component {
 
     async step () {
         if (!this.bridge) return;
-        if (this.state.execution === 'renode') return;
+        if (this.state.execution !== 'native') return;
         if (this.hubState?.externalBackend) await this.stopProgram();
         this.advance(STEP_BUTTON_MS);
         this.setState({status: 'paused'});
@@ -650,8 +656,11 @@ class SpikeArenaPane extends React.Component {
                             <option value="renode" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
                                 {this.locale === 'de' ? 'Firmware-Demo (Desktop)' : 'Firmware demo (desktop)'}
                             </option>
+                            <option value="program" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
+                                {this.locale === 'de' ? 'Firmware-Programm (Desktop)' : 'Firmware program (desktop)'}
+                            </option>
                         </select>
-                        <button type="button" style={btn} disabled={!world || this.state.execution === 'renode'} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>
+                        <button type="button" style={btn} disabled={!world || this.state.execution !== 'native'} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>
                         <button type="button" style={btn} disabled={!world} onClick={() => this.reset()} data-testid="bw-spike-arena-reset">{t('reset')}</button>
                         <button type="button" style={btn} disabled={!world} onClick={() => this.toggleView()}
                             aria-pressed={view === '3d'} title={t('viewToggleTitle')} data-testid="bw-spike-arena-view-toggle">

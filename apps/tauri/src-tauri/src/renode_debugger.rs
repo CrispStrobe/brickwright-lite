@@ -20,6 +20,10 @@ use std::time::{Duration, Instant};
 // seconds on a cold CI worker. Keep this below the supervisor's hard session
 // limit while allowing the real packaged model to finish starting.
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+// The minimal simulation guest avoids remote SVD loading, but cold Renode
+// startup exceeded 30 seconds on a busy host. The supervisor still enforces
+// its 120-second wall limit for the complete owned session.
+const SPIKE_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 const EV3_UART_EVIDENCE: &[u8] = b"EV3 ARM9 IRQ\n";
 
 struct Session {
@@ -93,7 +97,11 @@ impl RenodeDebugger {
             RenodeTarget::Ev3 => supervisor.start_ev3()?,
         };
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
-        let deadline = Instant::now() + STARTUP_TIMEOUT;
+        let startup_timeout = match target {
+            RenodeTarget::SpikePrime => SPIKE_STARTUP_TIMEOUT,
+            RenodeTarget::Ev3 => STARTUP_TIMEOUT,
+        };
+        let deadline = Instant::now() + startup_timeout;
         let rsp = loop {
             match RenodeRsp::connect_for_architecture(address, target.architecture()) {
                 Ok(rsp) => break rsp,
@@ -115,7 +123,7 @@ impl RenodeDebugger {
             RenodeTarget::SpikePrime => {
                 let state_address =
                     SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.state_port);
-                let state_deadline = Instant::now() + STARTUP_TIMEOUT;
+                let state_deadline = Instant::now() + SPIKE_STARTUP_TIMEOUT;
                 let feed = loop {
                     match BrickStateFeed::connect(state_address) {
                         Ok(state) => match state.wait_ready(Duration::from_secs(2)) {
@@ -380,6 +388,23 @@ impl RenodeDebugger {
                 }
                 Ok(state)
             }
+        }
+    }
+
+    pub(crate) fn spike_arena_program(&self, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                serde_json::to_value(feed.command("arena.program.load", arguments)?)
+                    .map_err(|_| "SPIKE snapshot unavailable".to_owned())
+            }
+            _ => Err("SPIKE arena program target mismatch".into()),
         }
     }
 

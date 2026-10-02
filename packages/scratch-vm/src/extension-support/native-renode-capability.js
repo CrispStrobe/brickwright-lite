@@ -11,6 +11,7 @@ const OPERATIONS = Object.freeze({
     memory: 'renode.spike.memory.read',
     state: 'renode.spike.state.read',
     arenaInputs: 'renode.spike.arena.inputs.write',
+    arenaProgram: 'renode.spike.arena.program.load',
     setBreakpoint: 'renode.spike.breakpoint.set',
     clearBreakpoint: 'renode.spike.breakpoint.clear',
     ev3Start: 'renode.ev3.session.start',

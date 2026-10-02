@@ -80,3 +80,79 @@ mod tests {
         }
     }
 }
+
+/// Closed instruction ABI for our simulation guest; never executable/memory uploads.
+pub(crate) fn valid_program(value: &Value) -> bool {
+    if !keys(value, &["version", "instructions"]) || value["version"].as_u64() != Some(1) {
+        return false;
+    }
+    let Some(code) = value["instructions"].as_array() else {
+        return false;
+    };
+    if code.is_empty() || code.len() > 256 {
+        return false;
+    }
+    let n = code.len() as i64;
+    for instruction in code {
+        let Some(words) = instruction.as_array() else {
+            return false;
+        };
+        if words.len() != 4 {
+            return false;
+        }
+        let values: Option<Vec<i64>> = words.iter().map(Value::as_i64).collect();
+        let Some(v) = values else {
+            return false;
+        };
+        let (op, a, b, c) = (v[0], v[1], v[2], v[3]);
+        let ok = match op {
+            0 => a == 0 && b == 0 && c == 0,
+            1 => (0..=1).contains(&a) && (-1110..=1110).contains(&b) && c == 0,
+            2 => (0..=120000).contains(&a) && b == 0 && c == 0,
+            3 | 5 => {
+                let bound = match a {
+                    1 | 2 => 65535,
+                    3 => 1,
+                    4 => 255,
+                    5 | 6 => 100,
+                    _ => -1,
+                };
+                (1..=6).contains(&a)
+                    && (0..=bound).contains(&b)
+                    && (if op == 3 { c == 0 } else { (0..n).contains(&c) })
+            }
+            4 => (0..n).contains(&a) && b == 0 && c == 0,
+            6 => (0..=1).contains(&a) && (-36000..=36000).contains(&b) && (1..=1110).contains(&c),
+            _ => false,
+        };
+        if !ok {
+            return false;
+        }
+    }
+    code.last() == Some(&serde_json::json!([0, 0, 0, 0]))
+}
+
+#[cfg(test)]
+mod program_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn programs_are_closed_bounded_and_do_not_accept_executable_uploads() {
+        assert!(valid_program(
+            &json!({"version":1,"instructions":[[1,0,-1110,0],[3,1,65535,0],[6,1,36000,1110],[0,0,0,0]]})
+        ));
+        for code in [
+            json!([]),
+            json!([[1, 0, 1111, 0], [0, 0, 0, 0]]),
+            json!([[0, false, 0, 0]]),
+            json!([[4, 2, 0, 0], [0, 0, 0, 0]]),
+            json!([[3, 3, 2, 0], [0, 0, 0, 0]]),
+            json!([[1, 1, 300, 0]]),
+        ] {
+            assert!(!valid_program(&json!({"version":1,"instructions":code})));
+        }
+        assert!(!valid_program(
+            &json!({"version":1,"instructions":[[0,0,0,0]],"address":0x20000000})
+        ));
+    }
+}

@@ -10,7 +10,8 @@ import {resolve} from 'node:path';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const tests=['spike-arena-contact','spike-arena-project-editing','spike-virtual-connection','virtual-hub-shim','spike3-python-import','spike-long-sequences','spike-sandbox','independent-spike-controller','independent-spike-backend','independent-spike-speed-envelope','spike-simulator-pane','spike-arena-sim','spike-arena-challenges',
  'spike3-python-arena','spike3-python-arena-d1','virtual-spike-extension-e2e','virtual-spike-classic-extension-e2e',
- 'virtual-spike-prime','virtual-spike-classic','virtual-spike-panel','virtual-spike-shared-state'];
+ 'virtual-spike-prime','virtual-spike-classic','virtual-spike-panel','virtual-spike-shared-state',
+ 'spike-firmware-program','spike-renode-arena-session','spike-renode-arena-bridge','native-renode-capability'];
 let result;
  result=spawnSync(process.execPath,['--test','--import','./scripts/lib/register-gui-scope.mjs',...tests.map(name=>`test/${name}.test.mjs`)],
   {cwd:root,encoding:'utf8',timeout:180000,maxBuffer:16*1024*1024});

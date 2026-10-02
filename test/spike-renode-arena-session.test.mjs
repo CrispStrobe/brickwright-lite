@@ -48,3 +48,30 @@ test('hub Stop cancels the externally owned guest and clears its ownership after
     b.hubState.stopAll(); await session.completion;
     assert.equal(stops, 1); assert.equal(b.hubState.externalBackend, null); assert.equal(b.hubState.clockOwner, null);
 });
+
+const programFrame = (status = 0) => ({schemaVersion:1,type:'snapshot',seq:1,clockNs:0,
+    target:{board:'spike-prime',firmware:'brickwright-arena-demo',transport:'none',imageSha256:'a'.repeat(64),
+        capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1','arena-program/v1']},
+    lifecycle:{connectionGeneration:1,arenaProgram:{status,pc:0,error:0}},
+    ports:[{id:'C',attached:true,kind:'color'},{id:'D',attached:true,kind:'distance'},{id:'E',attached:true,kind:'force'}],
+    motors:['A','B'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))});
+test('program load precedes run and legacy package refuses without demo fallback', async () => {
+    for (const modern of [true,false]) {
+        const calls=[];const frame=programFrame(); if(!modern) frame.target.capabilities.pop();
+        const caps=Object.fromEntries(['session.start','session.close','run','state.read','arena.inputs.write','arena.program.load'].map(op=>
+            [`renode.spike.${op}`,async args=>{calls.push([op,args]);return op==='state.read'?JSON.stringify(frame):'ready';}]));
+        const program={version:1,instructions:[[0,0,0,0]]};
+        const session=new RenodeArenaSession({bridge:bridge(),capabilities:caps,program});
+        if(modern) {await session.start();await session.stop();assert.deepEqual(calls.map(c=>c[0]),['session.start','state.read','arena.program.load','arena.inputs.write','run','session.close']);assert.deepEqual(calls[2][1],program);}
+        else {await assert.rejects(session.start(),/demo only/);assert.deepEqual(calls.map(c=>c[0]),['session.start','state.read','session.close']);}
+    }
+});
+test('guest completion closes owned runtime without a poll/stop deadlock', async () => {
+    let seq=0, closes=0, complete=0;
+    const caps=Object.fromEntries(['session.start','session.close','run','state.read','arena.inputs.write','arena.program.load'].map(op=>
+        [`renode.spike.${op}`,async()=>{if(op==='session.close') closes++; if(op!=='state.read')return 'ready';
+            const frame=programFrame(seq?2:0);frame.seq=++seq;frame.clockNs=(seq-1)*1000000;return JSON.stringify(frame);}]));
+    const session=new RenodeArenaSession({bridge:bridge(),capabilities:caps,program:{version:1,instructions:[[0,0,0,0]]},onCompleted:()=>complete++});
+    await session.start();await session.poll();await new Promise(resolve=>setTimeout(resolve,0));await session.completion;
+    assert.equal(complete,1);assert.equal(closes,1);assert.equal(session.adapter.bridge.hubState.externalBackend,null);
+});
