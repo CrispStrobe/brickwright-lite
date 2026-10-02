@@ -2,8 +2,11 @@
 // Copyright (c) 2026 Brickwright contributors
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compileFirmwareProgram} from '../overlay/scratch-gui/src/lib/spike-arena/firmware-program.js';
+const {OPERATIONS} = createRequire(import.meta.url)('../overlay/scratch-vm/src/extension-support/capability-broker.js');
+const validate = OPERATIONS['renode.spike.arena.program.load'].validate;
 function loaded(source) {
     const creator = new SB3Creator(); creator.parse(source);
     assert.deepEqual(creator.warnings, []);
@@ -46,4 +49,18 @@ test('oversized repeat fails and graph cycles fail', () => {
     assert.throws(()=>compileFirmwareProgram(program('  repeat 255:\n    wait 1 seconds\n')),/256 instructions/);
     const vm=program('  wait 1 seconds\n');const b=vm.runtime.targets[0].blocks._blocks;const hat=Object.values(b).find(x=>x.topLevel);b[hat.next].next=hat.next;
     assert.throws(()=>compileFirmwareProgram(vm),/cyclic/);
+});
+test('declared capability accepts compiled programs and closed instruction boundaries', () => {
+    assert.equal(validate(compileFirmwareProgram(program('  start tank 25 25\n  wait 0.5 seconds\n  stop movement\n'))), true);
+    assert.equal(validate({version:1,instructions:[[1,0,-1110,0],[2,120000,0,0],[3,1,65535,0],[5,3,1,6],[6,1,-36000,1110],[4,0,0,0],[0,0,0,0]]}), true);
+    assert.equal(validate({version:1,instructions:Array.from({length:256},()=>[0,0,0,0])}), true);
+});
+test('capability refuses malformed programs before an executor can receive them', () => {
+    for (const instructions of [[],[[0,0,0,true]],[[1,2,100,0],[0,0,0,0]],[[6,0,1,0],[0,0,0,0]],
+        [[4,9,0,0],[0,0,0,0]],[[3,3,2,0],[0,0,0,0]],[[1,0,0,0]],[[0,0,0]],[[0,0,0,0.5]],
+        [Array(4)],Array(1),Array.from({length:257},()=>[0,0,0,0])]) {
+        assert.equal(validate({version:1,instructions}), false);
+    }
+    assert.equal(validate({version:1,instructions:[[0,0,0,0]],address:0x20000000}), false);
+    assert.equal(validate({version:true,instructions:[[0,0,0,0]]}), false);
 });

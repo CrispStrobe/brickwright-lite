@@ -36,6 +36,10 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
+    'verify-spike-code-guest-browser.mjs': 'manual/local: requires our locally compiled program-capable ARM guest, '
+        + 'a pinned local Renode package, proof driver and GUI build. Seven Code/web-presence checks exercise '
+        + 'the real guest through a semantic test transport; receipts must stay private. Source compiler/session '
+        + 'and broker checks run in CI. See docs/SPIKE-FIRMWARE-PROGRAMS.md; this is not a Tauri ACL proof.',
     'verify-spike-renode-arena-browser.mjs': 'manual/local: requires an immutable locally built own ARM demo, '
         + 'a pinned Renode package and the compiled tools/renode-arena-proof driver. Execution receipts stay '
         + 'in the private evidence repo. Five real-guest production GUI checks passed; see docs/SPIKE-ARENA.md '

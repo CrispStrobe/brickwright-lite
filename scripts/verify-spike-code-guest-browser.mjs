@@ -62,6 +62,8 @@ try {
     await page.getByTestId('bw-open-spike-arena').click();
     await page.waitForFunction(() => window.__bwSpikeArena?.bridge);
     await page.getByTestId('bw-spike-arena-sandbox').click();
+    assert.equal(await page.getByTestId('bw-spike-firmware-run').count(), 0);
+    check('firmware Code action is absent in a web-only GUI');
     await page.evaluate(async () => {
         const pane = window.__bwSpikeArena._pane;
         const operations = ['session.start', 'session.close', 'run', 'pause', 'state.read', 'arena.inputs.write', 'arena.program.load'];

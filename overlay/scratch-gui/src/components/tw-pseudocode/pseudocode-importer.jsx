@@ -279,6 +279,7 @@ const L10N = {
         runOnSimulator: '▶ Run',
         openSpikeArena: '🪐 SPIKE arena',
         openSpikeArenaTitle: 'Explore a free virtual SPIKE sandbox or run a program in the arena challenges',
+        spikeFirmwareRunTitle: 'Run the supported code subset in our simulation-only ARM firmware',
         runOnSpike3: '▶ Run on SPIKE 3 (Python)',
         runOnSpike3Title: 'Read this LEGO SPIKE App 3 Python program into SPIKE blocks and run them on the virtual SPIKE hub (and in the arena, when it is open)',
         spike3Console: 'SPIKE 3 Python console',
@@ -581,6 +582,7 @@ const L10N = {
         runOnSimulator: '▶ Ausführen',
         openSpikeArena: '🪐 SPIKE-Arena',
         openSpikeArenaTitle: 'Eine freie virtuelle SPIKE-Arena erkunden oder ein Programm in den Arena-Aufgaben ausführen',
+        spikeFirmwareRunTitle: 'Unterstützten Code in unserer ARM-Firmware für die Simulation ausführen',
         runOnSpike3: '▶ Auf SPIKE 3 ausführen (Python)',
         runOnSpike3Title: 'Dieses LEGO-SPIKE-App-3-Python-Programm in SPIKE-Blöcke übersetzen und auf dem virtuellen SPIKE-Hub ausführen (und in der Arena, wenn sie offen ist)',
         spike3Console: 'SPIKE-3-Python-Konsole',
@@ -5640,7 +5642,7 @@ class PseudocodeImporter extends React.Component {
                         </button>
                         {window.__TAURI_INTERNALS__ && ((this.state.lang === 'pseudocode' && this.currentDevice() === 'spike') || (this.state.lang === 'python' && isSpike3Program(this.activeCode()))) ? <button type="button" onClick={() => this.runOnSpikeFirmware()}
                             disabled={this.state.busy} style={actionBtn} data-testid="bw-spike-firmware-run"
-                            title="Run the supported code subset in our simulation-only ARM firmware">
+                            title={this.L.spikeFirmwareRunTitle}>
                             ▶ Firmware
                         </button> : null}
                     </React.Fragment>
