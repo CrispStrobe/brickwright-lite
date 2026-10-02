@@ -6,7 +6,7 @@ import {programStorageAbiAddress} from '../scripts/lib/spike-program-storage-mar
 const symbol = address => `${address.toString(16)} R g_bw_program_storage_abi\n`;
 function image (address = 0x08060000, value = 1) {
     const elf = Buffer.alloc(88);Buffer.from('7f454c460101', 'hex').copy(elf);
-    elf.writeUInt32LE(52, 28);elf.writeUInt16LE(32, 42);elf.writeUInt16LE(1, 44);
+    elf.writeUInt16LE(40, 18);elf.writeUInt32LE(52, 28);elf.writeUInt16LE(32, 42);elf.writeUInt16LE(1, 44);
     elf.writeUInt32LE(1, 52);elf.writeUInt32LE(84, 56);elf.writeUInt32LE(address, 60);elf.writeUInt32LE(4, 68);elf.writeUInt32LE(value, 84);
     return elf;
 }
@@ -19,4 +19,15 @@ test('old image is unadvertised; marker requires aligned userspace file-backed A
     assert.throws(() => programStorageAbiAddress(image(0x08060004), symbol(0x08060000)));
     const bad = image();bad.writeUInt16LE(31, 42);
     assert.throws(() => programStorageAbiAddress(bad, symbol(0x08060000)));
+});
+
+
+test('storage ABI marker rejects writable/code symbols and non-ARM ELF', () => {
+    const address = 0x08060000;
+    assert.equal(programStorageAbiAddress(image(), symbol(address).replace(' R ', ' r ')), address);
+    for (const kind of ['T', 't', 'D', 'd', 'B', 'b', 'A', 'W']) {
+        assert.throws(() => programStorageAbiAddress(image(), symbol(address).replace(' R ', ` ${kind} `)), /read-only/);
+    }
+    const elf = image();elf.writeUInt16LE(62, 18);
+    assert.throws(() => programStorageAbiAddress(elf, symbol(address)), /ARM/);
 });

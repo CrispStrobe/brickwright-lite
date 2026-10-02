@@ -148,6 +148,11 @@ test('program storage controls gate unsupported packages and explicitly run load
         session.storage=async()=>{throw Object.assign(new Error('errno -16'),{result:-16});};
         await act(async()=>one(renderer,'bw-spike-program-load').props.onClick());
         assert.match(one(renderer,'bw-spike-arena-message').props.children,/storage is busy/);
+        pane.locale = 'de';
+        await act(async()=>one(renderer,'bw-spike-program-load').props.onClick());
+        assert.match(one(renderer,'bw-spike-arena-message').props.children,/Programmspeicher beschäftigt/);
+        assert.equal(one(renderer,'bw-spike-arena-start').props.children,'Geladenes Programm starten');
+        assert.match(one(renderer,'bw-spike-program-storage-hint').props.children,/Laden startet das Programm nicht/);
         await act(async()=>pane.setState({programState:2}));
         assert.equal(one(renderer,'bw-spike-program-save').props.disabled,true);
         assert.equal(one(renderer,'bw-spike-program-load').props.disabled,true);

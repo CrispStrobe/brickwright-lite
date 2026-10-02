@@ -2,11 +2,12 @@
 // Copyright (c) 2026 Brickwright contributors
 /** Verify our optional ABI marker in a file-backed userspace ELF32 load segment. */
 export function programStorageAbiAddress (elf, symbols) {
-    const marker = symbols.match(/^([a-fA-F0-9]+)\s+\w\s+g_bw_program_storage_abi$/m);
+    const marker = symbols.match(/^([a-fA-F0-9]+)\s+(\w)\s+g_bw_program_storage_abi$/m);
     if (!marker) return null;
+    if (!['R', 'r'].includes(marker[2])) throw new Error('Program storage ABI marker must be read-only');
     const address = Number.parseInt(marker[1], 16);
     if (address % 4 || address < 0x08060000 || address > 0x08100000 - 4) throw new Error('Program storage ABI marker exceeds userspace flash');
-    if (elf.length < 52 || elf.subarray(0, 6).toString('hex') !== '7f454c460101') throw new Error('Expected little-endian ELF32 storage marker');
+    if (elf.length < 52 || elf.subarray(0, 6).toString('hex') !== '7f454c460101' || elf.readUInt16LE(18) !== 40) throw new Error('Expected little-endian ARM ELF32 storage marker');
     const phoff = elf.readUInt32LE(28), phsize = elf.readUInt16LE(42), count = elf.readUInt16LE(44);
     if (phsize < 32 || count > 256 || phoff + phsize * count > elf.length) throw new Error('Malformed storage marker ELF headers');
     let found = false;
