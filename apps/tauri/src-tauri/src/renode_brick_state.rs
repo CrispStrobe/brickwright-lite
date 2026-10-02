@@ -352,7 +352,9 @@ impl BrickStateFeed {
             "nuttx.program.packet" => prior.target.board == "spike-prime"
                 && prior.target.transport == "none"
                 && prior.target.firmware == "brickwright-nuttx"
-                && prior.target.capabilities.iter().any(|cap| cap == "nuttx-program/v1"),
+                && prior.target.capabilities.iter().any(|cap| cap == "nuttx-program/v1")
+                && (arguments["bytes"][2].as_u64().is_some_and(|op| op < 8)
+                    || prior.target.capabilities.iter().any(|cap| cap == "nuttx-program-storage/v1")),
             "arena.inputs" | "arena.program.load" => {
                 prior.target.board == "spike-prime"
                     && prior.target.transport == "none"

@@ -164,3 +164,15 @@ test('cancellation after uncertain START stops before abort and failed correlati
     }, {id: 1, program}), /Mismatched/);
     assert.deepEqual(mismatched, [0, 1, 6]);
 });
+
+test('storage uses exact nonzero-ID frames and never starts or cleans up on error', async () => {
+    for (const op of [8, 9]) {
+        assert.deepEqual([...encodeCommand(op, 0x12345678)], [112, 1, op, 0, 120, 86, 52, 18]);
+        assert.throws(() => encodeCommand(op, 0));
+        const calls = [], client = new NuttXProgramClient(async packet => {calls.push(packet[2]);return reply(packet, {result: -16});}, 9);
+        await assert.rejects(op === 8 ? client.save() : client.load(), error => error.result === -16 && error.reply.id === 9);
+        assert.deepEqual(calls, [op]);
+        assert.throws(() => decodeReply(reply(encodeCommand(op, 9), {id: 10}), {op, id: 9}), /Mismatched/);
+    }
+    assert.throws(() => encodeCommand(10, 1));
+});

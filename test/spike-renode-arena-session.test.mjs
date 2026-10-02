@@ -113,3 +113,61 @@ test('invalid source or rows fail before a firmware session can replace native a
         program: {version: 1, instructions: [[1, 0, 9999, 0], [0, 0, 0, 0]]}}));
     assert.equal(calls, 0); assert.equal(b.hubState.clockOwner, null);
 });
+
+test('storage-capable NuttX retains completed program, loads READY without START, and uploads current code in place', async () => {
+    let seq = 0, state = 0, completes = 0, saved = false;
+    const calls = [], packets = [];
+    const makeFrame = () => {
+        const frame = programFrame();frame.seq = ++seq;frame.clockNs = seq * 1000000;
+        frame.target.firmware = 'brickwright-nuttx';frame.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+        frame.lifecycle.nuttxProgram = {state, error: 0};return frame;
+    };
+    const capabilities = Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write','program.packet'].map(op =>
+        [`renode.spike.${op}`, async args => {
+            calls.push(op);
+            if (op === 'state.read') return JSON.stringify(makeFrame());
+            if (op !== 'program.packet') return 'ready';
+            const packet = args.bytes;packets.push(packet);
+            if (packet[2] === 2 || packet[2] === 9) state = 1;
+            if (packet[2] === 3) state = 2;
+            if (packet[2] === 4) state = 4;
+            if (packet[2] === 8) saved = true;
+            const frame = makeFrame(), reply = new Uint8Array(20), v = new DataView(reply.buffer);
+            reply.set([0x71,1,packet[2],state]);v.setUint32(4,1,true);v.setUint16(14,1,true);
+            frame.lifecycle.nuttxProgramReply = [...reply];return JSON.stringify(frame);
+        }]));
+    const session = new RenodeArenaSession({bridge: bridge(), capabilities, backend: 'nuttx',
+        program: {version:1,instructions:[[0,0,0,0]]}, onCompleted: () => completes++});
+    try {
+        await session.start();clearTimeout(session.timer);
+        await assert.rejects(session.storage('save'), /busy/);
+        state = 3;await session.poll();clearTimeout(session.timer);
+        await session.poll();clearTimeout(session.timer);
+        assert.equal(completes, 1);assert.equal(session.closed, false);
+        await session.storage('save');clearTimeout(session.timer);assert.equal(saved, true);
+        const beforeLoad = packets.length;
+        await session.storage('load');clearTimeout(session.timer);
+        assert.equal(session.programState, 1);assert.equal(session.loaded, true);
+        assert.deepEqual(packets.slice(beforeLoad).map(p => p[2]), [9]);
+        assert.equal(packets.at(-1).length, 8);
+        await session.startProgram();clearTimeout(session.timer);assert.equal(state, 2);
+        await session.stopProgram();clearTimeout(session.timer);assert.equal(state, 4);assert.equal(session.closed, false);
+        const beforeUpload = packets.length;
+        await session.uploadProgram({version:1,instructions:[[2,10,0,0],[0,0,0,0]]});clearTimeout(session.timer);
+        assert.equal(session.loaded, false);assert.equal(state, 2);
+        assert.deepEqual(packets.slice(beforeUpload).map(p => p[2]), [4,0,1,1,1,1,2,3]);
+        assert.equal(calls.filter(op => op === 'session.start').length, 1);
+        assert.equal(calls.filter(op => op === 'run').length, 1);
+        assert.equal(calls.includes('session.close'), false);
+    } finally { await session.stop(); }
+    assert.equal(calls.filter(op => op === 'session.close').length, 1);
+});
+
+test('old NuttX package cannot invoke storage and transport errno remains available', async () => {
+    const session = new RenodeArenaSession({bridge: bridge()});let calls = 0;
+    session.programClient = {save: async () => {calls++;throw Object.assign(new Error('flash busy'), {result:-16});}};
+    await assert.rejects(session.storage('save'), /supported live/);assert.equal(calls, 0);
+    session.storageSupported = true;session.programState = 1;
+    try { await assert.rejects(session.storage('save'), error => error.result === -16);assert.equal(calls, 1);assert.equal(session.storageBusy, false); }
+    finally { clearTimeout(session.timer); }
+});

@@ -6,6 +6,7 @@ import {resolve, join} from 'node:path';
 import {mkdir, copyFile, readFile, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {programStorageAbiAddress} from './lib/spike-program-storage-marker.mjs';
 const args = process.argv.slice(2);
 if (args.length !== 5) throw new Error('Usage: prepare-spike-nuttx-package.mjs FIRMWARE_REPO RENODE_REPO INFRASTRUCTURE_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY');
 const [firmware, models, infrastructure, executable, output] = args.map(p => resolve(p));
@@ -41,6 +42,7 @@ if (!mailbox || mailbox % 4 || mailbox < 0x20020000 || mailbox > 0x20040000 - 11
 const outputSymbol = nm.stdout.match(/^([a-fA-F0-9]+)\s+\w\s+g_bw_python_output$/m);
 const outputMailbox = outputSymbol && parseInt(outputSymbol[1], 16);
 if (!outputMailbox || outputMailbox % 4 || outputMailbox < 0x20020000 || outputMailbox > 0x20040000 - 1036) throw new Error('Python output buffer exceeds userspace RAM');
+const storageAddress = programStorageAbiAddress(user, nm.stdout);
 const copies = [['nuttx/nuttx', 'nuttx-kernel.elf', firmware], ['nuttx/nuttx_user.elf', 'nuttx-user.elf', firmware],
     ['LICENSE', 'licenses/firmware-LICENSE', firmware], ['nuttx/LICENSE', 'licenses/NuttX-Apache-2.0.txt', firmware],
     ['nuttx/NOTICE', 'licenses/NuttX-NOTICE.txt', firmware],
@@ -58,6 +60,7 @@ const hash = async file => createHash('sha256').update(await readFile(file)).dig
 await writeFile(join(output, 'nuttx.resc'), `include @${join(output, 'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(output, 'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n`);
 await writeFile(join(output, 'state-config.json'), JSON.stringify({identity: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none',
     imageSha256: await hash(join(output, 'nuttx-user.elf'))}, programMailbox: mailbox, pythonOutputMailbox: outputMailbox, boot,
+    ...(storageAddress === null ? {} : {programStorageAbiAddress: storageAddress}),
 paths: {...Object.fromEntries('ABCDE'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');
 const files = ['models.cs', 'nuttx.resc', 'state-config.json', ...copies.map(c => c[1]),
     'licenses/renode-models-MIT.txt', 'licenses/brickwright-BSD-3-Clause.txt',
