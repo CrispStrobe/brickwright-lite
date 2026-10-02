@@ -13,6 +13,7 @@ const OPERATIONS = Object.freeze({
     arenaInputs: 'renode.spike.arena.inputs.write',
     arenaProgram: 'renode.spike.arena.program.load',
     programPacket: 'renode.spike.program.packet',
+    programStorageSubmit: 'renode.spike.program.storage.submit',
     setBreakpoint: 'renode.spike.breakpoint.set',
     clearBreakpoint: 'renode.spike.breakpoint.clear',
     ev3Start: 'renode.ev3.session.start',

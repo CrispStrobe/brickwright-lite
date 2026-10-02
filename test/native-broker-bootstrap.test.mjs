@@ -359,3 +359,21 @@ test('a retired session is inert for a capability request, like every other kind
 
     await control.dispose();
 });
+
+test('GUI program upload and deferred storage cross the real broker receiver with the SPIKE resource', async () => {
+    const invokes = [], replies = [];
+    const control = createNativeBrokerReceiver({NativeBrokerProtocol,
+        BrokerProtocolError: protocolModule.BrokerProtocolError,
+        invoke: async (command, args) => {
+            if (command === 'native_broker_reply') {replies.push(JSON.parse(args.payload));return;}
+            if (command === 'native_broker_lease') return 'f'.repeat(64);
+            assert.equal(command, 'native_broker_invoke');invokes.push(args);return 'snapshot';
+        }, createProtocol: () => {throw new Error('program transport does not create a worker');}});
+    for (const [index, operation] of ['renode.spike.program.packet', 'renode.spike.program.storage.submit'].entries()) {
+        const args = {bytes: [112, 1, index === 0 ? 2 : 8, 0, 1, 0, 0, 0]};
+        await control.receive(delivery(sid(2), sid(21 + index), 'capability', index, {operation, args}));
+        assert.deepEqual(invokes[index], {lease: 'f'.repeat(64), sequence: 0, operation, resource: 'renode/spike-prime', args});
+        assert.deepEqual(replies[index], {kind: 'capability', result: 'snapshot'});
+    }
+    assert.equal(invokes.length, 2);await control.dispose();
+});

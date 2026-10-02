@@ -421,6 +421,23 @@ impl RenodeDebugger {
         }
     }
 
+    pub(crate) fn spike_program_storage_submit(&self, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                serde_json::to_value(feed.command("nuttx.program.storage.submit", arguments)?)
+                    .map_err(|_| "SPIKE snapshot unavailable".to_owned())
+            }
+            _ => Err("SPIKE program packet target mismatch".into()),
+        }
+    }
+
     pub(crate) fn spike_arena_program(&self, arguments: Value) -> Result<Value, String> {
         let session = self
             .session
@@ -479,6 +496,19 @@ impl RenodeDebugger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Own ABI proof: correlate the complete reply and retain signed errno.
+    fn assert_program_reply(snapshot: &Value, request: &Value, expected_result: i32) -> (u8, u16) {
+        let bytes: Vec<u8> = snapshot["lifecycle"]["nuttxProgramReply"]
+            .as_array().unwrap().iter().map(|v| u8::try_from(v.as_u64().unwrap()).unwrap()).collect();
+        let packet: Vec<u8> = request.as_array().unwrap().iter()
+            .map(|v| u8::try_from(v.as_u64().unwrap()).unwrap()).collect();
+        assert_eq!(bytes.len(), 20);
+        assert_eq!(&bytes[..3], &[0x71, 1, packet[2]]);
+        assert_eq!(&bytes[4..8], &packet[4..8]);
+        assert_eq!(i32::from_le_bytes(bytes[8..12].try_into().unwrap()), expected_result);
+        (bytes[3], u16::from_le_bytes(bytes[14..16].try_into().unwrap()))
+    }
 
     #[test]
     fn close_is_idempotent_and_does_not_manufacture_a_session() {
@@ -592,6 +622,155 @@ mod tests {
         }
         debugger.spike_arena_inputs(serde_json::json!({"sensors":[{"port":"E","kind":"force","values":{"forcePercent":70,"pressed":true}}],"loads":[]})).unwrap();
         debugger.close(&supervisor).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned storage-capable NuttX package and private native caller fixture"]
+    fn packaged_spike_nuttx_program_storage_retains_session_without_autorun() {
+        // One fresh firmware boot keeps storage diagnosis independent of the paired
+        // guest/Python proof and within the existing supervisor session bound.
+        let elapsed = Instant::now();
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        eprintln!("storage stage=boot-full-nuttx elapsed_ms=0");
+        debugger.start_spike_backend(&supervisor, Some("nuttx")).unwrap_or_else(|error| {
+            panic!("storage stage=boot-full-nuttx elapsed_ms={} error={error}", elapsed.elapsed().as_millis())
+        });
+        eprintln!("storage stage=read-first-snapshot elapsed_ms={}", elapsed.elapsed().as_millis());
+        let first = debugger.state().unwrap_or_else(|error| {
+            panic!("storage stage=read-first-snapshot elapsed_ms={} error={error}", elapsed.elapsed().as_millis())
+        });
+        assert_eq!(first["target"]["firmware"], "brickwright-nuttx");
+        for port in ["A", "B", "C", "D", "E", "F"] {
+            assert!(first["ports"].as_array().unwrap().iter().any(|entry| entry["id"] == port),
+                "packaged shared state omitted port {port}");
+        }
+        eprintln!("storage stage=run-emulator elapsed_ms={}", elapsed.elapsed().as_millis());
+        debugger.run().unwrap_or_else(|error| {
+            panic!("storage stage=run-emulator elapsed_ms={} error={error}", elapsed.elapsed().as_millis())
+        });
+        let cases: Value = serde_json::from_slice(&std::fs::read(
+            std::env::var("BW_NUTTX_CALLER_FIXTURES").expect("generate private synthetic caller fixtures first")
+        ).unwrap()).unwrap();
+        let mut response;
+        assert!(first["target"]["capabilities"].as_array().unwrap().iter()
+            .any(|cap| cap == "nuttx-program-storage/v1"), "stage a storage-capable own firmware package");
+        let native = cases.as_array().unwrap().iter().find(|case| case["python"] == false).unwrap();
+        let storage = &native["storage"];
+        let last_storage_sequence = std::cell::Cell::new(
+            first["lifecycle"]["nuttxProgramStorage"]["requestSeq"].as_u64());
+        let send = |stage: &str, request: &Value| {
+            let packet = request.as_array().unwrap();
+            let op = packet[2].as_u64().unwrap();
+            let id = u32::from_le_bytes(std::array::from_fn(|i| packet[4+i].as_u64().unwrap() as u8));
+            let began = Instant::now();
+            eprintln!("storage stage={stage} op={op} id={id} elapsed_ms={}", elapsed.elapsed().as_millis());
+            let mut response = if matches!(op, 8 | 9) {
+                assert!(first["target"]["capabilities"].as_array().unwrap().iter()
+                    .any(|cap| cap == "nuttx-program-storage-deferred/v1"), "stage the deferred-storage server package");
+                debugger.spike_program_storage_submit(json!({"bytes": request}))
+            } else {
+                debugger.spike_program_packet(json!({"bytes": request}))
+            }.unwrap_or_else(|error| {
+                panic!("storage stage={stage} op={op} id={id} elapsed_ms={} packet_ms={} endpoint_owned={} error={error}",
+                    elapsed.elapsed().as_millis(), began.elapsed().as_millis(), debugger.has_endpoint())
+            });
+            if matches!(op, 8 | 9) {
+                let submitted = response["lifecycle"]["nuttxProgramStorage"]["requestSeq"].as_u64().unwrap();
+                assert_ne!(Some(submitted), last_storage_sequence.get(),
+                    "storage stage={stage} reused a previous storage request sequence");
+                loop {
+                    assert!(began.elapsed() < Duration::from_secs(30), "storage stage={stage} completion timed out");
+                    assert!(debugger.has_endpoint(), "storage endpoint lost at {stage}");
+                    assert_eq!(response["target"], first["target"], "storage target changed at {stage}");
+                    for key in ["generation", "connectionGeneration"] {
+                        assert_eq!(response["lifecycle"][key], first["lifecycle"][key], "storage generation changed at {stage}");
+                    }
+                    let metadata = &response["lifecycle"]["nuttxProgramStorage"];
+                    assert_eq!(metadata["requestSeq"].as_u64(), Some(submitted));
+                    assert_eq!(metadata["operation"].as_u64(), Some(op));
+                    assert_eq!(metadata["programId"].as_u64(), Some(id as u64));
+                    if metadata["pending"] == false {
+                        assert_eq!(metadata["replySeq"].as_u64(), Some(submitted));
+                        last_storage_sequence.set(Some(submitted));
+                        break;
+                    }
+                    assert!(began.elapsed() < Duration::from_millis(27950), "storage stage={stage} op={op} id={id} completion timed out");
+                    thread::sleep(Duration::from_millis(50));
+                    response = debugger.state().unwrap_or_else(|error| {
+                        panic!("storage stage={stage} op={op} id={id} poll_ms={} endpoint_owned={} error={error}",
+                            began.elapsed().as_millis(), debugger.has_endpoint())
+                    });
+                }
+            }
+            let reply = response["lifecycle"]["nuttxProgramReply"].as_array().unwrap();
+            let result = i32::from_le_bytes(std::array::from_fn(|i| reply[8+i].as_u64().unwrap() as u8));
+            eprintln!("storage stage={stage} complete state={} result={result} packet_ms={} elapsed_ms={}",
+                reply[3], began.elapsed().as_millis(), elapsed.elapsed().as_millis());
+            response
+        };
+        // Upload without START, persist, then replace the resident program under the same ID.
+        for request in storage["upload"].as_array().unwrap() {
+            response = send("upload-native", request);assert_program_reply(&response, request, 0);
+        }
+        response = send("save-native", &storage["save"]);
+        assert_eq!(assert_program_reply(&response, &storage["save"], 0).0, 1);
+        let retained_identity = response["target"].clone();
+        let retained_seq = response["seq"].as_u64().unwrap();
+        for request in storage["replace"].as_array().unwrap() {
+            response = send("replace-resident", request);assert_program_reply(&response, request, 0);
+        }
+        assert_eq!(assert_program_reply(&response, storage["replace"].as_array().unwrap().last().unwrap(), 0),
+            (1, u16::try_from(storage["replacementCount"].as_u64().unwrap()).unwrap()));
+        assert_ne!(storage["savedCount"], storage["replacementCount"]);
+        response = send("load-saved-native", &storage["load"]);
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0),
+            (1, u16::try_from(storage["savedCount"].as_u64().unwrap()).unwrap()));
+        let motor_b_position = |snapshot: &Value| snapshot["motors"].as_array().unwrap().iter()
+            .find(|motor| motor["port"] == "B").unwrap()["position"].as_f64().unwrap();
+        let loaded_position = motor_b_position(&response);
+        thread::sleep(Duration::from_millis(100));
+        response = send("status-no-autorun", &native["status"]);
+        assert_eq!(assert_program_reply(&response, &native["status"], 0).0, 1, "LOAD must not autorun");
+        assert!((motor_b_position(&response) - loaded_position).abs() < 0.1, "LOAD moved the motor");
+        response = send("start-restored", &storage["start"]);
+        assert_eq!(assert_program_reply(&response, &storage["start"], 0).0, 2);
+        for _ in 0..50 {
+            response = send("status-restored-run", &native["status"]);
+            let state = assert_program_reply(&response, &native["status"], 0).0;
+            assert_ne!(state, 5, "restored native program faulted during status-restored-run");
+            if state == 3 { break; }
+            thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(response["lifecycle"]["nuttxProgramReply"][3], 3);
+        assert!(motor_b_position(&response) > loaded_position + 1.0, "saved motor program was not restored");
+        // START accepts READY only. Restore the saved slot before the second run.
+        response = send("reload-before-stop-run", &storage["load"]);
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0).0, 1);
+        let reloaded_position = motor_b_position(&response);
+        response = send("status-reloaded-no-autorun", &native["status"]);
+        assert_eq!(assert_program_reply(&response, &native["status"], 0).0, 1);
+        assert!((motor_b_position(&response) - reloaded_position).abs() < 0.1, "second LOAD moved the motor");
+        response = send("restart-before-stop", &storage["start"]);
+        assert_eq!(assert_program_reply(&response, &storage["start"], 0).0, 2);
+        response = send("stop-retained", &storage["stop"]);
+        assert_eq!(assert_program_reply(&response, &storage["stop"], 0).0, 4);
+        // STOP retains both process and saved slot. Allow a bounded unwind before LOAD.
+        for _ in 0..50 {
+            response = send("load-after-stop", &storage["load"]);
+            let bytes = response["lifecycle"]["nuttxProgramReply"].as_array().unwrap();
+            let result = i32::from_le_bytes(std::array::from_fn(|i| bytes[8+i].as_u64().unwrap() as u8));
+            if result == 0 { break; }
+            assert_eq!(result, -16, "unexpected LOAD failure after STOP");
+            thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0).0, 1);
+        assert_eq!(response["target"], retained_identity);
+        assert!(response["seq"].as_u64().unwrap() > retained_seq);
+        assert!(debugger.has_endpoint(), "storage must retain the live desktop session");
+        eprintln!("storage stage=close-session elapsed_ms={}", elapsed.elapsed().as_millis());
+        debugger.close(&supervisor).unwrap();
+        eprintln!("storage stage=complete elapsed_ms={}", elapsed.elapsed().as_millis());
     }
 
     /// Hosted/manual proof against the exact build-pinned Renode tree. The ordinary library

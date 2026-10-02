@@ -86,6 +86,10 @@ fn execute(
                     .expect("bounded length"),
             )
         }
+        Operation::RenodeSpikeProgramStorageSubmit => {
+            spike()?;
+            debugger.spike_program_storage_submit(args.clone()).map(|value| value.to_string())
+        }
         Operation::RenodeSpikeProgramPacket => {
             spike()?;
             debugger.spike_program_packet(args.clone()).map(|value| value.to_string())

@@ -395,6 +395,17 @@ class SpikeArenaPane extends React.Component {
         if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm);
         if (source !== null) encodePython(source);
         if (program) encodeInstructions(program);
+        if (this.firmwareSession?.storageSupported && (source !== null || this.state.execution === 'nuttx')) {
+            const session = this.firmwareSession;
+            session.onOutput = onOutput;
+            session.onCompleted = () => { onCompleted(); if (!this.disposed && this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); };
+            this.setState({status: 'starting', message: this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…'});
+            try {
+                await session.uploadProgram(program, source);
+                if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: this.locale === 'de' ? 'Aktueller Code geladen; läuft in der ARM-Firmware.' : 'Current code uploaded and running in ARM firmware.'});
+            } catch (error) { if (!this.disposed && this.firmwareSession === session) this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message}); }
+            return;
+        }
         await this.stopProgram();
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
@@ -408,15 +419,20 @@ class SpikeArenaPane extends React.Component {
             onStopped: () => { if (!this.disposed && this.firmwareSession === session) {
                 this.firmwareSession = null; this.setState({execution: backend === 'nuttx' ? 'nuttx' : program ? 'program' : 'renode', status: 'paused'});
             } },
+            onProgramState: (programState, storageSupported, runtimeError) => {
+                if (!this.disposed && this.firmwareSession === session) this.setState({programState, storageSupported,
+                    status: programState === 2 ? 'running' : 'paused',
+                    ...(programState === 5 ? {message: this.locale === 'de' ? `Firmware-Programm fehlgeschlagen (${runtimeError}). Gespeichertes Programm laden oder aktuellen Code starten.` : `Firmware program failed (${runtimeError}). Load a saved program or run current code to recover.`} : {})});
+            },
             onFrame: snapshot => { if (!this.disposed && this.firmwareSession === session) {
-                this.setState({status: 'running', readout: snapshot, verdict: snapshot.verdict}); this.draw();
+                this.setState({status: session.storageSupported && session.programState !== 2 ? 'paused' : 'running', readout: snapshot, verdict: snapshot.verdict}); this.draw();
             } },
             onError: error => { if (!this.disposed && this.firmwareSession === session) {
                 this.firmwareSession = null;
                 this.setState({status: 'failed', message: error.message});
             } }});
         this.firmwareSession = session;
-        this.setState({status: 'starting', message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
+        this.setState({status: 'starting', storageSupported: false, programState: null, message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
         try {
             await session.start();
             if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: program || source !== null ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
@@ -428,7 +444,38 @@ class SpikeArenaPane extends React.Component {
         }
     }
 
+    async programStorage (operation) {
+        const session = this.firmwareSession;
+        if (!session || this.state.storageBusy) return;
+        this.setState({storageBusy: true});
+        try {
+            await session.storage(operation);
+            if (!this.disposed && this.firmwareSession === session) this.setState({status: 'paused',
+                message: this.locale === 'de' ? (operation === 'save' ? 'Programm in dieser Simulator-Sitzung gespeichert.' : 'Programm geladen und bereit. Editor-Text unverändert. Zum Ausführen „Geladenes Programm starten“ drücken.') :
+                    (operation === 'save' ? 'Program saved in this simulator session.' : 'Program loaded and ready. Editor text is unchanged. Press Run loaded program to run it.')});
+        } catch (error) {
+            const messages = this.locale === 'de' ? {
+                '-16': 'Programmspeicher beschäftigt. Programm stoppen und kurz warten.',
+                '-2': 'Kein gespeichertes Programm in dieser Simulator-Sitzung.',
+                '-22': 'Ungültige Programmdaten oder abweichende Programm-ID.',
+                '-5': 'Speichern fehlgeschlagen: Flash-Ein-/Ausgabefehler im Simulator.',
+                '-74': 'Gespeichertes Programm beschädigt oder ungültig.'
+            } : {'-16': 'Program storage is busy; stop the program and wait before trying again.',
+                '-2': 'No saved program exists in this simulator session.', '-22': 'Program storage rejected invalid data or a mismatched program ID.',
+                '-5': 'Program storage failed: simulator flash I/O error.', '-74': 'Saved program is damaged or invalid.'};
+            if (!this.disposed && this.firmwareSession === session) this.setState({message: session.storageUncertain ?
+                (this.locale === 'de' ? 'Ergebnis des Programmspeichers unbekannt. Diese Simulator-Sitzung vor dem Fortfahren schließen.' :
+                    'Program storage result is unknown. Close this simulator session before continuing.') :
+                messages[error.result ?? (/busy/.test(error.message) ? -16 : null)] || (this.locale === 'de' ? `Programmspeicher: ${error.message}` : error.message)});
+        } finally { if (!this.disposed) this.setState({storageBusy: false}); }
+    }
+
     async start () {
+        if (this.firmwareSession?.storageSupported && this.firmwareSession.loaded && this.firmwareSession.programState === 1 && !this.firmwareSession.closed) {
+            try { await this.firmwareSession.startProgram(); this.setState({status: 'running', message: this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.'}); }
+            catch (error) { this.setState({message: error.message}); }
+            return;
+        }
         if (['renode', 'program', 'nuttx'].includes(this.state.execution)) {
             try { return await this.startFirmware(); }
             catch (error) { this.setState({status: 'failed', message: error.message}); return; }
@@ -479,6 +526,11 @@ class SpikeArenaPane extends React.Component {
     }
 
     async pause () {
+        if (this.firmwareSession?.storageSupported) {
+            try { await this.firmwareSession.stopProgram(); this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'}); }
+            catch (error) { this.setState({message: error.message}); }
+            return;
+        }
         if (this.firmwareSession || this.hubState?.externalBackend) await this.stopProgram();
         this.setState({status: 'paused'});
     }
@@ -649,7 +701,7 @@ class SpikeArenaPane extends React.Component {
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}
-                                disabled={!world} onClick={() => this.start()} data-testid="bw-spike-arena-start">{t('start')}</button>
+                                disabled={!world || this.state.storageBusy || this.firmwareSession?.uploading || status === 'starting'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{this.firmwareSession?.loaded && this.state.programState === 1 ? (this.locale === 'de' ? 'Geladenes Programm starten' : 'Run loaded program') : t('start')}</button>
                         )}
                         <select aria-label={this.locale === 'de' ? 'Ausführung' : 'Execution'} data-testid="bw-spike-arena-execution"
                             value={this.state.execution} onChange={async event => {
@@ -667,6 +719,18 @@ class SpikeArenaPane extends React.Component {
                                 {this.locale === 'de' ? 'Vollständiges NuttX (Desktop)' : 'Full NuttX (desktop)'}
                             </option>
                         </select>
+                        {this.state.execution === 'nuttx' ? <>
+                            <button type="button" style={btn} data-testid="bw-spike-program-save"
+                                disabled={!this.firmwareSession?.storageSupported || this.state.storageBusy || this.firmwareSession?.uploading || ![1, 3, 4].includes(this.state.programState)}
+                                onClick={() => this.programStorage('save')}>{this.locale === 'de' ? 'Programm speichern' : 'Save program'}</button>
+                            <button type="button" style={btn} data-testid="bw-spike-program-load"
+                                disabled={!this.firmwareSession?.storageSupported || this.state.storageBusy || this.firmwareSession?.uploading || this.state.programState === 2}
+                                onClick={() => this.programStorage('load')}>{this.locale === 'de' ? 'Programm laden' : 'Load program'}</button>
+                            <span style={{fontSize: 12, flex: '1 1 220px', alignSelf: 'center'}} data-testid="bw-spike-program-storage-hint">
+                                {this.locale === 'de' ? (this.firmwareSession?.storageSupported ? 'Speicher gilt für diese Simulator-Sitzung. Laden startet das Programm nicht.' : 'Speicher erfordert eine laufende NuttX-Sitzung mit Speicherunterstützung.') :
+                                    (this.firmwareSession?.storageSupported ? 'Storage lasts for this live simulator session. Load never runs automatically.' : 'Storage requires a live NuttX package with program storage support.')}
+                            </span>
+                        </> : null}
                         <button type="button" style={btn} disabled={!world || this.state.execution !== 'native'} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>
                         <button type="button" style={btn} disabled={!world} onClick={() => this.reset()} data-testid="bw-spike-arena-reset">{t('reset')}</button>
                         <button type="button" style={btn} disabled={!world} onClick={() => this.toggleView()}

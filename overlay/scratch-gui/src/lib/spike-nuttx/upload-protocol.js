@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 // Autonomous NuttX program ABI. No emulator, GUI or transport dependencies.
 export const PROGRAM_OP = Object.freeze({BEGIN: 0, CHUNK: 1, COMMIT: 2, START: 3,
-    STOP: 4, STATUS: 5, ABORT: 6, BEGIN_PYTHON: 7});
+    STOP: 4, STATUS: 5, ABORT: 6, BEGIN_PYTHON: 7, SAVE: 8, LOAD: 9});
 export const PROGRAM_STATE = Object.freeze({EMPTY: 0, READY: 1, RUNNING: 2,
     COMPLETE: 3, STOPPED: 4, FAULT: 5});
 const integer = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
@@ -58,7 +58,7 @@ export function encodePython (source) {
     return data;
 }
 function header (op, id, length = 8) {
-    requireInteger(op, 0, 7, 'operation');
+    requireInteger(op, 0, 9, 'operation');
     requireInteger(id, op === PROGRAM_OP.STATUS ? 0 : 1, 0xffffffff, 'program id');
     const data = new Uint8Array(length);
     data.set([0x70, 1, op, 0]);view(data).setUint32(4, id, true);return data;
@@ -78,12 +78,12 @@ export function encodeChunk (id, offset, payload) {
     view(data).setUint16(8, offset, true);data.set(payload, 10);return data;
 }
 export function encodeCommand (op, id) {
-    if (![2, 3, 4, 5, 6].includes(op)) throw new RangeError('Expected program command');
+    if (![2, 3, 4, 5, 6, 8, 9].includes(op)) throw new RangeError('Expected program command');
     return header(op, id);
 }
 export function decodeReply (data, expected) {
     bytes(data);
-    if (!expected || !integer(expected.op, 0, 7) ||
+    if (!expected || !integer(expected.op, 0, 9) ||
         !integer(expected.id, expected.op === 5 ? 0 : 1, 0xffffffff)) throw new TypeError('Expected request operation and id');
     if (data.length !== 20 || data[0] !== 0x71 || data[1] !== 1 || data[2] !== expected.op || data[3] > 5) {
         throw new Error('Malformed or mismatched NuttX program reply');
@@ -146,6 +146,8 @@ export class NuttXProgramClient {
         });
     }
     command (op) {return this.enqueue(() => this.request(encodeCommand(op, this.id)));}
+    save () {return this.command(8);}
+    load () {return this.command(9);}
     start () {return this.command(3);}
     status () {return this.command(5);}
     abort () {this.stopEpoch++;return this.command(6);}
