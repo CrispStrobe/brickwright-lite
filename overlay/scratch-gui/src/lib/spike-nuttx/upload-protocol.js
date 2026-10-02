@@ -22,7 +22,9 @@ export function crc32 (value) {
     }
     return (crc ^ 0xffffffff) >>> 0;
 }
-export function encodeInstructions (program) {
+export function encodeInstructions (program, {topology = 'default'} = {}) {
+    if (!['default', 'six-motors'].includes(topology)) throw new TypeError('Unknown firmware topology');
+    const six = topology === 'six-motors';
     if (!program || Object.getPrototypeOf(program) !== Object.prototype ||
         Object.keys(program).length !== 2 || program.version !== 1 ||
         !Array.isArray(program.instructions)) throw new TypeError('Expected compiled firmware program v1');
@@ -35,13 +37,13 @@ export function encodeInstructions (program) {
         }
         const [op, a, b, c] = row;
         const valid = (op === 0 && a === 0 && b === 0 && c === 0) ||
-            (op === 1 && integer(a, 0, 1) && integer(b, -1110, 1110) && c === 0) ||
+            (op === 1 && integer(a, 0, six ? 5 : 1) && integer(b, -1110, 1110) && c === 0) ||
             (op === 2 && integer(a, 0, 120000) && b === 0 && c === 0) ||
-            ([3, 5].includes(op) && integer(a, 1, 6) &&
+            (!six && [3, 5].includes(op) && integer(a, 1, 6) &&
                 integer(b, 0, a <= 2 ? 65535 : a === 3 ? 1 : a === 4 ? 255 : 100) &&
                 (op === 3 ? c === 0 : integer(c, 0, count - 1))) ||
             (op === 4 && integer(a, 0, count - 1) && b === 0 && c === 0) ||
-            (op === 6 && integer(a, 0, 1) && integer(b, -36000, 36000) && integer(c, 1, 1110));
+            (op === 6 && integer(a, 0, six ? 5 : 1) && integer(b, -36000, 36000) && integer(c, 1, 1110));
         if (!valid) throw new RangeError('Instruction exceeds firmware ABI bounds');
     }
     if (rows[count - 1].some(word => word !== 0)) throw new Error('Firmware program must end with END');
@@ -103,7 +105,9 @@ const cancellation = () => Object.assign(new Error('NuttX program upload cancell
  * and bound its own I/O timeout. Cancellation waits for the current exchange
  * before cleanup so packets/replies never overlap. Keep one client per device. */
 export class NuttXProgramClient {
-    constructor (exchange, id) {
+    constructor (exchange, id, {topology = 'default'} = {}) {
+        if (!['default', 'six-motors'].includes(topology)) throw new TypeError('Unknown firmware topology');
+        this.topology = topology;
         if (typeof exchange !== 'function') throw new TypeError('Expected packet exchange function');
         requireInteger(id, 1, 0xffffffff, 'program id');
         this.exchange = exchange;this.id = id;this.tail = Promise.resolve();this.stopEpoch = 0;
@@ -121,7 +125,7 @@ export class NuttXProgramClient {
     }
     upload (program, {python = false, signal, start = true} = {}) {
         // Complete validation and copy the payload before any transport call.
-        const payload = python ? encodePython(program) : encodeInstructions(program);
+        const payload = python ? encodePython(program) : encodeInstructions(program, {topology: this.topology});
         if (typeof start !== 'boolean' || typeof python !== 'boolean') throw new TypeError('Invalid upload options');
         const begin = encodeBegin(this.id, python ? payload.length : payload.length / 16, crc32(payload), python);
         const epoch = this.stopEpoch;
@@ -153,8 +157,8 @@ export class NuttXProgramClient {
     abort () {this.stopEpoch++;return this.command(6);}
     stop () {this.stopEpoch++;return this.command(4);}
 }
-export async function uploadProgram (exchange, {id, program, source, signal, start = true}) {
+export async function uploadProgram (exchange, {id, program, source, signal, start = true, topology = 'default'}) {
     if ((program === undefined) === (source === undefined)) throw new TypeError('Supply one compiled program or Python source');
-    return new NuttXProgramClient(exchange, id).upload(source === undefined ? program : source,
+    return new NuttXProgramClient(exchange, id, {topology}).upload(source === undefined ? program : source,
         {python: source !== undefined, signal, start});
 }

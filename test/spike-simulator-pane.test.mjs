@@ -160,7 +160,7 @@ test('program storage controls gate unsupported packages and explicitly run load
     } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}
 });
 
-test('six-motor profile is sandbox-only, localized, pre-start and Python-only', async () => {
+test('six-motor profile is sandbox-only, localized, pre-start and compiled-program capable', async () => {
     const browser=installBrowser(),{Pane,cleanup}=await loadSimulator();let renderer;
     try {
         await act(async()=>{renderer=create(React.createElement(Pane,{hubState:new Hub(),locale:'en'}));});
@@ -170,11 +170,19 @@ test('six-motor profile is sandbox-only, localized, pre-start and Python-only', 
         await act(async()=>pane.setState({execution:'nuttx',status:'ready'}));
         assert.equal(one(renderer,'bw-spike-nuttx-topology').props.disabled,false);
         await act(async()=>one(renderer,'bw-spike-nuttx-topology').props.onChange({target:{value:'six-motors'}}));
-        assert.equal(one(renderer,'bw-spike-arena-start').props.disabled,true);
-        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Python.*Scratch firmware currently supports A\/B only/);
-        await assert.rejects(pane.startFirmware(),/Six motors require NuttX Python/);
-        pane.firmwareSession={topology:'six-motors',loaded:true,programState:1,storageSupported:true};
-        await act(async()=>pane.setState({programState:1}));
+        assert.equal(one(renderer,'bw-spike-arena-start').props.disabled,false);
+        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch motor commands support A–F.*without synchronized starts/);
+        let uploaded;
+        pane.firmwareSession={topology:'six-motors',storageSupported:true,stop:async()=>{},uploadProgram:async p=>{uploaded=p;}};
+        const compiled={version:1,instructions:[[1,5,200,0],[0,0,0,0]]};
+        await act(async()=>pane.startFirmware(compiled));
+        assert.equal(uploaded,compiled);
+        await assert.rejects(pane.startFirmware({version:1,instructions:[[3,1,200,0],[0,0,0,0]]}),/ABI bounds/);
+        uploaded=null;
+        await act(async()=>pane.loadReferenceSolution());
+        assert.match(pane.state.message,/Lesson templates require the default devices/);
+        pane.firmwareSession={topology:'six-motors',loaded:true,programState:1,storageSupported:true,stop:async()=>{}};
+        await act(async()=>pane.setState({programState:1,status:'paused'}));
         assert.equal(one(renderer,'bw-spike-nuttx-topology').props.disabled,true);
         assert.equal(one(renderer,'bw-spike-arena-start').props.disabled,false);
         assert.equal(one(renderer,'bw-spike-arena-start').props.children,'Run loaded program');
@@ -183,6 +191,6 @@ test('six-motor profile is sandbox-only, localized, pre-start and Python-only', 
         const selector=one(renderer,'bw-spike-nuttx-topology');
         assert.equal(selector.props['aria-label'],'NuttX-Geräte');
         assert.equal(selector.findAllByType('option').find(o=>o.props.value==='six-motors').props.disabled,true);
-        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch-Firmware.*A\/B/);
+        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch-Motorbefehle unterstützen A–F/);
     } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}
 });

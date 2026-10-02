@@ -8,8 +8,8 @@ import {exchangeStorage, DEFERRED_STORAGE_CAPABILITY} from '../spike-nuttx/stora
 export class RenodeArenaSession {
     constructor ({bridge, capabilities, backend = null, topology = 'default', program = null, source = null, onOutput = () => {}, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}, onProgramState = () => {}}) {
         validateTopology(topology);
-        if (topology === 'six-motors' && (backend !== 'nuttx' || source === null || program || bridge?.robot?.sensors?.length !== 0)) {
-            throw new Error('Six motors require own NuttX Python and a sensorless sandbox');
+        if (topology === 'six-motors' && (backend !== 'nuttx' || (!program && source === null) || bridge?.robot?.sensors?.length !== 0)) {
+            throw new Error('Six motors require an own NuttX program and a sensorless sandbox');
         }
         this.topology = topology;
         this.adapter = new RenodeArenaBridge(bridge, {allMotors: topology === 'six-motors'});
@@ -18,7 +18,7 @@ export class RenodeArenaSession {
         this.backend = backend;
         if (program && source !== null) throw new TypeError('Supply one compiled program or Python source');
         if (source !== null) encodePython(source);
-        if (program) encodeInstructions(program);
+        if (program) encodeInstructions(program, {topology});
         this.program = program;
         this.source = source;
         this.onOutput = onOutput;
@@ -99,7 +99,7 @@ export class RenodeArenaSession {
                         this.onFrame(this.adapter.bridge.snapshot());
                     }
                     return new Uint8Array(frame.lifecycle?.nuttxProgramReply || []);
-                }, 1);
+                }, 1, {topology: this.topology});
                 this.uploading = true;
                 try { await this.programClient.upload(this.source === null ? this.program : this.source,
                     {python: this.source !== null}); } finally { this.uploading = false; }
@@ -189,12 +189,19 @@ export class RenodeArenaSession {
     }
     async uploadProgram (program, source = null) {
         if (source !== null) encodePython(source);
-        else encodeInstructions(program);
+        else encodeInstructions(program, {topology: this.topology});
         if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.storageBusy || this.uploading) throw new Error('NuttX program is unavailable or busy');
         this.uploading = true; clearTimeout(this.timer);
         try {
             await this.tail;
             if (this.closed) throw new Error('NuttX session is closed');
+            if (this.topology === 'six-motors') {
+                const fresh = JSON.parse(await this.call('state.read'));
+                if (this.closed) throw new Error('NuttX session is closed');
+                requireSixMotorFrame(fresh);
+                this.adapter.accept(fresh);
+                this.latestFrame = fresh;
+            }
             await this.programClient.stop();
             this.program = program; this.source = source; this.loaded = false; this.completed = false;
             const reply = await this.programClient.upload(source === null ? program : source, {python: source !== null});

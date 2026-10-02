@@ -395,14 +395,14 @@ class SpikeArenaPane extends React.Component {
         if (this.firmwareSession && (this.firmwareSession.topology || 'default') !== topology) {
             throw new Error(this.locale === 'de' ? 'Diese Firmware-Sitzung vor dem Gerätewechsel schließen.' : 'Close this firmware session before changing devices.');
         }
-        if (topology === 'six-motors' && (!this.state.sandbox || source === null || program)) {
-            throw new Error(this.locale === 'de' ? 'Sechs Motoren benötigen NuttX-Python im Sandkasten. Scratch-Firmware unterstützt derzeit nur A/B.' :
-                'Six motors require NuttX Python in the sandbox. Scratch firmware currently supports A/B only.');
+        if (topology === 'six-motors' && (!this.state.sandbox || this.state.execution !== 'nuttx')) {
+            throw new Error(this.locale === 'de' ? 'Sechs Motoren benötigen die eigene NuttX-Firmware im Sandkasten.' :
+                'Six motors require own NuttX firmware in the sandbox.');
         }
         // Compile before stopping a running session: unsupported blocks never run a demo.
-        if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm);
+        if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm, {topology});
         if (source !== null) encodePython(source);
-        if (program) encodeInstructions(program);
+        if (program) encodeInstructions(program, {topology});
         if (this.firmwareSession?.storageSupported && (source !== null || this.state.execution === 'nuttx')) {
             const session = this.firmwareSession;
             session.onOutput = onOutput;
@@ -563,6 +563,10 @@ class SpikeArenaPane extends React.Component {
     }
 
     async loadReferenceSolution () {
+        if (this.state.topology === 'six-motors') {
+            this.setState({message: this.locale === 'de' ? 'Lektionsvorlagen benötigen die Standardgeräte mit Sensoren.' : 'Lesson templates require the default devices with sensors.'});
+            return;
+        }
         const world = this.world;
         if (!world) return;
         try {
@@ -714,7 +718,7 @@ class SpikeArenaPane extends React.Component {
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}
-                                disabled={!world || this.state.storageBusy || this.firmwareSession?.uploading || status === 'starting' || (this.state.topology === 'six-motors' && !this.firmwareSession?.loaded)} onClick={() => this.start()} data-testid="bw-spike-arena-start">{this.firmwareSession?.loaded && this.state.programState === 1 ? (this.locale === 'de' ? 'Geladenes Programm starten' : 'Run loaded program') : t('start')}</button>
+                                disabled={!world || this.state.storageBusy || this.firmwareSession?.uploading || status === 'starting'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{this.firmwareSession?.loaded && this.state.programState === 1 ? (this.locale === 'de' ? 'Geladenes Programm starten' : 'Run loaded program') : t('start')}</button>
                         )}
                         <select aria-label={this.locale === 'de' ? 'Ausführung' : 'Execution'} data-testid="bw-spike-arena-execution"
                             value={this.state.execution} onChange={async event => {
@@ -744,8 +748,8 @@ class SpikeArenaPane extends React.Component {
                                 <option value="six-motors" disabled={!this.state.sandbox}>{this.locale === 'de' ? 'Sechs Motoren A–F (Sandkasten)' : 'Six motors A–F (sandbox)'}</option>
                             </select>
                             {this.state.topology === 'six-motors' ? <span style={{fontSize: 12, flex: '1 1 240px'}} data-testid="bw-spike-six-motor-hint">
-                                {this.locale === 'de' ? 'Benötigt ein NuttX-Paket mit sechs Motoren. Python im Code-Tab starten; Scratch-Firmware unterstützt derzeit nur A/B. A/B bewegen den Roboter, C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' :
-                                    'Requires a six-motor NuttX package. Run Python from the Code tab; Scratch firmware currently supports A/B only. A/B drive the rover, C–F are extra motors. No arena sensors.'}
+                                {this.locale === 'de' ? 'Benötigt ein NuttX-Paket mit sechs Motoren. Scratch-Motorbefehle unterstützen A–F; Positionsbewegungen verwenden einen Motor. Mehrportbefehle laufen nacheinander, ohne synchronisierten Start. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' :
+                                    'Requires a six-motor NuttX package. Scratch motor commands support A–F; position moves use one motor. Multiport commands execute sequentially, without synchronized starts. A/B drive the rover; C–F are extra motors. No arena sensors.'}
                             </span> : null}
                             <button type="button" style={btn} data-testid="bw-spike-program-save"
                                 disabled={!this.firmwareSession?.storageSupported || this.state.storageBusy || this.firmwareSession?.uploading || ![1, 3, 4].includes(this.state.programState)}

@@ -596,11 +596,14 @@ booting. Packages without that declaration keep the default topology; they
 cannot launch the six-motor profile. The first live snapshot must confirm all
 six attachments before a program upload.
 
-Six-motor execution initially uses Python from the Code tab. The own module
+Six-motor execution supports the bounded Scratch compiler and Python from the Code tab. The own module
 `brickwright` exposes `motor(port, speed)` with numeric ports 0–5 for A–F, for
 example `import brickwright as b; b.motor(5, 200)`. A program must keep running to
-maintain that command; completion and Stop idle the motors. Scratch firmware
-compilation still supports A/B only. The existing sandbox uses A/B as the
+maintain that command; completion and Stop idle the motors. Scratch motor speed, start, brake, and timed commands accept distinct literal
+A–F ports. Multiport commands execute as successive firmware instructions,
+without synchronized starts. Relative degrees/rotations moves accept one motor
+only; arbitrary drivebase pairs, absolute positioning, coast, and hold remain
+unsupported. The rover movement commands still use A/B. The existing sandbox uses A/B as the
 rover's wheels; C–F are additional motors observed through the same shared hub.
 This profile has no arena sensors and does not run sensor-based lessons. It
 observes simulated device models; it makes no physical hardware or radio
@@ -612,3 +615,11 @@ session; close it before selecting different devices. Native Reset retains the
 selected topology and boots with an empty program without automatic execution.
 The startup, packet, Python source/stack, and process lifetime limits remain
 unchanged. Save/Load still retain a slot only within the live emulator session.
+
+The native position qualification uses one relative 30° move at 333 degrees per
+second, with ±3° final error and completion within two firmware program-clock
+seconds. The accepted relative target range remains ±36000°; this does not
+promise that every target completes within two seconds. Wall time depends on
+simulator pacing; completion bounds use the firmware program clock rather than
+a short wall-clock wait. Qualification uses separate fresh processes for continuous/timed commands and
+position movement, with the production process lifetime unchanged.
