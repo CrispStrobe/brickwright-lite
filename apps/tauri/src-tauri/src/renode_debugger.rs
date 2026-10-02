@@ -657,6 +657,8 @@ mod tests {
             .any(|cap| cap == "nuttx-program-storage/v1"), "stage a storage-capable own firmware package");
         let native = cases.as_array().unwrap().iter().find(|case| case["python"] == false).unwrap();
         let storage = &native["storage"];
+        let last_storage_sequence = std::cell::Cell::new(
+            first["lifecycle"]["nuttxProgramStorage"]["requestSeq"].as_u64());
         let send = |stage: &str, request: &Value| {
             let packet = request.as_array().unwrap();
             let op = packet[2].as_u64().unwrap();
@@ -675,6 +677,8 @@ mod tests {
             });
             if matches!(op, 8 | 9) {
                 let submitted = response["lifecycle"]["nuttxProgramStorage"]["requestSeq"].as_u64().unwrap();
+                assert_ne!(Some(submitted), last_storage_sequence.get(),
+                    "storage stage={stage} reused a previous storage request sequence");
                 loop {
                     assert!(began.elapsed() < Duration::from_secs(30), "storage stage={stage} completion timed out");
                     assert!(debugger.has_endpoint(), "storage endpoint lost at {stage}");
@@ -688,6 +692,7 @@ mod tests {
                     assert_eq!(metadata["programId"].as_u64(), Some(id as u64));
                     if metadata["pending"] == false {
                         assert_eq!(metadata["replySeq"].as_u64(), Some(submitted));
+                        last_storage_sequence.set(Some(submitted));
                         break;
                     }
                     assert!(began.elapsed() < Duration::from_millis(27950), "storage stage={stage} op={op} id={id} completion timed out");

@@ -236,7 +236,10 @@ test('live session selects deferred submit for storage and polls without START o
         state = 3;session.observeProgram({state});
         const before = calls.length;
         await session.storage('save');clearTimeout(session.timer);
+        assert.equal(session.latestFrame.lifecycle.nuttxProgramStorage.requestSeq, 12);
+        assert.equal(session.latestFrame.lifecycle.nuttxProgramStorage.pending, false);
         await session.storage('load');clearTimeout(session.timer);
+        assert.equal(session.latestFrame.lifecycle.nuttxProgramStorage.requestSeq, 14);
         assert.equal(session.loaded, true);assert.equal(session.programState, 1);
         assert.deepEqual(calls.slice(before).map(c => c[0]), ['program.storage.submit', 'state.read', 'state.read',
             'program.storage.submit', 'state.read', 'state.read']);

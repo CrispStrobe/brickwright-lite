@@ -40,7 +40,7 @@ export class RenodeArenaSession {
             this.outputSequence = first.lifecycle?.nuttxProgramOutput?.sequence;
             this.nuttx = first.target?.firmware === 'brickwright-nuttx' &&
                 first.target?.capabilities?.includes('nuttx-program/v1');
-            this.initialFrame = first;
+            this.latestFrame = first;
             this.storageDeferred = first.target?.capabilities?.includes(DEFERRED_STORAGE_CAPABILITY);
             this.storageSupported = Boolean(this.nuttx && first.target?.capabilities?.includes('nuttx-program-storage/v1'));
             if (this.nuttx && !this.program && this.source === null) {
@@ -63,12 +63,13 @@ export class RenodeArenaSession {
             if (this.nuttx && (this.program || this.source !== null)) {
                 this.programClient = new NuttXProgramClient(async bytes => {
                     if ([8, 9].includes(bytes[2]) && this.storageDeferred) {
-                        return exchangeStorage({packet: bytes, initialFrame: this.initialFrame,
+                        return exchangeStorage({packet: bytes, initialFrame: this.latestFrame,
                             submit: async args => JSON.parse(await this.call('program.storage.submit', args)),
                             sample: async () => JSON.parse(await this.call('state.read')),
                             closed: () => this.closed,
                             onFrame: frame => {
                                 this.adapter.accept(frame);
+                                this.latestFrame = frame;
                                 this.observeOutput(frame);
                                 this.onFrame(this.adapter.bridge.snapshot());
                             }});
@@ -78,6 +79,7 @@ export class RenodeArenaSession {
                         this.observeProgram(frame.lifecycle?.nuttxProgram);
                         this.observeOutput(frame);
                         const inputs = this.adapter.accept(frame);
+                        this.latestFrame = frame;
                         await this.call('arena.inputs.write', inputs);
                         this.onFrame(this.adapter.bridge.snapshot());
                     }
@@ -114,6 +116,7 @@ export class RenodeArenaSession {
         if (this.closed) return;
         this.observeOutput(frame);
         const inputs = this.adapter.accept(frame);
+        this.latestFrame = frame;
         await this.call('arena.inputs.write', inputs);
         if (this.closed) return;
         this.onFrame(this.adapter.bridge.snapshot());

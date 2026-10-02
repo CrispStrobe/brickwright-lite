@@ -13,7 +13,8 @@ const frame = (pending = true, seq = 12) => ({target: {board: 'spike-prime', fir
         nuttxProgramReply: [0x71, 1, 8, 1, 1, 0, 0, 0, ...Array(12).fill(0)]}});
 function harness (frames = [frame(), frame(false)], extra = {}) {
     const calls = [];let index = 0, time = 0;
-    const args = {packet: encodeCommand(8, 1), initialFrame: frame(),
+    const baseline = frame();delete baseline.lifecycle.nuttxProgramStorage;
+    const args = {packet: encodeCommand(8, 1), initialFrame: baseline,
         submit: async args => {calls.push(['submit', args]);return frames[index++];},
         sample: async () => {calls.push(['sample']);return frames[index++];},
         now: () => time, wait: async ms => {time += ms;}, ...extra};
@@ -79,8 +80,21 @@ test('generation/target change, read failure and deadline never retry submission
 
 test('sequence wrap is valid and a completion arriving after the job deadline is ignored', async () => {
     const pending = frame(true, 2);pending.lifecycle.nuttxProgramStorage.replySeq = 0xfffffffe;
-    assert.equal((await exchangeStorage(harness([pending, frame(false, 2)]).args))[2], 8);
+    assert.equal((await exchangeStorage(harness([pending, frame(false, 2)], {initialFrame: frame(false, 0xfffffffe)}).args))[2], 8);
     let time = 0;
     const late = harness([], {now: () => time, submit: async () => {time = 30001;return frame(false);}});
     await assert.rejects(exchangeStorage(late.args), /result is unknown/);
+});
+
+
+test('fresh noop-submit snapshot with previous completed SAVE metadata cannot succeed', async () => {
+    const old = frame(false, 12);old.seq = 100;
+    const fresh = frame(false, 12);fresh.seq = 101;
+    const h = harness([fresh], {initialFrame: old});
+    await assert.rejects(exchangeStorage(h.args), /reused the previous request sequence/);
+    assert.deepEqual(h.calls.map(c => c[0]), ['submit']);
+    const valid = harness([frame(false, 14)], {initialFrame: old});
+    assert.equal((await exchangeStorage(valid.args))[2], 8);
+    const busy = harness([frame(false, 14)], {initialFrame: frame(true, 12)});
+    await assert.rejects(exchangeStorage(busy.args), /already pending/);assert.equal(busy.calls.length, 0);
 });

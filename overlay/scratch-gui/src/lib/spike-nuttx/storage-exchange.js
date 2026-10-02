@@ -25,6 +25,8 @@ export async function exchangeStorage ({packet, initialFrame, submit, sample, cl
     if (!programId || !initialFrame?.target?.capabilities?.includes(DEFERRED_STORAGE_CAPABILITY)) {
         throw new Error('Deferred program storage is unavailable');
     }
+    const previous = initialFrame.lifecycle?.nuttxProgramStorage === undefined ? null : storageMetadata(initialFrame);
+    if (previous?.pending) throw new Error('Program storage is already pending');
     const expectedIdentity = identity(initialFrame);
     const deadline = now() + 30000;
     const check = () => {
@@ -50,6 +52,9 @@ export async function exchangeStorage ({packet, initialFrame, submit, sample, cl
         if (metadata.operation !== packet[2] || metadata.programId !== programId ||
             (sequence !== undefined && metadata.requestSeq !== sequence)) {
             throw new Error('Mismatched program storage request');
+        }
+        if (sequence === undefined && metadata.requestSeq === previous?.requestSeq) {
+            throw new Error('Program storage submission reused the previous request sequence');
         }
         sequence = metadata.requestSeq;
         onFrame(frame);
