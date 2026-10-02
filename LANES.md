@@ -482,6 +482,18 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+Measurement browser package follow-up: Codex bwcx `/root` owns the CUI package
+boundary in `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`, branch
+`lane/measurement-browser-package-adoption-20261002`, exact base
+`7e61141fb1a29ed56f77500a4c6a2d82e818771a`. **CLAIM 2026-10-02.** Adopt qualified
+CUI `3a44883095223f33689d0c0e16695c9ba2ee8757` only; Board and other pins remain
+unchanged. Scope: vendor-pins, derived root/GUI specs and locks, generated package
+notices/provenance/report mirrors only where stale, installed measurement
+authority test, this ledger paragraph. No source forks, workflow, other model,
+physical expectation, or deployment claim before actual publication evidence.
+Existing actual upstream browser fault/recovery and live ngspice waveform tests
+are qualified; private 300-case source-analysis replay is independent and pending.
+
 Live measurement adoption final preflight: complete pin-history/gate-shape
 surface 27/27 with all three upstream Git histories supplied (the initial
 unstaged-pin diagnostic is not a final receipt); controller/mirror surface
