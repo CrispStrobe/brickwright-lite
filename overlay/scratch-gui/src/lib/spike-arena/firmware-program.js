@@ -12,8 +12,12 @@ export function compileFirmwareProgram (vm) {
     const code = [], speeds = [75, 75]; let movementSpeed = 50;
     const fail = block => { throw new Error(`Firmware does not support ${block?.opcode || 'missing block'}`); };
     const emit = (...words) => {
-        if (code.length >= 255) throw new Error('Firmware program exceeds 256 instructions');
+        if (code.length >= 256) throw new Error('Firmware program exceeds 256 instructions');
         code.push(words);
+    };
+    let work = 0;
+    const consumeWork = () => {
+        if (++work > 4096) throw new Error('Firmware program exceeds compiler expansion budget');
     };
     const input = (block, name) => blocks[block.inputs?.[name]?.block];
     const literal = (block, name) => {
@@ -64,8 +68,10 @@ export function compileFirmwareProgram (vm) {
         return [kind, Math.round(number(block, 'OPERAND2', 0, max) * scale)];
     };
     const walk = (first, ancestors = new Set(), dynamic = false) => {
+        consumeWork();
         let current = first; const seen = new Set(ancestors);
         while (current) {
+            consumeWork();
             if (seen.has(current)) throw new Error('Firmware script contains a cyclic block graph');
             seen.add(current);
             const block = blocks[current]; if (!block) fail(block);
