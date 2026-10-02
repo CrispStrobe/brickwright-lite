@@ -29,6 +29,9 @@ absolute position, coast and HOLD are rejected by name. These limits apply
 only to this firmware program choice.
 
 At most 256 instructions execute for at most 120 seconds of guest time.
+Compilation is limited to 4096 traversal steps, including empty loop bodies
+and repeated speed settings that do not emit instructions. Overly large
+expansions refuse before starting a guest.
 The managed desktop session is capped at 120 seconds of wall time, including
 startup. The minimal guest platform needs no remote SVD description or
 unused STM32 peripheral models.

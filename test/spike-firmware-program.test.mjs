@@ -46,9 +46,23 @@ test('unsupported APIs, hardware ports, multiple scripts and dynamic expressions
     assert.throws(()=>compileFirmwareProgram(vm),/exactly one/);
 });
 test('oversized repeat fails and graph cycles fail', () => {
-    assert.throws(()=>compileFirmwareProgram(program('  repeat 255:\n    wait 1 seconds\n')),/256 instructions/);
+    assert.throws(()=>compileFirmwareProgram(program('  repeat 255:\n    wait 1 seconds\n    wait 1 seconds\n')),/256 instructions/);
     const vm=program('  wait 1 seconds\n');const b=vm.runtime.targets[0].blocks._blocks;const hat=Object.values(b).find(x=>x.topLevel);b[hat.next].next=hat.next;
     assert.throws(()=>compileFirmwareProgram(vm),/cyclic/);
+});
+test('256 instructions including END are accepted', () => {
+    const boundary=compileFirmwareProgram(program('  repeat 255:\n    wait 0.001 seconds\n'));
+    assert.equal(boundary.instructions.length,256);
+    assert.equal(validate(boundary),true);
+});
+test('nested non-emitting settings loops stay within a compilation work budget', () => {
+    assert.throws(()=>compileFirmwareProgram(program('  repeat 255:\n    repeat 255:\n      set motor speed B 50\n')),/expansion budget/);
+    const vm=program('  repeat 255:\n    repeat 255:\n      set motor speed B 50\n');
+    const blocks=vm.runtime.targets[0].blocks._blocks;
+    const inner=Object.values(blocks).find(block=>block.opcode==='control_repeat' &&
+        blocks[block.inputs.SUBSTACK.block].opcode==='spikeprime_motorSetSpeed');
+    delete inner.inputs.SUBSTACK;
+    assert.throws(()=>compileFirmwareProgram(vm),/expansion budget/);
 });
 test('declared capability accepts compiled programs and closed instruction boundaries', () => {
     assert.equal(validate(compileFirmwareProgram(program('  start tank 25 25\n  wait 0.5 seconds\n  stop movement\n'))), true);
