@@ -112,30 +112,52 @@ impl RenodeSupervisor {
     /// the Renode command line or monitor language.
     #[allow(dead_code)]
     pub(crate) fn start_spike(&self) -> Result<RenodeEndpoint, String> {
+        self.start_spike_backend(None)
+    }
+
+    pub(crate) fn start_spike_backend(&self, backend: Option<&str>) -> Result<RenodeEndpoint, String> {
+        if backend.is_some_and(|name| !matches!(name, "guest" | "nuttx")) {
+            return Err("unknown SPIKE execution backend".into());
+        }
+        let nuttx = backend == Some("nuttx") && option_env!("BW_RENODE_NUTTX_ROOT").is_some();
+        let (root_pin, scenario_pin, scenario_hash, firmware_pin, firmware_hash,
+             script_pin, script_hash, config_pin, config_hash, manifest_pin, manifest_hash) = if nuttx {
+            (option_env!("BW_RENODE_NUTTX_ROOT"), option_env!("BW_RENODE_NUTTX_SCENARIO"), option_env!("BW_RENODE_NUTTX_SCENARIO_SHA256"),
+             option_env!("BW_RENODE_NUTTX_FIRMWARE"), option_env!("BW_RENODE_NUTTX_FIRMWARE_SHA256"),
+             option_env!("BW_RENODE_NUTTX_STATE_SCRIPT"), option_env!("BW_RENODE_NUTTX_STATE_SCRIPT_SHA256"),
+             option_env!("BW_RENODE_NUTTX_STATE_CONFIG"), option_env!("BW_RENODE_NUTTX_STATE_CONFIG_SHA256"),
+             option_env!("BW_RENODE_NUTTX_MANIFEST"), option_env!("BW_RENODE_NUTTX_MANIFEST_SHA256"))
+        } else {
+            (option_env!("BW_RENODE_SPIKE_ROOT"), option_env!("BW_RENODE_SPIKE_SCENARIO"), option_env!("BW_RENODE_SPIKE_SCENARIO_SHA256"),
+             option_env!("BW_RENODE_SPIKE_FIRMWARE"), option_env!("BW_RENODE_SPIKE_FIRMWARE_SHA256"),
+             option_env!("BW_RENODE_SPIKE_STATE_SCRIPT"), option_env!("BW_RENODE_SPIKE_STATE_SCRIPT_SHA256"),
+             option_env!("BW_RENODE_SPIKE_STATE_CONFIG"), option_env!("BW_RENODE_SPIKE_STATE_CONFIG_SHA256"),
+             option_env!("BW_RENODE_SPIKE_MANIFEST"), option_env!("BW_RENODE_SPIKE_MANIFEST_SHA256"))
+        };
         let root = pinned_path(
             "SPIKE model root",
-            option_env!("BW_RENODE_SPIKE_ROOT"),
+            root_pin,
             None,
         )?;
         let scenario = pinned_file(
             "SPIKE scenario",
-            option_env!("BW_RENODE_SPIKE_SCENARIO"),
-            option_env!("BW_RENODE_SPIKE_SCENARIO_SHA256"),
+            scenario_pin,
+            scenario_hash,
         )?;
         let firmware = pinned_file(
             "SPIKE firmware",
-            option_env!("BW_RENODE_SPIKE_FIRMWARE"),
-            option_env!("BW_RENODE_SPIKE_FIRMWARE_SHA256"),
+            firmware_pin,
+            firmware_hash,
         )?;
         let state_script = pinned_file(
             "SPIKE state service",
-            option_env!("BW_RENODE_SPIKE_STATE_SCRIPT"),
-            option_env!("BW_RENODE_SPIKE_STATE_SCRIPT_SHA256"),
+            script_pin,
+            script_hash,
         )?;
         let state_config = pinned_file(
             "SPIKE state config",
-            option_env!("BW_RENODE_SPIKE_STATE_CONFIG"),
-            option_env!("BW_RENODE_SPIKE_STATE_CONFIG_SHA256"),
+            config_pin,
+            config_hash,
         )?;
         for path in [&scenario, &state_script, &state_config] {
             if !path.starts_with(&root) {
@@ -148,11 +170,14 @@ impl RenodeSupervisor {
                 .map_err(|_| "SPIKE state config unavailable".to_owned())?,
         )
         .map_err(|_| "SPIKE state config malformed".to_owned())?;
+        if backend.is_some_and(|name| config["identity"]["firmware"].as_str() != Some(if name == "nuttx" {"brickwright-nuttx"} else {"brickwright-arena-demo"})) {
+            return Err("requested SPIKE backend is not packaged in this desktop build".into());
+        }
         if config["identity"]["firmware"] == "brickwright-arena-demo" {
             let manifest = pinned_file(
                 "arena package manifest",
-                option_env!("BW_RENODE_SPIKE_MANIFEST"),
-                option_env!("BW_RENODE_SPIKE_MANIFEST_SHA256"),
+                manifest_pin,
+                manifest_hash,
             )?;
             verify_arena_manifest(&root, &manifest)?;
             let mut header = [0u8; 52];
@@ -180,6 +205,29 @@ impl RenodeSupervisor {
             for command in commands.into_iter().rev() {
                 arguments.splice(index..index, ["-e".to_owned(), command.to_owned()]);
             }
+        }
+
+        if config["identity"]["firmware"] == "brickwright-nuttx" && config.get("programMailbox").is_some() {
+            let manifest = pinned_file("full firmware package manifest", manifest_pin, manifest_hash)?;
+            verify_nuttx_manifest(&root, &manifest)?;
+            if firmware != root.join("nuttx-user.elf") || config["identity"]["imageSha256"].as_str() != Some(sha256(&firmware).map_err(|_| "full firmware image unavailable")?.as_str()) {
+                return Err("full firmware package identity mismatch".into());
+            }
+            let base = config["programMailbox"].as_u64().ok_or("full firmware mailbox unavailable")?;
+            if base % 4 != 0 || !(0x20020000..=0x20040000-112).contains(&base) {
+                return Err("full firmware mailbox outside userspace RAM".into());
+            }
+            let sp = config["boot"]["stack"].as_u64().ok_or("full firmware reset stack unavailable")?;
+            let pc = config["boot"]["reset"].as_u64().ok_or("full firmware reset entry unavailable")?;
+            if sp % 8 != 0 || !(0x20000008..=0x20020000).contains(&sp) || pc & 1 != 1 || !(0x08008000..0x08060000).contains(&pc) {
+                return Err("full firmware reset vector outside protected kernel".into());
+            }
+            let commands = [format!("sysbus LoadELF {}", monitor_path(&root.join("nuttx-kernel.elf"))?),
+                "cpu VectorTableOffset 0x08008000".to_owned(), format!("cpu SP {sp}"), format!("cpu PC {pc}"),
+                "emulation RunFor \"1.0\"".to_owned()];
+            let index = arguments.iter().position(|arg| arg == "machine StartGdbServer {BW_GDB_PORT}")
+                .ok_or("SPIKE startup sequence unavailable")? - 1;
+            for command in commands.into_iter().rev() {arguments.splice(index..index, ["-e".to_owned(), command]);}
         }
 
         self.start(&arguments, &root)
@@ -483,7 +531,7 @@ fn pinned_file(
 
 // All executable support files are verified before starting this optional demo.
 fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
-    let required = [
+    const REQUIRED: &[&str] = &[
         "arena-demo.elf",
         "arena-demo.repl",
         "arena-demo.resc",
@@ -494,6 +542,23 @@ fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "tools/spike_arena_inputs.py",
         "tools/spike_arena_mailbox.py",
     ];
+    verify_support_manifest(root, manifest, REQUIRED,
+        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py"])
+}
+fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
+    verify_support_manifest(root, manifest, &[
+        "nuttx-kernel.elf", "nuttx-user.elf", "nuttx.resc", "models.cs", "state-config.json",
+        "platforms/boards/spike-prime.repl", "platforms/boards/spike-prime-brick-devices.repl",
+        "platforms/cpus/stm32f413vg.repl", "platforms/cpus/stm32f4.repl",
+        "scripts/spike-state-server.py", "tools/spike_state_monitor_protocol.py",
+        "tools/ev3_state_observer.py", "tools/spike_arena_inputs.py", "tools/spike_arena_mailbox.py",
+        "tools/spike_nuttx_mailbox.py"], &[
+        "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt",
+        "licenses/firmware-LICENSE", "licenses/NuttX-Apache-2.0.txt", "licenses/NuttX-NOTICE.txt",
+        "licenses/NuttX-apps-Apache-2.0.txt", "licenses/littlefs-BSD-3-Clause.txt", "licenses/Zephyr-Apache-2.0.txt",
+        "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt"])
+}
+fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str]) -> Result<(), String> {
     if !manifest.starts_with(root) {
         return Err("arena manifest escaped its package".into());
     }
@@ -511,11 +576,7 @@ fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         return Err("arena manifest is incomplete".into());
     }
     for (name, digest) in map {
-        if !required.contains(&name.as_str())
-            && !matches!(
-                name.as_str(),
-                "licenses/renode-MIT.txt" | "licenses/arena-BSD-3-Clause.txt"
-            )
+        if !required.contains(&name.as_str()) && !allowed.contains(&name.as_str())
         {
             return Err("arena manifest contains an unsupported file".into());
         }

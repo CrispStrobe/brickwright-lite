@@ -31,6 +31,7 @@ struct Session {
     interrupt: RenodeRspInterrupt,
     running: Arc<AtomicBool>,
     target: RenodeTarget,
+    backend: Option<String>,
     state: TargetState,
 }
 
@@ -73,17 +74,26 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn start(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::SpikePrime)
+        self.start_target(supervisor, RenodeTarget::SpikePrime, None)
+    }
+
+    pub(crate) fn start_spike_backend(
+        &self,
+        supervisor: &RenodeSupervisor,
+        backend: Option<&str>,
+    ) -> Result<&'static str, String> {
+        self.start_target(supervisor, RenodeTarget::SpikePrime, backend)
     }
 
     pub(crate) fn start_ev3(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::Ev3)
+        self.start_target(supervisor, RenodeTarget::Ev3, None)
     }
 
     fn start_target(
         &self,
         supervisor: &RenodeSupervisor,
         target: RenodeTarget,
+        backend: Option<&str>,
     ) -> Result<&'static str, String> {
         let mut session = self
             .session
@@ -93,7 +103,7 @@ impl RenodeDebugger {
             return Err("Renode debugger already started".into());
         }
         let endpoint = match target {
-            RenodeTarget::SpikePrime => supervisor.start_spike()?,
+            RenodeTarget::SpikePrime => supervisor.start_spike_backend(backend)?,
             RenodeTarget::Ev3 => supervisor.start_ev3()?,
         };
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
@@ -184,6 +194,7 @@ impl RenodeDebugger {
             interrupt,
             running: Arc::new(AtomicBool::new(false)),
             target,
+            backend: backend.map(str::to_owned),
             state,
         });
         Ok("ready")
@@ -217,12 +228,14 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn reset(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        let target = {
+        let (target, backend) = {
             let mut session = self
                 .session
                 .lock()
                 .map_err(|_| "Renode debugger unavailable".to_owned())?;
-            let target = session.as_ref().map(|active| active.target);
+            let target = session
+                .as_ref()
+                .map(|active| (active.target, active.backend.clone()));
             if let Some(active) = session.as_mut() {
                 if active.running.load(Ordering::Acquire) {
                     let _ = active.interrupt.request();
@@ -232,7 +245,7 @@ impl RenodeDebugger {
             target.ok_or_else(|| "Renode debugger is not started".to_owned())?
         };
         supervisor.teardown(TeardownReason::Reset);
-        self.start_target(supervisor, target)?;
+        self.start_target(supervisor, target, backend.as_deref())?;
         Ok("reset")
     }
 
@@ -391,6 +404,23 @@ impl RenodeDebugger {
         }
     }
 
+    pub(crate) fn spike_program_packet(&self, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                serde_json::to_value(feed.command("nuttx.program.packet", arguments)?)
+                    .map_err(|_| "SPIKE snapshot unavailable".to_owned())
+            }
+            _ => Err("SPIKE program packet target mismatch".into()),
+        }
+    }
+
     pub(crate) fn spike_arena_program(&self, arguments: Value) -> Result<Value, String> {
         let session = self
             .session
@@ -481,6 +511,86 @@ mod tests {
         debugger.pause().unwrap();
         let stopped = debugger.state().unwrap();
         assert_eq!(stopped["motors"][1]["speedDps"], 0);
+        debugger.close(&supervisor).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires both build-pinned firmware packages and private synthetic caller fixtures"]
+    fn packaged_spike_backends_run_native_and_python_callers() {
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        debugger
+            .start_spike_backend(&supervisor, Some("guest"))
+            .unwrap();
+        assert_eq!(
+            debugger.state().unwrap()["target"]["firmware"],
+            "brickwright-arena-demo"
+        );
+        debugger.close(&supervisor).unwrap();
+        debugger
+            .start_spike_backend(&supervisor, Some("nuttx"))
+            .unwrap();
+        let first = debugger.state().unwrap();
+        assert_eq!(first["target"]["firmware"], "brickwright-nuttx");
+        assert!(first["target"]["capabilities"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|c| c == "nuttx-program/v1"));
+        debugger.run().unwrap();
+
+        let cases: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(
+                std::env::var("BW_NUTTX_CALLER_FIXTURES")
+                    .expect("generate private synthetic caller fixtures first"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let mut response = serde_json::Value::Null;
+        for case in cases.as_array().unwrap() {
+            for packet in case["packets"].as_array().unwrap() {
+                response = debugger
+                    .spike_program_packet(serde_json::json!({"bytes":packet}))
+                    .unwrap();
+                for byte in response["lifecycle"]["nuttxProgramReply"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .skip(8)
+                    .take(4)
+                {
+                    assert_eq!(byte, 0);
+                }
+            }
+            for _ in 0..50 {
+                response = debugger
+                    .spike_program_packet(serde_json::json!({"bytes":case["status"]}))
+                    .unwrap();
+                let state = response["lifecycle"]["nuttxProgramReply"][3]
+                    .as_u64()
+                    .unwrap();
+                assert_ne!(state, 5, "{}", response);
+                if state == 3 {
+                    break;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            assert_eq!(response["lifecycle"]["nuttxProgramReply"][3], 3);
+            if case["python"] == true {
+                assert!(response["lifecycle"]["nuttxProgramOutput"]["text"]
+                    .as_str()
+                    .unwrap()
+                    .contains("hello from ARM"));
+            } else {
+                assert!(response["motors"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .any(|m| m["port"] == "B" && m["position"].as_f64().unwrap() > 1.0));
+            }
+        }
+        debugger.spike_arena_inputs(serde_json::json!({"sensors":[{"port":"E","kind":"force","values":{"forcePercent":70,"pressed":true}}],"loads":[]})).unwrap();
         debugger.close(&supervisor).unwrap();
     }
 

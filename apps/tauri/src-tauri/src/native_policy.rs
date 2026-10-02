@@ -72,6 +72,7 @@ impl NativePolicyState {
                 ),
                 (Operation::RenodeSpikeMemoryRead, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikeStateRead, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeProgramPacket, Resource::RenodeSpikePrime),
                 (
                     Operation::RenodeSpikeArenaProgram,
                     Resource::RenodeSpikePrime,
@@ -177,6 +178,7 @@ pub(crate) enum Operation {
     RenodeSpikeStateRead,
     RenodeSpikeArenaInputs,
     RenodeSpikeArenaProgram,
+    RenodeSpikeProgramPacket,
     RenodeSpikeBreakpointSet,
     RenodeSpikeBreakpointClear,
     RenodeEv3Start,
@@ -209,6 +211,7 @@ impl Operation {
             "renode.spike.state.read" => Some(Self::RenodeSpikeStateRead),
             "renode.spike.arena.inputs.write" => Some(Self::RenodeSpikeArenaInputs),
             "renode.spike.arena.program.load" => Some(Self::RenodeSpikeArenaProgram),
+            "renode.spike.program.packet" => Some(Self::RenodeSpikeProgramPacket),
             "renode.spike.breakpoint.set" => Some(Self::RenodeSpikeBreakpointSet),
             "renode.spike.breakpoint.clear" => Some(Self::RenodeSpikeBreakpointClear),
             "renode.ev3.session.start" => Some(Self::RenodeEv3Start),
@@ -233,8 +236,10 @@ impl Operation {
             return false;
         };
         match self {
+            Self::RenodeSpikeStart => map.is_empty() || (map.len() == 1 && matches!(args["backend"].as_str(), Some("guest" | "nuttx"))),
             Self::RenodeSpikeArenaInputs => crate::arena_inputs::valid(args),
             Self::RenodeSpikeArenaProgram => crate::arena_inputs::valid_program(args),
+            Self::RenodeSpikeProgramPacket => crate::arena_inputs::valid_nuttx_packet(args),
             Self::RenodeEv3ButtonSet => {
                 map.len() == 2
                     && map.get("button").and_then(Value::as_str).is_some_and(|v| {
@@ -436,6 +441,7 @@ impl RedactedAuditRow {
                 Operation::RenodeSpikeStateRead => "renode.spike.state.read",
                 Operation::RenodeSpikeArenaInputs => "renode.spike.arena.inputs.write",
                 Operation::RenodeSpikeArenaProgram => "renode.spike.arena.program.load",
+                Operation::RenodeSpikeProgramPacket => "renode.spike.program.packet",
                 Operation::RenodeSpikeBreakpointSet => "renode.spike.breakpoint.set",
                 Operation::RenodeSpikeBreakpointClear => "renode.spike.breakpoint.clear",
                 Operation::RenodeEv3Start => "renode.ev3.session.start",

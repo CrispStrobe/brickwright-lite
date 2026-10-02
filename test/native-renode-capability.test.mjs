@@ -76,3 +76,18 @@ test('malformed reply drops the session and the next operation reopens it', asyn
     assert.equal(await handlers[OPERATIONS.close]({}), 'closed');
     assert.equal(opens, 2);
 });
+
+test('full firmware packet capability accepts only the bounded upload ABI', () => {
+    const {OPERATIONS: broker} = require_('../overlay/scratch-vm/src/extension-support/capability-broker.js');
+    const validate = broker['renode.spike.program.packet'].validate;
+    assert.equal(validate({bytes:[112,1,5,0,0,0,0,0]}), true);
+    for (const args of [{bytes:[112,1,3,0,0,0,0,0]}, {bytes:[112,1,5,0,0,0,0,0],address:0},
+        {bytes:[112,1,5,0,0,0,0,true]}, {bytes:[112,1,5,0,0,0,0,256]}]) assert.equal(validate(args), false);
+});
+
+test('backend selection is an enum and cannot supply images or monitor text', () => {
+    const {OPERATIONS: broker}=require_('../overlay/scratch-vm/src/extension-support/capability-broker.js');
+    const valid=broker['renode.spike.session.start'].validate;
+    for(const args of [{},{backend:'guest'},{backend:'nuttx'}])assert.equal(valid(args),true);
+    for(const args of [{backend:'nuttx; quit'},{backend:'lego'},{backend:'nuttx',path:'/tmp/image'},{backend:true}])assert.equal(valid(args),false);
+});

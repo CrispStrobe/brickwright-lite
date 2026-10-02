@@ -53,3 +53,22 @@ test('mutation check detects disconnected actuator-to-world coupling', () => {
     const before = bridge.sim.pose.x; adapter.accept(frame(2, 1000, 300));
     assert.throws(() => assert.ok(bridge.sim.pose.x > before + 10));
 });
+test('full NuttX encoders use the same world and enforce its program capability', () => {
+    const {hub, bridge, adapter} = setup();
+    const nuttx = (seq, ms, position) => {
+        const f = frame(seq, ms, position);
+        f.target.firmware = 'brickwright-nuttx';
+        f.target.capabilities.push('nuttx-program/v1');
+        f.motors.forEach(m => {m.speedDps = Math.sign(m.speedDps) * 900;});
+        return f;
+    };
+    hub.stepMotors = () => {throw new Error('second clock');};
+    adapter.accept(nuttx(1, 1000, 0));
+    const x = bridge.sim.pose.x;
+    adapter.accept(nuttx(2, 1100, 90));
+    assert.ok(bridge.sim.pose.x > x);
+    assert.equal(hub.clockOwner, 'renode');
+    const invalid = nuttx(3, 1200, 180);
+    invalid.target.capabilities = invalid.target.capabilities.filter(cap => cap !== 'nuttx-program/v1');
+    assert.throws(() => adapter.accept(invalid), /motor frame/);
+});
