@@ -7,10 +7,12 @@ import {mkdir, copyFile, readFile, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {programStorageAbiAddress} from './lib/spike-program-storage-marker.mjs';
+import {firmwareExtraNotices} from './lib/spike-firmware-notices.mjs';
 const args = process.argv.slice(2);
 if (args.length !== 5) throw new Error('Usage: prepare-spike-nuttx-package.mjs FIRMWARE_REPO RENODE_REPO INFRASTRUCTURE_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY');
 const [firmware, models, infrastructure, executable, output] = args.map(p => resolve(p));
 if ([firmware, models, infrastructure, executable, output].some(p => /[\s"'@;\\]/.test(p))) throw new Error('Package paths must not contain monitor metacharacters');
+const extraNotices = await firmwareExtraNotices(firmware);
 const stage = spawnSync('python3', [join(models, 'tools/stage_prime_runtime.py'), '--infrastructure', infrastructure,
     '--output', output, '--aggregate-display-clock'], {stdio: 'inherit'});
 if (stage.status !== 0) throw new Error('Prime model staging failed');
@@ -52,6 +54,7 @@ const copies = [['nuttx/nuttx', 'nuttx-kernel.elf', firmware], ['nuttx/nuttx_use
     ['licenses/firmware-source-NOTICES.txt', 'licenses/firmware-source-NOTICES.txt', firmware],
     ['third_party/micropython-embed/LICENSE', 'licenses/MicroPython-MIT.txt', firmware],
     ['licenses/hubprogram-BSD-3-Clause.txt', 'licenses/hubprogram-BSD-3-Clause.txt', firmware],
+    ...extraNotices.map(([source, destination]) => [source, destination, firmware]),
     ['scripts/spike-state-server.py', 'scripts/spike-state-server.py', models],
     ...['spike_arena_mailbox', 'spike_arena_inputs', 'spike_state_monitor_protocol', 'ev3_state_observer', 'spike_nuttx_mailbox']
         .map(p => [`tools/${p}.py`, `tools/${p}.py`, models])];

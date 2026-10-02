@@ -556,7 +556,10 @@ fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt",
         "licenses/firmware-LICENSE", "licenses/NuttX-Apache-2.0.txt", "licenses/NuttX-NOTICE.txt",
         "licenses/NuttX-apps-Apache-2.0.txt", "licenses/littlefs-BSD-3-Clause.txt", "licenses/Zephyr-Apache-2.0.txt",
-        "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt"])
+        "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt",
+        "licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt", "licenses/NuttX-Apps-NOTICE.txt",
+        "licenses/firmware-Brickwright-BSD-3-Clause.txt", "licenses/NuttX-Tickless-BSD-3-Clause.txt",
+        "licenses/Simulation-Firmware-NOTICES.txt"])
 }
 fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str]) -> Result<(), String> {
     if !manifest.starts_with(root) {
@@ -574,6 +577,14 @@ fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allo
     let map = map.as_object().ok_or("arena manifest malformed")?;
     if map.len() > 32 || !required.iter().all(|name| map.contains_key(*name)) {
         return Err("arena manifest is incomplete".into());
+    }
+    let backport_notices = ["licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt",
+        "licenses/NuttX-Apps-NOTICE.txt", "licenses/firmware-Brickwright-BSD-3-Clause.txt",
+        "licenses/NuttX-Tickless-BSD-3-Clause.txt"];
+    if backport_notices.iter().any(|name| map.contains_key(*name))
+        && (!backport_notices.iter().all(|name| map.contains_key(*name))
+            || !map.contains_key("licenses/Simulation-Firmware-NOTICES.txt")) {
+        return Err("firmware backport notices are incomplete".into());
     }
     for (name, digest) in map {
         if !required.contains(&name.as_str()) && !allowed.contains(&name.as_str())
