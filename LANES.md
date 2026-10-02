@@ -482,7 +482,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-ADP7118 startup installed package adoption — **CLAIMED 2026-10-02**, Codex bwcx
+ADP7118 startup installed package adoption — **DONE candidate 2026-10-02**, Codex bwcx
 `/root`, isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`,
 branch `lane/adp7118-startup-package-adoption-20261002`, exact base
 `950f4856fe0fd699e89de28e6a4c23c4e131f94f`. Own Board/CUI package boundary:
@@ -498,6 +498,22 @@ refusal and sticky measurement invalidation, plus production browser startup
 capture. Preserve default DC fixture and all physical expectations. No source
 copy/fork, other pin, solver/model/tolerance/workflow or corpus change. One final
 Build qualification; guarded normal landing and actual Pages publication proof.
+Upstream Board candidate CI `37037332946`/Harris `37037333051` qualified;
+landed exact Board main CI `37040975244` and Harris `37040975120` green.
+CUI exact candidate `37042696710` and main `37044392582` all four jobs green.
+Installed physical-part/measurement surface 17/17, package/provenance/mirror/report
+surface 20/20, exact-Board census/BIOS source+ancestry surface 17/17, zero skips.
+Independent root npm-pack bytes: Board 5888 files and CUI 1301 files; one engine.
+Both locks change only Board/CUI specs/resolved/integrity; seven demo ROMs and
+BIOS binary unchanged. Remaining DOS/CPM/free-386/controller source range empty;
+payloads unchanged, provenance advanced. Census still 34 rows; matrix and 8086
+report change only pin attribution; profiles/reader coverage unchanged/current.
+Two independent read-only audits accepted the bounded candidate. Browser proof
+is an explicit cold bundled-engine capture on the displayed Circuit, not an
+Instruments-click or scope-pixel certificate. The interpolation is authored,
+not a vendor macromodel; reactive overload/high-inrush remain named refusals.
+Hosted Build and actual public deployment remain pending; no app adoption or
+publication claim before those receipts. No limiter implementation in this lane.
 
 Instantaneous meter operand package adoption — **DONE candidate 2026-10-02**, Codex bwcx
 `/root`, clean isolated `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`,

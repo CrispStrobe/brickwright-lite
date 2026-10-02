@@ -265,6 +265,58 @@ try {
         Math.abs(adp7118.output - 5) < 0.002,
         JSON.stringify(adp7118));
 
+    const startupFixture = structuredClone(adp7118Fixture);
+    startupFixture.parts.find(part => part.id === 'u1').params.startupModel = 'datasheet-envelope';
+    startupFixture.parts.find(part => part.id === 'load').params.ohms = 500;
+    startupFixture.parts.push({id: 'cout', kind: 'capacitor', params: {farads: 2.2e-6}, x: 800, y: 400});
+    startupFixture.wires.push(
+        {from: 'cout', fromTerminal: 'a', to: 'u1', toTerminal: 'vout_1'},
+        {from: 'cout', fromTerminal: 'b', to: 'gnd', toTerminal: 'gnd'});
+    await page.evaluate(value => new Promise(resolve => {
+        window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+    }), startupFixture);
+    await adpFace.waitFor({state: 'visible', timeout: 10000});
+    const startup = await page.evaluate(() => {
+        const circuit = window.__circuit, previous = circuit?.board;
+        if (!previous) return {error: 'startup Circuit board missing'};
+        // Explicit harness setup: a display tick may already have advanced
+        // this engine. Give the displayed Circuit a genuinely fresh instance
+        // of its bundled Board, retaining its real inferred netlist. Do not
+        // rewind clocks or reuse an old scope/meter acquisition.
+        const board = new previous.constructor(8);
+        board.setNetlist(previous.parts, previous.nets);
+        circuit.board = board;
+        const net = (part, terminal) => board.nets.find(item => item.terminals.some(
+            endpoint => endpoint.part === part && endpoint.terminal === terminal)).id;
+        const out = net('u1', 'vout_1'), ground = net('gnd', 'gnd');
+        const handle = board.addScopeChannel({type: 'voltage', netId: out, referenceNetId: ground,
+            capture: 'sample', sampleRateHz: 100000, depth: 256});
+        board.meterVoltage(out, ground);
+        board.advanceTo(1200000n);
+        const capture = board.getScopeData(handle);
+        const tau = 300e-6 / Math.log(9);
+        const delay = Math.round((80e-6 + tau * Math.log(.9)) * 1e9) / 1e9;
+        const gain = 500 / 500.05, rc = (.05 * 500 / 500.05) * 2.2e-6;
+        let maxError = 0;
+        for (let i = 0; i < capture.count; i++) {
+            const x = (Number(capture.startTNs) + i * Number(capture.sampleIntervalNs)) / 1e9 - delay;
+            const expected = x <= 0 ? 0 : 5 * gain * (1 -
+                (tau * Math.exp(-x / tau) - rc * Math.exp(-x / rc)) / (tau - rc));
+            maxError = Math.max(maxError, Math.abs(capture.samples[2 * i] - expected));
+        }
+        const x = .0012 - delay;
+        const expectedMean = 5 * gain * (x - (tau * tau * (1 - Math.exp(-x / tau)) -
+            rc * rc * (1 - Math.exp(-x / rc))) / (tau - rc)) / .0012;
+        const mean = board.meterVoltage(out, ground);
+        return {count: capture.count, origin: String(capture.startTNs), maxError,
+            meanError: Math.abs(mean - expectedMean), mean, final: board.nodeVoltage(out),
+            accuracyMet: board.transientAnalysisStatus().accuracyMet};
+    });
+    check('production browser ADP7118 startup captures 120 real samples and the window mean',
+        startup.count === 120 && startup.origin === '10000' && startup.maxError < .001 &&
+        startup.meanError < .0001 && Math.abs(startup.mean - startup.final) > .5 &&
+        startup.accuracyMet === true, JSON.stringify(startup));
+
     // The final vertical slice: Lite's bundled CUI face and Board model must
     // meet in one real browser circuit, not merely coexist as package files.
     await page.evaluate(value => new Promise(resolve => {
