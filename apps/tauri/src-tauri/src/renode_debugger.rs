@@ -744,7 +744,15 @@ mod tests {
         }
         assert_eq!(response["lifecycle"]["nuttxProgramReply"][3], 3);
         assert!(motor_b_position(&response) > loaded_position + 1.0, "saved motor program was not restored");
-        response = send("restart-before-stop", &storage["start"]);assert_program_reply(&response, &storage["start"], 0);
+        // START accepts READY only. Restore the saved slot before the second run.
+        response = send("reload-before-stop-run", &storage["load"]);
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0).0, 1);
+        let reloaded_position = motor_b_position(&response);
+        response = send("status-reloaded-no-autorun", &native["status"]);
+        assert_eq!(assert_program_reply(&response, &native["status"], 0).0, 1);
+        assert!((motor_b_position(&response) - reloaded_position).abs() < 0.1, "second LOAD moved the motor");
+        response = send("restart-before-stop", &storage["start"]);
+        assert_eq!(assert_program_reply(&response, &storage["start"], 0).0, 2);
         response = send("stop-retained", &storage["stop"]);
         assert_eq!(assert_program_reply(&response, &storage["stop"], 0).0, 4);
         // STOP retains both process and saved slot. Allow a bounded unwind before LOAD.

@@ -471,7 +471,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
-        if (this.firmwareSession?.storageSupported && this.firmwareSession.loaded && !this.firmwareSession.closed) {
+        if (this.firmwareSession?.storageSupported && this.firmwareSession.loaded && this.firmwareSession.programState === 1 && !this.firmwareSession.closed) {
             try { await this.firmwareSession.startProgram(); this.setState({status: 'running', message: this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.'}); }
             catch (error) { this.setState({message: error.message}); }
             return;
@@ -701,7 +701,7 @@ class SpikeArenaPane extends React.Component {
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}
-                                disabled={!world || this.state.storageBusy || this.firmwareSession?.uploading || status === 'starting'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{this.firmwareSession?.loaded ? (this.locale === 'de' ? 'Geladenes Programm starten' : 'Run loaded program') : t('start')}</button>
+                                disabled={!world || this.state.storageBusy || this.firmwareSession?.uploading || status === 'starting'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{this.firmwareSession?.loaded && this.state.programState === 1 ? (this.locale === 'de' ? 'Geladenes Programm starten' : 'Run loaded program') : t('start')}</button>
                         )}
                         <select aria-label={this.locale === 'de' ? 'Ausführung' : 'Execution'} data-testid="bw-spike-arena-execution"
                             value={this.state.execution} onChange={async event => {

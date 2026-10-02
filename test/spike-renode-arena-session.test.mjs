@@ -246,3 +246,17 @@ test('live session selects deferred submit for storage and polls without START o
         assert.equal(session.closed, false);
     } finally {await session.stop();}
 });
+
+test('Run loaded program requires READY; leaving READY clears loaded intent', async () => {
+    const session = new RenodeArenaSession({bridge: bridge()});let starts = 0;
+    session.storageSupported = true;session.programClient = {start: async () => {starts++;return {state:2};}};
+    for (const state of [0, 2, 3, 4, 5]) {
+        session.loaded = true;session.observeProgram({state});
+        assert.equal(session.loaded, false);
+        await assert.rejects(session.startProgram(), /Load the saved program to READY/);
+    }
+    assert.equal(starts, 0);
+    session.loaded = true;session.observeProgram({state:1});
+    try {await session.startProgram();assert.equal(starts, 1);assert.equal(session.loaded, false);}
+    finally {clearTimeout(session.timer);}
+});

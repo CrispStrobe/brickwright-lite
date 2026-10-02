@@ -148,6 +148,7 @@ export class RenodeArenaSession {
     observeProgram (status) {
         if (!status || ![0, 1, 2, 3, 4, 5].includes(status.state)) return;
         this.programState = status.state;
+        if (status.state !== 1) this.loaded = false;
         this.onProgramState(status.state, this.storageSupported, status.error ?? status.runtimeError);
     }
     async storage (operation) {
@@ -187,6 +188,7 @@ export class RenodeArenaSession {
     }
     async startProgram () {
         if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.uploading || this.storageBusy) throw new Error('NuttX program is unavailable or busy');
+        if (!this.loaded || this.programState !== 1) throw new Error('Load the saved program to READY before running it');
         this.completed = false;
         return this.controlProgram('start');
     }
