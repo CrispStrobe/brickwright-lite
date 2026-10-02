@@ -9,9 +9,31 @@ import {Circuit} from 'bw-circuit-ui/model/circuit.js';
 import {importCircuit} from 'bw-circuit-ui/importers/index.js';
 import {createMeterState, readMeter} from 'bw-circuit-ui/model/multimeter.js';
 import {resolveEndpointNet} from 'bw-circuit-ui/model/instrument-report.js';
+import {readScopeCapture} from 'bw-circuit-ui/model/scope-tools.js';
 
 registerAllDevices();
 setEngine({BoardImpl, inferNetlist, checkWiring, getDevice});
+
+test('installed meter refuses nonfinite and untyped values while preserving true zero and signed values', () => {
+    for (const mode of ['voltage', 'current', 'resistance']) {
+        const meter = createMeterState(); meter.mode = mode;
+        meter.probeA = {netId:'a', partId:'r', terminal:'a'};
+        meter.probeB.netId = 'b';
+        const c = {board:{}, meterVoltage:()=>NaN, meterCurrent:()=>NaN, resistance:()=>NaN};
+        const method = {voltage:'meterVoltage', current:'meterCurrent', resistance:'resistance'}[mode];
+        for (const bad of [NaN, Infinity, -Infinity, null, undefined, '1', {}]) {
+            c[method] = () => bad;
+            const reading = readMeter(meter, c);
+            assert.equal(reading.siValue, null, `${mode}: ${String(bad)}`);
+            assert.equal(reading.value, '---'); assert.ok(reading.note);
+        }
+        for (const good of [0, -1, 1]) {
+            c[method] = () => good;
+            const reading = readMeter(meter, c);
+            assert.equal(reading.siValue, good); assert.equal(reading.note, null);
+        }
+    }
+});
 
 test('installed designer and engine refuse a faulted meter and unobserved scope interval across recovery', () => {
     const input = importCircuit('spice', '* live fault\nV1 n 0 1\nVBAD 0 0 0\nR1 n 0 1k\n.end\n');
@@ -31,6 +53,9 @@ test('installed designer and engine refuse a faulted meter and unobserved scope 
     // Do not observe the scope during the fault: sticky invalidation must be proactive.
     c.setControl('VBAD', 0);
     assert.throws(() => c.board.getScopeData(h), /scope capture refused:.*solve failed/);
+    const refused = readScopeCapture(c.board, h);
+    assert.equal(refused.data, null);
+    assert.match(refused.reason, /scope capture refused:.*solve failed/);
     assert.equal(readMeter(meter, c).siValue, null);
     const fresh = createMeterState();
     fresh.probeA.netId = meter.probeB.netId; fresh.probeB.netId = meter.probeA.netId;

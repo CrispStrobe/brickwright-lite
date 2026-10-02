@@ -485,14 +485,27 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 Measurement browser package follow-up: Codex bwcx `/root` owns the CUI package
 boundary in `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`, branch
 `lane/measurement-browser-package-adoption-20261002`, exact base
-`7e61141fb1a29ed56f77500a4c6a2d82e818771a`. **CLAIM 2026-10-02.** Adopt qualified
+`7e61141fb1a29ed56f77500a4c6a2d82e818771a`. **DONE candidate 2026-10-02; hosted qualification pending.** Adopt qualified
 CUI `3a44883095223f33689d0c0e16695c9ba2ee8757` only; Board and other pins remain
 unchanged. Scope: vendor-pins, derived root/GUI specs and locks, generated package
 notices/provenance/report mirrors only where stale, installed measurement
-authority test, this ledger paragraph. No source forks, workflow, other model,
+authority test, five existing part-adoption tests' CUI SHA assertions only,
+this ledger paragraph. No source forks, workflow, other model,
 physical expectation, or deployment claim before actual publication evidence.
 Existing actual upstream browser fault/recovery and live ngspice waveform tests
-are qualified; private 300-case source-analysis replay is independent and pending.
+are qualified. Installed local consumer/physical-part tests 12/12; package,
+identity and mirror checks 21/21; full pin-history/gate surface 27/27, zero skips.
+Three finite-guard source mutants make the installed consumer assertions red;
+installed files remain pristine. Root npm-pack byte identity: 3578 Board files,
+1301 CUI files, one engine resolution. GUI lock derives the identical CUI pack
+integrity; GUI installed-byte/browser verification remains hosted, not claimed
+locally. Census (exact pinned Board checkout), 8086 report, matrix, profiles,
+reader coverage and Rust notices are unchanged/current; package notices mirrors
+regenerated. Only CUI specs/resolved/integrity changed in both locks. Private
+300-case source-analysis replay `36996306687` at `c809d53` passed with 50 comparable
+circuits, 16,137/16,137 observations on EACH route and 250 explicit noncomparables;
+no claim of 300 supported circuits or physical opamp certification. No deployment
+claim until the main release and public source manifest are verified.
 
 Live measurement adoption final preflight: complete pin-history/gate-shape
 surface 27/27 with all three upstream Git histories supplied (the initial
