@@ -2,10 +2,46 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "ab87a27cfe31de2507ca60f01fc4c81cf624cd3e",
-    "read": "2026-09-29"
+    "sha": "c0dea37a3bb44b5a425e08ad16389adc5c8bb711",
+    "read": "2026-10-02"
   },
   "rows": [
+    {
+      "id": "386-native-ram-coherence-report",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — the committed fixture runs in ordinary CI without a native Bochs build.",
+      "via": "test/fixtures/i80386-native-ram-coherence-capture.json.gz",
+      "gates": [
+        "test/i80386-native-ram-coherence-report.test.mjs"
+      ],
+      "what": "Committed actual four-budget native RAM, SMC and A20 coherence capture used by mandatory baseline and mutation checks. Preserves native raw bus order and the explicit eight far-CALL frame-order differences; full byte-bus-order parity, architectural reset parity and whole AT boot remain unfinished."
+    },
+    {
+      "id": "386-native-cold-reset-report",
+      "kind": "fixture",
+      "present": true,
+      "ciAvailable": true,
+      "ci": "yes — the committed fixture runs in ordinary CI without a native Bochs build.",
+      "via": "test/fixtures/i80386-native-cold-reset-capture.json.gz",
+      "gates": [
+        "test/i80386-native-cold-reset-report.test.mjs"
+      ],
+      "what": "Committed actual four-budget native cold-reset capture used by mandatory baseline and mutation checks. Proves the bounded actual-board bus gate; architectural reset parity and whole AT boot remain unfinished."
+    },
+    {
+      "id": "386-native-device-quanta-pilot",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI does not provide this retained historical single-arm pilot; only that optional pilot check skips, while the committed four-arm report tests run.",
+      "via": "tried $BW_DEVICE_QUANTA_ACTUAL_PILOT",
+      "gates": [
+        "test/i80386-native-device-quanta.test.mjs"
+      ],
+      "what": "Retained actual ef157ce7 continuous native device-quanta pilot report. Enables the optional one-arm core-proof check against its exact SHA-256; this historical diagnostic is not an independent CPU oracle or a final qualification receipt."
+    },
     {
       "id": "i80386-win16-qemu",
       "kind": "oracle",
@@ -17,6 +53,30 @@
         "test/i80386-win16-io-boundary-oracle.test.mjs"
       ],
       "what": "Pinned QEMU 8.2.2 TCG 486 supplies protected-16 CPU-state checkpoints for the owned branch-to-I/O fixture. The test requires the exact executable SHA-256 before running; mere file presence is not acceptance."
+    },
+    {
+      "id": "386-es-cache-qemu",
+      "kind": "oracle",
+      "present": true,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI does not install the pinned QEMU executable; the external comparison skips there",
+      "via": "/usr/bin/qemu-system-i386",
+      "gates": [
+        "test/i80386-es-cache-witness.test.mjs"
+      ],
+      "what": "Pinned QEMU 8.2.2 TCG 486 supplies an external output witness for the owned protected16 memory-source 8E ES cache fixture. The test checks the exact executable SHA-256 before running; QEMU 486 does not establish original-386 bus ordering or timing."
+    },
+    {
+      "id": "386-es-cache-bochs",
+      "kind": "oracle",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI does not provide the pinned Bochs CPU-level-3 build; the optional comparison is absent there",
+      "via": "tried $BOCHS_386_ROOT",
+      "gates": [
+        "test/i80386-es-cache-witness.test.mjs"
+      ],
+      "what": "Pinned Bochs 2.7 CPU level 3 optionally witnesses the same protected16 ES cache output when BOCHS_386_ROOT names the matching build. The comparator checks its revision, binary SHA-256, and CPU-level config."
     },
     {
       "id": "harris-native-wasm",
@@ -148,7 +208,10 @@
       "gates": [
         "test/ngspice-neutral-oracle.test.mjs",
         "test/nonuic-transient.test.mjs",
-        "test/pwm-duty-ngspice.test.mjs"
+        "test/pwm-duty-ngspice.test.mjs",
+        "test/scope-fractional-time.test.mjs",
+        "test/meter-waveform-integration.test.mjs",
+        "test/inductor-meter-integral.test.mjs"
       ],
       "what": "The reference NUMERIC circuit simulator. lcapy is symbolic and exact but cannot model a junction; ngspice models devices, so the two are complementary rather than redundant -- where both agree and we do not, it is us, and where THEY disagree the circuit is ill-posed and belongs in neither corpus. Note that the ngspice GOLDENS under test/golden/ are pre-recorded and need no binary; this row is for the gates that invoke ngspice LIVE."
     },
@@ -198,7 +261,9 @@
         "test/labwired-roundtrip.test.mjs",
         "test/pad-drive-parity.test.mjs",
         "test/labwired-firmware-only.test.mjs",
-        "test/labwired-microbit-matrix.test.mjs"
+        "test/labwired-microbit-matrix.test.mjs",
+        "test/labwired-microbit-motion.test.mjs",
+        "test/labwired-f0-timing.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
     },
