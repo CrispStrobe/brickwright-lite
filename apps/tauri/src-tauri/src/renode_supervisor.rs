@@ -71,6 +71,35 @@ impl SessionControl {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SpikeTopology { Default, SixMotors }
+impl SpikeTopology {
+    pub(crate) fn parse(value: Option<&str>) -> Result<Self, String> {
+        match value { None | Some("default") => Ok(Self::Default), Some("six-motors") => Ok(Self::SixMotors),
+            _ => Err("unknown SPIKE topology".into()) }
+    }
+}
+fn topology_commands(config: &serde_json::Value, topology: SpikeTopology) -> Result<Vec<String>, String> {
+    if config.get("motorPorts").is_some() && config["motorPorts"].as_u64() != Some(6) {
+        return Err("invalid packaged motor-port declaration".into());
+    }
+    if topology == SpikeTopology::Default { return Ok(Vec::new()); }
+    if config["identity"]["firmware"] != "brickwright-nuttx" || config["motorPorts"].as_u64() != Some(6) {
+        return Err("six-motor topology is not supported by this own firmware package".into());
+    }
+    Ok(['A', 'B', 'C', 'D', 'E', 'F'].into_iter().map(|port| format!("port{port} Attach \"motor\"")).collect())
+}
+
+fn insert_topology_commands(arguments: &mut Vec<String>, firmware: &Path, config: &serde_json::Value,
+    topology: SpikeTopology) -> Result<(), String> {
+    let attachments = topology_commands(config, topology)?;
+    let user_load = format!("sysbus LoadELF {}", monitor_path(firmware)?);
+    let index = arguments.iter().position(|arg| arg == &user_load)
+        .ok_or("SPIKE firmware load sequence unavailable")? - 1;
+    for command in attachments.into_iter().rev() { arguments.splice(index..index, ["-e".to_owned(), command]); }
+    Ok(())
+}
+
 pub(crate) struct RenodeSupervisor {
     session: Mutex<Option<SessionControl>>,
 }
@@ -116,6 +145,13 @@ impl RenodeSupervisor {
     }
 
     pub(crate) fn start_spike_backend(&self, backend: Option<&str>) -> Result<RenodeEndpoint, String> {
+        self.start_spike_profile(backend, SpikeTopology::Default)
+    }
+
+    pub(crate) fn start_spike_profile(&self, backend: Option<&str>, topology: SpikeTopology) -> Result<RenodeEndpoint, String> {
+        if topology == SpikeTopology::SixMotors && backend != Some("nuttx") {
+            return Err("six-motor topology requires own NuttX firmware".into());
+        }
         if backend.is_some_and(|name| !matches!(name, "guest" | "nuttx")) {
             return Err("unknown SPIKE execution backend".into());
         }
@@ -173,6 +209,9 @@ impl RenodeSupervisor {
         if backend.is_some_and(|name| config["identity"]["firmware"].as_str() != Some(if name == "nuttx" {"brickwright-nuttx"} else {"brickwright-arena-demo"})) {
             return Err("requested SPIKE backend is not packaged in this desktop build".into());
         }
+        if topology == SpikeTopology::SixMotors && (config["identity"]["firmware"] != "brickwright-nuttx" || config.get("programMailbox").is_none()) {
+            return Err("six-motor topology requires own full NuttX firmware".into());
+        }
         if config["identity"]["firmware"] == "brickwright-arena-demo" {
             let manifest = pinned_file(
                 "arena package manifest",
@@ -222,6 +261,7 @@ impl RenodeSupervisor {
             if sp % 8 != 0 || !(0x20000008..=0x20020000).contains(&sp) || pc & 1 != 1 || !(0x08008000..0x08060000).contains(&pc) {
                 return Err("full firmware reset vector outside protected kernel".into());
             }
+            insert_topology_commands(&mut arguments, &firmware, &config, topology)?;
             let commands = [format!("sysbus LoadELF {}", monitor_path(&root.join("nuttx-kernel.elf"))?),
                 "cpu VectorTableOffset 0x08008000".to_owned(), format!("cpu SP {sp}"), format!("cpu PC {pc}"),
                 "emulation RunFor \"1.0\"".to_owned()];
@@ -740,6 +780,36 @@ fn drain_bounded(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn six_motor_launch_is_gated_and_precedes_both_firmware_loads() {
+        let old = serde_json::json!({"identity":{"firmware":"brickwright-nuttx"}});
+        assert!(topology_commands(&old, SpikeTopology::Default).unwrap().is_empty());
+        assert!(topology_commands(&old, SpikeTopology::SixMotors).is_err());
+        for value in [serde_json::json!(true),serde_json::json!("6"),serde_json::json!(5)] {
+            let config = serde_json::json!({"identity":{"firmware":"brickwright-nuttx"},"motorPorts":value});
+            assert!(topology_commands(&config, SpikeTopology::SixMotors).is_err());
+        }
+        let config = serde_json::json!({"identity":{"firmware":"brickwright-nuttx"},"motorPorts":6});
+        let user = Path::new("/trusted/nuttx-user.elf");
+        let mut args = spike_arguments(Path::new("/trusted/nuttx.resc"),user,
+            Path::new("/trusted/scripts/state.py"),Path::new("/trusted/state-config.json")).unwrap();
+        args.extend(["-e".to_owned(),"sysbus LoadELF /trusted/nuttx-kernel.elf".to_owned()]);
+        insert_topology_commands(&mut args,user,&config,SpikeTopology::SixMotors).unwrap();
+        let first_load = args.iter().position(|arg| arg.starts_with("sysbus LoadELF")).unwrap();
+        for port in ['A','B','C','D','E','F'] {
+            assert!(args.iter().position(|arg| arg == &format!("port{port} Attach \"motor\"")).unwrap() < first_load);
+        }
+        let demo = serde_json::json!({"identity":{"firmware":"brickwright-arena-demo"},"motorPorts":6});
+        assert!(topology_commands(&demo,SpikeTopology::SixMotors).is_err());
+        assert_eq!(SpikeTopology::parse(None).unwrap(),SpikeTopology::Default);
+        assert_eq!(SpikeTopology::parse(Some("six-motors")).unwrap(),SpikeTopology::SixMotors);
+        assert!(SpikeTopology::parse(Some("six-motors;quit")).is_err());
+        let supervisor = RenodeSupervisor::new();
+        assert!(supervisor.start_spike_profile(Some("guest"),SpikeTopology::SixMotors).is_err());
+        assert!(supervisor.start_spike_profile(None,SpikeTopology::SixMotors).is_err());
+        assert!(supervisor.session.lock().unwrap().is_none(), "unsupported profiles must fail before process creation");
+    }
 
     #[test]
     fn tokens_are_secret_sized_and_unique() {

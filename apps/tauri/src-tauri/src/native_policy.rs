@@ -239,7 +239,7 @@ impl Operation {
             return false;
         };
         match self {
-            Self::RenodeSpikeStart => map.is_empty() || (map.len() == 1 && matches!(args["backend"].as_str(), Some("guest" | "nuttx"))),
+            Self::RenodeSpikeStart => crate::arena_inputs::valid_spike_start(args),
             Self::RenodeSpikeArenaInputs => crate::arena_inputs::valid(args),
             Self::RenodeSpikeArenaProgram => crate::arena_inputs::valid_program(args),
             Self::RenodeSpikeProgramPacket => crate::arena_inputs::valid_nuttx_packet(args),

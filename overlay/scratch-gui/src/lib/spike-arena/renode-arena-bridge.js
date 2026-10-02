@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 // Observed guest encoders drive the existing world; the native controller never steps here.
+import {requireSixMotorFrame} from '../spike-nuttx/motor-topology.js';
 import {writeObservedMotor} from '../virtual-hub/motor-telemetry.js';
 const PORTS = 'ABCDEF';
 const REQUIRED = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1'];
 export class RenodeArenaBridge {
-    constructor (bridge) {
+    constructor (bridge, {allMotors = false} = {}) {
         if (!bridge?.hubState || !bridge.sim) throw new TypeError('A shared arena bridge is required');
         this.bridge = bridge;
+        this.allMotors = allMotors;
         this.last = null;
         this.closed = false;
         this.previousOwner = bridge.hubState.clockOwner;
@@ -22,6 +24,7 @@ export class RenodeArenaBridge {
             throw new Error('Configured simulation firmware does not support the arena contract');
         }
         const speedLimit = target.capabilities.some(cap => ['arena-program/v1', 'nuttx-program/v1'].includes(cap)) ? 1110 : 300;
+        if (this.allMotors) requireSixMotorFrame(frame);
         const generation = frame.lifecycle?.connectionGeneration;
         if (!Number.isSafeInteger(frame.seq) || frame.seq < 0 || !Number.isSafeInteger(generation) || generation < 0 ||
             !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) throw new Error('Invalid guest clock or sequence');
@@ -45,11 +48,20 @@ export class RenodeArenaBridge {
                 throw new Error('Guest sensor layout does not match the arena');
             }
         }
+        const observed = this.allMotors ? frame.motors : motors;
+        for (const motor of observed) {
+            if (!Number.isFinite(motor.position) || Math.abs(motor.position) > 1080000 ||
+                !Number.isFinite(motor.speedDps) || Math.abs(motor.speedDps) > speedLimit ||
+                ![-1, 0, 1].includes(motor.demandDirection) || typeof motor.stalled !== 'boolean' ||
+                this.bridge.hubState.data.sensors[PORTS.indexOf(motor.port)]?.kind !== 'motor') {
+                throw new Error('Invalid guest motor frame');
+            }
+        }
         const identity = `${target.imageSha256}:${generation}`;
         const last = this.last;
         const ms = last ? (frame.clockNs - last.clockNs) / 1e6 : 0;
         if (last && (identity !== last.identity || frame.seq <= last.seq || ms < 0 || ms > 2000 ||
-            motors.some((motor, i) => Math.abs(motor.position - last.motors[i].position) > speedLimit * ms / 1000 + 0.002))) {
+            observed.some(motor => Math.abs(motor.position - last.observed[motor.port]) > speedLimit * ms / 1000 + 0.002))) {
             throw new Error('Guest frame is stale, discontinuous or outside the sampling interval');
         }
         const hub = this.bridge.hubState;
@@ -63,11 +75,12 @@ export class RenodeArenaBridge {
                 (sides[i].wheelDiameter ?? this.bridge.robot.wheelDiameter));
             for (let i = 0; i < count; i++) this.bridge.sim.advanceWheels(travels[0] / count, travels[1] / count, ms / count);
         }
-        for (const motor of motors) {
+        for (const motor of observed) {
             writeObservedMotor(hub, motor.port, motor);
             this.bridge.lastPositions[motor.port] = motor.position;
         }
-        this.last = {identity, seq: frame.seq, clockNs: frame.clockNs, motors};
+        this.last = {identity, seq: frame.seq, clockNs: frame.clockNs, motors,
+            observed: Object.fromEntries(observed.map(motor => [motor.port, motor.position]))};
         this.bridge.verdict = this.bridge.checker.evaluate(this.bridge.sim.snapshot());
         this.bridge._publish();
         return this.inputs();

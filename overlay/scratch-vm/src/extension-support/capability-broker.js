@@ -10,7 +10,7 @@ const OPERATIONS = Object.freeze({
         validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
     }),
     'renode.spike.session.start': Object.freeze({
-        validate: args => isPlainRecord(args) && (hasOnlyKeys(args, []) || (hasOnlyKeys(args, ['backend']) && ['guest', 'nuttx'].includes(args.backend)))
+        validate: args => isPlainRecord(args) && (hasOnlyKeys(args, []) || (hasOnlyKeys(args, ['backend']) && ['guest', 'nuttx'].includes(args.backend)) || (hasOnlyKeys(args, ['backend', 'topology']) && args.backend === 'nuttx' && ['default', 'six-motors'].includes(args.topology)))
     }),
     'renode.spike.session.close': Object.freeze({
         validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])

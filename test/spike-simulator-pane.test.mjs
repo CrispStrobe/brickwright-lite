@@ -159,3 +159,30 @@ test('program storage controls gate unsupported packages and explicitly run load
         pane.firmwareSession=null;
     } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}
 });
+
+test('six-motor profile is sandbox-only, localized, pre-start and Python-only', async () => {
+    const browser=installBrowser(),{Pane,cleanup}=await loadSimulator();let renderer;
+    try {
+        await act(async()=>{renderer=create(React.createElement(Pane,{hubState:new Hub(),locale:'en'}));});
+        await act(async()=>{await one(renderer,'bw-spike-arena-sandbox').props.onClick();});
+        await settle(()=>browser.win.__bwSpikeArena?.bridge,'arena ready');
+        const pane=browser.win.__bwSpikeArena._pane;
+        await act(async()=>pane.setState({execution:'nuttx',status:'ready'}));
+        assert.equal(one(renderer,'bw-spike-nuttx-topology').props.disabled,false);
+        await act(async()=>one(renderer,'bw-spike-nuttx-topology').props.onChange({target:{value:'six-motors'}}));
+        assert.equal(one(renderer,'bw-spike-arena-start').props.disabled,true);
+        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Python.*Scratch firmware currently supports A\/B only/);
+        await assert.rejects(pane.startFirmware(),/Six motors require NuttX Python/);
+        pane.firmwareSession={topology:'six-motors',loaded:true,programState:1,storageSupported:true};
+        await act(async()=>pane.setState({programState:1}));
+        assert.equal(one(renderer,'bw-spike-nuttx-topology').props.disabled,true);
+        assert.equal(one(renderer,'bw-spike-arena-start').props.disabled,false);
+        assert.equal(one(renderer,'bw-spike-arena-start').props.children,'Run loaded program');
+        pane.firmwareSession=null;pane.locale='de';
+        await act(async()=>pane.setState({sandbox:null}));
+        const selector=one(renderer,'bw-spike-nuttx-topology');
+        assert.equal(selector.props['aria-label'],'NuttX-Geräte');
+        assert.equal(selector.findAllByType('option').find(o=>o.props.value==='six-motors').props.disabled,true);
+        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch-Firmware.*A\/B/);
+    } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}
+});

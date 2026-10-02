@@ -2,11 +2,17 @@
 // Copyright (c) 2026 Brickwright contributors
 import {RenodeArenaBridge} from './renode-arena-bridge.js';
 import {NuttXProgramClient, encodePython, encodeInstructions} from '../spike-nuttx/upload-protocol.js';
+import {validateTopology, requireSixMotorFrame, prepareSixMotorHub} from '../spike-nuttx/motor-topology.js';
 import {exchangeStorage, DEFERRED_STORAGE_CAPABILITY} from '../spike-nuttx/storage-exchange.js';
 /** Owns only a session it successfully started; stopping invalidates outstanding polls. */
 export class RenodeArenaSession {
-    constructor ({bridge, capabilities, backend = null, program = null, source = null, onOutput = () => {}, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}, onProgramState = () => {}}) {
-        this.adapter = new RenodeArenaBridge(bridge);
+    constructor ({bridge, capabilities, backend = null, topology = 'default', program = null, source = null, onOutput = () => {}, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}, onProgramState = () => {}}) {
+        validateTopology(topology);
+        if (topology === 'six-motors' && (backend !== 'nuttx' || source === null || program || bridge?.robot?.sensors?.length !== 0)) {
+            throw new Error('Six motors require own NuttX Python and a sensorless sandbox');
+        }
+        this.topology = topology;
+        this.adapter = new RenodeArenaBridge(bridge, {allMotors: topology === 'six-motors'});
         this.capabilities = capabilities;
         if (backend !== null && !['guest', 'nuttx'].includes(backend)) throw new TypeError('Unknown firmware backend');
         this.backend = backend;
@@ -32,11 +38,20 @@ export class RenodeArenaSession {
     }
     async start () {
         this.tail = (async () => {
-            await this.call('session.start', this.backend ? {backend: this.backend} : {});
+            const hub = this.adapter.bridge.hubState;
+            if (hub.configurationOwner && hub.configurationOwner !== this) throw new Error('Hub configuration is owned by another session');
+            // Reserve only configuration controls while startup is pending;
+            // native motors and clock ownership remain unchanged until a frame.
+            hub.configurationOwner = this;hub.changed();
+            await this.call('session.start', this.backend ? {backend: this.backend, ...(this.topology === 'six-motors' ? {topology: this.topology} : {})} : {});
             this.started = true;
             if (this.closed) return;
             const first = JSON.parse(await this.call('state.read'));
             if (this.closed) return;
+            if (this.topology === 'six-motors') {
+                requireSixMotorFrame(first);
+                prepareSixMotorHub(this.adapter.bridge.hubState);
+            }
             this.outputSequence = first.lifecycle?.nuttxProgramOutput?.sequence;
             this.nuttx = first.target?.firmware === 'brickwright-nuttx' &&
                 first.target?.capabilities?.includes('nuttx-program/v1');
@@ -226,6 +241,7 @@ export class RenodeArenaSession {
             finally {
                 this.adapter.close();
                 const hub = this.adapter.bridge.hubState;
+                if (hub.configurationOwner === this) {hub.configurationOwner = null;hub.changed();}
                 if (hub.externalBackend === this) hub.externalBackend = null;
                 this.onStopped();
             }

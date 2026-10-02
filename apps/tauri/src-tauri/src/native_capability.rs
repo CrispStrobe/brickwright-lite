@@ -49,10 +49,8 @@ fn execute(
             "linux"
         }
         .to_owned()),
-        Operation::RenodeSpikeStart => match args["backend"].as_str() {
-            Some(backend) => debugger.start_spike_backend(supervisor, Some(backend)),
-            None => debugger.start(supervisor),
-        }.map(str::to_owned),
+        Operation::RenodeSpikeStart => debugger.start_spike_profile(supervisor, args["backend"].as_str(),
+            crate::renode_supervisor::SpikeTopology::parse(args["topology"].as_str())?).map(str::to_owned),
         Operation::RenodeSpikeClose => {
             spike()?;
             debugger.close(supervisor).map(str::to_owned)
