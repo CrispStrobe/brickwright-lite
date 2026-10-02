@@ -523,6 +523,32 @@ mod tests {
     }
 
     #[test]
+    fn older_nuttx_capability_refuses_storage_before_writing_to_backend() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            let old = frame(0).replace("\"capabilities\":[]", "\"capabilities\":[\"nuttx-program/v1\"]");
+            stream.write_all(format!("{old}\n").as_bytes()).unwrap();
+            let mut byte = [0];
+            match stream.read(&mut byte) {
+                Ok(0) => {},
+                Err(error) if matches!(error.kind(), std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut) => {},
+                other => panic!("storage request escaped capability gate: {other:?}"),
+            }
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();
+        feed.wait_ready(Duration::from_secs(2)).unwrap();
+        for operation in [8, 9] {
+            assert_eq!(feed.command("nuttx.program.packet", serde_json::json!({"bytes":[112,1,operation,0,1,0,0,0]})).unwrap_err(),
+                "brick-state input target mismatch");
+        }
+        drop(feed);
+        server.join().unwrap();
+    }
+
+    #[test]
     fn rejects_replay_wrong_identity_version_and_oversize() {
         let mut decoder = BrickStateDecoder::default();
         decoder.decode(frame(2).as_bytes()).unwrap();

@@ -480,6 +480,19 @@ impl RenodeDebugger {
 mod tests {
     use super::*;
 
+    // Own ABI proof: correlate the complete reply and retain signed errno.
+    fn assert_program_reply(snapshot: &Value, request: &Value, expected_result: i32) -> (u8, u16) {
+        let bytes: Vec<u8> = snapshot["lifecycle"]["nuttxProgramReply"]
+            .as_array().unwrap().iter().map(|v| u8::try_from(v.as_u64().unwrap()).unwrap()).collect();
+        let packet: Vec<u8> = request.as_array().unwrap().iter()
+            .map(|v| u8::try_from(v.as_u64().unwrap()).unwrap()).collect();
+        assert_eq!(bytes.len(), 20);
+        assert_eq!(&bytes[..3], &[0x71, 1, packet[2]]);
+        assert_eq!(&bytes[4..8], &packet[4..8]);
+        assert_eq!(i32::from_le_bytes(bytes[8..12].try_into().unwrap()), expected_result);
+        (bytes[3], u16::from_le_bytes(bytes[14..16].try_into().unwrap()))
+    }
+
     #[test]
     fn close_is_idempotent_and_does_not_manufacture_a_session() {
         let debugger = RenodeDebugger::new();
@@ -532,6 +545,10 @@ mod tests {
             .unwrap();
         let first = debugger.state().unwrap();
         assert_eq!(first["target"]["firmware"], "brickwright-nuttx");
+        for port in ["A", "B", "C", "D", "E", "F"] {
+            assert!(first["ports"].as_array().unwrap().iter().any(|entry| entry["id"] == port),
+                "packaged shared state omitted port {port}");
+        }
         assert!(first["target"]["capabilities"]
             .as_array()
             .unwrap()
@@ -590,6 +607,62 @@ mod tests {
                     .any(|m| m["port"] == "B" && m["position"].as_f64().unwrap() > 1.0));
             }
         }
+        assert!(first["target"]["capabilities"].as_array().unwrap().iter()
+            .any(|cap| cap == "nuttx-program-storage/v1"), "stage a storage-capable own firmware package");
+        let native = cases.as_array().unwrap().iter().find(|case| case["python"] == false).unwrap();
+        let storage = &native["storage"];
+        let send = |request: &Value| debugger.spike_program_packet(json!({"bytes": request})).unwrap();
+        // Upload without START, persist, then replace the resident program under the same ID.
+        for request in storage["upload"].as_array().unwrap() {
+            response = send(request);assert_program_reply(&response, request, 0);
+        }
+        response = send(&storage["save"]);
+        assert_eq!(assert_program_reply(&response, &storage["save"], 0).0, 1);
+        let retained_identity = response["target"].clone();
+        let retained_seq = response["seq"].as_u64().unwrap();
+        for request in storage["replace"].as_array().unwrap() {
+            response = send(request);assert_program_reply(&response, request, 0);
+        }
+        assert_eq!(assert_program_reply(&response, storage["replace"].as_array().unwrap().last().unwrap(), 0),
+            (1, u16::try_from(storage["replacementCount"].as_u64().unwrap()).unwrap()));
+        assert_ne!(storage["savedCount"], storage["replacementCount"]);
+        response = send(&storage["load"]);
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0),
+            (1, u16::try_from(storage["savedCount"].as_u64().unwrap()).unwrap()));
+        let motor_b_position = |snapshot: &Value| snapshot["motors"].as_array().unwrap().iter()
+            .find(|motor| motor["port"] == "B").unwrap()["position"].as_f64().unwrap();
+        let loaded_position = motor_b_position(&response);
+        thread::sleep(Duration::from_millis(100));
+        response = send(&native["status"]);
+        assert_eq!(assert_program_reply(&response, &native["status"], 0).0, 1, "LOAD must not autorun");
+        assert!((motor_b_position(&response) - loaded_position).abs() < 0.1, "LOAD moved the motor");
+        response = send(&storage["start"]);
+        assert_eq!(assert_program_reply(&response, &storage["start"], 0).0, 2);
+        for _ in 0..50 {
+            response = send(&native["status"]);
+            let state = assert_program_reply(&response, &native["status"], 0).0;
+            assert_ne!(state, 5, "restored native program faulted: {}", response);
+            if state == 3 { break; }
+            thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(response["lifecycle"]["nuttxProgramReply"][3], 3);
+        assert!(motor_b_position(&response) > loaded_position + 1.0, "saved motor program was not restored");
+        response = send(&storage["start"]);assert_program_reply(&response, &storage["start"], 0);
+        response = send(&storage["stop"]);
+        assert_eq!(assert_program_reply(&response, &storage["stop"], 0).0, 4);
+        // STOP retains both process and saved slot. Allow a bounded unwind before LOAD.
+        for _ in 0..50 {
+            response = send(&storage["load"]);
+            let bytes = response["lifecycle"]["nuttxProgramReply"].as_array().unwrap();
+            let result = i32::from_le_bytes(std::array::from_fn(|i| bytes[8+i].as_u64().unwrap() as u8));
+            if result == 0 { break; }
+            assert_eq!(result, -16, "unexpected LOAD failure after STOP");
+            thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0).0, 1);
+        assert_eq!(response["target"], retained_identity);
+        assert!(response["seq"].as_u64().unwrap() > retained_seq);
+        assert!(debugger.has_endpoint(), "storage must retain the live desktop session");
         debugger.spike_arena_inputs(serde_json::json!({"sensors":[{"port":"E","kind":"force","values":{"forcePercent":70,"pressed":true}}],"loads":[]})).unwrap();
         debugger.close(&supervisor).unwrap();
     }

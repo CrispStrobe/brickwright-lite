@@ -61,7 +61,7 @@ await writeFile(join(output, 'nuttx.resc'), `include @${join(output, 'models.cs'
 await writeFile(join(output, 'state-config.json'), JSON.stringify({identity: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none',
     imageSha256: await hash(join(output, 'nuttx-user.elf'))}, programMailbox: mailbox, pythonOutputMailbox: outputMailbox, boot,
     ...(storageAddress === null ? {} : {programStorageAbiAddress: storageAddress}),
-paths: {...Object.fromEntries('ABCDE'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');
+paths: {...Object.fromEntries('ABCDEF'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');
 const files = ['models.cs', 'nuttx.resc', 'state-config.json', ...copies.map(c => c[1]),
     'licenses/renode-models-MIT.txt', 'licenses/brickwright-BSD-3-Clause.txt',
     ...['boards/spike-prime.repl', 'boards/spike-prime-brick-devices.repl', 'cpus/stm32f413vg.repl', 'cpus/stm32f4.repl'].map(p => `platforms/${p}`)];
