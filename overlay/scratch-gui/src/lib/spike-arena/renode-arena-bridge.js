@@ -16,12 +16,12 @@ export class RenodeArenaBridge {
         if (this.closed) throw new Error('Renode arena connection is closed');
         const target = frame?.target;
         if (frame?.schemaVersion !== 1 || frame.type !== 'snapshot' || target?.board !== 'spike-prime' ||
-            target.firmware !== 'brickwright-arena-demo' || target.transport !== 'none' ||
+            !['brickwright-arena-demo', 'brickwright-nuttx'].includes(target.firmware) || target.transport !== 'none' ||
             !/^[a-f0-9]{64}$/.test(target.imageSha256 || '') ||
             !REQUIRED.every(cap => target.capabilities?.includes(cap))) {
             throw new Error('Configured simulation firmware does not support the arena contract');
         }
-        const speedLimit = target.capabilities.includes('arena-program/v1') ? 1110 : 300;
+        const speedLimit = target.capabilities.some(cap => ['arena-program/v1', 'nuttx-program/v1'].includes(cap)) ? 1110 : 300;
         const generation = frame.lifecycle?.connectionGeneration;
         if (!Number.isSafeInteger(frame.seq) || frame.seq < 0 || !Number.isSafeInteger(generation) || generation < 0 ||
             !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) throw new Error('Invalid guest clock or sequence');
@@ -87,7 +87,9 @@ export class RenodeArenaBridge {
     close () {
         if (this.closed) return;
         this.closed = true;
+        if (!this.last) return;
         const hub = this.bridge.hubState;
+        if (hub.clockOwner !== 'renode') return;
         hub.backend.cancel();
         if (hub.clockOwner === 'renode') hub.clockOwner = this.previousOwner;
         this.bridge.lastPositions = Object.fromEntries([this.bridge.robot.left, this.bridge.robot.right]

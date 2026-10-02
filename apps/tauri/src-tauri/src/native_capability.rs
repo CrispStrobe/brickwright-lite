@@ -49,7 +49,7 @@ fn execute(
             "linux"
         }
         .to_owned()),
-        Operation::RenodeSpikeStart => debugger.start(supervisor).map(str::to_owned),
+        Operation::RenodeSpikeStart => debugger.start_spike_backend(supervisor, args["backend"].as_str()).map(str::to_owned),
         Operation::RenodeSpikeClose => {
             spike()?;
             debugger.close(supervisor).map(str::to_owned)
@@ -82,6 +82,10 @@ fn execute(
                 usize::try_from(args["length"].as_u64().expect("validated length"))
                     .expect("bounded length"),
             )
+        }
+        Operation::RenodeSpikeProgramPacket => {
+            spike()?;
+            debugger.spike_program_packet(args.clone()).map(|value| value.to_string())
         }
         Operation::RenodeSpikeArenaProgram => {
             spike()?;

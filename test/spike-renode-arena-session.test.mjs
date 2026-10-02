@@ -75,3 +75,30 @@ test('guest completion closes owned runtime without a poll/stop deadlock', async
     await session.start();await session.poll();await new Promise(resolve=>setTimeout(resolve,0));await session.completion;
     assert.equal(complete,1);assert.equal(closes,1);assert.equal(session.adapter.bridge.hubState.externalBackend,null);
 });
+test('raw embedded Python cannot run in the small simulation guest', async () => {
+    const calls=[];
+    const caps=Object.fromEntries(['session.start','session.close','state.read','run'].map(op=>
+        [`renode.spike.${op}`,async()=>{calls.push(op);return op==='state.read'?JSON.stringify(programFrame()):'ready';}]));
+    const session=new RenodeArenaSession({bridge:bridge(),capabilities:caps,source:'print(1)\n'});
+    await assert.rejects(session.start(),/full NuttX package/);
+    assert.deepEqual(calls,['session.start','state.read','session.close']);
+});
+test('NuttX STOP failure still closes its owned runtime', async () => {
+    let closed=0;
+    const session=new RenodeArenaSession({bridge:bridge(),capabilities:{'renode.spike.session.close':async()=>closed++}});
+    session.started=true;
+    session.programClient={stop:async()=>{throw new Error('packet link failed');}};
+    await assert.rejects(session.stop(),/packet link failed/);
+    assert.equal(closed,1);
+    assert.equal(session.adapter.bridge.hubState.clockOwner,null);
+});
+test('refused firmware startup preserves a running native motor', async () => {
+    const b=bridge();b.hubState.setSimulationEnabled(true);
+    b.hubState.backend.runAtSpeed('A',300);b.hubState.stepMotors(50);
+    const before=structuredClone(b.hubState.data.motors[0]);
+    const caps={'renode.spike.session.start':async()=>{},'renode.spike.session.close':async()=>{},
+        'renode.spike.state.read':async()=>JSON.stringify(programFrame())};
+    const session=new RenodeArenaSession({bridge:b,capabilities:caps,source:'print(1)\n'});
+    await assert.rejects(session.start(),/full NuttX/);
+    assert.deepEqual(b.hubState.data.motors[0],before);
+});

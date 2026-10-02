@@ -326,6 +326,7 @@ impl BrickStateFeed {
         arguments: serde_json::Value,
     ) -> Result<BrickStateSnapshot, String> {
         match name {
+            "nuttx.program.packet" if crate::arena_inputs::valid_nuttx_packet(&arguments) => {}
             "arena.inputs" if crate::arena_inputs::valid(&arguments) => {}
             "arena.program.load" if crate::arena_inputs::valid_program(&arguments) => {}
             "state.sample" if arguments.as_object().is_some_and(|args| args.is_empty()) => {}
@@ -348,10 +349,15 @@ impl BrickStateFeed {
         let prior = self.latest()?;
         let target_ok = match name {
             "state.sample" => true,
+            "nuttx.program.packet" => prior.target.board == "spike-prime"
+                && prior.target.transport == "none"
+                && prior.target.firmware == "brickwright-nuttx"
+                && prior.target.capabilities.iter().any(|cap| cap == "nuttx-program/v1"),
             "arena.inputs" | "arena.program.load" => {
                 prior.target.board == "spike-prime"
                     && prior.target.transport == "none"
-                    && prior.target.firmware == "brickwright-arena-demo"
+                    && (prior.target.firmware == "brickwright-arena-demo" ||
+                        (name == "arena.inputs" && prior.target.firmware == "brickwright-nuttx"))
                     && prior.target.capabilities.iter().any(|cap| {
                         cap == if name == "arena.program.load" {
                             "arena-program/v1"

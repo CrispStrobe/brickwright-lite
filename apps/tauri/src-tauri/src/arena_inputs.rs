@@ -156,3 +156,37 @@ mod program_tests {
         ));
     }
 }
+
+/// A bounded packet for our firmware upload service, never monitor commands.
+pub(crate) fn valid_nuttx_packet(value: &Value) -> bool {
+    if !keys(value, &["bytes"]) { return false; }
+    let Some(bytes) = value["bytes"].as_array() else { return false; };
+    if !(8..=20).contains(&bytes.len()) || bytes.iter().any(|b| !integer(b, 0, 255)) { return false; }
+    let b: Vec<u8> = bytes.iter().map(|v| v.as_u64().unwrap() as u8).collect();
+    if b[0] != 0x70 || b[1] != 1 || b[3] != 0 || b[2] > 7 { return false; }
+    if b[4..8].iter().all(|v| *v == 0) && b[2] != 5 { return false; }
+    match b[2] {
+        0 | 7 => b.len() == 16,
+        1 => (11..=20).contains(&b.len()),
+        _ => b.len() == 8,
+    }
+}
+
+#[cfg(test)]
+mod nuttx_packet_tests {
+    use super::valid_nuttx_packet;
+    use serde_json::json;
+    #[test]
+    fn packets_are_bounded_and_cannot_select_memory_or_monitor_commands() {
+        assert!(valid_nuttx_packet(&json!({"bytes":[112,1,5,0,0,0,0,0]})));
+        assert!(valid_nuttx_packet(&json!({"bytes":[112,1,4,0,1,0,0,0]})));
+        for value in [json!({"bytes":[112,1,3,0,0,0,0,0]}),
+            json!({"bytes":[112,1,5,0,0,0,0,0],"address":0}),
+            json!({"bytes":[112,1,5,0,0,0,0,true]}),
+            json!({"bytes":[112,1,5,0,0,0,0,256]}),
+            json!({"bytes":[112,1,7,0,1,0,0,0]}),
+            json!({"bytes":[112,1,1,0,1,0,0,0,0,0]})] {
+            assert!(!valid_nuttx_packet(&value));
+        }
+    }
+}
