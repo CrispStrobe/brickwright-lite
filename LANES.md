@@ -482,6 +482,21 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+Visible Circuit browser-proof host — **CLAIM 2026-10-03**, Codex bwcx `/root`,
+isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`, branch
+`lane/circuit-proof-visible-host-20261003`, exact base
+`679da60c664b28ac66dfcad68b57adc175c95c68`. Test-only envelope: this paragraph,
+scripts/verify-circuit-rendering.mjs, new scripts/lib/rendering-circuit-host.mjs,
+new test/rendering-circuit-host.test.mjs. Await the visible designer's canvas
+and bind its own nearest CircuitTab ancestor, never an arbitrary global BFS
+host; prove hidden/unrelated hosts, incomplete/missing/cyclic ancestry and stale
+bindings cannot pass. Actual Pages/Vercel rendering checks, focused negative
+and mutation evidence, one final exact-head Build and guarded normal landing.
+No application/source model, fixture accuracy bound, pin, lock, generated output,
+workflow or deployment-policy changes. Prior full Vercel smoke stopped at the
+Arduino artwork before ADP7118; targeted visible/ready-owner ADP proof passed
+both limiter fixtures on exact deployed679da60c6. No production defect claimed.
+
 ADP7118 current-limited installed package adoption — **DONE candidate 2026-10-03**, Codex
 bwcx `/root`, isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`,
 branch `lane/adp7118-limiter-package-adoption-20261003`, exact base
