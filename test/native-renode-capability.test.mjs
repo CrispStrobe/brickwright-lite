@@ -163,3 +163,39 @@ test('backend selection is an enum and cannot supply images or monitor text', ()
     for(const args of [{},{backend:'guest'},{backend:'nuttx'}])assert.equal(valid(args),true);
     for(const args of [{backend:'nuttx; quit'},{backend:'lego'},{backend:'nuttx',path:'/tmp/image'},{backend:true}])assert.equal(valid(args),false);
 });
+
+
+test('MicroPython UART broker arguments are closed, bounded byte DTOs', () => {
+    const {OPERATIONS: broker} = require_('../overlay/scratch-vm/src/extension-support/capability-broker.js');
+    const validators = Object.fromEntries(['read', 'write', 'close'].map(name =>
+        [name, broker[`renode.spike.micropython.uart.${name}`].validate]));
+    for (const generation of [1, Number.MAX_SAFE_INTEGER]) {
+        for (const maxBytes of [1, 4096]) assert.equal(validators.read({generation, maxBytes}), true);
+        for (const bytes of [[0], Array(32).fill(255)]) assert.equal(validators.write({generation, bytes}), true);
+        assert.equal(validators.close({generation}), true);
+    }
+    for (const generation of [0, -1, true, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+        assert.equal(validators.close({generation}), false);
+    }
+    for (const args of [{generation:1,maxBytes:0}, {generation:1,maxBytes:4097},
+        {generation:1,maxBytes:1,port:123}, {generation:1,maxBytes:true}]) assert.equal(validators.read(args), false);
+    for (const args of [{generation:1,bytes:[]}, {generation:1,bytes:Array(33).fill(0)},
+        {generation:1,bytes:[true]}, {generation:1,bytes:[256]}, {generation:1,bytes:Array(1)},
+        {generation:1,bytes:[0],path:'/tmp/firmware'}, {generation:1,bytes:Object.assign([0],{route:'external:x'})}]) {
+        assert.equal(validators.write(args), false);
+    }
+    assert.equal(validators.close({generation:1,monitor:'quit'}), false);
+    let reads = 0;
+    const getter = {generation:1};
+    Object.defineProperty(getter, 'bytes', {enumerable:true,get:()=>{reads++;return [0];}});
+    assert.equal(validators.write(getter), false);assert.equal(reads, 0);
+    const bytes = [0];Object.defineProperty(bytes,'0',{get:()=>{reads++;return 0;}});
+    assert.equal(validators.write({generation:1,bytes}), false);assert.equal(reads, 0);
+});
+
+test('packaged UART validator and broker vocabulary match the overlay', () => {
+    for (const name of ['spike-program-uart-contract.js','capability-broker.js']) {
+        assert.equal(readFileSync(new URL(`../packages/scratch-vm/src/extension-support/${name}`,import.meta.url),'utf8'),
+            readFileSync(new URL(`../overlay/scratch-vm/src/extension-support/${name}`,import.meta.url),'utf8'));
+    }
+});

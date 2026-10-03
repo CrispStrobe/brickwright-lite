@@ -377,3 +377,25 @@ test('GUI program upload and deferred storage cross the real broker receiver wit
     }
     assert.equal(invokes.length, 2);await control.dispose();
 });
+
+
+test('UART read/write/close cross the real broker receiver with fixed SPIKE resource', async () => {
+    const invokes = [], replies = [];
+    const control = createNativeBrokerReceiver({NativeBrokerProtocol,
+        BrokerProtocolError: protocolModule.BrokerProtocolError,
+        invoke: async (command, args) => {
+            if (command === 'native_broker_reply') {replies.push(JSON.parse(args.payload));return;}
+            if (command === 'native_broker_lease') return 'f'.repeat(64);
+            assert.equal(command, 'native_broker_invoke');invokes.push(args);return 'bounded UART result';
+        }, createProtocol: () => {throw new Error('UART does not create a worker');}});
+    for (const [index, [name, args]] of [['read',{generation:7,maxBytes:4096}],
+        ['write',{generation:7,bytes:[3]}],['close',{generation:7}]].entries()) {
+        const operation = `renode.spike.micropython.uart.${name}`;
+        await control.receive(delivery(sid(2), sid(21+index), 'capability', index, {operation,args}));
+        assert.deepEqual(invokes[index],{lease:'f'.repeat(64),sequence:0,operation,resource:'renode/spike-prime',args});
+        assert.deepEqual(replies[index],{kind:'capability',result:'bounded UART result'});
+    }
+    await control.receive(delivery(sid(2),sid(25),'capability',3,
+        {operation:'renode.spike.micropython.uart.attach',args:{port:123}}));
+    assert.equal(invokes.length,3);assert.equal(replies[3].kind,'failure');await control.dispose();
+});

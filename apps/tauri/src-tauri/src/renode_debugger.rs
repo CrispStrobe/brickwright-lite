@@ -420,6 +420,22 @@ impl RenodeDebugger {
         }
     }
 
+    /// Byte-only MicroPython requests on the active owned SPIKE state connection.
+    /// No separate endpoint or caller-supplied route is accepted.
+    pub(crate) fn spike_program_uart(&self, command: &str, arguments: Value) -> Result<Value, String> {
+        crate::spike_program_uart_contract::parse_request(command, &arguments)
+            .map_err(|_| "SPIKE UART input is unsupported")?;
+        let session = self.session.lock().map_err(|_| "Renode debugger unavailable")?;
+        let active = session.as_ref().ok_or("Renode debugger is not started")?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                let (snapshot, data) = feed.command_with_result(command, arguments)?;
+                Ok(json!({"snapshot":snapshot,"data":data.ok_or("SPIKE UART result unavailable")?}))
+            }
+            _ => Err("SPIKE UART target mismatch".into()),
+        }
+    }
+
     pub(crate) fn spike_program_packet(&self, arguments: Value) -> Result<Value, String> {
         let session = self
             .session

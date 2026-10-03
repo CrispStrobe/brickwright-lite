@@ -95,6 +95,18 @@ fn execute(
             spike()?;
             debugger.spike_program_storage_submit(args.clone()).map(|value| value.to_string())
         }
+        Operation::RenodeSpikeUartRead => {
+            spike()?;
+            debugger.spike_program_uart("micropython.uart.read", args.clone()).map(|value| value.to_string())
+        }
+        Operation::RenodeSpikeUartWrite => {
+            spike()?;
+            debugger.spike_program_uart("micropython.uart.write", args.clone()).map(|value| value.to_string())
+        }
+        Operation::RenodeSpikeUartClose => {
+            spike()?;
+            debugger.spike_program_uart("micropython.uart.close", args.clone()).map(|value| value.to_string())
+        }
         Operation::RenodeSpikeProgramPacket => {
             spike()?;
             debugger.spike_program_packet(args.clone()).map(|value| value.to_string())
