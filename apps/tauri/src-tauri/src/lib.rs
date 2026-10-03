@@ -17,6 +17,8 @@ mod native_capability;
 #[cfg(desktop)]
 mod renode_brick_state;
 #[cfg(desktop)]
+mod spike_program_uart_contract;
+#[cfg(desktop)]
 mod renode_debugger;
 #[cfg(desktop)]
 mod renode_rsp;

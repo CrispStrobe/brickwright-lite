@@ -56,6 +56,7 @@ pub(crate) struct BrickStateSnapshot {
 pub(crate) struct BrickStateDecoder {
     last_seq: Option<u64>,
     identity: Option<(String, String, Option<String>)>,
+    uart_generation: Option<u64>,
 }
 
 impl BrickStateDecoder {
@@ -84,6 +85,7 @@ impl BrickStateDecoder {
                     | "spike-nx"
                     | "brickwright-nuttx"
                     | "brickwright-arena-demo"
+                    | "micropython-prime"
             )
         };
         if !valid_firmware {
@@ -168,6 +170,25 @@ impl BrickStateDecoder {
         {
             return Err("brick-state snapshot shape is malformed".into());
         }
+        let micro = snapshot.target.firmware == "micropython-prime";
+        let uart = snapshot.target.capabilities.iter().any(|cap| cap == "micropython-uart/v1");
+        let uart_generation = if micro && uart && snapshot.target.image_sha256.is_some() {
+            let metadata = &snapshot.lifecycle["micropythonUart"];
+            if !metadata.as_object().is_some_and(|fields| fields.len() == 2)
+                || !metadata["state"].as_str().is_some_and(|state| matches!(state, "ready" | "closed" | "faulted")) {
+                return Err("brick-state UART metadata is malformed".into());
+            }
+            Some(metadata["generation"].as_u64().filter(|generation| (1..=9_007_199_254_740_991).contains(generation))
+                .ok_or("brick-state UART metadata is malformed")?)
+        } else {
+            if micro || uart || snapshot.lifecycle.get("micropythonUart").is_some() {
+                return Err("brick-state UART metadata is malformed".into());
+            }
+            None
+        };
+        if self.last_seq.is_some() && self.uart_generation != uart_generation {
+            return Err("brick-state UART generation changed".into());
+        }
         let deferred = snapshot.target.capabilities.iter().any(|cap| cap == "nuttx-program-storage-deferred/v1");
         if (deferred && (snapshot.target.board != "spike-prime" || snapshot.target.firmware != "brickwright-nuttx"
             || !snapshot.target.capabilities.iter().any(|cap| cap == "nuttx-program-storage/v1")))
@@ -206,6 +227,7 @@ impl BrickStateDecoder {
             return Err("brick-state target changed within a session".into());
         }
         self.identity = Some(identity);
+        self.uart_generation = uart_generation;
         self.last_seq = Some(snapshot.seq);
         Ok(snapshot)
     }
@@ -438,7 +460,12 @@ impl BrickStateFeed {
         name: &str,
         arguments: serde_json::Value,
     ) -> Result<(BrickStateSnapshot, Option<serde_json::Value>), String> {
+        let uart_request = if name.starts_with("micropython.uart.") {
+            Some(crate::spike_program_uart_contract::parse_request(name, &arguments)
+                .map_err(|_| "brick-state UART input is unsupported")?)
+        } else { None };
         match name {
+            "micropython.uart.read" | "micropython.uart.write" | "micropython.uart.close" if uart_request.is_some() => {}
             "nuttx.program.packet" if crate::arena_inputs::valid_nuttx_packet(&arguments) => {}
             "nuttx.program.storage.submit" if crate::arena_inputs::valid_nuttx_storage_submit(&arguments) => {}
             "arena.inputs" if crate::arena_inputs::valid(&arguments) => {}
@@ -462,6 +489,13 @@ impl BrickStateFeed {
             .map_err(|_| "brick-state command unavailable".to_owned())?;
         let prior = self.latest()?;
         let target_ok = match name {
+            "micropython.uart.read" | "micropython.uart.write" | "micropython.uart.close" => {
+                prior.target.board == "spike-prime" && prior.target.transport == "none"
+                    && prior.target.firmware == "micropython-prime" && prior.target.image_sha256.is_some()
+                    && prior.target.capabilities.iter().any(|cap| cap == "micropython-uart/v1")
+                    && prior.lifecycle["micropythonUart"]["state"] == "ready"
+                    && prior.lifecycle["micropythonUart"]["generation"].as_u64() == uart_request.as_ref().map(|request| request.generation())
+            }
             "state.sample" => true,
             "nuttx.program.packet" | "nuttx.program.storage.submit" => prior.target.board == "spike-prime"
                 && prior.target.transport == "none"
@@ -474,7 +508,7 @@ impl BrickStateFeed {
                 prior.target.board == "spike-prime"
                     && prior.target.transport == "none"
                     && (prior.target.firmware == "brickwright-arena-demo" ||
-                        (name == "arena.inputs" && prior.target.firmware == "brickwright-nuttx"))
+                        (name == "arena.inputs" && matches!(prior.target.firmware.as_str(), "brickwright-nuttx" | "micropython-prime")))
                     && prior.target.capabilities.iter().any(|cap| {
                         cap == if name == "arena.program.load" {
                             "arena-program/v1"
@@ -511,6 +545,11 @@ impl BrickStateFeed {
                         return Err("brick-state command rejected".into());
                     }
                     if current.seq > prior.seq {
+                        if let Some(request) = &uart_request {
+                            let data = result.data.as_ref().ok_or("brick-state UART reply unavailable")?;
+                            crate::spike_program_uart_contract::parse_reply(request, data)
+                                .map_err(|_| "brick-state UART reply unavailable")?;
+                        }
                         return Ok((current, result.data.take()));
                     }
                 }
@@ -555,6 +594,71 @@ mod tests {
     use super::*;
     use std::io::Write;
     use std::net::{Ipv4Addr, TcpListener};
+
+    fn micro_frame(seq: u64) -> serde_json::Value {
+        let mut value: serde_json::Value = serde_json::from_str(&frame(seq)).unwrap();
+        value["target"]["firmware"] = "micropython-prime".into();
+        value["target"]["imageSha256"] = "a".repeat(64).into();
+        value["target"]["capabilities"] = serde_json::json!(["micropython-uart/v1"]);
+        value["lifecycle"]["micropythonUart"] = serde_json::json!({"generation":7,"state":"ready"});
+        value
+    }
+
+    #[test]
+    fn micro_identity_requires_bound_uart_metadata_and_stable_generation() {
+        let valid = micro_frame(0);
+        BrickStateDecoder::default().decode(&serde_json::to_vec(&valid).unwrap()).unwrap();
+        for (path, value) in [
+            (vec!["target","firmware"],serde_json::json!("brickwright-nuttx")),
+            (vec!["target","imageSha256"],serde_json::Value::Null),
+            (vec!["target","capabilities"],serde_json::json!([])),
+            (vec!["lifecycle","micropythonUart","generation"],serde_json::json!(0)),
+            (vec!["lifecycle","micropythonUart","generation"],serde_json::json!(7.0)),
+            (vec!["lifecycle","micropythonUart","state"],serde_json::json!("unknown")),
+            (vec!["lifecycle","micropythonUart","extra"],serde_json::json!(true)),
+        ] {
+            let mut bad = valid.clone();
+            let mut field = &mut bad;
+            for key in path { field = &mut field[key]; }
+            *field = value;
+            assert!(BrickStateDecoder::default().decode(&serde_json::to_vec(&bad).unwrap()).is_err());
+        }
+        let mut decoder = BrickStateDecoder::default();
+        decoder.decode(&serde_json::to_vec(&valid).unwrap()).unwrap();
+        let mut changed = micro_frame(1);
+        changed["lifecycle"]["micropythonUart"]["generation"] = 8.into();
+        assert!(decoder.decode(&serde_json::to_vec(&changed).unwrap()).is_err());
+    }
+
+    #[test]
+    fn correlated_micro_reply_data_is_validated_before_completion() {
+        for data in [serde_json::json!({"generation":7,"bytes":[42]}),
+                     serde_json::json!({"generation":8,"bytes":[]}),
+                     serde_json::json!({"generation":7,"bytes":[42,43]})] {
+            let expected = data == serde_json::json!({"generation":7,"bytes":[42]});
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST,0)).unwrap();
+            let endpoint = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let (mut stream,_) = listener.accept().unwrap();
+                stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+                writeln!(stream,"{}",micro_frame(0)).unwrap();
+                let command = read_command(&mut stream);
+                assert_eq!(command["command"],"micropython.uart.read");
+                writeln!(stream,"{}",serde_json::json!({"schemaVersion":1,"type":"result",
+                    "requestId":command["requestId"],"seq":0,"accepted":true,"data":data})).unwrap();
+                writeln!(stream,"{}",micro_frame(1)).unwrap();
+                thread::sleep(Duration::from_millis(100));
+            });
+            let feed = BrickStateFeed::connect(endpoint).unwrap();
+            feed.wait_ready(Duration::from_secs(2)).unwrap();
+            assert!(feed.command_with_result("micropython.uart.read",serde_json::json!({"generation":8,"maxBytes":1})).is_err());
+            assert!(feed.latest().is_ok(),"wrong caller generation must fail before sending");
+            let result = feed.command_with_result("micropython.uart.read",serde_json::json!({"generation":7,"maxBytes":1}));
+            assert_eq!(result.is_ok(),expected);
+            if !expected { assert!(feed.latest().is_err(),"malformed post-send reply must invalidate the feed"); }
+            server.join().unwrap();
+        }
+    }
 
     fn read_command(stream: &mut TcpStream) -> serde_json::Value {
         let mut bytes = Vec::new();
