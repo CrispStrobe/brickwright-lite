@@ -140,6 +140,12 @@ export class RenodeArenaSession {
                 signal.throwIfAborted();return this.call(operation, args);
             }), canceled]);
             signal.throwIfAborted();
+            // The desktop broker returns serialized semantic results. A typed
+            // object is also accepted for the closed test/embedded host adapter.
+            if (typeof reply === 'string') {
+                if (reply.length > 32768) throw new Error('MicroPython UART reply exceeds its bound');
+                return JSON.parse(reply);
+            }
             return reply;
         } finally { signal.removeEventListener('abort', abort); }
     }

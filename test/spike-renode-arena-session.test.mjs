@@ -399,3 +399,19 @@ test('immediate native UART timeout replies yield to timer cancellation', async 
     assert.equal(calls.filter(([op])=>op==='session.close').length,1);
     assert.equal(session.adapter.bridge.hubState.clockOwner,null);
 });
+
+test('MicroPython decodes bounded desktop broker JSON results before typed validation', async () => {
+    const output = [], reads = [uartBytes('raw REPL; CTRL-B to exit\r\n>'), uartBytes('OK42\r\n\x04\x04>')];
+    const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(42)',
+        capabilities:microCaps({write:async args=>JSON.stringify({generation:1,count:args.bytes.length}),
+            read:async()=>JSON.stringify({generation:1,bytes:reads.shift()})}),onOutput:value=>output.push(value)});
+    await session.start();await session.completion;
+    assert.equal(output[0].text,'42\r\n');
+    for (const malformed of ['{',' '.repeat(32769)]) {
+        const errors = [], calls = [];
+        const bad = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'pass',
+            capabilities:microCaps({calls,write:async()=>malformed}),onError:error=>errors.push(error)});
+        await bad.start();await bad.completion;
+        assert.equal(errors.length,1);assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    }
+});
