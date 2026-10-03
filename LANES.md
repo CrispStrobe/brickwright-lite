@@ -509,9 +509,17 @@ suite 53 pass/2 explicit history skips before source checkout configuration;
 history-enabled rerun 19/19 without skips; mirror gate green and all eight
 generator checks current. Browser gate adds actual bundled overload,
 inrush and source-refusal checks (not an instrument-pixels certificate).
-Canonical claim 3fea37d16 preceded implementation; one final Build qualification
-and guarded normal landing pending, actual Pages/Vercel publication verified
-separately rather than inferred from package or source tests.
+Canonical claim 3fea37d16 preceded implementation. Build37101075614 at2a9c5d719:
+5396 unit passes/0 failures/15 skips, corpus/heavy browser/FPGA green; light
+browser RED in the two new capture checks. The harness incorrectly applied
+finite-series-source bulk-acquisition bounds to ideal-source partitioned
+advances (overload max100.159/mean38.714 microvolts; inrush max65.648).
+Forward evidence-only repair matches the qualified CLI's 4-ohm source fixture
+and bulk capture protocol, separately retaining 120 partitioned current/KCL,
+finite VIN drop and upstream partition-waveform bounds. Original capture
+bounds and all model/solver bytes unchanged; the ideal-source numerical
+discrepancy remains recorded, not claimed fixed. Fresh qualification and
+guarded landing pending; Pages/Vercel publication verified separately.
 
 ADP7118 startup installed package adoption — **DONE candidate 2026-10-02**, Codex bwcx
 `/root`, isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`,

@@ -326,8 +326,18 @@ try {
             vOut: 5, startupModel: 'current-limited-envelope', rOut: .05, currentLimit: .36
         };
         limitedFixture.parts.find(part => part.id === 'load').params.ohms = resistance;
-        limitedFixture.parts.push({id: 'cout', kind: 'capacitor', params: {farads: capacitance}, x: 800, y: 400});
+        // Match the qualified installed CLI fixture, including finite VIN
+        // delivery resistance; this is not the earlier ideal-source fixture.
+        limitedFixture.parts.push(
+            {id: 'cout', kind: 'capacitor', params: {farads: capacitance}, x: 800, y: 430},
+            {id: 'rin', kind: 'resistor', params: {ohms: 4}, x: 330, y: 180});
+        for (const wire of limitedFixture.wires) {
+            if (wire.from === 'vin' && wire.fromTerminal === 'pos' && wire.to === 'u1') {
+                wire.from = 'rin'; wire.fromTerminal = 'b';
+            }
+        }
         limitedFixture.wires.push(
+            {from: 'vin', fromTerminal: 'pos', to: 'rin', toTerminal: 'a'},
             {from: 'cout', fromTerminal: 'a', to: 'u1', toTerminal: 'vout_1'},
             {from: 'cout', fromTerminal: 'b', to: 'gnd', toTerminal: 'gnd'});
         await page.evaluate(value => new Promise(resolve => {
@@ -338,13 +348,15 @@ try {
             const parts = window.__circuit?.board?.parts;
             return parts?.find(part => part.id === 'u1')?.params.startupModel === 'current-limited-envelope'
                 && parts.find(part => part.id === 'load')?.params.ohms === resistance
-                && parts.find(part => part.id === 'cout')?.params.farads === capacitance;
+                && parts.find(part => part.id === 'cout')?.params.farads === capacitance
+                && parts.find(part => part.id === 'rin')?.params.ohms === 4;
         }, {resistance, capacitance}, {timeout: 10000});
         const limited = await page.evaluate(({resistance: R, capacitance: C}) => {
             const circuit = window.__circuit, previous = circuit?.board;
             if (!previous || previous.parts.find(part => part.id === 'u1')?.params.startupModel !== 'current-limited-envelope'
                 || previous.parts.find(part => part.id === 'load')?.params.ohms !== R
-                || previous.parts.find(part => part.id === 'cout')?.params.farads !== C) {
+                || previous.parts.find(part => part.id === 'cout')?.params.farads !== C
+                || previous.parts.find(part => part.id === 'rin')?.params.ohms !== 4) {
                 return {error: 'displayed Circuit did not load the selected current-limited fixture'};
             }
             // Match the old startup harness: the displayed Circuit gets a cold
@@ -357,6 +369,8 @@ try {
             const out = net('u1', 'vout_1'), ground = net('gnd', 'gnd');
             const fullyBonded = net('u1', 'vout_2') === out && net('u1', 'sense_adj') === out
                 && net('u1', 'vin_7') === net('u1', 'vin_8');
+            const finiteInput = net('vin', 'pos') === net('rin', 'a')
+                && net('rin', 'b') === net('u1', 'vin_7') && net('rin', 'a') !== net('rin', 'b');
             const duration = .0012, amplitude = 5, r = .05, limit = .36;
             const tau = 300e-6 / Math.log(9);
             const delay = Math.round((80e-6 + tau * Math.log(.9)) * 1e9) / 1e9;
@@ -408,23 +422,36 @@ try {
                 capture: 'sample', sampleRateHz: 100000, depth: 256});
             const cold = board.meterVoltage(out, ground);
             board.meterCurrent('u1', 'vin_7');
+            // CLI acquisition is one bulk advance. A separate cold bundled
+            // Board exercises the upstream partitioned current/KCL protocol;
+            // its waveform accuracy is reported and checked independently.
+            board.advanceTo(1200000n);
+            const bulkAccuracyMet = board.transientAnalysisStatus().accuracyMet === true;
+            const partitioned = new previous.constructor(8);
+            partitioned.setNetlist(previous.parts, previous.nets);
             const terminals = ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'];
-            let maxCeilingError = 0, maxKclError = 0, maxSupplyError = 0;
+            let maxCeilingError = 0, maxKclError = 0, maxSupplyError = 0, maxVinDropError = 0;
+            let partitionMaxError = 0;
             let accuracyMet = true;
             for (let i = 1; i <= 120; i++) {
-                board.advanceTo(BigInt(i) * 10000n);
-                const current = terminal => board.branchCurrent('u1', terminal);
+                partitioned.advanceTo(BigInt(i) * 10000n);
+                partitionMaxError = Math.max(partitionMaxError, Math.abs(
+                    partitioned.nodeVoltage(out) - partitioned.nodeVoltage(ground) - expectedVoltage(i * 10e-6)));
+                const current = terminal => partitioned.branchCurrent('u1', terminal);
                 const outputAmps = current('vout_1') + current('vout_2');
                 const iq = 50e-6 + 130e-6 * Math.min(outputAmps, .2) / .2;
                 maxCeilingError = Math.max(maxCeilingError, -outputAmps, outputAmps - limit);
                 maxSupplyError = Math.max(maxSupplyError,
                     Math.abs(-current('vin_7') - current('vin_8') - outputAmps - iq),
                     Math.abs(current('gnd') - iq),
-                    Math.abs(board.branchCurrent('vin', 'pos') - outputAmps - iq));
+                    Math.abs(partitioned.branchCurrent('vin', 'pos') - outputAmps - iq));
+                maxVinDropError = Math.max(maxVinDropError, Math.abs(
+                    (partitioned.nodeVoltage(net('vin', 'pos')) - partitioned.nodeVoltage(net('u1', 'vin_7'))) / 4
+                    - outputAmps - iq));
                 maxKclError = Math.max(maxKclError,
                     Math.abs(terminals.reduce((sum, terminal) => sum + current(terminal), 0)),
-                    Math.abs(outputAmps + board.branchCurrent('load', 'a') + board.branchCurrent('cout', 'a')));
-                accuracyMet &&= board.transientAnalysisStatus().accuracyMet === true;
+                    Math.abs(outputAmps + partitioned.branchCurrent('load', 'a') + partitioned.branchCurrent('cout', 'a')));
+                accuracyMet &&= partitioned.transientAnalysisStatus().accuracyMet === true;
             }
             const capture = board.getScopeData(handle);
             let maxError = 0, paired = true;
@@ -435,18 +462,20 @@ try {
                 maxError = Math.max(maxError, Math.abs(sample - expectedVoltage(t)));
             }
             const mean = board.meterVoltage(out, ground), final = board.nodeVoltage(out) - board.nodeVoltage(ground);
+            const endpointAgreement = Math.abs(final - partitioned.nodeVoltage(out) + partitioned.nodeVoltage(ground));
             let controlRefusal = '';
             try { board.setControl('vin', 8); } catch (error) { controlRefusal = error.message; }
             const refused = read => {
                 try { read(); return false; }
                 catch (error) { return /measurement unavailable|scope capture refused|circuit solve failed/.test(error.message); }
             };
-            return {fullyBonded, cold, scopeHandle: handle, count: capture.count, origin: String(capture.startTNs),
+            return {fullyBonded, finiteInput, cold, scopeHandle: handle, count: capture.count, origin: String(capture.startTNs),
                 interval: String(capture.sampleIntervalNs), paired, maxError,
                 entry: entry === null ? null : entry + delay, release: release === null ? null : release + delay,
                 mean, meanError: Math.abs(mean - expectedMean), final,
                 endpointError: Math.abs(final - expectedVoltage(duration)),
-                maxCeilingError, maxKclError, maxSupplyError, accuracyMet, controlRefusal,
+                maxCeilingError, maxKclError, maxSupplyError, maxVinDropError, partitionMaxError,
+                endpointAgreement, accuracyMet, bulkAccuracyMet, controlRefusal,
                 oldVoltageRefused: refused(() => board.meterVoltage(out, ground)),
                 oldCurrentRefused: refused(() => board.meterCurrent('u1', 'vin_7')),
                 oldScopeRefused: refused(() => board.getScopeData(handle))};
@@ -456,11 +485,16 @@ try {
                 : Math.abs(limited.entry - 66.26866414968961e-6) < 1e-12 &&
                     limited.release !== null && Math.abs(limited.release - 329.1432340371157e-6) < 1e-12);
         check(`production browser ADP7118 selected ${label} captures 120 samples, analytic transitions and mean`,
-            limited.fullyBonded && limited.cold === 0 && limited.count === 120 && limited.origin === '10000' &&
+            limited.fullyBonded && limited.finiteInput && limited.cold === 0 && limited.count === 120 && limited.origin === '10000' &&
             limited.interval === '10000' && limited.paired && transitionsMatch && limited.maxError < sampleTolerance &&
             limited.meanError < meanTolerance && limited.endpointError < sampleTolerance &&
-            Math.abs(limited.mean - limited.final) > .05 && limited.accuracyMet === true &&
-            limited.maxCeilingError < 1e-8 && limited.maxKclError < 1e-9 && limited.maxSupplyError < 1e-9,
+            Math.abs(limited.mean - limited.final) > .05 && limited.bulkAccuracyMet === true,
+            JSON.stringify(limited));
+        check(`production browser ADP7118 ${label} separate partitioned probe preserves waveform, KCL and finite VIN delivery`,
+            limited.accuracyMet === true && limited.endpointAgreement <= 1e-7 &&
+            limited.partitionMaxError < (label === 'overload' ? 1.2e-4 : 5e-6) &&
+            limited.maxCeilingError < 1e-8 && limited.maxKclError < 1e-9 && limited.maxSupplyError < 1e-9 &&
+            limited.maxVinDropError < 1e-9,
             JSON.stringify(limited));
         check(`production browser ADP7118 ${label} source refusal invalidates acquired meter and scope observations`,
             /ADP7118.*(control|constant|source)/i.test(limited.controlRefusal) && limited.oldVoltageRefused &&
