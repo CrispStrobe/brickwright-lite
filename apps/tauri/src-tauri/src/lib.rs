@@ -52,6 +52,9 @@ mod spike_local_image;
 #[cfg(desktop)]
 #[allow(dead_code)]
 mod spike_staged_image;
+#[cfg(desktop)]
+#[allow(dead_code)]
+mod spike_micropython_launch;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
