@@ -482,7 +482,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-Linux browser boot timing boundary — **CLAIM 2026-10-03**, Codex bwcx `/root`;
+Linux browser boot timing boundary — **DONE candidate 2026-10-03**, Codex bwcx `/root`;
 isolated `/tmp/bwcx-linux-boot-timing-20261003`, exact base
 fb30f839f1498210e71da574f46650be8b57334e. Narrow evidence repair within the
 held ADP7118 package lane: scripts/verify-cpm-system.mjs, new pure
@@ -495,6 +495,9 @@ refuse invalid or nonpositive timing. Prove slow snapshot and favorable transpor
 cannot pass. No runtime, pins, workflow, media, timeout or threshold changes.
 Merge canonical claim before implementation; combine with frozen6454a2a56 and
 qualify the final head once. No unchanged-red rerun or landing on failed receipt.
+Canonical remotely merged claim9e9928cc6 precedes implementation. Focused6/6
+green, including three isolated executable mutants (transport as boot, inclusive
+half-time, invalid phases); full hosted combined qualification remains required.
 
 ADP7118 bounded precision package adoption — **CLAIM 2026-10-03**, Codex
 bwcx `/root`; isolated wt-lite-adp-precision-20261003, branch

@@ -20,6 +20,7 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {compareLinuxBootTimings} from './lib/linux-boot-timing.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(root, 'packages', 'scratch-gui', 'build');
@@ -361,10 +362,14 @@ try {
     timing.cold = {fetchedSeconds: cold.fetched, promptSeconds: cold.prompt};
     check(cold.up, `Boot from scratch reached the bwb# prompt — ${cold.prompt.toFixed(1)} s from the click (media fetched + verified in ${cold.fetched.toFixed(1)} s)`);
     check(!cold.errors.length, 'no page errors during the cold Linux boot', cold.errors.slice(0, 2).join(' | '));
-    // Relative, so a slow runner cannot flip it: the snapshot must beat a real
-    // boot by a wide margin, or it is not what reached the prompt.
-    check(run.prompt < cold.prompt / 2,
-        `the snapshot opens at the prompt in under half the cold boot's time (${run.prompt.toFixed(1)} s vs ${cold.prompt.toFixed(1)} s)`);
+    // Compare the same existing media-ready boundary. The snapshot downloads
+    // more bytes, and sequential runs can see different CDN/cache latency.
+    // Click-to-prompt and fetch times remain in the artifact; they are not an
+    // engine-speed claim. Preserve the strict half-time boot threshold.
+    timing.comparison = compareLinuxBootTimings(timing.snapshot, timing.cold);
+    const {snapshotSeconds, coldSeconds, passes} = timing.comparison;
+    check(passes,
+        `after media readiness the snapshot reaches the prompt in under half the cold boot's time (${snapshotSeconds.toFixed(3)} s vs ${coldSeconds.toFixed(3)} s)`);
     await cold.page.close();
     await writeFile(join(LINUX_ARTIFACTS, 'timing.json'), JSON.stringify(timing, null, 2));
 } catch (e) {
