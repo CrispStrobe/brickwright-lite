@@ -27,11 +27,18 @@ impl MicroPythonRecipe {
 
     pub(crate) fn plan(&self) -> Result<MicroPythonLaunch, String> {
         use std::sync::atomic::Ordering;
-        let generation = UART_GENERATION
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |value| {
-                (value < 9_007_199_254_740_991).then_some(value + 1)
-            })
-            .map_err(|_| "native UART generations exhausted")?;
+        let mut generation = UART_GENERATION.load(Ordering::Acquire);
+        loop {
+            if generation >= 9_007_199_254_740_991 {
+                return Err("native UART generations exhausted".into());
+            }
+            match UART_GENERATION.compare_exchange_weak(
+                generation, generation + 1, Ordering::AcqRel, Ordering::Acquire,
+            ) {
+                Ok(_) => break,
+                Err(current) => generation = current,
+            }
+        }
         MicroPythonLaunch::create(
             &self.root, &self.manifest_hash, &self.staging_root, &self.admitted, generation,
         )
