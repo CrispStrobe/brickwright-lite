@@ -22,7 +22,17 @@ plus warnings-denied Clippy. A compiled mutation removing request-specific
 reply validation fails the integration test. Actual production feed against the
 Renode state service and locally supplied MicroPython image passed arithmetic,
 Ctrl-C/recovery, wrong-generation pre-send rejection, UART close and continued
-state sampling. Firmware bytes, runtime scripts, captures, generated JSON and
+state sampling. Shared arena color input at boundary values is reflected in
+the same feed during UART execution. Rejection of a valid request for an
+unavailable device invalidates the feed and requires session restart, matching
+its retained post-send failure rule. An actual locally supplied LEGO_HUB_NO6
+MicroPython 1.26.1 module probe found neither `hub` nor `motor`; this qualification
+establishes Python execution, not a robot API.
+
+An additional 20 supervisor/flash-store tests pass. The manifest verifier accepts
+the newly compiled authored guest package, requires the optional UART helper
+when its service imports it, and detects changed helper bytes. A compiled
+allowlist-removal mutation fails the real package qualification. Firmware bytes, runtime scripts, captures, generated JSON and
 complete transcripts remain private.
 
 This adds no image chooser, native image launch, broker UART operation or GUI
