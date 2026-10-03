@@ -482,7 +482,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-Visible Circuit browser-proof host — **CLAIM 2026-10-03**, Codex bwcx `/root`,
+Visible Circuit browser-proof host — **DONE candidate 2026-10-03**, Codex bwcx `/root`,
 isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`, branch
 `lane/circuit-proof-visible-host-20261003`, exact base
 `679da60c664b28ac66dfcad68b57adc175c95c68`. Test-only envelope: this paragraph,
@@ -496,6 +496,14 @@ No application/source model, fixture accuracy bound, pin, lock, generated output
 workflow or deployment-policy changes. Prior full Vercel smoke stopped at the
 Arduino artwork before ADP7118; targeted visible/ready-owner ADP proof passed
 both limiter fixtures on exact deployed679da60c6. No production defect claimed.
+Canonical claim a642a3721 preceded implementation. New focused suite10/10,
+four isolated executable mutants red (wrong sibling, stale binding, missing
+state, unawaited canvas); related gates/adoption tests23/23, no new gate-shape
+suspects. Final shared readiness/owner helper and unchanged full rendering
+script pass against both live Pages and Vercel at deployed679da60c6, including
+Arduino geometry, physical op-amp/LDO faces, startup captures and refusals.
+Production bytes and pins unchanged. One frozen-head Build then guarded normal
+landing; no duplicate publication needed to change a test-only harness.
 
 ADP7118 current-limited installed package adoption — **DONE candidate 2026-10-03**, Codex
 bwcx `/root`, isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`,

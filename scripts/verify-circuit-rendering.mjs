@@ -2,6 +2,7 @@
 /** Browser regressions for physical Circuit Designer rendering and placement. */
 import {chromium} from 'playwright';
 import {readFileSync} from 'node:fs';
+import {bindReadyRenderingCircuitHost} from './lib/rendering-circuit-host.mjs';
 
 const lm324Fixture = JSON.parse(readFileSync(
     new URL('../test/fixtures/lm324-quad-follower.json', import.meta.url), 'utf8'));
@@ -38,27 +39,16 @@ try {
 
     await page.getByRole('tab', {name: /Circuit/}).click();
     const designer = page.locator('.bw-circuit-designer:visible').last();
-    await designer.waitFor({state: 'visible', timeout: 60000});
+    // A visible shell can precede its async canvas. Injecting a fixture before
+    // readiness can race initial scene loading on the public production site.
+    // Walk only this visible designer's owners, never a global BFS sibling.
+    const found = await bindReadyRenderingCircuitHost(designer);
     check('fresh Circuit Designer starts with Instruments minimized',
         await designer.locator('[data-instruments-column]').count() === 0 &&
         await designer.getByRole('button', {name: 'Expand instruments panel'}).count() === 1);
 
-    const found = await page.evaluate(() => {
-        const root = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
-        const key = Object.keys(root || {}).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
-        const queue = key ? [root[key]] : [];
-        for (let i = 0; i < 10000 && queue.length; i++) {
-            const fiber = queue.shift();
-            if (fiber?.stateNode?.loadExample && Object.hasOwn(fiber.stateNode.state || {}, 'circuitData')) {
-                window.__bwRenderingCircuitTab = fiber.stateNode;
-                return true;
-            }
-            if (fiber?.child) queue.push(fiber.child);
-            if (fiber?.sibling) queue.push(fiber.sibling);
-        }
-        return false;
-    });
-    check('Circuit host is available to the rendering gate', found);
+    check('visible ready Circuit host is available to the rendering gate', found);
+    if (!found) throw new Error('No Circuit host owns the visible ready designer');
 
     const load = async parts => {
         await page.evaluate(value => new Promise(resolve => {
