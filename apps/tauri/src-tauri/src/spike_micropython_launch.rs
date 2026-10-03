@@ -108,7 +108,7 @@ impl MicroPythonLaunch {
             .map_err(|_| "image staging failed")?;
         let config_bytes = serde_json::to_vec(&json!({
             "identity":{"board":"spike-prime","firmware":"micropython-prime","transport":"none","imageSha256":image.image_sha256()},
-            "paths":{"programUart":"external:programUart","portA":"external:portA","portB":"external:portB","portC":"external:portC","storage":"machine:sysbus.spi2.primeStorageMux.primeStorage"},
+            "paths":{"programUart":"external:programUart","portA":"external:portA","portB":"external:portB","portC":"external:portC","portD":"external:portD","portE":"external:portE","portF":"external:portF","storage":"machine:sysbus.spi2.primeStorageMux.primeStorage"},
             "programUartGeneration":generation,"socketTimeoutSeconds":30
         })).map_err(|_| "state configuration unavailable")?;
         let config = StagedImage::create(staging_root, &config_bytes)

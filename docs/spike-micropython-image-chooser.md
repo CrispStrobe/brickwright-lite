@@ -29,9 +29,6 @@ the actual native reader, admission owner, explicit production startup, UART and
 reset on a supplied MicroPython image. It does not automate the OS dialog. Generated
 harnesses, firmware, JSON, logs and raw transcripts stay private.
 
-GUI selection and Code-tab enablement remain pending. The existing synthetic
-MicroPython frontend uses a different firmware/UART contract than the qualified
-native service. The service currently advertises sensor inputs and UART, but not the
-frontend's required arena clock/motor-output capabilities. Those contracts must be
-aligned and exercised through the shared hub/arena before enabling that path. This
-change does not claim robot Python bindings or original LEGO firmware support.
+The follow-up [GUI integration](spike-micropython-gui.md) aligns the frontend with
+this qualified service and adds desktop selection/Code-tab execution. Robot Python
+bindings, portable package assembly and original LEGO firmware remain pending.

@@ -75,19 +75,19 @@ test('full NuttX encoders use the same world and enforce its program capability'
 
 test('MicroPython identity requires raw REPL capability and preserves frame continuity', () => {
     const micro = (seq, ms, position=0) => {
-        const f = frame(seq,ms,position);f.target.firmware='micropython-hub-no6';
-        f.target.capabilities.push('micropython-raw-repl/v1');
+        const f = frame(seq,ms,position);f.target.firmware='micropython-prime';
+        f.target.capabilities.push('micropython-uart/v1');f.lifecycle.micropythonUart={generation:1,state:'ready'};
         f.motors.forEach(m=>{m.speedDps=Math.sign(m.speedDps)*1110;});return f;
     };
     const {adapter,hub,bridge}=setup();
     const bad=micro(1,0);bad.target.capabilities.pop();assert.throws(()=>adapter.accept(bad),/contract/);
     assert.equal(hub.clockOwner,null);
     adapter.accept(micro(1,0));adapter.accept(micro(2,100,111));assert.equal(bridge.sim.timeMs,100);
-    for(const mutate of [f=>{f.seq=2;},f=>{f.lifecycle.connectionGeneration=2;},
+    for(const mutate of [f=>{f.seq=2;},f=>{f.lifecycle.micropythonUart.generation=2;},
         f=>{f.target.imageSha256='b'.repeat(64);},f=>{f.motors[1].position=223;},
         f=>{f.motors[1].speedDps=1111;},f=>{f.clockNs=3000000000;}]) {
         const f=micro(3,200,222);mutate(f);const before=bridge.snapshot();assert.throws(()=>adapter.accept(f));assert.deepEqual(bridge.snapshot(),before);
     }
-    const {adapter:legacy}=setup();const spoof=frame(1,0);spoof.target.capabilities.push('micropython-raw-repl/v1');
+    const {adapter:legacy}=setup();const spoof=frame(1,0);spoof.target.capabilities.push('micropython-uart/v1');
     spoof.motors[1].speedDps=1110;assert.throws(()=>legacy.accept(spoof),/motor frame/);
 });

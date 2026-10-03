@@ -34,8 +34,9 @@ complete transcripts remain private.
 
 The follow-up [native debugger attachment](spike-micropython-debugger.md) now
 qualifies the actual compile-time entry, debugger reset and support pinning tool.
-Public source assembly/portable packaging, native chooser, Code-tab selection and
-robot Python bindings remain pending. MicroPython lacks
+The [GUI follow-up](spike-micropython-gui.md) adds native chooser and Code-tab
+selection for pinned profiles. Public source assembly/portable packaging and robot
+Python bindings remain pending. MicroPython lacks
 `hub` and `motor` in the tested image. Original LEGO firmware and full hub/peripheral
 compatibility remain unqualified. Non-Unix capsule staging remains unsupported.
 New launch-plan source is BSD-3-Clause; retained models keep their MIT notices.
