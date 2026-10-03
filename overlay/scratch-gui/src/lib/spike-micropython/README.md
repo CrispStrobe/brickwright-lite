@@ -29,11 +29,32 @@ transport for subsequent execution. Late reads cannot complete a canceled run.
 Run `node --test test/spike-micropython-raw-repl.test.mjs` from the repository
 root. Tests cover fragmented UTF-8 and framing, exceptions, sequential and
 concurrent calls, timeout, cancellation, source/output limits and corrupted
-acknowledgments/delimiters. Actual interpreter framing was also checked locally
-with the Renode wrapper's `check_prime_micropython.py --raw-repl-test`; generated
-captures and comparison results remain private.
+acknowledgments/delimiters. The session integration tests use synthetic UART
+replies and arena frames; they do not validate actual interpreter firmware.
 
-This protocol component is not yet an enabled GUI firmware choice. Image
-admission, native RPC policy, bidirectional UART ownership and shared-arena
-identity admission must be wired and exercised before that choice is exposed.
-It provides no SPIKE Python SDK, USB transport or bootloader compatibility claim.
+The retained GUI `RenodeArenaSession` now consumes this client through explicit
+`backend: 'micropython'`, Python `source`, no compiled program, and default
+topology. Source validation happens before startup. The first frame must identify
+`micropython-hub-no6`, transport `none`, a valid image hash, a positive connection
+generation, all existing arena capabilities, and `micropython-raw-repl/v1`.
+The production bridge uses that same hub, world and clock, admitting observed
+motor speeds up to 1110 degrees/second while retaining continuity checks.
+
+The future native operations are `renode.spike.micropython.uart.read` with
+`{generation, maxBytes: 4096, deadlineMs: 1000}` and
+`renode.spike.micropython.uart.write` with `{generation, bytes}` (1–32 bytes).
+Reads require `{generation, bytes}` (1–4096 byte values), or the exact timeout
+reply `{generation, timeout: true}`; EOF closes execution. Writes require
+`{generation, count}` matching the entire host-paced chunk. Generation is fixed
+by the first frame. Invalid or mismatched replies fail closed. Cancellation
+aborts locally, ignores late replies and closes the owned native session once.
+Execution runs asynchronously alongside arena polling. Exact raw completion
+delivers `{sequence: 1, text, truncated, stdout, stderr}` to `onOutput`, with
+common GUI `text` limited to 1024 characters; Python stderr reports an error and
+closes, and successful completion calls `onCompleted` and closes.
+
+Native UART operations are not registered yet. Missing handlers fail closed;
+there is no enabled GUI chooser. Synthetic session and bridge tests exercise
+this route without firmware or private captures. This integration is retained
+GUI work, not a cleanroom implementation. It provides no SPIKE Python SDK,
+USB transport or bootloader compatibility claim.
