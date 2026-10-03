@@ -317,6 +317,170 @@ try {
         startup.meanError < .0001 && Math.abs(startup.mean - startup.final) > .5 &&
         startup.accuracyMet === true, JSON.stringify(startup));
 
+    for (const [label, resistance, capacitance, sampleTolerance, meanTolerance] of [
+        ['overload', 10, 2.2e-6, 1e-4, 3e-5],
+        ['inrush', 500, 22e-6, 5e-6, 1e-5]
+    ]) {
+        const limitedFixture = structuredClone(adp7118Fixture);
+        limitedFixture.parts.find(part => part.id === 'u1').params = {
+            vOut: 5, startupModel: 'current-limited-envelope', rOut: .05, currentLimit: .36
+        };
+        limitedFixture.parts.find(part => part.id === 'load').params.ohms = resistance;
+        limitedFixture.parts.push({id: 'cout', kind: 'capacitor', params: {farads: capacitance}, x: 800, y: 400});
+        limitedFixture.wires.push(
+            {from: 'cout', fromTerminal: 'a', to: 'u1', toTerminal: 'vout_1'},
+            {from: 'cout', fromTerminal: 'b', to: 'gnd', toTerminal: 'gnd'});
+        await page.evaluate(value => new Promise(resolve => {
+            window.__bwRenderingCircuitTab.setState({circuitData: value}, resolve);
+        }), limitedFixture);
+        await adpFace.waitFor({state: 'visible', timeout: 10000});
+        await page.waitForFunction(({resistance, capacitance}) => {
+            const parts = window.__circuit?.board?.parts;
+            return parts?.find(part => part.id === 'u1')?.params.startupModel === 'current-limited-envelope'
+                && parts.find(part => part.id === 'load')?.params.ohms === resistance
+                && parts.find(part => part.id === 'cout')?.params.farads === capacitance;
+        }, {resistance, capacitance}, {timeout: 10000});
+        const limited = await page.evaluate(({resistance: R, capacitance: C}) => {
+            const circuit = window.__circuit, previous = circuit?.board;
+            if (!previous || previous.parts.find(part => part.id === 'u1')?.params.startupModel !== 'current-limited-envelope'
+                || previous.parts.find(part => part.id === 'load')?.params.ohms !== R
+                || previous.parts.find(part => part.id === 'cout')?.params.farads !== C) {
+                return {error: 'displayed Circuit did not load the selected current-limited fixture'};
+            }
+            // Match the old startup harness: the displayed Circuit gets a cold
+            // instance of its own bundled Board and actual inferred netlist.
+            const board = new previous.constructor(8);
+            board.setNetlist(previous.parts, previous.nets);
+            circuit.board = board;
+            const net = (part, terminal) => board.nets.find(item => item.terminals.some(
+                endpoint => endpoint.part === part && endpoint.terminal === terminal)).id;
+            const out = net('u1', 'vout_1'), ground = net('gnd', 'gnd');
+            const fullyBonded = net('u1', 'vout_2') === out && net('u1', 'sense_adj') === out
+                && net('u1', 'vin_7') === net('u1', 'vin_8');
+            const duration = .0012, amplitude = 5, r = .05, limit = .36;
+            const tau = 300e-6 / Math.log(9);
+            const delay = Math.round((80e-6 + tau * Math.log(.9)) * 1e9) / 1e9;
+            const gain = R / (R + r), rho = C * R * r / (R + r);
+            // Independent continuous RC solution. Roots come from the analytic
+            // load line, never the captured waveform or device's region state.
+            const target = x => amplitude * (1 - Math.exp(-x / tau));
+            const linear = x => amplitude * gain * (1 -
+                (tau * Math.exp(-x / tau) - rho * Math.exp(-x / rho)) / (tau - rho));
+            const bisect = (f, a, b) => {
+                for (let i = 0; i < 70; i++) {
+                    const middle = (a + b) / 2;
+                    if (f(middle) > 0) b = middle; else a = middle;
+                }
+                return (a + b) / 2;
+            };
+            const firstCrossing = (f, start) => {
+                for (let x = start + 1e-6; x <= duration; x += 1e-6) {
+                    if (f(x) > 0) return bisect(f, x - 1e-6, x);
+                }
+                return null;
+            };
+            const entry = firstCrossing(x => target(x) - linear(x) - r * limit, 0);
+            const clamped = x => limit * R + (linear(entry) - limit * R) * Math.exp(-(x - entry) / (R * C));
+            const release = entry === null ? null
+                : firstCrossing(x => -(target(x) - clamped(x) - r * limit), entry);
+            const particular = x => amplitude * gain * (1 - tau * Math.exp(-x / tau) / (tau - rho));
+            const expectedVoltage = t => {
+                const x = t - delay;
+                if (x <= 0) return 0;
+                if (entry === null || x <= entry) return linear(x);
+                if (release === null || x <= release) return clamped(x);
+                return particular(x) + (clamped(release) - particular(release)) * Math.exp(-(x - release) / rho);
+            };
+            const linearIntegral = x => amplitude * gain * (x +
+                (tau * tau * Math.exp(-x / tau) - rho * rho * Math.exp(-x / rho)) / (tau - rho));
+            const clampedIntegral = x => limit * R * x
+                - (linear(entry) - limit * R) * R * C * Math.exp(-(x - entry) / (R * C));
+            const releasedIntegral = x => amplitude * gain * (x + tau * tau * Math.exp(-x / tau) / (tau - rho))
+                - (clamped(release) - particular(release)) * rho * Math.exp(-(x - release) / rho);
+            const x = duration - delay, firstEnd = entry === null ? x : Math.min(x, entry);
+            let integral = linearIntegral(firstEnd) - linearIntegral(0);
+            if (entry !== null && x > entry) {
+                integral += clampedIntegral(release === null ? x : Math.min(x, release)) - clampedIntegral(entry);
+            }
+            if (release !== null && x > release) integral += releasedIntegral(x) - releasedIntegral(release);
+            const expectedMean = integral / duration;
+            const handle = board.addScopeChannel({type: 'voltage', netId: out, referenceNetId: ground,
+                capture: 'sample', sampleRateHz: 100000, depth: 256});
+            const cold = board.meterVoltage(out, ground);
+            board.meterCurrent('u1', 'vin_7');
+            const terminals = ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 'vin_8'];
+            let maxCeilingError = 0, maxKclError = 0, maxSupplyError = 0;
+            let accuracyMet = true;
+            for (let i = 1; i <= 120; i++) {
+                board.advanceTo(BigInt(i) * 10000n);
+                const current = terminal => board.branchCurrent('u1', terminal);
+                const outputAmps = current('vout_1') + current('vout_2');
+                const iq = 50e-6 + 130e-6 * Math.min(outputAmps, .2) / .2;
+                maxCeilingError = Math.max(maxCeilingError, -outputAmps, outputAmps - limit);
+                maxSupplyError = Math.max(maxSupplyError,
+                    Math.abs(-current('vin_7') - current('vin_8') - outputAmps - iq),
+                    Math.abs(current('gnd') - iq),
+                    Math.abs(board.branchCurrent('vin', 'pos') - outputAmps - iq));
+                maxKclError = Math.max(maxKclError,
+                    Math.abs(terminals.reduce((sum, terminal) => sum + current(terminal), 0)),
+                    Math.abs(outputAmps + board.branchCurrent('load', 'a') + board.branchCurrent('cout', 'a')));
+                accuracyMet &&= board.transientAnalysisStatus().accuracyMet === true;
+            }
+            const capture = board.getScopeData(handle);
+            let maxError = 0, paired = true;
+            for (let i = 0; i < capture.count; i++) {
+                const t = (Number(capture.startTNs) + i * Number(capture.sampleIntervalNs)) / 1e9;
+                const sample = capture.samples[2 * i];
+                paired &&= Number.isFinite(sample) && sample === capture.samples[2 * i + 1];
+                maxError = Math.max(maxError, Math.abs(sample - expectedVoltage(t)));
+            }
+            const mean = board.meterVoltage(out, ground), final = board.nodeVoltage(out) - board.nodeVoltage(ground);
+            let controlRefusal = '';
+            try { board.setControl('vin', 8); } catch (error) { controlRefusal = error.message; }
+            const refused = read => {
+                try { read(); return false; }
+                catch (error) { return /measurement unavailable|scope capture refused|circuit solve failed/.test(error.message); }
+            };
+            return {fullyBonded, cold, scopeHandle: handle, count: capture.count, origin: String(capture.startTNs),
+                interval: String(capture.sampleIntervalNs), paired, maxError,
+                entry: entry === null ? null : entry + delay, release: release === null ? null : release + delay,
+                mean, meanError: Math.abs(mean - expectedMean), final,
+                endpointError: Math.abs(final - expectedVoltage(duration)),
+                maxCeilingError, maxKclError, maxSupplyError, accuracyMet, controlRefusal,
+                oldVoltageRefused: refused(() => board.meterVoltage(out, ground)),
+                oldCurrentRefused: refused(() => board.meterCurrent('u1', 'vin_7')),
+                oldScopeRefused: refused(() => board.getScopeData(handle))};
+        }, {resistance, capacitance});
+        const transitionsMatch = limited.entry !== null &&
+            (label === 'overload' ? Math.abs(limited.entry - 217.30757602325912e-6) < 1e-12 && limited.release === null
+                : Math.abs(limited.entry - 66.26866414968961e-6) < 1e-12 &&
+                    limited.release !== null && Math.abs(limited.release - 329.1432340371157e-6) < 1e-12);
+        check(`production browser ADP7118 selected ${label} captures 120 samples, analytic transitions and mean`,
+            limited.fullyBonded && limited.cold === 0 && limited.count === 120 && limited.origin === '10000' &&
+            limited.interval === '10000' && limited.paired && transitionsMatch && limited.maxError < sampleTolerance &&
+            limited.meanError < meanTolerance && limited.endpointError < sampleTolerance &&
+            Math.abs(limited.mean - limited.final) > .05 && limited.accuracyMet === true &&
+            limited.maxCeilingError < 1e-8 && limited.maxKclError < 1e-9 && limited.maxSupplyError < 1e-9,
+            JSON.stringify(limited));
+        check(`production browser ADP7118 ${label} source refusal invalidates acquired meter and scope observations`,
+            /ADP7118.*(control|constant|source)/i.test(limited.controlRefusal) && limited.oldVoltageRefused &&
+            limited.oldCurrentRefused && limited.oldScopeRefused, JSON.stringify(limited));
+        await page.evaluate(handle => {
+            const circuit = window.__circuit, failed = circuit.board;
+            // Explicit harness cleanup after checking the refusal: a clean
+            // bundled Board prevents Circuit's next snapshot/restore from
+            // carrying the refused VIN control into the following fixture.
+            // The failed Board and its observations are never repaired/reused.
+            const clean = new failed.constructor(8);
+            clean.setNetlist(failed.parts, failed.nets);
+            circuit.board = clean;
+            let stillRefused = false;
+            try { failed.getScopeData(handle); }
+            catch (error) { stillRefused = /scope capture refused/.test(error.message); }
+            if (!stillRefused) throw new Error('cleanup lost the old Board scope refusal');
+        }, limited.scopeHandle);
+    }
+
     // The final vertical slice: Lite's bundled CUI face and Board model must
     // meet in one real browser circuit, not merely coexist as package files.
     await page.evaluate(value => new Promise(resolve => {

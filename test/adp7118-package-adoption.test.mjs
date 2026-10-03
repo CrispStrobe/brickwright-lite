@@ -14,7 +14,7 @@ const terminals = ['vout_1', 'vout_2', 'sense_adj', 'gnd', 'en', 'ss', 'vin_7', 
 
 test('the exact installed packages expose and solve the physical ADP7118', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
-    assert.equal(pins['bw-board'], '944d1357e093fdb4c65bed65de378e1128dfc1ac');
+    assert.equal(pins['bw-board'], '8eb5cf13013e49a6602fadc5077920efee144ba7');
     assert.equal(pins['bw-circuit-ui'], '6471bf44ec64c86384a6f48fdd9df625e6de5512');
 
     const sidecar = JSON.parse(readFileSync(
@@ -88,10 +88,12 @@ test('installed Lite packages CLI measures every startup sample and the independ
         assert.ok(Math.abs(report.meters[0].reading.siValue - mean) < .0001);
         assert.ok(Math.abs(report.meters[0].reading.siValue - report.scope[0].summary.lastVolts) > .5);
         const receipt = JSON.parse(readFileSync(receiptPath, 'utf8'));
-        const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
+        const cuiPackage = JSON.parse(readFileSync(path.join(root, 'node_modules/bw-circuit-ui/package.json'), 'utf8'));
         assert.equal(receipt.engine.selection, 'installed package');
         assert.equal(receipt.invocation.BW_BOARD, null);
-        assert.equal(receipt.engine.declaredPackageSpec, `github:CrispStrobe/bw-board#${pins['bw-board']}`);
+        // The CLI reports its own development declaration separately from the
+        // observed installed engine; a consumer pin bump does not rewrite CUI.
+        assert.equal(receipt.engine.declaredPackageSpec, cuiPackage.devDependencies['bw-board']);
         assert.deepEqual(receipt.report, report);
     } finally {rmSync(dir, {recursive: true, force: true});}
 });

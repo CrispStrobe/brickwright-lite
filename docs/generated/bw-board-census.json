@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "944d1357e093fdb4c65bed65de378e1128dfc1ac",
-    "read": "2026-10-02"
+    "sha": "8eb5cf13013e49a6602fadc5077920efee144ba7",
+    "read": "2026-10-03"
   },
   "rows": [
     {
@@ -263,7 +263,8 @@
         "test/labwired-firmware-only.test.mjs",
         "test/labwired-microbit-matrix.test.mjs",
         "test/labwired-microbit-motion.test.mjs",
-        "test/labwired-f0-timing.test.mjs"
+        "test/labwired-f0-timing.test.mjs",
+        "test/labwired-f0-gpio-profile.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
     },
