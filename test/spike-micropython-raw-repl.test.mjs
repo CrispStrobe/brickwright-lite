@@ -19,7 +19,7 @@ test('completion requires ACK, two output delimiters, and prompt across all spli
     assert.deepEqual(parser.result, {stdout: '42\r\n', stderr: '', failed: false});
 });
 test('protocol mutations cannot become successful execution', () => {
-    for (const wire of ['NO42\x04\x04>', 'OK42\x04\x04?', 'OK42\x04\x04>junk']) {
+    for (const wire of ['NO42\x04\x04>', 'NK42\x04\x04>', 'OK42\x04\x04?', 'OK42\x04\x04>junk']) {
         assert.throws(() => new RawReplResult().accept(bytes(wire)));
     }
     for (const wire of ['OK42', 'OK42\x04', 'OK42\x04\x04']) {
