@@ -514,6 +514,14 @@ Instruments-click or scope-pixel certificate. The interpolation is authored,
 not a vendor macromodel; reactive overload/high-inrush remain named refusals.
 Hosted Build and actual public deployment remain pending; no app adoption or
 publication claim before those receipts. No limiter implementation in this lane.
+Original candidate `d5da211ca` qualified in Build `37048044516`: build, corpus,
+both browser shards and FPGA all green; deployment intentionally skipped on
+the branch. Main advanced to `8d80364f673a1bf782b6f65a66cd7fc98f213f9c`
+with SPIKE runtime changes and no package-pin overlap. Merged main forward,
+not force/rebase; the non-ledger lane diff remains byte-identical (SHA256
+`ece41a870f1f3d0b4cda2188cdda08fdf2a73fb98a50f2b3def9ab953cc50a3c`).
+Fresh combined-head hosted qualification is required before landing;
+the original green run is not its deployment receipt.
 
 Instantaneous meter operand package adoption — **DONE candidate 2026-10-02**, Codex bwcx
 `/root`, clean isolated `/mnt/volume1/code/lego/wt-lite-live-measurement-20261002`,
