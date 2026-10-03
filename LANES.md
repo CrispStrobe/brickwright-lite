@@ -482,6 +482,28 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+ADP7118 current-limited installed package adoption — **CLAIM 2026-10-03**, Codex
+bwcx `/root`, isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`,
+branch `lane/adp7118-limiter-package-adoption-20261003`, exact base
+`4fd860e6bb0e76d849053d916b94bb4257aedab2`. Own Board package boundary only:
+adopt qualified upstream `8eb5cf13013e49a6602fadc5077920efee144ba7`, retaining
+CUI6471bf44 and all other pins. Scope: this paragraph; vendor-pins.json and
+derived root/GUI package specifications/locks; generated package notices,
+Board census, 8086/matrix reports and controller/ROM provenance mirrors only
+where pin-stale; scripts/verify-circuit-rendering.mjs; existing
+test/adp7118-package-adoption.test.mjs plus new
+test/adp7118-limiter-package-adoption.test.mjs; the other four physical-part
+adoption tests' exact Board pin assertions only. Board range changes only
+src/devices.js, src/devices/power.js and src/mna.js; nonlinear primitive,
+lead admission and selected current-limited RC model are upstream-owned.
+Prove installed scope/meter waveform, current ceiling and simultaneous VIN/KCL,
+real bundled browser overload/inrush and source-refusal boundary. Keep legacy
+DC/startup controls. No source copy/fork, other pin, solver/tolerance/budget,
+workflow, corpus payload or unrelated GUI edit. Exact upstream CI37099345521
+and Harris37099345517 green; diagnostic CUI CLI compatibility independently
+proved, not yet installed adoption. Canonical claim first; one final Build
+qualification, guarded normal landing, actual Pages/Vercel publication proof.
+
 ADP7118 startup installed package adoption — **DONE candidate 2026-10-02**, Codex bwcx
 `/root`, isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`,
 branch `lane/adp7118-startup-package-adoption-20261002`, exact base
