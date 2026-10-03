@@ -2,10 +2,22 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "8eb5cf13013e49a6602fadc5077920efee144ba7",
+    "sha": "0f0092051eefb24a364645edbb371d8755dd1ad6",
     "read": "2026-10-03"
   },
   "rows": [
+    {
+      "id": "386-cold-bios-js-capture",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI intentionally skips only the full cold capture to preserve its execution budget; the seven pure refusal controls always run. The historical bounded eight-test execution is recorded evidence.",
+      "via": "tried $BW_COLD_REFERENCE_OUTPUT; full capture not requested",
+      "gates": [
+        "test/i80386-cold-bios-reference-source.test.mjs"
+      ],
+      "what": "Controlled opt-in ordinary-JS cold reset to before F000:E16 using the fixed vendored free BIOS. Seven pure refusal controls always run; only the eighth, full-capture test requires an explicit bounded invocation. The retained historical capture passes all eight with 48 current/Git inputs authenticated before and after; it proves no native or performance claim."
+    },
     {
       "id": "386-native-ram-coherence-report",
       "kind": "fixture",
@@ -264,9 +276,22 @@
         "test/labwired-microbit-matrix.test.mjs",
         "test/labwired-microbit-motion.test.mjs",
         "test/labwired-f0-timing.test.mjs",
-        "test/labwired-f0-gpio-profile.test.mjs"
+        "test/labwired-f0-gpio-profile.test.mjs",
+        "test/labwired-f0-gpio-window-profile.test.mjs"
       ],
       "what": "The labwired engine as WASM — the differential oracle for the labwired bridge."
+    },
+    {
+      "id": "labwired-warmed-window-profile",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — ordinary CI intentionally skips artifact-dependent capture. labwired-window-profile.yml runs two actual repeats each on pinned Node20.20.2/22.23.3, retaining raw profiles and floor failures.",
+      "via": "tried $LABWIRED_WINDOW_PROFILE_OUT; full capture not requested",
+      "gates": [
+        "test/labwired-f0-gpio-window-profile.test.mjs"
+      ],
+      "what": "Opt-in diagnostic capture of five warmed GPIO cycle windows using Node Inspector. Ordinary timing is a separate unchanged process. Requires verified LABWIRED_WASM NODEJS bytes, the ARM guest compiler and LABWIRED_REQUIRE_F0_RTX=1; profiles never waive the ordinary 1x floor."
     },
     {
       "id": "labwired-cli",

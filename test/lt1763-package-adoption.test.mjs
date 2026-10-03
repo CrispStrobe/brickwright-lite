@@ -12,8 +12,8 @@ const terminals = ['out', 'sense_adj', 'gnd_3', 'byp', 'shdn', 'gnd_6', 'gnd_7',
 
 test('the exact installed packages expose and solve the physical LT1763', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
-    assert.equal(pins['bw-board'], '8eb5cf13013e49a6602fadc5077920efee144ba7');
-    assert.equal(pins['bw-circuit-ui'], '6471bf44ec64c86384a6f48fdd9df625e6de5512');
+    assert.equal(pins['bw-board'], '0f0092051eefb24a364645edbb371d8755dd1ad6');
+    assert.equal(pins['bw-circuit-ui'], '494337a619aba4181a92f73ad2b8fc271ae83ad5');
 
     const sidecar = JSON.parse(readFileSync(
         path.join(root, 'node_modules/bw-circuit-ui/src/parts-data/lt1763.json'), 'utf8'));

@@ -8,7 +8,7 @@ import {pathToFileURL} from 'node:url';
 import {loadCircuitModel} from '../scripts/lib/polarity-oracle.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
-const boardPin='8eb5cf13013e49a6602fadc5077920efee144ba7';
+const boardPin='0f0092051eefb24a364645edbb371d8755dd1ad6';
 const packageSpec=`github:CrispStrobe/bw-board#${boardPin}`;
 const fixture=JSON.parse(readFileSync(path.join(root,'test/fixtures/adp7118-fixed-regulator.json'),'utf8'));
 const terminals=['vout_1','vout_2','sense_adj','gnd','en','ss','vin_7','vin_8'];
@@ -97,15 +97,18 @@ async function installedCircuit(R,C){
 test('limiter adoption selects the exact pinned installed package rather than a board override',()=>{
     const pins=JSON.parse(readFileSync(path.join(root,'vendor-pins.json'),'utf8'));
     assert.equal(pins['bw-board'],boardPin);
-    assert.equal(pins['bw-circuit-ui'],'6471bf44ec64c86384a6f48fdd9df625e6de5512');
+    assert.equal(pins['bw-circuit-ui'],'494337a619aba4181a92f73ad2b8fc271ae83ad5');
     const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
     assert.equal(pkg.devDependencies['bw-board'],packageSpec);
     const lock=JSON.parse(readFileSync(path.join(root,'package-lock.json'),'utf8'));
     assert.ok(lock.packages['node_modules/bw-board'].resolved.endsWith(`#${boardPin}`));
 });
 
-for(const [R,C,sampleTolerance,meanTolerance] of [[10,2.2e-6,1e-4,3e-5],[500,22e-6,5e-6,1e-5]]){
-    test(`installed CLI publishes qualified ${R} ohm / ${C} F limiter scope, meter, CSV and receipt`,async t=>{
+for(const [R,C,sampleTolerance,meanTolerance,precision] of [
+    [10,2.2e-6,1e-4,3e-5,false],[500,22e-6,5e-6,1e-5,false],
+    [10,2.2e-6,5e-7,1e-6,true],[500,22e-6,5e-7,1e-6,true],
+]){
+    test(`installed CLI publishes qualified ${precision?'precision':'interactive'} ${R} ohm / ${C} F limiter scope, meter, CSV and receipt`,async t=>{
         const dir=mkdtempSync(path.join(tmpdir(),'lite-limiter-cli-'));
         const env={...process.env};delete env.BW_BOARD;
         try{
@@ -113,12 +116,26 @@ for(const [R,C,sampleTolerance,meanTolerance] of [[10,2.2e-6,1e-4,3e-5],[500,22e
             writeFileSync(input,JSON.stringify(limiterFixture(R,C)));
             const result=spawnSync(process.execPath,[path.join(root,'node_modules/bw-circuit-ui/bin/bwc.mjs'),
                 'measure',input,'--scope','u1.vout_1,gnd.gnd','--meter','voltage:u1.vout_1,gnd.gnd',
-                '--duration','1200us','--rate','100kHz','--csv',csv,'--receipt',receiptPath,'--json'],
+                '--duration','1200us','--rate','100kHz','--csv',csv,'--receipt',receiptPath,'--json',
+                ...(precision?['--profile','precision-v1','--initial','zero-state']:[])],
             {encoding:'utf8',env,timeout:30000});
             assert.equal(result.error,undefined);assert.equal(result.status,0,result.stderr);
             const report=JSON.parse(result.stdout),expected=oracle(R,C);
             assert.equal(report.transient.accuracyMet,true);assert.equal(report.transient.failure,null);
             assert.equal(report.transient.profile.maxAttempts,20000);
+            if(precision){
+                assert.equal(report.transient.profile.id,'precision-v1');
+                assert.equal(report.precisionCapture.basis,'engine-whole-advance-adp7118-current-limited');
+                const bounded=report.transient.boundedAdvance;
+                assert.equal(bounded.completed,true);assert.equal(bounded.failure,null);
+                assert.equal(bounded.requestedTimeNs,'1200000');
+                assert.deepEqual(bounded.limits,{maxAttempts:20000,maxSolves:60001,maxAdvances:200});
+                for(const [counter,limit] of [['attempts',20000],['solves',60001],['advances',200]]){
+                    assert.ok(Number.isSafeInteger(bounded.work[counter])&&bounded.work[counter]>0);
+                    assert.ok(bounded.work[counter]<=limit);
+                }
+                assert.ok(bounded.work.advances>100,'real timed-device subdivisions charged together');
+            }
             assert.equal(report.scope[0].summary.samples,120);
             const rows=readFileSync(csv,'utf8').trim().split('\n');
             assert.equal(rows.length,122);assert.match(rows[0],/startTimeNs=10000/);
