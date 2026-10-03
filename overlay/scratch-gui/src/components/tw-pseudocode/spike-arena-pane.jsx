@@ -419,7 +419,7 @@ class SpikeArenaPane extends React.Component {
         }
     }
 
-    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}} = {}) {
+    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}, onError = () => {}} = {}) {
         if (this.disposed) throw new Error("The arena pane is closed");
         if (!this.bridge) return;
         const micro = this.state.execution === 'micropython';
@@ -470,6 +470,7 @@ class SpikeArenaPane extends React.Component {
             onError: error => { if (!this.disposed && this.firmwareSession === session) {
                 this.firmwareSession = null;
                 this.setState({status: 'failed', message: error.message});
+                onError(error);
             } }});
         this.firmwareSession = session;
         this.setState({status: 'starting', storageSupported: false, programState: null, message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});

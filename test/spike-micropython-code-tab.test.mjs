@@ -69,3 +69,11 @@ test('comparison detects bypassing the Code-tab selection cancellation gate', as
     assert.equal(s.calls.some(call => Array.isArray(call) && call[0] === 'start'), true,
         'the cancelled-selection no-start assertion above would detect this mutant');
 });
+
+test('asynchronous MicroPython failure clears the Code-tab running indicator', async () => {
+    const s = scaffold(); let report;
+    s.pane.startFirmware = async (program, args) => {report = args.onError; s.pane.firmwareSession = {};};
+    await codeMethod(s.window).call(s.editor); assert.equal(s.editor.state.spike3Running, true);
+    report(new Error('synthetic Python failure'));
+    assert.equal(s.editor.state.spike3Running, false); assert.equal(s.editor.state.status, 'synthetic Python failure');
+});

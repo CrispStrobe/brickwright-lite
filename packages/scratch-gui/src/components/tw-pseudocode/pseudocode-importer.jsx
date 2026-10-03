@@ -3860,7 +3860,8 @@ class PseudocodeImporter extends React.Component {
             this.setState({spike3Running: true, spike3Log: [], status: 'Python running in the local MicroPython image.'});
             await pane.startFirmware(null, {source,
                 onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]}),
-                onCompleted: () => this.setState({spike3Running: false, status: 'MicroPython program completed.'})});
+                onCompleted: () => this.setState({spike3Running: false, status: 'MicroPython program completed.'}),
+                onError: error => this.setState({spike3Running: false, status: error.message})});
             if (!pane.firmwareSession && pane.state.status === 'failed') throw new Error(pane.state.message || 'MicroPython could not start');
         } catch (error) { this.setState({spike3Running: false, status: error.message}); }
         finally { this.setState({busy: false}); }
