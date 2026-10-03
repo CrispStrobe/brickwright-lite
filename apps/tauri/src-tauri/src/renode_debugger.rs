@@ -338,12 +338,20 @@ impl RenodeDebugger {
         thread::spawn(move || {
             if let Ok(mut rsp) = rsp.lock() {
                 let _ = rsp.resume_started(Some(started_tx));
+            } else {
+                let _ = started_tx.send(Err("Renode debugger RSP lock unavailable".into()));
             }
             running.store(false, Ordering::Release);
         });
         match started_rx.recv_timeout(Duration::from_secs(2)) {
-            Ok(()) => Ok("running"),
-            Err(_) => Err("Renode debugger failed to run".into()),
+            Ok(Ok(())) => Ok("running"),
+            Ok(Err(error)) => Err(format!("Renode debugger failed to run: {error}")),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                Err("Renode debugger failed to run: continue acknowledgement timed out".into())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                Err("Renode debugger failed to run: start worker disconnected".into())
+            }
         }
     }
 

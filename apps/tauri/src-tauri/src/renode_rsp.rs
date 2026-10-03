@@ -146,17 +146,17 @@ impl RenodeRsp {
 
     pub(crate) fn resume_started(
         &mut self,
-        started: Option<SyncSender<()>>,
+        started: Option<SyncSender<Result<(), String>>>,
     ) -> Result<Vec<u8>, String> {
-        let result = self.send_packet(b"c").and_then(|()| {
+        let starting = self.send_packet(b"c").and_then(|()| {
             self.stream
                 .set_read_timeout(None)
-                .map_err(|_| "Renode debugger unavailable".to_owned())?;
-            if let Some(started) = started {
-                let _ = started.send(());
-            }
-            self.read_packet()
+                .map_err(|_| "Renode debugger unavailable".to_owned())
         });
+        if let Some(started) = started {
+            let _ = started.send(starting.clone());
+        }
+        let result = starting.and_then(|()| self.read_packet());
         let restore = self.stream.set_read_timeout(Some(IO_TIMEOUT));
         if restore.is_err() {
             return Err("Renode debugger unavailable".into());
@@ -463,14 +463,43 @@ mod tests {
         });
         let mut rsp = RenodeRsp::connect(endpoint).unwrap();
         let mut interrupt = rsp.interrupt_handle().unwrap();
-        let (started_tx, started_rx) = std::sync::mpsc::sync_channel(0);
+        let (started_tx, started_rx) = std::sync::mpsc::sync_channel::<Result<(), String>>(0);
         let interrupter = thread::spawn(move || {
-            started_rx.recv().unwrap();
+            started_rx.recv().unwrap().unwrap();
             interrupt.request().unwrap();
         });
         assert_eq!(rsp.resume_started(Some(started_tx)).unwrap(), b"S02");
         interrupter.join().unwrap();
         server.join().unwrap();
+    }
+
+    #[test]
+    fn reports_continue_rejection_and_closed_connection_before_started() {
+        for rejection in [true, false] {
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+            let endpoint = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream.write_all(&packet(b"S05")).unwrap();
+                let mut initial_ack = [0u8; 1];
+                stream.read_exact(&mut initial_ack).unwrap();
+                assert_eq!(initial_ack, [b'+']);
+                let mut request = [0u8; 5];
+                stream.read_exact(&mut request).unwrap();
+                assert_eq!(&request, b"$c#63");
+                if rejection { stream.write_all(b"-").unwrap(); }
+            });
+            let mut rsp = RenodeRsp::connect(endpoint).unwrap();
+            let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
+            let expected = if rejection { "Renode debugger rejected the packet" }
+                else { "Renode debugger acknowledgement failed" };
+            assert_eq!(rsp.resume_started(Some(started_tx)).unwrap_err(), expected);
+            assert_eq!(started_rx.recv_timeout(Duration::from_millis(250)).unwrap(), Err(expected.to_owned()));
+            assert_eq!(rsp.stream.read_timeout().unwrap(), Some(IO_TIMEOUT));
+            assert!(matches!(started_rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Disconnected)),
+                "pre-start error must not also publish successful start");
+            server.join().unwrap();
+        }
     }
 
     #[test]
