@@ -868,7 +868,7 @@ fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "tools/spike_arena_mailbox.py",
     ];
     verify_support_manifest(root, manifest, REQUIRED,
-        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py"], 32)
+        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py"], 32)
 }
 fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
     verify_support_manifest(root, manifest, &[
@@ -884,7 +884,7 @@ fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt",
         "licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt", "licenses/NuttX-Apps-NOTICE.txt",
         "licenses/firmware-Brickwright-BSD-3-Clause.txt", "licenses/NuttX-Tickless-BSD-3-Clause.txt",
-        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin"], 33)
+        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin", "tools/spike_program_uart.py"], 34)
 }
 fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str], max_files: usize) -> Result<(), String> {
     if !manifest.starts_with(root) {
@@ -902,6 +902,20 @@ fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allo
     let map = map.as_object().ok_or("arena manifest malformed")?;
     if map.len() > max_files || !required.iter().all(|name| map.contains_key(*name)) {
         return Err("arena manifest is incomplete".into());
+    }
+    if required.contains(&"scripts/spike-state-server.py") {
+        let mut service = Vec::new();
+        File::open(root.join("scripts/spike-state-server.py"))
+            .and_then(|file| file.take(65537).read_to_end(&mut service))
+            .map_err(|_| "state service unavailable".to_owned())?;
+        if service.len() > 65536 {
+            return Err("state service exceeds bounds".into());
+        }
+        let import = b"from spike_program_uart import";
+        if service.windows(import.len()).any(|part| part == import)
+            && !map.contains_key("tools/spike_program_uart.py") {
+            return Err("program UART helper is missing from manifest".into());
+        }
     }
     let backport_notices = ["licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt",
         "licenses/NuttX-Apps-NOTICE.txt", "licenses/firmware-Brickwright-BSD-3-Clause.txt",
@@ -1527,6 +1541,21 @@ mod tests {
         let manifest = root.join("manifest.json");
         std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
         assert!(verify_arena_manifest(&root, &manifest).is_ok());
+        let service = root.join("scripts/spike-state-server.py");
+        std::fs::write(&service, b"from spike_program_uart import ProgramUartBinding").unwrap();
+        map.insert("scripts/spike-state-server.py".to_owned(), sha256(&service).unwrap().into());
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert_eq!(verify_arena_manifest(&root, &manifest).unwrap_err(),
+            "program UART helper is missing from manifest");
+        let helper = root.join("tools/spike_program_uart.py");
+        std::fs::write(&helper, b"synthetic UART helper").unwrap();
+        map.insert("tools/spike_program_uart.py".to_owned(), sha256(&helper).unwrap().into());
+        std::fs::write(&manifest, serde_json::to_vec(&map).unwrap()).unwrap();
+        assert!(verify_arena_manifest(&root, &manifest).is_ok());
+        std::fs::write(&helper, b"changed UART helper").unwrap();
+        assert_eq!(verify_arena_manifest(&root, &manifest).unwrap_err(),
+            "arena support file digest mismatch");
+        std::fs::write(&helper, b"synthetic UART helper").unwrap();
         std::fs::write(root.join("tools/spike_arena_mailbox.py"), b"changed helper").unwrap();
         assert_eq!(
             verify_arena_manifest(&root, &manifest).unwrap_err(),

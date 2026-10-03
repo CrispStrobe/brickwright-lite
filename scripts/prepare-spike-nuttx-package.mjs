@@ -66,6 +66,9 @@ const copies = [['nuttx/nuttx', 'nuttx-kernel.elf', firmware], ['nuttx/nuttx_use
     ['scripts/spike-state-server.py', 'scripts/spike-state-server.py', models],
     ...['spike_arena_mailbox', 'spike_arena_inputs', 'spike_state_monitor_protocol', 'ev3_state_observer', 'spike_nuttx_mailbox']
         .map(p => [`tools/${p}.py`, `tools/${p}.py`, models])];
+if (stateService.includes('from spike_program_uart import')) {
+    copies.push(['tools/spike_program_uart.py', 'tools/spike_program_uart.py', models]);
+}
 for (const [source, destination, root] of copies) await copyFile(join(root, source), join(output, destination));
 const hash = async file => createHash('sha256').update(await readFile(file)).digest('hex');
 await writeFile(join(output, 'nuttx.resc'), `include @${join(output, 'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(output, 'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${seeded ? initialFlashScenario(output) : ''}`);

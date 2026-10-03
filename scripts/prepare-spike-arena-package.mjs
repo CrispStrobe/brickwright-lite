@@ -18,6 +18,10 @@ const copies = [['simulation/arena-demo/arena-demo.repl','arena-demo.repl',firmw
     ['simulation/arena-demo/LICENSE','licenses/arena-BSD-3-Clause.txt',firmware],
     ['LICENSE','licenses/renode-MIT.txt',models], ['scripts/spike-state-server.py','scripts/spike-state-server.py',models],
     ...['spike_arena_mailbox','spike_arena_inputs','spike_state_monitor_protocol','ev3_state_observer','spike_nuttx_mailbox'].map(p=>[`tools/${p}.py`,`tools/${p}.py`,models])];
+const stateService = await readFile(join(models,'scripts/spike-state-server.py'),'utf8');
+if (stateService.includes('from spike_program_uart import')) {
+    copies.push(['tools/spike_program_uart.py','tools/spike_program_uart.py',models]);
+}
 for(const [source,destination,root] of copies) await copyFile(join(root,source),join(output,destination));
 const hash = async file => createHash('sha256').update(await readFile(file)).digest('hex');
 await writeFile(join(output,'arena-demo.resc'),`mach create\nmachine LoadPlatformDescription @${join(output,'arena-demo.repl')}\n`);
