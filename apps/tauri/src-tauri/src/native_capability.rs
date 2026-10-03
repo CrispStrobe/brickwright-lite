@@ -9,7 +9,7 @@ use crate::native_policy::{LeaseId, NativePolicyState, Operation, RedactedAuditR
 use crate::renode_debugger::{RenodeDebugger, RenodeTarget};
 use crate::renode_supervisor::RenodeSupervisor;
 use serde_json::Value;
-use tauri::{State, WebviewWindow};
+use tauri::{Manager, State, WebviewWindow};
 
 const BROKER_LABEL: &str = "capability-broker";
 const MAIN_LABEL: &str = "main";
@@ -37,6 +37,7 @@ fn execute(
     args: &Value,
     debugger: &RenodeDebugger,
     supervisor: &RenodeSupervisor,
+    choose_image: impl FnOnce() -> Result<Option<crate::spike_local_image::AdmittedImage>, String>,
 ) -> Result<String, String> {
     let spike = || debugger.ensure_target(RenodeTarget::SpikePrime);
     let ev3 = || debugger.ensure_target(RenodeTarget::Ev3);
@@ -49,7 +50,17 @@ fn execute(
             "linux"
         }
         .to_owned()),
+        Operation::RenodeSpikeImageChoose => {
+            if option_env!("BW_RENODE_MICROPYTHON_ROOT").is_none()
+                || option_env!("BW_RENODE_MICROPYTHON_MANIFEST_SHA256").is_none() {
+                return Err("MicroPython support is not packaged in this desktop build".into());
+            }
+            debugger.choose_micropython_image(choose_image).map(str::to_owned)
+        }
         Operation::RenodeSpikeStart => {
+            if args["backend"] == "micropython" {
+                return debugger.start_chosen_micropython(supervisor).map(str::to_owned);
+            }
             use crate::renode_supervisor::SpikeTopology;
             let topology = SpikeTopology::parse(args["topology"].as_str())?;
             match (topology, args["backend"].as_str()) {
@@ -254,7 +265,8 @@ pub(crate) fn native_broker_invoke(
     let call = policy
         .consume_broker_call(window.label(), id, sequence, &operation, &resource, &args)
         .map_err(opaque)?;
-    execute(call.operation, &args, &debugger, &supervisor)
+    execute(call.operation, &args, &debugger, &supervisor,
+        || crate::spike_image_chooser::pick(window.app_handle()))
 }
 
 /// Diagnostics. Readable from the MAIN webview because that is where the learner sees it, and

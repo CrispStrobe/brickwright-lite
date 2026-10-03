@@ -48,6 +48,8 @@ mod spike_usb;
 #[cfg(desktop)]
 #[allow(dead_code)]
 mod spike_local_image;
+#[cfg(desktop)]
+mod spike_image_chooser;
 // Native-owned canonical image capsule. Chooser/startup wiring is still pending.
 #[cfg(desktop)]
 #[allow(dead_code)]
