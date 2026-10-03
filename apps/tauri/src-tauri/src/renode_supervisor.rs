@@ -386,6 +386,15 @@ impl RenodeSupervisor {
         )
     }
 
+    #[allow(dead_code)]
+    pub(crate) fn start_micropython_plan(&self, plan: crate::spike_micropython_launch::MicroPythonLaunch) -> Result<RenodeEndpoint, String> {
+        let executable = option_env!("BW_RENODE_EXECUTABLE").ok_or("Renode backend is not packaged in this build")?;
+        let digest = option_env!("BW_RENODE_SHA256").ok_or("Renode backend digest is not packaged in this build")?;
+        let (root, arguments, files) = plan.into_parts()?;
+        self.start_verified_with_owned_files(Path::new(executable),digest,&arguments,&root,
+            LaunchBounds {timeout:MAX_SESSION_TIME,output_limit:MAX_OUTPUT_BYTES,capture_uart:false},None,files)
+    }
+
     /// Launch the packaged SPIKE Prime machine and public simulation image.
     /// Every path and digest is fixed at build time; editor data cannot enter
     /// the Renode command line or monitor language.
@@ -632,6 +641,17 @@ impl RenodeSupervisor {
         checkpoint: Option<FlashCheckpointLaunch>,
         image: Option<crate::spike_staged_image::StagedImage>,
     ) -> Result<RenodeEndpoint, String> {
+        self.start_verified_with_owned_files(executable, expected_digest, arguments,
+            working_directory, bounds, checkpoint, image.into_iter().collect())
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn start_verified_with_owned_files(
+        &self, executable: &Path, expected_digest: &str, arguments: &[String],
+        working_directory: &Path, bounds: LaunchBounds, checkpoint: Option<FlashCheckpointLaunch>,
+        images: Vec<crate::spike_staged_image::StagedImage>,
+    ) -> Result<RenodeEndpoint, String> {
+        if images.len() > 2 { return Err("owned launch files exceed bounds".into()); }
         if arguments.len() > 64 || arguments.iter().any(|value| value.len() > 16 * 1024) {
             return Err("Renode launch plan exceeds its bounds".into());
         }
@@ -735,7 +755,7 @@ impl RenodeSupervisor {
         drop(listener);
         drop(gdb_listener);
         drop(state_listener);
-        if let Some(capsule) = &image {
+        for capsule in &images {
             capsule.verify().map_err(|_| "local image capsule changed before launch")?;
         }
         let mut child = command
@@ -819,7 +839,7 @@ impl RenodeSupervisor {
             }
             // Cleanup follows child reaping and output-reader completion, even
             // after automatic timeout or a supervisor teardown timeout.
-            drop(image);
+            drop(images);
             let (lock, wake) = &*worker_done;
             if let Ok(mut finished) = lock.lock() {
                 *finished = true;
@@ -851,7 +871,7 @@ impl Drop for RenodeSupervisor {
     }
 }
 
-fn sha256(path: &Path) -> io::Result<String> {
+pub(crate) fn sha256(path: &Path) -> io::Result<String> {
     let mut file = File::open(path)?;
     let mut hash = Sha256::new();
     let mut buffer = [0u8; 64 * 1024];
@@ -897,6 +917,22 @@ fn pinned_file(
 }
 
 // All executable support files are verified before starting this optional demo.
+pub(crate) fn verify_micropython_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
+    verify_support_manifest(root, manifest, &[
+        "models.cs", "program-uart.cs", "boot-seed.bin",
+        "platforms/boards/spike-prime.repl", "platforms/boards/spike-prime-brick-devices.repl",
+        "platforms/cpus/stm32f413vg.repl", "platforms/cpus/stm32f4.repl",
+        "scripts/spike-state-server.py", "tools/spike_state_monitor_protocol.py",
+        "tools/ev3_state_observer.py", "tools/spike_arena_inputs.py", "tools/spike_arena_mailbox.py",
+        "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py",
+        "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt",
+    ], &[], 16)?;
+    if std::fs::metadata(root.join("boot-seed.bin")).map_err(|_| "boot seed unavailable")?.len() != 65536 {
+        return Err("boot seed geometry mismatch".into());
+    }
+    Ok(())
+}
+
 fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
     const REQUIRED: &[&str] = &[
         "arena-demo.elf",
