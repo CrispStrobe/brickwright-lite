@@ -5,7 +5,8 @@ In a desktop build with the pinned MicroPython simulation profile, choose
 **Choose image…** opens the native chooser for a local raw or Intel HEX application.
 In the Code tab, select Python and press **▶ MicroPython · Image**. It uses a pending
 selected image or opens the chooser, then starts the current source in Renode.
-Cancellation never starts an emulator. The arena's ordinary Run button is disabled
+Cancellation never starts an emulator. Caller/lease authorization precedes worker
+dispatch; the native dialog and emulator work run off the UI thread. The arena's ordinary Run button is disabled
 for this backend because its input comes from the Code tab. Web builds do not offer
 an active native image route.
 
@@ -42,4 +43,5 @@ is qualified. The live support profile uses a previously qualified local candida
 electrical model. Public source-profile assembly and portable installed packaging
 remain pending: ordinary desktop builds without the pinned profile refuse explicitly.
 The native chooser never downloads firmware or receives an editor-supplied path.
+Unix capsule staging is qualified; non-Unix staging remains unsupported.
 New glue uses BSD-3-Clause; existing component/dependency attribution is retained.
