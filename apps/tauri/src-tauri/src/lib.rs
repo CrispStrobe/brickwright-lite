@@ -22,6 +22,8 @@ mod renode_debugger;
 mod renode_rsp;
 #[cfg(desktop)]
 mod renode_supervisor;
+#[cfg(desktop)]
+mod spike_flash_store;
 // Compiled on every target so the staged relay stays warning-clean. It has no
 // command registration or runtime consumer until the authenticated adapter lands.
 #[allow(dead_code)]
@@ -144,6 +146,9 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 use tauri::Manager;
+                app.state::<renode_supervisor::RenodeSupervisor>()
+                    .set_flash_store_root(app.path().app_data_dir()?.join("spike-flash-v1"))
+                    .map_err(std::io::Error::other)?;
                 let main = app
                     .get_webview_window("main")
                     .ok_or(tauri::Error::WindowNotFound)?;

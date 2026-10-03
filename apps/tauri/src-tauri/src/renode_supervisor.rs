@@ -4,9 +4,13 @@
 //! process boundary; CP05 attaches the already-isolated semantic broker to it.
 //! The executable and digest are host/build inputs, never editor arguments.
 
+use crate::spike_flash_store::{self, FlashStore, RestoreReport, FLASH_BYTES};
 use command_group::CommandGroup;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::fs::File;
+use std::io::Write;
 use std::io::{self, Read};
 use std::net::{Ipv4Addr, TcpListener};
 use std::path::{Path, PathBuf};
@@ -72,7 +76,10 @@ impl SessionControl {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum SpikeTopology { Default, SixMotors }
+pub(crate) enum SpikeTopology {
+    Default,
+    SixMotors,
+}
 impl SpikeTopology {
     pub(crate) fn parse(value: Option<&str>) -> Result<Self, String> {
         match value { None | Some("default") => Ok(Self::Default), Some("six-motors") => Ok(Self::SixMotors),
@@ -102,13 +109,225 @@ fn insert_topology_commands(arguments: &mut Vec<String>, firmware: &Path, config
 
 pub(crate) struct RenodeSupervisor {
     session: Mutex<Option<SessionControl>>,
+    flash_store_root: Mutex<Option<PathBuf>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct FlashExport {
+    schema: u32,
+    image_sha256: String,
+    request_seq: u32,
+    program_id: u32,
+    byte_length: u64,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FlashReceipt<'a> {
+    schema: u32,
+    image_sha256: &'a str,
+    request_seq: u32,
+    program_id: u32,
+    status: &'a str,
+}
+struct FlashCheckpointLaunch {
+    store: FlashStore,
+    directory: PathBuf,
+    image: String,
+    seen: HashMap<u32, u32>,
+}
+impl FlashCheckpointLaunch {
+    fn prepare(root: &Path, image: &str) -> Result<Self, String> {
+        let store = FlashStore::open(root, image).map_err(|error| error.to_string())?;
+        let sessions = root.join("sessions");
+        spike_flash_store::private_directory(&sessions).map_err(|error| error.to_string())?;
+        let directory = sessions.join(random_token()?);
+        std::fs::create_dir(&directory)
+            .map_err(|_| "private flash session directory unavailable")?;
+        spike_flash_store::private_directory(&directory).map_err(|error| error.to_string())?;
+        let job = Self {
+            store,
+            directory,
+            image: image.to_owned(),
+            seen: HashMap::new(),
+        };
+        let restore = job
+            .store
+            .restore_to(&job.directory.join("restore.bin"))
+            .map_err(|error| error.to_string())?;
+        if let RestoreReport::Restored {
+            checkpoint,
+            recovered_previous: true,
+        } = restore
+        {
+            return Err(format!("latest virtual hub flash checkpoint is damaged; previous generation {} is intact; startup stopped for recovery",checkpoint.generation));
+        }
+        Ok(job)
+    }
+    fn process_export(&mut self) -> Result<(), String> {
+        let metadata = self.directory.join("export.json");
+        match std::fs::symlink_metadata(&metadata) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+            Err(_) => return Err("flash export metadata unavailable".into()),
+            Ok(_) => {}
+        }
+        let file = spike_flash_store::private_open(&metadata, false, false)
+            .map_err(|error| error.to_string())?;
+        let mut bytes = Vec::new();
+        file.take(1025)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "flash export metadata unreadable")?;
+        if bytes.len() > 1024 {
+            return Err("flash export metadata exceeds its bound".into());
+        }
+        let export: FlashExport =
+            serde_json::from_slice(&bytes).map_err(|_| "invalid flash export metadata")?;
+        if export.schema != 1
+            || export.image_sha256 != self.image
+            || export.request_seq == 0
+            || export.request_seq % 2 != 0
+            || export.program_id == 0
+            || export.byte_length != FLASH_BYTES
+        {
+            return Err("flash export identity or correlation mismatch".into());
+        }
+        if let Some(id) = self.seen.get(&export.request_seq) {
+            return if *id == export.program_id {
+                Ok(())
+            } else {
+                Err("flash export reused a request sequence".into())
+            };
+        }
+        if self.seen.len() >= 256 {
+            return Err("flash checkpoint count exceeds session bound".into());
+        }
+        self.seen.insert(export.request_seq, export.program_id);
+        let committed = (|| {
+            let mut flash =
+                spike_flash_store::private_open(&self.directory.join("flash.bin"), false, false)?;
+            if flash.metadata()?.len() != FLASH_BYTES {
+                return Err(spike_flash_store::StoreError::WrongSize);
+            }
+            self.store.commit(&mut flash)
+        })();
+        if let Err(error) = &committed {
+            eprintln!("virtual hub flash commit failed: {error}");
+        }
+        let receipt = FlashReceipt {
+            schema: 1,
+            image_sha256: &self.image,
+            request_seq: export.request_seq,
+            program_id: export.program_id,
+            status: if committed.is_ok() {
+                "durable"
+            } else {
+                "failed"
+            },
+        };
+        let bytes =
+            serde_json::to_vec(&receipt).map_err(|_| "flash checkpoint receipt unavailable")?;
+        let pending = self.directory.join("receipt.pending");
+        let mut output =
+            spike_flash_store::private_new(&pending).map_err(|error| error.to_string())?;
+        output
+            .write_all(&bytes)
+            .map_err(|_| "flash receipt write failed")?;
+        output.sync_all().map_err(|_| "flash receipt sync failed")?;
+        drop(output);
+        spike_flash_store::safe_replace(&pending, &self.directory.join("receipt.json"))
+            .map_err(|error| error.to_string())?;
+        spike_flash_store::sync_directory(&self.directory).map_err(|error| error.to_string())?;
+        Ok(())
+    }
+}
+impl Drop for FlashCheckpointLaunch {
+    fn drop(&mut self) {
+        // This uniquely created native directory is not retained after the worker.
+        let _ = std::fs::remove_dir_all(&self.directory);
+    }
+}
+
+fn insert_preboot_flash_restore(
+    arguments: &mut Vec<String>,
+    state_script: &Path,
+) -> Result<(), String> {
+    let include = format!("include {}", monitor_path(state_script)?);
+    let index = arguments
+        .iter()
+        .position(|arg| arg == &include)
+        .ok_or("state service include unavailable")?;
+    if index == 0 || arguments[index - 1] != "-e" {
+        return Err("state service include sequence unavailable".into());
+    }
+    arguments.drain(index - 1..=index);
+    let run = arguments
+        .iter()
+        .position(|arg| arg == "emulation RunFor \"1.0\"")
+        .ok_or("full firmware boot sequence unavailable")?;
+    if run == 0 || arguments[run - 1] != "-e" {
+        return Err("full firmware boot sequence unavailable".into());
+    }
+    arguments.splice(
+        run - 1..run - 1,
+        [
+            "-e".to_owned(),
+            include,
+            "-e".to_owned(),
+            "spike_flash_restore".to_owned(),
+        ],
+    );
+    Ok(())
+}
+
+fn checkpoint_adapter(config: &serde_json::Value) -> Result<bool, String> {
+    let Some(abi) = config.get("hostFlashCheckpointAbi") else {
+        return Ok(false);
+    };
+    let marker = config["programStorageAbiAddress"]
+        .as_u64()
+        .ok_or("host flash checkpoint requires owned storage ABI")?;
+    if abi.as_u64() != Some(1)
+        || config["identity"]["firmware"] != "brickwright-nuttx"
+        || config["identity"]["transport"] != "none"
+        || config.get("programMailbox").is_none()
+        || marker % 4 != 0
+        || !(0x08060000..=0x08100000 - 4).contains(&marker)
+    {
+        return Err("invalid packaged host flash checkpoint declaration".into());
+    }
+    Ok(true)
 }
 
 impl RenodeSupervisor {
     pub(crate) fn new() -> Self {
         Self {
             session: Mutex::new(None),
+            flash_store_root: Mutex::new(None),
         }
+    }
+
+    /// Only native app setup or native tests may supply this app-data directory.
+    pub(crate) fn set_flash_store_root(&self, root: PathBuf) -> Result<(), String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode supervisor unavailable")?;
+        if session.is_some() {
+            return Err("cannot configure flash storage during a session".into());
+        }
+        if !root.is_absolute() {
+            return Err("flash storage requires an absolute native app-data directory".into());
+        }
+        let mut configured = self
+            .flash_store_root
+            .lock()
+            .map_err(|_| "flash storage unavailable")?;
+        if configured.is_some() {
+            return Err("flash storage is already configured".into());
+        }
+        spike_flash_store::private_directory(&root).map_err(|error| error.to_string())?;
+        *configured = Some(root);
+        Ok(())
     }
 
     /// Start the build-pinned Renode executable. Arguments are supplied by the
@@ -118,6 +337,15 @@ impl RenodeSupervisor {
         &self,
         arguments: &[String],
         working_directory: &Path,
+    ) -> Result<RenodeEndpoint, String> {
+        self.start_with_checkpoint(arguments, working_directory, None)
+    }
+
+    fn start_with_checkpoint(
+        &self,
+        arguments: &[String],
+        working_directory: &Path,
+        checkpoint: Option<FlashCheckpointLaunch>,
     ) -> Result<RenodeEndpoint, String> {
         let executable = option_env!("BW_RENODE_EXECUTABLE")
             .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
@@ -133,6 +361,7 @@ impl RenodeSupervisor {
                 output_limit: MAX_OUTPUT_BYTES,
                 capture_uart: false,
             },
+            checkpoint,
         )
     }
 
@@ -206,6 +435,7 @@ impl RenodeSupervisor {
                 .map_err(|_| "SPIKE state config unavailable".to_owned())?,
         )
         .map_err(|_| "SPIKE state config malformed".to_owned())?;
+        let checkpoint_enabled=checkpoint_adapter(&config)?;
         if backend.is_some_and(|name| config["identity"]["firmware"].as_str() != Some(if name == "nuttx" {"brickwright-nuttx"} else {"brickwright-arena-demo"})) {
             return Err("requested SPIKE backend is not packaged in this desktop build".into());
         }
@@ -246,6 +476,7 @@ impl RenodeSupervisor {
             }
         }
 
+        let mut checkpoint=None;
         if config["identity"]["firmware"] == "brickwright-nuttx" && config.get("programMailbox").is_some() {
             let manifest = pinned_file("full firmware package manifest", manifest_pin, manifest_hash)?;
             verify_nuttx_manifest(&root, &manifest)?;
@@ -261,6 +492,10 @@ impl RenodeSupervisor {
             if sp % 8 != 0 || !(0x20000008..=0x20020000).contains(&sp) || pc & 1 != 1 || !(0x08008000..0x08060000).contains(&pc) {
                 return Err("full firmware reset vector outside protected kernel".into());
             }
+            if let Some(store_root)=self.flash_store_root.lock().map_err(|_| "flash storage unavailable")?.clone().filter(|_|checkpoint_enabled) {
+                let image=config["identity"]["imageSha256"].as_str().ok_or("verified flash image identity unavailable")?;
+                checkpoint=Some(FlashCheckpointLaunch::prepare(&store_root,image)?);
+            }
             insert_topology_commands(&mut arguments, &firmware, &config, topology)?;
             let commands = [format!("sysbus LoadELF {}", monitor_path(&root.join("nuttx-kernel.elf"))?),
                 "cpu VectorTableOffset 0x08008000".to_owned(), format!("cpu SP {sp}"), format!("cpu PC {pc}"),
@@ -268,9 +503,14 @@ impl RenodeSupervisor {
             let index = arguments.iter().position(|arg| arg == "machine StartGdbServer {BW_GDB_PORT}")
                 .ok_or("SPIKE startup sequence unavailable")? - 1;
             for command in commands.into_iter().rev() {arguments.splice(index..index, ["-e".to_owned(), command]);}
+            if checkpoint.is_some() {insert_preboot_flash_restore(&mut arguments,&state_script)?;}
         }
 
-        self.start(&arguments, &root)
+        #[cfg(test)]
+        if std::env::var("BW_NUTTX_PRIVATE_PROCESS_DIAGNOSTICS").as_deref() == Ok("1") {
+            arguments.retain(|argument| argument != "--hide-log");
+        }
+        self.start_with_checkpoint(&arguments, &root, checkpoint)
     }
 
     /// Launch the exact public AM1808 model and source-built permissive smoke
@@ -319,6 +559,7 @@ impl RenodeSupervisor {
                 output_limit: MAX_OUTPUT_BYTES,
                 capture_uart: true,
             },
+            None,
         )
     }
 
@@ -342,6 +583,7 @@ impl RenodeSupervisor {
                 output_limit,
                 capture_uart: false,
             },
+            None,
         )
     }
 
@@ -352,6 +594,7 @@ impl RenodeSupervisor {
         arguments: &[String],
         working_directory: &Path,
         bounds: LaunchBounds,
+        checkpoint: Option<FlashCheckpointLaunch>,
     ) -> Result<RenodeEndpoint, String> {
         if arguments.len() > 64 || arguments.iter().any(|value| value.len() > 16 * 1024) {
             return Err("Renode launch plan exceeds its bounds".into());
@@ -429,6 +672,27 @@ impl RenodeSupervisor {
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        // Parent environment is never authority: guest/EV3/unconfigured launches
+        // explicitly discard checkpoint paths and identity inherited from the host.
+        command
+            .env_remove("BW_SPIKE_FLASH_JOB_DIR")
+            .env_remove("BW_SPIKE_FLASH_IMAGE_SHA256");
+        if let Some(job) = &checkpoint {
+            command
+                .env("BW_SPIKE_FLASH_JOB_DIR", &job.directory)
+                .env("BW_SPIKE_FLASH_IMAGE_SHA256", &job.image);
+            #[cfg(unix)]
+            {
+                use std::os::unix::process::CommandExt;
+                // umask is async-signal-safe and affects only the child before exec.
+                unsafe {
+                    command.pre_exec(|| {
+                        libc::umask(0o077);
+                        Ok(())
+                    });
+                }
+            }
+        }
         // The reserved socket closes immediately before spawn. Renode is only
         // ever told the selected loopback address; it cannot be redirected to
         // a LAN interface by project input.
@@ -468,6 +732,23 @@ impl RenodeSupervisor {
         let worker_done = Arc::clone(&done);
         let worker_uart_evidence = uart_evidence.clone();
         thread::spawn(move || {
+            let checkpoint_stop = Arc::new(AtomicBool::new(false));
+            let checkpoint_thread = checkpoint.map(|mut job| {
+                let stopping = Arc::clone(&checkpoint_stop);
+                thread::spawn(move || {
+                    let mut failed = false;
+                    while !stopping.load(Ordering::SeqCst) {
+                        if !failed {
+                            if let Err(error) = job.process_export() {
+                                eprintln!("virtual hub flash checkpoint worker failed: {error}");
+                                failed = true;
+                            }
+                        }
+                        thread::sleep(Duration::from_millis(10));
+                    }
+                    // job owns the lock and cleans the private directory only now.
+                })
+            });
             let started = Instant::now();
             loop {
                 let terminate = worker_stop.load(Ordering::SeqCst)
@@ -487,6 +768,10 @@ impl RenodeSupervisor {
                         break;
                     }
                 }
+            }
+            checkpoint_stop.store(true, Ordering::SeqCst);
+            if let Some(worker) = checkpoint_thread {
+                let _ = worker.join();
             }
             let _ = stdout_reader.join();
             let _ = stderr_reader.join();
@@ -768,6 +1053,12 @@ fn drain_bounded(
             if count == 0 {
                 break;
             }
+            // Explicit opt-in for private ignored-test diagnostics only. Normal
+            // application launches continue to discard the bounded output.
+            #[cfg(test)]
+            if std::env::var("BW_NUTTX_PRIVATE_PROCESS_DIAGNOSTICS").as_deref() == Ok("1") {
+                eprintln!("owned-renode-output: {}", String::from_utf8_lossy(&buffer[..count]));
+            }
             let previous = total.fetch_add(count, Ordering::SeqCst);
             if previous.saturating_add(count) > limit {
                 overflow.store(true, Ordering::SeqCst);
@@ -780,6 +1071,188 @@ fn drain_bounded(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct FlashFixture(PathBuf);
+    impl FlashFixture {
+        fn new() -> Self {
+            let root = std::env::var_os("BW_FLASH_TEST_ROOT")
+                .map(PathBuf::from)
+                .unwrap_or_else(std::env::temp_dir);
+            let directory = root.join(format!("flash-worker-{}", random_token().unwrap()));
+            spike_flash_store::private_directory(&directory).unwrap();
+            Self(directory)
+        }
+        fn metadata(job: &FlashCheckpointLaunch, value: &serde_json::Value) {
+            let path = job.directory.join("export.json");
+            let _ = std::fs::remove_file(&path);
+            let mut file = spike_flash_store::private_new(&path).unwrap();
+            file.write_all(&serde_json::to_vec(value).unwrap()).unwrap();
+            file.sync_all().unwrap();
+        }
+        fn valid_export(image: &str) -> serde_json::Value {
+            serde_json::json!({"schema":1,"imageSha256":image,"requestSeq":2,"programId":12002,"byteLength":FLASH_BYTES})
+        }
+    }
+    impl Drop for FlashFixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn host_checkpoint_requires_explicit_owned_adapter_and_restore_precedes_boot() {
+        let old = serde_json::json!({"identity":{"firmware":"brickwright-nuttx"}});
+        assert!(!checkpoint_adapter(&old).unwrap());
+        let config = serde_json::json!({"hostFlashCheckpointAbi":1,"identity":{"firmware":"brickwright-nuttx","transport":"none"},
+            "programMailbox":0x20020000,"programStorageAbiAddress":0x08060000});
+        assert!(checkpoint_adapter(&config).unwrap());
+        for change in [
+            serde_json::json!(true),
+            serde_json::json!("1"),
+            serde_json::json!(0),
+            serde_json::json!(2),
+            serde_json::json!(null),
+        ] {
+            let mut bad = config.clone();
+            bad["hostFlashCheckpointAbi"] = change;
+            assert!(checkpoint_adapter(&bad).is_err());
+        }
+        for change in [
+            serde_json::json!(0),
+            serde_json::json!(0x08060001),
+            serde_json::json!(0x08100000),
+        ] {
+            let mut bad = config.clone();
+            bad["programStorageAbiAddress"] = change;
+            assert!(checkpoint_adapter(&bad).is_err());
+        }
+        let mut guest = config;
+        guest["identity"]["firmware"] = "brickwright-arena-demo".into();
+        assert!(checkpoint_adapter(&guest).is_err());
+        let script = Path::new("/trusted/state.py");
+        let mut args = spike_arguments(
+            Path::new("/trusted/nuttx.resc"),
+            Path::new("/trusted/user.elf"),
+            script,
+            Path::new("/trusted/config.json"),
+        )
+        .unwrap();
+        let gdb = args
+            .iter()
+            .position(|s| s == "machine StartGdbServer {BW_GDB_PORT}")
+            .unwrap()
+            - 1;
+        args.splice(gdb..gdb, ["-e".into(), "emulation RunFor \"1.0\"".into()]);
+        insert_preboot_flash_restore(&mut args, script).unwrap();
+        let include = args
+            .iter()
+            .position(|s| s == "include @/trusted/state.py")
+            .unwrap();
+        let restore = args
+            .iter()
+            .position(|s| s == "spike_flash_restore")
+            .unwrap();
+        let boot = args
+            .iter()
+            .position(|s| s == "emulation RunFor \"1.0\"")
+            .unwrap();
+        let service = args
+            .iter()
+            .position(|s| s.starts_with("spike_state_start "))
+            .unwrap();
+        assert!(include < restore && restore < boot && boot < service);
+        assert_eq!(
+            args.iter()
+                .filter(|s| *s == "include @/trusted/state.py")
+                .count(),
+            1
+        );
+    }
+    #[test]
+    fn native_flash_root_is_absolute_single_configuration_and_not_active_session_input() {
+        let supervisor = RenodeSupervisor::new();
+        let fixture = FlashFixture::new();
+        assert!(supervisor
+            .set_flash_store_root(PathBuf::from("relative"))
+            .is_err());
+        supervisor.set_flash_store_root(fixture.0.clone()).unwrap();
+        assert!(supervisor.set_flash_store_root(fixture.0.clone()).is_err());
+    }
+    #[test]
+    fn checkpoint_worker_validates_closed_metadata_and_reports_durable_only_after_commit() {
+        let fixture = FlashFixture::new();
+        let image = "a".repeat(64);
+        let mut job = FlashCheckpointLaunch::prepare(&fixture.0, &image).unwrap();
+        assert!(!job.directory.join("restore.bin").exists());
+        let valid = FlashFixture::valid_export(&image);
+        for (key, value) in [
+            ("schema", serde_json::json!(2)),
+            ("imageSha256", serde_json::json!("b".repeat(64))),
+            ("requestSeq", serde_json::json!(1)),
+            ("requestSeq", serde_json::json!(0)),
+            ("requestSeq", serde_json::json!(true)),
+            ("programId", serde_json::json!(0)),
+            ("byteLength", serde_json::json!(FLASH_BYTES - 1)),
+            ("path", serde_json::json!("untrusted")),
+        ] {
+            let mut bad = valid.clone();
+            bad[key] = value;
+            FlashFixture::metadata(&job, &bad);
+            assert!(job.process_export().is_err());
+            assert!(!job.directory.join("receipt.json").exists());
+        }
+        let mut flash = spike_flash_store::private_new(&job.directory.join("flash.bin")).unwrap();
+        io::copy(&mut io::repeat(0x55).take(FLASH_BYTES), &mut flash).unwrap();
+        flash.sync_all().unwrap();
+        drop(flash);
+        FlashFixture::metadata(&job, &valid);
+        job.process_export().unwrap();
+        let receipt: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(job.directory.join("receipt.json")).unwrap())
+                .unwrap();
+        assert_eq!(
+            receipt,
+            serde_json::json!({"schema":1,"imageSha256":image,"requestSeq":2,"programId":12002,"status":"durable"})
+        );
+        job.process_export().unwrap();
+        match job
+            .store
+            .restore_to(&fixture.0.join("durable.bin"))
+            .unwrap()
+        {
+            RestoreReport::Restored { checkpoint, .. } => assert_eq!(
+                checkpoint.generation, 1,
+                "repeated metadata must not commit twice"
+            ),
+            RestoreReport::Absent => panic!("receipt preceded durable journal"),
+        }
+        let mut reused = valid;
+        reused["programId"] = 12003.into();
+        FlashFixture::metadata(&job, &reused);
+        assert!(job.process_export().is_err());
+        let directory = job.directory.clone();
+        drop(job);
+        assert!(!directory.exists());
+    }
+    #[test]
+    fn failed_flash_export_never_claims_durability_or_formats_a_journal() {
+        let fixture = FlashFixture::new();
+        let image = "a".repeat(64);
+        let mut job = FlashCheckpointLaunch::prepare(&fixture.0, &image).unwrap();
+        FlashFixture::metadata(&job, &FlashFixture::valid_export(&image));
+        let mut flash = spike_flash_store::private_new(&job.directory.join("flash.bin")).unwrap();
+        flash.write_all(&[0; 16]).unwrap();
+        drop(flash);
+        job.process_export().unwrap();
+        let receipt: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(job.directory.join("receipt.json")).unwrap())
+                .unwrap();
+        assert_eq!(receipt["status"], "failed");
+        assert!(matches!(
+            job.store.restore_to(&fixture.0.join("absent.bin")).unwrap(),
+            RestoreReport::Absent
+        ));
+    }
 
     #[test]
     fn six_motor_launch_is_gated_and_precedes_both_firmware_loads() {
@@ -960,9 +1433,13 @@ mod tests {
     }
     #[test]
     fn initial_flash_manifest_requires_exact_seed_even_with_matching_digest() {
-        let root = std::env::temp_dir().join(format!("bw-initial-flash-manifest-{}", random_token().unwrap()));
+        let root = std::env::temp_dir().join(format!(
+            "bw-initial-flash-manifest-{}",
+            random_token().unwrap()
+        ));
         std::fs::create_dir(&root).unwrap();
-        #[cfg(unix)] {
+        #[cfg(unix)]
+        {
             use std::os::unix::fs::PermissionsExt;
             std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).unwrap();
         }
@@ -970,27 +1447,50 @@ mod tests {
         let manifest = root.join("manifest.json");
         let mut names = vec!["nuttx.resc".to_owned(), "initial-flash.bin".to_owned()];
         names.extend((0..31).map(|i| format!("bounded-component-{i}")));
-        for name in &names { std::fs::write(root.join(name), b"synthetic fixture").unwrap(); }
-        std::fs::write(root.join("nuttx.resc"), b"trusted fixed initial-flash.bin boot initialization").unwrap();
+        for name in &names {
+            std::fs::write(root.join(name), b"synthetic fixture").unwrap();
+        }
+        std::fs::write(
+            root.join("nuttx.resc"),
+            b"trusted fixed initial-flash.bin boot initialization",
+        )
+        .unwrap();
         std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8192]).unwrap();
         let allowed: Vec<&str> = names.iter().map(String::as_str).collect();
         let write_manifest = || {
-            let entries: serde_json::Map<String, serde_json::Value> = names.iter().map(|name|
-                (name.clone(), serde_json::Value::String(sha256(&root.join(name)).unwrap()))).collect();
+            let entries: serde_json::Map<String, serde_json::Value> = names
+                .iter()
+                .map(|name| {
+                    (
+                        name.clone(),
+                        serde_json::Value::String(sha256(&root.join(name)).unwrap()),
+                    )
+                })
+                .collect();
             std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
         };
         write_manifest();
         assert!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).is_ok());
-        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 32).unwrap_err(), "arena manifest is incomplete");
+        assert_eq!(
+            verify_support_manifest(&root, &manifest, &[], &allowed, 32).unwrap_err(),
+            "arena manifest is incomplete"
+        );
         std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8193]).unwrap();
         write_manifest(); // Correct hash must not bypass the geometry guard.
-        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(), "initial flash seed exceeds exact geometry");
+        assert_eq!(
+            verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(),
+            "initial flash seed exceeds exact geometry"
+        );
         std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8192]).unwrap();
         write_manifest();
-        let mut entries: serde_json::Value = serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
+        let mut entries: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
         entries.as_object_mut().unwrap().remove("initial-flash.bin");
         std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
-        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(), "full firmware initial flash seed is incomplete");
+        assert_eq!(
+            verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(),
+            "full firmware initial flash seed is incomplete"
+        );
         std::fs::write(root.join("nuttx.resc"), b"old seedless baseline scenario").unwrap();
         entries["nuttx.resc"] = sha256(&root.join("nuttx.resc")).unwrap().into();
         std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();

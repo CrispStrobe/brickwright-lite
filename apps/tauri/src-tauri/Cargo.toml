@@ -65,6 +65,12 @@ tauri-plugin-depth-capture = { path = "plugins/depth-capture" }
 serialport = "4"
 command-group = "5.0.1"
 sha2 = "0.10"
+# Cross-process private flash-store lock (MIT OR Apache-2.0), compatible with MSRV 1.77.
+fs2 = "=0.4.3"
+
+# Unix no-follow file opens for the host-owned flash journal.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 # Linux Bluetooth-Classic (RFCOMM/SPP) backend, for EV3 + legacy SPIKE.
 [target.'cfg(target_os = "linux")'.dependencies]
