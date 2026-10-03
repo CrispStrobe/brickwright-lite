@@ -66,12 +66,14 @@ enum TargetState {
 
 pub(crate) struct RenodeDebugger {
     session: Mutex<Option<Session>>,
+    selected_image: Mutex<Option<crate::spike_local_image::AdmittedImage>>,
 }
 
 impl RenodeDebugger {
     pub(crate) fn new() -> Self {
         Self {
             session: Mutex::new(None),
+            selected_image: Mutex::new(None),
         }
     }
 
@@ -94,6 +96,26 @@ impl RenodeDebugger {
 
     pub(crate) fn start_ev3(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
         self.start_target(supervisor, RenodeTarget::Ev3, None, SpikeTopology::Default)
+    }
+
+    /// Selection alone never starts an emulator. A cancelled/new selection clears
+    /// any previous unstarted admission. Holding this lock excludes overlapping choosers.
+    pub(crate) fn choose_micropython_image(&self,
+        choose: impl FnOnce() -> Result<Option<crate::spike_local_image::AdmittedImage>, String>,
+    ) -> Result<&'static str, String> {
+        let mut selected = self.selected_image.try_lock()
+            .map_err(|_| "Image selection is busy")?;
+        *selected = None;
+        *selected = choose()?;
+        Ok(if selected.is_some() { "selected" } else { "cancelled" })
+    }
+
+    pub(crate) fn start_chosen_micropython(&self, supervisor: &RenodeSupervisor)
+        -> Result<&'static str, String> {
+        let admitted = self.selected_image.try_lock()
+            .map_err(|_| "Image selection is busy")?.take()
+            .ok_or("Choose a local MicroPython application first")?;
+        self.start_micropython_image(supervisor, admitted)
     }
 
     /// Called only by a native image chooser/profile owner, never a path DTO.
@@ -578,6 +600,30 @@ impl RenodeDebugger {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn local_selection_cancel_failure_and_contention_never_start_a_session() {
+        let debugger = super::RenodeDebugger::new();
+        assert_eq!(debugger.choose_micropython_image(|| Ok(None)).unwrap(), "cancelled");
+        assert!(debugger.choose_micropython_image(|| Err("synthetic failure".into())).is_err());
+        assert!(debugger.selected_image.lock().unwrap().is_none());
+        let mut bytes = 0x2005_0000u32.to_le_bytes().to_vec();
+        bytes.extend_from_slice(&0x0801_0009u32.to_le_bytes());
+        bytes.extend_from_slice(&[0x70, 0x47]);
+        let admitted = crate::spike_local_image::admit_raw(&bytes).unwrap();
+        assert_eq!(debugger.choose_micropython_image(|| Ok(Some(admitted))).unwrap(), "selected");
+        assert!(debugger.session.lock().unwrap().is_none());
+        assert_eq!(debugger.choose_micropython_image(|| Ok(None)).unwrap(), "cancelled");
+        assert!(debugger.selected_image.lock().unwrap().is_none());
+        let held = debugger.selected_image.lock().unwrap();
+        let mut called = false;
+        assert!(debugger.choose_micropython_image(|| { called = true; Ok(None) }).is_err());
+        assert!(!called);
+        drop(held);
+        assert!(debugger.session.lock().unwrap().is_none());
+        assert!(debugger.start_chosen_micropython(&crate::renode_supervisor::RenodeSupervisor::new()).is_err());
+        assert!(debugger.session.lock().unwrap().is_none());
+    }
+
     use super::*;
 
     // Own ABI proof: correlate the complete reply and retain signed errno.

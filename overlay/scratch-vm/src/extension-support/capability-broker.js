@@ -10,8 +10,9 @@ const OPERATIONS = Object.freeze({
     'platform.kind.read': Object.freeze({
         validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
     }),
+    'renode.spike.micropython.image.choose': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
     'renode.spike.session.start': Object.freeze({
-        validate: args => isPlainRecord(args) && (hasOnlyKeys(args, []) || (hasOnlyKeys(args, ['backend']) && ['guest', 'nuttx'].includes(args.backend)) || (hasOnlyKeys(args, ['backend', 'topology']) && args.backend === 'nuttx' && ['default', 'six-motors'].includes(args.topology)))
+        validate: args => isPlainRecord(args) && (hasOnlyKeys(args, []) || (hasOnlyKeys(args, ['backend']) && ['guest', 'nuttx', 'micropython'].includes(args.backend)) || (hasOnlyKeys(args, ['backend', 'topology']) && args.backend === 'nuttx' && ['default', 'six-motors'].includes(args.topology)))
     }),
     'renode.spike.session.close': Object.freeze({
         validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])

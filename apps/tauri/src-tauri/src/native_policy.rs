@@ -61,6 +61,7 @@ impl NativePolicyState {
             [
                 (Operation::PlatformKindRead, Resource::PlatformDefault),
                 (Operation::RenodeSpikeStart, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeImageChoose, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikeClose, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikeRun, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikePause, Resource::RenodeSpikePrime),
@@ -194,6 +195,7 @@ impl NativePolicyState {
 pub(crate) enum Operation {
     PlatformKindRead,
     RenodeSpikeStart,
+    RenodeSpikeImageChoose,
     RenodeSpikeClose,
     RenodeSpikeRun,
     RenodeSpikePause,
@@ -231,6 +233,7 @@ impl Operation {
         match value {
             "platform.kind.read" => Some(Self::PlatformKindRead),
             "renode.spike.session.start" => Some(Self::RenodeSpikeStart),
+            "renode.spike.micropython.image.choose" => Some(Self::RenodeSpikeImageChoose),
             "renode.spike.session.close" => Some(Self::RenodeSpikeClose),
             "renode.spike.run" => Some(Self::RenodeSpikeRun),
             "renode.spike.pause" => Some(Self::RenodeSpikePause),
@@ -469,6 +472,7 @@ impl RedactedAuditRow {
             operation: event.operation.map(|operation| match operation {
                 Operation::PlatformKindRead => "platform.kind.read",
                 Operation::RenodeSpikeStart => "renode.spike.session.start",
+                Operation::RenodeSpikeImageChoose => "renode.spike.micropython.image.choose",
                 Operation::RenodeSpikeClose => "renode.spike.session.close",
                 Operation::RenodeSpikeRun => "renode.spike.run",
                 Operation::RenodeSpikePause => "renode.spike.pause",

@@ -301,3 +301,13 @@ test('a high-ID gap is refused without poisoning the exact-next sequence', async
         'a refused gap must not self-DoS the capability session');
     await assert.rejects(broker.request(worker, request(0)), error => error.code === 'replayed-request');
 });
+
+// Native selection receives no path, bytes, endpoint or monitor command.
+test('MicroPython image selection and startup arguments stay closed', async () => {
+    for (const args of [{path: '/private/image.bin'}, {bytes: [1]}, {url: 'https://example.invalid'}, {monitor: 'start'}]) {
+        assert.equal(brokerModule.OPERATIONS['renode.spike.micropython.image.choose'].validate(args), false);
+    }
+    assert.equal(brokerModule.OPERATIONS['renode.spike.micropython.image.choose'].validate({}), true);
+    assert.equal(brokerModule.OPERATIONS['renode.spike.session.start'].validate({backend: 'micropython'}), true);
+    assert.equal(brokerModule.OPERATIONS['renode.spike.session.start'].validate({backend: 'micropython', path: '/private/image.bin'}), false);
+});

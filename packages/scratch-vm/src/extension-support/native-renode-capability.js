@@ -2,6 +2,7 @@
 
 const OPERATIONS = Object.freeze({
     start: 'renode.spike.session.start',
+    microImageChoose: 'renode.spike.micropython.image.choose',
     close: 'renode.spike.session.close',
     run: 'renode.spike.run',
     pause: 'renode.spike.pause',

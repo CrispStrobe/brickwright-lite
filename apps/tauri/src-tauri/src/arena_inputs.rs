@@ -11,7 +11,7 @@ fn integer(value: &Value, min: i64, max: i64) -> bool {
     value.as_i64().is_some_and(|v| (min..=max).contains(&v))
 }
 pub(crate) fn valid_spike_start(value: &Value) -> bool {
-    keys(value, &[]) || (keys(value, &["backend"]) && matches!(value["backend"].as_str(), Some("guest" | "nuttx")))
+    keys(value, &[]) || (keys(value, &["backend"]) && matches!(value["backend"].as_str(), Some("guest" | "nuttx" | "micropython")))
         || (keys(value, &["backend", "topology"]) && value["backend"] == "nuttx"
             && matches!(value["topology"].as_str(), Some("default" | "six-motors")))
 }
@@ -72,11 +72,11 @@ mod tests {
     use serde_json::json;
     #[test]
     fn topology_launch_arguments_are_closed_and_nuttx_only() {
-        for value in [json!({}),json!({"backend":"guest"}),json!({"backend":"nuttx"}),
+        for value in [json!({}),json!({"backend":"guest"}),json!({"backend":"nuttx"}),json!({"backend":"micropython"}),
             json!({"backend":"nuttx","topology":"default"}),json!({"backend":"nuttx","topology":"six-motors"})] {
             assert!(valid_spike_start(&value));
         }
-        for value in [json!({"backend":"guest","topology":"six-motors"}),json!({"topology":"six-motors"}),
+        for value in [json!({"backend":"micropython","path":"secret.bin"}), json!({"backend":"micropython","topology":"default"}), json!({"backend":"guest","topology":"six-motors"}),json!({"topology":"six-motors"}),
             json!({"backend":"nuttx","topology":"six-motors;quit"}),json!({"backend":"nuttx","topology":true}),
             json!({"backend":"nuttx","topology":"six-motors","path":"/tmp/model"})] {
             assert!(!valid_spike_start(&value));
