@@ -3838,6 +3838,35 @@ class PseudocodeImporter extends React.Component {
         finally { this.setState({busy: false}); }
     }
 
+    // New MicroPython execution glue: BSD-3-Clause, (c) 2026 Brickwright contributors.
+    async runOnMicroPythonImage () {
+        this.openSpikeArena();
+        this.setState({busy: true});
+        try {
+            const source = this.activeCode();
+            const {encodeSource} = await import('../../lib/spike-micropython/raw-repl.js');
+            encodeSource(source);
+            const deadline = Date.now() + 15000;
+            while (!window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+            const pane = window.__bwSpikeArena?._pane;
+            if (!pane?.bridge || pane.disposed) throw new Error('Open the SPIKE arena before running MicroPython');
+            await pane.stopProgram();
+            await new Promise(resolve => pane.setState({execution: 'micropython', topology: 'default'}, resolve));
+            if (!pane.state.microImageSelected && !await pane.chooseMicroPythonImage()) {
+                this.setState({status: 'Image selection cancelled.'});
+                return;
+            }
+            this._spike3Stop = () => pane.stopProgram();
+            this.setState({spike3Running: true, spike3Log: [], status: 'Python running in the local MicroPython image.'});
+            await pane.startFirmware(null, {source,
+                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]}),
+                onCompleted: () => this.setState({spike3Running: false, status: 'MicroPython program completed.'}),
+                onError: error => this.setState({spike3Running: false, status: error.message})});
+            if (!pane.firmwareSession && pane.state.status === 'failed') throw new Error(pane.state.message || 'MicroPython could not start');
+        } catch (error) { this.setState({spike3Running: false, status: error.message}); }
+        finally { this.setState({busy: false}); }
+    }
+
     async runOnSpikeFirmware () {
         this.openSpikeArena();
         this.setState({busy: true});
@@ -5665,6 +5694,13 @@ class PseudocodeImporter extends React.Component {
                                 title={pickLocale(this.props.locale) === 'de' ? 'Python in unserer vollständigen NuttX-Firmware ausführen. Benötigt das Desktop-Paket mit eingebettetem MicroPython; Roboter-API: brickwright.' :
                                     'Run Python in our full NuttX firmware. Requires the desktop package with embedded MicroPython; robot API: brickwright.'}>
                                 ▶ Python · NuttX
+                            </button> : null}
+                        {window.__TAURI_INTERNALS__ && this.state.lang === 'python' && this.activeCode().trim() ?
+                            <button type="button" onClick={() => this.runOnMicroPythonImage()} disabled={this.state.busy}
+                                style={actionBtn} data-testid="bw-spike-micropython-run"
+                                title={pickLocale(this.props.locale) === 'de' ? 'Lokales MicroPython-Anwendungsimage auswählen und Python in Renode ausführen. Benötigt ein Desktop-Paket mit MicroPython-Simulationsprofil.' :
+                                    'Choose a local MicroPython application image and run Python in Renode. Requires a desktop package with the MicroPython simulation profile.'}>
+                                ▶ MicroPython · Image
                             </button> : null}
                         {window.__TAURI_INTERNALS__ && ((this.state.lang === 'pseudocode' && this.currentDevice() === 'spike') || (this.state.lang === 'python' && isSpike3Program(this.activeCode()))) ? <button type="button" onClick={() => this.runOnSpikeFirmware()}
                             disabled={this.state.busy} style={actionBtn} data-testid="bw-spike-firmware-run"

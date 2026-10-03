@@ -53,12 +53,13 @@ export class RenodeArenaSession {
             const first = JSON.parse(await this.call('state.read'));
             if (this.closed) return;
             this.micropython = this.backend === 'micropython';
-            if (!this.micropython && first.target?.firmware === 'micropython-hub-no6') {
+            if (!this.micropython && first.target?.firmware === 'micropython-prime') {
                 throw new Error('MicroPython requires an explicit backend and Python source');
             }
-            if (this.micropython && (first.target?.firmware !== 'micropython-hub-no6' ||
-                !Array.isArray(first.target?.capabilities) || !first.target.capabilities.includes('micropython-raw-repl/v1') ||
-                !Number.isSafeInteger(first.lifecycle?.connectionGeneration) || first.lifecycle.connectionGeneration <= 0)) {
+            if (this.micropython && (first.target?.firmware !== 'micropython-prime' ||
+                !Array.isArray(first.target?.capabilities) || !first.target.capabilities.includes('micropython-uart/v1') ||
+                first.lifecycle?.micropythonUart?.state !== 'ready' ||
+                !Number.isSafeInteger(first.lifecycle?.micropythonUart?.generation) || first.lifecycle.micropythonUart.generation <= 0)) {
                 throw new Error('MicroPython firmware requires the raw REPL arena contract');
             }
             if (this.topology === 'six-motors') {
@@ -86,9 +87,9 @@ export class RenodeArenaSession {
             this.adapter.bridge.hubState.externalBackend = this;
             await this.call('arena.inputs.write', inputs);
             if (this.closed) return;
-            await this.call('run');
+            if (!this.micropython) await this.call('run');
             if (this.closed) return;
-            if (this.micropython) this.executeMicroPython(first.lifecycle.connectionGeneration);
+            if (this.micropython) this.executeMicroPython(first.lifecycle.micropythonUart.generation);
             if (this.nuttx && (this.program || this.source !== null)) {
                 this.programClient = new NuttXProgramClient(async bytes => {
                     if ([8, 9].includes(bytes[2]) && this.storageDeferred) {
@@ -144,10 +145,23 @@ export class RenodeArenaSession {
             // object is also accepted for the closed test/embedded host adapter.
             if (typeof reply === 'string') {
                 if (reply.length > 32768) throw new Error('MicroPython UART reply exceeds its bound');
-                return JSON.parse(reply);
+                return this.uartData(JSON.parse(reply));
             }
-            return reply;
+            return this.uartData(reply);
         } finally { signal.removeEventListener('abort', abort); }
+    }
+    uartData (reply) {
+        if (!reply || typeof reply !== 'object' || Array.isArray(reply)) throw new Error('Invalid MicroPython UART reply');
+        if (!Object.hasOwn(reply, 'snapshot')) return reply; // Closed embedded/test transport.
+        const snapshot = reply.snapshot;
+        if (Object.keys(reply).length !== 2 || !Object.hasOwn(reply, 'data') ||
+            snapshot?.schemaVersion !== 1 || snapshot.type !== 'snapshot' ||
+            snapshot.target?.firmware !== 'micropython-prime' ||
+            snapshot.target.imageSha256 !== this.latestFrame?.target?.imageSha256 ||
+            snapshot.lifecycle?.micropythonUart?.generation !== this.latestFrame?.lifecycle?.micropythonUart?.generation) {
+            throw new Error('MicroPython UART attachment identity changed');
+        }
+        return reply.data;
     }
     executeMicroPython (generation) {
         const validObject = reply => reply && typeof reply === 'object' && !Array.isArray(reply) &&
@@ -157,15 +171,14 @@ export class RenodeArenaSession {
         this.programClient = new MicroPythonProgramClient({
             read: async ({signal}) => {
                 while (true) {
-                    const reply = await this.uartCall('micropython.uart.read', {generation, maxBytes: 4096, deadlineMs: 1000}, signal);
+                    const reply = await this.uartCall('micropython.uart.read', {generation, maxBytes: 4096}, signal);
                     if (!validObject(reply)) throw new Error('Invalid MicroPython UART read reply');
-                    if (reply.timeout === true && keys(reply, ['generation', 'timeout'])) {
+                    if (Array.isArray(reply.bytes) && reply.bytes.length === 0 && keys(reply, ['generation', 'bytes'])) {
                         // Yield even if a native timeout reply resolves immediately,
                         // allowing GUI Stop and execution deadlines to abort the loop.
                         await this.uartWait(signal);
                         continue;
                     }
-                    if (reply.eof === true && keys(reply, ['generation', 'eof'])) throw new Error('MicroPython UART closed');
                     if (!keys(reply, ['generation', 'bytes']) || !Array.isArray(reply.bytes) ||
                         reply.bytes.length < 1 || reply.bytes.length > 4096 ||
                         !Array.from(reply.bytes).every(byte => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {

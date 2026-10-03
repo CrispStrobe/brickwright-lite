@@ -36,9 +36,9 @@ tool's output was used in a second live qualification. A constant-generation
 mutation is detected by the reset recipe test. Generated packages, firmware bytes,
 logs, test harnesses and complete transcripts are retained privately.
 
-This is native debugger integration, not a GUI selection claim. The chooser and
-Code-tab selection, public source assembly/portable packaging and robot Python
-bindings remain pending. The tested image lacks `hub` and `motor`. The live support
+The follow-up [GUI integration](spike-micropython-gui.md) adds chooser/Code-tab
+execution for pinned desktop profiles. Public source assembly/portable packaging
+and robot Python bindings remain pending. The tested image lacks `hub` and `motor`. The live support
 profile uses the previously qualified local candidate electrical model; this does
 not qualify the stock model, original LEGO firmware or physical hub equivalence.
 Non-Unix capsule staging remains unsupported. New components use BSD-3-Clause;
