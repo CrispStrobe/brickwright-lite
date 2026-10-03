@@ -29,6 +29,8 @@ cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml spike_flash_store -- 
 
 The paired Renode repository supplies `tests/tools/spike_flash_checkpoint_test.py` and `tests/tools/spike_state_monitor_protocol_test.py`. The opt-in native test `packaged_spike_nuttx_flash_survives_close_and_profile_change_without_autorun` requires the privately staged own package, synthetic caller fixtures, and a fresh `BW_NUTTX_TEST_FLASH_ROOT`; it exercises two actual emulator boots.
 
+Local qualification passed that two-boot test with six-motor Save followed by default-profile restore, EMPTY before Load, READY without autorun, and explicit execution after Load. The current production GUI build and 17 storage/browser-contract tests passed. The actual managed ARM guest browser test passed shared arena motion, distance sensing, wall stall, cancellation and return to native sandbox driving. Full NuttX browser tests remain under investigation: successful boot snapshots were followed by a debugger continue-handshake failure. These browser runs use an injected closed transport into the production native policy and debugger, rather than an installed Tauri WebView.
+
 Generated packages, flash files, execution receipts, transcripts and result JSON belong in private evidence storage. They are not public repository assets.
 
 Linux filesystem and lock behaviour is the local qualification target. Windows directory flushing and installed desktop WebView behaviour require separate qualification; source tests do not establish those properties. This integration reuses the retained firmware and simulator infrastructure with their required attribution. It makes no cleanroom or physical-hardware equivalence claim.
