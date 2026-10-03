@@ -330,6 +330,13 @@ impl RenodeSupervisor {
         Ok(())
     }
 
+    pub(crate) fn local_image_staging_root(&self) -> Result<PathBuf,String> {
+        let root=self.flash_store_root.lock().map_err(|_| "native image storage unavailable")?
+            .clone().ok_or("native image storage is not configured")?.join("local-images");
+        spike_flash_store::private_directory(&root).map_err(|_| "native image storage unavailable")?;
+        Ok(root)
+    }
+
     /// Start the build-pinned Renode executable. Arguments are supplied by the
     /// native target adapter, never copied from a project or webview request.
     #[allow(dead_code)]

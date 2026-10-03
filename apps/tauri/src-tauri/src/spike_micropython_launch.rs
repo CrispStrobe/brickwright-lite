@@ -7,7 +7,39 @@ use crate::spike_staged_image::StagedImage;
 use serde_json::json;
 use std::path::{Path, PathBuf};
 
+#[derive(Clone)]
+pub(crate) struct MicroPythonRecipe {
+    root: PathBuf,
+    manifest_hash: String,
+    staging_root: PathBuf,
+    admitted: AdmittedImage,
+}
+static UART_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+impl MicroPythonRecipe {
+    pub(crate) fn new(
+        root: PathBuf,
+        manifest_hash: String,
+        staging_root: PathBuf,
+        admitted: AdmittedImage,
+    ) -> Self {
+        Self { root, manifest_hash, staging_root, admitted }
+    }
+
+    pub(crate) fn plan(&self) -> Result<MicroPythonLaunch, String> {
+        use std::sync::atomic::Ordering;
+        let generation = UART_GENERATION
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |value| {
+                (value < 9_007_199_254_740_991).then_some(value + 1)
+            })
+            .map_err(|_| "native UART generations exhausted")?;
+        MicroPythonLaunch::create(
+            &self.root, &self.manifest_hash, &self.staging_root, &self.admitted, generation,
+        )
+    }
+}
+
 pub(crate) struct MicroPythonLaunch {
+    generation: u64,
     root: PathBuf,
     manifest_hash: String,
     arguments: Vec<String>,
@@ -102,12 +134,16 @@ impl MicroPythonLaunch {
             arguments.extend(["-e".into(), command]);
         }
         Ok(Self {
+            generation,
             root,
             manifest_hash: manifest_hash.into(),
             arguments,
             image,
             config,
         })
+    }
+    pub(crate) fn identity(&self) -> (String,u64) {
+        (self.image.image_sha256().into(),self.generation)
     }
     pub(crate) fn into_parts(self) -> Result<(PathBuf, Vec<String>, Vec<StagedImage>), String> {
         check_assets(&self.root, &self.manifest_hash)?;
@@ -223,6 +259,11 @@ mod tests {
         assert!(
             MicroPythonLaunch::create(&assets, &"0".repeat(64), &staging, &admitted, 7).is_err()
         );
+        let recipe=MicroPythonRecipe::new(assets.clone(),pin.clone(),staging.clone(),admitted.clone());
+        let first=recipe.plan().unwrap();let second=recipe.plan().unwrap();
+        assert_ne!(first.identity().1,second.identity().1);
+        assert_eq!(first.identity().0,second.identity().0);
+        drop((first,second));
         let plan = MicroPythonLaunch::create(&assets, &pin, &staging, &admitted, 7).unwrap();
         let config: serde_json::Value =
             serde_json::from_slice(&std::fs::read(plan.config.path()).unwrap()).unwrap();

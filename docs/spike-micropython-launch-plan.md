@@ -32,8 +32,10 @@ or launch the Tauri GUI. The support profile uses the previously qualified local
 candidate electrical model. Image bytes, support packages, fixtures, logs and
 complete transcripts remain private.
 
-Public package preparation/build pins, native chooser, debugger session attachment,
-Code-tab selection and robot Python bindings remain pending. MicroPython lacks
+The follow-up [native debugger attachment](spike-micropython-debugger.md) now
+qualifies the actual compile-time entry, debugger reset and support pinning tool.
+Public source assembly/portable packaging, native chooser, Code-tab selection and
+robot Python bindings remain pending. MicroPython lacks
 `hub` and `motor` in the tested image. Original LEGO firmware and full hub/peripheral
 compatibility remain unqualified. Non-Unix capsule staging remains unsupported.
 New launch-plan source is BSD-3-Clause; retained models keep their MIT notices.
