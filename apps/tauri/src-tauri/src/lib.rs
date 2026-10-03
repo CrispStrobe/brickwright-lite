@@ -42,6 +42,10 @@ mod pico;
 mod scratchlink;
 mod share_server;
 mod spike_usb;
+// Local application admission is type-checked before native chooser/startup wiring.
+#[cfg(desktop)]
+#[allow(dead_code)]
+mod spike_local_image;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
