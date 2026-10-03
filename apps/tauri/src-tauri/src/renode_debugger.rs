@@ -338,12 +338,20 @@ impl RenodeDebugger {
         thread::spawn(move || {
             if let Ok(mut rsp) = rsp.lock() {
                 let _ = rsp.resume_started(Some(started_tx));
+            } else {
+                let _ = started_tx.send(Err("Renode debugger RSP lock unavailable".into()));
             }
             running.store(false, Ordering::Release);
         });
         match started_rx.recv_timeout(Duration::from_secs(2)) {
-            Ok(()) => Ok("running"),
-            Err(_) => Err("Renode debugger failed to run".into()),
+            Ok(Ok(())) => Ok("running"),
+            Ok(Err(error)) => Err(format!("Renode debugger failed to run: {error}")),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                Err("Renode debugger failed to run: continue acknowledgement timed out".into())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                Err("Renode debugger failed to run: start worker disconnected".into())
+            }
         }
     }
 
@@ -969,6 +977,102 @@ mod tests {
         eprintln!("storage stage=close-session elapsed_ms={}", elapsed.elapsed().as_millis());
         debugger.close(&supervisor).unwrap();
         eprintln!("storage stage=complete elapsed_ms={}", elapsed.elapsed().as_millis());
+    }
+
+    // SPDX-License-Identifier: BSD-3-Clause
+    // Copyright (c) 2026 Brickwright contributors
+    #[test]
+    #[ignore = "requires privately staged own NuttX package, caller fixtures and an empty host flash directory"]
+    fn packaged_spike_nuttx_flash_survives_close_and_profile_change_without_autorun() {
+        let elapsed = Instant::now();
+        let root = std::path::PathBuf::from(std::env::var("BW_NUTTX_TEST_FLASH_ROOT")
+            .expect("provide an empty private host flash directory"));
+        let reopen_only = std::env::var("BW_NUTTX_TEST_REOPEN_ONLY").as_deref() == Ok("1");
+        assert!(if reopen_only { root.is_dir() } else { !root.exists() },
+            "provide a fresh store for full qualification or an existing private store for explicit reopen diagnosis");
+        let cases: Value = serde_json::from_slice(&std::fs::read(std::env::var("BW_NUTTX_CALLER_FIXTURES")
+            .expect("generate private caller fixtures first")).unwrap()).unwrap();
+        let native = cases.as_array().unwrap().iter().find(|case| case["python"] == false).unwrap();
+        let storage = &native["storage"];
+        for (leg, topology) in [(0, SpikeTopology::SixMotors), (1, SpikeTopology::Default)] {
+            if reopen_only && leg == 0 { continue; }
+            let supervisor = RenodeSupervisor::new();
+            supervisor.set_flash_store_root(root.clone()).unwrap();
+            let debugger = RenodeDebugger::new();
+            eprintln!("persistent-flash leg={leg} stage=boot elapsed_ms={}", elapsed.elapsed().as_millis());
+            debugger.start_spike_profile(&supervisor, Some("nuttx"), topology).unwrap();
+            let first = debugger.state().unwrap();
+            assert!(first["target"]["capabilities"].as_array().unwrap().iter()
+                .any(|cap| cap == "nuttx-flash-checkpoint/v1"));
+            debugger.run().unwrap();
+            let send = |request: &Value| {
+                let op = request[2].as_u64().unwrap();
+                let began = Instant::now();
+                let mut frame = if matches!(op, 8 | 9) {
+                    debugger.spike_program_storage_submit(json!({"bytes": request}))
+                } else { debugger.spike_program_packet(json!({"bytes": request})) }.unwrap();
+                if matches!(op, 8 | 9) {
+                    let seq = frame["lifecycle"]["nuttxProgramStorage"]["requestSeq"].clone();
+                    loop {
+                        assert!(began.elapsed() < Duration::from_secs(28), "host storage job timed out");
+                        let metadata = &frame["lifecycle"]["nuttxProgramStorage"];
+                        assert_eq!(metadata["requestSeq"], seq);
+                        if metadata["pending"] == false {
+                            assert_program_reply(&frame, request, 0);
+                            if op == 9 { break; }
+                            let checkpoint = &frame["lifecycle"]["nuttxFlashCheckpoint"];
+                            assert_eq!(checkpoint["requestSeq"], seq);
+                            assert_eq!(checkpoint["programId"], metadata["programId"]);
+                            assert_ne!(checkpoint["status"], "failed", "host commit failed: {checkpoint}");
+                            if checkpoint["status"] == "durable" { break; }
+                        }
+                        thread::sleep(Duration::from_millis(50));
+                        frame = debugger.state().unwrap();
+                    }
+                    eprintln!("persistent-flash leg={leg} op={op} job_ms={}", began.elapsed().as_millis());
+                }
+                frame
+            };
+            let status = send(&native["status"]);
+            assert_eq!(assert_program_reply(&status, &native["status"], 0).0, 0, "fresh boot must be EMPTY");
+            let position = |frame: &Value| frame["motors"].as_array().unwrap().iter()
+                .find(|motor| motor["port"] == "B").unwrap()["position"].as_f64().unwrap();
+            let before = position(&status);
+            thread::sleep(Duration::from_millis(150));
+            assert!((position(&debugger.state().unwrap()) - before).abs() < 0.1, "boot must not autorun");
+            if leg == 0 {
+                for request in storage["upload"].as_array().unwrap() {
+                    assert_program_reply(&send(request), request, 0);
+                }
+                assert_eq!(assert_program_reply(&send(&storage["save"]), &storage["save"], 0).0, 1);
+            } else {
+                let loaded = send(&storage["load"]);
+                assert_eq!(assert_program_reply(&loaded, &storage["load"], 0),
+                    (1, u16::try_from(storage["savedCount"].as_u64().unwrap()).unwrap()));
+                let before_run = position(&loaded);
+                thread::sleep(Duration::from_millis(150));
+                let ready = send(&native["status"]);
+                assert_eq!(assert_program_reply(&ready, &native["status"], 0).0, 1);
+                assert!((position(&ready) - before_run).abs() < 0.1, "LOAD must not autorun");
+                assert_eq!(assert_program_reply(&send(&storage["start"]), &storage["start"], 0).0, 2);
+                let began = Instant::now();
+                loop {
+                    let running = send(&native["status"]);
+                    let state = assert_program_reply(&running, &native["status"], 0).0;
+                    assert_ne!(state, 5, "restored program faulted");
+                    if state == 3 {
+                        assert!(position(&running) > before_run + 1.0, "restored flash program did not move motor B");
+                        break;
+                    }
+                    assert!(began.elapsed() < Duration::from_secs(25), "restored native program did not finish");
+                    thread::sleep(Duration::from_millis(50));
+                }
+                assert_program_reply(&send(&storage["stop"]), &storage["stop"], 0);
+            }
+            debugger.close(&supervisor).unwrap();
+            assert!(!debugger.has_endpoint());
+        }
+        eprintln!("persistent-flash complete elapsed_ms={}", elapsed.elapsed().as_millis());
     }
 
     /// Hosted/manual proof against the exact build-pinned Renode tree. The ordinary library

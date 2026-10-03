@@ -49,6 +49,10 @@ const outputSymbol = nm.stdout.match(/^([a-fA-F0-9]+)\s+\w\s+g_bw_python_output$
 const outputMailbox = outputSymbol && parseInt(outputSymbol[1], 16);
 if (!outputMailbox || outputMailbox % 4 || outputMailbox < 0x20020000 || outputMailbox > 0x20040000 - 1036) throw new Error('Python output buffer exceeds userspace RAM');
 const storageAddress = programStorageAbiAddress(user, nm.stdout);
+// This host adapter ABI is declared by our authored state service, independent
+// of the embedded firmware's storage ABI. Older service packages stay usable.
+const stateService = await readFile(join(models, 'scripts/spike-state-server.py'), 'utf8');
+const hostFlashCheckpointAbi = storageAddress !== null && /^FLASH_CHECKPOINT_ABI = 1$/m.test(stateService) ? 1 : null;
 const copies = [['nuttx/nuttx', 'nuttx-kernel.elf', firmware], ['nuttx/nuttx_user.elf', 'nuttx-user.elf', firmware],
     ['LICENSE', 'licenses/firmware-LICENSE', firmware], ['nuttx/LICENSE', 'licenses/NuttX-Apache-2.0.txt', firmware],
     ['nuttx/NOTICE', 'licenses/NuttX-NOTICE.txt', firmware],
@@ -69,6 +73,7 @@ await writeFile(join(output, 'state-config.json'), JSON.stringify({identity: {bo
     imageSha256: await hash(join(output, 'nuttx-user.elf'))}, programMailbox: mailbox, pythonOutputMailbox: outputMailbox, boot,
     ...(storageAddress === null ? {} : {programStorageAbiAddress: storageAddress}),
     ...(motorPorts === null ? {} : {motorPorts}),
+    ...(hostFlashCheckpointAbi === null ? {} : {hostFlashCheckpointAbi}),
 paths: {...Object.fromEntries('ABCDEF'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');
 const files = [...(seeded ? [INITIAL_FLASH_FILE] : []), 'models.cs', 'nuttx.resc', 'state-config.json', ...copies.map(c => c[1]),
     'licenses/renode-models-MIT.txt', 'licenses/brickwright-BSD-3-Clause.txt',

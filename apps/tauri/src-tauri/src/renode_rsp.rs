@@ -6,11 +6,13 @@
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::mpsc::SyncSender;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const MAX_PACKET_BYTES: usize = 64 * 1024;
 const MAX_MEMORY_BYTES: usize = 4096;
 const IO_TIMEOUT: Duration = Duration::from_secs(2);
+const MAX_ACK_STOP_FRAMES: usize = 32;
+const MAX_ACK_BYTES: usize = 4096;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Arm32Architecture {
@@ -146,17 +148,17 @@ impl RenodeRsp {
 
     pub(crate) fn resume_started(
         &mut self,
-        started: Option<SyncSender<()>>,
+        started: Option<SyncSender<Result<(), String>>>,
     ) -> Result<Vec<u8>, String> {
-        let result = self.send_packet(b"c").and_then(|()| {
+        let starting = self.send_packet(b"c").and_then(|()| {
             self.stream
                 .set_read_timeout(None)
-                .map_err(|_| "Renode debugger unavailable".to_owned())?;
-            if let Some(started) = started {
-                let _ = started.send(());
-            }
-            self.read_packet()
+                .map_err(|_| "Renode debugger unavailable".to_owned())
         });
+        if let Some(started) = started {
+            let _ = started.send(starting.clone());
+        }
+        let result = starting.and_then(|()| self.read_packet());
         let restore = self.stream.set_read_timeout(Some(IO_TIMEOUT));
         if restore.is_err() {
             return Err("Renode debugger unavailable".into());
@@ -197,25 +199,105 @@ impl RenodeRsp {
             String::from_utf8_lossy(payload)
         )
         .map_err(|_| "Renode debugger write failed".to_owned())?;
-        let mut ack = [0u8; 1];
-        // A model observer can briefly pause the machine while we are idle.
-        // Renode reports that as an asynchronous stop packet, which can race
-        // the acknowledgement for this request. Acknowledge bounded async
-        // packets, then continue waiting for the request ACK.
-        for _ in 0..=4 {
-            self.stream
-                .read_exact(&mut ack)
-                .map_err(|_| "Renode debugger acknowledgement failed".to_owned())?;
-            match ack[0] {
+        let result = self.await_request_ack(Instant::now() + IO_TIMEOUT);
+        // A continue removes the timeout only after this bounded handshake.
+        let read_restore = self.stream.set_read_timeout(Some(IO_TIMEOUT));
+        let write_restore = self.stream.set_write_timeout(Some(IO_TIMEOUT));
+        if read_restore.is_err() || write_restore.is_err() {
+            return Err("Renode debugger unavailable".into());
+        }
+        result
+    }
+
+    fn await_request_ack(&mut self, deadline: Instant) -> Result<(), String> {
+        let mut consumed = 0;
+        let mut stops = 0;
+        loop {
+            let mut byte = [0u8; 1];
+            self.read_ack_bytes(&mut byte, deadline, &mut consumed)?;
+            match byte[0] {
                 b'+' => return Ok(()),
                 b'-' => return Err("Renode debugger rejected the packet".into()),
                 b'$' => {
-                    self.read_packet_after_start()?;
+                    if stops == MAX_ACK_STOP_FRAMES {
+                        return Err("Renode debugger asynchronous stop frame limit exceeded".into());
+                    }
+                    let mut payload = Vec::new();
+                    loop {
+                        self.read_ack_bytes(&mut byte, deadline, &mut consumed)?;
+                        if byte[0] == b'#' {
+                            break;
+                        }
+                        payload.push(byte[0]);
+                    }
+                    let mut checksum = [0u8; 2];
+                    self.read_ack_bytes(&mut checksum, deadline, &mut consumed)?;
+                    let claimed = parse_hex_byte(checksum[0], checksum[1])
+                        .ok_or_else(|| "Renode debugger checksum is malformed".to_owned())?;
+                    let actual = payload
+                        .iter()
+                        .fold(0u8, |sum, value| sum.wrapping_add(*value));
+                    if claimed != actual {
+                        return Err("Renode debugger checksum mismatch".into());
+                    }
+                    if !is_async_stop(&payload) {
+                        return Err(
+                            "Renode debugger unexpected packet before acknowledgement".into()
+                        );
+                    }
+                    let remaining = deadline
+                        .checked_duration_since(Instant::now())
+                        .filter(|remaining| !remaining.is_zero())
+                        .ok_or_else(|| "Renode debugger acknowledgement timed out".to_owned())?;
+                    self.stream
+                        .set_write_timeout(Some(remaining))
+                        .map_err(|_| "Renode debugger unavailable".to_owned())?;
+                    self.stream
+                        .write_all(b"+")
+                        .map_err(|_| "Renode debugger acknowledgement failed".to_owned())?;
+                    stops += 1;
                 }
-                _ => {}
+                _ => return Err("Renode debugger unexpected acknowledgement byte".into()),
             }
         }
-        Err("Renode debugger acknowledgement was not received".into())
+    }
+
+    fn read_ack_bytes(
+        &mut self,
+        mut bytes: &mut [u8],
+        deadline: Instant,
+        consumed: &mut usize,
+    ) -> Result<(), String> {
+        if bytes.len() > MAX_ACK_BYTES.saturating_sub(*consumed) {
+            return Err("Renode debugger acknowledgement byte limit exceeded".into());
+        }
+        while !bytes.is_empty() {
+            let remaining = deadline
+                .checked_duration_since(Instant::now())
+                .filter(|remaining| !remaining.is_zero())
+                .ok_or_else(|| "Renode debugger acknowledgement timed out".to_owned())?;
+            self.stream
+                .set_read_timeout(Some(remaining))
+                .map_err(|_| "Renode debugger unavailable".to_owned())?;
+            match self.stream.read(bytes) {
+                Ok(0) => return Err("Renode debugger acknowledgement failed".into()),
+                Ok(count) => {
+                    *consumed += count;
+                    bytes = &mut bytes[count..];
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock
+                    ) =>
+                {
+                    return Err("Renode debugger acknowledgement timed out".into());
+                }
+                Err(_) => return Err("Renode debugger acknowledgement failed".into()),
+            }
+        }
+        Ok(())
     }
 
     fn read_packet(&mut self) -> Result<Vec<u8>, String> {
@@ -263,6 +345,45 @@ impl RenodeRsp {
             .write_all(b"+")
             .map_err(|_| "Renode debugger acknowledgement failed".to_owned())?;
         Ok(payload)
+    }
+}
+
+fn is_async_stop(payload: &[u8]) -> bool {
+    if payload.len() < 3 || parse_hex_byte(payload[1], payload[2]).is_none() {
+        return false;
+    }
+    match payload[0] {
+        b'S' => payload.len() == 3,
+        b'T' => {
+            let fields = &payload[3..];
+            if fields.is_empty() {
+                return true;
+            }
+            if !fields.ends_with(b";") {
+                return false;
+            }
+            fields[..fields.len() - 1]
+                .split(|byte| *byte == b';')
+                .all(|field| {
+                    let Some(split) = field.iter().position(|byte| *byte == b':') else {
+                        return false;
+                    };
+                    let (key, value) = (&field[..split], &field[split + 1..]);
+                    let hex =
+                        |part: &[u8]| !part.is_empty() && part.iter().all(u8::is_ascii_hexdigit);
+                    if key == b"thread" {
+                        hex(value)
+                            || value.strip_prefix(b"p").is_some_and(|ids| {
+                                let parts: Vec<_> = ids.split(|byte| *byte == b'.').collect();
+                                parts.len() == 2 && parts.iter().all(|part| hex(part))
+                            })
+                    } else {
+                        (hex(key) || matches!(key, b"core" | b"watch" | b"rwatch" | b"awatch"))
+                            && hex(value)
+                    }
+                })
+        }
+        _ => false,
     }
 }
 
@@ -463,14 +584,235 @@ mod tests {
         });
         let mut rsp = RenodeRsp::connect(endpoint).unwrap();
         let mut interrupt = rsp.interrupt_handle().unwrap();
-        let (started_tx, started_rx) = std::sync::mpsc::sync_channel(0);
+        let (started_tx, started_rx) = std::sync::mpsc::sync_channel::<Result<(), String>>(0);
         let interrupter = thread::spawn(move || {
-            started_rx.recv().unwrap();
+            started_rx.recv().unwrap().unwrap();
             interrupt.request().unwrap();
         });
         assert_eq!(rsp.resume_started(Some(started_tx)).unwrap(), b"S02");
         interrupter.join().unwrap();
         server.join().unwrap();
+    }
+
+    #[test]
+    fn reports_continue_rejection_and_closed_connection_before_started() {
+        for rejection in [true, false] {
+            let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+            let endpoint = listener.local_addr().unwrap();
+            let server = thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream.write_all(&packet(b"S05")).unwrap();
+                let mut initial_ack = [0u8; 1];
+                stream.read_exact(&mut initial_ack).unwrap();
+                assert_eq!(initial_ack, [b'+']);
+                let mut request = [0u8; 5];
+                stream.read_exact(&mut request).unwrap();
+                assert_eq!(&request, b"$c#63");
+                if rejection { stream.write_all(b"-").unwrap(); }
+            });
+            let mut rsp = RenodeRsp::connect(endpoint).unwrap();
+            let (started_tx, started_rx) = std::sync::mpsc::sync_channel(1);
+            let expected = if rejection { "Renode debugger rejected the packet" }
+                else { "Renode debugger acknowledgement failed" };
+            assert_eq!(rsp.resume_started(Some(started_tx)).unwrap_err(), expected);
+            assert_eq!(started_rx.recv_timeout(Duration::from_millis(250)).unwrap(), Err(expected.to_owned()));
+            assert_eq!(rsp.stream.read_timeout().unwrap(), Some(IO_TIMEOUT));
+            assert!(matches!(started_rx.try_recv(), Err(std::sync::mpsc::TryRecvError::Disconnected)),
+                "pre-start error must not also publish successful start");
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn synthetic_continue_ack_after_four_valid_stop_frames() {
+        synthetic_continue_ack_after_stop_frames(4);
+    }
+
+    #[test]
+    fn synthetic_continue_ack_after_five_valid_stop_frames() {
+        synthetic_continue_ack_after_stop_frames(5);
+    }
+
+    #[test]
+    fn synthetic_continue_ack_after_larger_valid_stop_burst() {
+        synthetic_continue_ack_after_stop_frames(24);
+    }
+
+    fn synthetic_ack_wire(
+        wire: Vec<u8>,
+        delay: Option<Duration>,
+    ) -> (Result<(), String>, Duration) {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(IO_TIMEOUT)).unwrap();
+            stream.write_all(&packet(b"S05")).unwrap();
+            let mut ack = [0u8; 1];
+            stream.read_exact(&mut ack).unwrap();
+            assert_eq!(ack, [b'+']);
+            let mut request = [0u8; 5];
+            stream.read_exact(&mut request).unwrap();
+            assert_eq!(&request, b"$c#63");
+            if let Some(delay) = delay {
+                for byte in wire {
+                    if stream.write_all(&[byte]).is_err() {
+                        break;
+                    }
+                    thread::sleep(delay);
+                }
+            } else {
+                stream.write_all(&wire).unwrap();
+                // Keep the peer alive while the client acknowledges a burst;
+                // closing with those ACKs unread can reset the TCP connection.
+                let mut acknowledgements = Vec::new();
+                let _ = stream.read_to_end(&mut acknowledgements);
+            }
+        });
+        let mut rsp = RenodeRsp::connect(endpoint).unwrap();
+        let start = Instant::now();
+        let result = rsp.send_packet(b"c");
+        let elapsed = start.elapsed();
+        assert_eq!(rsp.stream.read_timeout().unwrap(), Some(IO_TIMEOUT));
+        assert_eq!(rsp.stream.write_timeout().unwrap(), Some(IO_TIMEOUT));
+        drop(rsp);
+        server.join().unwrap();
+        (result, elapsed)
+    }
+
+    #[test]
+    fn synthetic_ack_rejects_noise_nonstop_and_invalid_stop_frames() {
+        for payload in [
+            b"OK".as_slice(),
+            b"O6869",
+            b"S0z",
+            b"S05extra",
+            b"T05thread:;",
+            b"T05thread:1",
+            b"T05unknown:1;",
+        ] {
+            let (result, _) = synthetic_ack_wire(packet(payload), None);
+            assert_eq!(
+                result,
+                Err("Renode debugger unexpected packet before acknowledgement".into()),
+                "payload {payload:?}"
+            );
+        }
+        assert_eq!(
+            synthetic_ack_wire(b"?".to_vec(), None).0,
+            Err("Renode debugger unexpected acknowledgement byte".into())
+        );
+        assert_eq!(
+            synthetic_ack_wire(b"$S05#zz".to_vec(), None).0,
+            Err("Renode debugger checksum is malformed".into())
+        );
+        assert_eq!(
+            synthetic_ack_wire(b"$S05#00".to_vec(), None).0,
+            Err("Renode debugger checksum mismatch".into())
+        );
+    }
+
+    #[test]
+    fn synthetic_ack_stop_and_byte_floods_are_bounded() {
+        let wire = packet(b"S05").repeat(MAX_ACK_STOP_FRAMES + 1);
+        assert_eq!(
+            synthetic_ack_wire(wire, None).0,
+            Err("Renode debugger asynchronous stop frame limit exceeded".into())
+        );
+        let mut wire = vec![b'$'];
+        wire.extend(vec![b'x'; MAX_ACK_BYTES]);
+        assert_eq!(
+            synthetic_ack_wire(wire, None).0,
+            Err("Renode debugger acknowledgement byte limit exceeded".into())
+        );
+    }
+
+    #[test]
+    fn synthetic_slow_ack_framing_uses_one_absolute_deadline() {
+        // Every individual gap is below 2s, but the full frame takes longer.
+        let (result, elapsed) =
+            synthetic_ack_wire(packet(b"S05"), Some(Duration::from_millis(400)));
+        assert_eq!(
+            result,
+            Err("Renode debugger acknowledgement timed out".into())
+        );
+        assert!(
+            elapsed >= Duration::from_millis(1700),
+            "elapsed {elapsed:?}"
+        );
+        assert!(
+            elapsed < Duration::from_millis(2600),
+            "deadline restarted during framing: {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn validates_stop_reply_fields() {
+        for payload in [
+            b"S05".as_slice(),
+            b"T05",
+            b"T05thread:1;",
+            b"T05thread:p1.2;core:0;0f:00ab;watch:20000000;",
+        ] {
+            assert!(is_async_stop(payload), "valid stop {payload:?}");
+        }
+        for payload in [
+            b"".as_slice(),
+            b"S",
+            b"T00;",
+            b"T05thread:p1.;",
+            b"T05thread:1;;",
+            b"W00",
+        ] {
+            assert!(!is_async_stop(payload), "invalid stop {payload:?}");
+        }
+    }
+
+    fn synthetic_continue_ack_after_stop_frames(count: usize) {
+        // This models queued observer stops, not an actual Renode observation.
+        // Each stop has a valid checksum and is acknowledged before the peer
+        // emits the continue request's ACK. No delay or host load is needed.
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(IO_TIMEOUT)).unwrap();
+            stream.set_write_timeout(Some(IO_TIMEOUT)).unwrap();
+            stream.write_all(&packet(b"S05")).unwrap();
+            let mut ack = [0u8; 1];
+            stream.read_exact(&mut ack).unwrap();
+            assert_eq!(ack, [b'+']);
+            let mut request = [0u8; 5];
+            stream.read_exact(&mut request).unwrap();
+            assert_eq!(&request, b"$c#63");
+            for index in 0..count {
+                let stop: &[u8] = if index % 2 == 0 { b"S05" } else { b"T05" };
+                stream.write_all(&packet(stop)).unwrap();
+                stream.read_exact(&mut ack).unwrap();
+                assert_eq!(ack, [b'+'], "stop frame {index} was not acknowledged");
+            }
+            stream.write_all(b"+").unwrap();
+            count
+        });
+        let mut rsp = RenodeRsp::connect(endpoint).unwrap();
+        let result = rsp.send_packet(b"c");
+        assert_eq!(server.join().unwrap(), count);
+        assert_eq!(rsp.stream.read_timeout().unwrap(), Some(IO_TIMEOUT));
+        assert_eq!(rsp.stream.write_timeout().unwrap(), Some(IO_TIMEOUT));
+        if result.is_err() {
+            let mut unread_ack = [0u8; 1];
+            rsp.stream.read_exact(&mut unread_ack).unwrap();
+            assert_eq!(
+                unread_ack,
+                [b'+'],
+                "peer's request ACK must really follow the stops"
+            );
+        }
+        assert_eq!(
+            result,
+            Ok(()),
+            "valid synthetic stop frames must not hide the continue ACK"
+        );
     }
 
     #[test]

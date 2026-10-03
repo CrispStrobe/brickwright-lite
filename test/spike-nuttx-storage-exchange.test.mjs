@@ -98,3 +98,52 @@ test('fresh noop-submit snapshot with previous completed SAVE metadata cannot su
     const busy = harness([frame(false, 14)], {initialFrame: frame(true, 12)});
     await assert.rejects(exchangeStorage(busy.args), /already pending/);assert.equal(busy.calls.length, 0);
 });
+
+const checkpointFrame = (status = 'pending', sequence = 12) => {
+    const f = frame(false, sequence);
+    f.target.capabilities.push('nuttx-flash-checkpoint/v1');
+    f.lifecycle.nuttxFlashCheckpoint = {requestSeq: sequence, programId: 1, status};
+    return f;
+};
+const durableHarness = frames => {
+    const h = harness(frames);
+    h.args.initialFrame.target.capabilities.push('nuttx-flash-checkpoint/v1');
+    return h;
+};
+test('durable SAVE waits beyond successful firmware ACK for correlated host commit', async () => {
+    const h = durableHarness([checkpointFrame(), checkpointFrame(), checkpointFrame('durable')]);
+    assert.equal((await exchangeStorage(h.args))[2], 8);
+    assert.deepEqual(h.calls.map(c => c[0]), ['submit', 'sample', 'sample']);
+});
+test('host failure or lost capability never reports successful SAVE or retries writes', async () => {
+    for (const status of ['failed', 'missing-capability']) {
+        const f = checkpointFrame(status === 'failed' ? 'failed' : 'durable');
+        if (status === 'missing-capability') f.target.capabilities.pop();
+        const h = durableHarness([f]);
+        await assert.rejects(exchangeStorage(h.args), /Host flash checkpoint/);
+        assert.equal(h.calls.length, 1);
+    }
+});
+test('stale, malformed or missing host receipt cannot complete successful SAVE', async () => {
+    for (const mutate of [f => {f.lifecycle.nuttxFlashCheckpoint.requestSeq = 10;},
+        f => {f.lifecycle.nuttxFlashCheckpoint.programId = 2;},
+        f => {f.lifecycle.nuttxFlashCheckpoint.extra = true;},
+        f => {delete f.lifecycle.nuttxFlashCheckpoint;},
+        f => {f.lifecycle.nuttxFlashCheckpoint.status = 'exported';}]) {
+        const f = checkpointFrame('durable');mutate(f);
+        const h = durableHarness([f]);
+        await assert.rejects(exchangeStorage(h.args), /checkpoint/);
+        assert.equal(h.calls.length, 1);
+    }
+});
+test('LOAD remains explicit and firmware errno does not wait for a host checkpoint', async () => {
+    const loaded = checkpointFrame('pending');
+    loaded.lifecycle.nuttxProgramStorage.operation = 9;loaded.lifecycle.nuttxProgramReply[2] = 9;
+    const l = durableHarness([loaded]);l.args.packet = encodeCommand(9, 1);
+    assert.equal((await exchangeStorage(l.args))[2], 9);assert.equal(l.calls.length, 1);
+    const failed = checkpointFrame('pending');failed.lifecycle.nuttxProgramReply[8] = 22;
+    const h = durableHarness([failed]);
+    const client = new NuttXProgramClient(packet => exchangeStorage({...h.args, packet}), 1);
+    await assert.rejects(client.save(), e => e.result === 22);
+    assert.equal(h.calls.length, 1);
+});

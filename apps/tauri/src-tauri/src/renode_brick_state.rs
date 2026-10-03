@@ -173,6 +173,12 @@ impl BrickStateDecoder {
             || !valid_storage_metadata(&snapshot.lifecycle) {
             return Err("brick-state storage metadata is malformed".into());
         }
+        let checkpoint = snapshot.target.capabilities.iter().any(|cap| cap == "nuttx-flash-checkpoint/v1");
+        if (checkpoint && (!deferred || snapshot.target.transport != "none" || snapshot.target.image_sha256.is_none()))
+            || (snapshot.lifecycle.get("nuttxFlashCheckpoint").is_some() && !checkpoint)
+            || !valid_flash_checkpoint(&snapshot.lifecycle) {
+            return Err("brick-state flash checkpoint is malformed".into());
+        }
         if let Some(digest) = &snapshot.target.image_sha256 {
             if digest.len() != 64
                 || !digest
@@ -223,6 +229,26 @@ fn valid_storage_metadata(lifecycle: &serde_json::Value) -> bool {
         let id = (0..4).fold(0u64, |id, i| id | (bytes[4 + i].as_u64().unwrap() << (i * 8)));
         if Some(id) != metadata["programId"].as_u64() { return false; }
     }
+    true
+}
+
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+fn valid_flash_checkpoint(lifecycle: &serde_json::Value) -> bool {
+    let Some(data) = lifecycle.get("nuttxFlashCheckpoint") else { return true; };
+    let Some(fields) = data.as_object() else { return false; };
+    if !(3..=4).contains(&fields.len())
+        || fields.keys().any(|key| !matches!(key.as_str(), "requestSeq" | "programId" | "status" | "error"))
+        || !data["requestSeq"].as_u64().is_some_and(|v| v > 0 && v <= u32::MAX as u64 && v % 2 == 0)
+        || !data["programId"].as_u64().is_some_and(|v| v > 0 && v <= u32::MAX as u64)
+        || !matches!(data["status"].as_str(), Some("pending" | "durable" | "failed")) { return false; }
+    if fields.contains_key("error") && (data["status"] != "failed"
+        || !data["error"].as_str().is_some_and(|v| v.len() <= 256)) { return false; }
+    // LOAD and ordinary program packets may follow a durable SAVE. A current
+    // SAVE, however, must refer to exactly this checkpoint generation and ID.
+    let metadata = &lifecycle["nuttxProgramStorage"];
+    if metadata["operation"] == 8 && (metadata["requestSeq"] != data["requestSeq"]
+        || metadata["programId"] != data["programId"]) { return false; }
     true
 }
 
@@ -480,6 +506,27 @@ mod tests {
         assert!(super::valid_storage_metadata(&lifecycle));
         lifecycle["nuttxProgramReply"][8] = serde_json::json!(256);
         assert!(!super::valid_storage_metadata(&lifecycle));
+    }
+
+    #[test]
+    fn host_checkpoint_rejects_stale_ids_shapes_and_unknown_status() {
+        let lifecycle = serde_json::json!({"nuttxProgramStorage": {"requestSeq": 12, "programId": 1, "operation": 8},
+            "nuttxFlashCheckpoint": {"requestSeq": 12, "programId": 1, "status": "pending"}});
+        assert!(valid_flash_checkpoint(&lifecycle));
+        for (field, value) in [("requestSeq", serde_json::json!(10)), ("programId", serde_json::json!(2)),
+            ("status", serde_json::json!("exported")), ("error", serde_json::json!("unexpected")),
+            ("extra", serde_json::json!(true))] {
+            let mut bad = lifecycle.clone(); bad["nuttxFlashCheckpoint"][field] = value;
+            assert!(!valid_flash_checkpoint(&bad));
+        }
+        let mut load = lifecycle;
+        load["nuttxProgramStorage"]["operation"] = serde_json::json!(9);
+        load["nuttxProgramStorage"]["requestSeq"] = serde_json::json!(14);
+        load["nuttxFlashCheckpoint"]["status"] = serde_json::json!("durable");
+        assert!(valid_flash_checkpoint(&load));
+        load["nuttxFlashCheckpoint"]["status"] = serde_json::json!("failed");
+        load["nuttxFlashCheckpoint"]["error"] = serde_json::json!("previous checkpoint retained");
+        assert!(valid_flash_checkpoint(&load));
     }
 
     #[test]
