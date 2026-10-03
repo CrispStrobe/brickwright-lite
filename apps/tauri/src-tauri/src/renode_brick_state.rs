@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
 //! Bounded decoder for the neutral `brick-state/v1` Renode stream.
 
 use serde::{Deserialize, Serialize};
@@ -258,7 +260,55 @@ pub(crate) struct BrickStateFeed {
     stop: Arc<AtomicBool>,
     stream: TcpStream,
     command_lock: Mutex<()>,
+    reply: Arc<Mutex<Option<PendingCommand>>>,
     thread: Option<JoinHandle<()>>,
+}
+
+struct PendingCommand {
+    request_id: String,
+    seq: u64,
+    result: Option<CommandResult>,
+}
+
+struct CommandResult {
+    accepted: bool,
+    data: Option<serde_json::Value>,
+}
+
+/// Decode only the terminal reply for the currently owned request. A fresh
+/// snapshot cannot substitute for acknowledgment or command-specific data.
+fn accept_command_result(
+    value: &serde_json::Value,
+    pending: &mut Option<PendingCommand>,
+) -> Result<(), ()> {
+    let fields = value.as_object().ok_or(())?;
+    if !(5..=7).contains(&fields.len())
+        || fields.keys().any(|key| !matches!(key.as_str(),
+            "schemaVersion" | "type" | "requestId" | "seq" | "accepted" | "error" | "data"))
+        || value["schemaVersion"].as_u64() != Some(1)
+        || value["type"] != "result" {
+        return Err(());
+    }
+    let owned = pending.as_mut().ok_or(())?;
+    if value["requestId"].as_str() != Some(owned.request_id.as_str())
+        || value["seq"].as_u64() != Some(owned.seq)
+        || owned.result.is_some() {
+        return Err(());
+    }
+    let accepted = value["accepted"].as_bool().ok_or(())?;
+    if fields.contains_key("error") && (accepted ||
+        !value["error"].as_str().is_some_and(|text| text.len() <= 1024)) {
+        return Err(());
+    }
+    let data = fields.get("data");
+    if let Some(data) = data {
+        if !accepted || !data.is_object()
+            || serde_json::to_vec(data).map_err(|_| ())?.len() > 32768 {
+            return Err(());
+        }
+    }
+    owned.result = Some(CommandResult {accepted, data: data.cloned()});
+    Ok(())
 }
 
 impl BrickStateFeed {
@@ -280,9 +330,11 @@ impl BrickStateFeed {
         let latest = Arc::new(Mutex::new(None));
         let healthy = Arc::new(AtomicBool::new(false));
         let stop = Arc::new(AtomicBool::new(false));
+        let reply = Arc::new(Mutex::new(None));
         let latest_thread = Arc::clone(&latest);
         let healthy_thread = Arc::clone(&healthy);
         let stop_thread = Arc::clone(&stop);
+        let reply_thread = Arc::clone(&reply);
         let thread = thread::spawn(move || {
             let mut decoder = BrickStateDecoder::default();
             let mut pending = Vec::new();
@@ -298,20 +350,14 @@ impl BrickStateFeed {
                         while let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
                             let mut remainder = pending.split_off(newline + 1);
                             pending.truncate(newline);
-                            let is_result = serde_json::from_slice::<serde_json::Value>(&pending)
-                                .ok()
-                                .is_some_and(|value| {
-                                    value["schemaVersion"] == 1
-                                        && value["type"] == "result"
-                                        && value["accepted"].as_bool() == Some(true)
-                                        && value["seq"].as_u64() == decoder.last_seq
-                                        && value["requestId"].as_str().is_some_and(|request| {
-                                            decoder.last_seq.is_some_and(|seq| {
-                                                request == format!("input-{seq}")
-                                            })
-                                        })
-                                });
-                            if is_result {
+                            let parsed = serde_json::from_slice::<serde_json::Value>(&pending).ok();
+                            if parsed.as_ref().is_some_and(|value| value["type"] == "result") {
+                                let accepted = reply_thread.lock().ok().is_some_and(|mut slot|
+                                    accept_command_result(parsed.as_ref().unwrap(), &mut slot).is_ok());
+                                if !accepted {
+                                    healthy_thread.store(false, Ordering::Release);
+                                    return;
+                                }
                                 pending.clear();
                                 pending.append(&mut remainder);
                                 continue;
@@ -355,12 +401,13 @@ impl BrickStateFeed {
             stop,
             stream,
             command_lock: Mutex::new(()),
+            reply,
             thread: Some(thread),
         })
     }
 
     pub(crate) fn latest(&self) -> Result<BrickStateSnapshot, String> {
-        if !self.healthy.load(Ordering::Acquire) {
+        if self.stop.load(Ordering::Acquire) || !self.healthy.load(Ordering::Acquire) {
             return Err("brick-state snapshot unavailable".into());
         }
         self.latest
@@ -381,6 +428,16 @@ impl BrickStateFeed {
         name: &str,
         arguments: serde_json::Value,
     ) -> Result<BrickStateSnapshot, String> {
+        self.command_with_result(name, arguments).map(|(snapshot, _)| snapshot)
+    }
+
+    /// Closed commands only. Returned data belongs to the exact request, while
+    /// the snapshot remains the shared model's fresh observation.
+    pub(crate) fn command_with_result(
+        &self,
+        name: &str,
+        arguments: serde_json::Value,
+    ) -> Result<(BrickStateSnapshot, Option<serde_json::Value>), String> {
         match name {
             "nuttx.program.packet" if crate::arena_inputs::valid_nuttx_packet(&arguments) => {}
             "nuttx.program.storage.submit" if crate::arena_inputs::valid_nuttx_storage_submit(&arguments) => {}
@@ -431,25 +488,44 @@ impl BrickStateFeed {
         if !target_ok {
             return Err("brick-state input target mismatch".into());
         }
+        let request_id = format!("input-{}", prior.seq);
         let command = serde_json::json!({"schemaVersion":1,"type":"command",
-            "requestId":format!("input-{}",prior.seq),"expectedSeq":prior.seq,
+            "requestId":request_id,"expectedSeq":prior.seq,
             "command":name,"arguments":arguments});
         let mut wire = serde_json::to_vec(&command)
             .map_err(|_| "brick-state command unavailable".to_owned())?;
         wire.push(b'\n');
-        let mut stream = &self.stream;
-        stream
-            .write_all(&wire)
-            .map_err(|_| "brick-state command unavailable".to_owned())?;
-        let deadline = Instant::now() + Duration::from_secs(2);
-        while Instant::now() < deadline {
-            let current = self.latest()?;
-            if current.seq > prior.seq {
-                return Ok(current);
+        *self.reply.lock().map_err(|_| "brick-state command unavailable")? =
+            Some(PendingCommand {request_id, seq: prior.seq, result: None});
+        let outcome = (|| {
+            let mut stream = &self.stream;
+            stream.write_all(&wire).map_err(|_| "brick-state command unavailable".to_owned())?;
+            let deadline = Instant::now() + Duration::from_secs(2);
+            while Instant::now() < deadline {
+                let current = self.latest()?;
+                let mut slot = self.reply.lock().map_err(|_| "brick-state command unavailable")?;
+                if let Some(result) = slot.as_mut().and_then(|owned| owned.result.as_mut()) {
+                    if !result.accepted {
+                        // Do not expose backend error text or continue after a
+                        // rejected request with potentially partial side effects.
+                        return Err("brick-state command rejected".into());
+                    }
+                    if current.seq > prior.seq {
+                        return Ok((current, result.data.take()));
+                    }
+                }
+                drop(slot);
+                thread::sleep(Duration::from_millis(5));
             }
-            thread::sleep(Duration::from_millis(5));
+            Err("brick-state command timed out".into())
+        })();
+        if let Ok(mut slot) = self.reply.lock() { *slot = None; }
+        if outcome.is_err() {
+            self.stop.store(true, Ordering::Release);
+            self.healthy.store(false, Ordering::Release);
+            let _ = self.stream.shutdown(Shutdown::Both);
         }
-        Err("brick-state sample timed out".into())
+        outcome
     }
 
     pub(crate) fn wait_ready(&self, timeout: Duration) -> Result<(), String> {
@@ -479,6 +555,101 @@ mod tests {
     use super::*;
     use std::io::Write;
     use std::net::{Ipv4Addr, TcpListener};
+
+    fn read_command(stream: &mut TcpStream) -> serde_json::Value {
+        let mut bytes = Vec::new();
+        loop {
+            let mut byte = [0];
+            stream.read_exact(&mut byte).unwrap();
+            if byte[0] == b'\n' { break; }
+            bytes.push(byte[0]);
+            assert!(bytes.len() <= 1024);
+        }
+        serde_json::from_slice(&bytes).unwrap()
+    }
+
+    #[test]
+    fn results_require_exact_owned_request_and_bounded_closed_envelope() {
+        let valid = serde_json::json!({"schemaVersion":1,"type":"result","requestId":"input-4",
+            "seq":4,"accepted":true,"data":{"generation":7,"bytes":[0,4,255]}});
+        let pending = || Some(PendingCommand {request_id:"input-4".into(),seq:4,result:None});
+        let mut slot = pending();
+        accept_command_result(&valid, &mut slot).unwrap();
+        assert_eq!(slot.as_ref().unwrap().result.as_ref().unwrap().data, Some(valid["data"].clone()));
+        assert!(accept_command_result(&valid, &mut slot).is_err());
+        assert!(accept_command_result(&valid, &mut None).is_err());
+        for (key, value) in [("requestId",serde_json::json!("input-5")), ("seq",serde_json::json!(5)),
+            ("schemaVersion",serde_json::json!(2)), ("accepted",serde_json::json!(1)),
+            ("extra",serde_json::json!(true)), ("error",serde_json::json!("unexpected")),
+            ("data",serde_json::json!([1,2,3])),
+            ("data",serde_json::json!({"bytes":"x".repeat(32768)}))] {
+            let mut bad = valid.clone(); bad[key] = value;
+            assert!(accept_command_result(&bad, &mut pending()).is_err(), "invalid field {key}");
+        }
+        let rejected = serde_json::json!({"schemaVersion":1,"type":"result","requestId":"input-4",
+            "seq":4,"accepted":false,"error":"bounded private diagnostic"});
+        let mut slot = pending();
+        accept_command_result(&rejected, &mut slot).unwrap();
+        assert!(!slot.unwrap().result.unwrap().accepted);
+    }
+
+    #[test]
+    fn fresh_snapshot_waits_for_exact_reply_and_preserves_fragmented_data() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST,0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let (sent, observed) = std::sync::mpsc::channel();
+        let (release, held) = std::sync::mpsc::channel();
+        let server = thread::spawn(move || {
+            let (mut stream,_) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            writeln!(stream,"{}",frame(0)).unwrap();
+            let command = read_command(&mut stream);
+            writeln!(stream,"{}",frame(1)).unwrap();
+            sent.send(()).unwrap(); held.recv_timeout(Duration::from_secs(2)).unwrap();
+            let wire = format!("{}\n",serde_json::json!({"schemaVersion":1,"type":"result",
+                "requestId":command["requestId"],"seq":0,"accepted":true,
+                "data":{"generation":7,"bytes":[0,4,255]}}));
+            for chunk in wire.as_bytes().chunks(3) { stream.write_all(chunk).unwrap(); }
+            thread::sleep(Duration::from_millis(100));
+        });
+        let feed = Arc::new(BrickStateFeed::connect(endpoint).unwrap());
+        feed.wait_ready(Duration::from_secs(2)).unwrap();
+        let owned = Arc::clone(&feed);
+        let (finished, completion) = std::sync::mpsc::channel();
+        let command = thread::spawn(move || finished.send(owned.command_with_result("state.sample",serde_json::json!({}))).unwrap());
+        observed.recv_timeout(Duration::from_secs(2)).unwrap();
+        assert!(matches!(completion.recv_timeout(Duration::from_millis(30)),Err(std::sync::mpsc::RecvTimeoutError::Timeout)),
+            "a snapshot alone completed the command");
+        release.send(()).unwrap();
+        let (snapshot,data) = completion.recv_timeout(Duration::from_secs(2)).unwrap().unwrap();
+        assert_eq!(snapshot.seq,1);
+        assert_eq!(data,Some(serde_json::json!({"generation":7,"bytes":[0,4,255]})));
+        command.join().unwrap(); server.join().unwrap();
+    }
+
+    #[test]
+    fn rejected_reply_cannot_succeed_via_a_fresh_snapshot_or_expose_backend_error() {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST,0)).unwrap();
+        let endpoint = listener.local_addr().unwrap();
+        let server = thread::spawn(move || {
+            let (mut stream,_) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+            writeln!(stream,"{}",frame(0)).unwrap();
+            let command = read_command(&mut stream);
+            writeln!(stream,"{}",frame(1)).unwrap();
+            thread::sleep(Duration::from_millis(30));
+            writeln!(stream,"{}",serde_json::json!({"schemaVersion":1,"type":"result",
+                "requestId":command["requestId"],"seq":0,"accepted":false,
+                "error":"private backend diagnostic /private/synthetic-file"})).unwrap();
+            thread::sleep(Duration::from_millis(100));
+        });
+        let feed = BrickStateFeed::connect(endpoint).unwrap();
+        feed.wait_ready(Duration::from_secs(2)).unwrap();
+        assert_eq!(feed.sample().unwrap_err(),"brick-state command rejected");
+        assert!(feed.latest().is_err());
+        assert!(feed.sample().is_err());
+        server.join().unwrap();
+    }
 
     fn frame(seq: u64) -> String {
         format!(
