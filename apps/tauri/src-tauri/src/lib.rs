@@ -24,6 +24,11 @@ mod renode_rsp;
 mod renode_supervisor;
 #[cfg(desktop)]
 mod spike_flash_store;
+// Staged UART byte transport: type-check now, register after image admission
+// and modeled UART pacing are qualified. No command or listener is started here.
+#[cfg(desktop)]
+#[allow(dead_code)]
+mod spike_micropython_uart;
 // Compiled on every target so the staged relay stays warning-clean. It has no
 // command registration or runtime consumer until the authenticated adapter lands.
 #[allow(dead_code)]
