@@ -567,7 +567,7 @@ start never closes someone else's pre-existing debugger. The desktop process
 supervisor still imposes its existing 120-second session limit. The guest's
 synthetic motion is bounded to one simulated hour. The model/guest units are
 not physically calibrated, the demo is not full NuttX/SPIKE API compatibility,
-and full NuttX driver-to-arena integration remains separate work.
+and Full NuttX uses the separate optional own firmware backend.
 
 Build the source-only guest, then use `renode-spike-prime`'s
 `tools/stage_spike_arena_demo.py` to produce a new immutable local package.
@@ -584,3 +584,42 @@ This proof uses a test broker transport to drive the actual managed guest;
 it does not substitute for the Tauri webview ACL/broker boundary tests.
 New adapters, validators and proof tools use BSD-3-Clause. Retained native
 supervisor, GDB transport and Renode components retain their original licences.
+
+## Own NuttX six-motor profile
+
+In the desktop sandbox, Full NuttX offers Default devices or Six motors A–F
+before starting a session. Six motors requires a package whose trusted firmware
+source policy `policy/simulation-firmware-inputs.json` declares
+`capabilities.motorPorts: 6`. The native launcher verifies
+the pinned package and attaches the six motors before loading either ELF or
+booting. Packages without that declaration keep the default topology; they
+cannot launch the six-motor profile. The first live snapshot must confirm all
+six attachments before a program upload.
+
+Six-motor execution supports the bounded Scratch compiler and Python from the Code tab. The own module
+`brickwright` exposes `motor(port, speed)` with numeric ports 0–5 for A–F, for
+example `import brickwright as b; b.motor(5, 200)`. A program must keep running to
+maintain that command; completion and Stop idle the motors. Scratch motor speed, start, brake, and timed commands accept distinct literal
+A–F ports. Multiport commands execute as successive firmware instructions,
+without synchronized starts. Relative degrees/rotations moves accept one motor
+only; arbitrary drivebase pairs, absolute positioning, coast, and hold remain
+unsupported. The rover movement commands still use A/B. The existing sandbox uses A/B as the
+rover's wheels; C–F are additional motors observed through the same shared hub.
+This profile has no arena sensors and does not run sensor-based lessons. It
+observes simulated device models; it makes no physical hardware or radio
+qualification claim.
+
+Device and value controls in the existing virtual-hub panel become read-only
+while firmware owns the hub. The topology selector stays locked for the live
+session; close it before selecting different devices. Native Reset retains the
+selected topology and boots with an empty program without automatic execution.
+The startup, packet, Python source/stack, and process lifetime limits remain
+unchanged. Save/Load still retain a slot only within the live emulator session.
+
+The native position qualification uses one relative 30° move at 333 degrees per
+second, with ±3° final error and completion within two firmware program-clock
+seconds. The accepted relative target range remains ±36000°; this does not
+promise that every target completes within two seconds. Wall time depends on
+simulator pacing; completion bounds use the firmware program clock rather than
+a short wall-clock wait. Qualification uses separate fresh processes for continuous/timed commands and
+position movement, with the production process lifetime unchanged.

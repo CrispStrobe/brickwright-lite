@@ -71,6 +71,35 @@ impl SessionControl {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum SpikeTopology { Default, SixMotors }
+impl SpikeTopology {
+    pub(crate) fn parse(value: Option<&str>) -> Result<Self, String> {
+        match value { None | Some("default") => Ok(Self::Default), Some("six-motors") => Ok(Self::SixMotors),
+            _ => Err("unknown SPIKE topology".into()) }
+    }
+}
+fn topology_commands(config: &serde_json::Value, topology: SpikeTopology) -> Result<Vec<String>, String> {
+    if config.get("motorPorts").is_some() && config["motorPorts"].as_u64() != Some(6) {
+        return Err("invalid packaged motor-port declaration".into());
+    }
+    if topology == SpikeTopology::Default { return Ok(Vec::new()); }
+    if config["identity"]["firmware"] != "brickwright-nuttx" || config["motorPorts"].as_u64() != Some(6) {
+        return Err("six-motor topology is not supported by this own firmware package".into());
+    }
+    Ok(['A', 'B', 'C', 'D', 'E', 'F'].into_iter().map(|port| format!("port{port} Attach \"motor\"")).collect())
+}
+
+fn insert_topology_commands(arguments: &mut Vec<String>, firmware: &Path, config: &serde_json::Value,
+    topology: SpikeTopology) -> Result<(), String> {
+    let attachments = topology_commands(config, topology)?;
+    let user_load = format!("sysbus LoadELF {}", monitor_path(firmware)?);
+    let index = arguments.iter().position(|arg| arg == &user_load)
+        .ok_or("SPIKE firmware load sequence unavailable")? - 1;
+    for command in attachments.into_iter().rev() { arguments.splice(index..index, ["-e".to_owned(), command]); }
+    Ok(())
+}
+
 pub(crate) struct RenodeSupervisor {
     session: Mutex<Option<SessionControl>>,
 }
@@ -116,6 +145,13 @@ impl RenodeSupervisor {
     }
 
     pub(crate) fn start_spike_backend(&self, backend: Option<&str>) -> Result<RenodeEndpoint, String> {
+        self.start_spike_profile(backend, SpikeTopology::Default)
+    }
+
+    pub(crate) fn start_spike_profile(&self, backend: Option<&str>, topology: SpikeTopology) -> Result<RenodeEndpoint, String> {
+        if topology == SpikeTopology::SixMotors && backend != Some("nuttx") {
+            return Err("six-motor topology requires own NuttX firmware".into());
+        }
         if backend.is_some_and(|name| !matches!(name, "guest" | "nuttx")) {
             return Err("unknown SPIKE execution backend".into());
         }
@@ -173,6 +209,9 @@ impl RenodeSupervisor {
         if backend.is_some_and(|name| config["identity"]["firmware"].as_str() != Some(if name == "nuttx" {"brickwright-nuttx"} else {"brickwright-arena-demo"})) {
             return Err("requested SPIKE backend is not packaged in this desktop build".into());
         }
+        if topology == SpikeTopology::SixMotors && (config["identity"]["firmware"] != "brickwright-nuttx" || config.get("programMailbox").is_none()) {
+            return Err("six-motor topology requires own full NuttX firmware".into());
+        }
         if config["identity"]["firmware"] == "brickwright-arena-demo" {
             let manifest = pinned_file(
                 "arena package manifest",
@@ -222,6 +261,7 @@ impl RenodeSupervisor {
             if sp % 8 != 0 || !(0x20000008..=0x20020000).contains(&sp) || pc & 1 != 1 || !(0x08008000..0x08060000).contains(&pc) {
                 return Err("full firmware reset vector outside protected kernel".into());
             }
+            insert_topology_commands(&mut arguments, &firmware, &config, topology)?;
             let commands = [format!("sysbus LoadELF {}", monitor_path(&root.join("nuttx-kernel.elf"))?),
                 "cpu VectorTableOffset 0x08008000".to_owned(), format!("cpu SP {sp}"), format!("cpu PC {pc}"),
                 "emulation RunFor \"1.0\"".to_owned()];
@@ -543,7 +583,7 @@ fn verify_arena_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "tools/spike_arena_mailbox.py",
     ];
     verify_support_manifest(root, manifest, REQUIRED,
-        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py"])
+        &["licenses/renode-MIT.txt", "licenses/arena-BSD-3-Clause.txt", "tools/spike_nuttx_mailbox.py"], 32)
 }
 fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
     verify_support_manifest(root, manifest, &[
@@ -556,9 +596,12 @@ fn verify_nuttx_manifest(root: &Path, manifest: &Path) -> Result<(), String> {
         "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt",
         "licenses/firmware-LICENSE", "licenses/NuttX-Apache-2.0.txt", "licenses/NuttX-NOTICE.txt",
         "licenses/NuttX-apps-Apache-2.0.txt", "licenses/littlefs-BSD-3-Clause.txt", "licenses/Zephyr-Apache-2.0.txt",
-        "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt"])
+        "licenses/firmware-source-NOTICES.txt", "licenses/MicroPython-MIT.txt", "licenses/hubprogram-BSD-3-Clause.txt",
+        "licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt", "licenses/NuttX-Apps-NOTICE.txt",
+        "licenses/firmware-Brickwright-BSD-3-Clause.txt", "licenses/NuttX-Tickless-BSD-3-Clause.txt",
+        "licenses/Simulation-Firmware-NOTICES.txt", "initial-flash.bin"], 33)
 }
-fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str]) -> Result<(), String> {
+fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allowed: &[&str], max_files: usize) -> Result<(), String> {
     if !manifest.starts_with(root) {
         return Err("arena manifest escaped its package".into());
     }
@@ -572,8 +615,32 @@ fn verify_support_manifest(root: &Path, manifest: &Path, required: &[&str], allo
     let map: serde_json::Value =
         serde_json::from_slice(&bytes).map_err(|_| "arena manifest malformed".to_owned())?;
     let map = map.as_object().ok_or("arena manifest malformed")?;
-    if map.len() > 32 || !required.iter().all(|name| map.contains_key(*name)) {
+    if map.len() > max_files || !required.iter().all(|name| map.contains_key(*name)) {
         return Err("arena manifest is incomplete".into());
+    }
+    let backport_notices = ["licenses/Apache-2.0.txt", "licenses/firmware-NuttX-NOTICE.txt",
+        "licenses/NuttX-Apps-NOTICE.txt", "licenses/firmware-Brickwright-BSD-3-Clause.txt",
+        "licenses/NuttX-Tickless-BSD-3-Clause.txt"];
+    if backport_notices.iter().any(|name| map.contains_key(*name))
+        && (!backport_notices.iter().all(|name| map.contains_key(*name))
+            || !map.contains_key("licenses/Simulation-Firmware-NOTICES.txt")) {
+        return Err("firmware backport notices are incomplete".into());
+    }
+    if allowed.contains(&"initial-flash.bin") {
+        let mut scenario = Vec::new();
+        File::open(root.join("nuttx.resc"))
+            .and_then(|file| file.take(65537).read_to_end(&mut scenario))
+            .map_err(|_| "full firmware scenario unavailable".to_owned())?;
+        if scenario.len() > 65536 { return Err("full firmware scenario exceeds bounds".into()); }
+        let requires_seed = scenario.windows(b"initial-flash.bin".len()).any(|part| part == b"initial-flash.bin");
+        let has_seed = map.contains_key("initial-flash.bin");
+        if requires_seed != has_seed || (backport_notices.iter().any(|name| map.contains_key(*name)) && !has_seed) {
+            return Err("full firmware initial flash seed is incomplete".into());
+        }
+        if has_seed && std::fs::metadata(root.join("initial-flash.bin"))
+            .map_err(|_| "initial flash seed unavailable".to_owned())?.len() != 8192 {
+            return Err("initial flash seed exceeds exact geometry".into());
+        }
     }
     for (name, digest) in map {
         if !required.contains(&name.as_str()) && !allowed.contains(&name.as_str())
@@ -713,6 +780,36 @@ fn drain_bounded(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn six_motor_launch_is_gated_and_precedes_both_firmware_loads() {
+        let old = serde_json::json!({"identity":{"firmware":"brickwright-nuttx"}});
+        assert!(topology_commands(&old, SpikeTopology::Default).unwrap().is_empty());
+        assert!(topology_commands(&old, SpikeTopology::SixMotors).is_err());
+        for value in [serde_json::json!(true),serde_json::json!("6"),serde_json::json!(5)] {
+            let config = serde_json::json!({"identity":{"firmware":"brickwright-nuttx"},"motorPorts":value});
+            assert!(topology_commands(&config, SpikeTopology::SixMotors).is_err());
+        }
+        let config = serde_json::json!({"identity":{"firmware":"brickwright-nuttx"},"motorPorts":6});
+        let user = Path::new("/trusted/nuttx-user.elf");
+        let mut args = spike_arguments(Path::new("/trusted/nuttx.resc"),user,
+            Path::new("/trusted/scripts/state.py"),Path::new("/trusted/state-config.json")).unwrap();
+        args.extend(["-e".to_owned(),"sysbus LoadELF /trusted/nuttx-kernel.elf".to_owned()]);
+        insert_topology_commands(&mut args,user,&config,SpikeTopology::SixMotors).unwrap();
+        let first_load = args.iter().position(|arg| arg.starts_with("sysbus LoadELF")).unwrap();
+        for port in ['A','B','C','D','E','F'] {
+            assert!(args.iter().position(|arg| arg == &format!("port{port} Attach \"motor\"")).unwrap() < first_load);
+        }
+        let demo = serde_json::json!({"identity":{"firmware":"brickwright-arena-demo"},"motorPorts":6});
+        assert!(topology_commands(&demo,SpikeTopology::SixMotors).is_err());
+        assert_eq!(SpikeTopology::parse(None).unwrap(),SpikeTopology::Default);
+        assert_eq!(SpikeTopology::parse(Some("six-motors")).unwrap(),SpikeTopology::SixMotors);
+        assert!(SpikeTopology::parse(Some("six-motors;quit")).is_err());
+        let supervisor = RenodeSupervisor::new();
+        assert!(supervisor.start_spike_profile(Some("guest"),SpikeTopology::SixMotors).is_err());
+        assert!(supervisor.start_spike_profile(None,SpikeTopology::SixMotors).is_err());
+        assert!(supervisor.session.lock().unwrap().is_none(), "unsupported profiles must fail before process creation");
+    }
 
     #[test]
     fn tokens_are_secret_sized_and_unique() {
@@ -861,6 +958,46 @@ mod tests {
             .iter()
             .any(|value| matches!(value.as_str(), "sh" | "bash" | "cmd" | "powershell")));
     }
+    #[test]
+    fn initial_flash_manifest_requires_exact_seed_even_with_matching_digest() {
+        let root = std::env::temp_dir().join(format!("bw-initial-flash-manifest-{}", random_token().unwrap()));
+        std::fs::create_dir(&root).unwrap();
+        #[cfg(unix)] {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let root = root.canonicalize().unwrap();
+        let manifest = root.join("manifest.json");
+        let mut names = vec!["nuttx.resc".to_owned(), "initial-flash.bin".to_owned()];
+        names.extend((0..31).map(|i| format!("bounded-component-{i}")));
+        for name in &names { std::fs::write(root.join(name), b"synthetic fixture").unwrap(); }
+        std::fs::write(root.join("nuttx.resc"), b"trusted fixed initial-flash.bin boot initialization").unwrap();
+        std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8192]).unwrap();
+        let allowed: Vec<&str> = names.iter().map(String::as_str).collect();
+        let write_manifest = || {
+            let entries: serde_json::Map<String, serde_json::Value> = names.iter().map(|name|
+                (name.clone(), serde_json::Value::String(sha256(&root.join(name)).unwrap()))).collect();
+            std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
+        };
+        write_manifest();
+        assert!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).is_ok());
+        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 32).unwrap_err(), "arena manifest is incomplete");
+        std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8193]).unwrap();
+        write_manifest(); // Correct hash must not bypass the geometry guard.
+        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(), "initial flash seed exceeds exact geometry");
+        std::fs::write(root.join("initial-flash.bin"), vec![0xff; 8192]).unwrap();
+        write_manifest();
+        let mut entries: serde_json::Value = serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
+        entries.as_object_mut().unwrap().remove("initial-flash.bin");
+        std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
+        assert_eq!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).unwrap_err(), "full firmware initial flash seed is incomplete");
+        std::fs::write(root.join("nuttx.resc"), b"old seedless baseline scenario").unwrap();
+        entries["nuttx.resc"] = sha256(&root.join("nuttx.resc")).unwrap().into();
+        std::fs::write(&manifest, serde_json::to_vec(&entries).unwrap()).unwrap();
+        assert!(verify_support_manifest(&root, &manifest, &[], &allowed, 33).is_ok());
+        std::fs::remove_dir_all(&root).unwrap();
+    }
+
     #[test]
     fn arena_support_manifest_detects_changed_helpers_and_escaped_names() {
         let root =

@@ -119,3 +119,78 @@ test('sandbox item drag and resize update sensors; project load replaces the mou
         localStorage.removeItem?.('bw-spike-sandbox-v1');
     } finally {if (renderer) act(() => renderer.unmount()); browser.restore(); await cleanup();}
 });
+
+test('program storage controls gate unsupported packages and explicitly run loaded code without resetting', async () => {
+    const browser = installBrowser(), {Pane, cleanup} = await loadSimulator();let renderer;
+    try {
+        await act(async () => {renderer = create(React.createElement(Pane, {hubState:new Hub(), locale:'en'}));});
+        await act(async () => {await one(renderer, 'bw-spike-arena-sandbox').props.onClick();});
+        await settle(() => browser.win.__bwSpikeArena?.bridge, 'arena ready');
+        const pane = browser.win.__bwSpikeArena._pane;
+        await act(async () => {pane.setState({execution:'nuttx',status:'paused',programState:1});});
+        assert.equal(one(renderer,'bw-spike-program-save').props.disabled,true);
+        assert.equal(one(renderer,'bw-spike-program-load').props.disabled,true);
+        const seen = [], session = {storageSupported:true,programState:1,loaded:false,
+            storage:async operation => {seen.push(operation);if(operation==='load')session.loaded=true;return {state:1};},
+            startProgram:async()=>seen.push('start-loaded'),stopProgram:async()=>seen.push('stop-program'),
+            stop:async()=>seen.push('close')};
+        pane.firmwareSession=session;
+        await act(async()=>pane.setState({storageSupported:true}));
+        await act(async()=>one(renderer,'bw-spike-program-save').props.onClick());
+        await act(async()=>one(renderer,'bw-spike-program-load').props.onClick());
+        assert.deepEqual(seen,['save','load']);
+        assert.match(one(renderer,'bw-spike-arena-message').props.children,/Editor text is unchanged/);
+        assert.equal(one(renderer,'bw-spike-arena-start').props.children,'Run loaded program');
+        await act(async()=>one(renderer,'bw-spike-arena-start').props.onClick());
+        assert.deepEqual(seen,['save','load','start-loaded']);
+        await act(async()=>one(renderer,'bw-spike-arena-stop').props.onClick());
+        assert.deepEqual(seen,['save','load','start-loaded','stop-program']);
+        session.storage=async()=>{throw Object.assign(new Error('errno -16'),{result:-16});};
+        await act(async()=>one(renderer,'bw-spike-program-load').props.onClick());
+        assert.match(one(renderer,'bw-spike-arena-message').props.children,/storage is busy/);
+        pane.locale = 'de';
+        await act(async()=>one(renderer,'bw-spike-program-load').props.onClick());
+        assert.match(one(renderer,'bw-spike-arena-message').props.children,/Programmspeicher beschäftigt/);
+        assert.equal(one(renderer,'bw-spike-arena-start').props.children,'Geladenes Programm starten');
+        assert.match(one(renderer,'bw-spike-program-storage-hint').props.children,/Laden startet das Programm nicht/);
+        await act(async()=>pane.setState({programState:2}));
+        assert.equal(one(renderer,'bw-spike-program-save').props.disabled,true);
+        assert.equal(one(renderer,'bw-spike-program-load').props.disabled,true);
+        pane.firmwareSession=null;
+    } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}
+});
+
+test('six-motor profile is sandbox-only, localized, pre-start and compiled-program capable', async () => {
+    const browser=installBrowser(),{Pane,cleanup}=await loadSimulator();let renderer;
+    try {
+        await act(async()=>{renderer=create(React.createElement(Pane,{hubState:new Hub(),locale:'en'}));});
+        await act(async()=>{await one(renderer,'bw-spike-arena-sandbox').props.onClick();});
+        await settle(()=>browser.win.__bwSpikeArena?.bridge,'arena ready');
+        const pane=browser.win.__bwSpikeArena._pane;
+        await act(async()=>pane.setState({execution:'nuttx',status:'ready'}));
+        assert.equal(one(renderer,'bw-spike-nuttx-topology').props.disabled,false);
+        await act(async()=>one(renderer,'bw-spike-nuttx-topology').props.onChange({target:{value:'six-motors'}}));
+        assert.equal(one(renderer,'bw-spike-arena-start').props.disabled,false);
+        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch motor commands support A–F.*without synchronized starts/);
+        let uploaded;
+        pane.firmwareSession={topology:'six-motors',storageSupported:true,stop:async()=>{},uploadProgram:async p=>{uploaded=p;}};
+        const compiled={version:1,instructions:[[1,5,200,0],[0,0,0,0]]};
+        await act(async()=>pane.startFirmware(compiled));
+        assert.equal(uploaded,compiled);
+        await assert.rejects(pane.startFirmware({version:1,instructions:[[3,1,200,0],[0,0,0,0]]}),/ABI bounds/);
+        uploaded=null;
+        await act(async()=>pane.loadReferenceSolution());
+        assert.match(pane.state.message,/Lesson templates require the default devices/);
+        pane.firmwareSession={topology:'six-motors',loaded:true,programState:1,storageSupported:true,stop:async()=>{}};
+        await act(async()=>pane.setState({programState:1,status:'paused'}));
+        assert.equal(one(renderer,'bw-spike-nuttx-topology').props.disabled,true);
+        assert.equal(one(renderer,'bw-spike-arena-start').props.disabled,false);
+        assert.equal(one(renderer,'bw-spike-arena-start').props.children,'Run loaded program');
+        pane.firmwareSession=null;pane.locale='de';
+        await act(async()=>pane.setState({sandbox:null}));
+        const selector=one(renderer,'bw-spike-nuttx-topology');
+        assert.equal(selector.props['aria-label'],'NuttX-Geräte');
+        assert.equal(selector.findAllByType('option').find(o=>o.props.value==='six-motors').props.disabled,true);
+        assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch-Motorbefehle unterstützen A–F/);
+    } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}
+});

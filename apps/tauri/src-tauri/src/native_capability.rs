@@ -49,10 +49,15 @@ fn execute(
             "linux"
         }
         .to_owned()),
-        Operation::RenodeSpikeStart => match args["backend"].as_str() {
-            Some(backend) => debugger.start_spike_backend(supervisor, Some(backend)),
-            None => debugger.start(supervisor),
-        }.map(str::to_owned),
+        Operation::RenodeSpikeStart => {
+            use crate::renode_supervisor::SpikeTopology;
+            let topology = SpikeTopology::parse(args["topology"].as_str())?;
+            match (topology, args["backend"].as_str()) {
+                (SpikeTopology::Default, None) => debugger.start(supervisor),
+                (SpikeTopology::Default, backend) => debugger.start_spike_backend(supervisor, backend),
+                (SpikeTopology::SixMotors, backend) => debugger.start_spike_profile(supervisor, backend, topology),
+            }.map(str::to_owned)
+        }
         Operation::RenodeSpikeClose => {
             spike()?;
             debugger.close(supervisor).map(str::to_owned)
@@ -85,6 +90,10 @@ fn execute(
                 usize::try_from(args["length"].as_u64().expect("validated length"))
                     .expect("bounded length"),
             )
+        }
+        Operation::RenodeSpikeProgramStorageSubmit => {
+            spike()?;
+            debugger.spike_program_storage_submit(args.clone()).map(|value| value.to_string())
         }
         Operation::RenodeSpikeProgramPacket => {
             spike()?;

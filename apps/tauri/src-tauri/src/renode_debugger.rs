@@ -5,7 +5,7 @@
 
 use crate::renode_brick_state::BrickStateFeed;
 use crate::renode_rsp::{Arm32Architecture, RenodeRsp, RenodeRspInterrupt};
-use crate::renode_supervisor::{RenodeSupervisor, TeardownReason};
+use crate::renode_supervisor::{RenodeSupervisor, SpikeTopology, TeardownReason};
 use serde_json::{json, Value};
 use std::io::Read;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -32,6 +32,7 @@ struct Session {
     running: Arc<AtomicBool>,
     target: RenodeTarget,
     backend: Option<String>,
+    topology: SpikeTopology,
     state: TargetState,
 }
 
@@ -74,7 +75,7 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn start(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::SpikePrime, None)
+        self.start_target(supervisor, RenodeTarget::SpikePrime, None, SpikeTopology::Default)
     }
 
     pub(crate) fn start_spike_backend(
@@ -82,11 +83,16 @@ impl RenodeDebugger {
         supervisor: &RenodeSupervisor,
         backend: Option<&str>,
     ) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::SpikePrime, backend)
+        self.start_spike_profile(supervisor, backend, SpikeTopology::Default)
+    }
+
+    pub(crate) fn start_spike_profile(&self, supervisor: &RenodeSupervisor, backend: Option<&str>,
+        topology: SpikeTopology) -> Result<&'static str, String> {
+        self.start_target(supervisor, RenodeTarget::SpikePrime, backend, topology)
     }
 
     pub(crate) fn start_ev3(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        self.start_target(supervisor, RenodeTarget::Ev3, None)
+        self.start_target(supervisor, RenodeTarget::Ev3, None, SpikeTopology::Default)
     }
 
     fn start_target(
@@ -94,6 +100,7 @@ impl RenodeDebugger {
         supervisor: &RenodeSupervisor,
         target: RenodeTarget,
         backend: Option<&str>,
+        topology: SpikeTopology,
     ) -> Result<&'static str, String> {
         let mut session = self
             .session
@@ -103,7 +110,7 @@ impl RenodeDebugger {
             return Err("Renode debugger already started".into());
         }
         let endpoint = match target {
-            RenodeTarget::SpikePrime => supervisor.start_spike_backend(backend)?,
+            RenodeTarget::SpikePrime => supervisor.start_spike_profile(backend, topology)?,
             RenodeTarget::Ev3 => supervisor.start_ev3()?,
         };
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
@@ -195,6 +202,7 @@ impl RenodeDebugger {
             running: Arc::new(AtomicBool::new(false)),
             target,
             backend: backend.map(str::to_owned),
+            topology,
             state,
         });
         Ok("ready")
@@ -228,14 +236,14 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn reset(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        let (target, backend) = {
+        let (target, backend, topology) = {
             let mut session = self
                 .session
                 .lock()
                 .map_err(|_| "Renode debugger unavailable".to_owned())?;
             let target = session
                 .as_ref()
-                .map(|active| (active.target, active.backend.clone()));
+                .map(|active| (active.target, active.backend.clone(), active.topology));
             if let Some(active) = session.as_mut() {
                 if active.running.load(Ordering::Acquire) {
                     let _ = active.interrupt.request();
@@ -245,7 +253,7 @@ impl RenodeDebugger {
             target.ok_or_else(|| "Renode debugger is not started".to_owned())?
         };
         supervisor.teardown(TeardownReason::Reset);
-        self.start_target(supervisor, target, backend.as_deref())?;
+        self.start_target(supervisor, target, backend.as_deref(), topology)?;
         Ok("reset")
     }
 
@@ -421,6 +429,23 @@ impl RenodeDebugger {
         }
     }
 
+    pub(crate) fn spike_program_storage_submit(&self, arguments: Value) -> Result<Value, String> {
+        let session = self
+            .session
+            .lock()
+            .map_err(|_| "Renode debugger unavailable".to_owned())?;
+        let active = session
+            .as_ref()
+            .ok_or_else(|| "Renode debugger is not started".to_owned())?;
+        match &active.state {
+            TargetState::Spike(feed) => {
+                serde_json::to_value(feed.command("nuttx.program.storage.submit", arguments)?)
+                    .map_err(|_| "SPIKE snapshot unavailable".to_owned())
+            }
+            _ => Err("SPIKE program packet target mismatch".into()),
+        }
+    }
+
     pub(crate) fn spike_arena_program(&self, arguments: Value) -> Result<Value, String> {
         let session = self
             .session
@@ -479,6 +504,19 @@ impl RenodeDebugger {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Own ABI proof: correlate the complete reply and retain signed errno.
+    fn assert_program_reply(snapshot: &Value, request: &Value, expected_result: i32) -> (u8, u16) {
+        let bytes: Vec<u8> = snapshot["lifecycle"]["nuttxProgramReply"]
+            .as_array().unwrap().iter().map(|v| u8::try_from(v.as_u64().unwrap()).unwrap()).collect();
+        let packet: Vec<u8> = request.as_array().unwrap().iter()
+            .map(|v| u8::try_from(v.as_u64().unwrap()).unwrap()).collect();
+        assert_eq!(bytes.len(), 20);
+        assert_eq!(&bytes[..3], &[0x71, 1, packet[2]]);
+        assert_eq!(&bytes[4..8], &packet[4..8]);
+        assert_eq!(i32::from_le_bytes(bytes[8..12].try_into().unwrap()), expected_result);
+        (bytes[3], u16::from_le_bytes(bytes[14..16].try_into().unwrap()))
+    }
 
     #[test]
     fn close_is_idempotent_and_does_not_manufacture_a_session() {
@@ -592,6 +630,345 @@ mod tests {
         }
         debugger.spike_arena_inputs(serde_json::json!({"sensors":[{"port":"E","kind":"force","values":{"forcePercent":70,"pressed":true}}],"loads":[]})).unwrap();
         debugger.close(&supervisor).unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned six-motor NuttX package and private caller fixture"]
+    fn packaged_spike_nuttx_six_motor_profile_runs_stops_and_survives_reset() {
+        let elapsed = Instant::now();
+        let supervisor = RenodeSupervisor::new();let debugger = RenodeDebugger::new();
+        let check_profile = |snapshot: &Value| {
+            assert_eq!(snapshot["target"]["firmware"], "brickwright-nuttx");
+            assert!(snapshot["target"]["capabilities"].as_array().unwrap().iter().any(|cap| cap == "nuttx-six-motors/v1"));
+            let motors = snapshot["motors"].as_array().unwrap();assert_eq!(motors.len(),6);
+            for port in ["A","B","C","D","E","F"] {
+                assert_eq!(motors.iter().filter(|motor| motor["port"] == port).count(),1);
+                assert_eq!(snapshot["ports"].as_array().unwrap().iter().filter(|p| p["id"] == port
+                    && p["attached"] == true && p["kind"] == "motor").count(),1);
+            }
+        };
+        eprintln!("six-profile stage=boot elapsed_ms=0");
+        debugger.start_spike_profile(&supervisor,Some("nuttx"),SpikeTopology::SixMotors).unwrap();
+        let first = debugger.state().unwrap();check_profile(&first);
+        assert_eq!(first["lifecycle"]["nuttxProgram"]["state"],0);
+        let positions = |snapshot: &Value| -> Vec<f64> {
+            ["A","B","C","D","E","F"].into_iter().map(|port| snapshot["motors"].as_array().unwrap().iter()
+                .find(|m| m["port"] == port).unwrap()["position"].as_f64().unwrap()).collect()
+        };
+        let initial_positions = positions(&first);
+        let cases: Value = serde_json::from_slice(&std::fs::read(std::env::var("BW_NUTTX_CALLER_FIXTURES")
+            .expect("generate private synthetic caller fixtures first")).unwrap()).unwrap();
+        let native = cases.as_array().unwrap().iter().find(|case| case["python"] == false).unwrap();
+        let fixture = &native["sixMotorProfile"];
+        assert!(fixture["source"].as_str().unwrap().len() <= 4095);
+        debugger.run().unwrap();
+        let send = |stage: &str, request: &Value| {
+            let began = Instant::now();
+            let response = debugger.spike_program_packet(json!({"bytes":request})).unwrap_or_else(|error| {
+                panic!("six-profile stage={stage} op={} packet_ms={} elapsed_ms={} endpoint_owned={} error={error}",
+                    request[2],began.elapsed().as_millis(),elapsed.elapsed().as_millis(),debugger.has_endpoint())
+            });
+            assert_program_reply(&response,request,0);response
+        };
+        let mut response = first;
+        for packet in fixture["packets"].as_array().unwrap() {response=send("upload-python-six",packet);}
+        assert_eq!(response["lifecycle"]["nuttxProgramReply"][3],2);
+        let movement_deadline = Instant::now() + Duration::from_secs(12);
+        loop {
+            response = debugger.state().unwrap();check_profile(&response);
+            assert_eq!(response["lifecycle"]["nuttxProgram"]["state"],2,"six-motor Python unexpectedly completed or faulted");
+            let current = positions(&response);
+            if (2..6).all(|port| current[port] > initial_positions[port] + 1.0) {break;}
+            assert!(Instant::now() < movement_deadline,"C-F did not move under six-profile Python");
+            thread::sleep(Duration::from_millis(50));
+        }
+        response = send("stop-six",&fixture["stop"]);
+        assert_eq!(response["lifecycle"]["nuttxProgramReply"][3],4);
+        let stop_deadline = Instant::now() + Duration::from_secs(8);
+        loop {
+            response=debugger.state().unwrap();check_profile(&response);
+            if response["motors"].as_array().unwrap().iter().all(|m| m["speedDps"].as_f64() == Some(0.0)
+                && m["demandDirection"].as_i64() == Some(0)) {break;}
+            assert!(Instant::now() < stop_deadline,"STOP did not idle all six motors");
+            thread::sleep(Duration::from_millis(50));
+        }
+        eprintln!("six-profile stage=reset elapsed_ms={}",elapsed.elapsed().as_millis());
+        debugger.reset(&supervisor).unwrap();
+        let reset = debugger.state().unwrap();check_profile(&reset);
+        assert_eq!(reset["target"],response["target"]);
+        assert_eq!(reset["lifecycle"]["nuttxProgram"]["state"],0,"reset must not upload or autoexecute");
+        assert!(reset["motors"].as_array().unwrap().iter().all(|m| m["speedDps"].as_f64() == Some(0.0)
+            && m["demandDirection"].as_i64() == Some(0)));
+        assert!(debugger.has_endpoint());
+        debugger.close(&supervisor).unwrap();assert!(!debugger.has_endpoint());
+        eprintln!("six-profile stage=complete elapsed_ms={}",elapsed.elapsed().as_millis());
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned six-motor NuttX package and private compiled Scratch fixtures"]
+    fn packaged_spike_nuttx_compiled_six_motor_programs_move_position_and_brake() {
+        let elapsed=Instant::now();let supervisor=RenodeSupervisor::new();let debugger=RenodeDebugger::new();
+        let cases:Value=serde_json::from_slice(&std::fs::read(std::env::var("BW_NUTTX_CALLER_FIXTURES")
+            .expect("generate private synthetic caller fixtures first")).unwrap()).unwrap();
+        let native=cases.as_array().unwrap().iter().find(|case|case["python"]==false).unwrap();
+        let fixtures=&native["compiledSix"];
+        // Optional qualification receipt, supplied explicitly by a local tester.
+        // The ignored test never writes a default or bundled output location.
+        let receipt=std::env::var_os("BW_NUTTX_PRIVATE_FRAME_RECEIPT").map(|path|
+            std::cell::RefCell::new(std::fs::OpenOptions::new().write(true).create_new(true).open(path)
+                .expect("new private frame receipt")));
+        let check=|frame:&Value| {
+            assert_eq!(frame["target"]["firmware"],"brickwright-nuttx");
+            assert!(frame["target"]["capabilities"].as_array().unwrap().iter().any(|c|c=="nuttx-six-motors/v1"));
+            assert_eq!(frame["motors"].as_array().unwrap().len(),6);
+            for port in ["A","B","C","D","E","F"] {
+                assert_eq!(frame["motors"].as_array().unwrap().iter().filter(|m|m["port"]==port).count(),1);
+                assert_eq!(frame["ports"].as_array().unwrap().iter().filter(|p|p["id"]==port && p["attached"]==true && p["kind"]=="motor").count(),1);
+            }
+            if let Some(file)=&receipt {
+                use std::io::Write;
+                let mut file=file.borrow_mut();
+                serde_json::to_writer(&mut *file,frame).unwrap();file.write_all(b"\n").unwrap();
+            }
+        };
+        let idle=|frame:&Value|frame["motors"].as_array().unwrap().iter().all(|m|
+            m["speedDps"].as_f64()==Some(0.0) && m["demandDirection"].as_i64()==Some(0));
+        let positions=|frame:&Value|->Vec<f64> {
+            ["A","B","C","D","E","F"].into_iter().map(|port|frame["motors"].as_array().unwrap().iter()
+                .find(|m|m["port"]==port).unwrap()["position"].as_f64().unwrap()).collect()
+        };
+        let send=|stage:&str,request:&Value| {
+            let response=debugger.spike_program_packet(json!({"bytes":request})).unwrap_or_else(|error|
+                panic!("compiled-six stage={stage} op={} elapsed_ms={} endpoint_owned={} error={error}",
+                    request[2],elapsed.elapsed().as_millis(),debugger.has_endpoint()));
+            assert_program_reply(&response,request,0);check(&response);response
+        };
+        let wait=|stage:&str,state:u64,process_started:Instant,position_clock:Option<u64>| {
+            let deadline=process_started+Duration::from_secs(110);
+            let mut last_position_clock=position_clock;
+            loop {
+                let frame=debugger.state().unwrap();check(&frame);
+                let actual=frame["lifecycle"]["nuttxProgram"]["state"].as_u64().unwrap();
+                assert_ne!(actual,5,"compiled-six stage={stage} faulted: {}",frame["lifecycle"]["nuttxProgram"]);
+                if let Some(start_clock)=position_clock {
+                    let clock=frame["lifecycle"]["nuttxProgram"]["clockMs"].as_u64().expect("integer firmware program clock");
+                    assert!(clock<=u64::from(u32::MAX),"firmware program clock exceeds uint32");
+                    assert!(clock>=last_position_clock.unwrap(),"firmware program clock must not regress");
+                    last_position_clock=Some(clock);
+                    let delta=clock.checked_sub(start_clock).expect("firmware program clock must not regress");
+                    assert!(delta<=2000,"relative F position exceeded two simulated seconds: delta_ms={delta} program={} motors={}",
+                        frame["lifecycle"]["nuttxProgram"],frame["motors"]);
+                }
+                if actual==state && idle(&frame) {break frame;}
+                assert!(Instant::now()<deadline,
+                    "compiled-six stage={stage} completion/idle timed out elapsed_ms={} clock_ns={} program={} motors={}",
+                    elapsed.elapsed().as_millis(),frame["clockNs"],frame["lifecycle"]["nuttxProgram"],frame["motors"]);
+                thread::sleep(Duration::from_millis(50));
+            }
+        };
+        // Wall-time pacing does not bound firmware-clock completion. Qualify the
+        // prior 30-degree contract in its own fresh process;
+        // retain production 120-second lifetime and enforce a 110-second test budget.
+        for group in [vec!["continuous","timed"],vec!["position"]] {
+            let process_started=Instant::now();
+            assert!(elapsed.elapsed()<Duration::from_secs(300));
+            debugger.start_spike_profile(&supervisor,Some("nuttx"),SpikeTopology::SixMotors).unwrap();
+            let first=debugger.state().unwrap();check(&first);assert!(idle(&first));
+            assert_eq!(first["lifecycle"]["nuttxProgram"]["state"],0);
+            debugger.run().unwrap();
+            for name in group {
+                let fixture=&fixtures[name];assert!(fixture["source"].as_str().unwrap().contains("WHEN flag clicked"));
+                assert!(fixture["program"]["instructions"].as_array().unwrap().len()<=256);
+                let before=positions(&debugger.state().unwrap());
+                let mut ready=Value::Null;
+                for packet in fixture["upload"].as_array().unwrap() {ready=send("upload-compiled-six",packet);}
+                assert_eq!(ready["lifecycle"]["nuttxProgramReply"][3],1,"COMMIT must leave READY without execution");
+                let paused=debugger.state().unwrap();assert!(idle(&paused));
+                assert!(positions(&paused).iter().zip(&before).all(|(a,b)|(a-b).abs()<=0.1),"upload must not move motors");
+                eprintln!("compiled-six stage={name} before_positions_deg={before:?} elapsed_ms={}",elapsed.elapsed().as_millis());
+                let started=send("start-compiled-six",&fixture["start"]);
+                eprintln!("compiled-six stage={name}-START clock_ns={} program={} motors={}",
+                    started["clockNs"],started["lifecycle"]["nuttxProgram"],started["motors"]);
+                if name=="continuous" {
+                    let deadline=Instant::now()+Duration::from_secs(12);
+                    loop {
+                        let frame=debugger.state().unwrap();check(&frame);
+                        assert_eq!(frame["lifecycle"]["nuttxProgram"]["state"],2);
+                        if positions(&frame).iter().enumerate().all(|(p,v)|*v>before[p]+1.0) {break;}
+                        assert!(Instant::now()<deadline,"compiled C-F motors did not move");thread::sleep(Duration::from_millis(50));
+                    }
+                    send("stop-compiled-six",&fixture["stop"]);
+                    let stopped=wait("STOP-all-six",4,process_started,None);
+                    eprintln!("compiled-six stage=STOP-all-six after_positions_deg={:?} all_idle={} elapsed_ms={}",
+                        positions(&stopped),idle(&stopped),elapsed.elapsed().as_millis());
+                } else {
+                    let position_clock=if name=="position" {
+                        Some(started["lifecycle"]["nuttxProgram"]["clockMs"].as_u64().expect("integer firmware program clock"))
+                    } else {None};
+                    let completed=wait("END-all-owned",3,process_started,position_clock);let after=positions(&completed);
+                    eprintln!("compiled-six stage={name}-END after_positions_deg={after:?} all_idle={} elapsed_ms={}",
+                        idle(&completed),elapsed.elapsed().as_millis());
+                    if name=="position" {
+                        eprintln!("compiled-six stage=relative-F target_delta_deg=30 actual_delta_deg={} error_deg={} tolerance_deg=3 within_tolerance={}",
+                            after[5]-before[5],after[5]-before[5]-30.0,(after[5]-before[5]-30.0).abs()<=3.0);
+                        assert!((after[5]-before[5]-30.0).abs()<=3.0,"relative F target exceeds ±3 degrees");
+                        assert!((0..5).all(|p|(after[p]-before[p]).abs()<=3.0),"single-position move changed other ports");
+                    } else {assert!((2..6).all(|p|after[p]>before[p]+1.0),"timed native C-F did not move");}
+                }
+            }
+            debugger.close(&supervisor).unwrap();assert!(!debugger.has_endpoint());
+            assert!(process_started.elapsed()<Duration::from_secs(110));
+        }
+        eprintln!("compiled-six stage=complete elapsed_ms={}",elapsed.elapsed().as_millis());
+    }
+
+    #[test]
+    #[ignore = "requires the build-pinned storage-capable NuttX package and private native caller fixture"]
+    fn packaged_spike_nuttx_program_storage_retains_session_without_autorun() {
+        // One fresh firmware boot keeps storage diagnosis independent of the paired
+        // guest/Python proof and within the existing supervisor session bound.
+        let elapsed = Instant::now();
+        let supervisor = RenodeSupervisor::new();
+        let debugger = RenodeDebugger::new();
+        eprintln!("storage stage=boot-full-nuttx elapsed_ms=0");
+        debugger.start_spike_backend(&supervisor, Some("nuttx")).unwrap_or_else(|error| {
+            panic!("storage stage=boot-full-nuttx elapsed_ms={} error={error}", elapsed.elapsed().as_millis())
+        });
+        eprintln!("storage stage=read-first-snapshot elapsed_ms={}", elapsed.elapsed().as_millis());
+        let first = debugger.state().unwrap_or_else(|error| {
+            panic!("storage stage=read-first-snapshot elapsed_ms={} error={error}", elapsed.elapsed().as_millis())
+        });
+        assert_eq!(first["target"]["firmware"], "brickwright-nuttx");
+        for port in ["A", "B", "C", "D", "E", "F"] {
+            assert!(first["ports"].as_array().unwrap().iter().any(|entry| entry["id"] == port),
+                "packaged shared state omitted port {port}");
+        }
+        eprintln!("storage stage=run-emulator elapsed_ms={}", elapsed.elapsed().as_millis());
+        debugger.run().unwrap_or_else(|error| {
+            panic!("storage stage=run-emulator elapsed_ms={} error={error}", elapsed.elapsed().as_millis())
+        });
+        let cases: Value = serde_json::from_slice(&std::fs::read(
+            std::env::var("BW_NUTTX_CALLER_FIXTURES").expect("generate private synthetic caller fixtures first")
+        ).unwrap()).unwrap();
+        let mut response;
+        assert!(first["target"]["capabilities"].as_array().unwrap().iter()
+            .any(|cap| cap == "nuttx-program-storage/v1"), "stage a storage-capable own firmware package");
+        let native = cases.as_array().unwrap().iter().find(|case| case["python"] == false).unwrap();
+        let storage = &native["storage"];
+        let last_storage_sequence = std::cell::Cell::new(
+            first["lifecycle"]["nuttxProgramStorage"]["requestSeq"].as_u64());
+        let send = |stage: &str, request: &Value| {
+            let packet = request.as_array().unwrap();
+            let op = packet[2].as_u64().unwrap();
+            let id = u32::from_le_bytes(std::array::from_fn(|i| packet[4+i].as_u64().unwrap() as u8));
+            let began = Instant::now();
+            eprintln!("storage stage={stage} op={op} id={id} elapsed_ms={}", elapsed.elapsed().as_millis());
+            let mut response = if matches!(op, 8 | 9) {
+                assert!(first["target"]["capabilities"].as_array().unwrap().iter()
+                    .any(|cap| cap == "nuttx-program-storage-deferred/v1"), "stage the deferred-storage server package");
+                debugger.spike_program_storage_submit(json!({"bytes": request}))
+            } else {
+                debugger.spike_program_packet(json!({"bytes": request}))
+            }.unwrap_or_else(|error| {
+                panic!("storage stage={stage} op={op} id={id} elapsed_ms={} packet_ms={} endpoint_owned={} error={error}",
+                    elapsed.elapsed().as_millis(), began.elapsed().as_millis(), debugger.has_endpoint())
+            });
+            if matches!(op, 8 | 9) {
+                let submitted = response["lifecycle"]["nuttxProgramStorage"]["requestSeq"].as_u64().unwrap();
+                assert_ne!(Some(submitted), last_storage_sequence.get(),
+                    "storage stage={stage} reused a previous storage request sequence");
+                loop {
+                    assert!(began.elapsed() < Duration::from_secs(30), "storage stage={stage} completion timed out");
+                    assert!(debugger.has_endpoint(), "storage endpoint lost at {stage}");
+                    assert_eq!(response["target"], first["target"], "storage target changed at {stage}");
+                    for key in ["generation", "connectionGeneration"] {
+                        assert_eq!(response["lifecycle"][key], first["lifecycle"][key], "storage generation changed at {stage}");
+                    }
+                    let metadata = &response["lifecycle"]["nuttxProgramStorage"];
+                    assert_eq!(metadata["requestSeq"].as_u64(), Some(submitted));
+                    assert_eq!(metadata["operation"].as_u64(), Some(op));
+                    assert_eq!(metadata["programId"].as_u64(), Some(id as u64));
+                    if metadata["pending"] == false {
+                        assert_eq!(metadata["replySeq"].as_u64(), Some(submitted));
+                        last_storage_sequence.set(Some(submitted));
+                        break;
+                    }
+                    assert!(began.elapsed() < Duration::from_millis(27950), "storage stage={stage} op={op} id={id} completion timed out");
+                    thread::sleep(Duration::from_millis(50));
+                    response = debugger.state().unwrap_or_else(|error| {
+                        panic!("storage stage={stage} op={op} id={id} poll_ms={} endpoint_owned={} error={error}",
+                            began.elapsed().as_millis(), debugger.has_endpoint())
+                    });
+                }
+            }
+            let reply = response["lifecycle"]["nuttxProgramReply"].as_array().unwrap();
+            let result = i32::from_le_bytes(std::array::from_fn(|i| reply[8+i].as_u64().unwrap() as u8));
+            eprintln!("storage stage={stage} complete state={} result={result} packet_ms={} elapsed_ms={}",
+                reply[3], began.elapsed().as_millis(), elapsed.elapsed().as_millis());
+            response
+        };
+        // Upload without START, persist, then replace the resident program under the same ID.
+        for request in storage["upload"].as_array().unwrap() {
+            response = send("upload-native", request);assert_program_reply(&response, request, 0);
+        }
+        response = send("save-native", &storage["save"]);
+        assert_eq!(assert_program_reply(&response, &storage["save"], 0).0, 1);
+        let retained_identity = response["target"].clone();
+        let retained_seq = response["seq"].as_u64().unwrap();
+        for request in storage["replace"].as_array().unwrap() {
+            response = send("replace-resident", request);assert_program_reply(&response, request, 0);
+        }
+        assert_eq!(assert_program_reply(&response, storage["replace"].as_array().unwrap().last().unwrap(), 0),
+            (1, u16::try_from(storage["replacementCount"].as_u64().unwrap()).unwrap()));
+        assert_ne!(storage["savedCount"], storage["replacementCount"]);
+        response = send("load-saved-native", &storage["load"]);
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0),
+            (1, u16::try_from(storage["savedCount"].as_u64().unwrap()).unwrap()));
+        let motor_b_position = |snapshot: &Value| snapshot["motors"].as_array().unwrap().iter()
+            .find(|motor| motor["port"] == "B").unwrap()["position"].as_f64().unwrap();
+        let loaded_position = motor_b_position(&response);
+        thread::sleep(Duration::from_millis(100));
+        response = send("status-no-autorun", &native["status"]);
+        assert_eq!(assert_program_reply(&response, &native["status"], 0).0, 1, "LOAD must not autorun");
+        assert!((motor_b_position(&response) - loaded_position).abs() < 0.1, "LOAD moved the motor");
+        response = send("start-restored", &storage["start"]);
+        assert_eq!(assert_program_reply(&response, &storage["start"], 0).0, 2);
+        for _ in 0..50 {
+            response = send("status-restored-run", &native["status"]);
+            let state = assert_program_reply(&response, &native["status"], 0).0;
+            assert_ne!(state, 5, "restored native program faulted during status-restored-run");
+            if state == 3 { break; }
+            thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(response["lifecycle"]["nuttxProgramReply"][3], 3);
+        assert!(motor_b_position(&response) > loaded_position + 1.0, "saved motor program was not restored");
+        // START accepts READY only. Restore the saved slot before the second run.
+        response = send("reload-before-stop-run", &storage["load"]);
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0).0, 1);
+        let reloaded_position = motor_b_position(&response);
+        response = send("status-reloaded-no-autorun", &native["status"]);
+        assert_eq!(assert_program_reply(&response, &native["status"], 0).0, 1);
+        assert!((motor_b_position(&response) - reloaded_position).abs() < 0.1, "second LOAD moved the motor");
+        response = send("restart-before-stop", &storage["start"]);
+        assert_eq!(assert_program_reply(&response, &storage["start"], 0).0, 2);
+        response = send("stop-retained", &storage["stop"]);
+        assert_eq!(assert_program_reply(&response, &storage["stop"], 0).0, 4);
+        // STOP retains both process and saved slot. Allow a bounded unwind before LOAD.
+        for _ in 0..50 {
+            response = send("load-after-stop", &storage["load"]);
+            let bytes = response["lifecycle"]["nuttxProgramReply"].as_array().unwrap();
+            let result = i32::from_le_bytes(std::array::from_fn(|i| bytes[8+i].as_u64().unwrap() as u8));
+            if result == 0 { break; }
+            assert_eq!(result, -16, "unexpected LOAD failure after STOP");
+            thread::sleep(Duration::from_millis(50));
+        }
+        assert_eq!(assert_program_reply(&response, &storage["load"], 0).0, 1);
+        assert_eq!(response["target"], retained_identity);
+        assert!(response["seq"].as_u64().unwrap() > retained_seq);
+        assert!(debugger.has_endpoint(), "storage must retain the live desktop session");
+        eprintln!("storage stage=close-session elapsed_ms={}", elapsed.elapsed().as_millis());
+        debugger.close(&supervisor).unwrap();
+        eprintln!("storage stage=complete elapsed_ms={}", elapsed.elapsed().as_millis());
     }
 
     /// Hosted/manual proof against the exact build-pinned Renode tree. The ordinary library

@@ -10,6 +10,11 @@ fn keys(value: &Value, names: &[&str]) -> bool {
 fn integer(value: &Value, min: i64, max: i64) -> bool {
     value.as_i64().is_some_and(|v| (min..=max).contains(&v))
 }
+pub(crate) fn valid_spike_start(value: &Value) -> bool {
+    keys(value, &[]) || (keys(value, &["backend"]) && matches!(value["backend"].as_str(), Some("guest" | "nuttx")))
+        || (keys(value, &["backend", "topology"]) && value["backend"] == "nuttx"
+            && matches!(value["topology"].as_str(), Some("default" | "six-motors")))
+}
 pub(crate) fn valid(value: &Value) -> bool {
     if !keys(value, &["sensors", "loads"]) {
         return false;
@@ -65,6 +70,19 @@ pub(crate) fn valid(value: &Value) -> bool {
 mod tests {
     use super::*;
     use serde_json::json;
+    #[test]
+    fn topology_launch_arguments_are_closed_and_nuttx_only() {
+        for value in [json!({}),json!({"backend":"guest"}),json!({"backend":"nuttx"}),
+            json!({"backend":"nuttx","topology":"default"}),json!({"backend":"nuttx","topology":"six-motors"})] {
+            assert!(valid_spike_start(&value));
+        }
+        for value in [json!({"backend":"guest","topology":"six-motors"}),json!({"topology":"six-motors"}),
+            json!({"backend":"nuttx","topology":"six-motors;quit"}),json!({"backend":"nuttx","topology":true}),
+            json!({"backend":"nuttx","topology":"six-motors","path":"/tmp/model"})] {
+            assert!(!valid_spike_start(&value));
+        }
+    }
+
     #[test]
     fn frames_are_closed_bounded_and_unique() {
         assert!(valid(
@@ -163,7 +181,7 @@ pub(crate) fn valid_nuttx_packet(value: &Value) -> bool {
     let Some(bytes) = value["bytes"].as_array() else { return false; };
     if !(8..=20).contains(&bytes.len()) || bytes.iter().any(|b| !integer(b, 0, 255)) { return false; }
     let b: Vec<u8> = bytes.iter().map(|v| v.as_u64().unwrap() as u8).collect();
-    if b[0] != 0x70 || b[1] != 1 || b[3] != 0 || b[2] > 7 { return false; }
+    if b[0] != 0x70 || b[1] != 1 || b[3] != 0 || b[2] > 9 { return false; }
     if b[4..8].iter().all(|v| *v == 0) && b[2] != 5 { return false; }
     match b[2] {
         0 | 7 => b.len() == 16,
@@ -172,14 +190,39 @@ pub(crate) fn valid_nuttx_packet(value: &Value) -> bool {
     }
 }
 
+/// Deferred storage submission cannot carry upload or execution instructions.
+pub(crate) fn valid_nuttx_storage_submit(value: &Value) -> bool {
+    valid_nuttx_packet(value)
+        && value["bytes"].as_array().is_some_and(|bytes| bytes.len() == 8)
+        && matches!(value["bytes"][2].as_u64(), Some(8 | 9))
+}
+
 #[cfg(test)]
 mod nuttx_packet_tests {
     use super::valid_nuttx_packet;
     use serde_json::json;
     #[test]
+    fn deferred_storage_is_a_closed_nonexecution_operation() {
+        for op in [8, 9] {
+            assert!(super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,op,0,1,0,0,0]})));
+            assert!(!super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,op,0,0,0,0,0]})));
+        }
+        for op in [2, 3, 4, 5, 6] {
+            assert!(!super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,op,0,1,0,0,0]})));
+        }
+        assert!(!super::valid_nuttx_storage_submit(&json!({"bytes":[112,1,8,0,1,0,0,0],"path":"program"})));
+    }
+
+    #[test]
     fn packets_are_bounded_and_cannot_select_memory_or_monitor_commands() {
         assert!(valid_nuttx_packet(&json!({"bytes":[112,1,5,0,0,0,0,0]})));
         assert!(valid_nuttx_packet(&json!({"bytes":[112,1,4,0,1,0,0,0]})));
+        for op in [8, 9] {
+            assert!(valid_nuttx_packet(&json!({"bytes":[112,1,op,0,255,255,255,255]})));
+            assert!(!valid_nuttx_packet(&json!({"bytes":[112,1,op,0,0,0,0,0]})));
+            assert!(!valid_nuttx_packet(&json!({"bytes":[112,1,op,0,1,0,0,0,0]})));
+        }
+        assert!(!valid_nuttx_packet(&json!({"bytes":[112,1,10,0,1,0,0,0]})));
         for value in [json!({"bytes":[112,1,3,0,0,0,0,0]}),
             json!({"bytes":[112,1,5,0,0,0,0,0],"address":0}),
             json!({"bytes":[112,1,5,0,0,0,0,true]}),

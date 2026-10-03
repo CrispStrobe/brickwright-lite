@@ -27,6 +27,38 @@ function loaded(source) {
     return {runtime:{targets}};
 }
 const program = body => loaded(`DEVICE SPIKE\nWHEN flag clicked:\n${body}`);
+const six = {topology:'six-motors'};
+test('six topology compiles C–F speeds and single relative position without widening defaults', () => {
+    const vm=program('  set motor speed C 20\n  set motor speed F -50\n  start motor C forward\n  start motor F backward\n  run motor D backward 90 degrees\n  stop motor C\n');
+    assert.throws(()=>compileFirmwareProgram(vm),/A and B only/);
+    assert.deepEqual(compileFirmwareProgram(vm,six).instructions,
+        [[1,2,222,0],[1,5,555,0],[6,3,-90,833],[1,2,0,0],[0,0,0,0]]);
+    assert.throws(()=>compileFirmwareProgram(vm,{topology:'arbitrary'}),/topology/);
+});
+test('six multiport timed commands share one wait, retain independent speeds and reject ambiguous ports', () => {
+    const vm=program('  set motor speed C 20\n  set motor speed F 50\n  run motor C forward 0.2 seconds\n');
+    const blocks=vm.runtime.targets[0].blocks._blocks;
+    const run=Object.values(blocks).find(b=>b.opcode==='spikeprime_motorRunFor');
+    run.fields.PORT.value='FC';
+    assert.deepEqual(compileFirmwareProgram(vm,six).instructions,
+        [[1,2,222,0],[1,5,555,0],[2,200,0,0],[1,2,0,0],[1,5,0,0],[0,0,0,0]]);
+    for(const port of ['', 'CC', 'C F', 'C,F', 'G', 'ABCDEFABCDEF']) {
+        run.fields.PORT.value=port;assert.throws(()=>compileFirmwareProgram(vm,six),/distinct literal/);
+    }
+    run.fields.PORT.value='CF';run.fields.UNIT.value='degrees';
+    assert.throws(()=>compileFirmwareProgram(vm,six),/one motor/);
+    run.fields.UNIT.value='seconds';run.fields.PORT.value='ABCDEF';
+    const repeat=program('  repeat 25:\n    run motor C forward 0.2 seconds\n');
+    const body=Object.values(repeat.runtime.targets[0].blocks._blocks).find(b=>b.opcode==='spikeprime_motorRunFor');
+    body.fields.PORT.value='ABCDEF';
+    assert.throws(()=>compileFirmwareProgram(repeat,six),/256 instructions/);
+});
+test('sensor templates and changed rover movement pairs are rejected in six topology', () => {
+    assert.throws(()=>compileFirmwareProgram(program('  wait until spike distance D in mm < 250\n'),six),/no arena sensors/);
+    const vm=program('  start tank 20 20\n');
+    const block=Object.values(vm.runtime.targets[0].blocks._blocks).find(b=>b.opcode==='spikeprime_startTank');
+    block.opcode='spikeprime_setMovementMotors';block.fields={PORT_A:{value:'C'},PORT_B:{value:'B'}};assert.throws(()=>compileFirmwareProgram(vm,six),/A and B/);
+});
 test('actual native reader emits timed concurrent motors with explicit END', () => {
     const code = compileFirmwareProgram(program('  set motor speed B 50\n  start motor B forward\n  wait 1 seconds\n  stop motor B\n'));
     assert.deepEqual(code.instructions,[[1,1,555,0],[2,1000,0,0],[1,1,0,0],[0,0,0,0]]);

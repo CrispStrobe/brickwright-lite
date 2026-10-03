@@ -8,6 +8,19 @@ const {validArenaProgram} = createRequire(import.meta.url)('../overlay/scratch-v
 import {crc32, encodeInstructions, encodePython, encodeBegin, encodeChunk, encodeCommand,
     decodeReply, NuttXProgramClient, uploadProgram} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
 const program = {version: 1, instructions: [[1, 0, -1110, 0], [6, 1, -90, 555], [0, 0, 0, 0]]};
+test('six encoder accepts native C–F while default and guest validators remain strict', async () => {
+    const six={version:1,instructions:[[1,2,-1110,0],[6,5,90,555],[0,0,0,0]]};
+    assert.throws(()=>encodeInstructions(six),/ABI bounds/);assert.equal(validArenaProgram(six),false);
+    const data=encodeInstructions(six,{topology:'six-motors'});
+    assert.equal(new DataView(data.buffer).getInt32(20,true),5);
+    for(const row of [[1,6,0,0],[1,5,1111,0],[6,5,36001,1],[6,5,0,0],[3,1,200,0],[5,3,1,0]]) {
+        assert.throws(()=>encodeInstructions({version:1,instructions:[row,[0,0,0,0]]},{topology:'six-motors'}),/ABI bounds/);
+    }
+    let calls=0;const client=new NuttXProgramClient(async request=>{calls++;return reply(request);},1);
+    assert.throws(()=>client.upload(six),/ABI bounds/);assert.equal(calls,0);
+    const sixClient=new NuttXProgramClient(async request=>{calls++;return reply(request);},1,{topology:'six-motors'});
+    await sixClient.upload(six,{start:false});assert.ok(calls>0);
+});
 function reply (request, {result = 0, state = 1, id, pc = 0, count = 3, received = 0, runtimeError = 0} = {}) {
     const data = new Uint8Array(20), v = new DataView(data.buffer);
     data.set([0x71, 1, request[2], state]);
@@ -163,4 +176,16 @@ test('cancellation after uncertain START stops before abort and failed correlati
         mismatched.push(packet[2]);return reply(packet, {id: packet[2] === 1 ? 2 : 1});
     }, {id: 1, program}), /Mismatched/);
     assert.deepEqual(mismatched, [0, 1, 6]);
+});
+
+test('storage uses exact nonzero-ID frames and never starts or cleans up on error', async () => {
+    for (const op of [8, 9]) {
+        assert.deepEqual([...encodeCommand(op, 0x12345678)], [112, 1, op, 0, 120, 86, 52, 18]);
+        assert.throws(() => encodeCommand(op, 0));
+        const calls = [], client = new NuttXProgramClient(async packet => {calls.push(packet[2]);return reply(packet, {result: -16});}, 9);
+        await assert.rejects(op === 8 ? client.save() : client.load(), error => error.result === -16 && error.reply.id === 9);
+        assert.deepEqual(calls, [op]);
+        assert.throws(() => decodeReply(reply(encodeCommand(op, 9), {id: 10}), {op, id: 9}), /Mismatched/);
+    }
+    assert.throws(() => encodeCommand(10, 1));
 });
