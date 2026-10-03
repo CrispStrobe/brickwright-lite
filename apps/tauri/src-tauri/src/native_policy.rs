@@ -73,6 +73,9 @@ impl NativePolicyState {
                 (Operation::RenodeSpikeMemoryRead, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikeStateRead, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikeProgramPacket, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeUartRead, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeUartWrite, Resource::RenodeSpikePrime),
+                (Operation::RenodeSpikeUartClose, Resource::RenodeSpikePrime),
                 (Operation::RenodeSpikeProgramStorageSubmit, Resource::RenodeSpikePrime),
                 (
                     Operation::RenodeSpikeArenaProgram,
@@ -202,6 +205,9 @@ pub(crate) enum Operation {
     RenodeSpikeArenaInputs,
     RenodeSpikeArenaProgram,
     RenodeSpikeProgramPacket,
+    RenodeSpikeUartRead,
+    RenodeSpikeUartWrite,
+    RenodeSpikeUartClose,
     RenodeSpikeProgramStorageSubmit,
     RenodeSpikeBreakpointSet,
     RenodeSpikeBreakpointClear,
@@ -236,6 +242,9 @@ impl Operation {
             "renode.spike.arena.inputs.write" => Some(Self::RenodeSpikeArenaInputs),
             "renode.spike.arena.program.load" => Some(Self::RenodeSpikeArenaProgram),
             "renode.spike.program.packet" => Some(Self::RenodeSpikeProgramPacket),
+            "renode.spike.micropython.uart.read" => Some(Self::RenodeSpikeUartRead),
+            "renode.spike.micropython.uart.write" => Some(Self::RenodeSpikeUartWrite),
+            "renode.spike.micropython.uart.close" => Some(Self::RenodeSpikeUartClose),
             "renode.spike.program.storage.submit" => Some(Self::RenodeSpikeProgramStorageSubmit),
             "renode.spike.breakpoint.set" => Some(Self::RenodeSpikeBreakpointSet),
             "renode.spike.breakpoint.clear" => Some(Self::RenodeSpikeBreakpointClear),
@@ -265,6 +274,9 @@ impl Operation {
             Self::RenodeSpikeArenaInputs => crate::arena_inputs::valid(args),
             Self::RenodeSpikeArenaProgram => crate::arena_inputs::valid_program(args),
             Self::RenodeSpikeProgramPacket => crate::arena_inputs::valid_nuttx_packet(args),
+            Self::RenodeSpikeUartRead => crate::spike_program_uart_contract::parse_request("micropython.uart.read", args).is_ok(),
+            Self::RenodeSpikeUartWrite => crate::spike_program_uart_contract::parse_request("micropython.uart.write", args).is_ok(),
+            Self::RenodeSpikeUartClose => crate::spike_program_uart_contract::parse_request("micropython.uart.close", args).is_ok(),
             Self::RenodeSpikeProgramStorageSubmit => crate::arena_inputs::valid_nuttx_storage_submit(args),
             Self::RenodeEv3ButtonSet => {
                 map.len() == 2
@@ -468,6 +480,9 @@ impl RedactedAuditRow {
                 Operation::RenodeSpikeArenaInputs => "renode.spike.arena.inputs.write",
                 Operation::RenodeSpikeArenaProgram => "renode.spike.arena.program.load",
                 Operation::RenodeSpikeProgramPacket => "renode.spike.program.packet",
+                Operation::RenodeSpikeUartRead => "renode.spike.micropython.uart.read",
+                Operation::RenodeSpikeUartWrite => "renode.spike.micropython.uart.write",
+                Operation::RenodeSpikeUartClose => "renode.spike.micropython.uart.close",
                 Operation::RenodeSpikeProgramStorageSubmit => "renode.spike.program.storage.submit",
                 Operation::RenodeSpikeBreakpointSet => "renode.spike.breakpoint.set",
                 Operation::RenodeSpikeBreakpointClear => "renode.spike.breakpoint.clear",
@@ -1271,4 +1286,24 @@ mod tests {
             !operation.valid_args(&json!({"version":1,"instructions":[[1,0,1111,0],[0,0,0,0]]}))
         );
     }
+    #[test]
+    fn uart_policy_requires_broker_scope_closed_payload_and_one_use_lease() {
+        for (index, (name, args)) in [
+            ("read", json!({"generation":7,"maxBytes":4096})),
+            ("write", json!({"generation":7,"bytes":[0,255]})),
+            ("close", json!({"generation":7})),
+        ].into_iter().enumerate() {
+            let state = NativePolicyState::new();
+            let operation = format!("renode.spike.micropython.uart.{name}");
+            let lease = state.issue_broker_lease(BROKER_LABEL,7,id(index as u8+1)).unwrap();
+            assert!(state.consume_broker_call("main",lease,0,&operation,"renode/spike-prime",&args).is_err());
+            assert!(state.consume_broker_call(BROKER_LABEL,lease,0,&operation,"renode/ev3",&args).is_err());
+            let mut extra = args.clone();extra["port"] = json!(123);
+            assert!(state.consume_broker_call(BROKER_LABEL,lease,0,&operation,"renode/spike-prime",&extra).is_err());
+            assert!(state.consume_broker_call(BROKER_LABEL,lease,0,&operation,"renode/spike-prime",&args).is_ok());
+            assert!(state.consume_broker_call(BROKER_LABEL,lease,0,&operation,"renode/spike-prime",&args).is_err());
+        }
+        assert!(Operation::parse("renode.spike.micropython.uart.attach").is_none());
+    }
+
 }

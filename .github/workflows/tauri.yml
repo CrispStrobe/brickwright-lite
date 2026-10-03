@@ -20,7 +20,9 @@ on:
       - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
       - 'packages/scratch-vm/src/extension-support/native-broker-*.js'
       - 'overlay/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'overlay/scratch-vm/src/extension-support/spike-program-uart-contract.js'
       - 'packages/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'packages/scratch-vm/src/extension-support/spike-program-uart-contract.js'
       # The JS-side vocabulary DECLARES platform.kind.read, so it belongs to the boundary's
       # contract even though it is not named native-broker-*. Editing it used to leave the
       # e2e gate unrun, and a trigger too narrow is nearly a gate nothing runs.
@@ -61,7 +63,9 @@ on:
       - 'overlay/scratch-vm/src/extension-support/native-broker-*.js'
       - 'packages/scratch-vm/src/extension-support/native-broker-*.js'
       - 'overlay/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'overlay/scratch-vm/src/extension-support/spike-program-uart-contract.js'
       - 'packages/scratch-vm/src/extension-support/native-renode-capability.js'
+      - 'packages/scratch-vm/src/extension-support/spike-program-uart-contract.js'
       # The JS-side vocabulary DECLARES platform.kind.read, so it belongs to the boundary's
       # contract even though it is not named native-broker-*. Editing it used to leave the
       # e2e gate unrun, and a trigger too narrow is nearly a gate nothing runs.
