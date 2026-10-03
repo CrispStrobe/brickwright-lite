@@ -260,3 +260,158 @@ test('Run loaded program requires READY; leaving READY clears loaded intent', as
     try {await session.startProgram();assert.equal(starts, 1);assert.equal(session.loaded, false);}
     finally {clearTimeout(session.timer);}
 });
+
+const microFrame = (seq = 1, position = 0) => {
+    const f = programFrame();f.seq = seq;f.clockNs = (seq - 1) * 100000000;
+    f.target.firmware = 'micropython-hub-no6';
+    f.target.capabilities = f.target.capabilities.filter(cap => cap !== 'arena-program/v1');
+    f.target.capabilities.push('micropython-raw-repl/v1');
+    f.motors[0].position = -position;f.motors[1].position = position;
+    return f;
+};
+const microCaps = ({read, write, frame = microFrame(), calls = []} = {}) => ({
+    ...Object.fromEntries(['session.start', 'session.close', 'run', 'arena.inputs.write'].map(op =>
+        [`renode.spike.${op}`, async args => {calls.push([op, args]);return 'ready';}])),
+    'renode.spike.state.read': async () => JSON.stringify(frame),
+    ...(read ? {'renode.spike.micropython.uart.read': read} : {}),
+    ...(write ? {'renode.spike.micropython.uart.write': write} : {})
+});
+const uartBytes = text => [...new TextEncoder().encode(text)];
+test('explicit MicroPython validates source and startup contract before clock takeover', async () => {
+    const b = bridge();let calls = 0;
+    for (const args of [{source: null}, {source: 'x\0y'}, {source: 'x'.repeat(16385)},
+        {source: 'print(1)', program: {version:1,instructions:[[0,0,0,0]]}}, {source: 'print(1)', topology:'six-motors'}]) {
+        assert.throws(() => new RenodeArenaSession({bridge:b, backend:'micropython', ...args,
+            capabilities:{'renode.spike.session.start':async()=>calls++}}));
+    }
+    assert.equal(calls, 0);
+    for (const mutate of [f => f.target.capabilities.pop(), f => {f.lifecycle.connectionGeneration = 0;},
+        f => {f.target.firmware = 'brickwright-nuttx';}, f => {f.target.transport = 'usb';},
+        f => {f.target.imageSha256 = 'bad';}, f => {f.target.capabilities.splice(0, 1);}, f => {f.target.capabilities = 'micropython-raw-repl/v1';}]) {
+        const f = microFrame();mutate(f);const ops = [];
+        const session = new RenodeArenaSession({bridge:b, backend:'micropython', source:'print(1)', capabilities:microCaps({frame:f,calls:ops})});
+        await assert.rejects(session.start());assert.equal(b.hubState.clockOwner, null);
+        assert.equal(ops.filter(([op]) => op === 'session.close').length, 1);
+        assert.equal(ops.some(([op]) => op === 'run'), false);
+    }
+    // The 4 KiB NuttX limit does not constrain the explicit raw REPL backend.
+    new RenodeArenaSession({bridge:b, backend:'micropython', source:'x'.repeat(4096)});
+});
+test('MicroPython executes asynchronously while production arena frames move the shared world', async () => {
+    const b = bridge(), calls = [], output = [];let complete = 0, deliver;
+    const f = microFrame();let readCount = 0;
+    const caps = microCaps({frame:f,calls,
+        write:async args => {assert.equal(args.generation, 1);assert.ok(args.bytes.length <= 32);return {generation:1,count:args.bytes.length};},
+        read:async args => {
+            assert.deepEqual(args,{generation:1,maxBytes:4096,deadlineMs:1000});
+            if (++readCount === 1) return {generation:1,timeout:true};
+            if (readCount === 2) return {generation:1,bytes:uartBytes('raw REPL; CTRL-B to exit\r\n>')};
+            return new Promise(resolve => {deliver = resolve;});
+        }});
+    const session = new RenodeArenaSession({bridge:b,capabilities:caps,backend:'micropython',source:'print("hello")',
+        onOutput:value=>output.push(value),onCompleted:()=>complete++});
+    await session.start();clearTimeout(session.timer);
+    while (!deliver) await new Promise(resolve=>setTimeout(resolve,0));
+    const x = b.sim.pose.x;Object.assign(f,microFrame(2,90));await session.poll();clearTimeout(session.timer);
+    assert.ok(b.sim.pose.x > x);assert.equal(b.sim.timeMs,100);assert.equal(b.hubState.externalBackend,session);
+    deliver({generation:1,bytes:uartBytes('OKhello\n\x04\x04>')});await session.completion;
+    assert.deepEqual(output,[{sequence:1,text:'hello\n',truncated:false,stdout:'hello\n',stderr:''}]);assert.equal(complete,1);
+    assert.equal(calls.filter(([op])=>op==='session.close').length,1);assert.equal(b.hubState.clockOwner,null);
+});
+test('MicroPython cancellation aborts a pending read and ignores late completion', async () => {
+    const calls = [];let deliver, outputs = 0, completes = 0;
+    const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'while True: pass',
+        capabilities:microCaps({calls,write:async args=>({generation:1,count:args.bytes.length}),
+            read:async()=>new Promise(resolve=>{deliver=resolve;})}),
+        onOutput:()=>outputs++,onCompleted:()=>completes++});
+    await session.start();while (!deliver) await new Promise(resolve=>setTimeout(resolve,0));
+    await session.stop();await session.execution;
+    deliver({generation:1,bytes:uartBytes('OKlate\x04\x04>')});await Promise.resolve();
+    assert.equal(outputs,0);assert.equal(completes,0);assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    assert.equal(session.adapter.bridge.hubState.externalBackend,null);
+});
+test('missing native MicroPython operations fail closed only for the owned session', async () => {
+    for (const write of [undefined, async args=>({generation:1,count:args.bytes.length})]) {
+        const calls = [], errors = [];
+        const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(1)',
+            capabilities:microCaps({calls,write}),onError:error=>errors.push(error)});
+        await session.start();await session.completion;
+        assert.equal(errors.length,1);assert.match(errors[0].message,/unavailable/);
+        assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+        assert.equal(session.adapter.bridge.hubState.clockOwner,null);
+    }
+});
+test('MicroPython rejects malformed native UART replies and reports Python failure', async () => {
+    for (const bad of [{generation:2,bytes:[1]}, {generation:1,bytes:[]}, {generation:1,bytes:[256]},
+        {generation:1,eof:true}, {generation:1,timeout:true,bytes:[1]}, 'monitor text']) {
+        const errors = [], calls = [];
+        const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(1)',
+            capabilities:microCaps({calls,write:async args=>({generation:1,count:args.bytes.length}),read:async()=>bad}),
+            onError:error=>errors.push(error)});
+        await session.start();await session.completion;
+        assert.equal(errors.length,1);assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    }
+    const output = [], errors = [], reads = [uartBytes('raw REPL; CTRL-B to exit\r\n>'),uartBytes('OK\x04ValueError\n\x04>')];
+    let complete = 0;
+    const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'raise ValueError',
+        capabilities:microCaps({write:async args=>({generation:1,count:args.bytes.length}),read:async()=>({generation:1,bytes:reads.shift()})}),
+        onOutput:value=>output.push(value),onError:error=>errors.push(error),onCompleted:()=>complete++});
+    await session.start();await session.completion;
+    assert.deepEqual(output,[{sequence:1,text:'ValueError\n',truncated:false,stdout:'',stderr:'ValueError\n'}]);assert.match(errors[0].message,/MicroPython program failed/);
+    assert.equal(complete,0);assert.equal(session.closed,true);
+});
+
+test('MicroPython awaits host-paced writes, rejects malformed counts, and aborts pending writes', async () => {
+    for (const reply of [{generation:2,count:4},{generation:1,count:3},{generation:1,count:4,extra:true}]) {
+        const calls = [], errors = [];
+        const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(1)',
+            capabilities:microCaps({calls,write:async()=>reply}),onError:error=>errors.push(error)});
+        await session.start();await session.completion;
+        assert.match(errors[0].message,/write reply/);assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    }
+    const calls = [];let finishWrite, reads = 0;
+    const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(1)',
+        capabilities:microCaps({calls,write:async()=>new Promise(resolve=>{finishWrite=resolve;}),
+            read:async()=>{reads++;throw new Error('premature read');}})});
+    await session.start();while (!finishWrite) await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(reads,0);await session.stop();await session.execution;
+    finishWrite({generation:1,count:4});await Promise.resolve();assert.equal(reads,0);
+    assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+});
+
+test('MicroPython common GUI output truncates text while retaining complete raw stdout and stderr', async () => {
+    const stdout = 'x'.repeat(1100), output = [], reads = [
+        uartBytes('raw REPL; CTRL-B to exit\r\n>'),uartBytes(`OK${stdout}\x04\x04>`)];
+    const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print("x")',
+        capabilities:microCaps({write:async args=>({generation:1,count:args.bytes.length}),
+            read:async()=>({generation:1,bytes:reads.shift()})}),onOutput:value=>output.push(value)});
+    await session.start();await session.completion;
+    assert.deepEqual(output,[{sequence:1,text:'x'.repeat(1024),truncated:true,stdout,stderr:''}]);
+});
+test('immediate native UART timeout replies yield to timer cancellation', async () => {
+    const calls = [];let reads = 0;
+    const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(1)',
+        capabilities:microCaps({calls,write:async args=>({generation:1,count:args.bytes.length}),
+            read:async()=>{reads++;return {generation:1,timeout:true};}})});
+    await session.start();
+    await new Promise((resolve,reject)=>setTimeout(()=>session.stop().then(resolve,reject),5));
+    await session.execution;assert.ok(reads > 0);
+    assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    assert.equal(session.adapter.bridge.hubState.clockOwner,null);
+});
+
+test('MicroPython decodes bounded desktop broker JSON results before typed validation', async () => {
+    const output = [], reads = [uartBytes('raw REPL; CTRL-B to exit\r\n>'), uartBytes('OK42\r\n\x04\x04>')];
+    const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(42)',
+        capabilities:microCaps({write:async args=>JSON.stringify({generation:1,count:args.bytes.length}),
+            read:async()=>JSON.stringify({generation:1,bytes:reads.shift()})}),onOutput:value=>output.push(value)});
+    await session.start();await session.completion;
+    assert.equal(output[0].text,'42\r\n');
+    for (const malformed of ['{',' '.repeat(32769)]) {
+        const errors = [], calls = [];
+        const bad = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'pass',
+            capabilities:microCaps({calls,write:async()=>malformed}),onError:error=>errors.push(error)});
+        await bad.start();await bad.completion;
+        assert.equal(errors.length,1);assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    }
+});

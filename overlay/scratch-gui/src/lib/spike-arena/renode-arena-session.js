@@ -4,6 +4,7 @@ import {RenodeArenaBridge} from './renode-arena-bridge.js';
 import {NuttXProgramClient, encodePython, encodeInstructions} from '../spike-nuttx/upload-protocol.js';
 import {validateTopology, requireSixMotorFrame, prepareSixMotorHub} from '../spike-nuttx/motor-topology.js';
 import {exchangeStorage, DEFERRED_STORAGE_CAPABILITY} from '../spike-nuttx/storage-exchange.js';
+import {MicroPythonProgramClient, encodeSource} from '../spike-micropython/raw-repl.js';
 /** Owns only a session it successfully started; stopping invalidates outstanding polls. */
 export class RenodeArenaSession {
     constructor ({bridge, capabilities, backend = null, topology = 'default', program = null, source = null, onOutput = () => {}, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}, onProgramState = () => {}}) {
@@ -14,10 +15,13 @@ export class RenodeArenaSession {
         this.topology = topology;
         this.adapter = new RenodeArenaBridge(bridge, {allMotors: topology === 'six-motors'});
         this.capabilities = capabilities;
-        if (backend !== null && !['guest', 'nuttx'].includes(backend)) throw new TypeError('Unknown firmware backend');
+        if (backend !== null && !['guest', 'nuttx', 'micropython'].includes(backend)) throw new TypeError('Unknown firmware backend');
         this.backend = backend;
+        if (backend === 'micropython' && (source === null || program !== null || topology !== 'default')) {
+            throw new TypeError('MicroPython requires Python source and the default topology');
+        }
         if (program && source !== null) throw new TypeError('Supply one compiled program or Python source');
-        if (source !== null) encodePython(source);
+        if (source !== null) (backend === 'micropython' ? encodeSource : encodePython)(source);
         if (program) encodeInstructions(program, {topology});
         this.program = program;
         this.source = source;
@@ -48,6 +52,15 @@ export class RenodeArenaSession {
             if (this.closed) return;
             const first = JSON.parse(await this.call('state.read'));
             if (this.closed) return;
+            this.micropython = this.backend === 'micropython';
+            if (!this.micropython && first.target?.firmware === 'micropython-hub-no6') {
+                throw new Error('MicroPython requires an explicit backend and Python source');
+            }
+            if (this.micropython && (first.target?.firmware !== 'micropython-hub-no6' ||
+                !Array.isArray(first.target?.capabilities) || !first.target.capabilities.includes('micropython-raw-repl/v1') ||
+                !Number.isSafeInteger(first.lifecycle?.connectionGeneration) || first.lifecycle.connectionGeneration <= 0)) {
+                throw new Error('MicroPython firmware requires the raw REPL arena contract');
+            }
             if (this.topology === 'six-motors') {
                 requireSixMotorFrame(first);
                 prepareSixMotorHub(this.adapter.bridge.hubState);
@@ -61,7 +74,7 @@ export class RenodeArenaSession {
             if (this.nuttx && !this.program && this.source === null) {
                 this.program = {version: 1, instructions: [[1, 0, -150, 0], [1, 1, 150, 0], [2, 2000, 0, 0], [0, 0, 0, 0]]};
             }
-            if (this.source !== null && !this.nuttx) throw new Error('Embedded Python requires the full NuttX package');
+            if (this.source !== null && !this.nuttx && !this.micropython) throw new Error('Embedded Python requires the full NuttX package');
             if (this.program && !this.nuttx && !first.target?.capabilities?.includes('arena-program/v1')) {
                 throw new Error('This desktop package supports the demo only; rebuild with program-capable firmware');
             }
@@ -75,6 +88,7 @@ export class RenodeArenaSession {
             if (this.closed) return;
             await this.call('run');
             if (this.closed) return;
+            if (this.micropython) this.executeMicroPython(first.lifecycle.connectionGeneration);
             if (this.nuttx && (this.program || this.source !== null)) {
                 this.programClient = new NuttXProgramClient(async bytes => {
                     if ([8, 9].includes(bytes[2]) && this.storageDeferred) {
@@ -107,6 +121,88 @@ export class RenodeArenaSession {
             if (!this.closed) { this.schedule(); }
         })();
         try { await this.tail; } catch (error) { this.onError(error); await this.stop(); throw error; }
+    }
+    // Abort locally even if a native request is still pending. Native close is
+    // idempotent here and never calls stop recursively from client cancellation.
+    closeOwned () {
+        if (!this.nativeClosing) this.nativeClosing = Promise.resolve().then(() => this.started && this.call('session.close'));
+        return this.nativeClosing;
+    }
+    async uartCall (operation, args, signal) {
+        signal.throwIfAborted();
+        let abort;
+        const canceled = new Promise((resolve, reject) => {
+            abort = () => reject(signal.reason);
+            signal.addEventListener('abort', abort, {once: true});
+        });
+        try {
+            const reply = await Promise.race([Promise.resolve().then(() => {
+                signal.throwIfAborted();return this.call(operation, args);
+            }), canceled]);
+            signal.throwIfAborted();
+            // The desktop broker returns serialized semantic results. A typed
+            // object is also accepted for the closed test/embedded host adapter.
+            if (typeof reply === 'string') {
+                if (reply.length > 32768) throw new Error('MicroPython UART reply exceeds its bound');
+                return JSON.parse(reply);
+            }
+            return reply;
+        } finally { signal.removeEventListener('abort', abort); }
+    }
+    executeMicroPython (generation) {
+        const validObject = reply => reply && typeof reply === 'object' && !Array.isArray(reply) &&
+            [Object.prototype, null].includes(Object.getPrototypeOf(reply)) && reply.generation === generation;
+        const keys = (reply, allowed) => Object.keys(reply).length === allowed.length &&
+            Object.keys(reply).every(key => allowed.includes(key));
+        this.programClient = new MicroPythonProgramClient({
+            read: async ({signal}) => {
+                while (true) {
+                    const reply = await this.uartCall('micropython.uart.read', {generation, maxBytes: 4096, deadlineMs: 1000}, signal);
+                    if (!validObject(reply)) throw new Error('Invalid MicroPython UART read reply');
+                    if (reply.timeout === true && keys(reply, ['generation', 'timeout'])) {
+                        // Yield even if a native timeout reply resolves immediately,
+                        // allowing GUI Stop and execution deadlines to abort the loop.
+                        await this.uartWait(signal);
+                        continue;
+                    }
+                    if (reply.eof === true && keys(reply, ['generation', 'eof'])) throw new Error('MicroPython UART closed');
+                    if (!keys(reply, ['generation', 'bytes']) || !Array.isArray(reply.bytes) ||
+                        reply.bytes.length < 1 || reply.bytes.length > 4096 ||
+                        !Array.from(reply.bytes).every(byte => Number.isInteger(byte) && byte >= 0 && byte <= 255)) {
+                        throw new Error('Invalid MicroPython UART read reply');
+                    }
+                    return new Uint8Array(reply.bytes);
+                }
+            },
+            write: async (bytes, {signal}) => {
+                if (!(bytes instanceof Uint8Array) || !bytes.length || bytes.length > 32) throw new Error('Invalid MicroPython UART write');
+                const reply = await this.uartCall('micropython.uart.write', {generation, bytes: Array.from(bytes)}, signal);
+                if (!validObject(reply) || !keys(reply, ['generation', 'count']) || reply.count !== bytes.length) {
+                    throw new Error('Invalid MicroPython UART write reply');
+                }
+            },
+            close: () => this.closeOwned()
+        });
+        this.execution = this.programClient.execute(this.source).then(async result => {
+            if (this.closed) return;
+            const text = result.stdout + result.stderr;
+            this.onOutput({sequence: 1, text: text.slice(0, 1024), truncated: text.length > 1024,
+                stdout: result.stdout, stderr: result.stderr});
+            if (result.failed) throw new Error(`MicroPython program failed: ${result.stderr}`);
+            this.completed = true;this.onCompleted();
+            await this.stop();
+        }).catch(async error => {
+            if (!this.closed) {this.onError(error);await this.stop();}
+        });
+        this.execution.catch(() => {});
+    }
+    uartWait (signal) {
+        signal.throwIfAborted();
+        return new Promise((resolve, reject) => {
+            const abort = () => {clearTimeout(timer);signal.removeEventListener('abort', abort);reject(signal.reason);};
+            const timer = setTimeout(() => {signal.removeEventListener('abort', abort);resolve();}, 0);
+            signal.addEventListener('abort', abort, {once: true});
+        });
     }
     observeOutput (frame) {
         const output = frame.lifecycle?.nuttxProgramOutput;
@@ -224,7 +320,7 @@ export class RenodeArenaSession {
         try { await this.tail; if (this.closed) throw new Error('NuttX session is closed'); const reply = await this.programClient[operation](); this.observeProgram(reply); return reply; }
         finally { this.storageBusy = false; this.schedule(); }
     }
-    get completion () { return this.stopping || this.tail; }
+    get completion () { return this.stopping || this.execution || this.tail; }
     cancel () {
         const result = this.stop();
         result.catch(error => this.onError(error));
@@ -235,14 +331,14 @@ export class RenodeArenaSession {
         this.closed = true;
         clearTimeout(this.timer);
         // Invalidate an upload now, then serialize its STOP behind the current packet.
-        const stopped = this.programClient?.stop();
+        const stopped = this.micropython ? this.programClient?.cancel() : this.programClient?.stop();
         if (stopped) stopped.catch(() => {});
         // Finish any request before closing; never apply its late result.
         this.stopping = (async () => {
             await this.tail.catch(() => {});
             try {
                 try { if (stopped) await stopped; }
-                finally { if (this.started) await this.call('session.close'); }
+                finally { if (this.started) await this.closeOwned(); }
             }
             catch (error) { this.onError(error); throw error; }
             finally {
