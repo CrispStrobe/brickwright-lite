@@ -482,6 +482,25 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+ADP7118 bounded precision package adoption — **CLAIM 2026-10-03**, Codex
+bwcx `/root`; isolated wt-lite-adp-precision-20261003, branch
+lane/adp7118-precision-package-adoption-20261003; exact base
+276a148fd819f8b7fd2e7b806781e3e5fa4b58d9. Own Board/CUI package boundary:
+adopt landed Board0f0092051eefb24a364645edbb371d8755dd1ad6 and
+CUI494337a619aba4181a92f73ad2b8fc271ae83ad5 (full upstream CI37115880798
+green, all four jobs). Scope: this paragraph, vendor-pins.json; generated
+root/GUI package specifications and locks, package notices, Board census,
+8086/matrix reports and controller/ROM provenance mirrors only where pin-stale;
+existing test/adp7118-limiter-package-adoption.test.mjs for actual installed CLI
+precision waveform/window means and native work receipt; exact stale Board/CUI
+pin assertions in existing physical-part/measurement adoption tests only.
+Preserve all existing interactive/default/legacy cases and reference tolerances.
+No source copy/fork, solver/model, importer/exporter, other pin, corpus payload,
+application UI, browser harness, workflow or deployment-policy edit. Remote
+canonical claim before implementation, focused identity/behavior/generator
+checks, one final exact-head hosted qualification, guarded normal landing.
+Publication and actual deployed instrument checks are separate from CI green.
+
 Visible Circuit browser-proof host — **DONE candidate 2026-10-03**, Codex bwcx `/root`,
 isolated `/mnt/volume1/code/lego/wt-lite-adp7118-startup-20261002`, branch
 `lane/circuit-proof-visible-host-20261003`, exact base
