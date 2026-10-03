@@ -27,9 +27,11 @@
 //! descriptors anchor file operations even if another process renames a path.
 //! Non-Unix operations fail closed until stable file identities and private
 //! ACL validation are implemented. The types remain available on every target.
+#[cfg(unix)]
 use sha2::{Digest, Sha256};
 use std::ffi::CString;
 use std::fs::{self, File, Metadata, OpenOptions};
+#[cfg(unix)]
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
