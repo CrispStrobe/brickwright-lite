@@ -365,6 +365,27 @@ impl RenodeSupervisor {
         )
     }
 
+    /// Native-only launch seam for an admitted local image. The native profile
+    /// builder supplies fixed arguments; no broker request can call this directly.
+    /// The process worker owns the capsule until the entire child group is reaped.
+    #[allow(dead_code)]
+    pub(crate) fn start_with_owned_image(
+        &self,
+        arguments: &[String],
+        working_directory: &Path,
+        image: crate::spike_staged_image::StagedImage,
+    ) -> Result<RenodeEndpoint, String> {
+        let executable = option_env!("BW_RENODE_EXECUTABLE")
+            .ok_or("Renode backend is not packaged in this build")?;
+        let digest = option_env!("BW_RENODE_SHA256")
+            .ok_or("Renode backend digest is not packaged in this build")?;
+        self.start_verified_with_owned_image(
+            Path::new(executable), digest, arguments, working_directory,
+            LaunchBounds {timeout: MAX_SESSION_TIME, output_limit: MAX_OUTPUT_BYTES, capture_uart: false},
+            None, Some(image),
+        )
+    }
+
     /// Launch the packaged SPIKE Prime machine and public simulation image.
     /// Every path and digest is fixed at build time; editor data cannot enter
     /// the Renode command line or monitor language.
@@ -596,6 +617,21 @@ impl RenodeSupervisor {
         bounds: LaunchBounds,
         checkpoint: Option<FlashCheckpointLaunch>,
     ) -> Result<RenodeEndpoint, String> {
+        self.start_verified_with_owned_image(executable, expected_digest, arguments,
+            working_directory, bounds, checkpoint, None)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn start_verified_with_owned_image(
+        &self,
+        executable: &Path,
+        expected_digest: &str,
+        arguments: &[String],
+        working_directory: &Path,
+        bounds: LaunchBounds,
+        checkpoint: Option<FlashCheckpointLaunch>,
+        image: Option<crate::spike_staged_image::StagedImage>,
+    ) -> Result<RenodeEndpoint, String> {
         if arguments.len() > 64 || arguments.iter().any(|value| value.len() > 16 * 1024) {
             return Err("Renode launch plan exceeds its bounds".into());
         }
@@ -699,6 +735,9 @@ impl RenodeSupervisor {
         drop(listener);
         drop(gdb_listener);
         drop(state_listener);
+        if let Some(capsule) = &image {
+            capsule.verify().map_err(|_| "local image capsule changed before launch")?;
+        }
         let mut child = command
             .group_spawn()
             .map_err(|_| "Renode process failed to start")?;
@@ -778,6 +817,9 @@ impl RenodeSupervisor {
             if let Some(path) = worker_uart_evidence {
                 let _ = std::fs::remove_file(path);
             }
+            // Cleanup follows child reaping and output-reader completion, even
+            // after automatic timeout or a supervisor teardown timeout.
+            drop(image);
             let (lock, wake) = &*worker_done;
             if let Ok(mut finished) = lock.lock() {
                 *finished = true;
@@ -1572,4 +1614,61 @@ mod tests {
         );
         std::fs::remove_dir_all(root).unwrap();
     }
+    #[cfg(unix)]
+    #[test]
+    fn local_image_capsule_survives_launch_and_cleans_after_child_reaping() {
+        let executable = Path::new("/bin/sh");
+        let digest = sha256(executable).unwrap();
+        for reason in [TeardownReason::Reset, TeardownReason::ProjectClose, TeardownReason::AppExit] {
+            let root = FlashFixture::new();
+            let image = crate::spike_staged_image::StagedImage::create(&root.0, b"abcdefgh").unwrap();
+            let path = image.path().to_owned();
+            let supervisor = RenodeSupervisor::new();
+            supervisor.start_verified_with_owned_image(executable, &digest,
+                &["-c".into(), "sleep 30 & wait".into()], Path::new("."),
+                LaunchBounds {timeout:Duration::from_secs(30),output_limit:1024,capture_uart:false},
+                None, Some(image)).unwrap();
+            assert!(path.exists());
+            supervisor.teardown(reason);
+            assert!(!path.exists());
+        }
+        let root = FlashFixture::new();
+        let image = crate::spike_staged_image::StagedImage::create(&root.0, b"abcdefgh").unwrap();
+        let path = image.path().to_owned();
+        std::fs::write(&path, b"changed!").unwrap();
+        let supervisor = RenodeSupervisor::new();
+        let result = supervisor.start_verified_with_owned_image(executable,&digest,
+            &["-c".into(),"sleep 30".into()],Path::new("."),
+            LaunchBounds {timeout:Duration::from_secs(30),output_limit:1024,capture_uart:false},
+            None,Some(image));
+        assert_eq!(result.unwrap_err(),"local image capsule changed before launch");
+        assert!(supervisor.session.lock().unwrap().is_none());
+        assert!(!path.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn local_image_cleanup_follows_timeout_output_limit_and_normal_exit() {
+        let executable = Path::new("/bin/sh");
+        let digest = sha256(executable).unwrap();
+        for (script, timeout, limit) in [
+            ("sleep 30",Duration::from_millis(40),1024),
+            ("while :; do printf 0123456789; done",Duration::from_secs(3),256),
+            ("exit 0",Duration::from_secs(3),1024),
+        ] {
+            let root = FlashFixture::new();
+            let image = crate::spike_staged_image::StagedImage::create(&root.0,b"abcdefgh").unwrap();
+            let path = image.path().to_owned();
+            let supervisor = RenodeSupervisor::new();
+            supervisor.start_verified_with_owned_image(executable,&digest,
+                &["-c".into(),script.into()],Path::new("."),
+                LaunchBounds {timeout,output_limit:limit,capture_uart:false},None,Some(image)).unwrap();
+            let done = supervisor.session.lock().unwrap().as_ref().unwrap().done.clone();
+            let (lock,wake) = &*done;
+            let finished = wake.wait_timeout_while(lock.lock().unwrap(),Duration::from_secs(4),|value| !*value).unwrap();
+            assert!(*finished.0,"owned child cleanup did not complete");
+            assert!(!path.exists());
+        }
+    }
+
 }
