@@ -27,3 +27,17 @@ export function requireSixMoved (before, after) {
     const a = sixPositions(before), b = sixPositions(after);
     if (!b.every((position, i) => position > a[i] + 1)) throw new Error('All six motors must move in actual firmware');
 }
+
+export function requireSharedMotors ({frame, motors, classicPorts}) {
+    const positions = sixPositions(frame);
+    if (!Array.isArray(motors) || motors.length < 6 || !Array.isArray(classicPorts)) {
+        throw new Error('Missing shared virtual hub observation');
+    }
+    for (const [index, port] of [...'ABCDEF'].entries()) {
+        const raw = frame.motors.find(motor => motor.port === port);
+        if (motors[index]?.position !== positions[index] || motors[index]?.degPerSec !== raw.speedDps ||
+            classicPorts[index]?.[1]?.[1] !== Math.round(positions[index])) {
+            throw new Error('Firmware observation did not reach the shared virtual hub');
+        }
+    }
+}

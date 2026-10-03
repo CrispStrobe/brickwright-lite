@@ -6,7 +6,7 @@ import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compileFirmwareProgram} from '../overlay/scratch-gui/src/lib/spike-arena/firmware-program.js';
 import {encodePython, encodeInstructions} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
 import {proofModes, proofOperations, sixMotorSource, replacementSource, sixMotorPython,
-    sixPositions, requireSixMoved} from '../scripts/lib/spike-nuttx-browser-proof.mjs';
+    sixPositions, requireSixMoved, requireSharedMotors} from '../scripts/lib/spike-nuttx-browser-proof.mjs';
 
 function compile (source) {
     const creator = new SB3Creator(); creator.parse(source);
@@ -55,4 +55,15 @@ test('proof modes preserve guest and expose only closed semantic operations', ()
     assert.ok(proofOperations.includes('program.packet'));
     assert.ok(proofOperations.includes('program.storage.submit'));
     assert.ok(!proofOperations.some(operation => /memory|monitor|register|breakpoint|exec/.test(operation)));
+});
+
+test('shared hub checks detect stale C–F telemetry or rounded legacy encoder mismatch', () => {
+    const observed = frame(); observed.motors.forEach(motor => {motor.position = 1.2;motor.speedDps = 200;});
+    const result = {frame: observed, motors: observed.motors.map(motor => ({position: motor.position, degPerSec: motor.speedDps})),
+        classicPorts: observed.motors.map(() => [48, [20, 1, 0, 20]])};
+    requireSharedMotors(result);
+    result.motors[5].position = 0;
+    assert.throws(() => requireSharedMotors(result), /shared virtual hub/);
+    result.motors[5].position = 1.2;result.classicPorts[2][1][1] = 2;
+    assert.throws(() => requireSharedMotors(result), /shared virtual hub/);
 });

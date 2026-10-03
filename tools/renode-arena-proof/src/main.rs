@@ -2,6 +2,8 @@
 // Copyright (c) 2026 Brickwright contributors
 // Source-only test driver for the actual managed runtime. No listener or monitor passthrough.
 #![allow(dead_code)]
+#[path = "../../../apps/tauri/src-tauri/src/spike_flash_store.rs"]
+mod spike_flash_store;
 #[path = "../../../apps/tauri/src-tauri/src/arena_inputs.rs"]
 mod arena_inputs;
 #[path = "../../../apps/tauri/src-tauri/src/native_policy.rs"]

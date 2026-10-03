@@ -11,7 +11,7 @@ import {resolve, sep, extname} from 'node:path';
 import assert from 'node:assert/strict';
 import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 import {proofModes, proofOperations, sixMotorSource, replacementSource, sixMotorPython,
-    sixPositions, requireSixMoved} from './lib/spike-nuttx-browser-proof.mjs';
+    sixPositions, requireSixMoved, requireSharedMotors} from './lib/spike-nuttx-browser-proof.mjs';
 const mode = process.env.BW_SPIKE_PROOF_MODE || 'guest';
 if (!proofModes.includes(mode)) throw new Error('Unknown BW_SPIKE_PROOF_MODE');
 const executable = process.env.BW_RENODE_ARENA_PROOF_DRIVER;
@@ -61,8 +61,13 @@ const readFirmware = () => page.evaluate(() => {
     return {frame: s?.latestFrame, state: s?.programState, storage: s?.storageSupported,
         count: reply?.length === 20 ? reply[14] | (reply[15] << 8) : null,
         loaded: s?.loaded, busy: p.state.storageBusy, owner: p.hubState.clockOwner,
-        message: p.state.message};
+        message: p.state.message, motors: p.hubState.data.motors,
+        classicPorts: p.hubState.data.classicPorts, pose: {...p.bridge.sim.pose}};
 });
+const waitFirmwareReady = () => page.waitForFunction(() => {
+    const frame = window.__bwSpikeArena?._pane.firmwareSession?.latestFrame;
+    return frame?.target?.firmware === 'brickwright-nuttx' && frame.lifecycle?.phase === 'ready';
+}, null, {timeout: 60000});
 const waitFirmware = state => page.waitForFunction(wanted =>
     window.__bwSpikeArena?._pane.firmwareSession?.programState === wanted, state, {timeout: 30000});
 async function loadSource (source, starts) {
@@ -91,10 +96,11 @@ async function runNuttxProof () {
         const editor = page.getByTestId('bw-code-editor');
         await editor.locator('.cm-content[contenteditable=true], textarea').first().fill(sixMotorPython);
         await page.getByTestId('bw-spike-nuttx-python-run').click();
+        await waitFirmwareReady();
         await waitFirmware(2);
         await page.waitForFunction(() => window.__bwSpikeArena._pane.firmwareSession.latestFrame
             .motors.every(m => m.position > 1 && m.demandDirection !== 0), null, {timeout: 30000});
-        const active = await readFirmware(); sixPositions(active.frame);
+        const active = await readFirmware(); requireSharedMotors(active);
         await page.getByTestId('bw-spike3-console').filter({hasText: 'BROWSER SIX ARM'}).waitFor();
         await page.screenshot({path: `${evidence}/python-running.png`});
         check('GUI Python editor runs on actual ARM and drives all six motors');
@@ -107,9 +113,14 @@ async function runNuttxProof () {
         await writeFile(`${evidence}/frames.json`, JSON.stringify({active, stopped}, null, 2));
     } else {
         await loadSource(sixMotorSource, 6);
+        const initialPose = await page.evaluate(() => ({...window.__bwSpikeArena._pane.bridge.sim.pose}));
         await page.getByTestId('bw-spike-arena-start').click();
+        await waitFirmwareReady();
         await waitFirmware(3);
-        const saved = await readFirmware(); sixPositions(saved.frame);
+        const saved = await readFirmware(); requireSharedMotors(saved);
+        assert.ok(Math.hypot(saved.pose.x - initialPose.x, saved.pose.y - initialPose.y) > 0.01 ||
+            Math.abs(saved.pose.heading - initialPose.heading) > 0.01, 'A/B encoders must advance the shared arena pose');
+        check('A–F observations reach the shared hub and A/B move the existing arena');
         await page.screenshot({path: `${evidence}/source-completed.png`});
         assert.ok(sixPositions(saved.frame).every(position => position > 1));
         assert.equal(saved.storage, true);
@@ -149,7 +160,7 @@ async function runNuttxProof () {
         await waitFirmware(3);
         const restored = await readFirmware();
         assert.equal(restored.count, count);
-        requireSixMoved(loaded.frame, restored.frame);
+        requireSixMoved(loaded.frame, restored.frame); requireSharedMotors(restored);
         check('Run loaded program executes the saved six-motor program instead of the replacement editor text');
         await writeFile(`${evidence}/frames.json`, JSON.stringify({saved, replacement, loaded, restored}, null, 2));
     }
