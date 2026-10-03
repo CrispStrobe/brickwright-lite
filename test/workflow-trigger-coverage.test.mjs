@@ -47,6 +47,7 @@ test('native packaging, policy, security, and both committed source copies trigg
         'overlay/scratch-gui/src/lib/distribution-policy.js',
         'packages/scratch-gui/src/lib/distribution-policy.js',
         'scripts/package-native-broker-*.mjs',
+        'scripts/prepare-spike-micropython-pins.mjs',
         'scripts/verify-native-downloads-e2e.mjs',
         'scripts/verify-build-policy.mjs',
         'test/native-*.test.mjs',

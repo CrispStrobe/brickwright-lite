@@ -34,6 +34,7 @@ struct Session {
     backend: Option<String>,
     topology: SpikeTopology,
     state: TargetState,
+    micropython: Option<crate::spike_micropython_launch::MicroPythonRecipe>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -95,6 +96,30 @@ impl RenodeDebugger {
         self.start_target(supervisor, RenodeTarget::Ev3, None, SpikeTopology::Default)
     }
 
+    /// Called only by a native image chooser/profile owner, never a path DTO.
+    #[allow(dead_code)]
+    pub(crate) fn start_micropython_image(&self, supervisor: &RenodeSupervisor,
+        admitted: crate::spike_local_image::AdmittedImage) -> Result<&'static str,String> {
+        let root=option_env!("BW_RENODE_MICROPYTHON_ROOT").ok_or("MicroPython support is not packaged")?;
+        let pin=option_env!("BW_RENODE_MICROPYTHON_MANIFEST_SHA256").ok_or("MicroPython package pin unavailable")?;
+        let recipe=crate::spike_micropython_launch::MicroPythonRecipe::new(
+            PathBuf::from(root),pin.into(),supervisor.local_image_staging_root()?,admitted);
+        self.start_micropython_recipe(supervisor,recipe)
+    }
+
+    fn start_micropython_recipe(&self, supervisor: &RenodeSupervisor,
+        recipe: crate::spike_micropython_launch::MicroPythonRecipe) -> Result<&'static str,String> {
+        let plan=recipe.plan()?;
+        let identity=plan.identity();
+        self.start_owned_target(supervisor,RenodeTarget::SpikePrime,Some("micropython"),
+            SpikeTopology::Default,Some((recipe,identity)),|| supervisor.start_micropython_plan(plan))?;
+        if let Err(error)=self.run() {
+            let _=self.close(supervisor);
+            return Err(error);
+        }
+        Ok("running")
+    }
+
     fn start_target(
         &self,
         supervisor: &RenodeSupervisor,
@@ -102,6 +127,18 @@ impl RenodeDebugger {
         backend: Option<&str>,
         topology: SpikeTopology,
     ) -> Result<&'static str, String> {
+        self.start_owned_target(supervisor,target,backend,topology,None,|| match target {
+            RenodeTarget::SpikePrime => supervisor.start_spike_profile(backend,topology),
+            RenodeTarget::Ev3 => supervisor.start_ev3(),
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn start_owned_target(&self, supervisor: &RenodeSupervisor, target: RenodeTarget,
+        backend: Option<&str>, topology: SpikeTopology,
+        micropython: Option<(crate::spike_micropython_launch::MicroPythonRecipe,(String,u64))>,
+        launch: impl FnOnce() -> Result<crate::renode_supervisor::RenodeEndpoint,String>,
+    ) -> Result<&'static str,String> {
         let mut session = self
             .session
             .lock()
@@ -109,10 +146,7 @@ impl RenodeDebugger {
         if session.is_some() {
             return Err("Renode debugger already started".into());
         }
-        let endpoint = match target {
-            RenodeTarget::SpikePrime => supervisor.start_spike_profile(backend, topology)?,
-            RenodeTarget::Ev3 => supervisor.start_ev3()?,
-        };
+        let endpoint = launch()?;
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
         let startup_timeout = match target {
             RenodeTarget::SpikePrime => SPIKE_STARTUP_TIMEOUT,
@@ -159,6 +193,21 @@ impl RenodeDebugger {
                         }
                     }
                 };
+                if let Some((_,(hash,generation)))=&micropython {
+                    let snapshot = match feed.latest() {
+                        Ok(snapshot) => snapshot,
+                        Err(error) => {
+                            supervisor.teardown(TeardownReason::Reset);
+                            return Err(error);
+                        }
+                    };
+                    if snapshot.target.firmware!="micropython-prime" || snapshot.target.image_sha256.as_ref()!=Some(hash)
+                        || snapshot.lifecycle["micropythonUart"]["generation"].as_u64()!=Some(*generation)
+                        || snapshot.lifecycle["micropythonUart"]["state"]!="ready" {
+                        supervisor.teardown(TeardownReason::Reset);
+                        return Err("MicroPython attachment identity mismatch".into());
+                    }
+                }
                 TargetState::Spike(feed)
             }
             RenodeTarget::Ev3 => {
@@ -204,6 +253,7 @@ impl RenodeDebugger {
             backend: backend.map(str::to_owned),
             topology,
             state,
+            micropython: micropython.map(|(recipe,_)| recipe),
         });
         Ok("ready")
     }
@@ -236,14 +286,14 @@ impl RenodeDebugger {
     }
 
     pub(crate) fn reset(&self, supervisor: &RenodeSupervisor) -> Result<&'static str, String> {
-        let (target, backend, topology) = {
+        let (target, backend, topology, micropython) = {
             let mut session = self
                 .session
                 .lock()
                 .map_err(|_| "Renode debugger unavailable".to_owned())?;
             let target = session
                 .as_ref()
-                .map(|active| (active.target, active.backend.clone(), active.topology));
+                .map(|active| (active.target, active.backend.clone(), active.topology, active.micropython.clone()));
             if let Some(active) = session.as_mut() {
                 if active.running.load(Ordering::Acquire) {
                     let _ = active.interrupt.request();
@@ -253,7 +303,8 @@ impl RenodeDebugger {
             target.ok_or_else(|| "Renode debugger is not started".to_owned())?
         };
         supervisor.teardown(TeardownReason::Reset);
-        self.start_target(supervisor, target, backend.as_deref(), topology)?;
+        if let Some(recipe)=micropython {self.start_micropython_recipe(supervisor,recipe)?;}
+        else {self.start_target(supervisor, target, backend.as_deref(), topology)?;}
         Ok("reset")
     }
 
