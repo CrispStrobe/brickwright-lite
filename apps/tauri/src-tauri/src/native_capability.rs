@@ -240,7 +240,7 @@ pub(crate) fn native_broker_invoke(
     // some later comparison might accept.
     let id = LeaseId::parse_hex(&lease).ok_or_else(|| "capability refused".to_owned())?;
     let call = policy
-        .authorize_broker_call(window.label(), id, sequence, &operation, &resource, &args)
+        .consume_broker_call(window.label(), id, sequence, &operation, &resource, &args)
         .map_err(opaque)?;
     execute(call.operation, &args, &debugger, &supervisor)
 }
