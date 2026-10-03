@@ -20,6 +20,19 @@ pub struct AdmittedImage {
     pub vector_address: u32,
 }
 
+#[cfg(desktop)]
+impl AdmittedImage {
+    /// Only a native owner supplies this private staging root. The staged hash
+    /// identifies canonical bytes, rather than the original HEX text. Retain
+    /// the returned capsule until its owned emulator has fully stopped.
+    pub(crate) fn stage(
+        &self,
+        root: &std::path::Path,
+    ) -> Result<crate::spike_staged_image::StagedImage, crate::spike_staged_image::StageError> {
+        crate::spike_staged_image::StagedImage::create(root, &self.bytes)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImageError {
     InputTooLarge,

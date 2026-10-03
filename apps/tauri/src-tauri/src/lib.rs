@@ -46,6 +46,10 @@ mod spike_usb;
 #[cfg(desktop)]
 #[allow(dead_code)]
 mod spike_local_image;
+// Native-owned canonical image capsule. Chooser/startup wiring is still pending.
+#[cfg(desktop)]
+#[allow(dead_code)]
+mod spike_staged_image;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
