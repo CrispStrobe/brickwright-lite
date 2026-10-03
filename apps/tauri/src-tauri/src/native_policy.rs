@@ -135,6 +135,28 @@ impl NativePolicyState {
             .map_err(StateError::Denied)
     }
 
+    /// The isolated broker mints one lease per semantic call. Consume that
+    /// lease atomically before execution, so finished calls cannot retain all
+    /// 256 live slots for a minute or replay their authority. The general core
+    /// still supports ordered multi-call leases for its separate contract.
+    pub(crate) fn consume_broker_call(
+        &self,
+        caller_label: &str,
+        id: LeaseId,
+        sequence: u64,
+        operation: &str,
+        resource: &str,
+        args: &Value,
+    ) -> Result<AuthorizedCall, StateError> {
+        let now = self.now();
+        let mut core = self.inner.core.lock().map_err(|_| StateError::Unavailable)?;
+        let authorized = core
+            .authorize(caller_label, id, sequence, operation, resource, args, now)
+            .map_err(StateError::Denied)?;
+        core.leases.remove(&id);
+        Ok(authorized)
+    }
+
     /// A bounded, already-redacted view of the audit ring, for the diagnostics surface.
     ///
     /// Redaction here is structural rather than a filtering step that could be forgotten:
@@ -772,6 +794,53 @@ impl PolicyCore {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn per_call_leases_release_capacity_and_cannot_replay() {
+        let state = NativePolicyState::new();
+        for n in 0u64..1024 {
+            let mut random = [0; 32];
+            random[..8].copy_from_slice(&n.to_le_bytes());
+            let lease = state.issue_broker_lease(BROKER_LABEL, n, LeaseId::from_host_random(random)).unwrap();
+            assert!(state.consume_broker_call(BROKER_LABEL, lease, 0,
+                "platform.kind.read", "platform/default", &json!({})).is_ok());
+            assert_eq!(state.consume_broker_call(BROKER_LABEL, lease, 1,
+                "platform.kind.read", "platform/default", &json!({})),
+                Err(StateError::Denied(Denial::UnknownLease)));
+        }
+        assert!(state.inner.core.lock().unwrap().leases.is_empty());
+        assert_eq!(state.redacted_audit().unwrap().len(), 1024);
+    }
+
+    #[test]
+    fn invalid_call_cannot_consume_another_callers_lease() {
+        let state = NativePolicyState::new();
+        let lease = state.issue_broker_lease(BROKER_LABEL, 7, id(1)).unwrap();
+        assert_eq!(state.consume_broker_call("main", lease, 0,
+            "platform.kind.read", "platform/default", &json!({})),
+            Err(StateError::Denied(Denial::WrongCaller)));
+        assert!(state.consume_broker_call(BROKER_LABEL, lease, 0,
+            "platform.kind.read", "platform/default", &json!({"extra": true})).is_err());
+        assert!(state.consume_broker_call(BROKER_LABEL, lease, 0,
+            "platform.kind.read", "platform/default", &json!({})).is_ok());
+    }
+
+    #[test]
+    fn concurrent_consumers_authorize_exactly_once() {
+        let state = NativePolicyState::new();
+        let lease = state.issue_broker_lease(BROKER_LABEL, 7, id(1)).unwrap();
+        let barrier = Arc::new(std::sync::Barrier::new(2));
+        let handles: Vec<_> = (0..2).map(|_| {
+            let state = state.clone();
+            let barrier = barrier.clone();
+            std::thread::spawn(move || {
+                barrier.wait();
+                state.consume_broker_call(BROKER_LABEL, lease, 0,
+                    "platform.kind.read", "platform/default", &json!({})).is_ok()
+            })
+        }).collect();
+        assert_eq!(handles.into_iter().map(|h| h.join().unwrap()).filter(|ok| *ok).count(), 1);
+    }
 
     fn limits() -> Limits {
         Limits {

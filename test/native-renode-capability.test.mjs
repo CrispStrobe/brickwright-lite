@@ -65,6 +65,7 @@ test('malformed reply drops the session and the next operation reopens it', asyn
             opens++;
             return 'b'.repeat(64);
         }
+        if (command === 'native_broker_main_teardown') return;
         if (malformed) {
             malformed = false;
             return JSON.stringify({kind: 'call', result: 'ready'});
@@ -75,6 +76,77 @@ test('malformed reply drops the session and the next operation reopens it', asyn
     await assert.rejects(() => handlers[OPERATIONS.start]({}), /malformed/);
     assert.equal(await handlers[OPERATIONS.close]({}), 'closed');
     assert.equal(opens, 2);
+});
+
+test('long-running capabilities renew the bounded relay without replaying operations', async () => {
+    const calls = [];
+    let opens = 0;
+    const invoke = async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return `session-${++opens}`;
+        if (command === 'native_broker_main_teardown') return;
+        return JSON.stringify({kind: 'capability', result: String(params.requestId)});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    for (let i = 0; i < 1300; i++) {
+        assert.equal(await handlers[OPERATIONS.state]({}), String(i % 512));
+    }
+    assert.equal(opens, 3);
+    assert.equal(calls.filter(c => c.command === 'native_broker_request').length, 1300);
+    assert.deepEqual(calls.filter(c => c.command === 'native_broker_main_teardown').map(c => c.params),
+        [{session: 'session-1'}, {session: 'session-2'}]);
+});
+
+test('simultaneous first calls share one open and unique request IDs', async () => {
+    let finishOpen;
+    const calls = [];
+    const invoke = async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return new Promise(resolve => { finishOpen = resolve; });
+        return JSON.stringify({kind: 'capability', result: String(params.requestId)});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    const first = handlers[OPERATIONS.state]({});
+    const second = handlers[OPERATIONS.pause]({});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.length, 1);
+    finishOpen('owned');
+    assert.deepEqual(await Promise.all([first, second]), ['0', '1']);
+    assert.deepEqual(calls.filter(c => c.params).map(c => c.params.requestId), [0, 1]);
+});
+
+test('renewal drains in-flight replies before teardown and fails closed if cleanup fails', async () => {
+    let resolveLast;
+    let failCleanup = true;
+    let opens = 0;
+    const calls = [];
+    const invoke = async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return `session-${++opens}`;
+        if (command === 'native_broker_main_teardown') {
+            if (failCleanup) throw new Error('cleanup refused');
+            return;
+        }
+        if (params.requestId === 511) return new Promise(resolve => { resolveLast = resolve; });
+        return JSON.stringify({kind: 'capability', result: 'ok'});
+    };
+    const handlers = createNativeRenodeCapabilities({invoke});
+    for (let i = 0; i < 511; i++) await handlers[OPERATIONS.state]({});
+    const last = handlers[OPERATIONS.state]({});
+    await new Promise(resolve => setImmediate(resolve));
+    const next = handlers[OPERATIONS.pause]({});
+    const rejected = assert.rejects(next, /cleanup refused/);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(calls.some(c => c.command === 'native_broker_main_teardown'), false);
+    resolveLast(JSON.stringify({kind: 'capability', result: 'last'}));
+    assert.equal(await last, 'last');
+    await rejected;
+    assert.equal(opens, 1);
+    failCleanup = false;
+    assert.equal(await handlers[OPERATIONS.pause]({}), 'ok');
+    assert.equal(opens, 2);
+    assert.equal(calls.filter(c => c.params?.payload &&
+        JSON.parse(c.params.payload).operation === OPERATIONS.pause).length, 1);
 });
 
 test('full firmware packet capability accepts only the bounded upload ABI', () => {

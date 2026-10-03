@@ -34,14 +34,35 @@ const OPERATIONS = Object.freeze({
 const createNativeRenodeCapabilities = ({invoke} = {}) => {
     if (typeof invoke !== 'function') return null;
     let session = null;
-    let requestId = 0;
-    const request = operation => async args => {
-        try {
-            if (session === null) {
-                session = await invoke('native_broker_open');
-                requestId = 0;
+    // Match the native relay's bounded correlation history. Renewal disposes
+    // transport bookkeeping only; the managed debugger owns the emulator.
+    const REQUEST_BUDGET = 512;
+    let allocation = Promise.resolve();
+    const reserve = () => {
+        const next = allocation.then(async () => {
+            if (session && (session.failed || session.nextId === REQUEST_BUDGET)) {
+                const retired = session;
+                if (retired.pending) await new Promise(resolve => { retired.drained = resolve; });
+                await invoke('native_broker_main_teardown', {session: retired.id});
+                session = null;
             }
-            const raw = await invoke('native_broker_request', {session, requestId: requestId++,
+            if (session === null) {
+                session = {id: await invoke('native_broker_open'), nextId: 0, pending: 0, failed: false};
+            }
+            const owned = session;
+            owned.pending++;
+            return {owned, requestId: owned.nextId++};
+        });
+        // Serialize allocation and renewal, while allowing ordinary requests
+        // to execute concurrently. A failed open/teardown is never replayed as
+        // a semantic operation and does not poison the allocation queue.
+        allocation = next.then(() => {}, () => {});
+        return next;
+    };
+    const request = operation => async args => {
+        const {owned, requestId} = await reserve();
+        try {
+            const raw = await invoke('native_broker_request', {session: owned.id, requestId,
                 payload: JSON.stringify({kind: 'capability', operation, args})});
             const reply = JSON.parse(raw);
             if (!reply || Object.getPrototypeOf(reply) !== Object.prototype ||
@@ -50,9 +71,10 @@ const createNativeRenodeCapabilities = ({invoke} = {}) => {
             }
             return reply.result;
         } catch (error) {
-            session = null;
-            requestId = 0;
+            owned.failed = true;
             throw error;
+        } finally {
+            if (--owned.pending === 0) owned.drained?.();
         }
     };
     return Object.freeze(Object.fromEntries(Object.values(OPERATIONS).map(operation =>

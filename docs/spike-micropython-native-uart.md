@@ -41,3 +41,19 @@ write limits, wrong generations, EOF, read deadline, competing reads, prompt
 close cancellation, repeated close, and leaving another connection usable.
 This is a retained integration component, not a whole-backend independence or
 actual emulator UART qualification claim.
+
+The desktop Renode capability adapter renews its relay after 512 requests,
+matching the existing native limit. It waits for outstanding replies before
+retiring transport bookkeeping and opening the next relay. It neither closes
+the debugger nor replays a semantic operation. Allocation is serialized so
+simultaneous first requests share one session and get unique request IDs.
+If retirement fails, the next operation fails without executing; a later call
+can retry retirement. Outstanding native requests retain their existing timeout.
+
+Each semantic invocation consumes its freshly minted broker lease atomically
+before execution. Consumed leases cannot be replayed, including after execution
+fails, and cannot fill the 256 live-lease slots while waiting for expiry. Wrong
+callers and malformed operations still fail policy validation. Relay, lease,
+request and audit limits are unchanged. This lifecycle fix applies to existing
+SPIKE and EV3 operations as well as future UART integration; it does not register
+new UART commands or enable caller-image startup.
