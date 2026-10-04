@@ -482,6 +482,26 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+ADP7118 finite precision stream package adoption — **CLAIM 2026-10-04**, Codex
+bwcx `/root`; isolated wt-lite-adp-stream-20261004, branch
+lane/adp7118-stream-package-adoption-20261004; exact main base
+f246c712a63e510d106266f806a3c2caeb6b4f3c. Own Board/CUI package boundary:
+landed Board31c6499a617e274505386dbbc9d3a955e8f527ac (CI37146153959 and
+Harris37146153948 green) and CUIe3a3ffe6fa5eca6edac7aef249a90c46efb6a514
+(CI37176374150 all four jobs green). Scope: this paragraph; vendor-pins.json;
+generated root/GUI package specs and locks, package notices, Board census,
+8086/matrix reports and controller/ROM provenance mirrors only where pin-stale;
+existing test/adp7118-limiter-package-adoption.test.mjs for actual packaged CLI
+finite stream waveform/mean, provisional/final receipt and late budget refusal;
+exact stale Board/CUI assertions in existing ADP7118/LM324/LM741/LT1001/LT1763
+package tests only. Preserve existing interactive/batch accuracy bounds/cases.
+No source copy/fork, model/solver/tolerance, other pin, corpus payload, application
+UI/bin wrapper/browser harness/workflow/deploy-policy edit. Streaming entrypoint
+is installed bw-circuit-ui/bin/bwc.mjs, not an invented bwlite circuit command.
+Merge canonical claim before implementation; verify package identity, generator
+checks and independent caller consequences; one final exact-head hosted Build,
+guarded normal landing, then separately evidenced publication if requested.
+
 Linux browser boot timing boundary — **DONE candidate 2026-10-03**, Codex bwcx `/root`;
 isolated `/tmp/bwcx-linux-boot-timing-20261003`, exact base
 fb30f839f1498210e71da574f46650be8b57334e. Narrow evidence repair within the
