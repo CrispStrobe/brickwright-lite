@@ -33,7 +33,10 @@ test('the PXT Arcade page exposes upstream controls without a replacement input 
 
 test('production browser acceptance checks actual PXT button press and release', () => {
     assert.match(verifier, /frame\.locator\('\.button-a'\)/);
-    assert.match(verifier, /state\.buttonsByPin/);
+    assert.match(verifier, /Reflect\.apply\(original, this, args\)/);
+    assert.match(verifier, /args\[0\] === window\.pxsim\.Key\.A/);
+    assert.match(verifier, /delete board\.handleKeyEvent/);
+    assert.doesNotMatch(verifier, /state\.buttonsByPin/);
     assert.match(verifier, /await page\.mouse\.down\(\)/);
     assert.match(verifier, /finally\s*\{\s*await page\.mouse\.up\(\)/);
     assert.match(verifier, /on-screen A presses a real PXT board button/);

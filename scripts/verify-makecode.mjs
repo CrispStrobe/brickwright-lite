@@ -235,27 +235,44 @@ try {
         check('the imported Arcade game draws in MakeCode\'s Arcade simulator', lit > 50, `${lit} lit pixels`);
 
         // Native PXT controls must reach the running board, not merely appear.
-        // Read state only: do not inject a button or call its handler directly.
-        const pressedButtons = () => frame.evaluate(() => {
-            const state = window.pxsim?.board()?.buttonState;
-            if (!state?.buttonsByPin) throw new Error('Arcade button state unavailable');
-            return Object.entries(state.buttonsByPin).filter(([, button]) => button.pressed).map(([id]) => id);
+        // Arcade's pinned Board has no CommonButtonState. Observe its native
+        // event handler instead, after forwarding the untouched call. This
+        // verifier never injects input or invokes the handler directly.
+        await frame.evaluate(() => {
+            const board = window.pxsim?.board();
+            if (typeof board?.handleKeyEvent !== 'function' || !window.pxsim.Key?.A) {
+                throw new Error('Arcade native key-event contract unavailable');
+            }
+            const original = board.handleKeyEvent;
+            const own = Object.getOwnPropertyDescriptor(board, 'handleKeyEvent');
+            const events = [];
+            board.handleKeyEvent = function (...args) {
+                const result = Reflect.apply(original, this, args);
+                if (args[0] === window.pxsim.Key.A) events.push(Boolean(args[1]));
+                return result;
+            };
+            window.bwArcadeInputProof = {events, restore: () => {
+                if (own) Object.defineProperty(board, 'handleKeyEvent', own);
+                else delete board.handleKeyEvent;
+                delete window.bwArcadeInputProof;
+            }};
         });
+        const nativeEvents = () => frame.evaluate(() => window.bwArcadeInputProof.events.slice());
         const aButton = frame.locator('.button-a');
         const box = await aButton.boundingBox();
         check('PXT Arcade exposes an on-screen A control', Boolean(box && box.width >= 20 && box.height >= 20), JSON.stringify(box));
-        const before = await pressedButtons();
-        let down = [];
         try {
             await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
             await page.mouse.down();
-            down = await waitFor(pressedButtons, ids => ids.some(id => !before.includes(id)), 5000);
-            check('on-screen A presses a real PXT board button', down.some(id => !before.includes(id)), JSON.stringify(down));
+            const down = await waitFor(nativeEvents, events => events.includes(true), 5000);
+            check('on-screen A presses a real PXT board button', down.includes(true), JSON.stringify(down));
+            await page.mouse.up();
+            const released = await waitFor(nativeEvents, events => events.indexOf(false) > events.indexOf(true), 5000);
+            check('on-screen A releases the real PXT board button', released.indexOf(false) > released.indexOf(true), JSON.stringify(released));
         } finally {
             await page.mouse.up();
+            await frame.evaluate(() => window.bwArcadeInputProof?.restore());
         }
-        const released = await waitFor(pressedButtons, ids => down.every(id => before.includes(id) || !ids.includes(id)), 5000);
-        check('on-screen A releases the real PXT board button', down.every(id => before.includes(id) || !released.includes(id)), JSON.stringify(released));
 
         // ── 2b'. …and downloads as firmware for the board picked from pxt-arcade's own list ──
         // The picker is filled from static/makecode/arcade/hardware.json when the Arcade
