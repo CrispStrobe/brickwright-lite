@@ -91,3 +91,66 @@ test('MicroPython identity requires raw REPL capability and preserves frame cont
     const {adapter:legacy}=setup();const spoof=frame(1,0);spoof.target.capabilities.push('micropython-uart/v1');
     spoof.motors[1].speedDps=1110;assert.throws(()=>legacy.accept(spoof),/motor frame/);
 });
+
+const hubFrame = (seq, ms, position = 0) => {
+    const value = frame(seq, ms, position);
+    value.target.firmware = 'micropython-prime';
+    value.target.capabilities.push('micropython-uart/v1', 'prime-hub-io/v1');
+    value.lifecycle.micropythonUart = {generation: 1, state: 'ready'};
+    value.display = {width: 5, height: 5, semantics: 'grayscale-16bit', pixels: Array(25).fill(65535)};
+    value.buttons = {left: false, center: true, right: false, bluetooth: false};
+    value.imu = {available: true, semantics: 'signed-16bit-raw', temperature: -32768,
+        angularRate: [32767, 0, -1], acceleration: [-32768, 0, 32767]};
+    value.audio = {available: true, active: false, pcm8: {lastSample: 255, totalBytes: 6,
+        droppedBytes: 0, disabledBytes: 0, bufferedBytes: 6}};
+    return value;
+};
+test('hub observations share the hub without replacing manual inputs or arena heading', () => {
+    const {hub, adapter} = setup();
+    hub.data.buttons.left = true;
+    hub.data.imuRaw.acceleration = [1, 2, 3];
+    const inputs = adapter.accept(hubFrame(1, 0));
+    assert.deepEqual(hub.data.display, Array(25).fill(9));
+    assert.deepEqual(hub.data.firmwareHub.imu.acceleration, [-32768, 0, 32767]);
+    assert.equal(hub.data.firmwareHub.audio.pcm8.totalBytes, 6);
+    assert.equal(hub.data.imu.yaw, 0);
+    assert.equal(inputs.hub.buttons.left, true);
+    assert.equal(inputs.hub.buttons.center, false, 'observations do not overwrite pending manual input');
+    assert.deepEqual(inputs.hub.imuRaw.acceleration, [1, 2, 3]);
+});
+test('malformed hub observations fail before moving motors, world or ownership', () => {
+    for (const mutate of [f => {f.display.pixels[0] = 65536;}, f => {f.buttons.left = 1;},
+        f => {f.imu.acceleration[0] = true;}, f => {f.imu.angularRate.pop();},
+        f => {f.audio.pcm8.totalBytes = -1;}, f => {f.audio.pcm8.path = 'monitor';},
+        f => {f.display.semantics = 'physical';}, f => {f.target.firmware = 'brickwright-nuttx';}]) {
+        const {hub, bridge, adapter} = setup();
+        const before = structuredClone(hub.data), pose = {...bridge.sim.pose};
+        const bad = hubFrame(1, 0, 20); mutate(bad);
+        assert.throws(() => adapter.accept(bad), /Prime hub observation/);
+        assert.deepEqual(hub.data, before); assert.deepEqual(bridge.sim.pose, pose);
+        assert.equal(hub.clockOwner, null);
+    }
+    const {hub, adapter} = setup();
+    hub.data.imuRaw.temperature = 32768;
+    assert.throws(() => adapter.accept(hubFrame(1, 0)), /Prime hub input/);
+    assert.equal(hub.clockOwner, null);
+});
+
+test('hub validation mutation checks detect lost grayscale, IMU and PCM bounds', async () => {
+    const {readFile} = await import('node:fs/promises');
+    const source = await readFile(new URL('../overlay/scratch-gui/src/lib/spike-arena/prime-hub-io.js', import.meta.url), 'utf8');
+    for (const [needle, replacement, mutate] of [
+        ['!display.pixels.every(v => integer(v, 0, 65535))', 'false', f => {f.display.pixels[0] = 65536;}],
+        ['!vector(imu.angularRate)', 'false', f => {f.imu.angularRate = [0, 0];}],
+        ["!['totalBytes', 'droppedBytes', 'disabledBytes', 'bufferedBytes'].every(key => integer(audio.pcm8[key], 0, Number.MAX_SAFE_INTEGER))",
+            'false', f => {f.audio.pcm8.totalBytes = -1;}]
+    ]) {
+        assert.ok(source.includes(needle));
+        const original = await import('../overlay/scratch-gui/src/lib/spike-arena/prime-hub-io.js');
+        const mutant = await import(`data:text/javascript;base64,${Buffer.from(source.replace(needle, replacement)).toString('base64')}`);
+        const bad = hubFrame(1, 0);mutate(bad);
+        assert.throws(() => original.readHubObservation(bad), /Prime hub observation/);
+        assert.throws(() => assert.throws(() => mutant.readHubObservation(bad), /Prime hub observation/),
+            /Missing expected exception/, 'the same rejection scenario detects the broken validator');
+    }
+});

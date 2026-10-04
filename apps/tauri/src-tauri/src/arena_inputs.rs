@@ -17,8 +17,25 @@ pub(crate) fn valid_spike_start(value: &Value) -> bool {
         || (keys(value, &["backend", "topology"]) && value["backend"] == "micropython"
             && value["topology"] == "six-motors")
 }
+pub(crate) fn valid_hub_input(value: &Value) -> bool {
+    let buttons = &value["buttons"];
+    let imu = &value["imuRaw"];
+    keys(value, &["buttons", "imuRaw"])
+        && keys(buttons, &["left", "center", "right", "bluetooth"])
+        && ["left", "center", "right", "bluetooth"]
+            .iter()
+            .all(|name| buttons[name].is_boolean())
+        && keys(imu, &["temperature", "angularRate", "acceleration"])
+        && integer(&imu["temperature"], -32768, 32767)
+        && ["angularRate", "acceleration"].iter().all(|name| {
+            imu[name].as_array().is_some_and(|values| {
+                values.len() == 3 && values.iter().all(|v| integer(v, -32768, 32767))
+            })
+        })
+}
 pub(crate) fn valid(value: &Value) -> bool {
-    if !keys(value, &["sensors", "loads"]) {
+    if !(keys(value, &["sensors", "loads"]) ||
+        (keys(value, &["sensors", "loads", "hub"]) && valid_hub_input(&value["hub"]))) {
         return false;
     }
     let (Some(sensors), Some(loads)) = (value["sensors"].as_array(), value["loads"].as_array())
@@ -232,6 +249,36 @@ mod nuttx_packet_tests {
             json!({"bytes":[112,1,7,0,1,0,0,0]}),
             json!({"bytes":[112,1,1,0,1,0,0,0,0,0]})] {
             assert!(!valid_nuttx_packet(&value));
+        }
+    }
+}
+
+#[cfg(test)]
+mod hub_tests {
+    use super::*;
+    use serde_json::json;
+    #[test]
+    fn hub_inputs_are_closed_boolean_buttons_and_signed_raw_samples() {
+        let sample = json!({"sensors":[],"loads":[],"hub":{
+            "buttons":{"left":true,"center":false,"right":false,"bluetooth":true},
+            "imuRaw":{"temperature":-32768,"angularRate":[32767,0,-1],"acceleration":[-32768,0,32767]}}});
+        assert!(valid(&sample));
+        for (path, value) in [
+            (vec!["hub", "buttons", "left"], json!(1)),
+            (vec!["hub", "buttons", "monitor"], json!(false)),
+            (vec!["hub", "imuRaw", "temperature"], json!(32768)),
+            (vec!["hub", "imuRaw", "temperature"], json!(true)),
+            (vec!["hub", "imuRaw", "angularRate"], json!([1, 2])),
+            (vec!["hub", "imuRaw", "acceleration"], json!([0, -32769, 0])),
+            (vec!["hub", "imuRaw", "path"], json!("sysbus")),
+        ] {
+            let mut bad = sample.clone();
+            let mut field = &mut bad;
+            for key in path {
+                field = &mut field[key];
+            }
+            *field = value;
+            assert!(!valid(&bad));
         }
     }
 }

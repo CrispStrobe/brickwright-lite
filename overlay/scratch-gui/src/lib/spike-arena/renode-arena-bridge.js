@@ -3,6 +3,7 @@
 // Observed guest encoders drive the existing world; the native controller never steps here.
 import {requireSixMotorFrame} from '../spike-nuttx/motor-topology.js';
 import {writeObservedMotor} from '../virtual-hub/motor-telemetry.js';
+import {readHubObservation, validHubInput} from './prime-hub-io.js';
 const PORTS = 'ABCDEF';
 const REQUIRED = ['arena-inputs/v1', 'arena-clock/v1', 'guest-motor-output/v1', 'state-sample/v1'];
 export class RenodeArenaBridge {
@@ -24,6 +25,15 @@ export class RenodeArenaBridge {
             (target.firmware === 'micropython-prime' && !target.capabilities.includes('micropython-uart/v1'))) {
             throw new Error('Configured simulation firmware does not support the arena contract');
         }
+        const observation = readHubObservation(frame);
+        if (observation) {
+            const data = this.bridge.hubState.data;
+            if (!validHubInput({buttons: {left: data.buttons.left, center: data.buttons.center,
+                right: data.buttons.right, bluetooth: data.buttons.bluetooth ?? false}, imuRaw: data.imuRaw})) {
+                throw new Error('Invalid Prime hub input');
+            }
+        }
+        if (this.last && Boolean(observation) !== this.hubIo) throw new Error('Prime hub capability changed during a session');
         const micropython = target.firmware === 'micropython-prime';
         const speedLimit = micropython || target.capabilities.some(cap => ['arena-program/v1', 'nuttx-program/v1'].includes(cap)) ? 1110 : 300;
         if (this.allMotors) requireSixMotorFrame(frame, target.firmware);
@@ -69,6 +79,12 @@ export class RenodeArenaBridge {
         const hub = this.bridge.hubState;
         if (!last) hub.backend.cancel();
         hub.clockOwner = 'renode';
+        this.hubIo = Boolean(observation);
+        if (observation) {
+            hub.data.firmwareHub = observation;
+            // UI brightness is 0..9; preserve raw 16-bit values in firmwareHub.
+            hub.data.display = observation.display.pixels.map(value => Math.round(value * 9 / 65535));
+        }
         // Linear encoder interpolation is a sampled trajectory, bounded to 5 ms world steps.
         if (ms > 0) {
             const count = Math.ceil(ms / this.bridge.stepMs);
@@ -98,8 +114,15 @@ export class RenodeArenaBridge {
         const travel = sides.map((side, i) => this.last.motors[i].demandDirection * (side.reversed ? -1 : 1) * 0.01);
         const contact = this.bridge.robot.contactModel === 'stall' && this.bridge.sim.wouldBlockWheels(...travel);
         const ports = this.allMotors ? [...PORTS] : sides.map(side => side.port);
-        return {sensors, loads: ports.map(port => ({port,
+        const result = {sensors, loads: ports.map(port => ({port,
             percent: contact && sides.some(side => side.port === port) ? 100 : 0}))};
+        if (this.hubIo) {
+            const data = this.bridge.hubState.data;
+            result.hub = {buttons: {left: data.buttons.left, center: data.buttons.center,
+                right: data.buttons.right, bluetooth: data.buttons.bluetooth ?? false}, imuRaw: data.imuRaw};
+            if (!validHubInput(result.hub)) throw new Error('Invalid Prime hub input');
+        }
+        return result;
     }
     close () {
         if (this.closed) return;

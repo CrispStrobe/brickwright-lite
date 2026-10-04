@@ -146,6 +146,48 @@ impl BrickStateDecoder {
                 && display_height.is_some_and(|value| value <= 64)
                 && pixels.iter().all(serde_json::Value::is_number)
         };
+        if snapshot
+            .target
+            .capabilities
+            .iter()
+            .any(|cap| cap == "prime-hub-io/v1")
+        {
+            let pcm = &snapshot.audio["pcm8"];
+            let valid_pcm = pcm.as_object().is_some_and(|fields| fields.len() == 5)
+                && pcm["lastSample"].as_u64().is_some_and(|v| v <= 255)
+                && [
+                    "totalBytes",
+                    "droppedBytes",
+                    "disabledBytes",
+                    "bufferedBytes",
+                ]
+                .iter()
+                .all(|key| {
+                    pcm[key]
+                        .as_u64()
+                        .is_some_and(|v| v <= 9_007_199_254_740_991)
+                });
+            if snapshot.target.firmware != "micropython-prime"
+                || display_width != Some(5)
+                || display_height != Some(5)
+                || pixels.len() != 25
+                || snapshot.display["semantics"] != "grayscale-16bit"
+                || !pixels
+                    .iter()
+                    .all(|v| v.as_u64().is_some_and(|raw| raw <= 65535))
+                || snapshot.imu["available"] != true
+                || snapshot.imu["semantics"] != "signed-16bit-raw"
+                || !crate::arena_inputs::valid_hub_input(&serde_json::json!({
+                    "buttons": snapshot.buttons,
+                    "imuRaw": {"temperature": snapshot.imu["temperature"],
+                        "angularRate": snapshot.imu["angularRate"], "acceleration": snapshot.imu["acceleration"]}
+                }))
+                || snapshot.audio["available"] != true
+                || !valid_pcm
+            {
+                return Err("brick-state Prime hub observation is malformed".into());
+            }
+        }
         if !valid_display {
             return Err("brick-state display exceeds its bounds".into());
         }
@@ -509,6 +551,9 @@ impl BrickStateFeed {
                     && prior.target.transport == "none"
                     && (prior.target.firmware == "brickwright-arena-demo" ||
                         (name == "arena.inputs" && matches!(prior.target.firmware.as_str(), "brickwright-nuttx" | "micropython-prime")))
+                    && (arguments.get("hub").is_none() ||
+                        (name == "arena.inputs" && prior.target.firmware == "micropython-prime" &&
+                            prior.target.capabilities.iter().any(|cap| cap == "prime-hub-io/v1")))
                     && prior.target.capabilities.iter().any(|cap| {
                         cap == if name == "arena.program.load" {
                             "arena-program/v1"
@@ -602,6 +647,53 @@ mod tests {
         value["target"]["capabilities"] = serde_json::json!(["micropython-uart/v1"]);
         value["lifecycle"]["micropythonUart"] = serde_json::json!({"generation":7,"state":"ready"});
         value
+    }
+
+    #[test]
+    fn prime_hub_observations_are_bounded_before_decoder_state_changes() {
+        let mut valid = micro_frame(0);
+        valid["target"]["capabilities"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!("prime-hub-io/v1"));
+        valid["display"] = serde_json::json!({"width":5,"height":5,"semantics":"grayscale-16bit","pixels":vec![65535;25]});
+        valid["buttons"] =
+            serde_json::json!({"left":false,"center":true,"right":false,"bluetooth":false});
+        valid["imu"] = serde_json::json!({"available":true,"semantics":"signed-16bit-raw","temperature":-32768,
+            "angularRate":[32767,0,-1],"acceleration":[-32768,0,32767]});
+        valid["audio"] = serde_json::json!({"available":true,"active":false,"pcm8":{
+            "lastSample":255,"totalBytes":6,"droppedBytes":0,"disabledBytes":0,"bufferedBytes":6}});
+        BrickStateDecoder::default()
+            .decode(&serde_json::to_vec(&valid).unwrap())
+            .unwrap();
+        for (path, value) in [
+            (
+                vec!["display", "pixels"],
+                serde_json::json!(vec![65536; 25]),
+            ),
+            (vec!["display", "semantics"], serde_json::json!("physical")),
+            (vec!["buttons", "left"], serde_json::json!(1)),
+            (vec!["imu", "temperature"], serde_json::json!(true)),
+            (vec!["imu", "angularRate"], serde_json::json!([1, 2])),
+            (
+                vec!["imu", "acceleration"],
+                serde_json::json!([0, -32769, 0]),
+            ),
+            (vec!["audio", "pcm8", "totalBytes"], serde_json::json!(-1)),
+            (vec!["audio", "pcm8", "path"], serde_json::json!("sysbus")),
+        ] {
+            let mut bad = valid.clone();
+            let mut field = &mut bad;
+            for key in path {
+                field = &mut field[key];
+            }
+            *field = value;
+            let mut decoder = BrickStateDecoder::default();
+            assert!(decoder.decode(&serde_json::to_vec(&bad).unwrap()).is_err());
+            decoder
+                .decode(&serde_json::to_vec(&valid).unwrap())
+                .unwrap();
+        }
     }
 
     #[test]

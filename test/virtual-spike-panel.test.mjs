@@ -82,7 +82,24 @@ test('reopening and closing the dashboard releases its state subscription', () =
         enabled.checked = true;
         enabled.listeners.change();
         assert.equal(state.data.simulationEnabled, true);
+        state.externalBackend = {adapter: {hubIo: true}, closed: false};
         dialog = openVirtualSpikePanel(state);
+        const hubControls = [];
+        const findHub = node => {
+            if (node?.['aria-label']?.startsWith('Hub ') || node?.['aria-label']?.startsWith('Raw ')) hubControls.push(node);
+            for (const child of node?.children || []) findHub(child);
+        };
+        findHub(dialog);
+        assert.equal(hubControls.length, 11, 'four buttons and seven signed raw samples');
+        const button = hubControls.find(node => node['aria-label'] === 'Hub left button');
+        button.checked = true;button.listeners.change();assert.equal(state.data.buttons.left, true);
+        const raw = hubControls.find(node => node['aria-label'] === 'Raw acceleration x');
+        raw.value = '-32768';raw.listeners.input();assert.equal(state.data.imuRaw.acceleration[0], -32768);
+        for (const value of ['32768', '1.5', '']) {
+            raw.value = value;raw.listeners.input();assert.equal(state.data.imuRaw.acceleration[0], -32768);
+        }
+        state.externalBackend.closed = true;
+        button.checked = false;button.listeners.change();assert.equal(state.data.buttons.left, true, 'late closed-session events cannot alter input');
         assert.equal(state.listeners.size, 1);
         const reopenedEnabled = document.activeElement;
         let tabPrevented = false;

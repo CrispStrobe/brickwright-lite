@@ -166,6 +166,41 @@ export const openVirtualSpikePanel = hubState => {
         imu.appendChild(label);
     }
     card.appendChild(imu);
+    // Raw samples are separate from the arena's heading and calibrated UI units.
+    if (hubState.externalBackend?.adapter?.hubIo) {
+        const section = element('div', {style: 'margin-top:14px'});
+        section.appendChild(element('h3', {}, 'Firmware hub inputs'));
+        section.appendChild(element('p', {}, 'IMU values are signed 16-bit raw samples, without physical calibration.'));
+        const available = () => Boolean(hubState.externalBackend?.adapter?.hubIo && !hubState.externalBackend.closed);
+        for (const name of ['left', 'center', 'right', 'bluetooth']) {
+            const label = element('label', {style: 'margin-right:12px'}, name);
+            const input = element('input', {type: 'checkbox', 'aria-label': `Hub ${name} button`});
+            input.checked = hubState.data.buttons[name] ?? false;
+            input.addEventListener('change', () => {
+                if (!available()) return;
+                hubState.data.buttons[name] = input.checked; hubState.changed();
+            });
+            label.appendChild(input); section.appendChild(label); focusable.push(input);
+        }
+        for (const [name, length] of [['temperature', 1], ['angularRate', 3], ['acceleration', 3]]) {
+            for (let i = 0; i < length; i++) {
+                const label = element('label', {style: 'display:flex;gap:8px;margin-top:6px'},
+                    length === 1 ? 'Raw temperature' : `Raw ${name} ${'xyz'[i]}`);
+                const input = element('input', {type: 'number', min: '-32768', max: '32767', step: '1',
+                    'aria-label': length === 1 ? 'Raw temperature' : `Raw ${name} ${'xyz'[i]}`});
+                input.value = String(length === 1 ? hubState.data.imuRaw[name] : hubState.data.imuRaw[name][i]);
+                input.addEventListener('input', () => {
+                    const value = Number(input.value);
+                    if (!available() || input.value.trim() === '' || !Number.isInteger(value) || value < -32768 || value > 32767) return;
+                    if (length === 1) hubState.data.imuRaw[name] = value;
+                    else hubState.data.imuRaw[name][i] = value;
+                    hubState.changed();
+                });
+                label.appendChild(input); section.appendChild(label); focusable.push(input);
+            }
+        }
+        card.appendChild(section);
+    }
     const close = element('button', {style: 'margin-top:16px;padding:9px 18px'}, 'Done');
     close.addEventListener('click', () => { unsubscribe(); closeVirtualSpikePanel(); });
     focusable.push(close);
