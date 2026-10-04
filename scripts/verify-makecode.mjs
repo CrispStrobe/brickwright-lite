@@ -234,6 +234,29 @@ try {
         }).catch(() => 0), n => n > 50, 60000) : 0;
         check('the imported Arcade game draws in MakeCode\'s Arcade simulator', lit > 50, `${lit} lit pixels`);
 
+        // Native PXT controls must reach the running board, not merely appear.
+        // Read state only: do not inject a button or call its handler directly.
+        const pressedButtons = () => frame.evaluate(() => {
+            const state = window.pxsim?.board()?.buttonState;
+            if (!state?.buttonsByPin) throw new Error('Arcade button state unavailable');
+            return Object.entries(state.buttonsByPin).filter(([, button]) => button.pressed).map(([id]) => id);
+        });
+        const aButton = frame.locator('.button-a');
+        const box = await aButton.boundingBox();
+        check('PXT Arcade exposes an on-screen A control', Boolean(box && box.width >= 20 && box.height >= 20), JSON.stringify(box));
+        const before = await pressedButtons();
+        let down = [];
+        try {
+            await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+            await page.mouse.down();
+            down = await waitFor(pressedButtons, ids => ids.some(id => !before.includes(id)), 5000);
+            check('on-screen A presses a real PXT board button', down.some(id => !before.includes(id)), JSON.stringify(down));
+        } finally {
+            await page.mouse.up();
+        }
+        const released = await waitFor(pressedButtons, ids => down.every(id => before.includes(id) || !ids.includes(id)), 5000);
+        check('on-screen A releases the real PXT board button', down.every(id => before.includes(id) || !released.includes(id)), JSON.stringify(released));
+
         // ── 2b'. …and downloads as firmware for the board picked from pxt-arcade's own list ──
         // The picker is filled from static/makecode/arcade/hardware.json when the Arcade
         // project arrives; wait for it to be filled, never for a fixed time.
