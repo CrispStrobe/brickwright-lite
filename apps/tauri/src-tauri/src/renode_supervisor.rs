@@ -1122,10 +1122,10 @@ fn spike_arguments(
         "--hide-log".into(),
         "-P".into(),
         "{BW_MONITOR_PORT}".into(),
-        scenario
-            .to_str()
-            .ok_or_else(|| "SPIKE scenario path is not UTF-8".to_owned())?
-            .into(),
+        // Renode interpolates a positional script into an unescaped monitor
+        // command. Use its explicit command interface for paths with spaces.
+        "-e".into(),
+        format!("include {}", monitor_path(scenario)?),
         "-e".into(),
         format!("sysbus LoadELF {}", monitor_path(firmware)?),
         "-e".into(),
@@ -1609,6 +1609,12 @@ mod tests {
             monitor_path(Path::new("/package with spaces/image.elf")).unwrap(),
             "@/package\\ with\\ spaces/image.elf"
         );
+        let spaced = spike_arguments(Path::new("/installed resources/guest/arena-demo.resc"),
+            Path::new("/installed resources/guest/arena-demo.elf"),
+            Path::new("/installed resources/guest/scripts/spike-state-server.py"),
+            Path::new("/installed resources/guest/state-config.json")).unwrap();
+        assert!(spaced.windows(2).any(|pair| pair == ["-e", "include @/installed\\ resources/guest/arena-demo.resc"]));
+        assert!(!spaced.iter().any(|arg| arg == "/installed resources/guest/arena-demo.resc"));
         assert_eq!(
             monitor_path(Path::new("/package/image.elf;quit")).unwrap_err(),
             "SPIKE package path is not monitor-safe"

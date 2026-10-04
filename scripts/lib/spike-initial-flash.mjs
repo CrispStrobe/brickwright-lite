@@ -27,3 +27,7 @@ export function initialFlashScenario (output) {
     // Runs in the pinned scenario before kernel boot; no packet or client path.
     return `python "from System.IO import File; seed=File.ReadAllBytes('${join(output, INITIAL_FLASH_FILE)}'); assert len(seed)==8192; self.Machine['sysbus.spi2.primeStorageMux.primeStorage'].UnderlyingMemory.WriteBytes(0x100000,seed)"\n`;
 }
+/** Renode's monitor origin follows the included scenario, unlike process cwd. */
+export function initialFlashResourceScenario () {
+    return `python "from System.IO import File, Path; seed=File.ReadAllBytes(Path.Combine(variables['ORIGIN'],'${INITIAL_FLASH_FILE}')); assert len(seed)==8192; self.Machine['sysbus.spi2.primeStorageMux.primeStorage'].UnderlyingMemory.WriteBytes(0x100000,seed)"\n`;
+}

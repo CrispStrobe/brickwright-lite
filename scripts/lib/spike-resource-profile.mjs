@@ -4,7 +4,7 @@
 import {readFile, writeFile, mkdir, lstat, realpath} from 'node:fs/promises';
 import {join, dirname, relative, sep, resolve} from 'node:path';
 import {createHash} from 'node:crypto';
-import {initialFlashScenario} from './spike-initial-flash.mjs';
+import {initialFlashScenario,initialFlashResourceScenario} from './spike-initial-flash.mjs';
 const shared = ['state-config.json','scripts/spike-state-server.py',
     'tools/spike_state_monitor_protocol.py','tools/ev3_state_observer.py',
     'tools/spike_arena_inputs.py','tools/spike_arena_mailbox.py'];
@@ -77,7 +77,7 @@ export async function freezeResourceProfile (kind, sourceArg, outputArg, resourc
     const expected=kind==='guest'?`mach create\nmachine LoadPlatformDescription @${join(source,'arena-demo.repl')}\n`:
         `include @${join(source,'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(source,'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashScenario(source):''}`;
     const portable=kind==='guest'?'mach create\nmachine LoadPlatformDescription @arena-demo.repl\n':
-        `include @models.cs\nmach create\nmachine LoadPlatformDescription @platforms/boards/spike-prime.repl\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashScenario('.'):''}`;
+        `include @models.cs\nmach create\nmachine LoadPlatformDescription @platforms/boards/spike-prime.repl\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashResourceScenario():''}`;
     // Accept only the exact authored templates, never arbitrary monitor rewriting.
     if (![expected,portable].includes(files[scenario].toString())) throw new Error('Unknown source-build scenario template');
     files[scenario]=Buffer.from(portable);

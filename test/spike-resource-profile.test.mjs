@@ -27,7 +27,7 @@ for(const kind of ['guest','nuttx'])test(`${kind} profile freezes exact mappings
         assert.ok(Object.values(result.pins).every(n=>!n.includes(root)));
         const relocated=join(root,'installed resources with spaces');await rename(resources,relocated);
         const text=await readFile(join(relocated,kind,scenario),'utf8');assert.ok(!text.includes(source));
-        if(kind==='nuttx')assert.match(text,/File.ReadAllBytes\('initial-flash.bin'\)/);
+        if(kind==='nuttx')assert.ok(text.includes("Path.Combine(variables['ORIGIN'],'initial-flash.bin')"));
         await assert.rejects(freezeResourceProfile(kind,source,join(relocated,kind),relocated),/EEXIST/);
     }finally{await rm(root,{recursive:true,force:true});}
 });
