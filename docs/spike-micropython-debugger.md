@@ -37,9 +37,11 @@ mutation is detected by the reset recipe test. Generated packages, firmware byte
 logs, test harnesses and complete transcripts are retained privately.
 
 The follow-up [GUI integration](spike-micropython-gui.md) adds chooser/Code-tab
-execution for pinned desktop profiles. Public source assembly/portable packaging
-and robot Python bindings remain pending. The tested image lacks `hub` and `motor`. The live support
-profile uses the previously qualified local candidate electrical model; this does
-not qualify the stock model, original LEGO firmware or physical hub equivalence.
+execution for pinned desktop profiles. Public source assembly and the seed's
+`bwspike` motor/sensor API are now available; see the
+[support contract](https://github.com/CrispStrobe/renode-spike-prime/blob/main/docs/spike-micropython-support.md).
+The tested upstream image itself lacks `hub` and `motor`. Portable installed
+packaging remains pending. The later support-profile qualification does not
+establish original LEGO firmware compatibility or physical hub equivalence.
 Non-Unix capsule staging remains unsupported. New components use BSD-3-Clause;
 retained model sources keep MIT attribution.

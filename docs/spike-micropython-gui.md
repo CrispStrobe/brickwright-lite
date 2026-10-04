@@ -36,12 +36,48 @@ are refused. The OS dialog and full desktop DOM route were not automated locally
 Generated harnesses, firmware, observations, support packages and complete transcripts
 remain private.
 
-The tested image has no `hub` or `motor` modules. This path runs ordinary MicroPython;
-robot Python bindings remain pending. Full NuttX Python continues to use its own
-runner and `brickwright` API. Neither original LEGO firmware nor physical equivalence
-is qualified. The live support profile uses a previously qualified local candidate
-electrical model. Public source-profile assembly and portable installed packaging
-remain pending: ordinary desktop builds without the pinned profile refuse explicitly.
-The native chooser never downloads firmware or receives an editor-supplied path.
+## Robot programs and desktop setup
+
+The upstream application has no `hub` or `motor` modules. The public support seed
+now supplies Brickwright's BSD `bwspike` API: A/B motor power, braking/coasting,
+encoder and speed reads, timed speed control and absolute encoder moves; C color,
+D distance and E force readings. These commands run inside the emulated CPU and
+use modeled GPIO/PWM/UART devices. They feed the same hub and arena, rather than
+moving a second world from Python.
+
+For example, enter this in the Python Code tab:
+
+```python
+from bwspike import Motor, ColorSensor, stop_all
+
+motor = Motor('A')
+try:
+    motor.run_speed(40, 1500)
+    print(motor.run_to(180, speed_limit=30, timeout_ms=10000))
+    print(ColorSensor().reflection())
+finally:
+    stop_all()
+```
+
+Reassemble support from the current reviewed Renode repository and regenerate
+its pins before rebuilding the desktop application. Older support seeds do not
+contain this API. The [support assembly and API contract](https://github.com/CrispStrobe/renode-spike-prime/blob/main/docs/spike-micropython-support.md)
+provides reproducible commands, units, bounds, timing and error behavior.
+The local application image is still selected separately; no firmware is bundled.
+
+Live qualification tracked 40% speed at 38–39% under 25% modeled load
+(tolerance: three percentage points), reached absolute targets within two encoder
+degrees, detected lack of encoder progress and braked A on Ctrl-C while B remained
+running. Sensor boundary values and shared-arena motion also passed. This does not
+establish physical calibration, general hotplug support or six-motor control.
+Feedback commands are synchronous and require a single program thread. Timed
+speed commands cannot guarantee unreachable speed targets; position completion
+does not provide active holding afterward.
+
+Full NuttX Python continues to use its own runner and `brickwright` API. Original
+LEGO firmware and physical equivalence remain unqualified. Public source-profile
+assembly is available; portable installed packaging remains pending. Ordinary
+desktop builds without configured runtime/support pins refuse explicitly. The
+native chooser never downloads firmware or receives an editor-supplied path.
 Unix capsule staging is qualified; non-Unix staging remains unsupported.
 New glue uses BSD-3-Clause; existing component/dependency attribution is retained.
