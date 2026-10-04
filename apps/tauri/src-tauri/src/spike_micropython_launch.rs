@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //! Native-only direct application startup. No firmware is bundled or fetched.
-use crate::renode_supervisor::{sha256, verify_micropython_manifest};
+use crate::renode_supervisor::{sha256, verify_micropython_manifest, SpikeTopology};
 use crate::spike_local_image::{admit_raw, AdmittedImage};
 use crate::spike_staged_image::StagedImage;
 use serde_json::json;
@@ -13,6 +13,7 @@ pub(crate) struct MicroPythonRecipe {
     manifest_hash: String,
     staging_root: PathBuf,
     admitted: AdmittedImage,
+    topology: SpikeTopology,
 }
 static UART_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 impl MicroPythonRecipe {
@@ -22,8 +23,14 @@ impl MicroPythonRecipe {
         staging_root: PathBuf,
         admitted: AdmittedImage,
     ) -> Self {
-        Self { root, manifest_hash, staging_root, admitted }
+        Self { root, manifest_hash, staging_root, admitted, topology: SpikeTopology::Default }
     }
+
+    pub(crate) fn with_topology(mut self, topology: SpikeTopology) -> Self {
+        self.topology = topology;
+        self
+    }
+    pub(crate) fn topology(&self) -> SpikeTopology { self.topology }
 
     pub(crate) fn plan(&self) -> Result<MicroPythonLaunch, String> {
         use std::sync::atomic::Ordering;
@@ -39,8 +46,8 @@ impl MicroPythonRecipe {
                 Err(current) => generation = current,
             }
         }
-        MicroPythonLaunch::create(
-            &self.root, &self.manifest_hash, &self.staging_root, &self.admitted, generation,
+        MicroPythonLaunch::create_with_topology(
+            &self.root, &self.manifest_hash, &self.staging_root, &self.admitted, generation, self.topology,
         )
     }
 }
@@ -83,12 +90,20 @@ fn python_path(path: &Path) -> Result<String, String> {
 impl MicroPythonLaunch {
     /// The owner supplies native package pins and a private staging root;
     /// none of these arguments are editor/broker DTOs.
+    #[allow(dead_code)]
     pub(crate) fn create(
         root: &Path,
         manifest_hash: &str,
         staging_root: &Path,
         admitted: &AdmittedImage,
         generation: u64,
+    ) -> Result<Self, String> {
+        Self::create_with_topology(root, manifest_hash, staging_root, admitted, generation, SpikeTopology::Default)
+    }
+
+    pub(crate) fn create_with_topology(
+        root: &Path, manifest_hash: &str, staging_root: &Path,
+        admitted: &AdmittedImage, generation: u64, topology: SpikeTopology,
     ) -> Result<Self, String> {
         if !(1..=9_007_199_254_740_991).contains(&generation) {
             return Err("invalid native UART generation".into());
@@ -106,14 +121,16 @@ impl MicroPythonLaunch {
         check_assets(&root, manifest_hash)?;
         let image = StagedImage::create(staging_root, &admitted.bytes)
             .map_err(|_| "image staging failed")?;
-        let config_bytes = serde_json::to_vec(&json!({
+        let mut state_config = json!({
             "identity":{"board":"spike-prime","firmware":"micropython-prime","transport":"none","imageSha256":image.image_sha256()},
             "paths":{"programUart":"external:programUart","portA":"external:portA","portB":"external:portB","portC":"external:portC","portD":"external:portD","portE":"external:portE","portF":"external:portF","storage":"machine:sysbus.spi2.primeStorageMux.primeStorage"},
             "programUartGeneration":generation,"socketTimeoutSeconds":30
-        })).map_err(|_| "state configuration unavailable")?;
+        });
+        if topology == SpikeTopology::SixMotors { state_config["motorPorts"] = json!(6); }
+        let config_bytes = serde_json::to_vec(&state_config).map_err(|_| "state configuration unavailable")?;
         let config = StagedImage::create(staging_root, &config_bytes)
             .map_err(|_| "configuration staging failed")?;
-        let commands = vec![
+        let mut commands = vec![
             format!("include {}",monitor_path(&root.join("models.cs"))?),
             format!("include {}",monitor_path(&root.join("program-uart.cs"))?),
             "mach create".into(),
@@ -131,6 +148,10 @@ impl MicroPythonLaunch {
             format!("spike_state_start \"127.0.0.1\" {{BW_STATE_PORT}} {}",monitor_path(config.path())?),
             "start".into(),
         ];
+        if topology == SpikeTopology::SixMotors {
+            commands.splice(5..5, ['C','D','E','F'].into_iter()
+                .map(|port| format!("port{port} Attach \"motor\"")));
+        }
         let mut arguments = vec![
             "--disable-gui".into(),
             "--hide-log".into(),
@@ -280,6 +301,21 @@ mod tests {
         let config_path = plan.config.path().to_owned();
         let (_, args, files) = plan.into_parts().unwrap();
         assert_eq!(files.len(), 2);
+        let six_recipe=recipe.clone().with_topology(SpikeTopology::SixMotors);
+        let six_first=six_recipe.plan().unwrap();let six_second=six_recipe.plan().unwrap();
+        assert_eq!(six_recipe.topology(),SpikeTopology::SixMotors);
+        assert_ne!(six_first.identity().1,six_second.identity().1);
+        let config:serde_json::Value=serde_json::from_slice(&std::fs::read(six_first.config.path()).unwrap()).unwrap();
+        assert_eq!(config["motorPorts"],6);
+        let commands=&six_first.arguments;
+        let create=commands.iter().position(|c|c.contains("CreatePrimeElectricalPorts")).unwrap();
+        let load=commands.iter().position(|c|c.starts_with("sysbus LoadBinary")).unwrap();
+        for port in ['C','D','E','F'] {
+            let attach=commands.iter().position(|c|c==&format!("port{port} Attach \"motor\"")).unwrap();
+            assert!(create<attach && attach<load);
+        }
+        drop((six_first,six_second));
+
         assert!(args.iter().any(|s| s.contains("{BW_STATE_PORT}")));
         assert!(image_path.exists() && config_path.exists());
         drop(files);

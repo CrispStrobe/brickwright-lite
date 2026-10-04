@@ -14,6 +14,8 @@ pub(crate) fn valid_spike_start(value: &Value) -> bool {
     keys(value, &[]) || (keys(value, &["backend"]) && matches!(value["backend"].as_str(), Some("guest" | "nuttx" | "micropython")))
         || (keys(value, &["backend", "topology"]) && value["backend"] == "nuttx"
             && matches!(value["topology"].as_str(), Some("default" | "six-motors")))
+        || (keys(value, &["backend", "topology"]) && value["backend"] == "micropython"
+            && value["topology"] == "six-motors")
 }
 pub(crate) fn valid(value: &Value) -> bool {
     if !keys(value, &["sensors", "loads"]) {
@@ -71,9 +73,9 @@ mod tests {
     use super::*;
     use serde_json::json;
     #[test]
-    fn topology_launch_arguments_are_closed_and_nuttx_only() {
+    fn topology_launch_arguments_are_closed_and_explicit_for_supported_profiles() {
         for value in [json!({}),json!({"backend":"guest"}),json!({"backend":"nuttx"}),json!({"backend":"micropython"}),
-            json!({"backend":"nuttx","topology":"default"}),json!({"backend":"nuttx","topology":"six-motors"})] {
+            json!({"backend":"nuttx","topology":"default"}),json!({"backend":"nuttx","topology":"six-motors"}),json!({"backend":"micropython","topology":"six-motors"})] {
             assert!(valid_spike_start(&value));
         }
         for value in [json!({"backend":"micropython","path":"secret.bin"}), json!({"backend":"micropython","topology":"default"}), json!({"backend":"guest","topology":"six-motors"}),json!({"topology":"six-motors"}),

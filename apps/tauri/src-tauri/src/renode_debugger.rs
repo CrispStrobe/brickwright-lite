@@ -110,22 +110,34 @@ impl RenodeDebugger {
         Ok(if selected.is_some() { "selected" } else { "cancelled" })
     }
 
+    #[allow(dead_code)]
     pub(crate) fn start_chosen_micropython(&self, supervisor: &RenodeSupervisor)
         -> Result<&'static str, String> {
+        self.start_chosen_micropython_profile(supervisor, SpikeTopology::Default)
+    }
+
+    pub(crate) fn start_chosen_micropython_profile(&self, supervisor: &RenodeSupervisor,
+        topology: SpikeTopology) -> Result<&'static str, String> {
         let admitted = self.selected_image.try_lock()
             .map_err(|_| "Image selection is busy")?.take()
             .ok_or("Choose a local MicroPython application first")?;
-        self.start_micropython_image(supervisor, admitted)
+        self.start_micropython_image_profile(supervisor, admitted, topology)
     }
 
     /// Called only by a native image chooser/profile owner, never a path DTO.
     #[allow(dead_code)]
     pub(crate) fn start_micropython_image(&self, supervisor: &RenodeSupervisor,
         admitted: crate::spike_local_image::AdmittedImage) -> Result<&'static str,String> {
+        self.start_micropython_image_profile(supervisor, admitted, SpikeTopology::Default)
+    }
+
+    fn start_micropython_image_profile(&self, supervisor: &RenodeSupervisor,
+        admitted: crate::spike_local_image::AdmittedImage, topology: SpikeTopology)
+        -> Result<&'static str,String> {
         let root=supervisor.micropython_support_root()?;
         let pin=option_env!("BW_RENODE_MICROPYTHON_MANIFEST_SHA256").ok_or("MicroPython package pin unavailable")?;
         let recipe=crate::spike_micropython_launch::MicroPythonRecipe::new(
-            root,pin.into(),supervisor.local_image_staging_root()?,admitted);
+            root,pin.into(),supervisor.local_image_staging_root()?,admitted).with_topology(topology);
         self.start_micropython_recipe(supervisor,recipe)
     }
 
@@ -134,7 +146,7 @@ impl RenodeDebugger {
         let plan=recipe.plan()?;
         let identity=plan.identity();
         self.start_owned_target(supervisor,RenodeTarget::SpikePrime,Some("micropython"),
-            SpikeTopology::Default,Some((recipe,identity)),|| supervisor.start_micropython_plan(plan))?;
+            recipe.topology(),Some((recipe,identity)),|| supervisor.start_micropython_plan(plan))?;
         if let Err(error)=self.run() {
             let _=self.close(supervisor);
             return Err(error);

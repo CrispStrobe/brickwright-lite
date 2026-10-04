@@ -9,16 +9,16 @@ import {MicroPythonProgramClient, encodeSource} from '../spike-micropython/raw-r
 export class RenodeArenaSession {
     constructor ({bridge, capabilities, backend = null, topology = 'default', program = null, source = null, onOutput = () => {}, onFrame = () => {}, onError = () => {}, onStopped = () => {}, onCompleted = () => {}, onProgramState = () => {}}) {
         validateTopology(topology);
-        if (topology === 'six-motors' && (backend !== 'nuttx' || (!program && source === null) || bridge?.robot?.sensors?.length !== 0)) {
-            throw new Error('Six motors require an own NuttX program and a sensorless sandbox');
+        if (topology === 'six-motors' && (!['nuttx', 'micropython'].includes(backend) || (!program && source === null) || bridge?.robot?.sensors?.length !== 0)) {
+            throw new Error('Six motors require NuttX or MicroPython code and a sensorless sandbox');
         }
         this.topology = topology;
         this.adapter = new RenodeArenaBridge(bridge, {allMotors: topology === 'six-motors'});
         this.capabilities = capabilities;
         if (backend !== null && !['guest', 'nuttx', 'micropython'].includes(backend)) throw new TypeError('Unknown firmware backend');
         this.backend = backend;
-        if (backend === 'micropython' && (source === null || program !== null || topology !== 'default')) {
-            throw new TypeError('MicroPython requires Python source and the default topology');
+        if (backend === 'micropython' && (source === null || program !== null)) {
+            throw new TypeError('MicroPython requires Python source');
         }
         if (program && source !== null) throw new TypeError('Supply one compiled program or Python source');
         if (source !== null) (backend === 'micropython' ? encodeSource : encodePython)(source);
@@ -63,7 +63,7 @@ export class RenodeArenaSession {
                 throw new Error('MicroPython firmware requires the raw REPL arena contract');
             }
             if (this.topology === 'six-motors') {
-                requireSixMotorFrame(first);
+                requireSixMotorFrame(first, this.micropython ? 'micropython-prime' : 'brickwright-nuttx');
                 prepareSixMotorHub(this.adapter.bridge.hubState);
             }
             this.outputSequence = first.lifecycle?.nuttxProgramOutput?.sequence;

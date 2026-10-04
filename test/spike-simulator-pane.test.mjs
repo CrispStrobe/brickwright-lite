@@ -189,7 +189,7 @@ test('six-motor profile is sandbox-only, localized, pre-start and compiled-progr
         pane.firmwareSession=null;pane.locale='de';
         await act(async()=>pane.setState({sandbox:null}));
         const selector=one(renderer,'bw-spike-nuttx-topology');
-        assert.equal(selector.props['aria-label'],'NuttX-Geräte');
+        assert.equal(selector.props['aria-label'],'Firmware-Geräte');
         assert.equal(selector.findAllByType('option').find(o=>o.props.value==='six-motors').props.disabled,true);
         assert.match(one(renderer,'bw-spike-six-motor-hint').props.children,/Scratch-Motorbefehle unterstützen A–F/);
     } finally {if(renderer)act(()=>renderer.unmount());browser.restore();await cleanup();}

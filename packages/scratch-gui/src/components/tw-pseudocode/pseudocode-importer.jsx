@@ -3851,7 +3851,7 @@ class PseudocodeImporter extends React.Component {
             const pane = window.__bwSpikeArena?._pane;
             if (!pane?.bridge || pane.disposed) throw new Error('Open the SPIKE arena before running MicroPython');
             await pane.stopProgram();
-            await new Promise(resolve => pane.setState({execution: 'micropython', topology: 'default'}, resolve));
+            await new Promise(resolve => pane.setState({execution: 'micropython', topology: pane.state.sandbox && pane.state.topology === 'six-motors' ? 'six-motors' : 'default'}, resolve));
             if (!pane.state.microImageSelected && !await pane.chooseMicroPythonImage()) {
                 this.setState({status: 'Image selection cancelled.'});
                 return;

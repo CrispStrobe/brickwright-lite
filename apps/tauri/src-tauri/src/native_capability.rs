@@ -59,7 +59,8 @@ fn execute(
         }
         Operation::RenodeSpikeStart => {
             if args["backend"] == "micropython" {
-                return debugger.start_chosen_micropython(supervisor).map(str::to_owned);
+                return debugger.start_chosen_micropython_profile(supervisor,
+                    crate::renode_supervisor::SpikeTopology::parse(args["topology"].as_str())?).map(str::to_owned);
             }
             use crate::renode_supervisor::SpikeTopology;
             let topology = SpikeTopology::parse(args["topology"].as_str())?;
