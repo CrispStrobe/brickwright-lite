@@ -42,6 +42,7 @@ const createNativeRenodeCapabilities = ({invoke} = {}) => {
     // transport bookkeeping only; the managed debugger owns the emulator.
     const REQUEST_BUDGET = 512;
     let allocation = Promise.resolve();
+    let dispatch = Promise.resolve();
     const reserve = () => {
         const next = allocation.then(async () => {
             if (session && (session.failed || session.nextId === REQUEST_BUDGET)) {
@@ -57,29 +58,35 @@ const createNativeRenodeCapabilities = ({invoke} = {}) => {
             owned.pending++;
             return {owned, requestId: owned.nextId++};
         });
-        // Serialize allocation and renewal, while allowing ordinary requests
-        // to execute concurrently. A failed open/teardown is never replayed as
-        // a semantic operation and does not poison the allocation queue.
+        // Serialize allocation and renewal. A failed open/teardown is never
+        // replayed as a semantic operation or left poisoning the queue.
         allocation = next.then(() => {}, () => {});
         return next;
     };
-    const request = operation => async args => {
-        const {owned, requestId} = await reserve();
-        try {
-            const raw = await invoke('native_broker_request', {session: owned.id, requestId,
-                payload: JSON.stringify({kind: 'capability', operation, args})});
-            const reply = JSON.parse(raw);
-            if (!reply || Object.getPrototypeOf(reply) !== Object.prototype ||
-                reply.kind !== 'capability' || typeof reply.result !== 'string') {
-                throw new Error('Renode capability reply was malformed');
+    // BSD-3-Clause, (c) 2026 Brickwright contributors.
+    // Tauri schedules async handlers independently. Keep submission and reply
+    // in order so a later request cannot reach the strict relay first.
+    const request = operation => args => {
+        const next = dispatch.then(async () => {
+            const {owned, requestId} = await reserve();
+            try {
+                const raw = await invoke('native_broker_request', {session: owned.id, requestId,
+                    payload: JSON.stringify({kind: 'capability', operation, args})});
+                const reply = JSON.parse(raw);
+                if (!reply || Object.getPrototypeOf(reply) !== Object.prototype ||
+                    reply.kind !== 'capability' || typeof reply.result !== 'string') {
+                    throw new Error('Renode capability reply was malformed');
+                }
+                return reply.result;
+            } catch (error) {
+                owned.failed = true;
+                throw error instanceof Error ? error : new Error(typeof error === 'string' ? error : 'Renode operation failed');
+            } finally {
+                if (--owned.pending === 0) owned.drained?.();
             }
-            return reply.result;
-        } catch (error) {
-            owned.failed = true;
-            throw error;
-        } finally {
-            if (--owned.pending === 0) owned.drained?.();
-        }
+        });
+        dispatch = next.then(() => {}, () => {});
+        return next;
     };
     return Object.freeze(Object.fromEntries(Object.values(OPERATIONS).map(operation =>
         [operation, request(operation)])));

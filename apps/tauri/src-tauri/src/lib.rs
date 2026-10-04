@@ -58,8 +58,16 @@ mod spike_staged_image;
 #[allow(dead_code)]
 mod spike_micropython_launch;
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
+// Desktop context packaging changes: BSD-3-Clause, Copyright (c) 2026 Brickwright contributors.
+// Keep the mobile entry point; desktop assets belong in the executable so the
+// Rust library metadata does not carry another copy of the entire GUI.
+#[cfg(mobile)]
+#[tauri::mobile_entry_point]
 pub fn run() {
+    run_with_context(tauri::generate_context!());
+}
+
+pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
     let builder = tauri::Builder::default()
         // Logging → stdout on desktop, logcat/oslog on mobile.
         .plugin(
@@ -226,7 +234,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building the Brickwright application")
         // Handle files opened via association / share "open with" (macOS/iOS
         // deliver these as an Opened run event with file:// URLs; the variant

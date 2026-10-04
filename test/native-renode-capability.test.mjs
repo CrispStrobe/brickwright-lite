@@ -115,6 +115,24 @@ test('simultaneous first calls share one open and unique request IDs', async () 
     assert.deepEqual(calls.filter(c => c.params).map(c => c.params.requestId), [0, 1]);
 });
 
+test('a later semantic request cannot overtake a pending relay request', async () => {
+    let finishFirst;
+    const submitted = [];
+    const handlers = createNativeRenodeCapabilities({invoke: async (command, params) => {
+        if (command === 'native_broker_open') return 'owned';
+        submitted.push(params.requestId);
+        if (params.requestId === 0) return new Promise(resolve => { finishFirst = resolve; });
+        return JSON.stringify({kind: 'capability', result: 'second'});
+    }});
+    const first = handlers[OPERATIONS.state]({});
+    const second = handlers[OPERATIONS.microUartRead]({generation: 1, limit: 32, deadlineMs: 100});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(submitted, [0], 'native scheduler must not receive a later ID before the pending reply');
+    finishFirst(JSON.stringify({kind: 'capability', result: 'first'}));
+    assert.deepEqual(await Promise.all([first, second]), ['first', 'second']);
+    assert.deepEqual(submitted, [0, 1]);
+});
+
 test('renewal drains in-flight replies before teardown and fails closed if cleanup fails', async () => {
     let resolveLast;
     let failCleanup = true;
