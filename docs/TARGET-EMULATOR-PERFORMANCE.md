@@ -202,6 +202,34 @@ CP07–CP12 are intentionally ordered by the public EV3 boot path. PRU support i
 not promoted ahead of those dependencies. PXT/MicroPython remain the complete
 source-level experiences while CP13 and CP14 are partial.
 
+### User-facing priorities: PXT first, firmware completeness next
+
+PXT Arcade is the primary source-level game experience for PyBadge. It models
+game APIs and wall-paced interaction, not ATSAMD51 instruction cycles; do not
+assign it a CPU RTx or use the 3.78x terminal self-branch receipt as game proof.
+STM32F030 also has a shipped light-tier emulator; optional LabWired F0 benchmark
+floors are not a prerequisite for that route or for PXT micro:bit/Arcade use.
+
+The immediate order for PyBadge work is:
+
+1. Make PXT games usable with keyboard and on-screen controls; verify real
+   program output and press/release through the running simulator. Then cover
+   representative games, stop/restart, and supported circuit I/O. Do not infer
+   PyBadge ST7735 or physical GPIO fidelity from source-level API simulation.
+2. For actual firmware, implement and prove the ST7735 display and button mux
+   first, then NeoPixels/audio and QSPI; USB remains explicitly incomplete
+   until independently exercised. Use permissive source-built active guests
+   and actual model/debugger observations, not terminal idle loops.
+3. Measure those working experiences on a modest supported device with the UI
+   and debugger active. Optimize only demonstrated latency, audio, rendering
+   or firmware-throughput bottlenecks; retain existing correctness/RTx gates.
+
+This priority does not close or reorder the CP13/CP14 engine checkpoints,
+promote a WASM pin, or claim new browser performance. The Arcade page now
+exposes its existing upstream controls with a bounded responsive layout;
+`scripts/verify-makecode.mjs` checks actual PXT button press/release in hosted
+production-browser acceptance. Source-only layout tests are not that proof.
+
 CP13 remains in progress. Its first native slice landed in
 [LabWired PR 126](https://github.com/CrispStrobe/labwired-core/pull/126), merge
 `8bd67fe8`, with runtime source `87553ec2` qualified by

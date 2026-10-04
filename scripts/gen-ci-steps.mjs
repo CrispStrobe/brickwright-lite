@@ -7,6 +7,9 @@
  *   node scripts/gen-ci-steps.mjs --fetch    read the runs (gh api) and REWRITE
  *                                            docs/generated/ci-step-census.json
  *   node scripts/gen-ci-steps.mjs --check    exit 1 on a step nobody runs
+ *   node scripts/gen-ci-steps.mjs --fetch --workflow arcade-controls.yml
+ *     Refresh just that workflow; retain every other recorded observation.
+ *     --baseline-ref HEAD can use committed readings after an uncommitted refresh.
  *
  * Per (workflow, step name), aggregated over every job instance in a run (a
  * shard's gate that runs in the sibling shard RAN): runs it appeared in, runs
@@ -118,9 +121,23 @@ export const workflowSource = (runs, workflow, fallback) => {
     return own.find(run => run.branch === 'main') || own[0] || fallback;
 };
 
-const fetchAll = () => {
+export const mergeWorkflowReadings = (previous, fresh, workflow) => {
+    if (previous.repo !== fresh.repo || !fresh.workflows[workflow]) throw new Error('Workflow refresh must match the recorded repository and workflow');
+    return {
+        ...previous,
+        generatedAt: fresh.generatedAt,
+        runs: [...previous.runs.filter(r => r.workflow !== workflow), ...fresh.runs],
+        workflowsInTree: [...new Set([...previous.workflowsInTree, workflow])].sort(),
+        workflows: {...previous.workflows, [workflow]: fresh.workflows[workflow]},
+        lastRefresh: {workflow, at: fresh.generatedAt, sourceSha: fresh.workflows[workflow].sourceSha}
+    };
+};
+
+const fetchAll = (selectedWorkflow) => {
     const repo = gh(['repo', 'view', '--json', 'nameWithOwner', '--jq', '.nameWithOwner']).trim();
-    const wfs = readdirSync(path.join(ROOT, '.github/workflows')).filter(f => f.endsWith('.yml'));
+    const inTree = readdirSync(path.join(ROOT, '.github/workflows')).filter(f => f.endsWith('.yml'));
+    if (selectedWorkflow && !inTree.includes(selectedWorkflow)) throw new Error(`Unknown workflow: ${selectedWorkflow}`);
+    const wfs = selectedWorkflow ? [selectedWorkflow] : inTree;
     const runs = [];
     for (const wf of wfs) {
         // A WORKFLOW THAT HAS NEVER RUN IS A NORMAL STATE, and until this was
@@ -173,10 +190,24 @@ const fetchAll = () => {
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
     if (process.argv.includes('--fetch')) {
-        const {repo, runs, newestMain, yamlAtSha, sourceShas, wfs} = fetchAll();
+        const option = flag => {
+            const index = process.argv.indexOf(flag);
+            if (index < 0) return undefined;
+            const value = process.argv[index + 1];
+            if (!value || value.startsWith('--')) throw new Error(`${flag} needs a value`);
+            return value;
+        };
+        const selectedWorkflow = option('--workflow');
+        const baselineRef = option('--baseline-ref');
+        if (baselineRef && !selectedWorkflow) throw new Error('--baseline-ref requires --workflow');
+        const previous = selectedWorkflow ? JSON.parse(baselineRef
+            ? execFileSync('git', ['show', `${baselineRef}:docs/generated/ci-step-census.json`], {cwd: ROOT, encoding: 'utf8'})
+            : readFileSync(READINGS, 'utf8')) : null;
+        const {repo, runs, newestMain, yamlAtSha, sourceShas, wfs} = fetchAll(selectedWorkflow);
         const workflows = census(runs, yamlAtSha);
         for (const wf of wfs) workflows[wf].sourceSha = sourceShas[wf];
-        const body = {generatedAt: new Date().toISOString(), repo, headSha: newestMain.sha, newestMainRun: newestMain.run, runs: runs.map(r => ({run: r.run, workflow: r.workflow, branch: r.branch, sha: r.sha})), workflowsInTree: wfs, workflows};
+        const fresh = {generatedAt: new Date().toISOString(), repo, headSha: newestMain?.sha, newestMainRun: newestMain?.run, runs: runs.map(r => ({run: r.run, workflow: r.workflow, branch: r.branch, sha: r.sha})), workflowsInTree: wfs, workflows};
+        const body = selectedWorkflow ? mergeWorkflowReadings(previous, fresh, selectedWorkflow) : fresh;
         writeFileSync(READINGS, JSON.stringify(body, null, 1) + '\n');
         // `--fetch` REWRITES A TRACKED FILE. It reads like a read-only flag and is
         // not one: brickwright-lite-ea ran it inside a lane worktree on 2026-09-07,

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-09-28T10:50:59.170Z",
+ "generatedAt": "2026-10-04T15:00:24.880Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "a87a7b447",
  "newestMainRun": 36409366028,
@@ -1683,11 +1683,66 @@
    "workflow": "vendor-freshness.yml",
    "branch": "main",
    "sha": "7a6b045e5"
+  },
+  {
+   "run": 37211070180,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "c6fb1a447"
+  },
+  {
+   "run": 37210958475,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "78f251463"
+  },
+  {
+   "run": 37209529438,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "0f263bb50"
+  },
+  {
+   "run": 37209293043,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "6fbe71aa9"
+  },
+  {
+   "run": 37208989018,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "fa2ced300"
+  },
+  {
+   "run": 37208779392,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "0e014aea6"
+  },
+  {
+   "run": 37208608431,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "b2c20197b"
+  },
+  {
+   "run": 37208457675,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "1b70f679b"
+  },
+  {
+   "run": 37208291895,
+   "workflow": "arcade-controls.yml",
+   "branch": "fix/pybadge-pxt-touch-20261004",
+   "sha": "4b8f25fa2"
   }
  ],
  "workflowsInTree": [
   "ack-z80-cpm.yml",
   "appstore-screenshots.yml",
+  "arcade-controls.yml",
   "build.yml",
   "ci-metrics.yml",
   "cycle-core-qualification.yml",
@@ -6157,6 +6212,85 @@
     }
    },
    "sourceSha": "a87a7b447"
+  },
+  "arcade-controls.yml": {
+   "runs": 9,
+   "stepsInFile": [
+    "Layout and ledger contracts",
+    "Sync pinned MakeCode runtimes",
+    "Install isolated browser tooling",
+    "Actual PXT game mouse/touch/keyboard/restart proof"
+   ],
+   "inFileInNoRun": [],
+   "steps": {
+    "Layout and ledger contracts": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "controls"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Sync pinned MakeCode runtimes": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "controls"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install isolated browser tooling": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "controls"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Actual PXT game mouse/touch/keyboard/restart proof": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "controls"
+     ],
+     "clause": null,
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "controls": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "always"
+    }
+   },
+   "sourceSha": "c6fb1a447"
   }
+ },
+ "lastRefresh": {
+  "workflow": "arcade-controls.yml",
+  "at": "2026-10-04T15:00:24.880Z",
+  "sourceSha": "c6fb1a447"
  }
 }
