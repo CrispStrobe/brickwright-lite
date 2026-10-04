@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 
-//! Admission of local raw and Intel HEX application images.
+//! Admission of local raw, Intel HEX and DfuSe application images.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -53,6 +53,9 @@ pub enum ImageError {
     InvalidStackPointer,
     InvalidResetPc,
     MissingResetOpcode,
+    MalformedDfu,
+    UnsupportedDfuLayout,
+    DfuChecksumMismatch,
 }
 
 impl fmt::Display for ImageError {
@@ -76,6 +79,11 @@ impl fmt::Display for ImageError {
             Self::InvalidStackPointer => "application stack pointer is invalid",
             Self::InvalidResetPc => "application reset PC lacks the Thumb flag",
             Self::MissingResetOpcode => "application reset opcode bytes are missing",
+            Self::MalformedDfu => "malformed DfuSe container",
+            Self::UnsupportedDfuLayout => {
+                "DfuSe requires one application element at 0x08010000 on target 0"
+            }
+            Self::DfuChecksumMismatch => "DfuSe CRC does not match",
         };
         f.write_str(message)
     }
@@ -134,6 +142,61 @@ pub fn admit_raw(input: &[u8]) -> Result<AdmittedImage, ImageError> {
         reset_pc,
         vector_address: VECTOR_ADDRESS,
     })
+}
+
+// DfuSe uses the reflected CRC-32 register, initialized to all ones, without
+// the final complement used by ordinary CRC-32. This is a format integrity
+// check, not a signature or an assertion about the application's provenance.
+fn dfu_crc(input: &[u8]) -> u32 {
+    let mut register = u32::MAX;
+    for byte in input {
+        register ^= u32::from(*byte);
+        for _ in 0..8 {
+            register = (register >> 1) ^ if register & 1 == 0 { 0 } else { 0xedb8_8320 };
+        }
+    }
+    register
+}
+
+/// Decode a local DfuSe application, never bootloaders or additional regions.
+/// Target labels and USB identifiers are metadata; none are used as paths.
+pub fn admit_dfu(input: &[u8]) -> Result<AdmittedImage, ImageError> {
+    check_size(input)?;
+    // Prefix 11, target header 274, element header 8, vectors 8, suffix 16.
+    if input.len() < 317 || &input[..5] != b"DfuSe" || input[5] != 1 {
+        return Err(ImageError::MalformedDfu);
+    }
+    let word = |offset: usize| {
+        u32::from_le_bytes(
+            input[offset..offset + 4]
+                .try_into()
+                .expect("bounded DFU field"),
+        )
+    };
+    let suffix = input.len() - 16;
+    // MicroPython's writer counts prefix + targets, excluding the suffix.
+    // DfuSe writers also use a whole-file count; accept only those two exact sizes.
+    if ![suffix, input.len()].contains(&(word(6) as usize))
+        || &input[suffix + 6..suffix + 12] != b"\x1a\x01UFD\x10"
+        || &input[11..17] != b"Target"
+        || word(18) > 1
+    {
+        return Err(ImageError::MalformedDfu);
+    }
+    if dfu_crc(&input[..input.len() - 4]) != word(input.len() - 4) {
+        return Err(ImageError::DfuChecksumMismatch);
+    }
+    if input[10] != 1 || input[17] != 0 || word(281) != 1 || word(285) != VECTOR_ADDRESS {
+        return Err(ImageError::UnsupportedDfuLayout);
+    }
+    let target_size = word(277) as usize;
+    let element_size = word(289) as usize;
+    // Compare against actual bounded slices instead of trusting declared counts
+    // for allocation or offset arithmetic. No trailing/ignored bytes are allowed.
+    if target_size != suffix - 285 || element_size != suffix - 293 {
+        return Err(ImageError::MalformedDfu);
+    }
+    admit_raw(&input[293..suffix])
 }
 
 fn nibble(byte: u8) -> Result<u8, ImageError> {
@@ -250,7 +313,7 @@ pub fn admit_hex(input: &[u8]) -> Result<AdmittedImage, ImageError> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     // Test records are assembled from numeric fields, independently of the decoder.
@@ -278,6 +341,143 @@ mod tests {
 
     fn valid_raw() -> Vec<u8> {
         raw(0x2005_0000, VECTOR_ADDRESS + 9)
+    }
+
+    // Fixture CRC uses the forward polynomial and reflected input/output,
+    // independently of the production right-shifting register implementation.
+    fn seal_dfu(input: &mut [u8]) {
+        let checksum_at = input.len() - 4;
+        let mut state = u32::MAX;
+        for byte in &input[..checksum_at] {
+            state ^= u32::from(byte.reverse_bits()) << 24;
+            for _ in 0..8 {
+                let top = state >> 31;
+                state = (state << 1) ^ if top == 0 { 0 } else { 0x04c1_1db7 };
+            }
+        }
+        input[checksum_at..].copy_from_slice(&state.reverse_bits().to_le_bytes());
+    }
+
+    pub(crate) fn fixture_dfu(payload: &[u8]) -> Vec<u8> {
+        let mut bytes = b"DfuSe\x01".to_vec();
+        bytes.extend_from_slice(&(293u32 + payload.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(b"\x01Target\x00");
+        bytes.resize(277, 0); // unnamed target, inert 255-byte name
+        bytes.extend_from_slice(&(8u32 + payload.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(&1u32.to_le_bytes());
+        bytes.extend_from_slice(&VECTOR_ADDRESS.to_le_bytes());
+        bytes.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(payload);
+        bytes.extend_from_slice(b"\x00\x00\x08\x00\x94\x06\x1a\x01UFD\x10\x00\x00\x00\x00");
+        seal_dfu(&mut bytes);
+        bytes
+    }
+
+    #[test]
+    fn dfu_crc_known_answers_and_canonical_application() {
+        assert_eq!(dfu_crc(b"123456789"), 0x340b_c6d9);
+        let input = fixture_dfu(&valid_raw());
+        // Fixed external Python/zlib fixture checksum, not derived by the decoder.
+        assert_eq!(&input[input.len() - 4..], &0x9389_81eau32.to_le_bytes());
+        assert_eq!(admit_dfu(&input), admit_raw(&valid_raw()));
+        let mut whole_file_size = input.clone();
+        whole_file_size[6..10].copy_from_slice(&(input.len() as u32).to_le_bytes());
+        seal_dfu(&mut whole_file_size);
+        assert_eq!(admit_dfu(&whole_file_size), admit_raw(&valid_raw()));
+    }
+
+    #[test]
+    fn dfu_corruption_truncation_and_input_bound() {
+        let input = fixture_dfu(&valid_raw());
+        for end in 0..input.len() {
+            assert!(admit_dfu(&input[..end]).is_err(), "length {end}");
+        }
+        for offset in [22, 293, input.len() - 1] {
+            let mut corrupt = input.clone();
+            corrupt[offset] ^= 1;
+            assert_eq!(admit_dfu(&corrupt), Err(ImageError::DfuChecksumMismatch));
+        }
+        let mut trailing = input;
+        trailing.push(0);
+        assert_eq!(admit_dfu(&trailing), Err(ImageError::MalformedDfu));
+        assert_eq!(
+            admit_dfu(&vec![0; INPUT_LIMIT + 1]),
+            Err(ImageError::InputTooLarge)
+        );
+    }
+
+    #[test]
+    fn dfu_valid_crc_does_not_authorize_other_targets_or_boot_regions() {
+        for (offset, value) in [
+            (10, 0),
+            (10, 2),
+            (17, 1),
+            (281, 0),
+            (281, 2),
+            (285, 0x0800_8000),
+        ] {
+            let mut input = fixture_dfu(&valid_raw());
+            if [10, 17].contains(&offset) {
+                input[offset] = value as u8;
+            } else {
+                input[offset..offset + 4].copy_from_slice(&(value as u32).to_le_bytes());
+            }
+            seal_dfu(&mut input);
+            assert_eq!(admit_dfu(&input), Err(ImageError::UnsupportedDfuLayout));
+        }
+    }
+
+    #[test]
+    fn dfu_declared_geometry_and_signatures_are_strict() {
+        for (offset, value) in [(6, 0), (18, 2), (277, u32::MAX), (289, 0), (289, u32::MAX)] {
+            let mut input = fixture_dfu(&valid_raw());
+            input[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+            seal_dfu(&mut input);
+            assert_eq!(admit_dfu(&input), Err(ImageError::MalformedDfu));
+        }
+        for offset in [0, 5, 11, 303 + 6, 303 + 8, 303 + 11] {
+            let mut input = fixture_dfu(&valid_raw());
+            input[offset] ^= 1;
+            seal_dfu(&mut input);
+            assert_eq!(admit_dfu(&input), Err(ImageError::MalformedDfu));
+        }
+    }
+
+    #[test]
+    fn dfu_labels_and_usb_identifiers_are_inert_metadata() {
+        let mut input = fixture_dfu(&valid_raw());
+        input[18..22].copy_from_slice(&1u32.to_le_bytes());
+        let label = b"../../not-an-input-path";
+        input[22..22 + label.len()].copy_from_slice(label);
+        let suffix = input.len() - 16;
+        input[suffix..suffix + 6].fill(0xff);
+        seal_dfu(&mut input);
+        assert_eq!(admit_dfu(&input), admit_raw(&valid_raw()));
+    }
+
+    #[test]
+    fn dfu_application_uses_existing_vector_and_flash_validation() {
+        for (payload, error) in [
+            (raw(0, VECTOR_ADDRESS + 9), ImageError::InvalidStackPointer),
+            (
+                raw(0x2005_0000, VECTOR_ADDRESS + 8),
+                ImageError::InvalidResetPc,
+            ),
+            (
+                raw(0x2005_0000, VECTOR_ADDRESS + 11),
+                ImageError::MissingResetOpcode,
+            ),
+        ] {
+            assert_eq!(admit_dfu(&fixture_dfu(&payload)), Err(error));
+        }
+        let mut payload = valid_raw();
+        payload.resize((FLASH_END - VECTOR_ADDRESS) as usize, 0xff);
+        assert_eq!(admit_dfu(&fixture_dfu(&payload)), admit_raw(&payload));
+        payload.push(0);
+        assert_eq!(
+            admit_dfu(&fixture_dfu(&payload)),
+            Err(ImageError::OutsideFlash)
+        );
     }
 
     fn hex_with(records: &[(u8, u16, &[u8])]) -> Vec<u8> {
