@@ -219,3 +219,25 @@ test('unmount invalidates unit loads before they can publish a late scene', asyn
         assert.equal(updates, 0, 'no state publication or onReady callback after unmount');
     } finally { release(); if (renderer) act(() => renderer.unmount()); browser.restore(); }
 });
+
+test('MicroPython shares the sandbox motor selector without NuttX storage controls', async () => {
+    const browser = installBrowser(), Pane = await loadPane(); let renderer;
+    try {
+        await act(async () => { renderer = create(React.createElement(Pane, {locale: 'en'})); });
+        const pane = renderer.getInstance();
+        await settle(() => Boolean(pane.bridge), 'arena ready');
+        await act(async () => pane.openSandbox());
+        await act(async () => pane.setState({execution: 'micropython', topology: 'default'}));
+        assert.equal(byTestId(renderer, 'bw-spike-program-save').length, 0);
+        assert.equal(byTestId(renderer, 'bw-spike-program-load').length, 0);
+        await act(async () => one(renderer, 'bw-spike-nuttx-topology').props.onChange({target: {value: 'six-motors'}}));
+        assert.equal(pane.state.topology, 'six-motors');
+        const hint = one(renderer, 'bw-spike-six-motor-hint').children.join('');
+        assert.match(hint, /bwspike/); assert.doesNotMatch(hint, /NuttX|Scratch/);
+        await act(async () => pane.setState({execution: 'nuttx'}));
+        assert.equal(byTestId(renderer, 'bw-spike-program-save').length, 1);
+        await act(async () => pane.setState({execution: 'micropython', sandbox: false, topology: 'default'}));
+        await act(async () => one(renderer, 'bw-spike-nuttx-topology').props.onChange({target: {value: 'six-motors'}}));
+        assert.equal(pane.state.topology, 'default');
+    } finally { if (renderer) await act(async () => renderer.unmount()); browser.restore(); }
+});

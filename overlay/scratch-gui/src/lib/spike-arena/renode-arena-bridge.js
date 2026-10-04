@@ -26,7 +26,7 @@ export class RenodeArenaBridge {
         }
         const micropython = target.firmware === 'micropython-prime';
         const speedLimit = micropython || target.capabilities.some(cap => ['arena-program/v1', 'nuttx-program/v1'].includes(cap)) ? 1110 : 300;
-        if (this.allMotors) requireSixMotorFrame(frame);
+        if (this.allMotors) requireSixMotorFrame(frame, target.firmware);
         const generation = micropython ? frame.lifecycle?.micropythonUart?.generation : frame.lifecycle?.connectionGeneration;
         if (!Number.isSafeInteger(frame.seq) || frame.seq < 0 || !Number.isSafeInteger(generation) || generation < (micropython ? 1 : 0) ||
             !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) throw new Error('Invalid guest clock or sequence');
@@ -97,7 +97,9 @@ export class RenodeArenaBridge {
         const sides = [this.bridge.robot.left, this.bridge.robot.right];
         const travel = sides.map((side, i) => this.last.motors[i].demandDirection * (side.reversed ? -1 : 1) * 0.01);
         const contact = this.bridge.robot.contactModel === 'stall' && this.bridge.sim.wouldBlockWheels(...travel);
-        return {sensors, loads: sides.map(side => ({port: side.port, percent: contact ? 100 : 0}))};
+        const ports = this.allMotors ? [...PORTS] : sides.map(side => side.port);
+        return {sensors, loads: ports.map(port => ({port,
+            percent: contact && sides.some(side => side.port === port) ? 100 : 0}))};
     }
     close () {
         if (this.closed) return;

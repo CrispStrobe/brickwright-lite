@@ -39,7 +39,7 @@ remain private.
 ## Robot programs and desktop setup
 
 The upstream application has no `hub` or `motor` modules. The public support seed
-now supplies Brickwright's BSD `bwspike` API: A/B motor power, braking/coasting,
+now supplies Brickwright's BSD `bwspike` API: A–F motor power, braking/coasting,
 encoder and speed reads, timed speed control and absolute encoder moves; C color,
 D distance and E force readings. These commands run inside the emulated CPU and
 use modeled GPIO/PWM/UART devices. They feed the same hub and arena, rather than
@@ -69,7 +69,7 @@ Live qualification tracked 40% speed at 38–39% under 25% modeled load
 (tolerance: three percentage points), reached absolute targets within two encoder
 degrees, detected lack of encoder progress and braked A on Ctrl-C while B remained
 running. Sensor boundary values and shared-arena motion also passed. This does not
-establish physical calibration, general hotplug support or six-motor control.
+establish physical calibration or general hotplug support.
 Feedback commands are synchronous and require a single program thread. Timed
 speed commands cannot guarantee unreachable speed targets; position completion
 does not provide active holding afterward.
@@ -83,3 +83,39 @@ without configured runtime/support pins refuse explicitly. The
 native chooser never downloads firmware or receives an editor-supplied path.
 Unix capsule staging is qualified; non-Unix staging remains unsupported.
 New glue uses BSD-3-Clause; existing component/dependency attribution is retained.
+
+## Six motors in the sandbox
+
+Choose MicroPython and **Six motors A–F (sandbox)** in the arena's firmware
+device selector, then run Python from the Code tab. This selection survives the
+Code-tab run action while sandbox mode is active. Use a local image containing
+`bwspike` with freshly assembled support and regenerated desktop pins; ordinary
+unconfigured packages refuse this route explicitly. No firmware is bundled.
+
+```python
+from bwspike import Motor, wait, stop_all
+
+motors = [Motor(port) for port in 'ABCDEF']
+try:
+    for motor in motors:
+        motor.dc(30)
+    wait(1000)
+    stop_all()
+    print(motors[5].run_to(90))
+finally:
+    stop_all()
+```
+
+A/B drive the arena rover; C–F are auxiliary motors. All six publish encoder and
+speed observations through the existing shared hub. Six mode replaces mounted
+sensors with motors, so sensor reads fail with a device-type error. The default
+A/B plus sensors profile remains available. Save/Load buttons belong to NuttX
+program storage and are not shown for MicroPython.
+
+Local qualification ran the production frontend session/native launcher/Renode
+CPU route: all six motors moved with the requested alternating signs, C–F
+sequential absolute moves reached 90 degrees within two encoder degrees, A/B
+moved the arena rover, and program completion released hub and clock ownership.
+This is modeled behavior, not physical-hub calibration. Feedback commands remain
+synchronous; multiport commands do not promise synchronized starts. `stop_all()`
+brakes A/B and auxiliary ports already verified as motors by the current module.

@@ -34,7 +34,7 @@ test('package feature requires explicit curated six-port declaration, never a st
 });
 test('closed start arguments preserve older defaults and refuse guest/arbitrary topology or paths', () => {
     const valid = OPERATIONS['renode.spike.session.start'].validate;
-    for (const args of [{},{backend:'guest'},{backend:'nuttx'},{backend:'nuttx',topology:'default'},{backend:'nuttx',topology:'six-motors'}]) assert.equal(valid(args),true);
+    for (const args of [{},{backend:'guest'},{backend:'nuttx'},{backend:'nuttx',topology:'default'},{backend:'nuttx',topology:'six-motors'},{backend:'micropython',topology:'six-motors'}]) assert.equal(valid(args),true);
     for (const args of [{topology:'six-motors'},{backend:'guest',topology:'six-motors'},
         {backend:'nuttx',topology:'six-motors;quit'},{backend:'nuttx',topology:6},
         {backend:'nuttx',topology:'six-motors',path:'/tmp/model'}]) assert.equal(valid(args),false);
@@ -60,7 +60,7 @@ test('all six observations enter the one hub; extra motors do not create arena s
 test('six profile refuses empty/guest/sensorful setup before invoking transport', () => {
     for (const options of [{backend:'guest',source:'pass'},{backend:'nuttx'},
         {backend:'nuttx',source:'pass',bridge:new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()})}]) {
-        assert.throws(()=>new RenodeArenaSession({bridge:bridge(),topology:'six-motors',...options}),/NuttX program/);
+        assert.throws(()=>new RenodeArenaSession({bridge:bridge(),topology:'six-motors',...options}),/NuttX or MicroPython code/);
     }
 });
 test('bad first snapshot closes only acquired session and sends no program upload', async () => {
@@ -139,4 +139,42 @@ test('compiled six upload verifies attachments and replacement refreshes capabil
         bad=null;await s.uploadProgram(program);clearTimeout(s.timer);
         assert.ok(calls.filter(c=>c[0]==='program.packet').length>packets);
     } finally {bad=false;await s.stop();}
+});
+
+const microSixFrame = () => {
+    const f=frame();f.target.firmware='micropython-prime';
+    f.target.capabilities=f.target.capabilities.filter(c=>!c.startsWith('nuttx-'));
+    f.target.capabilities.push('micropython-uart/v1','micropython-six-motors/v1');
+    f.lifecycle.micropythonUart={state:'ready',generation:1};return f;
+};
+test('Micro six frame requires its own capability, six motors and ready UART',()=>{
+    requireSixMotorFrame(microSixFrame(),'micropython-prime');
+    for(const mutate of [f=>f.target.capabilities.pop(),f=>f.motors.pop(),
+        f=>{f.motors[5].port='A';},f=>{f.ports[5].kind='color';},
+        f=>{f.lifecycle.micropythonUart.state='closed';},f=>{f.lifecycle.micropythonUart.generation=true;}]) {
+        const f=microSixFrame();mutate(f);assert.throws(()=>requireSixMotorFrame(f,'micropython-prime'));
+    }
+    assert.throws(()=>requireSixMotorFrame(microSixFrame()));
+});
+test('Micro six shares the hub, has no sensors and emits all six loads',()=>{
+    const b=bridge(),hub=b.hubState;prepareSixMotorHub(hub);
+    const adapter=new RenodeArenaBridge(b,{allMotors:true});adapter.accept(microSixFrame());
+    assert.equal(adapter.bridge.hubState,hub);
+    assert.deepEqual(adapter.inputs(),{sensors:[],loads:[...'ABCDEF'].map(port=>({port,percent:0}))});
+    b.robot.contactModel='stall';b.sim.wouldBlockWheels=()=>true;
+    assert.deepEqual(adapter.inputs().loads,[...'ABCDEF'].map(port=>({port,percent:'AB'.includes(port)?100:0})));
+    adapter.close();assert.equal(hub.clockOwner,null);
+});
+test('Micro six refuses missing attachments before any UART upload',async()=>{
+    for(const mutate of [f=>f.target.capabilities.pop(),f=>{f.ports[5].kind='none';},
+        f=>{f.lifecycle.micropythonUart.state='closed';}]) {
+        const f=microSixFrame();mutate(f);const calls=[];
+        const caps=Object.fromEntries(['session.start','session.close','state.read','micropython.uart.write']
+            .map(op=>[`renode.spike.${op}`,async args=>{calls.push([op,args]);return op==='state.read'?JSON.stringify(f):'ready';}]));
+        const s=new RenodeArenaSession({bridge:bridge(),capabilities:caps,backend:'micropython',topology:'six-motors',source:'pass'});
+        await assert.rejects(s.start());
+        assert.deepEqual(calls[0],['session.start',{backend:'micropython',topology:'six-motors'}]);
+        assert.equal(calls.some(([op])=>op==='micropython.uart.write'),false);
+        assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    }
 });

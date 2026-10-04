@@ -77,3 +77,12 @@ test('asynchronous MicroPython failure clears the Code-tab running indicator', a
     report(new Error('synthetic Python failure'));
     assert.equal(s.editor.state.spike3Running, false); assert.equal(s.editor.state.status, 'synthetic Python failure');
 });
+
+test('Code-tab preserves six motors only in the sandbox', async () => {
+    for (const sandbox of [true, false]) {
+        const s = scaffold(); Object.assign(s.pane.state, {sandbox, topology: 'six-motors'});
+        await codeMethod(s.window).call(s.editor);
+        assert.equal(s.pane.state.topology, sandbox ? 'six-motors' : 'default');
+        assert.ok(s.calls.some(call => Array.isArray(call) && call[0] === 'start'));
+    }
+});

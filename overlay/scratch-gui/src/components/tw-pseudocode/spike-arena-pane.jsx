@@ -428,9 +428,9 @@ class SpikeArenaPane extends React.Component {
         if (this.firmwareSession && (this.firmwareSession.topology || 'default') !== topology) {
             throw new Error(this.locale === 'de' ? 'Diese Firmware-Sitzung vor dem Gerätewechsel schließen.' : 'Close this firmware session before changing devices.');
         }
-        if (topology === 'six-motors' && (!this.state.sandbox || this.state.execution !== 'nuttx')) {
-            throw new Error(this.locale === 'de' ? 'Sechs Motoren benötigen die eigene NuttX-Firmware im Sandkasten.' :
-                'Six motors require own NuttX firmware in the sandbox.');
+        if (topology === 'six-motors' && (!this.state.sandbox || !['nuttx', 'micropython'].includes(this.state.execution))) {
+            throw new Error(this.locale === 'de' ? 'Sechs Motoren benötigen NuttX oder MicroPython im Sandkasten.' :
+                'Six motors require NuttX or MicroPython in the sandbox.');
         }
         // Compile before stopping a running session: unsupported blocks never run a demo.
         if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm, {topology});
@@ -755,7 +755,7 @@ class SpikeArenaPane extends React.Component {
                         <select aria-label={this.locale === 'de' ? 'Ausführung' : 'Execution'} data-testid="bw-spike-arena-execution"
                             value={this.state.execution} disabled={status === 'choosing' || status === 'starting'} onChange={async event => {
                                 const execution = event.target.value; await this.stopProgram();
-                                if (!this.disposed) this.setState({execution, topology: execution === 'nuttx' ? this.state.topology : 'default', status: 'ready', message: ''});
+                                if (!this.disposed) this.setState({execution, topology: ['nuttx', 'micropython'].includes(execution) ? this.state.topology : 'default', status: 'ready', message: ''});
                             }}>
                             <option value="native">{this.locale === 'de' ? 'Simulator' : 'Simulator'}</option>
                             <option value="renode" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
@@ -777,11 +777,11 @@ class SpikeArenaPane extends React.Component {
                                 {this.locale === 'de' ? 'Image auswählen…' : 'Choose image…'}
                             </button>
                             <span style={{fontSize: 12}}>{this.locale === 'de' ?
-                                'Python im Code-Tab starten. Roboter-Module hub und motor sind im getesteten Image nicht vorhanden.' :
-                                'Run Python from the Code tab. The tested image has no hub or motor modules.'}</span>
+                                'Python im Code-Tab mit einem Image starten, das bwspike enthält.' :
+                                'Run Python from the Code tab with an image containing bwspike.'}</span>
                         </> : null}
-                        {this.state.execution === 'nuttx' ? <>
-                            <select aria-label={this.locale === 'de' ? 'NuttX-Geräte' : 'NuttX devices'} data-testid="bw-spike-nuttx-topology"
+                        {['nuttx', 'micropython'].includes(this.state.execution) ? <>
+                            <select aria-label={this.locale === 'de' ? 'Firmware-Geräte' : 'Firmware devices'} data-testid="bw-spike-nuttx-topology"
                                 value={this.state.topology} disabled={Boolean(this.firmwareSession) || status === 'starting'}
                                 onChange={event => {
                                     if (this.firmwareSession || this.state.status === 'starting') return;
@@ -792,9 +792,11 @@ class SpikeArenaPane extends React.Component {
                                 <option value="six-motors" disabled={!this.state.sandbox}>{this.locale === 'de' ? 'Sechs Motoren A–F (Sandkasten)' : 'Six motors A–F (sandbox)'}</option>
                             </select>
                             {this.state.topology === 'six-motors' ? <span style={{fontSize: 12, flex: '1 1 240px'}} data-testid="bw-spike-six-motor-hint">
-                                {this.locale === 'de' ? 'Benötigt ein NuttX-Paket mit sechs Motoren. Scratch-Motorbefehle unterstützen A–F; Positionsbewegungen verwenden einen Motor. Mehrportbefehle laufen nacheinander, ohne synchronisierten Start. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' :
+                                {this.state.execution === 'micropython' ? (this.locale === 'de' ? 'Benötigt ein Image mit bwspike und aktualisierte Simulator-Unterstützung. Motoren A–F über bwspike verwenden. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' : 'Requires an image containing bwspike and updated simulator support. Use bwspike for motors A–F. A/B drive the rover; C–F are extra motors. No arena sensors.') : this.locale === 'de' ? 'Benötigt ein NuttX-Paket mit sechs Motoren. Scratch-Motorbefehle unterstützen A–F; Positionsbewegungen verwenden einen Motor. Mehrportbefehle laufen nacheinander, ohne synchronisierten Start. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' :
                                     'Requires a six-motor NuttX package. Scratch motor commands support A–F; position moves use one motor. Multiport commands execute sequentially, without synchronized starts. A/B drive the rover; C–F are extra motors. No arena sensors.'}
                             </span> : null}
+                        </> : null}
+                        {this.state.execution === 'nuttx' ? <>
                             <button type="button" style={btn} data-testid="bw-spike-program-save"
                                 disabled={!this.firmwareSession?.storageSupported || this.state.storageBusy || this.firmwareSession?.uploading || ![1, 3, 4].includes(this.state.programState)}
                                 onClick={() => this.programStorage('save')}>{this.locale === 'de' ? 'Programm speichern' : 'Save program'}</button>
