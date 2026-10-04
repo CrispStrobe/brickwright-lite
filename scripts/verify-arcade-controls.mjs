@@ -6,6 +6,7 @@ import {readFile, mkdir, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {resolve, relative, extname} from 'node:path';
 import {compile, STATIC} from './lib/pxt-node.mjs';
+import {isArcadeSimulatorUrl} from './lib/arcade-controls.mjs';
 
 const {chromium} = await import(process.env.BW_PLAYWRIGHT_MODULE || 'playwright');
 const out = resolve(process.env.BW_ARCADE_PROOF_DIR || 'test-results/arcade-controls');
@@ -77,8 +78,8 @@ try {
         const run = () => page.evaluate(js => window.postMessage({type: 'bw-makecode-run', js}, location.origin), compiled.outfiles['binary.js']);
         await run();
         await page.waitForFunction(() => window.bwProofSerial.includes('READY:0'), null, {timeout: 30000});
-        const frame = page.frames().find(item => item.url().endsWith('/arcade/sim/simulator.html'));
-        assert.ok(frame, 'actual PXT simulator iframe');
+        const frame = page.frames().find(item => isArcadeSimulatorUrl(item.url(), origin));
+        assert.ok(frame, `actual PXT simulator iframe: ${JSON.stringify(page.frames().map(item => item.url()))}`);
         const initialPixels = await frame.locator('#game-screen').screenshot();
         for (const [name, selector] of [['A', '.button-a'], ['B', '.button-b'], ['up', '.dpad-up'], ['down', '.dpad-down'], ['left', '.dpad-left'], ['right', '.dpad-right']]) {
             const control = frame.locator(selector);
@@ -99,7 +100,8 @@ try {
         await page.evaluate(() => { window.bwProofSerial = ''; });
         await run();
         await page.waitForFunction(() => window.bwProofSerial.includes('READY:0'), null, {timeout: 30000});
-        const restarted = page.frames().find(item => item.url().endsWith('/arcade/sim/simulator.html'));
+        const restarted = page.frames().find(item => isArcadeSimulatorUrl(item.url(), origin));
+        assert.ok(restarted, 'restarted PXT simulator iframe');
         if (spec.hasTouch) await restarted.locator('.button-a').tap();
         else await restarted.locator('.button-a').click();
         await page.waitForFunction(() => window.bwProofSerial.includes('A:up:1'), null, {timeout: 5000});
@@ -110,6 +112,9 @@ try {
     }
     await writeFile(resolve(out, 'receipt.json'), JSON.stringify({schema: 'brickwright-pxt-controls/v1', sourceSha256: digest(source), compiledSha256: digest(compiled.outfiles['binary.js']), runtimeHashes: hashes, compilerNetworkAttempts: compiled.netAttempts, results, qualification: 'functional PXT browser input/output; not CPU RTx or complete PyBadge hardware'}, null, 2));
     console.log('PASS: actual PXT game responds to six mouse/touch controls, keyboard and restart on desktop/mobile viewports');
+} catch (error) {
+    await writeFile(resolve(out, 'failure.json'), JSON.stringify({error: String(error.stack || error), runtimeHashes: hashes, completedResults: results}, null, 2));
+    throw error;
 } finally {
     await browser.close();
     await new Promise(done => server.close(done));

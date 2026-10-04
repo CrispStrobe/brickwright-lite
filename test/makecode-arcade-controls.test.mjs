@@ -1,9 +1,20 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {isArcadeSimulatorUrl} from '../scripts/lib/arcade-controls.mjs';
 
 const page = readFileSync(new URL('../scripts/makecode/arcade-simulator.html', import.meta.url), 'utf8');
 const verifier = readFileSync(new URL('../scripts/verify-makecode.mjs', import.meta.url), 'utf8');
+
+test('actual simulator frame matching accepts PXT identifiers without accepting another origin/path', () => {
+    const origin = 'http://127.0.0.1:1234';
+    for (const suffix of ['', '#sim-123', '?id=123#sim-123']) {
+        assert.equal(isArcadeSimulatorUrl(`${origin}/arcade/sim/simulator.html${suffix}`, origin), true);
+    }
+    for (const url of ['about:blank', 'not a URL', `${origin}/arcade/sim/host.html`, 'http://example.com/arcade/sim/simulator.html']) {
+        assert.equal(isArcadeSimulatorUrl(url, origin), false);
+    }
+});
 
 test('the PXT Arcade page exposes upstream controls without a replacement input engine', () => {
     assert.match(page, /\.game-buttons, \.game-joystick\s*\{\s*display: flex/);
