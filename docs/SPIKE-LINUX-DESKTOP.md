@@ -72,6 +72,14 @@ list included source-built profiles and continue marking redistribution as
 unqualified. Full installed-GUI qualification of these optional combined profiles
 must be recorded separately from the previously tested MicroPython-only package.
 
+The supervisor registers launch ownership before starting its worker. A creation
+timeout requests cancellation and keeps that ownership until process and private
+resource cleanup completes; another launch cannot overlap the pending cleanup.
+Normal Stop, close and timeout terminate the owned process group. On Linux the
+persistent spawning thread also installs a parent-death signal, so abrupt desktop
+termination kills the direct simulator child. This additional crash protection
+does not cover forked descendants and is not qualified on other operating systems.
+
 Original LEGO images remain a private bring-up path, without a
 qualified Code-tab arena backend. See [NuttX](../SPIKE-NUTTX.md),
 [MicroPython](spike-micropython-gui.md) and

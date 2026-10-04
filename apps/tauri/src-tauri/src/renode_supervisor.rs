@@ -66,6 +66,21 @@ struct SessionControl {
 }
 
 impl SessionControl {
+    fn finished(&self) -> bool {
+        self.done.0.lock().map(|done| *done).unwrap_or(false)
+    }
+
+    fn await_startup(&self, ready: &std::sync::mpsc::Receiver<Result<(), String>>,
+        timeout: Duration) -> Result<(), String> {
+        match ready.recv_timeout(timeout) {
+            Ok(result) => result,
+            Err(_) => {
+                self.stop.store(true, Ordering::SeqCst);
+                Err("Renode process creation timed out".into())
+            }
+        }
+    }
+
     fn request_stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
         let (lock, wake) = &*self.done;
@@ -728,6 +743,7 @@ impl RenodeSupervisor {
             .session
             .lock()
             .map_err(|_| "Renode supervisor unavailable")?;
+        if slot.as_ref().is_some_and(SessionControl::finished) { *slot = None; }
         if slot.is_some() {
             return Err("Renode session already active".into());
         }
@@ -803,6 +819,23 @@ impl RenodeSupervisor {
                 }
             }
         }
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::process::CommandExt;
+            let owner = std::process::id() as libc::pid_t;
+            // Only async-signal-safe system calls run between fork and exec.
+            // Spawn occurs in the session worker below: Linux associates this
+            // signal with the spawning thread, which must outlive the child.
+            unsafe {
+                command.pre_exec(move || {
+                    if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL) != 0 {
+                        return Err(io::Error::last_os_error());
+                    }
+                    if libc::getppid() != owner { libc::raise(libc::SIGKILL); }
+                    Ok(())
+                });
+            }
+        }
         // The reserved socket closes immediately before spawn. Renode is only
         // ever told the selected loopback address; it cannot be redirected to
         // a LAN interface by project input.
@@ -812,23 +845,39 @@ impl RenodeSupervisor {
         for capsule in &images {
             capsule.verify().map_err(|_| "local image capsule changed before launch")?;
         }
-        let mut child = command
-            .group_spawn()
-            .map_err(|_| "Renode process failed to start")?;
-        let stdout = child
-            .inner()
-            .stdout
-            .take()
-            .ok_or_else(|| "Renode stdout unavailable".to_owned())?;
-        let stderr = child
-            .inner()
-            .stderr
-            .take()
-            .ok_or_else(|| "Renode stderr unavailable".to_owned())?;
         let stop = Arc::new(AtomicBool::new(false));
         let overflow = Arc::new(AtomicBool::new(false));
         let total = Arc::new(AtomicUsize::new(0));
         let done = Arc::new((Mutex::new(false), Condvar::new()));
+        let worker_stop = Arc::clone(&stop);
+        let worker_done = Arc::clone(&done);
+        let worker_uart_evidence = uart_evidence.clone();
+        let (ready_sender, ready_receiver) = std::sync::mpsc::sync_channel::<Result<(), String>>(1);
+        // Register ownership before starting the worker. A timed-out launch
+        // remains registered until its child and private resources are cleaned.
+        let control = SessionControl { stop, done };
+        *slot = Some(control.clone());
+        thread::spawn(move || {
+            let fail_start = |message: &str| {
+                let (lock, wake) = &*worker_done;
+                if let Ok(mut finished) = lock.lock() { *finished = true; wake.notify_all(); }
+                let _ = ready_sender.send(Err(message.to_owned()));
+            };
+            let mut child = match command.group_spawn() {
+                Ok(child) => child,
+                Err(_) => {
+                    drop(checkpoint); drop(images);
+                    fail_start("Renode process failed to start"); return;
+                }
+            };
+            let (stdout, stderr) = match (child.inner().stdout.take(), child.inner().stderr.take()) {
+                (Some(stdout), Some(stderr)) => (stdout, stderr),
+                _ => {
+                    let _ = child.kill(); let _ = child.wait();
+                    drop(checkpoint); drop(images);
+                    fail_start("Renode process output unavailable"); return;
+                }
+            };
         let stdout_reader = drain_bounded(
             stdout,
             Arc::clone(&total),
@@ -841,10 +890,7 @@ impl RenodeSupervisor {
             Arc::clone(&overflow),
             bounds.output_limit,
         );
-        let worker_stop = Arc::clone(&stop);
-        let worker_done = Arc::clone(&done);
-        let worker_uart_evidence = uart_evidence.clone();
-        thread::spawn(move || {
+            let _ = ready_sender.send(Ok(()));
             let checkpoint_stop = Arc::new(AtomicBool::new(false));
             let checkpoint_thread = checkpoint.map(|mut job| {
                 let stopping = Arc::clone(&checkpoint_stop);
@@ -900,7 +946,10 @@ impl RenodeSupervisor {
                 wake.notify_all();
             }
         });
-        *slot = Some(SessionControl { stop, done });
+        if let Err(error) = control.await_startup(&ready_receiver, Duration::from_secs(10)) {
+            if control.finished() { *slot = None; }
+            return Err(error);
+        }
         Ok(RenodeEndpoint {
             port,
             gdb_port,
@@ -912,8 +961,9 @@ impl RenodeSupervisor {
 
     pub(crate) fn teardown(&self, _reason: TeardownReason) {
         if let Ok(mut slot) = self.session.lock() {
-            if let Some(session) = slot.take() {
+            if let Some(session) = slot.as_ref() {
                 session.request_stop();
+                if session.finished() { *slot = None; }
             }
         }
     }
@@ -1551,6 +1601,119 @@ mod tests {
             supervisor.teardown(reason);
             assert!(supervisor.session.lock().unwrap().is_none());
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn initialization_timeout_retains_ownership_until_cleanup() {
+        let supervisor = RenodeSupervisor::new();
+        let control = SessionControl {
+            stop: Arc::new(AtomicBool::new(false)),
+            done: Arc::new((Mutex::new(false), Condvar::new())),
+        };
+        *supervisor.session.lock().unwrap() = Some(control.clone());
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+        let worker_done = Arc::clone(&control.done);
+        let cleanup = thread::spawn(move || {
+            // Model a slow creation/cleanup completion while its readiness
+            // channel remains open. Nothing is eligible for reuse before done.
+            thread::sleep(Duration::from_millis(150));
+            let (lock, wake) = &*worker_done;
+            *lock.lock().unwrap() = true;
+            wake.notify_all();
+            drop(sender);
+        });
+        assert!(control.await_startup(&receiver, Duration::from_millis(1)).is_err());
+        assert!(control.stop.load(Ordering::SeqCst));
+        assert!(supervisor.session.lock().unwrap().is_some());
+        let executable = Path::new("/bin/sh");
+        assert_eq!(supervisor.start_verified(executable, &sha256(executable).unwrap(),
+            &["-c".into(), "exit 0".into()], Path::new("."), Duration::from_secs(1), 1024)
+            .err().unwrap(), "Renode session already active");
+        supervisor.teardown(TeardownReason::Reset);
+        cleanup.join().unwrap();
+        assert!(supervisor.session.lock().unwrap().is_none());
+        supervisor.start_verified(executable, &sha256(executable).unwrap(),
+            &["-c".into(), "exit 0".into()], Path::new("."), Duration::from_secs(1), 1024).unwrap();
+        supervisor.teardown(TeardownReason::Reset);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "subprocess fixture for linux_owner_crash_terminates_simulator"]
+    fn linux_owner_death_fixture() {
+        let Some(root) = std::env::var_os("BW_TEST_LINUX_OWNER_DIR") else { return; };
+        let root = PathBuf::from(root);
+        let executable = Path::new("/bin/sh");
+        let supervisor = RenodeSupervisor::new();
+        supervisor.start_verified(executable, &sha256(executable).unwrap(),
+            &["-c".into(), "printf '%s' \"$$\" > child.pid; while :; do sleep 0.1; done".into()],
+            &root, Duration::from_secs(60), 1024).unwrap();
+        std::fs::write(root.join("owner.ready"), b"ready").unwrap();
+        thread::sleep(Duration::from_secs(60));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_owner_crash_terminates_simulator() {
+        struct TestOwner(std::process::Child);
+        impl Drop for TestOwner {
+            fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); }
+        }
+        let fixture = FlashFixture::new();
+        let mut owner = TestOwner(Command::new(std::env::current_exe().unwrap())
+            .args(["--ignored", "--exact", "renode_supervisor::tests::linux_owner_death_fixture"])
+            .env("BW_TEST_LINUX_OWNER_DIR", &fixture.0)
+            .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap());
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let pid: i32 = loop {
+            if fixture.0.join("owner.ready").exists() {
+                if let Some(pid) = std::fs::read_to_string(fixture.0.join("child.pid")).ok()
+                    .and_then(|value| value.parse::<i32>().ok()) { break pid; }
+            }
+            assert!(owner.0.try_wait().unwrap().is_none(), "owner fixture exited before spawn");
+            assert!(Instant::now() < deadline, "owner fixture did not create its child");
+            thread::sleep(Duration::from_millis(10));
+        };
+        assert!(pid > 1);
+        assert_eq!(unsafe {libc::getpgid(pid)}, pid, "synthetic child must own its group");
+        owner.0.kill().unwrap(); owner.0.wait().unwrap();
+        let running = || std::fs::read_to_string(format!("/proc/{pid}/status"))
+            .map(|status| !status.lines().any(|line| line.starts_with("State:")
+                && line.split_whitespace().nth(1) == Some("Z"))).unwrap_or(false);
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while running() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
+        let survived = running();
+        if survived {
+            // Clean the exact synthetic group even when a mutation breaks the guard.
+            unsafe { libc::kill(-pid, libc::SIGKILL); }
+        }
+        assert!(!survived, "simulator survived abrupt owner death");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn simulator_outlives_the_request_thread_until_session_teardown() {
+        let fixture = FlashFixture::new();
+        let root = fixture.0.clone();
+        let supervisor = Arc::new(RenodeSupervisor::new());
+        let requester = Arc::clone(&supervisor);
+        thread::spawn(move || {
+            let executable = Path::new("/bin/sh");
+            requester.start_verified(executable, &sha256(executable).unwrap(),
+                &["-c".into(), "printf '%s' \"$$\" > child.pid; while :; do sleep 0.1; done".into()],
+                &root, Duration::from_secs(10), 1024).unwrap();
+        }).join().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let pid: i32 = loop {
+            if let Some(pid) = std::fs::read_to_string(fixture.0.join("child.pid")).ok()
+                .and_then(|value| value.parse::<i32>().ok()) { break pid; }
+            assert!(Instant::now() < deadline, "child died with the request thread");
+            thread::sleep(Duration::from_millis(10));
+        };
+        thread::sleep(Duration::from_millis(100));
+        assert_eq!(unsafe {libc::getpgid(pid)}, pid, "session worker must keep the child alive");
+        supervisor.teardown(TeardownReason::Reset);
     }
 
     #[cfg(unix)]
