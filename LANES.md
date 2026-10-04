@@ -482,7 +482,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-Static OP CLI KCL package adoption — **CLAIM 2026-10-04**, Codex bwcx `/root`;
+Static OP CLI KCL package adoption — **DONE candidate 2026-10-04**, Codex bwcx `/root`;
 isolated reused `/tmp/bwcx-lite-adp-stream-candidate-20261004`, branch
 lane/cli-op-kcl-package-adoption-20261004, exact fresh base
 fa1c32fd11ba1404d20fc1217238e6a8a5a09a59. Own CUI package boundary only:
@@ -504,6 +504,20 @@ solver/model/tolerance, importer/GUI/native/SPIKE/workflow/corpus edits or blank
 KCL coverage/deployment claim. Remotely merge claim before implementation; final
 DONE candidate includes available local evidence, one exact-head hosted Build,
 guarded normal landing and separately verified publication.
+Canonical claim30632825a preceded all implementation. Actual installed CLI and
+existing physical-part/package surface35/35; full-history pin/provenance/notices
+surface20/20; mirror/pin-assertion surface7/7:62 passing, zero skips. Three isolated
+real CLI producer mutations red reversed source signs, missing terminal and
+indeterminate source; ordinary process afterward passes. Whole installed payload
+matches pinned Git/npm pack bytes: Board10,367 files, CUI1,303 files; single reviewed
+Board resolution. Root and GUI official npm lock regeneration change only CUI
+spec/resolved/integrity; GUI uses CI's existing legacy-peer-deps setting after the
+ordinary resolver reproduced the known React16/18 peer conflict. No policy change.
+Rust notices, 8086 report, language matrix, part profiles, reader coverage, hosted
+targets and Board census checks ALL pass unchanged; last two use exact existing
+pinned source worktrees, not current unrelated upstream tips. Package notices
+match both mirrors; LICENSE bytes unchanged. No deployed or corpus KCL claim.
+One frozen exact-head Build remains required before guarded normal main landing.
 
 
 Linux browser boot timing boundary — **DONE candidate 2026-10-03**, Codex bwcx `/root`;
