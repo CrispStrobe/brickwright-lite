@@ -614,7 +614,10 @@ while firmware owns the hub. The topology selector stays locked for the live
 session; close it before selecting different devices. Native Reset retains the
 selected topology and boots with an empty program without automatic execution.
 The startup, packet, Python source/stack, and process lifetime limits remain
-unchanged. Save/Load still retain a slot only within the live emulator session.
+unchanged. Packages with the verified host flash checkpoint ABI and configured
+native app storage retain the last completed explicit Save across Linux emulator
+boots; older packages retain a session-only slot. Load never starts execution
+automatically. See [flash checkpoint persistence](spike-flash-persistence.md).
 
 The native position qualification uses one relative 30° move at 333 degrees per
 second, with ±3° final error and completion within two firmware program-clock

@@ -492,17 +492,17 @@ class SpikeArenaPane extends React.Component {
         try {
             await session.storage(operation);
             if (!this.disposed && this.firmwareSession === session) this.setState({status: 'paused',
-                message: this.locale === 'de' ? (operation === 'save' ? 'Programm in dieser Simulator-Sitzung gespeichert.' : 'Programm geladen und bereit. Editor-Text unverändert. Zum Ausführen „Geladenes Programm starten“ drücken.') :
-                    (operation === 'save' ? 'Program saved in this simulator session.' : 'Program loaded and ready. Editor text is unchanged. Press Run loaded program to run it.')});
+                message: this.locale === 'de' ? (operation === 'save' ? (session.storagePersistent ? 'Programm für weitere Simulator-Sitzungen gespeichert.' : 'Programm in dieser Simulator-Sitzung gespeichert.') : 'Programm geladen und bereit. Editor-Text unverändert. Zum Ausführen „Geladenes Programm starten“ drücken.') :
+                    (operation === 'save' ? (session.storagePersistent ? 'Program saved for future simulator sessions.' : 'Program saved in this simulator session.') : 'Program loaded and ready. Editor text is unchanged. Press Run loaded program to run it.')});
         } catch (error) {
             const messages = this.locale === 'de' ? {
                 '-16': 'Programmspeicher beschäftigt. Programm stoppen und kurz warten.',
-                '-2': 'Kein gespeichertes Programm in dieser Simulator-Sitzung.',
+                '-2': 'Kein gespeichertes Programm vorhanden.',
                 '-22': 'Ungültige Programmdaten oder abweichende Programm-ID.',
                 '-5': 'Speichern fehlgeschlagen: Flash-Ein-/Ausgabefehler im Simulator.',
                 '-74': 'Gespeichertes Programm beschädigt oder ungültig.'
             } : {'-16': 'Program storage is busy; stop the program and wait before trying again.',
-                '-2': 'No saved program exists in this simulator session.', '-22': 'Program storage rejected invalid data or a mismatched program ID.',
+                '-2': 'No saved program exists.', '-22': 'Program storage rejected invalid data or a mismatched program ID.',
                 '-5': 'Program storage failed: simulator flash I/O error.', '-74': 'Saved program is damaged or invalid.'};
             if (!this.disposed && this.firmwareSession === session) this.setState({message: session.storageUncertain ?
                 (this.locale === 'de' ? 'Ergebnis des Programmspeichers unbekannt. Diese Simulator-Sitzung vor dem Fortfahren schließen.' :
@@ -804,8 +804,8 @@ class SpikeArenaPane extends React.Component {
                                 disabled={!this.firmwareSession?.storageSupported || this.state.storageBusy || this.firmwareSession?.uploading || this.state.programState === 2}
                                 onClick={() => this.programStorage('load')}>{this.locale === 'de' ? 'Programm laden' : 'Load program'}</button>
                             <span style={{fontSize: 12, flex: '1 1 220px', alignSelf: 'center'}} data-testid="bw-spike-program-storage-hint">
-                                {this.locale === 'de' ? (this.firmwareSession?.storageSupported ? 'Speicher gilt für diese Simulator-Sitzung. Laden startet das Programm nicht.' : 'Speicher erfordert eine laufende NuttX-Sitzung mit Speicherunterstützung.') :
-                                    (this.firmwareSession?.storageSupported ? 'Storage lasts for this live simulator session. Load never runs automatically.' : 'Storage requires a live NuttX package with program storage support.')}
+                                {this.locale === 'de' ? (this.firmwareSession?.storageSupported ? (this.firmwareSession.storagePersistent ? 'Explizites Speichern bleibt nach dem Schließen dieses Simulators erhalten. Laden startet das Programm nicht automatisch.' : 'Speicher gilt für diese Simulator-Sitzung. Laden startet das Programm nicht.') : 'Speicher erfordert eine laufende NuttX-Sitzung mit Speicherunterstützung.') :
+                                    (this.firmwareSession?.storageSupported ? (this.firmwareSession.storagePersistent ? 'Explicit Save survives closing this simulator. Load never runs automatically.' : 'Storage lasts for this live simulator session. Load never runs automatically.') : 'Storage requires a live NuttX package with program storage support.')}
                             </span>
                         </> : null}
                         <button type="button" style={btn} disabled={!world || this.state.execution !== 'native'} onClick={() => this.step()} data-testid="bw-spike-arena-step">{t('step')}</button>

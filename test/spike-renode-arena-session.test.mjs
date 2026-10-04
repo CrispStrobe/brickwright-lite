@@ -511,3 +511,27 @@ test('MicroPython completion waits for an in-flight poll and serializes the fina
     assert.equal(s.session.latestFrame.seq, 3);assert.equal(s.b.hubState.data.motors[1].position, 90);
     assert.equal(s.calls.filter(([op]) => op === 'state.read').length, 3);
 });
+
+test('persistent storage requires both NuttX storage and checkpoint capabilities', async () => {
+    for (const [firmware, storage, checkpoint, expected] of [
+        ['brickwright-nuttx', true, true, true],
+        ['brickwright-nuttx', true, false, false],
+        ['brickwright-nuttx', false, true, false],
+        ['brickwright-arena-demo', true, true, false]
+    ]) {
+        const frame = programFrame();
+        frame.target.firmware = firmware;
+        frame.target.capabilities.push('nuttx-program/v1');
+        if (storage) frame.target.capabilities.push('nuttx-program-storage/v1');
+        if (checkpoint) frame.target.capabilities.push('nuttx-flash-checkpoint/v1');
+        const session = new RenodeArenaSession({bridge: bridge(), capabilities: {
+            'renode.spike.session.start': async () => {},
+            'renode.spike.session.close': async () => {},
+            'renode.spike.state.read': async () => JSON.stringify(frame),
+            'renode.spike.arena.inputs.write': async () => {},
+            'renode.spike.run': async () => {throw new Error('test stops before upload');}
+        }});
+        await assert.rejects(session.start(), /test stops before upload/);
+        assert.equal(session.storagePersistent, expected, `${firmware}/${storage}/${checkpoint}`);
+    }
+});
