@@ -19,7 +19,23 @@ import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
 import path from 'node:path';
 import {parseStepPointers, judgeSteps, STEP_HEADING} from '../scripts/lib/skip-pointers.mjs';
-import {census, yamlSteps, why, workflowSource, READINGS} from '../scripts/gen-ci-steps.mjs';
+import {census, yamlSteps, why, workflowSource, mergeWorkflowReadings, READINGS} from '../scripts/gen-ci-steps.mjs';
+
+test('a scoped workflow refresh preserves unrelated dated evidence and main provenance', () => {
+    const previous = {repo: 'owner/repo', headSha: 'old-main', newestMainRun: 1,
+        runs: [{run: 1, workflow: 'old.yml'}, {run: 2, workflow: 'new.yml'}],
+        workflowsInTree: ['old.yml', 'new.yml'], workflows: {'old.yml': {sourceSha: 'old', runs: 1}, 'new.yml': {runs: 1}}};
+    const fresh = {repo: 'owner/repo', generatedAt: '2026-10-04', runs: [{run: 3, workflow: 'new.yml'}],
+        workflows: {'new.yml': {sourceSha: 'branch', runs: 1}}};
+    const result = mergeWorkflowReadings(previous, fresh, 'new.yml');
+    assert.deepEqual(result.workflows['old.yml'], previous.workflows['old.yml']);
+    assert.equal(result.headSha, 'old-main');
+    assert.equal(result.newestMainRun, 1);
+    assert.deepEqual(result.runs, [{run: 1, workflow: 'old.yml'}, {run: 3, workflow: 'new.yml'}]);
+    assert.equal(result.lastRefresh.sourceSha, 'branch');
+    assert.throws(() => mergeWorkflowReadings(previous, {...fresh, repo: 'other/repo'}, 'new.yml'));
+    assert.throws(() => mergeWorkflowReadings(previous, fresh, 'absent.yml'));
+});
 
 test('a new workflow sources its own branch run until main has actually run it', () => {
     const main = {workflow: 'old.yml', branch: 'main', sha: 'main', createdAt: '2026-09-08'};
