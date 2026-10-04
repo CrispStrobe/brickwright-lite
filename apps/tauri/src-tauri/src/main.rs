@@ -2,5 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    brickwright_tauri_lib::run();
+    // BSD-3-Clause desktop packaging addition, Copyright (c) 2026 Brickwright contributors.
+    brickwright_tauri_lib::run_with_context(tauri::generate_context!());
 }
