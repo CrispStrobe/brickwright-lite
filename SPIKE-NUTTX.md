@@ -23,7 +23,10 @@ b.sleep_ms(150)
 This module is separate from LEGO's Python SDK. Supported LEGO SPIKE App 3
 Python can still use the existing conversion-to-blocks route and then the
 compiled firmware runner. Unsupported commands fail before upload. Firmware
-programs currently use motors A/B and arena sensors C/D/E. Python source is
+programs use motors A/B and arena sensors C/D/E in the default topology.
+A qualified six-motor package supports native/Scratch and embedded Python
+commands on A–F: A/B drive the rover, C–F are auxiliary motors, and arena
+sensors are unavailable in that topology. Python source is
 limited to 4095 UTF-8 bytes; output is limited to 1024 bytes and marked when
 truncated. Python filesystem imports and networking are unavailable.
 
@@ -72,11 +75,17 @@ The source-built full firmware now formats and mounts blank simulated flash
 as LittleFS. Qualification covers mixed CPU/SPI receive-DMA reads in direct
 and FIFO modes; regression mutations detect stale requests and FIFO overreads.
 See the Renode repository's `docs/prime-nuttx-qualification.md` for commands.
-File operations and persistence across emulator restarts, general DMA FIFO
-packing/bursts, USB OTG, actual BLE transport and runtime MPU isolation still
-need qualification. Original LEGO and upstream LEGO_HUB_NO6
-MicroPython images are separate local CPU-probe paths, not qualified arena
-backends, and are not packaged by these scripts. LabWired would need additional
+Explicit Save/Load passed separate emulator-restart tests for native and
+completed embedded Python programs. Configured Linux packages advertising
+`nuttx-flash-checkpoint/v1` retain the last completed explicit Save across boots;
+Load restores READY without running automatically. See
+[flash checkpoint persistence](docs/spike-flash-persistence.md). Power-loss
+durability, wider filesystem operations, general DMA FIFO packing/bursts, USB
+OTG, actual BLE transport and runtime MPU isolation remain unqualified.
+Original LEGO images remain separate local CPU-probe paths. Supplied upstream
+LEGO_HUB_NO6 MicroPython images have a separately qualified desktop arena
+route described in [MicroPython GUI support](docs/spike-micropython-gui.md);
+neither image family is packaged by these scripts. LabWired would need additional
 SPIKE-specific peripheral/LPF2 integration; Renode is the qualified path here.
 
 New upload/session/package components use BSD-3-Clause; see

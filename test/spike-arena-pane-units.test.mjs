@@ -241,3 +241,28 @@ test('MicroPython shares the sandbox motor selector without NuttX storage contro
         assert.equal(pane.state.topology, 'default');
     } finally { if (renderer) await act(async () => renderer.unmount()); browser.restore(); }
 });
+
+test('Save feedback and storage hint distinguish persistent and legacy packages in both languages', async () => {
+    const browser = installBrowser(), Pane = await loadPane(); let renderer;
+    try {
+        for (const locale of ['en', 'de']) {
+            await act(async () => {renderer = create(React.createElement(Pane, {locale}));});
+            const pane = renderer.getInstance();
+            await settle(() => Boolean(pane.bridge), 'arena ready');
+            await act(async () => pane.setState({execution: 'nuttx'}));
+            for (const persistent of [false, true]) {
+                pane.firmwareSession = {storageSupported: true, storagePersistent: persistent, storage: async () => {}};
+                await act(async () => pane.programStorage('save'));
+                const hint = one(renderer, 'bw-spike-program-storage-hint').children.join('');
+                assert.match(pane.state.message, persistent ? /future simulator sessions|weitere Simulator-Sitzungen/ : /this simulator session|dieser Simulator-Sitzung/);
+                assert.match(hint, persistent ? /survives closing|nach dem Schließen/ : /live simulator session|diese Simulator-Sitzung/);
+                assert.match(hint, /never runs automatically|startet das Programm nicht/);
+                pane.firmwareSession.storage = async () => {throw Object.assign(new Error('missing'), {result: -2});};
+                await act(async () => pane.programStorage('load'));
+                assert.match(pane.state.message, /No saved program exists\.|Kein gespeichertes Programm vorhanden\./);
+            }
+            pane.firmwareSession = null;
+            await act(async () => renderer.unmount()); renderer = null;
+        }
+    } finally {if (renderer) await act(async () => renderer.unmount()); browser.restore();}
+});

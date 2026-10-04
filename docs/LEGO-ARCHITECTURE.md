@@ -81,11 +81,11 @@ also has a real virtual-hub slice. The generic multi-hub architecture remains op
 dated status matrix below is the concise current inventory; the older gap narratives remain
 because they explain the design and the measured boundaries.
 
-## Current status by hub (re-measured 2026-09-26)
+## Current status by hub (SPIKE simulation updated 2026-10-04)
 
 | Hub family | Pseudocode ⇄ extension blocks | Virtual brick/world | Deliverable editor |
 |---|---|---|---|
-| SPIKE Prime / Robot Inventor | **PARTIAL:** 30 of the pinned 84-opcode compiler surface are bidirectional; 21 host controls and 4 hats are deliberately classified; 29 learner operations remain. The shipped consolidated extension has 101 opcodes, so refreshing that pinned census is itself open work. | **PARTIAL:** shared six-port state, motor/display outputs, editable sensor/IMU/battery inputs, BLE and classic adapters, panel, and extension E2E tests exist under `lib/virtual-hub/`. Motor position is stored but not integrated with time. | Python is editable through the existing `.py` mode; no SPIKE-API completion or lint. |
+| SPIKE Prime / Robot Inventor | **PARTIAL:** 30 of the pinned 84-opcode compiler surface are bidirectional; 21 host controls and 4 hats are deliberately classified; 29 learner operations remain. The shipped consolidated extension has 101 opcodes, so refreshing that pinned census is itself open work. | **PARTIAL:** shared six-port state, motor/display outputs, editable sensor/IMU/battery inputs, BLE and classic adapters, panel, and extension E2E tests exist under `lib/virtual-hub/`. Deterministic motor/encoder dynamics and the shared 2D/3D arena support browser Scratch/native and supported SPIKE3 Python conversion. Configured desktop routes observe ARM guest, full NuttX/embedded Python, or supplied upstream MicroPython execution; API breadth and physical calibration remain bounded. | Python is editable through the existing `.py` mode; no SPIKE-API completion or lint. |
 | EV3 stock firmware | **PARTIAL (2026-09-29, task B4):** `DEVICE EV3` maps 48 of the pinned 74 `ev3comprehensive` opcodes both ways (sb3-creator `ev3Dialect.js`, one table read by parser and decompiler); the other 26 are classified (host-control 10, transport-control 14, core-duplicate 2). MakeCode EV3 programs import into it (`lib/bw-makecode/ev3-translate.js`, census section in `docs/generated/MAKECODE-CENSUS.md`). | **OPEN:** no virtual EV3 transport, state or world model — so the importer is proven by round trip + pxt-ev3 recompile, not by a side-by-side run. | LMS bytecode is intentionally not a hand-editable format. |
 | EV3 on ev3dev | **OPEN:** on-brick transpilation exists, but no BrickWright forward/reverse block map. | **OPEN.** | Python is editable; no ev3dev2 API awareness. |
 | NXT | **OPEN:** extension/transpiler exists; no BrickWright map. | **OPEN.** | NXC has no first-class language mode. |
@@ -193,8 +193,9 @@ six sensor ports, IMU, buttons, battery and connection state. The panel edits th
 the BLE and classic adapters expose that same state to the real bundled extension; commands
 write motor/display state; focused and extension-level tests exercise both directions.
 
-The honest remaining boundary is breadth and dynamics. No other hub family uses this model,
-and SPIKE motor position does not advance as time passes. The generic `bw-board/src/face.js`
+The remaining boundary is API breadth, physical calibration and reuse by other hub
+families. SPIKE motor position advances under one deterministic clock; firmware
+routes publish observed motor state through the same hub and arena. The generic `bw-board/src/face.js`
 render binding (`matrix | lcd | level | needle`) is also not yet a view over the virtual hub.
 
 The pattern to follow already exists on the STC12 side: `stc12SimulatorDriver` in
@@ -224,7 +225,7 @@ via `bw_board`. A LEGO brick sim is the same idea with a richer model.
 
 **Next shape:** extract a small protocol-neutral hub-state contract from the proven SPIKE
 implementation rather than designing a second model from scratch. Keep protocol adapters
-hub-specific. Add deterministic time advancement for actuator feedback, then adopt EV3 as
+hub-specific. Reuse SPIKE’s deterministic actuator feedback, then adopt EV3 as
 the first second-family proof and the LPF2 family as the first shared-protocol proof. Input
 widgets write the world; display/gauge widgets read the brick model. Port counts, sensor
 kinds and ranges must be derived from the same device descriptors used by Gap 1.
@@ -237,7 +238,7 @@ kinds and ranges must be derived from the same device descriptors used by Gap 1.
 ## Priority order
 
 1. **Gap 1** — the pseudocode ⇄ LEGO-blocks joint (connects the whole stack).
-2. **Gap 3** — finish SPIKE dynamics, extract the contract, then add EV3 and LPF2 family sims.
+2. **Gap 3** — extend SPIKE API coverage and calibration, extract the contract, then add EV3 and LPF2 family sims.
 3. **Gap 2** — the NXC / hub-API editor (nice-to-have; `.py` already covers the Python
    deliverables).
 

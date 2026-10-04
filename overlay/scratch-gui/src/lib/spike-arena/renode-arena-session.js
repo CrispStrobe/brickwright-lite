@@ -72,6 +72,8 @@ export class RenodeArenaSession {
             this.latestFrame = first;
             this.storageDeferred = first.target?.capabilities?.includes(DEFERRED_STORAGE_CAPABILITY);
             this.storageSupported = Boolean(this.nuttx && first.target?.capabilities?.includes('nuttx-program-storage/v1'));
+            this.storagePersistent = Boolean(this.storageSupported &&
+                first.target?.capabilities?.includes('nuttx-flash-checkpoint/v1'));
             if (this.nuttx && !this.program && this.source === null) {
                 this.program = {version: 1, instructions: [[1, 0, -150, 0], [1, 1, 150, 0], [2, 2000, 0, 0], [0, 0, 0, 0]]};
             }
