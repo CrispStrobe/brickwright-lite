@@ -270,13 +270,19 @@ const microFrame = (seq = 1, position = 0) => {
     f.motors[0].position = -position;f.motors[1].position = position;
     return f;
 };
-const microCaps = ({read, write, frame = microFrame(), calls = []} = {}) => ({
+const microCaps = ({read, write, frame = microFrame(), calls = []} = {}) => {
+    let lastSequence = -1;
+    return ({
     ...Object.fromEntries(['session.start', 'session.close', 'run', 'arena.inputs.write'].map(op =>
         [`renode.spike.${op}`, async args => {calls.push([op, args]);return 'ready';}])),
-    'renode.spike.state.read': async () => JSON.stringify(frame),
+    'renode.spike.state.read': async () => {
+        lastSequence = Math.max(frame.seq, lastSequence + 1);
+        return JSON.stringify({...frame, seq: lastSequence});
+    },
     ...(read ? {'renode.spike.micropython.uart.read': read} : {}),
     ...(write ? {'renode.spike.micropython.uart.write': write} : {})
 });
+};
 const uartBytes = text => [...new TextEncoder().encode(text)];
 test('explicit MicroPython validates source and startup contract before clock takeover', async () => {
     const b = bridge();let calls = 0;
@@ -428,4 +434,80 @@ test('native UART envelope binds the admitted image and fresh UART generation', 
         const snapshot = microFrame(); mutation(snapshot);
         assert.throws(() => session.uartData({snapshot, data: reply.data}), /identity changed/);
     }
+});
+
+const completionScaffold = ({final = microFrame(2, 90), sample, finish, onFrame, onCompleted} = {}) => {
+    const b = bridge(), calls = [], events = [], errors = [];let reads = 0;
+    const replies = [uartBytes('raw REPL; CTRL-B to exit\r\n>'), uartBytes('OKdone\n\x04\x04>')];
+    const caps = microCaps({calls, write: async args => ({generation: 1, count: args.bytes.length}),
+        read: async () => {
+            const bytes = replies.shift();
+            if (bytes?.[0] === 79 && finish) await finish();
+            return {generation: 1, bytes};
+        }});
+    caps['renode.spike.state.read'] = async () => {
+        calls.push(['state.read']);
+        if (++reads === 1) return JSON.stringify(microFrame());
+        return JSON.stringify(sample ? await sample(reads) : final);
+    };
+    caps['renode.spike.session.close'] = async () => {calls.push(['session.close']);events.push('close');};
+    const session = new RenodeArenaSession({bridge: b, capabilities: caps, backend: 'micropython', source: 'print("done")',
+        onFrame: frame => {events.push('frame');onFrame?.(frame, b);},
+        onCompleted: () => {events.push('complete');onCompleted?.(b);}, onError: error => errors.push(error)});
+    return {session, b, calls, events, errors};
+};
+test('MicroPython completion publishes fresh observed hub and arena before completion and close', async () => {
+    let observed;
+    const s = completionScaffold({onCompleted: b => {observed = b.hubState.data.motors[1].position;}});
+    const x = s.b.sim.pose.x;await s.session.start();await s.session.execution;
+    assert.deepEqual(s.errors, []);assert.equal(observed, 90);assert.ok(s.b.sim.pose.x > x);
+    assert.deepEqual(s.events, ['frame', 'complete', 'close']);
+    assert.equal(s.calls.filter(([op]) => op === 'state.read').length, 2);
+    assert.equal(s.session.latestFrame.seq, 2);assert.equal(s.session.completed, true);
+});
+test('MicroPython invalid final frames never announce completion or mutate observed positions', async () => {
+    for (const mutate of [f => {f.target.imageSha256 = 'b'.repeat(64);},
+        f => {f.lifecycle.micropythonUart.generation = 2;}, f => {f.lifecycle.micropythonUart.state = 'closed';},
+        f => {f.seq = 1;}, f => {f.clockNs = -1;}, f => {f.clockNs = 3e9;},
+        f => {f.motors[0].position = -100000;}, f => {f.target.firmware = 'brickwright-nuttx';}]) {
+        const final = microFrame(2, 90);mutate(final);const s = completionScaffold({final});
+        await s.session.start();await s.session.execution;
+        assert.equal(s.errors.length, 1);assert.deepEqual(s.events, ['close']);
+        assert.equal(s.session.completed, undefined);assert.equal(s.b.hubState.data.motors[1].position, 0);
+        assert.equal(s.b.hubState.clockOwner, null);assert.equal(s.b.hubState.configurationOwner, null);
+    }
+});
+test('Stop during final sampling ignores the late frame and releases the owned session once', async () => {
+    let release, requested;
+    const gate = new Promise(resolve => {requested = resolve;});
+    const s = completionScaffold({sample: async () => {requested();return new Promise(resolve => {release = resolve;});}});
+    await s.session.start();await gate;
+    await s.session.stop();release(microFrame(2, 90));await s.session.execution;
+    assert.deepEqual(s.errors, []);assert.deepEqual(s.events, ['close']);
+    assert.equal(s.b.hubState.data.motors[1].position, 0);assert.equal(s.b.hubState.externalBackend, null);
+    assert.equal(s.session.completed, undefined);
+});
+test('Stop from the final frame callback suppresses completion', async () => {
+    let s;
+    s = completionScaffold({onFrame: () => {s.session.stop();}});
+    await s.session.start();await s.session.execution;await s.session.stop();
+    assert.deepEqual(s.errors, []);assert.deepEqual(s.events, ['frame', 'close']);
+    assert.equal(s.session.completed, undefined);
+});
+
+test('MicroPython completion waits for an in-flight poll and serializes the final frame', async () => {
+    let finish, finishEntered, releasePoll, pollEntered;
+    const finishing = new Promise(resolve => {finishEntered = resolve;});
+    const polling = new Promise(resolve => {pollEntered = resolve;});
+    const s = completionScaffold({finish: () => {finishEntered();return new Promise(resolve => {finish = resolve;});},
+        sample: count => count === 2 ? (pollEntered(), new Promise(resolve => {releasePoll = resolve;})) : microFrame(3, 90)});
+    await s.session.start();clearTimeout(s.session.timer);await finishing;
+    s.session.tail = s.session.poll();await polling;
+    finish();await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(s.calls.filter(([op]) => op === 'state.read').length, 2);
+    assert.deepEqual(s.events, []);
+    releasePoll(microFrame(2, 30));await s.session.execution;
+    assert.deepEqual(s.errors, []);assert.deepEqual(s.events, ['frame', 'frame', 'complete', 'close']);
+    assert.equal(s.session.latestFrame.seq, 3);assert.equal(s.b.hubState.data.motors[1].position, 90);
+    assert.equal(s.calls.filter(([op]) => op === 'state.read').length, 3);
 });

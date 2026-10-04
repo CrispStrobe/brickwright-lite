@@ -202,12 +202,35 @@ export class RenodeArenaSession {
             this.onOutput({sequence: 1, text: text.slice(0, 1024), truncated: text.length > 1024,
                 stdout: result.stdout, stderr: result.stderr});
             if (result.failed) throw new Error(`MicroPython program failed: ${result.stderr}`);
+            if (!await this.publishMicroPythonCompletion(generation)) return;
             this.completed = true;this.onCompleted();
             await this.stop();
         }).catch(async error => {
             if (!this.closed) {this.onError(error);await this.stop();}
         });
         this.execution.catch(() => {});
+    }
+    async publishMicroPythonCompletion (generation) {
+        // Fence the polling loop, then sample after the raw REPL reports completion.
+        // Stop can invalidate either wait without allowing a late frame to publish.
+        this.finishingMicroPython = true;
+        clearTimeout(this.timer);
+        await this.tail;
+        if (this.closed) return false;
+        const frame = JSON.parse(await this.call('state.read'));
+        if (this.closed) return false;
+        if (frame.target?.firmware !== 'micropython-prime' ||
+            frame.lifecycle?.micropythonUart?.state !== 'ready' ||
+            frame.lifecycle?.micropythonUart?.generation !== generation) {
+            throw new Error('MicroPython completion attachment identity changed');
+        }
+        // The existing adapter checks image identity, sequence, clock, topology,
+        // motor bounds and slew before changing the shared hub or arena.
+        this.adapter.accept(frame);
+        if (this.closed) return false;
+        this.latestFrame = frame;
+        this.onFrame(this.adapter.bridge.snapshot());
+        return !this.closed;
     }
     uartWait (signal) {
         signal.throwIfAborted();
@@ -226,7 +249,7 @@ export class RenodeArenaSession {
         this.onOutput(output);
     }
     schedule () {
-        if (this.closed || this.storageUncertain || this.storageBusy || this.uploading) return;
+        if (this.closed || this.finishingMicroPython || this.storageUncertain || this.storageBusy || this.uploading) return;
         clearTimeout(this.timer);
         this.timer = setTimeout(() => {
             this.tail = this.poll();
@@ -236,6 +259,7 @@ export class RenodeArenaSession {
         }, 50);
     }
     async poll () {
+        if (this.closed || this.finishingMicroPython) return;
         const frame = JSON.parse(await this.call('state.read'));
         if (this.closed) return;
         this.observeOutput(frame);
