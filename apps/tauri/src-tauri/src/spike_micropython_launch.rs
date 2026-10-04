@@ -123,7 +123,7 @@ impl MicroPythonLaunch {
             .map_err(|_| "image staging failed")?;
         let mut state_config = json!({
             "identity":{"board":"spike-prime","firmware":"micropython-prime","transport":"none","imageSha256":image.image_sha256()},
-            "paths":{"programUart":"external:programUart","portA":"external:portA","portB":"external:portB","portC":"external:portC","portD":"external:portD","portE":"external:portE","portF":"external:portF","storage":"machine:sysbus.spi2.primeStorageMux.primeStorage"},
+            "paths":{"programUart":"external:programUart","portA":"external:portA","portB":"external:portB","portC":"external:portC","portD":"external:portD","portE":"external:portE","portF":"external:portF","storage":"machine:sysbus.spi2.primeStorageMux.primeStorage","display":"machine:sysbus.spi1.display","imu":"machine:sysbus.i2c2.imu","speaker":"machine:sysbus.speaker","leftButton":"machine:sysbus.leftButton","centerButton":"machine:sysbus.centerButton","rightButton":"machine:sysbus.rightButton","bluetoothButton":"machine:sysbus.bluetoothButton"},
             "programUartGeneration":generation,"socketTimeoutSeconds":30
         });
         if topology == SpikeTopology::SixMotors { state_config["motorPorts"] = json!(6); }
