@@ -87,6 +87,7 @@ pub(crate) struct Delivery {
     /// Fixed-code invocation with all data JSON-string encoded. The future host may pass this to
     /// the exact broker webview only after its own label and lifecycle checks.
     pub(crate) javascript: String,
+    pub(crate) timeout_ms: u64,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -164,6 +165,20 @@ enum EditorRequest {
 }
 
 impl EditorRequest {
+    // BSD-3-Clause, (c) 2026 Brickwright contributors.
+    // Host-selected budgets only; callers cannot supply a timeout. Native
+    // startup has its own 60-second bound and file selection needs human time.
+    fn timeout_ms(&self, ordinary: u64) -> u64 {
+        match self {
+            Self::Capability { operation, .. } => match operation.as_str() {
+                "renode.spike.session.start" | "renode.ev3.session.start" => 90_000,
+                "renode.spike.micropython.image.choose" => 180_000,
+                _ => ordinary,
+            },
+            _ => ordinary,
+        }
+    }
+
     fn ev3_state_reply(&self) -> bool {
         matches!(self, Self::Capability { operation, .. } if matches!(operation.as_str(),
             "renode.ev3.state.read" | "renode.ev3.button.set" | "renode.ev3.analog.set-channel"))
@@ -568,7 +583,7 @@ impl BrokerTransportCore {
         {
             return Err(refuse(RelayErrorCode::RandomFailure));
         }
-        let deadline = Self::deadline(now, self.limits.request_ttl)?.min(state.deadline);
+        let deadline = Self::deadline(now, typed_request.timeout_ms(self.limits.request_ttl))?.min(state.deadline);
         let kind = match typed_request.expected() {
             ReplyKind::Load => "load",
             ReplyKind::Call => "call",
@@ -607,6 +622,7 @@ impl BrokerTransportCore {
             request_id,
             correlation,
             javascript,
+            timeout_ms: deadline - now,
         })
     }
 
@@ -971,6 +987,33 @@ mod tests {
     }
     fn session(core: &mut BrokerTransportCore, byte: u8) -> SessionId {
         core.open_session(MAIN_LABEL, 0, rng(byte)).unwrap()
+    }
+
+    #[test]
+    fn startup_budget_survives_ordinary_timeout_but_remains_bounded() {
+        let mut configured = limits();
+        configured.session_ttl = 1_800_000;
+        configured.request_ttl = 30_000;
+        let mut c = BrokerTransportCore::new(configured).unwrap();
+        let s = session(&mut c, 1);
+        let d = c.request(MAIN_LABEL, s.as_str(), 0,
+            br#"{"kind":"capability","operation":"renode.spike.session.start","args":{}}"#,
+            0, rng(11)).unwrap();
+        assert_eq!(d.timeout_ms, 90_000);
+        assert!(c.reply(BROKER_LABEL, s.as_str(), d.correlation.as_str(), 0,
+            br#"{"kind":"capability","result":"ready"}"#, 60_000).is_ok());
+        let ordinary = c.request(MAIN_LABEL, s.as_str(), 1,
+            br#"{"kind":"capability","operation":"renode.spike.state.read","args":{}}"#,
+            60_000, rng(12)).unwrap();
+        assert_eq!(ordinary.timeout_ms, 30_000);
+        assert!(c.reply(BROKER_LABEL, s.as_str(), ordinary.correlation.as_str(), 1,
+            br#"{"kind":"capability","result":"{}"}"#, 90_000).is_err());
+        let chooser = c.request(MAIN_LABEL, s.as_str(), 2,
+            br#"{"kind":"capability","operation":"renode.spike.micropython.image.choose","args":{}}"#,
+            90_000, rng(13)).unwrap();
+        assert_eq!(chooser.timeout_ms, 180_000);
+        assert!(c.reply(BROKER_LABEL, s.as_str(), chooser.correlation.as_str(), 2,
+            br#"{"kind":"capability","result":"selected"}"#, 270_000).is_err());
     }
 
     #[test]

@@ -11,7 +11,6 @@ use tauri::{Manager, State, WebviewWindow};
 use tokio::sync::oneshot;
 
 type OriginKey = (String, u64);
-const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 
 // Tauri's RuntimeCapability::build() parses with `.expect("invalid capability")`, so malformed
 // JSON here would panic rather than refuse. That is survivable only because these two files are
@@ -339,7 +338,7 @@ pub(crate) async fn native_broker_request(
         request_id,
         active: true,
     };
-    let outcome = match tokio::time::timeout(REQUEST_TIMEOUT, receiver).await {
+    let outcome = match tokio::time::timeout(Duration::from_millis(delivery.timeout_ms), receiver).await {
         Ok(result) => result.map_err(|_| "broker unavailable".to_owned())?,
         Err(_) => {
             let mut inner = state.lock()?;

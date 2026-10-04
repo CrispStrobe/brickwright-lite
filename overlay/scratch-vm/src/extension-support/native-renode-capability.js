@@ -76,7 +76,7 @@ const createNativeRenodeCapabilities = ({invoke} = {}) => {
             return reply.result;
         } catch (error) {
             owned.failed = true;
-            throw error;
+            throw error instanceof Error ? error : new Error(typeof error === 'string' ? error : 'Renode operation failed');
         } finally {
             if (--owned.pending === 0) owned.drained?.();
         }
