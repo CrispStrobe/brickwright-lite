@@ -94,6 +94,10 @@ try {
         await page.waitForFunction(() => window.bwProofSerial.includes('READY:0'), null, {timeout: 30000});
         const frame = page.frames().find(item => isArcadeSimulatorUrl(item.url(), origin));
         assert.ok(frame, `actual PXT simulator iframe: ${JSON.stringify(page.frames().map(item => item.url()))}`);
+        for (const selector of ['.game-button-svg', '.game-joystick-svg']) {
+            const bounds = await frame.locator(selector).boundingBox();
+            assert.ok(bounds && Math.abs(bounds.width - bounds.height) < 1, `${selector}: native gesture surface must be square`);
+        }
         const initialPixels = await frame.locator('#game-screen').screenshot();
         for (const [name, selector] of [['A', '.button-a'], ['B', '.button-b'], ['up', '.dpad-up'], ['down', '.dpad-down'], ['left', '.dpad-left'], ['right', '.dpad-right']]) {
             activeControl = `${spec.name}:${name}`;

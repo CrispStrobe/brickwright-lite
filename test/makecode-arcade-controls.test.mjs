@@ -24,6 +24,7 @@ test('the PXT Arcade page exposes upstream controls without a replacement input 
     }
     assert.match(page, /touch-action: none/);
     assert.match(page, /\.label-a, \.label-b\s*\{\s*pointer-events: none/);
+    assert.match(page, /\.game-button-svg, \.game-joystick-svg\s*\{\s*width: auto; height: 100%; aspect-ratio: 1/);
     assert.match(page, /grid-template-rows: minmax\(0, 1fr\) auto clamp\(72px, 25vh, 128px\)/);
     assert.match(page, /object-fit: contain/);
     assert.doesNotMatch(page, /dispatchEvent|setPressed|postMessage/);
