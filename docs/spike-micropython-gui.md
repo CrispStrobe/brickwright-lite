@@ -76,8 +76,10 @@ does not provide active holding afterward.
 
 Full NuttX Python continues to use its own runner and `brickwright` API. Original
 LEGO firmware and physical equivalence remain unqualified. Public source-profile
-assembly is available; portable installed packaging remains pending. Ordinary
-desktop builds without configured runtime/support pins refuse explicitly. The
+assembly is available; [resource-relative paths](spike-micropython-installed-resources.md)
+allow configured desktop packages to move between installations. Signed installers
+and platform-specific packaging remain unqualified. Ordinary desktop builds
+without configured runtime/support pins refuse explicitly. The
 native chooser never downloads firmware or receives an editor-supplied path.
 Unix capsule staging is qualified; non-Unix staging remains unsupported.
 New glue uses BSD-3-Clause; existing component/dependency attribution is retained.

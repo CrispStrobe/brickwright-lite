@@ -39,7 +39,8 @@ selection for pinned profiles. The public
 [support assembler and `bwspike` API](https://github.com/CrispStrobe/renode-spike-prime/blob/main/docs/spike-micropython-support.md)
 now provide modeled motor control and sensor reads inside the emulated CPU.
 The upstream image itself lacks `hub` and `motor`; programs use `bwspike` from the
-updated support seed. Portable installed packaging, original LEGO firmware and
-full hub/peripheral compatibility remain unqualified. Non-Unix capsule staging
+updated support seed. [Resource-relative paths](spike-micropython-installed-resources.md) are available;
+signed installers, platform-specific packaging, original LEGO firmware and full
+hub/peripheral compatibility remain unqualified. Non-Unix capsule staging
 remains unsupported. New launch-plan source is BSD-3-Clause; retained models keep
 their MIT notices.

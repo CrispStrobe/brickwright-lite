@@ -51,8 +51,8 @@ fn execute(
         }
         .to_owned()),
         Operation::RenodeSpikeImageChoose => {
-            if option_env!("BW_RENODE_MICROPYTHON_ROOT").is_none()
-                || option_env!("BW_RENODE_MICROPYTHON_MANIFEST_SHA256").is_none() {
+            supervisor.micropython_support_root()?;
+            if option_env!("BW_RENODE_MICROPYTHON_MANIFEST_SHA256").is_none() {
                 return Err("MicroPython support is not packaged in this desktop build".into());
             }
             debugger.choose_micropython_image(choose_image).map(str::to_owned)

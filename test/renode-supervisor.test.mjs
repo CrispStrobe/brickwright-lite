@@ -22,6 +22,10 @@ const audit = ({source, entry, manifest}) => {
         'process-tree ownership must use the reviewed exact command-group version');
     assert.match(source, /option_env!\("BW_RENODE_EXECUTABLE"\)/);
     assert.match(source, /option_env!\("BW_RENODE_SHA256"\)/);
+    assert.match(source, /option_env!\("BW_RENODE_RESOURCE_EXECUTABLE"\)/);
+    assert.match(source, /option_env!\("BW_RENODE_MICROPYTHON_RESOURCE_ROOT"\)/);
+    assert.match(entry, /set_resource_root\(app\.path\(\)\.resource_dir\(\)\?\)/,
+        'relative package paths must be rooted by native Tauri setup');
     assert.match(source, /actual_digest\.eq_ignore_ascii_case\(expected_digest\)/,
         'the executable must be verified before spawn');
     assert.match(source, /Command::new\(&executable\)/,
@@ -75,6 +79,7 @@ test('Renode supervisor gate rejects independent boundary weakening', () => {
         input => { input.source = input.source.replace('getrandom::getrandom(&mut bytes)', 'Ok(())'); },
         input => { input.source = input.source.replaceAll('let _ = child.kill();', ''); },
         input => { input.entry = input.entry.replace('TeardownReason::AppExit', 'TeardownReason::Reset'); },
+        input => { input.entry = input.entry.replace('set_resource_root(app.path().resource_dir()?)', 'set_resource_root(PathBuf::from("/tmp"))'); },
         input => { input.manifest = input.manifest.replace('command-group = "5.0.1"', ''); }
     ];
     const survivors = [];
