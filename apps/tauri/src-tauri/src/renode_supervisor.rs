@@ -110,6 +110,7 @@ fn insert_topology_commands(arguments: &mut Vec<String>, firmware: &Path, config
 pub(crate) struct RenodeSupervisor {
     session: Mutex<Option<SessionControl>>,
     flash_store_root: Mutex<Option<PathBuf>>,
+    resource_root: Mutex<Option<PathBuf>>,
 }
 
 #[derive(Deserialize)]
@@ -298,12 +299,62 @@ fn checkpoint_adapter(config: &serde_json::Value) -> Result<bool, String> {
     Ok(true)
 }
 
+// Resource-relative packaging additions are BSD-3-Clause, Brickwright contributors.
+// Paths are compiled package metadata, never editor values or ambient environment.
+fn package_path(resource_root: Option<&Path>, relative: Option<&str>, absolute: Option<&str>)
+    -> Result<PathBuf, String> {
+    match (relative, absolute) {
+        (Some(_), Some(_)) => Err("mixed Renode package path modes".into()),
+        (None, Some(value)) if Path::new(value).is_absolute() => Ok(PathBuf::from(value)),
+        (None, Some(_)) => Err("configured Renode package path must be absolute".into()),
+        (None, None) => Err("Renode package path is not configured".into()),
+        (Some(value), None) => {
+            if value.len() > 1024 || value.split('/').any(|part| part.is_empty() || part == "." || part == "..")
+                || value.chars().any(|c| c.is_control() || matches!(c, '\\' | ':' | ';' | '\'' | '"')) {
+                return Err("invalid relative Renode package path".into());
+            }
+            let root = resource_root.ok_or("native resource directory is not configured")?
+                .canonicalize().map_err(|_| "native resource directory unavailable")?;
+            let file = root.join(value).canonicalize().map_err(|_| "installed Renode package unavailable")?;
+            if !file.starts_with(&root) || file == root {
+                return Err("Renode package escapes native resources".into());
+            }
+            Ok(file)
+        }
+    }
+}
+
 impl RenodeSupervisor {
     pub(crate) fn new() -> Self {
         Self {
             session: Mutex::new(None),
             flash_store_root: Mutex::new(None),
+            resource_root: Mutex::new(None),
         }
+    }
+
+    /// Tauri setup supplies this once. No broker operation can configure it.
+    pub(crate) fn set_resource_root(&self, root: PathBuf) -> Result<(), String> {
+        let session = self.session.lock().map_err(|_| "Renode supervisor unavailable")?;
+        if session.is_some() { return Err("cannot configure resources during a session".into()); }
+        if !root.is_absolute() || !root.is_dir() { return Err("native resource directory unavailable".into()); }
+        let root = root.canonicalize().map_err(|_| "native resource directory unavailable")?;
+        let mut configured = self.resource_root.lock().map_err(|_| "native resources unavailable")?;
+        if configured.is_some() { return Err("native resources already configured".into()); }
+        *configured = Some(root);
+        Ok(())
+    }
+
+    pub(crate) fn micropython_support_root(&self) -> Result<PathBuf, String> {
+        let resource = self.resource_root.lock().map_err(|_| "native resources unavailable")?;
+        package_path(resource.as_deref(), option_env!("BW_RENODE_MICROPYTHON_RESOURCE_ROOT"),
+            option_env!("BW_RENODE_MICROPYTHON_ROOT"))
+    }
+
+    fn micropython_executable(&self) -> Result<PathBuf, String> {
+        let resource = self.resource_root.lock().map_err(|_| "native resources unavailable")?;
+        package_path(resource.as_deref(), option_env!("BW_RENODE_RESOURCE_EXECUTABLE"),
+            option_env!("BW_RENODE_EXECUTABLE"))
     }
 
     /// Only native app setup or native tests may supply this app-data directory.
@@ -395,10 +446,10 @@ impl RenodeSupervisor {
 
     #[allow(dead_code)]
     pub(crate) fn start_micropython_plan(&self, plan: crate::spike_micropython_launch::MicroPythonLaunch) -> Result<RenodeEndpoint, String> {
-        let executable = option_env!("BW_RENODE_EXECUTABLE").ok_or("Renode backend is not packaged in this build")?;
+        let executable = self.micropython_executable()?;
         let digest = option_env!("BW_RENODE_SHA256").ok_or("Renode backend digest is not packaged in this build")?;
         let (root, arguments, files) = plan.into_parts()?;
-        self.start_verified_with_owned_files(Path::new(executable),digest,&arguments,&root,
+        self.start_verified_with_owned_files(&executable,digest,&arguments,&root,
             LaunchBounds {timeout:MAX_SESSION_TIME,output_limit:MAX_OUTPUT_BYTES,capture_uart:false},None,files)
     }
 
@@ -1196,6 +1247,45 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn package_paths_follow_resources_after_relocation_and_refuse_ambiguity() {
+        let fixture=FlashFixture::new();
+        let old=fixture.0.join("old resources");
+        std::fs::create_dir(&old).unwrap();
+        std::fs::create_dir(old.join("runtime")).unwrap();
+        std::fs::write(old.join("runtime/renode"), b"synthetic runtime").unwrap();
+        let first=package_path(Some(&old),Some("runtime/renode"),None).unwrap();
+        let relocated=fixture.0.join("relocated resources");
+        std::fs::rename(&old,&relocated).unwrap();
+        let second=package_path(Some(&relocated),Some("runtime/renode"),None).unwrap();
+        assert!(!first.exists());
+        assert_eq!(std::fs::read(second).unwrap(),b"synthetic runtime");
+        assert!(package_path(None,Some("runtime/renode"),None).is_err());
+        assert!(package_path(Some(&relocated),Some("runtime/renode"),Some("/absolute/renode")).is_err());
+        assert!(package_path(Some(&relocated),None,Some("relative/renode")).is_err());
+        assert_eq!(package_path(None,None,Some("/absolute/renode")).unwrap(),PathBuf::from("/absolute/renode"));
+        assert!(package_path(None,None,None).is_err());
+        for path in ["", "/runtime/renode", "../renode", "runtime/../renode", "./runtime/renode",
+            "runtime//renode", "C:/renode", "runtime\\renode", "runtime/renode;quit", "runtime/renode\n"] {
+            assert!(package_path(Some(&relocated),Some(path),None).is_err(),"{path:?}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn package_paths_refuse_symlink_escape_even_with_identical_bytes() {
+        let fixture=FlashFixture::new();
+        let resources=fixture.0.join("resources");std::fs::create_dir(&resources).unwrap();
+        let outside=fixture.0.join("outside");std::fs::write(&outside,b"synthetic runtime").unwrap();
+        std::os::unix::fs::symlink(&outside,resources.join("renode")).unwrap();
+        assert!(package_path(Some(&resources),Some("renode"),None).is_err());
+        let supervisor=RenodeSupervisor::new();
+        assert!(supervisor.set_resource_root(PathBuf::from("relative")).is_err());
+        assert!(supervisor.set_resource_root(outside).is_err());
+        supervisor.set_resource_root(resources.clone()).unwrap();
+        assert!(supervisor.set_resource_root(resources).is_err());
     }
 
     #[test]

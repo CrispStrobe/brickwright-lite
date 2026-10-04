@@ -23,7 +23,8 @@ node --test test/native-spike-micropython-pins.test.mjs test/workflow-trigger-co
 The tool copies only the closed 16-file support manifest, verifies digests before
 and after copying, and writes compile-time `BW_RENODE_*` pins. It never copies
 adjacent application images or replaces an existing directory. It does not assemble
-models from source or produce a portable installed runtime bundle. The native build
+models from source or produce a runtime distribution. Its optional `--resource-root` mode emits
+resource-relative pins; see [installed resources](spike-micropython-installed-resources.md). The native build
 owner supplies the pins as environment variables when compiling Rust. Changing a
 support file requires rebuilding its manifest and the pinned native application.
 
@@ -40,8 +41,8 @@ The follow-up [GUI integration](spike-micropython-gui.md) adds chooser/Code-tab
 execution for pinned desktop profiles. Public source assembly and the seed's
 `bwspike` motor/sensor API are now available; see the
 [support contract](https://github.com/CrispStrobe/renode-spike-prime/blob/main/docs/spike-micropython-support.md).
-The tested upstream image itself lacks `hub` and `motor`. Portable installed
-packaging remains pending. The later support-profile qualification does not
+The tested upstream image itself lacks `hub` and `motor`. [Resource-relative paths](spike-micropython-installed-resources.md) are available;
+signed installers and platform-specific packaging remain unqualified. The later support-profile qualification does not
 establish original LEGO firmware compatibility or physical hub equivalence.
 Non-Unix capsule staging remains unsupported. New components use BSD-3-Clause;
 retained model sources keep MIT attribution.
