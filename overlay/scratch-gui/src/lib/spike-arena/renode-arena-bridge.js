@@ -18,16 +18,16 @@ export class RenodeArenaBridge {
         if (this.closed) throw new Error('Renode arena connection is closed');
         const target = frame?.target;
         if (frame?.schemaVersion !== 1 || frame.type !== 'snapshot' || target?.board !== 'spike-prime' ||
-            !['brickwright-arena-demo', 'brickwright-nuttx', 'micropython-hub-no6'].includes(target.firmware) || target.transport !== 'none' ||
+            !['brickwright-arena-demo', 'brickwright-nuttx', 'micropython-prime'].includes(target.firmware) || target.transport !== 'none' ||
             !/^[a-f0-9]{64}$/.test(target.imageSha256 || '') ||
             !Array.isArray(target.capabilities) || !REQUIRED.every(cap => target.capabilities.includes(cap)) ||
-            (target.firmware === 'micropython-hub-no6' && !target.capabilities.includes('micropython-raw-repl/v1'))) {
+            (target.firmware === 'micropython-prime' && !target.capabilities.includes('micropython-uart/v1'))) {
             throw new Error('Configured simulation firmware does not support the arena contract');
         }
-        const micropython = target.firmware === 'micropython-hub-no6';
+        const micropython = target.firmware === 'micropython-prime';
         const speedLimit = micropython || target.capabilities.some(cap => ['arena-program/v1', 'nuttx-program/v1'].includes(cap)) ? 1110 : 300;
         if (this.allMotors) requireSixMotorFrame(frame);
-        const generation = frame.lifecycle?.connectionGeneration;
+        const generation = micropython ? frame.lifecycle?.micropythonUart?.generation : frame.lifecycle?.connectionGeneration;
         if (!Number.isSafeInteger(frame.seq) || frame.seq < 0 || !Number.isSafeInteger(generation) || generation < (micropython ? 1 : 0) ||
             !Number.isSafeInteger(frame.clockNs) || frame.clockNs < 0) throw new Error('Invalid guest clock or sequence');
         const sides = [this.bridge.robot.left, this.bridge.robot.right];

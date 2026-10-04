@@ -260,3 +260,14 @@ test('topology contract rejects independently weakened boundaries', () => {
     });
     assert.deepEqual(survivors, [], `mutations that did NOT turn the gate red: ${survivors}`);
 });
+
+test('blocking dialog/emulator work is dispatched only after broker authorization', () => {
+    const capability = readFileSync(path.join(root, 'apps/tauri/src-tauri/src/native_capability.rs'), 'utf8');
+    const body = fnBody(capability, 'native_broker_invoke');
+    assert.match(capability, /pub\(crate\) async fn native_broker_invoke/);
+    assert.ok(body.indexOf('broker_only(&window)?') < body.indexOf('consume_broker_call'));
+    assert.ok(body.indexOf('consume_broker_call') < body.indexOf('spawn_blocking'));
+    assert.ok(body.indexOf('spawn_blocking') < body.indexOf('spike_image_chooser::pick'));
+    assert.match(body, /app\.state::<RenodeDebugger>\(\)/);
+    assert.doesNotMatch(body, /thread::spawn|Command::new/);
+});

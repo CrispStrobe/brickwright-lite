@@ -263,9 +263,10 @@ test('Run loaded program requires READY; leaving READY clears loaded intent', as
 
 const microFrame = (seq = 1, position = 0) => {
     const f = programFrame();f.seq = seq;f.clockNs = (seq - 1) * 100000000;
-    f.target.firmware = 'micropython-hub-no6';
+    f.target.firmware = 'micropython-prime';
     f.target.capabilities = f.target.capabilities.filter(cap => cap !== 'arena-program/v1');
-    f.target.capabilities.push('micropython-raw-repl/v1');
+    f.target.capabilities.push('micropython-uart/v1');
+    f.lifecycle.micropythonUart = {generation: 1, state: 'ready'};
     f.motors[0].position = -position;f.motors[1].position = position;
     return f;
 };
@@ -285,9 +286,9 @@ test('explicit MicroPython validates source and startup contract before clock ta
             capabilities:{'renode.spike.session.start':async()=>calls++}}));
     }
     assert.equal(calls, 0);
-    for (const mutate of [f => f.target.capabilities.pop(), f => {f.lifecycle.connectionGeneration = 0;},
+    for (const mutate of [f => f.target.capabilities.pop(), f => {f.lifecycle.micropythonUart.generation = 0;},
         f => {f.target.firmware = 'brickwright-nuttx';}, f => {f.target.transport = 'usb';},
-        f => {f.target.imageSha256 = 'bad';}, f => {f.target.capabilities.splice(0, 1);}, f => {f.target.capabilities = 'micropython-raw-repl/v1';}]) {
+        f => {f.target.imageSha256 = 'bad';}, f => {f.target.capabilities.splice(0, 1);}, f => {f.target.capabilities = 'micropython-uart/v1';}]) {
         const f = microFrame();mutate(f);const ops = [];
         const session = new RenodeArenaSession({bridge:b, backend:'micropython', source:'print(1)', capabilities:microCaps({frame:f,calls:ops})});
         await assert.rejects(session.start());assert.equal(b.hubState.clockOwner, null);
@@ -303,8 +304,8 @@ test('MicroPython executes asynchronously while production arena frames move the
     const caps = microCaps({frame:f,calls,
         write:async args => {assert.equal(args.generation, 1);assert.ok(args.bytes.length <= 32);return {generation:1,count:args.bytes.length};},
         read:async args => {
-            assert.deepEqual(args,{generation:1,maxBytes:4096,deadlineMs:1000});
-            if (++readCount === 1) return {generation:1,timeout:true};
+            assert.deepEqual(args,{generation:1,maxBytes:4096});
+            if (++readCount === 1) return {generation:1,bytes:[]};
             if (readCount === 2) return {generation:1,bytes:uartBytes('raw REPL; CTRL-B to exit\r\n>')};
             return new Promise(resolve => {deliver = resolve;});
         }});
@@ -392,7 +393,7 @@ test('immediate native UART timeout replies yield to timer cancellation', async 
     const calls = [];let reads = 0;
     const session = new RenodeArenaSession({bridge:bridge(),backend:'micropython',source:'print(1)',
         capabilities:microCaps({calls,write:async args=>({generation:1,count:args.bytes.length}),
-            read:async()=>{reads++;return {generation:1,timeout:true};}})});
+            read:async()=>{reads++;return {generation:1,bytes:[]};}})});
     await session.start();
     await new Promise((resolve,reject)=>setTimeout(()=>session.stop().then(resolve,reject),5));
     await session.execution;assert.ok(reads > 0);
@@ -413,5 +414,18 @@ test('MicroPython decodes bounded desktop broker JSON results before typed valid
             capabilities:microCaps({calls,write:async()=>malformed}),onError:error=>errors.push(error)});
         await bad.start();await bad.completion;
         assert.equal(errors.length,1);assert.equal(calls.filter(([op])=>op==='session.close').length,1);
+    }
+});
+
+test('native UART envelope binds the admitted image and fresh UART generation', () => {
+    const session = new RenodeArenaSession({bridge: bridge(), backend: 'micropython', source: 'print(42)'});
+    session.latestFrame = microFrame();
+    const reply = {snapshot: microFrame(), data: {generation: 1, bytes: [79, 75]}};
+    assert.deepEqual(session.uartData(reply), reply.data);
+    for (const mutation of [frame => {frame.target.imageSha256 = 'b'.repeat(64);},
+        frame => {frame.lifecycle.micropythonUart.generation = 2;},
+        frame => {frame.target.firmware = 'brickwright-nuttx';}]) {
+        const snapshot = microFrame(); mutation(snapshot);
+        assert.throws(() => session.uartData({snapshot, data: reply.data}), /identity changed/);
     }
 });

@@ -245,12 +245,9 @@ pub(crate) fn native_broker_lease(
 }
 
 #[tauri::command]
-#[allow(clippy::too_many_arguments)] // Tauri injects the three managed State parameters.
-pub(crate) fn native_broker_invoke(
+pub(crate) async fn native_broker_invoke(
     window: WebviewWindow,
     policy: State<'_, NativePolicyState>,
-    debugger: State<'_, RenodeDebugger>,
-    supervisor: State<'_, RenodeSupervisor>,
     lease: String,
     sequence: u64,
     operation: String,
@@ -265,8 +262,17 @@ pub(crate) fn native_broker_invoke(
     let call = policy
         .consume_broker_call(window.label(), id, sequence, &operation, &resource, &args)
         .map_err(opaque)?;
-    execute(call.operation, &args, &debugger, &supervisor,
-        || crate::spike_image_chooser::pick(window.app_handle()))
+    // Authorization and caller binding happen before dispatch. The worker owns
+    // only the approved typed operation and bounded arguments. Blocking native
+    // dialogs and emulator startup must never execute on the UI thread.
+    let app = window.app_handle().clone();
+    let operation = call.operation;
+    tauri::async_runtime::spawn_blocking(move || {
+        let debugger = app.state::<RenodeDebugger>();
+        let supervisor = app.state::<RenodeSupervisor>();
+        execute(operation, &args, &debugger, &supervisor,
+            || crate::spike_image_chooser::pick(&app))
+    }).await.map_err(|_| "capability unavailable".to_owned())?
 }
 
 /// Diagnostics. Readable from the MAIN webview because that is where the learner sees it, and

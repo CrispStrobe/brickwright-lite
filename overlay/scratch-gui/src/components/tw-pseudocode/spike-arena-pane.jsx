@@ -2,6 +2,7 @@ import React from 'react';
 import {compileFirmwareProgram} from '../../lib/spike-arena/firmware-program.js';
 import {RenodeArenaSession} from '../../lib/spike-arena/renode-arena-session.js';
 import {encodePython, encodeInstructions} from '../../lib/spike-nuttx/upload-protocol.js';
+import {encodeSource} from '../../lib/spike-micropython/raw-repl.js';
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
 import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
 import {browserLocale} from '../../lib/bw-i18n.js';
@@ -389,8 +390,40 @@ class SpikeArenaPane extends React.Component {
             }});
     }
 
-    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}} = {}) {
+    nativeCapabilities () {
+        if (this.props.renodeCapabilities) return this.props.renodeCapabilities;
+        if (this._nativeCapabilities) return this._nativeCapabilities;
+        const internals = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
+        this._nativeCapabilities = createNativeRenodeCapabilities({
+            invoke: typeof internals?.invoke === 'function' ? internals.invoke.bind(internals) : null
+        });
+        return this._nativeCapabilities;
+    }
+
+    // New MicroPython selection glue: BSD-3-Clause, (c) 2026 Brickwright contributors.
+    async chooseMicroPythonImage () {
+        const choose = this.nativeCapabilities()?.['renode.spike.micropython.image.choose'];
+        if (!choose) throw new Error(this.locale === 'de' ? 'MicroPython benötigt das Desktop-Paket.' : 'MicroPython requires the desktop package.');
+        this.setState({microImageSelected: false, status: 'choosing', message: this.locale === 'de' ? 'Lokales MicroPython-Anwendungsimage auswählen…' : 'Choose a local MicroPython application image…'});
+        try {
+            const result = await choose({});
+            if (this.disposed || this.state.execution !== 'micropython') return false;
+            if (!['selected', 'cancelled'].includes(result)) throw new Error('Unexpected image selection result');
+            this.setState({microImageSelected: result === 'selected', status: 'ready', message: result === 'selected' ?
+                (this.locale === 'de' ? 'Image ausgewählt. Python im Code-Tab ausführen.' : 'Image selected. Run Python from the Code tab.') :
+                (this.locale === 'de' ? 'Image-Auswahl abgebrochen.' : 'Image selection cancelled.')});
+            return result === 'selected';
+        } catch (error) {
+            if (!this.disposed) this.setState({status: 'failed', message: error.message});
+            throw error;
+        }
+    }
+
+    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}, onError = () => {}} = {}) {
+        if (this.disposed) throw new Error("The arena pane is closed");
         if (!this.bridge) return;
+        const micro = this.state.execution === 'micropython';
+        if (micro && (source === null || program)) throw new Error(this.locale === 'de' ? 'Python im Code-Tab ausführen.' : 'Run Python from the Code tab.');
         const topology = this.state.topology;
         if (this.firmwareSession && (this.firmwareSession.topology || 'default') !== topology) {
             throw new Error(this.locale === 'de' ? 'Diese Firmware-Sitzung vor dem Gerätewechsel schließen.' : 'Close this firmware session before changing devices.');
@@ -401,7 +434,7 @@ class SpikeArenaPane extends React.Component {
         }
         // Compile before stopping a running session: unsupported blocks never run a demo.
         if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm, {topology});
-        if (source !== null) encodePython(source);
+        if (source !== null) (micro ? encodeSource : encodePython)(source);
         if (program) encodeInstructions(program, {topology});
         if (this.firmwareSession?.storageSupported && (source !== null || this.state.execution === 'nuttx')) {
             const session = this.firmwareSession;
@@ -418,15 +451,13 @@ class SpikeArenaPane extends React.Component {
         this.hubState.setSimulationEnabled(true);
         if (topology === 'six-motors') this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world, robot: {sensors: []}});
         this.bridge.reset();
-        const internals = typeof window !== 'undefined' && window.__TAURI_INTERNALS__;
-        const capabilities = this.props.renodeCapabilities || createNativeRenodeCapabilities({
-            invoke: typeof internals?.invoke === 'function' ? internals.invoke.bind(internals) : null
-        });
-        const backend = source !== null || this.state.execution === 'nuttx' ? 'nuttx' : 'guest';
+        const capabilities = this.nativeCapabilities();
+        const backend = micro ? 'micropython' : source !== null || this.state.execution === 'nuttx' ? 'nuttx' : 'guest';
+        if (micro) this.setState({microImageSelected: false});
         const session = new RenodeArenaSession({bridge: this.bridge, capabilities, backend, topology, program, source, onOutput,
             onCompleted: () => { onCompleted(); if (!this.disposed) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); },
             onStopped: () => { if (!this.disposed && this.firmwareSession === session) {
-                this.firmwareSession = null; this.setState({execution: backend === 'nuttx' ? 'nuttx' : program ? 'program' : 'renode', status: 'paused'});
+                this.firmwareSession = null; this.setState({execution: backend === 'micropython' ? 'micropython' : backend === 'nuttx' ? 'nuttx' : program ? 'program' : 'renode', status: 'paused'});
             } },
             onProgramState: (programState, storageSupported, runtimeError) => {
                 if (!this.disposed && this.firmwareSession === session) this.setState({programState, storageSupported,
@@ -439,6 +470,7 @@ class SpikeArenaPane extends React.Component {
             onError: error => { if (!this.disposed && this.firmwareSession === session) {
                 this.firmwareSession = null;
                 this.setState({status: 'failed', message: error.message});
+                onError(error);
             } }});
         this.firmwareSession = session;
         this.setState({status: 'starting', storageSupported: false, programState: null, message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
@@ -718,10 +750,10 @@ class SpikeArenaPane extends React.Component {
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}
-                                disabled={!world || this.state.storageBusy || this.firmwareSession?.uploading || status === 'starting'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{this.firmwareSession?.loaded && this.state.programState === 1 ? (this.locale === 'de' ? 'Geladenes Programm starten' : 'Run loaded program') : t('start')}</button>
+                                disabled={!world || this.state.execution === 'micropython' || this.state.storageBusy || this.firmwareSession?.uploading || status === 'starting'} onClick={() => this.start()} data-testid="bw-spike-arena-start">{this.firmwareSession?.loaded && this.state.programState === 1 ? (this.locale === 'de' ? 'Geladenes Programm starten' : 'Run loaded program') : t('start')}</button>
                         )}
                         <select aria-label={this.locale === 'de' ? 'Ausführung' : 'Execution'} data-testid="bw-spike-arena-execution"
-                            value={this.state.execution} onChange={async event => {
+                            value={this.state.execution} disabled={status === 'choosing' || status === 'starting'} onChange={async event => {
                                 const execution = event.target.value; await this.stopProgram();
                                 if (!this.disposed) this.setState({execution, topology: execution === 'nuttx' ? this.state.topology : 'default', status: 'ready', message: ''});
                             }}>
@@ -735,7 +767,19 @@ class SpikeArenaPane extends React.Component {
                             <option value="nuttx" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
                                 {this.locale === 'de' ? 'Vollständiges NuttX (Desktop)' : 'Full NuttX (desktop)'}
                             </option>
+                            <option value="micropython" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
+                                {this.locale === 'de' ? 'MicroPython · lokales Image (Desktop)' : 'MicroPython · local image (desktop)'}
+                            </option>
                         </select>
+                        {this.state.execution === 'micropython' ? <>
+                            <button type="button" style={btn} disabled={Boolean(this.firmwareSession) || ['choosing', 'starting'].includes(status)}
+                                data-testid="bw-spike-micropython-image-choose" onClick={() => this.chooseMicroPythonImage().catch(() => {})}>
+                                {this.locale === 'de' ? 'Image auswählen…' : 'Choose image…'}
+                            </button>
+                            <span style={{fontSize: 12}}>{this.locale === 'de' ?
+                                'Python im Code-Tab starten. Roboter-Module hub und motor sind im getesteten Image nicht vorhanden.' :
+                                'Run Python from the Code tab. The tested image has no hub or motor modules.'}</span>
+                        </> : null}
                         {this.state.execution === 'nuttx' ? <>
                             <select aria-label={this.locale === 'de' ? 'NuttX-Geräte' : 'NuttX devices'} data-testid="bw-spike-nuttx-topology"
                                 value={this.state.topology} disabled={Boolean(this.firmwareSession) || status === 'starting'}
