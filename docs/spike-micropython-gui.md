@@ -2,7 +2,10 @@
 
 In a desktop build with the pinned MicroPython simulation profile, choose
 **MicroPython · local image (desktop)** in the SPIKE arena's execution selector.
-**Choose image…** opens the native chooser for a local raw or Intel HEX application.
+**Choose image…** opens the native chooser for a local `.bin`, Intel `.hex` or
+single-application DfuSe `.dfu` image. DFU import checks the container CRC and
+geometry before admitting its application bytes. It does not run a DFU bootloader
+or flash a physical hub.
 In the Code tab, select Python and press **▶ MicroPython · Image**. It uses a pending
 selected image or opens the chooser, then starts the current source in Renode.
 Cancellation never starts an emulator. Caller/lease authorization precedes worker

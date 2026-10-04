@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 //! Native owner only: no editor path, firmware fetch or emulator startup.
-use crate::spike_local_image::{admit_hex, admit_raw, AdmittedImage};
+use crate::spike_local_image::{admit_dfu, admit_hex, admit_raw, AdmittedImage};
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::path::Path;
@@ -31,11 +31,11 @@ pub(crate) fn read_selected(path: &Path) -> Result<AdmittedImage, String> {
     if bytes.len() as u64 > MAX_INPUT {
         return Err("Selected image exceeds its size limit".into());
     }
-    let hex = path
-        .extension()
-        .is_some_and(|value| value.eq_ignore_ascii_case("hex"));
-    (if hex {
+    let extension = path.extension();
+    (if extension.is_some_and(|value| value.eq_ignore_ascii_case("hex")) {
         admit_hex(&bytes)
+    } else if extension.is_some_and(|value| value.eq_ignore_ascii_case("dfu")) {
+        admit_dfu(&bytes)
     } else {
         admit_raw(&bytes)
     })
@@ -49,7 +49,7 @@ pub(crate) fn pick(app: &tauri::AppHandle) -> Result<Option<AdmittedImage>, Stri
         .dialog()
         .file()
         .set_title("Choose a local SPIKE MicroPython application")
-        .add_filter("Application image", &["bin", "hex"])
+        .add_filter("Application image", &["bin", "hex", "dfu"])
         .blocking_pick_file();
     let Some(selected) = selected else {
         return Ok(None);
@@ -93,6 +93,20 @@ mod tests {
         let admitted = read_selected(&path).unwrap();
         std::fs::remove_file(&path).unwrap();
         assert_eq!(admitted.bytes, bytes);
+    }
+    #[test]
+    fn selected_dfu_is_canonicalized_and_corruption_is_refused() {
+        let (path, bytes) = fixture();
+        let path = path.with_extension("DFU");
+        let mut container = crate::spike_local_image::tests::fixture_dfu(&bytes);
+        std::fs::write(&path, &container).unwrap();
+        assert_eq!(read_selected(&path).unwrap(), admit_raw(&bytes).unwrap());
+        container[293] ^= 1;
+        std::fs::write(&path, &container).unwrap();
+        let error = read_selected(&path).unwrap_err();
+        assert!(error.contains("CRC"));
+        assert!(!error.contains(path.to_str().unwrap()));
+        std::fs::remove_file(&path).unwrap();
     }
     #[test]
     fn malformed_oversized_missing_and_nonregular_inputs_are_refused() {
