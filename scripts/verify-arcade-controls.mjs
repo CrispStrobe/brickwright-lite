@@ -94,6 +94,8 @@ try {
         await page.waitForFunction(() => window.bwProofSerial.includes('READY:0'), null, {timeout: 30000});
         const frame = page.frames().find(item => isArcadeSimulatorUrl(item.url(), origin));
         assert.ok(frame, `actual PXT simulator iframe: ${JSON.stringify(page.frames().map(item => item.url()))}`);
+        const frameViewport = await frame.evaluate(() => ({width: innerWidth, height: innerHeight}));
+        assert.ok(frameViewport.height >= spec.viewport.height * 0.9, 'Arcade fills the available host height, not a default 150px iframe');
         for (const selector of ['.game-button-svg', '.game-joystick-svg']) {
             const bounds = await frame.locator(selector).boundingBox();
             assert.ok(bounds && Math.abs(bounds.width - bounds.height) < 1, `${selector}: native gesture surface must be square`);
@@ -126,7 +128,7 @@ try {
         await page.waitForFunction(() => window.bwProofSerial.includes('A:up:1'), null, {timeout: 5000});
         assert.deepEqual(errors, []);
         await page.screenshot({path: resolve(out, `${spec.name}.png`)});
-        results.push({name: spec.name, viewport: spec.viewport, serial, restartSerial: await page.evaluate(() => window.bwProofSerial), initialPixelsSha256: digest(initialPixels), changedPixelsSha256: digest(changedPixels), errors});
+        results.push({name: spec.name, viewport: spec.viewport, frameViewport, serial, restartSerial: await page.evaluate(() => window.bwProofSerial), initialPixelsSha256: digest(initialPixels), changedPixelsSha256: digest(changedPixels), errors});
         await context.close();
         activePage = null;
     }

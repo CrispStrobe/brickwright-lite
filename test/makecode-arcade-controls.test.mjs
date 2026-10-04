@@ -5,6 +5,7 @@ import {isArcadeSimulatorUrl} from '../scripts/lib/arcade-controls.mjs';
 
 const page = readFileSync(new URL('../scripts/makecode/arcade-simulator.html', import.meta.url), 'utf8');
 const verifier = readFileSync(new URL('../scripts/verify-makecode.mjs', import.meta.url), 'utf8');
+const host = readFileSync(new URL('../scripts/makecode/host.html', import.meta.url), 'utf8');
 
 test('actual simulator frame matching accepts PXT identifiers without accepting another origin/path', () => {
     const origin = 'http://127.0.0.1:1234';
@@ -37,4 +38,10 @@ test('production browser acceptance checks actual PXT button press and release',
     assert.match(verifier, /finally\s*\{\s*await page\.mouse\.up\(\)/);
     assert.match(verifier, /on-screen A presses a real PXT board button/);
     assert.match(verifier, /on-screen A releases the real PXT board button/);
+});
+
+test('only Arcade overrides the standalone PXT wrapper height', () => {
+    assert.match(host, /html\.bw-arcade-host #sim > \.simframe\s*\{ height: 100%; padding-bottom: 0 !important/);
+    assert.match(host, /classList\.toggle\('bw-arcade-host'/);
+    assert.match(host, /arcade.*host/);
 });

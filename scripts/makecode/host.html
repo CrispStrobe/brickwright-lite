@@ -42,6 +42,11 @@
   html, body { margin: 0; height: 100%; background: transparent; }
   #sim { width: 100%; height: 100%; }
   #sim iframe { border: 0; width: 100%; height: 100%; }
+  /* PXT's wrapper normally gets its height from the editor's Semantic UI CSS.
+     Our standalone host has no such CSS: without this the frame is 150px tall.
+     Scope the fill layout to Arcade; other board aspect ratios stay unchanged. */
+  html.bw-arcade-host #sim > .simframe { height: 100%; padding-bottom: 0 !important; }
+  html.bw-arcade-host #sim iframe { display: block; }
 </style>
 <script src="pxtsim.js"></script>
 </head>
@@ -49,6 +54,7 @@
 <div id="sim"></div>
 <script>
 (function () {
+  document.documentElement.classList.toggle('bw-arcade-host', /\/arcade\/sim\/host\.html$/.test(location.pathname));
   var parentWin = window.parent;
   var say = function (msg) { try { parentWin.postMessage(msg, '*'); } catch (e) { /* detached */ } };
   var config = null;
