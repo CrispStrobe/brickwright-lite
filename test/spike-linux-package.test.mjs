@@ -8,6 +8,7 @@ import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+import {syntheticProfile} from './helpers/spike-profile-fixture.mjs';
 const script = fileURLToPath(new URL('../scripts/build-spike-linux-desktop.mjs', import.meta.url));
 const names = ['models.cs','program-uart.cs','boot-seed.bin','platforms/boards/spike-prime.repl',
     'platforms/boards/spike-prime-brick-devices.repl','platforms/cpus/stm32f413vg.repl','platforms/cpus/stm32f4.repl',
@@ -37,7 +38,7 @@ async function fixture () {
     await writeFile(join(frontend,'index.html'),'synthetic frontend');await writeFile(join(frontend,'capability-broker.html'),'synthetic broker');
     return {root,support,runtime,frontend};
 }
-const run = (f, output) => spawnSync(process.execPath,[script,f.support,f.runtime,f.frontend,output,'--prepare-only'],{encoding:'utf8'});
+const run = (f, output, options=[]) => spawnSync(process.execPath,[script,f.support,f.runtime,f.frontend,output,'--prepare-only',...options],{encoding:'utf8'});
 test('offline preparation closes resources, keeps firmware out and preserves an existing output', {skip:process.platform!=='linux'||process.arch!=='x64'}, async()=>{
     const f=await fixture();try {
         await mkdir(join(f.runtime,'tests'));await writeFile(join(f.runtime,'tests/private-input.bin'),'must never copy');
@@ -66,4 +67,23 @@ test('runtime links and non-ELF inputs are rejected before creating an output', 
         await rm(join(f.runtime,'renode'));await writeFile(join(f.runtime,'renode'),'not executable');
         assert.notEqual(run(f,output).status,0);await assert.rejects(readFile(join(output,'build-inputs.json')),/ENOENT/);
     } finally {await rm(f.root,{recursive:true,force:true});}
+});
+
+test('offline combined package pins guest and NuttX beside one shared runtime', {skip:process.platform!=='linux'||process.arch!=='x64'},async()=>{
+    const f=await fixture();try {
+        const guest=await syntheticProfile(f.root,'guest');const nuttx=await syntheticProfile(f.root,'nuttx',{seed:true});
+        const output=join(f.root,'combined');const result=run(f,output,['--guest',guest.source,'--nuttx',nuttx.source]);
+        assert.equal(result.status,0,result.stderr);
+        const pins=JSON.parse(await readFile(join(output,'compile-pins.json'),'utf8'));
+        assert.equal(pins.BW_RENODE_SPIKE_RESOURCE_ROOT,'guest');assert.equal(pins.BW_RENODE_NUTTX_RESOURCE_ROOT,'nuttx');
+        assert.equal(pins.BW_RENODE_RESOURCE_EXECUTABLE,'renode/renode');
+        assert.ok(!Object.keys(pins).some(n=>n.endsWith('_EXECUTABLE')&&n!=='BW_RENODE_RESOURCE_EXECUTABLE'));
+        assert.ok(!Object.values(pins).some(v=>v.includes(f.root)));
+        const config=JSON.parse(await readFile(join(output,'tauri-config.json'),'utf8'));
+        assert.ok(Object.values(config.bundle.resources).includes('guest/arena-demo.elf'));
+        assert.ok(Object.values(config.bundle.resources).includes('nuttx/nuttx-kernel.elf'));
+        assert.equal(Object.values(config.bundle.resources).filter(n=>n.endsWith('/renode')).length,1);
+        const inputs=JSON.parse(await readFile(join(output,'build-inputs.json'),'utf8'));
+        assert.deepEqual(Object.keys(inputs.profiles).sort(),['guest','nuttx']);
+    }finally{await rm(f.root,{recursive:true,force:true});}
 });

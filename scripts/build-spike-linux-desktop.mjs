@@ -7,11 +7,20 @@ import {createHash} from 'node:crypto';
 import {copyFile, cp, mkdir, readdir, readFile, realpath, lstat, writeFile, chmod} from 'node:fs/promises';
 import {dirname, join, resolve, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {freezeResourceProfile} from './lib/spike-resource-profile.mjs';
 
-const [supportArg, runtimeArg, frontendArg, outputArg, mode] = process.argv.slice(2);
-const prepareOnly = mode === '--prepare-only';
-if (!([6, 7].includes(process.argv.length)) || (mode && !prepareOnly) || process.platform !== 'linux' || process.arch !== 'x64') {
-    throw new Error('Usage on Linux x64: build-spike-linux-desktop.mjs SUPPORT_DIRECTORY RENODE_DIRECTORY FRONTEND_DIRECTORY NEW_OUTPUT_DIRECTORY [--prepare-only]');
+const [supportArg, runtimeArg, frontendArg, outputArg, ...options] = process.argv.slice(2);
+let prepareOnly = false;
+const profiles = {};
+for (let i=0;i<options.length;i++) {
+    const option=options[i];
+    if (option==='--prepare-only' && !prepareOnly) prepareOnly=true;
+    else if (['--guest','--nuttx'].includes(option) && !profiles[option.slice(2)] && options[i+1] && !options[i+1].startsWith('--')) {
+        profiles[option.slice(2)]=options[++i];
+    } else throw new Error('Invalid or repeated package option');
+}
+if (!outputArg || process.platform !== 'linux' || process.arch !== 'x64') {
+    throw new Error('Usage on Linux x64: build-spike-linux-desktop.mjs SUPPORT_DIRECTORY RENODE_DIRECTORY FRONTEND_DIRECTORY NEW_OUTPUT_DIRECTORY [--prepare-only] [--guest STAGED_GUEST] [--nuttx STAGED_NUTTX]');
 }
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const support = await realpath(supportArg), runtime = await realpath(runtimeArg), frontend = await realpath(frontendArg);
@@ -90,11 +99,17 @@ execFileSync(process.execPath, [join(repo, 'scripts/prepare-spike-micropython-pi
     join(runtimeOutput, 'renode'), profile, '--resource-root', resources], {stdio: 'inherit'});
 const pins = JSON.parse(await readFile(join(profile, 'pins.json'), 'utf8'));
 const config = JSON.parse(await readFile(join(profile, 'tauri-support-resources.json'), 'utf8'));
+const profileInputs = {};
+for (const [kind, source] of Object.entries(profiles)) {
+    const frozen = await freezeResourceProfile(kind, source, join(resources,kind), resources);
+    Object.assign(pins, frozen.pins);Object.assign(config.bundle.resources, frozen.resources);
+    profileInputs[kind] = {sourceManifestSha256: frozen.sourceManifestSha256, manifest: frozen.manifest};
+}
 Object.assign(config.bundle.resources, resourceMap);config.build = {frontendDist: frontend};
 await writeFile(join(output, 'tauri-config.json'), JSON.stringify(config, null, 2) + '\n');
 await writeFile(join(output, 'compile-pins.json'), JSON.stringify(pins, null, 2) + '\n');
 const manifest = {schemaVersion: 1, scope: 'local-offline-assembly', redistributionValidated: false,
-    sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], {cwd: repo, encoding: 'utf8'}).trim(),
+    profiles: profileInputs, sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], {cwd: repo, encoding: 'utf8'}).trim(),
     frontend: frontendInventory, runtime: Object.fromEntries(nativeFiles.map(item => [item.name, digest(item.bytes)])), pins};
 await writeFile(join(output, 'build-inputs.json'), JSON.stringify(manifest, null, 2) + '\n');
 // Keep mobile targets intact in the repository; compile an isolated desktop profile.
@@ -135,7 +150,7 @@ if (prepareOnly) {
 }
 execFileSync('cargo', ['build', '--locked', '--offline', '--manifest-path', desktopManifest,
     '--features', 'custom-protocol', '--bin', 'brickwright-tauri'], {cwd: repo, stdio: 'inherit',
-    env: {...process.env, ...pins, TAURI_CONFIG: JSON.stringify(config), CARGO_TARGET_DIR: targetDirectory,
+    env: {...Object.fromEntries(Object.entries(process.env).filter(([name]) => !name.startsWith('BW_RENODE_'))), ...pins, TAURI_CONFIG: JSON.stringify(config), CARGO_TARGET_DIR: targetDirectory,
         CARGO_PROFILE_DEV_DEBUG: '0', CARGO_INCREMENTAL: '0', CARGO_BUILD_JOBS: '2'}});
 // A debug-symbol-free development build is intentional. No reproducible release-byte claim.
 const binary = join(targetDirectory, 'debug/brickwright-tauri');
@@ -157,5 +172,5 @@ const deb = join(output, `brickwright_${version}_amd64.deb`);
 execFileSync('dpkg-deb', ['--build', '--root-owner-group', '--threads-max=2', packageRoot, deb], {stdio: 'inherit'});
 await writeFile(join(output, 'package-receipt.json'), JSON.stringify({schemaVersion: 1,
     sha256: digest(await readFile(deb)), binarySha256: digest(await readFile(binary)),
-    runtimeSha256: pins.BW_RENODE_SHA256, firmwareBundled: false, redistributionValidated: false}, null, 2) + '\n');
-console.log(`Local package assembled at ${deb}. Firmware is supplied separately through the native chooser.`);
+    runtimeSha256: pins.BW_RENODE_SHA256, firmwareBundled: Object.keys(profiles).length > 0, sourceBuiltFirmwareProfiles: Object.keys(profiles), externallySuppliedFirmwareBundled: false, redistributionValidated: false}, null, 2) + '\n');
+console.log(`Local package assembled at ${deb}. Source-built profiles: ${Object.keys(profiles).join(', ') || 'none'}. External firmware is supplied separately through the native chooser.`);

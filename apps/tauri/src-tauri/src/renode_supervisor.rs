@@ -66,6 +66,21 @@ struct SessionControl {
 }
 
 impl SessionControl {
+    fn finished(&self) -> bool {
+        self.done.0.lock().map(|done| *done).unwrap_or(false)
+    }
+
+    fn await_startup(&self, ready: &std::sync::mpsc::Receiver<Result<(), String>>,
+        timeout: Duration) -> Result<(), String> {
+        match ready.recv_timeout(timeout) {
+            Ok(result) => result,
+            Err(_) => {
+                self.stop.store(true, Ordering::SeqCst);
+                Err("Renode process creation timed out".into())
+            }
+        }
+    }
+
     fn request_stop(&self) {
         self.stop.store(true, Ordering::SeqCst);
         let (lock, wake) = &*self.done;
@@ -324,6 +339,19 @@ fn package_path(resource_root: Option<&Path>, relative: Option<&str>, absolute: 
     }
 }
 
+// Fixed package leaves only; no caller-selected path can enter this helper.
+fn profile_file(root: &Path, resource_mode: bool, label: &str, leaf: &str,
+    absolute: Option<&str>, digest: Option<&str>) -> Result<PathBuf, String> {
+    if resource_mode {
+        if absolute.is_some() { return Err("mixed SPIKE profile path modes".into()); }
+        let path = root.join(leaf);
+        let value = path.to_str().ok_or("SPIKE resource path encoding unavailable")?;
+        let verified = pinned_file(label, Some(value), digest)?;
+        if !verified.starts_with(root) { return Err("SPIKE profile escaped native resources".into()); }
+        Ok(verified)
+    } else { pinned_file(label, absolute, digest) }
+}
+
 impl RenodeSupervisor {
     pub(crate) fn new() -> Self {
         Self {
@@ -351,7 +379,7 @@ impl RenodeSupervisor {
             option_env!("BW_RENODE_MICROPYTHON_ROOT"))
     }
 
-    fn micropython_executable(&self) -> Result<PathBuf, String> {
+    fn packaged_executable(&self) -> Result<PathBuf, String> {
         let resource = self.resource_root.lock().map_err(|_| "native resources unavailable")?;
         package_path(resource.as_deref(), option_env!("BW_RENODE_RESOURCE_EXECUTABLE"),
             option_env!("BW_RENODE_EXECUTABLE"))
@@ -405,12 +433,11 @@ impl RenodeSupervisor {
         working_directory: &Path,
         checkpoint: Option<FlashCheckpointLaunch>,
     ) -> Result<RenodeEndpoint, String> {
-        let executable = option_env!("BW_RENODE_EXECUTABLE")
-            .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
+        let executable = self.packaged_executable()?;
         let digest = option_env!("BW_RENODE_SHA256")
             .ok_or_else(|| "Renode backend digest is not packaged in this build".to_owned())?;
         self.start_verified_with_evidence(
-            Path::new(executable),
+            &executable,
             digest,
             arguments,
             working_directory,
@@ -433,12 +460,11 @@ impl RenodeSupervisor {
         working_directory: &Path,
         image: crate::spike_staged_image::StagedImage,
     ) -> Result<RenodeEndpoint, String> {
-        let executable = option_env!("BW_RENODE_EXECUTABLE")
-            .ok_or("Renode backend is not packaged in this build")?;
+        let executable = self.packaged_executable()?;
         let digest = option_env!("BW_RENODE_SHA256")
             .ok_or("Renode backend digest is not packaged in this build")?;
         self.start_verified_with_owned_image(
-            Path::new(executable), digest, arguments, working_directory,
+            &executable, digest, arguments, working_directory,
             LaunchBounds {timeout: MAX_SESSION_TIME, output_limit: MAX_OUTPUT_BYTES, capture_uart: false},
             None, Some(image),
         )
@@ -446,7 +472,7 @@ impl RenodeSupervisor {
 
     #[allow(dead_code)]
     pub(crate) fn start_micropython_plan(&self, plan: crate::spike_micropython_launch::MicroPythonLaunch) -> Result<RenodeEndpoint, String> {
-        let executable = self.micropython_executable()?;
+        let executable = self.packaged_executable()?;
         let digest = option_env!("BW_RENODE_SHA256").ok_or("Renode backend digest is not packaged in this build")?;
         let (root, arguments, files) = plan.into_parts()?;
         self.start_verified_with_owned_files(&executable,digest,&arguments,&root,
@@ -472,7 +498,10 @@ impl RenodeSupervisor {
         if backend.is_some_and(|name| !matches!(name, "guest" | "nuttx")) {
             return Err("unknown SPIKE execution backend".into());
         }
-        let nuttx = backend == Some("nuttx") && option_env!("BW_RENODE_NUTTX_ROOT").is_some();
+        let nuttx = backend == Some("nuttx") && (option_env!("BW_RENODE_NUTTX_ROOT").is_some()
+            || option_env!("BW_RENODE_NUTTX_RESOURCE_ROOT").is_some());
+        let relative_root = if nuttx { option_env!("BW_RENODE_NUTTX_RESOURCE_ROOT") }
+            else { option_env!("BW_RENODE_SPIKE_RESOURCE_ROOT") };
         let (root_pin, scenario_pin, scenario_hash, firmware_pin, firmware_hash,
              script_pin, script_hash, config_pin, config_hash, manifest_pin, manifest_hash) = if nuttx {
             (option_env!("BW_RENODE_NUTTX_ROOT"), option_env!("BW_RENODE_NUTTX_SCENARIO"), option_env!("BW_RENODE_NUTTX_SCENARIO_SHA256"),
@@ -487,31 +516,19 @@ impl RenodeSupervisor {
              option_env!("BW_RENODE_SPIKE_STATE_CONFIG"), option_env!("BW_RENODE_SPIKE_STATE_CONFIG_SHA256"),
              option_env!("BW_RENODE_SPIKE_MANIFEST"), option_env!("BW_RENODE_SPIKE_MANIFEST_SHA256"))
         };
-        let root = pinned_path(
-            "SPIKE model root",
-            root_pin,
-            None,
-        )?;
-        let scenario = pinned_file(
-            "SPIKE scenario",
-            scenario_pin,
-            scenario_hash,
-        )?;
-        let firmware = pinned_file(
-            "SPIKE firmware",
-            firmware_pin,
-            firmware_hash,
-        )?;
-        let state_script = pinned_file(
-            "SPIKE state service",
-            script_pin,
-            script_hash,
-        )?;
-        let state_config = pinned_file(
-            "SPIKE state config",
-            config_pin,
-            config_hash,
-        )?;
+        let resource = self.resource_root.lock().map_err(|_| "native resources unavailable")?.clone();
+        let root = package_path(resource.as_deref(), relative_root, root_pin)?
+            .canonicalize().map_err(|_| "SPIKE model root unavailable")?;
+        let scenario = profile_file(&root, relative_root.is_some(), "SPIKE scenario",
+            if nuttx {"nuttx.resc"} else {"arena-demo.resc"}, scenario_pin, scenario_hash)?;
+        let firmware = profile_file(&root, relative_root.is_some(), "SPIKE firmware",
+            if nuttx {"nuttx-user.elf"} else {"arena-demo.elf"}, firmware_pin, firmware_hash)?;
+        let state_script = profile_file(&root, relative_root.is_some(), "SPIKE state service",
+            "scripts/spike-state-server.py", script_pin, script_hash)?;
+        let state_config = profile_file(&root, relative_root.is_some(), "SPIKE state config",
+            "state-config.json", config_pin, config_hash)?;
+        let manifest = profile_file(&root, relative_root.is_some(), "SPIKE manifest",
+            "manifest.json", manifest_pin, manifest_hash)?;
         for path in [&scenario, &state_script, &state_config] {
             if !path.starts_with(&root) {
                 return Err("SPIKE model artifact escaped its packaged root".into());
@@ -531,11 +548,6 @@ impl RenodeSupervisor {
             return Err("six-motor topology requires own full NuttX firmware".into());
         }
         if config["identity"]["firmware"] == "brickwright-arena-demo" {
-            let manifest = pinned_file(
-                "arena package manifest",
-                manifest_pin,
-                manifest_hash,
-            )?;
             verify_arena_manifest(&root, &manifest)?;
             let mut header = [0u8; 52];
             File::open(&firmware)
@@ -566,7 +578,6 @@ impl RenodeSupervisor {
 
         let mut checkpoint=None;
         if config["identity"]["firmware"] == "brickwright-nuttx" && config.get("programMailbox").is_some() {
-            let manifest = pinned_file("full firmware package manifest", manifest_pin, manifest_hash)?;
             verify_nuttx_manifest(&root, &manifest)?;
             if firmware != root.join("nuttx-user.elf") || config["identity"]["imageSha256"].as_str() != Some(sha256(&firmware).map_err(|_| "full firmware image unavailable")?.as_str()) {
                 return Err("full firmware package identity mismatch".into());
@@ -732,6 +743,7 @@ impl RenodeSupervisor {
             .session
             .lock()
             .map_err(|_| "Renode supervisor unavailable")?;
+        if slot.as_ref().is_some_and(SessionControl::finished) { *slot = None; }
         if slot.is_some() {
             return Err("Renode session already active".into());
         }
@@ -807,6 +819,23 @@ impl RenodeSupervisor {
                 }
             }
         }
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::unix::process::CommandExt;
+            let owner = std::process::id() as libc::pid_t;
+            // Only async-signal-safe system calls run between fork and exec.
+            // Spawn occurs in the session worker below: Linux associates this
+            // signal with the spawning thread, which must outlive the child.
+            unsafe {
+                command.pre_exec(move || {
+                    if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL) != 0 {
+                        return Err(io::Error::last_os_error());
+                    }
+                    if libc::getppid() != owner { libc::raise(libc::SIGKILL); }
+                    Ok(())
+                });
+            }
+        }
         // The reserved socket closes immediately before spawn. Renode is only
         // ever told the selected loopback address; it cannot be redirected to
         // a LAN interface by project input.
@@ -816,23 +845,39 @@ impl RenodeSupervisor {
         for capsule in &images {
             capsule.verify().map_err(|_| "local image capsule changed before launch")?;
         }
-        let mut child = command
-            .group_spawn()
-            .map_err(|_| "Renode process failed to start")?;
-        let stdout = child
-            .inner()
-            .stdout
-            .take()
-            .ok_or_else(|| "Renode stdout unavailable".to_owned())?;
-        let stderr = child
-            .inner()
-            .stderr
-            .take()
-            .ok_or_else(|| "Renode stderr unavailable".to_owned())?;
         let stop = Arc::new(AtomicBool::new(false));
         let overflow = Arc::new(AtomicBool::new(false));
         let total = Arc::new(AtomicUsize::new(0));
         let done = Arc::new((Mutex::new(false), Condvar::new()));
+        let worker_stop = Arc::clone(&stop);
+        let worker_done = Arc::clone(&done);
+        let worker_uart_evidence = uart_evidence.clone();
+        let (ready_sender, ready_receiver) = std::sync::mpsc::sync_channel::<Result<(), String>>(1);
+        // Register ownership before starting the worker. A timed-out launch
+        // remains registered until its child and private resources are cleaned.
+        let control = SessionControl { stop, done };
+        *slot = Some(control.clone());
+        thread::spawn(move || {
+            let fail_start = |message: &str| {
+                let (lock, wake) = &*worker_done;
+                if let Ok(mut finished) = lock.lock() { *finished = true; wake.notify_all(); }
+                let _ = ready_sender.send(Err(message.to_owned()));
+            };
+            let mut child = match command.group_spawn() {
+                Ok(child) => child,
+                Err(_) => {
+                    drop(checkpoint); drop(images);
+                    fail_start("Renode process failed to start"); return;
+                }
+            };
+            let (stdout, stderr) = match (child.inner().stdout.take(), child.inner().stderr.take()) {
+                (Some(stdout), Some(stderr)) => (stdout, stderr),
+                _ => {
+                    let _ = child.kill(); let _ = child.wait();
+                    drop(checkpoint); drop(images);
+                    fail_start("Renode process output unavailable"); return;
+                }
+            };
         let stdout_reader = drain_bounded(
             stdout,
             Arc::clone(&total),
@@ -845,10 +890,7 @@ impl RenodeSupervisor {
             Arc::clone(&overflow),
             bounds.output_limit,
         );
-        let worker_stop = Arc::clone(&stop);
-        let worker_done = Arc::clone(&done);
-        let worker_uart_evidence = uart_evidence.clone();
-        thread::spawn(move || {
+            let _ = ready_sender.send(Ok(()));
             let checkpoint_stop = Arc::new(AtomicBool::new(false));
             let checkpoint_thread = checkpoint.map(|mut job| {
                 let stopping = Arc::clone(&checkpoint_stop);
@@ -904,7 +946,10 @@ impl RenodeSupervisor {
                 wake.notify_all();
             }
         });
-        *slot = Some(SessionControl { stop, done });
+        if let Err(error) = control.await_startup(&ready_receiver, Duration::from_secs(10)) {
+            if control.finished() { *slot = None; }
+            return Err(error);
+        }
         Ok(RenodeEndpoint {
             port,
             gdb_port,
@@ -916,8 +961,9 @@ impl RenodeSupervisor {
 
     pub(crate) fn teardown(&self, _reason: TeardownReason) {
         if let Ok(mut slot) = self.session.lock() {
-            if let Some(session) = slot.take() {
+            if let Some(session) = slot.as_ref() {
                 session.request_stop();
+                if session.finished() { *slot = None; }
             }
         }
     }
@@ -945,8 +991,8 @@ pub(crate) fn sha256(path: &Path) -> io::Result<String> {
 
 fn pinned_path(
     label: &str,
-    path: Option<&'static str>,
-    expected_digest: Option<&'static str>,
+    path: Option<&str>,
+    expected_digest: Option<&str>,
 ) -> Result<PathBuf, String> {
     let path = path.ok_or_else(|| format!("{label} is not packaged in this build"))?;
     let path = Path::new(path)
@@ -966,8 +1012,8 @@ fn pinned_path(
 
 fn pinned_file(
     label: &str,
-    path: Option<&'static str>,
-    expected_digest: Option<&'static str>,
+    path: Option<&str>,
+    expected_digest: Option<&str>,
 ) -> Result<PathBuf, String> {
     let expected_digest =
         expected_digest.ok_or_else(|| format!("{label} digest is not packaged in this build"))?;
@@ -1126,10 +1172,10 @@ fn spike_arguments(
         "--hide-log".into(),
         "-P".into(),
         "{BW_MONITOR_PORT}".into(),
-        scenario
-            .to_str()
-            .ok_or_else(|| "SPIKE scenario path is not UTF-8".to_owned())?
-            .into(),
+        // Renode interpolates a positional script into an unescaped monitor
+        // command. Use its explicit command interface for paths with spaces.
+        "-e".into(),
+        format!("include {}", monitor_path(scenario)?),
         "-e".into(),
         format!("sysbus LoadELF {}", monitor_path(firmware)?),
         "-e".into(),
@@ -1270,6 +1316,29 @@ mod tests {
         for path in ["", "/runtime/renode", "../renode", "runtime/../renode", "./runtime/renode",
             "runtime//renode", "C:/renode", "runtime\\renode", "runtime/renode;quit", "runtime/renode\n"] {
             assert!(package_path(Some(&relocated),Some(path),None).is_err(),"{path:?}");
+        }
+    }
+
+    #[test]
+    fn fixed_profile_leaves_relocate_and_refuse_mixed_modes_and_damage() {
+        let fixture=FlashFixture::new();
+        let resources=fixture.0.join("installed resources");
+        for kind in ["guest", "nuttx"] {
+            let root=resources.join(kind);std::fs::create_dir_all(&root).unwrap();
+            let leaf=if kind=="guest" {"arena-demo.resc"} else {"nuttx.resc"};
+            let file=root.join(leaf);std::fs::write(&file,b"synthetic closed scenario").unwrap();
+            let digest=sha256(&file).unwrap();
+            assert_eq!(profile_file(&root,true,"scenario",leaf,None,Some(&digest)).unwrap(),file);
+            assert!(profile_file(&root,true,"scenario",leaf,Some("/old/staging/scenario"),Some(&digest)).is_err());
+            std::fs::write(&file,b"changed scenario").unwrap();
+            assert!(profile_file(&root,true,"scenario",leaf,None,Some(&digest)).is_err());
+        }
+        let relocated=fixture.0.join("another installation");std::fs::rename(&resources,&relocated).unwrap();
+        for kind in ["guest", "nuttx"] {
+            let root=package_path(Some(&relocated),Some(kind),None).unwrap();
+            let leaf=if kind=="guest" {"arena-demo.resc"} else {"nuttx.resc"};
+            let digest=sha256(&root.join(leaf)).unwrap();
+            assert_eq!(profile_file(&root,true,"scenario",leaf,None,Some(&digest)).unwrap(),root.join(leaf));
         }
     }
 
@@ -1536,6 +1605,119 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn initialization_timeout_retains_ownership_until_cleanup() {
+        let supervisor = RenodeSupervisor::new();
+        let control = SessionControl {
+            stop: Arc::new(AtomicBool::new(false)),
+            done: Arc::new((Mutex::new(false), Condvar::new())),
+        };
+        *supervisor.session.lock().unwrap() = Some(control.clone());
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+        let worker_done = Arc::clone(&control.done);
+        let cleanup = thread::spawn(move || {
+            // Model a slow creation/cleanup completion while its readiness
+            // channel remains open. Nothing is eligible for reuse before done.
+            thread::sleep(Duration::from_millis(150));
+            let (lock, wake) = &*worker_done;
+            *lock.lock().unwrap() = true;
+            wake.notify_all();
+            drop(sender);
+        });
+        assert!(control.await_startup(&receiver, Duration::from_millis(1)).is_err());
+        assert!(control.stop.load(Ordering::SeqCst));
+        assert!(supervisor.session.lock().unwrap().is_some());
+        let executable = Path::new("/bin/sh");
+        assert_eq!(supervisor.start_verified(executable, &sha256(executable).unwrap(),
+            &["-c".into(), "exit 0".into()], Path::new("."), Duration::from_secs(1), 1024)
+            .err().unwrap(), "Renode session already active");
+        supervisor.teardown(TeardownReason::Reset);
+        cleanup.join().unwrap();
+        assert!(supervisor.session.lock().unwrap().is_none());
+        supervisor.start_verified(executable, &sha256(executable).unwrap(),
+            &["-c".into(), "exit 0".into()], Path::new("."), Duration::from_secs(1), 1024).unwrap();
+        supervisor.teardown(TeardownReason::Reset);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore = "subprocess fixture for linux_owner_crash_terminates_simulator"]
+    fn linux_owner_death_fixture() {
+        let Some(root) = std::env::var_os("BW_TEST_LINUX_OWNER_DIR") else { return; };
+        let root = PathBuf::from(root);
+        let executable = Path::new("/bin/sh");
+        let supervisor = RenodeSupervisor::new();
+        supervisor.start_verified(executable, &sha256(executable).unwrap(),
+            &["-c".into(), "printf '%s' \"$$\" > child.pid; while :; do sleep 0.1; done".into()],
+            &root, Duration::from_secs(60), 1024).unwrap();
+        std::fs::write(root.join("owner.ready"), b"ready").unwrap();
+        thread::sleep(Duration::from_secs(60));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_owner_crash_terminates_simulator() {
+        struct TestOwner(std::process::Child);
+        impl Drop for TestOwner {
+            fn drop(&mut self) { let _ = self.0.kill(); let _ = self.0.wait(); }
+        }
+        let fixture = FlashFixture::new();
+        let mut owner = TestOwner(Command::new(std::env::current_exe().unwrap())
+            .args(["--ignored", "--exact", "renode_supervisor::tests::linux_owner_death_fixture"])
+            .env("BW_TEST_LINUX_OWNER_DIR", &fixture.0)
+            .stdout(Stdio::null()).stderr(Stdio::null()).spawn().unwrap());
+        let deadline = Instant::now() + Duration::from_secs(10);
+        let pid: i32 = loop {
+            if fixture.0.join("owner.ready").exists() {
+                if let Some(pid) = std::fs::read_to_string(fixture.0.join("child.pid")).ok()
+                    .and_then(|value| value.parse::<i32>().ok()) { break pid; }
+            }
+            assert!(owner.0.try_wait().unwrap().is_none(), "owner fixture exited before spawn");
+            assert!(Instant::now() < deadline, "owner fixture did not create its child");
+            thread::sleep(Duration::from_millis(10));
+        };
+        assert!(pid > 1);
+        assert_eq!(unsafe {libc::getpgid(pid)}, pid, "synthetic child must own its group");
+        owner.0.kill().unwrap(); owner.0.wait().unwrap();
+        let running = || std::fs::read_to_string(format!("/proc/{pid}/status"))
+            .map(|status| !status.lines().any(|line| line.starts_with("State:")
+                && line.split_whitespace().nth(1) == Some("Z"))).unwrap_or(false);
+        let deadline = Instant::now() + Duration::from_secs(3);
+        while running() && Instant::now() < deadline { thread::sleep(Duration::from_millis(10)); }
+        let survived = running();
+        if survived {
+            // Clean the exact synthetic group even when a mutation breaks the guard.
+            unsafe { libc::kill(-pid, libc::SIGKILL); }
+        }
+        assert!(!survived, "simulator survived abrupt owner death");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn simulator_outlives_the_request_thread_until_session_teardown() {
+        let fixture = FlashFixture::new();
+        let root = fixture.0.clone();
+        let supervisor = Arc::new(RenodeSupervisor::new());
+        let requester = Arc::clone(&supervisor);
+        thread::spawn(move || {
+            let executable = Path::new("/bin/sh");
+            requester.start_verified(executable, &sha256(executable).unwrap(),
+                &["-c".into(), "printf '%s' \"$$\" > child.pid; while :; do sleep 0.1; done".into()],
+                &root, Duration::from_secs(10), 1024).unwrap();
+        }).join().unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let pid: i32 = loop {
+            if let Some(pid) = std::fs::read_to_string(fixture.0.join("child.pid")).ok()
+                .and_then(|value| value.parse::<i32>().ok()) { break pid; }
+            assert!(Instant::now() < deadline, "child died with the request thread");
+            thread::sleep(Duration::from_millis(10));
+        };
+        thread::sleep(Duration::from_millis(100));
+        assert_eq!(unsafe {libc::getpgid(pid)}, pid, "session worker must keep the child alive");
+        supervisor.teardown(TeardownReason::Reset);
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn output_and_time_limits_stop_the_group() {
         let executable = PathBuf::from("/bin/sh");
         let digest = sha256(&executable).unwrap();
@@ -1590,6 +1772,12 @@ mod tests {
             monitor_path(Path::new("/package with spaces/image.elf")).unwrap(),
             "@/package\\ with\\ spaces/image.elf"
         );
+        let spaced = spike_arguments(Path::new("/installed resources/guest/arena-demo.resc"),
+            Path::new("/installed resources/guest/arena-demo.elf"),
+            Path::new("/installed resources/guest/scripts/spike-state-server.py"),
+            Path::new("/installed resources/guest/state-config.json")).unwrap();
+        assert!(spaced.windows(2).any(|pair| pair == ["-e", "include @/installed\\ resources/guest/arena-demo.resc"]));
+        assert!(!spaced.iter().any(|arg| arg == "/installed resources/guest/arena-demo.resc"));
         assert_eq!(
             monitor_path(Path::new("/package/image.elf;quit")).unwrap_err(),
             "SPIKE package path is not monitor-safe"
