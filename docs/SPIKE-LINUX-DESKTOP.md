@@ -56,7 +56,9 @@ To include already staged source builds, add `--guest /private/staged-guest` and
 building firmware. The freezer verifies each digest, firmware identity and ARM
 ELF32 header, preserves required notices, checks flash seed geometry, and accepts
 only the known scenario templates. It rewrites their staging paths relative to
-the profile working directory, then regenerates scenario and manifest digests.
+the included scenario origin, then regenerates scenario and manifest digests.
+The flash seed uses that monitor origin explicitly because Renode changes the
+process working directory to its runtime directory.
 These checks establish consistency of supplied source-build declarations; they
 are not proof of firmware origin or physical-hardware behavior.
 

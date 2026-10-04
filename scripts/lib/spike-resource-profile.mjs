@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 // Freeze only already staged, closed source-build profiles. Never fetch images.
 import {readFile, writeFile, mkdir, lstat, realpath} from 'node:fs/promises';
-import {join, dirname, relative, sep, resolve} from 'node:path';
+import {join, dirname, relative, sep, resolve, basename} from 'node:path';
 import {createHash} from 'node:crypto';
 import {initialFlashScenario,initialFlashResourceScenario} from './spike-initial-flash.mjs';
 const shared = ['state-config.json','scripts/spike-state-server.py',
@@ -38,10 +38,10 @@ const bounded = async (root,name,limit) => {
 export async function freezeResourceProfile (kind, sourceArg, outputArg, resourceArg) {
     if (!Object.hasOwn(profileFiles,kind)) throw new Error('Unknown source-build profile');
     const source=await realpath(sourceArg), resources=await realpath(resourceArg), output=resolve(outputArg);
-    const destination=join(await realpath(dirname(output)),output.split(sep).at(-1));
+    const destination=join(await realpath(dirname(output)),basename(output));
     const location=relative(resources,destination).split(sep).join('/');
     if (location.split('/').some(p=>!p || p==='.' || p==='..') || /[\\:;'"\x00-\x1f\x7f-\x9f]/.test(location)
-        || output===source || output.startsWith(source+sep)) throw new Error('Invalid profile resource destination');
+        || destination===source || destination.startsWith(source+sep)) throw new Error('Invalid profile resource destination');
     const sourceManifestBytes=await bounded(source,'manifest.json',65536);
     const original=JSON.parse(sourceManifestBytes.toString());
     const required=profileFiles[kind], allowed=[...required,...optional[kind]];
