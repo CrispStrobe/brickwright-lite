@@ -324,6 +324,19 @@ fn package_path(resource_root: Option<&Path>, relative: Option<&str>, absolute: 
     }
 }
 
+// Fixed package leaves only; no caller-selected path can enter this helper.
+fn profile_file(root: &Path, resource_mode: bool, label: &str, leaf: &str,
+    absolute: Option<&str>, digest: Option<&str>) -> Result<PathBuf, String> {
+    if resource_mode {
+        if absolute.is_some() { return Err("mixed SPIKE profile path modes".into()); }
+        let path = root.join(leaf);
+        let value = path.to_str().ok_or("SPIKE resource path encoding unavailable")?;
+        let verified = pinned_file(label, Some(value), digest)?;
+        if !verified.starts_with(root) { return Err("SPIKE profile escaped native resources".into()); }
+        Ok(verified)
+    } else { pinned_file(label, absolute, digest) }
+}
+
 impl RenodeSupervisor {
     pub(crate) fn new() -> Self {
         Self {
@@ -351,7 +364,7 @@ impl RenodeSupervisor {
             option_env!("BW_RENODE_MICROPYTHON_ROOT"))
     }
 
-    fn micropython_executable(&self) -> Result<PathBuf, String> {
+    fn packaged_executable(&self) -> Result<PathBuf, String> {
         let resource = self.resource_root.lock().map_err(|_| "native resources unavailable")?;
         package_path(resource.as_deref(), option_env!("BW_RENODE_RESOURCE_EXECUTABLE"),
             option_env!("BW_RENODE_EXECUTABLE"))
@@ -405,12 +418,11 @@ impl RenodeSupervisor {
         working_directory: &Path,
         checkpoint: Option<FlashCheckpointLaunch>,
     ) -> Result<RenodeEndpoint, String> {
-        let executable = option_env!("BW_RENODE_EXECUTABLE")
-            .ok_or_else(|| "Renode backend is not packaged in this build".to_owned())?;
+        let executable = self.packaged_executable()?;
         let digest = option_env!("BW_RENODE_SHA256")
             .ok_or_else(|| "Renode backend digest is not packaged in this build".to_owned())?;
         self.start_verified_with_evidence(
-            Path::new(executable),
+            &executable,
             digest,
             arguments,
             working_directory,
@@ -433,12 +445,11 @@ impl RenodeSupervisor {
         working_directory: &Path,
         image: crate::spike_staged_image::StagedImage,
     ) -> Result<RenodeEndpoint, String> {
-        let executable = option_env!("BW_RENODE_EXECUTABLE")
-            .ok_or("Renode backend is not packaged in this build")?;
+        let executable = self.packaged_executable()?;
         let digest = option_env!("BW_RENODE_SHA256")
             .ok_or("Renode backend digest is not packaged in this build")?;
         self.start_verified_with_owned_image(
-            Path::new(executable), digest, arguments, working_directory,
+            &executable, digest, arguments, working_directory,
             LaunchBounds {timeout: MAX_SESSION_TIME, output_limit: MAX_OUTPUT_BYTES, capture_uart: false},
             None, Some(image),
         )
@@ -446,7 +457,7 @@ impl RenodeSupervisor {
 
     #[allow(dead_code)]
     pub(crate) fn start_micropython_plan(&self, plan: crate::spike_micropython_launch::MicroPythonLaunch) -> Result<RenodeEndpoint, String> {
-        let executable = self.micropython_executable()?;
+        let executable = self.packaged_executable()?;
         let digest = option_env!("BW_RENODE_SHA256").ok_or("Renode backend digest is not packaged in this build")?;
         let (root, arguments, files) = plan.into_parts()?;
         self.start_verified_with_owned_files(&executable,digest,&arguments,&root,
@@ -472,7 +483,10 @@ impl RenodeSupervisor {
         if backend.is_some_and(|name| !matches!(name, "guest" | "nuttx")) {
             return Err("unknown SPIKE execution backend".into());
         }
-        let nuttx = backend == Some("nuttx") && option_env!("BW_RENODE_NUTTX_ROOT").is_some();
+        let nuttx = backend == Some("nuttx") && (option_env!("BW_RENODE_NUTTX_ROOT").is_some()
+            || option_env!("BW_RENODE_NUTTX_RESOURCE_ROOT").is_some());
+        let relative_root = if nuttx { option_env!("BW_RENODE_NUTTX_RESOURCE_ROOT") }
+            else { option_env!("BW_RENODE_SPIKE_RESOURCE_ROOT") };
         let (root_pin, scenario_pin, scenario_hash, firmware_pin, firmware_hash,
              script_pin, script_hash, config_pin, config_hash, manifest_pin, manifest_hash) = if nuttx {
             (option_env!("BW_RENODE_NUTTX_ROOT"), option_env!("BW_RENODE_NUTTX_SCENARIO"), option_env!("BW_RENODE_NUTTX_SCENARIO_SHA256"),
@@ -487,31 +501,19 @@ impl RenodeSupervisor {
              option_env!("BW_RENODE_SPIKE_STATE_CONFIG"), option_env!("BW_RENODE_SPIKE_STATE_CONFIG_SHA256"),
              option_env!("BW_RENODE_SPIKE_MANIFEST"), option_env!("BW_RENODE_SPIKE_MANIFEST_SHA256"))
         };
-        let root = pinned_path(
-            "SPIKE model root",
-            root_pin,
-            None,
-        )?;
-        let scenario = pinned_file(
-            "SPIKE scenario",
-            scenario_pin,
-            scenario_hash,
-        )?;
-        let firmware = pinned_file(
-            "SPIKE firmware",
-            firmware_pin,
-            firmware_hash,
-        )?;
-        let state_script = pinned_file(
-            "SPIKE state service",
-            script_pin,
-            script_hash,
-        )?;
-        let state_config = pinned_file(
-            "SPIKE state config",
-            config_pin,
-            config_hash,
-        )?;
+        let resource = self.resource_root.lock().map_err(|_| "native resources unavailable")?.clone();
+        let root = package_path(resource.as_deref(), relative_root, root_pin)?
+            .canonicalize().map_err(|_| "SPIKE model root unavailable")?;
+        let scenario = profile_file(&root, relative_root.is_some(), "SPIKE scenario",
+            if nuttx {"nuttx.resc"} else {"arena-demo.resc"}, scenario_pin, scenario_hash)?;
+        let firmware = profile_file(&root, relative_root.is_some(), "SPIKE firmware",
+            if nuttx {"nuttx-user.elf"} else {"arena-demo.elf"}, firmware_pin, firmware_hash)?;
+        let state_script = profile_file(&root, relative_root.is_some(), "SPIKE state service",
+            "scripts/spike-state-server.py", script_pin, script_hash)?;
+        let state_config = profile_file(&root, relative_root.is_some(), "SPIKE state config",
+            "state-config.json", config_pin, config_hash)?;
+        let manifest = profile_file(&root, relative_root.is_some(), "SPIKE manifest",
+            "manifest.json", manifest_pin, manifest_hash)?;
         for path in [&scenario, &state_script, &state_config] {
             if !path.starts_with(&root) {
                 return Err("SPIKE model artifact escaped its packaged root".into());
@@ -531,11 +533,6 @@ impl RenodeSupervisor {
             return Err("six-motor topology requires own full NuttX firmware".into());
         }
         if config["identity"]["firmware"] == "brickwright-arena-demo" {
-            let manifest = pinned_file(
-                "arena package manifest",
-                manifest_pin,
-                manifest_hash,
-            )?;
             verify_arena_manifest(&root, &manifest)?;
             let mut header = [0u8; 52];
             File::open(&firmware)
@@ -566,7 +563,6 @@ impl RenodeSupervisor {
 
         let mut checkpoint=None;
         if config["identity"]["firmware"] == "brickwright-nuttx" && config.get("programMailbox").is_some() {
-            let manifest = pinned_file("full firmware package manifest", manifest_pin, manifest_hash)?;
             verify_nuttx_manifest(&root, &manifest)?;
             if firmware != root.join("nuttx-user.elf") || config["identity"]["imageSha256"].as_str() != Some(sha256(&firmware).map_err(|_| "full firmware image unavailable")?.as_str()) {
                 return Err("full firmware package identity mismatch".into());
@@ -945,8 +941,8 @@ pub(crate) fn sha256(path: &Path) -> io::Result<String> {
 
 fn pinned_path(
     label: &str,
-    path: Option<&'static str>,
-    expected_digest: Option<&'static str>,
+    path: Option<&str>,
+    expected_digest: Option<&str>,
 ) -> Result<PathBuf, String> {
     let path = path.ok_or_else(|| format!("{label} is not packaged in this build"))?;
     let path = Path::new(path)
@@ -966,8 +962,8 @@ fn pinned_path(
 
 fn pinned_file(
     label: &str,
-    path: Option<&'static str>,
-    expected_digest: Option<&'static str>,
+    path: Option<&str>,
+    expected_digest: Option<&str>,
 ) -> Result<PathBuf, String> {
     let expected_digest =
         expected_digest.ok_or_else(|| format!("{label} digest is not packaged in this build"))?;
@@ -1270,6 +1266,29 @@ mod tests {
         for path in ["", "/runtime/renode", "../renode", "runtime/../renode", "./runtime/renode",
             "runtime//renode", "C:/renode", "runtime\\renode", "runtime/renode;quit", "runtime/renode\n"] {
             assert!(package_path(Some(&relocated),Some(path),None).is_err(),"{path:?}");
+        }
+    }
+
+    #[test]
+    fn fixed_profile_leaves_relocate_and_refuse_mixed_modes_and_damage() {
+        let fixture=FlashFixture::new();
+        let resources=fixture.0.join("installed resources");
+        for kind in ["guest", "nuttx"] {
+            let root=resources.join(kind);std::fs::create_dir_all(&root).unwrap();
+            let leaf=if kind=="guest" {"arena-demo.resc"} else {"nuttx.resc"};
+            let file=root.join(leaf);std::fs::write(&file,b"synthetic closed scenario").unwrap();
+            let digest=sha256(&file).unwrap();
+            assert_eq!(profile_file(&root,true,"scenario",leaf,None,Some(&digest)).unwrap(),file);
+            assert!(profile_file(&root,true,"scenario",leaf,Some("/old/staging/scenario"),Some(&digest)).is_err());
+            std::fs::write(&file,b"changed scenario").unwrap();
+            assert!(profile_file(&root,true,"scenario",leaf,None,Some(&digest)).is_err());
+        }
+        let relocated=fixture.0.join("another installation");std::fs::rename(&resources,&relocated).unwrap();
+        for kind in ["guest", "nuttx"] {
+            let root=package_path(Some(&relocated),Some(kind),None).unwrap();
+            let leaf=if kind=="guest" {"arena-demo.resc"} else {"nuttx.resc"};
+            let digest=sha256(&root.join(leaf)).unwrap();
+            assert_eq!(profile_file(&root,true,"scenario",leaf,None,Some(&digest)).unwrap(),root.join(leaf));
         }
     }
 

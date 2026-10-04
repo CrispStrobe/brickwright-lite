@@ -2,7 +2,8 @@
 
 The offline builder assembles a Linux x64 `.deb` from a built Brickwright GUI,
 a separately supplied Renode distribution and the closed MicroPython support
-profile. It does not download or bundle a hub firmware image, upload artifacts,
+profile. Optional source-built guest and full NuttX profiles can be included.
+It does not download firmware, bundle external user images, upload artifacts,
 or install anything into the system. Keep its output outside public repositories.
 
 ```sh
@@ -50,9 +51,26 @@ wheels. The virtual hub panel exposes raw hub inputs while a supported firmware
 session is running. Stop closes only that session. Images are local user inputs;
 checks establish supported geometry/integrity, not firmware authenticity.
 
-The full NuttX and small guest routes retain their existing separately configured
-package paths; this builder does not yet produce a portable combined package for
-those routes. Original LEGO images remain a private bring-up path, without a
+To include already staged source builds, add `--guest /private/staged-guest` and
+`--nuttx /private/staged-nuttx`. These options freeze the closed manifests without
+building firmware. The freezer verifies each digest, firmware identity and ARM
+ELF32 header, preserves required notices, checks flash seed geometry, and accepts
+only the known scenario templates. It rewrites their staging paths relative to
+the profile working directory, then regenerates scenario and manifest digests.
+These checks establish consistency of supplied source-build declarations; they
+are not proof of firmware origin or physical-hardware behavior.
+
+Guest, NuttX and MicroPython live in separate resource directories and share one
+verified Renode executable. The supervisor resolves fixed profile leaves under
+Tauri's resource directory and refuses mixed relative/absolute profile modes.
+Legacy separately configured absolute profiles remain supported. The builder
+clears inherited `BW_RENODE_*` compile variables before applying its own pins, so
+an unrelated workspace profile cannot override the installed package. Receipts
+list included source-built profiles and continue marking redistribution as
+unqualified. Full installed-GUI qualification of these optional combined profiles
+must be recorded separately from the previously tested MicroPython-only package.
+
+Original LEGO images remain a private bring-up path, without a
 qualified Code-tab arena backend. See [NuttX](../SPIKE-NUTTX.md),
 [MicroPython](spike-micropython-gui.md) and
 [flash persistence](spike-flash-persistence.md) for their tested boundaries.
