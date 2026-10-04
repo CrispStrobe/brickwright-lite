@@ -36,6 +36,7 @@
   .game-joystick { grid-column: 1; grid-row: 3; }
   .game-buttons { grid-column: 2; grid-row: 3; }
   .game-button-svg, .game-joystick-svg { width: 100%; height: 100%; max-width: 160px; }
+  .label-a, .label-b { pointer-events: none; } /* labels must not swallow the button hit */
   .game-player-background, .game-player-msft { display: none; }
   #debug-stats { position: absolute; top: 0; left: 0; color: #0f0; font: 10px monospace; }
   .no-select { user-select: none; }
