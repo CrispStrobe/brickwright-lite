@@ -122,10 +122,10 @@ impl RenodeDebugger {
     #[allow(dead_code)]
     pub(crate) fn start_micropython_image(&self, supervisor: &RenodeSupervisor,
         admitted: crate::spike_local_image::AdmittedImage) -> Result<&'static str,String> {
-        let root=option_env!("BW_RENODE_MICROPYTHON_ROOT").ok_or("MicroPython support is not packaged")?;
+        let root=supervisor.micropython_support_root()?;
         let pin=option_env!("BW_RENODE_MICROPYTHON_MANIFEST_SHA256").ok_or("MicroPython package pin unavailable")?;
         let recipe=crate::spike_micropython_launch::MicroPythonRecipe::new(
-            PathBuf::from(root),pin.into(),supervisor.local_image_staging_root()?,admitted);
+            root,pin.into(),supervisor.local_image_staging_root()?,admitted);
         self.start_micropython_recipe(supervisor,recipe)
     }
 

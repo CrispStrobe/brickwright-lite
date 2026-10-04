@@ -33,7 +33,7 @@ async function fixture(t) {
     const save = () => writeFile(join(source, 'manifest.json'), JSON.stringify(manifest));
     await save();
     const output = join(root, 'output');
-    const run = () => spawnSync(process.execPath, [script.pathname, source, runtime, output], {encoding: 'utf8'});
+    const run = (args=[]) => spawnSync(process.execPath, [script.pathname, source, runtime, output,...args], {encoding: 'utf8'});
     return {root, source, runtime, output, manifest, save, run};
 }
 test('pins copy only the closed support profile, never adjacent application images', async t => {
@@ -73,3 +73,58 @@ test('never replaces an existing output directory', async t => {
     assert.equal(await readFile(join(f.output, 'owner.txt'), 'utf8'), 'keep');
     await assert.rejects(readFile(join(f.output, 'models.cs')), {code: 'ENOENT'});
 });
+
+test('resource pins contain only relative locations and support survives moving the resource tree', async t => {
+    const f=await fixture(t);
+    assert.equal(f.run(['--resource-root',f.root]).status,0);
+    const pins=JSON.parse(await readFile(join(f.output,'pins.json')));
+    assert.equal(pins.BW_RENODE_RESOURCE_EXECUTABLE,'runtime');
+    assert.equal(pins.BW_RENODE_MICROPYTHON_RESOURCE_ROOT,'output');
+    assert.equal(Object.hasOwn(pins,'BW_RENODE_EXECUTABLE'),false);
+    assert.equal(Object.hasOwn(pins,'BW_RENODE_MICROPYTHON_ROOT'),false);
+    assert.ok(!JSON.stringify(pins).includes(f.root));
+    const mapping=JSON.parse(await readFile(join(f.output,'tauri-support-resources.json'))).bundle.resources;
+    assert.deepEqual(Object.keys(mapping).sort(),[...names,'manifest.json'].map(name=>join(f.output,name)).sort());
+    for (const name of [...names,'manifest.json']) assert.equal(mapping[join(f.output,name)],`output/${name}`);
+    assert.ok(!Object.keys(mapping).some(name=>name.endsWith('/pins.json')||name.endsWith('/application.bin')));
+    const {rename}=await import('node:fs/promises');
+    const moved=f.root+'-moved';t.after(()=>rm(moved,{recursive:true,force:true}));
+    await rename(f.root,moved);
+    assert.equal(hash(await readFile(join(moved,pins.BW_RENODE_RESOURCE_EXECUTABLE))),pins.BW_RENODE_SHA256);
+    assert.equal(hash(await readFile(join(moved,pins.BW_RENODE_MICROPYTHON_RESOURCE_ROOT,'manifest.json'))),pins.BW_RENODE_MICROPYTHON_MANIFEST_SHA256);
+});
+for (const defect of ['outside runtime','outside output','symlinked output parent','unknown mode']) {
+    test(`resource mode refuses ${defect} before creating support`,async t=>{
+        const f=await fixture(t);let resource=f.root;
+        if (defect==='outside runtime') resource=f.source;
+        if (defect==='outside output') {
+            const resources=join(f.root,'resources');await mkdir(resources);
+            await writeFile(join(resources,'runtime'),'synthetic runtime');
+            await rm(f.runtime);await symlink(join(resources,'runtime'),f.runtime);
+            resource=resources;
+        }
+        if (defect==='symlinked output parent') {
+            const outside=await mkdtemp(join(tmpdir(),'bw-outside-'));
+            t.after(()=>rm(outside,{recursive:true,force:true}));
+            const link=join(f.root,'escape');await symlink(outside,link);
+            const result=spawnSync(process.execPath,[script.pathname,f.source,f.runtime,join(link,'output'),'--resource-root',f.root],{encoding:'utf8'});
+            assert.notEqual(result.status,0);
+            await assert.rejects(readFile(join(outside,'output','manifest.json')),{code:'ENOENT'});
+            return;
+        }
+        const args=defect==='unknown mode' ? ['--ambient-root',resource] : ['--resource-root',resource];
+        assert.notEqual(f.run(args).status,0);
+        await assert.rejects(readFile(join(f.output,'manifest.json')),{code:'ENOENT'});
+    });
+}
+
+for (const defect of ['oversized runtime','nonregular runtime']) {
+    test(`refuses ${defect} before staging`,async t=>{
+        const f=await fixture(t);
+        if (defect==='oversized runtime') {
+            const {truncate}=await import('node:fs/promises');await truncate(f.runtime,512*1024*1024+1);
+        } else {await rm(f.runtime);await mkdir(f.runtime);}
+        assert.notEqual(f.run().status,0);
+        await assert.rejects(readFile(join(f.output,'manifest.json')),{code:'ENOENT'});
+    });
+}

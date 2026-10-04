@@ -169,6 +169,12 @@ pub fn run() {
                 app.state::<renode_supervisor::RenodeSupervisor>()
                     .set_flash_store_root(app.path().app_data_dir()?.join("spike-flash-v1"))
                     .map_err(std::io::Error::other)?;
+                if option_env!("BW_RENODE_MICROPYTHON_RESOURCE_ROOT").is_some()
+                    || option_env!("BW_RENODE_RESOURCE_EXECUTABLE").is_some() {
+                    app.state::<renode_supervisor::RenodeSupervisor>()
+                        .set_resource_root(app.path().resource_dir()?)
+                        .map_err(std::io::Error::other)?;
+                }
                 let main = app
                     .get_webview_window("main")
                     .ok_or(tauri::Error::WindowNotFound)?;
