@@ -52,7 +52,20 @@ await new Promise(done => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch();
 const results = [];
+let activePage = null;
+let activeControl = null;
 await mkdir(out, {recursive: true});
+// A bounded source excerpt is diagnostic text, never an engine download.
+const simSource = await readFile(resolve(STATIC, 'arcade/sim/sim.js'), 'utf8');
+const excerpts = [];
+for (const term of ['game-buttons', 'button-a', 'joystick-container', 'pointerdown', 'mousedown', 'touchstart']) {
+    let offset = simSource.indexOf(term);
+    for (let count = 0; offset >= 0 && count < 2; count++) {
+        excerpts.push(`${term} @ ${offset}\n${simSource.slice(Math.max(0, offset - 900), offset + 1600)}`);
+        offset = simSource.indexOf(term, offset + term.length);
+    }
+}
+await writeFile(resolve(out, 'input-contract.txt'), excerpts.join('\n\n').slice(0, 32768));
 try {
     for (const spec of [
         {name: 'desktop-mouse', viewport: {width: 640, height: 480}, hasTouch: false},
@@ -60,6 +73,7 @@ try {
     ]) {
         const context = await browser.newContext({viewport: spec.viewport, hasTouch: spec.hasTouch});
         const page = await context.newPage();
+        activePage = page;
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await context.route('**/*', route => route.request().url().startsWith(`${origin}/`) ? route.continue() : route.abort());
@@ -82,6 +96,7 @@ try {
         assert.ok(frame, `actual PXT simulator iframe: ${JSON.stringify(page.frames().map(item => item.url()))}`);
         const initialPixels = await frame.locator('#game-screen').screenshot();
         for (const [name, selector] of [['A', '.button-a'], ['B', '.button-b'], ['up', '.dpad-up'], ['down', '.dpad-down'], ['left', '.dpad-left'], ['right', '.dpad-right']]) {
+            activeControl = `${spec.name}:${name}`;
             const control = frame.locator(selector);
             const box = await control.boundingBox();
             assert.ok(box && box.width >= 12 && box.height >= 12, `${spec.name}: ${name} visible`);
@@ -109,11 +124,15 @@ try {
         await page.screenshot({path: resolve(out, `${spec.name}.png`)});
         results.push({name: spec.name, viewport: spec.viewport, serial, restartSerial: await page.evaluate(() => window.bwProofSerial), initialPixelsSha256: digest(initialPixels), changedPixelsSha256: digest(changedPixels), errors});
         await context.close();
+        activePage = null;
     }
     await writeFile(resolve(out, 'receipt.json'), JSON.stringify({schema: 'brickwright-pxt-controls/v1', sourceSha256: digest(source), compiledSha256: digest(compiled.outfiles['binary.js']), runtimeHashes: hashes, compilerNetworkAttempts: compiled.netAttempts, results, qualification: 'functional PXT browser input/output; not CPU RTx or complete PyBadge hardware'}, null, 2));
     console.log('PASS: actual PXT game responds to six mouse/touch controls, keyboard and restart on desktop/mobile viewports');
 } catch (error) {
-    await writeFile(resolve(out, 'failure.json'), JSON.stringify({error: String(error.stack || error), runtimeHashes: hashes, completedResults: results}, null, 2));
+    const serial = activePage ? await activePage.evaluate(() => window.bwProofSerial).catch(() => null) : null;
+    if (activePage) await activePage.screenshot({path: resolve(out, 'failure.png')}).catch(() => {});
+    await writeFile(resolve(out, 'failure.json'), JSON.stringify({error: String(error.stack || error), activeControl, serial, runtimeHashes: hashes, completedResults: results}, null, 2));
+    console.error(JSON.stringify({activeControl, serial}));
     throw error;
 } finally {
     await browser.close();
