@@ -482,6 +482,20 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+Vercel docs-only validation inheritance — **CLAIM 2026-10-04**, Codex bwcx
+`/root`, `/tmp/wt-bwcx-vercel-doc-inheritance-20261004`, branch
+`lane/vercel-doc-validation-20261004`, exact base
+`0c511c3dbe399d2b34969368f9861c18c8b5e6cd`. Envelope ONLY LANES.md,
+scripts/verify-vercel-main-checks.mjs and test/vercel-main-checks.test.mjs.
+Fix the proven docs-filter/current-main deployment gap by requiring a green main
+push ancestor and complete GitHub comparison whose entire delta is excluded
+documentation under the existing Build paths. Keep exact-current failures,
+supporting checks, full browser/FPGA jobs, freshness-before-publish and all
+production/package/workflow bytes unchanged. Prove rename/truncation/API-failure,
+executable/pin/shipped-doc/reincluded-doc and failed-current negative controls.
+One frozen qualification, guarded normal FF, then actual Vercel publication and
+live version proof. No package bump, duplicate Build or deployment-policy bypass.
+
 Linux browser boot timing boundary — **DONE candidate 2026-10-03**, Codex bwcx `/root`;
 isolated `/tmp/bwcx-linux-boot-timing-20261003`, exact base
 fb30f839f1498210e71da574f46650be8b57334e. Narrow evidence repair within the
