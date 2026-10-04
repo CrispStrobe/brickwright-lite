@@ -58,6 +58,10 @@ await mkdir(out, {recursive: true});
 // A bounded source excerpt is diagnostic text, never an engine download.
 const simSource = await readFile(resolve(STATIC, 'arcade/sim/sim.js'), 'utf8');
 const excerpts = [];
+for (const pattern of [/class Board extends/, /setButton\([^)]*\)\s*\{/, /setKey\([^)]*\)\s*\{/]) {
+    const match = pattern.exec(simSource);
+    if (match) excerpts.push(`${pattern} @ ${match.index}\n${simSource.slice(match.index, match.index + 3500)}`);
+}
 for (const term of ['pressureLevelByButtonId', 'isButtonPressed', 'setButton', 'setKey', 'buttonState', 'game-buttons', 'button-a', 'joystick-container', 'pointerdown', 'mousedown', 'touchstart']) {
     let offset = simSource.indexOf(term);
     for (let count = 0; offset >= 0 && count < 2; count++) {
@@ -114,6 +118,10 @@ try {
         await frame.locator('#game-screen').press('ArrowRight');
         await page.waitForFunction(() => window.bwProofSerial.includes('right:down:7') && window.bwProofSerial.includes('right:up:7'), null, {timeout: 5000});
         const serial = await page.evaluate(() => window.bwProofSerial);
+        const boardContract = await frame.evaluate(() => {
+            const board = window.pxsim.board();
+            return {fields: Object.keys(board), methods: Object.getOwnPropertyNames(Object.getPrototypeOf(board))};
+        });
         assert.match(serial, /right:up:7/);
         const changedPixels = await frame.locator('#game-screen').screenshot();
         assert.notEqual(digest(initialPixels), digest(changedPixels), 'button-driven game changes display');
@@ -128,7 +136,7 @@ try {
         await page.waitForFunction(() => window.bwProofSerial.includes('A:up:1'), null, {timeout: 5000});
         assert.deepEqual(errors, []);
         await page.screenshot({path: resolve(out, `${spec.name}.png`)});
-        results.push({name: spec.name, viewport: spec.viewport, frameViewport, serial, restartSerial: await page.evaluate(() => window.bwProofSerial), initialPixelsSha256: digest(initialPixels), changedPixelsSha256: digest(changedPixels), errors});
+        results.push({name: spec.name, viewport: spec.viewport, frameViewport, boardContract, serial, restartSerial: await page.evaluate(() => window.bwProofSerial), initialPixelsSha256: digest(initialPixels), changedPixelsSha256: digest(changedPixels), errors});
         await context.close();
         activePage = null;
     }
