@@ -16,6 +16,8 @@ breadboards before soldering the real thing.
 **Native binaries:** built by CI for macOS, Windows, Linux, iOS and Android
 (see **Actions** / **Releases**).
 
+For x86 programs, raw floppy/HDD images and DOSBox configs, see [the GUI loading guide](docs/I80386-GUI.md), [backend and format scope](docs/X86-LOADING-SCOPE.md), and [the upstream CLI/GUI loading guide](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-LOADING-GUIDE.md).
+
 ### Source ownership and upstream integrity
 
 Fast landing does not mean local forking. `bw-board` and `bw-circuit-ui` are
