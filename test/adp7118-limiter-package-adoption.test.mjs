@@ -8,7 +8,7 @@ import {pathToFileURL} from 'node:url';
 import {loadCircuitModel} from '../scripts/lib/polarity-oracle.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
-const boardPin='0f0092051eefb24a364645edbb371d8755dd1ad6';
+const boardPin='31c6499a617e274505386dbbc9d3a955e8f527ac';
 const packageSpec=`github:CrispStrobe/bw-board#${boardPin}`;
 const fixture=JSON.parse(readFileSync(path.join(root,'test/fixtures/adp7118-fixed-regulator.json'),'utf8'));
 const terminals=['vout_1','vout_2','sense_adj','gnd','en','ss','vin_7','vin_8'];
@@ -97,7 +97,7 @@ async function installedCircuit(R,C){
 test('limiter adoption selects the exact pinned installed package rather than a board override',()=>{
     const pins=JSON.parse(readFileSync(path.join(root,'vendor-pins.json'),'utf8'));
     assert.equal(pins['bw-board'],boardPin);
-    assert.equal(pins['bw-circuit-ui'],'494337a619aba4181a92f73ad2b8fc271ae83ad5');
+    assert.equal(pins['bw-circuit-ui'],'e3a3ffe6fa5eca6edac7aef249a90c46efb6a514');
     const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
     assert.equal(pkg.devDependencies['bw-board'],packageSpec);
     const lock=JSON.parse(readFileSync(path.join(root,'package-lock.json'),'utf8'));
@@ -173,6 +173,85 @@ for(const [R,C,sampleTolerance,meanTolerance,precision] of [
         }finally{rmSync(dir,{recursive:true,force:true});}
     });
 }
+
+for(const [R,C] of [[10,2.2e-6],[500,22e-6]]){
+    test(`installed precision stream preserves provisional clocks and independent ${R} ohm / ${C} F waveform, mean and current`,()=>{
+        const dir=mkdtempSync(path.join(tmpdir(),'lite-limiter-stream-'));
+        const env={...process.env};delete env.BW_BOARD;
+        try{
+            const input=path.join(dir,'input.json');writeFileSync(input,JSON.stringify(limiterFixture(R,C)));
+            const expected=oracle(R,C),cli=path.join(root,'node_modules/bw-circuit-ui/bin/bwc.mjs');
+            for(const [rate,step] of [['100kHz',10000n],['45kHz',22222n]]){
+                const receiptPath=path.join(dir,`${rate}.json`);
+                const result=spawnSync(process.execPath,[cli,'measure',input,'--watch',
+                    '--scope','u1.vout_1,gnd.gnd','--meter','voltage:u1.vout_1,gnd.gnd',
+                    ...['vout_1','vout_2','vin_7','vin_8','gnd'].flatMap(pin=>['--meter',`current:u1.${pin}`]),
+                    '--duration','1200us','--rate',rate,'--profile','precision-v1','--initial','zero-state',
+                    '--receipt',receiptPath],{encoding:'utf8',env,timeout:30000});
+                assert.equal(result.error,undefined);assert.equal(result.status,0,result.stderr);
+                const rows=result.stdout.trim().split('\n').map(JSON.parse),summary=rows.pop();
+                assert.equal(summary.recordType,'summary');assert.equal(summary.qualified,true);
+                assert.equal(rows.length,Number((1200000n+step-1n)/step));
+                for(const [index,row] of rows.entries()){
+                    const time=(BigInt(index+1)*step)>1200000n?1200000n:BigInt(index+1)*step;
+                    const scopeTime=Number(time/step*step)/1e9;
+                    assert.equal(row.recordType,'sample');assert.equal(row.qualified,false);assert.equal(row.index,index);
+                    assert.equal(row.timeSeconds,Number(time)/1e9);assert.equal(row.scope[0].timeSeconds,scopeTime);
+                    near(row.scope[0].volts,expected.voltage(scopeTime),5e-7,`stream ${rate} point ${index}`);
+                }
+                const report=summary.report,bounded=report.transient.boundedAdvance;
+                assert.equal(bounded.completed,true);assert.equal(bounded.failure,null);
+                assert.equal(bounded.requestedTimeNs,'1200000');
+                assert.deepEqual(bounded.limits,{maxAttempts:20000,maxSolves:60001,maxAdvances:200});
+                assert.deepEqual(bounded.stream,{stepNs:String(step),observerCalls:rows.length});
+                for(const [key,limit] of [['attempts',20000],['solves',60001],['advances',200]]){
+                    assert.ok(Number.isSafeInteger(bounded.work[key])&&bounded.work[key]>0&&bounded.work[key]<=limit);
+                }
+                near(report.meters[0].reading.siValue,expected.mean,1e-6,'stream capture-window mean');
+                const current=Object.fromEntries(report.meters.slice(1).map(row=>[row.probes[0].split('.')[1],row.reading.siValue]));
+                near(current.vout_1+current.vout_2,expected.mean/R+C*expected.voltage(.0012)/.0012,2e-6,'stream output/load/storage delivery');
+                near(Object.values(current).reduce((sum,value)=>sum+value,0),0,1e-9,'stream mean terminal KCL');
+                const receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
+                assert.equal(receipt.engine.selection,'installed package');assert.equal(receipt.invocation.BW_BOARD,null);
+                assert.equal(receipt.acquisition,'watch');assert.equal(receipt.exitCode,0);
+                assert.deepEqual(receipt.report,report);
+            }
+        }finally{rmSync(dir,{recursive:true,force:true});}
+    });
+}
+
+test('installed precision stream has real late aggregate refusal and rejects an ordinary-advance bypass without success artifacts',()=>{
+    const dir=mkdtempSync(path.join(tmpdir(),'lite-limiter-stream-failure-'));
+    const env={...process.env};delete env.BW_BOARD;
+    try{
+        const input=path.join(dir,'input.json');writeFileSync(input,JSON.stringify(limiterFixture()));
+        const cli=path.join(root,'node_modules/bw-circuit-ui/bin/bwc.mjs');
+        for(const [name,rate,preload,reason] of [
+            ['actual-aggregate-cap','90kHz',null,/whole-advance work budget exceeded/],
+            ['ordinary-bypass','100kHz',`import {BoardImpl} from ${JSON.stringify(pathToFileURL(path.join(root,'node_modules/bw-board/src/board.js')).href)};
+                BoardImpl.prototype.advanceToBoundedStream=function(t,limits,options){
+                    for(let time=options.stepNs;time<=t;time+=options.stepNs){this.advanceTo(time);options.onStep({timeNs:time});}};`,/whole-advance receipt/],
+        ]){
+            const csv=path.join(dir,`${name}.csv`),receipt=path.join(dir,`${name}.json`),module=path.join(dir,`${name}.mjs`);
+            if(preload)writeFileSync(module,preload);
+            const result=spawnSync(process.execPath,[...(preload?['--import',module]:[]),cli,'measure',input,
+                '--watch','--scope','u1.vout_1,gnd.gnd','--duration','1200us','--rate',rate,
+                '--profile','precision-v1','--initial','zero-state','--csv',csv,'--receipt',receipt],
+            {encoding:'utf8',env,timeout:30000});
+            assert.equal(result.error,undefined);assert.equal(result.status,2,result.stderr);
+            const rows=result.stdout.trim().split('\n').map(JSON.parse),failure=rows.pop();
+            assert.ok(rows.length>0,'actual provisional readings precede terminal refusal');
+            assert.ok(rows.every(row=>row.recordType==='sample'&&row.qualified===false));
+            assert.equal(failure.recordType,'failure');assert.equal(failure.qualified,false);
+            assert.match(failure.error,reason);
+            if(!preload){assert.equal(failure.transient.boundedAdvance.completed,false);
+                assert.ok(failure.timeSeconds>0&&failure.timeSeconds<.0012);}
+            for(const destination of [csv,receipt]){
+                assert.throws(()=>readFileSync(destination),error=>error.code==='ENOENT');
+            }
+        }
+    }finally{rmSync(dir,{recursive:true,force:true});}
+});
 
 test('installed Circuit uses coherent accepted-step currents and preserves partitioned limiter trajectories',async t=>{
     const {BoardImpl}=await import(path.join(root,'node_modules/bw-board/src/board.js'));

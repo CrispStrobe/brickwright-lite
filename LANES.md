@@ -482,26 +482,6 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-ADP7118 finite precision stream package adoption — **CLAIM 2026-10-04**, Codex
-bwcx `/root`; isolated wt-lite-adp-stream-20261004, branch
-lane/adp7118-stream-package-adoption-20261004; exact main base
-f246c712a63e510d106266f806a3c2caeb6b4f3c. Own Board/CUI package boundary:
-landed Board31c6499a617e274505386dbbc9d3a955e8f527ac (CI37146153959 and
-Harris37146153948 green) and CUIe3a3ffe6fa5eca6edac7aef249a90c46efb6a514
-(CI37176374150 all four jobs green). Scope: this paragraph; vendor-pins.json;
-generated root/GUI package specs and locks, package notices, Board census,
-8086/matrix reports and controller/ROM provenance mirrors only where pin-stale;
-existing test/adp7118-limiter-package-adoption.test.mjs for actual packaged CLI
-finite stream waveform/mean, provisional/final receipt and late budget refusal;
-exact stale Board/CUI assertions in existing ADP7118/LM324/LM741/LT1001/LT1763
-package tests only. Preserve existing interactive/batch accuracy bounds/cases.
-No source copy/fork, model/solver/tolerance, other pin, corpus payload, application
-UI/bin wrapper/browser harness/workflow/deploy-policy edit. Streaming entrypoint
-is installed bw-circuit-ui/bin/bwc.mjs, not an invented bwlite circuit command.
-Merge canonical claim before implementation; verify package identity, generator
-checks and independent caller consequences; one final exact-head hosted Build,
-guarded normal landing, then separately evidenced publication if requested.
-
 Linux browser boot timing boundary — **DONE candidate 2026-10-03**, Codex bwcx `/root`;
 isolated `/tmp/bwcx-linux-boot-timing-20261003`, exact base
 fb30f839f1498210e71da574f46650be8b57334e. Narrow evidence repair within the
@@ -950,6 +930,37 @@ the old red is not a landing or deployment receipt.
 | C: a doc's name printed as markdown is not a read, and the trigger list may not vouch for itself | lego-b9 (VPS Claude session, worktree `wt/lego-b9-t9`, branch `lane/doc-triggers-output-only`) | 2026-09-07 | **CLAIMED** (lego-ac's ask, option C of docs/CI-QUEUE-2026-09-07-MAIN.md). Two instances held docs/LANGUAGE-DEVICE-MATRIX-PLAN.md in build.yml's re-include list: `scripts/gen-reader-coverage.mjs:171` and `scripts/gen-language-device-matrix.mjs:97`, each printing the plan's name between escaped backticks inside a template literal — a report's provenance line, not a read. Five main runs on 2026-09-07 (127 runner-min) verified plan-only edits for it. While measuring, a second thing: the census scans `.github/`, so build.yml's own `- 'docs/X.md'` entries counted as mentions and the test's STALE direction could never fire (fired live: re-including a doc nothing names stayed 5/5 green) — two docs whose readers had left (`DEBUGGER-NEXT-ROADMAP.md`, `FULL-DEBUGGER-ARCHITECTURE.md`) were still re-included; GATES thirtieth species. `scripts/lib/doc-triggers.mjs`: a workflow's trigger entry is not a mention; a name between escaped backticks is stripped before the match and listed by `outputOnlyMentions` (reported in the test's diagnostic, not counted). Mutations in a throwaway tree (printed-only line, read line, both on one line, a trigger entry vs a `run:` that reads) and on the real list (an unmentioned doc, chosen at run time, re-included → stale by name); fired live: a code line naming the plan → missing by name. Re-includes 18 → 15; a plan-only or LANES-only push now starts no run. |
 
 ## DONE — recently, so nobody redoes it
+
+ADP7118 finite precision stream package adoption — **DONE candidate 2026-10-04**,
+Codex bwcx `/root`; branch lane/adp7118-stream-package-adoption-20261004.
+Exact main base f246c712a63e510d106266f806a3c2caeb6b4f3c; canonical claim 2bb56e40a
+merged first. Candidate moved from wt-lite-adp-stream-20261004 to isolated
+/tmp/bwcx-lite-adp-stream-candidate-20261004 because shared-volume ENOSPC
+prevented safe lock/ledger writes; the code and package scope did not change.
+Board 31c6499a617e274505386dbbc9d3a955e8f527ac (CI 37146153959/Harris 37146153948)
+and CUI e3a3ffe6fa5eca6edac7aef249a90c46efb6a514 (CI 37176374150/37176864926)
+are landed upstream and green. Root/GUI exact specs and locks, package notices,
+census, 8086/matrix reports and pin-stale controller/ROM provenance regenerated;
+locks change only these two packages' specs/resolved identities/integrities.
+Root installed npm-pack bytes match all 10,367 Board/1,301 CUI files and resolve
+one engine. Installed CLI tests preserve interactive/batch cases and prove two
+loads at 100kHz/45kHz: provisional actual clocks, real scope sample timestamps
+including the short final chunk, analytic waveform/window mean, signed output
+current and terminal KCL, exact native limits/work/step/count and final receipts.
+Real 90kHz cumulative budget refusal and ordinary-advance bypass both refuse
+success artifacts; the existing zero-sum/stale-VIN mutation stays load-bearing.
+Final focused consumer/provenance checks: 102/102 pass, zero skips. All seven
+generator checks plus package notices pass. History-aware pin/fetch/mirror
+checks: 30/30; ROM/build sources across 0f009205..31c6499 are byte-unchanged,
+as are the controller bundle and firmware binaries. Three additional firmware
+pin fields were repaired after the full-history gate exposed them. Only exact
+pin assertions move in the five other physical-part package tests. No source
+fork, model/solver/tolerance, other pin, corpus, application wrapper/UI, browser
+harness, workflow or deploy-policy change. Actual entrypoint remains installed
+bw-circuit-ui/bin/bwc.mjs; this is not a GUI precision-streaming claim. One final
+exact-head hosted Build precedes guarded normal landing; publication remains
+a separately verified step. GUI installed-byte/browser proof is hosted, not
+claimed locally; the implementation commit identifies its own candidate head.
 
 
 | DONE — Visible micro:bit LED matrix on the labwired tier (task B2 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: 6f571e07-89cb-47b7-907d-ea390bbf9778`, worktrees `/mnt/volume1/code/wt-lw-nrfgpio` (labwired-core), `/mnt/volume1/code/wt-bwb-mbmatrix` (bw-board), `/mnt/volume1/code/wt/cui-microbit-face` (bw-circuit-ui), `/mnt/volume1/code/lego/wt-lite-labwired-debug` (Lite, branch `lane/b2-labwired-nrf-led-matrix`); claim `76d21c170`, scope amended `858315bdb` | **labwired-core fork #123 merged `a7c7cbdf`** (all 19 checks green): nRF GPIOTE owns its pad (a Task-mode CONFIG drives OUTINIT; channels take pin-claim tokens so the pad reads the GPIOTE level over DIR/OUT; GPIOTE latched a whole IN word from a zeroed shadow, resetting the buttons to "pressed" — now per-pin), new `led_matrix` primitive (`led-matrix-mux`), micro:bit V1/V2 displays; release `labwired-wasm-a7c7cbdf`. **bw-board #143 merged `5eeb4922`**: the micro:bit's on-module matrix on the bench manifest, adapter `boardMatrix` → `Board.setPartMatrix`, `gray8` decode, catalog gains `microbit-v2`, `binToElf extraSegments` (UICR); labwired-wasm.yml run 36604174128 90/90 incl. the real-engine micro:bit tests (floor 60→88). **bw-circuit-ui #75 merged `b6b18822`**: the micro:bit (`mcu`) face draws its 5×5 from `deviceStates[id].matrix`. **Lite**: pins bw-board `5eeb4922`, bw-circuit-ui `b6b18822`, labwired-wasm `a7c7cbdf` (+ pin-bump surfaces); `labwired-firmware.js` loads the V2 section of a universal .hex (was the V1 image) and keeps UICR as `extraSegments` (was dropped → MakeCode V2 hard-faulted at boot). Evidence: a real MakeCode "show heart" V2 image on the engine shows `09090 99999 99999 09990 00900`, buttons stay released, greyscale 255/128/32 → 255/107/33 (local probe; image not committable — Nordic MBR). | **DONE 2026-09-29.** |
