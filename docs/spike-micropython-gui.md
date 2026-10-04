@@ -119,3 +119,20 @@ moved the arena rover, and program completion released hub and clock ownership.
 This is modeled behavior, not physical-hub calibration. Feedback commands remain
 synchronous; multiport commands do not promise synchronized starts. `stop_all()`
 brakes A/B and auxiliary ports already verified as motors by the current module.
+
+## Final telemetry at successful completion
+
+After the raw REPL reports success, the session pauses its polling loop and waits
+for any poll already in flight. It then requests one fresh native state frame.
+The frame must belong to the same image and ready UART generation and satisfy
+the existing sequence, clock, topology, motor and motion bounds. The shared hub
+and arena receive that frame before the GUI announces completion and closes the
+owned session. An invalid final frame reports a failure and cleans up; it does
+not announce successful completion or apply invalid motor observations.
+
+Stop during final sampling suppresses late frame publication and completion.
+Completion does not promise that a program has electrically stopped its motors;
+programs must still brake or coast explicitly as required. This samples the
+modeled state after source execution, rather than freezing the emulated CPU at
+its final Python statement. The existing sampling interval and numerical bounds
+remain unchanged. NuttX's persistent-program completion path is unchanged.
