@@ -29,7 +29,8 @@ second large GUI copy in desktop Rust library metadata.
 The installed layout is `usr/bin/brickwright-tauri` with resources under
 `usr/lib/Brickwright` (the configured Tauri product name). Compile pins use paths relative to that resource
 directory. The resource closure includes the exact Renode executable, fourteen
-named native libraries, supplied notices and the seventeen verified support
+named native libraries, the runtime root marker and upstream monitor helper,
+supplied notices and the seventeen verified support
 artifacts. Test tools, plugins and firmware directories from the runtime input
 are excluded. File hashes and package receipts are recorded privately.
 

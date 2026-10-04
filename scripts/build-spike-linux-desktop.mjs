@@ -37,6 +37,12 @@ for (const name of ['renode', ...libraries]) {
     if (!item.bytes.subarray(0, 4).equals(Buffer.from([127, 69, 76, 70]))) throw new Error('Runtime input must be ELF');
     nativeFiles.push({name, ...item});
 }
+// Renode discovers its monitor startup helpers through this runtime root marker.
+// The state service uses the upstream monitor's documented external accessor.
+for (const name of ['.renode-root', 'scripts/monitor.py']) {
+    const item = await regular(runtime, name, 1024 * 1024);
+    nativeFiles.push({name, ...item});
+}
 const notices = await readdir(join(runtime, 'licenses'));
 if (!notices.includes('renode-license') || notices.length > 128 ||
     notices.some(name => !/^[A-Za-z0-9_.-]+-license$/.test(name))) throw new Error('Unexpected runtime notice closure');

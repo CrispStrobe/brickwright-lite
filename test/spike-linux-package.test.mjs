@@ -30,6 +30,9 @@ async function fixture () {
     }
     await writeFile(join(support,'manifest.json'),JSON.stringify(manifest));
     for (const name of ['renode',...libraries]) await writeFile(join(runtime,name),Buffer.from([127,69,76,70,1]));
+    await mkdir(join(runtime,'scripts'));
+    await writeFile(join(runtime,'.renode-root'),'synthetic runtime root');
+    await writeFile(join(runtime,'scripts/monitor.py'),'synthetic monitor helpers');
     await mkdir(join(runtime,'licenses'));await writeFile(join(runtime,'licenses/renode-license'),'synthetic MIT notice');
     await writeFile(join(frontend,'index.html'),'synthetic frontend');await writeFile(join(frontend,'capability-broker.html'),'synthetic broker');
     return {root,support,runtime,frontend};
@@ -46,9 +49,9 @@ test('offline preparation closes resources, keeps firmware out and preserves an 
         assert.ok(native.files['apps/tauri/src-tauri/src/main.rs']);
         const pins=JSON.parse(await readFile(join(output,'compile-pins.json'),'utf8'));
         assert.equal(pins.BW_RENODE_RESOURCE_EXECUTABLE,'renode/renode');assert.equal(pins.BW_RENODE_MICROPYTHON_RESOURCE_ROOT,'micropython');
-        assert.deepEqual((await readdir(join(output,'resources/renode'))).sort(),['renode','licenses',...libraries].sort());
+        assert.deepEqual((await readdir(join(output,'resources/renode'))).sort(),['renode','licenses','scripts','.renode-root',...libraries].sort());
         const config=JSON.parse(await readFile(join(output,'tauri-config.json'),'utf8'));
-        assert.equal(Object.values(config.bundle.resources).length,17+15+1);
+        assert.equal(Object.values(config.bundle.resources).length,17+15+2+1);
         assert.ok(Object.values(config.bundle.resources).every(name=>!name.includes('private-input')));
         const inputs=JSON.parse(await readFile(join(output,'build-inputs.json'),'utf8'));assert.equal(inputs.redistributionValidated,false);
         const before=await readFile(join(output,'compile-pins.json'));assert.notEqual(run(f,output).status,0);
