@@ -58,7 +58,7 @@ await mkdir(out, {recursive: true});
 // A bounded source excerpt is diagnostic text, never an engine download.
 const simSource = await readFile(resolve(STATIC, 'arcade/sim/sim.js'), 'utf8');
 const excerpts = [];
-for (const term of ['game-buttons', 'button-a', 'joystick-container', 'pointerdown', 'mousedown', 'touchstart']) {
+for (const term of ['pressureLevelByButtonId', 'isButtonPressed', 'setButton', 'setKey', 'buttonState', 'game-buttons', 'button-a', 'joystick-container', 'pointerdown', 'mousedown', 'touchstart']) {
     let offset = simSource.indexOf(term);
     for (let count = 0; offset >= 0 && count < 2; count++) {
         excerpts.push(`${term} @ ${offset}\n${simSource.slice(Math.max(0, offset - 900), offset + 1600)}`);
