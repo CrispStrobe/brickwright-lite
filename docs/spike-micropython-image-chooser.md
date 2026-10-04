@@ -30,5 +30,6 @@ reset on a supplied MicroPython image. It does not automate the OS dialog. Gener
 harnesses, firmware, JSON, logs and raw transcripts stay private.
 
 The follow-up [GUI integration](spike-micropython-gui.md) aligns the frontend with
-this qualified service and adds desktop selection/Code-tab execution. Robot Python
-bindings, portable package assembly and original LEGO firmware remain pending.
+this qualified service and adds desktop selection/Code-tab execution. Updated public support seeds now supply the `bwspike` motor/sensor API; see the
+[GUI setup and program example](spike-micropython-gui.md#robot-programs-and-desktop-setup).
+Portable installed packaging and original LEGO firmware remain pending.
