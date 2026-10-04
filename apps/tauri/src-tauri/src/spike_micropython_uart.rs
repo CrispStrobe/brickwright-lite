@@ -419,7 +419,7 @@ mod tests {
         let (other, mut other_peer) = pair();
         let pending = uart.clone();
         let reader = thread::spawn(move || pending.invoke(read(1, 1000)));
-        let ownership_deadline = Instant::now() + MAX_DEADLINE;
+        let ownership_deadline = Instant::now() + Duration::from_secs(5);
         loop {
             match uart.0.reader.try_lock() {
                 Err(TryLockError::WouldBlock) => break,
@@ -430,7 +430,9 @@ mod tests {
                 Instant::now() < ownership_deadline,
                 "reader never acquired ownership"
             );
-            thread::yield_now();
+            // Yield the lock and CPU so the worker can acquire reader ownership.
+            // This is test setup; the cancellation deadline below stays unchanged.
+            thread::sleep(Duration::from_millis(1));
         }
         let start = Instant::now();
         assert_eq!(uart.invoke(read(1, 1000)), Err(UartError::Busy));
