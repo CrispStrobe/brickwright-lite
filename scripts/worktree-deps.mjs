@@ -16,7 +16,11 @@
  *   <store>/<key>/manifest.json       inputs, versions, git-dep shas, digest
  *
  * The key hashes every file that decides the tree (see KEY_INPUTS) plus the
- * Node/npm majors and platform. The store is populated with the SAME commands
+ * Node/npm majors and platform. Of vendor-pins.json it hashes ONLY the npm
+ * git-sha deps (GIT_DEPS, pin-packages.mjs's PACKAGES): the other pins
+ * (sb3-creator, stc-compiler-flasher, ...) are synced as files, not installed,
+ * so keying them minted a new 1-1.8 GB store entry per unrelated pin bump
+ * (task C6; five keys on 2026-10-05). The store is populated with the SAME commands
  * CI runs (.github/workflows/build.yml), in a staging dir, so a worktree's own
  * files are never rewritten by the install.
  *
@@ -56,6 +60,7 @@ import {
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';
+import {PACKAGES} from './pin-packages.mjs';
 
 const SCHEMA = 'bw-lite-deps/1';
 export const MARKER = '.bw-lite-deps.json';
@@ -67,14 +72,23 @@ export const TREES = [
         args: ['install', '--ignore-scripts', '--legacy-peer-deps', '--no-audit', '--no-fund']}
 ];
 
-/** Files whose bytes decide the installed trees. */
+/**
+ * Files that decide the installed trees. Each is hashed through keyText():
+ * the gui pair with its derived bw-* entries dropped, vendor-pins.json
+ * reduced to its GIT_DEPS entries.
+ */
 export const KEY_INPUTS = [
     'package.json', 'package-lock.json', 'vendor-pins.json',
     'packages/scratch-gui/package.json', 'packages/scratch-gui/package-lock.json'
 ];
 
-/** git-sha dependencies whose spec integrate.mjs derives from vendor-pins.json. */
-export const GIT_DEPS = ['bw-board', 'bw-circuit-ui'];
+/**
+ * The git-sha npm dependencies whose spec is derived from vendor-pins.json:
+ * pin-packages.mjs writes them into the root package.json and integrate.mjs
+ * into packages/scratch-gui's (test/worktree-deps.test.mjs checks integrate's
+ * list against this one). These, and only these, pins are installed by npm.
+ */
+export const GIT_DEPS = PACKAGES;
 
 /**
  * Paths (relative to a tree's node_modules) the repo's own scripts write after
@@ -96,7 +110,7 @@ const readJson = p => JSON.parse(readFileSync(p, 'utf8'));
  * The gui package.json/lock as tracked still name whatever bw-* sha they were
  * last committed with; integrate.mjs rewrites the spec from vendor-pins.json
  * and `npm install` then rewrites the lock entry. Those entries are therefore
- * derived data: drop them, and vendor-pins.json (also keyed) carries the pin.
+ * derived data: drop them, and vendor-pins.json's GIT_DEPS entries (keyed) carry the pin.
  * The key is then the same before and after integrate/install.
  */
 export const normaliseGui = (name, text) => {
@@ -112,6 +126,21 @@ export const normaliseGui = (name, text) => {
 };
 
 /**
+ * vendor-pins.json as the installs see it: only the GIT_DEPS entries. A pin
+ * that is not an npm dependency changes no installed byte, so it must not
+ * change the key; an npm pin must (the gui lock's own entry is normalised out).
+ */
+export const npmPins = text => {
+    const pins = JSON.parse(text);
+    return JSON.stringify(Object.fromEntries([...GIT_DEPS].sort().map(d => [d, pins[d] ?? null])));
+};
+
+/** The text of one KEY_INPUTS file that is hashed into the key. */
+export const keyText = (rel, text) =>
+    rel === 'vendor-pins.json' ? npmPins(text)
+        : rel.startsWith('packages/scratch-gui/') ? normaliseGui(rel, text) : text;
+
+/**
  * @param {string} wt worktree root
  * @param {{nodeMajor?: number, npmMajor?: number, platform?: string, arch?: string}} env
  */
@@ -122,9 +151,7 @@ export function computeKey (wt, env = {}) {
     for (const rel of KEY_INPUTS) {
         const p = path.join(wt, rel);
         if (!existsSync(p)) throw new Error(`key input missing: ${rel}`);
-        let text = readFileSync(p, 'utf8');
-        if (rel.startsWith('packages/scratch-gui/')) text = normaliseGui(rel, text);
-        inputs[rel] = sha256(text);
+        inputs[rel] = sha256(keyText(rel, readFileSync(p, 'utf8')));
         h.update(`${rel}\0${inputs[rel]}\n`);
     }
     const e = {
