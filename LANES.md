@@ -445,7 +445,11 @@ several false local reds on 2026-09-29.
 
 `scripts/worktree-deps.mjs` replaces both. It keeps a store keyed on every
 input that decides the install: both lockfiles, both `package.json` files,
-`vendor-pins.json`, and the Node and npm majors. It populates the store once,
+the npm git-sha pins in `vendor-pins.json` (bw-board and bw-circuit-ui, the
+`PACKAGES` of `scripts/pin-packages.mjs`, which integrate.mjs also installs),
+the install commands, and the Node and npm majors. Pins npm never installs
+(sb3-creator, stc-compiler-flasher, ...) are not keyed, so bumping them does
+not mint a new ~1-1.8 GB entry (task C6). It populates the store once,
 using CI's own commands, and hardlinks the store into each worktree.
 
 ```bash
@@ -465,7 +469,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
   of the store, so a chmod followed by a write is caught too. New files, such
   as webpack's `node_modules/.cache`, land in the worktree's own directories.
 - **`verify` fails with the remedy** in these cases: the lockfiles or pins moved
-  after linking (STALE), the store was modified, a file is no longer the
+  after linking (STALE; a non-npm pin bump is not stale), the store was modified, a file is no longer the
   store's inode, or a bw-* package is not at `vendor-pins.json`. On an unlinked
   worktree it still checks the installed tree against the lockfile and pins,
   so it also catches a stale borrowed tree.
@@ -482,7 +486,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-| Deps-store key covers only npm-relevant pins (task C6 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c6-deps-key` | base `e17f82b29`; paths `scripts/worktree-deps.mjs`, `test/worktree-deps.test.mjs`, the LANES.md shared-node_modules section if the wording changes; this row and the task file. | **CLAIMED 2026-10-05.** |
+| Deps-store key covers only npm-relevant pins (task C6 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c6-deps-key` | base `e17f82b29`; paths `scripts/worktree-deps.mjs`, `test/worktree-deps.test.mjs`, the LANES.md shared-node_modules section if the wording changes; this row and the task file. | **DONE 2026-10-05 — Lite PR #657** (branch `lane/c6-deps-key`, impl `071d5cb47`). The key hashes `vendor-pins.json` reduced to `GIT_DEPS` (`keyText`/`npmPins` in `scripts/worktree-deps.mjs`); `GIT_DEPS` = `PACKAGES` of `scripts/pin-packages.mjs`, and a test parses integrate.mjs's vendor-pins -> `github:CrispStrobe/<name>#<sha>` loop and asserts the same set. `verify` unchanged (every installed git-sha dep vs vendor-pins; STALE when an npm pin moves). **Measured** (fixed env, files via `git show`): B10 sb3-creator bump #653 `e17f82b29^1`->`e17f82b29` old key `65293d6a`->`f9a548b3`, new `dcea1070`->`dcea1070`; #648 sb3-creator old `8a32e399`->`65293d6a`, new unchanged `dcea1070`; #644 bw-circuit-ui old `9e568970`->`8a32e399`, new `b7d5c62e`->`dcea1070`. One-time rekey: main now keys to `dcea1070`; old entries age out via `gc`. **Tests:** `test/worktree-deps.test.mjs` 11/11 (+2): non-npm bumps keep the key and verify OK, each npm pin alone moves it and verify says STALE; mutations (whole vendor-pins keyed, npm pins dropped, GIT_DEPS drift) each red, control green. CI verdict: the PR's exact-head run. |
 
 | Salvage E3b: SB3 save/load of BWValues references and UNDEFINED (task E3b of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/e3b-sb3-values` | base `f60ebf370`; paths `overlay/scratch-vm/src/serialization/sb3.js` (overlay), the overlay apply step if needed, `test/bw-values.test.mjs` + focused save/load tests; this row and the task file. Not E1/E2/E3 extensions. | **DONE 2026-10-05 — Lite PR #656** (branch `lane/e3b-sb3-values`; impl `918b6139b`, merge of main `c76aeb1ca`). `overlay/scratch-vm/src/serialization/bw-sb3-values.js` + three anchor hooks in sb3.js and the loadProject SB1-signature check (`scripts/apply-vm-overlay.mjs`); on-disk form = plain scalar field + guarded per-target `bwValues` sidecar; references reopen dead (same kind+id). `test/bw-sb3-values.test.mjs` 49 tests (per kind × variable/list through the real VM + stock scratch-parser), E3a's red-on-fix case in `test/bw-values.test.mjs` rewritten; mutations M1-M6, M8-M11 each red (drop encode 33, drop decode 32, raw objects 32, in-place list 14, no guard 1, refs as placeholders 15, SB1 for all 1, length unchecked 1, -0 as text 2, unknown version 1), control 60/60. Local: focused gates 406/0; full `test:fast` 5618 / 5497 pass / 0 fail / 121 skipped. CI verdict: the PR's exact-head run. |
 
