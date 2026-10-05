@@ -50,11 +50,10 @@
  *    `contains` compare through Cast, where every reference is the string
  *    '[object Object]': two DIFFERENT references are "equal" to Scratch. Only
  *    BWValues.compare/equal/indexOf tell them apart.
- *  - Saving: stock sb3 serialization writes a reference or UNDEFINED held in a
- *    variable as a JSON object, and scratch-parser then REFUSES the saved
- *    project (variable values must be string or number), so it no longer
- *    loads. Making such values survive save/load is the `sb3.js` serialization
- *    piece of task E3, not this file.
+ *  - Saving is not done here: serialization/bw-sb3-values.js (task E3b) writes
+ *    a reference, UNDEFINED or a non-finite number held in a variable or list
+ *    as a plain placeholder plus an exact-value sidecar, because stock sb3
+ *    wrote them as JSON objects that scratch-parser refuses (or as 0).
  */
 // The Arrays extension's built-in value rules (arrays.js `makeValues`), verbatim.
 const makeValues = () => {
