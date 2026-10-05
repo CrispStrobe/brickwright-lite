@@ -117,6 +117,38 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
     },
     {
+        // Task E1: the Arcade import runtime compiles MakeCode's own code and
+        // data into the bundle — pxt-common-packages' simulator image
+        // algorithms and speech/text rendering, generated from the pinned
+        // pxt-arcade bundle (scripts/generate-arcade-{image-operations,speech}.mjs).
+        name: 'pxt-common-packages',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech-pxt.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt',
+    },
+    {
+        // ... and pxt-arcade's built-in image table (device/*.jres), generated
+        // from the same pinned bundle (scripts/generate-arcade-builtin-images.mjs).
+        name: 'pxt-arcade',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt',
+    },
+    {
+        // font12 of pxt-common-packages, a pixel font based on Adobe's Source
+        // Han Sans v2.001R, carried in speech-fonts.json for speech bubbles.
+        name: 'Source Han Sans',
+        licence: 'OFL-1.1',
+        holder: 'Adobe',
+        evidence: 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech-fonts.json',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/pxt-speech-font12.OFL.txt',
+    },
+    {
         // The core compiler, shipped as WASM. BSD-2 clause 2 attaches to
         // BINARY redistribution specifically, which is exactly what a .wasm
         // in the bundle is.

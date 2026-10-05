@@ -227,7 +227,13 @@ test('the router sends each artefact to the right outcome', async () => {
     assert.equal(arcade.lang, 'pseudocode', 'an Arcade game becomes a Scratch project');
     assert.equal(arcade.note, 'arcade');
     assert.ok(arcade.costumes.length, 'with its artwork');
-    assert.ok(arcade.unsupported.length, 'and an honest account of what one pong script cannot become');
+    // Before the Arcade runtime (task E1) one pong script driving three
+    // sprites could not become Scratch sprites and came back as refusals.
+    // On the runtime it imports whole; makecode-arcade-runs runs it with no
+    // block errors. Anything it still could not do would be listed here.
+    assert.ok(Array.isArray(arcade.unsupported));
+    assert.deepEqual(arcade.unsupported, [], 'the pong imports whole on the Arcade runtime');
+    assert.match(arcade.code, /^DEVICE ARCADE/);
 });
 
 test('the accept list and the extension test agree with each other', () => {

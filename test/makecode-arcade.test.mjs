@@ -1,15 +1,15 @@
 /**
  * MakeCode Arcade → a Scratch project: the artwork and the translation.
  *
- * Two real games carry this file. `arcade-assets.hex` is the friendly
- * case — one script per sprite, a .g.jres gallery, a background — and
- * `arcade-shield.hex` is the hostile one, a pong where a single script
- * drives three sprites, which Scratch cannot express and which must
- * therefore come back as a list of refusals rather than as a game that
- * silently does not work.
+ * Real games exercise gallery assets, shared backgrounds, native sprite
+ * instances and timed callbacks. Since task E1 an imported game runs on the
+ * Arcade runtime (the `arcade` extension's sprite instances, created from
+ * per-image templates by a `Game` sprite), not as one Scratch sprite per
+ * Arcade sprite; what it still cannot do is reported by name.
  *
- * As in makecode-translate.test.mjs, the assertion that matters is that
- * SB3Creator compiles the result into the sprites and blocks named here.
+ * As in makecode-translate.test.mjs, SB3Creator must compile the result into
+ * the sprites and blocks named here; where a claim is about behaviour, the
+ * translation is run in the real VM.
  */
 
 import {test} from 'node:test';
@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
 
+import {runProgram} from './helpers/bw-vm.mjs';
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {
     ARCADE_PALETTE,
@@ -98,26 +99,33 @@ test('a real Arcade game becomes sprites, costumes and scripts', async () => {
     const out = arcadeToPseudocode(files, {name: 'unterwasser'});
 
     assert.match(out.code, /^DEVICE ARCADE/, 'an imported game selects the playable console');
-    assert.deepEqual(out.sprites, ['background', 'mySprite', 'gegner', 'einfangen']);
-    // The backdrop is a sprite, not a Stage costume: applyCustomSVG
-    // deliberately skips the Stage, so a Stage costume would never arrive.
-    assert.ok(out.costumes.some(c => c.sprite === 'background'));
-    assert.equal(out.costumes.length, 4, 'every sprite got its art');
-    assert.match(out.code, /WHEN up arrow key pressed:/, 'controller events are key hats');
-    assert.match(out.code, /IF touching mySprite THEN:/, 'overlap becomes touching');
+    assert.deepEqual(out.unsupported, []);
+    assert.deepEqual(out.sprites, ['Game', '__arcadeTemplate1', '__arcadeTemplate2',
+        '__arcadeTemplate3', '__arcadeBackground1']);
+    assert.equal(out.costumes.length, 4, 'three instance templates and the background retain artwork');
+    assert.match(out.code, /WHEN up arrow key pressed:/);
+    assert.match(out.code, /WHEN arcade kinds "Enemy" and "Player" overlap:/);
     assert.match(out.code, /change score by/);
-    assert.match(out.code, /create clone of gegner/, 'a mid-game spawn is a clone');
-    assert.match(out.code, /change x by gegner_vx \/ 10/, 'velocity becomes a motion loop');
+    assert.match(out.code, /arcade create template "__arcadeTemplate2" kind "Enemy"/);
+    assert.match(out.code, /arcade set vx of gegner to/);
+    assert.match(out.code, /arcade set background image/);
 });
 
-test('the clone is created AFTER the parent is positioned', async () => {
-    const files = await projectOf('arcade-assets.hex');
-    const {code} = arcadeToPseudocode(files);
-    const lines = code.split('\n');
-    const clone = lines.findIndex(l => /create clone of gegner/.test(l));
-    const position = lines.findIndex(l => /go to x: 240/.test(l));
-    assert.ok(position > -1 && clone > position,
-        'a Scratch clone inherits the parent\'s position, so the order is load-bearing');
+test('timed spawns preserve their own positions, artwork and native velocities', async () => {
+    const out = arcadeToPseudocode(await projectOf('arcade-assets.hex'));
+    const run = await runProgram(out.code, {frames: 78, uploads: out.costumes, storage: true});
+    assert.deepEqual(run.errors, []);
+    assert.deepEqual(run.creator.warnings, []);
+    const state = run.vm.runtime.bwArcadeDeviceState;
+    const enemy = Object.values(state.sprites).find(sprite => sprite.kind === 'Enemy');
+    assert.ok(enemy, 'the 2500ms callback creates an independent instance');
+    assert.equal(enemy.vx, -40);
+    assert.ok(enemy.x >= 150 && enemy.x <= 160, `enemy starts at the right edge: ${enemy.x}`);
+    assert.ok(enemy.y >= 0 && enemy.y <= 120);
+    assert.equal(enemy.width, 36);
+    assert.equal(enemy.height, 16);
+    assert.ok(enemy.mask.some(pixel => pixel !== 0));
+    assert.ok(state.backgroundImage.pixels.some(pixel => pixel !== 0));
 });
 
 test('coordinates are converted, and stay in Arcade units in between', () => {
@@ -134,6 +142,22 @@ test('coordinates are converted, and stay in Arcade units in between', () => {
     // The comparison is the game's own arithmetic and must not silently
     // switch units halfway through.
     assert.match(code, /\(x position \/ 3 \+ 80\) > 100/);
+});
+
+test('Arcade screen.width and screen.height use the imported stage dimensions', () => {
+    const {code, unsupported} = arcadeToPseudocode('let width = screen.width\nlet height = screen.height\n');
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /set width to 160/);
+    assert.match(code, /set height to 120/);
+});
+
+test('constant and changing background colors use the Arcade runtime command', () => {
+    const {code, unsupported} = arcadeToPseudocode('scene.setBackgroundColor(2)');
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /arcade set background color to 2/);
+    const changed = arcadeToPseudocode('scene.setBackgroundColor(2)\nscene.setBackgroundColor(3)');
+    assert.deepEqual(changed.unsupported, []);
+    assert.match(changed.code, /arcade set background color to 2\n  arcade set background color to 3/);
 });
 
 test('what Scratch cannot express is refused by name', () => {
@@ -155,14 +179,12 @@ test('what Scratch cannot express is refused by name', () => {
     assert.match(code, /# unsupported: hero\.x/, 'each refusal is said where it happened');
 });
 
-test('the hostile case reports rather than pretends', async () => {
+test('the former hostile Pong fixture translates logical values without refusals', async () => {
     const files = await projectOf('arcade-shield.hex');
     const out = arcadeToPseudocode(files, {name: 'ping-pong'});
-    assert.equal(out.sprites.length, 3);
-    assert.ok(out.unsupported.length > 5,
-        'a pong driven from one script cannot become three Scratch sprites, and says so');
-    assert.ok(out.unsupported.every(u => typeof u === 'string' && u.length > 10),
-        'each refusal names what it refused');
+    assert.ok(out.sprites.length >= 3);
+    assert.deepEqual(out.unsupported,[]);
+    assert.match(out.code,/arcade set local __bwValue/);
 });
 
 test('the translation compiles into the sprites and blocks it names', {skip: canCompile ? false :
@@ -173,7 +195,7 @@ test('the translation compiles into the sprites and blocks it names', {skip: can
     const project = creator.parse(out.code);
 
     assert.deepEqual(project.targets.map(t => t.name),
-        ['Stage', 'background', 'mySprite', 'gegner', 'einfangen']);
+        ['Stage', ...out.sprites]);
 
     const ops = new Set();
     for (const target of project.targets) {
@@ -182,10 +204,11 @@ test('the translation compiles into the sprites and blocks it names', {skip: can
         }
     }
     for (const expected of [
-        'event_whenflagclicked', 'event_whenkeypressed', 'control_forever',
-        'control_create_clone_of', 'sensing_touchingobject', 'motion_gotoxy',
-        'motion_changexby', 'motion_changeyby', 'motion_yposition',
-        'data_changevariableby', 'operator_random'
+        'event_whenflagclicked', 'event_whenkeypressed', 'arcade_whenInterval',
+        'arcade_whenUpdate', 'arcade_whenSpritesOverlap', 'arcade_createSprite',
+        'arcade_setSpriteProperty', 'arcade_setSpriteAutoDestroy',
+        'arcade_setBackgroundImage', 'arcade_frameImage', 'arcade_spriteProperty',
+        'arcade_changescore', 'operator_random'
     ]) {
         assert.ok(ops.has(expected), `${expected} is missing — a mapping compiled to silence`);
     }
@@ -230,20 +253,23 @@ test('the level is painted whole, tile by tile', async () => {
     assert.ok([...image.pixels.slice((image.height - 1) * image.width)].some(p => p !== 0));
 });
 
-test('a platformer imports with its level as the backdrop', async () => {
+test('a platformer imports all eight editable tile maps and retains terrain diagnostics', async () => {
     const files = await projectOf('arcade-tilemap.hex');
     const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
-    assert.ok(out.sprites.includes('background'));
-    const backdrop = out.costumes.find(c => c.sprite === 'background');
-    assert.ok(backdrop, 'the level became a costume');
-    assert.match(backdrop.name, /^level-/);
-    assert.ok(backdrop.svg.length > 10000, 'a whole level, not a placeholder');
-    // And the difference it cannot hide: a picture is not terrain.
-    assert.ok(out.unsupported.some(u => /not as terrain/.test(u)));
-    // Eight levels at a few hundred kilobytes each is more than the paint
-    // editor should be handed, so the extras are named, not dropped.
-    assert.equal(out.costumes.filter(c => c.sprite === 'background').length, 4);
-    assert.ok(out.unsupported.some(u => /only the first 4 backdrops/.test(u)));
+    const commands = out.code.split('\n').filter(line => line.trim().startsWith('arcade set tilemap data '));
+    assert.equal(commands.length, 8, 'every authored level has actual map data');
+    const maps = commands.map(line => JSON.parse(JSON.parse(line.trim().slice('arcade set tilemap data '.length))));
+    for (const map of maps) {
+        assert.equal(map.tileSize, 16);
+        assert.equal(map.rows, 8);
+        assert.equal(map.indices.length, map.columns * map.rows);
+        assert.equal(map.walls.length, map.columns * map.rows);
+        assert.ok(map.images.length > 1, 'the actual tile images are embedded');
+    }
+    assert.ok(out.unsupported.some(u => /terrain collision physics and scene lifecycle/.test(u)));
+    assert.match(out.code,/arcade register tile kind/);
+    assert.ok(!out.unsupported.some(u => /synchronous handler mutation ordering/.test(u)));
+    assert.ok(!out.unsupported.some(u => /first 4 backdrops/.test(u)), 'native maps are not capped artwork backdrops');
 });
 
 test('sprite kinds are numbers, not refusals', () => {
@@ -288,68 +314,56 @@ test('sprite dimensions and edges use the decoded image geometry', () => {
         })
     `);
 
-    assert.match(code, /\(x position \/ 3 \+ 80\) - 2 < 0/);
-    assert.match(code, /\(x position \/ 3 \+ 80\) \+ 2 > 160/);
-    assert.match(code, /\(60 - y position \/ 3\) - 1 < 0/);
-    assert.match(code, /\(60 - y position \/ 3\) \+ 1 > 120/);
-    assert.match(code, /IF \(4 = 4\) and \(2 = 2\) THEN:/);
+    for(const property of ['left','right','top','bottom','width','height'])
+        assert.match(code,new RegExp(`arcade property ${property} of hero`));
+    assert.match(code,/arcade set local __bwValue/);
+    assert.match(code,/arcade change score by 1/);
+    assert.doesNotMatch(code,/\) and \(|\) or \(/,'logical guards must use lazy branches');
     assert.deepEqual(unsupported, []);
 });
 
-test('animation frames arrive as costumes on the sprite they were attached to', async () => {
-    // The shape a real game uses is the ACTION api, and until this landed
-    // every frame was lost outright:
-    //     walk = animation.createAnimation(ActionKind.Walking, 100)
-    //     animation.attachAnimation(hero, walk)
-    //     walk.addAnimationFrame(img`…`)
+test('action animations preserve their real objects, frame images and attachments', async () => {
     const files = await projectOf('arcade-tilemap.hex');
     const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
-
-    const hero = out.costumes.filter(c => c.sprite === 'hero');
-    assert.ok(hero.length > 10, `the hero's animations should arrive; got ${hero.length} costume(s)`);
-    assert.equal(hero[0].mode, 'replace', 'its own art is the costume');
-    assert.ok(hero.slice(1).every(c => c.mode === 'add'), 'the frames are added beside it');
-    assert.ok(hero.some(c => /^mainIdleLeft-1$/.test(c.name)),
-        'named for the animation they came from, so the user can tell them apart');
+    assert.equal((out.code.match(/arcade create animation action/g) || []).length, 11);
+    assert.equal((out.code.match(/arcade add animation frame/g) || []).length, 29);
+    assert.equal((out.code.match(/arcade attach animation/g) || []).length, 11);
+    assert.match(out.code, /arcade attach animation \(coinAnimation\) to sprite \(coin\)/, 'instances created inside functions receive the shared animation');
+    const imageResources = out.costumes.filter(c => /^__arcadeBackground/.test(c.sprite));
+    assert.ok(imageResources.length >= 29, 'every animation image remains editable artwork');
+    assert.ok(imageResources.every(c => c.svg.includes('data-bw-pixel-scale')));
 });
 
-test('what the frames cannot bring with them is said once', async () => {
+test('supported animation calls execute while remaining platformer gaps stay visible', async () => {
     const files = await projectOf('arcade-tilemap.hex');
     const out = arcadeToPseudocode(files, {name: 'jumpy platformer'});
-
-    const setAction = out.unsupported.filter(u => /setAction/.test(u));
-    assert.equal(setAction.length, 1, 'one explanation, not one refusal per call');
-    assert.match(setAction[0], /no named animation with its own timer/);
-
-    // An animation bound to a sprite this translation never created — a
-    // coin spawned inside a function, which becomes a clone — has nowhere
-    // to put its frames, and that is reported rather than dropped.
-    assert.ok(out.unsupported.some(u => /attached to no sprite/.test(u)));
-
-    // And the declarations themselves are silent: a refusal per
-    // addAnimationFrame would bury the note that matters.
-    assert.equal(out.unsupported.filter(u => /addAnimationFrame/.test(u)).length, 0);
-    assert.equal(out.unsupported.filter(u => /attachAnimation\(\)/.test(u)).length, 0);
+    assert.equal(out.unsupported.filter(u => /setAction|addAnimationFrame|attachAnimation|no named animation|attached to no sprite/.test(u)).length, 0);
+    assert.equal((out.code.match(/arcade set animation action/g) || []).length, 11);
+    assert.ok(!out.unsupported.some(u => /isHittingTile/.test(u)));
+    assert.match(out.code, /arcade sprite \(hero\) hitting wall \(3\)/);
+    assert.ok(out.unsupported.some(u => /music\.powerUp\.play/.test(u)));
+    assert.ok(!out.unsupported.some(u => /scene\.cameraFollowSprite/.test(u)));
+    assert.match(out.code,/arcade camera follow sprite \(player2\)/);
 });
 
-test('the frame cap is per sprite, so one actor cannot consume another actor\'s costumes', () => {
+test('animation objects retain every frame without a fixed costume cap', () => {
     const many = sprite => Array.from({length: 40}, (_, i) => [
         `let ${sprite}Walk${i} = animation.createAnimation(ActionKind.Walking, 100)`,
         `animation.attachAnimation(${sprite}, ${sprite}Walk${i})`,
         `${sprite}Walk${i}.addAnimationFrame(img\`1\`)`
     ].join('\n')).join('\n');
     const out = arcadeToPseudocode(`
+        enum ActionKind { Walking }
         let hero = sprites.create(img\`1\`, SpriteKind.Player)
         let rival = sprites.create(img\`1\`, SpriteKind.Enemy)
         ${many('hero')}
         ${many('rival')}
     `);
-    const heroCostumes = out.costumes.filter(c => c.sprite === 'hero');
-    const rivalCostumes = out.costumes.filter(c => c.sprite === 'rival');
-    assert.equal(heroCostumes.length, 25, 'hero art plus 24 animation frames');
-    assert.equal(rivalCostumes.length, 25, 'rival gets its own independent frame budget');
-    assert.equal(out.unsupported.filter(u => /past 24/.test(u)).length, 2,
-        'the omitted frames are reported once for each capped sprite');
+    assert.equal((out.code.match(/arcade create animation action/g) || []).length, 80);
+    assert.equal((out.code.match(/arcade add animation frame/g) || []).length, 80);
+    assert.equal((out.code.match(/arcade attach animation/g) || []).length, 80);
+    assert.equal(out.costumes.length, 82, 'two actual sprite images plus all eighty animation images');
+    assert.deepEqual(out.unsupported, []);
 });
 
 test('the per-player info API writes the same variables the plain one does', () => {
@@ -374,15 +388,18 @@ test('the per-player info API writes the same variables the plain one does', () 
     assert.match(code, /IF lives > 0 THEN:/);
 });
 
-test('onLifeZero fires once, because lives do not come back', () => {
+// The pinned Arcade runtime (game/info.ts raiseLifeZero) fires when lives are
+// at or below 0 and then clears them to null, so the handler fires again once
+// lives are set again. Here: it waits for lives above 0, then for lives below
+// 1. (Lives set straight to 0 without ever being positive fire in MakeCode and
+// not here.)
+test('onLifeZero waits for positive lives and can rearm after a callback restores them', () => {
     const {code} = arcadeToPseudocode(`
         let hero = sprites.create(img\`1\`, SpriteKind.Player)
         info.player2.onLifeZero(function () { game.over() })
     `);
-    assert.match(code, /IF lives2 = 0 THEN:/);
-    // Without this the body would re-run every frame for the rest of the game.
-    const body = code.slice(code.indexOf('IF lives2 = 0 THEN:'));
-    assert.match(body, /stop all[\s\S]*stop this script/);
+    assert.match(code, /wait until lives2 > 0\n    wait until lives2 < 1/);
+    assert.match(code, /stop all/);
 });
 
 test('a sprite knows its own size, because we decoded the picture', () => {
@@ -404,25 +421,23 @@ test('a sprite knows its own size, because we decoded the picture', () => {
     assert.match(code, /- 2\b/, 'and left is the centre minus half of it');
 });
 
-test('a sprite held in a variable is refused, not turned into one', () => {
-    // `collisionPaddle.width`, where the variable holds whichever paddle
-    // was hit, used to become a variable literally named `width`: a
-    // program that reads as working and is not. This is the failure mode
-    // the whole translator is written against.
-    const {code, unsupported} = arcadeToPseudocode(`
+test('a Sprite alias initialized with null reads the selected Sprite width', async () => {
+    const imported = arcadeToPseudocode(`
         let ball = sprites.create(img\`1\`, SpriteKind.Player)
         let paddle = sprites.create(img\`2\`, SpriteKind.Food)
         let hit: Sprite = null
         game.onUpdate(function () {
-            // ball is mentioned first, so the script owns it and the write
-            // is legal — otherwise the cross-sprite refusal fires and the
-            // right-hand side is never even evaluated.
-            ball.vx = hit.width
             hit = paddle
+            ball.vx = hit.width
         })
     `);
-    assert.ok(unsupported.some(u => /hit\.width — a sprite held in a variable/.test(u)));
-    assert.doesNotMatch(code, /\bto width\b/, 'never a variable named after the property');
+    assert.deepEqual(imported.unsupported, []);
+    const run=await runProgram(imported.code,{frames:40,uploads:imported.costumes,storage:true});
+    const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
+    assert.equal(vars.hit,vars.paddle);
+    assert.equal(run.vm.runtime.bwArcadeDeviceState.sprites[vars.ball].vx,1);
+    assert.ok(!Object.hasOwn(vars,'width'));
+    assert.deepEqual(run.errors,[]);
 });
 
 test('another script may set velocity, because velocity is a variable', () => {
@@ -564,7 +579,7 @@ test('every compound operator survives on every kind of target', () => {
             game.onUpdate(function () { ${key} 4 })
         `);
         const lines = code.split('\n');
-        const loop = lines.findIndex(line => /FOREVER:/.test(line));
-        assert.equal((lines[loop + 1] || '').trim(), expected, `${key} 4`);
+        const update = lines.findIndex(line => /WHEN arcade updates:/.test(line));
+        assert.equal((lines[update + 1] || '').trim(), expected, `${key} 4`);
     }
 });

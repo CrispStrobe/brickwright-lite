@@ -14,6 +14,13 @@
  * with lite's real extensions, pull the green flag, and insist that
  * threads start, blocks run, and the VM reports no block errors.
  *
+ * The import carries its artwork beside the code (`costumes`), and the
+ * Code tab bakes it into the project before loading (pseudocode-importer
+ * maps res.costumes to its uploads). Since the Arcade runtime reads sprite
+ * and frame images from those costumes (task E1), the run does the same:
+ * without them the VM reports "cannot read this artwork", as the app would
+ * if it dropped the art.
+ *
  * (The device referee in trace-oracle cannot do this job: it models
  * hardware programs and refuses motion/looks/sensing outright.)
  */
@@ -38,12 +45,10 @@ const SKIP = CAN_RUN ? false : 'needs the integrated tree and its scratch-vm —
 
 test('a translated Arcade game starts and computes in the real VM', {skip: SKIP}, async () => {
     const files = await projectOf('arcade-assets.hex');
-    const {code} = arcadeToPseudocode(files, {name: 'unterwasser'});
+    const {code, costumes} = arcadeToPseudocode(files, {name: 'unterwasser'});
     // 120 frames, not 24: this game's spawners wait 2.5 seconds, so a
-    // shorter run proves only that nothing had happened YET. (The VM warns
-    // about costume assets it cannot fetch without a storage module —
-    // that is the harness, not the project.)
-    const run = await runProgram(code, {frames: 120});
+    // shorter run proves only that nothing had happened YET.
+    const run = await runProgram(code, {frames: 120, uploads: costumes, storage: true});
 
     assert.deepEqual(run.errors, [], 'the VM reported block errors');
     assert.ok(run.threadsStarted > 0, 'the green flag started nothing');
@@ -53,12 +58,12 @@ test('a translated Arcade game starts and computes in the real VM', {skip: SKIP}
 });
 
 test('the hostile game runs too, refusals and all', {skip: SKIP}, async () => {
-    // The pong is the one a single script drives, so most of its
-    // cross-sprite work is refused. What is left must still be a program
-    // that runs rather than a shell that throws.
+    // The pong is the one a single script drives. Before the Arcade
+    // runtime most of its cross-sprite work was refused; whatever is left
+    // must still be a program that runs rather than a shell that throws.
     const files = await projectOf('arcade-shield.hex');
-    const {code} = arcadeToPseudocode(files, {name: 'ping-pong'});
-    const run = await runProgram(code, {frames: 24});
+    const {code, costumes} = arcadeToPseudocode(files, {name: 'ping-pong'});
+    const run = await runProgram(code, {frames: 24, uploads: costumes, storage: true});
 
     assert.deepEqual(run.errors, []);
     assert.ok(run.threadsStarted > 0);
@@ -66,8 +71,8 @@ test('the hostile game runs too, refusals and all', {skip: SKIP}, async () => {
 
 test('a platformer with tilemaps and animations runs', {skip: SKIP}, async () => {
     const files = await projectOf('arcade-tilemap.hex');
-    const {code} = arcadeToPseudocode(files, {name: 'jumpy platformer'});
-    const run = await runProgram(code, {frames: 24});
+    const {code, costumes} = arcadeToPseudocode(files, {name: 'jumpy platformer'});
+    const run = await runProgram(code, {frames: 24, uploads: costumes, storage: true});
 
     assert.deepEqual(run.errors, []);
     assert.ok(run.threadsStarted > 0);

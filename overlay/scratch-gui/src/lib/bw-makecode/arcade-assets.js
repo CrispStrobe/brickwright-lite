@@ -186,7 +186,8 @@ export function imageToSvg (image, opts = {}) {
         }
     }
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" ` +
-        `viewBox="0 0 ${width * scale} ${height * scale}" shape-rendering="crispEdges">${rects.join('')}</svg>`;
+        `viewBox="0 0 ${width * scale} ${height * scale}" shape-rendering="crispEdges" ` +
+        `data-bw-pixel-scale="${scale}">${rects.join('')}</svg>`;
 }
 
 

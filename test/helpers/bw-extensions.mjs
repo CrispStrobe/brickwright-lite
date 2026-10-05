@@ -57,19 +57,27 @@ function installedOverlaySupport (base) {
 }
 
 let adapterCache = null;
-function shimRequire (spec) {
+function shimRequire (spec, from) {
     const base = path.basename(spec);
     if (base === 'adapter') return loadAdapter();
     if (spec === 'format-message') return nodeRequire(path.join(INTEGRATED, 'node_modules', spec));
     if (OVERLAY_SUPPORT.has(base)) return installedOverlaySupport(base);
     if (SUPPORT[base]) return nodeRequire(path.join(VM_SRC, SUPPORT[base]));
+    if (spec.startsWith('./')) {
+        const candidate = path.resolve(path.dirname(from), spec);
+        if (candidate.startsWith(OVERLAY_EXT + path.sep)) {
+            const file = existsSync(candidate) ? candidate : candidate + '.js';
+            if (file.endsWith('.json')) return JSON.parse(readFileSync(file, 'utf8'));
+            return evalCjs(file);
+        }
+    }
     throw new Error(`bw-extensions: unresolved require(${spec})`);
 }
 function evalCjs (file) {
     const module_ = {exports: {}};
     // eslint-disable-next-line no-new-func
     new Function('require', 'module', 'exports', '__filename', '__dirname',
-        readFileSync(file, 'utf8'))(shimRequire, module_, module_.exports, file, path.dirname(file));
+        readFileSync(file, 'utf8'))(spec => shimRequire(spec, file), module_, module_.exports, file, path.dirname(file));
     return module_.exports;
 }
 function loadAdapter () {

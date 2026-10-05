@@ -1,0 +1,33 @@
+Microsoft MakeCode code and data compiled into Lite's Arcade runtime (task E1):
+
+- pxt-common-packages (https://github.com/microsoft/pxt-common-packages), as bundled
+  in pxt-arcade 4.2.1: the simulator image algorithms in
+  overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js, the text layout
+  and speech rendering (game/renderText.ts, game/spritesay.ts) in speech-pxt.js, and
+  font8 (screen/text.ts) in speech-fonts.json;
+- pxt-arcade (https://github.com/microsoft/pxt-arcade) 4.2.1: the built-in image table
+  (device/*.jres) in overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js.
+
+Both are MIT with this notice:
+
+MIT License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE

@@ -86,7 +86,7 @@ const isEmptyString = node => !!node && node.type === 'String' && node.value ===
  * \r \t, JSON's) are written with JSON.stringify.
  */
 const TS_ESCAPES = {n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', 0: '\0'};
-const tsText = raw => String(raw).replace(/\\(u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[\s\S])/g, (m, e) => {
+export const tsText = raw => String(raw).replace(/\\(u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[\s\S])/g, (m, e) => {
     if (/^u\{/.test(e)) return String.fromCodePoint(parseInt(e.slice(2, -1), 16));
     if (/^[ux][0-9a-fA-F]/.test(e)) return String.fromCharCode(parseInt(e.slice(1), 16));
     return e in TS_ESCAPES ? TS_ESCAPES[e] : e;
@@ -303,7 +303,8 @@ export class BaseTranslator {
         // which MakeCode refuses to assign to a number (census 2026-09-25).
         // In a condition, condition() below keeps true/false.
         case 'Boolean': return node.value ? '1' : '0';
-        case 'Null': return '0';
+        case 'Null':
+        case 'Undefined': return '0';
         case 'Identifier':
             // A handler's parameter that IS a reporter here (radio's
             // receivedNumber inside onReceivedNumber) reads as that reporter.
@@ -1598,7 +1599,10 @@ export class BaseTranslator {
         // `shift()` removes the first element; as a statement the removed
         // value is discarded, which is exactly `remove item 0`.
         case 'shift': push(`remove item 0 of ${ref}`); return true;
-        case 'pop': push(`pop from ${ref}`); return true;
+        // The removed value is discarded in statement position. Use the
+        // array command block here: arrays_pop is a reporter and cannot
+        // execute as a standalone Scratch stack block.
+        case 'pop': push(`remove item (length of ${ref}) - 1 of ${ref}`); return true;
         case 'removeElement': push(`remove item (index of ${arg(0)} in ${ref}) of ${ref}`); return true;
         case 'sort': push(`sort of ${ref} ascending`); return true;
         default: return false;
