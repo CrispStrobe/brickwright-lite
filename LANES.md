@@ -482,6 +482,8 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| Remaining actuator/PWM gaps outside B6: motor direction, stc12 display/keypad/PORT/PART blocks, sb3-creator driver setServo/setMotor, green-flag first-write (task B7 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b7-actuators*` | base `9c999cdd6`; upstream CrispStrobe/extensions (stc12/devices blocks), bw-board (motor direction), sb3-creator drivers; Lite pin-bump surfaces + focused tests; this row and the task file. Not labwired (B6, session 6f571e07). | **CLAIMED 2026-10-05.** |
+
 Static OP CLI KCL package adoption — **DONE candidate 2026-10-04**, Codex bwcx `/root`;
 isolated reused `/tmp/bwcx-lite-adp-stream-candidate-20261004`, branch
 lane/cli-op-kcl-package-adoption-20261004, exact fresh base
