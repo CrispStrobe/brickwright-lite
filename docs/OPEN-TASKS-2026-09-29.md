@@ -74,6 +74,23 @@ lands there first; Lite then advances the exact pin.
 | D6 | Dialect remainders found by D5 | (1) ~40 declaration refusals in `parseStcDeclaration` still warn-and-skip the declaration (statements using it are refused, but the declaration line itself is lost with a warning) — make them errors like D5's `DIALECT_UNPARSED_LINES`; (2) escaped quotes in text literals (`"a \"b\""`) are not unescaped by the value parser (and the exporter must escape them back: round-trip fixed point); (3) `set voxel pick random 1 to 10 1 1 to 1` misreads: an unbracketed multi-word reporter fills adjacent positional slots — refuse unbracketed reporters in multi-slot rules. | DONE 2026-09-30 — sb3-creator #43 (`8f4b6316`) + #44 (`4d9828d2`) + #45 (`82c04190`), Lite PR #576. (1) Declarations: 78 warn-and-skip sites in `parseStcDeclaration` (+ SHAPE/COSTUME/BACKDROP: stage shape, unknown shape, unknown art when art is registered) → refused via `refuseDeclaration()` (`DIALECT_UNPARSED_LINES`, line+reason); an unmatched declaration keyword is refused by name; the one warning left keeps its line (LEDBANK8/SEVENSEG8 port share). Corpus 426 programs: 0 refused before and after. Consumers: device-idle-coverage's `STC12/STC89/STC15` rows named no device and silently tested the default chip (fixed); i8086 reach censuses: 80-a2-lcd-moving-text + 81-8051-lcd1602-parallel (parallel LCD1602 on i8086) were counted parsed-hollow → parseFailed, named (parsed 150 → 148); retarget reasons now name the refused line (#44); Lite's i8086 export gate wrote `DEVICE 8086`, silently the default STC12 before → 8086/8088/i8088 are aliases of i8086 (#45); the picker's `riscv32` and `arduboy` have no dialect DEVICE and are now refused by name (they parsed as the default STC12). (2) Text escapes `\" \\ \n \r \t` (JSON's) in the value parser, direct-capture rules, scanners, initialisers, and the decompiler (`dtext`); before: `say "a \"b\""` stored the quotes and backslashes and export wrote `"${text}"` unescaped → now parse → blocks → export → parse is a fixed point (14 texts × 13 text inputs + print/raw/initials/broadcasts; Python/JS/host C/micro:bit MicroPython round trips). Readers fixed: host C, micro:bit MicroPython, BASIC, Lite's MakeCode TS import; the micro:bit MicroPython emitter no longer splits a text at a line break. (3) Spilled reporters: census of all 71 multi-slot rules × 9 unbracketed reporters (1122 cells): ok 596 / refused 425 / WRONG VALUE 101 → ok 596 / refused 526 / WRONG 0; EV3 word slots 105 cells: WRONG 34 → 0; custom-block calls WRONG → refused. MakeCode census raw counts unchanged: micro:bit apps 204/8/2/1, lite→micro:bit 150/130/29 recompile/22 retarget, EV3 100 full/157 partial/1. |
 
 
+## E — salvage of parked Codex work (owner decision 2026-10-05)
+
+A paused Codex agent left ~11k lines of uncommitted work in the shared main checkout
+(edits 2026-10-02, base `d7e07b515` of 2026-09-26). It was parked on the LOCAL branch
+`wip/main-checkout-brickwright-lite-20261005` (`23e9c7f44`; also archived on the storage box
+under `volume1-offload/dirty-mains-20261005/`). It never landed and conflicts with main in
+84 files: its `export-arcade.js`, `ts-import.js` and `export.js` predate A2/A4/A5/D5/D6.
+The owner chose to salvage it in pieces: port only what main lacks onto current main, drop
+and name what is superseded, keep each piece's own tests.
+
+| # | piece | scope / done-when | status |
+| --- | --- | --- | --- |
+| E1 | Arcade import runtime | `arcade-translate.js` (+2.5k lines) and its new helpers (`namespace-bindings.js`, `lower-lazy-values.js`, `value-type-graph.js`, `legacy-array-values.js`, `tilemap-values.js`, `arcade-builtin-images.js`), the arcade extension's `image*`/`speech*` modules, and the 76 new `test/makecode-arcade-*` tests + fixtures. Done when each test either passes on main or is dropped with a named reason (superseded / depends on a later piece). | CLAIMED 2026-10-05 |
+| E2 | Arcade/arrays extension blocks exported back to Arcade | The `arcade_*`/`arrays_*` cases the WIP added to `export-arcade.js`, re-ported onto A4/A5's exporter (not its pre-A4 copy). | queued |
+| E3 | TurboWarp compatibility extensions | `encoding`, `tempvars`, `peers` extensions, `sb3-boolean-values`, the `sb3.js` serialization override and `util/bw-values.js`, with their tests. | queued |
+| E4 | Tauri dialog plugin | The vendored `tauri-plugin-dialog` (52 files) and the app permission (ACL) changes, with `tauri-app-command-acl` tests; licence/notice records. | queued |
+
 ## Retired firmware experiment
 
 The optional firmware runtime, assets, Code-tab action and build tools have been
