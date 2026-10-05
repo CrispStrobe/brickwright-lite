@@ -1686,6 +1686,31 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
         adapter.attachBoard(board);
 
+        // Serial, both ways, as on the AVR (task B11). The 8051 path had
+        // neither: a `print` reached no serial monitor, and an `ask ... and
+        // wait` could never be answered. The adapter's onSerial/sendSerial are
+        // bw-board #409; the emulator's receive FIFO (emu8051-stc #2) hands a
+        // typed line over byte by byte as the program takes it.
+        if (typeof adapter.onSerial === 'function') {
+            let lineBuf = '';
+            serialLines = [];
+            adapter.onSerial((byte) => {
+                const ch = String.fromCharCode(byte);
+                if (ch === '\n') {
+                    serialLines.push(lineBuf);
+                    lineBuf = '';
+                    if (serialLines.length > 200) serialLines.shift();
+                } else if (ch !== '\r') {
+                    lineBuf += ch;
+                }
+            });
+        }
+        if (typeof adapter.sendSerial === 'function') {
+            runner.sendSerial = (data) => adapter.sendSerial(typeof data === 'number'
+                ? [data & 0xff]
+                : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff));
+        }
+
         // ccall marshals the string itself. Nothing here may touch a heap view:
         // no emu8051 build exports one (debugger-ui.md §7b).
         wasm.ccall('emu_load_hex', 'number', ['string', 'number'],
@@ -1936,6 +1961,14 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     lineBuf += ch;
                 }
             });
+        }
+
+        // RX into the program (task B11): UART0's receive FIFO, the same
+        // both-shapes contract as the AVR and STM32 paths (bw-board #409).
+        if (picoAdapter && typeof picoAdapter.sendSerial === 'function') {
+            runner.sendSerial = (data) => picoAdapter.sendSerial(typeof data === 'number'
+                ? [data & 0xff]
+                : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff));
         }
 
         // Value resolver and variable wiring — same as AVR.

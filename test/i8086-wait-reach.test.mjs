@@ -189,7 +189,8 @@ test('commented-zero mutation cannot put either timer program back into honest r
                 'sb3-creator-chostruntime.js',
                 'cubeDirections.js',
                 'ev3Dialect.js',
-                'arcadeDialect.js'
+                'arcadeDialect.js',
+                'pinRoleParts.js'
             ]) await symlink(join(sourceDir, dependency), join(temp, basename(dependency)));
             await writeFile(mutantFile, mutant);
             const {stdout} = await execFileP(process.execPath, [
