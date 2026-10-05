@@ -15,11 +15,10 @@
  *     Arcade extension's name the same arrays.
  *  3. What a real scratch-vm does with these values today: a variable and a
  *     list keep the identical object; Scratch's own `=` and `contains` cannot
- *     tell two references apart; saving one in a variable produces a project
- *     scratch-parser refuses. (3) is a MEASUREMENT of main, not a wish: the
- *     sb3 serialization that makes these values survive is task E3's `sb3.js`
- *     piece, and when it lands the save/load case below must be rewritten
- *     with it — it is meant to go red then.
+ *     tell two references apart (a MEASUREMENT of main, not a wish). Saving
+ *     them is task E3b (serialization/bw-sb3-values.js): the save/load case
+ *     below runs this file's green-flag program, saves, and reopens; the
+ *     per-kind round trips and the mutations live in test/bw-sb3-values.test.mjs.
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -357,23 +356,26 @@ test('real VM: Scratch\'s own = and contains cannot tell two references apart', 
     assert.equal(prims.data_itemnumoflist({...list, ITEM: b}, {target: stage}), 1, 'item # of finds the FIRST reference');
 });
 
-test('real VM: saving a reference or UNDEFINED in a variable makes a project scratch-parser refuses (E3 sb3.js)', async () => {
+test('real VM: a project holding references and UNDEFINED saves valid sb3 and reopens with them (E3b)', async () => {
     const {vm} = await runFlag();
     const json = vm.toJSON();
     const saved = JSON.parse(json).targets[0];
-    assert.deepEqual(Object.keys(saved.variables.vid[1]), ['bwReference'], 'stock sb3 writes the reference object');
-    assert.deepEqual(saved.variables.uid[1], {bwUndefined: true});
+    // The standard fields hold plain scalars; the exact values ride in the sidecar.
+    assert.equal(saved.variables.vid[1], '[image reference a]');
+    assert.equal(saved.variables.uid[1], 'undefined');
+    assert.deepEqual(saved.lists.lid[1], ['[image reference a]', '[image reference b]']);
+    assert.deepEqual(saved.bwValues.variables, {vid: {bwReference: {kind: 'image', id: 'a'}}, uid: {bwUndefined: true}});
     const validate = nodeRequire(path.join(INTEGRATED, 'node_modules', 'scratch-parser'));
-    // scratch-parser reports the FIRST failing value only, so each kind is validated on its own.
-    const refusedAt = async variables => {
-        const project = JSON.parse(json);
-        project.targets[0].variables = variables;
-        const verdict = await new Promise(resolve => validate(JSON.stringify(project), false, error => resolve(error)));
-        assert.ok(verdict, 'scratch-parser accepted it — has E3\'s sb3.js serialization landed? rewrite this case with it');
-        return [...new Set((verdict.sb3Errors || []).map(e => e.dataPath))];
-    };
-    const clean = {vid: ['v', 0], sid: ['same', true], uid: ['u', 0]};
-    assert.deepEqual(await refusedAt({...clean, vid: saved.variables.vid}), [".targets[0].variables['vid'][1]"]);
-    assert.deepEqual(await refusedAt({...clean, uid: saved.variables.uid}), [".targets[0].variables['uid'][1]"]);
-    await assert.rejects(vmWithProbe().loadProject(json), 'the saved project does not load');
+    const verdict = await new Promise(resolve => validate(json, false, error => resolve(error)));
+    assert.equal(verdict, null, `scratch-parser refuses the saved project: ${JSON.stringify(verdict)}`);
+    const reopened = vmWithProbe();
+    await reopened.loadProject(json);
+    const stage = reopened.runtime.getTargetForStage();
+    const v = stage.variables.vid.value;
+    assert.equal(stage.variables.uid.value, BW.UNDEFINED, 'UNDEFINED comes back as UNDEFINED');
+    assert.equal(stage.variables.sid.value, true);
+    assert.ok(BW.isReference(v) && v.bwReference.kind === 'image' && v.bwReference.id === 'a', 'the reference keeps its kind and id');
+    assert.equal(BW.referenceId(reopened.runtime, v, 'image'), null, 'and, being per-run, resolves to nothing');
+    assert.equal(stage.variables.lid.value[0], v, 'variable and list item are one interned reference again');
+    assert.equal(stage.variables.lid.value[1].bwReference.id, 'b');
 });

@@ -182,6 +182,36 @@ if (sb3.includes('// Brickwright: restore hardware declarations')) {
     process.exit(1);
 }
 
+// E3b: variable and list values stock sb3 cannot write (BWValues UNDEFINED and
+// references, NaN/±Infinity/-0, null, other objects). Stock writes them as JSON
+// objects, null or 0 — a project scratch-parser refuses, or a silently changed
+// number. The rules live in the overlay module serialization/bw-sb3-values.js;
+// these three hooks call it: require it, `save` after serializeVariables in
+// serializeTarget (project save AND sprite export), `restore` after the lists
+// are read in parseScratchObject (project load AND sprite import).
+const bwSb3Hooks = [
+    ['require', `const log = require('../util/log');\n`,
+        `const log = require('../util/log');\n// Brickwright E3b: save/load values stock sb3 cannot write (bw-sb3-values.js).\nconst bwSb3Values = require('./bw-sb3-values');\n`,
+        `const bwSb3Values = require('./bw-sb3-values');`],
+    ['save', `    obj.broadcasts = vars.broadcasts;\n`,
+        `    obj.broadcasts = vars.broadcasts;\n    // Brickwright E3b: schema-valid fields + the exact values in obj.bwValues.\n    bwSb3Values.save(target.variables, obj);\n`,
+        `bwSb3Values.save(target.variables, obj);`],
+    ['restore', `    if (Object.prototype.hasOwnProperty.call(object, 'broadcasts')) {\n`,
+        `    // Brickwright E3b: restore the exact values recorded in object.bwValues.\n    bwSb3Values.restore(object, target.variables);\n    if (Object.prototype.hasOwnProperty.call(object, 'broadcasts')) {\n`,
+        `bwSb3Values.restore(object, target.variables);`]
+];
+for (const [name, anchor, patch, marker] of bwSb3Hooks) {
+    if (sb3.includes(marker)) {
+        console.log(`  sb3.js E3b ${name} hook already applied`);
+    } else if (sb3.split(anchor).length === 2) {
+        sb3 = sb3.replace(anchor, patch);
+        console.log(`  patched sb3.js (E3b ${name} hook)`);
+    } else {
+        console.error(`  ! sb3.js E3b ${name} anchor not found exactly once — base VM version changed?`);
+        process.exit(1);
+    }
+}
+
 writeFileSync(sb3Path, sb3);
 
 // --- vm.setStc() + pre-load extensions: two patches on virtual-machine.js ---
@@ -353,6 +383,51 @@ for (const [name, anchor, patch, marker] of [
         console.error(`  ! virtual-machine.js ${name} extension-load anchor not found`);
         process.exit(1);
     }
+}
+
+// E3b: a project scratch-parser refuses went on to the Scratch 1 converter
+// whatever its bytes, and the converter's own assertion on a JSON text or a zip
+// ("Non-ascii character in FixedAsciiString") replaced the real reason. Only
+// input that starts with the Scratch 1 signature is tried as Scratch 1 now;
+// anything else is rejected with scratch-parser's own error, which names the
+// failing path (e.g. .targets[0].variables['v'][1]).
+vm2 = readFileSync(vmPath2, 'utf8');
+const vmSb1Anchor = `            .catch(error => {
+                const {SB1File, ValidationError} = require('scratch-sb1-converter');
+`;
+const vmSb1Patch = `            .catch(error => {
+                // Brickwright E3b: only a Scratch 1 signature goes to the SB1 converter.
+                if (!bwLooksLikeSb1(input)) return Promise.reject(error);
+                const {SB1File, ValidationError} = require('scratch-sb1-converter');
+`;
+const vmSb1Helper = `const bwLooksLikeSb1 = function (input) {
+    // Brickwright E3b: a Scratch 1 file starts with 'ScratchV01' or 'ScratchV02'.
+    let head = '';
+    try {
+        if (typeof input === 'string') {
+            head = input.slice(0, 10);
+        } else {
+            const bytes = ArrayBuffer.isView(input) ?
+                new Uint8Array(input.buffer, input.byteOffset, Math.min(10, input.byteLength)) :
+                new Uint8Array(input, 0, Math.min(10, input.byteLength));
+            head = String.fromCharCode.apply(null, bytes);
+        }
+    } catch (e) {
+        return true; // unknown input shape: keep the stock path
+    }
+    return head === 'ScratchV01' || head === 'ScratchV02';
+};
+
+class VirtualMachine extends EventEmitter {`;
+if (vm2.includes('Brickwright E3b: only a Scratch 1 signature')) {
+    console.log('  virtual-machine.js E3b SB1 signature check already applied');
+} else if (vm2.split(vmSb1Anchor).length === 2 && vm2.split('class VirtualMachine extends EventEmitter {').length === 2) {
+    vm2 = vm2.replace(vmSb1Anchor, vmSb1Patch).replace('class VirtualMachine extends EventEmitter {', vmSb1Helper);
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (E3b: SB1 fallback only for a Scratch 1 signature)');
+} else {
+    console.error('  ! virtual-machine.js E3b SB1 fallback anchor not found exactly once');
+    process.exit(1);
 }
 
 // Trim locale data: editor-msgs.js is 3.9 MiB with 80 locales; brickwright-lite ships only
