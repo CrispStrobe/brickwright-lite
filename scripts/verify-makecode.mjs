@@ -208,8 +208,11 @@ try {
     const statusLine = (text.match(/[^\n]*sprite\(s\)[^\n]*/i) || [''])[0];
     check('no status line leaks an undefined interpolation',
         !/\bundefined\b/.test(statusLine), statusLine.replace(/\s+/g, ' ').slice(0, 140));
+    // Since task E1 the game runs on the Arcade runtime: a Game sprite holds
+    // the scripts, one hidden template sprite per sprite image carries its art
+    // (mySprite's is __arcadeTemplate1), and the background is an image resource.
     check('an Arcade game imports as sprites and costumes',
-        /4 sprite\(s\)/i.test(text) && /4 (costume\(s\)|Kostüm\(e\))/i.test(text),
+        /5 sprite\(s\)/i.test(text) && /4 (costume\(s\)|Kostüm\(e\))/i.test(text),
         (text.match(/.{0,40}sprite\(s\).{0,40}/i) || [''])[0].replace(/\s+/g, ' '));
 
     const arcadeCode = await page.evaluate(() => {
@@ -217,7 +220,8 @@ try {
         return editor ? editor.innerText : '';
     });
     check('with the sprite sections the game names',
-        /SPRITE background:/.test(arcadeCode) && /SPRITE mySprite:/.test(arcadeCode),
+        /SPRITE Game:/.test(arcadeCode) && /SPRITE __arcadeTemplate1:/.test(arcadeCode) &&
+        /GLOBAL mySprite/.test(arcadeCode) && /set mySprite to \(arcade create template "__arcadeTemplate1"/.test(arcadeCode),
         arcadeCode.split('\n').slice(0, 6).join(' / '));
 
     // ── 2b. …and plays in MakeCode's Arcade simulator ─────────────────
@@ -325,13 +329,14 @@ try {
         const built = await waitFor(() => page.evaluate(() => {
             const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
             return vm ? vm.runtime.targets.filter(t => !t.isStage).map(t => t.getName()) : [];
-        }).catch(() => []), names => names.includes('mySprite'), 30000);
-        check('⇦ To blocks builds the imported Arcade sprites', built.includes('mySprite'), built.join(', '));
+        }).catch(() => []), names => names.includes('__arcadeTemplate1'), 30000);
+        check('⇦ To blocks builds the imported Arcade sprites',
+            ['Game', '__arcadeTemplate1', '__arcadeTemplate2', '__arcadeTemplate3'].every(name => built.includes(name)), built.join(', '));
         const costumesTab = page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first();
         if (await costumesTab.count()) {
             await costumesTab.click();
-            // Select the imported sprite by name: it carries the Arcade art.
-            const sprite = page.locator('[class*="sprite-selector-item"]', {hasText: 'mySprite'}).first();
+            // Select mySprite's template by name: it carries the Arcade art.
+            const sprite = page.locator('[class*="sprite-selector-item"]', {hasText: '__arcadeTemplate1'}).first();
             if (await sprite.count()) await sprite.click().catch(() => {});
             // A crash here would be the paint editor itself on the imported costume, not the toggle.
             const tabErrors = browserErrors.filter(e => /Costume Tab/.test(e)).length;
