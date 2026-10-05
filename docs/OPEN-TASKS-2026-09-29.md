@@ -14,6 +14,23 @@ Upstream-first applies (see `docs/VENDORING-REGIME.md`): work that belongs in
 `bw-board`, `bw-circuit-ui`, `sb3-creator`, the extensions repo or `labwired`
 lands there first; Lite then advances the exact pin.
 
+## State on 2026-10-05
+
+- **Done:** A1–A5, B2–B4, C1–C5, D1–D3, D5, D6 (receipts in each row below).
+- **Partial, gaps named:** B1 and B5 (PWM). The B6 part of those gaps (labwired nRF52
+  PWM, ESP32 LEDC) is claimed by session 6f571e07 since 2026-09-30; its notes record the
+  ESP32 half as not started and a labwired fork-main SAADC regression (#127) blocking
+  MakeCode V2 runs. The remaining non-labwired gaps are B7 below.
+- **Removed by the owner:** D4 (Pybricks header PR). pybricks/pybricks-micropython#508 was
+  closed by the maintainer on 2026-09-30; the Pybricks runtime was retired on 2026-10-01
+  (see "Retired firmware experiment" below). The separate bug-fix PR #507 is still open
+  upstream. Nothing further is sent to Pybricks without the owner's explicit GO.
+- **Disk (box hygiene, not a Lite change):** on 2026-10-05 `/` and `/mnt/volume1` were
+  full (0.6 GB / 2.0 GB free). Idle `/tmp` dirs and idle large worktrees are archived as
+  verified `.tgz` to the storage box (`/mnt/storage/volume1-offload/`), with a
+  `NAME.ARCHIVED.txt` note left at each old path; the daily cleanup now does the `/tmp`
+  part itself when `/` is low.
+
 ## A — micro:bit and MakeCode
 
 | # | task | scope / done-when | status |
@@ -34,6 +51,7 @@ lands there first; Lite then advances the exact pin.
 | B4 | EV3 import into Lite's dialect | MakeCode EV3 programs → Lite's EV3/LEGO dialect and blocks, like the micro:bit importer, with a round-trip census. | DONE 2026-09-29 — sb3-creator #39 (merged `b58a2254`: `DEVICE EV3`, 48 words = 48 of the 74 pinned `ev3comprehensive` opcodes, the other 26 classified) + Lite #542 (pin, `lib/bw-makecode/{ev3-translate,export-ev3}.js`, census section). Census (`docs/generated/MAKECODE-CENSUS.md`), every program in the pxt-ev3 1.4.41 docs: **258 programs, 257 compile as written: 100 full, 157 partial, 1 not-a-program; 0 silent-loss, 0 recompile, 0 parse**; 1208 EV3 blocks made; micro:bit and Lite sections unchanged. Partial = named: screen images/moods (bitmaps, no extension block), sound files, pair moves without a length (two motor runs), flashing lights, medium motors (driven as large), console, motor regulation. No side-by-side test: Lite has no EV3 runtime (no virtual EV3), so the proof is round trip + pxt-ev3 recompile. |
 | B5 | PWM follow-ups (gaps named by B1) | stc12 Scratch VM pin blocks write a map nothing reads, so even digital writes never reach the board (a bug, not a PWM gap); micro:bit+ `analogwrite` still on/off (one-line fix in CrispStrobe/extensions); micro:bit+ servo blocks are empty stubs; devices `set motor speed` refused (motor model has no speed input); servo canvas shows "no signal" (bw-circuit-ui); multimeter on a PWM net reads instantaneous, not average; MakeCode `servoWritePin`/`analogSetPeriod`, labwired nRF PWM and ESP32 LEDC unverified. Queued after B4, since found, not chosen. | PARTIAL 2026-09-29 — extensions #26 (merge `4d65f562`), bw-board #139 (`cfacdf60`), bw-circuit-ui #74 (`e9ebcf11`), Lite PR (this pin bump; receipts in the LANES.md DONE row). Before → after, measured at the old pins then the new: stc12 VM pin blocks — wrote `_stc12Pins`, read by nothing, LED 0 mA → drive `runtime.circuitBoard` (setPin/setPwm/setTone, inputs armed; 25 % = 25 % of full-on; reads come from the circuit); micro:bit+ `analogwrite` — `>= 50 %` on/off (25 % = 0 mA) → setPwm at 50 Hz (N % of full-on within 0.5 %); micro:bit+ servo/continuous servo — stubs → CODAL frame 50 Hz, 500 + deg·2000/180 us (0–180 within 0.5°); devices `set motor speed` — refused → N % duty on the MCU pin that drives the motor (walked through base resistor/NPN; same omega as setPwm on the pin); devices `set servo angle` — no pulse, canvas "no signal" → pulse on the servo's pin + engine `signal` field the face reads; servo calibration (found) — 1000–2000 us vs every driver's 500–2500 us (45° read 0) → 500–2500; multimeter on a PWM net — instantaneous on/off → both Circuit-tab meters show bw-board's 100 ms mean (exact over whole periods of 500/50 Hz; DC identical); MakeCode `servoWritePin` — a 0 % PWM, servo stayed at 90° → host reports the angle, bridge sends the servo frame; `analogSetPeriod` — ignored (always 50 Hz) → the program's period is the carrier. GAPS: labwired nRF52 PWM and ESP32 LEDC emit no pad edges (labwired-core `95774285` models registers/events only), so duty from those engines does not reach the circuit; motor `direction` stays refused (needs an H-bridge IN-pin map); stc12 `set PORT`/`set PART`/screen/segment/keypad blocks still keep state no circuit reads; sb3-creator devices JS/Python drivers still stub `setServo`/`setMotor`; the VM route was not driven in a browser. |
 | B6 | PWM pad edges from labwired nRF52 PWM and ESP32 LEDC (found by B5) | labwired-core models nRF52 PWM and ESP32 LEDC as registers/events only, so a program's duty on those chips never reaches the circuit (B5 GAP). Make each drive its pad through the engine's pad seam (as GPIOTE now does), so `analogWrite`/LED dimming on a micro:bit or ESP32 bench follow the duty. Found by B5, not chosen. | CLAIMED 2026-09-30 (VPS Claude, session 6f571e07; see LANES.md) |
+| B7 | Remaining actuator/PWM gaps from B1/B5 (outside B6) | (1) devices motor `direction` is refused — map it onto an H-bridge's two input pins (or name the circuits it cannot drive); (2) the stc12 `set PORT`, `set PART`, screen, segment and keypad blocks keep state that no circuit reads — wire each to `vm.runtime.circuitBoard` as B5 did for the pin blocks, or name it; (3) sb3-creator's devices JS/Python drivers still have empty `setServo`/`setMotor` — implement via the same bw-board routes; (4) measure in a real browser whether the circuit designer's green-flag reset wipes a program's first write, and fix if so. Not labwired (B6). | CLAIMED 2026-10-05 |
 
 ## C — infrastructure and RISC-V (before D)
 
