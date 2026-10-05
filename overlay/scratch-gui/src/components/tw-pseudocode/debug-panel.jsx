@@ -239,6 +239,7 @@ class DebugPanel extends React.Component {
         this.onCorrelatedCheckpoint = this.onCorrelatedCheckpoint.bind(this);
         this.onCorrelatedRestore = this.onCorrelatedRestore.bind(this);
         this.syncProjectTokens = this.syncProjectTokens.bind(this);
+        this.onGreenFlag = this.onGreenFlag.bind(this);
         this._onMachineExtracted = this._onMachineExtracted.bind(this);
         this._onMediaLoad = this._onMediaLoad.bind(this);
         this._onAsmRomReady = this._onAsmRomReady.bind(this);
@@ -746,11 +747,41 @@ class DebugPanel extends React.Component {
 
     syncProjectTokens (prevProps, initial) {
         if (this.props.runToken && (initial || this.props.runToken !== prevProps.runToken)) {
-            this.onStart();
+            this.onGreenFlag();
         }
         if (!initial && this.props.stopToken && this.props.stopToken !== prevProps.stopToken) {
             this.onStop();
         }
+    }
+
+    /**
+     * The green flag is ONE run, by ONE runtime, on ONE board (task B8).
+     *
+     * When this runner would compile the project's own blocks, the Scratch VM
+     * is already running that same program on the designer's board — the
+     * board the designer shows and the VM's blocks write. Starting it here as
+     * well was a second copy of the program on a private board, and once it had
+     * built (seconds in) the designer displayed THAT board while the VM's
+     * writes went to one that was neither shown nor clocked — from the second
+     * green flag on, every run (measured in a real browser on production,
+     * 54-motor-driver). So the flag starts this runner only when it runs
+     * something the VM does not: a machine bench, boot media, the user's
+     * firmware. Otherwise the flag ends any debug session of the blocks, which
+     * hands the display back to the designer's board; the Debug pane's own
+     * Start is the explicit way to run the blocks on the emulator, and the
+     * designer labels that board as the emulator's while it is shown.
+     */
+    async onGreenFlag () {
+        const {runnerCompilesProjectBlocks, selectDebugTargetKind} = await import(
+            /* webpackChunkName: "bw-debug" */ '../../lib/bw-debug/debug-runner.js');
+        const rt = this.props.vm && this.props.vm.runtime;
+        const device = String((rt && rt.stc && rt.stc.device) || '').toLowerCase();
+        const selectedKind = selectDebugTargetKind(device, this.state.kind);
+        if (runnerCompilesProjectBlocks({selectedKind, bootMedia: this._bootMedia, userFirmware: this._userFirmware})) {
+            this.onStop();
+            return;
+        }
+        return this.onStart();
     }
 
     componentWillUnmount () {
@@ -774,6 +805,8 @@ class DebugPanel extends React.Component {
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
         this._mouseLeave();
+        // The host shows a runner's board only while that runner lives (B8).
+        if (this.props.onRunnerGone) this.props.onRunnerGone();
         // Stop mirroring the old machine's video / draining its keyboard into the
         // Widgets pane before it is destroyed; the next boot starts its own.
         if (typeof window !== 'undefined' && typeof window.bwStopMachineVideo === 'function') {
@@ -2029,6 +2062,7 @@ class DebugPanel extends React.Component {
 DebugPanel.propTypes = {
     clockHz: PropTypes.number,
     onRunnerChange: PropTypes.func,
+    onRunnerGone: PropTypes.func,
     runToken: PropTypes.number,
     stopToken: PropTypes.number,
     locale: PropTypes.string,

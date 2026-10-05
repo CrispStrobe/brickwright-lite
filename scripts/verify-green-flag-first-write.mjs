@@ -20,19 +20,30 @@
  * round red); on the fixed order the clear has already run, synchronously,
  * inside the click.
  *
- * THE SUBJECT is the designer's OWN board — where the VM's stc12 blocks write
- * and the designer clears. The Debug pane also runs the program on every green
- * flag, on a board of its own, and once that runner has built (seconds after
- * the first flag) the designer DISPLAYS the runner's board instead. That
- * two-runtime handover is a separate, named defect (task B7's residue), not
- * this gate's subject, so every round starts on a fresh page — the runner idle
- * — and a round in which the runner took the display before the reading is
- * repeated, never asserted on.
+ * SEVERAL CONSECUTIVE RUNS ON ONE PAGE (task B8). Until B8 every green flag
+ * also started the Debug pane's runner on the same blocks, on a board of its
+ * own; once that runner had built, the designer displayed ITS board and never
+ * handed it back, so from the second flag on the VM's blocks wrote a board that
+ * was neither shown nor clocked (measured on production: the VM's board frozen
+ * at 500 ms of board time for every later run, the shown board the runner's,
+ * itself frozen ~3 s at the start of run 3). B7's version of this gate opened a
+ * fresh page per round to step around that. Now one run is one runtime on one
+ * board, so the rounds run back to back on ONE page, and each must behave like
+ * the first:
  *
- * PER ROUND (fresh page, ROUNDS of them):
- *   1. the designer's clock runs — board time advances while the program waits
- *      (an unclocked board: the green flag left the designer in build mode);
- *   2. the board holds the program's first write: P1.0 pushpull LOW and the
+ *   flag, stop, flag, stop, flag, flag (a restart while running), stop — then
+ *   the Debug pane's own Start (the explicit choice to run the blocks on the
+ *   emulator, whose board the designer then shows, labelled), and a green flag
+ *   during that session, which must hand the display back to the VM's board.
+ *
+ * PER RUN:
+ *   1. the board on screen is the board the VM's blocks write
+ *      (vm.runtime.circuitBoard), at every animation frame from the click to
+ *      the reading — no swap, not even a transient one;
+ *   2. the Debug pane runs no second copy of the program (no runner board);
+ *   3. the designer's clock runs — board time advances while the program waits
+ *      (an unclocked board: build mode, or a board never handed back);
+ *   4. the board holds the program's first write: P1.0 pushpull LOW and the
  *      LED lit, while the program is still in its wait (the wipe: the pin is
  *      the designer's quasi-high and the LED dark).
  * The gate waits on conditions only (waitForFunction), never on a sleep.
@@ -48,15 +59,13 @@ const artifacts = resolve(process.env.GREEN_FLAG_ARTIFACTS || 'artifacts/green-f
 const EXAMPLE = '54-motor-driver';
 const PIN = 'P1.0';
 const LED = 'LED_led';
-const ROUNDS = 3;
 // Board time the designer must advance after the program's first write before
 // the reading is taken: two of its 50 ms ticks, five 20 ms LED windows. A
 // designer left in build mode (an unclocked board) cannot pass it.
 const ADVANCE_NS = 100_000_000;
 // A reading taken after the program's own `turn off led` (4 s of wall time
-// later), or after the Debug pane's runner took the display, says nothing about
-// this gate's subject. Such a round is repeated, at most this many times in
-// all, and reported if it never lands.
+// later) says nothing about this gate's subject: such a run is repeated, at
+// most this many times in all, and reported if it never lands.
 const ATTEMPTS = 3;
 // The LED's brightness when lit on this bench: 5 V through 1 kOhm and a red
 // LED is about 3 mA, 0.155 of the 20 mA scale (measured in CI run 37293825910).
@@ -110,59 +119,91 @@ const check = (name, ok, detail = '') => {
 try {
     if (!url) ({server, url} = await serveBuild());
     browser = await chromium.launch({headless: true});
-    // A fresh page per round: the Debug pane's runner is idle, so the designer
-    // displays its own board (see the header).
-    const open = async () => {
-        if (page) await page.close();
-        page = await browser.newPage({viewport: {width: 1600, height: 1050}});
-        page.on('dialog', dialog => dialog.accept());
-        page.on('pageerror', error => console.log(`pageerror: ${error.message}`));
-        await page.addInitScript(() => {
-            localStorage.clear();
-            localStorage.setItem('bw-starter-v1-complete', '1');
-            localStorage.setItem('bw-right-pane-hidden', '0');
-            localStorage.setItem('bw-debug-dock', 'right');
-            sessionStorage.clear();
-        });
-        await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
-        await page.waitForSelector('[role="tab"]', {timeout: 60000});
-        // The circuit tab mounted first, then its gallery loader found the way
-        // verify-example-journey.mjs finds it.
-        await page.getByRole('tab', {name: /circuit/i}).click();
-        await page.waitForFunction(id => {
-            const gui = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
-            if (!gui) return false;
+    page = await browser.newPage({viewport: {width: 1600, height: 1050}});
+    page.on('dialog', dialog => dialog.accept());
+    page.on('pageerror', error => console.log(`pageerror: ${error.message}`));
+    await page.addInitScript(() => {
+        localStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-right-pane-hidden', '0');
+        localStorage.setItem('bw-debug-dock', 'right');
+        sessionStorage.clear();
+    });
+    await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
+    await page.waitForSelector('[role="tab"]', {timeout: 60000});
+    // The circuit tab mounted first, then its gallery loader found the way
+    // verify-example-journey.mjs finds it.
+    await page.getByRole('tab', {name: /circuit/i}).click();
+    await page.waitForFunction(id => {
+        const gui = document.querySelector('[class*="gui_body"]') || document.querySelector('[class*="gui"]');
+        if (!gui) return false;
+        const key = Object.keys(gui).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
+        if (!key) return false;
+        const queue = [gui[key]];
+        for (let i = 0; i < 8000 && queue.length; i++) {
+            const fiber = queue.shift();
+            const node = fiber && fiber.stateNode;
+            if (node && typeof node.loadExample === 'function' && Array.isArray(node.state && node.state.examples)) {
+                window.__bwUiCircuitTab = node;
+                return node.state.examples.some(e => e.id === id);
+            }
+            if (fiber && fiber.child) queue.push(fiber.child);
+            if (fiber && fiber.sibling) queue.push(fiber.sibling);
+        }
+        return false;
+    }, EXAMPLE, {timeout: 40000});
+    const loaded = await page.evaluate(async id => {
+        const tab = window.__bwUiCircuitTab;
+        return tab.loadExample(tab.state.examples.find(e => e.id === id));
+    }, EXAMPLE);
+    check(`the gallery loads ${EXAMPLE}`, loaded && loaded.ok !== false, (loaded && loaded.error) || '');
+    await page.waitForFunction(() => {
+        const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
+        return !!(vm && vm.runtime.circuitBoard && vm.runtime.stc && (vm.runtime.stc.pins || []).length
+            && vm.runtime.targets.some(t => Object.values(t.blocks._blocks).some(b => b.opcode === 'event_whenflagclicked')));
+    }, null, {timeout: 60000});
+    // Board identities, and a per-frame watch of which board is on screen
+    // against the board the VM's blocks write. The designer shows its
+    // `board` prop (the host's state.board) when one is lent, else its own,
+    // which is the board it publishes as vm.runtime.circuitBoard.
+    await page.evaluate(() => {
+        const ids = new WeakMap(); let next = 1;
+        window.__b8id = b => { if (!b) return null; if (!ids.has(b)) ids.set(b, next++); return `B${ids.get(b)}`; };
+        window.__b8Panel = () => {
+            const gui = document.querySelector('[class*="gui"]');
             const key = Object.keys(gui).find(k => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance'));
-            if (!key) return false;
             const queue = [gui[key]];
-            for (let i = 0; i < 8000 && queue.length; i++) {
+            for (let i = 0; i < 40000 && queue.length; i++) {
                 const fiber = queue.shift();
                 const node = fiber && fiber.stateNode;
-                if (node && typeof node.loadExample === 'function' && Array.isArray(node.state && node.state.examples)) {
-                    window.__bwUiCircuitTab = node;
-                    return node.state.examples.some(e => e.id === id);
-                }
+                if (node && typeof node._createRunner === 'function') return node;
                 if (fiber && fiber.child) queue.push(fiber.child);
                 if (fiber && fiber.sibling) queue.push(fiber.sibling);
             }
-            return false;
-        }, EXAMPLE, {timeout: 40000});
-        const loaded = await page.evaluate(async id => {
-            const tab = window.__bwUiCircuitTab;
-            return tab.loadExample(tab.state.examples.find(e => e.id === id));
-        }, EXAMPLE);
-        check(`the gallery loads ${EXAMPLE}`, loaded && loaded.ok !== false, (loaded && loaded.error) || '');
-        await page.waitForFunction(() => {
-            const vm = window.__brickwrightStore?.getState?.()?.scratchGui?.vm;
-            return !!(vm && vm.runtime.circuitBoard && vm.runtime.stc && (vm.runtime.stc.pins || []).length
-                && vm.runtime.targets.some(t => Object.values(t.blocks._blocks).some(b => b.opcode === 'event_whenflagclicked')));
-        }, null, {timeout: 60000});
-    };
+            return null;
+        };
+        window.__b8Watch = () => {
+            const vm = window.__brickwrightStore.getState().scratchGui.vm;
+            const watch = {frames: 0, swaps: [], stop: false};
+            const t0 = performance.now();
+            const frame = () => {
+                if (watch.stop) return;
+                const written = vm.runtime.circuitBoard;
+                const shown = window.__bwUiCircuitTab.state.board || written;
+                watch.frames++;
+                if (shown !== written && watch.swaps.length < 5) {
+                    watch.swaps.push({ms: Math.round(performance.now() - t0), shown: window.__b8id(shown), written: window.__b8id(written)});
+                }
+                requestAnimationFrame(frame);
+            };
+            requestAnimationFrame(frame);
+            return watch;
+        };
+    });
 
-    const attempt = async () => {
-        await open();
+    const runOnce = async (label, {stopAfter = true, viaFlagWhileRunning = false} = {}) => {
         // The extension's record of what the program wrote is the program's
-        // side of the comparison; cleared so this round's write is this round's.
+        // side of the comparison; cleared so this run's write is this run's.
         const startNs = await page.evaluate(() => {
             const vm = window.__brickwrightStore.getState().scratchGui.vm;
             vm.runtime._stc12Pins = Object.create(null);
@@ -171,6 +212,7 @@ try {
         // The real control, clicked as a learner clicks it — and in the same
         // task, the VM's next step (the separating state; see the header).
         await page.evaluate(() => {
+            window.__b8Current = window.__b8Watch();
             document.querySelector('[class*="green-flag"]').click();
             window.__brickwrightStore.getState().scratchGui.vm.runtime._step();
         });
@@ -189,40 +231,92 @@ try {
             }, String(BigInt(wrote) + BigInt(ADVANCE_NS)), {timeout: 30000}).then(() => true).catch(() => false);
             reading = await page.evaluate(({pin, led}) => {
                 const vm = window.__brickwrightStore.getState().scratchGui.vm;
+                const tab = window.__bwUiCircuitTab;
                 const b = vm.runtime.circuitBoard;
-                const ps = b.pinStates.get(pin.toLowerCase());
+                const shown = tab.state.board || b;
+                const ps = shown.pinStates.get(pin.toLowerCase());
+                const panel = window.__b8Panel();
+                const runner = panel && panel.state.runner;
+                const watch = window.__b8Current;
+                watch.stop = true;
                 return {
-                    runnerOwns: !!(window.__bwUiCircuitTab && window.__bwUiCircuitTab.state.board),
+                    shownIsWritten: shown === b, shown: window.__b8id(shown), written: window.__b8id(b),
+                    frames: watch.frames, swaps: watch.swaps,
+                    runnerPhase: runner ? runner.state().phase : 'none',
+                    runnerBoard: window.__b8id(runner && runner.board ? runner.board() : null),
                     stillWaiting: vm.runtime._stc12Pins.led === 0,
                     mode: ps ? ps.mode : null, high: ps ? ps.driveHigh : null,
-                    led: b.ledBrightness(led), boardNs: String(b.timeNs)
+                    led: shown.ledBrightness(led), boardNs: String(shown.timeNs),
+                    simMode: (document.querySelector('[data-sim-mode]') || {dataset: {}}).dataset.simMode
                 };
             }, {pin: PIN, led: LED});
             reading.wallMs = Date.now() - t0;
         }
-        await page.evaluate(() => document.querySelector('[class*="stop-all"]').click());
-        await page.waitForFunction(() => !window.__brickwrightStore.getState().scratchGui.vmStatus.running,
-            null, {timeout: 15000});
-        return {startNs, wrote, ran, reading};
+        if (stopAfter) {
+            await page.evaluate(() => document.querySelector('[class*="stop-all"]').click());
+            await page.waitForFunction(() => !window.__brickwrightStore.getState().scratchGui.vmStatus.running,
+                null, {timeout: 15000});
+        }
+        return {label, startNs, wrote, ran, reading, viaFlagWhileRunning};
     };
 
-    for (let round = 1; round <= ROUNDS; round++) {
+    const assertRun = (r) => {
+        const {label, reading} = r;
+        if (!check(`${label}: the program wrote its first level (turn on led)`, r.wrote !== null)) return false;
+        const detail = `start ${r.startNs} ns, write at ${r.wrote} ns, now ${reading.boardNs} ns after ${reading.wallMs} ms; `
+            + `shown ${reading.shown}, written ${reading.written}, runner ${reading.runnerPhase}/${reading.runnerBoard}; `
+            + `${PIN} ${reading.mode}/${reading.high}; LED ${reading.led.toFixed(3)}; designer ${reading.simMode}`;
+        check(`${label}: the board on screen is the board the VM's blocks write, at every frame (${reading.frames} frames)`,
+            reading.shownIsWritten && reading.swaps.length === 0 && reading.frames > 0,
+            `${detail}; swaps ${JSON.stringify(reading.swaps)}`);
+        check(`${label}: the Debug pane runs no second copy of the program`,
+            reading.runnerBoard === null || reading.runnerPhase === 'idle', detail);
+        check(`${label}: the designer's clock runs after the green flag (not left in build mode, not unclocked)`,
+            r.ran && reading.simMode === 'simulate', detail);
+        check(`${label}: the reading is taken inside the program's wait (else this runner is too slow to observe)`,
+            !r.ran || reading.stillWaiting, detail);
+        check(`${label}: the board holds the program's first write (${PIN} pushpull low), not the start-of-run clear`,
+            reading.mode === 'pushpull' && reading.high === false, detail);
+        check(`${label}: the LED the program turned on is lit`, reading.led > LIT, detail);
+        return true;
+    };
+
+    // A run read after the program's own turn-off is repeated, never asserted on.
+    const attempt = async (label, options) => {
         let r = null;
         for (let n = 1; n <= ATTEMPTS; n++) {
-            r = await attempt();
-            if (r.wrote === null || !r.ran || (r.reading.stillWaiting && !r.reading.runnerOwns)) break;
-            console.log(`round ${round}: attempt ${n} ${r.reading.runnerOwns ? 'had the Debug pane\'s runner owning the display' : 'read after the program\'s own turn-off'} (${r.reading.wallMs} ms for ${ADVANCE_NS / 1e6} ms of board time) — repeated`);
+            r = await runOnce(label, options);
+            if (r.wrote === null || !r.ran || r.reading.stillWaiting) break;
+            console.log(`${label}: attempt ${n} read after the program's own turn-off (${r.reading.wallMs} ms for ${ADVANCE_NS / 1e6} ms of board time) — repeated`);
         }
-        if (!check(`round ${round}: the program wrote its first level (turn on led)`, r.wrote !== null)) break;
-        const {reading} = r;
-        const detail = `start ${r.startNs} ns, write at ${r.wrote} ns, now ${reading.boardNs} ns after ${reading.wallMs} ms; ${PIN} ${reading.mode}/${reading.high}; LED ${reading.led.toFixed(3)}`;
-        check(`round ${round}: the designer's clock runs after the green flag (not left in build mode)`, r.ran, detail);
-        check(`round ${round}: the reading is taken inside the program's wait, on the designer's own board (else this runner is too slow to observe)`,
-            !r.ran || (reading.stillWaiting && !reading.runnerOwns), detail);
-        check(`round ${round}: the board holds the program's first write (${PIN} pushpull low), not the start-of-run clear`,
-            reading.mode === 'pushpull' && reading.high === false, detail);
-        check(`round ${round}: the LED the program turned on is lit`, reading.led > LIT, detail);
+        return assertRun(r);
+    };
+
+    // 1-3: flag, stop — three times; every one must be the first.
+    for (let run = 1; run <= 3; run++) {
+        if (!await attempt(`run ${run}`)) break;
     }
+    // 4-5: a flag while the previous run still runs is a restart (the VM's own
+    // stop precedes its start in one call; it must not strand build mode).
+    await attempt('run 4 (left running)', {stopAfter: false});
+    await attempt('run 5 (a flag while run 4 runs)');
+
+    // 6: the explicit choice. The Debug pane's own Start runs the blocks on the
+    // emulator; the designer then shows that board, labelled — and a green flag
+    // during that session hands the display back to the VM's board, whose run
+    // must behave like every other.
+    const session = await page.evaluate(() => { window.__b8Panel().onStart(); return true; });
+    const lent = await page.waitForFunction(() => {
+        const tab = window.__bwUiCircuitTab;
+        const panel = window.__b8Panel();
+        const runner = panel && panel.state.runner;
+        return !!(tab.state.board && runner && runner.board && tab.state.board === runner.board()
+            && runner.state().phase === 'running');
+    }, null, {timeout: 90000}).then(() => true).catch(() => false);
+    const label = await page.evaluate(() => document.body.innerText.includes('LIVE — emulator driving pins'));
+    check('the Debug pane\'s own Start shows the emulator\'s board, labelled as the emulator\'s', session && lent && label,
+        `lent ${lent}, label ${label}`);
+    if (lent) await attempt('run 6 (a flag during a Debug-pane session)');
     await page.screenshot({path: join(artifacts, 'final.png'), fullPage: true});
 } catch (error) {
     failures.push(error && error.message ? error.message : String(error));
@@ -237,4 +331,4 @@ if (failures.length) {
     console.error(`\n${failures.length} green-flag first-write check(s) failed.`);
     process.exit(1);
 }
-console.log('\nthe first write survives every green flag');
+console.log('\nevery green flag runs once, on the board on screen, and keeps its first write');
