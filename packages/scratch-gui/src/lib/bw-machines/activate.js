@@ -28,7 +28,8 @@ const TARGET_KIND = Object.freeze({
     i80386: 'i80386',
     z80: 'z80', zx48: 'z80', zx128: 'z80',
     eater6502: 'eater6502', gpascal: 'eater6502',
-    riscv32: 'riscv32'
+    riscv32: 'riscv32',
+    rp2040js: 'rp2040js'
 });
 
 /** Boot slot → the debug-runner `bootMedia.profile` that selects its branch.
@@ -42,7 +43,11 @@ const SLOT_PROFILE = Object.freeze({
     cpmsys: 'cpm-system',
     // A 'kernel' slot boots Linux on the RV32 machine (debug-runner's
     // attachRiscV32Linux); its `initrd` slot rides along as extra media.
-    kernel: 'linux'
+    kernel: 'linux',
+    // A 'flash' slot boots a pico-sdk .uf2 on the RP2040 (debug-runner's
+    // attachRp2040jsBundle, via bw-board's runRp2040Bundle path). The console
+    // is UART0 on the debug panel's serial terminal.
+    flash: 'uf2'
 });
 
 const isObj = v => v != null && typeof v === 'object' && !Array.isArray(v);

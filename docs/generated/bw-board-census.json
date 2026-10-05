@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "bf5ba56282eaff5df38d51c85ec18d815290f8e9",
+    "sha": "292f3307f40ccc0e279036ff8fc3cfd4be72598c",
     "read": "2026-10-05"
   },
   "rows": [
@@ -209,6 +209,18 @@
         "test/lcapy-oracle.test.mjs"
       ],
       "what": "An independent SYMBOLIC circuit solver. The only non-numerical check on mna.js."
+    },
+    {
+      "id": "picobb-uf2",
+      "kind": "fixture",
+      "present": false,
+      "ciAvailable": false,
+      "ci": "no — the UF2 is a built Zlib artifact kept in the media lab, not vendored; routine CI skips the acceptance and runs the parseUF2 units + runner mechanics.",
+      "via": "tried $PICOBB_UF2",
+      "gates": [
+        "test/rp2040-media-bundle.test.mjs"
+      ],
+      "what": "PicoBB — BBC BASIC for the Raspberry Pi Pico, a built Zlib .uf2 that lives in brickwright-media-lab (projects/picobb-rp2040/). The rp2040 media-bundle acceptance (runRp2040Bundle) boots it on rp2040js and runs its UART0 REPL. The firmware is a built artifact, never vendored here — so the acceptance skips when absent while the parseUF2 units and the runner mechanics (a bad bundle failing by name) always run."
     },
     {
       "id": "ngspice",
