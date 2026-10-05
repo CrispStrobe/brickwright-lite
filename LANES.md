@@ -482,6 +482,8 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| Adopt sb3-creator main in full: #49 gallery examples + later commits; fix the i8086 `long` leak (task B10 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b10-sb3-main*` | base `244b0372d`; Lite sb3-creator pin-bump surfaces (vendored twins, gallery/corpus/census counts, simulator-driver arming), upstream sb3-creator fix for the i8086 `long` leak if it lives there; this row and the task file. Not bw-values (E3a), not labwired (B9). | **CLAIMED 2026-10-05.** |
+
 | Salvage E3a: bw-values + the adapter part the arcade extension needs (task E3a of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/e3a-bw-values` | base `28121c673`; paths `overlay/scratch-vm/src/util/bw-values.js`, the `Scratch.BWValues` exposure in `overlay/scratch-vm/src/extensions/crispstrobe/adapter.js` (+ extension-manager if needed), packages twins, focused tests; this row and the task file. Not the dialect (E0), not the arcade extension itself (E1). | **CLAIMED 2026-10-05.** |
 
 
