@@ -4,11 +4,21 @@
  * hold, for extensions that run translated MakeCode Arcade programs.
  *
  * Exposed to every bundled CrispStrobe extension as `Scratch.BWValues`
- * (extensions/crispstrobe/adapter.js). Nothing in scratch-vm calls it: until an
- * extension does, projects behave exactly as before. Ported from the parked
- * Codex WIP (`23e9c7f44`, task E3a of docs/OPEN-TASKS-2026-09-29.md); the code
- * below that header is the WIP's, unchanged, so the Arcade extension (E1) binds
- * to the same API it was written against.
+ * (extensions/crispstrobe/adapter.js), so all of them share ONE set of rules
+ * and one array heap per runtime: the Arrays extension's reference blocks and
+ * the Arcade extension's images, tiles, scenes (task E1) name the same values.
+ * Nothing in scratch-vm itself calls it.
+ *
+ * ONE RULE SET, TWO COPIES. The Arrays extension (CrispStrobe/extensions
+ * arrays.js, bundled in extensions/crispstrobe/arrays) carries its own built-in
+ * copy, `makeValues`, and uses `Scratch.BWValues` instead whenever the host
+ * provides it. The function below is that copy's text (dedented), so the
+ * Arrays extension computes exactly what it computed before this file existed;
+ * test/bw-values.test.mjs holds the two to the same results. It converges the
+ * parked Codex WIP's version (`23e9c7f44`, task E3a of
+ * docs/OPEN-TASKS-2026-09-29.md), which had the same API and differed only
+ * where it threw or leaked: it threw on a missing runtime, returned a falsy
+ * non-boolean from isReference(0), and required WeakRef/FinalizationRegistry.
  *
  * WHAT IT CARRIES
  *  - UNDEFINED: MakeCode's `undefined` as a value. Scratch reads an undefined
@@ -24,6 +34,7 @@
  *    PROJECT_START (green flag) and PROJECT_LOADED, after which
  *    referenceId(runtime, oldRef, kind) is null — a reference never names a
  *    resource of another run, another project or another VM.
+ *    Without a runtime (a unit test, a headless load) one stand-in key is used.
  *  - Arrays by reference: arrayReference(runtime, array) / arrayValue(runtime,
  *    ref) keep one heap of real JS arrays per runtime (cleared on PROJECT_START,
  *    PROJECT_LOADED, RUNTIME_DISPOSED); the same array always gets the same id.
@@ -45,113 +56,228 @@
  *    loads. Making such values survive save/load is the `sb3.js` serialization
  *    piece of task E3, not this file.
  */
-// Undefined is a value in MakeCode. Scratch also uses an undefined result
-// to mean a command did not report anything, so carry it as a tagged value.
-// The tag survives project JSON; conversion is centralized at native boundaries.
-const isUndefined = value => value && typeof value === 'object' &&
-    Object.keys(value).length === 1 && value.bwUndefined === true;
-const UNDEFINED = Object.freeze(Object.defineProperties({bwUndefined: true}, {
-    toString: {value: () => 'undefined'}, valueOf: {value: () => NaN}
-}));
-const scopes = new WeakMap();
-const session = `${Date.now().toString(36)}:${Math.random().toString(36).slice(2)}`;
-let nextScope = 0;
-const references = new Map();
-const collected = new FinalizationRegistry(key => {
-    if (!references.get(key)?.deref()) references.delete(key);
-});
-const isReference = value => value && typeof value === 'object' && Object.keys(value).length === 1 &&
-    ['array','image','tile','animation','scene','physics-engine'].includes(value.bwReference?.kind) && typeof value.bwReference.id === 'string' && typeof value.bwReference.scope === 'string';
-const restoreReference = value => {
-    const key = JSON.stringify([value.bwReference.scope, value.bwReference.kind, value.bwReference.id]);
-    const existing = references.get(key)?.deref();
+// The Arrays extension's built-in value rules (arrays.js `makeValues`), verbatim.
+const makeValues = () => {
+  const isUndefined = (value) =>
+    Boolean(value) &&
+    typeof value === "object" &&
+    Object.keys(value).length === 1 &&
+    value.bwUndefined === true;
+  const UNDEFINED = Object.freeze(
+    Object.defineProperties(
+      { bwUndefined: true },
+      {
+        toString: { value: () => "undefined" },
+        valueOf: { value: () => NaN },
+      }
+    )
+  );
+  const KINDS = [
+    "array",
+    "image",
+    "tile",
+    "animation",
+    "scene",
+    "physics-engine",
+  ];
+  const scopes = new WeakMap();
+  const session =
+    Date.now().toString(36) + ":" + Math.random().toString(36).slice(2);
+  let nextScope = 0;
+  const references = new Map();
+  const collected =
+    typeof FinalizationRegistry === "function"
+      ? new FinalizationRegistry((key) => {
+          const held = references.get(key);
+          if (!held || !held.deref()) references.delete(key);
+        })
+      : null;
+  const isReference = (value) =>
+    Boolean(value) &&
+    typeof value === "object" &&
+    Object.keys(value).length === 1 &&
+    Boolean(value.bwReference) &&
+    KINDS.includes(value.bwReference.kind) &&
+    typeof value.bwReference.id === "string" &&
+    typeof value.bwReference.scope === "string";
+  const restoreReference = (value) => {
+    const ref = value.bwReference;
+    const key = JSON.stringify([ref.scope, ref.kind, ref.id]);
+    const held = references.get(key);
+    const existing = held && held.deref();
     if (existing) return existing;
-    references.set(key, new WeakRef(value));
-    collected.register(value, key);
+    if (typeof WeakRef === "function") {
+      references.set(key, new WeakRef(value));
+      if (collected) collected.register(value, key);
+    }
     return value;
-};
-const reference = (runtime, kind, id) => {
-    if (!scopes.has(runtime)) {
-        scopes.set(runtime, `${session}:${++nextScope}`);
-        const reset = () => scopes.set(runtime, `${session}:${++nextScope}`);
-        runtime.on?.('PROJECT_START', reset);
-        runtime.on?.('PROJECT_LOADED', reset);
+  };
+  // Without a runtime (a unit test, a headless load) one key stands in.
+  const NO_RUNTIME = {};
+  const keyOf = (runtime) => runtime || NO_RUNTIME;
+  const listen = (runtime, events, handler) => {
+    if (runtime && typeof runtime.on === "function") {
+      for (const event of events) runtime.on(event, handler);
     }
-    return restoreReference({bwReference: {kind, id, scope: scopes.get(runtime)}});
-};
-// Extensions share one array heap per runtime. Collections contain actual values;
-// references and identity are scoped to the running project, never serialized IDs.
-const arrayHeaps = new WeakMap();
-const arrayHeap = runtime => {
-    if (!arrayHeaps.has(runtime)) {
-        const heap = {values: new Map(), objects: new WeakMap(), next: 0};
-        arrayHeaps.set(runtime, heap);
-        const reset = () => {heap.values.clear(); heap.objects = new WeakMap();};
-        for (const event of ['PROJECT_START', 'PROJECT_LOADED', 'RUNTIME_DISPOSED']) runtime.on?.(event, reset);
+  };
+  const scopeOf = (runtime) => {
+    const key = keyOf(runtime);
+    if (!scopes.has(key)) {
+      scopes.set(key, session + ":" + ++nextScope);
+      listen(runtime, ["PROJECT_START", "PROJECT_LOADED"], () =>
+        scopes.set(key, session + ":" + ++nextScope)
+      );
     }
-    return arrayHeaps.get(runtime);
-};
-const arrayReference = (runtime, array) => {
-    if (!Array.isArray(array)) throw new TypeError('Array reference requires an array');
-    const heap = arrayHeap(runtime);
+    return scopes.get(key);
+  };
+  const reference = (runtime, kind, id) =>
+    restoreReference({ bwReference: { kind, id, scope: scopeOf(runtime) } });
+  const heaps = new WeakMap();
+  const heapOf = (runtime) => {
+    const key = keyOf(runtime);
+    if (!heaps.has(key)) {
+      const heap = { values: new Map(), objects: new WeakMap(), next: 0 };
+      heaps.set(key, heap);
+      listen(
+        runtime,
+        ["PROJECT_START", "PROJECT_LOADED", "RUNTIME_DISPOSED"],
+        () => {
+          heap.values.clear();
+          heap.objects = new WeakMap();
+        }
+      );
+    }
+    return heaps.get(key);
+  };
+  const referenceId = (runtime, value, kind) =>
+    isReference(value) &&
+    value.bwReference.kind === kind &&
+    value.bwReference.scope === scopes.get(keyOf(runtime))
+      ? value.bwReference.id
+      : null;
+  const arrayReference = (runtime, array) => {
+    if (!Array.isArray(array)) {
+      throw new TypeError("Array reference requires an array");
+    }
+    const heap = heapOf(runtime);
     let id = heap.objects.get(array);
-    if (!id) {id = `array-reference:${++heap.next}`; heap.objects.set(array, id); heap.values.set(id, array);}
-    return reference(runtime, 'array', id);
-};
-const arrayValue = (runtime, value) => {
-    const id = referenceId(runtime, value, 'array');
-    return id === null ? undefined : arrayHeap(runtime).values.get(id);
-};
-const sameReference = (a, b) => isReference(a) && isReference(b) &&
-    ['kind', 'id', 'scope'].every(key => a.bwReference[key] === b.bwReference[key]);
-const referenceId = (runtime, value, kind) => isReference(value) && value.bwReference.kind === kind &&
-    value.bwReference.scope === scopes.get(runtime) ? value.bwReference.id : null;
-const decode = value => isUndefined(value) ? undefined : isReference(value) ? restoreReference(value) : value && typeof value === 'object' && Object.keys(value).length === 1 && ['NaN','Infinity','-Infinity','-0'].includes(value.bwNumber) ? Number(value.bwNumber) : value;
-const encode = value => value === undefined || isUndefined(value) ? UNDEFINED : decode(value);
-// PXT RefCollection and RefImage inherit RefObject. Operators use
-// its ordinary object conversion; transport/display IDs are never operands.
-const operand = value => decode(value);
-const equal = (a, b) => sameReference(a, b) || decode(a) === decode(b);
-const indexOf = (array, value, from = 0) => {
+    if (!id) {
+      id = "array-reference:" + ++heap.next;
+      heap.objects.set(array, id);
+      heap.values.set(id, array);
+    }
+    return reference(runtime, "array", id);
+  };
+  const arrayValue = (runtime, value) => {
+    const id = referenceId(runtime, value, "array");
+    return id === null ? undefined : heapOf(runtime).values.get(id);
+  };
+  const sameReference = (a, b) =>
+    isReference(a) &&
+    isReference(b) &&
+    ["kind", "id", "scope"].every(
+      (key) => a.bwReference[key] === b.bwReference[key]
+    );
+  const SPECIAL_NUMBERS = ["NaN", "Infinity", "-Infinity", "-0"];
+  const decode = (value) => {
+    if (isUndefined(value)) return undefined;
+    if (isReference(value)) return restoreReference(value);
+    if (
+      value &&
+      typeof value === "object" &&
+      Object.keys(value).length === 1 &&
+      SPECIAL_NUMBERS.includes(value.bwNumber)
+    ) {
+      return Number(value.bwNumber);
+    }
+    return value;
+  };
+  const encode = (value) =>
+    value === undefined || isUndefined(value) ? UNDEFINED : decode(value);
+  const equal = (a, b) => sameReference(a, b) || decode(a) === decode(b);
+  const indexOf = (array, value, from = 0) => {
     const start = Math.trunc(Number(from)) || 0;
-    for (let i = start < 0 ? Math.max(array.length + start, 0) : start; i < array.length; i++) {
-        if (i in array && equal(array[i], value)) return i;
+    for (
+      let i = start < 0 ? Math.max(array.length + start, 0) : start;
+      i < array.length;
+      i++
+    ) {
+      if (i in array && equal(array[i], value)) return i;
     }
     return -1;
-};
-const binary = (left, op, right) => {
-    const a = operand(left), b = operand(right);
+  };
+  const binary = (left, op, right) => {
+    const a = decode(left);
+    const b = decode(right);
     switch (op) {
-    case '+': return a + b;
-    case '-': return a - b;
-    case '*': return a * b;
-    case '/': return a / b;
-    case '%': return a % b;
-    default: throw new Error(`Unknown value arithmetic ${op}`);
+      case "+":
+        return a + b;
+      case "-":
+        return a - b;
+      case "*":
+        return a * b;
+      case "/":
+        return a / b;
+      case "%":
+        return a % b;
+      default:
+        throw new Error("Unknown value arithmetic " + op);
     }
-};
-const unary = (op, value) => {
-    const a = operand(value);
-    if (op === '+') return +a;
-    if (op === '-') return -a;
-    throw new Error(`Unknown unary value arithmetic ${op}`);
-};
-const jsonReplacer = (_key, value) => typeof value === 'number' && (!Number.isFinite(value) || Object.is(value,-0)) ? {bwNumber:Object.is(value,-0)?'-0':String(value)} : value;
-module.exports = {arrayReference, arrayValue, UNDEFINED, decode, encode, binary, unary, jsonReplacer, isReference, reference, referenceId, equal, indexOf, truth: value => Boolean(decode(value)),
-    compare (left, op, right) {
-        const a = operand(left), b = sameReference(left, right) ? a : operand(right);
-        switch (op) {
-        // These are deliberately JavaScript comparisons, including its
-        // null/undefined loose equality and strict primitive distinctions.
-        case '==': return a == b; // eslint-disable-line eqeqeq
-        case '!=': return a != b; // eslint-disable-line eqeqeq
-        case '===': return a === b;
-        case '!==': return a !== b;
-        case '<': return a < b;
-        case '>': return a > b;
-        case '<=': return a <= b;
-        case '>=': return a >= b;
-        default: throw new Error(`Unknown value comparison ${op}`);
-        }
+  };
+  const unary = (op, value) => {
+    const a = decode(value);
+    if (op === "+") return +a;
+    if (op === "-") return -a;
+    throw new Error("Unknown unary value arithmetic " + op);
+  };
+  const compare = (left, op, right) => {
+    const a = decode(left);
+    const b = sameReference(left, right) ? a : decode(right);
+    switch (op) {
+      // JavaScript's comparisons on purpose, loose null/undefined equality
+      // and strict primitive distinctions included.
+      case "==":
+        return a == b;
+      case "!=":
+        return a != b;
+      case "===":
+        return a === b;
+      case "!==":
+        return a !== b;
+      case "<":
+        return a < b;
+      case ">":
+        return a > b;
+      case "<=":
+        return a <= b;
+      case ">=":
+        return a >= b;
+      default:
+        throw new Error("Unknown value comparison " + op);
     }
+  };
+  const jsonReplacer = (_key, value) =>
+    typeof value === "number" &&
+    (!Number.isFinite(value) || Object.is(value, -0))
+      ? { bwNumber: Object.is(value, -0) ? "-0" : String(value) }
+      : value;
+  return {
+    UNDEFINED,
+    arrayReference,
+    arrayValue,
+    reference,
+    referenceId,
+    isReference,
+    decode,
+    encode,
+    equal,
+    indexOf,
+    binary,
+    unary,
+    compare,
+    jsonReplacer,
+    truth: (value) => Boolean(decode(value)),
+  };
 };
+
+module.exports = makeValues();

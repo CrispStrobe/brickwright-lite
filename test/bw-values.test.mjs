@@ -9,6 +9,10 @@
  *     table, one scope per runtime). The shim gains exactly that one key.
  *  2. The API surface E1 uses: create / identify / compare / stringify a
  *     reference value, UNDEFINED, the array heap, non-finite numbers in JSON.
+ *  2a. Parity with the Arrays extension's built-in copy of the same rules
+ *     (arrays.js `makeValues`), and ONE heap: the Arrays extension takes
+ *     Scratch.BWValues when the host provides it, so its references and the
+ *     Arcade extension's name the same arrays.
  *  3. What a real scratch-vm does with these values today: a variable and a
  *     list keep the identical object; Scratch's own `=` and `contains` cannot
  *     tell two references apart; saving one in a variable produces a project
@@ -163,6 +167,121 @@ test('arrays: one heap per runtime, by identity, cleared with the run', () => {
     assert.notEqual(BW.arrayReference(runtime, rows).bwReference.id, ref.bwReference.id,
         'a new run starts with an empty heap');
     assert.throws(() => BW.arrayReference(runtime, 'not an array'), TypeError);
+});
+
+// ---- the Arrays extension: same rules as its built-in copy, and ONE heap with everyone ----
+
+// arrays.js (CrispStrobe/extensions, bundled) ships its own `makeValues` and uses Scratch.BWValues
+// when the host provides it. Its built-in copy is evaluated here from the bundled source itself.
+const ARRAYS_ENTRY = path.join(REPO, 'overlay', 'scratch-vm', 'src', 'extensions', 'crispstrobe', 'arrays', 'index.js');
+const arraysSource = () => {
+    const bundled = readFileSync(ARRAYS_ENTRY, 'utf8');
+    const literal = bundled.match(/makeExt\(("(?:[^"\\]|\\.)*")\)/);
+    assert.ok(literal, 'arrays/index.js is no longer makeExt("<source>") — read its source another way');
+    return JSON.parse(literal[1]);
+};
+const builtinValues = () => {
+    const source = arraysSource();
+    const start = source.indexOf('  const makeValues = () => {');
+    const end = source.indexOf('\n  };\n', start);
+    assert.ok(start >= 0 && end > start, 'arrays.js no longer has its built-in makeValues — has the fallback moved or gone?');
+    // eslint-disable-next-line no-new-func
+    return new Function(`${source.slice(start, end + 5)}\nreturn makeValues();`)();
+};
+
+// One script of operations, run against an implementation with its own fresh runtimes. Results are
+// normalised so the two can be compared: scopes are per-implementation random strings, so a
+// reference is described by kind, id and WHICH earlier reference it is identical to.
+const paritySession = values => {
+    const seen = [];
+    const norm = x => {
+        if (typeof x === 'number') return Number.isNaN(x) ? 'NaN' : Object.is(x, -0) ? '-0' : x;
+        if (x === undefined) return '<undefined>';
+        if (x === values.UNDEFINED) return '<UNDEFINED>';
+        if (Array.isArray(x)) return x.map(norm);
+        if (x && typeof x === 'object' && x.bwReference) {
+            let i = seen.indexOf(x);
+            if (i < 0) i = seen.push(x) - 1;
+            return `ref#${i}(${x.bwReference.kind}:${x.bwReference.id})`;
+        }
+        return x;
+    };
+    const out = [];
+    const run = (label, fn) => {
+        try { out.push([label, norm(fn())]); } catch (error) { out.push([label, `throws ${error.constructor.name}: ${error.message}`]); }
+    };
+    const a = fakeRuntime(), b = fakeRuntime();
+    const imgA = values.reference(a, 'image', 'img-1');
+    const refs = {imgA, imgA2: values.reference(a, 'image', 'img-1'), imgB: values.reference(a, 'image', 'img-2'),
+        tileA: values.reference(a, 'tile', 'img-1'), foreign: values.reference(b, 'image', 'img-1'),
+        noRuntime: values.reference(null, 'scene', 's-1'), json: values.decode(JSON.parse(JSON.stringify(imgA)))};
+    for (const [name, ref] of Object.entries(refs)) run(`reference ${name}`, () => ref);
+    const samples = [0, 1, '1', '', 'img-1', null, undefined, values.UNDEFINED, NaN, -0, Infinity, true, false, [],
+        {}, {bwReference: {kind: 'sprite', id: 'x', scope: 's'}}, {bwReference: imgA.bwReference, extra: 1},
+        {bwNumber: 'NaN'}, {bwNumber: '-0'}, {bwNumber: '7'}, {bwUndefined: true}, imgA, refs.imgB, refs.foreign];
+    samples.forEach((v, i) => {
+        run(`isReference #${i}`, () => values.isReference(v));
+        run(`decode #${i}`, () => values.decode(v));
+        run(`encode #${i}`, () => values.encode(v));
+        run(`truth #${i}`, () => values.truth(v));
+        run(`String #${i}`, () => String(values.encode(v)));
+        // Scopes are per-implementation random strings: compare the text with them blanked.
+        run(`JSON #${i}`, () => JSON.stringify([v], values.jsonReplacer).replace(/"scope":"[^"]*"/g, '"scope":"<scope>"'));
+        for (const kind of ['image', 'array']) run(`referenceId ${kind} #${i}`, () => values.referenceId(a, v, kind));
+    });
+    const operands = [0, 1, '1', '', 'img-1', null, values.UNDEFINED, NaN, true, imgA, refs.imgA2, refs.imgB, refs.foreign];
+    operands.forEach((l, i) => operands.forEach((r, j) => {
+        for (const op of ['==', '!=', '===', '!==', '<', '>', '<=', '>=']) run(`compare #${i} ${op} #${j}`, () => values.compare(l, op, r));
+        for (const op of ['+', '-', '*', '/', '%']) run(`binary #${i} ${op} #${j}`, () => values.binary(l, op, r));
+        run(`equal #${i} #${j}`, () => values.equal(l, r));
+    }));
+    operands.forEach((v, i) => { for (const op of ['+', '-']) run(`unary ${op} #${i}`, () => values.unary(op, v)); });
+    run('compare unknown op', () => values.compare(1, '<>', 2));
+    run('binary unknown op', () => values.binary(1, '**', 2));
+    const list = [1, refs.imgB, undefined, imgA, '1', NaN];
+    delete list[2];
+    for (const [v, from] of [[imgA, 0], [refs.json, 0], ['1', 0], [1, 0], [undefined, 0], [NaN, 0], [imgA, 4], [imgA, -3], [imgA, Infinity]]) {
+        run(`indexOf ${norm(v)} from ${from}`, () => values.indexOf(list, v, from));
+    }
+    const rows = [1, 2];
+    const rowsRef = values.arrayReference(a, rows);
+    run('arrayReference', () => rowsRef);
+    run('arrayReference again', () => values.arrayReference(a, rows));
+    run('arrayValue', () => values.arrayValue(a, rowsRef));
+    run('arrayValue foreign', () => values.arrayValue(b, rowsRef));
+    run('arrayValue no runtime', () => values.arrayValue(null, values.arrayReference(null, rows)));
+    run('arrayReference non-array', () => values.arrayReference(a, 'x'));
+    a.emit('PROJECT_START');
+    run('after start: referenceId', () => values.referenceId(a, imgA, 'image'));
+    run('after start: arrayValue', () => values.arrayValue(a, rowsRef));
+    run('after start: same array, new id', () => values.arrayReference(a, rows));
+    run('after start: compare old/new', () => values.compare(imgA, '===', values.reference(a, 'image', 'img-1')));
+    return out;
+};
+
+test('parity: bw-values computes what the Arrays extension\'s built-in copy computes', () => {
+    const ours = paritySession(BW);
+    const theirs = paritySession(builtinValues());
+    assert.ok(ours.length > 2000, `the parity script ran only ${ours.length} operations`);
+    const differ = ours.filter(([label, value], i) => label !== theirs[i][0] || !Object.is(JSON.stringify(value), JSON.stringify(theirs[i][1])));
+    assert.deepEqual(differ.slice(0, 5).map(([label, value]) => ({label, ours: value, arrays: theirs[ours.findIndex(o => o[0] === label)][1]})), [],
+        `${differ.length} of ${ours.length} operations differ between bw-values and arrays.js's built-in copy`);
+    assert.equal(theirs.length, ours.length);
+});
+
+test('one heap: the Arrays extension uses Scratch.BWValues, so its references and another extension\'s are one', () => {
+    const runtime = fakeRuntime();
+    const ArraysExtension = makeCrispExtension(arraysSource());
+    const arraysExt = new ArraysExtension(runtime);
+    // Hand the arrays extension a runtime the way the adapter does (Scratch.vm.runtime).
+    assert.equal(arraysExt._inst._runtime, runtime, 'the adapter gave the Arrays extension its runtime');
+    // An Arrays reference resolves through Scratch.BWValues (what the Arcade extension calls) ...
+    const made = arraysExt.createReference({VALUES: '[1, 2, 3]'});
+    assert.deepEqual(BW.arrayValue(runtime, made), [1, 2, 3], 'Arrays wrote into the shared heap');
+    // ... and a reference made through Scratch.BWValues is an array the Arrays blocks can read.
+    const shared = BW.arrayReference(runtime, ['a', 'b']);
+    assert.equal(arraysExt.referenceLength({ARRAY: shared}), 2, 'Arrays read from the shared heap');
+    assert.equal(arraysExt.valueCompare({LEFT: shared, OP: '===', RIGHT: BW.arrayReference(runtime, BW.arrayValue(runtime, shared))}), true);
 });
 
 // ---- a real scratch-vm: variables, lists, Scratch's operators, save/load ----
