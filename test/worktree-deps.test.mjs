@@ -109,6 +109,50 @@ test('the key moves with every input byte and the Node major, not with derived b
     } finally { done(); }
 });
 
+// Task C6: vendor-pins.json also pins repos that npm never installs (sb3-creator,
+// stc-compiler-flasher: synced as files). Keying the whole file minted a new
+// 1-1.8 GB store entry per such bump. Only the npm git-sha pins may move the key.
+test('vendor-pins.json: a non-npm pin bump keeps the key, an npm pin bump moves it, and verify sees it STALE', () => {
+    const {base, store, done} = setup();
+    try {
+        const wt = makeWorktree(base, 'wt');
+        const pinsPath = path.join(wt, 'vendor-pins.json');
+        const write = pins => writeFileSync(pinsPath, JSON.stringify(pins, null, 2));
+        const nonNpm = {'sb3-creator': '3'.repeat(40), 'stc-compiler-flasher': '4'.repeat(40)};
+        write({...PIN, ...nonNpm});
+        const k = linkFresh(wt, store);
+        for (const [name, sha] of [['sb3-creator', '5'.repeat(40)], ['stc-compiler-flasher', '6'.repeat(40)], ['some-new-repo', '7'.repeat(40)]]) {
+            write({...PIN, ...nonNpm, [name]: sha});
+            assert.equal(computeKey(wt, ENV).key, k.key, `${name} is not an npm dependency: its pin must not change the key`);
+            assert.deepEqual(verify(wt, {store, k: computeKey(wt, ENV)}).problems, [], `${name} bump: the linked store is still the right one`);
+        }
+        // Only vendor-pins.json moves here (the gui pair is normalised; root files untouched):
+        // the npm pin alone must move the key, and verify must call the store STALE.
+        for (const d of GIT_DEPS) {
+            write({...PIN, ...nonNpm, [d]: '8'.repeat(40)});
+            assert.notEqual(computeKey(wt, ENV).key, k.key, `${d} is an npm git-sha dep: its pin must change the key`);
+            const v = verify(wt, {store, k: computeKey(wt, ENV)});
+            assert.ok(v.problems.some(x => x.startsWith('STALE')), v.problems.join('\n'));
+            assert.ok(v.problems.some(x => x.includes(`${d} installed at ${PIN[d]} but vendor-pins.json pins ${'8'.repeat(40)}`)), v.problems.join('\n'));
+        }
+        write({...PIN, ...nonNpm});
+        assert.deepEqual(verify(wt, {store, k: computeKey(wt, ENV)}).problems, []);
+    } finally { done(); }
+});
+
+// GIT_DEPS is pin-packages.mjs's PACKAGES (the root specs); integrate.mjs derives the gui
+// specs from its own literal list. If the two drift, a gui-only npm pin would be neither
+// normalised nor keyed through vendor-pins.json, and verify would not check it.
+test('GIT_DEPS is the set integrate.mjs installs from vendor-pins.json', () => {
+    const src = readFileSync(path.join(REPO, 'scripts/integrate.mjs'), 'utf8');
+    const m = /for \(const name of \[([^\]]*)\]\) \{\s*const sha = pins\[name\];[\s\S]*?github:CrispStrobe\/\$\{name\}#\$\{sha\}/.exec(src);
+    assert.ok(m, 'integrate.mjs no longer has the vendor-pins -> github:CrispStrobe/<name>#<sha> loop; update this parse and GIT_DEPS');
+    const integrateSet = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]).sort();
+    assert.deepEqual([...GIT_DEPS].sort(), integrateSet);
+    const pins = JSON.parse(readFileSync(path.join(REPO, 'vendor-pins.json'), 'utf8'));
+    for (const d of GIT_DEPS) assert.match(pins[d] || '', /^[0-9a-f]{40}$/, `${d} is pinned`);
+});
+
 test('link: hardlinks the store read-only, copies OWNED paths, and verify passes', () => {
     const {base, store, done} = setup();
     try {

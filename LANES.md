@@ -445,7 +445,11 @@ several false local reds on 2026-09-29.
 
 `scripts/worktree-deps.mjs` replaces both. It keeps a store keyed on every
 input that decides the install: both lockfiles, both `package.json` files,
-`vendor-pins.json`, and the Node and npm majors. It populates the store once,
+the npm git-sha pins in `vendor-pins.json` (bw-board and bw-circuit-ui, the
+`PACKAGES` of `scripts/pin-packages.mjs`, which integrate.mjs also installs),
+the install commands, and the Node and npm majors. Pins npm never installs
+(sb3-creator, stc-compiler-flasher, ...) are not keyed, so bumping them does
+not mint a new ~1-1.8 GB entry (task C6). It populates the store once,
 using CI's own commands, and hardlinks the store into each worktree.
 
 ```bash
@@ -465,7 +469,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
   of the store, so a chmod followed by a write is caught too. New files, such
   as webpack's `node_modules/.cache`, land in the worktree's own directories.
 - **`verify` fails with the remedy** in these cases: the lockfiles or pins moved
-  after linking (STALE), the store was modified, a file is no longer the
+  after linking (STALE; a non-npm pin bump is not stale), the store was modified, a file is no longer the
   store's inode, or a bw-* package is not at `vendor-pins.json`. On an unlinked
   worktree it still checks the installed tree against the lockfile and pins,
   so it also catches a stale borrowed tree.
