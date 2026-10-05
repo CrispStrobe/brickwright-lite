@@ -18,6 +18,8 @@ breadboards before soldering the real thing.
 
 For x86 programs, raw floppy/HDD images and DOSBox configs, see [the GUI loading guide](docs/I80386-GUI.md), [backend and format scope](docs/X86-LOADING-SCOPE.md), and [the upstream CLI/GUI loading guide](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-LOADING-GUIDE.md).
 
+The [x86 checkpoint and next GUI lanes](docs/X86-NEXT-LANES.md) separates reached evidence from pending media, browser acceptance and upstream-adoption tasks.
+
 ### Source ownership and upstream integrity
 
 Fast landing does not mean local forking. `bw-board` and `bw-circuit-ui` are
