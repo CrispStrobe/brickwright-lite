@@ -85,9 +85,19 @@ under `volume1-offload/dirty-mains-20261005/`). It never landed and conflicts wi
 The owner chose to salvage it in pieces: port only what main lacks onto current main, drop
 and name what is superseded, keep each piece's own tests.
 
+**Order (re-scoped 2026-10-05 after E1's first attempt):** E0 → E3a → E1 → E2 → rest of E3 → E4.
+E1 alone could not land: its translator emits ~140 dialect words main lacks (D5's gate rejects
+them, turning 18 green Arcade tests red), its arcade extension needs `bw-values` (38 calls), and
+45 of its 76 tests round-trip through E2's exporter. Even the WIP's own tree passed only 63/76.
+E1's ported tree is kept on local branch `lane/e1-arcade-import` (`d33d97c1b`, not pushed).
+Licences (checked by E1): built-in images and image/speech code from pinned pxt-arcade /
+pxt-common-packages (MIT); font8 MIT (Microsoft); font12 SIL OFL 1.1 (based on Adobe Source Han Sans).
+
 | # | piece | scope / done-when | status |
 | --- | --- | --- | --- |
-| E1 | Arcade import runtime | `arcade-translate.js` (+2.5k lines) and its new helpers (`namespace-bindings.js`, `lower-lazy-values.js`, `value-type-graph.js`, `legacy-array-values.js`, `tilemap-values.js`, `arcade-builtin-images.js`), the arcade extension's `image*`/`speech*` modules, and the 76 new `test/makecode-arcade-*` tests + fixtures. Done when each test either passes on main or is dropped with a named reason (superseded / depends on a later piece). | CLAIMED 2026-10-05 |
+| E0 | Upstream dialect words + arrays opcodes (prerequisite, added 2026-10-05) | The ~140 `arcade_*`/`arrays_*` dialect words the WIP added to the vendored `sb3-creator.js` (~850 lines), re-done on CURRENT sb3-creator main (on top of D5/D6: argument slots take expressions, unparseable lines are errors, no comparison-as-value warning removed), in CrispStrobe/sb3-creator first; the arrays reference opcodes in CrispStrobe/extensions; Lite pin bumps. Done when Lite main parses every dialect line the WIP translator emits, with D5's no-dropped-lines gate green. | CLAIMED 2026-10-05 |
+| E3a | `bw-values` + adapter (prerequisite, split from E3) | `overlay/scratch-vm/src/util/bw-values.js` and the adapter part the arcade extension needs (`Scratch.BWValues`, 38 call sites). | queued |
+| E1 | Arcade import runtime | `arcade-translate.js` (+2.5k lines) and its new helpers (`namespace-bindings.js`, `lower-lazy-values.js`, `value-type-graph.js`, `legacy-array-values.js`, `tilemap-values.js`, `arcade-builtin-images.js`), the arcade extension's `image*`/`speech*` modules, and the 76 new `test/makecode-arcade-*` tests + fixtures. Done when each test either passes on main or is dropped with a named reason (superseded / depends on a later piece). | CLAIMED 2026-10-05 — waits for E0 and E3a (first attempt: see the order note above) |
 | E2 | Arcade/arrays extension blocks exported back to Arcade | The `arcade_*`/`arrays_*` cases the WIP added to `export-arcade.js`, re-ported onto A4/A5's exporter (not its pre-A4 copy). | queued |
 | E3 | TurboWarp compatibility extensions | `encoding`, `tempvars`, `peers` extensions, `sb3-boolean-values`, the `sb3.js` serialization override and `util/bw-values.js`, with their tests. | queued |
 | E4 | Tauri dialog plugin | The vendored `tauri-plugin-dialog` (52 files) and the app permission (ACL) changes, with `tauri-app-command-acl` tests; licence/notice records. | queued |
