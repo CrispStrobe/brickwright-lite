@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
+// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+
+const source = `let horizontal = controller.dx(90)
+let vertical = controller.dy()
+let reversed = controller.dx(-60)`;
+
+test('controller dx and dy keep their steps through Code and Blocks', async () => {
+    const imported = arcadeToPseudocode(source);
+    assert.deepEqual(imported.unsupported, []);
+    assert.match(imported.code, /arcade controller x step 90/);
+    assert.match(imported.code, /arcade controller y step 100/);
+    assert.match(imported.code, /arcade controller x step \(0 - 60\)/);
+    const creator = new SB3Creator();
+    creator.parse(imported.code);
+    assert.deepEqual(creator.warnings, []);
+    assert.ok(projectOpcodes(creator.project).has('arcade_controllerStep'));
+    assert.match(creator.decompile(), /arcade controller y step 100/);
+});
+
+test('controller reporters use signed PXT frame movement for held arrows', async () => {
+    const imported = arcadeToPseudocode(source);
+    const run = await runProgram(imported.code, {frames: 2, keys: ['ArrowRight', 'ArrowUp']});
+    assert.deepEqual(run.errors, []);
+    const vars = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}));
+    const value = name => Number(vars.find(variable => variable.name === name)?.value);
+    assert.equal(value('horizontal'), 3);
+    assert.equal(value('vertical'), -100 / 30);
+    assert.equal(value('reversed'), -2);
+    assert.ok((run.calls.get('arcade_controllerStep') || 0) >= 3);
+});
+
+test('opposing Arcade directions cancel', async () => {
+    const imported = arcadeToPseudocode(source);
+    const run = await runProgram(imported.code, {frames: 2,
+        keys: ['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown']});
+    assert.deepEqual(run.errors, []);
+    const vars = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}));
+    for (const name of ['horizontal', 'vertical', 'reversed']) {
+        assert.ok(Number(vars.find(variable => variable.name === name)?.value) === 0);
+    }
+});

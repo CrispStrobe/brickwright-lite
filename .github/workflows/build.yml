@@ -664,6 +664,20 @@ jobs:
           ref: ${{ steps.stc_flasher_pin.outputs.sha }}
           path: .stc-compiler-flasher
 
+      - name: Install Playwright Chromium for the PXT Arcade oracle in the unit tests
+        # The Arcade import tests (task E1) take their expected values from
+        # MakeCode's own pinned Arcade simulator (test/helpers/pxt-arcade-runtime.mjs),
+        # which needs a browser; the root `playwright` package is installed above
+        # with its scripts off, so its Chromium is not. Bounded and retried as in the
+        # browser job; a failure is a failure, never a silent skip of those tests.
+        run: |
+          ok=0
+          for i in 1 2 3; do
+            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
+            echo "playwright chromium install attempt $i failed/timed out; retrying"
+            sleep 5
+          done
+          [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:

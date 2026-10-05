@@ -36,7 +36,7 @@
 
 const PUNCT = [
     '===', '!==', '==', '!=', '<=', '>=', '&&', '||', '++', '--',
-    '+=', '-=', '*=', '/=', '=>', '...', '>>>', '<<', '>>',
+    '+=', '-=', '*=', '/=', '%=', '=>', '...', '>>>', '<<', '>>',
     '{', '}', '(', ')', '[', ']', ';', ',', '.', ':', '?',
     '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '^', '~'
 ];
@@ -216,10 +216,21 @@ class CallSpotter {
     }
 }
 
+const parameterDefaultStatements = params => (params.parameterDefaults || []).map(({name,value})=>({
+    type:'If',test:{type:'Binary',op:'===',left:{type:'Identifier',name},right:{type:'Undefined'}},
+    consequent:[{type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name},right:value}}],alternate:[]
+}));
+
 class Parser {
     constructor (tokens) {
         this.toks = tokens;
         this.pos = 0;
+        this.parameterDefaults = false;
+    }
+
+    /** The default-parameter statements, when the caller asked for them (parseMakeCodeTs). */
+    defaultStatements (params) {
+        return this.parameterDefaults ? parameterDefaultStatements(params) : [];
     }
 
     peek (offset = 0) {
@@ -263,6 +274,9 @@ class Parser {
         let depth = 0;
         let isArray = false;
         let prev = this.toks[this.pos - 1];
+        let complete = false;
+        const prefixes = new Set(['readonly','keyof','typeof','unique','infer']);
+        const continuations = new Set(['.','[','<','|','&','=>','?']);
         for (;;) {
             const t = this.peek();
             if (t.type === 'eof') return isArray;
@@ -274,12 +288,19 @@ class Parser {
             prev = t;
             // A return type ends at the function body: `): void {`.
             if (depth === 0 && t.type === 'punct' && t.value === '{') return isArray;
+            // Once a type is complete, only a type suffix/operator can
+            // continue it. A following declaration or expression belongs to
+            // the program, even when an optional semicolon was omitted.
+            if (depth === 0 && complete && !(t.type === 'punct' && continuations.has(t.value))) return isArray;
             if (t.type === 'punct' && '<[('.includes(t.value)) depth++;
             if (t.type === 'punct' && t.value === '[') isArray = true;
             if (t.type === 'ident' && t.value === 'Array') isArray = true;
-            if (t.type === 'punct' && '>])'.includes(t.value)) {
+            if (t.type === 'punct' && ['>',']',')','>>','>>>'].includes(t.value)) {
                 if (depth === 0) return isArray;
-                depth--;
+                depth=Math.max(0,depth-(t.value.startsWith('>')?t.value.length:1));
+                complete=true;
+            } else if (depth === 0) {
+                complete = t.type !== 'punct' && !prefixes.has(t.value);
             }
             if (depth === 0 && t.type === 'punct' && (t.value === '=' || t.value === ';' || t.value === ',')) return isArray;
             if (depth === 0 && t.type === 'punct' && t.value === ')') return isArray;
@@ -317,7 +338,8 @@ class Parser {
         if (this.eat('punct', ';')) return null;
         if (this.at('export')) {
             this.next();
-            return this.parseStatement();
+            const statement = this.parseStatement();
+            return statement ? {...statement, exported: true} : statement;
         }
         if (this.at('let') || this.at('const') || this.at('var')) return this.parseDeclaration();
         if (this.at('function')) return this.parseFunction();
@@ -571,6 +593,7 @@ class Parser {
         // Each parameter's type text, by name (`p: Player`, `arr: boolean[]`):
         // what a record or an array parameter is known by.
         const types = {};
+        Object.defineProperties(params,{optionalParams:{value:[]},parameterDefaults:{value:[]}});
         while (!this.at('punct', ')') && !this.at('eof')) {
             // `radio.onDataPacketReceived(({receivedString: text}) => ...)`
             // binds a destructured object. The names that reach the body are
@@ -579,11 +602,16 @@ class Parser {
                 params.push(...this.parseObjectPatternNames());
             } else {
                 const name = this.next().value;
-                // `input?: Buffer` — an optional parameter.
-                this.eat('punct', '?');
+                // `input?: Buffer` — an optional parameter: the marker changes
+                // the type, not the name bound in the body; a default is
+                // applied at the top of the body when the argument is undefined.
+                if (this.eat('punct', '?')) params.optionalParams.push(name);
                 const isArray = this.skipTypeAnnotation();
                 types[name] = {text: this.lastType, isArray};
-                if (this.eat('punct', '=')) this.parseExpression();
+                if (this.eat('punct', '=')) {
+                    params.optionalParams.push(name);
+                    params.parameterDefaults.push({name, value: this.parseExpression()});
+                }
                 params.push(name);
             }
             if (!this.eat('punct', ',')) break;
@@ -616,7 +644,8 @@ class Parser {
         this.skipTypeAnnotation();
         const returnType = this.lastType;
         const body = this.parseBlock();
-        return {type: 'FunctionDeclaration', name, params, paramTypes, returnType, body};
+        return {type: 'FunctionDeclaration', name, params, paramTypes, returnType,
+            optionalParams: params.optionalParams, body: [...this.defaultStatements(params), ...body]};
     }
 
     parseIf () {
@@ -666,18 +695,27 @@ class Parser {
         // (census 2026-09-27: "Identifier statement" in three apps).
         if ((this.at('let') || this.at('const') || this.at('var')) &&
             this.peek(1).type === 'ident' && this.peek(2).type === 'ident' && this.peek(2).value === 'of') {
-            this.next();
+            const kind = this.next().value;
             const name = this.next().value;
             this.next();
             const iterable = this.parseExpression();
             this.expect('punct', ')');
-            return {type: 'ForOf', name, iterable, body: this.parseBlockOrStatement()};
+            return {type: 'ForOf', name, kind, iterable, body: this.parseBlockOrStatement()};
         }
         let init = null;
         if (!this.at('punct', ';')) {
             init = (this.at('let') || this.at('const') || this.at('var')) ?
                 this.parseDeclaration() :
                 {type: 'ExpressionStatement', expr: this.parseExpression()};
+        }
+        // `for (let x: T of list)`: the typed form the check above does not see.
+        if (this.eat('ident', 'of')) {
+            if (init?.type !== 'Declaration' || init.decls.length !== 1 || init.decls[0].init) {
+                throw new Error('for-of needs one declared loop variable');
+            }
+            const iterable = this.parseExpression();
+            this.expect('punct', ')');
+            return {type: 'ForOf', name: init.decls[0].name, kind: init.kind, iterable, body: this.parseBlockOrStatement()};
         }
         this.eat('punct', ';');
         const test = this.at('punct', ';') ? null : this.parseExpression();
@@ -696,14 +734,15 @@ class Parser {
         while (!this.at('punct', '}') && !this.at('eof')) {
             const member = this.expect('ident').value;
             let value = nextValue++;
+            let initializer = null;
             if (this.eat('punct', '=')) {
-                const expr = this.parseExpression();
+                const expr = initializer = this.parseExpression();
                 if (expr.type === 'Number') {
                     value = Number(expr.value);
                     nextValue = value + 1;
                 }
             }
-            members.push({name: member, value});
+            members.push({name: member, value, initializer});
             if (!this.eat('punct', ',')) break;
         }
         this.expect('punct', '}');
@@ -723,7 +762,7 @@ class Parser {
 
     parseAssignment () {
         const left = this.parseConditional();
-        for (const op of ['=', '+=', '-=', '*=', '/=']) {
+        for (const op of ['=', '+=', '-=', '*=', '/=', '%=']) {
             if (this.at('punct', op)) {
                 this.next();
                 const right = this.parseAssignment();
@@ -752,6 +791,15 @@ class Parser {
         let left = this.parseUnary();
         for (;;) {
             const t = this.peek();
+            // Type assertions have relational precedence and erase only their
+            // type; the expression's evaluation and identity are unchanged.
+            if (t.type === 'ident' && t.value === 'as' && minPrec <= 5) {
+                this.next();
+                this.expect('ident');
+                while (this.eat('punct', '.')) this.expect('ident');
+                while (this.eat('punct', '[')) this.expect('punct', ']');
+                continue;
+            }
             if (t.type !== 'punct') break;
             const prec = BINARY_PRECEDENCE[t.value];
             if (!prec || prec < minPrec) break;
@@ -764,7 +812,7 @@ class Parser {
 
     parseUnary () {
         if (this.at('punct', '!') || this.at('punct', '-') || this.at('punct', '+') ||
-            this.at('punct', '~')) {
+            this.at('punct', '~') || this.at('ident', 'typeof')) {
             const op = this.next().value;
             return {type: 'Unary', op, argument: this.parseUnary()};
         }
@@ -802,9 +850,12 @@ class Parser {
                 continue;
             }
             if (this.at('punct', '++') || this.at('punct', '--')) {
+                // Postfix updates cannot cross a line terminator. On the
+                // next line this token begins a separate prefix update.
+                if (this.peek().line > this.toks[this.pos - 1]?.line) break;
                 const op = this.next().value;
                 node = {type: 'Update', op, prefix: false, argument: node};
-                continue;
+                break;
             }
             break;
         }
@@ -863,22 +914,27 @@ class Parser {
         }
         if (t.type === 'null' || t.type === 'undefined') {
             this.next();
-            return {type: 'Null'};
+            return {type: t.type === 'undefined' ? 'Undefined' : 'Null'};
         }
         if (t.type === 'function') {
             this.next();
             const params = this.parseParams();
             this.skipTypeAnnotation();
             const body = this.parseBlock();
-            return {type: 'FunctionExpression', params, body};
+            return {type: 'FunctionExpression', params, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
         }
         if (t.type === 'new') {
             // `new Player()`: a call, marked, so the translator knows it
             // constructs (a class lowered to records allocates one).
             this.next();
-            const made = this.parsePostfix();
-            if (made && made.type === 'Call') made.isNew = true;
-            return made;
+            // `new` binds to the constructor and its own argument list only:
+            // `new X(1).m()` constructs X(1), then calls m on the result (the
+            // caller's postfix loop reads `.m()`); `new X` takes no arguments.
+            // `isNew` and `constructorCall` mark the same fact for both readers.
+            let callee = this.parsePrimary();
+            while (this.eat('punct', '.')) callee = {type: 'Member', object: callee, name: this.next().value};
+            return {type: 'Call', callee, args: this.at('punct', '(') ? this.parseArguments() : [],
+                isNew: true, constructorCall: true};
         }
         if (t.type === 'ident') {
             this.next();
@@ -900,7 +956,7 @@ class Parser {
                     this.next();
                     const body = this.at('punct', '{') ? this.parseBlock() :
                         [{type: 'Return', value: this.parseExpression()}];
-                    return {type: 'FunctionExpression', params, body};
+                    return {type: 'FunctionExpression', params, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
                 }
             } catch (e) { /* not a parameter list after all */ }
             this.pos = save;
@@ -947,6 +1003,16 @@ class Parser {
  * @param {string} source MakeCode TypeScript
  * @returns {object} the program AST
  */
-export function parseMakeCodeTs (source) {
-    return new Parser(tokenize(source)).parseProgram();
+/**
+ * @param {string} source
+ * @param {{parameterDefaults?: boolean}} [opts] parameterDefaults: start each
+ *   function body with `if (p === undefined) p = <default>` for its default
+ *   parameters. Only a translator whose `undefined` is a real value (Arcade's
+ *   value heap) may ask for it: one that lowers `undefined` to 0 would apply
+ *   the default when 0 was passed.
+ */
+export function parseMakeCodeTs (source, opts = {}) {
+    const parser = new Parser(tokenize(source));
+    parser.parameterDefaults = Boolean(opts.parameterDefaults);
+    return parser.parseProgram();
 }

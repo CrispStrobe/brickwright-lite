@@ -62,7 +62,6 @@ const builtinExtensions = {
     // 404'd and the blocks were dropped (gallery sweep, 2026-08-10).
     bitops: () => require('../extensions/crispstrobe/bitops'),
     microbitplus: () => require('../extensions/crispstrobe/microbitplus'),
-    arcade: () => require('../extensions/crispstrobe/arcade'),
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
@@ -105,6 +104,9 @@ const builtinExtensions = {
 // where `import()` follows ES-module resolution even from CommonJS, and that
 // has no directory imports. webpack is indifferent.
 const lazyBuiltinExtensions = {
+    // The Arcade runtime (task E1) carries MakeCode's speech fonts (font12 alone is
+    // ~137 KiB gzipped) and sprite/image engines: needed only by an Arcade project.
+    arcade: () => import(/* webpackChunkName: "ext-arcade" */ '../extensions/crispstrobe/arcade/index.js'),
     planetemaths: () => import(/* webpackChunkName: "ext-planetemaths" */ '../extensions/crispstrobe/planetemaths/index.js'),
     legopoweredup: () => import(/* webpackChunkName: "ext-legopoweredup" */ '../extensions/crispstrobe/legopoweredup/index.js'),
     legoboostunified: () => import(/* webpackChunkName: "ext-legoboostunified" */ '../extensions/crispstrobe/legoboostunified/index.js'),
