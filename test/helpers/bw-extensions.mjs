@@ -13,7 +13,13 @@ import {packageSourceFile} from './package-source.mjs';
  *
  * The four `extension-support` / `util` modules the adapter pulls in are stock
  * upstream scratch-vm and come from the installed copy; the overlay does not
- * carry them.
+ * carry them. The fifth, `util/bw-values`, IS an overlay file, and it also comes
+ * from the installed copy: it keeps module-level state (the per-runtime scope
+ * and the reference intern table), so an extension built here and a VM module
+ * that requires it (sb3.js, once E3 lands) must share ONE instance. Reading the
+ * installed copy alone would bring back the stale-copy reading above, so the
+ * helper refuses an installed copy that differs from the overlay and names the
+ * remedy.
  *
  * Extensions are resolved to their ids STATICALLY and constructed LAZILY.
  * Constructing all 26 does not terminate: several LEGO BLE extensions start a
@@ -34,14 +40,28 @@ const SUPPORT = {
     'argument-type': 'extension-support/argument-type',
     'block-type': 'extension-support/block-type',
     'target-type': 'extension-support/target-type',
-    cast: 'util/cast'
+    cast: 'util/cast',
+    'bw-values': 'util/bw-values'
 };
+// Overlay-owned support modules: same installed instance, but only when its bytes are the overlay's.
+const OVERLAY_SUPPORT = new Set(['bw-values']);
+function installedOverlaySupport (base) {
+    const installed = path.join(VM_SRC, `${SUPPORT[base]}.js`);
+    const overlay = path.join(REPO, 'overlay', 'scratch-vm', 'src', `${SUPPORT[base]}.js`);
+    const theirs = existsSync(installed) ? readFileSync(installed, 'utf8') : null;
+    if (theirs !== readFileSync(overlay, 'utf8')) {
+        throw new Error(`bw-extensions: installed ${SUPPORT[base]}.js ${theirs === null ? 'is missing' : 'differs from the overlay'}` +
+            ' — run `node scripts/apply-vm-overlay.mjs`');
+    }
+    return nodeRequire(installed);
+}
 
 let adapterCache = null;
 function shimRequire (spec) {
     const base = path.basename(spec);
     if (base === 'adapter') return loadAdapter();
     if (spec === 'format-message') return nodeRequire(path.join(INTEGRATED, 'node_modules', spec));
+    if (OVERLAY_SUPPORT.has(base)) return installedOverlaySupport(base);
     if (SUPPORT[base]) return nodeRequire(path.join(VM_SRC, SUPPORT[base]));
     throw new Error(`bw-extensions: unresolved require(${spec})`);
 }
