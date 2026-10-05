@@ -19,6 +19,43 @@ import {join} from 'node:path';
 
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {parseMakeCodeTs, tokenize} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
+
+test('line breaks separate postfix and prefix updates, including multiline comments', () => {
+    const tree = parseMakeCodeTs('rows[0]++\n++rows[1]\nrows[2] /* newline\n */ --rows[3]');
+    assert.deepEqual(tree.body.map(st => [st.expr.type, st.expr.op, st.expr.prefix]), [
+        ['Update', '++', false], ['Update', '++', true], ['Index', undefined, undefined], ['Update', '--', true]
+    ]);
+});
+
+test('type annotations end before the next statement while preserving multiline and nested array types', () => {
+    const tree = parseMakeCodeTs('let rows:Array<Array<number>>\nlet pending:\n number[]\nlet count:number\ncount=3');
+    assert.deepEqual(tree.body.slice(0, 3).map(st => [st.decls[0].name, st.decls[0].isArray, st.decls[0].init]), [
+        ['rows', true, null], ['pending', true, null], ['count', false, null]
+    ]);
+    assert.equal(tree.body[3].expr.left.name, 'count');
+});
+
+test('default parameters become body statements only when the caller asks (Arcade), never for micro:bit', () => {
+    const source = 'function f(a: number = 5, b?: number) { basic.showNumber(a) }';
+    const plain = parseMakeCodeTs(source).body[0];
+    assert.deepEqual(plain.optionalParams, ['a', 'b']);
+    assert.equal(plain.body.length, 1, 'micro:bit lowers undefined to 0: a default here would replace a passed 0');
+    const arcade = parseMakeCodeTs(source, {parameterDefaults: true}).body[0];
+    assert.equal(arcade.body.length, 2);
+    assert.equal(arcade.body[0].type, 'If');
+    assert.equal(arcade.body[0].test.right.type, 'Undefined');
+});
+
+test('new marks a construction, with or without an argument list', () => {
+    const [a, b] = parseMakeCodeTs('let e = new ArcadePhysicsEngine(1, 2)\nlet f = new ArcadePhysicsEngine').body;
+    for (const call of [a.decls[0].init, b.decls[0].init]) {
+        assert.equal(call.type, 'Call');
+        assert.equal(call.isNew, true);
+        assert.equal(call.constructorCall, true);
+    }
+    assert.equal(a.decls[0].init.args.length, 2);
+    assert.equal(b.decls[0].init.args.length, 0);
+});
 import {
     microbitToPseudocode,
     ledPattern

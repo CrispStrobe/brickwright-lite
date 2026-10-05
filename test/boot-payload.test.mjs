@@ -20,6 +20,7 @@ test('boot payload accepts shared lazy engine bytes but rejects eager, absent an
         for (const [name, bytes] of Object.entries({
             'ext-music': "'drums/1-snare.mp3'", 'render-fonts': 'x-font-ttf',
             'ext-legonxt': 'ID: legonxt', 'ext-spikeprime': 'ID: spikeprime\n',
+            'ext-arcade': 'font12: Adobe SIL OFL 1.1',
             'asset-library-index': '"name":"Abby"',
             'bw-circuit-ui': 'Check the address decode wiring on the breadboard. Could not recognise this file',
             'bw-board': 'entry', 'guided-lessons': 'optional', '8933.hash': marker,

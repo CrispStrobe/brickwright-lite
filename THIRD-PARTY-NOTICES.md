@@ -1623,6 +1623,38 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   to say whose files these are; this project is not affiliated with or endorsed by
   Microsoft.
 
+### MakeCode Arcade runtime code and data (generated from the pinned bundle) — MIT, SIL OFL 1.1
+
+Lite's Arcade runtime (the `arcade` VM extension and the Arcade importer, task
+E1) runs imported games with MakeCode's own algorithms and artwork rather than
+re-implementations. Generated from the pinned pxt-arcade 4.2.1 bundle above
+(`packages/scratch-gui/static/makecode/arcade/`) and committed, so they are
+compiled into the app; each generator has a `--check` mode that fails when the
+committed file differs from the pinned bundle:
+
+- **pxt-common-packages** (https://github.com/microsoft/pxt-common-packages),
+  MIT, Copyright (c) Microsoft Corporation: the simulator's image algorithms
+  (`sim/common-sim.js`: setPixel, fillRect, drawLine, drawImage, overlapsWith, ...)
+  in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js`
+  (`scripts/generate-arcade-image-operations.mjs`); text layout and speech bubbles
+  (`game/renderText.ts`, `game/spritesay.ts`, transpiled) in `speech-pxt.js`, and the
+  6x8 `font8` (`screen/text.ts`) in `speech-fonts.json`
+  (`scripts/generate-arcade-speech.mjs`).
+- **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
+  Microsoft Corporation: the 507 built-in images (`sprites.castle.tileGrass1`, ...;
+  `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`
+  (`scripts/generate-arcade-builtin-images.mjs`).
+- **font12** of pxt-common-packages (`screen/font12.jres`), a 12x12 pixel font based on
+  **Adobe Source Han Sans** v2.001R (https://github.com/adobe-fonts/source-han-sans),
+  in `speech-fonts.json`: SIL Open Font License 1.1, Copyright 2014-2019 Adobe
+  (http://www.adobe.com/), with Reserved Font Name 'Source' — the notice
+  pxt-common-packages' ThirdPartyNotice records for that version. "Source" is a
+  trademark of Adobe in the United States and/or other countries.
+
+Full texts: `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt` (both MIT
+sources) and `overlay/scratch-gui/static/licenses/pxt-speech-font12.OFL.txt`, shipped
+with the app and reachable from the About dialog offline.
+
 ### MakeCode extensions (vendored source) — MIT
 
 Three third-party MakeCode extensions ("packages") that MakeCode's own micro:bit

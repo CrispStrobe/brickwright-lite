@@ -47,6 +47,8 @@ const LAZY = [
         why: 'the scratch-render-fonts alias in overlay/scratch-gui/webpack.config.js and src/lib/lazy-render-fonts.js'},
     {what: 'LEGO NXT driver', marker: 'ID: legonxt', chunk: 'ext-legonxt',
         why: 'lazyBuiltinExtensions.legonxt in extension-manager.js'},
+    {what: 'Arcade runtime (its speech fonts)', marker: 'font12: Adobe SIL OFL 1.1', chunk: 'ext-arcade',
+        why: 'lazyBuiltinExtensions.arcade in extension-manager.js'},
     {what: 'LEGO SPIKE Prime driver', marker: 'ID: spikeprime\\n', altMarkers: ['ID: spikeprime\n'], chunk: 'ext-spikeprime',
         why: 'lazyBuiltinExtensions.spikeprime in extension-manager.js'},
     // `md5ext` is NOT the marker: the default project and scratch-vm's serializer

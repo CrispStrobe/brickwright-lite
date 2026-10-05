@@ -8,6 +8,17 @@ what the editors wrote.
 | file | editor | project | trimmed from |
 |---|---|---|---|
 | `microbit-blocks.hex` | makecode.microbit.org 0.14.x | "pins test 1" | a 570 KB .hex download |
+| `arcade-taco-move.ts` | pinned `pxt-arcade` corpus, MIT | moves a food sprite with `controller.moveSprite` | `arcade-107c54b68a1435d3.ts` in the private compatibility corpus |
+| `arcade-created-asteroids.ts` | pinned `pxt-arcade` corpus, MIT | creates an asteroid in an interval and positions it through `sprites.onCreated` | `arcade-a1936970d088e350.ts` in the private compatibility corpus |
+| `arcade-fire-overlap.ts` | pinned `pxt-arcade` corpus, MIT | creates a player and timed fire sprites with creation and overlap callbacks | `arcade-71f1dce8d41987f9.ts` in the private compatibility corpus |
+| `arcade-side-projectile.ts` | pinned `pxt-arcade` corpus, MIT | launches a projectile from the incoming screen edge | `arcade-40a58a973a18ceed.ts` in the private compatibility corpus |
+| `arcade-overlap-destroy.ts` | pinned `pxt-arcade` corpus, MIT | destroys the overlapping food sprite by callback handle | `arcade-6f150f39b96fe45a.ts` in the private compatibility corpus |
+| `arcade-ask-name.ts` | pinned `pxt-arcade` corpus, MIT | asks for a name and uses the answer | `arcade-4b7a3d0b91d40c9d.ts` in the private compatibility corpus |
+| `arcade-console-log.ts` | pinned `pxt-arcade` corpus, MIT | writes two messages to Arcade serial output | `arcade-316eeffc7f5f5601.ts` in the private compatibility corpus |
+| `arcade-say-text.ts` | pinned `pxt-arcade` corpus, MIT | displays a sequence of speech bubbles | `arcade-bb8eed3760754c42.ts` in the private compatibility corpus |
+| `arcade-flip-image.ts` | pinned `pxt-arcade` corpus, MIT | flips the sprite image through an A-button procedure | `arcade-ba2a1d65bbed0b24.ts` in the private compatibility corpus |
+| `arcade-firework-flags.ts` | pinned `pxt-arcade` corpus, MIT | controller-local firework creation with Ghost and AutoDestroy; particle image mutation | `arcade-5d1935bf86a3e712.ts` in the private compatibility corpus |
+| `arcade-random-background.ts` | pinned `pxt-arcade` corpus, MIT | chooses a random Arcade palette background | `arcade-4eed6ea168ba6fb5.ts` in the private compatibility corpus |
 | `arcade-shield.hex` | arcade.makecode.com 4.0.x, Calliope mini 3 + GameKit shield | "ping-pong" | a 1.0 MB .hex download |
 | `arcade-shield.uf2` | the same project, UF2 build | "ping-pong" | a 700 KB .uf2 download |
 | `arcade-assets.hex` | arcade.makecode.com, micro:bit V2 + shield | "Jonathans Ausweichspiel unterwasser" | a 1.0 MB .hex download |
@@ -75,3 +86,10 @@ recovers. They come from Alex Gustafsson's
 [ev3-emulator-toolkit](https://github.com/AlexGustafsson/ev3-emulator-toolkit)
 (`examples/`, released under The Unlicense) and are here so the EV3 runtime is
 tested on programs the real editor wrote, not on ones written for the test.
+
+`arcade-hat-speech.ts` is the pinned corpus source
+`arcade-a7e0b415c09c3f04.ts`. Its A-button callback moves the player and its
+Player/Hat overlap callback invokes `sprite.say("Excuse Me!", 500)`. The speech
+tests (`test/makecode-arcade-say-text.test.mjs`) exercise its actual callback
+handle and nonblocking lifetime. The original source remains in the private
+compatibility corpus.
