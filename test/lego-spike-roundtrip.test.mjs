@@ -201,8 +201,13 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // the stc12 PORT/595/keypad verbs); `git diff 3250c2ca 5d8dcf05 -- src/`
     // touches sb3Creator.js's driver generators and nothing the SPIKE emitter
     // or this fixture's parser path reads. The assertions re-ran at the pin.
+    // PIN MOVED 5d8dcf05 -> 3125c1be (2026-10-05, sb3-creator#50's own commit, task
+    // E0): the MakeCode Arcade / array-reference words (arcadeDialect.js), reached
+    // only by lines starting `arcade`, `when arcade`, `mutate array reference` or
+    // spelling one of its reporters. No SPIKE word and nothing this fixture parses
+    // changed; the assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '5d8dcf05a7acfaf16ebe2b9d1c8335fe23149ffe');
+        '3125c1be0268653d33b82db77c38d60151b0feeb');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
