@@ -482,6 +482,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| Salvage E1: Arcade import runtime from the parked Codex WIP (task E1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/e1-arcade-import` | base `1613f15b6`; source: local branch `wip/main-checkout-brickwright-lite-20261005` (`23e9c7f44`); paths `overlay/scratch-gui/src/lib/bw-makecode/{arcade-translate,namespace-bindings,lower-lazy-values,value-type-graph,legacy-array-values,tilemap-values,arcade-builtin-images}.js`, `overlay/scratch-vm/src/extensions/crispstrobe/arcade/**`, packages twins, `test/makecode-arcade-*`, `test/fixtures/makecode/**`, this row and the task file. Not export-arcade (E2) or the TurboWarp extensions (E3). | **CLAIMED 2026-10-05.** |
 
 Static OP CLI KCL package adoption — **DONE candidate 2026-10-04**, Codex bwcx `/root`;
 isolated reused `/tmp/bwcx-lite-adp-stream-candidate-20261004`, branch
