@@ -6,6 +6,8 @@ import {projectTitleInitialState} from '../reducers/project-title';
 import {showStandardAlertWithMessage} from '../reducers/alerts';
 import downloadBlob from '../lib/download-blob';
 import {attachBrickwrightState} from '../lib/bw-project-bundle';
+import {setProjectUnchanged} from '../reducers/project-changed';
+import {setProjectTitle} from '../reducers/project-title';
 /**
  * Project saver component passes a downloadProject function to its child.
  * It expects this child to be a function with the signature
@@ -27,7 +29,14 @@ class SB3Downloader extends React.Component {
             'downloadProject'
         ]);
     }
-    downloadProject () {
+    componentDidMount () {
+        window.addEventListener('bw-save-project-request', this.downloadProject);
+    }
+    componentWillUnmount () {
+        window.removeEventListener('bw-save-project-request', this.downloadProject);
+    }
+    downloadProject (mode = 'save') {
+        if (typeof mode !== 'string') mode = 'save';
         // EVERY step here can fail, and until 2026-08-24 none of them reported it.
         // saveProjectSb3() rejecting, or downloadBlob() throwing, produced an
         // unhandled promise rejection: no dialog, no console entry the user would
@@ -45,14 +54,41 @@ class SB3Downloader extends React.Component {
             // It returns the original blob if anything goes wrong: saving the
             // Scratch half beats saving nothing.
             .then(content => attachBrickwrightState(content))
-            .then(content => {
-                if (this.props.onSaveFinished) {
-                    this.props.onSaveFinished();
+            .then(async content => {
+                const tauri = window.__TAURI__;
+                if (tauri?.core?.invoke) {
+                    const bytes = Array.from(new Uint8Array(await content.arrayBuffer()));
+                    const mobile = await tauri.core.invoke('is_mobile');
+                    if (mode === 'send' && mobile) {
+                        const path = await tauri.core.invoke('write_temp_project',
+                            {filename: this.props.projectFilename, bytes});
+                        await tauri.core.invoke('plugin:share|share_file',
+                            {path, mime: 'application/octet-stream'});
+                    } else {
+                        let savedCopy = mode === 'send';
+                        let result = await tauri.core.invoke('save_project_document',
+                            {filename: this.props.projectFilename, bytes,
+                                mode: mode === 'send' ? 'copy' : mode});
+                        if (result.conflict) {
+                            savedCopy = true;
+                            alert('The project file changed on another device. Save a separate copy to keep both versions.'); // eslint-disable-line no-alert
+                            result = await tauri.core.invoke('save_project_document',
+                                {filename: this.props.projectFilename.replace(/\.sb3$/i, ' (conflict copy).sb3'),
+                                    bytes, mode: 'copy'});
+                        }
+                        if (!result.saved) return;
+                        if (!savedCopy && window.ReduxStore) {
+                            window.ReduxStore.dispatch(setProjectUnchanged());
+                            if (result.name) {
+                                window.ReduxStore.dispatch(setProjectTitle(result.name.replace(/\.sb3$/i, '')));
+                            }
+                        }
+                    }
+                } else {
+                    // Browser download can throw synchronously.
+                    await downloadBlob(this.props.projectFilename, content);
                 }
-                // downloadBlob is not async on the browser path but CAN throw
-                // synchronously (blob URL creation, the anchor click), so it is
-                // inside the chain rather than after it.
-                return downloadBlob(this.props.projectFilename, content);
+                if (this.props.onSaveFinished) this.props.onSaveFinished();
             })
             .catch(err => {
                 const detail = (err && (err.message || err.name)) || String(err);

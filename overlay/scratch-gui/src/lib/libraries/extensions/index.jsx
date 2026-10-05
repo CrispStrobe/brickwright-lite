@@ -332,6 +332,15 @@ export default [
         featured: true
     },
     {
+        name: 'Peer Sessions',
+        extensionId: 'peersessions',
+        iconURL: videoSensingIconURL,
+        insetIconURL: videoSensingInsetIconURL,
+        description: 'Take photos and share projects with paired Brickwright sessions.',
+        featured: true,
+        disabled: typeof window === 'undefined' || !window.__TAURI__
+    },
+    {
         name: (
             <FormattedMessage
                 defaultMessage="Text to Speech"

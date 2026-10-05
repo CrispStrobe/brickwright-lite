@@ -352,6 +352,48 @@ const GUIComponent = props => {
         const varBinding = bindPanelToVariables(controllerPanel, props.vm);
         return () => varBinding.dispose();
     }, [props.vm, controllerPanel]);
+    // A gamepad assembled from Controller widgets steers an imported Arcade
+    // project through the same keyboard IO as the console's physical buttons.
+    // Only the six game directions/actions are interpreted; other widgets keep
+    // their existing variable and circuit bindings.
+    React.useEffect(() => {
+        const vm = props.vm;
+        if (!vm || !vm.runtime) return undefined;
+        const keys = {up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', a: ' ', b: 'z'};
+        const held = new Set();
+        const setKey = (name, down) => {
+            if (!Object.prototype.hasOwnProperty.call(keys, name) || held.has(name) === down) return;
+            if (down) held.add(name); else held.delete(name);
+            vm.postIOData('keyboard', {key: keys[name], isDown: down});
+            const state = vm.runtime.bwArcadeDeviceState || (vm.runtime.bwArcadeDeviceState = {});
+            state.buttons = {...state.buttons, [name]: down};
+            vm.runtime.emit('ARCADE_DEVICE_CHANGED');
+            if (down && vm.runtime.startHats) vm.runtime.startHats('arcade_whenButton', {BUTTON: name});
+        };
+        const onInput = (event, detail) => {
+            if (event !== 'input' || !detail) return;
+            const device = String(vm.runtime.stc?.device || vm.runtime.bwDeviceId || '').toLowerCase();
+            if (!['arcade', 'pybadge', 'pybadge-lc'].includes(device) ||
+                localStorage.getItem('bw-debug-dock') === 'makecode') return;
+            const widget = controllerPanel.getWidget(detail.name);
+            if (!widget) return;
+            if (widget.type === 'button') {
+                const name = String(widget.name).toLowerCase();
+                setKey(name, !!detail.pressed);
+            } else if (widget.type === 'dpad') {
+                setKey(detail.direction, !!detail.pressed);
+            } else if (widget.type === 'joystick') {
+                const x = Number(detail.x) || 0, y = Number(detail.y) || 0;
+                setKey('left', x < -35); setKey('right', x > 35);
+                setKey('up', y < -35); setKey('down', y > 35);
+            }
+        };
+        controllerPanel.addListener(onInput);
+        return () => {
+            controllerPanel.removeListener(onInput);
+            for (const name of held) vm.postIOData('keyboard', {key: keys[name], isDown: false});
+        };
+    }, [props.vm, controllerPanel]);
     // Restore panel from project data when project loads
     React.useEffect(() => {
         const onProjectLoad = () => {
@@ -1152,7 +1194,8 @@ const GUIComponent = props => {
                             ) : dockMode === 'makecode' ? (
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading MakeCode simulator…</div>}>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
-                                        <MakeCodeSimPane vm={vm} />
+                                        <MakeCodeSimPane vm={vm} controllerPanel={controllerPanel}
+                                            ControllerView={ControllerPanelView} board={board} />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'arduboy' ? (

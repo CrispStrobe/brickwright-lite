@@ -156,6 +156,9 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             id="gui.menuBar.scratchLinkTransport"
                         />
                     </MenuItem>
+                    {window.__TAURI__ && <MenuItem onClick={() => { emit('bw-open-peer-sessions'); onRequestClose(); }}>
+                        Peer sessions…
+                    </MenuItem>}
                     <MenuItem onClick={() => { emit('bw-open-virtual-spike'); onRequestClose(); }}>
                         <FormattedMessage
                             defaultMessage="Virtual SPIKE Prime…"

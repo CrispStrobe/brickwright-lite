@@ -29,6 +29,20 @@ console.log('  applied scratch-vm overlay onto node_modules/scratch-vm (built-in
 // extension's blocks never appear. `xmlEscape` is already imported in runtime.js — wrap the name.
 const runtimePath = path.join(DEST, 'src', 'engine', 'runtime.js');
 let rt = readFileSync(runtimePath, 'utf8');
+// Arcade sprites need one deterministic physics tick per Scratch VM frame.
+// Extensions subscribe to this event; the project stores ordinary extension
+// blocks in .sb3 and the event only supplies their runtime clock.
+const arcadeFrameAnchor = '    _step () {\n';
+const arcadeFramePatched = '    _step () {\n        this.emit(\'ARCADE_FRAME\');\n';
+if (!rt.includes(arcadeFramePatched)) {
+    if (!rt.includes(arcadeFrameAnchor)) {
+        console.error('  ! runtime.js Arcade frame anchor not found — base VM version changed?');
+        process.exit(1);
+    }
+    rt = rt.replace(arcadeFrameAnchor, arcadeFramePatched);
+    writeFileSync(runtimePath, rt);
+    console.log('  patched runtime.js (Arcade sprite frame)');
+}
 const anchor = '<category name="${name}" id="${';
 if (rt.includes(anchor)) {
     rt = rt.replace(anchor, '<category name="${xmlEscape(name)}" id="${');
@@ -39,6 +53,46 @@ if (rt.includes(anchor)) {
 } else {
     console.error('  ! runtime.js category-name anchor not found — base VM version changed?');
     process.exit(1);
+}
+
+// Preserve real keyboard transitions for Arcade's event bus, including taps
+// shorter than a VM frame. Scratch's KEY_PRESSED event retains its original
+// repeated-keydown behavior; this additional event emits only after a change.
+const keyboardPath = path.join(DEST, 'src', 'io', 'keyboard.js');
+let keyboardSource = readFileSync(keyboardPath, 'utf8');
+for (const [anchor, event] of [
+    ['                this._keysPressed.push(scratchKey);',
+        "                this.runtime.emit('KEY_STATE_CHANGED', scratchKey, true);"],
+    ['            this._keysPressed.splice(index, 1);',
+        "            this.runtime.emit('KEY_STATE_CHANGED', scratchKey, false);"]
+]) {
+    if (!keyboardSource.includes(event)) {
+        if (!keyboardSource.includes(anchor)) throw new Error('keyboard.js state transition anchor missing');
+        keyboardSource = keyboardSource.replace(anchor, anchor + '\n' + event);
+    }
+}
+writeFileSync(keyboardPath, keyboardSource);
+
+// Null is a valid reporter result. Upstream uses null for "no pending
+// report", which otherwise repeats an asynchronous call returning null.
+// Track promise completion separately from its payload on the owning frame.
+const executePath = path.join(DEST, 'src', 'engine', 'execute.js');
+let executeSource = readFileSync(executePath, 'utf8');
+if (!executeSource.includes('bwPromiseReported')) {
+    const patches = [
+        ['    primitiveReportedValue.then(resolvedValue => {',
+            '    const promiseFrame = thread.peekStackFrame();\n    primitiveReportedValue.then(resolvedValue => {\n        promiseFrame.bwPromiseReported = true;'],
+        ['if (thread.justReported !== null && ops[i] && ops[i].id === currentStackFrame.reporting)',
+            'if ((currentStackFrame.bwPromiseReported || thread.justReported !== null) && ops[i] && ops[i].id === currentStackFrame.reporting)'],
+        ['            const inputValue = thread.justReported;\n\n            thread.justReported = null;',
+            '            const inputValue = thread.justReported;\n\n            currentStackFrame.bwPromiseReported = false;\n            thread.justReported = null;']
+    ];
+    for (const [before, after] of patches) {
+        if (!executeSource.includes(before)) throw new Error('execute.js promise completion anchor missing');
+        executeSource = executeSource.replace(before, after);
+    }
+    writeFileSync(executePath, executeSource);
+    console.log('  patched execute.js (null promise reporter results)');
 }
 
 // Per-device palettes: _refreshExtensionPrimitives must propagate color changes.
@@ -160,6 +214,25 @@ if (sb3.includes('// Brickwright: persist hardware declarations')) {
     process.exit(1);
 }
 
+// Keep the original MakeCode Arcade files as optional project provenance.
+// The block graph remains the active program; this snapshot makes source
+// recovery and future sprite-model migrations possible after .sb3 save/load.
+const makeCodeSerAnchor = `    if (runtime.stc) {
+        obj.stc = Object.assign({version: 1}, runtime.stc);
+    }
+    return obj;`;
+const makeCodeSerPatch = `    if (runtime.stc) {
+        obj.stc = Object.assign({version: 1}, runtime.stc);
+    }
+    if (runtime.bwMakeCode && runtime.bwMakeCode.version === 1) {
+        obj.bwMakeCode = runtime.bwMakeCode;
+    }
+    return obj;`;
+if (!sb3.includes('obj.bwMakeCode = runtime.bwMakeCode')) {
+    if (!sb3.includes(makeCodeSerAnchor)) throw new Error('sb3.js MakeCode serialize anchor not found');
+    sb3 = sb3.replace(makeCodeSerAnchor, makeCodeSerPatch);
+}
+
 // --- deserialize: restore stc from project JSON ---
 const desAnchor = `        .then(targets => ({
             targets,
@@ -180,6 +253,13 @@ if (sb3.includes('// Brickwright: restore hardware declarations')) {
 } else {
     console.error('  ! sb3.js deserialize anchor not found — base VM version changed?');
     process.exit(1);
+}
+const makeCodeDesAnchor = `            return {targets, extensions};`;
+const makeCodeDesPatch = `            runtime.bwMakeCode = json.bwMakeCode && json.bwMakeCode.version === 1 ? json.bwMakeCode : null;
+            return {targets, extensions};`;
+if (!sb3.includes('runtime.bwMakeCode = json.bwMakeCode')) {
+    if (!sb3.includes(makeCodeDesAnchor)) throw new Error('sb3.js MakeCode deserialize anchor not found');
+    sb3 = sb3.replace(makeCodeDesAnchor, makeCodeDesPatch);
 }
 
 writeFileSync(sb3Path, sb3);

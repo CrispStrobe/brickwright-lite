@@ -74,10 +74,13 @@ const GESTURE = {
 const PULL = {up: 'PinPullMode.PullUp', down: 'PinPullMode.PullDown', none: 'PinPullMode.PullNone'};
 
 class Emitter {
-    constructor (blocks) {
+    constructor (blocks, radioNames) {
         this.blocks = blocks;
         this.unsupported = [];
         this.arrays = new Set();   // names met on `arrays` blocks; declared by the caller
+        this.radioNames = radioNames;
+        this.usesRadioNumber = false;
+        this.usesRadioString = false;
     }
 
     block (id) {
@@ -301,8 +304,12 @@ class Emitter {
         case 'microbitplus_isbutton': return `input.buttonIsPressed(${BUTTON[f('BTN')] || 'Button.A'})`;
         case 'microbitplus_digitalread': return `pins.digitalReadPin(DigitalPin.${PIN(f('PIN'))})`;
         case 'microbitplus_analogread': return `pins.analogReadPin(AnalogPin.${PIN(f('PIN'))})`;
-        case 'microbitplus_radiolastnum': return 'receivedNumber';
-        case 'microbitplus_radiolaststr': return 'receivedString';
+        case 'microbitplus_radiolastnum':
+            this.usesRadioNumber = true;
+            return this.radioNames.number;
+        case 'microbitplus_radiolaststr':
+            this.usesRadioString = true;
+            return this.radioNames.string;
         case 'sensing_timer': return '(input.runningTime() / 1000)';
         // Inside a DEFINE, a parameter is read through one of these.
         case 'argument_reporter_string_number':
@@ -594,10 +601,21 @@ export function projectToMakeCodeTs (project) {
     const lines = [];
     const declared = new Set();
     const unsupported = [];
+    const taken = new Set(targets.flatMap(t => Object.values(t.variables || {})
+        .map(v => Array.isArray(v) ? v[0] : v)));
+    const fresh = base => {
+        let name = base;
+        while (taken.has(name)) name += '_';
+        taken.add(name);
+        return name;
+    };
+    const radioNames = {number: fresh('_bwLastRadioNumber'), string: fresh('_bwLastRadioString')};
+    let usesRadioNumber = false;
+    let usesRadioString = false;
 
     for (const target of targets) {
         const blocks = target.blocks || {};
-        const emitter = new Emitter(blocks);
+        const emitter = new Emitter(blocks, radioNames);
 
         // Variables first: MakeCode is TypeScript, and TypeScript wants
         // them declared before the code that assigns them.
@@ -658,10 +676,24 @@ export function projectToMakeCodeTs (project) {
         }
         lines.push(...body);
         unsupported.push(...emitter.unsupported);
+        usesRadioNumber ||= emitter.usesRadioNumber;
+        usesRadioString ||= emitter.usesRadioString;
     }
 
+    // MakeCode has event callbacks for incoming radio packets, while lite's
+    // reporter returns the latest packet whenever a script polls it. Capture
+    // the callback value once and let every polling script read that variable.
+    // This also avoids the old self-assignment (`receivedNumber = receivedNumber`).
+    const radioSetup = [];
+    if (usesRadioNumber) radioSetup.push(
+        `let ${radioNames.number} = 0`,
+        `radio.onReceivedNumber(function (value) { ${radioNames.number} = value })`);
+    if (usesRadioString) radioSetup.push(
+        `let ${radioNames.string} = ""`,
+        `radio.onReceivedString(function (value) { ${radioNames.string} = value })`);
+
     return {
-        ts: `${lines.join('\n').trimEnd()}\n`,
+        ts: `${[...radioSetup, ...lines].join('\n').trimEnd()}\n`,
         unsupported: [...new Set(unsupported)]
     };
 }

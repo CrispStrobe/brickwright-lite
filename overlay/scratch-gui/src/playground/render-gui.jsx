@@ -18,6 +18,7 @@ import VirtualSpikeHubState from '../lib/virtual-hub/spike-hub-state.js';
 import initVirtualSpikePanel from '../lib/virtual-hub/spike-panel.js';
 import installScratchLinkBridge from '../lib/native-scratch-link-bridge.js';
 import initTauriBridge from '../lib/tauri-bridge.js';
+import initPeerSessions from '../lib/peer-sessions.js';
 import initUrlExtensions from '../lib/url-extensions.js';
 import {applyStoredChrome} from '../components/gui/chrome-toggle.jsx';
 
@@ -92,6 +93,7 @@ export default appTarget => {
 
     // Wire native file-open (Tauri) → web VM. No-op in a browser.
     initTauriBridge();
+    initPeerSessions();
 
     // Load any ?extension=<url> from the address bar (Xcratch-style), once the
     // VM is up. Untrusted URLs prompt for confirmation first.

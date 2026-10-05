@@ -331,6 +331,7 @@ takes a permissive option: specifically, `unescaper` declares
 <!-- BEGIN GENERATED RUST CRATE LIST: run `node scripts/gen-rust-notices.mjs` to refresh, do not hand-edit below this line -->
 
 - adler2 2.0.1 (0BSD OR MIT OR Apache-2.0) -- https://github.com/oyvindln/adler2
+- aead 0.5.2 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
 - ahash 0.7.8 (MIT OR Apache-2.0) -- https://github.com/tkaitchuck/ahash
 - aho-corasick 1.1.4 (Unlicense OR MIT) -- https://github.com/BurntSushi/aho-corasick
 - alloc-no-stdlib 2.0.4 (BSD-3-Clause) -- https://github.com/dropbox/rust-alloc-no-stdlib
@@ -382,6 +383,7 @@ takes a permissive option: specifically, `unescaper` declares
 - bytemuck 1.25.0 (Zlib OR Apache-2.0 OR MIT) -- https://github.com/Lokathor/bytemuck
 - byteorder 1.5.0 (Unlicense OR MIT) -- https://github.com/BurntSushi/byteorder
 - bytes 1.12.0 (MIT) -- https://github.com/tokio-rs/bytes
+- c_linked_list 1.1.1 (MIT OR BSD-3-Clause)
 - cairo-rs 0.18.5 (MIT) -- https://github.com/gtk-rs/gtk-rs-core
 - cairo-sys-rs 0.18.2 (MIT) -- https://github.com/gtk-rs/gtk-rs-core
 - camino 1.2.4 (MIT OR Apache-2.0) -- https://github.com/camino-rs/camino
@@ -394,8 +396,11 @@ takes a permissive option: specifically, `unescaper` declares
 - cfg_aliases 0.2.1 (MIT) -- https://github.com/katharostech/cfg_aliases
 - cfg-expr 0.15.8 (MIT OR Apache-2.0) -- https://github.com/EmbarkStudios/cfg-expr
 - cfg-if 1.0.4 (MIT OR Apache-2.0) -- https://github.com/rust-lang/cfg-if
+- chacha20 0.9.1 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/stream-ciphers
 - chacha20 0.10.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/stream-ciphers
+- chacha20poly1305 0.10.1 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305
 - chrono 0.4.45 (MIT OR Apache-2.0) -- https://github.com/chronotope/chrono
+- cipher 0.4.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
 - combine 4.6.7 (MIT) -- https://github.com/Marwes/combine
 - concurrent-queue 2.5.0 (Apache-2.0 OR MIT) -- https://github.com/smol-rs/concurrent-queue
 - const-random 0.1.18 (MIT OR Apache-2.0) -- https://github.com/tkaitchuck/constrandom
@@ -485,6 +490,7 @@ takes a permissive option: specifically, `unescaper` declares
 - futures-sink 0.3.32 (MIT OR Apache-2.0) -- https://github.com/rust-lang/futures-rs
 - futures-task 0.3.32 (MIT OR Apache-2.0) -- https://github.com/rust-lang/futures-rs
 - futures-util 0.3.32 (MIT OR Apache-2.0) -- https://github.com/rust-lang/futures-rs
+- gcc 0.3.55 (MIT/Apache-2.0) -- https://github.com/alexcrichton/gcc-rs
 - gdk 0.18.2 (MIT) -- https://github.com/gtk-rs/gtk3-rs
 - gdk-pixbuf 0.18.5 (MIT) -- https://github.com/gtk-rs/gtk-rs-core
 - gdk-pixbuf-sys 0.18.0 (MIT) -- https://github.com/gtk-rs/gtk-rs-core
@@ -493,6 +499,8 @@ takes a permissive option: specifically, `unescaper` declares
 - gdkx11 0.18.2 (MIT) -- https://github.com/gtk-rs/gtk3-rs
 - gdkx11-sys 0.18.2 (MIT) -- https://github.com/gtk-rs/gtk3-rs
 - generic-array 0.14.7 (MIT) -- https://github.com/fizyk20/generic-array.git
+- get_if_addrs 0.5.3 (MIT OR BSD-3-Clause) -- https://github.com/maidsafe/get_if_addrs
+- get_if_addrs-sys 0.1.1 (MIT OR BSD-3-Clause) -- https://github.com/maidsafe/get_if_addrs
 - getrandom 0.2.17 (MIT OR Apache-2.0) -- https://github.com/rust-random/getrandom
 - getrandom 0.3.4 (MIT OR Apache-2.0) -- https://github.com/rust-random/getrandom
 - getrandom 0.4.3 (MIT OR Apache-2.0) -- https://github.com/rust-random/getrandom
@@ -513,6 +521,8 @@ takes a permissive option: specifically, `unescaper` declares
 - heck 0.5.0 (MIT OR Apache-2.0) -- https://github.com/withoutboats/heck
 - hermit-abi 0.5.2 (MIT OR Apache-2.0) -- https://github.com/hermit-os/hermit-rs
 - hex 0.4.3 (MIT OR Apache-2.0) -- https://github.com/KokaKiwi/rust-hex
+- hkdf 0.12.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/KDFs/
+- hmac 0.12.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/MACs
 - html5ever 0.38.0 (MIT OR Apache-2.0) -- https://github.com/servo/html5ever
 - http 1.4.2 (MIT OR Apache-2.0) -- https://github.com/hyperium/http
 - http-body 1.0.1 (MIT) -- https://github.com/hyperium/http-body
@@ -537,6 +547,7 @@ takes a permissive option: specifically, `unescaper` declares
 - indexmap 1.9.3 (Apache-2.0 OR MIT) -- https://github.com/bluss/indexmap
 - indexmap 2.14.0 (Apache-2.0 OR MIT) -- https://github.com/indexmap-rs/indexmap
 - infer 0.19.0 (MIT) -- https://github.com/bojand/infer
+- inout 0.1.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/utils
 - io-kit-sys 0.4.1 (MIT / Apache-2.0) -- https://github.com/jtakakura/io-kit-rs
 - ipnet 2.12.0 (MIT OR Apache-2.0) -- https://github.com/krisprice/ipnet
 - is-docker 0.2.0 (MIT) -- https://github.com/TheLarkInn/is-docker
@@ -612,6 +623,7 @@ takes a permissive option: specifically, `unescaper` declares
 - objc2-user-notifications 0.3.2 (Zlib OR Apache-2.0 OR MIT) -- https://github.com/madsmtm/objc2
 - objc2-web-kit 0.3.2 (Zlib OR Apache-2.0 OR MIT) -- https://github.com/madsmtm/objc2
 - once_cell 1.21.4 (MIT OR Apache-2.0) -- https://github.com/matklad/once_cell
+- opaque-debug 0.3.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/utils
 - open 5.4.0 (MIT) -- https://github.com/Byron/open-rs
 - option-ext 0.2.0 (MPL-2.0) -- https://github.com/soc/option-ext.git
 - ordered-multimap 0.7.3 (MIT) -- https://github.com/sgodwincs/ordered-multimap-rs
@@ -636,6 +648,7 @@ takes a permissive option: specifically, `unescaper` declares
 - png 0.17.16 (MIT OR Apache-2.0) -- https://github.com/image-rs/image-png
 - png 0.18.1 (MIT OR Apache-2.0) -- https://github.com/image-rs/image-png
 - polling 3.11.0 (Apache-2.0 OR MIT) -- https://github.com/smol-rs/polling
+- poly1305 0.8.0 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/universal-hashes
 - potential_utf 0.1.5 (Unicode-3.0) -- https://github.com/unicode-org/icu4x
 - powerfmt 0.2.0 (MIT OR Apache-2.0) -- https://github.com/jhpratt/powerfmt
 - ppv-lite86 0.2.21 (MIT OR Apache-2.0) -- https://github.com/cryptocorrosion/cryptocorrosion
@@ -813,6 +826,7 @@ takes a permissive option: specifically, `unescaper` declares
 - unic-ucd-version 0.9.0 (MIT/Apache-2.0) -- https://github.com/open-i18n/rust-unic/
 - unicode-ident 1.0.24 ((MIT OR Apache-2.0) AND Unicode-3.0) -- https://github.com/dtolnay/unicode-ident
 - unicode-segmentation 1.13.3 (MIT OR Apache-2.0) -- https://github.com/unicode-rs/unicode-segmentation
+- universal-hash 0.5.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
 - untrusted 0.9.0 (ISC) -- https://github.com/briansmith/untrusted
 - url 2.5.8 (MIT OR Apache-2.0) -- https://github.com/servo/rust-url
 - urlpattern 0.3.0 (MIT) -- https://github.com/denoland/rust-urlpattern
@@ -845,6 +859,7 @@ takes a permissive option: specifically, `unescaper` declares
 - webview2-com 0.38.2 (MIT) -- https://github.com/wravery/webview2-rs
 - webview2-com-macros 0.8.1 (MIT) -- https://github.com/wravery/webview2-rs
 - webview2-com-sys 0.38.2 (MIT) -- https://github.com/wravery/webview2-rs
+- winapi 0.2.8 (MIT) -- https://github.com/retep998/winapi-rs
 - winapi 0.3.9 (MIT/Apache-2.0) -- https://github.com/retep998/winapi-rs
 - winapi-i686-pc-windows-gnu 0.4.0 (MIT/Apache-2.0) -- https://github.com/retep998/winapi-rs
 - winapi-util 0.1.11 (Unlicense OR MIT) -- https://github.com/BurntSushi/winapi-util
@@ -1499,6 +1514,10 @@ makecode.com. Copyright (c) Microsoft Corporation. All rights reserved.
   (gitignored) with each package's own LICENSE file beside it, and copied into the
   app by webpack — served, never committed. The Arcade simulator page
   (`scripts/makecode/arcade-simulator.html`) is ours: pxt-arcade ships none.
+- **Built-in Arcade art:** `arcade-builtin-images.js` carries 507 static image entries
+  generated from `libs/device/*.jres` in pxt-arcade commit `8ae4f42` (MIT).
+  `scripts/generate-arcade-builtin-images.mjs` reproduces that table from the
+  pinned checkout.
 - **Licence:** MIT
 - **Source:** https://github.com/microsoft/pxt, https://github.com/microsoft/pxt-microbit,
   https://github.com/microsoft/pxt-arcade
@@ -1618,6 +1637,22 @@ committed. Either way each image contains, compiled and unmodified:
   Runtime Library Exception.
 - **Source:** https://github.com/lancaster-university, https://github.com/microsoft/pxt-common-packages,
   https://github.com/raspberrypi/pico-sdk
+
+### Arcade speech renderer and pixel fonts
+
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech-pxt.js` contains
+the PXT `renderText.ts` and `spritesay.ts` algorithms from the bundled Arcade
+4.2.1 runtime. Copyright (c) Microsoft Corporation, MIT. The generated file
+records the source hashes; regenerate with `scripts/generate-arcade-speech.mjs`.
+The permission notice is shipped in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+
+`speech-fonts.json` contains PXT's font8 pixel glyphs (Microsoft, MIT) and font12
+glyphs derived from Adobe's Source Han Sans (SIL Open Font License 1.1).
+The latter font data remains under the OFL; its copyright and full license
+are shipped in `overlay/scratch-gui/static/licenses/pxt-speech-font12.OFL.txt`.
+Sources: https://github.com/microsoft/pxt-common-packages,
+https://github.com/adobe-fonts/source-han-sans.
 
 ## BBC BASIC interpreter attribution — zlib
 
@@ -1750,3 +1785,117 @@ not linked, and not distributed** in any form:
 
 - **Acorn BBC BASIC ROM** — Crown Copyright, not redistributable
 - **Enhanced BASIC (ehBASIC)** by Lee Davison — licence unclear, not used
+
+
+### Arcade pixel drawing algorithms
+
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js` carries the
+pixel read/write, filled rectangle, clipped line, opaque/transparent image copy
+and image overlap algorithms extracted from
+the pinned Arcade simulator's `pxt-common-packages` image implementation.
+Copyright (c) Microsoft Corporation, MIT. The full license ships in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`. Regenerate
+with `scripts/generate-arcade-image-operations.mjs`; the generated module records
+a SHA-256 hash of its source algorithms. The Brickwright adapter supplies native
+pixel storage and converts Scratch numeric inputs before invoking these APIs.
+
+### Arcade tile data and location semantics
+
+The tile-data adapter in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`
+and the tilemap conversion helper in
+`overlay/scratch-gui/src/lib/bw-makecode/tilemap-values.js` implement behavior
+studied from Microsoft's pinned MakeCode Arcade `pxt-common-packages` tilemap
+and tiles APIs. Copyright (c) Microsoft Corporation, MIT. The full license is
+shipped in `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+The adapter uses Brickwright's own scoped references, arrays and renderer;
+collision physics and camera scrolling are still named unsupported features.
+
+### Arcade animation compatibility — MIT reference
+
+The native Arcade extension's legacy action-animation and image-array playback
+semantics were implemented and checked against the locally pinned Microsoft
+`pxt-common-packages` sources `libs/animation/legacy.ts` and
+`libs/game/animation.ts`. Copyright (c) Microsoft Corporation, MIT; the license
+is shipped in `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+Regression probes execute the original pinned simulator as an oracle. Movement
+path animation is not implemented by this compatibility slice.
+
+### Arcade tile-wall physics compatibility — MIT reference
+
+The native Arcade extension's tile-wall collision movement, directional contact
+cache, opaque/degenerate hitboxes and clipping recovery were implemented against
+Microsoft's pinned `pxt-common-packages` game sources (`physics.ts`, `sprite.ts`,
+`tilemap.ts`, and hitbox code). Copyright (c) Microsoft Corporation, MIT; the
+license is shipped in `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+Original simulator probes verify the supported subset. Terrain events, camera
+scrolling and complete physics/scheduling parity remain separate work.
+
+### Arcade camera compatibility — MIT reference
+
+Camera position, follow/property behavior, tilemap clamping and drawing offsets
+were implemented against the locally pinned Microsoft `pxt-common-packages`
+game sources (`camera.ts`, `scenes.ts`, `sprite.ts`, `physics.ts`, `tilemap.ts`).
+Copyright (c) Microsoft Corporation, MIT; the license is shipped in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`. Original
+simulator probes verify the implemented subset. Camera shake and full scene
+stack lifecycle remain separate work.
+
+
+### Arcade scene lifecycle and Info compatibility — MIT reference
+
+Scene suspension/restoration, scene-bound registrations, shared resource lifetime,
+Info score/life state and callback scheduling were implemented against the
+locally pinned Microsoft `pxt-common-packages` game sources (`scenes.ts`,
+`game.ts`, `info.ts`, `controller.ts`, `physics.ts`, `sprite.ts`, and animation
+sources). Copyright (c) Microsoft Corporation, MIT; the license is shipped in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`. Original
+simulator comparisons cover the implemented subset, rather than full Scene
+object, callback-removal, effects or scheduler parity.
+
+### Arcade multi-sprite physics and overlap queries — MIT reference
+
+Default fixed-point integration, round-robin substeps, spatial bucket overlap
+ordering and opaque retained-sprite queries were implemented against locally
+pinned Microsoft `pxt-common-packages` game sources (`physics.ts`, `sprite.ts`
+and image overlap routines). Copyright (c) Microsoft Corporation, MIT; the
+license is shipped in `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+Original simulator comparisons cover the implemented subset. Friction, ordinary
+scaling and configurable engine settings have additional comparisons below;
+viewport-aware sprite rendering has additional comparisons below; rotation
+and full scheduler parity remain open.
+
+### Arcade Sprite friction — MIT reference
+
+Per-axis friction properties and fixed-point velocity integration were implemented
+against the locally pinned Microsoft `pxt-common-packages` game sources
+(`sprite.ts`, `physics.ts` and fixed-point helpers). Copyright (c) Microsoft
+Corporation, MIT; the license is shipped in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+
+### Arcade Scene and PhysicsEngine references/settings — MIT reference
+
+Engine defaults, fixed-point setting access, independent sprite membership,
+scene engine assignment and engine-dependent movement were implemented against
+locally pinned Microsoft `pxt-common-packages` game sources (`physics.ts`,
+`scene.ts`, `sprite.ts`, `sprites.ts` and fixed-point helpers). Copyright (c)
+Microsoft Corporation, MIT; the license is shipped in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+
+### Arcade Sprite scaling and scaled overlap — MIT reference
+
+Fixed-point scale properties, center/anchor preservation, scaled dimensions,
+hitboxes, raster rendering and pixel overlap are implemented against locally
+pinned Microsoft `pxt-common-packages` game sources (`sprite.ts`, `hitbox.ts`
+and image scaling/overlap helpers). Copyright (c) Microsoft Corporation, MIT;
+the license is shipped in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+Rotation remains separate compatibility work.
+
+### Arcade viewport-aware sprite rendering — MIT reference
+
+Clipped scaled-image sampling and large-dimension center/position semantics were
+implemented against locally pinned Microsoft pxt-common-packages Sprite and
+fixed-point sources and pinned simulator image.blit. Copyright (c) Microsoft
+Corporation, MIT; the license is shipped in
+`overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt`.
+Original full-screen comparisons cover the implemented unrotated sprite subset.

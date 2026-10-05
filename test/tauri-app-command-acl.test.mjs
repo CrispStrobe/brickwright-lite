@@ -58,7 +58,7 @@ const audit = ({handler, build, main, mobile, ack, runtime}) => {
     const entries = handlerEntries(handler);
     const registered = entries.map(entry => entry.name);
     const manifested = manifestCommands(build);
-    assert.equal(registered.length, 26, 'review a deliberate command-count change');
+    assert.equal(registered.length, 39, 'review a deliberate command-count change');
     assert.equal(new Set(registered).size, registered.length, 'handler commands must be unique');
     assert.equal(new Set(manifested).size, manifested.length, 'manifest commands must be unique');
     assert.deepEqual(uniqueSorted(manifested), uniqueSorted(registered),

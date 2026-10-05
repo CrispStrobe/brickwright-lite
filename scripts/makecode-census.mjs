@@ -20,7 +20,7 @@
  *                snippet that is not a whole program — excluded from the rest)
  *     import     microbitToPseudocode: how many calls were named unsupported
  *     parse      the pseudocode parses (SB3Creator)
- *     sim        generateMicroPython succeeds — the program runs in our simulator
+ *     sim        generateMicroPython succeeds — simulator code generation check
  *     export     pseudocode -> MakeCode TypeScript (export.js)
  *     recompile  pxt compiles the re-export (simulator build)
  *     SILENT     a MakeCode call in the original that is in neither the
@@ -257,7 +257,7 @@ if (ONLY !== 'lite') {
         `## MakeCode's own programs (pxt-microbit 9.1.1 docs) — ${mc.length} programs, ${programs.length} compile as MakeCode wrote them`,
         '',
         '| outcome | programs |', '|---|---|', table(tally(mc)), '',
-        '`full` = imported with nothing unsupported, runs in our simulator, re-exported and recompiled by MakeCode, no call lost. ' +
+        '`full` = imported with nothing unsupported, generates simulator code, re-exported and recompiled by MakeCode, no call lost. ' +
         '`partial` = the same, with unsupported calls NAMED. `silent-loss` = a call vanished without being named.',
         '',
         '### What import names unsupported, most common first', '', '| programs | unsupported |', '|---|---|',
@@ -268,7 +268,7 @@ if (ONLY !== 'lite') {
         top(hist(programs, 'transformed', s => s)), '',
         '### Why a re-export does not recompile', '', '| programs | MakeCode error |', '|---|---|',
         top(hist(programs.filter(r => r.recompileError).map(r => ({e: [r.recompileError]})), 'e', normError)), '',
-        '### Why a translation does not run in our simulator', '', '| programs | reason |', '|---|---|',
+        '### Why a translation cannot generate simulator code', '', '| programs | reason |', '|---|---|',
         top(hist(programs.filter(r => r.simReasons), 'simReasons', normError)), ''
     );
 }

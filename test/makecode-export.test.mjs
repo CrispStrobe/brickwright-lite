@@ -104,6 +104,24 @@ test('every shipped micro:bit example survives the round trip', {skip: canCompil
     }
 });
 
+test('radio packet reporters export as callbacks that keep their latest values', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const source = [
+        'radio.onReceivedNumber(function (n) { basic.showNumber(n) })',
+        'radio.onReceivedString(function (s) { basic.showString(s) })'
+    ].join('\n');
+    const imported = microbitToPseudocode(source);
+    const creator = new SB3Creator();
+    creator.parse(imported.code);
+    const out = exportToMakeCode(creator.project);
+    assert.match(out.ts, /radio\.onReceivedNumber\(function \(value\)/);
+    assert.match(out.ts, /radio\.onReceivedString\(function \(value\)/);
+    assert.match(out.ts, /n = _bwLastRadioNumber/);
+    assert.match(out.ts, /s = _bwLastRadioString/);
+    assert.doesNotMatch(out.ts, /n = n|s = s/);
+    assert.deepEqual(out.unsupported, []);
+});
+
 test('the exported hex carries a whole project, not just the code', {skip: canCompile ? false :
     'packages/scratch-gui not integrated'}, async () => {
     const project = new SB3Creator().parse(example('mb01-display'));

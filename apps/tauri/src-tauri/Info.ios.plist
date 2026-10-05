@@ -26,6 +26,8 @@
     <key>NSAllowsLocalNetworking</key>
     <true/>
   </dict>
+  <key>NSLocalNetworkUsageDescription</key>
+  <string>Brickwright connects to nearby paired sessions to exchange projects, control devices, and capture photos.</string>
 
   <!-- Bluetooth Classic (RFCOMM) on iOS goes through MFi ExternalAccessory, and
        an accessory is invisible to EAAccessoryManager unless its protocol is
@@ -62,7 +64,7 @@
        WKWebView UI delegate grants the in-page request, but iOS still requires
        these strings or it terminates the app on first access. -->
   <key>NSCameraUsageDescription</key>
-  <string>Brickwright uses the camera for Video Sensing, photo projects such as LEGO scanners, and photographing costumes.</string>
+  <string>Brickwright uses the camera for Video Sensing, LEGO scanners, and photos requested by a paired Brickwright session while sharing is on.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Brickwright uses the microphone for the loudness/sound blocks and to record sounds.</string>
   <key>NSSpeechRecognitionUsageDescription</key>

@@ -392,6 +392,9 @@ cfgs.forEach(c => {
             ...origExclude.map(e => (e && Array.isArray(e.and) && Array.isArray(e.not))
                 ? {...e, not: [...e.not, OWN_PACKAGES]}
                 : e),
+            // Keep factories embedded via Function#toString self-contained.
+            // Babel's outer helpers cannot cross the extension sandbox.
+            /crispstrobe[\\/]arcade[\\/](speech|speech-pxt|image|image-pxt)\.js$/,
             /scratch-blocks[\\/]blockly_compressed/
         ];
     }

@@ -12,6 +12,14 @@
     "deep-link:default",
     "opener:allow-open-url",
     "allow-save-project",
+    "allow-open-project-document",
+    "allow-open-recent-project",
+    "allow-recent-projects",
+    "allow-pending-project",
+    "allow-clear-project-document",
+    "allow-activate-project-document",
+    "allow-discard-open-project",
+    "allow-save-project-document",
     "allow-write-temp-project",
     "allow-is-mobile",
     "allow-download-pack",
@@ -27,6 +35,11 @@
     "allow-pico-flash-uf2",
     "allow-scratchlink-bridge-open",
     "allow-scratchlink-bridge-send",
-    "allow-scratchlink-bridge-close"
+    "allow-scratchlink-bridge-close",
+    "allow-peer-status",
+    "allow-peer-enable",
+    "allow-peer-disable",
+    "allow-peer-send",
+    "allow-peer-reply"
   ]
 }

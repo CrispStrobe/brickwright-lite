@@ -1088,6 +1088,18 @@ class PseudocodeImporter extends React.Component {
         const vm = this.props.vm;
         let consumedParkedSource = false;
         if (vm && vm.runtime) {
+            this._onMakeCodeLoaded = () => {
+                const stored = vm.runtime.bwMakeCode;
+                if (stored && stored.version === 1 && MAKECODE_RUNNABLE.includes(stored.target)) {
+                    this._makeCodeProject = {files: stored.files, name: stored.name, target: stored.target};
+                } else {
+                    this._makeCodeProject = null;
+                    this._makeCodeImportedCode = null;
+                }
+                this.forceUpdate();
+            };
+            vm.runtime.on('PROJECT_LOADED', this._onMakeCodeLoaded);
+            if (vm.runtime.bwMakeCode) this._onMakeCodeLoaded();
             this._onProjectChanged = () => {
                 const src = vm.runtime.bwPseudocodeSource;
                 if (src) {
@@ -1679,6 +1691,7 @@ class PseudocodeImporter extends React.Component {
             name: res.project.name || String(label).replace(/\.[^.]+$/, ''),
             target: res.project.target
         } : null;
+        this._makeCodeImportedCode = res.kind === 'makecode' ? res.code : null;
         const unsupported = (res.unsupported || []).length;
         const arcade = res.project.target === 'arcade';
         let status;
@@ -1959,6 +1972,8 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true, status: this.L.mcRunCompiling('Arcade')});
         try {
             const out = await this.arcadeFromStage();
+            if (out.unsupported.length || out.warnings.length) throw new Error(
+                `Arcade export is incomplete: ${[...out.unsupported, ...out.warnings].join('; ')}`);
             const {compileMakeCode} = await import(
                 /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
             const built = await compileMakeCode({target: 'arcade', files: out.files});
@@ -1985,6 +2000,15 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true});
         try {
             const out = await this.arcadeFromStage();
+            if (out.unsupported.length || out.warnings.length) throw new Error(
+                `Arcade export is incomplete: ${[...out.unsupported, ...out.warnings].join('; ')}`);
+            const {compileMakeCode} = await import(
+                /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
+            const built = await compileMakeCode({target: 'arcade', files: out.files});
+            if (!built.success) {
+                const d = built.diagnostics[0] || {};
+                throw new Error(`Arcade compile failed: ${d.file || 'main.ts'}:${(d.line || 0) + 1} ${d.message || ''}`);
+            }
             const {makeCodeSourceHex} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = JSON.parse(out.files['pxt.json']).name;
@@ -2030,6 +2054,9 @@ class PseudocodeImporter extends React.Component {
         const vm = this.props.vm;
         if (vm && vm.runtime && this._onProjectChanged) {
             vm.runtime.removeListener('PROJECT_CHANGED', this._onProjectChanged);
+        }
+        if (vm && vm.runtime && this._onMakeCodeLoaded) {
+            vm.runtime.removeListener('PROJECT_LOADED', this._onMakeCodeLoaded);
         }
         window.removeEventListener('bw-project-bundle-collect', this._onBundleCollect);
         window.removeEventListener('bw-example-loaded', this._onExampleLoaded);
@@ -4187,6 +4214,10 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             creator.parse(source);
+            if (this._makeCodeProject &&
+                source === this._makeCodeImportedCode) {
+                creator.project.bwMakeCode = {version: 1, ...this._makeCodeProject};
+            }
             const missing = [];
             this.state.uploads.forEach(u => {
                 const name = (u.sprite || '').trim();
@@ -4317,15 +4348,16 @@ class PseudocodeImporter extends React.Component {
                 micropython: mpResult.ok ? mpResult.py : `# === Cannot generate MicroPython ===\n${mpResult.reasons.map(s => '# ' + s).join('\n')}`
             };
             this.setState({importedPython: false});
-            const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
+            const unsupportedDiagnostics = Array.from(buffers.pseudocode.matchAll(/^\s*# unsupported:\s*(.*)$/gm), match => match[1].trim());
+            const unsupported = unsupportedDiagnostics.length;
             this.setState({
                 buffers,
                 output: null,
                 status: unsupported ?
-                    `Read into all languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
+                    `Read into all languages — ${unsupported} unsupported diagnostic(s) retained in Code.` :
                     'Read the current project into all languages. Edit any of them, then “To blocks”.',
                 conversionReport: {direction: 'Blocks → Code', preserved: true, changed: [],
-                    unsupported: unsupported ? [`${unsupported} block(s) left as unsupported comments`] : []}
+                    unsupported: unsupportedDiagnostics}
             });
         } catch (e) {
             this.setState({status: this.L.stError(e.message), conversionReport: {

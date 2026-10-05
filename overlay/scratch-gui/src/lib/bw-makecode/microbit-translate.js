@@ -244,6 +244,18 @@ class MicrobitTranslator extends BaseTranslator {
             // MicroPython's built-in images are the same bitmaps, and
             // `show pattern` lowers to display.show().
             const table = name === 'basic.showArrow' ? MICROBIT_ARROWS : MICROBIT_ICONS;
+            if (a[0] && a[0].type === 'Conditional') {
+                const chosen = a[0];
+                const yes = chosen.consequent.type === 'Member' && table[chosen.consequent.name];
+                const no = chosen.alternate.type === 'Member' && table[chosen.alternate.name];
+                if (yes && no) {
+                    push(`IF ${this.condition(chosen.test)} THEN:`);
+                    out.push(`${pad}  show pattern ${yes}`);
+                    push('ELSE:');
+                    out.push(`${pad}  show pattern ${no}`);
+                    return;
+                }
+            }
             const member = a[0] && a[0].type === 'Member' ? a[0].name : null;
             const pattern = member ? table[member] : null;
             if (!pattern) {

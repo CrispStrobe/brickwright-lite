@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import {createPortal} from 'react-dom';
 import classNames from 'classnames';
 
 import Box from '../box/box.jsx';
@@ -22,17 +23,25 @@ const StageComponent = props => {
         isFullScreen,
         isStarted,
         colorInfo,
+        arcadeDialog,
         micIndicator,
         question,
         stageSize,
         useEditorDragStyle,
         onDeactivateColorPicker,
         onDoubleClick,
+        onArcadeDialogDismiss,
         onQuestionAnswered,
         ...boxProps
     } = props;
 
     const stageDimensions = getStageDimensions(stageSize, isFullScreen);
+    const arcadeDialogStyle = arcadeDialog?.type === 'longText' ? {
+        justifyContent: arcadeDialog.layout === 'Top' ? 'flex-start' :
+            arcadeDialog.layout === 'Bottom' ? 'flex-end' : 'center',
+        alignItems: arcadeDialog.layout === 'Left' ? 'flex-start' :
+            arcadeDialog.layout === 'Right' ? 'flex-end' : 'center'
+    } : undefined;
 
     return (
         <React.Fragment>
@@ -60,6 +69,26 @@ const StageComponent = props => {
                         }}
                         {...boxProps}
                     />
+                    {arcadeDialog ? createPortal(
+                        <div className={styles.arcadeDialogOverlay} role="dialog" aria-modal="true"
+                            aria-label={arcadeDialog.type === 'longText' ? 'Arcade long text' : 'Arcade splash screen'}
+                            style={arcadeDialogStyle}
+                            onKeyDown={event => {
+                                if (event.key !== 'Tab') {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    onArcadeDialogDismiss();
+                                }
+                            }}>
+                            <div className={styles.arcadeDialogText}
+                                style={arcadeDialog.layout === 'Full' ? {width: '100%', maxHeight: '85vh'} : undefined}>
+                                <strong>{arcadeDialog.title}</strong>
+                                {arcadeDialog.subtitle ? <span>{arcadeDialog.subtitle}</span> : null}
+                            </div>
+                            <button autoFocus className={styles.arcadeDialogButton}
+                                onClick={onArcadeDialogDismiss}>Continue</button>
+                        </div>, document.body
+                    ) : null}
                     <Box className={styles.monitorWrapper}>
                         <MonitorList
                             draggable={useEditorDragStyle}
@@ -134,6 +163,8 @@ const StageComponent = props => {
     );
 };
 StageComponent.propTypes = {
+    arcadeDialog: PropTypes.shape({title: PropTypes.string, subtitle: PropTypes.string,
+        type: PropTypes.string, layout: PropTypes.string}),
     canvas: PropTypes.instanceOf(Element).isRequired,
     colorInfo: Loupe.propTypes.colorInfo,
     dragRef: PropTypes.func,
@@ -142,6 +173,7 @@ StageComponent.propTypes = {
     isStarted: PropTypes.bool,
     micIndicator: PropTypes.bool,
     onDeactivateColorPicker: PropTypes.func,
+    onArcadeDialogDismiss: PropTypes.func,
     onDoubleClick: PropTypes.func,
     onQuestionAnswered: PropTypes.func,
     question: PropTypes.string,

@@ -78,10 +78,15 @@ export function svgToPixels (svg, palette = ARCADE_PALETTE) {
     if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return null;
     const nums = rects.map(r => ['x', 'y', 'width', 'height'].map(k => Number(attr(r, k))));
     if (nums.some(n => n.some(v => !Number.isInteger(v) || v < 0))) return null;
-    // The scale is the largest integer dividing every coordinate and size, and
-    // the canvas; our emitter uses 4, but a costume saved at another scale reads too.
+    // A uniform image can have every rectangle coordinate divisible by 8 or
+    // 16 even when it was drawn on a four-unit grid. Preserve the emitter's
+    // explicit scale; older costumes without it still use the GCD fallback.
     const gcd = (a, b) => (b ? gcd(b, a % b) : a);
-    let scale = [w, h, ...nums.flat()].filter(v => v > 0).reduce(gcd);
+    const declaredScale = attr(root[1], 'data-bw-pixel-scale');
+    if (declaredScale !== null && (!/^\d+$/.test(declaredScale) || Number(declaredScale) < 1 ||
+        [w, h, ...nums.flat()].some(value => value % Number(declaredScale) !== 0))) return null;
+    let scale = declaredScale !== null ? Number(declaredScale) :
+        [w, h, ...nums.flat()].filter(v => v > 0).reduce(gcd);
     if (!scale) scale = 1;
     const width = w / scale;
     const height = h / scale;

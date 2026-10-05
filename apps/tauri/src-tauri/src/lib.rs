@@ -21,6 +21,7 @@ mod native_broker_transport;
 // webview exists; the topology gate forbids registering a partial boundary.
 #[allow(dead_code)]
 mod native_policy;
+mod peer;
 mod pico;
 mod scratchlink;
 
@@ -35,6 +36,7 @@ pub fn run() {
         )
         // Native Save/Open dialogs, and deep links / .sb3 "open with".
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_deep_link::init())
         // Open external links (help/docs/credits) in the system browser.
         .plugin(tauri_plugin_opener::init());
@@ -82,8 +84,17 @@ pub fn run() {
     let builder = builder.manage(native_broker_adapter::NativeBrokerAdapter::new());
 
     builder
+        .manage(fileio::Documents::default())
         .invoke_handler(tauri::generate_handler![
             fileio::save_project,
+            fileio::open_project_document,
+            fileio::open_recent_project,
+            fileio::recent_projects,
+            fileio::pending_project,
+            fileio::clear_project_document,
+            fileio::activate_project_document,
+            fileio::discard_open_project,
+            fileio::save_project_document,
             fileio::write_temp_project,
             fileio::is_mobile,
             downloads::download_pack,
@@ -100,6 +111,11 @@ pub fn run() {
             scratchlink::bridge::scratchlink_bridge_open,
             scratchlink::bridge::scratchlink_bridge_send,
             scratchlink::bridge::scratchlink_bridge_close,
+            peer::peer_status,
+            peer::peer_enable,
+            peer::peer_disable,
+            peer::peer_send,
+            peer::peer_reply,
             // Transport only, desktop only. Registration is not authority: every one of these
             // is unreachable until `native_broker_ready` grants the runtime capabilities, and
             // mobile never compiles them in at all.
@@ -127,6 +143,7 @@ pub fn run() {
             native_capability::native_broker_audit
         ])
         .manage(scratchlink::bridge::BridgeState::default())
+        .manage(peer::PeerState::default())
         .setup(move |app| {
             #[cfg(desktop)]
             native_broker::create(app, native_policy.clone())?;
@@ -174,25 +191,32 @@ pub fn run() {
                 app.deep_link().on_open_url(move |event| {
                     for url in event.urls() {
                         if let Ok(path) = url.to_file_path() {
-                            fileio::emit_load_project(&handle, &path);
+                            fileio::emit_load_project(&handle, path.into());
                         }
                     }
                 });
+            }
+            // Windows and Linux pass associated documents as command-line
+            // arguments on a fresh launch.
+            #[cfg(any(target_os = "linux", windows))]
+            for arg in std::env::args_os().skip(1) {
+                let path = std::path::PathBuf::from(arg);
+                if path.is_file() && matches!(path.extension().and_then(|e| e.to_str()), Some("sb3" | "sb2")) {
+                    fileio::emit_load_project(app.handle(), path.into());
+                    break;
+                }
             }
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error while building the Brickwright application")
-        // Handle files opened via association / share "open with" (macOS/iOS
-        // deliver these as an Opened run event with file:// URLs; the variant
-        // doesn't exist on Linux/Windows, where deep links cover it instead).
+        // Apple/Android file associations arrive as URLs, including Android's
+        // content:// provider handles.
         .run(move |_app, _event| {
-            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            #[cfg(any(target_os = "macos", target_os = "ios", target_os = "android"))]
             if let tauri::RunEvent::Opened { urls } = _event {
                 for url in urls {
-                    if let Ok(path) = url.to_file_path() {
-                        fileio::emit_load_project(_app, &path);
-                    }
+                    fileio::emit_load_project(_app, url.into());
                 }
             }
         });

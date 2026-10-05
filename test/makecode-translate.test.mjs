@@ -19,6 +19,21 @@ import {join} from 'node:path';
 
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {parseMakeCodeTs, tokenize} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
+
+test('line breaks separate postfix and prefix updates, including multiline comments', () => {
+    const tree=parseMakeCodeTs('rows[0]++\n++rows[1]\nrows[2] /* newline\n */ --rows[3]');
+    assert.deepEqual(tree.body.map(st=>[st.expr.type,st.expr.op,st.expr.prefix]),[
+        ['Update','++',false],['Update','++',true],['Index',undefined,undefined],['Update','--',true]
+    ]);
+});
+
+test('type annotations end before the next statement while preserving multiline and nested array types', () => {
+    const tree=parseMakeCodeTs('let rows:Array<Array<number>>\nlet pending:\n number[]\nlet count:number\ncount=3');
+    assert.deepEqual(tree.body.slice(0,3).map(st=>[st.decls[0].name,st.decls[0].isArray,st.decls[0].init]),[
+        ['rows',true,null],['pending',true,null],['count',false,null]
+    ]);
+    assert.equal(tree.body[3].expr.left.name,'count');
+});
 import {
     microbitToPseudocode,
     ledPattern
@@ -355,4 +370,22 @@ test('Math.randomBoolean as a VALUE is the dialect\'s 0/1, not a comparison stor
     assert.ok(mp.ok, JSON.stringify(mp.reasons));
     assert.match(mp.py, /b = random\.randint\(0, 1\)/, mp.py);
     assert.doesNotMatch(mp.py, /b = "/, 'the coin toss became a string');
+});
+
+test('a conditional icon expression becomes two real display branches', {skip: canCompile ? false :
+    'packages/scratch-gui not integrated'}, () => {
+    const source = 'let paired = false\nbasic.showIcon(paired ? IconNames.Heart : IconNames.Sad)\n';
+    const {code, unsupported} = microbitToPseudocode(source);
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /IF not \(paired = 0\) THEN:/);
+    assert.match(code, /ELSE:/);
+    assert.equal((code.match(/show pattern/g) || []).length, 2);
+    new SB3Creator().parse(code);
+});
+
+test('TypeScript optional parameters and conditional expressions parse as their own shapes', () => {
+    const tree = parseMakeCodeTs('function choose(x?: number) { return x ? 1 : 2 }');
+    const fn = tree.body[0];
+    assert.deepEqual(fn.params, ['x']);
+    assert.equal(fn.body[0].value.type, 'Conditional');
 });

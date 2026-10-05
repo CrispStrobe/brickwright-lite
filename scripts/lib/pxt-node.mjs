@@ -47,7 +47,7 @@ async function sandbox (target) {
  * Compile a MakeCode project. Same result shape as the browser's compileMakeCode.
  * @param {string} target 'microbit' | 'arcade'
  * @param {object} files {filename: contents}, pxt.json included
- * @param {{native?: boolean, embedSource?: object}} [opts]
+ * @param {{native?: boolean, embedSource?: object, hwVariant?: string}} [opts]
  */
 export async function compile (target, files, opts = {}) {
     const sb = await sandbox(target);
@@ -55,6 +55,7 @@ export async function compile (target, files, opts = {}) {
         const p = path.join(STATIC, target, 'hexcache', `${sha}.hex`);
         return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
     };
-    const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null, getBaseHex});
+    const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null,
+        hwVariant: opts.hwVariant || '', getBaseHex});
     return JSON.parse(JSON.stringify(r));   // out of the vm's realm
 }

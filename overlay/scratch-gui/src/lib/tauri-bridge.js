@@ -1,7 +1,90 @@
-// Brickwright: bridge native (Tauri) file-open events into the web VM. When the
-// app is launched by opening an .sb3 (file association / share "open with") or a
-// deep link, the Rust side reads the file and emits a `load-project` event; here
-// we feed it into `window.vm.loadProject`. No-op outside Tauri.
+import {inspectBrickwrightState, applyBrickwrightInspection,
+    rollbackBrickwrightInspection} from './bw-project-bundle';
+import {setProjectTitle} from '../reducers/project-title';
+import {setProjectUnchanged} from '../reducers/project-changed';
+
+const native = () => typeof window !== 'undefined' && window.__TAURI__;
+const invoke = (command, args) => native().core.invoke(command, args);
+
+const waitForVm = (tries = 100) => new Promise((resolve, reject) => {
+    const check = n => {
+        const vm = window.__brickwrightStore?.getState()?.scratchGui?.vm;
+        if (vm) return resolve(vm);
+        if (n <= 0) return reject(new Error('VM not available'));
+        return setTimeout(() => check(n - 1), 200);
+    };
+    check(tries);
+});
+
+const nativeLoads = new WeakMap();
+const trackedVm = async () => {
+    const vm = await waitForVm();
+    if (!nativeLoads.has(vm)) {
+        const original = vm.loadProject.bind(vm);
+        nativeLoads.set(vm, original);
+        // Importers, lessons and peer transfers can all replace the project.
+        // Unlink the previous on-disk document after any such successful load.
+        vm.loadProject = (...args) => Promise.resolve(original(...args)).then(async result => {
+            await invoke('clear_project_document').catch(error => {
+                // eslint-disable-next-line no-console
+                console.warn('[brickwright] could not unlink old project document', error);
+            });
+            return result;
+        });
+    }
+    return vm;
+};
+
+let lastOpen = null;
+export const loadNativeProject = async payload => {
+    if (!payload?.bytes) return;
+    const signature = `${payload.path}:${payload.bytes.length}`;
+    if (lastOpen && lastOpen.signature === signature && Date.now() - lastOpen.at < 1000) return;
+    if (window.ReduxStore?.getState()?.scratchGui?.projectChanged &&
+        !confirm('Replace the current project? Save it first if you want to keep your changes.')) { // eslint-disable-line no-alert
+        await invoke('discard_open_project');
+        return;
+    }
+    lastOpen = {signature, at: Date.now()};
+    const vm = await trackedVm();
+    const buffer = new Uint8Array(payload.bytes).buffer;
+    let bundle;
+    try {
+        const inspection = await inspectBrickwrightState(buffer);
+        if (inspection.outcome === 'invalid' || inspection.outcome === 'future') {
+            window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded', {detail: inspection}));
+            throw new Error(`Brickwright project state ${inspection.outcome}: ${inspection.reason || inspection.report?.action}`);
+        }
+        bundle = applyBrickwrightInspection(inspection);
+        if (bundle.outcome === 'storage-failed') throw new Error(bundle.reason);
+        try {
+            await nativeLoads.get(vm)(buffer);
+        } catch (error) {
+            const rollback = rollbackBrickwrightInspection(bundle);
+            if (!rollback.rolledBack) error.message += `; auxiliary rollback failed: ${rollback.reason}`;
+            throw error;
+        }
+        window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded', {detail: bundle}));
+        await invoke('activate_project_document', {path: payload.path});
+        if (payload.name && window.ReduxStore) {
+            window.ReduxStore.dispatch(setProjectTitle(payload.name.replace(/\.sb[23]$/i, '')));
+            window.ReduxStore.dispatch(setProjectUnchanged());
+        }
+    } catch (error) {
+        await invoke('discard_open_project');
+        throw error;
+    }
+};
+
+export const openNativeProject = async path => {
+    const payload = path ? await invoke('open_recent_project', {path}) :
+        await invoke('open_project_document');
+    if (payload) await loadNativeProject(payload);
+};
+
+export const getRecentNativeProjects = () => invoke('recent_projects');
+
+// Native file associations and File menu opens share the loader above.
 export default function initTauriBridge () {
     const tauri = typeof window !== 'undefined' && window.__TAURI__;
     if (!tauri) return;
@@ -49,42 +132,21 @@ export default function initTauriBridge () {
 
     if (!tauri.event || typeof tauri.event.listen !== 'function') return;
 
-    const getVm = () => {
-        try {
-            return window.__brickwrightStore.getState().scratchGui.vm;
-        } catch (e) {
-            return null;
-        }
-    };
-    const waitForVm = (tries = 100) => new Promise((resolve, reject) => {
-        const check = n => {
-            const vm = getVm();
-            if (vm) return resolve(vm);
-            if (n <= 0) return reject(new Error('VM not available'));
-            return setTimeout(() => check(n - 1), 200);
-        };
-        check(tries);
-    });
-
     tauri.event.listen('load-project', async event => {
         try {
-            const {name, bytes} = event.payload || {};
-            if (!bytes) return;
-            const vm = await waitForVm();
-            await vm.loadProject(new Uint8Array(bytes).buffer);
-            if (window.ReduxStore && name) {
-                try {
-                    window.ReduxStore.dispatch({
-                        type: 'scratch-gui/project-title/SET_PROJECT_TITLE',
-                        title: name.replace(/\.sb[23]$/i, '')
-                    });
-                } catch (e) {
-                    // Title is best-effort; ignore if the action shape changes.
-                }
-            }
+            await loadNativeProject(event.payload);
         } catch (e) {
             // eslint-disable-next-line no-console
             console.error('[brickwright] load-project failed', e);
+            alert(`Could not open project: ${e.message || e}`); // eslint-disable-line no-alert
         }
+    });
+    trackedVm().catch(error => {
+        // eslint-disable-next-line no-console
+        console.warn('[brickwright] project document tracking unavailable', error);
+    });
+    invoke('pending_project').then(loadNativeProject).catch(e => {
+        // eslint-disable-next-line no-console
+        console.error('[brickwright] pending project failed', e);
     });
 }

@@ -151,14 +151,15 @@ export class BaseTranslator {
             if (/^0[bB]/.test(v)) return String(parseInt(v.slice(2), 2));
             return v;
         }
-        case 'String': return `"${node.value.replace(/\\n/g, ' ')}"`;
+        case 'String': return JSON.stringify(node.value);
         // A VALUE: the dialect's truth is 1 and 0 (its conditions read a
         // variable as `not (v = 0)`), so `let A = false` is `set A to 0`.
         // The word `false` here became the string "false" on the way back out,
         // which MakeCode refuses to assign to a number (census 2026-09-25).
         // In a condition, condition() below keeps true/false.
         case 'Boolean': return node.value ? '1' : '0';
-        case 'Null': return '0';
+        case 'Null':
+        case 'Undefined': return '0';
         case 'Identifier': return this.varName(node.name);
         case 'Unary':
             if (node.op === '!') return `not (${this.condition(node.argument)})`;
@@ -214,6 +215,9 @@ export class BaseTranslator {
             return this.expr(node.object);
         }
         case 'Call': return this.callExpression(node);
+        case 'Conditional':
+            this.unsupported.push('conditional expression (?:) as a value');
+            return '0';
         case 'Template': return '"(image)"';
         default: return '0';
         }
@@ -548,7 +552,10 @@ export class BaseTranslator {
         // `shift()` removes the first element; as a statement the removed
         // value is discarded, which is exactly `remove item 0`.
         case 'shift': push(`remove item 0 of ${ref}`); return true;
-        case 'pop': push(`pop from ${ref}`); return true;
+        // The removed value is discarded in statement position. Use the
+        // array command block here: arrays_pop is a reporter and cannot
+        // execute as a standalone Scratch stack block.
+        case 'pop': push(`remove item (length of ${ref}) - 1 of ${ref}`); return true;
         case 'removeElement': push(`remove item (index of ${arg(0)} in ${ref}) of ${ref}`); return true;
         case 'sort': push(`sort of ${ref} ascending`); return true;
         default: return false;

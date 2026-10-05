@@ -42,6 +42,8 @@ const L10N = {
         'mc.stopped': 'Stopped',
         'mc.serial': 'Serial',
         'mc.keys': 'Keys: arrows, Z/Space = A, X = B (click the screen first).',
+        'mc.controls': 'Controller',
+        'mc.widgets': 'Widgets',
         'mc.error': 'Simulator error: {msg}'
     },
     de: {
@@ -58,6 +60,8 @@ const L10N = {
         'mc.stopped': 'Gestoppt',
         'mc.serial': 'Seriell',
         'mc.keys': 'Tasten: Pfeile, Z/Leertaste = A, X = B (erst auf den Bildschirm klicken).',
+        'mc.controls': 'Steuerung',
+        'mc.widgets': 'Widgets',
         'mc.error': 'Simulatorfehler: {msg}'
     }
 };
@@ -66,26 +70,33 @@ const t = makeT(L10N);
 class MakeCodeSimPane extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {program: null, hostReady: false, running: false, serial: '', error: null, runId: 0, pins: 0};
+        this.state = {program: null, hostReady: false, running: false, serial: '', error: null, runId: 0, pins: 0,
+            showWidgets: false};
         this.inputs = new Map();        // pin name -> analog?  (pins the program reads)
+        this.heldControls = new Set();
         this._frame = React.createRef();
         this.onLoad = this.onLoad.bind(this);
         this.onMessage = this.onMessage.bind(this);
         this.restart = this.restart.bind(this);
         this.stop = this.stop.bind(this);
+        this.setControl = this.setControl.bind(this);
+        this.onWidgetInput = this.onWidgetInput.bind(this);
     }
 
     componentDidMount () {
         window.addEventListener('bw-makecode-load', this.onLoad);
         window.addEventListener('message', this.onMessage);
+        if (this.props.controllerPanel) this.props.controllerPanel.addListener(this.onWidgetInput);
         this.inputTimer = setInterval(() => this.sampleInputs(), 50);
         const pending = window.__bwMakeCodePending;
         if (pending) this.take(pending);
     }
 
     componentWillUnmount () {
+        this.releaseControls();
         window.removeEventListener('bw-makecode-load', this.onLoad);
         window.removeEventListener('message', this.onMessage);
+        if (this.props.controllerPanel) this.props.controllerPanel.removeListener(this.onWidgetInput);
         clearInterval(this.inputTimer);
     }
 
@@ -94,6 +105,8 @@ class MakeCodeSimPane extends React.Component {
     }
 
     take (program) {
+        this.releaseControls();
+        this.ensureGamepad(program.target);
         window.__bwMakeCodePending = null;
         const sameTarget = this.state.program && this.state.program.target === program.target;
         // A different target is a different host page: the frame reloads and
@@ -174,16 +187,105 @@ class MakeCodeSimPane extends React.Component {
 
     restart () {
         if (!this.state.program) return;
+        this.releaseControls();
         this.setState({serial: '', error: null});
         this.post({type: 'bw-makecode-run', js: this.state.program.js});
     }
 
     stop () {
+        this.releaseControls();
         this.post({type: 'bw-makecode-stop'});
+    }
+
+    setControl (name, isDown) {
+        const target = this.state.program && this.state.program.target;
+        const keys = target === 'arcade' ?
+            {up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', a: ' ', b: 'x'} :
+            {a: 'a', b: 'b'};
+        const key = keys[name];
+        if (!key || !this.state.hostReady) return;
+        if (isDown === this.heldControls.has(name)) return;
+        if (isDown) this.heldControls.add(name);
+        else this.heldControls.delete(name);
+        this.post({type: 'bw-makecode-key', key, isDown});
+        this.setState({heldControls: [...this.heldControls]});
+    }
+
+    releaseControls () {
+        if (!this.heldControls.size) return;
+        const target = this.state.program && this.state.program.target;
+        const keys = target === 'arcade' ?
+            {up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', a: ' ', b: 'x'} :
+            {a: 'a', b: 'b'};
+        for (const name of this.heldControls) {
+            if (keys[name]) this.post({type: 'bw-makecode-key', key: keys[name], isDown: false});
+        }
+        this.heldControls.clear();
+    }
+
+    ensureGamepad (target) {
+        const panel = this.props.controllerPanel;
+        if (!panel || !['arcade', 'microbit', 'calliopemini'].includes(target)) return;
+        let added = false;
+        if (target === 'arcade' && !panel.getWidgets().some(w => w.type === 'dpad' || w.type === 'joystick') &&
+            !panel.getWidget('MakeCode D-Pad')) {
+            panel.addWidget('MakeCode D-Pad', 'dpad', {}, {x: 18, y: 20});
+            added = true;
+        }
+        for (const name of ['A', 'B']) {
+            if (panel.getWidget(name) || panel.getWidgets().some(w =>
+                w.type === 'button' && w.name.toLowerCase() === name.toLowerCase())) continue;
+            panel.addWidget(name, 'button', {label: name}, {x: name === 'A' ? 180 : 260, y: 58});
+            added = true;
+        }
+        if (added) {
+            panel.setMode('play');
+            if (this.props.vm?.runtime?.bwMakeCode?.target === target) {
+                window.dispatchEvent(new CustomEvent('bw-controller-changed', {
+                    detail: {data: panel.toJSON()}
+                }));
+            }
+        }
+    }
+
+    onWidgetInput (event, detail) {
+        if (event !== 'input' || !detail || !this.state.program) return;
+        const panel = this.props.controllerPanel;
+        const widget = panel && panel.getWidget(detail.name);
+        if (!widget) return;
+        if (widget.type === 'button') this.setControl(widget.name.toLowerCase(), !!detail.pressed);
+        else if (widget.type === 'dpad') this.setControl(detail.direction, !!detail.pressed);
+        else if (widget.type === 'joystick') {
+            const x = Number(detail.x) || 0, y = Number(detail.y) || 0;
+            this.setControl('left', x < -35); this.setControl('right', x > 35);
+            this.setControl('up', y < -35); this.setControl('down', y > 35);
+        }
+    }
+
+    renderControls (locale, target) {
+        const names = target === 'arcade' ? ['left', 'up', 'down', 'right', 'a', 'b'] : ['a', 'b'];
+        const labels = {left: '◀', up: '▲', down: '▼', right: '▶', a: 'A', b: 'B'};
+        return <div data-testid="bw-makecode-controls" style={{padding: '7px 10px', background: '#e2e8f0',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap'}}>
+            <span style={{fontSize: 12, color: '#334155', marginRight: 4}}>{t(locale, 'mc.controls')}</span>
+            {names.map(name => <button key={name} type="button" aria-label={name}
+                data-testid={`bw-makecode-control-${name}`}
+                onPointerDown={event => {
+                    event.preventDefault();
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    this.setControl(name, true);
+                }}
+                onPointerUp={event => { event.preventDefault(); this.setControl(name, false); }}
+                onPointerCancel={() => this.setControl(name, false)}
+                style={{minWidth: 36, height: 34, borderRadius: 6, border: '1px solid #94a3b8',
+                    background: this.heldControls.has(name) ? '#93c5fd' : '#fff', cursor: 'pointer',
+                    touchAction: 'none', fontWeight: 700}}>{labels[name]}</button>)}
+        </div>;
     }
 
     render () {
         const locale = this.props.locale || browserLocale();
+        const ControllerView = this.props.ControllerView;
         const {program, hostReady, running, serial, error} = this.state;
         const btn = {padding: '4px 10px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#fff',
             cursor: 'pointer', fontSize: 13};
@@ -218,6 +320,22 @@ class MakeCodeSimPane extends React.Component {
                     src={`static/makecode/${program.target}/sim/host.html`}
                     style={{flex: 1, minHeight: 240, border: 0, width: '100%'}}
                 />
+                {this.renderControls(locale, program.target)}
+                {this.props.controllerPanel && this.props.ControllerView ? (
+                    <React.Fragment>
+                        <button type="button" data-testid="bw-makecode-widgets-toggle"
+                            onClick={() => this.setState(state => ({showWidgets: !state.showWidgets}))}
+                            style={{padding: 5, border: 0, background: '#e2e8f0', color: '#334155', cursor: 'pointer'}}>
+                            {this.state.showWidgets ? '▾' : '▸'} {t(locale, 'mc.widgets')}
+                        </button>
+                        {this.state.showWidgets ? <div data-testid="bw-makecode-widgets"
+                            style={{position: 'relative', height: 270, minHeight: 190, flexShrink: 0,
+                                borderTop: '1px solid #cbd5e1', overflow: 'hidden'}}>
+                            <ControllerView panel={this.props.controllerPanel}
+                                board={this.props.board} vm={this.props.vm} />
+                        </div> : null}
+                    </React.Fragment>
+                ) : null}
                 {program.target === 'arcade' ? (
                     <div style={{fontSize: 11, color: '#64748b', padding: '2px 10px'}}>{t(locale, 'mc.keys')}</div>
                 ) : null}
@@ -237,7 +355,10 @@ class MakeCodeSimPane extends React.Component {
 
 MakeCodeSimPane.propTypes = {
     locale: PropTypes.string,
-    vm: PropTypes.shape({runtime: PropTypes.object})
+    vm: PropTypes.shape({runtime: PropTypes.object}),
+    controllerPanel: PropTypes.object,
+    ControllerView: PropTypes.elementType,
+    board: PropTypes.object
 };
 
 export default MakeCodeSimPane;

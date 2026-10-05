@@ -13,7 +13,8 @@
  *     lite's bundled sources instead of being fetched into a sandbox Worker,
  *     because node has no Worker. The extension object is the same one the
  *     browser builds — see bw-extensions.mjs.
- *  2. There is no renderer and no storage, so costumes/sounds do not load and
+ *  2. There is no renderer. Storage is optional (`storage: true`); otherwise
+ *     costumes/sounds do not load and
  *     motion/looks blocks are inert. Variables, control flow, custom blocks and
  *     extension blocks all run for real.
  *
@@ -183,11 +184,27 @@ function variableSnapshot (vm) {
     return snapshot;
 }
 
-export async function runProgram (source, {frames = 12} = {}) {
+/** Advance controlled VM frames with the normal Promise continuation queue. */
+export async function stepFrames(vm, frames) {
+    for (let i = 0; i < frames; i++) {
+        vm.runtime._step();
+        await new Promise(resolve => setImmediate(resolve));
+    }
+}
+
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false} = {}) {
     const creator = new SB3Creator();
     creator.parse(source);
+    for (const upload of uploads) {
+        if (upload.mode === 'add') creator.addCustomSVGCostume(upload.sprite, upload.svg, upload.name);
+        else creator.applyCustomSVG(upload.sprite, upload.svg);
+    }
     const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
     const vm = new VM();
+    if (storage) {
+        const Storage = (await importGuiDependency('scratch-storage/dist/node/scratch-storage.js')).default;
+        vm.attachStorage(new Storage());
+    }
     const calls = new Map();
     registerBundledExtensions(vm, calls);
     await vm.loadProject(buffer);
@@ -207,8 +224,13 @@ export async function runProgram (source, {frames = 12} = {}) {
     const before = variableSnapshot(vm);
     vm.start();
     vm.greenFlag();
+    const greenFlagThreadsStarted = vm.runtime.threads.length;
+    for (const key of keys) vm.postIOData('keyboard', {key, isDown: true});
     const threadsStarted = vm.runtime.threads.length;
-    for (let i = 0; i < frames; i++) vm.runtime._step();
+    // Drive deterministic frames ourselves, while allowing Promise reporters
+    // and callback completions to resume between frames as they do in-browser.
+    vm.quit();
+    await stepFrames(vm, frames);
     const after = variableSnapshot(vm);
     vm.quit();
     clearStrayTimers();
@@ -216,7 +238,7 @@ export async function runProgram (source, {frames = 12} = {}) {
     for (const [name, value] of after) if (before.get(name) !== value) variablesChanged++;
     let extensionCalls = 0;
     for (const count of calls.values()) extensionCalls += count;
-    return {creator, vm, buffer, loadedOpcodes, blockCount, threadsStarted, errors,
+    return {creator, vm, buffer, loadedOpcodes, blockCount, threadsStarted, greenFlagThreadsStarted, errors,
         calls, extensionCalls, variablesChanged,
         loadedExtensions: new Set(vm.extensionManager._loadedExtensions.keys())};
 }

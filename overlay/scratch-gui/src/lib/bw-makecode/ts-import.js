@@ -34,9 +34,15 @@
 
 // ─── lexer ──────────────────────────────────────────────────────────────
 
+// String tokens contain decoded JavaScript values. Preserve escaped quotes,
+// control characters, Unicode and line continuations through Code and SB3.
+const decodeString = text => text.replace(/\\(?:u\{([0-9a-fA-F]+)\}|u([0-9a-fA-F]{4})|x([0-9a-fA-F]{2})|([\s\S]))/g,
+    (_,point,unicode,hex,escape)=>point ? String.fromCodePoint(parseInt(point,16)) : unicode || hex ? String.fromCharCode(parseInt(unicode || hex,16)) :
+        ({n:'\n',r:'\r',t:'\t',b:'\b',f:'\f',v:'\v','0':'\0','\n':'','\r':''}[escape] ?? escape));
+
 const PUNCT = [
     '===', '!==', '==', '!=', '<=', '>=', '&&', '||', '++', '--',
-    '+=', '-=', '*=', '/=', '=>', '...', '>>>', '<<', '>>',
+    '+=', '-=', '*=', '/=', '%=', '=>', '...', '>>>', '<<', '>>',
     '{', '}', '(', ')', '[', ']', ';', ',', '.', ':', '?',
     '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '^', '~'
 ];
@@ -104,7 +110,7 @@ export function tokenize (src) {
                 s += src[i++];
             }
             i++;
-            push('string', s);
+            push('string', decodeString(s));
             continue;
         }
         if (c === '`') {
@@ -179,10 +185,16 @@ function taggedName (node) {
     return parts.join('.');
 }
 
+const parameterDefaultStatements = params => (params.parameterDefaults || []).map(({name,value})=>({
+    type:'If',test:{type:'Binary',op:'===',left:{type:'Identifier',name},right:{type:'Undefined'}},
+    consequent:[{type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name},right:value}}],alternate:[]
+}));
+
 class Parser {
     constructor (tokens) {
         this.toks = tokens;
         this.pos = 0;
+        this.forOfSuffix = 0;
     }
 
     peek (offset = 0) {
@@ -222,17 +234,27 @@ class Parser {
         if (!this.eat('punct', ':')) return false;
         let depth = 0;
         let isArray = false;
+        let complete = false;
+        const prefixes = new Set(['readonly','keyof','typeof','unique','infer']);
+        const continuations = new Set(['.','[','<','|','&','=>','?']);
         for (;;) {
             const t = this.peek();
             if (t.type === 'eof') return isArray;
             // A return type ends at the function body: `): void {`.
             if (depth === 0 && t.type === 'punct' && t.value === '{') return isArray;
+            // Once a type is complete, only a type suffix/operator can
+            // continue it. A following declaration or expression belongs to
+            // the program, even when an optional semicolon was omitted.
+            if (depth === 0 && complete && !(t.type === 'punct' && continuations.has(t.value))) return isArray;
             if (t.type === 'punct' && '<[('.includes(t.value)) depth++;
             if (t.type === 'punct' && t.value === '[') isArray = true;
             if (t.type === 'ident' && t.value === 'Array') isArray = true;
-            if (t.type === 'punct' && '>])'.includes(t.value)) {
+            if (t.type === 'punct' && ['>',']',')','>>','>>>'].includes(t.value)) {
                 if (depth === 0) return isArray;
-                depth--;
+                depth=Math.max(0,depth-(t.value.startsWith('>')?t.value.length:1));
+                complete=true;
+            } else if (depth === 0) {
+                complete = t.type !== 'punct' && !prefixes.has(t.value);
             }
             if (depth === 0 && t.type === 'punct' && (t.value === '=' || t.value === ';' || t.value === ',')) return isArray;
             if (depth === 0 && t.type === 'punct' && t.value === ')') return isArray;
@@ -270,7 +292,8 @@ class Parser {
         if (this.eat('punct', ';')) return null;
         if (this.at('export')) {
             this.next();
-            return this.parseStatement();
+            const statement = this.parseStatement();
+            return statement ? {...statement, exported: true} : statement;
         }
         if (this.at('let') || this.at('const') || this.at('var')) return this.parseDeclaration();
         if (this.at('function')) return this.parseFunction();
@@ -339,6 +362,7 @@ class Parser {
     parseParams () {
         this.expect('punct', '(');
         const params = [];
+        Object.defineProperties(params,{optionalParams:{value:[]},parameterDefaults:{value:[]}});
         while (!this.at('punct', ')') && !this.at('eof')) {
             // `radio.onDataPacketReceived(({receivedString: text}) => ...)`
             // binds a destructured object. The names that reach the body are
@@ -347,8 +371,11 @@ class Parser {
                 params.push(...this.parseObjectPatternNames());
             } else {
                 const name = this.next().value;
+                // TypeScript's optional parameter marker changes the type,
+                // not the name bound in the function body.
+                if(this.eat('punct', '?'))params.optionalParams.push(name);
                 this.skipTypeAnnotation();
-                if (this.eat('punct', '=')) this.parseExpression();
+                if(this.eat('punct', '=')){params.optionalParams.push(name);params.parameterDefaults.push({name,value:this.parseExpression()});}
                 params.push(name);
             }
             if (!this.eat('punct', ',')) break;
@@ -378,7 +405,8 @@ class Parser {
         const params = this.parseParams();
         this.skipTypeAnnotation();
         const body = this.parseBlock();
-        return {type: 'FunctionDeclaration', name, params, body};
+        const defaults=parameterDefaultStatements(params);
+        return {type: 'FunctionDeclaration', name, params, optionalParams:params.optionalParams, body:[...defaults,...body]};
     }
 
     parseIf () {
@@ -411,6 +439,20 @@ class Parser {
                 this.parseDeclaration() :
                 {type: 'ExpressionStatement', expr: this.parseExpression()};
         }
+        if (this.eat('ident','of')) {
+            if (init?.type !== 'Declaration' || init.decls.length !== 1 || init.decls[0].init) throw new Error('for-of needs one declared loop variable');
+            const iterable=this.parseExpression();this.expect('punct',')');
+            const body=this.parseBlockOrStatement();
+            let suffix=++this.forOfSuffix;while(this.toks.some(t=>t.value===`__bwForOfArray${suffix}` || t.value===`__bwForOfIndex${suffix}`))suffix++;
+            this.forOfSuffix=suffix;
+            const array=`__bwForOfArray${suffix}`,index=`__bwForOfIndex${suffix}`;
+            const id=name=>({type:'Identifier',name});
+            return {type:'Block',body:[{type:'Declaration',kind:'let',decls:[{name:array,init:iterable,isArray:true}]},
+                {type:'For',init:{type:'Declaration',kind:'let',decls:[{name:index,init:{type:'Number',value:0}}]},
+                    test:{type:'Binary',op:'<',left:id(index),right:{type:'Member',object:id(array),name:'length'}},
+                    update:{type:'Update',op:'++',argument:id(index),prefix:false},
+                    body:[{type:'Declaration',kind:init.kind,decls:[{...init.decls[0],init:{type:'Index',object:id(array),index:id(index)}}]},...body]}]};
+        }
         this.eat('punct', ';');
         const test = this.at('punct', ';') ? null : this.parseExpression();
         this.eat('punct', ';');
@@ -428,14 +470,15 @@ class Parser {
         while (!this.at('punct', '}') && !this.at('eof')) {
             const member = this.expect('ident').value;
             let value = nextValue++;
+            let initializer = null;
             if (this.eat('punct', '=')) {
-                const expr = this.parseExpression();
+                const expr = initializer = this.parseExpression();
                 if (expr.type === 'Number') {
                     value = Number(expr.value);
                     nextValue = value + 1;
                 }
             }
-            members.push({name: member, value});
+            members.push({name: member, value, initializer});
             if (!this.eat('punct', ',')) break;
         }
         this.expect('punct', '}');
@@ -454,8 +497,8 @@ class Parser {
     }
 
     parseAssignment () {
-        const left = this.parseBinary(0);
-        for (const op of ['=', '+=', '-=', '*=', '/=']) {
+        const left = this.parseConditional();
+        for (const op of ['=', '+=', '-=', '*=', '/=', '%=']) {
             if (this.at('punct', op)) {
                 this.next();
                 const right = this.parseAssignment();
@@ -465,10 +508,28 @@ class Parser {
         return left;
     }
 
+    parseConditional () {
+        const test = this.parseBinary(0);
+        if (!this.eat('punct', '?')) return test;
+        const consequent = this.parseAssignment();
+        this.expect('punct', ':');
+        const alternate = this.parseAssignment();
+        return {type: 'Conditional', test, consequent, alternate};
+    }
+
     parseBinary (minPrec) {
         let left = this.parseUnary();
         for (;;) {
             const t = this.peek();
+            // Type assertions have relational precedence and erase only their
+            // type; the expression's evaluation and identity are unchanged.
+            if (t.type === 'ident' && t.value === 'as' && minPrec <= 5) {
+                this.next();
+                this.expect('ident');
+                while (this.eat('punct', '.')) this.expect('ident');
+                while (this.eat('punct', '[')) this.expect('punct', ']');
+                continue;
+            }
             if (t.type !== 'punct') break;
             const prec = BINARY_PRECEDENCE[t.value];
             if (!prec || prec < minPrec) break;
@@ -481,7 +542,7 @@ class Parser {
 
     parseUnary () {
         if (this.at('punct', '!') || this.at('punct', '-') || this.at('punct', '+') ||
-            this.at('punct', '~')) {
+            this.at('punct', '~') || this.at('ident', 'typeof')) {
             const op = this.next().value;
             return {type: 'Unary', op, argument: this.parseUnary()};
         }
@@ -519,9 +580,12 @@ class Parser {
                 continue;
             }
             if (this.at('punct', '++') || this.at('punct', '--')) {
+                // Postfix updates cannot cross a line terminator. On the
+                // next line this token begins a separate prefix update.
+                if (this.peek().line > this.toks[this.pos - 1]?.line) break;
                 const op = this.next().value;
                 node = {type: 'Update', op, prefix: false, argument: node};
-                continue;
+                break;
             }
             break;
         }
@@ -559,18 +623,20 @@ class Parser {
         }
         if (t.type === 'null' || t.type === 'undefined') {
             this.next();
-            return {type: 'Null'};
+            return {type: t.type === 'undefined' ? 'Undefined' : 'Null'};
         }
         if (t.type === 'function') {
             this.next();
             const params = this.parseParams();
             this.skipTypeAnnotation();
             const body = this.parseBlock();
-            return {type: 'FunctionExpression', params, body};
+            return {type: 'FunctionExpression', params, optionalParams:params.optionalParams || [], body:[...parameterDefaultStatements(params),...body]};
         }
         if (t.type === 'new') {
             this.next();
-            return this.parsePostfix();
+            let callee = this.parsePrimary();
+            while (this.eat('punct', '.')) callee = {type:'Member',object:callee,name:this.next().value};
+            return {type:'Call',callee,args:this.at('punct','(')?this.parseArguments():[],constructorCall:true};
         }
         if (t.type === 'ident') {
             this.next();
@@ -592,7 +658,7 @@ class Parser {
                     this.next();
                     const body = this.at('punct', '{') ? this.parseBlock() :
                         [{type: 'Return', value: this.parseExpression()}];
-                    return {type: 'FunctionExpression', params, body};
+                    return {type: 'FunctionExpression', params, optionalParams:params.optionalParams || [], body:[...parameterDefaultStatements(params),...body]};
                 }
             } catch (e) { /* not a parameter list after all */ }
             this.pos = save;

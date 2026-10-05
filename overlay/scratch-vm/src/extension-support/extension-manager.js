@@ -51,6 +51,8 @@ const isRemoteExtensionURL = url =>
 // or is what the lessons' hardware flows reach for first (stc12, circuit,
 // controller, devices), so it stays in the first load.
 const builtinExtensions = {
+    Encoding: () => require('../extensions/crispstrobe/encoding'),
+    lmsTempVars2: () => require('../extensions/crispstrobe/tempvars'),
     arrays: () => require('../extensions/crispstrobe/arrays'),
     // The pin blocks sb3-creator has always emitted for hardware projects. Without
     // this line every one of them failed to load with "Unknown extension: stc12".
@@ -129,6 +131,7 @@ const lazyBuiltinExtensions = {
     translate: () => import(/* webpackChunkName: "ext-translate" */ '../extensions/scratch3_translate/index.js'),
     videoSensing: () => import(/* webpackChunkName: "ext-videosensing" */ '../extensions/scratch3_video_sensing/index.js'),
     cameracapture: () => import(/* webpackChunkName: "ext-cameracapture" */ '../extensions/crispstrobe/cameracapture/index.js'),
+    peersessions: () => import(/* webpackChunkName: "ext-peersessions" */ '../extensions/crispstrobe/peers/index.js'),
     ev3: () => import(/* webpackChunkName: "ext-ev3" */ '../extensions/scratch3_ev3/index.js'),
     boost: () => import(/* webpackChunkName: "ext-boost" */ '../extensions/scratch3_boost/index.js'),
     gdxfor: () => import(/* webpackChunkName: "ext-gdxfor" */ '../extensions/scratch3_gdx_for/index.js')

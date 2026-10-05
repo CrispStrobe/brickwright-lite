@@ -17,6 +17,7 @@
     host -> app   {type: 'bw-makecode-error', message}
     host -> app   {type: 'bw-makecode-pins', pins: {p0: {out, value}, …}}  pin changes
     app  -> host  {type: 'bw-makecode-pin-in', pins: {p1: value, …}}      circuit -> program
+    app  -> host  {type: 'bw-makecode-key', key, isDown}                on-screen controller -> program
 
   THE PIN BRIDGE. The simulator's board keeps every edge pin's mode (digital /
   analog, input / output) and value (0..1023). This page (same origin as the
@@ -75,6 +76,7 @@
       else if (m.type === 'bw-makecode-pin-in' && m.pins) {
         for (var k in m.pins) pendingIn[k] = Number(m.pins[k]) || 0;
       }
+      else if (m.type === 'bw-makecode-key') sendKey(m.key, !!m.isDown);
       return;
     }
     if (m.type === 'serial' && typeof m.data === 'string') say({type: 'bw-makecode-serial', data: m.data});
@@ -89,6 +91,34 @@
   function simWindow () {
     var f = document.querySelector('#sim iframe');
     return (f && f.contentWindow) || null;
+  }
+  function sendKey (key, isDown) {
+    var allowed = {ArrowUp: 38, ArrowDown: 40, ArrowLeft: 37, ArrowRight: 39,
+      ' ': 32, x: 88, a: 65, b: 66};
+    if (!Object.prototype.hasOwnProperty.call(allowed, key)) return;
+    var w = simWindow();
+    if (!w || !w.document || !w.document.body) return;
+    var event = new w.KeyboardEvent(isDown ? 'keydown' : 'keyup', {
+      key: key, code: key === ' ' ? 'Space' : key, keyCode: allowed[key],
+      which: allowed[key], bubbles: true, cancelable: true
+    });
+    w.document.body.dispatchEvent(event);
+    // micro:bit and Calliope button handlers listen to the simulator's DAL
+    // event bus, rather than DOM keyboard events. Mirror the target's own
+    // ButtonPairView press/release sequence so input.onButtonPressed runs.
+    if (key === 'a' || key === 'b') {
+      var board = simBoard(w);
+      var pair = board && board.buttonPairState;
+      var button = pair && (key === 'a' ? pair.aBtn : pair.bBtn);
+      if (button && board.bus && board.bus.queue) {
+        button.pressed = isDown;
+        if (!isDown) {
+          board.bus.queue(button.id, pair.props.BUTTON_EVT_UP);
+          board.bus.queue(button.id, pair.props.BUTTON_EVT_CLICK);
+        }
+        if (w.pxsim && w.pxsim.runtime) w.pxsim.runtime.queueDisplayUpdate();
+      }
+    }
   }
   function simBoard (w) {
     try { return w && w.pxsim && w.pxsim.board && w.pxsim.board(); } catch (e) { return null; }

@@ -21,6 +21,7 @@ import MenuBarMenu from './menu-bar-menu.jsx';
 import {MenuItem, MenuSection} from '../menu/menu.jsx';
 import OfflineLibraryModal from '../offline-library/offline-library-modal.jsx';
 import {isNativeApp} from '../../lib/offline-assets.js';
+import {openNativeProject, getRecentNativeProjects} from '../../lib/tauri-bridge.js';
 import ProjectTitleInput from './project-title-input.jsx';
 import ExampleIntroButton from './example-intro-button.jsx';
 import AuthorInfo from './author-info.jsx';
@@ -190,7 +191,7 @@ class MenuBar extends React.Component {
         ]);
         // Local UI state for the Brickwright offline-library dialog (native app
         // only). Kept out of Redux — it's app-specific and self-contained.
-        this.state = {offlineLibraryOpen: false};
+        this.state = {offlineLibraryOpen: false, recentProjects: []};
     }
     componentDidMount () {
         document.addEventListener('keydown', this.handleKeyPress);
@@ -209,6 +210,7 @@ class MenuBar extends React.Component {
         );
         this.props.onRequestCloseFile();
         if (readyToReplaceProject) {
+            if (isNativeApp()) window.__TAURI__.core.invoke('clear_project_document');
             this.props.onClickNew(this.props.canSave && this.props.canCreateNew);
         }
         this.props.onRequestCloseFile();
@@ -292,7 +294,11 @@ class MenuBar extends React.Component {
     handleKeyPress (event) {
         const modifier = bowser.mac ? event.metaKey : event.ctrlKey;
         if (modifier && event.key === 's') {
-            this.props.onClickSave();
+            if (isNativeApp()) {
+                window.dispatchEvent(new Event('bw-save-project-request'));
+            } else {
+                this.props.onClickSave();
+            }
             event.preventDefault();
         }
     }
@@ -305,6 +311,20 @@ class MenuBar extends React.Component {
                 this.props.onProjectTelemetryEvent('projectDidSave', metadata);
             }
         };
+    }
+    handleNativeOpen (path) {
+        this.props.onRequestCloseFile();
+        openNativeProject(path).catch(error => {
+            // eslint-disable-next-line no-alert
+            alert(`Could not open project: ${error.message || error}`);
+        });
+    }
+    handleOpenFileMenu () {
+        this.props.onClickFile();
+        if (isNativeApp()) {
+            getRecentNativeProjects().then(recentProjects => this.setState({recentProjects}))
+                .catch(() => this.setState({recentProjects: []}));
+        }
     }
     restoreOptionMessage (deletedItem) {
         switch (deletedItem) {
@@ -467,7 +487,7 @@ class MenuBar extends React.Component {
                                 className={classNames(styles.menuBarItem, styles.hoverable, {
                                     [styles.active]: this.props.fileMenuOpen
                                 })}
-                                onMouseUp={this.props.onClickFile}
+                                onMouseUp={() => this.handleOpenFileMenu()}
                             >
                                 <img src={fileIcon} />
                                 <span className={styles.collapsibleLabel}>
@@ -530,22 +550,35 @@ class MenuBar extends React.Component {
                                         </MenuSection>
                                     )}
                                     <MenuSection>
-                                        <MenuItem
-                                            onClick={this.props.onStartSelectingFileUpload}
-                                        >
+                                        <MenuItem onClick={isNativeApp() ?
+                                            () => this.handleNativeOpen() : this.props.onStartSelectingFileUpload}>
                                             {this.props.intl.formatMessage(sharedMessages.loadFromComputerTitle)}
                                         </MenuItem>
-                                        <SB3Downloader>{(className, downloadProjectCallback) => (
-                                            <MenuItem
-                                                className={className}
-                                                onClick={this.getSaveToComputerHandler(downloadProjectCallback)}
-                                            >
-                                                <FormattedMessage
-                                                    defaultMessage="Save to your computer"
-                                                    description="Menu bar item for downloading a project to your computer" // eslint-disable-line max-len
-                                                    id="gui.menuBar.downloadToComputer"
-                                                />
+                                        {isNativeApp() && this.state.recentProjects.map(recent => (
+                                            <MenuItem key={recent.path} onClick={() => this.handleNativeOpen(recent.path)}>
+                                                {`Recent: ${recent.name}`}
                                             </MenuItem>
+                                        ))}
+                                        <SB3Downloader>{(className, downloadProjectCallback) => (
+                                            <React.Fragment>
+                                                {isNativeApp() && <MenuItem className={className}
+                                                    onClick={() => { this.props.onRequestCloseFile(); downloadProjectCallback('save'); }}>
+                                                    {'Save project'}
+                                                </MenuItem>}
+                                                <MenuItem className={className}
+                                                    onClick={isNativeApp() ?
+                                                        () => { this.props.onRequestCloseFile(); downloadProjectCallback('saveAs'); } :
+                                                        this.getSaveToComputerHandler(downloadProjectCallback)}>
+                                                    {isNativeApp() ? 'Save project as…' :
+                                                        <FormattedMessage defaultMessage="Save to your computer"
+                                                            description="Menu bar item for downloading a project to your computer"
+                                                            id="gui.menuBar.downloadToComputer" />}
+                                                </MenuItem>
+                                                {isNativeApp() && <MenuItem className={className}
+                                                    onClick={() => { this.props.onRequestCloseFile(); downloadProjectCallback('send'); }}>
+                                                    {'Send a copy…'}
+                                                </MenuItem>}
+                                            </React.Fragment>
                                         )}</SB3Downloader>
                                         {isNativeApp() && (
                                             <MenuItem onClick={this.handleOpenOfflineLibrary}>

@@ -35,6 +35,19 @@ test('an image survives costume and back exactly (SVG and img literal)', () => {
     assert.ok(same(parseImageLiteral(toImgLiteral(SPRITE).replace(/^img`|`$/g, '')), SPRITE));
 });
 
+test('uniform pixel art keeps its declared grid size', () => {
+    const art = {width: 16, height: 16, pixels: new Uint8Array(16 * 16).fill(5)};
+    const svg = pixelsToSvg(art);
+    assert.match(svg, /data-bw-pixel-scale="4"/);
+    const back = svgToPixels(svg);
+    assert.equal(back?.width, 16);
+    assert.equal(back?.height, 16);
+    assert.equal(back?.scale, 4);
+    assert.ok(same(back, art));
+    assert.equal(svgToPixels(svg.replace('data-bw-pixel-scale="4"', 'data-bw-pixel-scale="3"')), null,
+        'an edited grid declaration cannot silently distort the artwork');
+});
+
 test('every costume a real Arcade import makes reads back as palette pixels', async () => {
     const fixtures = ['arcade-assets.hex', 'arcade-tilemap.hex', 'arcade-umlaut.hex', 'arcade-shield.hex'];
     let checked = 0;

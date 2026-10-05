@@ -1470,6 +1470,7 @@ class SB3Creator {
         let depth = 0, inStr = false;
         for (let i = open; i < s.length; i++) {
             const c = s[i];
+            if (inStr && c === '\\') {i++;continue;}
             if (c === '"') { inStr = !inStr; continue; }
             if (inStr) continue;
             if (c === '(') depth++;
@@ -1500,6 +1501,7 @@ class SB3Creator {
         let depth = 0, inStr = false, best = null;
         for (let i = 0; i < s.length; i++) {
             const ch = s[i];
+            if (inStr && ch === '\\') {i++;continue;}
             if (ch === '"') { inStr = !inStr; continue; }
             if (inStr) continue;
             if (ch === '(' || ch === '[') { depth++; continue; }
@@ -1536,7 +1538,8 @@ class SB3Creator {
         // Hex, because a bit mask is unreadable in decimal and firmware is written in them.
         if (/^0[xX][0-9a-fA-F]+$/.test(s)) return [1, [4, String(parseInt(s, 16))]];
         if (s.length >= 2 && s.startsWith('"') && s.endsWith('"') && this.matchQuote(s) === s.length - 1) {
-            return [1, [10, s.slice(1, -1)]];
+            let text;try{text=JSON.parse(s);}catch(_){text=s.slice(1,-1);}
+            return [1, [10, text]];
         }
         if (/^(true|false)$/i.test(s)) return [1, [10, s.toLowerCase()]];
         if (/^#[0-9a-fA-F]{6}$/.test(s)) return [1, [9, s.toLowerCase()]];
@@ -1546,9 +1549,24 @@ class SB3Creator {
         // expression that may itself contain operators (e.g. `item (r*8+c)+1 of board`).
         // Unbounded reporters (abs/round/…) stay after operators so that
         // `abs of vx * -1` keeps its `(abs of vx) * -1` meaning.
-        if (/^(item|letter|pick random)\b/i.test(s)) {
+        if (/^(item|letter|pick random)\b|^arcade (function argument|call function|spawn template|projectile (?:template|image)|ask number|ask text)\b/i.test(s)) {
             const early = this.parseReporter(s, context);
             if (early) return early;
+        }
+
+        // "and" separates min/max arguments; it is not a Boolean operator.
+        if (/^(min|max) of\s/i.test(s)) {
+            const reporter=this.parseReporter(s,context);
+            if(reporter)return reporter;
+        }
+
+        // Scratch Boolean reporters are also values (assignments, procedure
+        // arguments and extension inputs). Evaluate them before arithmetic,
+        // respecting condition precedence and quoted literals above.
+        if (!this.variableExists(s, context.target) && (
+            /^not\s/i.test(s) ||
+            this.splitBinary(s, [' or ', ' and ', '!=', '<=', '>=', '<', '>', '='], {ci: true}))) {
+            return this.valueOfBlock(this.parseCondition(s, context));
         }
 
         // Binary operators, loosest binding first
@@ -1622,24 +1640,14 @@ class SB3Creator {
             return [3, [12, variable.name, variable.id], [10, ""]];
         }
 
-        // Fallback: string literal — and say so when it plainly is not one.
-        // A comparison has no VALUE form in this dialect (`parseCondition` owns
-        // `<`, `>` and `=`), so `set flag to (val > 5)` lands here and is
-        // emitted as the constant string "val > 5" — `flag = 0 /* val > 5 */;`
-        // in C. Measured 2026-08-29, no warning anywhere.
-        if (!/^".*"$/.test(s) && this.splitBinary(s, ['!=', '<=', '>=', '<', '>', '='])) {
-            this.warn(this._lineIndex,
-                `"${s}" is a COMPARISON used where a value is expected, and it is emitted as `
-                + 'the literal text rather than evaluated. Comparisons belong in a condition '
-                + '(`IF …`, `wait until …`); to keep a truth value in a variable, branch on it '
-                + 'and assign 1 or 0.');
-        }
+        // Unrecognized values retain their literal text.
         return [1, [10, s]];
     }
 
     matchQuote(s) {
-        for (let i = 1; i < s.length; i++) {
-            if (s[i] === '"') return i;
+        for(let i=1;i<s.length;i++){
+            if(s[i]==='\\'){i++;continue;}
+            if(s[i]==='"')return i;
         }
         return -1;
     }
@@ -1648,6 +1656,186 @@ class SB3Creator {
     parseReporter(s, context) {
         const B = (op, inputs = {}, fields = {}) => this.valueOfBlock(this.pushBlock(context, op, inputs, fields));
         let m;
+
+        // Boolean predicates can occupy value slots as well as conditions.
+        // A logical selection must retain the actual Boolean, not a variable
+        // whose name happens to be the predicate's Code spelling.
+        if ((m=s.match(/^arcade (.+?) overlaps (.+?)\??$/i)))
+            return B('arcade_spriteOverlaps',{A:this.parseValue(m[1],context),B:this.parseValue(m[2],context)});
+        if ((m=s.match(/^key\s+(.+?)\s+pressed\??$/i)))
+            return B('sensing_keypressed',{KEY_OPTION:this.menuInput(context,'sensing_keyoptions','KEY_OPTION',this.normalizeKey(m[1]))});
+        if ((m=s.match(/^touching\s+(.+)$/i))) {
+            const name=/^edge$/i.test(m[1])?'_edge_':/^mouse(-pointer)?$/i.test(m[1])?'_mouse_':m[1].trim();
+            return B('sensing_touchingobject',{TOUCHINGOBJECTMENU:this.menuInput(context,'sensing_touchingobjectmenu','TOUCHINGOBJECTMENU',name)});
+        }
+        if (/^mouse down\??$/i.test(s))return B('sensing_mousedown');
+
+        if (/^arcade function argument /i.test(s)) {
+            const tokens=this.tokenizeTop(s);
+            if(tokens.length===6 && tokens[4].toLowerCase()==='rest') return B('arcade_functionArgument', {
+                VALUE:this.parseValue(tokens[3],context),REST:this.parseValue(tokens[5],context)});
+        }
+        if ((m = s.match(/^arcade call function "([^"]+)" arguments (.+)$/i))) return B('arcade_callFunction', {
+            NAME:this.parseValue(`"${m[1]}"`,context),ARGS:this.parseValue(m[2],context)});
+        // Arcade handles are values, so variables and callback parameters can
+        // refer to any live sprite, including several of the same kind.
+        if ((m = s.match(/^arcade create template (.+?) kind (.+?) width (.+?) height (.+)$/i))) {
+            return B('arcade_createSprite', {TEMPLATE:this.parseValue(m[1],context), KIND:this.parseValue(m[2],context),
+                WIDTH:this.parseValue(m[3],context), HEIGHT:this.parseValue(m[4],context)});
+        }
+        if ((m = s.match(/^arcade create image (.+?) template "([^"]+)" kind "([^"]+)"$/i))) {
+            return B('arcade_createImageSprite', {IMAGE:this.parseValue(m[1],context), TEMPLATE:this.parseValue(`"${m[2]}"`,context), KIND:this.parseValue(`"${m[3]}"`,context)});
+        }
+        if ((m = s.match(/^arcade spawn template (.+?) kind (.+?) x (.+?) y (.+?) width (.+?) height (.+)$/i))) {
+            return B('arcade_spawnSprite', {
+                TEMPLATE: this.parseValue(m[1], context), KIND: this.parseValue(m[2], context),
+                X: this.parseValue(m[3], context), Y: this.parseValue(m[4], context),
+                WIDTH: this.parseValue(m[5], context), HEIGHT: this.parseValue(m[6], context)
+            });
+        }
+        if ((m = s.match(/^arcade projectile image (.+?) template "([^"]+)" kind "([^"]+)" vx (.+?) vy (.+?) mode (side|kind|sprite|kind-source)(?: source (.+))?$/i))) {
+            return B('arcade_spawnImageProjectile', {
+                IMAGE: this.parseValue(m[1], context), TEMPLATE: this.parseValue(`"${m[2]}"`, context),
+                KIND: this.parseValue(`"${m[3]}"`, context), VX: this.parseValue(m[4], context),
+                VY: this.parseValue(m[5], context), MODE: this.parseValue(`"${m[6]}"`, context),
+                SOURCE: this.parseValue(m[7] || '""', context)
+            });
+        }
+        if ((m = s.match(/^arcade projectile template (.+?) kind (.+?) vx (.+?) vy (.+?) width (.+?) height (.+?) mode (side|kind|sprite|kind-source)(?: source (.+))?$/i))) {
+            return B('arcade_spawnProjectile', {
+                TEMPLATE: this.parseValue(m[1], context), KIND: this.parseValue(m[2], context),
+                VX: this.parseValue(m[3], context), VY: this.parseValue(m[4], context),
+                WIDTH: this.parseValue(m[5], context), HEIGHT: this.parseValue(m[6], context),
+                MODE: this.parseValue(`"${m[7]}"`, context),
+                SOURCE: this.parseValue(m[8] || '""', context)
+            });
+        }
+        // Match grouped arguments at top level: nested array constructors
+        // contain their own `rest`, `of` and `from` words.
+        if(/^arcade score$/i.test(s))return B('arcade_getscore');
+        const arrayTokens=this.tokenizeTop(s);
+        const arrayWords=arrayTokens.map(token=>token.toLowerCase());
+        if(arrayWords.slice(0,4).join(' ')==='reference to named array' && arrayTokens.length===5)
+            return B('arrays_namedReference',{NAME:this.parseValue(arrayTokens[4],context)});
+        if(arrayWords.slice(0,3).join(' ')==='parse array input' && arrayTokens.length===4)
+            return B('arrays_parseLegacyValue',{VALUE:this.parseValue(arrayTokens[3],context)});
+        if(arrayWords.slice(0,4).join(' ')==='json text of value' && arrayTokens.length===5)
+            return B('arrays_jsonValue',{VALUE:this.parseValue(arrayTokens[4],context)});
+        if(['undefined value','null value'].includes(s.toLowerCase()))
+            return B('arrays_specialValue',{KIND:this.parseValue(`"${arrayWords[0]}"`,context)});
+        if(arrayWords.slice(0,2).join(' ')==='calculate value' && arrayWords[3]==='op' && arrayWords[5]==='with' && arrayTokens.length===7)
+            return B('arrays_valueBinary',{LEFT:this.parseValue(arrayTokens[2],context),OP:this.parseValue(arrayTokens[4],context),RIGHT:this.parseValue(arrayTokens[6],context)});
+        if(arrayWords.slice(0,2).join(' ')==='convert value' && arrayWords[3]==='op' && arrayTokens.length===5)
+            return B('arrays_valueUnary',{VALUE:this.parseValue(arrayTokens[2],context),OP:this.parseValue(arrayTokens[4],context)});
+        if(arrayWords.slice(0,3).join(' ')==='truthiness of value' && arrayTokens.length===4)
+            return B('arrays_valueTruthy',{VALUE:this.parseValue(arrayTokens[3],context)});
+        if(arrayWords.slice(0,2).join(' ')==='compare value' && arrayWords[3]==='op' && arrayWords[5]==='with' && arrayTokens.length===7)
+            return B('arrays_valueCompare',{LEFT:this.parseValue(arrayTokens[2],context),OP:this.parseValue(arrayTokens[4],context),RIGHT:this.parseValue(arrayTokens[6],context)});
+        if(arrayWords[0]==='array' && arrayWords[1]==='value' && arrayWords[3]==='rest' && arrayTokens.length===5)
+            return B('arrays_referenceValues',{VALUE:this.parseValue(arrayTokens[2],context),REST:this.parseValue(arrayTokens[4],context)});
+        if(arrayWords.slice(0,4).join(' ')==='new array reference from' && arrayTokens.length===5)
+            return B('arrays_createReference',{VALUES:this.parseValue(arrayTokens[4],context)});
+        if(arrayWords.slice(0,3).join(' ')==='truthiness of item' && arrayWords.slice(4,7).join(' ')==='of array reference' && arrayTokens.length===8)
+            return B('arrays_referenceTruthy',{ARRAY:this.parseValue(arrayTokens[7],context),INDEX:this.parseValue(arrayTokens[3],context)});
+        if(arrayWords[0]==='item' && arrayWords.slice(2,5).join(' ')==='of array reference' && arrayTokens.length===6)
+            return B('arrays_referenceItem',{INDEX:this.parseValue(arrayTokens[1],context),ARRAY:this.parseValue(arrayTokens[5],context)});
+        if(arrayWords.slice(0,4).join(' ')==='length of array reference' && arrayTokens.length===5)
+            return B('arrays_referenceLength',{ARRAY:this.parseValue(arrayTokens[4],context)});
+        if(arrayWords.slice(0,5).join(' ')==='random item of array reference' && arrayTokens.length===6)
+            return B('arrays_referenceRandom',{ARRAY:this.parseValue(arrayTokens[5],context)});
+        if(arrayWords.slice(0,2).join(' ')==='remove value' && arrayWords.slice(3,6).join(' ')==='from array reference' && arrayTokens.length===7)
+            return B('arrays_referenceRemove',{ARRAY:this.parseValue(arrayTokens[6],context),VALUE:this.parseValue(arrayTokens[2],context)});
+        if(['pop','shift','removeat'].includes(arrayWords[0]) && arrayWords.slice(1,4).join(' ')==='from array reference' && arrayWords[5]==='index' && arrayTokens.length===7)
+            return B('arrays_referenceTake',{OP:this.parseValue(`"${arrayWords[0]==='removeat'?'removeAt':arrayWords[0]}"`,context),ARRAY:this.parseValue(arrayTokens[4],context),INDEX:this.parseValue(arrayTokens[6],context)});
+        if(arrayWords.slice(0,2).join(' ')==='index of' && arrayWords.slice(3,6).join(' ')==='in array reference' &&
+            (arrayTokens.length===7 || arrayTokens.length===9 && arrayWords[7]==='from'))
+            return B('arrays_referenceIndexOf',{ARRAY:this.parseValue(arrayTokens[6],context),VALUE:this.parseValue(arrayTokens[2],context),INDEX:this.parseValue(arrayTokens[8]||'0',context)});
+        if(arrayWords.join(' ')==='arcade current scene')return B('arcade_currentScene');
+        if(arrayWords.slice(0,5).join(' ')==='arcade physics engine of scene' && arrayTokens.length===6)
+            return B('arcade_scenePhysicsEngine',{SCENE:this.parseValue(arrayTokens[5],context)});
+        if(arrayWords.slice(0,6).join(' ')==='arcade create physics engine max speed' && arrayWords.slice(7,9).join(' ')==='min step' && arrayWords.slice(10,12).join(' ')==='max step' && arrayTokens.length===13)
+            return B('arcade_createPhysicsEngine',{MAX_SPEED:this.parseValue(arrayTokens[6],context),MIN_STEP:this.parseValue(arrayTokens[9],context),MAX_STEP:this.parseValue(arrayTokens[12],context)});
+        if(arrayWords.slice(0,4).join(' ')==='arcade physics engine property' && arrayWords[5]==='of' && arrayTokens.length===7 && ['maxspeed','minstep','maxstep'].includes(arrayWords[4]))
+            return B('arcade_physicsEngineProperty',{ENGINE:this.parseValue(arrayTokens[6],context)},{PROPERTY:[{maxspeed:'maxSpeed',minstep:'minStep',maxstep:'maxStep'}[arrayWords[4]],null]});
+        if(arrayWords.slice(0,4).join(' ')==='arcade create animation action' && arrayWords[5]==='interval' && arrayTokens.length===7)
+            return B('arcade_createAnimation',{ACTION:this.parseValue(arrayTokens[4],context),INTERVAL:this.parseValue(arrayTokens[6],context)});
+        if(arrayWords.slice(0,2).join(' ')==='arcade animation' && ['image','action','interval'].includes(arrayWords[2]) && arrayWords[3]==='of' && arrayTokens.length===5)
+            return B('arcade_animationProperty',{ANIMATION:this.parseValue(arrayTokens[4],context)},{PROPERTY:[arrayWords[2],null]});
+        if(arrayWords.slice(0,2).join(' ')==='arcade player' && arrayTokens.length===4 && arrayWords[3]==='score')
+            return B('arcade_getPlayerScore',{PLAYER:this.parseValue(arrayTokens[2],context)});
+        if(arrayWords.slice(0,2).join(' ')==='arcade player' && arrayTokens.length===5 && arrayWords[3]==='has' && ['score','life'].includes(arrayWords[4]))
+            return B(arrayWords[4]==='life'?'arcade_hasLife':'arcade_hasPlayerScore',{PLAYER:this.parseValue(arrayTokens[2],context)});
+        if(arrayWords.slice(0,3).join(' ')==='arcade life player' && arrayTokens.length===4)
+            return B('arcade_getLife',{PLAYER:this.parseValue(arrayTokens[3],context)});
+        if(arrayWords.slice(0,3).join(' ')==='arcade camera property' && arrayTokens.length===4)
+            return B('arcade_cameraProperty',{PROPERTY:this.parseValue(arrayTokens[3],context)});
+        if(arrayWords.join(' ')==='arcade event location') return B('arcade_eventLocation');
+        if(arrayWords.slice(0,2).join(' ')==='arcade sprite' && arrayWords.slice(3,5).join(' ')==='hitting wall' && arrayTokens.length===6)
+            return B('arcade_isHittingTile',{ID:this.parseValue(arrayTokens[2],context),DIRECTION:this.parseValue(arrayTokens[5],context)});
+        if(arrayWords.slice(0,4).join(' ')==='arcade tile location column' && arrayWords[5]==='row' && arrayTokens.length===7)
+            return B('arcade_tileLocation',{COLUMN:this.parseValue(arrayTokens[4],context),ROW:this.parseValue(arrayTokens[6],context)});
+        if(arrayWords.slice(0,4).join(' ')==='arcade tile array image' && arrayTokens.length===5)
+            return B('arcade_tilesOfType',{IMAGE:this.parseValue(arrayTokens[4],context)});
+        if(arrayWords.slice(0,2).join(' ')==='arcade tile' && ['column','row','x','y','left','right','top','bottom'].includes(arrayWords[2]) && arrayWords[3]==='of' && arrayTokens.length===5)
+            return B('arcade_tileLocationProperty',{LOCATION:this.parseValue(arrayTokens[4],context)},{PROPERTY:[arrayWords[2],null]});
+        if(arrayWords.slice(0,2).join(' ')==='arcade tile' && arrayWords.slice(3,5).join(' ')==='equals image' && arrayTokens.length===6)
+            return B('arcade_tileIs',{LOCATION:this.parseValue(arrayTokens[2],context),IMAGE:this.parseValue(arrayTokens[5],context)});
+        if(arrayWords.slice(0,2).join(' ')==='arcade tile' && arrayWords.slice(3).join(' ')==='is wall' && arrayTokens.length===5)
+            return B('arcade_tileIsWall',{LOCATION:this.parseValue(arrayTokens[2],context)});
+        if ((m = s.match(/^arcade new image width (.+?) height (.+)$/i))) {
+            return B('arcade_createImage', {WIDTH: this.parseValue(m[1], context), HEIGHT: this.parseValue(m[2], context)});
+        }
+        if ((m = s.match(/^arcade copy image (.+)$/i))) return B('arcade_cloneImage', {IMAGE: this.parseValue(m[1], context)});
+        if ((m = s.match(/^arcade image (width|height) of (.+)$/i))) return B('arcade_imageProperty', {IMAGE: this.parseValue(m[2], context)}, {PROPERTY:[m[1].toLowerCase(),null]});
+        if ((m = s.match(/^arcade images overlap (.+?) source (.+?) x (.+?) y (.+)$/i))) return B('arcade_imagesOverlap', {
+            IMAGE:this.parseValue(m[1],context),SOURCE:this.parseValue(m[2],context),X:this.parseValue(m[3],context),Y:this.parseValue(m[4],context)});
+        if ((m = s.match(/^arcade image pixel (.+?) x (.+?) y (.+)$/i))) return B('arcade_imagePixel', {
+            IMAGE:this.parseValue(m[1],context),X:this.parseValue(m[2],context),Y:this.parseValue(m[3],context)});
+        if ((m = s.match(/^arcade spawn image (.+?) template "([^"]+)" kind "([^"]+)" x (.+?) y (.+)$/i))) return B('arcade_spawnImageSprite', {
+            IMAGE:this.parseValue(m[1],context),TEMPLATE:this.parseValue(`"${m[2]}"`,context),KIND:this.parseValue(`"${m[3]}"`,context),X:this.parseValue(m[4],context),Y:this.parseValue(m[5],context)});
+        if ((m = s.match(/^arcade frame image array "([^"]+)" index (.+?) template "([^"]+)" start (.+?) count (.+)$/i))) {
+            return B('arcade_frameImage', {KEY: this.parseValue(`"${m[1]}"`, context), INDEX: this.parseValue(m[2], context),
+                TEMPLATE: this.parseValue(`"${m[3]}"`, context), START: this.parseValue(m[4], context), COUNT: this.parseValue(m[5], context)});
+        }
+        if ((m = s.match(/^arcade text of sprite (.+)$/i))) {
+            return B('arcade_spriteToString', {ID: this.parseValue(m[1], context)});
+        }
+        if ((m = s.match(/^arcade image of (.+)$/i))) {
+            return B('arcade_spriteImage', {ID: this.parseValue(m[1], context)});
+        }
+        if ((m = s.match(/^arcade pixel of (.+?) x (.+?) y (.+)$/i))) {
+            return B('arcade_spritePixel', {ID: this.parseValue(m[1], context),
+                X: this.parseValue(m[2], context), Y: this.parseValue(m[3], context)});
+        }
+        if ((m = s.match(/^arcade property (x|y|left|right|top|bottom|vx|vy|ax|ay|fx|fy|sx|sy|scale|width|height|z|lifespan) of (.+)$/i))) {
+            return B('arcade_spriteProperty', {ID: this.parseValue(m[2], context)},
+                {PROPERTY: [m[1].toLowerCase(), null]});
+        }
+        if ((m = s.match(/^arcade sprite array kind (.+)$/i))) {
+            return B('arcade_spritesOfKind', {KIND: this.parseValue(m[1], context)});
+        }
+        if ((m = s.match(/^arcade count kind (.+)$/i))) {
+            return B('arcade_spriteCount', {KIND: this.parseValue(m[1], context)});
+        }
+        if ((m = s.match(/^arcade ask number (.+)$/i))) {
+            return B('arcade_askForNumber', {QUESTION: this.parseValue(m[1], context)});
+        }
+        if ((m = s.match(/^arcade controller ([xy]) step (.+)$/i))) {
+            return B('arcade_controllerStep', {STEP: this.parseValue(m[2], context)},
+                {AXIS: [m[1].toLowerCase(), null]});
+        }
+        if ((m = s.match(/^arcade captured ([A-Za-z_]\w*)$/i))) {
+            return B('arcade_getCaptured', {NAME: this.parseValue(`"${m[1]}"`, context)});
+        }
+        if ((m = s.match(/^arcade local ([A-Za-z_]\w*)$/i))) {
+            return B('arcade_getLocal', {NAME: this.parseValue(`"${m[1]}"`, context)});
+        }
+        if ((m = s.match(/^arcade ask text (.+)$/i))) {
+            return B('arcade_askForString', {QUESTION: this.parseValue(m[1], context)});
+        }
+        if ((m = s.match(/^arcade event (first|second)$/i))) {
+            return B('arcade_eventSprite', {}, {WHICH: [m[1].toLowerCase(), null]});
+        }
 
         // Custom-block parameters resolve to argument reporters inside their definition.
         if (this.currentProcArgs && this.currentProcArgs.has(s)) {
@@ -1809,6 +1997,9 @@ class SB3Creator {
             });
         }
 
+        if (/^arcade background image$/i.test(s)) return B('arcade_backgroundImage');
+        if (/^arcade background color$/i.test(s)) return B('arcade_backgroundColor');
+
         // Device reporters
         if ((m = s.match(/^temperature from\s+(.+)$/i))) {
             return B('devices_temperature', { SENSOR: this.parseValue(m[1], context) });
@@ -1875,8 +2066,10 @@ class SB3Creator {
         // auto-declares the `planetemaths` extension from these opcodes.
         if ((m = s.match(/^factorial of\s+(.+)$/i))) return B('planetemaths_factorial', { NUM1: this.parseValue(m[1], context) });
         if ((m = s.match(/^sum of digits of\s+(.+)$/i))) return B('planetemaths_sommechiffres', { NUM1: this.parseValue(m[1], context) });
-        if ((m = s.match(/^min of\s+(.+?)\s+and\s+(.+)$/i))) return B('planetemaths_min', { NUM1: this.parseValue(m[1], context), NUM2: this.parseValue(m[2], context) });
-        if ((m = s.match(/^max of\s+(.+?)\s+and\s+(.+)$/i))) return B('planetemaths_max', { NUM1: this.parseValue(m[1], context), NUM2: this.parseValue(m[2], context) });
+        if ((m=s.match(/^(min|max) of\s+(.+)$/i))) {
+            const args=this.splitBinary(m[2],[' and '],{ci:true});
+            if(args)return B(`planetemaths_${m[1].toLowerCase()}`,{NUM1:this.parseValue(args.left,context),NUM2:this.parseValue(args.right,context)});
+        }
         if ((m = s.match(/^(.+?)\s+to the power of\s+(.+)$/i))) return B('planetemaths_pow', { NUM1: this.parseValue(m[1], context), NUM2: this.parseValue(m[2], context) });
         if (/^pi$/i.test(s) && !this.variableExists('pi', context.target)) return B('planetemaths_nombre_pi', {});
         if (/^euler$/i.test(s) && !this.variableExists('euler', context.target)) return B('planetemaths_nombre_e', {});
@@ -3908,8 +4101,25 @@ class SB3Creator {
             }
         }
 
+        // Array Boolean reporters remain Boolean inputs rather than being
+        // coerced through a numeric equality (which loses export semantics).
+        if(/^(truthiness of item|truthiness of value|compare value|remove value) /i.test(s)){
+            const reporter=this.parseReporter(s,context);
+            if(reporter && ['arrays_referenceTruthy','arrays_referenceRemove','arrays_valueTruthy','arrays_valueCompare'].includes(context.extraBlocks[reporter[1]]?.opcode))return reporter[1];
+        }
+
         // Predicates
         let m;
+        if ((m = s.match(/^arcade images overlap (.+?) source (.+?) x (.+?) y (.+)$/i))) {
+            return push('arcade_imagesOverlap', {IMAGE:this.parseValue(m[1],context), SOURCE:this.parseValue(m[2],context),
+                X:this.parseValue(m[3],context), Y:this.parseValue(m[4],context)});
+        }
+
+        if ((m = s.match(/^arcade (.+?) overlaps (.+?)\??$/i))) {
+            return push('arcade_spriteOverlaps', {
+                A: this.parseValue(m[1], context), B: this.parseValue(m[2], context)
+            });
+        }
         // A bare `read <pin>` used as a condition is the pin's level (active-low aware).
         // Wrap in `> 0` so the CONDITION input gets a Boolean-shaped block —
         // stc12_read is a reporter (rounded), not a boolean (hexagonal).
@@ -4026,17 +4236,12 @@ class SB3Creator {
         while (i < s.length) {
             if (s[i] === ' ') { i++; continue; }
             if (s[i] === '(') {
-                let depth = 0, j = i;
-                for (; j < s.length; j++) {
-                    if (s[j] === '(') depth++;
-                    else if (s[j] === ')') { depth--; if (depth === 0) { j++; break; } }
-                }
-                tokens.push(s.slice(i, j)); i = j; continue;
+                const close=this.matchParen(s,i),j=close<0?s.length:close+1;
+                tokens.push(s.slice(i,j));i=j;continue;
             }
             if (s[i] === '"') {
-                let j = i + 1;
-                while (j < s.length && s[j] !== '"') j++;
-                j++; tokens.push(s.slice(i, j)); i = j; continue;
+                const close=this.matchQuote(s.slice(i)),j=close<0?s.length:i+close+1;
+                tokens.push(s.slice(i,j));i=j;continue;
             }
             let j = i;
             while (j < s.length && s[j] !== ' ' && s[j] !== '(' && s[j] !== '"') j++;
@@ -4111,15 +4316,18 @@ class SB3Creator {
     tryProcedureCall(line, target) {
         const tokens = this.tokenizeTop(line);
         for (const proc of this.procedures) {
-            if (proc.template.length !== tokens.length) continue;
+            if (tokens.length > proc.template.length) continue;
             const rawArgs = [];
             let ok = true;
+            let missing = 0;
             for (let i = 0; i < proc.template.length; i++) {
                 const t = proc.template[i];
                 if (t.lit) { if (tokens[i] !== t.lit) { ok = false; break; } }
-                else rawArgs.push(tokens[i]);
+                else if (i < tokens.length) rawArgs.push(tokens[i]);
+                else { rawArgs.push('0'); missing++; }
             }
             if (!ok) continue;
+            if (missing) this.warn(null, `Procedure ${proc.proccode} was called with ${missing} missing argument(s); they default to 0`);
 
             const context = { target, extraBlocks: {}, parentId: null };
             const { id, block } = this.createBlock('procedures_call');
@@ -4163,6 +4371,402 @@ class SB3Creator {
         const ret = (block) => ({ block, extraBlocks: context.extraBlocks });
         const ext = (n) => { if (!this.project.extensions.includes(n)) this.project.extensions.push(n); };
         const val = (s) => this.parseValue(s, context);
+        if ((match = line.match(/^arcade (set score to|change score by) (.+)$/i))) {
+            const {id,block}=cmd(match[1].toLowerCase()==='set score to'?'arcade_setscore':'arcade_changescore');
+            block[id].inputs.N=val(match[2]);return ret(block);
+        }
+        if ((match = line.match(/^arcade set background color to\s+(.+)$/i))) {
+            const {id, block} = cmd('arcade_setBackgroundColor');
+            block[id].inputs.COLOR = val(match[1]);
+            return ret(block);
+        }
+
+        if (/^when arcade updates$/i.test(line)) {
+            const {id, block} = this.createBlock('arcade_whenUpdate', {topLevel: true});
+            return ret(block);
+        }
+        if ((match = line.match(/^when arcade every (.+) ms$/i))) {
+            const {id, block} = this.createBlock('arcade_whenInterval', {topLevel: true});
+            block[id].inputs.PERIOD = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^when arcade (update|interval|button|destroyed kind|overlap|scene push|scene pop|forever|life zero|countdown) handler (.+) runs$/i))) {
+            const names={'update':'Update','interval':'Interval','button':'Button','destroyed kind':'KindDestroyed','overlap':'Overlap',
+                'scene push':'ScenePush','scene pop':'ScenePop','forever':'Forever','life zero':'LifeZero','countdown':'Countdown'};
+            const {id,block}=this.createBlock('arcade_whenRegistered'+names[match[1].toLowerCase()],{topLevel:true});
+            block[id].inputs.TOKEN=val(match[2]);return ret(block);
+        }
+        if ((match = line.match(/^when arcade (wall|tile) handler (.+) runs$/i))) {
+            const {id, block} = this.createBlock(match[1].toLowerCase()==='wall'?'arcade_whenRegisteredWall':'arcade_whenRegisteredTile', {topLevel: true});
+            block[id].inputs.TOKEN = val(match[2]);return ret(block);
+        }
+        if ((match = line.match(/^when arcade creation handler (.+) runs$/i))) {
+            const {id, block} = this.createBlock('arcade_whenRegisteredCreated', {topLevel: true});
+            block[id].inputs.TOKEN = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^when arcade kind (.+) created$/i))) {
+            const {id, block} = this.createBlock('arcade_whenSpriteCreated', {topLevel: true});
+            block[id].inputs.KIND = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^when arcade kind (.+) destroyed$/i))) {
+            const {id, block} = this.createBlock('arcade_whenSpriteDestroyed', {topLevel: true});
+            block[id].inputs.KIND = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^when arcade destruction handler (.+) runs$/i))) {
+            const {id, block} = this.createBlock('arcade_whenRegisteredDestroyed', {topLevel: true});
+            block[id].inputs.TOKEN = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^when arcade kinds (.+?) and (.+) overlap$/i))) {
+            const {id, block} = this.createBlock('arcade_whenSpritesOverlap', {topLevel: true});
+            block[id].inputs.A = val(match[1]);
+            block[id].inputs.B = val(match[2]);
+            return ret(block);
+        }
+        if (/^when arcade countdown ends$/i.test(line)) {
+            return ret(this.createBlock('arcade_whenCountdownEnds', {topLevel: true}).block);
+        }
+        if ((match = line.match(/^arcade destroy (.+)$/i))) {
+            const {id, block} = cmd('arcade_destroySprite');
+            block[id].inputs.ID = val(match[1]);
+            return ret(block);
+        }
+        // Speech can itself contain our field labels. Split only outside a
+        // quoted string or nested reporter, so those words remain text.
+        if (/^arcade say /i.test(line)) {
+            const rest = line.slice(11);
+            const labels = [' text ', ' for ', ' ms animated ', ' text color ', ' box color ', ' mode '];
+            const values = [];
+            let start = 0, depth = 0, quote = '';
+            for (let i = 0; i < rest.length && values.length < labels.length; i++) {
+                const char = rest[i];
+                if (quote) {
+                    if (char === '\\') i++;
+                    else if (char === quote) quote = '';
+                } else if (char === '"' || char === "'") quote = char;
+                else if (char === '(' || char === '[') depth++;
+                else if (char === ')' || char === ']') depth--;
+                else if (!depth && rest.slice(i, i + labels[values.length].length).toLowerCase() === labels[values.length]) {
+                    values.push(rest.slice(start, i).trim());
+                    i += labels[values.length - 1].length - 1;
+                    start = i + 1;
+                }
+            }
+            values.push(rest.slice(start).trim());
+            if (values.length === 7 && values.every(Boolean)) {
+                const {id, block} = cmd('arcade_spriteSay');
+                for (const [index, name] of ['ID', 'TEXT', 'DURATION', 'ANIMATED', 'FOREGROUND', 'BACKGROUND', 'MODE'].entries()) {
+                    if (name === 'MODE') {
+                        const mode = values[index].replace(/^"|"$/g, '').toLowerCase();
+                        block[id].fields.MODE = [mode, null];
+                        if (!['text', 'legacy'].includes(mode)) this.warnings.push('Arcade speech mode must be text or legacy');
+                    } else if (name === 'TEXT' && /^"(?:[^"\\]|\\.)*"$/.test(values[index])) {
+                        block[id].inputs[name] = [1, [10, JSON.parse(values[index])]];
+                    } else if (name === 'ANIMATED' && (
+                        this.splitBinary(this.stripOuterParens(values[index]), [' or ', ' and ', '!=', '<=', '>=', '<', '>', '=']) ||
+                        /^not\s/i.test(this.stripOuterParens(values[index])))) {
+                        block[id].inputs[name] = [2, this.parseCondition(values[index], context)];
+                    } else block[id].inputs[name] = val(values[index]);
+                }
+                const animated = block[id].inputs.ANIMATED;
+                if (Array.isArray(animated?.[1]) && [4, 5, 6, 7, 8, 10].includes(animated[1][0])) {
+                    const value = animated[1][1];
+                    const on = Boolean(value) && value !== '0' && String(value).toLowerCase() !== 'false';
+                    block[id].inputs.ANIMATED = this.valueOfBlock(this.pushBlock(context, 'operator_equals', {
+                        OPERAND1: val(on ? '1' : '0'), OPERAND2: val('1')
+                    }));
+                } else {
+                    const reporter = context.extraBlocks[animated?.[1]];
+                    const boolean = reporter && ['operator_equals', 'operator_lt', 'operator_gt',
+                        'operator_and', 'operator_or', 'operator_not', 'sensing_keypressed',
+                        'sensing_touchingobject', 'sensing_mousedown', 'arcade_spriteOverlaps',
+                        'arcade_buttonPressed'].includes(reporter.opcode);
+                    if (!boolean) {
+                        const zeroId = this.pushBlock(context, 'operator_equals', {
+                            OPERAND1: animated, OPERAND2: val('0')
+                        });
+                        const notId = this.pushBlock(context, 'operator_not', {OPERAND: this.valueOfBlock(zeroId)});
+                        context.extraBlocks[zeroId].parent = notId;
+                        if (reporter) reporter.parent = zeroId;
+                        block[id].inputs.ANIMATED = this.valueOfBlock(notId);
+                    }
+                }
+                return ret(block);
+            }
+        }
+        {
+            const tokens=this.tokenizeTop(line),words=tokens.map(value=>value.toLowerCase());
+            if(words.join(' ')==='arcade push scene' || words.join(' ')==='arcade pop scene'){
+                const {block}=cmd(words[1]==='push'?'arcade_pushScene':'arcade_popScene');return ret(block);
+            }
+            if(words[0]==='arcade' && ['set','change'].includes(words[1]) && words[2]==='score' && words[3]==='player' && words[5]===(words[1]==='set'?'to':'by') && tokens.length===7){
+                const {id,block}=cmd(words[1]==='set'?'arcade_setPlayerScore':'arcade_changePlayerScore');
+                block[id].inputs.PLAYER=val(tokens[4]);block[id].inputs.VALUE=val(tokens[6]);return ret(block);
+            }
+            if(words[0]==='arcade' && ['set','change'].includes(words[1]) && words[2]==='life' && words[3]==='player' && words[5]===(words[1]==='set'?'to':'by') && tokens.length===7){
+                const {id,block}=cmd(words[1]==='set'?'arcade_setLife':'arcade_changeLife');
+                block[id].inputs.PLAYER=val(tokens[4]);block[id].inputs.VALUE=val(tokens[6]);return ret(block);
+            }
+            let registration=null;
+            if(words[0]==='arcade' && words[1]==='register'){
+                const simple={update:'Update',forever:'Forever',countdown:'Countdown'};
+                if(simple[words[2]] && words[3]==='as' && words[5]==='capturing' && tokens.length===7)
+                    registration=[simple[words[2]],[['TOKEN',4],['CAPTURES',6]]];
+                else if(words[2]==='interval' && words[4]==='as' && words[6]==='capturing' && tokens.length===8)
+                    registration=['Interval',[['INTERVAL',3],['TOKEN',5],['CAPTURES',7]]];
+                else if(words[2]==='button' && words[4]==='event' && words[6]==='as' && words[8]==='capturing' && tokens.length===10)
+                    registration=['Button',[['BUTTON',3],['EVENT',5],['TOKEN',7],['CAPTURES',9]]];
+                else if(words[2]==='destroyed' && words[3]==='kind' && words[5]==='as' && words[7]==='capturing' && tokens.length===9)
+                    registration=['Destroyed',[['KIND',4],['TOKEN',6],['CAPTURES',8]]];
+                else if(words[2]==='overlap' && words[3]==='kind' && words[5]==='with' && words[6]==='kind' && words[8]==='as' && words[10]==='capturing' && tokens.length===12)
+                    registration=['Overlap',[['KIND',4],['OTHER_KIND',7],['TOKEN',9],['CAPTURES',11]]];
+                else if(words[2]==='scene' && ['push','pop'].includes(words[3]) && words[4]==='as' && words[6]==='capturing' && tokens.length===8)
+                    registration=[words[3]==='push'?'ScenePush':'ScenePop',[['TOKEN',5],['CAPTURES',7]]];
+                else if(words[2]==='life' && words[3]==='zero' && words[4]==='player' && words[6]==='as' && words[8]==='capturing' && tokens.length===10)
+                    registration=['LifeZero',[['PLAYER',5],['TOKEN',7],['CAPTURES',9]]];
+                else if(words[2]==='life' && words[3]==='zero' && words[4]==='as' && words[6]==='capturing' && tokens.length===8)
+                    registration=['LifeZero',[['TOKEN',5],['CAPTURES',7]]];
+            }
+            if(registration){
+                const {id,block}=cmd('arcade_register'+registration[0]+'Handler');
+                for(const [name,index] of registration[1])block[id].inputs[name]=val(tokens[index]);return ret(block);
+            }
+            if(words.slice(0,4).join(' ')==='arcade center camera x' && words[5]==='y' && tokens.length===7){
+                const {id,block}=cmd('arcade_centerCameraAt');
+                block[id].inputs.X=val(tokens[4]);block[id].inputs.Y=val(tokens[6]);return ret(block);
+            }
+            if(words.slice(0,4).join(' ')==='arcade camera follow sprite' && tokens.length===5){
+                const {id,block}=cmd('arcade_cameraFollowSprite');block[id].inputs.ID=val(tokens[4]);return ret(block);
+            }
+            if(words.slice(0,4).join(' ')==='arcade register wall kind' && words[5]==='as' && words[7]==='capturing' && tokens.length===9){
+                const {id,block}=cmd('arcade_registerWallHandler');
+                for(const [name,index] of [['KIND',4],['TOKEN',6],['CAPTURES',8]])block[id].inputs[name]=val(tokens[index]);return ret(block);
+            }
+            if(words.slice(0,4).join(' ')==='arcade register tile kind' && words[5]==='image' && words[7]==='as' && words[9]==='capturing' && tokens.length===11){
+                const {id,block}=cmd('arcade_registerTileHandler');
+                for(const [name,index] of [['KIND',4],['IMAGE',6],['TOKEN',8],['CAPTURES',10]])block[id].inputs[name]=val(tokens[index]);return ret(block);
+            }
+        }
+        if ((match = line.match(/^arcade register creation kind (.+?) as (.+?)(?: capturing (.+))?$/i))) {
+            const {id, block} = cmd('arcade_registerSpriteCreated');
+            block[id].inputs.KIND = val(match[1]);block[id].inputs.TOKEN = val(match[2]);block[id].inputs.CAPTURES = val(match[3] || '""');
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade set captured ([A-Za-z_]\w*) to (.+)$/i))) {
+            const {id, block} = cmd('arcade_setCaptured');
+            block[id].inputs.NAME = val(`"${match[1]}"`);block[id].inputs.VALUE = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade register destruction of (.+?) as (.+)$/i))) {
+            const {id, block} = cmd('arcade_registerSpriteDestroyed');
+            block[id].inputs.ID = val(match[1]);
+            block[id].inputs.TOKEN = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade set local ([A-Za-z_]\w*) to (.+)$/i))) {
+            const {id, block} = cmd('arcade_setLocal');
+            block[id].inputs.NAME = val(`"${match[1]}"`);
+            block[id].inputs.VALUE = val(match[2]);
+            return ret(block);
+        }
+        if (/^arcade set position of /i.test(line)) {
+            const tokens=this.tokenizeTop(line);
+            if (tokens.length===9 && tokens[5].toLowerCase()==='x' && tokens[7].toLowerCase()==='y') {
+                const {id,block}=cmd('arcade_setSpritePosition');
+                block[id].inputs.ID=val(tokens[4]);block[id].inputs.X=val(tokens[6]);block[id].inputs.Y=val(tokens[8]);return ret(block);
+            }
+        }
+        if (/^arcade scale core of /i.test(line)) {
+            const tokens=this.tokenizeTop(line);
+            if(tokens.length===13 && tokens[5].toLowerCase()==='x' && tokens[7].toLowerCase()==='y' && tokens[9].toLowerCase()==='anchor' && tokens[11].toLowerCase()==='proportional') {
+                const {id,block}=cmd('arcade_setSpriteScaleCore');
+                ['ID','SX','SY','ANCHOR','PROPORTIONAL'].forEach((key,index)=>{block[id].inputs[key]=val(tokens[4+index*2]);});return ret(block);
+            }
+        }
+        if (/^arcade (set|change) scale of /i.test(line)) {
+            const tokens=this.tokenizeTop(line);
+            if(tokens.length===9 && /^(to|by)$/i.test(tokens[5]) && tokens[7].toLowerCase()==='anchor') {
+                const {id,block}=cmd(tokens[1].toLowerCase()==='set'?'arcade_setSpriteScale':'arcade_changeSpriteScale');
+                block[id].inputs.ID=val(tokens[4]);block[id].inputs.VALUE=val(tokens[6]);block[id].inputs.ANCHOR=val(tokens[8]);return ret(block);
+            }
+        }
+        if ((match = line.match(/^arcade set (x|y|left|right|top|bottom|vx|vy|ax|ay|fx|fy|sx|sy|scale|width|height|z|lifespan) of (.+?) to (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteProperty');
+            block[id].fields.PROPERTY = [match[1].toLowerCase(), null];
+            block[id].inputs.ID = val(match[2]);
+            block[id].inputs.VALUE = val(match[3]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade mutate image (fill|replace|flipX|flipY) (.+?) color (.+?) replacement (.+)$/i))) {
+            const {id,block}=cmd('arcade_mutateImage');
+            block[id].fields.OP=[['fill','replace','flipX','flipY'].find(op=>op.toLowerCase()===match[1].toLowerCase()),null];
+            ['IMAGE','COLOR','TO'].forEach((key,index)=>{block[id].inputs[key]=val(match[index+2]);}); return ret(block);
+        }
+        if ((match = line.match(/^arcade blit image (drawImage|drawTransparentImage) (.+?) source (.+?) x (.+?) y (.+)$/i))) {
+            const {id,block}=cmd('arcade_blitImage');
+            block[id].fields.OP=[match[1].toLowerCase()==='drawimage'?'drawImage':'drawTransparentImage',null];
+            ['IMAGE','SOURCE','X','Y'].forEach((key,index)=>{block[id].inputs[key]=val(match[index+2]);});return ret(block);
+        }
+        if ((match = line.match(/^arcade control sprite (.+?) vx (.+?) vy (.+)$/i))) {
+            const {id,block}=cmd('arcade_controlSprite');
+            ['ID','VX','VY'].forEach((key,index)=>{block[id].inputs[key]=val(match[index+1]);});return ret(block);
+        }
+        if (/^mutate array reference /i.test(line)) {
+            const tokens=this.tokenizeTop(line);
+            if(tokens.length===10 && tokens[4].toLowerCase()==='op' && tokens[6].toLowerCase()==='index' && tokens[8].toLowerCase()==='value') {
+                const {id,block}=cmd('arrays_mutateReference');block[id].inputs={ARRAY:val(tokens[3]),OP:val(tokens[5]),INDEX:val(tokens[7]),VALUE:val(tokens[9])};return ret(block);
+            }
+        }
+        if(/^arcade set physics engine/i.test(line)) {
+            const tokens=this.tokenizeTop(line),words=tokens.map(value=>value.toLowerCase());
+            let opcode=null,inputs=null,property=null;
+            if(words.slice(0,6).join(' ')==='arcade set physics engine of scene' && words[7]==='to' && tokens.length===9){opcode='arcade_setScenePhysicsEngine';inputs={SCENE:val(tokens[6]),ENGINE:val(tokens[8])};}
+            if(words.slice(0,5).join(' ')==='arcade set physics engine property' && words[6]==='of' && words[8]==='to' && tokens.length===10 && ['maxspeed','minstep','maxstep'].includes(words[5])){opcode='arcade_setPhysicsEngineProperty';inputs={ENGINE:val(tokens[7]),VALUE:val(tokens[9])};property={maxspeed:'maxSpeed',minstep:'minStep',maxstep:'maxStep'}[words[5]];}
+            if(opcode){const {id,block}=cmd(opcode);Object.assign(block[id].inputs,inputs);if(property)block[id].fields.PROPERTY=[property,null];return ret(block);}
+        }
+        if(/^arcade (add animation|attach animation|set animation|animate sprite|stop animations)/i.test(line)) {
+            const tokens=this.tokenizeTop(line),words=tokens.map(value=>value.toLowerCase());
+            let opcode=null,inputs=null;
+            if(words.slice(0,4).join(' ')==='arcade add animation frame' && words[5]==='image' && tokens.length===7){opcode='arcade_addAnimationFrame';inputs={ANIMATION:val(tokens[4]),IMAGE:val(tokens[6])};}
+            if(words.slice(0,3).join(' ')==='arcade attach animation' && words.slice(4,6).join(' ')==='to sprite' && tokens.length===7){opcode='arcade_attachAnimation';inputs={ANIMATION:val(tokens[3]),ID:val(tokens[6])};}
+            if(words.slice(0,5).join(' ')==='arcade set animation action of' && words[6]==='to' && tokens.length===8){opcode='arcade_setAnimationAction';inputs={ID:val(tokens[5]),ACTION:val(tokens[7])};}
+            if(words.slice(0,4).join(' ')==='arcade set animation interval' && words[5]==='to' && tokens.length===7){opcode='arcade_setAnimationInterval';inputs={ANIMATION:val(tokens[4]),INTERVAL:val(tokens[6])};}
+            if(words.slice(0,3).join(' ')==='arcade animate sprite' && words[4]==='frames' && words[6]==='interval' && words[8]==='loop' && tokens.length===10){opcode='arcade_runImageAnimation';inputs={ID:val(tokens[3]),FRAMES:val(tokens[5]),INTERVAL:val(tokens[7]),LOOP:val(tokens[9])};}
+            if(words.slice(0,4).join(' ')==='arcade stop animations of' && words[5]==='type' && tokens.length===7){opcode='arcade_stopAnimation';inputs={ID:val(tokens[4]),TYPE:val(tokens[6])};}
+            if(opcode){const {id,block}=cmd(opcode);block[id].inputs=inputs;return ret(block);}
+        }
+        if(/^arcade (set tile|place sprite)/i.test(line)) {
+            const tokens=this.tokenizeTop(line),words=tokens.map(value=>value.toLowerCase());
+            let opcode=null,inputs=null;
+            if(words.slice(0,4).join(' ')==='arcade set tilemap data' && tokens.length===5){opcode='arcade_setTilemap';inputs={DATA:val(tokens[4])};}
+            if(words.slice(0,3).join(' ')==='arcade set tile' && words[4]==='image' && tokens.length===6){opcode='arcade_setTileAt';inputs={LOCATION:val(tokens[3]),IMAGE:val(tokens[5])};}
+            if(words.slice(0,4).join(' ')==='arcade set tile wall' && words[5]==='to' && tokens.length===7){opcode='arcade_setWallAt';inputs={LOCATION:val(tokens[4]),WALL:val(tokens[6])};}
+            if(words.slice(0,3).join(' ')==='arcade place sprite' && words.slice(4,6).join(' ')==='on tile' && tokens.length===7){opcode='arcade_placeOnTile';inputs={ID:val(tokens[3]),LOCATION:val(tokens[6])};}
+            if(words.slice(0,3).join(' ')==='arcade place sprite' && words.slice(4,8).join(' ')==='on random tile image' && tokens.length===9){opcode='arcade_placeOnRandomTile';inputs={ID:val(tokens[3]),IMAGE:val(tokens[8])};}
+            if(opcode){const {id,block}=cmd(opcode);block[id].inputs=inputs;return ret(block);}
+        }
+        if ((match = line.match(/^arcade set background image (.+)$/i))) {
+            const {id,block}=cmd('arcade_setBackgroundImage');block[id].inputs.IMAGE=val(match[1]);return ret(block);
+        }
+        if ((match = line.match(/^arcade return value (.+)$/i))) {
+            const {id,block}=cmd('arcade_returnValue');block[id].inputs.VALUE=val(match[1]);return ret(block);
+        }
+        if ((match = line.match(/^arcade set image pixel (.+?) x (.+?) y (.+?) color (.+)$/i))) {
+            const {id,block}=cmd('arcade_setImagePixel');
+            ['IMAGE','X','Y','COLOR'].forEach((key,index)=>{block[id].inputs[key]=val(match[index+1]);}); return ret(block);
+        }
+        if ((match = line.match(/^arcade draw image (fillRect|drawLine) (.+?) x (.+?) y (.+?) width (.+?) height (.+?) color (.+)$/i))) {
+            const {id,block}=cmd('arcade_drawImage'); block[id].fields.OP=[match[1].toLowerCase()==='fillrect'?'fillRect':'drawLine',null];
+            ['IMAGE','X','Y','W','H','COLOR'].forEach((key,index)=>{block[id].inputs[key]=val(match[index+2]);}); return ret(block);
+        }
+        if ((match = line.match(/^arcade set image of (.+?) to (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteImage');
+            block[id].inputs.ID = val(match[1]); block[id].inputs.IMAGE = val(match[2]); return ret(block);
+        }
+        if ((match = line.match(/^arcade set pixel of (.+?) x (.+?) y (.+?) color (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpritePixel');
+            ['ID', 'X', 'Y', 'COLOR'].forEach((key, index) => { block[id].inputs[key] = val(match[index + 1]); });
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade draw (fillRect|drawLine) of (.+?) x (.+?) y (.+?) width (.+?) height (.+?) color (.+)$/i))) {
+            const {id, block} = cmd('arcade_drawSpriteImage');
+            block[id].fields.OP = [match[1].toLowerCase() === 'fillrect' ? 'fillRect' : 'drawLine', null];
+            ['ID', 'X', 'Y', 'W', 'H', 'COLOR'].forEach((key, index) => { block[id].inputs[key] = val(match[index + 2]); });
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade image (fill|replace|flipX|flipY) of (.+?) color (.+?) replacement (.+)$/i))) {
+            const {id, block} = cmd('arcade_mutateSpriteImage');
+            block[id].fields.OP = [['fill', 'replace', 'flipX', 'flipY'].find(op => op.toLowerCase() === match[1].toLowerCase()), null];
+            block[id].inputs.ID = val(match[2]);
+            block[id].inputs.COLOR = val(match[3]);
+            block[id].inputs.TO = val(match[4]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade set costume of (.+?) to (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteCostume');
+            block[id].inputs.ID = val(match[1]);
+            block[id].inputs.COSTUME = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade set flag ([A-Za-z]+) of (.+?) to (.+)$/i))) {
+            const flags = ['AutoDestroy', 'StayInScreen', 'BounceOnWall', 'Invisible',
+                'Ghost', 'GhostThroughSprites', 'GhostThroughWalls', 'GhostThroughTiles', 'DestroyOnWall', 'RelativeToCamera'];
+            const flag = flags.find(name => name.toLowerCase() === match[1].toLowerCase());
+            if (!flag) this.warnings.push(`Unsupported Arcade sprite flag "${match[1]}"`);
+            const {id, block} = cmd('arcade_setSpriteFlag');
+            block[id].fields.FLAG = [flag || match[1], null];
+            block[id].inputs.ID = val(match[2]);
+            const on = this.stripOuterParens(match[3]);
+            block[id].inputs.ON = this.splitBinary(on, [' or ', ' and ', '!=', '<=', '>=', '<', '>', '=']) || /^not\s/i.test(on) ?
+                [2, this.parseCondition(on, context)] : val(match[3]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade keep (.+?) in screen (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteStayInScreen');
+            block[id].inputs.ID = val(match[1]);
+            const on = this.stripOuterParens(match[2]);
+            block[id].inputs.ON = this.splitBinary(on, [' or ', ' and ', '!=', '<=', '>=', '<', '>', '=']) || /^not\s/i.test(on) ?
+                [2, this.parseCondition(on, context)] : val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade auto destroy (.+?) outside screen (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteAutoDestroy');
+            block[id].inputs.ID = val(match[1]);
+            const on = this.stripOuterParens(match[2]);
+            block[id].inputs.ON = this.splitBinary(on, [' or ', ' and ', '!=', '<=', '>=', '<', '>', '=']) || /^not\s/i.test(on) ?
+                [2, this.parseCondition(on, context)] : val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade bounce (.+?) on wall (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteBounceOnWall');
+            block[id].inputs.ID = val(match[1]);
+            const on = this.stripOuterParens(match[2]);
+            block[id].inputs.ON = this.splitBinary(on, [' or ', ' and ', '!=', '<=', '>=', '<', '>', '=']) || /^not\s/i.test(on) ?
+                [2, this.parseCondition(on, context)] : val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade ghost (.+?) through sprites (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteGhostThroughSprites');
+            block[id].inputs.ID = val(match[1]);
+            const on = this.stripOuterParens(match[2]);
+            block[id].inputs.ON = this.splitBinary(on, [' or ', ' and ', '!=', '<=', '>=', '<', '>', '=']) || /^not\s/i.test(on) ?
+                [2, this.parseCondition(on, context)] : val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade start countdown (.+)$/i))) {
+            const {id, block} = cmd('arcade_startCountdown');
+            block[id].inputs.N = val(match[1]);
+            return ret(block);
+        }
+        if (/^arcade stop countdown$/i.test(line)) {
+            return ret(cmd('arcade_stopCountdown').block);
+        }
+        if ((match = line.match(/^arcade splash (.+) subtitle (.+)$/i))) {
+            const {id, block} = cmd('arcade_splash');
+            block[id].inputs.TITLE = val(match[1]);
+            block[id].inputs.SUBTITLE = val(match[2]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade long text (.+) layout "(Left|Right|Top|Bottom|Center|Full)"$/i))) {
+            const {id, block} = cmd('arcade_showLongText');
+            block[id].inputs.TEXT = val(match[1]);
+            block[id].fields.LAYOUT = [match[2], null];
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade log (.+)$/i))) {
+            const {id, block} = cmd('arcade_log');
+            block[id].inputs.TEXT = val(match[1]);
+            return ret(block);
+        }
+        if ((match = line.match(/^arcade set kind of (.+?) to (.+)$/i))) {
+            const {id, block} = cmd('arcade_setSpriteKind');
+            block[id].inputs.ID = val(match[1]);
+            block[id].inputs.KIND = val(match[2]);
+            return ret(block);
+        }
 
         // ---- Event hats (routed here from the main loop) ---------------------------
         if (/^when I start as a clone$/i.test(line)) {
@@ -5156,7 +5760,7 @@ class SB3Creator {
             block[id].inputs.TO = this.menuInput(context, 'motion_glideto_menu', 'TO', this.spriteMenuValue(match[2]));
             return ret(block);
         }
-        if ((match = line.match(/^go to\s+(.+)$/i))) {
+        if ((match = line.match(/^go to\s+(?!front$|back$)(.+)$/i))) {
             const { id, block } = cmd('motion_goto');
             block[id].inputs.TO = this.menuInput(context, 'motion_goto_menu', 'TO', this.spriteMenuValue(match[1]));
             return ret(block);
@@ -6108,6 +6712,12 @@ class SB3Creator {
             }
         }
 
+        // Arcade clears its screen to palette color 0 before drawing artwork.
+        // Store that default as a real backdrop so it also survives native SB3 saves.
+        if (this.project.stc?.device === 'arcade' &&
+            stage.costumes[0]?.assetId === 'cd21514d0531fdffb22204e0ec5ed84a') {
+            stage.costumes[0] = this.buildBackdrop('#000000', 'backdrop1');
+        }
         this.validateReferences();
         this.syncExtensions();
         for (const t of this.project.targets) this.layoutScripts(t);
@@ -6608,8 +7218,8 @@ class SB3Creator {
         const inner = input[1];
         if (Array.isArray(inner)) {
             const [type, a] = inner;
-            if (type === 10) return `"${a}"`;       // string
-            if (type === 11) return `"${a}"`;       // broadcast
+            if (type === 10) return JSON.stringify(String(a));       // string
+            if (type === 11) return JSON.stringify(String(a));       // broadcast
             // number (4), color (9), variable (12), list (13) — emit the raw value
             return String(a);
         }
@@ -6623,6 +7233,76 @@ class SB3Creator {
         const v = (k) => this.dval(b.inputs[k], blocks);
         const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
         switch (b.opcode) {
+            case 'operator_gt': case 'operator_lt': case 'operator_equals':
+            case 'operator_and': case 'operator_or': case 'operator_not':
+                return this.dconditionBlock(b, blocks);
+            case 'arcade_createSprite': return `arcade create template ${v('TEMPLATE')} kind ${v('KIND')} width ${v('WIDTH')} height ${v('HEIGHT')}`;
+            case 'arcade_createImageSprite': return `arcade create image (${v('IMAGE')}) template ${v('TEMPLATE')} kind ${v('KIND')}`;
+            case 'arcade_spawnSprite': return `arcade spawn template ${v('TEMPLATE')} kind ${v('KIND')} x ${v('X')} y ${v('Y')} width ${v('WIDTH')} height ${v('HEIGHT')}`;
+            case 'arcade_spawnImageProjectile': return `arcade projectile image (${v('IMAGE')}) template ${v('TEMPLATE')} kind ${v('KIND')} vx ${v('VX')} vy ${v('VY')} mode ${v('MODE').replace(/^"|"$/g, '')} source ${v('SOURCE') || '""'}`;
+            case 'arcade_spawnProjectile': return `arcade projectile template ${v('TEMPLATE')} kind ${v('KIND')} vx ${v('VX')} vy ${v('VY')} width ${v('WIDTH')} height ${v('HEIGHT')} mode ${v('MODE').replace(/^"|"$/g, '')} source ${v('SOURCE') || '""'}`;
+            case 'arcade_createImage': return `arcade new image width (${v('WIDTH')}) height (${v('HEIGHT')})`;
+            case 'arcade_getscore': return 'arcade score';
+            case 'arrays_namedReference': return `reference to named array (${v('NAME')})`;
+            case 'arrays_parseLegacyValue': return `parse array input (${v('VALUE')})`;
+            case 'arrays_jsonValue': return `JSON text of value (${v('VALUE')})`;
+            case 'arrays_specialValue': return `${v('KIND').replace(/"/g,'')} value`;
+            case 'arrays_valueBinary': return `calculate value (${v('LEFT')}) op ${v('OP')} with (${v('RIGHT')})`;
+            case 'arrays_valueUnary': return `convert value (${v('VALUE')}) op ${v('OP')}`;
+            case 'arrays_valueTruthy': return `truthiness of value (${v('VALUE')})`;
+            case 'arrays_valueCompare': return `compare value (${v('LEFT')}) op ${v('OP')} with (${v('RIGHT')})`;
+            case 'arrays_referenceValues': return `array value (${v('VALUE')}) rest (${v('REST')})`;
+            case 'arrays_createReference': return `new array reference from (${v('VALUES')})`;
+            case 'arrays_referenceTruthy': return `truthiness of item (${v('INDEX')}) of array reference (${v('ARRAY')})`;
+            case 'arrays_referenceItem': return `item (${v('INDEX')}) of array reference (${v('ARRAY')})`;
+            case 'arrays_referenceRemove': return `remove value (${v('VALUE')}) from array reference (${v('ARRAY')})`;
+            case 'arrays_referenceRandom': return `random item of array reference (${v('ARRAY')})`;
+            case 'arrays_referenceLength': return `length of array reference (${v('ARRAY')})`;
+            case 'arrays_referenceTake': return `${v('OP').replace(/^"|"$/g,'')} from array reference (${v('ARRAY')}) index (${v('INDEX')})`;
+            case 'arrays_referenceIndexOf': return `index of (${v('VALUE')}) in array reference (${v('ARRAY')}) from (${v('INDEX')})`;
+            case 'arcade_cloneImage': return `arcade copy image (${v('IMAGE')})`;
+            case 'arcade_imageProperty': return `arcade image ${f('PROPERTY')} of (${v('IMAGE')})`;
+            case 'arcade_imagesOverlap': return `arcade images overlap (${v('IMAGE')}) source (${v('SOURCE')}) x (${v('X')}) y (${v('Y')})`;
+            case 'arcade_functionArgument': return `arcade function argument (${v('VALUE')}) rest (${v('REST')})`;
+            case 'arcade_callFunction': return `arcade call function ${v('NAME')} arguments (${v('ARGS')})`;
+            case 'arcade_imagePixel': return `arcade image pixel (${v('IMAGE')}) x (${v('X')}) y (${v('Y')})`;
+            case 'arcade_spawnImageSprite': return `arcade spawn image (${v('IMAGE')}) template ${v('TEMPLATE')} kind ${v('KIND')} x ${v('X')} y ${v('Y')}`;
+            case 'arcade_spriteImage': return `arcade image of ${v('ID')}`;
+            case 'arcade_frameImage': return `arcade frame image array ${v('KEY')} index (${v('INDEX')}) template ${v('TEMPLATE')} start ${v('START')} count ${v('COUNT')}`;
+            case 'arcade_spritePixel': return `arcade pixel of ${v('ID')} x (${v('X')}) y (${v('Y')})`;
+            case 'arcade_spriteToString': return `arcade text of sprite (${v('ID')})`;
+            case 'arcade_spriteProperty': return `arcade property ${f('PROPERTY')} of ${v('ID')}`;
+            case 'arcade_backgroundImage': return 'arcade background image';
+            case 'arcade_backgroundColor': return 'arcade background color';
+            case 'arcade_currentScene': return 'arcade current scene';
+            case 'arcade_scenePhysicsEngine': return `arcade physics engine of scene (${v('SCENE')})`;
+            case 'arcade_createPhysicsEngine': return `arcade create physics engine max speed (${v('MAX_SPEED')}) min step (${v('MIN_STEP')}) max step (${v('MAX_STEP')})`;
+            case 'arcade_physicsEngineProperty': return `arcade physics engine property ${b.fields.PROPERTY[0]} of (${v('ENGINE')})`;
+            case 'arcade_createAnimation': return `arcade create animation action (${v('ACTION')}) interval (${v('INTERVAL')})`;
+            case 'arcade_animationProperty': return `arcade animation ${f('PROPERTY')} of (${v('ANIMATION')})`;
+            case 'arcade_tileLocation': return `arcade tile location column (${v('COLUMN')}) row (${v('ROW')})`;
+            case 'arcade_tilesOfType': return `arcade tile array image (${v('IMAGE')})`;
+            case 'arcade_tileLocationProperty': return `arcade tile ${f('PROPERTY')} of (${v('LOCATION')})`;
+            case 'arcade_tileIs': return `arcade tile (${v('LOCATION')}) equals image (${v('IMAGE')})`;
+            case 'arcade_isHittingTile': return `arcade sprite (${v('ID')}) hitting wall (${v('DIRECTION')})`;
+            case 'arcade_tileIsWall': return `arcade tile (${v('LOCATION')}) is wall`;
+            case 'arcade_spritesOfKind': return `arcade sprite array kind ${v('KIND')}`;
+            case 'arcade_spriteCount': return `arcade count kind ${v('KIND')}`;
+            case 'arcade_askForNumber': return `arcade ask number ${v('QUESTION')}`;
+            case 'arcade_controllerStep': return `arcade controller ${f('AXIS')} step ${v('STEP')}`;
+            case 'arcade_getCaptured': return `arcade captured ${v('NAME').replace(/^"|"$/g, '')}`;
+            case 'arcade_getLocal': return `arcade local ${v('NAME').replace(/^"|"$/g, '')}`;
+            case 'arcade_askForString': return `arcade ask text ${v('QUESTION')}`;
+            case 'arcade_menu_scaleAnchors': return String(Number(f('scaleAnchors')));
+            case 'arcade_menu_cameraProperties': return String(Number(f('cameraProperties')));
+            case 'arcade_getPlayerScore': return `arcade player (${v('PLAYER')}) score`;
+            case 'arcade_hasLife': return `arcade player (${v('PLAYER')}) has life`;
+            case 'arcade_hasPlayerScore': return `arcade player (${v('PLAYER')}) has score`;
+            case 'arcade_getLife': return `arcade life player (${v('PLAYER')})`;
+            case 'arcade_cameraProperty': return `arcade camera property (${v('PROPERTY')})`;
+            case 'arcade_eventLocation': return 'arcade event location';
+            case 'arcade_eventSprite': return `arcade event ${f('WHICH')}`;
+            case 'arcade_spriteOverlaps': return `arcade ${v('A')} overlaps ${v('B')}`;
             case 'operator_add': return `${v('NUM1')} + ${v('NUM2')}`;
             case 'operator_subtract': return `${v('NUM1')} - ${v('NUM2')}`;
             case 'operator_multiply': return `${v('NUM1')} * ${v('NUM2')}`;
@@ -6776,7 +7456,10 @@ class SB3Creator {
 
     // Decompile a boolean input/block -> condition text.
     dcond(ref, blocks) {
-        const b = typeof ref === 'string' ? blocks[ref] : blocks[ref];
+        return this.dconditionBlock(blocks[ref], blocks);
+    }
+
+    dconditionBlock(b, blocks) {
         if (!b) return '';
         const v = (k) => this.dval(b.inputs[k], blocks);
         const c = (k) => this.dcond(b.inputs[k][1], blocks);
@@ -6830,6 +7513,26 @@ class SB3Creator {
         const f = (k) => (b.fields[k] ? b.fields[k][0] : '');
         const v = (k) => this.dval(b.inputs[k], blocks);
         switch (b.opcode) {
+            case 'arcade_whenUpdate': return 'WHEN arcade updates:';
+            case 'arcade_whenInterval': return `WHEN arcade every ${v('PERIOD')} ms:`;
+            case 'arcade_whenRegisteredUpdate': return `WHEN arcade update handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredInterval': return `WHEN arcade interval handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredButton': return `WHEN arcade button handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredKindDestroyed': return `WHEN arcade destroyed kind handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredOverlap': return `WHEN arcade overlap handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredScenePush': return `WHEN arcade scene push handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredScenePop': return `WHEN arcade scene pop handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredForever': return `WHEN arcade forever handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredLifeZero': return `WHEN arcade life zero handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredCountdown': return `WHEN arcade countdown handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredWall': return `WHEN arcade wall handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredTile': return `WHEN arcade tile handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenRegisteredCreated': return `WHEN arcade creation handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenSpriteCreated': return `WHEN arcade kind ${v('KIND')} created:`;
+            case 'arcade_whenSpriteDestroyed': return `WHEN arcade kind ${v('KIND')} destroyed:`;
+            case 'arcade_whenRegisteredDestroyed': return `WHEN arcade destruction handler ${v('TOKEN')} runs:`;
+            case 'arcade_whenSpritesOverlap': return `WHEN arcade kinds ${v('A')} and ${v('B')} overlap:`;
+            case 'arcade_whenCountdownEnds': return 'WHEN arcade countdown ends:';
             case 'event_whenflagclicked': return 'WHEN flag clicked:';
             case 'event_whenkeypressed': return `WHEN ${f('KEY_OPTION')} key pressed:`;
             case 'event_whenthisspriteclicked': return 'WHEN sprite clicked:';
@@ -6866,6 +7569,81 @@ class SB3Creator {
         const line = (txt) => [pad + txt];
 
         switch (b.opcode) {
+            case 'arcade_destroySprite': return line(`arcade destroy ${v('ID')}`);
+            case 'arcade_setBackgroundColor': return line(`arcade set background color to ${v('COLOR')}`);
+            case 'arcade_spriteSay': {
+                const text = b.inputs.TEXT?.[1];
+                const message = Array.isArray(text) && text[0] === 10 ? JSON.stringify(text[1]) : v('TEXT');
+                return line(`arcade say ${v('ID')} text ${message} for ${v('DURATION')} ms animated ${v('ANIMATED')} text color ${v('FOREGROUND')} box color ${v('BACKGROUND')} mode ${v('MODE') || JSON.stringify(f('MODE'))}`);
+            }
+            case 'arcade_setPlayerScore': return line(`arcade set score player (${v('PLAYER')}) to (${v('VALUE')})`);
+            case 'arcade_changePlayerScore': return line(`arcade change score player (${v('PLAYER')}) by (${v('VALUE')})`);
+            case 'arcade_setLife': return line(`arcade set life player (${v('PLAYER')}) to (${v('VALUE')})`);
+            case 'arcade_changeLife': return line(`arcade change life player (${v('PLAYER')}) by (${v('VALUE')})`);
+            case 'arcade_pushScene': return line('arcade push scene');
+            case 'arcade_popScene': return line('arcade pop scene');
+            case 'arcade_registerUpdateHandler': return line(`arcade register update as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerIntervalHandler': return line(`arcade register interval (${v('INTERVAL')}) as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerButtonHandler': return line(`arcade register button (${v('BUTTON')}) event (${v('EVENT')}) as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerDestroyedHandler': return line(`arcade register destroyed kind (${v('KIND')}) as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerOverlapHandler': return line(`arcade register overlap kind (${v('KIND')}) with kind (${v('OTHER_KIND')}) as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerScenePushHandler': return line(`arcade register scene push as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerScenePopHandler': return line(`arcade register scene pop as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerForeverHandler': return line(`arcade register forever as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerLifeZeroHandler': return line(`arcade register life zero player (${b.inputs?.PLAYER?v('PLAYER'):'1'}) as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerCountdownHandler': return line(`arcade register countdown as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_centerCameraAt': return line(`arcade center camera x (${v('X')}) y (${v('Y')})`);
+            case 'arcade_cameraFollowSprite': return line(`arcade camera follow sprite (${v('ID')})`);
+            case 'arcade_registerWallHandler': return line(`arcade register wall kind (${v('KIND')}) as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerTileHandler': return line(`arcade register tile kind (${v('KIND')}) image (${v('IMAGE')}) as (${v('TOKEN')}) capturing (${v('CAPTURES')})`);
+            case 'arcade_registerSpriteCreated': return line(`arcade register creation kind ${v('KIND')} as ${v('TOKEN')} capturing ${v('CAPTURES')}`);
+            case 'arcade_setCaptured': return line(`arcade set captured ${v('NAME').replace(/^"|"$/g, '')} to ${v('VALUE')}`);
+            case 'arcade_registerSpriteDestroyed': return line(`arcade register destruction of ${v('ID')} as ${v('TOKEN')}`);
+            case 'arcade_setscore': return line(`arcade set score to ${v('N')}`);
+            case 'arcade_changescore': return line(`arcade change score by ${v('N')}`);
+            case 'arcade_setLocal': return line(`arcade set local ${v('NAME').replace(/^"|"$/g, '')} to ${v('VALUE')}`);
+            case 'arcade_setSpritePosition': return line(`arcade set position of (${v('ID')}) x (${v('X')}) y (${v('Y')})`);
+            case 'arcade_setSpriteScaleCore': return line(`arcade scale core of (${v('ID')}) x (${v('SX')}) y (${v('SY')}) anchor (${v('ANCHOR')}) proportional (${v('PROPORTIONAL')})`);
+            case 'arcade_setSpriteScale': return line(`arcade set scale of (${v('ID')}) to (${v('VALUE')}) anchor (${v('ANCHOR')})`);
+            case 'arcade_changeSpriteScale': return line(`arcade change scale of (${v('ID')}) by (${v('VALUE')}) anchor (${v('ANCHOR')})`);
+            case 'arcade_setSpriteProperty': return line(`arcade set ${f('PROPERTY')} of ${v('ID')} to ${v('VALUE')}`);
+            case 'arcade_mutateImage': return line(`arcade mutate image ${f('OP')} (${v('IMAGE')}) color ${v('COLOR')} replacement ${v('TO')}`);
+            case 'arcade_blitImage': return line(`arcade blit image ${f('OP')} (${v('IMAGE')}) source (${v('SOURCE')}) x (${v('X')}) y (${v('Y')})`);
+            case 'arrays_mutateReference': return line(`mutate array reference (${v('ARRAY')}) op ${v('OP')} index (${v('INDEX')}) value (${v('VALUE')})`);
+            case 'arcade_setBackgroundImage': return line(`arcade set background image (${v('IMAGE')})`);
+            case 'arcade_controlSprite': return line(`arcade control sprite (${v('ID')}) vx (${v('VX')}) vy (${v('VY')})`);
+            case 'arcade_returnValue': return line(`arcade return value (${v('VALUE')})`);
+            case 'arcade_setImagePixel': return line(`arcade set image pixel (${v('IMAGE')}) x ${v('X')} y ${v('Y')} color ${v('COLOR')}`);
+            case 'arcade_drawImage': return line(`arcade draw image ${f('OP')} (${v('IMAGE')}) x ${v('X')} y ${v('Y')} width ${v('W')} height ${v('H')} color ${v('COLOR')}`);
+            case 'arcade_addAnimationFrame': return line(`arcade add animation frame (${v('ANIMATION')}) image (${v('IMAGE')})`);
+            case 'arcade_attachAnimation': return line(`arcade attach animation (${v('ANIMATION')}) to sprite (${v('ID')})`);
+            case 'arcade_setAnimationAction': return line(`arcade set animation action of (${v('ID')}) to (${v('ACTION')})`);
+            case 'arcade_setScenePhysicsEngine': return line(`arcade set physics engine of scene (${v('SCENE')}) to (${v('ENGINE')})`);
+            case 'arcade_setPhysicsEngineProperty': return line(`arcade set physics engine property ${b.fields.PROPERTY[0]} of (${v('ENGINE')}) to (${v('VALUE')})`);
+            case 'arcade_setAnimationInterval': return line(`arcade set animation interval (${v('ANIMATION')}) to (${v('INTERVAL')})`);
+            case 'arcade_runImageAnimation': return line(`arcade animate sprite (${v('ID')}) frames (${v('FRAMES')}) interval (${v('INTERVAL')}) loop (${v('LOOP')})`);
+            case 'arcade_stopAnimation': return line(`arcade stop animations of (${v('ID')}) type (${v('TYPE')})`);
+            case 'arcade_setTilemap': return line(`arcade set tilemap data ${v('DATA')}`);
+            case 'arcade_setTileAt': return line(`arcade set tile (${v('LOCATION')}) image (${v('IMAGE')})`);
+            case 'arcade_setWallAt': return line(`arcade set tile wall (${v('LOCATION')}) to (${v('WALL')})`);
+            case 'arcade_placeOnTile': return line(`arcade place sprite (${v('ID')}) on tile (${v('LOCATION')})`);
+            case 'arcade_placeOnRandomTile': return line(`arcade place sprite (${v('ID')}) on random tile image (${v('IMAGE')})`);
+            case 'arcade_setSpriteImage': return line(`arcade set image of ${v('ID')} to ${v('IMAGE')}`);
+            case 'arcade_setSpritePixel': return line(`arcade set pixel of ${v('ID')} x ${v('X')} y ${v('Y')} color ${v('COLOR')}`);
+            case 'arcade_drawSpriteImage': return line(`arcade draw ${f('OP')} of ${v('ID')} x ${v('X')} y ${v('Y')} width ${v('W')} height ${v('H')} color ${v('COLOR')}`);
+            case 'arcade_mutateSpriteImage': return line(`arcade image ${f('OP')} of ${v('ID')} color ${v('COLOR')} replacement ${v('TO')}`);
+            case 'arcade_setSpriteCostume': return line(`arcade set costume of ${v('ID')} to ${v('COSTUME')}`);
+            case 'arcade_setSpriteFlag': return line(`arcade set flag ${f('FLAG')} of ${v('ID')} to ${v('ON')}`);
+            case 'arcade_setSpriteStayInScreen': return line(`arcade keep ${v('ID')} in screen ${v('ON')}`);
+            case 'arcade_setSpriteAutoDestroy': return line(`arcade auto destroy ${v('ID')} outside screen ${v('ON')}`);
+            case 'arcade_setSpriteBounceOnWall': return line(`arcade bounce ${v('ID')} on wall ${v('ON')}`);
+            case 'arcade_setSpriteGhostThroughSprites': return line(`arcade ghost ${v('ID')} through sprites ${v('ON')}`);
+            case 'arcade_startCountdown': return line(`arcade start countdown ${v('N')}`);
+            case 'arcade_stopCountdown': return line('arcade stop countdown');
+            case 'arcade_splash': return line(`arcade splash ${v('TITLE')} subtitle ${v('SUBTITLE')}`);
+            case 'arcade_showLongText': return line(`arcade long text ${v('TEXT')} layout "${f('LAYOUT')}"`);
+            case 'arcade_log': return line(`arcade log ${v('TEXT')}`);
+            case 'arcade_setSpriteKind': return line(`arcade set kind of ${v('ID')} to ${v('KIND')}`);
             // ---- control structures ----
             case 'control_forever': return [pad + 'FOREVER:', ...sub('SUBSTACK', level + 1)];
             case 'control_repeat': return [pad + `REPEAT ${v('TIMES')}:`, ...sub('SUBSTACK', level + 1)];
@@ -6950,8 +7728,8 @@ class SB3Creator {
             case 'data_insertatlist': return line(`insert ${v('ITEM')} at ${v('INDEX')} of ${f('LIST')}`);
             case 'data_replaceitemoflist': return line(`replace item ${v('INDEX')} of ${f('LIST')} with ${v('ITEM')}`);
             // Arrays & Vectors commands (v('NAME') yields the quoted name).
-            case 'arrays_create1D': return line(`new array ${v('NAME')} = ${this.dval(b.inputs.JSON, blocks).replace(/^"|"$/g, '')}`);
-            case 'arrays_create2D': return line(`new 2D array ${v('NAME')} = ${this.dval(b.inputs.JSON, blocks).replace(/^"|"$/g, '')}`);
+            case 'arrays_create1D': return line(`new array ${v('NAME')} = ${Array.isArray(b.inputs.JSON?.[1]) && b.inputs.JSON[1][0]===10 ? b.inputs.JSON[1][1] : this.dval(b.inputs.JSON,blocks)}`);
+            case 'arrays_create2D': return line(`new 2D array ${v('NAME')} = ${Array.isArray(b.inputs.JSON?.[1]) && b.inputs.JSON[1][0]===10 ? b.inputs.JSON[1][1] : this.dval(b.inputs.JSON,blocks)}`);
             case 'arrays_set2D': return line(`set item row ${v('ROW')} col ${v('COL')} of array ${v('NAME')} to ${v('VALUE')}`);
             case 'arrays_createEmpty': return line(`new array ${v('NAME')}`);
             case 'arrays_createRange': return line(`new array ${v('NAME')} = range ${v('START')} to ${v('END')}`);

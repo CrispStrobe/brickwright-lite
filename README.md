@@ -67,6 +67,10 @@ human coordination and qualification process.
   makecode.microbit.org opens.
 - What has no equivalent here is listed rather than dropped: every refusal is
   marked in the code and counted in the status line.
+- [Conversion CLI and compatibility audit](docs/COMPATIBILITY-AUDIT.md) show
+  commands, the pinned project corpus, and the remaining gaps by frequency.
+- [Arcade sprite handles](docs/ARCADE-SPRITES.md) describe the editable sprite
+  blocks and the MakeCode APIs the current translator still needs to map.
 
 ### Guided lessons
 
@@ -84,6 +88,10 @@ and Bluetooth Classic** without a browser or a separate install.
 
 - Offline asset library, camera + microphone, native `.sb3` save/load/share,
   file associations and deep links.
+- [Project files across devices](docs/PROJECT-FILES.md) documents native
+  Open, Save, Save As, version copies and LocalSend handoff.
+- [Peer sessions](docs/PEER-SESSIONS.md) exchange camera photos, projects, and
+  Code tab sources with a paired native app over a local IP network.
 
 ## Quick start
 

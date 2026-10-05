@@ -26,6 +26,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-makecode-cli-'));
 const run = (...args) => spawnSync(process.execPath, ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', CLI, ...args],
     {cwd: ROOT, encoding: 'utf8', timeout: 600000});
 const synced = fs.existsSync(path.join(ROOT, 'packages/scratch-gui/static/makecode/microbit/pxtworker.js'));
+const arcadeBase = fs.existsSync(path.join(ROOT, 'packages/scratch-gui/static/makecode/arcade/hexcache'));
 
 test('a MakeCode game becomes an .sb3 with its sprites', async () => {
     const out = path.join(tmp, 'game.sb3');
@@ -36,6 +37,17 @@ test('a MakeCode game becomes an .sb3 with its sprites', async () => {
     const sprites = project.targets.filter(t => !t.isStage);
     assert.ok(sprites.length >= 2, `${sprites.length} sprites`);
     assert.ok(Object.keys(zip.files).some(f => /\.svg$/.test(f)), 'no costume artwork in the .sb3');
+});
+
+test('a MakeCode TypeScript file converts directly for its selected target', async () => {
+    const source = path.join(tmp, 'direct.ts');
+    const out = path.join(tmp, 'direct.sb3');
+    fs.writeFileSync(source, 'let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.x = 80\n');
+    const r = run('to-sb3', source, '--target', 'arcade', '-o', out);
+    assert.equal(r.status, 0, r.stderr);
+    const zip = await JSZip.loadAsync(fs.readFileSync(out));
+    const project = JSON.parse(await zip.file('project.json').async('string'));
+    assert.ok(project.targets.some(t => t.name === 'hero'));
 });
 
 test('--source writes the project file MakeCode opens, and it reads back', async () => {
@@ -54,14 +66,28 @@ test('bad usage is an exit code, not a crash', () => {
 
 // Gated with skip, not an early return: an early return is a PASS, and would
 // hide that the Arcade half never ran on a box without the synced runtime.
-test('a board-less Arcade firmware request is refused as exit code 1, by name',
+test('a board-less Arcade firmware request asks for a board by name',
     {skip: !synced && 'MakeCode runtime not synced (npm run sync:makecode)'}, () => {
     const sb3 = path.join(tmp, 'game.sb3');
     if (!fs.existsSync(sb3)) run('to-sb3', path.join(ROOT, 'test/fixtures/makecode/arcade-assets.hex'), '-o', sb3);
     const r = run('to-hex', sb3, '--target', 'arcade', '-o', path.join(tmp, 'game.hex'));
-    assert.equal(r.status, 1);
-    assert.match(r.stderr, /refused: no precompiled firmware base/);
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /Arcade firmware needs --board/);
 });
+
+test('the CLI builds a flashable Arcade UF2 for a named board',
+    {skip: !arcadeBase && 'Arcade firmware bases not synced', timeout: 900000}, async () => {
+        const source = path.join(tmp, 'arcade-cli.bw');
+        const firmware = path.join(tmp, 'arcade-cli.uf2');
+        fs.writeFileSync(source, 'DEVICE ARCADE\nSPRITE hero:\nWHEN flag clicked:\n  FOREVER:\n    change x by 1\n');
+        const r = run('to-hex', source, '--target', 'arcade', '--board', 'rp2040', '-o', firmware);
+        assert.equal(r.status, 0, r.stderr);
+        const bytes = new Uint8Array(fs.readFileSync(firmware));
+        assert.ok(bytes.length > 100000 && bytes.length % 512 === 0);
+        const project = await importArtefact(bytes, {name: 'arcade-cli.uf2'});
+        assert.equal(project.project.target, 'arcade');
+        assert.match(project.files['main.ts'], /let hero = sprites\.create/);
+    });
 
 test('the full circle: .bw -> micro:bit firmware -> .sb3 -> firmware, and the program survives',
     {skip: synced ? false : 'MakeCode runtime not synced (npm run sync:makecode) — pxt compiler absent', timeout: 900000}, async () => {

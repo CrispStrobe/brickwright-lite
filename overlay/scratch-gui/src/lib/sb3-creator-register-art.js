@@ -26,6 +26,7 @@ import SB3Creator from './sb3-creator.js';
 import art from './sb3-creator-vector-art.js';
 import spikeRuntimeOps from './spike-runtime-ops.js';
 import {LEGACY_IDS as SPIKE_LEGACY_IDS} from './spike-legacy-migration.js';
+import withPeerPseudocode from './peer-pseudocode.js';
 
 // Returns the entry count; ignored here, asserted by the tests (246 as of 2026-08-30).
 SB3Creator.registerVectorArt(art);
@@ -51,4 +52,4 @@ for (const legacyId of SPIKE_LEGACY_IDS) {
     delete SB3Creator.RUNTIME_EXTENSIONS[legacyId];
 }
 
-export default SB3Creator;
+export default withPeerPseudocode(SB3Creator);

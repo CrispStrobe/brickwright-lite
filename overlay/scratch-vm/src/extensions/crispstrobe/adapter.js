@@ -2,6 +2,7 @@ const ArgumentType = require('../../extension-support/argument-type');
 const BlockType = require('../../extension-support/block-type');
 const TargetType = require('../../extension-support/target-type');
 const Cast = require('../../util/cast');
+const BWValues = require('../../util/bw-values');
 
 // Xcratch extensions ship as ES modules (`.mjs`) with top-level `export`
 // statements, but we run source through `new Function` (a function body, where
@@ -32,7 +33,7 @@ module.exports = function makeCrispExtension (source) {
             this.runtime = runtime;
             let captured = null;
             const Scratch = {
-                BlockType, ArgumentType, TargetType, Cast,
+                BlockType, ArgumentType, TargetType, Cast, BWValues,
                 translate: Object.assign(m => (m && typeof m === 'object' ? (m.default || '') : m), { setup: () => {} }),
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
                 vm: runtime && runtime.emit ? { runtime } : {}, runtime

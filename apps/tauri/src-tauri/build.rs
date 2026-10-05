@@ -44,6 +44,14 @@ fn main() {
     // `generate_handler!` in src/lib.rs; the structural test enforces that.
     const APP_COMMANDS: &[&str] = &[
         "save_project",
+        "open_project_document",
+        "open_recent_project",
+        "recent_projects",
+        "pending_project",
+        "clear_project_document",
+        "activate_project_document",
+        "discard_open_project",
+        "save_project_document",
         "write_temp_project",
         "is_mobile",
         "download_pack",
@@ -60,6 +68,11 @@ fn main() {
         "scratchlink_bridge_open",
         "scratchlink_bridge_send",
         "scratchlink_bridge_close",
+        "peer_status",
+        "peer_enable",
+        "peer_disable",
+        "peer_send",
+        "peer_reply",
         // Desktop-only broker transport. These are registered behind `#[cfg(desktop)]` in
         // `generate_handler!`, and NONE of them is granted by `capabilities/default.json`:
         // `native_broker_ready` is scoped to the broker webview, and the other five are granted

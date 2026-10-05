@@ -195,6 +195,11 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                             const uploadedProjectTitle = this.getProjectTitleFromFilename(filename);
                             this.props.onSetProjectTitle(uploadedProjectTitle);
                         }
+                        // An HTML file input opens an independent document. A
+                        // later native Save must not overwrite the old one.
+                        if (window.__TAURI__?.core?.invoke) {
+                            window.__TAURI__.core.invoke('clear_project_document');
+                        }
                         loadingSuccess = true;
                     })
                     .catch(error => {

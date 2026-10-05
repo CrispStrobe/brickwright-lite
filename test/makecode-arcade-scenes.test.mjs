@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {SCENES_SOURCE} from './fixtures/arcade-scenes.mjs';
+const names=['pushHits','popHits','pushScore','popScore','childInitialCount','childInitialScore','childInitialLife','childInitialPlayer2Score','childInitialPlayer2Life','childInitialCameraX','childInitialBackground','retainedParentX','parentFrozen','restoredCount','restoredParentIdentity','restoredScore','restoredLife','restoredPlayer2Score','restoredPlayer2Life','restoredCameraX','restoredCameraY','restoredBackground','restoredPixel','retainedChildX','mutatedPoppedChildX','parentResumed','childFrozen','scenesDone'];
+const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+test('scene worlds, callbacks, Info, camera and live resource aliases match original through Code/SB3 and executed PXT export',async()=>{
+    const expected=await runPxtArcade(SCENES_SOURCE,{waitForGlobals:{scenesDone:true}});
+    assert.equal(expected.pushHits,2);assert.equal(expected.popHits,2);assert.equal(expected.parentFrozen,true);assert.equal(expected.childFrozen,true);assert.equal(expected.restoredPixel,6);
+    const check=run=>{for(const name of names)assert.equal(values(run)[name],expected[name],name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+    const execute=async imported=>{assert.deepEqual(imported.unsupported,['full terrain collision physics and scene lifecycle are not yet supported']);const run=await runProgram(imported.code,{frames:250,uploads:imported.costumes,storage:true});check(run);return run;};
+    const imported=arcadeToPseudocode(SCENES_SOURCE),run=await execute(imported);
+    await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    assert.match(exported.ts,/game\.pushScene\(/);assert.match(exported.ts,/game\.popScene\(/);assert.match(exported.ts,/game\.addScenePushHandler\(/);assert.match(exported.ts,/info\.player2\.setLife\(/);
+    const again=await runPxtArcade(exported.ts,{waitForGlobals:{scenesDone:true}});for(const name of names)assert.equal(again[name],expected[name],name+' in exported PXT');
+    await execute(arcadeToPseudocode(exported.files));
+    await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,250);check(run);
+});

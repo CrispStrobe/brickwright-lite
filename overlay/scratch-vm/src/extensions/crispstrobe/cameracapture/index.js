@@ -10,6 +10,9 @@ const MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 class CameraCapture {
     constructor (runtime) {
         this.runtime = runtime;
+        // The native peer adapter calls this exact built-in instance. It never
+        // reaches arbitrary extension services or evaluates incoming code.
+        if (runtime) runtime.__brickwrightCameraCapture = this;
         this._lastPhoto = '';
         this._width = 0;
         this._height = 0;
