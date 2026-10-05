@@ -49,11 +49,19 @@ test('the green flag\'s author rule is start()\'s own split, for every kind, med
     // the user's firmware, else build() — the project's own blocks. Its
     // expression is evaluated here as written, so the two cannot drift.
     const runner = read('lib/bw-debug/debug-runner.js');
-    const m = runner.match(/const built = (\([\s\S]*?\)) \? null\s*: userFirmware \? await builtFromUserFirmware\(selectedKind\)\s*: await build\(\);/);
-    assert.ok(m, 'start()\'s choice of what to run moved — re-read it before trusting the author rule');
+    // Delimited by the two fixed texts around the condition (indexOf, not a lazy
+    // capture, which a nested parenthesis would cut short).
+    const head = 'const built = ';
+    const tail = ' ? null';
+    const at = runner.indexOf(head);
+    const end = runner.indexOf(tail, at);
+    assert.ok(at > 0 && end > at, 'start()\'s choice of what to run moved — re-read it before trusting the author rule');
+    const condition = runner.slice(at + head.length, end);
+    assert.match(runner.slice(end), /^ \? null\s*: userFirmware \? await builtFromUserFirmware\(selectedKind\)\s*: await build\(\);/,
+        'start() no longer ends in firmware-else-build — re-read it');
     // eslint-disable-next-line no-new-func
     const startCompiles = new Function('selectedKind', 'bootMedia', 'userFirmware',
-        `return (${m[1]}) ? false : userFirmware ? false : true;`);
+        `return (${condition}) ? false : userFirmware ? false : true;`);
     let compared = 0;
     for (const selectedKind of KINDS) {
         for (const bootMedia of [null, {name: 'rom'}]) {
@@ -76,8 +84,11 @@ test('the Debug pane: a green flag starts the runner only when it is the run\'s 
     const sync = method(panel, 'syncProjectTokens (prevProps, initial)');
     assert.match(sync, /this\.onGreenFlag\(\);/);
     assert.doesNotMatch(sync, /this\.onStart\(\);/, 'the token no longer starts a second copy of the VM\'s program');
-    const body = method(panel, 'async onGreenFlag ()')
-        .replace(/await import\([\s\S]*?\);/, 'await __import();');
+    const raw = method(panel, 'async onGreenFlag ()');
+    const importAt = raw.indexOf('await import(');
+    const importEnd = raw.indexOf("debug-runner.js');", importAt);
+    assert.ok(importAt > 0 && importEnd > importAt, 'onGreenFlag no longer imports the runner module');
+    const body = raw.slice(0, importAt) + 'await __import();' + raw.slice(importEnd + "debug-runner.js');".length);
     const run = async ({kind, device, bootMedia = null, userFirmware = null}) => {
         const calls = [];
         const self = {
