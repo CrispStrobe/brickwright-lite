@@ -66,6 +66,7 @@ import {lowerableLines} from '../../lib/bw-fpga/pseudocode-expr.js';
 import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
 import {isSpike3Program, runSpike3OnVirtualHub} from '../../lib/spike3-python-run.js';
 import {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
+import {createCodeRunFeedback} from '../../lib/spike-arena/code-run-feedback.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
 // handoff has to name a tab index and a wrong one silently switches to Sounds.
@@ -3822,6 +3823,8 @@ class PseudocodeImporter extends React.Component {
     async runOnNuttxPython () {
         this.openSpikeArena();
         this.setState({busy: true});
+        const feedback = createCodeRunFeedback(state => this.setState(state), {
+            running: 'Python running in full NuttX firmware.', completed: 'Python firmware program completed.', stopped: this.L.spike3Stopped});
         try {
             const source = this.activeCode();
             const deadline = Date.now() + 15000;
@@ -3829,12 +3832,12 @@ class PseudocodeImporter extends React.Component {
             const pane = window.__bwSpikeArena?._pane;
             if (!pane?.bridge) throw new Error('Open the SPIKE arena before running firmware');
             await new Promise(resolve => pane.setState({execution: 'nuttx'}, resolve));
-            await pane.startFirmware(null, {source,
-                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]}), onCompleted: () => this.setState({spike3Running: false, status: 'Python firmware program completed.'})});
+            this._spike3Stop = () => { feedback.requestStop(); return pane.stopProgram(); };
+            await pane.startFirmware(null, {source, ...feedback.callbacks,
+                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]})});
             if (!pane.firmwareSession) throw new Error(pane.state.message || 'Full NuttX firmware could not start');
-            this._spike3Stop = () => pane.stopProgram();
-            this.setState({spike3Running: true, status: 'Python running in full NuttX firmware.'});
-        } catch (error) { this.setState({status: error.message}); }
+            feedback.started();
+        } catch (error) { if (!feedback.cancelled) this.setState({status: error.message}); }
         finally { this.setState({busy: false}); }
     }
 
@@ -3842,6 +3845,8 @@ class PseudocodeImporter extends React.Component {
     async runOnMicroPythonImage () {
         this.openSpikeArena();
         this.setState({busy: true});
+        const feedback = createCodeRunFeedback(state => this.setState(state), {
+            running: 'Python running in the local MicroPython image.', completed: 'MicroPython program completed.', stopped: this.L.spike3Stopped});
         try {
             const source = this.activeCode();
             const {encodeSource} = await import('../../lib/spike-micropython/raw-repl.js');
@@ -3856,20 +3861,20 @@ class PseudocodeImporter extends React.Component {
                 this.setState({status: 'Image selection cancelled.'});
                 return;
             }
-            this._spike3Stop = () => pane.stopProgram();
+            this._spike3Stop = () => { feedback.requestStop(); return pane.stopProgram(); };
             this.setState({spike3Running: true, spike3Log: [], status: 'Python running in the local MicroPython image.'});
-            await pane.startFirmware(null, {source,
-                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]}),
-                onCompleted: () => this.setState({spike3Running: false, status: 'MicroPython program completed.'}),
-                onError: error => this.setState({spike3Running: false, status: error.message})});
+            await pane.startFirmware(null, {source, ...feedback.callbacks,
+                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]})});
             if (!pane.firmwareSession && pane.state.status === 'failed') throw new Error(pane.state.message || 'MicroPython could not start');
-        } catch (error) { this.setState({spike3Running: false, status: error.message}); }
+        } catch (error) { if (!feedback.cancelled) this.setState({spike3Running: false, status: error.message}); }
         finally { this.setState({busy: false}); }
     }
 
     async runOnSpikeFirmware () {
         this.openSpikeArena();
         this.setState({busy: true});
+        const feedback = createCodeRunFeedback(state => this.setState(state), {
+            running: 'Code program running in ARM firmware.', completed: 'Firmware program completed.', stopped: this.L.spike3Stopped});
         try {
             await this.compile({strict: true});
             const deadline = Date.now() + 15000;
@@ -3877,11 +3882,11 @@ class PseudocodeImporter extends React.Component {
             const pane = window.__bwSpikeArena?._pane;
             if (!pane?.bridge) throw new Error('Open the SPIKE arena before running firmware');
             await new Promise(resolve => pane.setState({execution: pane.state.execution === 'nuttx' ? 'nuttx' : 'program'}, resolve));
-            await pane.startFirmware(null, {onCompleted: () => this.setState({spike3Running: false, status: 'Firmware program completed.'})});
+            this._spike3Stop = () => { feedback.requestStop(); return pane.stopProgram(); };
+            await pane.startFirmware(null, feedback.callbacks);
             if (!pane.firmwareSession) throw new Error(pane.state.message || 'Firmware could not start');
-            this._spike3Stop = () => pane.stopProgram();
-            this.setState({spike3Running: true, status: 'Code program running in ARM firmware.'});
-        } catch (error) { this.setState({status: error.message}); }
+            feedback.started();
+        } catch (error) { if (!feedback.cancelled) this.setState({status: error.message}); }
         finally { this.setState({busy: false}); }
     }
 
