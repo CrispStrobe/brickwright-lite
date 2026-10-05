@@ -6,7 +6,10 @@
 // `/* */`, so they filed the program under `longLeaked` — a leak the route
 // itself (compileC8086 -> cUsesLong, which also drops `//`, strings and chars)
 // does not see, and SmallerC never sees either: the C compiles. The scripts now
-// import cUsesLong. This file holds both directions on that real program:
+// import cUsesLong. sb3-creator #52 (task B11) reworded that comment, so the
+// fixture is now the gallery program with the B10 sentence put back as one
+// comment line (fixtureSource); everything else is the real program. This file
+// holds both directions on it:
 //   - a comment that says "long" is not a leak (it reaches `emits`), and
 //   - an emitted `long` token still is (a mutant emitter typing i8086 numbers
 //     `long` puts the same program in `long`), so the bucket is not vacated.
@@ -30,17 +33,25 @@ const run = async (script, examples, extra = []) => JSON.parse((await execFileP(
     ['--import', hook, `scripts/${script}`, '--examples', examples, ...extra],
     {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout);
 
+const COMMENT_ANCHOR = '# How noisy is the room?';
+async function fixtureSource () {
+    const src = await readFile(join(root, 'overlay/scratch-gui/examples', PROGRAM, 'program.bw'), 'utf8');
+    assert.equal(src.split(COMMENT_ANCHOR).length, 2, 'fixture comment anchor moved');
+    return src.replace(COMMENT_ANCHOR, `# So one long noise counts once.\n${COMMENT_ANCHOR}`);
+}
+
 async function oneProgramCorpus () {
     const dir = await mkdtemp(join(tmpdir(), 'b10-long-corpus-'));
     // A copy, not a symlink: the scripts list directories by dirent type.
     await cp(join(root, 'overlay/scratch-gui/examples', PROGRAM), join(dir, PROGRAM), {recursive: true});
+    await writeFile(join(dir, PROGRAM, 'program.bw'), await fixtureSource());
     return dir;
 }
 
 test('precondition: the emitted 8086 C says "long" only inside a // comment', async () => {
     const {default: SB3Creator} = await import(pathToFileURL(join(libDir, 'sb3-creator.js')).href);
     const {cUsesLong} = await import(pathToFileURL(join(libDir, 'bw-asm/assemble-route.js')).href);
-    const src = await readFile(join(root, 'overlay/scratch-gui/examples', PROGRAM, 'program.bw'), 'utf8');
+    const src = await fixtureSource();
     const r = SB3Creator.retargetPseudocode(src, 'stc12c5a60s2');
     const text = (typeof r === 'string' ? r : r.pseudocode || r.text || r.source || r.code)
         .replace(/^DEVICE .*$/m, 'DEVICE i8086');

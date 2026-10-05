@@ -119,3 +119,4 @@ By category (the closed `REASON` vocabulary). These carry no verbs.
 
 chipRefusals() (i8086-machine.js) keeps a per-feature ledger for a few PC host chips. The join is CLEAN for **i8237**, **ym3812** (identifier-shaped `feature` literals) and declared PARTIAL for `sb-dsp`, `upd765`, `i8255`, `i8259` (templated hex or full sentences). All are `dip-surface`.
 
+<!-- WARNING: tone stored [avr] != derived [8051,avr,arm] — run the gate -->

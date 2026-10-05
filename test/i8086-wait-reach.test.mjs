@@ -85,7 +85,18 @@ const auditReach = (receipt, {compiled}) => {
     // sense-noise-counter's only `long` is a `//` copy of its program comment;
     // the script now asks the route's cUsesLong, so it is emitted, not a leak
     // (test/i8086-reach-long-classifier.test.mjs holds both directions).
-    assert.equal(s.programs, 295);
+    // 295 -> 303 at sb3-creator c8edc8cc (task B11, #52): eight device and
+    // language examples. None emits for i8086: the five whose PART (DS3231,
+    // AT24C02, I2C, HC-SR04, DS18B20) the 8086 board does not have are refused
+    // as unreadable lines (parseFailed +5, named below); melody-lists (tone,
+    // now; a literal and a computed wait) and random-lucky-light (now; a
+    // literal wait) stop at their chokes; guess-the-number's joined print is
+    // refused (printRefused, named below). #52 also refuses tone + print on
+    // the 8051 at retarget (both need Timer 1), which moves the existing
+    // arduino-02-tone-pitch-follower from its adc+tone choke to retargetRefused
+    // and takes its literal wait out of the count: waitLiteralPrograms +2 -1,
+    // waitComputedPrograms +1.
+    assert.equal(s.programs, 303);
     // 122 -> 121 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row (a literal
     // `wait 150 ms`) names a LEDBANK8, which i8086 does not have; its LED line
     // was DROPPED with a warning and the rest counted as reached. An unreadable
@@ -93,8 +104,8 @@ const auditReach = (receipt, {compiled}) => {
     // 121 -> 120 at sb3-creator 8f4b6316 (task D6): 80-a2-lcd-moving-text's
     // parallel LCD1602 declaration, which i8086 cannot take, was skipped with a
     // warning; it is refused now, so the program is parseFailed (named below).
-    assert.equal(s.waitLiteralPrograms, 133);
-    assert.equal(s.waitComputedPrograms, 3);
+    assert.equal(s.waitLiteralPrograms, 134);
+    assert.equal(s.waitComputedPrograms, 4);
     assert.equal(s.waitLiteralRefused, 0);
     assert.equal(s.waitComputedRefused, 2);
     assert.deepEqual(receipt.emits, expectedEmitted,
@@ -108,7 +119,8 @@ const auditReach = (receipt, {compiled}) => {
         'arduino-02-debounce'
     ]);
     assert.deepEqual(namesOf(receipt.printRefused), [
-        'arduino-08-string-addition'
+        'arduino-08-string-addition',
+        'guess-the-number'
     ]);
     assert.equal(receipt.loweringRefused.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
     assert.equal(receipt.printRefused.every(row => row.includes(': ') && !row.endsWith(': ?')), true);
@@ -130,15 +142,17 @@ const auditReach = (receipt, {compiled}) => {
     assert.equal(s.longLeaked, 0);
     // 1 -> 3 at sb3-creator 8f4b6316 (task D6): the two parallel-LCD1602
     // programs' declaration is refused on i8086 instead of skipped.
-    assert.equal(s.parseFailed, 3);
+    assert.equal(s.parseFailed, 8);
     assert.deepEqual(receipt.parseFailed.map(row => row.split(': ')[0]),
-        ['80-a2-lcd-moving-text', '81-8051-lcd1602-parallel', '82-a2-led-row']);
+        ['80-a2-lcd-moving-text', '81-8051-lcd1602-parallel', '82-a2-led-row',
+            'clock-ds3231', 'eeprom-start-counter', 'i2c-scanner', 'sense-distance-alarm',
+            'sense-thermometer-1wire']);
     assert.equal(s.retargetRefused + s.parseFailed + s.choke + s.printRefused + s.loweringRefused + s.hostC
         + s.int16Refused + s.waitLiteralRefused + s.waitComputedRefused + s.emits, s.programs,
     'every gallery program must land in exactly one outcome bucket');
 };
 
-test('the 295-program gallery records the wait/print gains and every emitted program compiles',
+test('the 303-program gallery records the wait/print gains and every emitted program compiles',
     {timeout: 300000}, async t => {
         const {stdout} = await execFileP(process.execPath, [
             '--import', guiScopeHook,

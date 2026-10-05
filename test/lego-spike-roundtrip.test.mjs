@@ -211,8 +211,15 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // src/` = cMs (a computed `wait x ms` scales before dividing), the C reader's
     // pwm_set sentence, and the referee's matching ms scaling. None is a SPIKE
     // word or on this fixture's parse/decompile path; the assertions re-ran.
+    // PIN MOVED 0f14aedb -> c8edc8cc (2026-10-05, sb3-creator#52, task B11):
+    // device C on every chip (timing, tone, lists/random, sensor and I2C PARTs,
+    // pin hats, ask/answer), the C reader and referee to match, eight gallery
+    // examples. The parser change a SPIKE line could meet is the pin-role PART
+    // declaration (HCSR04/DS18B20/DS3231/AT24C02/I2C) and `set time of`/`store`/
+    // `byte ... of`/`i2c device ...` -- none is a SPIKE word or in this fixture;
+    // the assertions re-ran.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '0f14aedbc86e939c58bc7bcf698047cfe094585a');
+        'c8edc8cc39b8306e714e5cf0e7ab283a1fb944fa');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

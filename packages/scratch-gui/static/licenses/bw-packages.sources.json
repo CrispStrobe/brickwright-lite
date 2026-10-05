@@ -4,13 +4,13 @@
   "packages": [
     {
       "name": "bw-board",
-      "commit": "292f3307f40ccc0e279036ff8fc3cfd4be72598c",
+      "commit": "df7dae8534cfe92dfdf79982152a6dab76fecb69",
       "license": "MIT",
       "licenseFile": "bw-board.MIT.txt",
       "licenseSha256": "e53c4e17a0971ca6cac5010a19876b77a896e3ce172b1f61d934dfd14c595d6d",
-      "sourceTree": "https://github.com/CrispStrobe/bw-board/tree/292f3307f40ccc0e279036ff8fc3cfd4be72598c",
-      "sourceArchive": "https://github.com/CrispStrobe/bw-board/archive/292f3307f40ccc0e279036ff8fc3cfd4be72598c.tar.gz",
-      "upstreamLicense": "https://github.com/CrispStrobe/bw-board/blob/292f3307f40ccc0e279036ff8fc3cfd4be72598c/LICENSE"
+      "sourceTree": "https://github.com/CrispStrobe/bw-board/tree/df7dae8534cfe92dfdf79982152a6dab76fecb69",
+      "sourceArchive": "https://github.com/CrispStrobe/bw-board/archive/df7dae8534cfe92dfdf79982152a6dab76fecb69.tar.gz",
+      "upstreamLicense": "https://github.com/CrispStrobe/bw-board/blob/df7dae8534cfe92dfdf79982152a6dab76fecb69/LICENSE"
     },
     {
       "name": "bw-circuit-ui",

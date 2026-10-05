@@ -22,7 +22,7 @@ const measureRaw = async examples => (await execFileP(process.execPath,
     {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout;
 const measure = async examples => JSON.parse(await measureRaw(examples));
 
-test('the exact 295-program post-production print census is disjoint and exhaustive',
+test('the exact 303-program post-production print census is disjoint and exhaustive',
     {timeout: 120000}, async () => {
         const absolute = join(root, 'overlay/scratch-gui/examples');
         const absoluteBytes = await measureRaw(absolute);
@@ -43,19 +43,33 @@ test('the exact 295-program post-production print census is disjoint and exhaust
         // of its program comment; the classifier is now the route's own
         // cUsesLong (test/i8086-reach-long-classifier.test.mjs), so it is
         // emitted, not longLeaked.
-        assert.equal(report.programs, 295);
-        assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 109, total: 109});
-        assert.deepEqual(report.source.values, {literalText: 46, numericLiteral: 0, computed: 63});
+        // 295 -> 303 at sb3-creator c8edc8cc (task B11, #52): eight examples.
+        // Output-bearing: clock-ds3231, eeprom-start-counter, i2c-scanner,
+        // sense-distance-alarm, sense-thermometer-1wire (computed) and
+        // guess-the-number (mixed); no output opcode: melody-lists,
+        // random-lucky-light. The five PART programs are parseFailed on the
+        // 8086 (it has none of those parts), so their output is notReached;
+        // guess-the-number's joined print is printRefused. #52 also refuses
+        // tone + print on the 8051 at retarget (Timer 1 is the baud clock):
+        // arduino-02-tone-pitch-follower leaves the adc+tone choke for
+        // retargetRefused, and its output becomes notReached.
+        assert.equal(report.programs, 303);
+        assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 119, total: 119});
+        assert.deepEqual(report.source.values, {literalText: 48, numericLiteral: 0, computed: 71});
         assert.deepEqual(report.source.programCounts,
-            {literalText: 6, numericLiteral: 0, computed: 28, mixed: 15, none: 246});
-        assert.deepEqual(report.opcode.operations, report.source.operations,
+            {literalText: 6, numericLiteral: 0, computed: 33, mixed: 16, none: 248});
+        // Until B11 every output-bearing program parsed on the 8086, so the
+        // opcode inventory equalled the source one. Now 7 computed prints do
+        // not reach an opcode: those of the five PART programs (parseFailed)
+        // and of arduino-02-tone-pitch-follower (retargetRefused).
+        assert.deepEqual(report.opcode.operations, {say: 0, sayForSecs: 0, print: 112, total: 112},
             'retarget/parse changed the output-opcode inventory');
-        assert.deepEqual(report.opcode.values, report.source.values,
+        assert.deepEqual(report.opcode.values, {literalText: 48, numericLiteral: 0, computed: 64},
             'retarget/parse changed the output-value inventory');
-        assert.equal(report.invariants.sourceLiteralTextPrograms, 21);
-        assert.equal(report.invariants.sourceNumericOrComputedPrograms, 43);
-        assert.equal(report.invariants.sourceOutputPrograms, 49);
-        assert.equal(report.invariants.sourceProgramCount, 295);
+        assert.equal(report.invariants.sourceLiteralTextPrograms, 22);
+        assert.equal(report.invariants.sourceNumericOrComputedPrograms, 49);
+        assert.equal(report.invariants.sourceOutputPrograms, 55);
+        assert.equal(report.invariants.sourceProgramCount, 303);
         // 151 -> 150 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row's
         // `light only led step on leds` names a LEDBANK8, which i8086 does not
         // have, so the line was DROPPED with a warning and the program counted
@@ -69,30 +83,33 @@ test('the exact 295-program post-production print census is disjoint and exhaust
         // parseFailed, named. (82-a2-led-row's LEDBANK8 line is refused too.)
         // 148 -> 161 at sb3-creator 0f14aedb (task B10): the thirteen #49 examples
         // all parse on the 8086.
-        assert.equal(report.invariants.opcodeProgramCount, 161);
+        // 161 -> 163 at sb3-creator c8edc8cc (task B11): +3 parsed (melody-lists,
+        // random-lucky-light, guess-the-number), -1 retarget-refused
+        // (arduino-02-tone-pitch-follower); the five PART examples are parseFailed.
+        assert.equal(report.invariants.opcodeProgramCount, 163);
         assert.equal(report.invariants.sourceProgramExhaustive, true);
         assert.equal(report.invariants.opcodeProgramExhaustive, true);
-        assert.equal(report.invariants.currentOutputCount, 49);
+        assert.equal(report.invariants.currentOutputCount, 55);
         assert.equal(report.invariants.currentOutputExhaustiveForSource, true);
         assert.deepEqual(report.currentOutput.counts,
-            {notReached: 0, hostC: 15, refused: 24, emitted: 10, commentOnly: 0});
+            {notReached: 6, hostC: 15, refused: 24, emitted: 10, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
-            retargetRefused: 131, parseFailed: 3, noOutputOpcode: 112, hostC: 15,
-            printRefused: 1, remainingChoke: 22, waitRefused: 1, int16Refused: 0,
+            retargetRefused: 132, parseFailed: 8, noOutputOpcode: 114, hostC: 15,
+            printRefused: 2, remainingChoke: 21, waitRefused: 1, int16Refused: 0,
             longLeaked: 0, emitted: 10, commentOnly: 0
         });
-        assert.equal(report.invariants.terminalCount, 295);
+        assert.equal(report.invariants.terminalCount, 303);
         assert.equal(report.invariants.terminalExhaustive, true);
         assert.deepEqual(report.chokeCombinationCounts, {
-            adc: 17, none: 12, 'adc + tone': 1,
+            adc: 17, none: 13,
             'adc + pwm': 1, 'adc + now': 3
         });
-        assert.deepEqual(report.remainingChokeCounts, {adc: 22, tone: 1, pwm: 1, now: 3});
-        assert.equal(report.computedForms.variable.deviceOccurrences, 17);
+        assert.deepEqual(report.remainingChokeCounts, {adc: 21, pwm: 1, now: 3});
+        assert.equal(report.computedForms.variable.deviceOccurrences, 16);
         assert.equal(report.computedForms.stc12_read.deviceOccurrences, 15);
-        assert.equal(report.computedForms.operator_join.deviceOccurrences, 3);
+        assert.equal(report.computedForms.operator_join.deviceOccurrences, 5);
         assert.deepEqual(report.computedForms.operator_join.devicePrograms,
-            ['arduino-08-string-addition']);
+            ['arduino-08-string-addition', 'guess-the-number']);
         assert.deepEqual(report.currentOutput.emitted, [
             'arduino-01-digital-read-serial',
             'arduino-02-digital-input-pullup',
@@ -123,7 +140,8 @@ test('the exact 295-program post-production print census is disjoint and exhaust
                 `${name}: released literal output remained a print refusal instead of its ADC choke`);
         }
         assert.deepEqual(Object.keys(report.printRefusalEvidence), [
-            'arduino-08-string-addition'
+            'arduino-08-string-addition',
+            'guess-the-number'
         ]);
         assert.ok(report.terminal.emitted.includes('arduino-sk-p11-crystal-ball'),
             'N2f crystal-ball did not reach emitted terminal output');
