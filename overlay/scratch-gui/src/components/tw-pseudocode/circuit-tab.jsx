@@ -716,12 +716,13 @@ class CircuitTab extends React.Component {
      * The VM's own stop. vm.greenFlag() calls stopAll() FIRST, so a green
      * flag emits PROJECT_STOP_ALL and then PROJECT_START in one synchronous
      * call. Relayed as a user stop, that bumped stopToken beside the start's
-     * runToken; the designer applies the two in effect order — simulate, then
-     * build — and was left in build mode with its clock stopped, so a run's
-     * writes landed on a frozen board (task B7, measured in a real browser:
-     * from the third green flag on, no reset and board time stuck at
-     * 250 ms). A VM stop that a start follows in the same call is a restart:
-     * it is held for a microtask and dropped if the start arrives.
+     * runToken, and the designer applies the two in effect order: simulate,
+     * then build. Until task B7 the `bw-green-flag` event arrived LAST (on a
+     * setTimeout) and set simulate again; now that it goes out first — the
+     * designer's clear must precede the program — the stop token would be the
+     * last word and every green flag would leave the designer in build mode,
+     * its clock stopped. A VM stop that a start follows in the same call is a
+     * restart: it is held for a microtask and dropped if the start arrives.
      */
     handleVmStopAll () {
         this._vmStopPending = true;
