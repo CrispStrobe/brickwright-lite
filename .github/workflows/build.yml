@@ -1372,6 +1372,10 @@ jobs:
       # designer cleared its board after the VM's first step (a setTimeout race),
       # and the green flag's own stopAll left it in build mode with its clock
       # stopped; both measured in a real browser on production, both held here.
+      # Task B8: six consecutive runs on ONE page, each like the first — the board
+      # on screen is the board the VM's blocks write at every frame, the Debug
+      # pane runs no second copy, and a flag during a Debug-pane session hands
+      # the display back (the runner's board had taken it from the second flag on).
       - name: Browser gate — the green flag keeps a program's first pin write
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
