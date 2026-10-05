@@ -332,12 +332,22 @@ try {
         }).catch(() => []), names => names.includes('__arcadeTemplate1'), 30000);
         check('⇦ To blocks builds the imported Arcade sprites',
             ['Game', '__arcadeTemplate1', '__arcadeTemplate2', '__arcadeTemplate3'].every(name => built.includes(name)), built.join(', '));
+        // Edit mySprite's template, which carries its Arcade art. Selected through
+        // the VM (what a click in the sprite list does): on the Costumes tab the
+        // `sprite-selector-item` class also matches the COSTUME tiles, so a click by
+        // name selected nothing, and the editor showed whichever sprite To blocks
+        // auto-selected (the first with scripts: now Game, which has no art).
+        const selected = await page.evaluate(() => {
+            const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
+            const target = vm && vm.runtime.targets.find(t => t.getName && t.getName() === '__arcadeTemplate1');
+            if (!target) return null;
+            vm.setEditingTarget(target.id);
+            return vm.editingTarget && vm.editingTarget.getName();
+        }).catch(() => null);
+        check('the imported Arcade sprite\'s template can be selected for editing', selected === '__arcadeTemplate1', String(selected));
         const costumesTab = page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first();
         if (await costumesTab.count()) {
             await costumesTab.click();
-            // Select mySprite's template by name: it carries the Arcade art.
-            const sprite = page.locator('[class*="sprite-selector-item"]', {hasText: '__arcadeTemplate1'}).first();
-            if (await sprite.count()) await sprite.click().catch(() => {});
             // A crash here would be the paint editor itself on the imported costume, not the toggle.
             const tabErrors = browserErrors.filter(e => /Costume Tab/.test(e)).length;
             check('the costume tab opens on an imported Arcade sprite without crashing', tabErrors === 0,
