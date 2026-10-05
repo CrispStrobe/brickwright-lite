@@ -10,7 +10,11 @@
 //     prove each mismatch class fires (emulation-vs-reference, and the codegen
 //     case only the `expected` anchor can catch);
 //   - a REAL run on the emulated engine, so the engine side has a holder that
-//     is a pass, not a skip.
+//     is a pass, not a skip;
+//   - the CLI gate's fixture corpus, checked for well-formedness and that every
+//     `expected` anchor is already a fixed point of the normaliser (the form the
+//     oracle compares against). Importing that corpus is also what keeps the CLI
+//     gate exercised in gate-coverage's eyes — see the import note below.
 // The LIVE cross-engine twin-run (emulated vs the BBCSDL reference across the
 // fixtures) needs the native reference built, so it is NOT a unit test here —
 // it is `scripts/verify-basic-oracle.mjs` (CLI, and the CI workflow that builds
@@ -25,6 +29,13 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {normalizeConsole, compareTwin, runEmulatedBbc} from
     '../overlay/scratch-gui/src/lib/bw-debug/basic-twin-oracle.js';
+// The CLI/CI gate's own fixture corpus. Importing it here is also what keeps the
+// gate from rotting unseen: gate-coverage.test.mjs counts a verify-*.mjs script
+// as exercised only when a test imports it (naming it is not running it), and
+// this suite runs on every build. The dynamic generate machinery lives behind an
+// `await import` inside generateFromPseudocode, so this top-level import stays
+// light and the CLI entry is guarded — importing runs no oracle.
+import {RAW_FIXTURES, GENERATED_FIXTURES} from '../scripts/verify-basic-oracle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const COM = new Uint8Array(readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/roms/bbcbasic.com')));
@@ -64,4 +75,29 @@ test('the emulated BBC BASIC (Z80) machine runs a program and prints a computed 
     const r = runEmulatedBbc(COM, '10 PRINT 2+2');
     assert.equal(r.reason, 'ok', `run completed (reason ${r.reason})`);
     assert.equal(normalizeConsole(r.output), '         4');
+});
+
+test('the CLI gate fixture corpus is well-formed and its anchors are already normalised', () => {
+    // The oracle anchor-compares normalizeConsole(output) against a fixture's
+    // `expected`; if an anchor were stored un-normalised (a trailing CRLF, an
+    // edge blank line) the comparison would not be apples-to-apples and a real
+    // divergence could read as agreement. So the corpus must be non-empty and
+    // every anchor must already be a fixed point of the normaliser — exercised
+    // here on the exact data the CLI/CI gate runs, no engine required.
+    assert.ok(RAW_FIXTURES.length >= 5, 'raw fixtures present');
+    assert.ok(GENERATED_FIXTURES.length >= 1, 'generated fixtures present');
+    for (const f of RAW_FIXTURES) {
+        assert.equal(typeof f.name, 'string');
+        assert.equal(typeof f.program, 'string', `${f.name}: raw fixture carries a program`);
+        assert.equal(typeof f.expected, 'string', `${f.name}: raw fixture carries an anchor`);
+        assert.equal(normalizeConsole(f.expected), f.expected,
+            `${f.name}: anchor is stored in normal form`);
+    }
+    for (const f of GENERATED_FIXTURES) {
+        assert.equal(typeof f.name, 'string');
+        assert.equal(typeof f.pseudocode, 'string', `${f.name}: generated fixture carries dialect pseudocode`);
+        assert.equal(typeof f.expected, 'string', `${f.name}: generated fixture carries an anchor`);
+        assert.equal(normalizeConsole(f.expected), f.expected,
+            `${f.name}: anchor is stored in normal form`);
+    }
 });
