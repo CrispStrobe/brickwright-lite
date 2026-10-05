@@ -204,7 +204,14 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1217, 'the gate must cover the complete vendored corpus');
+    // 1217 -> 1349 on 2026-10-05 (task B10, sb3-creator #49 at pin 0f14aedb):
+    // thirteen portable sensor and game examples, 132 circuit files between
+    // them (one authored STC12 base + 8-11 device benches each): sense-pir-alarm,
+    // sense-clap-switch, sense-noise-counter, sense-noise-light,
+    // sense-light-barrier, sense-auto-dimmer, sense-twilight-switch,
+    // morse-buzzer-message, binary-counter-buttons, dice-pips, reaction-duel,
+    // two-toggle-keys, idea-generator. None removed.
+    assert.equal(files.length, 1349, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -347,9 +354,13 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         // axis contributes the same 24 electrically validated benches counted
         // above; the three EEPROM-conflicting Arduino candidates remain
         // intentionally unavailable.
-        authored: 116,
-        retargeted: 907,
-        total: 1023
+        // 116/907 -> 129/1026 (total 1023 -> 1155) on 2026-10-05 (task B10,
+        // sb3-creator #49): the thirteen new examples above, each authored once
+        // and retargeted onto its 8-11 benches: +13 authored, +119 retargeted,
+        // the same 132 files the corpus count gained, none overlapping.
+        authored: 129,
+        retargeted: 1026,
+        total: 1155
     });
 });
 

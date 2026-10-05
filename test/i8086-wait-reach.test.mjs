@@ -54,14 +54,22 @@ const expectedEmitted = [
     'arduino-sk-p15-hacking-buttons',
     'avr01-blink',
     'avr05-button-led',
+    'binary-counter-buttons',
     'blinkenrocket-pendant',
     'eater6502-blink',
     'i8086-blink',
+    'idea-generator',
     'mega01-blink',
     'mega03-port-current',
+    'morse-buzzer-message',
     'nano01-blink',
     'pico01-blink',
     'pico04-button',
+    'reaction-duel',
+    'sense-clap-switch',
+    'sense-noise-counter',
+    'sense-pir-alarm',
+    'two-toggle-keys',
     'z80-pd-bench'
 ];
 const namesOf = rows => rows.map(row => row.split(': ')[0]);
@@ -69,7 +77,15 @@ const auditReach = (receipt, {compiled}) => {
     const s = receipt.summary;
     // c593574 adds lesson 56's numeric-only STC12 program. Its two literal
     // waits make it one new emitted/compiled program and one new wait program.
-    assert.equal(s.programs, 282);
+    // 282 -> 295 at sb3-creator 0f14aedb (task B10, #49): thirteen sensor and
+    // game examples, all with literal waits (waitLiteralPrograms +13). Eight
+    // emit and compile (named in expectedEmitted); four stop at the ADC/PWM
+    // choke; dice-pips' slowing roll is a computed wait, refused before its
+    // unsigned word could wrap (waitComputedPrograms and -Refused +1).
+    // sense-noise-counter's only `long` is a `//` copy of its program comment;
+    // the script now asks the route's cUsesLong, so it is emitted, not a leak
+    // (test/i8086-reach-long-classifier.test.mjs holds both directions).
+    assert.equal(s.programs, 295);
     // 122 -> 121 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row (a literal
     // `wait 150 ms`) names a LEDBANK8, which i8086 does not have; its LED line
     // was DROPPED with a warning and the rest counted as reached. An unreadable
@@ -77,10 +93,10 @@ const auditReach = (receipt, {compiled}) => {
     // 121 -> 120 at sb3-creator 8f4b6316 (task D6): 80-a2-lcd-moving-text's
     // parallel LCD1602 declaration, which i8086 cannot take, was skipped with a
     // warning; it is refused now, so the program is parseFailed (named below).
-    assert.equal(s.waitLiteralPrograms, 120);
-    assert.equal(s.waitComputedPrograms, 2);
+    assert.equal(s.waitLiteralPrograms, 133);
+    assert.equal(s.waitComputedPrograms, 3);
     assert.equal(s.waitLiteralRefused, 0);
-    assert.equal(s.waitComputedRefused, 1);
+    assert.equal(s.waitComputedRefused, 2);
     assert.deepEqual(receipt.emits, expectedEmitted,
         'the exact safety-correct emitted set changed');
     assert.deepEqual(receipt.compiled, compiled ? expectedEmitted : []);
@@ -102,9 +118,10 @@ const auditReach = (receipt, {compiled}) => {
         'N2e list lowering is implemented; ADC remains smoothing\'s sole terminal choke');
     assert.equal(receipt.choke.some(row => /(?:^|, )numericLists(?:,|$)/.test(row.split(': ')[1] || '')), false,
         'an implemented numeric-list feature must never be reported as unsupported');
-    assert.equal(s.emits, 49,
+    assert.equal(s.emits, 57,
         'c879 removes two unsafe timer fallbacks from N2c\'s historical 44, then N2d adds four prints, '
-        + 'P7 adds i8086-blink, N2f adds crystal-ball, and c593574 adds lesson 56');
+        + 'P7 adds i8086-blink, N2f adds crystal-ball, c593574 adds lesson 56, and B10 adds eight of '
+        + 'sb3-creator #49\'s examples');
     if (compiled) {
         assert.equal(s.compiled, s.emits,
             `every emitted program must compile through SmallerC: ${JSON.stringify(receipt.compileFailed)}`);
@@ -121,7 +138,7 @@ const auditReach = (receipt, {compiled}) => {
     'every gallery program must land in exactly one outcome bucket');
 };
 
-test('the 282-program gallery records the wait/print gains and every emitted program compiles',
+test('the 295-program gallery records the wait/print gains and every emitted program compiles',
     {timeout: 300000}, async t => {
         const {stdout} = await execFileP(process.execPath, [
             '--import', guiScopeHook,

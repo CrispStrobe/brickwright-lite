@@ -22,7 +22,7 @@ const measureRaw = async examples => (await execFileP(process.execPath,
     {cwd: root, maxBuffer: 8 * 1024 * 1024})).stdout;
 const measure = async examples => JSON.parse(await measureRaw(examples));
 
-test('the exact 282-program post-production print census is disjoint and exhaustive',
+test('the exact 295-program post-production print census is disjoint and exhaustive',
     {timeout: 120000}, async () => {
         const absolute = join(root, 'overlay/scratch-gui/examples');
         const absoluteBytes = await measureRaw(absolute);
@@ -33,19 +33,29 @@ test('the exact 282-program post-production print census is disjoint and exhaust
         assert.equal(report.schema, 'n2f-i8086-print-reach-v5');
         // c593574 adds lesson 56's program.bw. It has no output opcode, so it
         // grows only the exhaustive corpus/opcode denominators and no print bucket.
-        assert.equal(report.programs, 282);
-        assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 83, total: 83});
-        assert.deepEqual(report.source.values, {literalText: 27, numericLiteral: 0, computed: 56});
+        // 282 -> 295 at sb3-creator 0f14aedb (task B10, #49): thirteen sensor and
+        // game examples. Their terminal outcomes: emitted binary-counter-buttons,
+        // idea-generator, reaction-duel, sense-noise-counter, sense-pir-alarm (5);
+        // no output opcode morse-buzzer-message, sense-auto-dimmer,
+        // sense-clap-switch, sense-noise-light, two-toggle-keys (5); ADC choke
+        // sense-light-barrier, sense-twilight-switch (2); computed wait refused
+        // dice-pips (1). sense-noise-counter's C says "long" only in a `//` copy
+        // of its program comment; the classifier is now the route's own
+        // cUsesLong (test/i8086-reach-long-classifier.test.mjs), so it is
+        // emitted, not longLeaked.
+        assert.equal(report.programs, 295);
+        assert.deepEqual(report.source.operations, {say: 0, sayForSecs: 0, print: 109, total: 109});
+        assert.deepEqual(report.source.values, {literalText: 46, numericLiteral: 0, computed: 63});
         assert.deepEqual(report.source.programCounts,
-            {literalText: 3, numericLiteral: 0, computed: 24, mixed: 14, none: 241});
+            {literalText: 6, numericLiteral: 0, computed: 28, mixed: 15, none: 246});
         assert.deepEqual(report.opcode.operations, report.source.operations,
             'retarget/parse changed the output-opcode inventory');
         assert.deepEqual(report.opcode.values, report.source.values,
             'retarget/parse changed the output-value inventory');
-        assert.equal(report.invariants.sourceLiteralTextPrograms, 17);
-        assert.equal(report.invariants.sourceNumericOrComputedPrograms, 38);
-        assert.equal(report.invariants.sourceOutputPrograms, 41);
-        assert.equal(report.invariants.sourceProgramCount, 282);
+        assert.equal(report.invariants.sourceLiteralTextPrograms, 21);
+        assert.equal(report.invariants.sourceNumericOrComputedPrograms, 43);
+        assert.equal(report.invariants.sourceOutputPrograms, 49);
+        assert.equal(report.invariants.sourceProgramCount, 295);
         // 151 -> 150 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row's
         // `light only led step on leds` names a LEDBANK8, which i8086 does not
         // have, so the line was DROPPED with a warning and the program counted
@@ -57,26 +67,28 @@ test('the exact 282-program post-production print census is disjoint and exhaust
         // skipped with a warning and the programs counted as parsed with no
         // output opcode; the declaration is refused now, so they are
         // parseFailed, named. (82-a2-led-row's LEDBANK8 line is refused too.)
-        assert.equal(report.invariants.opcodeProgramCount, 148);
+        // 148 -> 161 at sb3-creator 0f14aedb (task B10): the thirteen #49 examples
+        // all parse on the 8086.
+        assert.equal(report.invariants.opcodeProgramCount, 161);
         assert.equal(report.invariants.sourceProgramExhaustive, true);
         assert.equal(report.invariants.opcodeProgramExhaustive, true);
-        assert.equal(report.invariants.currentOutputCount, 41);
+        assert.equal(report.invariants.currentOutputCount, 49);
         assert.equal(report.invariants.currentOutputExhaustiveForSource, true);
         assert.deepEqual(report.currentOutput.counts,
-            {notReached: 0, hostC: 15, refused: 21, emitted: 5, commentOnly: 0});
+            {notReached: 0, hostC: 15, refused: 24, emitted: 10, commentOnly: 0});
         assert.deepEqual(report.terminalCounts, {
-            retargetRefused: 131, parseFailed: 3, noOutputOpcode: 107, hostC: 15,
-            printRefused: 1, remainingChoke: 20, waitRefused: 0, int16Refused: 0,
-            longLeaked: 0, emitted: 5, commentOnly: 0
+            retargetRefused: 131, parseFailed: 3, noOutputOpcode: 112, hostC: 15,
+            printRefused: 1, remainingChoke: 22, waitRefused: 1, int16Refused: 0,
+            longLeaked: 0, emitted: 10, commentOnly: 0
         });
-        assert.equal(report.invariants.terminalCount, 282);
+        assert.equal(report.invariants.terminalCount, 295);
         assert.equal(report.invariants.terminalExhaustive, true);
         assert.deepEqual(report.chokeCombinationCounts, {
-            adc: 15, none: 6, 'adc + tone': 1,
+            adc: 17, none: 12, 'adc + tone': 1,
             'adc + pwm': 1, 'adc + now': 3
         });
-        assert.deepEqual(report.remainingChokeCounts, {adc: 20, tone: 1, pwm: 1, now: 3});
-        assert.equal(report.computedForms.variable.deviceOccurrences, 10);
+        assert.deepEqual(report.remainingChokeCounts, {adc: 22, tone: 1, pwm: 1, now: 3});
+        assert.equal(report.computedForms.variable.deviceOccurrences, 17);
         assert.equal(report.computedForms.stc12_read.deviceOccurrences, 15);
         assert.equal(report.computedForms.operator_join.deviceOccurrences, 3);
         assert.deepEqual(report.computedForms.operator_join.devicePrograms,
@@ -86,7 +98,12 @@ test('the exact 282-program post-production print census is disjoint and exhaust
             'arduino-02-digital-input-pullup',
             'arduino-02-state-change',
             'arduino-06-ping',
-            'arduino-sk-p11-crystal-ball'
+            'arduino-sk-p11-crystal-ball',
+            'binary-counter-buttons',
+            'idea-generator',
+            'reaction-duel',
+            'sense-noise-counter',
+            'sense-pir-alarm'
         ]);
         const smoothingEvidence = report.numericListDependencyEvidence['arduino-03-smoothing'];
         assert.ok(smoothingEvidence.some(row => /ADC/.test(row)),

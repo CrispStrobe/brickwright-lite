@@ -21,7 +21,8 @@
 //   host      generateC emitted HOST C (no hardware declarations survived the
 //             retarget — string, micro:bit and SPIKE programs): a desktop
 //             program, never 8086 code; the route refuses it by name
-//   long      a `long` token reached DEVICE C (must be 0 after N2b step 2)
+//   long      a `long` token reached DEVICE C, as the route's own cUsesLong
+//             guard sees it (comments and strings excluded); must be 0
 //   emits     C came out; with --compile, SmallerC is run and the result is
 //             split into compiled / compile-failed (first diagnostic kept)
 // Printed as one JSON object so a test or a plan entry can quote it. The
@@ -45,6 +46,12 @@ const L = new URL('../overlay/scratch-gui/src/lib/', import.meta.url);
 const sb3Idx = argv.indexOf('--sb3');
 const sb3Url = sb3Idx >= 0 && argv[sb3Idx + 1] ? new URL(argv[sb3Idx + 1], L) : new URL('sb3-creator.js', L);
 const {default: SB3Creator} = await import(sb3Url.href);
+// The `long` bucket asks the route's own question: cUsesLong is the guard
+// compileC8086 applies before SmallerC, so a comment or string that merely
+// says "long" (sense-noise-counter carries the program's `# ... one long
+// noise` comment into a `//` line) is not counted as a leak the route would
+// refuse, and a real `long` token still is.
+const {cUsesLong} = await import(new URL('bw-asm/assemble-route.js', L).href);
 const asText = r => {
     if (typeof r === 'string') return r;
     for (const k of ['pseudocode', 'text', 'source', 'code']) if (r && typeof r[k] === 'string') return r[k];
@@ -148,7 +155,7 @@ for (const name of entries) {
         throw new Error(`${name}: emitter refused without a structured i8086 reason`);
     }
     if (/^\s*\/\*[^\n]*blocks → C \(host\)/.test(code)) { out.host.push(name); continue; }
-    if (/\blong\b/.test(code.replace(/\/\*[\s\S]*?\*\//g, ''))) { out.long.push(name); continue; }
+    if (cUsesLong(code)) { out.long.push(name); continue; }
     out.emits.push(name);
     if (compileC) {
         try {
