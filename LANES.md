@@ -482,6 +482,8 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| Two runtimes, one display: one board per run shared by the VM blocks, the Debug pane and the circuit designer (task B8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b8-one-board*` | base `12b678cbd`; Lite circuit tab / Debug pane / run wiring (`circuit-tab.jsx`, debug runner, controls), bw-circuit-ui designer board binding if needed (upstream first), focused tests + a multi-run browser gate; this row and the task file. Not the Arcade salvage (E1). | **CLAIMED 2026-10-05.** Found by B7 (#640). |
+
 | Salvage E1: Arcade import runtime from the parked Codex WIP (task E1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/e1-arcade-import` | base `1613f15b6`; source: local branch `wip/main-checkout-brickwright-lite-20261005` (`23e9c7f44`); paths `overlay/scratch-gui/src/lib/bw-makecode/{arcade-translate,namespace-bindings,lower-lazy-values,value-type-graph,legacy-array-values,tilemap-values,arcade-builtin-images}.js`, `overlay/scratch-vm/src/extensions/crispstrobe/arcade/**`, packages twins, `test/makecode-arcade-*`, `test/fixtures/makecode/**`, this row and the task file. Not export-arcade (E2) or the TurboWarp extensions (E3). | **CLAIMED 2026-10-05.** |
 
 Static OP CLI KCL package adoption — **DONE candidate 2026-10-04**, Codex bwcx `/root`;
