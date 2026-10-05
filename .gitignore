@@ -52,3 +52,4 @@ packages/scratch-gui/src/lib/sdcc-wasm/dist/
 
 # SPIKE audit records and execution transcripts belong in the private evidence repository.
 /docs/independent-spike/evidence/
+/tools/
