@@ -136,7 +136,7 @@ records already working features and fixes only demonstrated gaps.
 ### G04 — Extend API/topology parity through declared capabilities
 
 **Owners:** firmware L01/L02/L05/L06/L09, Runtime, then Lite. **Start:**
-[Runtime tasks](https://github.com/CrispStrobe/renode-spike-prime/blob/main/docs/SPIKE-STATUS-AND-LANES.md),
+[Runtime tasks](https://github.com/CrispStrobe/renode-spike-prime/blob/0bb3f3e40ec8e84afe6c7a63a03374a5a0553969/docs/SPIKE-STATUS-AND-LANES.md),
 `test/independent-spike-backend.test.mjs`, `test/spike-renode-arena-session.test.mjs`.
 
 Choose one supported command slice; compare identical external scenarios across
@@ -168,7 +168,7 @@ platform/signing tests require their build environment and credentials.
 ### G06 — Improve model fidelity and unchanged-image bringup
 
 **Owners:** Infrastructure and Runtime; firmware L07/L08/L11. **Start:**
-[model tasks](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/blob/main/docs/SPIKE-STATUS-AND-LANES.md).
+[model tasks](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/blob/5a519ce5d9b5122bcf2ecedcbfd6f49d2735bbeb/docs/SPIKE-STATUS-AND-LANES.md).
 
 Implement one evidenced public peripheral contract at a time, then adopt exact
 pins and rerun affected guest workflows. Keep unknown modern IMU mapping false.
