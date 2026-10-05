@@ -11,24 +11,23 @@
 //     case only the `expected` anchor can catch);
 //   - a REAL run on the emulated engine, so the engine side has a holder that
 //     is a pass, not a skip.
-// The cross-engine twin test needs the native reference and so is SKIPPED (not
-// passed) unless BBCSDL_BBCBASIC points at it or scripts/build-bbcsdl-reference.sh
-// has produced tools/bbcsdl/bbcbasic — a skip reports as a test and never as a
-// green cross-check (MEMORY: a skip must not count as a pass).
+// The LIVE cross-engine twin-run (emulated vs the BBCSDL reference across the
+// fixtures) needs the native reference built, so it is NOT a unit test here —
+// it is `scripts/verify-basic-oracle.mjs` (CLI, and the CI workflow that builds
+// the reference). That keeps this suite free of a skip that would never execute
+// in it (MEMORY: a skip must not count as a pass); the comparator above already
+// proves the mismatch logic without a live reference.
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync, existsSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {normalizeConsole, compareTwin, runEmulatedBbc} from
     '../overlay/scratch-gui/src/lib/bw-debug/basic-twin-oracle.js';
-import {runReferenceBbc, RAW_FIXTURES} from '../scripts/verify-basic-oracle.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const COM = new Uint8Array(readFileSync(path.join(ROOT, 'overlay/scratch-gui/static/roms/bbcbasic.com')));
-const REF = process.env.BBCSDL_BBCBASIC || path.join(ROOT, 'tools/bbcsdl/bbcbasic');
-const HAVE_REF = existsSync(REF);
 
 test('normalizeConsole folds CR/LF/CRLF and trims trailing/edge blanks, keeping print-field leading spaces', () => {
     assert.equal(normalizeConsole('a\r\nb\r\n'), 'a\nb');
@@ -66,14 +65,3 @@ test('the emulated BBC BASIC (Z80) machine runs a program and prints a computed 
     assert.equal(r.reason, 'ok', `run completed (reason ${r.reason})`);
     assert.equal(normalizeConsole(r.output), '         4');
 });
-
-test('twin-run: the emulated machine agrees with the BBCSDL reference across the fixtures',
-    {skip: HAVE_REF ? false : 'no reference engine — run scripts/build-bbcsdl-reference.sh or set BBCSDL_BBCBASIC'},
-    () => {
-        for (const f of RAW_FIXTURES) {
-            const emu = runEmulatedBbc(COM, f.program);
-            const ref = runReferenceBbc(REF, f.program);
-            const v = compareTwin({emulated: emu.output, reference: ref.output, expected: f.expected});
-            assert.ok(v.pass, `${f.name}: ${v.detail}`);
-        }
-    });
