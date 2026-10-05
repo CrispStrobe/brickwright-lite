@@ -282,6 +282,19 @@ const CENSUS = [
            + 'to build unless HEAD equals that full commit SHA.'
     },
     {
+        file: 'scripts/build-bbcsdl-reference.sh',
+        kind: 'git',
+        text: 'git clone --filter=blob:none "$BBCSDL_REPO" "$WORK/BBCSDL"',
+        class: 'sha-const',
+        pin: 'BBCSDL_COMMIT',
+        why: 'CI/dev-only build of the BASIC twin-run oracle\'s REFERENCE engine (BBCSDL, '
+           + 'R.T. Russell, zlib) as a host console bbcbasic — NOT the browser bundle, NOT a '
+           + 'deployable, the same shape as the ACK z80/cpm CI build. The clone is checked out '
+           + 'to the 40-hex BBCSDL_COMMIT and the script exits 1 unless HEAD equals it; nothing '
+           + 'fetched is written into the tree (the binary lands in gitignored tools/). The SHA '
+           + 'checkout is the immutable reference.'
+    },
+    {
         file: '.github/workflows/build.yml',
         kind: 'git',
         text: 'git clone --filter=blob:none --no-checkout \\',
@@ -548,7 +561,8 @@ const SHA_CONSTANTS = [
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
-    ['scripts/verify-native-downloads-e2e.mjs', /'([0-9a-zA-Z]+)\/riscv32-linux\/Image'/]
+    ['scripts/verify-native-downloads-e2e.mjs', /'([0-9a-zA-Z]+)\/riscv32-linux\/Image'/],
+    ['scripts/build-bbcsdl-reference.sh', /^BBCSDL_COMMIT=([0-9a-zA-Z]+)/m]
 ];
 
 const key = (h) => `${h.file} ${h.kind} ${h.text}`;

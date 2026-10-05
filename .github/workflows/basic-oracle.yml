@@ -1,0 +1,65 @@
+# Run the BASIC twin-run oracle on CI with a REAL reference engine (plan: the
+# BASIC lane's hard gate). scripts/verify-basic-oracle.mjs runs each fixture's
+# BBC BASIC program on two independent engines and compares their console
+# output:
+#
+#   emulated  — BbcZ80Runner over overlay/.../static/roms/bbcbasic.com (R.T.
+#               Russell's BBC BASIC Z80 .COM), the EXACT runner the Code tab's
+#               BBC profile uses.
+#   reference — BBCSDL (R.T. Russell, zlib) built here as a host console
+#               `bbcbasic` by scripts/build-bbcsdl-reference.sh. A different
+#               codebase (C, not Z80 asm) for the same language, so agreement is
+#               real cross-engine evidence, not an engine judging itself.
+#
+# This is the live cross-engine run the unit suite deliberately does NOT hold (a
+# native reference cannot be built in the Node suite without a skip, and a skip
+# must not count as a pass): test/basic-twin-oracle.test.mjs proves the
+# comparator and the emulated engine and the fixture corpus; THIS job proves the
+# two engines actually agree. Same shape as ack-z80-cpm.yml — a CI-only build of
+# an upstream reference that this box's routine suite cannot carry.
+#
+# BBCSDL is zlib-licensed and is NOT bundled or linked into the browser app; it
+# exists only so a real reference can run in CI/dev. Pinned to an immutable
+# commit inside build-bbcsdl-reference.sh (fetch-pinning classes it sha-const).
+name: BASIC oracle — BBCSDL reference vs the emulated BBC BASIC (Z80)
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/basic-oracle.yml'
+      - 'scripts/verify-basic-oracle.mjs'
+      - 'scripts/build-bbcsdl-reference.sh'
+      - 'overlay/scratch-gui/src/lib/bw-debug/basic-twin-oracle.js'
+      - 'overlay/scratch-gui/src/lib/sb3-creator.js'
+      - 'overlay/scratch-gui/src/lib/sb3-creator-basic.js'
+      - 'overlay/scratch-gui/static/roms/bbcbasic.com'
+permissions:
+  contents: read
+jobs:
+  basic-oracle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      # The emulated engine runs on bw-board's Z80 machine: basic-twin-oracle.js
+      # imports `bw-board/bbc-z80-runner.js`, so the oracle needs it installed.
+      - name: Install source-test dependencies (brings bw-board)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      # BBCSDL's console build assembles one data file with nasm; everything else
+      # is gcc (preinstalled on ubuntu-latest).
+      - name: Install the reference build toolchain (nasm)
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends nasm
+
+      - name: Build the BBCSDL reference (host console bbcbasic) at the pinned commit
+        run: bash scripts/build-bbcsdl-reference.sh
+
+      - name: Run the twin-run oracle (emulated BBC BASIC Z80 vs BBCSDL)
+        run: BBCSDL_BBCBASIC=tools/bbcsdl/bbcbasic node scripts/verify-basic-oracle.mjs
