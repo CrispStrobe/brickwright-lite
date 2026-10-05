@@ -177,6 +177,7 @@ class CircuitTab extends React.Component {
         this.handleProjectStart = this.handleProjectStart.bind(this);
         this.handleVmProjectStart = this.handleVmProjectStart.bind(this);
         this.handleVmStopAll = this.handleVmStopAll.bind(this);
+        this.handleRunnerGone = this.handleRunnerGone.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
         this.handleProjectChanged = this.handleProjectChanged.bind(this);
         this._circuitFileWake = this._circuitFileWake.bind(this);
@@ -1670,9 +1671,18 @@ class CircuitTab extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-debug-phase', {detail: {phase}}));
         }
         if (phase === 'idle' || phase === 'error') {
-            if (this.state.debugState !== null) {
+            // ...and no session, no loan of the display either. The runner's
+            // board stays on screen only while its run lives: kept after a
+            // stop, it outlived every later green flag, and the designer kept
+            // showing a board nothing drove while the Scratch VM's blocks wrote
+            // the designer's own (task B8, measured on production). Handed
+            // back, the designer resumes its own board's clock.
+            if (this.state.debugState !== null || this.state.board !== null) {
                 this._markReactUpdate('host:runner-state');
-                this.setState({debugState: null});
+                this.setState({debugState: null, board: null});
+            }
+            if (typeof window !== 'undefined' && window.__activeBoard === board) {
+                window.__activeBoard = window.__board || null;
             }
             return;
         }
@@ -1794,6 +1804,15 @@ class CircuitTab extends React.Component {
                 }
             });
         }
+    }
+
+    /** The Debug pane tore its runner down (new program, new firmware, a
+     *  reboot, unmount): its board is no longer anything's, so the designer
+     *  takes its own back (task B8). */
+    handleRunnerGone () {
+        if (this.state.board === null && this.state.debugState === null) return;
+        this._markReactUpdate('host:runner-state');
+        this.setState({board: null, debugState: null});
     }
 
     /** Resolve a Scratch block id to something a person can read: the
@@ -2090,6 +2109,7 @@ class CircuitTab extends React.Component {
                         runToken={this.state.runToken}
                         stopToken={this.state.stopToken}
                         onRunnerChange={this.handleRunnerChange}
+                        onRunnerGone={this.handleRunnerGone}
                     />))}
                 </React.Suspense>
             </PanelBoundary>

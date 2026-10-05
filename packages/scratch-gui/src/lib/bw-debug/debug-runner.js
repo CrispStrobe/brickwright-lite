@@ -455,6 +455,35 @@ async function installWasmCompilerRouting (setStatus) {
  * @param {string} requested target picker selection
  * @returns {string}
  */
+/**
+ * Board time minus target time when a run (re)starts: the offset that keeps a
+ * board's clock moving forward from where it is while the target's restarts at
+ * zero. Never negative — a board behind its target simply catches up.
+ */
+export function boardTimeBase (board, target) {
+    if (!board || !target || typeof target.timeNs !== 'function') return 0n;
+    const boardNs = typeof board.timeNs === 'bigint' ? board.timeNs : 0n;
+    const targetNs = target.timeNs();
+    const base = boardNs - (typeof targetNs === 'bigint' ? targetNs : BigInt(Math.round(Number(targetNs) || 0)));
+    return base > 0n ? base : 0n;
+}
+
+/**
+ * Does this runner compile and run the project's OWN blocks? The same split
+ * start() makes when it picks `built` (null for an interpreter or boot-media
+ * machine, the user's firmware, else build()): kept beside it, and compared
+ * against it by test/b8-one-board-per-run.test.mjs.
+ *
+ * When it does, the Scratch VM is already running that very program on the
+ * designer's board, so the green flag must not start a second copy here
+ * (task B8: one board per run, one author per board).
+ */
+export function runnerCompilesProjectBlocks ({selectedKind, bootMedia = null, userFirmware = null}) {
+    if (selectedKind === 'z80' || selectedKind === 'eater6502' || selectedKind === 'riscv32') return false;
+    if ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia) return false;
+    return !userFirmware;
+}
+
 export function selectDebugTargetKind(device, requested = 'emulator') {
     if (requested !== 'emulator') return requested;
     const normalized = String(device || '').toLowerCase();
@@ -581,6 +610,16 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
     let capsOf = null;
     let cycleProviderOf = null;
     let board = null;
+    /**
+     * Board time minus target time, fixed at each (re)start (boardTimeBase).
+     * The target's clock restarts at zero on every run; a board that has
+     * already lived (the designer's, attached by a machine bench, or this
+     * runner's own board after a stop) does not, and advanceTo ignores a time
+     * behind it — so without the base the board froze for as long as the
+     * previous run had lasted (task B8, measured: 3 s of a frozen display at
+     * the start of the third run).
+     */
+    let boardBaseNs = 0n;
     let symbols = null;
     /** `${task}/${state}` -> block id, joined from the two halves. */
     let blockOf = new Map();
@@ -3341,7 +3380,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (!session || destroyed) return;
         if (activeRunTo) {
             const result = runToController.pump();
-            if (board) board.advanceTo(target.timeNs());
+            if (board) board.advanceTo(target.timeNs() + boardBaseNs);
             if (result.accepted && result.reason === 'running') {
                 schedule();
                 emitLive();
@@ -3383,7 +3422,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // DEBUG-CONTROL-MODEL §3.1 fall out for free: a halted MCU stops
         // pumping, so board time stops with program time, and resume continues
         // from where it stopped rather than catching up on wall-clock.
-        if (board && outcome !== 'idle') board.advanceTo(target.timeNs());
+        if (board && outcome !== 'idle') board.advanceTo(target.timeNs() + boardBaseNs);
         const perfBoardEnd = perfProbe ? performance.now() : 0;
         // Keep going while there is anything to do. A halted session stops
         // asking for frames entirely, which is what makes a paused program cost
@@ -3605,6 +3644,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     unsubscribeBps = subscribeBreakpoints(syncBreakpoints);
                 }
                 session.start();
+                boardBaseNs = boardTimeBase(board, target);
                 setStatus('running');
                 schedule();
             } catch (e) {
@@ -4841,6 +4881,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             // Machine-bench targets carry no destroy (nothing to free — the
             // machine is plain JS); the 8051 target's tears down WASM state.
             if (target && typeof target.destroy === 'function') target.destroy();
+            // The run board dies with the runner too, as in stop(): a destroyed
+            // runner's board left published was still what Widgets resolved.
+            if (vm && vm.runtime && board && vm.runtime.bwRunBoard === board) {
+                delete vm.runtime.bwRunBoard;
+                if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+            }
             session = target = board = symbols = null;
             runToTarget = runToController = null;
             for (const branch of forkRecordingStore.summaries()) {
