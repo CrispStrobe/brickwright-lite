@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-04T15:00:24.880Z",
+ "generatedAt": "2026-10-05T14:31:48.764Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "a87a7b447",
  "newestMainRun": 36409366028,
@@ -1737,12 +1737,19 @@
    "workflow": "arcade-controls.yml",
    "branch": "fix/pybadge-pxt-touch-20261004",
    "sha": "4b8f25fa2"
+  },
+  {
+   "run": 37325124144,
+   "workflow": "basic-oracle.yml",
+   "branch": "feat/basic-oracle-ci-20261005",
+   "sha": "d428b52cc"
   }
  ],
  "workflowsInTree": [
   "ack-z80-cpm.yml",
   "appstore-screenshots.yml",
   "arcade-controls.yml",
+  "basic-oracle.yml",
   "build.yml",
   "ci-metrics.yml",
   "cycle-core-qualification.yml",
@@ -6286,11 +6293,85 @@
     }
    },
    "sourceSha": "c6fb1a447"
+  },
+  "basic-oracle.yml": {
+   "runs": 1,
+   "stepsInFile": [
+    "Install source-test dependencies (brings bw-board)",
+    "Install the reference build toolchain (nasm)",
+    "Build the BBCSDL reference (host console bbcbasic) at the pinned commit",
+    "Run the twin-run oracle (emulated BBC BASIC Z80 vs BBCSDL)"
+   ],
+   "inFileInNoRun": [],
+   "steps": {
+    "Install source-test dependencies (brings bw-board)": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "basic-oracle"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install the reference build toolchain (nasm)": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "basic-oracle"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Build the BBCSDL reference (host console bbcbasic) at the pinned commit": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "basic-oracle"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Run the twin-run oracle (emulated BBC BASIC Z80 vs BBCSDL)": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "basic-oracle"
+     ],
+     "clause": null,
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "basic-oracle": {
+     "existed": 1,
+     "ran": 1,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "always"
+    }
+   },
+   "sourceSha": "d428b52cc"
   }
  },
  "lastRefresh": {
-  "workflow": "arcade-controls.yml",
-  "at": "2026-10-04T15:00:24.880Z",
-  "sourceSha": "c6fb1a447"
+  "workflow": "basic-oracle.yml",
+  "at": "2026-10-05T14:31:48.764Z",
+  "sourceSha": "d428b52cc"
  }
 }
