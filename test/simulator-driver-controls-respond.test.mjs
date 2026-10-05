@@ -132,7 +132,9 @@ function driverArming (js) {
     // fail — it compiles a DIFFERENT program, or throws a syntax error blamed on the driver.
     // All three were lazy captures ending on a literal bracket; `_bw_arm`'s terminator was the
     // spelling `} };`, which emitted code can easily contain before its real end.
-    for (const name of ['const _mod =', 'const _stc12_pins =', 'const _bw_arm =']) {
+    // `_bw_arm` also arms the declared INPUT PORTs and KEYPAD4X4 pins (task B7,
+    // sb3-creator 5d8dcf05), so the two tables it reads are lifted with it.
+    for (const name of ['const _mod =', 'const _stc12_pins =', 'const _stc12_ports =', 'const _stc12_parts =', 'const _bw_arm =']) {
         assert.ok(js.includes(name),
             `the simulator driver no longer emits \`${name}\` in the shape this gate reads. ` +
             'Re-read stc12SimulatorDriver before trusting any number here — a gate that silently ' +
@@ -148,10 +150,13 @@ function driverArming (js) {
     };
     const mode = initialiser('const _mod =', '(', ')', true);
     const pins = initialiser('const _stc12_pins =', '{', '}', false);
+    const ports = initialiser('const _stc12_ports =', '{', '}', false);
+    const parts = initialiser('const _stc12_parts =', '{', '}', false);
     const arm = initialiser('const _bw_arm =', '{', '}', true);
     // eslint-disable-next-line no-new-func
     const built = new Function(
-        `const _stc12_pins = ${pins};\nconst _mod = ${mode};\nlet _bw_armed_board = null;\n` +
+        `const _stc12_pins = ${pins};\nconst _stc12_ports = ${ports};\nconst _stc12_parts = ${parts};\n` +
+        `const _mod = ${mode};\nlet _bw_armed_board = null;\n` +
         `const _bw_arm = ${arm};\nreturn {mode: _mod, arm: _bw_arm, pins: _stc12_pins};`)();
     return built;
 }

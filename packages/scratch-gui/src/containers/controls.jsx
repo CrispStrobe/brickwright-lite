@@ -29,11 +29,20 @@ class Controls extends React.Component {
                 return;
             }
             if (!this.props.isStarted) this.props.vm.start();
-            this.props.vm.greenFlag();
             // The circuit designer listens to the same user-level action. This
             // keeps the Scratch green flag as the single, unsurprising start
             // control for both block scripts and a visible circuit simulation.
-            window.setTimeout(() => window.dispatchEvent(new CustomEvent('bw-green-flag')), 0);
+            //
+            // BEFORE the VM starts, and synchronously: the designer clears its
+            // board for the run (reset, every MCU pin re-armed) when it sees this
+            // event, and the program's writes must come after that clear. It was
+            // dispatched on a setTimeout(0) after vm.greenFlag(), against the VM's
+            // own step interval, and a program's first write was wiped whenever
+            // the VM stepped first (task B7, measured in a real browser: `turn on
+            // led` at 68.7 ms, the clear at 174 ms). vm.greenFlag() only queues the
+            // hats; the scripts run on the VM's next step, after this returns.
+            window.dispatchEvent(new CustomEvent('bw-green-flag'));
+            this.props.vm.greenFlag();
         }
     }
     handleStopAllClick (e) {
