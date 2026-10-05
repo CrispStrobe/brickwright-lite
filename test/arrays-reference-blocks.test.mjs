@@ -11,9 +11,10 @@
  * the behaviour the words promise, block by block and then through the
  * dialect and a running VM.
  *
- * The bundle runs here WITHOUT a host Scratch.BWValues (Lite's adapter does
- * not provide one before E3a), so this is the extension's built-in copy of
- * the value rules.
+ * The bundle runs here through Lite's adapter, which since E3a provides
+ * Scratch.BWValues (overlay/scratch-vm/src/util/bw-values.js), so these are
+ * the SHARED value rules, not the bundle's built-in copy; test/bw-values.test.mjs
+ * holds the two to the same results.
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,6 +43,13 @@ const REFERENCE_BLOCKS = {
     referenceRandom: 'reporter', referenceLength: 'reporter', referenceTake: 'reporter',
     referenceIndexOf: 'reporter', mutateReference: 'command'
 };
+
+test('the blocks here compute with the shared Scratch.BWValues, as the header says', () => {
+    const BWValues = require(path.join(INTEGRATED, 'node_modules/scratch-vm/src/util/bw-values.js'));
+    const {ext, runtime} = makeExt();
+    // Only the shared module's heap can resolve a reference the bundle made.
+    assert.deepEqual(BWValues.arrayValue(runtime, ext.createReference({VALUES: '[1, 2]'})), [1, 2]);
+});
 
 test('the 18 reference blocks are declared, with the shapes the dialect words build', () => {
     const {ext} = makeExt();

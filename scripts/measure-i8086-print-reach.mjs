@@ -26,6 +26,8 @@ if (dirIdx < 0 || !argv[dirIdx + 1]) {
 const examples = argv[dirIdx + 1];
 const L = new URL('../overlay/scratch-gui/src/lib/', import.meta.url);
 const {default: SB3Creator} = await import(new URL('sb3-creator.js', L).href);
+// The route's own `long` guard (comments and strings excluded), not a private copy.
+const {cUsesLong} = await import(new URL('bw-asm/assemble-route.js', L).href);
 
 const asText = result => {
     if (typeof result === 'string') return result;
@@ -257,7 +259,7 @@ for (const name of entries) {
         terminal.int16Refused.push(`${name}: ${creator._cI16Refused.join(', ')}`);
         continue;
     }
-    if (/\blong\b/.test(code.replace(/\/\*[\s\S]*?\*\//g, ''))) {
+    if (cUsesLong(code)) {
         terminal.longLeaked.push(name);
         continue;
     }

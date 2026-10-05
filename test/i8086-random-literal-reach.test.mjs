@@ -18,6 +18,9 @@ import {
 const root = fileURLToPath(new URL('../', import.meta.url));
 const examples = join(root, 'overlay/scratch-gui/examples');
 const emitterFile = join(root, 'overlay/scratch-gui/src/lib/sb3-creator.js');
+// 27 -> 46 entries at sb3-creator 0f14aedb (task B10): sb3-creator #49's
+// idea-generator (13), reaction-duel (2), sense-pir-alarm (2) and
+// sense-twilight-switch (2) print literal text; every earlier entry is unchanged.
 const literalPrintBlocks = [
     'arduino-04-ascii-table:h(%a.I?g~**:9Pj+1?KE',
     'arduino-05-switch-case:0Q8p=FNNXb*[5]V+!AlU',
@@ -45,7 +48,26 @@ const literalPrintBlocks = [
     'arduino-sk-p11-crystal-ball:g|o^pvM2ifZXiOA=736R',
     'arduino-sk-p11-crystal-ball:l%b.,h,Wup`Z.eQZMxe8',
     'arduino-sk-p11-crystal-ball:xyw[e_p[]R#xTCFmz9Ox',
-    'arduino-sk-p11-crystal-ball:|7l:fbD=GKrs~lY9V)s,'
+    'arduino-sk-p11-crystal-ball:|7l:fbD=GKrs~lY9V)s,',
+    'idea-generator:9u9`Km+[5KYVDEZ-zjO.',
+    'idea-generator:@u[)WmZ*)_5xvP~ecl9h',
+    'idea-generator:D92@6@9~dz/Vh0u`zxK,',
+    'idea-generator:DL{KRFXxlC/thyJwy3Z;',
+    'idea-generator:KWgDu(box@33-};bp.i~',
+    'idea-generator:P[;?%!UEK-HPp!svxj}Z',
+    'idea-generator:WrjG*vKtJz9y/9^_=y7k',
+    'idea-generator:XwK:5c%A}92ap(@g:kpv',
+    'idea-generator:`2inHcyPnmP6IogUG:=|',
+    'idea-generator:`YJTk8{{^WH!6wwv[5Ds',
+    'idea-generator:leJZ+kF#YvAq^O3f*/oY',
+    'idea-generator:uNDp%Bm_ie`ROKT#*vgd',
+    'idea-generator:y#+W8t-shAlNAIQl#i{y',
+    'reaction-duel:Z5SKqwc{.f|fx2AwJ(j9',
+    'reaction-duel:ZcXOkx?2y;}@/2SN3z#|',
+    'sense-pir-alarm:;V]Arob.AQ.kOC:E?#{,',
+    'sense-pir-alarm:;z6r7hZ6u,nhK;=NM=9k',
+    'sense-twilight-switch:/NL5w_#Pkq`+qFiN1hJ]',
+    'sense-twilight-switch:zzu83yxwLX[i`6Rk5uRC'
 ];
 const integerRandomEdges = [{
     program: 'arduino-sk-p11-crystal-ball',
@@ -54,7 +76,7 @@ const integerRandomEdges = [{
     inputName: 'VALUE'
 }];
 
-test('N2f production holds device 49 and mixed generation 77 without neutralisation',
+test('N2f production holds device 57 and mixed generation 85 without neutralisation',
     {timeout: 120000}, async () => {
         const report = await measureN2f({examples});
         assert.equal(report.schema, 'n2f-i8086-random-literal-reach-v1');
@@ -79,16 +101,22 @@ test('N2f production holds device 49 and mixed generation 77 without neutralisat
         // declare a parallel LCD1602, which i8086 cannot take. The declaration
         // was skipped with a warning and host C was generated for a program
         // without its display; it is refused now, and both are parseFailed.
+        // 282 / 148 parsed / 71 refused / 49 device / 77 total -> 295 / 161 / 76 /
+        // 57 / 85 at sb3-creator 0f14aedb (task B10): sb3-creator #49's thirteen
+        // examples all parse; eight generate device C (the eight named in
+        // i8086-wait-reach's emitted set) and five are refused (four at the ADC
+        // or PWM wall, dice-pips at its computed wait). No host C, and the
+        // neutralisation lattice below still changes nothing.
         assert.deepEqual(report.variants.baseline.counts, {
-            programs: 282, retargetRefused: 131, parsed: 148, parseFailed: 3,
-            refused: 71, generatedHost: 28, generatedDevice: 49, generatedTotal: 77
+            programs: 295, retargetRefused: 131, parsed: 161, parseFailed: 3,
+            refused: 76, generatedHost: 28, generatedDevice: 57, generatedTotal: 85
         });
-        assert.equal(report.variants.literalOnly.counts.generatedTotal, 77);
+        assert.equal(report.variants.literalOnly.counts.generatedTotal, 85);
         assert.deepEqual(report.delta.literalOnly, [], 'literal neutralisation changed production reach');
-        assert.equal(report.variants.randomOnly.counts.generatedTotal, 77);
+        assert.equal(report.variants.randomOnly.counts.generatedTotal, 85);
         assert.deepEqual(report.delta.randomOnly, [], 'random neutralisation changed production reach');
-        assert.equal(report.variants.randomAndLiteral.counts.generatedTotal, 77);
-        assert.equal(report.variants.randomAndLiteral.counts.generatedDevice, 49);
+        assert.equal(report.variants.randomAndLiteral.counts.generatedTotal, 85);
+        assert.equal(report.variants.randomAndLiteral.counts.generatedDevice, 57);
         assert.deepEqual(report.delta.randomAndLiteral, [],
             'combined neutralisation changed production reach');
         assert.deepEqual(report.transforms.randomAndLiteral.integerRandomEdges, integerRandomEdges,
@@ -219,20 +247,25 @@ test('hosted CI compile-backs every production DEVICE C body', {skip: !process.e
         const report = await measureN2f({examples, compile: true});
         // Lesson 56 is the one new distinct device body at c593574; hosted CI
         // compiles it in all four variants along with the prior 48.
-        assert.equal(report.compile.baseline.compiled.length, 49);
+        // 49 -> 57 at sb3-creator 0f14aedb (task B10): sb3-creator #49's eight
+        // device-C programs. Three of them print literal text (idea-generator,
+        // reaction-duel, sense-pir-alarm), so neutralising literals gives each a
+        // second body: 46 -> 54 distinct per variant, 49 -> 60 across variants
+        // (measured locally with CI=1; every body compiled, none failed).
+        assert.equal(report.compile.baseline.compiled.length, 57);
         assert.deepEqual(report.compile.baseline.failed, []);
-        assert.equal(report.compile.literalOnly.compiled.length, 49);
+        assert.equal(report.compile.literalOnly.compiled.length, 57);
         assert.deepEqual(report.compile.literalOnly.failed, []);
-        assert.equal(report.compile.randomOnly.compiled.length, 49);
+        assert.equal(report.compile.randomOnly.compiled.length, 57);
         assert.deepEqual(report.compile.randomOnly.failed, []);
-        assert.equal(report.compile.randomAndLiteral.compiled.length, 49);
+        assert.equal(report.compile.randomAndLiteral.compiled.length, 57);
         assert.deepEqual(report.compile.randomAndLiteral.failed, []);
-        assert.equal(report.compile.uniqueDeviceBodies, 49,
-            'lesson 56 adds one body; four crystal-ball variants still share one device-C body');
+        assert.equal(report.compile.uniqueDeviceBodies, 60,
+            'lesson 56 adds one body; crystal-ball and three #49 literal-print programs each add a neutralised body');
         assert.deepEqual(report.compile.bodyDelta, {
-            baselineDistinct: 46,
-            completeDistinct: 46,
-            addedPrograms: ['arduino-sk-p11-crystal-ball'],
-            removedPrograms: ['arduino-sk-p11-crystal-ball']
-        }, 'neutralising both released features did not replace exactly the crystal-ball body');
+            baselineDistinct: 54,
+            completeDistinct: 54,
+            addedPrograms: ['arduino-sk-p11-crystal-ball', 'idea-generator', 'reaction-duel', 'sense-pir-alarm'],
+            removedPrograms: ['arduino-sk-p11-crystal-ball', 'idea-generator', 'reaction-duel', 'sense-pir-alarm']
+        }, 'neutralising both released features did not replace exactly the crystal-ball and #49 literal-print bodies');
     });
