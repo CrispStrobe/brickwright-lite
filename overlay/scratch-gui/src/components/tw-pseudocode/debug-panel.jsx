@@ -412,6 +412,10 @@ class DebugPanel extends React.Component {
             romAt: typeof romAt === 'number' ? romAt : null
         };
         const nextKind = kind === 'riscv32' ? 'riscv32'
+            // The RP2040 media bundle (a pico-sdk .uf2 in a `flash` slot) boots
+            // on the rp2040js target from flash — debug-runner's
+            // attachRp2040jsBundle, UART0 REPL on the serial terminal below.
+            : kind === 'rp2040js' || kind === 'rp2040' || kind === 'pico' ? 'rp2040js'
             : kind === 'z80' ? 'z80'
             : kind === 'eater6502' || kind === '6502' ? 'eater6502'
                 // All four spellings. The 8088 is an 8086 with an eight-bit
