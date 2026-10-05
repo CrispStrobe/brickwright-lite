@@ -481,6 +481,9 @@ export function boardTimeBase (board, target) {
 export function runnerCompilesProjectBlocks ({selectedKind, bootMedia = null, userFirmware = null}) {
     if (selectedKind === 'z80' || selectedKind === 'eater6502' || selectedKind === 'riscv32') return false;
     if ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia) return false;
+    // An rp2040 .uf2 media bundle boots prebuilt firmware from flash; it does
+    // not compile the project's blocks (a bare rp2040js/pico firmware run still does).
+    if (selectedKind === 'rp2040js' && bootMedia) return false;
     return !userFirmware;
 }
 
@@ -1590,6 +1593,12 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
 
         if (selectedTargetKind === 'rp2040js') {
+            // A media bundle (a pico-sdk .uf2 in a `flash` slot) boots from
+            // flash the way silicon does, not as a raw Thumb image in SRAM —
+            // the RP2040 analogue of the riscv32 Linux split above.
+            if (bootMedia && (bootMedia.profile === 'uf2' || bootMedia.slot === 'flash')) {
+                return attachRp2040jsBundle();
+            }
             return attachRp2040js(built);
         }
 
@@ -1950,6 +1959,125 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         });
 
         setStatus('ready', S('built.device', {bytes: built.bytes, device: 'Pico', points: blockOf.size}));
+        return session;
+    }
+
+    /** RP2040 MEDIA BUNDLE — a pico-sdk .uf2 booted from flash the way silicon
+     *  does, the RP2040 analogue of attachRiscV32Linux. Where attachRp2040js
+     *  drops a raw Thumb image into SRAM (the compile route), a real Pico image
+     *  (PicoBB — BBC BASIC for the Pico) begins with an SDK stage-2 boot at
+     *  flash base, so it must be flattened from UF2 and entered through
+     *  bootFromFlash. The console is UART0; its REPL reaches the serial panel's
+     *  terminal, and what the user types reaches it through runner.sendSerial —
+     *  the input half attachRp2040js never wired. The firmware is supplied as
+     *  media bytes (never compiled here); bw-board owns the boot primitives. */
+    async function attachRp2040jsBundle() {
+        setStatus('attaching', S('attach.pico'));
+        const image = bootMedia && bootMedia.bytes;
+        if (!(image instanceof Uint8Array) || !image.length) {
+            throw new Error('rp2040 media bundle: the flash slot carried no bytes');
+        }
+        const [
+            { createDebugSession, BoardImpl, inferNetlist },
+            { createRp2040jsAdapter },
+            { parseUF2, FLASH_BASE },
+            { createRp2040jsDebugTarget }
+        ] = await Promise.all([
+            import(/* webpackChunkName: "bw-board" */ 'bw-board'),
+            import(/* webpackChunkName: "bw-board" */ 'bw-board/rp2040js-adapter.js'),
+            import(/* webpackChunkName: "bw-board" */ 'bw-board/uf2.js'),
+            import(/* webpackChunkName: "bw-board" */ 'bw-board/rp2040js-debug.js')
+        ]);
+
+        // Flatten the UF2 to a flat flash image (byte 0 at FLASH_BASE). Refuse
+        // by name on a bad image rather than booting an empty flash into a NOP
+        // flood (the failure mode bw-board's bootrom note warns about).
+        let flash;
+        try {
+            const parsed = parseUF2(image);
+            if (parsed.base !== FLASH_BASE) {
+                throw new Error(`UF2 base 0x${parsed.base.toString(16)} != FLASH_BASE`);
+            }
+            flash = parsed.image;
+        } catch (e) {
+            throw new Error(`rp2040 media bundle is not a bootable pico-sdk UF2: ${e.message}`);
+        }
+
+        // One board, one truth — same as attachRp2040js. A pin-less project is
+        // fine; the firmware drives UART0, not the project's pins.
+        const declared = projectStc(null);
+        const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
+        const clockHz = 125_000_000;
+        const netlist = await resolveNetlist(vm, stc, inferNetlist);
+        board = new BoardImpl(3.3);
+        board.setNetlist(netlist.parts, netlist.nets);
+        board.setPower(true);
+        if (vm && vm.runtime) vm.runtime.bwRunBoard = board;
+        if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
+
+        // Boot from flash: stage 2 first, exactly as silicon does. resetToProgram
+        // restores THIS entry (bootFromFlash sets entryPC = FLASH_BASE), so the
+        // panel's Reset re-boots the image rather than jumping into SRAM.
+        const adapter = createRp2040jsAdapter({ clockHz, vcc: 3.3 });
+        adapter.attachBoard(board);
+        adapter.bootFromFlash(flash);
+
+        const feedByte = (b) => adapter.rp2040.uart[0].feedByte(b & 0xff);
+
+        // Serial out → the panel's console, and auto-answer the console's VT100
+        // cursor-position probe (ESC[6n): the firmware queries terminal size on
+        // start and BLOCKS until it gets ESC[rows;colsR. The panel's <pre>
+        // terminal cannot answer, so the runner does — 24x80, the same reply the
+        // CLI proof gives. Without this PicoBB hangs before its banner.
+        let lineBuf = '';
+        let probe = '';
+        serialLines = [];
+        adapter.onSerial((byte) => {
+            probe = (probe + String.fromCharCode(byte)).slice(-4);
+            if (probe === '\x1b[6n') {
+                for (const c of '\x1b[24;80R') feedByte(c.charCodeAt(0));
+                probe = '';
+            }
+            const ch = String.fromCharCode(byte);
+            if (ch === '\n') {
+                serialLines.push(lineBuf);
+                lineBuf = '';
+                if (serialLines.length > 200) serialLines.shift();
+            } else if (ch !== '\r') {
+                lineBuf += ch;
+            }
+        });
+
+        // RX into the REPL: what the serial console types reaches UART0. A string
+        // (a typed line, CR-terminated by the panel) or a single byte. This is
+        // what turns on the panel's serial input box (canSendSerial).
+        runner.sendSerial = (data) => {
+            const bytes = typeof data === 'number'
+                ? [data & 0xff]
+                : Array.from(String(data), ch => ch.charCodeAt(0) & 0xff);
+            for (const b of bytes) feedByte(b);
+        };
+
+        setValueResolver((blockId) => runner.valuesAtBlock(blockId));
+        if (vm && vm.runtime) vm.runtime._bwDebugVariables = () => runner.variables();
+        symbols = null;
+        variableTable = [];
+        pinTable = stc.pins || [];
+
+        target = createRp2040jsDebugTarget(adapter, { symbols: undefined, clockHz });
+        session = createDebugSession(target, {
+            onChange: (st) => {
+                if (st.halted) {
+                    if (shouldSkip(st)) { skipped++; skipRequested = true; return; }
+                    glow(st.tasks);
+                    trace.record(target, st.why ? st.why.cause : 'halt',
+                        { variables: runner.variables(), tasks: st.tasks });
+                } else clearGlow();
+                emit();
+            }
+        });
+
+        setStatus('ready', S('built.device', {bytes: image.length, device: 'Pico', points: blockOf.size}));
         return session;
     }
 
@@ -3625,7 +3753,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     // booted Linux — all of which arrive as bootMedia.
                     const built = (selectedKind === 'z80' || selectedKind === 'eater6502' ||
                         selectedKind === 'riscv32' ||
-                        ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia)) ? null
+                        ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia) ||
+                        (selectedKind === 'rp2040js' && bootMedia)) ? null
                         : userFirmware ? await builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);
