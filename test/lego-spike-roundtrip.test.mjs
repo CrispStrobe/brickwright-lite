@@ -196,8 +196,13 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // 8086. Neither touches a SPIKE word.
     // PIN MOVED 82c04190 -> 3250c2ca: generic driver wording cleanup; this
     // virtual SPIKE fixture keeps the same parser and generated program.
+    // PIN MOVED 3250c2ca -> 5d8dcf05 (2026-10-05, sb3-creator#48, task B7): the
+    // JS/Python simulator drivers only (devices actuators via setDeviceControl,
+    // the stc12 PORT/595/keypad verbs); `git diff 3250c2ca 5d8dcf05 -- src/`
+    // touches sb3Creator.js's driver generators and nothing the SPIKE emitter
+    // or this fixture's parser path reads. The assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '3250c2cad0d76cd4cad564461ae39b33055539e2');
+        '5d8dcf05a7acfaf16ebe2b9d1c8335fe23149ffe');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

@@ -125,8 +125,17 @@ test('Green Flag and Red Flag reach Circuit Designer even without MCU code', () 
     assert.match(source, /addEventListener\('bw-stop-all', this\._stopAllHandler\)/);
     assert.match(source, /runToken/);
     assert.match(source, /stopToken/);
-    assert.match(controls, /setTimeout\(\(\) => window\.dispatchEvent\(new CustomEvent\('bw-green-flag'\)\), 0\)/);
+    // The start event goes out BEFORE the VM starts, synchronously: the designer
+    // clears its board on it, and the program's first write must follow the clear
+    // (task B7; scripts/verify-green-flag-first-write.mjs is the browser gate).
+    assert.match(controls, /window\.dispatchEvent\(new CustomEvent\('bw-green-flag'\)\);\s*this\.props\.vm\.greenFlag\(\);/);
+    assert.doesNotMatch(controls, /setTimeout\(\(\) => window\.dispatchEvent\(new CustomEvent\('bw-green-flag'\)\)/);
     assert.match(controls, /setTimeout\(\(\) => window\.dispatchEvent\(new CustomEvent\('bw-stop-all'\)\), 0\)/);
+    // vm.greenFlag() emits PROJECT_STOP_ALL then PROJECT_START: the VM's own stop
+    // is held and dropped when a start follows, or the designer ends in build mode.
+    assert.match(source, /runtime\.on\('PROJECT_STOP_ALL', this\.handleVmStopAll\)/);
+    assert.match(source, /runtime\.on\('PROJECT_START', this\.handleVmProjectStart\)/);
+    assert.match(source, /handleVmProjectStart \(\) \{\s*this\._vmStopPending = false;/);
 });
 
 test('SIM starts the same MCU program path as Green Flag', () => {

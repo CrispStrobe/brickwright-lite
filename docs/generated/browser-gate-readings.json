@@ -7142,6 +7142,12 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — the green flag keeps a program's first pin write": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

@@ -175,6 +175,8 @@ class CircuitTab extends React.Component {
         this.handleDeclarationChange = this.handleDeclarationChange.bind(this);
         this.handleCircuitEdit = this.handleCircuitEdit.bind(this);
         this.handleProjectStart = this.handleProjectStart.bind(this);
+        this.handleVmProjectStart = this.handleVmProjectStart.bind(this);
+        this.handleVmStopAll = this.handleVmStopAll.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
         this.handleProjectChanged = this.handleProjectChanged.bind(this);
         this._circuitFileWake = this._circuitFileWake.bind(this);
@@ -499,8 +501,8 @@ class CircuitTab extends React.Component {
         window.addEventListener('bw-power-off', this._powerOffHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
         if (runtime && runtime.on) {
-            runtime.on('PROJECT_START', this.handleProjectStart);
-            runtime.on('PROJECT_STOP_ALL', this.handleProjectStop);
+            runtime.on('PROJECT_START', this.handleVmProjectStart);
+            runtime.on('PROJECT_STOP_ALL', this.handleVmStopAll);
             // "To blocks" in the Code tab lands fresh pin declarations on
             // runtime.stc and announces them with PROJECT_CHANGED — but until
             // this subscription existed, nothing here re-read them: the
@@ -643,8 +645,8 @@ class CircuitTab extends React.Component {
         window.removeEventListener('bw-power-off', this._powerOffHandler);
         const runtime = this.props.vm && this.props.vm.runtime;
         if (runtime && runtime.removeListener) {
-            runtime.removeListener('PROJECT_START', this.handleProjectStart);
-            runtime.removeListener('PROJECT_STOP_ALL', this.handleProjectStop);
+            runtime.removeListener('PROJECT_START', this.handleVmProjectStart);
+            runtime.removeListener('PROJECT_STOP_ALL', this.handleVmStopAll);
             runtime.removeListener('PROJECT_CHANGED', this.handleProjectChanged);
         }
         document.documentElement.removeAttribute('data-bw-hide-stage');
@@ -708,6 +710,32 @@ class CircuitTab extends React.Component {
 
     handleProjectStop () {
         this.setState(state => ({stopToken: (state.stopToken || 0) + 1}));
+    }
+
+    /**
+     * The VM's own stop. vm.greenFlag() calls stopAll() FIRST, so a green
+     * flag emits PROJECT_STOP_ALL and then PROJECT_START in one synchronous
+     * call. Relayed as a user stop, that bumped stopToken beside the start's
+     * runToken, and the designer applies the two in effect order: simulate,
+     * then build. Until task B7 the `bw-green-flag` event arrived LAST (on a
+     * setTimeout) and set simulate again; now that it goes out first — the
+     * designer's clear must precede the program — the stop token would be the
+     * last word and every green flag would leave the designer in build mode,
+     * its clock stopped. A VM stop that a start follows in the same call is a
+     * restart: it is held for a microtask and dropped if the start arrives.
+     */
+    handleVmStopAll () {
+        this._vmStopPending = true;
+        Promise.resolve().then(() => {
+            if (!this._vmStopPending) return;
+            this._vmStopPending = false;
+            this.handleProjectStop();
+        });
+    }
+
+    handleVmProjectStart () {
+        this._vmStopPending = false;
+        this.handleProjectStart();
     }
 
     /** Re-read runtime.stc when the project changes (e.g. "To blocks" landed
