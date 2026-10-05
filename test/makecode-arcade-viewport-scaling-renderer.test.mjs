@@ -16,7 +16,7 @@ function place(a,id,x,y){a.setSpriteProperty({ID:id,PROPERTY:'left',VALUE:x-a._s
 function histogram(image){const counts=Array(16).fill(0);for(const c of image.pixels)counts[c]++;return counts;}
 test('huge scales rasterize only the viewport with exact cropped sampling and source geometry',()=>{
  const {a,id,image,target,skins}=setup();a.setSpriteScale({ID:id,VALUE:16384,ANCHOR:0});place(a,id,80,60);let r=raster(a,id);
- assert.equal(r.width,160);assert.equal(r.height,120);assert.equal(r.pixels.length,19200);assert.equal(r.left,0);assert.equal(r.top,0);assert.deepEqual(histogram(r).slice(0,10),[4800,0,4800,0,0,4800,0,0,0,4800]);
+ assert.equal(r.width,160);assert.equal(r.height,120);assert.equal(r.pixels.length,19200);assert.equal(r.left,0);assert.equal(r.top,0);assert.deepEqual(histogram(r),[4800,0,4800,0,0,4800,0,0,0,4800,0,0,0,0,0,0]);
  assert.equal(a.spriteProperty({ID:id,PROPERTY:'width'}),32768);assert.equal(a.spriteProperty({ID:id,PROPERTY:'height'}),32768);assert.equal(a._image(image).pixels.length,4);assert.equal(target.x,0);assert.equal(target.y,0);
  const skin=skins.get(a._inst._imageSkins.get(id).skinId);assert.match(skin.svg,/width="640"/);assert.match(skin.svg,/height="480"/);assert.deepEqual(skin.center,[320,240]);
  place(a,id,112,60);r=raster(a,id);assert.equal(histogram(r)[5],112*60);assert.equal(histogram(r)[9],48*60);place(a,id,48,60);r=raster(a,id);assert.equal(histogram(r)[5],48*60);assert.equal(histogram(r)[9],112*60);
