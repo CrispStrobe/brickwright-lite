@@ -2,6 +2,7 @@ const ArgumentType = require('../../extension-support/argument-type');
 const BlockType = require('../../extension-support/block-type');
 const TargetType = require('../../extension-support/target-type');
 const Cast = require('../../util/cast');
+const BWValues = require('../../util/bw-values');
 const formatMessage = require('format-message');
 
 // Older bundled extensions sometimes use stable English menu values directly
@@ -55,7 +56,7 @@ module.exports = function makeCrispExtension (source) {
             this.runtime = runtime;
             let captured = null;
             const Scratch = {
-                BlockType, ArgumentType, TargetType, Cast,
+                BlockType, ArgumentType, TargetType, Cast, BWValues,
                 translate: Object.assign(m => (m && typeof m === 'object' ? (m.default || '') : m), { setup: () => {} }),
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
                 vm: runtime && runtime.emit ? { runtime } : {}, runtime
