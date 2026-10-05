@@ -91,7 +91,9 @@ const FILES = [
     ['src/utils/basicToPseudocode.js', path.join(lib, 'sb3-creator-basic.js')],
     ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')],
     // The DEVICE EV3 word table, read by sb3Creator.js in both directions.
-    ['src/utils/ev3Dialect.js', path.join(lib, 'ev3Dialect.js')]
+    ['src/utils/ev3Dialect.js', path.join(lib, 'ev3Dialect.js')],
+    // The MakeCode Arcade / array-reference word table (task E0), the same design.
+    ['src/utils/arcadeDialect.js', path.join(lib, 'arcadeDialect.js')]
 ];
 
 // Downstream-only modules imported by synced compiler files. EMPTY, with no stated
