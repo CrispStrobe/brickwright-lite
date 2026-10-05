@@ -419,7 +419,47 @@ class SpikeArenaPane extends React.Component {
         }
     }
 
-    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}, onError = () => {}} = {}) {
+    firmwareProgramObserver (session, onProgramState) {
+        return (programState, storageSupported, runtimeError) => {
+            if (this.disposed || this.firmwareSession !== session) return;
+            onProgramState(programState, storageSupported, runtimeError);
+            this.setState({programState, storageSupported, status: programState === 2 ? 'running' : 'paused',
+                ...(programState === 5 ? {message: this.locale === 'de' ? `Firmware-Programm fehlgeschlagen (${runtimeError}). Gespeichertes Programm laden oder aktuellen Code starten.` : `Firmware program failed (${runtimeError}). Load a saved program or run current code to recover.`} : {})});
+        };
+    }
+
+    firmwareStoppedObserver (session, backend, program, onStopped) {
+        return () => {
+            onStopped();
+            if (!this.disposed && this.firmwareSession === session) {
+                this.firmwareSession = null;
+                this.setState({execution: backend === 'micropython' ? 'micropython' : backend === 'nuttx' ? 'nuttx' : program ? 'program' : 'renode', status: 'paused'});
+            }
+        };
+    }
+
+    firmwareErrorObserver (session, onError) {
+        return error => {
+            if (this.disposed || this.firmwareSession !== session) return;
+            this.firmwareSession = null;
+            this.setState({status: 'failed', message: error.message});
+            onError(error);
+        };
+    }
+
+    firmwareStartedState (session, message) {
+        if (this.disposed || this.firmwareSession !== session) return;
+        if ([0, 1, 3, 4, 5].includes(session.programState)) {
+            const messages = this.locale === 'de' ? {
+                0: 'Kein Firmware-Programm geladen.', 1: 'Firmware-Programm bereit.',
+                3: 'Firmware-Programm abgeschlossen.', 4: 'Programm gestoppt.'
+            } : {0: 'No firmware program loaded.', 1: 'Firmware program ready.',
+                3: 'Firmware program completed.', 4: 'Program stopped.'};
+            this.setState({status: 'paused', message: messages[session.programState] || this.state.message});
+        } else this.setState({status: 'running', message});
+    }
+
+    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}, onError = () => {}, onProgramState = () => {}, onStopped = () => {}} = {}) {
         if (this.disposed) throw new Error("The arena pane is closed");
         if (!this.bridge) return;
         const micro = this.state.execution === 'micropython';
@@ -439,15 +479,22 @@ class SpikeArenaPane extends React.Component {
         if (this.firmwareSession?.storageSupported && (source !== null || this.state.execution === 'nuttx')) {
             const session = this.firmwareSession;
             session.onOutput = onOutput;
+            session.onProgramState = this.firmwareProgramObserver(session, onProgramState);
+            session.onStopped = this.firmwareStoppedObserver(session, 'nuttx', program, onStopped);
+            session.onError = this.firmwareErrorObserver(session, onError);
             session.onCompleted = () => { onCompleted(); if (!this.disposed && this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); };
             this.setState({status: 'starting', message: this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…'});
             try {
                 await session.uploadProgram(program, source);
-                if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: this.locale === 'de' ? 'Aktueller Code geladen; läuft in der ARM-Firmware.' : 'Current code uploaded and running in ARM firmware.'});
-            } catch (error) { if (!this.disposed && this.firmwareSession === session) this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message}); }
+                this.firmwareStartedState(session, this.locale === 'de' ? 'Aktueller Code geladen; läuft in der ARM-Firmware.' : 'Current code uploaded and running in ARM firmware.');
+            } catch (error) {
+                if (!this.disposed && this.firmwareSession === session) this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message});
+                throw error;
+            }
             return;
         }
         await this.stopProgram();
+        if (this.disposed) throw new Error('The arena pane is closed');
         this.hubState.setSimulationEnabled(true);
         if (topology === 'six-motors') this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world, robot: {sensors: []}});
         this.bridge.reset();
@@ -456,28 +503,18 @@ class SpikeArenaPane extends React.Component {
         if (micro) this.setState({microImageSelected: false});
         const session = new RenodeArenaSession({bridge: this.bridge, capabilities, backend, topology, program, source, onOutput,
             onCompleted: () => { onCompleted(); if (!this.disposed) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); },
-            onStopped: () => { if (!this.disposed && this.firmwareSession === session) {
-                this.firmwareSession = null; this.setState({execution: backend === 'micropython' ? 'micropython' : backend === 'nuttx' ? 'nuttx' : program ? 'program' : 'renode', status: 'paused'});
-            } },
-            onProgramState: (programState, storageSupported, runtimeError) => {
-                if (!this.disposed && this.firmwareSession === session) this.setState({programState, storageSupported,
-                    status: programState === 2 ? 'running' : 'paused',
-                    ...(programState === 5 ? {message: this.locale === 'de' ? `Firmware-Programm fehlgeschlagen (${runtimeError}). Gespeichertes Programm laden oder aktuellen Code starten.` : `Firmware program failed (${runtimeError}). Load a saved program or run current code to recover.`} : {})});
-            },
             onFrame: snapshot => { if (!this.disposed && this.firmwareSession === session) {
                 this.setState({status: session.storageSupported && session.programState !== 2 ? 'paused' : 'running', readout: snapshot, verdict: snapshot.verdict}); this.draw();
-            } },
-            onError: error => { if (!this.disposed && this.firmwareSession === session) {
-                this.firmwareSession = null;
-                this.setState({status: 'failed', message: error.message});
-                onError(error);
             } }});
         this.firmwareSession = session;
+        session.onProgramState = this.firmwareProgramObserver(session, onProgramState);
+        session.onStopped = this.firmwareStoppedObserver(session, backend, program, onStopped);
+        session.onError = this.firmwareErrorObserver(session, onError);
         this.setState({status: 'starting', storageSupported: false, programState: null, message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
         try {
             await session.start();
-            if (!this.disposed && this.firmwareSession === session) this.setState({status: 'running', message: program || source !== null ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
-                'Die eingebaute Fahrdemo läuft.' : 'Running the built-in driving demo.')});
+            this.firmwareStartedState(session, program || source !== null ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
+                'Die eingebaute Fahrdemo läuft.' : 'Running the built-in driving demo.'));
         } catch (error) {
             if (!this.disposed && this.firmwareSession === session) {
                 this.firmwareSession = null; this.setState({status: 'failed', message: error.message});

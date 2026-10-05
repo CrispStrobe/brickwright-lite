@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {encodeSource} from '../overlay/scratch-gui/src/lib/spike-micropython/raw-repl.js';
+import {createCodeRunFeedback} from '../overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js';
 const importer = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
 const paneSource = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx', import.meta.url), 'utf8');
 // Execute the actual method with a neutral browser/pane scaffold. Inject only
@@ -11,10 +12,10 @@ const paneSource = readFileSync(new URL('../overlay/scratch-gui/src/components/t
 const codeMethod = (window, mutation = value => value) => {
     const body = importer.slice(importer.indexOf('    async runOnMicroPythonImage () {'), importer.indexOf('    async runOnSpikeFirmware () {'));
     const injected = mutation(body.replace("const {encodeSource} = await import('../../lib/spike-micropython/raw-repl.js');", ''));
-    return new Function('window', 'encodeSource', `return ({${injected}}).runOnMicroPythonImage;`)(window, encodeSource);
+    return new Function('window', 'encodeSource', 'createCodeRunFeedback', `return ({${injected}}).runOnMicroPythonImage;`)(window, encodeSource, createCodeRunFeedback);
 };
 const paneMethod = window => {
-    const body = paneSource.slice(paneSource.indexOf('    async chooseMicroPythonImage () {'), paneSource.indexOf('    async startFirmware ('));
+    const body = paneSource.slice(paneSource.indexOf('    async chooseMicroPythonImage () {'), paneSource.indexOf('    firmwareProgramObserver ('));
     return new Function('window', `return ({${body}}).chooseMicroPythonImage;`)(window);
 };
 const scaffold = ({selected = true, source = 'print(42)', previouslySelected = false} = {}) => {
@@ -24,7 +25,7 @@ const scaffold = ({selected = true, source = 'print(42)', previouslySelected = f
         async stopProgram () {calls.push('stop');},
         async chooseMicroPythonImage () {calls.push('choose'); if (selected instanceof Error) throw selected; return selected;},
         async startFirmware (program, args) {calls.push(['start', program, args.source]); this.firmwareSession = {};} };
-    const editor = {state: {}, openSpikeArena () {calls.push('open');}, activeCode: () => source,
+    const editor = {state: {}, L: {spike3Stopped: 'Stopped.'}, openSpikeArena () {calls.push('open');}, activeCode: () => source,
         setState (next) {Object.assign(this.state, next);} };
     return {calls, pane, editor, window: {__bwSpikeArena: {_pane: pane, bridge: pane.bridge}}};
 };
