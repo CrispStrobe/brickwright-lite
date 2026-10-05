@@ -148,7 +148,9 @@ for (const name of entries) {
         throw new Error(`${name}: emitter refused without a structured i8086 reason`);
     }
     if (/^\s*\/\*[^\n]*blocks → C \(host\)/.test(code)) { out.host.push(name); continue; }
-    if (/\blong\b/.test(code.replace(/\/\*[\s\S]*?\*\//g, ''))) { out.long.push(name); continue; }
+    // Both comment forms: program comments arrive as `//` lines, and "long" in
+    // one ("one long noise counts once") is prose, not a type.
+    if (/\blong\b/.test(code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''))) { out.long.push(name); continue; }
     out.emits.push(name);
     if (compileC) {
         try {

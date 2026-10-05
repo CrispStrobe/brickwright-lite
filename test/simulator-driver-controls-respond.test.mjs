@@ -303,7 +303,12 @@ test('both halves of the repair are measurable, and each one helps', async () =>
     // assertion — "the 22 are the 8051 side specifically" — was very slightly
     // false while it was 22: it was 21 quasi-pin benches plus one Arduino bench
     // that was dead under every rail. At 21 it is exactly true.
-    assert.equal(armedLow.dead.length, 21,
+    // 21 -> 29 on 2026-10-05 (sb3-creator ff53089b): eight new STC12 key pins
+    // in the sensor/game examples -- binary-counter-buttons up/down, dice-pips
+    // btn, idea-generator next, reaction-duel keyA/keyB, two-toggle-keys
+    // keyA/keyB. All quasi-bidirectional 8051 pins, the same side as the 21;
+    // every one responds under the shipped arming (EXPECTED_DEAD stays empty).
+    assert.equal(armedLow.dead.length, 29,
         `armed low: ${armedLow.dead.length} dead of ${armedLow.pins} (the 0777a17 corpus number — ` +
         'the board-class half of the repair, with the 8051 half still open)');
     assert.ok(armedLow.dead.every(d => !d.startsWith('arduino-')),
@@ -311,7 +316,7 @@ test('both halves of the repair are measurable, and each one helps', async () =>
     assert.equal(armedRail.dead.length, EXPECTED_DEAD.size,
         `armed at the rail: ${armedRail.dead.length} dead, EXPECTED_DEAD names ${EXPECTED_DEAD.size}`);
 
-    // And the 21 are the 8051 side specifically — the shape of the finding, not
+    // And the 29 are the 8051 side specifically — the shape of the finding, not
     // just its size. Three of them are Wave 5 lesson benches.
     for (const id of ['05-counter:button', '26-debounce:btn', '60-retro-console:btn1']) {
         assert.ok(armedLow.dead.includes(id), `${id} was dead under the 0777a17 arming rule`);

@@ -201,8 +201,14 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // the stc12 PORT/595/keypad verbs); `git diff 3250c2ca 5d8dcf05 -- src/`
     // touches sb3Creator.js's driver generators and nothing the SPIKE emitter
     // or this fixture's parser path reads. The assertions re-ran at the pin.
+    // PIN MOVED 5d8dcf05 -> ff53089b (2026-10-05, sb3-creator#49): thirteen
+    // portable sensor/game examples; the C emitter's computed-ms wait (cMs),
+    // the referee's matching wait, and the C reader's pwm_set sentence.
+    // `git diff 5d8dcf05 ff53089b -- src/` touches sb3Creator.js's cMs only,
+    // traceOracle.js and cToPseudocode.js -- no SPIKE emitter or parser path.
+    // The assertions re-ran at the pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '5d8dcf05a7acfaf16ebe2b9d1c8335fe23149ffe');
+        'ff53089becb09e96a7ae55c34db51086623d0f37');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

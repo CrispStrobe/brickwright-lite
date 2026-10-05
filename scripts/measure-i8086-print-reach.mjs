@@ -257,7 +257,9 @@ for (const name of entries) {
         terminal.int16Refused.push(`${name}: ${creator._cI16Refused.join(', ')}`);
         continue;
     }
-    if (/\blong\b/.test(code.replace(/\/\*[\s\S]*?\*\//g, ''))) {
+    // Both comment forms: program comments are emitted as `//` lines, and the
+    // word "long" in one ("one long noise counts once") is prose, not a type.
+    if (/\blong\b/.test(code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, ''))) {
         terminal.longLeaked.push(name);
         continue;
     }

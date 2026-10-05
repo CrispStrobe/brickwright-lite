@@ -204,7 +204,10 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // This is a floor on COVERAGE, not a claim about corpus size — it exists so a
     // glob that silently stops matching cannot report zero failures. It moves
     // only when the corpus does, and the commit that moves it says which example.
-    assert.equal(files.length, 1217, 'the gate must cover the complete vendored corpus');
+    // 1217 -> 1349 on 2026-10-05: sb3-creator ff53089b's thirteen portable
+    // sensor/game examples: 132 generated, seated per-device benches (8-11
+    // each; 13 authored on the STC12 plus 119 retargets). No flat variants.
+    assert.equal(files.length, 1349, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -347,9 +350,12 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         // axis contributes the same 24 electrically validated benches counted
         // above; the three EEPROM-conflicting Arduino candidates remain
         // intentionally unavailable.
-        authored: 116,
-        retargeted: 907,
-        total: 1023
+        // 116/907 -> 129/1026 (total 1023 -> 1155) on 2026-10-05: the thirteen
+        // sensor/game examples, each authored on the STC12 (+13) and offered on
+        // 8-11 boards (+119 retargeted combinations, all with benches).
+        authored: 129,
+        retargeted: 1026,
+        total: 1155
     });
 });
 

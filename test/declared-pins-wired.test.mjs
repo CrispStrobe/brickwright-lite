@@ -126,7 +126,7 @@ const INFRA = new Set(['breadboard', 'breadboard_full', 'breadboard_half', 'brea
 const AFFORDANCE = new Set(['button', 'potentiometer', 'switch', 'slide_switch', 'dip_switch',
     'dip_switch_spst', 'dip_switch_dpst', 'keypad_4x4', 'tilt_switch', 'tilt_sensor', 'ldr',
     'led', 'rgb_led', 'buzzer', 'piezo', 'bargraph', 'seven_segment', 'servo', 'dc_motor',
-    'relay', 'neopixel', 'ssd1306', 'char_lcd_i2c', 'max7219']);
+    'relay', 'neopixel', 'ssd1306', 'char_lcd_i2c', 'max7219', 'pir', 'sound_module']);
 
 /** Power and ground legs are not pads a program reads or drives. Counting them
  *  made every LED whose cathode meets the MCU's GND pin look "on a pad" — 96
@@ -459,6 +459,11 @@ const NAME_IMPLIES = [
     [/^(motor|fan)/i, new Set(['dc_motor', 'gearmotor'])],
     [/^(tilt)/i, new Set(['tilt_switch', 'tilt_sensor'])],
     [/^(relay)/i, new Set(['relay'])],
+    // Sensor modules that drive their own output (bw-board #404 infers them
+    // from these names). A button standing in for a PIR "works" -- the pin
+    // reads a level -- and only the lesson is wrong, the LDR-as-knob species.
+    [/^(pir|motion|presence)/i, new Set(['pir'])],
+    [/^(sound|noise|clap|mic|loud)/i, new Set(['sound_module'])],
 ];
 
 /**
