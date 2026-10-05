@@ -3753,7 +3753,8 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
                     // booted Linux — all of which arrive as bootMedia.
                     const built = (selectedKind === 'z80' || selectedKind === 'eater6502' ||
                         selectedKind === 'riscv32' ||
-                        ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia)) ? null
+                        ((selectedKind === 'i8086' || selectedKind === 'i80386') && bootMedia) ||
+                        (selectedKind === 'rp2040js' && bootMedia)) ? null
                         : userFirmware ? await builtFromUserFirmware(selectedKind)
                             : await build();
                     await attach(built);
