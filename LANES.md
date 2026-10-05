@@ -15,6 +15,13 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## SPIKE handover
+
+The [SPIKE state and next lanes](docs/SPIKE-STATUS-AND-LANES.md) record the
+2026-10-05 tested GUI baseline and proposed cross-repository work. These are task
+definitions, not implementation claims; claim a lane below before source changes.
+This documentation-only handover owns no actuator or firmware implementation.
+
 ## The protocol
 
 ### Two regimes — do not confuse them

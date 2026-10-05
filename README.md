@@ -1,5 +1,7 @@
 # Brickwright
 
+For SPIKE simulation, see the [current state and actionable task lanes](docs/SPIKE-STATUS-AND-LANES.md).
+
 **Build circuits. Program machines. See how they work.**
 
 Brickwright is an open-source visual computing workbench. Build and measure

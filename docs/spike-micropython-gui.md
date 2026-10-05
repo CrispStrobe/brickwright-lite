@@ -35,7 +35,10 @@ and ownership cleanup passed. Disabling arena wheel motion makes this live compa
 fail despite successful Python output and motor telemetry. Code-tab method tests
 cover selection, reuse, cancellation, invalid source and late completion after pane
 disposal; a cancellation bypass mutation is detected. UART image/generation changes
-are refused. The OS dialog and full desktop DOM route were not automated locally.
+are refused. Subsequent installed Linux GUI qualification exercised the native image chooser
+and actual Code-tab entry with MicroPython 1.29.0, motor/arena motion, display,
+output and terminal feedback. See [the current-state evidence](SPIKE-STATUS-AND-LANES.md#evidence-and-version-boundaries)
+for its version boundaries; earlier library tests alone did not cover that route.
 Generated harnesses, firmware, observations, support packages and complete transcripts
 remain private.
 
