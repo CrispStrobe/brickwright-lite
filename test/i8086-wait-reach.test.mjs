@@ -96,7 +96,12 @@ const auditReach = (receipt, {compiled}) => {
     // arduino-02-tone-pitch-follower from its adc+tone choke to retargetRefused
     // and takes its literal wait out of the count: waitLiteralPrograms +2 -1,
     // waitComputedPrograms +1.
-    assert.equal(s.programs, 303);
+    // 303 -> 304 at sb3-creator 70488a68 (task B12, #55): chip-thermometer,
+    // refused at retarget (the STC12 has no on-die sensor). #55 also lets tone
+    // and print share an 8051 again (the UART moves to the BRT), so
+    // arduino-02-tone-pitch-follower leaves retargetRefused for its adc+tone
+    // choke and brings its literal wait back: waitLiteralPrograms +1.
+    assert.equal(s.programs, 304);
     // 122 -> 121 at sb3-creator fa96f5f5+ (task D5): 82-a2-led-row (a literal
     // `wait 150 ms`) names a LEDBANK8, which i8086 does not have; its LED line
     // was DROPPED with a warning and the rest counted as reached. An unreadable
@@ -104,7 +109,7 @@ const auditReach = (receipt, {compiled}) => {
     // 121 -> 120 at sb3-creator 8f4b6316 (task D6): 80-a2-lcd-moving-text's
     // parallel LCD1602 declaration, which i8086 cannot take, was skipped with a
     // warning; it is refused now, so the program is parseFailed (named below).
-    assert.equal(s.waitLiteralPrograms, 134);
+    assert.equal(s.waitLiteralPrograms, 135);
     assert.equal(s.waitComputedPrograms, 4);
     assert.equal(s.waitLiteralRefused, 0);
     assert.equal(s.waitComputedRefused, 2);
@@ -152,7 +157,7 @@ const auditReach = (receipt, {compiled}) => {
     'every gallery program must land in exactly one outcome bucket');
 };
 
-test('the 303-program gallery records the wait/print gains and every emitted program compiles',
+test('the 304-program gallery records the wait/print gains and every emitted program compiles',
     {timeout: 300000}, async t => {
         const {stdout} = await execFileP(process.execPath, [
             '--import', guiScopeHook,

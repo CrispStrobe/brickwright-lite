@@ -225,8 +225,14 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // condition in a value position warns (none in this fixture), the decompiler
     // writes a Boolean block in a round slot as its condition, the C reader's
     // branch form. The assertions re-ran.
+    // PIN MOVED 7b8415d5 -> fcea15f3 (2026-10-06, sb3-creator#55 + #56, task B12):
+    // 8051 tone + print, several I2C buses, `chip temperature`, ATtiny print/
+    // ask/tone, the chip-thermometer example, main() never returning on the
+    // AVR/ARM (#56). The parser change a SPIKE line could meet is the
+    // `chip temperature` reporter -- not a SPIKE word and not in this
+    // fixture; the assertions re-ran.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '7b8415d5ede7fc2c31e9ef8c35f24eab63b59441');
+        'fcea15f3bcaa2d7d21f99f3d9ff58b9ee4be9142');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
