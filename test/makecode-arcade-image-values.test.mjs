@@ -4,9 +4,10 @@ import {EventEmitter} from 'node:events';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import {runPxtCore} from './helpers/pxt-core-runtime.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 
 test('image values match executed PXT operators and retain identity through arrays and procedures',async()=>{
@@ -53,6 +54,9 @@ let untouched=cloned.getPixel(0,0)`;
     };
     const imported=arcadeToPseudocode(source),run=await execute(imported);
     await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));
+    await execute(arcadeToPseudocode(exported.ts));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,80);check(run);
 });
 

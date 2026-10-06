@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(source,frames){
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported.unsupported));
@@ -11,7 +12,9 @@ async function execute(source,frames){
 async function roundtrip(source,verify,frames=10){
     const run=await execute(source,frames);verify(run);
     const code=await runProgram(run.creator.decompile(),{frames,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);assert.deepEqual(code.creator.warnings,[]);verify(code);
-    const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,frames);verify(run);return {run};
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));verify(await execute(exported.ts,frames));
+    const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,frames);verify(run);return {run,exported};
 }
 
 test('background images share mutable resource identity with sprites and procedure results',async()=>{
@@ -27,14 +30,14 @@ let other=sprites.create(copy,SpriteKind.Food)
 alias.setPixel(0,0,2)
 let width=scene.backgroundImage().width
 let sample=hero.image.getPixel(0,0)`;
-    await roundtrip(source,run=>{
+    const {exported}=await roundtrip(source,run=>{
         const state=run.vm.runtime.bwArcadeDeviceState,sprites=Object.values(state.sprites),v=vars(run);
         assert.equal(state.backgroundColor,2);assert.equal(state.backgroundImage,sprites[0].image);assert.notEqual(state.backgroundImage,sprites[1].image);
         assert.deepEqual([...state.backgroundImage.pixels],[2,...Array(14).fill(7)]);assert.deepEqual([...sprites[1].image.pixels],Array(15).fill(7));assert.equal(Number(v.width),5);assert.equal(Number(v.sample),2);
-    });
+    });assert.match(exported.ts,/\): Image/);assert.match(exported.ts,/scene\.setBackgroundImage\(picture\)/);
 });
 
-test('literal backgrounds, clearing and lazy screen images retain exact pixels',async()=>{
+test('literal backgrounds, clearing and lazy screen images retain exact pixels through export',async()=>{
     await roundtrip(`let hero=sprites.create(img\`1\`,SpriteKind.Player)
 scene.setBackgroundImage(img\`7 .\n. 2\`)
 let old=scene.backgroundImage()

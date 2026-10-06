@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 
-test('Arcade constructor, atomic positioning and fixed-point writes match original PXT through import, Code and SB3',async()=>{
+test('Arcade constructor, atomic positioning and fixed-point writes match original PXT through all conversion paths',async()=>{
     const source=`let seen=""
 sprites.onCreated(SpriteKind.Player,function(sprite:Sprite){seen=sprite.toString()})
 let hero=sprites.create(img\`1\`,SpriteKind.Player)
@@ -60,10 +60,14 @@ let retained=hero.toString()`;
     const opcodes=Object.values(run.creator.project.targets.flatMap(t=>Object.values(t.blocks))).map(b=>b.opcode);
     assert.ok(opcodes.includes('arcade_setSpritePosition'));assert.ok(opcodes.includes('arcade_createSprite'));assert.ok(opcodes.includes('arcade_createImageSprite'));
     await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const originalExported=await runPxtArcade(exported.ts);
+    for(const name of names)assert.equal(originalExported[name],expected[name],name+' in executed PXT export');
+    await execute(arcadeToPseudocode(exported.ts));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,80);check(run);
 });
 
-test('positioned factory runs creation callbacks before atomic placement',async()=>{
+test('positioned factory runs creation callbacks before atomic placement, including in exported PXT',async()=>{
     const source=`let seenX=0
 let seenY=0
 sprites.onCreated(SpriteKind.Player,function(sprite:Sprite){seenX=sprite.x;seenY=sprite.y;sprite.x=42})
@@ -76,4 +80,9 @@ let placed=hero.toString()`;
     const names=['seenX','seenY','placed'];
     const run=await runProgram(code,{frames:40,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
     for(const name of names)assert.equal(vars(run)[name],expected[name],name);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const actual=await runPxtArcade(exported.ts);for(const name of names)assert.equal(actual[name],expected[name],name+' in exported PXT');
+    const returned=arcadeToPseudocode(exported.ts);assert.deepEqual(returned.unsupported,[]);
+    const again=await runProgram(returned.code,{frames:40,uploads:returned.costumes,storage:true});assert.deepEqual(again.errors,[]);
+    for(const name of names)assert.equal(vars(again)[name],expected[name],name+' after export/reimport');
 });

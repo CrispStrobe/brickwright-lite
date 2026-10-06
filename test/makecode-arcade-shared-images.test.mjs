@@ -2,17 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runProgram, SB3Creator} from './helpers/bw-vm.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile} from '../scripts/lib/pxt-node.mjs';
+const out = creator => projectToArcade(creator.project,{costumeSvg:(t,c)=>creator.assets.get(c.assetId)?.data});
 const sprites = run => Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
 async function execute(source) {
     const imported = arcadeToPseudocode(source); assert.deepEqual(imported.unsupported,[]);
     const run = await runProgram(imported.code,{frames:10,uploads:imported.costumes,storage:true});
     assert.deepEqual(run.creator.warnings,[]); assert.deepEqual(run.errors,[]); return run;
 }
-// The editable Code half: the imported project decompiles and reads back cleanly.
-function recode(run) {
+async function reexport(run) {
     const recreated = new SB3Creator(); recreated.parse(run.creator.decompile()); assert.deepEqual(recreated.warnings,[]);
     for(const c of run.creator.project.targets.flatMap(t=>t.costumes||[])) assert.ok(c.assetId);
+    const exported = out(run.creator); assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files); assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    return execute(exported.ts);
 }
 
 test('sprite image aliases share pixels and masks, survive owner destruction, and export as Image references', async () => {
@@ -32,7 +36,8 @@ third.image.setPixel(1,0,8)`;
     assert.equal(state[0].image,state[1].image);
     assert.deepEqual([...state[0].image.pixels],[0,8]); assert.deepEqual([...state[0].mask],[0,1]);
     assert.equal(state[1].width,2); assert.equal(state[1].height,1);
-    recode(run);
+    const rerun=await reexport(run); assert.equal(sprites(rerun)[0].image,sprites(rerun)[1].image);
+    assert.deepEqual([...sprites(rerun)[1].image.pixels],[0,8]);
     const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
     run.vm.greenFlag();for(let i=0;i<10;i++)run.vm.runtime._step();
     assert.equal(sprites(run)[0].image,sprites(run)[1].image);
@@ -54,7 +59,8 @@ controller.A.onEvent(ControllerButtonEvent.Pressed,function(){hero.setImage(__bw
     assert.deepEqual([...sprites(run)[0].image.pixels],[0,7]);assert.deepEqual([...sprites(run)[1].mask],[0,1]);
     run.vm.postIOData('keyboard',{key:' ',isDown:true});for(let i=0;i<4;i++)run.vm.runtime._step();
     assert.deepEqual([...sprites(run)[0].image.pixels],[3,8]); assert.notEqual(sprites(run)[0].image,sprites(run)[1].image);
-    recode(run);
+    const rerun=await reexport(run);assert.equal(sprites(rerun)[0].image,sprites(rerun)[1].image);
+    assert.deepEqual([...sprites(rerun)[0].image.pixels],[0,7]);
 });
 
 test('equal literal image expressions remain separate resources when a shared sprite switches image', async () => {
@@ -66,7 +72,7 @@ hero.setImage(img\`1\`)
 hero.image.fill(2)`);
     assert.notEqual(sprites(run)[0].image,sprites(run)[1].image);
     assert.deepEqual(sprites(run).map(s=>[...s.image.pixels]),[[2],[7]]);
-    recode(run);
+    const again=await reexport(run);assert.deepEqual(sprites(again).map(s=>[...s.image.pixels]),[[2],[7]]);
 });
 
 test('creation callbacks share images selected from the same random frame array', async () => {
@@ -76,5 +82,5 @@ sprites.create(img\`1 2\`,SpriteKind.Player)
 sprites.create(img\`3 4\`,SpriteKind.Player)`);
     assert.equal(sprites(run).length,2);assert.equal(sprites(run)[0].image,sprites(run)[1].image);
     assert.deepEqual([...sprites(run)[1].image.pixels],[7,7]);
-    recode(run);
+    const again=await reexport(run);assert.equal(sprites(again)[0].image,sprites(again)[1].image);
 });

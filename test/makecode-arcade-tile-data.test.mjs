@@ -4,7 +4,7 @@ import {EventEmitter} from 'node:events';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {TILE_DATA_SOURCE,TILE_CLEAR_SOURCE} from './fixtures/arcade-tile-data.mjs';
@@ -38,6 +38,12 @@ test('tile collections, walls and placement match PXT across Code, SB3 and execu
     const opcodes=new Set(run.creator.project.targets.flatMap(t=>Object.values(t.blocks).map(b=>b.opcode)));
     for(const opcode of ['arcade_setTilemap','arcade_tilesOfType','arcade_tileLocation','arcade_tileLocationProperty','arcade_setTileAt','arcade_setWallAt','arcade_placeOnTile'])assert.ok(opcodes.has(opcode),opcode);
     await execute({...imported,code:run.creator.decompile()});
+    const exportProject=r=>projectToArcade(r.creator.project,{costumeSvg:(t,c)=>r.creator.assets.get(c.assetId)?.data});
+    const exported=exportProject(run);assert.deepEqual(exported.unsupported,[]);
+    const pxt=await runPxtArcade(exported.ts,{waitForGlobals:{tileDataDone:true}});for(const name of names)assert.equal(pxt[name],expected[name],name+' in exported PXT');
+    const again=await execute(arcadeToPseudocode(exported.ts));
+    const second=exportProject(again);assert.deepEqual(second.unsupported,[]);
+    const twice=await runPxtArcade(second.ts,{waitForGlobals:{tileDataDone:true}});for(const name of names)assert.equal(twice[name],expected[name],name+' after second PXT export');
     const previous=vars(run).spot;
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,140);check(run);
     assert.notEqual(vars(run).spot,previous,'project reload invalidates prior tile references');
@@ -84,6 +90,11 @@ test('clearing a tilemap retains location scale and preserves the independent ba
     };
     const imported=arcadeToPseudocode(TILE_CLEAR_SOURCE);checkDiagnostics(imported);
     const run=await runProgram(imported.code,{frames:90,uploads:imported.costumes,storage:true});check(run);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/tiles\.setTilemap\(null\)/);
+    const pxt=await runPxtArcade(exported.ts,{waitForGlobals:{tileClearDone:true}});for(const name of names)assert.equal(pxt[name],expected[name],name+' in exported PXT');
+    const again=arcadeToPseudocode(exported.ts);checkDiagnostics(again);
+    check(await runProgram(again.code,{frames:90,uploads:again.costumes,storage:true}));
 });
 
 test('generated tile factories preserve JRES pixels, scale thirty-two and the exact wall mask',async()=>{
@@ -106,4 +117,7 @@ test('generated tile factories preserve JRES pixels, scale thirty-two and the ex
     const run=await runProgram(imported.code,{frames:60,uploads:imported.costumes,storage:true});check(run);
     check(await runProgram(run.creator.decompile(),{frames:60,uploads:imported.costumes,storage:true}));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,60);check(run);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    assert.match(exported.ts,/TileScale\.ThirtyTwo/);
+    const pxt=await runPxtArcade(exported.ts,{waitForGlobals:{tileGeneratedDone:true}});for(const name of names)assert.equal(pxt[name],expected[name],name+' in exported PXT');
 });

@@ -5,10 +5,12 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {createRequire} from 'node:module';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram, stepFrames} from './helpers/bw-vm.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const value = (run,name) => run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name===name)?.value;
+const exportProject = creator => projectToArcade(creator.project,{costumeSvg:(t,c)=>creator.assets.get(c.assetId)?.data});
 async function execute(source,frames=30) {
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true});
@@ -39,6 +41,9 @@ let hero=sprites.create(img\`1\`,SpriteKind.Player)
 let sampled=hero.image.getPixel(0,0)
 let observed=order`);
     assert.equal(value(run,'sampled'),2);assert.equal(value(run,'observed'),reference);
+    const exported=exportProject(run.creator);assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    const again=await execute(exported.ts);assert.equal(value(again,'sampled'),2);assert.equal(value(again,'observed'),12);
     const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,30);
     assert.equal(value(run,'sampled'),2);assert.equal(value(run,'observed'),12);
 });
@@ -66,6 +71,8 @@ let actualVelocity=shot.vx
 let width=shot.width`,12);
     assert.equal(value(run,'seenVelocity'),0);assert.equal(value(run,'actualVelocity'),30);assert.equal(value(run,'width'),8);
     const shot=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0];assert.equal(shot.autoDestroy,true);
+    const exported=exportProject(run.creator);assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
 });
 
 test('stopping and restarting cancels pending creation callbacks without starting later handlers',async()=>{

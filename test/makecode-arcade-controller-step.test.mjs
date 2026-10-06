@@ -1,14 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 
 const source = `let horizontal = controller.dx(90)
 let vertical = controller.dy()
 let reversed = controller.dx(-60)`;
 
-test('controller dx and dy keep their steps through Code and Blocks', async () => {
+test('controller dx and dy keep their steps through Code, Blocks, and PXT', async () => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
     assert.match(imported.code, /arcade controller x step 90/);
@@ -19,6 +20,15 @@ test('controller dx and dy keep their steps through Code and Blocks', async () =
     assert.deepEqual(creator.warnings, []);
     assert.ok(projectOpcodes(creator.project).has('arcade_controllerStep'));
     assert.match(creator.decompile(), /arcade controller y step 100/);
+    const exported = projectToArcade(creator.project);
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /controller\.dx\(90\)/);
+    assert.match(exported.ts, /controller\.dy\(100\)/);
+    assert.match(exported.ts, /controller\.dx\(\(0 - 60\)\)/);
+    if (hasRuntime('arcade')) {
+        const compiled = await compile('arcade', exported.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    }
 });
 
 test('controller reporters use signed PXT frame movement for held arrows', async () => {

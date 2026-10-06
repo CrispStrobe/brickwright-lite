@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(imported){
     assert.deepEqual(imported.unsupported,[]);
@@ -12,7 +13,10 @@ async function execute(imported){
 async function roundtrip(source,check){
     const imported=arcadeToPseudocode(source),run=await execute(imported);check(run);
     check(await execute({...imported,code:run.creator.decompile()}));
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));check(await execute(arcadeToPseudocode(exported.ts)));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,15);check(run);
+    return exported;
 }
 test('literal Image variables preserve shared identity through procedures and backgrounds',async()=>{
     await roundtrip(`function paint(surface:Image){surface.setPixel(0,0,7)}
@@ -30,7 +34,7 @@ let sample=hero.image.getPixel(0,0)`,run=>{
     });
 });
 test('literal evaluations in Image-returning procedures allocate independently on every call',async()=>{
-    await roundtrip(`function picture(){return img\`2 .\n. 5\`}
+    const exported=await roundtrip(`function picture(){return img\`2 .\n. 5\`}
 let first=picture()
 let alias=first
 let second=picture()
@@ -45,7 +49,7 @@ let sample=alias.getPixel(1,1)`,run=>{
         const [a,b,c]=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
         assert.notEqual(a.image,b.image);assert.notEqual(b.image,c.image);
         assert.deepEqual([...a.image.pixels],[7,7,7,7]);assert.deepEqual([...b.image.pixels],[3,0,0,5]);assert.deepEqual([...c.image.pixels],[2,0,0,5]);assert.equal(Number(vars(run).sample),7);
-    });
+    });assert.match(exported.ts,/\): Image/);
 });
 test('Image-only literal programs and repeated background literals retain original pixels',async()=>{
     await roundtrip(`function install(){scene.setBackgroundImage(img\`2 .\n. 5\`)}

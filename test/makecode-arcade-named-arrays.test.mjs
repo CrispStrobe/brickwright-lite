@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-array-values.js';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+const normalized=values=>Object.fromEntries(Object.entries(values).map(([name,value])=>[name.replace(/^Game_/,''),value]));
+const output=run=>projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
 const code=`DEVICE ARCADE
 SPRITE Game:
 WHEN flag clicked:
@@ -44,10 +46,15 @@ WHEN flag clicked:
   set missing to item 0 of array "blank"`;
 const names=['identity','nested','numberText','wordText','count','last','content','located','oldCount','newCount','changed','deletedCount','oldContent','emptyPop'];
 const expected={identity:true,nested:'[2,3,4]',numberText:'12',wordText:'"word"',count:9,last:'',content:'[12,"word",[2,3,4],null,true,7,"hello",null]',located:5,oldCount:8,newCount:0,changed:true,deletedCount:0,oldContent:'[12,"word",[2,3,4],null,true,7,"hello",null]',emptyPop:''};
-test('named arrays retain JSON reads, value parsing, nested aliases and replacement through Code and SB3',async()=>{
+test('named arrays retain JSON reads, value parsing, nested aliases and replacement across all conversion paths',async()=>{
     const check=run=>{const actual=vars(run);for(const name of names)assert.equal(actual[name],expected[name],name);assert.equal(BWValues.decode(actual.missing),undefined,'a missing item is MakeCode undefined (raw or BWValues.UNDEFINED), not text');assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
     const run=await runProgram(code,{frames:50,storage:true});check(run);
     const again=await runProgram(run.creator.decompile(),{frames:50,storage:true});check(again);
+    const exported=output(run);assert.deepEqual(exported.unsupported,[]);
+    const original=normalized(await runPxtArcade(exported.ts));for(const name of names)assert.equal(original[name],expected[name],name+' in PXT');assert.equal(original.missing,undefined);
+    const imported=arcadeToPseudocode(exported.ts);assert.deepEqual(imported.unsupported,[]);
+    const returned=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true});check(returned);
+    const twice=output(returned);assert.deepEqual(twice.unsupported,[]);const originalTwice=normalized(await runPxtArcade(twice.ts));for(const name of names)assert.equal(originalTwice[name],expected[name],name+' in second PXT export');
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,50);check(run);
 });
 
@@ -66,6 +73,10 @@ let json=__bwNamedJsonValue(parsed)`;
     const check=run=>{for(const name of names)assert.equal(vars(run)[name],expected[name],name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
     check(run);
     check(await runProgram(run.creator.decompile(),{frames:50,uploads:imported.costumes,storage:true}));
+    const exported=output(run);assert.deepEqual(exported.unsupported,[]);
+    const exportedPxt=normalized(await runPxtArcade(exported.ts));for(const name of names)assert.equal(exportedPxt[name],expected[name],name+' in exported PXT');
+    const reimported=arcadeToPseudocode(exported.ts);assert.deepEqual(reimported.unsupported,[]);
+    check(await runProgram(reimported.code,{frames:50,uploads:reimported.costumes,storage:true}));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,50);check(run);
     const modified=arcadeToPseudocode(source.replace('if (value === "") return ""','if (value === "") return "changed"'));
     assert.ok(!modified.code.includes('parse array input'));
@@ -96,4 +107,6 @@ WHEN flag clicked:
   set nanIndex to index of (convert value ("NaN") op "+") in array "numbers"`;
     const check=run=>{const v=vars(run);assert.equal(v.calls,5);assert.equal(v.absentGet,'');assert.equal(v.end,'[1,2,3]');assert.equal(v.found,1);assert.equal(v.nanIndex,-1);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
     const run=await runProgram(code,{frames:50,storage:true});check(run);
+    const exported=output(run);assert.deepEqual(exported.unsupported,[]);const original=normalized(await runPxtArcade(exported.ts));assert.equal(original.calls,5);assert.equal(original.absentGet,'');assert.equal(original.end,'[1,2,3]');assert.equal(original.found,1);assert.equal(original.nanIndex,-1);
+    const imported=arcadeToPseudocode(exported.ts);assert.deepEqual(imported.unsupported,[]);check(await runProgram(imported.code,{frames:70,uploads:imported.costumes,storage:true}));
 });

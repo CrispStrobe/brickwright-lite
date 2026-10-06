@@ -4,8 +4,9 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {createRequire} from 'node:module';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const require=createRequire(import.meta.url);
 const engine=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/image.js')([],require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js'));
 const original=readFileSync(new URL('../packages/scratch-gui/static/makecode/arcade/sim/common-sim.js',import.meta.url),'utf8');
@@ -58,10 +59,15 @@ const verify=run=>{
     assert.equal(vars.hit,true);assert.equal(vars.miss,false);assert.equal(vars.spriteHit,true);assert.equal(Number(vars.branch),1);
 };
 
-test('live image drawing and overlap survive Code and SB3',async()=>{
+test('live image drawing and overlap survive Code, SB3 and compiled MakeCode export/reimport',async()=>{
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported));
     const run=await runProgram(imported.code,{frames:12,uploads:imported.costumes,storage:true});verify(run);
     verify(await runProgram(run.creator.decompile(),{frames:12,uploads:imported.costumes,storage:true}));
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/input: Image/);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    const again=arcadeToPseudocode(exported.ts);assert.deepEqual(again.unsupported,[],JSON.stringify(again));
+    verify(await runProgram(again.code,{frames:12,uploads:again.costumes,storage:true}));
     const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,12);verify(run);
 });
 

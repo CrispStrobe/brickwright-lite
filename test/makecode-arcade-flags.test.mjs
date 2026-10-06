@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {loadExtensionClass, probeExtension} from './helpers/bw-extensions.mjs';
 import {SB3Creator, runProgram} from './helpers/bw-vm.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 const Arcade = loadExtensionClass('arcade');
 function setup () {
@@ -14,6 +14,7 @@ function setup () {
     return {rt, ext: new Arcade(rt)};
 }
 const spawn = ext => ext.spawnSprite({TEMPLATE: '', KIND: 'Player', X: 80, Y: 60, WIDTH: 2, HEIGHT: 2});
+const exported = creator => projectToArcade(creator.project, {costumeSvg: (target, costume) => creator.assets.get(costume.assetId)?.data});
 
 test('sprite flag command is available in the Blocks palette and VM', () => {
     const {rt} = setup(); const probe = probeExtension(Arcade, rt);
@@ -70,6 +71,17 @@ hide(foe)`;
     assert.equal(state.find(s => s.kind === 'Enemy').flags, 128);
     const recreated = new SB3Creator(); recreated.parse(run.creator.decompile());
     assert.deepEqual(recreated.warnings, []);
+    const out = exported(run.creator); assert.deepEqual(out.unsupported, []);
+    // Since E0/E1 the import writes `true`/`false` and `==` as the value words
+    // (`compare value (0) op "<" with (1)`), which export as real Booleans.
+    assert.match(out.ts, /setFlag\(SpriteFlag.Ghost, __bwCompareLess\(0, 1\)\)/);
+    assert.match(out.ts, /setFlag\(SpriteFlag.GhostThroughTiles, __bwCompareLess\(1, 0\)\)/);
+    assert.match(out.ts, /setFlag\(SpriteFlag.Invisible, __bwCompareEqual\(enabled, \(0 \+ 1\)\)\)/);
+    const compiled = await compile('arcade', out.files);
+    assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    const again = arcadeToPseudocode(out.ts); assert.deepEqual(again.unsupported, []);
+    const roundtrip = await runProgram(again.code, {frames: 5, uploads: again.costumes, storage: true});
+    assert.deepEqual(Object.values(roundtrip.vm.runtime.bwArcadeDeviceState.sprites).map(s => s.flags).sort(), [128, 6280]);
 });
 
 test('controller-local sprite handles remain independent and can flow into flag procedures', async () => {
@@ -90,6 +102,7 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
     const sprites = Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
     assert.equal(sprites.length, 2); assert.notEqual(sprites[0].id, sprites[1].id);
     assert.ok(sprites.every(s => s.flags === 7296));
+    assert.deepEqual(exported(run.creator).unsupported, []);
 });
 
 test('Boolean assignments toggle flags repeatedly and survive native SB3 serialization', async () => {
@@ -114,6 +127,20 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     assert.equal(flags.length, 1); assert.equal(flags[0].fields.FLAG[0], 'Invisible');
     const roundtrip = new SB3Creator(); roundtrip.parse(run.creator.decompile(native));
     assert.deepEqual(roundtrip.warnings, []);
+    const out = exported(run.creator);
+    assert.deepEqual(out.unsupported, []);
+    const compiled = await compile('arcade', out.files);
+    assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    const again = arcadeToPseudocode(out.ts);
+    assert.deepEqual(again.unsupported, []);
+    const recreated = await runProgram(again.code, {frames: 4, uploads: again.costumes, storage: true});
+    for (const expected of [true, false]) {
+        recreated.vm.postIOData('keyboard', {key: 'z', isDown: true});
+        for (let i = 0; i < 4; i++) recreated.vm.runtime._step();
+        recreated.vm.postIOData('keyboard', {key: 'z', isDown: false});
+        assert.equal(Object.values(recreated.vm.runtime.bwArcadeDeviceState.sprites)[0].invisible, expected);
+    }
+    assert.match(out.ts, /setFlag\(SpriteFlag.Invisible,/);
 });
 
 test('pinned firework source retains local creation, Ghost, and sprite image mutation', async () => {
@@ -135,4 +162,11 @@ test('unknown flags remain explicit gaps in import and authored Code', () => {
     // E0: the dialect refuses an unknown flag by name rather than warning.
     assert.throws(() => new SB3Creator().parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag ShowPhysics of 1 to 1'),
         error => error.code === 'DIALECT_UNPARSED_LINES' && error.lines[0].text === 'arcade set flag ShowPhysics of 1 to 1');
+    // A flag block the dialect cannot write (a project edited elsewhere) is
+    // still refused by name on the way out, never exported as a guess.
+    const creator = new SB3Creator(); creator.parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag Ghost of 1 to 1');
+    assert.deepEqual(creator.warnings, []);
+    const flag = Object.values(creator.project.targets.find(t => t.name === 'Game').blocks).find(b => b.opcode === 'arcade_setSpriteFlag');
+    flag.fields.FLAG[0] = 'ShowPhysics';
+    assert.ok(exported(creator).unsupported.some(gap => gap.includes('Unsupported Arcade sprite flag ShowPhysics')));
 });

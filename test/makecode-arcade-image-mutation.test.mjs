@@ -7,12 +7,14 @@ import {readFileSync} from 'node:fs';
 import {loadExtensionClass, probeExtension} from './helpers/bw-extensions.mjs';
 import {runProgram, SB3Creator} from './helpers/bw-vm.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const require = createRequire(import.meta.url);
 const engine = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/image.js')([
     null, '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609', '#249ca3', '#78dc52',
     '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'], require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js'));
 const Arcade = loadExtensionClass('arcade');
+const exportProject = creator => projectToArcade(creator.project, {costumeSvg: (t, c) => creator.assets.get(c.assetId)?.data});
 
 test('pixel operations handle odd dimensions, transparency, and replacement without changing size', () => {
     const image = {width: 3, height: 3, pixels: Uint8Array.from([0,1,2,3,4,5,6,7,8])};
@@ -89,6 +91,11 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () { foe.image.fill
     const code = run.creator.decompile(); const recreated = new SB3Creator(); recreated.parse(code);
     assert.deepEqual(recreated.warnings, []);
     assert.equal(Object.values(recreated.project.targets.find(t => t.name === 'Game').blocks).filter(b => b.opcode === 'arcade_mutateSpriteImage').length, 4);
+    const exported = exportProject(run.creator); assert.deepEqual(exported.unsupported, []);
+    const built = await compile('arcade', exported.files); assert.equal(built.success, true, JSON.stringify(built.diagnostics));
+    const reimport = arcadeToPseudocode(exported.ts); assert.deepEqual(reimport.unsupported, []);
+    const again = await runProgram(reimport.code, {frames:8, uploads:reimport.costumes, storage:true});
+    assert.deepEqual([...Object.values(again.vm.runtime.bwArcadeDeviceState.sprites).find(s => s.kind === 'Player').image.pixels], [0,3,5,1]);
 });
 
 test('real flip game imports without gaps, while unsupported pixel drawing remains explicit', () => {
