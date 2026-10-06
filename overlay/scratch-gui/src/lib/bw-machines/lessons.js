@@ -72,6 +72,39 @@ export const LINUX_RISCV_MEDIA = Object.freeze({
     licences: Object.freeze(['GPL-2.0-only', 'LGPL-2.1-or-later'])
 });
 
+// ELKS 0.9.2 (Embeddable Linux Kernel Subset) — a real 16-bit Unix-like OS on the
+// i8086 machine. The official release floppy is GPL-2.0 and lives in brickwright-
+// media-lab on the `media/elks-v0.9.2` branch (byte-identical to the upstream
+// release asset; mirrored there because raw.githubusercontent sends CORS and the
+// GitHub release download does not). Its corresponding source is ghaerr/elks @
+// v0.9.2. Same pattern as the Linux lesson above.
+const ELKS_MEDIA_COMMIT = '1ebf1392e2c31f58c90d0c849c20c57e16c02614';
+const ELKS_RAW = `https://raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/${ELKS_MEDIA_COMMIT}/projects/elks`;
+
+/** The pinned ELKS media. Mirrors brickwright-media-lab projects/elks/
+ *  brickwright-media.json — same floppy, same geometry/quirks. */
+export const ELKS_MEDIA = Object.freeze({
+    commit: ELKS_MEDIA_COMMIT,
+    floppy: Object.freeze({
+        url: `${ELKS_RAW}/fd1440-fat.img`,
+        sha256: '637a1d07ac1b18c7e8fafbf64911ceaa5864a37c60e23878d498534ccaae366b',
+        bytes: 1474560,
+        geometry: Object.freeze({cylinders: 80, heads: 2, sectors: 18, bytesPerSector: 512})
+    }),
+    quirks: Object.freeze(['at-floppy-drive-type']),
+    /** Corresponding source (GPL-2.0 §3): the upstream ELKS tag the floppy is built from. */
+    source: 'https://github.com/ghaerr/elks/tree/v0.9.2',
+    project: `${MEDIA_LAB}/tree/main/projects/elks`,
+    licences: Object.freeze(['GPL-2.0-only'])
+});
+/** The ELKS display screen + keyboard (mirrors the media-lab manifest's widgets). */
+const ELKS_WIDGETS = Object.freeze([
+    {name: 'screen', type: 'simplevga', config: {width: 640, height: 200},
+        layout: {x: 0, y: 0, w: 24, h: 14}, source: 'video'},
+    {name: 'keyboard', type: 'keyboard', config: {},
+        layout: {x: 0, y: 15, w: 24, h: 3}, source: 'keyIn'}
+]);
+
 const TABLE = {
     en: {
         'lessons.heading': 'Lessons',
@@ -85,6 +118,13 @@ const TABLE = {
             'Run fetches them ({size}) from brickwright-media-lab and checks their SHA-256 first.',
         'lessons.cold': 'Boot from scratch',
         'linux.source': 'Source code',
+        'elks.title': 'ELKS on 8086',
+        'elks.summary': 'ELKS 0.9.2 — a real 16-bit Unix-like OS — boots on the emulated 8086 ' +
+            'from its 1.44 MB floppy. Run opens the kernel boot on the machine screen: it sizes ' +
+            'the disk, mounts the root filesystem and reaches a login. A free BIOS is built in.',
+        'elks.licence': 'ELKS is GPL-2.0. It is not part of this app: ' +
+            'Run fetches the floppy ({size}) from brickwright-media-lab and checks its SHA-256 first.',
+        'elks.source': 'Source code',
         'lessons.fetching': 'Fetching {title} ({size}) and checking SHA-256…',
         'lessons.failed': 'Could not start {title}: {reason}'
     },
@@ -100,6 +140,14 @@ const TABLE = {
             'Ausführen lädt sie ({size}) von brickwright-media-lab und prüft vorher ihre SHA-256.',
         'lessons.cold': 'Von Grund auf booten',
         'linux.source': 'Quellcode',
+        'elks.title': 'ELKS auf 8086',
+        'elks.summary': 'ELKS 0.9.2 — ein echtes 16-Bit-unixoides Betriebssystem — startet auf dem ' +
+            'emulierten 8086 von seiner 1,44-MB-Diskette. Ausführen zeigt den Kernel-Start auf dem ' +
+            'Maschinenbildschirm: Er erkennt die Diskettengeometrie, bindet das Wurzeldateisystem ein ' +
+            'und erreicht einen Login. Ein freies BIOS ist eingebaut.',
+        'elks.licence': 'ELKS steht unter GPL-2.0. Es ist nicht Teil dieser App: ' +
+            'Ausführen lädt die Diskette ({size}) von brickwright-media-lab und prüft vorher ihre SHA-256.',
+        'elks.source': 'Quellcode',
         'lessons.fetching': '{title} wird geladen ({size}) und per SHA-256 geprüft…',
         'lessons.failed': '{title} konnte nicht starten: {reason}'
     }
@@ -117,6 +165,8 @@ export const LINUX_DOWNLOAD_BYTES = LINUX_RISCV_MEDIA.kernel.bytes + LINUX_RISCV
     LINUX_RISCV_MEDIA.snapshot.bytes;
 /** Download of "Boot from scratch" (no snapshot). */
 export const LINUX_COLD_DOWNLOAD_BYTES = LINUX_RISCV_MEDIA.kernel.bytes + LINUX_RISCV_MEDIA.initrd.bytes;
+/** Total download of the ELKS lesson's Run (one floppy). */
+export const ELKS_DOWNLOAD_BYTES = ELKS_MEDIA.floppy.bytes;
 
 /**
  * The lessons, as machine configs plus what the manager shows beside them.
@@ -152,6 +202,35 @@ export function lessonMachines (locale) {
     const coldSlots = {...config.slots};
     delete coldSlots.snapshot;
     const coldConfig = newMachineConfig({...config, slots: coldSlots, bootOrder: ['kernel']});
+
+    // ELKS 0.9.2 on the i8086 machine — the floppy is the boot medium (no cold
+    // variant: it IS the whole boot). The floppy slot selects the floppy-OS boot
+    // path; its geometry + the at-floppy-drive-type quirk are what ELKS needs to
+    // find /bin/init. A `video` widget mirrors the machine screen into Widgets.
+    const elksConfig = newMachineConfig({
+        id: 'lesson-elks-i8086',
+        title: t('elks.title'),
+        executionMode: 'functional',
+        machine: 'i8086',
+        machineConfig: 'PCXT8086',
+        slots: {
+            floppy: {
+                url: ELKS_MEDIA.floppy.url,
+                sha256: ELKS_MEDIA.floppy.sha256,
+                geometry: {...ELKS_MEDIA.floppy.geometry}
+            }
+        },
+        quirks: [...ELKS_MEDIA.quirks],
+        bootOrder: ['floppy'],
+        widgets: ELKS_WIDGETS.map(w => ({...w})),
+        tags: ['lesson', 'elks', 'gpl-media'],
+        provenance: {
+            source: 'brickwright-media-lab/projects/elks',
+            license: ELKS_MEDIA.licences.join(' + '),
+            sourceCode: ELKS_MEDIA.source
+        }
+    });
+
     return [{
         config,
         coldConfig,
@@ -162,5 +241,12 @@ export function lessonMachines (locale) {
         source: LINUX_RISCV_MEDIA.source,
         sourceLabel: t('linux.source'),
         size: mediaSize(LINUX_DOWNLOAD_BYTES)
+    }, {
+        config: elksConfig,
+        summary: t('elks.summary'),
+        licence: t('elks.licence', {size: mediaSize(ELKS_DOWNLOAD_BYTES)}),
+        source: ELKS_MEDIA.source,
+        sourceLabel: t('elks.source'),
+        size: mediaSize(ELKS_DOWNLOAD_BYTES)
     }];
 }
