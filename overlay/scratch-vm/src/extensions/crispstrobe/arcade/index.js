@@ -1481,7 +1481,7 @@ module.exports = makeExt(`// Name: Arcade
     changeSpriteScale(args,util){const s=this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);if(s)return this.setSpriteScaleCore({...args,SX:s.sx+Number(args.VALUE),SY:s.sy+Number(args.VALUE)},util);}
     _renderSpriteImageIfPresent(sprite){
       if(!this._sprite(sprite.id))return;
-      if(!sprite.image && this._state().spriteTargets[sprite.id])this._imageForSprite(sprite.id);
+      if(!sprite.image && this._state().spriteTargets[sprite.id])this._imageForSprite(sprite.id,{quiet:true});
       if(sprite.image)this._renderSpriteImage(sprite.id);
     }
     setSpritePosition(args, util) {
@@ -1624,7 +1624,7 @@ module.exports = makeExt(`// Name: Arcade
       return !!sprite?._wallObstacles?.[Number(args.DIRECTION)];
     }
     _wallHitbox(sprite) {
-      const image = this._imageForSprite(sprite.id), pixels = image?.pixels || sprite.mask;
+      const image = this._imageForSprite(sprite.id, {quiet: true}), pixels = image?.pixels || sprite.mask;
       let left = 0, top = 0, right = sprite._imageWidth - 1, bottom = sprite._imageHeight - 1;
       if (pixels) {
         left = sprite._imageWidth; top = sprite._imageHeight; right = 0; bottom = 0;
@@ -1968,7 +1968,10 @@ module.exports = makeExt(`// Name: Arcade
       this._runtime?.renderer?.destroySkin(entry.skinId);
       this._imageSkins.delete(id);
     }
-    _imageForSprite(id) {
+    // quiet: a probe that has its own fallback (rendering, wall hitboxes) asks
+    // without reporting; only the image blocks themselves report a costume
+    // that is not pixel art (a vector costume has no Arcade image).
+    _imageForSprite(id, {quiet = false} = {}) {
       const sprite = this._spriteValues.get(String(id)) || this._sprite(id);
       const target = this._state().spriteTargets?.[id];
       if (!sprite) return null;
@@ -1979,7 +1982,7 @@ module.exports = makeExt(`// Name: Arcade
         sprite.image = imageEngine.decode(costume, this._costumeImageSize(costume));
       }
       if (!sprite.image) {
-        this._runtime?.emit?.('BLOCKS_ERROR', 'Arcade image mutation cannot read this sprite artwork. Use an imported Arcade pixel image.');
+        if (!quiet) this._runtime?.emit?.('BLOCKS_ERROR', 'Arcade image mutation cannot read this sprite artwork. Use an imported Arcade pixel image.');
         return;
       }
       return sprite.image;

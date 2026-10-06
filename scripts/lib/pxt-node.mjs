@@ -29,7 +29,7 @@ async function sandbox (target) {
     const quiet = () => {};
     const sb = {
         setTimeout, clearTimeout, setInterval, clearInterval, setImmediate, clearImmediate,
-        TextEncoder: util.TextEncoder, TextDecoder: util.TextDecoder, Buffer,
+        TextEncoder: util.TextEncoder, TextDecoder: util.TextDecoder, Buffer, atob,
         console: {log: quiet, debug: quiet, info: quiet, warn: quiet, error: quiet},
         pxtTargetBundle: JSON.parse(fs.readFileSync(path.join(dir, 'target.json'), 'utf8'))
     };
@@ -47,7 +47,8 @@ async function sandbox (target) {
  * Compile a MakeCode project. Same result shape as the browser's compileMakeCode.
  * @param {string} target 'microbit' | 'arcade'
  * @param {object} files {filename: contents}, pxt.json included
- * @param {{native?: boolean, embedSource?: object}} [opts]
+ * @param {{native?: boolean, embedSource?: object, hwVariant?: string}} [opts] hwVariant: an
+ *     Arcade board for a native build (ARCADE_HARDWARE in pxt-runtime.js)
  */
 export async function compile (target, files, opts = {}) {
     const sb = await sandbox(target);
@@ -55,6 +56,7 @@ export async function compile (target, files, opts = {}) {
         const p = path.join(STATIC, target, 'hexcache', `${sha}.hex`);
         return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
     };
-    const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null, getBaseHex});
+    const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null,
+        hwVariant: opts.hwVariant || '', getBaseHex});
     return JSON.parse(JSON.stringify(r));   // out of the vm's realm
 }
