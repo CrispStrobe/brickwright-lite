@@ -309,7 +309,10 @@ test('both halves of the repair are measurable, and each one helps', async () =>
     // idea-generator:next, reaction-duel:keyA/keyB, two-toggle-keys:keyA/keyB.
     // Still the 8051 side only, and all eight respond under the shipped rail
     // rule (armedRail adds no dead control; EXPECTED_DEAD is unchanged).
-    assert.equal(armedLow.dead.length, 29,
+    // 29 -> 31 on 2026-10-06 (task B11, sb3-creator #52 at c8edc8cc): two new
+    // STC12 quasi-pin buttons, melody-lists:btn and random-lucky-light:btn.
+    // Same rule, same side; EXPECTED_DEAD is unchanged again.
+    assert.equal(armedLow.dead.length, 31,
         `armed low: ${armedLow.dead.length} dead of ${armedLow.pins} (the 0777a17 corpus number — ` +
         'the board-class half of the repair, with the 8051 half still open)');
     assert.ok(armedLow.dead.every(d => !d.startsWith('arduino-')),
@@ -317,7 +320,7 @@ test('both halves of the repair are measurable, and each one helps', async () =>
     assert.equal(armedRail.dead.length, EXPECTED_DEAD.size,
         `armed at the rail: ${armedRail.dead.length} dead, EXPECTED_DEAD names ${EXPECTED_DEAD.size}`);
 
-    // And the 29 are the 8051 side specifically — the shape of the finding, not
+    // And the 31 are the 8051 side specifically — the shape of the finding, not
     // just its size. Three of them are Wave 5 lesson benches.
     for (const id of ['05-counter:button', '26-debounce:btn', '60-retro-console:btn1']) {
         assert.ok(armedLow.dead.includes(id), `${id} was dead under the 0777a17 arming rule`);

@@ -43,10 +43,12 @@ import path from 'node:path';
 // sha-addressing: EXPECT below is the content hash of each file, so even a
 // compromised CDN cannot substitute a binary. The pin says WHICH build; the
 // hashes say WHAT arrived. Keep both.
-const PIN = '63b4d4bcb0a896a25e9655af629356dbef2ca881';
+// 2026-10-05 (task B11): 63b4d4bc -> 68ef757a, emu8051-stc #1 (STC89 12T timers) and
+// #2 (UART1 receive FIFO; checkpoint layout 0x80510102 / 443557, matched by bw-board #410).
+const PIN = '68ef757aab3adc606796df4602f4724b627a500b';
 const EXPECT = {
-    'emu8051.wasm': '82abb5e0a5209002d38114590a716c0c81ca3348bc63a6d163fe02527635beee',
-    'emu8051.js': 'e79ae24842860ca69b8886e9fd04aecc0b6fe4d018a9ce68b67f95e80613b3bd'
+    'emu8051.wasm': 'ea39886982909b0d38427d7414e829097082d214ebeda96358973f0f5507b048',
+    'emu8051.js': '99d371302bac871c8b269d503635bcf9a245a8892f7c4da6677595ed9e21f64b'
 };
 
 const here = path.dirname(fileURLToPath(import.meta.url));

@@ -54,13 +54,16 @@ test('stubbed8051 flags a verb with a stub 8051 branch, not one with a real one'
     assert.ok(!s.has('baz'), 'baz co-gates a core but emits no driver — it must NOT be flagged');
 });
 
-test('the real emitter: tone is the only 8051 base-dialect exception, and it is avr-only', async () => {
+// Until sb3-creator #52 (task B11) tone was the one 8051 base-dialect exception
+// (a stub 8051 branch) and avr-only. It is implemented on the 8051 and arm now,
+// so the exception set is empty; any new stub branch reddens this.
+test('the real emitter: no verb has a stub 8051 branch, and tone reaches 8051, avr and arm', async () => {
     const { readFileSync } = await import('node:fs');
     const { fileURLToPath } = await import('node:url');
     const { join, dirname } = await import('node:path');
     const EMITTER = join(dirname(fileURLToPath(import.meta.url)), '..',
         'overlay/scratch-gui/src/lib/sb3-creator.js');
     const src = readFileSync(EMITTER, 'utf8');
-    assert.deepEqual([...stubbed8051(src)].sort(), ['tone']);
-    assert.deepEqual(deriveVerbFamilies(src).tone, ['avr']);
+    assert.deepEqual([...stubbed8051(src)].sort(), []);
+    assert.deepEqual(deriveVerbFamilies(src).tone, ['8051', 'avr', 'arm']);
 });

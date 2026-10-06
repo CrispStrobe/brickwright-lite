@@ -120,6 +120,7 @@ export const SB3_CREATOR_FILES = Object.freeze([
     ['cubeDirections.js', 'src/utils/cubeDirections.js'],
     ['ev3Dialect.js', 'src/utils/ev3Dialect.js'],
     ['arcadeDialect.js', 'src/utils/arcadeDialect.js'],
+    ['pinRoleParts.js', 'src/utils/pinRoleParts.js'],
 ]);
 
 /**

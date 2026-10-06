@@ -1,4 +1,4 @@
-/** Checkpoint honesty against the real vendored emu8051 WASM. */
+/** Checkpoint honesty against the real vendored emu8051 WASM (supported since task B11). */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
@@ -46,37 +46,62 @@ function digest(value) {
     return createHash('sha256').update(text).digest('hex');
 }
 
-test('8051 declines checkpoint capability and names every opaque mutable class', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
+// Until task B11 the vendored build had no complete-state ABI and the target
+// declined checkpoints. emu8051-stc 68ef757a exports it (build 0x80510102,
+// UART receive FIFO included) and bw-board df7dae85 accepts that layout, so
+// the target now offers checkpoints: a snapshot must restore the exact visible
+// state and continuation, and a malformed one must still be refused untouched.
+test('8051 offers checkpoints for the vendored build and keeps no generic snapshot alias', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture();
     const caps = target.capabilities();
-    assert.deepEqual(caps.recording, []);
-    assert.deepEqual(caps.extensions.checkpoint, {
-        supported: false,
-        code: 'incomplete-snapshot-abi',
-        missing: [
-            'cpu-in-flight-microstate', 'program-time', 'timer-and-interrupt-internals',
-            'uart-queues', 'external-input-latches'
-        ]
-    });
+    assert.deepEqual(caps.recording, ['checkpoint', 'restore']);
+    assert.deepEqual(caps.extensions.checkpoint,
+        {supported: true, version: 1, buildId: 0x80510102, size: 443557});
     assert.equal(target.saveState, undefined,
-        'generic machine snapshot callers must not mistake a refusal for saved state');
+        'generic machine snapshot callers go through captureCheckpoint, not an alias');
     assert.equal(target.loadState, undefined);
-    assert.deepEqual(target.captureCheckpoint(), target.captureCheckpoint(),
-        'the refusal itself has a stable serializable shape');
-    assert.match(target.captureCheckpoint().refused, /native complete-state WASM ABI/);
 });
 
-test('checkpoint capture/restore refusals neither inspect snapshots nor mutate real emulator state', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
+test('a checkpoint restores the exact visible state and the same continuation', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
+    const target = await fixture();
+    const events = [];
+    target.onDebugEvent(event => events.push(event));
+    target.step('insn', 1);
+    settle(target);
+    const before = visibleState(target);
+    const snapshot = target.captureCheckpoint();
+    assert.equal(snapshot.refused, undefined, JSON.stringify(snapshot.refused));
+    // A restore opens a new time domain (8051-oscillator-reset-N+1), so ticks
+    // are not compared across the two timelines; everything else must match.
+    const domains = new Set();
+    const continueThree = () => {
+        const mark = events.length;
+        for (let i = 0; i < 3; i++) {
+            target.step('insn', 1);
+            settle(target);
+        }
+        const fresh = events.slice(mark).map(event => {
+            if (!event.time) return event;
+            domains.add(event.time.domain);
+            return {...event, time: {...event.time, domain: undefined}};
+        });
+        return {state: visibleState(target), events: digest(fresh)};
+    };
+    const first = continueThree();
+    assert.notDeepEqual(first.state, before, 'the continuation must move the machine');
+    assert.equal(target.restoreCheckpoint(snapshot), true);
+    assert.deepEqual(visibleState(target), before);
+    assert.deepEqual(continueThree(), first, 'a restored machine must continue exactly as the original did');
+    assert.equal(domains.size, 2, 'the restored timeline must be a new time domain');
+});
+
+test('a malformed checkpoint is refused and leaves the real emulator state untouched', {skip: have ? false : 'the vendored emu8051 WASM is not present'}, async () => {
     const target = await fixture();
     target.step('insn', 1);
     settle(target);
     const before = visibleState(target);
-    const save = target.captureCheckpoint();
-    const hostileSnapshot = new Proxy({}, {get() { throw new Error('partial snapshot was inspected'); }});
-    const restore = target.restoreCheckpoint(hostileSnapshot);
-    assert.equal(save.code, 'incomplete-snapshot-abi');
-    assert.equal(restore.code, 'incomplete-snapshot-abi');
-    assert.equal(restore.operation, 'restore');
+    const restore = target.restoreCheckpoint({partial: new Uint8Array([1, 2, 3])});
+    assert.equal(restore.code, 'invalid-checkpoint-envelope');
     assert.deepEqual(visibleState(target), before);
 });
 
