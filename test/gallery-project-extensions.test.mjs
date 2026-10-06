@@ -194,9 +194,9 @@ test('every served fixture is the pinned gallery content', () => {
 test('the id map is the pins\' extensionId, one row per pin, E3\'s two entries included', () => {
     const map = ExtensionManager.GALLERY_EXTENSION_IDS;
     const pinned = Object.entries(pins.extensions);
-    assert.equal(pinned.length, 128);
+    assert.equal(pinned.length, 129);
     assert.ok(pinned.every(([, pin]) => typeof pin.extensionId === 'string' && pin.extensionId),
-        'every pin at 4fb33f88 has a readable id');
+        'every pin at a1dd6cbc has a readable id');
     assert.deepEqual(map, Object.fromEntries(pinned.map(([slug, pin]) => [pin.extensionId, slug])));
     assert.equal(map.Encoding, 'encoding');
     assert.equal(map.lmsTempVars2, 'Lily/TempVariables2');
