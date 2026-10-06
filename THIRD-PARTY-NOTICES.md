@@ -1824,6 +1824,29 @@ libi86 runtime, and carries no GCC-runtime copyleft.
   `runDosToolchain('ubasic', …)` over the bw-board 8086 DOS bench, which
   mounts the user's program as `PROG.BAS`.
 
+## fe (DOS-native Lisp) — MIT
+
+The code tab's "Lisp (fe on DOS)" language runs a real 16-bit MS-DOS
+interpreter on the 8086 DOS bench. The interpreter is **fe** by **rxi**,
+a tiny Lisp in ~900 lines of portable C (lambdas, closures, macros, a
+mark-and-sweep garbage collector over a fixed object pool, no allocation
+after startup), distributed under the **MIT licence**.
+
+It is compiled — unmodified except for an added `PROG.FE`-reading DOS
+front-end (`dosmain.c`) — to a 16-bit MS-DOS `.EXE` with `ia16-elf-gcc`
+(the tkchia GCC port for 16-bit x86). That GCC port is GPL, but it is a
+**build-time tool only**: the shipped binary is MIT fe linked against the
+permissive newlib + libi86 runtime, and carries no GCC-runtime copyleft.
+
+- **Upstream:** https://github.com/rxi/fe (commit
+  `ed4cda96bd582cbb08520964ba627efb40f3dd91`)
+- **Licence:** MIT, (c) 2020 rxi
+- **What ships:** `static/roms/fe.exe` — the built interpreter, with
+  `fe.provenance.json` beside it. Packaged as the media-lab project
+  `projects/fe-dos` (its `fetch.sh` reproduces this binary byte-for-byte).
+  Loaded at run time and driven by `runDosToolchain('fe', …)` over the
+  bw-board 8086 DOS bench, which mounts the user's program as `PROG.FE`.
+
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 
 The **fully-free 386** machine boots FreeDOS in the browser on redistributable

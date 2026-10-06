@@ -20,6 +20,11 @@ import {
 const UBASIC_EXE = new Uint8Array(readFileSync(
     fileURLToPath(new URL('../overlay/scratch-gui/static/roms/ubasic.exe', import.meta.url))));
 
+// The libre DOS-native Lisp this repo ships (media-lab project `fe-dos`,
+// MIT fe (rxi) built with ia16-elf-gcc).
+const FE_EXE = new Uint8Array(readFileSync(
+    fileURLToPath(new URL('../overlay/scratch-gui/static/roms/fe.exe', import.meta.url))));
+
 // A 40-byte real .COM: INT 21h create OUT.TXT, write "HI", close, exit(0).
 const FILE_WRITER = new Uint8Array([
     0xBA, 0x1E, 0x01,             // mov dx, OUT.TXT
@@ -126,6 +131,41 @@ test('runDosToolchain("ubasic", …) runs the shipped interpreter and returns it
     }
     // The user's program was mounted where the interpreter reads it.
     assert.ok(r.files.get('PROG.BAS'), 'PROG.BAS was mounted for the interpreter');
+});
+
+test('the DOS-native fe (Lisp) route is verified and shaped like uBASIC', () => {
+    const fe = DOS_TOOLCHAINS['fe'];
+    assert.ok(fe && fe.kind === 'dos-native');
+    assert.equal(fe.verified, true);
+    assert.equal(fe.language, 'fe');
+    assert.equal(fe.compilerFormat, 'exe');
+    assert.equal(fe.variant, '80186');       // ia16-elf-gcc emits 186 opcodes
+    assert.equal(fe.sourceName, 'PROG.FE');
+    assert.equal(fe.outputName, null);       // an interpreter: output is on screen
+    assert.equal(fe.run, false);
+});
+
+test('runDosToolchain("fe", …) runs the shipped fe Lisp on the real DOS bench', async () => {
+    // The EXACT production path: route lookup → fetch → compileAndRunOnDos on the
+    // real bench; the fetcher returns the shipped static/roms/fe.exe bytes.
+    const program = [
+        '(print "fe on the bench")',
+        '(print (* 6 7))',
+        '(= fact (fn (n) (if (<= n 1) 1 (* n (fact (- n 1))))))',
+        '(print (fact 5))', ''
+    ].join('\n');
+    const r = await runDosToolchain('fe', program, {
+        fetchToolchain: async () => ({compiler: FE_EXE}),
+        maxSteps: 60_000_000
+    });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.terminated, 'the interpreter terminated');
+    assert.equal(r.compile.exitCode, 0);
+    for (const want of ['fe on the bench', '42', '120']) {
+        assert.ok(r.compile.screen.includes(want), `expected ${want} in ${JSON.stringify(r.compile.screen)}`);
+    }
+    // The user's program was mounted where the interpreter reads it.
+    assert.ok(r.files.get('PROG.FE'), 'PROG.FE was mounted for the interpreter');
 });
 
 test('runDosToolchain runs a DOS-native route through the bench (fetch composition)', async () => {
