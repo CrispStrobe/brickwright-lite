@@ -454,7 +454,12 @@ class ArcadeTranslator extends BaseTranslator {
         if (st.type==='Declaration' && this.handleTemplates) {
             const pad='  '.repeat(indent);
             for(const d of st.decls){
-                const value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
+                const gaps=this.unsupported.length;
+                let value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
+                // An array we could not translate (already named as a gap) stands in as an
+                // EMPTY array, so \`for (const t of scene.getTilesByType(4))\` runs no times
+                // instead of failing at run time on "Array reference is null or expired".
+                if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
                 else out.push(`${pad}set ${this.varName(d.name)} to ${value}`);
             }
