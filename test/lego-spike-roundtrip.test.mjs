@@ -218,8 +218,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // declaration (HCSR04/DS18B20/DS3231/AT24C02/I2C) and `set time of`/`store`/
     // `byte ... of`/`i2c device ...` -- none is a SPIKE word or in this fixture;
     // the assertions re-ran.
+    // PIN MOVED c8edc8cc -> a69547b7 (2026-10-06, sb3-creator#53, task B11
+    // follow-up): the referee seeds declared lists, a bench layout fix, one
+    // gallery example's green-flag script. No parser change; the assertions re-ran.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'c8edc8cc39b8306e714e5cf0e7ab283a1fb944fa');
+        'a69547b783a63dc538c47569ffe8993edc5a985b');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

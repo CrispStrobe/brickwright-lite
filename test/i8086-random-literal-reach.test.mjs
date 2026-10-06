@@ -74,6 +74,8 @@ const literalPrintBlocks = [
 ];
 // 1 -> 4 edges at sb3-creator c8edc8cc (task B11): guess-the-number (1) and
 // random-lucky-light (2) pick random numbers; neither generates on the 8086.
+// The lucky-light ids moved at sb3-creator a69547b7 (#53): its new green-flag
+// script shifts the generated block ids; the two edges themselves are unchanged.
 const integerRandomEdges = [{
     program: 'arduino-sk-p11-crystal-ball',
     randomBlockId: 'vkBNDwMf7d6Z16c3aQUc',
@@ -86,13 +88,13 @@ const integerRandomEdges = [{
     inputName: 'VALUE'
 }, {
     program: 'random-lucky-light',
-    randomBlockId: ',stY|faluBgxWTfTtgYK',
-    consumerBlockId: 'Z~pe`M#v6(LcoO-*emJp',
+    randomBlockId: '?^`U-hkzO4)|+}5`4-B~',
+    consumerBlockId: 'lPX[[Qcc:(En%bT6@*I3',
     inputName: 'VALUE'
 }, {
     program: 'random-lucky-light',
-    randomBlockId: 'dVP-FwzMhAakk6H}V?H*',
-    consumerBlockId: 'F@+LrE~CuGlvWVD*2leV',
+    randomBlockId: 'F@+LrE~CuGlvWVD*2leV',
+    consumerBlockId: '38j=*?2Q^rrwUq(CYPvJ',
     inputName: 'VALUE'
 }];
 

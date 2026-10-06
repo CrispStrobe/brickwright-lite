@@ -367,9 +367,14 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         // sb3-creator #49): the thirteen new examples above, each authored once
         // and retargeted onto its 8-11 benches: +13 authored, +119 retargeted,
         // the same 132 files the corpus count gained, none overlapping.
-        authored: 129,
-        retargeted: 1026,
-        total: 1155
+        // 129/1026 -> 137/1064 (total 1155 -> 1201) on 2026-10-06 (task B11,
+        // sb3-creator #52 + #53): the eight new examples, +8 authored and +66
+        // retargeted; seven tone examples gain their ATmega/Pico/STM32 benches,
+        // +34; 40 printing examples lose their ATtiny targets, -62. #53 moved
+        // arduino-sk-p07-keyboard's pull-downs off the Uno/Mega outlines.
+        authored: 137,
+        retargeted: 1064,
+        total: 1201
     });
 });
 

@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-513 clean · 374 degraded · 15 refused (of 902; 57% clean)
+514 clean · 373 degraded · 15 refused (of 902; 57% clean)
 
-- round-trip (emit → read back): 513 clean · 372 degraded · 4 refused (of 889; 58% clean)
+- round-trip (emit → read back): 514 clean · 371 degraded · 4 refused (of 889; 58% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -79,7 +79,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | basic | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | basic | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | micropython | 6502 | 1 clean · 1 degraded · 0 refused (of 2; 50% clean) |
-| round-trip | micropython | 8051 | 45 clean · 27 degraded · 0 refused (of 72; 63% clean) |
+| round-trip | micropython | 8051 | 46 clean · 26 degraded · 0 refused (of 72; 64% clean) |
 | round-trip | micropython | arduino | 36 clean · 44 degraded · 0 refused (of 80; 45% clean) |
 | round-trip | micropython | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | micropython | microbit | 4 clean · 6 degraded · 0 refused (of 10; 40% clean) |
@@ -158,7 +158,6 @@ programs are refused as foreign. The refusal reasons below say which.
 | 1 | sensing_askandwait: no equivalent on this board; the block was not translated |
 | 1 | no dialect form for "…"device at "…" |
 | 1 | no dialect form for "…" devices"…" |
-| 1 | no bw_script() and no `…` |
 | 1 | spikeprime_motorStart: no equivalent on this board; the block was not translated |
 | 1 | spikeprime_motorStop: no equivalent on this board; the block was not translated |
 | 1 | spikeprime_displayText: no equivalent on this board; the block was not translated |
@@ -528,7 +527,6 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | c | pico | pico04-button | degraded | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void …; no pseudocode for the call "…" |
 | round-trip | basic | pico | pico04-button | degraded | no dialect form for "…"; unstructured "…" |
 | round-trip | basic | 8051 | random-lucky-light | degraded | no dialect form for "…" |
-| round-trip | micropython | 8051 | random-lucky-light | degraded | no bw_script() and no `…` |
 | round-trip | python | 8051 | reaction-duel | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | reaction-duel | degraded | dropped expression statement |
 | round-trip | basic | 8051 | reaction-duel | degraded | no dialect form for "…"; unstructured "…" |
