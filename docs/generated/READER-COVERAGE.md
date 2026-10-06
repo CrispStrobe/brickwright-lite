@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-514 clean · 373 degraded · 15 refused (of 902; 57% clean)
+516 clean · 376 degraded · 15 refused (of 907; 57% clean)
 
-- round-trip (emit → read back): 514 clean · 371 degraded · 4 refused (of 889; 58% clean)
+- round-trip (emit → read back): 516 clean · 374 degraded · 4 refused (of 894; 58% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -48,7 +48,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | --- | --- | --- | --- |
 | round-trip | python | 6502 | 4 clean · 1 degraded · 0 refused (of 5; 80% clean) |
 | round-trip | python | 8051 | 40 clean · 32 degraded · 0 refused (of 72; 56% clean) |
-| round-trip | python | arduino | 22 clean · 58 degraded · 0 refused (of 80; 28% clean) |
+| round-trip | python | arduino | 22 clean · 59 degraded · 0 refused (of 81; 27% clean) |
 | round-trip | python | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | python | microbit | 2 clean · 8 degraded · 0 refused (of 10; 20% clean) |
 | round-trip | python | pico | 2 clean · 6 degraded · 0 refused (of 8; 25% clean) |
@@ -56,7 +56,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | python | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | javascript | 6502 | 4 clean · 1 degraded · 0 refused (of 5; 80% clean) |
 | round-trip | javascript | 8051 | 40 clean · 32 degraded · 0 refused (of 72; 56% clean) |
-| round-trip | javascript | arduino | 22 clean · 58 degraded · 0 refused (of 80; 28% clean) |
+| round-trip | javascript | arduino | 22 clean · 59 degraded · 0 refused (of 81; 27% clean) |
 | round-trip | javascript | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | javascript | microbit | 10 clean · 0 degraded · 0 refused (of 10; 100% clean) |
 | round-trip | javascript | pico | 2 clean · 6 degraded · 0 refused (of 8; 25% clean) |
@@ -64,7 +64,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | javascript | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | c | 6502 | 4 clean · 1 degraded · 0 refused (of 5; 80% clean) |
 | round-trip | c | 8051 | 63 clean · 9 degraded · 0 refused (of 72; 88% clean) |
-| round-trip | c | arduino | 73 clean · 7 degraded · 0 refused (of 80; 91% clean) |
+| round-trip | c | arduino | 74 clean · 7 degraded · 0 refused (of 81; 91% clean) |
 | round-trip | c | i8086 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | c | microbit | 10 clean · 0 degraded · 0 refused (of 10; 100% clean) |
 | round-trip | c | pico | 0 clean · 8 degraded · 0 refused (of 8; 0% clean) |
@@ -72,7 +72,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | c | z80 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | basic | 6502 | 2 clean · 0 degraded · 0 refused (of 2; 100% clean) |
 | round-trip | basic | 8051 | 39 clean · 33 degraded · 0 refused (of 72; 54% clean) |
-| round-trip | basic | arduino | 62 clean · 18 degraded · 0 refused (of 80; 78% clean) |
+| round-trip | basic | arduino | 62 clean · 19 degraded · 0 refused (of 81; 77% clean) |
 | round-trip | basic | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | basic | microbit | 8 clean · 2 degraded · 0 refused (of 10; 80% clean) |
 | round-trip | basic | pico | 4 clean · 4 degraded · 0 refused (of 8; 50% clean) |
@@ -80,7 +80,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | basic | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | micropython | 6502 | 1 clean · 1 degraded · 0 refused (of 2; 50% clean) |
 | round-trip | micropython | 8051 | 46 clean · 26 degraded · 0 refused (of 72; 64% clean) |
-| round-trip | micropython | arduino | 36 clean · 44 degraded · 0 refused (of 80; 45% clean) |
+| round-trip | micropython | arduino | 37 clean · 44 degraded · 0 refused (of 81; 46% clean) |
 | round-trip | micropython | i8086 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | micropython | microbit | 4 clean · 6 degraded · 0 refused (of 10; 40% clean) |
 | round-trip | micropython | pico | 4 clean · 4 degraded · 0 refused (of 8; 50% clean) |
@@ -95,7 +95,7 @@ programs are refused as foreign. The refusal reasons below say which.
 
 | fixtures | construct kept as a placeholder |
 | --- | --- |
-| 194 | dropped expression statement |
+| 196 | dropped expression statement |
 | 63 | no pins found |
 | 41 | no dialect form for "…" |
 | 32 | unstructured "…" |
@@ -145,6 +145,7 @@ programs are refused as foreign. The refusal reasons below say which.
 | 1 | data_replaceitemoflist: no equivalent on this board; the block was not translated |
 | 1 | no dialect form for "…"combined: "…" |
 | 1 | 16 output pins × 20 mA = up to 320 mA at maximum pin ratings (actual current depends on se |
+| 1 | no dialect form for "…"Chip: "…" C"…" |
 | 1 | no dialect form for "…":"…":"…" |
 | 1 | devices_settime: no equivalent on this board; the block was not translated |
 | 1 | devices_clearmatrix: no equivalent on this board; the block was not translated |
@@ -439,6 +440,9 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | basic | 8051 | binary-counter-buttons | degraded | no dialect form for "…" |
 | round-trip | c | arduino | blinkenrocket-pendant | degraded | 16 output pins × 20 mA = up to 320 mA at maximum pin ratings (actual current depends on se |
 | round-trip | basic | arduino | blinkenrocket-pendant | degraded | no dialect form for "…" |
+| round-trip | python | arduino | chip-thermometer | degraded | dropped expression statement |
+| round-trip | javascript | arduino | chip-thermometer | degraded | dropped expression statement |
+| round-trip | basic | arduino | chip-thermometer | degraded | no dialect form for "…"Chip: "…" C"…" |
 | round-trip | python | 8051 | clock-ds3231 | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | clock-ds3231 | degraded | dropped expression statement |
 | round-trip | basic | 8051 | clock-ds3231 | degraded | no dialect form for "…":"…":"…" |
@@ -581,7 +585,7 @@ corpus this repository pins, with its licence recorded here.
 
 | source | languages | origin | licence |
 | --- | --- | --- | --- |
-| program.bw corpus | python, javascript, c, basic, micropython | overlay/scratch-gui/examples — 178 device-tagged programs, round-tripped (parse → emit → read back). Emitter gaps not fed to a reader: python 0, javascript 0, c 0, basic 3, micropython 3 | BSD-3 (repo); Arduino-port programs CC0 |
+| program.bw corpus | python, javascript, c, basic, micropython | overlay/scratch-gui/examples — 179 device-tagged programs, round-tripped (parse → emit → read back). Emitter gaps not fed to a reader: python 0, javascript 0, c 0, basic 3, micropython 3 | BSD-3 (repo); Arduino-port programs CC0 |
 | examples-i8086.js | asm | overlay/scratch-gui/src/lib/bw-asm/examples-i8086.js — 11 MASM programs (6 Amey Thakur, 5 ours), fed native | MIT (Amey Thakur set) / BSD-3 (ours) |
 | oracle C fixtures | c | test/fixtures/oracle/{stc12-blink,atmega328p-blink}.c — real device C, fed native to the pin-inferring reader | BSD-3 (repo) |
 | Amey Thakur external corpus (not folded in) | asm | /mnt/volume1/code/retro-corpus-8086 (525 .asm, env I8086_CORPUS) — a larger asm input, deliberately excluded from committed figures so CI stays reproducible | MIT |

@@ -136,9 +136,13 @@ test('N2f production holds device 57 and mixed generation 85 without neutralisat
         // refused; tone + print is refused at retarget on the 8051 now, which
         // moves arduino-02-tone-pitch-follower from refused to retargetRefused.
         // Generated reach is unchanged.
+        // 303 / 163 parsed / 78 refused -> 304 / 164 / 79 at sb3-creator
+        // 70488a68 (task B12): chip-thermometer is refused at retarget (no
+        // sensor on the STC12), and the pitch follower, whose tone + print the
+        // 8051 now takes, parses and is refused at its choke. Generation unchanged.
         assert.deepEqual(report.variants.baseline.counts, {
-            programs: 303, retargetRefused: 132, parsed: 163, parseFailed: 8,
-            refused: 78, generatedHost: 28, generatedDevice: 57, generatedTotal: 85
+            programs: 304, retargetRefused: 132, parsed: 164, parseFailed: 8,
+            refused: 79, generatedHost: 28, generatedDevice: 57, generatedTotal: 85
         });
         assert.equal(report.variants.literalOnly.counts.generatedTotal, 85);
         assert.deepEqual(report.delta.literalOnly, [], 'literal neutralisation changed production reach');
