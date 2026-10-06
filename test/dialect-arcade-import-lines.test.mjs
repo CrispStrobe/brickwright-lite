@@ -29,9 +29,9 @@
  *    of warning, or more of these, is red.
  *  - And the dialect's CONDITION-as-value warning (task D7, sb3-creator #54):
  *    the importer writes MakeCode's `!x` in value positions as `not (truthiness
- *    of value (x))` (and once `not (ticks < 5)`, once `key down arrow
- *    pressed?`), which the pinned parser USED TO keep as the text silently. 26
- *    such warnings; E1 is to write a negated truth value through a value word
+ *    of value (x))` (21), `not (compare value … op … with …)` (2), `not (ticks
+ *    < 5)` (2) and once `key down arrow pressed?`, which the pinned parser USED
+ *    TO keep as the text silently. 26 such warnings; E1 is to write a negated truth value through a value word
  *    (or the branch form) instead.
  *  - Every program that parses decompiles and reads back to a fixed point,
  *    except the four whose script has a hat with a comment-only body (a
