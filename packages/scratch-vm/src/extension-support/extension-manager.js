@@ -3,7 +3,7 @@ const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
-const {pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
+const {galleryURLForSlug, pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
 // The four SPIKE ids that became `spikeprime`.
 //
 // Inlined rather than imported: the canonical table lives in the GUI
@@ -40,6 +40,42 @@ const resolveExtensionId = (id, options = {}) => {
     if (EV3_LEGACY_IDS.indexOf(id) !== -1) return EV3_UNIFIED_ID;
     return id;
 };
+
+// TurboWarp gallery extensions a project names only by id (task E3).
+//
+// A TurboWarp project records `extensions: ["Encoding"]` and, beside it, an
+// `extensionURLs` entry this VM never reads (stock sb3 deserialize drops it, and
+// Lite's own saves do not write one). Without a route the bare id fell to the
+// "Unknown extension id" branch below and every block of the extension stopped
+// working on open. These ids route to the gallery's CONTENT-PINNED copy of the
+// same extension: the bytes TurboWarp runs (CrispStrobe/extensions tracks
+// TurboWarp/extensions), fetched and hash-checked like any gallery pick, then run
+// in the worker or the adapter as their pin says. No copy is bundled here.
+//
+// The parked WIP (23e9c7f44) bundled two partial clean-room re-implementations
+// under these ids instead. They were not ported: Encoding offered 2 of the 9
+// blocks and Base64 only (the URL mode threw; unpadded input the original
+// decodes came back empty), and the temporary variables offered 4 of 13 opcodes
+// with 0 where the original reports "" and no reset on green flag / stop.
+//
+// Key: the id in the project; value: the gallery slug. Each entry must be pinned
+// in gallery-pins.json and its source must declare the id; both are held by
+// test/turbowarp-encoding.test.mjs and test/turbowarp-tempvars.test.mjs.
+const GALLERY_EXTENSION_IDS = Object.freeze({
+    Encoding: 'encoding',
+    lmsTempVars2: 'Lily/TempVariables2'
+});
+
+/**
+ * The pinned gallery URL a bare TurboWarp extension id loads from, or null.
+ * @param {string} id extension id as a project names it
+ * @returns {string|null} exact pinned gallery URL
+ */
+const galleryURLForExtensionId = id => (
+    Object.prototype.hasOwnProperty.call(GALLERY_EXTENSION_IDS, id) ?
+        galleryURLForSlug(GALLERY_EXTENSION_IDS[id]) :
+        null
+);
 
 // HTTP(S) URLs are candidates for the content-pinned compatibility path. Unpinned URLs are always
 // sent to the extension worker; see isTrustedExtensionURL / loadExtensionURL.
@@ -355,6 +391,16 @@ class ExtensionManager {
             return Promise.reject(new Error(
                 'This distribution can load only bundled extensions; use an unrestricted build for URL extensions.'
             ));
+        }
+
+        // A TurboWarp gallery id (see GALLERY_EXTENSION_IDS) loads the pinned gallery
+        // copy below, exactly as if its URL had been picked from the gallery.
+        const galleryURL = galleryURLForExtensionId(extensionURL);
+        if (galleryURL) {
+            if (this.isExtensionLoaded(extensionURL) || this.isExtensionLoaded(galleryURL)) {
+                return Promise.resolve();
+            }
+            extensionURL = galleryURL;
         }
 
         // Brickwright: a BARE ID that is not a builtin is a missing implementation,
@@ -794,5 +840,8 @@ class ExtensionManager {
         return blockInfo;
     }
 }
+
+// Read by the tests that hold each entry to its pin and its source's declared id.
+ExtensionManager.GALLERY_EXTENSION_IDS = GALLERY_EXTENSION_IDS;
 
 module.exports = ExtensionManager;
