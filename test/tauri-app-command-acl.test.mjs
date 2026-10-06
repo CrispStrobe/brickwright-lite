@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
-import {readFileSync} from 'node:fs';
+import {readdirSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -165,12 +164,11 @@ const audit = ({handler, build, main, mobile, ack, runtime, editor}) => {
 };
 
 const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
-// Every editor source the main webview runs, as tracked (overlay is the source of truth).
-const editorSources = () => execFileSync('git', ['ls-files', '-z', '--',
-    'overlay/scratch-gui/src', 'overlay/scratch-vm/src'], {cwd: root, encoding: 'utf8'})
-    .split('\0')
-    .filter(file => /\.(?:js|jsx|mjs|ts)$/.test(file))
-    .map(file => readFileSync(path.join(root, file), 'utf8'))
+// Every editor source the main webview runs (overlay is the source of truth).
+const editorSources = () => ['overlay/scratch-gui/src', 'overlay/scratch-vm/src']
+    .flatMap(dir => readdirSync(path.join(root, dir), {recursive: true})
+        .filter(file => /\.(?:js|jsx|mjs|ts)$/.test(file))
+        .map(file => readFileSync(path.join(root, dir, file), 'utf8')))
     .join('\n');
 const live = () => ({
     handler: readFileSync(path.join(native, 'src/lib.rs'), 'utf8'),

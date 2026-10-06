@@ -11,10 +11,11 @@ const native = path.join(root, 'apps/tauri/src-tauri');
 const read = file => readFileSync(path.join(root, file), 'utf8');
 
 // Each `#[tauri::command]` function, from its attribute to the `}` that closes it at column 0
-// (rustfmt layout, which `cargo fmt` keeps).
+// (rustfmt layout, which `cargo fmt` keeps). `signature` is everything up to the body's `{`
+// (parameters and return type; neither holds a brace).
 const commands = source => [...source.matchAll(
-    /#\[tauri::command\]\npub (async )?fn ([a-z_]+)(\([\s\S]*?\))[\s\S]*?\n\}\n/g
-)].map(([body, async, name, params]) => ({async: Boolean(async), name, params, body}));
+    /#\[tauri::command\]\npub (async )?fn ([a-z_]+)([^{]*)\{[\s\S]*?\n\}\n/g
+)].map(([body, async, name, signature]) => ({async: Boolean(async), name, signature, body}));
 
 const live = () => ({
     fileio: read('apps/tauri/src-tauri/src/fileio.rs'),
@@ -47,7 +48,7 @@ const audit = ({fileio, cargo, lock, vendored, bridge, menu}) => {
     // The web layer never names a path to write: Save goes to the open document or to a path
     // the user picked in the dialog.
     const save = byName.get('save_project_document');
-    assert.doesNotMatch(save.params, /\bpath\b/, 'save_project_document must not accept a path');
+    assert.doesNotMatch(save.signature, /\bpath\b/, 'save_project_document must not accept a path');
     const production = fileio.split('#[cfg(test)]')[0];
     assert.equal([...production.matchAll(/\bwrite_document\(&/g)].length, 1,
         'write_document must have exactly one caller outside the unit tests');
