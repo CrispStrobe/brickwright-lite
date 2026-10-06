@@ -18,6 +18,7 @@
  */
 
 import {canonicalUuid} from '../native-web-bluetooth.js';
+import {confirmAsync} from '../native-dialog.js';
 
 const factories = new Set();
 
@@ -213,8 +214,9 @@ const chooseVirtual = async (candidates, hasReal) => {
         return globalThis.__brickwrightChooseVirtualBluetooth(candidates, hasReal);
     }
     if (!hasReal) return candidates[0];
-    if (typeof globalThis.confirm === 'function' &&
-        globalThis.confirm(`Connect to virtual Bluetooth device “${candidates[0].name}”?\n\n` +
+    // Awaited: in the desktop/iOS app `confirm` cannot block (lib/native-dialog.js), and its
+    // always-truthy Promise made the real device picker unreachable.
+    if (await confirmAsync(`Connect to virtual Bluetooth device “${candidates[0].name}”?\n\n` +
             'Choose Cancel to open the real Bluetooth device picker.')) return candidates[0];
     return null;
 };

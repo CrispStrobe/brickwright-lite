@@ -2,6 +2,10 @@ import downloadBlob from './download-blob';
 import loadProjectFile from './bw-project-load';
 import {setProjectTitle} from '../reducers/project-title';
 import {setProjectUnchanged} from '../reducers/project-changed';
+import {nativeMessage} from './native-dialog';
+
+// Questions and messages (and why `window.confirm` cannot be used in the app): native-dialog.js.
+export {nativeMessage};
 
 // ---------------------------------------------------------------------------------------------
 // Native project documents (desktop app): Open, Save, Save As, Recent Projects.
@@ -30,35 +34,6 @@ export const nativeDocumentsAvailable = () => {
         documentsAvailable = Promise.resolve(invoke('is_mobile')).then(mobile => !mobile, () => false);
     }
     return documentsAvailable;
-};
-
-/**
- * A native message box that the caller can wait for. The dialog plugin replaces
- * `window.alert` with a call that returns at once, and `window.confirm` with one to a command
- * the plugin no longer has (so it resolves to a Promise, which is always truthy). Both go
- * through `plugin:dialog|message`, the one dialog command the editor's capability grants.
- * @param {string} message text to show
- * @param {boolean} [cancellable] show OK and Cancel
- * @returns {Promise<boolean>} true when the user chose OK
- */
-export const nativeMessage = async (message, cancellable = false) => {
-    const invoke = nativeInvoke();
-    if (!invoke) {
-        // eslint-disable-next-line no-alert
-        if (cancellable) return window.confirm(message);
-        window.alert(message); // eslint-disable-line no-alert
-        return true;
-    }
-    const answer = await Promise.resolve(invoke('plugin:dialog|message', {
-        message,
-        kind: 'warning',
-        buttons: cancellable ? 'OkCancel' : 'Ok'
-    })).catch(error => {
-        // eslint-disable-next-line no-console
-        console.error('[brickwright] message dialog failed', message, error);
-        return null;
-    });
-    return answer === 'Ok';
 };
 
 const waitForVm = (tries = 100) => new Promise((resolve, reject) => {

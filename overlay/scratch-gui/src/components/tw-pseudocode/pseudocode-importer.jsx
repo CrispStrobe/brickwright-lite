@@ -67,6 +67,8 @@ import {getFpgaEnabled} from '../../lib/bw-fpga-preferences.js';
 import {isSpike3Program, runSpike3OnVirtualHub} from '../../lib/spike3-python-run.js';
 import {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
 import {createCodeRunFeedback} from '../../lib/spike-arena/code-run-feedback.js';
+// Every yes/no question is awaited: `window.confirm` cannot block in the desktop/iOS app.
+import {confirmAsync} from '../../lib/native-dialog.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
 // handoff has to name a tab index and a wrong one silently switches to Sounds.
@@ -1697,12 +1699,12 @@ class PseudocodeImporter extends React.Component {
      * there is work there — an example that silently eats what someone
      * typed is worse than no example.
      */
-    loadAsmExample (id) {
+    async loadAsmExample (id) {
         if (!id) return;
         const example = this._asmExamples().find(e => e.id === id);
         if (!example) return;
         const current = (this.state.buffers.asm || '').trim();
-        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        if (current && !(await confirmAsync(this.L.asmExampleReplace))) return;
         this.setState(state => ({
             buffers: {...state.buffers, asm: example.source},
             asmMode: 'source',
@@ -2750,12 +2752,12 @@ class PseudocodeImporter extends React.Component {
 
     /** Load a RISC-V C starter into the C buffer, and preselect the route the
      *  example needs (subset → browser, full C → server). */
-    loadRiscvCExample (id) {
+    async loadRiscvCExample (id) {
         if (!id) return;
         const ex = riscvCExamplesFor('riscv32').find(e => e.id === id);
         if (!ex) return;
         const current = (this.state.buffers.c || '').trim();
-        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        if (current && !(await confirmAsync(this.L.asmExampleReplace))) return;
         this.setState(state => ({
             buffers: {...state.buffers, c: ex.source},
             riscvCRoute: ex.route || state.riscvCRoute,
@@ -2859,12 +2861,12 @@ class PseudocodeImporter extends React.Component {
     }
 
     /** Load an Arduino C++ starter sketch into the C buffer. */
-    loadArduinoSketchExample (id) {
+    async loadArduinoSketchExample (id) {
         if (!id) return;
         const ex = arduinoSketchExamplesFor(this.currentDevice()).find(e => e.id === id);
         if (!ex) return;
         const current = (this.state.buffers.c || '').trim();
-        if (current && !window.confirm(this.L.asmExampleReplace)) return;
+        if (current && !(await confirmAsync(this.L.asmExampleReplace))) return;
         this.setState(state => ({
             buffers: {...state.buffers, c: ex.source},
             status: this.L.asmExampleLoaded(
