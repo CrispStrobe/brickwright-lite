@@ -603,7 +603,8 @@ const confirmCalls = (file, source) => {
             // `function confirm(` / `confirm (message) {` (a method definition) declare, not call.
             const before = label(tokens[index - 1]);
             if (!dotted && (before === 'function' || (tokens[index - 1] && tokens[index - 1].value === 'function'))) return;
-            calls.push({file, where, line: token.loc.start.line, callee: `${owner}confirm`});
+            calls.push({file, where, line: token.loc.start.line, callee: `${owner}confirm`,
+                text: (code.split('\n')[token.loc.start.line - 1] || '').trim()});
         });
     };
     const bundled = extensionSource(source);
@@ -632,14 +633,19 @@ const LEDGER = [
     {unit: '@xterm/xterm', callee: 'confirm', count: 2,
         why: "xterm's default OSC 8 link handler (lib/xterm.js, lib/xterm.mjs); linux-terminal.jsx " +
             'passes its own linkHandler, so the default is never reached (held below)'},
-    // NOT FIXED HERE — vendored bytes of CrispStrobe/extensions (UPSTREAM_COMMIT, re-vendored by
-    // scripts/spike/vendor-bundles.mjs). They still use the value of confirm() directly, so in the
-    // app they go ahead without asking. Their fix is upstream (await an injected confirm) plus a
-    // re-vendor; the E6 row in LANES.md names it as the remaining work.
-    {unit: 'overlay/scratch-vm/src/extensions/crispstrobe/ev3dev/index.js', callee: 'confirm', count: 2,
-        why: 'UPSTREAM (CrispStrobe/extensions): "N sound(s) failed to upload … Continue?" and "Delete <script>?"'},
+    // The CrispStrobe extensions Lite bundles (vendored from CrispStrobe/extensions at
+    // UPSTREAM_COMMIT by scripts/spike/vendor-bundles.mjs). Since #33 (task E7) their questions go
+    // through askYesNo(): Scratch.BWConfirm when the host offers it — Lite's adapter does, from
+    // runtime.confirmAsync (lib/extension-confirm-hook.js) — else this one browser confirm, awaited
+    // and read as === true. That fallback is the only confirm() each may hold: `at` pins the call to
+    // its line in askYesNo, so a direct `if (confirm(...))` anywhere in a bundle is a new site.
+    // test/extension-confirm-seam.test.mjs drives each question through the adapter.
+    {unit: 'overlay/scratch-vm/src/extensions/crispstrobe/ev3dev/index.js', callee: 'confirm', count: 1,
+        at: /^else if \(typeof confirm === "function"\) answer = confirm\(text\);$/,
+        why: "askYesNo's no-host fallback, awaited, only === true is a yes (E7)"},
     {unit: 'overlay/scratch-vm/src/extensions/crispstrobe/spikeprime/index.js', callee: 'confirm', count: 1,
-        why: 'UPSTREAM (CrispStrobe/extensions): "Delete <file> from hub?"'}
+        at: /^else if \(typeof confirm === "function"\) answer = confirm\(text\);$/,
+        why: "askYesNo's no-host fallback, awaited, only === true is a yes (E7)"}
 ];
 
 const censusVerdict = calls => {
@@ -656,6 +662,11 @@ const censusVerdict = calls => {
                 problems.push(`${call.file}:${call.line} (${call.where}) uses the value of ${call.callee}(...) — ` +
                     'in the desktop/iOS app that is an always-truthy Promise. Use ' +
                     "`await confirmAsync(...)` from lib/native-dialog.js (task E6).");
+            }
+        } else if (entry.at && found.some(call => !entry.at.test(call.text || ''))) {
+            for (const call of found.filter(item => !entry.at.test(item.text || ''))) {
+                problems.push(`${call.file}:${call.line} (${call.where}) uses the value of ${call.callee}(...) ` +
+                    `outside the reviewed line (${call.text}) — ask through askYesNo / Scratch.BWConfirm (task E7).`);
             }
         } else if (found.length !== entry.count) {
             problems.push(`${key.replace('\t', ' ')}: ${found.length} calls, the ledger says ${entry.count} ` +
@@ -719,7 +730,15 @@ test('census turns red on a new direct confirm() use, a stale count and a dead e
     const fewer = calls.filter(call => !call.file.endsWith('spikeprime/index.js'));
     assert.match(censusVerdict(fewer).join('\n'), /spikeprime\/index\.js confirm matches nothing/);
     const more = calls.concat(calls.filter(call => call.file.endsWith('ev3dev/index.js')).slice(0, 1));
-    assert.match(censusVerdict(more).join('\n'), /ev3dev\/index\.js confirm: 3 calls, the ledger says 2/);
+    assert.match(censusVerdict(more).join('\n'), /ev3dev\/index\.js confirm: 2 calls, the ledger says 1/);
+    // E7: a bundle that goes back to `if (confirm(...))` reds even with its count unchanged.
+    const ev3dev = 'overlay/scratch-vm/src/extensions/crispstrobe/ev3dev/index.js';
+    const ev3devSource = extensionSource(read(ev3dev));
+    const ev3devReverted = ev3devSource.replace('if (await askYesNo("Delete " + script + "?"))', 'if (confirm("Delete " + script + "?"))');
+    assert.notEqual(ev3devReverted, ev3devSource, 'the ev3dev delete question is where E7 put it');
+    const revertedBundle = `const makeExt = require('../adapter');\nmodule.exports = makeExt(${JSON.stringify(ev3devReverted)});\n`;
+    const withReverted = calls.filter(call => call.file !== ev3dev).concat(confirmCalls(ev3dev, revertedBundle));
+    assert.match(censusVerdict(withReverted).join('\n'), /ev3dev\/index\.js:\d+ \(bundled extension source\) uses the value of confirm\(\.\.\.\) outside the reviewed line/);
 });
 
 test('every confirmAsync / confirmReadyToReplaceProject answer is awaited or returned', () => {
