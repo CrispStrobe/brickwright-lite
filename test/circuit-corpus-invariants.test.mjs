@@ -220,7 +220,10 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // -multiple/-pitch-follower, arduino-sk-p06-light-theremin,
     // arduino-sk-p07-keyboard; 36). Removed: the ATtiny benches of 40 printing
     // examples, since print/ask are refused on the UART-less ATtinys (64).
-    assert.equal(files.length, 1395, 'the gate must cover the complete vendored corpus');
+    // 1395 -> 1488 on 2026-10-06 (task B12, sb3-creator #55 at 70488a68): +93.
+    // 87 ATtiny85/ATtiny88 benches for 53 examples that print, ask or play a
+    // tone (the ATtinys do all three now), and chip-thermometer's 6.
+    assert.equal(files.length, 1488, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -372,9 +375,12 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         // retargeted; seven tone examples gain their ATmega/Pico/STM32 benches,
         // +34; 40 printing examples lose their ATtiny targets, -62. #53 moved
         // arduino-sk-p07-keyboard's pull-downs off the Uno/Mega outlines.
-        authored: 137,
-        retargeted: 1064,
-        total: 1201
+        // 137/1064 -> 138/1156 (total 1201 -> 1294) on 2026-10-06 (task B12,
+        // sb3-creator #55): chip-thermometer, +1 authored and +5 retargeted;
+        // 53 examples gain ATtiny targets, +87.
+        authored: 138,
+        retargeted: 1156,
+        total: 1294
     });
 });
 
