@@ -441,6 +441,16 @@ it should know it is on a stack anyone can pop.
 **Keeping a stash "just in case" is not free when the stack is shared.** If work is worth
 keeping, it is worth a branch.
 
+## OPERATIONAL — never shallow-fetch in a Lite worktree (2026-10-06)
+
+Every Lite worktree shares ONE `.git` (the clone at `/mnt/volume1/code/lego/brickwright-lite`).
+A `git fetch --depth …` / `--deepen` / `--shallow-*` run in ANY worktree writes `.git/shallow`
+for ALL of them: the cut commit then looks like a root commit and every merge across it fails
+with false add/add conflicts. This happened on 2026-10-06 (cut at `aac306bde` and `fbd36edbb`;
+the full history was still local, so deleting `.git/shallow` fixed it). Use a plain
+`git fetch origin` here. Shallow clones are fine only in a separate clone (e.g. the vendored
+upstreams `scripts/vendor-forward.mjs` fetches into).
+
 ## OPERATIONAL — shared node_modules for local worktrees (2026-09-29)
 
 A fresh install puts about 1 GB into every Lite worktree: 130 MB at the root
