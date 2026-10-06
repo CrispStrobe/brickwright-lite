@@ -1342,12 +1342,17 @@ instruction-level ATmega328P emulation (Arduino Uno/Nano) for the
 circuit simulator. Imported as `avr8js` via the bw-board adapter
 (`bw-board/avr8js-adapter.js` in the installed package).
 
-- **Version:** 0.21.0
+- **Version:** 0.21.1-bw.1 (upstream 0.21.1 plus one fix, below)
 - **Licence:** MIT — Copyright (c) 2019-2025 Uri Shaked
-- **Source:** https://github.com/wokwi/avr8js
+- **Source:** https://github.com/CrispStrobe/avr8js at
+  `feea84c43e36e578841b5fce640202823b69b7f7`, a fork of
+  https://github.com/wokwi/avr8js; bw-board depends on it by git commit.
+- **Modified:** the ATtiny25/45/85 Timer/Counter1 PWM mode counts
+  single-slope (0..OCR1C, restart at $00) instead of up and down, latches
+  OCR1A/OCR1B at OCR1C and drives the inverted ~OC1A/~OC1B outputs
+  (datasheet 2586Q, section 12.2.2). The fork's FORK.md lists the changes;
+  its built `dist/` is committed.
 - **Usage:** AVR CPU simulation, I/O port + timer + ADC peripherals.
-  No source code from avr8js is modified; the package is consumed as
-  a published npm dependency.
 
 ## digitaljs — BSD-2-Clause (HEADLESS CORE ONLY)
 

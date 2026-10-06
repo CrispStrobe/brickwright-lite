@@ -111,3 +111,45 @@ test('the Circuit tab applies the setting wherever a board appears, and shows th
     assert.match(strip, /data-bench-temperature/);
     assert.match(strip, /onChange=\{e => \{[\s\S]*this\.handleBenchTemperature\(e\.target\.value\)/);
 });
+
+// The chip path, end to end: an ATtiny88 program built by avr-gcc from the C the
+// vendored emitter produces (Lite's CI has no AVR compiler, so it is kept as a
+// fixture; a changed emitter fails the hash check until it is rebuilt). The bench
+// control moves the board; the chip's own sensor reads it; a name typed while the
+// other script prints arrives whole (sb3-creator#57's full-duplex software UART).
+test('ATtiny88: the chip reads the bench the control set, and a line typed during printing arrives', async () => {
+    const {createHash} = await import('node:crypto');
+    const {pathToFileURL} = await import('node:url');
+    const {default: SB3Creator} = await import('../overlay/scratch-gui/src/lib/sb3-creator.js');
+    const fixture = JSON.parse(fs.readFileSync(path.join(ROOT, 'test/fixtures/b13/attiny88-temp-duplex.json'), 'utf8'));
+    const c = new SB3Creator();
+    c.parse(fixture.program);
+    const code = c.generateC();
+    assert.deepEqual(c._cWarnings || [], []);
+    assert.equal(createHash('sha256').update(code).digest('hex'), fixture.codeSha256,
+        'the emitter no longer produces the C this fixture was built from -- rebuild it');
+    const bytes = Buffer.from(fixture.image, 'base64');
+    const padded = Buffer.alloc(bytes.length + (bytes.length & 1));
+    bytes.copy(padded);
+    const {createAvr8jsAdapter} = await import(pathToFileURL(path.join(ROOT, 'node_modules/bw-board/src/avr8js-adapter.js')));
+    // The board surface the adapter reads, with BoardImpl's setTemperature contract.
+    const board = {
+        temperatureC: 25, tNs: 0n,
+        setTemperature (t) { board.temperatureC = t; },
+        advanceTo (t) { board.tNs = BigInt(t); }, setPin () {}, readPin: () => 1, readAnalog: () => 0
+    };
+    assert.equal(applyBenchTemperature(board, 60), true);
+    const adapter = createAvr8jsAdapter({chip: 'attiny88', program: new Uint16Array(padded.buffer, padded.byteOffset, padded.length / 2)});
+    adapter.attachBoard(board);
+    let out = '';
+    adapter.onSerial((b) => { out += String.fromCharCode(b); });
+    for (let i = 0; i < 30; i++) adapter.advanceNs(10_000_000);
+    // 230 / 300 / 370 LSB at -40 / 25 / 85 C (8008H Table 17-2); the emitted C
+    // turns counts back into degrees with that line.
+    assert.match(out, /^Chip 60 C\r\nName\?\r\n/, JSON.stringify(out.slice(0, 40)));
+    const before = out.length;
+    assert.equal(adapter.sendSerial(Array.from('Ada\r', (ch) => ch.charCodeAt(0))), true);
+    for (let i = 0; i < 20; i++) adapter.advanceNs(10_000_000);
+    assert.ok(out.length > before + 50, 'the other script kept printing while the name came in');
+    assert.match(out, /\r\nHi Ada\r\n/, 'the typed line arrived whole');
+});
