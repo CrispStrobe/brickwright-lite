@@ -18,6 +18,9 @@ breadboards before soldering the real thing.
 **Native binaries:** built by CI for macOS, Windows, Linux, iOS and Android
 (see **Actions** / **Releases**).
 
+Target handoff: [current state and actionable lanes](docs/TARGET-NEXT-LANES.md),
+with [historical source-bound performance receipts](docs/TARGET-EMULATOR-PERFORMANCE.md).
+
 For x86 programs, raw floppy/HDD images and DOSBox configs, see [the GUI loading guide](docs/I80386-GUI.md), [backend and format scope](docs/X86-LOADING-SCOPE.md), and [the upstream CLI/GUI loading guide](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-LOADING-GUIDE.md).
 
 The [x86 checkpoint and next GUI lanes](docs/X86-NEXT-LANES.md) separates reached evidence from pending media, browser acceptance and upstream-adoption tasks.
