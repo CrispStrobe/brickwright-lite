@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
 
 test('a MakeCode function local stays inside each invocation and exports to PXT', async () => {
@@ -28,7 +29,16 @@ test('a MakeCode function local stays inside each invocation and exports to PXT'
     // info.changeScoreBy keeps the score in the Arcade runtime's state (the
     // device pane shows it), not in a Scratch variable named score.
     assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score), 10);
+    const exported = projectToArcade(creator.project);
+    assert.deepEqual(exported.unsupported, []);
+    // The local is declared inside each run; since E1 the import writes its
+    // values as numbers (`(0 + 2)`), so the export types it `number` (the WIP's `any`).
+    assert.match(exported.ts, /function Game_bump \(\) \{\n\s+let value: number = 0/);
     assert.doesNotMatch(imported.code, /_mc\d+/);
+    if (hasRuntime('arcade')) {
+        const compiled = await compile('arcade', exported.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    }
 });
 
 test('nested Arcade procedure calls keep separate local frames', async () => {

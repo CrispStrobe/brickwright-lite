@@ -1,9 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 
 const values = run => Object.fromEntries(run.vm.runtime.targets.flatMap(target => Object.values(target.variables)).map(variable => [variable.name.replace(/^Game_/,''),variable.value]));
 
@@ -37,6 +37,10 @@ implicit+=0`;
     };
     const imported=arcadeToPseudocode(source),run=await execute(imported);
     await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[]);
+    const pxt=await runPxtArcade(exported.ts);for(const [name,value] of Object.entries(expected))assert.equal(pxt[name],value,'exported '+name);
+    await execute(arcadeToPseudocode(exported.ts));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,100);
     const restart=values(run);for(const [name,value] of Object.entries(expected))assert.equal(restart[name],value,'SB3 '+name);
     assert.deepEqual(run.errors,[]);

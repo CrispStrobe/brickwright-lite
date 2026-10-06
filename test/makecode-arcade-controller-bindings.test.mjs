@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const near=(actual,expected)=>assert.ok(Math.abs(actual-expected)<1e-8,`${actual} != ${expected}`);
 const sprites=run=>Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
 async function execute(source){
@@ -13,7 +14,10 @@ async function execute(source){
 async function roundtrip(source,exercise){
     const run=await execute(source);await exercise(run);
     const code=await runProgram(run.creator.decompile(),{frames:3,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.creator.warnings,[]);await exercise(code);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));await exercise(await execute(exported.ts));
     const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,3);await exercise(run);
+    return exported;
 }
 
 test('controller bindings retain zero axes, normalize diagonals and stop on release',async()=>{
@@ -25,7 +29,7 @@ first.vy=30
 controller.moveSprite(first,100,0)
 controller.moveSprite(second)
 controller.B.onEvent(ControllerButtonEvent.Pressed,function(){controller.moveSprite(first,30,0)})`;
-    await roundtrip(source,async run=>{
+    const exported=await roundtrip(source,async run=>{
         const [first,second]=sprites(run);assert.equal(first.controller.vy,0);assert.equal(second.controller.vy,100);
         // The pinned PXT ArcadePhysicsEngine (game/physics.ts) moves each frame by
         // Fx.idiv(Fx.imul(vx + oldVx, Math.idiv(dtMs, 2)), 1000) in 24.8 fixed point.
@@ -45,6 +49,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){controller.moveSpr
         assert.equal(first.controller.vx,30);run.vm.postIOData('keyboard',{key:'ArrowRight',isDown:true});await stepFrames(run.vm,2);assert.equal(first.vx,30);
         run.vm.postIOData('keyboard',{key:'ArrowRight',isDown:false});await stepFrames(run.vm,1);
     });
+    assert.match(exported.ts,/controller\.moveSprite\(first, 100, 0\)/);assert.match(exported.ts,/controller\.moveSprite\(second, 100, 100\)/);
 });
 
 test('a binding follows the sprite instance, supports dynamic speeds and disabling',async()=>{

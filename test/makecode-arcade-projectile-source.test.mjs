@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 
 const source = `function launch() {
     let origin = sprites.createProjectileFromSide(img\`1 1\`, 0, 0)
@@ -31,6 +32,17 @@ test('projectiles inherit a source handle position and keep their PXT creation f
     // info.changeScoreBy keeps the score in the Arcade runtime's state (the
     // device pane shows it), not in a Scratch variable named score.
     assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score), 105);
+    const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => {
+        const asset = creator.assets.get(costume.assetId);
+        return asset?.type === 'svg' ? asset.data : null;
+    }});
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /sprites\.createProjectileFromSprite\(/);
+    assert.match(exported.ts, /sprites\.createProjectile\([\s\S]*SpriteKind\.Food, origin\)/);
+    if (hasRuntime('arcade')) {
+        const compiled = await compile('arcade', exported.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    }
 });
 
 test('a null source keeps PXT edge placement', async () => {
@@ -49,4 +61,11 @@ test('a null source keeps PXT edge placement', async () => {
     creator.parse(imported.code);
     for (const costume of imported.costumes) creator.applyCustomSVG(costume.sprite, costume.svg);
     assert.deepEqual(creator.warnings, []);
+    const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => {
+        const asset = creator.assets.get(costume.assetId);
+        return asset?.type === 'svg' ? asset.data : null;
+    }});
+    assert.deepEqual(exported.unsupported, []);
+    // (-40 is imported as the unary value word, so it exports through its helper.)
+    assert.match(exported.ts, /sprites\.createProjectileFromSprite\([\s\S]*null, __bwUnarySubtract\(\(0 \+ 40\)\), 0\)/);
 });

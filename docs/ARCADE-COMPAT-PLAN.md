@@ -103,6 +103,76 @@ Corpus (38 lite games + 4 imported Arcade games): the only option used is
 refusal: it was a silent change, and that is what this task removed. It
 still compiles 42/42.
 
+## Arcade and Arrays blocks back to Arcade (task E2, 2026-10-06)
+
+E1 (#660) imports a MakeCode Arcade program as Lite's `arcade_*`/`arrays_*`
+blocks (E0's 156 dialect words), run by the arcade extension. E2 is the way
+back: those blocks export to the PXT calls they came from. The cases are the
+parked Codex WIP's (`wip/main-checkout-brickwright-lite-20261005`, `23e9c7f44`),
+re-ported onto A4/A5's exporter, not its pre-A4 copy: A4's broadcasts,
+costumes, clones, lists, pen and sounds, A5's run tokens and `stop`, and the
+D5/D6 dialect are unchanged. Before E2 each of these blocks was one
+`// arcade_…` comment and one `unsupported` entry.
+
+**Two value models, chosen per project.** A project holding any
+`arcade_*`/`arrays_*` block is an *Arcade program* (`arcadeValues`, L116). Its
+inputs keep JavaScript's values (`arrayValue`, L597): text stays text, a
+Boolean stays a Boolean, a variable is declared with the type of what flows
+into it (`imageProcedureParameters`, L1821: Sprite, Image, arrays, Scene,
+PhysicsEngine, Animation, tiles.Location, Boolean). A Scratch-only project
+keeps A4's rules: text that reads as a number is a number, a Boolean in a
+value slot is 1/0. Without that split, E2's rules would turn Scratch's
+`set x to "5"` into text (`x + 1` = `"51"`).
+
+| family | blocks | exports as | where (export-arcade.js) | held by |
+| --- | --- | --- | --- | --- |
+| sprites and projectiles | `createSprite`, `spawnSprite`, `spawnProjectile` (side / kind / sprite / kind-source), `createImageSprite`, `spawnImageProjectile`, `destroySprite`, `controlSprite` | `sprites.create`, `sprites.createProjectile*`, `.destroy()`, `controller.moveSprite`; a template sprite (`__arcadeTemplateN`) becomes its image, never a sprite of its own | L731, L766, L1212+ | projectile-source, local-projectiles, sprite-fixed-point, controller-bindings |
+| sprite properties, flags, scale | `spriteProperty`/`setSpriteProperty`, `setSpriteFlag` and its four shortcuts, `setSpriteScale`/`changeSpriteScale`/`setSpriteScaleCore`, `setSpriteKind`, `setSpriteCostume` | the property, `setFlag(SpriteFlag.X, b)` (a Boolean variable stays the condition, L671), `setScale*` (the fourth argument a real Boolean) | L874, L1459, L1471 | flags, scaling, sprite-text |
+| speech and dialogs | `spriteSay` (text/legacy), `splash`, `showLongText`, `log`, `askForNumber/String` | `sayText`/`say` with text never coerced to a number, `game.splash`, `game.showLongText(…, DialogLayout.X)`, `console.log`, `game.ask*` | L1216, L1487 | say-text, splash |
+| events | `whenUpdate`, `whenInterval`, `whenSpriteCreated/Destroyed`, `whenSpritesOverlap`, `whenCountdownEnds`, and the registered forms (`register update/interval/button/destroyed/overlap/forever/life zero/countdown/scene push/pop/wall/tile/created`, `register destruction of`) | `game.onUpdate`, `game.onUpdateInterval`, `sprites.on*`, `info.on*`, `scene.onHitWall/onOverlapTile`, `sprite.onDestroyed`; a registered handler is emitted where it is registered, with the captured locals; a handler that is never registered is **named** (`…callback X has no registration`) | L2337, L1288, L1323, L1334, L1350, `registeredCallback` L1796 | scene-registrations, terrain-events, destroyed, created-registration, update |
+| images | `createImage`, `cloneImage`, image property/pixel, `mutateImage`, `blitImage`, `drawImage`, `setImagePixel`, sprite image ops, `imagesOverlap`, frame arrays | `image.create`, `.clone()`, `.getPixel/.setPixel`, `.fill/.replace/.flipX/.flipY`, `.drawImage/.drawTransparentImage`, `.fillRect/.drawLine`, `.overlapsWith`, `Image[]` frame tables | L844, L853, L1360+ | image-values, image-blit, image-mutation, image-parameters, pixel-drawing, shared-images, generated-images, literal-images |
+| scene, camera, tiles, physics, animation | backgrounds, camera, `setTilemap` and tile reads/writes, scenes, `PhysicsEngine`, animations | `scene.*`, `tiles.*` (tile map literal from its data), `game.pushScene/popScene`, `ArcadePhysicsEngine`, `animation.*` (adds the `animation` package to `pxt.json`) | L885, L896, L1063, L1075 | background, background-images, camera, tile-data, terrain, scenes, multi-physics, physics-engine, friction, animation |
+| info | score, life (players 1-4), countdown, `game.over` | `info.score()/setScore/changeScoreBy`, `info.playerN.*`, `info.startCountdown`; in an Arcade program the global `score`/`lives` variables are Arcade's own | L881, L1087, L1282 | locals, destroyed, scene-registrations |
+| procedures | `callFunction` (a value-returning procedure), `returnValue`, `setLocal/getLocal`, captured values | a typed function (`): Image`, `): Sprite`, `: number`, …) whose locals are declared per call; a procedure that can fall off its end returns `undefined`, as in PXT | L777, L1265, L1370, L2363 | function-returns, locals, image-parameters, lazy-values |
+| named arrays (legacy `arrays` extension) | `namedReference`, create/delete, get, set, push, pop, insert, remove, length, indexOf, contains, toJSON, `parseLegacyValue`, `jsonValue` | a global `any[]` per name plus the WIP's helpers (Scratch's forgiving reads, JSON text) | L488, L796, L1239 | named-arrays |
+| reference arrays | `createReference`, item/take/random/length/indexOf/truthy/remove, `mutateReference` (set, length, push, unshift, insertAt, removeAt, pop, shift, reverse, removeElement) | JavaScript arrays, typed by what they hold (`Image[][][]`, `Sprite[]`, `any[]`) | L567, L832, L1254 | reference-arrays, sprite-collections, array-coercion |
+| values | `valueCompare`, `valueBinary`, `valueUnary`, `valueTruthy`, `specialValue` (`null`/`undefined`) | one helper per operator (`__bwCompareLess(a, b)`, `__bwBinaryAdd`, …: JavaScript's own operator, so `+` of text joins), `!!x`, `null`/`undefined` | L814 | value-arithmetic, native-minmax, lazy-values, scaling |
+| program shape | E1's `Game` sprite and its single flag script | `Game` with no artwork and no motion is no sprite (`isScriptHost`, L460); its one green-flag script is the program's startup code, run in place (L2539), so what it creates exists before the first frame, as in PXT. Several flag scripts, or one a `stop` can end, keep A4's `control.runInParallel` | L460, L2539 | created-order, sprite-fixed-point, scene-registrations |
+
+Changes to A4 behaviour, each because a round trip needed it:
+- Key **`z` is `controller.B`** (A4 had A). The importer has always written
+  Arcade's B as `z` (arcade-translate `CONTROLLER_KEYS`), so B handlers came
+  back as A.
+- `min of`/`max of` in an Arcade program keep Scratch's casts (a helper:
+  `min of "x" and 7` is 7; `Math.min("x", 7)` is a compile error). A
+  Scratch-only project keeps `Math.min/max` (L726).
+- `=` of two number literals is the constant it is (L941): the dialect writes a
+  Boolean literal as `0 = 1`, and Static TypeScript refuses `0 == 1`.
+
+Still refused, by name:
+- A frame-image table the importer did not write (a hand-written
+  `__bwFrames_x` array): `Arcade shared frame image requires a literal array key
+  and valid template range`.
+- A sprite flag the dialect cannot write (e.g. `ShowPhysics`, from a project
+  edited elsewhere): `Unsupported Arcade sprite flag ShowPhysics`.
+- A destruction or registered callback that is never registered.
+
+**Evidence.** The 45 E1 round-trip files have their export halves back
+(Arcade TS → blocks → Arcade TS → the pinned pxt-arcade 4.2.1 compiler, and,
+where the file already ran it, the headless PXT simulator and a re-import),
+plus E1's three export-only subtests and the export of the import's own maths
+words in `makecode-export-arcade`. Corpus: every distinct Arcade program the 80
+`makecode-arcade-*` files import (355, captured by wrapping the importer): 111
+are refused by the importer by name (the `*-import` tests' gap cases); of the
+244 that import, **242 export to TypeScript the compiler accepts**, and the
+other 2 are the frame-table refusal above. Mutations, each red: drop speech;
+drop value comparison; projectile with a wrong arity; Arcade inputs read as
+Scratch numbers; drop registered-handler emission; drop the tile map; named
+array read off by one; drop reference-array item; `setPixel` with a wrong
+arity; `z` back to A; no `animation` package; a Boolean flag variable
+compared with 0; min/max without Scratch's casts; the startup run in
+parallel instead of in place.
+
 ## Evidence
 
 - **Behaviour, in pxt-arcade's own simulator.** `scripts/lib/makecode-arcade-sim.mjs`

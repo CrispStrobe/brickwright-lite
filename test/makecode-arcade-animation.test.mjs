@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
@@ -41,6 +41,10 @@ test('typed legacy animation objects and modern image commands survive Code/SB3 
     const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:70,uploads:imported.costumes,storage:true});check(run);return run;};
     const imported=arcadeToPseudocode(source),run=await execute(imported);
     await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    assert.equal(JSON.parse(exported.files['pxt.json']).dependencies.animation,'*');assert.match(exported.ts,/: animation\.Animation/);
+    const pxt=await runPxtArcade(exported.ts,options);for(const name of names)assert.equal(pxt[name],expected[name],name+' in executed export');
+    await execute(arcadeToPseudocode(exported.files));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,70);check(run);
     const v=vars(run),p=run.vm.runtime._primitives;
     assert.equal(p.arcade_imagePixel({IMAGE:p.arcade_spriteImage({ID:v.hero}),X:0,Y:0}),7,'legacy playback uses attached frame image');

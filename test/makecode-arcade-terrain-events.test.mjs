@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {TERRAIN_EVENTS_SOURCE} from './fixtures/arcade-terrain-events.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 const names=['wallOrder','wallCount','wallColumn','wallRow','entryX','sawContact','afterPause','secondSawVelocity','returnedAfterHandlers','finalWallVelocity','tileOrder','tileColumn','tileRow','sameLocation','tileReturnedAfterHandlers','eventsDone'];
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 
@@ -18,6 +18,10 @@ test('terrain callbacks preserve synchronous mutation, yielded order, captured c
     };
     const imported=arcadeToPseudocode(TERRAIN_EVENTS_SOURCE),run=await execute(imported);
     await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    assert.match(exported.ts,/scene\.onHitWall\(/);assert.match(exported.ts,/scene\.onOverlapTile\(/);assert.match(exported.ts,/: tiles\.Location/);
+    const again=await runPxtArcade(exported.ts,{waitForGlobals:{eventsDone:true}});for(const name of names)assert.equal(again[name],expected[name],name+' in executed export');
+    await execute(arcadeToPseudocode(exported.files));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,200);check(run);
 });
 
@@ -61,4 +65,9 @@ let nestedDone=tiles.tileAtLocationIsWall(tiles.getTileLocation(1,1))`;
     const run=await runProgram(imported.code,{frames:100,uploads:imported.costumes,storage:true});
     for(const name of ['inheritedColumn','touchedRow','nestedDone'])assert.equal(values(run)[name],expected[name],name);
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[]);
+    assert.match(exported.ts,/items: tiles\.Location\[\]/);
+    const again=await runPxtArcade(exported.ts,{waitForGlobals:{nestedDone:true}});
+    for(const name of ['inheritedColumn','touchedRow','nestedDone'])assert.equal(again[name],expected[name],name+' in executed export');
 });

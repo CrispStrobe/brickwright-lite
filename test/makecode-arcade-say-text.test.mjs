@@ -4,8 +4,9 @@ import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {SB3Creator, projectOpcodes, runProgram} from './helpers/bw-vm.mjs';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile} from '../scripts/lib/pxt-node.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 
 test('a pinned speech sequence keeps each persistent sayText bubble', () => {
     const source = readFileSync(join(import.meta.dirname, 'fixtures/makecode/arcade-say-text.ts'), 'utf8');
@@ -32,7 +33,7 @@ test('timed sayText uses a nonblocking Arcade speech command', async () => {
     assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.speech, {});
 });
 
-test('sprite-handle speech survives blocks and Code without waiting', async () => {
+test('sprite-handle speech survives blocks, SB3, MakeCode compile and reimport without waiting', async () => {
     const source = `let animated = true
 function greet(sprite: Sprite) { sprite.sayText("Animated", 900, animated, 2, 9) }
 let hero = sprites.create(img\`1\`, SpriteKind.Player)
@@ -55,6 +56,18 @@ let completed = 1`;
     const again = new SB3Creator(); again.parse(text);
     assert.deepEqual(again.warnings, []);
     assert.ok(projectOpcodes(again.project).has('arcade_spriteSay'));
+    const out = projectToArcade(run.creator.project, {costumeSvg: (target, costume) =>
+        run.creator.assets.get(costume.assetId)?.data});
+    assert.deepEqual(out.unsupported, []);
+    const compiled = await compile('arcade', out.files);
+    assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    const reimported = arcadeToPseudocode(out.files);
+    assert.deepEqual(reimported.unsupported, []);
+    const rerun = await runProgram(reimported.code, {frames: 2, uploads: reimported.costumes, storage: true});
+    assert.deepEqual(rerun.errors, []);
+    assert.deepEqual(Object.values(rerun.vm.runtime.bwArcadeDeviceState.speech).map(s =>
+        [s.text, s.mode, s.duration, s.foreground, s.background]),
+        messages.map(s => [s.text, s.mode, s.duration, s.foreground, s.background]));
 });
 
 test('speech replacement, clearing, zero duration and destruction own their lifetime', () => {
@@ -76,7 +89,7 @@ test('speech replacement, clearing, zero duration and destruction own their life
     assert.deepEqual(ext._state().speech, {});
 });
 
-test('speech literals keep quotes, field labels, newlines and numeric-looking text across Code', async () => {
+test('speech literals keep quotes, field labels, newlines and numeric-looking text across Code and export', async () => {
     const message = '00123 "quoted" text for 7 ms animated 1 text color 2 box color 3 mode "legacy"\nNext line';
     const imported = arcadeToPseudocode(`let hero = sprites.create(img\`1\`, SpriteKind.Player)\n` +
         `hero.sayText(${JSON.stringify(message)}, 500, false, 2, 9)`);
@@ -88,6 +101,30 @@ test('speech literals keep quotes, field labels, newlines and numeric-looking te
     const again = new SB3Creator(); again.parse(run.creator.decompile());
     const speech = again.project.targets.flatMap(t => Object.values(t.blocks)).find(b => b.opcode === 'arcade_spriteSay');
     assert.equal(speech.inputs.TEXT[1][1], message);
+    const out = projectToArcade(run.creator.project, {costumeSvg: (_, costume) => run.creator.assets.get(costume.assetId)?.data});
+    assert.deepEqual(out.unsupported, []);
+    assert.ok(out.ts.includes(JSON.stringify(message)));
+    const reimported = arcadeToPseudocode(out.files);
+    const reloaded = await runProgram(reimported.code, {frames: 2, uploads: reimported.costumes, storage: true});
+    assert.equal(Object.values(reloaded.vm.runtime.bwArcadeDeviceState.speech)[0].text, message);
+});
+
+test('authored self speech and reporter animation export to valid PXT without numeric coercion of text', async () => {
+    const creator = new SB3Creator();
+    creator.parse(`DEVICE ARCADE
+SPRITE hero:
+WHEN flag clicked:
+  arcade say "self" text "00123" for -1 ms animated (1 = 1) text color 2 box color 9 mode "text"
+`);
+    creator.applyCustomSVG('hero', arcadeToPseudocode('let art = sprites.create(img`1`, SpriteKind.Player)').costumes[0].svg);
+    assert.deepEqual(creator.warnings, []);
+    const out = projectToArcade(creator.project, {costumeSvg: (_, costume) => creator.assets.get(costume.assetId)?.data});
+    assert.deepEqual(out.unsupported, []);
+    // (the export names a sprite `<name>Sprite`, A4's rule)
+    // (`1 = 1` of two literals is the constant it is: `0 == 1` does not compile)
+    assert.match(out.ts, /heroSprite\.sayText\("00123", -1, true, 2, 9\)/);
+    const compiled = await compile('arcade', out.files);
+    assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
 });
 
 test('the pinned hat overlap game speaks from the colliding handle while its script host stays hidden', async () => {
