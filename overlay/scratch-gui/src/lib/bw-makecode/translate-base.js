@@ -438,6 +438,8 @@ export class BaseTranslator {
         // project does not carry, an image where no image fits): a placeholder,
         // named, so the loss is visible.
         case 'Template':
+            // Untagged and unclaimed (\`serial.writeLine(\`plain\`)\`): its text.
+            if (!node.tag) return tsTextLiteral({type: 'String', value: node.value});
             this.unsupported.push(`${node.tag || 'template'}\`…\` — image or asset literal not translated here`);
             return '"(image)"';
         // An object literal is opaque here; say so, with the calls it made.

@@ -47,6 +47,7 @@ import {
     ARCADE_PALETTE
 } from './arcade-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
+import {HELPERS} from './arcade-runtime.js';
 /** `sprites.castle`, `sprites.dungeon`, … : the namespaces PXT's built-in art lives in. */
 const BUILTIN_IMAGE_GROUPS = new Set(Object.keys(BUILTIN_IMAGES).map(key => key.slice(0, key.lastIndexOf('.'))));
 
@@ -527,6 +528,14 @@ class ArcadeTranslator extends BaseTranslator {
         // form for a comparison (it warns and keeps the text), so a word that
         // reports a real boolean carries it (E0).
         if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        // \`!x\` AS A CONDITION is the dialect's \`not\`; E9's \`x === false\` value form is
+        // for value slots only. Written through it, Lite's own export (\`while (!(!c))\`)
+        // came back as nested value comparisons and lost every operator_not.
+        if(this.handleTemplates && node?.type==='Unary' && node.op==='!') {
+            const inner=node.argument;
+            if(inner?.type==='Unary' && inner.op==='!')return this.condition(inner.argument);
+            return `not (${this.condition(inner)})`;
+        }
         if(node?.type==='Index' && this.isArrayReference(node.object))
             return `truthiness of item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if(this.handleTemplates && node && node.type!=='Boolean' &&
@@ -1004,6 +1013,9 @@ class ArcadeTranslator extends BaseTranslator {
         const push = line => out.push(pad + line);
         const name = this.path(node.callee);
         const a = node.args || [];
+        // Lite's own export's stop machinery, lifted back by liftExporterStops.
+        if (name === '__bwStopAll') { push('stop all'); return; }
+        if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
         if (this.functions.some(fn=>fn.name===name)) {
             const fn=this.sourceFunctions?.get(name),actual=[...a];
             if(this.handleTemplates && fn && a.length<fn.params.length){
@@ -1364,9 +1376,14 @@ class ArcadeTranslator extends BaseTranslator {
             push(this.note(`sprite.${method}() arguments`));
             return;
         }
+        // A literal argument stays a literal in the block's slot: \`false\` is 0 and
+        // \`-1\` is -1, as when the import supplies the default (Lite's own export
+        // writes them out; read as value words they changed the blocks on a round trip).
+        const literal = node => node?.type === 'Boolean' ? (node.value ? '1' : '0') :
+            node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number' ? num(-Number(node.argument.value)) : null;
         const optional = (index, fallback) => args[index] &&
             args[index].type !== 'Null' &&
-            !(args[index].type === 'Identifier' && args[index].name === 'undefined') ? this.expr(args[index]) : fallback;
+            !(args[index].type === 'Identifier' && args[index].name === 'undefined') ? literal(args[index]) ?? this.expr(args[index]) : fallback;
         const escapes = {n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', '0': '\0'};
         const decode = value => value.replace(/\\(?:u\{([0-9a-f]+)\}|u([0-9a-f]{4})|x([0-9a-f]{2})|([\s\S]))/gi,
             (_, point, unicode, hex, char) => point || unicode || hex ?
@@ -1620,6 +1637,89 @@ const desugarForOf = (program, source) => {
         ]};
     };
     return visit(program);
+};
+
+// Lite's own Arcade export carries the run-token machinery that makes Scratch's
+// \`stop\` blocks work in PXT (arcade-runtime.js \`tok\`/\`others\`, export-arcade.js
+// stop()). Read back as user code it became DEFINE _tok / _dead / _stopAll and
+// the \`stop all\` itself was lost. When that machinery is present VERBATIM, this
+// lifts it back: \`_stopAll()\` is \`stop all\`, a mark of \`_stopOthers\` is \`stop
+// other scripts in sprite\`, and the run-token lines and their guards vanish.
+let exporterTokenTemplates;
+const liftExporterStops = program => {
+    const shape = node => JSON.stringify(node, (key, value) => (key === 'line' ? undefined : value));
+    const templates = exporterTokenTemplates || (exporterTokenTemplates = new Map(
+        parseMakeCodeTs(`${HELPERS.tok.ts}\n${HELPERS.others.ts}`).body
+            .filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, shape(fn)])));
+    const declared = new Map(program.body.filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, fn]));
+    const stopAll = declared.get('_stopAll');
+    const generated = ['_tok', '_dead'].every(name => declared.has(name) && shape(declared.get(name)) === templates.get(name)) &&
+        (!stopAll || stopAll.body?.[0]?.type === 'ExpressionStatement' && stopAll.body[0].expr?.type === 'Assignment' &&
+            stopAll.body[0].expr.left?.name === '_stopMark' && stopAll.body[0].expr.right?.name === '_tokens');
+    if (!generated) return program;
+    const helpers = new Set(['_tok', '_dead', '_stopAll',
+        ...['_stopOthers', '_othersStopped'].filter(name => declared.has(name) && shape(declared.get(name)) === templates.get(name))]);
+    const isId = (node, name) => node?.type === 'Identifier' && (name instanceof RegExp ? name.test(node.name) : node.name === name);
+    const isCall = (node, name) => node?.type === 'Call' && isId(node.callee, name);
+    const marker = name => ({type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Identifier', name}, args: []}});
+    // A guard term the export adds at each yield; anything else in the test stays.
+    const guardTerm = node => isCall(node, '_dead') && isId(node.args?.[0], '_t') ||
+        isCall(node, '_othersStopped') && isId(node.args?.[1], '_t') ||
+        node?.type === 'Binary' && node.op === '&&' && node.left?.type === 'Binary' && node.left.op === '<=' &&
+            isId(node.left.left, '_t') && isId(node.left.right, /^_som_/);
+    const terms = node => node?.type === 'Binary' && node.op === '||' ? [...terms(node.left), ...terms(node.right)] : [node];
+    const bareReturn = st => st?.type === 'Return' && !st.value ||
+        st?.type === 'Block' && st.body?.length === 1 && bareReturn(st.body[0]) ||
+        Array.isArray(st) && st.length === 1 && bareReturn(st[0]);
+    const statements = list => {
+        const out = [];
+        for (let i = 0; i < list.length; i++) {
+            const st = list[i];
+            if (st?.type === 'FunctionDeclaration' && helpers.has(st.name)) continue;
+            if (st?.type === 'Declaration' && st.decls.every(d => /^(_tokens|_stopMark|_som_\w+|_sok_\w+)$/.test(d.name) && !d.init?.type?.startsWith('Call') ||
+                d.name === '_t' && isCall(d.init, '_tok'))) continue;
+            if (st?.type === 'If' && !st.alternate && bareReturn(st.consequent)) {
+                const all = terms(st.test);
+                const kept = all.filter(term => !guardTerm(term));
+                if (kept.length === 0) continue;
+                if (kept.length < all.length) {
+                    out.push({...st, test: kept.reduce((left, right) => ({type: 'Binary', op: '||', left, right}))});
+                    continue;
+                }
+            }
+            const expr = st?.type === 'ExpressionStatement' && st.expr;
+            if (isCall(expr, '_stopAll') && !expr.args?.length) {
+                out.push(marker('__bwStopAll'));
+                if (bareReturn(list[i + 1])) i++;
+                continue;
+            }
+            if (isCall(expr, '_stopOthers') && isId(expr.args?.[1], '_t')) {
+                out.push(marker('__bwStopOthers'));
+                continue;
+            }
+            // \`_som_X = _tokens\` then \`_sok_X = _t\`: stop other scripts of a sprite that is never cloned.
+            if (expr?.type === 'Assignment' && isId(expr.left, /^_som_/) && isId(expr.right, '_tokens')) {
+                const next = list[i + 1]?.expr;
+                if (next?.type === 'Assignment' && isId(next.left, /^_sok_/) && isId(next.right, '_t')) i++;
+                out.push(marker('__bwStopOthers'));
+                continue;
+            }
+            out.push(visit(st));
+        }
+        return out;
+    };
+    const visit = node => {
+        if (Array.isArray(node)) return statements(node);
+        if (!node || typeof node !== 'object') return node;
+        const copy = {...node};
+        for (const key of Object.keys(copy)) {
+            if (Array.isArray(copy[key])) copy[key] = copy[key].every(x => x && typeof x === 'object' && 'type' in x) &&
+                ['body', 'consequent', 'alternate', 'cases'].includes(key) ? statements(copy[key]) : copy[key].map(visit);
+            else if (copy[key] && typeof copy[key] === 'object') copy[key] = visit(copy[key]);
+        }
+        return copy;
+    };
+    return {...program, body: statements(program.body)};
 };
 
 const inlineLegacyArrayHelpers = program => {
@@ -2999,7 +3099,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(parseMakeCodeTs(source, {parameterDefaults: true}), source)));
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(liftExporterStops(parseMakeCodeTs(source, {parameterDefaults: true})), source)));
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
     const flattened = namespaceBindings.program ? ast : null;

@@ -908,10 +908,11 @@ class Parser {
         }
         if (t.type === 'template') {
             this.next();
-            // An UNTAGGED template is a string: \`player ${p.id}\` is
-            // "player " + p.id. (A tagged one, img\`…\`, is art: see the postfix
-            // loop.) With no placeholder it is plain text.
-            return templateString(t.value) || {type: 'Template', value: t.value};
+            // An UNTAGGED template with a placeholder is a string: \`player ${p.id}\`
+            // is "player " + p.id. Without one it stays a Template: micro:bit's
+            // \`basic.showLeds(\`# . #…\`)\` is a picture, read by its translator.
+            // (A tagged one, img\`…\`, is art: see the postfix loop.)
+            return (t.value.includes('${') && templateString(t.value)) || {type: 'Template', value: t.value};
         }
         if (t.type === 'true' || t.type === 'false') {
             this.next();

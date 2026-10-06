@@ -267,3 +267,30 @@ test('Arcade maths keeps every argument both ways (min/max/pow kept only the fir
         assert.match(ts, call);
     }
 });
+
+// ── What Lite's own export carries comes back as itself (task F8) ───────────
+test('stop blocks and not survive export and re-import, without the run-token machinery', () => {
+    const src = [
+        'DEVICE ARCADE',
+        'SPRITE Game:',
+        'WHEN flag clicked:',
+        '  set n to 0',
+        '  REPEAT UNTIL not (n < 10):',
+        '    change n by 1',
+        '  stop other scripts in sprite',
+        '  IF n > 5 THEN:',
+        '    stop all',
+        'WHEN flag clicked:',
+        '  FOREVER:',
+        '    change m by 1',
+        ''
+    ].join('\n');
+    const {files} = exportOf(src);
+    assert.match(files['main.ts'], /function _stopAll \(\)/);
+    const back = importProjectFiles(files, {target: 'arcade', name: 'rt'});
+    assert.doesNotMatch(back.code, /_tok|_dead|_stopAll|_stopMark|_som_|_sok_/, back.code);
+    assert.match(back.code, /^\s*stop all$/m);
+    assert.match(back.code, /^\s*stop other scripts in sprite$/m);
+    assert.match(back.code, /REPEAT UNTIL not \(/);
+    assert.doesNotMatch(back.code, /op "===" with \(\(compare value \(1\) op "<" with \(0\)\)\)/, 'a condition came back as a value comparison');
+});
