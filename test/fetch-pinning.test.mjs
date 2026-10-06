@@ -552,6 +552,19 @@ const CENSUS = [
            + 'defaultImageFetcher; a mismatch is refused by slot name, test/linux-riscv-lesson.test.mjs).'
     },
     {
+        file: 'overlay/scratch-gui/src/lib/bw-machines/lessons.js',
+        kind: 'raw',
+        text: 'raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/${ELKS_MEDIA_COMMIT}/projects/elks',
+        class: 'sha-const',
+        why: 'The ELKS-on-8086 lesson media (the GPL-2.0 v0.9.2 floppy), fetched at RUN TIME in the '
+           + 'learner\'s browser from brickwright-media-lab and never part of this build '
+           + '(verify-no-gpl-in-build). ELKS_MEDIA_COMMIT is a 40-hex constant in the same file '
+           + '(SHA_CONSTANTS below), so the URL names an immutable commit of the media branch; the raw '
+           + 'CDN, not the release download, because only it serves CORS. The floppy is ALSO '
+           + 'sha256-checked against its per-slot pin before it boots (activate.js defaultImageFetcher; '
+           + 'a mismatch is refused by slot name, test/elks-lesson.test.mjs).'
+    },
+    {
         file: 'scripts/verify-native-downloads-e2e.mjs',
         kind: 'raw',
         text: 'raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/',
@@ -574,6 +587,7 @@ const SHA_CONSTANTS = [
     ['scripts/sync-labwired-wasm.mjs', /const PIN = '([0-9a-zA-Z]+)'/],
     ['.github/workflows/build.yml', /^\s*FLOOR=(\S+)/m],
     ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const LINUX_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
+    ['overlay/scratch-gui/src/lib/bw-machines/lessons.js', /const ELKS_MEDIA_COMMIT = '([0-9a-zA-Z]+)'/],
     ['scripts/verify-native-downloads-e2e.mjs', /'([0-9a-zA-Z]+)\/riscv32-linux\/Image'/],
     ['scripts/build-bbcsdl-reference.sh', /^BBCSDL_COMMIT=([0-9a-zA-Z]+)/m]
 ];
