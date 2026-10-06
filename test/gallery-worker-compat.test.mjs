@@ -164,7 +164,9 @@ test('published migration counts distinguish proven, awaiting-proof and ambient 
     // 24/103/1 = 128 after the TurboWarp sync of 2026-09-21. The cohort fell
     // 25 -> 24 because upstream delisted CubesterYT/TurboHook in favour of
     // CubesterYT/Webhooks, which did not inherit the promotion.
-    assert.deepEqual(counts, {worker: 24, deferred: 103, candidate: 1});
+    // 24/104/1 = 129 since CrispStrobe/circuitcubes (extensions #15,
+    // 2026-10-06), deferred on Web Bluetooth and DOM/VM locale bootstrap.
+    assert.deepEqual(counts, {worker: 24, deferred: 104, candidate: 1});
 });
 
 test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {
