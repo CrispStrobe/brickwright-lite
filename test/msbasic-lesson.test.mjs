@@ -1,9 +1,10 @@
 // The Microsoft BASIC (6502) lesson: Microsoft's MIT-released 1978 6502 BASIC
-// offered as a one-click machine in the Machine Manager. Self-contained — the
-// 32 KB ROM ships in this app (static/roms) — so it is offered even in a
-// self-contained build and fetches nothing remote. Checks the config (incl. the
-// inline eater6502 ACIA machineConfig), its activation, and bilingual strings.
-// The live boot is proven by the media-lab project's own proof.mjs.
+// offered as a one-click machine in the Machine Manager. Its media is
+// self-contained — the 32 KB ROM ships in this app (static/roms), nothing is
+// fetched from media-lab — but like every lesson it is still gated by the
+// machine-image policy axis. Checks the config (incl. the inline eater6502 ACIA
+// machineConfig), its activation, and bilingual strings. The live boot is
+// proven by the media-lab project's own proof.mjs.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 

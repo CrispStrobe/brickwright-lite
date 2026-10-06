@@ -1,9 +1,10 @@
 // The CP/M 2.2 lesson: DRI's real CCP+BDOS + BBC BASIC (Z80), offered as a
-// one-click machine in the Machine Manager. Unlike the Linux/ELKS lessons this
-// one is SELF-CONTAINED — its ROMs ship in this app (static/roms) — so it is
-// offered even in a self-contained build and fetches nothing remote. Checks the
-// config, its real-CP/M boot activation, and its bilingual strings. The live
-// boot is covered by scripts/verify-cpm-system.mjs (the Machine Manager gate).
+// one-click machine in the Machine Manager. Its media is SELF-CONTAINED — the
+// ROMs ship in this app (static/roms), nothing is fetched from media-lab — but
+// like every lesson it is still gated by the machine-image policy axis
+// (test/native-store-code-policy.test.mjs). Checks the config, its real-CP/M
+// boot activation, and its bilingual strings. The live boot is covered by
+// scripts/verify-cpm-system.mjs (the Machine Manager gate).
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 

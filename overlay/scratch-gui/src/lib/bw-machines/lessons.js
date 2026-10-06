@@ -149,14 +149,14 @@ const TABLE = {
         'elks.licence': 'ELKS is GPL-2.0. It is not part of this app: ' +
             'Run fetches the floppy ({size}) from brickwright-media-lab and checks its SHA-256 first.',
         'elks.source': 'Source code',
-        'cpm.title': 'BBC BASIC (CP/M 2.2)',
+        'cpm.title': 'BBC BASIC on CP/M 2.2',
         'cpm.summary': 'DRI’s real CP/M 2.2 (CCP+BDOS, not a shim) boots on the emulated Z80 to the A> prompt. ' +
             'BBC BASIC is on drive A: — type DIR to list it, BBCBASIC to run it. ' +
             'The console is the Debug panel’s serial terminal. Everything ships in the app — no download.',
         'cpm.licence': 'CP/M 2.2 is DRI’s redistributable release (2022 grant); BBC BASIC (Z80) is zlib (R.T. Russell). ' +
             'Both ship in this app.',
         'cpm.source': 'Project',
-        'msbasic.title': 'Microsoft BASIC (6502)',
+        'msbasic.title': 'Microsoft BASIC on 6502',
         'msbasic.summary': 'Microsoft’s original 1978 6502 BASIC (V1.1, the MIT release) boots on the emulated ' +
             'Ben Eater 6502 to the MICROSOFT BASIC V1.1 banner and the OK prompt. Answer MEMORY SIZE? and ' +
             'WIDTH? with Enter, then type a program (PRINT 2+2, or 10 FOR I=1 TO 3 …). ' +
@@ -187,14 +187,14 @@ const TABLE = {
         'elks.licence': 'ELKS steht unter GPL-2.0. Es ist nicht Teil dieser App: ' +
             'Ausführen lädt die Diskette ({size}) von brickwright-media-lab und prüft vorher ihre SHA-256.',
         'elks.source': 'Quellcode',
-        'cpm.title': 'BBC BASIC (CP/M 2.2)',
+        'cpm.title': 'BBC BASIC auf CP/M 2.2',
         'cpm.summary': 'DRIs echtes CP/M 2.2 (CCP+BDOS, kein Shim) startet auf dem emulierten Z80 am A>-Prompt. ' +
             'BBC BASIC liegt auf Laufwerk A: — DIR listet es, BBCBASIC startet es. ' +
             'Die Konsole ist das serielle Terminal im Debug-Panel. Alles ist in der App enthalten — kein Download.',
         'cpm.licence': 'CP/M 2.2 ist DRIs weitergabefähige Ausgabe (Freigabe 2022); BBC BASIC (Z80) steht unter zlib (R.T. Russell). ' +
             'Beides ist in dieser App enthalten.',
         'cpm.source': 'Projekt',
-        'msbasic.title': 'Microsoft BASIC (6502)',
+        'msbasic.title': 'Microsoft BASIC auf 6502',
         'msbasic.summary': 'Microsofts ursprüngliches 6502-BASIC von 1978 (V1.1, die MIT-Ausgabe) startet auf dem ' +
             'emulierten Ben-Eater-6502 mit dem Banner MICROSOFT BASIC V1.1 und dem OK-Prompt. Beantworte MEMORY SIZE? ' +
             'und WIDTH? mit der Eingabetaste und tippe dann ein Programm (PRINT 2+2 oder 10 FOR I=1 TO 3 …). ' +
@@ -231,14 +231,18 @@ export const ELKS_DOWNLOAD_BYTES = ELKS_MEDIA.floppy.bytes;
  *            sourceLabel: string, size: string, coldSize: string, coldLabel: string}[]}
  */
 export function lessonMachines (locale) {
+    // Lesson visibility follows ONLY the machine-image policy axis
+    // (test/native-store-code-policy.test.mjs): a build that denies remote
+    // machine images shows NO lessons at all — the whole feature is off. That
+    // includes the self-contained CP/M and MS BASIC lessons below, whose media
+    // ships in-app: they are gated the same way by product decision.
+    if (!remoteMachineImagesAllowed()) return [];
     const t = (k, v) => lessonT(locale, k, v);
     const rows = [];
 
     // Remote GPL-media lessons: the kernel/floppy are fetched at run time from
-    // brickwright-media-lab and are never part of this build. A deliberately
-    // self-contained build (selected by webpack, not inferred from Tauri) omits
-    // them; the self-contained lessons below are still offered.
-    if (remoteMachineImagesAllowed()) {
+    // brickwright-media-lab and are never part of this build.
+    {
         const config = newMachineConfig({
             id: 'lesson-linux-riscv32',
             title: t('linux.title'),
