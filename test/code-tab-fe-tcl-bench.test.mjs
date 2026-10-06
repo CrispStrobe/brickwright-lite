@@ -122,3 +122,84 @@ test('the generated code runs where the tab puts it: PROG.TCL / PROG.FE, exit 0,
         assert.doesNotMatch(r.compile.screen, /error|\?!/i);
     }
 });
+
+// Real Tcl 8.x, as a person writes it — expr, incr, for, elseif, default
+// arguments, return values, recursion — read into blocks and written back as
+// partcl. `out` is what real tclsh 8.6 prints for the ORIGINAL (measured when
+// these were written; this suite does not run tclsh, which the build does not
+// ship). The live tclsh-vs-partcl differential is scripts/tcl-corpus-roundtrip.mjs,
+// over the private Rosetta Code corpus.
+const REAL_TCL = {
+    recursion: {
+        src: [
+            'proc ack {m n} {',
+            '    if {$m == 0} {',
+            '        expr {$n + 1}',
+            '    } elseif {$n == 0} {',
+            '        ack [expr {$m - 1}] 1',
+            '    } else {',
+            '        ack [expr {$m - 1}] [ack $m [expr {$n - 1}]]',
+            '    }',
+            '}',
+            'proc fact {n} {',
+            '    if {$n <= 1} {return 1}',
+            '    return [expr {$n * [fact [expr {$n - 1}]]}]',
+            '}',
+            'puts [ack 2 3]',
+            'puts "7! = [fact 7]"'
+        ],
+        out: ['9', '7! = 5040']
+    },
+    loops: {
+        src: [
+            'package require Tcl 8.5',
+            'set total 0',
+            'proc bump {{by 2}} { global total; incr total $by }',
+            'for {set i 1} {$i <= 5} {incr i} {',
+            '    if {$i % 2 == 0} then { bump } elseif {$i == 5} { bump 10 } else { incr total }',
+            '}',
+            'puts "total:\\t$total"',
+            'set n 10',
+            'while {$n > 0} { incr n -3 }',
+            'puts "n=$n pow=[expr {2 ** 5}] abs=[expr {abs(-4)}]"'
+        ],
+        // bump is shared with the program through `global total`: that one
+        // cannot be partcl (a proc sees only its own frame), so it is
+        // refused — the rest is checked below without it.
+        refuse: 'uses the variable(s) total'
+    },
+    loopsLocal: {
+        src: [
+            'proc sumto {n} {',
+            '    set total 0',
+            '    for {set i 1} {$i <= $n} {incr i} {',
+            '        if {$i % 3 == 0} { incr total $i } elseif {$i % 5 == 0} { incr total 100 }',
+            '    }',
+            '    return $total',
+            '}',
+            'set n 10',
+            'while {$n > 0} { incr n -3 }',
+            'puts "sum=[sumto 10] n=$n pow=[expr {2 ** 5}] abs=[expr {abs(-4)}]"',
+            'puts "tab:\\tdone"'
+        ],
+        out: ['sum=218 n=-2 pow=32 abs=4', 'tab:\tdone']
+    }
+};
+
+for (const [name, prog] of Object.entries(REAL_TCL)) {
+    test(`real Tcl → blocks → partcl on the DOS bench: "${name}"`, async () => {
+        const source = `${prog.src.join('\n')}\n`;
+        const read = tclToPseudocode(source);
+        assert.deepEqual(read.warnings, [], read.pseudocode);
+        const g = generateTcl(project(read.pseudocode));
+        if (prog.refuse) {
+            assert.equal(g.ok, false);
+            assert.ok(g.reasons.some(x => x.includes(prog.refuse)), g.reasons.join('; '));
+            return;
+        }
+        assert.equal(g.ok, true, g.reasons.join('; '));
+        const r = await run('tcl', g.tcl);
+        assert.equal(r.exitCode, 0);
+        assert.deepEqual(r.lines, prog.out, `partcl:\n${g.tcl}`);
+    });
+}

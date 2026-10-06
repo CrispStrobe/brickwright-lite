@@ -190,7 +190,7 @@ test('tcl reader: hand-written partcl in its native forms', () => {
     assert.doesNotThrow(() => project(r.pseudocode));
 });
 
-test('tcl reader: the #693 demo degrades by name (a proc used for its value)', () => {
+test('tcl reader: the #693 demo comes through whole — a proc used for its value returns via fact_result', () => {
     const r = tclToPseudocode([
         'puts "partcl on DOS (8086)"',
         'set x 6',
@@ -198,10 +198,123 @@ test('tcl reader: the #693 demo degrades by name (a proc used for its value)', (
         'proc fact {n} { if {<= $n 1} {return 1} {return [* $n [fact [- $n 1]]]} }',
         'puts [fact 5]'
     ].join('\n'));
-    assert.ok(r.warnings.some(w => /reporter custom blocks/.test(w)), JSON.stringify(r.warnings));
-    assert.ok(r.warnings.some(w => /renamed to "x_var"/.test(w)), 'x would read as motion');
-    assert.match(r.pseudocode, /^ {2}say \(x_var \* 7\)$/m);
+    assert.deepEqual(r.warnings, ['variable "x" renamed to "x_var" (pseudocode reads "set x" as motion)']);
+    assert.equal(r.pseudocode, [
+        'GLOBAL x_var',
+        'GLOBAL fact_result',
+        '',
+        'DEFINE fact (n):',
+        '  IF (not (n > 1)) THEN:',
+        '    set fact_result to 1',
+        '    stop this script',
+        '  ELSE:',
+        '    fact (n - 1)',
+        '    set fact_result to (n * fact_result)',
+        '    stop this script',
+        '',
+        'WHEN flag clicked:',
+        '  say "partcl on DOS (8086)"',
+        '  set x_var to 6',
+        '  say (x_var * 7)',
+        '  fact 5',
+        '  say fact_result',
+        ''
+    ].join('\n'));
+    // …and writes back as partcl that returns, with f_result local to each frame.
+    const t = generateTcl(project(r.pseudocode));
+    assert.equal(t.ok, true, t.reasons.join('; '));
+    assert.match(t.tcl, /^ {4}set fact_result \[fact \[- \$n 1\]\]\n {4}return \[\* \$n \$fact_result\]$/m);
+    assert.match(t.tcl, /^set fact_result \[fact 5\]\nputs \$fact_result$/m);
+});
+
+test('tcl reader: real Tcl — expr, incr, for, if/elseif/else, defaults, global, escapes', () => {
+    const r = tclToPseudocode([
+        'package require Tcl 8.5',
+        'set total 0',
+        'proc bump {{by 2}} { global total; incr total $by }',
+        'for {set i 1} {$i <= 3} {incr i} {',
+        '    if {$i % 2 == 0} then { bump } elseif {$i == 3} { bump 10 } else { incr total }',
+        '}',
+        'puts "total:\\t$total"',
+        'puts [expr {2 ** 3 + abs(-1)}]'
+    ].join('\n'));
+    assert.deepEqual(r.warnings, []);
+    assert.equal(r.pseudocode, [
+        'GLOBAL total',
+        'GLOBAL i',
+        '',
+        'DEFINE bump (by):',
+        '  change total by by',
+        '',
+        'WHEN flag clicked:',
+        '  set total to 0',
+        '  set i to 1',
+        '  REPEAT UNTIL (i > 3):',
+        '    IF ((i mod 2) = 0) THEN:',
+        '      bump 2',
+        '    ELSE:',
+        '      IF (i = 3) THEN:',
+        '        bump 10',
+        '      ELSE:',
+        '        change total by 1',
+        '    change i by 1',
+        '  say ("total:\\t" join total)',
+        '  say ((2 to the power of 3) + (abs of (-1)))',
+        ''
+    ].join('\n'));
     assert.doesNotThrow(() => project(r.pseudocode));
+});
+
+test('tcl reader: a proc\'s variables are its own; an assigned argument is copied first', () => {
+    const r = tclToPseudocode([
+        'proc count {n} {',
+        '    set total 0',
+        '    while {$n > 0} { incr total $n; incr n -1 }',
+        '    return $total',
+        '}',
+        'puts [count 4]'
+    ].join('\n'));
+    assert.deepEqual(r.warnings, []);
+    assert.match(r.pseudocode, /^DEFINE count \(n\):\n {2}set count_n to n\n {2}set count_total to 0\n {2}REPEAT UNTIL \(not \(count_n > 0\)\):/m);
+    const t = generateTcl(project(r.pseudocode));
+    assert.equal(t.ok, true, t.reasons.join('; '));
+    // count_n and count_total are written before they are read: partcl locals.
+    assert.match(t.tcl, /^proc count \{n\} \{\n {2}set count_n \$n\n {2}set count_total 0\n/m);
+    assert.doesNotMatch(t.tcl, /^set count_total 0$/m, 'a local gets no global initialiser');
+});
+
+test('tcl reader: what blocks cannot say degrades that command only', () => {
+    const r = tclToPseudocode([
+        'puts {start}',
+        'puts [lindex {a b c} 1]',
+        'set arr(1) 5',
+        'puts {*}$args',
+        'set f {$x + 1}',
+        'puts [expr $f]',
+        'puts {end}'
+    ].join('\n'));
+    const why = r.warnings.join('\n');
+    assert.match(why, /line 2\): no block for the Tcl command \[lindex\]/);
+    assert.match(why, /line 3\): array element arr\(1\)/);
+    assert.match(why, /line 4\): \{\*\} argument expansion/);
+    assert.match(why, /line 6\): expr of a computed expression/);
+    assert.match(r.pseudocode, /^ {2}say "start"$/m);
+    assert.match(r.pseudocode, /^ {2}say "end"$/m);
+    assert.doesNotThrow(() => project(r.pseudocode));
+});
+
+test('tcl reader: generated partcl is read as partcl (a backslash is just a character)', () => {
+    const g = generateTcl(project('WHEN flag clicked:\n  say "A\\\\B"\n')).tcl;
+    assert.match(g, /^puts "A\\B"$/m);
+    assert.match(tclToPseudocode(g).pseudocode, /^ {2}say "A\\\\B"$/m);
+    // The same text without the generator's marker is real Tcl: \B escapes to B.
+    assert.match(tclToPseudocode('puts "A\\B"').pseudocode, /^ {2}say "AB"$/m);
+});
+
+test('tcl generator: a variable a custom block shares with the program is still refused', () => {
+    const r = generateTcl(project('GLOBAL flag\nDEFINE stop_it:\n  set flag to 0\nWHEN flag clicked:\n  set flag to 1\n  stop_it\n  say flag\n'));
+    assert.equal(r.ok, false);
+    assert.ok(r.reasons.some(x => /uses the variable\(s\) flag/.test(x)), r.reasons.join('; '));
 });
 
 test('tcl reader: unbalanced input throws (the reader contract), it is not guessed at', () => {

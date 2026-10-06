@@ -137,3 +137,44 @@ export function variablesUsed (startId, blocks) {
     return names;
 }
 
+
+/** The variables a stack (with its substacks) ASSIGNS with `set … to`. */
+export function variablesUsedBySets (startId, blocks) {
+    const names = new Set();
+    const visit = id => {
+        const b = blocks[id];
+        if (!b || typeof b !== 'object') return;
+        if (b.opcode === 'data_setvariableto' && b.fields && b.fields.VARIABLE) names.add(String(b.fields.VARIABLE[0]));
+        for (const input of Object.values(b.inputs || {})) {
+            if (input && typeof input[1] === 'string') visit(input[1]);
+        }
+        if (b.next) visit(b.next);
+    };
+    visit(startId);
+    return names;
+}
+
+/**
+ * Whether the first block of a stack's top level that touches `name` is a
+ * `set name to …` that does not read it — i.e. the variable's value on entry
+ * can never be observed. Anything inside a loop or an if counts as a read.
+ */
+export function writtenFirst (startId, blocks, name) {
+    let b = blocks[startId];
+    const seen = new Set();
+    while (b && !seen.has(b)) {
+        seen.add(b);
+        const reads = new Set();
+        for (const input of Object.values(b.inputs || {})) {
+            const v = input && input[1];
+            if (Array.isArray(v) && v[0] === PRIM_VARIABLE) reads.add(String(v[1]));
+            else if (typeof v === 'string') for (const n of variablesUsed(v, blocks)) reads.add(n);
+        }
+        const sets = b.opcode === 'data_setvariableto' && b.fields && b.fields.VARIABLE &&
+            String(b.fields.VARIABLE[0]) === name;
+        if (sets) return !reads.has(name);
+        if (reads.has(name) || (b.fields && b.fields.VARIABLE && String(b.fields.VARIABLE[0]) === name)) return false;
+        b = blocks[b.next];
+    }
+    return false;
+}
