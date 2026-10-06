@@ -4,25 +4,42 @@ import {readFileSync} from 'node:fs';
 
 const read = path => readFileSync(new URL(path, import.meta.url), 'utf8');
 const uploader = read('../overlay/scratch-gui/src/lib/sb-file-uploader-hoc.jsx');
+// The load sequence itself, shared by the web file input and the desktop app's native
+// documents (Open dialog, Recent Projects, file associations).
+const loader = read('../overlay/scratch-gui/src/lib/bw-project-load.js');
+const nativeBridge = read('../overlay/scratch-gui/src/lib/tauri-bridge.js');
 const code = read('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx');
 const circuit = read('../overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx');
 
 describe('mounted project consumers obey replacement outcomes', () => {
-    test('the uploader announces legacy, invalid and future outcomes, not only found bundles', () => {
-        assert.match(uploader, /if \(bundle && typeof window !== 'undefined'\)/);
-        assert.doesNotMatch(uploader, /bundle && bundle\.found/,
+    test('the project loader announces legacy, invalid and future outcomes, not only found bundles', () => {
+        assert.match(loader, /if \(bundle && typeof window !== 'undefined'\)/);
+        assert.doesNotMatch(loader, /bundle && bundle\.found/,
             'restoring this guard makes vanilla loads invisible to mounted tabs');
-        assert.match(uploader, /bw-project-bundle-loaded/);
+        assert.match(loader, /bw-project-bundle-loaded/);
     });
 
-    test('the uploader preflights compatibility and can roll back before reporting success', () => {
-        const inspectAt = uploader.indexOf('inspectBrickwrightState(rawFile)');
-        const loadAt = uploader.indexOf('this.props.vm.loadProject(rawFile)');
+    test('the project loader preflights compatibility and can roll back before reporting success', () => {
+        const inspectAt = loader.indexOf('inspectBrickwrightState(rawFile)');
+        const loadAt = loader.indexOf('vm.loadProject(rawFile)');
         assert.ok(inspectAt >= 0 && inspectAt < loadAt,
             'sidecar compatibility must be known before Scratch mutates its VM');
-        assert.match(uploader, /outcome === 'invalid'.*outcome === 'future'/s);
-        assert.match(uploader, /rollbackBrickwrightInspection\(bundle\)/,
+        assert.match(loader, /outcome === 'invalid'.*outcome === 'future'/s);
+        assert.match(loader, /rollbackBrickwrightInspection\(bundle\)/,
             'a VM rejection must restore the auxiliary project snapshot');
+    });
+
+    test('every project-file path loads through the one loader, never the VM directly', () => {
+        // Before the native documents landed, the app's file-association path called
+        // vm.loadProject itself and skipped the preflight, the rollback and the tab refresh.
+        for (const [name, source, call] of [
+            ['the web file input', uploader, /loadProjectFile\(this\.props\.vm, /],
+            ['the native documents', nativeBridge, /loadProjectFile\(vm, /]
+        ]) {
+            assert.match(source, call, `${name} must load through lib/bw-project-load.js`);
+            assert.doesNotMatch(source, /\bvm\.loadProject\(/,
+                `${name} must not call vm.loadProject around the shared loader`);
+        }
     });
 
     test('Code explicitly clears every authored buffer on loaded empty or legacy state', () => {

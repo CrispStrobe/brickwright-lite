@@ -47,6 +47,14 @@ fn main() {
     // `generate_handler!` in src/lib.rs; the structural test enforces that.
     const APP_COMMANDS: &[&str] = &[
         "save_project",
+        "open_project_document",
+        "open_recent_project",
+        "recent_projects",
+        "pending_project",
+        "clear_project_document",
+        "activate_project_document",
+        "discard_open_project",
+        "save_project_document",
         "write_temp_project",
         "is_mobile",
         "share_file_native",

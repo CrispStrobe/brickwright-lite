@@ -47,6 +47,9 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 # Extract the one-file library pack (Option C — a single CC BY-SA zip instead of
 # ~1300 individual CDN requests).
 zip = { version = "2", default-features = false, features = ["deflate"] }
+# Project documents (src/fileio.rs): Save refuses to overwrite a file that changed on disk
+# since it was opened, which it detects by digest. Also used by the desktop SPIKE flash store.
+sha2 = "0.10"
 
 # Mobile-only: OS share sheet (sender side of the project share round-trip).
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
@@ -64,7 +67,6 @@ tauri-plugin-depth-capture = { path = "plugins/depth-capture" }
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 serialport = "4"
 command-group = "5.0.1"
-sha2 = "0.10"
 # Cross-process private flash-store lock (MIT OR Apache-2.0), compatible with MSRV 1.77.
 fs2 = "=0.4.3"
 

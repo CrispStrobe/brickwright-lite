@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -54,11 +55,20 @@ const manifestCommands = source => {
 const allowName = command => `allow-${command.replaceAll('_', '-')}`;
 const allowsOf = capability => capability.permissions.filter(value => value.startsWith('allow-'));
 
-const audit = ({handler, build, main, mobile, ack, runtime}) => {
+// The dialog plugin's commands the editor may call. The plugin's own init script replaces
+// window.alert (and window.confirm) with `plugin:dialog|message`, and lib/tauri-bridge.js asks
+// questions through it; every file dialog is opened by the Rust side (src/fileio.rs,
+// src/spike_image_chooser.rs), which the ACL does not gate, so `open` and `save` stay ungranted.
+// `dialog:default` would grant all three.
+const EDITOR_DIALOG_COMMANDS = ['message'];
+const dialogCommandsInvoked = source =>
+    uniqueSorted([...source.matchAll(/plugin:dialog\|([a-z_]+)/g)].map(match => match[1]));
+
+const audit = ({handler, build, main, mobile, ack, runtime, editor}) => {
     const entries = handlerEntries(handler);
     const registered = entries.map(entry => entry.name);
     const manifested = manifestCommands(build);
-    assert.equal(registered.length, 31, 'review a deliberate command-count change');
+    assert.equal(registered.length, 39, 'review a deliberate command-count change');
     assert.equal(new Set(registered).size, registered.length, 'handler commands must be unique');
     assert.equal(new Set(manifested).size, manifested.length, 'manifest commands must be unique');
     assert.deepEqual(uniqueSorted(manifested), uniqueSorted(registered),
@@ -89,6 +99,22 @@ const audit = ({handler, build, main, mobile, ack, runtime}) => {
     assert.deepEqual(mobile.permissions.filter(value =>
         ordinaryAllows.includes(value) || brokerAllows.includes(value)), [],
     'the additive mobile capability must duplicate no application-command grant');
+
+    // Plugin grants, least privilege: the editor holds exactly the dialog commands it calls,
+    // and no filesystem-plugin permission at all (project files are read and written by
+    // fileio.rs, behind the application commands above).
+    const editorDialog = dialogCommandsInvoked(editor);
+    assert.deepEqual(editorDialog, EDITOR_DIALOG_COMMANDS,
+        'the editor must call exactly the reviewed dialog commands');
+    assert.deepEqual(main.permissions.filter(value => value.startsWith('dialog:')),
+        editorDialog.map(command => `dialog:allow-${command.replaceAll('_', '-')}`),
+        'main must grant exactly the dialog commands the editor calls, not a dialog:* set');
+    assert.deepEqual(main.permissions.filter(value => value.startsWith('fs:')), [],
+        'main must not grant the filesystem plugin');
+    for (const capability of [mobile, ack, ...runtime]) {
+        assert.deepEqual(capability.permissions.filter(value => /^(?:fs|dialog):/.test(value)), [],
+            `${capability.identifier} must not grant the dialog or filesystem plugin`);
+    }
 
     // Startup grants only the acknowledgement, and only to the broker webview.
     assert.deepEqual(ack.webviews, [BROKER_WEBVIEW], 'the ack capability must target the broker webview');
@@ -139,6 +165,13 @@ const audit = ({handler, build, main, mobile, ack, runtime}) => {
 };
 
 const readJson = file => JSON.parse(readFileSync(file, 'utf8'));
+// Every editor source the main webview runs, as tracked (overlay is the source of truth).
+const editorSources = () => execFileSync('git', ['ls-files', '-z', '--',
+    'overlay/scratch-gui/src', 'overlay/scratch-vm/src'], {cwd: root, encoding: 'utf8'})
+    .split('\0')
+    .filter(file => /\.(?:js|jsx|mjs|ts)$/.test(file))
+    .map(file => readFileSync(path.join(root, file), 'utf8'))
+    .join('\n');
 const live = () => ({
     handler: readFileSync(path.join(native, 'src/lib.rs'), 'utf8'),
     build: readFileSync(path.join(native, 'build.rs'), 'utf8'),
@@ -146,7 +179,8 @@ const live = () => ({
     mobile: readJson(path.join(native, 'capabilities/mobile.json')),
     ack: readJson(path.join(native, 'capabilities/native-broker-ack.json')),
     runtime: ['native-broker-main', 'native-capability-broker']
-        .map(name => readJson(path.join(native, `runtime-capabilities/${name}.json`)))
+        .map(name => readJson(path.join(native, `runtime-capabilities/${name}.json`))),
+    editor: editorSources()
 });
 
 test('Tauri application-command manifest and main grants exactly match generate_handler', () => {
@@ -160,6 +194,20 @@ test('Tauri application-command ACL rejects omissions, extras, and mobile duplic
         input => { input.main.permissions = input.main.permissions.filter(value => value !== 'allow-save-project'); },
         input => { input.main.permissions.push('allow-invented-command'); },
         input => { input.mobile.permissions.push('allow-save-project'); },
+        // Native project documents (E4).
+        input => { input.main.permissions = input.main.permissions.filter(value => value !== 'allow-save-project-document'); },
+        input => { input.build = input.build.replace('        "open_recent_project",\n', ''); },
+        // Dialog / filesystem plugin least privilege.
+        input => { input.main.permissions = input.main.permissions.map(value =>
+            (value === 'dialog:allow-message' ? 'dialog:default' : value)); },
+        input => { input.main.permissions.push('dialog:allow-open'); },
+        input => { input.main.permissions.push('dialog:allow-save'); },
+        input => { input.main.permissions = input.main.permissions.filter(value => value !== 'dialog:allow-message'); },
+        input => { input.main.permissions.push('fs:default'); },
+        input => { input.mobile.permissions.push('dialog:allow-open'); },
+        input => { input.runtime[0].permissions.push('fs:allow-read-file'); },
+        input => { input.editor += "\ninvoke('plugin:dialog|open', {});"; },
+        input => { input.editor = input.editor.replaceAll('plugin:dialog|message', 'plugin:opener|open_url'); },
         // The broker-specific half of the contract.
         input => { input.main.permissions.push('allow-native-broker-request'); },
         input => { input.main.permissions.push('allow-native-broker-reply'); },
@@ -184,8 +232,9 @@ test('Tauri application-command ACL rejects omissions, extras, and mobile duplic
         input => { input.runtime[0].permissions =
             input.runtime[0].permissions.filter(p => p !== 'allow-native-broker-audit'); }
     ];
+    const base = live();
     for (const mutate of mutations) {
-        const input = structuredClone(live());
+        const input = structuredClone(base);
         mutate(input);
         assert.throws(() => audit(input), `mutation did not turn the gate red`);
     }
