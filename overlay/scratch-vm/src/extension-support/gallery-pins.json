@@ -11,6 +11,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/-SIPC-/consoles.js",
       "load": "url",
+      "extensionId": "sipcconsole",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -24,6 +25,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/-SIPC-/time.js",
       "load": "url",
+      "extensionId": "sipctime",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -37,6 +39,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/0832/rxFS2.js",
       "load": "url",
+      "extensionId": "0832rxfs2",
       "capabilities": [
         "fetch-import"
       ],
@@ -52,6 +55,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Alestore/nfcwarp.js",
       "load": "url",
+      "extensionId": "alestorenfc",
       "capabilities": [
         "web-nfc"
       ],
@@ -67,6 +71,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/ar.js",
       "load": "url",
+      "extensionId": "AR",
       "capabilities": [
         "dom",
         "runtime"
@@ -83,6 +88,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/battery.js",
       "load": "url",
+      "extensionId": "battery",
       "capabilities": [
         "runtime"
       ],
@@ -98,6 +104,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/bitwise.js",
       "load": "url",
+      "extensionId": "Bitwise",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -111,6 +118,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/box2d.js",
       "load": "url",
+      "extensionId": "griffpatch",
       "capabilities": [
         "dom",
         "runtime",
@@ -128,6 +136,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Clay/htmlEncode.js",
       "load": "url",
+      "extensionId": "claytonhtmlencode",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -141,6 +150,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/clipboard.js",
       "load": "url",
+      "extensionId": "clipboard",
       "capabilities": [
         "dom",
         "runtime"
@@ -157,6 +167,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/clouddata-ping.js",
       "load": "url",
+      "extensionId": "clouddataping",
       "capabilities": [
         "websocket"
       ],
@@ -172,6 +183,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/cloudlink.js",
       "load": "url",
+      "extensionId": "cloudlink",
       "capabilities": [
         "dom",
         "runtime",
@@ -190,6 +202,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js",
       "load": "url",
+      "extensionId": "arrays",
       "capabilities": [
         "dom",
         "runtime"
@@ -206,6 +219,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/bitops.js",
       "load": "url",
+      "extensionId": "bitops",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -219,6 +233,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/brickwright_tts.js",
       "load": "url",
+      "extensionId": "brickwrightTTS",
       "capabilities": [
         "dom",
         "runtime",
@@ -236,6 +251,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/circuit.js",
       "load": "url",
+      "extensionId": "circuit",
       "capabilities": [
         "dom",
         "runtime",
@@ -253,6 +269,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/csp.js",
       "load": "url",
+      "extensionId": "cspSolver",
       "capabilities": [
         "dom",
         "runtime"
@@ -269,6 +286,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/devices.js",
       "load": "url",
+      "extensionId": "devices",
       "capabilities": [
         "runtime"
       ],
@@ -284,6 +302,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/ev3_direct.js",
       "load": "url",
+      "extensionId": "legoev3direct",
       "capabilities": [
         "dom",
         "runtime",
@@ -301,6 +320,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/ev3_lms_transpile.js",
       "load": "url",
+      "extensionId": "ev3lms",
       "capabilities": [
         "dom",
         "runtime",
@@ -318,6 +338,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/ev3_universal.js",
       "load": "url",
+      "extensionId": "ev3comprehensive",
       "capabilities": [
         "dom",
         "runtime",
@@ -337,6 +358,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/ev3dev_py_transpile.js",
       "load": "url",
+      "extensionId": "scratchtoev3",
       "capabilities": [
         "dom",
         "runtime",
@@ -354,6 +376,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/gamepad.js",
       "load": "url",
+      "extensionId": "universalgamepad",
       "capabilities": [
         "dom",
         "runtime"
@@ -370,6 +393,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/ledcube.js",
       "load": "url",
+      "extensionId": "ledcube",
       "capabilities": [
         "runtime"
       ],
@@ -385,6 +409,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/lego_poweredup.js",
       "load": "url",
+      "extensionId": "legopoweredup",
       "capabilities": [
         "dom",
         "runtime",
@@ -404,6 +429,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/lego_wedo2_universal.js",
       "load": "url",
+      "extensionId": "wedo2unified",
       "capabilities": [
         "dom",
         "runtime",
@@ -421,6 +447,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/legoboost_universal.js",
       "load": "url",
+      "extensionId": "legoboostunified",
       "capabilities": [
         "dom",
         "runtime",
@@ -440,6 +467,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/legonxt_transpile_universal.js",
       "load": "url",
+      "extensionId": "legonxt",
       "capabilities": [
         "dom",
         "runtime",
@@ -459,6 +487,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/legospike_ble.js",
       "load": "url",
+      "extensionId": "spikeprimeble",
       "capabilities": [
         "dom",
         "runtime",
@@ -476,6 +505,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/legospike_bridge.js",
       "load": "url",
+      "extensionId": "spikeprimeBridge",
       "capabilities": [
         "dom",
         "runtime",
@@ -493,6 +523,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/legospike_turbowarp_transpile.js",
       "load": "url",
+      "extensionId": "spikeprime",
       "capabilities": [
         "dom",
         "runtime",
@@ -511,6 +542,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/legospikeprime_ble.js",
       "load": "url",
+      "extensionId": "legospikeprimeBLE",
       "capabilities": [
         "dom",
         "runtime"
@@ -527,6 +559,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/legospikeprime_btc_scratchlink.js",
       "load": "url",
+      "extensionId": "spikeprimeBTC",
       "capabilities": [
         "dom",
         "runtime"
@@ -543,6 +576,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/microbitplus.js",
       "load": "url",
+      "extensionId": "microbitplus",
       "capabilities": [
         "runtime"
       ],
@@ -558,6 +592,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/planetemaths.js",
       "load": "url",
+      "extensionId": "planetemaths",
       "capabilities": [
         "dom",
         "runtime"
@@ -574,6 +609,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/CrispStrobe/stc12live.js",
       "load": "url",
+      "extensionId": "stc12live",
       "capabilities": [
         "runtime",
         "web-serial"
@@ -590,6 +626,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/cs2627883/numericalencoding.js",
       "load": "url",
+      "extensionId": "cs2627883NumericalEncoding",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -603,6 +640,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/CST1229/images.js",
       "load": "url",
+      "extensionId": "images",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -619,6 +657,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/CST1229/zip.js",
       "load": "url",
+      "extensionId": "cst1229zip",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -635,6 +674,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/CubesterYT/KeySimulation.js",
       "load": "url",
+      "extensionId": "cubesterKeySimulation",
       "capabilities": [
         "dom",
         "runtime"
@@ -651,6 +691,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/CubesterYT/Webhooks.js",
       "load": "url",
+      "extensionId": "cubesterWebhooks",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -667,6 +708,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/CubesterYT/WindowControls.js",
       "load": "url",
+      "extensionId": "cubesterWindowControls",
       "capabilities": [
         "dom",
         "runtime"
@@ -683,6 +725,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/cursor.js",
       "load": "url",
+      "extensionId": "MouseCursor",
       "capabilities": [
         "dom",
         "runtime"
@@ -699,6 +742,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/DNin/wake-lock.js",
       "load": "url",
+      "extensionId": "dninwakelock",
       "capabilities": [
         "dom",
         "runtime"
@@ -715,6 +759,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/DogeisCut/FormatNumbers.js",
       "load": "url",
+      "extensionId": "dogeiscutformatnumbers",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -728,6 +773,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/DT/cameracontrols.js",
       "load": "url",
+      "extensionId": "DTcameracontrols",
       "capabilities": [
         "runtime"
       ],
@@ -743,6 +789,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/encoding.js",
       "load": "url",
+      "extensionId": "Encoding",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -756,6 +803,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/fetch.js",
       "load": "url",
+      "extensionId": "fetch",
       "capabilities": [
         "fetch-import"
       ],
@@ -771,6 +819,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/files.js",
       "load": "url",
+      "extensionId": "files",
       "capabilities": [
         "dom",
         "runtime",
@@ -788,6 +837,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/gamejolt.js",
       "load": "url",
+      "extensionId": "GameJoltAPI",
       "capabilities": [
         "dom"
       ],
@@ -803,6 +853,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/gamepad.js",
       "load": "url",
+      "extensionId": "Gamepad",
       "capabilities": [
         "runtime"
       ],
@@ -818,6 +869,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/godslayerakp/http.js",
       "load": "url",
+      "extensionId": "gsaHTTPRequests",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -834,6 +886,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/godslayerakp/ws.js",
       "load": "url",
+      "extensionId": "gsaWebsocket",
       "capabilities": [
         "runtime",
         "websocket"
@@ -850,6 +903,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/iframe.js",
       "load": "url",
+      "extensionId": "iframe",
       "capabilities": [
         "dom",
         "runtime"
@@ -866,6 +920,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/itchio.js",
       "load": "url",
+      "extensionId": "itch",
       "capabilities": [
         "fetch-import"
       ],
@@ -881,6 +936,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/JeremyGamer13/tween.js",
       "load": "url",
+      "extensionId": "jeremygamerTweening",
       "capabilities": [
         "runtime"
       ],
@@ -896,6 +952,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/lab/face-sensing.js",
       "load": "url",
+      "extensionId": "faceSensing",
       "capabilities": [
         "dom",
         "runtime",
@@ -913,6 +970,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/lab/text.js",
       "load": "url",
+      "extensionId": "text",
       "capabilities": [
         "dom",
         "runtime"
@@ -929,6 +987,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/lab/video-sprites.js",
       "load": "url",
+      "extensionId": "videoSprites",
       "capabilities": [
         "dom",
         "runtime",
@@ -946,6 +1005,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/AllMenus.js",
       "load": "url",
+      "extensionId": "lmsAllMenus",
       "capabilities": [
         "dom",
         "runtime"
@@ -962,6 +1022,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/Assets.js",
       "load": "url",
+      "extensionId": "lmsAssets",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -978,6 +1039,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/Cast.js",
       "load": "url",
+      "extensionId": "lmsCast",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -991,6 +1053,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/ClonesPlus.js",
       "load": "url",
+      "extensionId": "lmsclonesplus",
       "capabilities": [
         "runtime"
       ],
@@ -1006,6 +1069,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/CommentBlocks.js",
       "load": "url",
+      "extensionId": "lmscomments",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1019,6 +1083,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/HackedBlocks.js",
       "load": "url",
+      "extensionId": "lmsHackedBlocks",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1032,6 +1097,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/ListTools.js",
       "load": "url",
+      "extensionId": "lmsData",
       "capabilities": [
         "runtime"
       ],
@@ -1047,6 +1113,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/lmsutils.js",
       "load": "url",
+      "extensionId": "lmsutilsblocks",
       "capabilities": [
         "dom",
         "runtime"
@@ -1063,6 +1130,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/LooksPlus.js",
       "load": "url",
+      "extensionId": "lmsLooksPlus",
       "capabilities": [
         "runtime"
       ],
@@ -1078,6 +1146,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/McUtils.js",
       "load": "url",
+      "extensionId": "lmsmcutils",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1091,6 +1160,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/MoreEvents.js",
       "load": "url",
+      "extensionId": "lmsMoreEvents",
       "capabilities": [
         "runtime"
       ],
@@ -1106,6 +1176,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/MoreTimers.js",
       "load": "url",
+      "extensionId": "lmsTimers",
       "capabilities": [
         "runtime"
       ],
@@ -1121,6 +1192,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/Skins.js",
       "load": "url",
+      "extensionId": "lmsSkins",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -1137,6 +1209,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/SoundExpanded.js",
       "load": "url",
+      "extensionId": "lmsSoundExpanded",
       "capabilities": [
         "runtime"
       ],
@@ -1152,6 +1225,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/TempVariables2.js",
       "load": "url",
+      "extensionId": "lmsTempVars2",
       "capabilities": [
         "runtime"
       ],
@@ -1167,6 +1241,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Lily/Video.js",
       "load": "url",
+      "extensionId": "lmsVideo",
       "capabilities": [
         "dom",
         "runtime"
@@ -1183,6 +1258,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/local-storage.js",
       "load": "url",
+      "extensionId": "localstorage",
       "capabilities": [
         "dom",
         "runtime"
@@ -1199,6 +1275,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Longboost/color_channels.js",
       "load": "url",
+      "extensionId": "lbdrawtest",
       "capabilities": [
         "runtime"
       ],
@@ -1214,6 +1291,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/mbw/xml.js",
       "load": "url",
+      "extensionId": "mbwxml",
       "capabilities": [
         "dom"
       ],
@@ -1229,6 +1307,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/mdwalters/notifications.js",
       "load": "url",
+      "extensionId": "mdwaltersnotifications",
       "capabilities": [
         "runtime"
       ],
@@ -1244,6 +1323,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/navigator.js",
       "load": "url",
+      "extensionId": "navigatorinfo",
       "capabilities": [
         "dom"
       ],
@@ -1259,6 +1339,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/NexusKitten/controlcontrols.js",
       "load": "url",
+      "extensionId": "nkcontrols",
       "capabilities": [
         "dom",
         "runtime"
@@ -1275,6 +1356,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/NexusKitten/moremotion.js",
       "load": "url",
+      "extensionId": "nkmoremotion",
       "capabilities": [
         "runtime"
       ],
@@ -1290,6 +1372,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/NexusKitten/sgrab.js",
       "load": "url",
+      "extensionId": "nexuskittensgrab",
       "capabilities": [
         "fetch-import"
       ],
@@ -1305,6 +1388,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/NishiOwO/dectalk.js",
       "load": "url",
+      "extensionId": "nishiowoDectalk",
       "capabilities": [
         "dom",
         "runtime"
@@ -1321,6 +1405,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/NOname-awa/graphics2d.js",
       "load": "url",
+      "extensionId": "nonameawagraph",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1334,6 +1419,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/NOname-awa/more-comparisons.js",
       "load": "url",
+      "extensionId": "nonameawacomparisons",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1347,6 +1433,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/numerical-encoding-2.js",
       "load": "url",
+      "extensionId": "numericalencoding2",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1360,6 +1447,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/obviousAlexC/newgroundsIO.js",
       "load": "url",
+      "extensionId": "NGIO",
       "capabilities": [
         "dom",
         "runtime"
@@ -1376,6 +1464,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/obviousAlexC/penPlus.js",
       "load": "url",
+      "extensionId": "penP",
       "capabilities": [
         "dom",
         "runtime"
@@ -1392,6 +1481,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/obviousAlexC/SensingPlus.js",
       "load": "url",
+      "extensionId": "obviousalexsensing",
       "capabilities": [
         "dom",
         "runtime"
@@ -1408,6 +1498,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/penplus.js",
       "load": "url",
+      "extensionId": "betterpen",
       "capabilities": [
         "runtime"
       ],
@@ -1423,6 +1514,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/pointerlock.js",
       "load": "url",
+      "extensionId": "pointerlock",
       "capabilities": [
         "dom",
         "runtime"
@@ -1439,6 +1531,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/PwLDev/vibration.js",
       "load": "url",
+      "extensionId": "pwldevvibration",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1452,6 +1545,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/qxsck/data-analysis.js",
       "load": "url",
+      "extensionId": "qxsckdataanalysis",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1465,6 +1559,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/qxsck/var-and-list.js",
       "load": "url",
+      "extensionId": "qxsckvarandlist",
       "capabilities": [
         "runtime"
       ],
@@ -1480,6 +1575,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/rixxyx.js",
       "load": "url",
+      "extensionId": "RixxyX",
       "capabilities": [
         "runtime"
       ],
@@ -1495,6 +1591,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/runtime-options.js",
       "load": "url",
+      "extensionId": "runtimeoptions",
       "capabilities": [
         "runtime"
       ],
@@ -1510,6 +1607,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/SamuelLouf/Geolocation.js",
       "load": "url",
+      "extensionId": "samuelloufgeolocation",
       "capabilities": [
         "runtime"
       ],
@@ -1525,6 +1623,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/SharkPool/Camera.js",
       "load": "url",
+      "extensionId": "SPcamera",
       "capabilities": [
         "runtime"
       ],
@@ -1540,6 +1639,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/SharkPool/Font-Manager.js",
       "load": "url",
+      "extensionId": "SPASfontManager",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -1556,6 +1656,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/SharkPool/Messages-Plus.js",
       "load": "url",
+      "extensionId": "SPmessagePlus",
       "capabilities": [
         "runtime"
       ],
@@ -1571,6 +1672,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/SharkPool/Tune-Shark-V3.js",
       "load": "url",
+      "extensionId": "SPtuneShark3",
       "capabilities": [
         "runtime"
       ],
@@ -1586,6 +1688,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/shreder95ua/resolution.js",
       "load": "url",
+      "extensionId": "shreder95resolution",
       "capabilities": [
         "dom"
       ],
@@ -1601,6 +1704,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Skyhigh173/bigint.js",
       "load": "url",
+      "extensionId": "skyhigh173BigInt",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1614,6 +1718,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Skyhigh173/json.js",
       "load": "url",
+      "extensionId": "skyhigh173JSON",
       "capabilities": [
         "runtime"
       ],
@@ -1629,6 +1734,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/steamworks.js",
       "load": "url",
+      "extensionId": "steamworks",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1642,6 +1748,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/stretch.js",
       "load": "url",
+      "extensionId": "stretch",
       "capabilities": [
         "runtime"
       ],
@@ -1657,6 +1764,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/text.js",
       "load": "url",
+      "extensionId": "strings",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1670,6 +1778,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/TheShovel/CanvasEffects.js",
       "load": "url",
+      "extensionId": "theshovelcanvaseffects",
       "capabilities": [
         "dom",
         "runtime"
@@ -1686,6 +1795,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/TheShovel/ColorPicker.js",
       "load": "url",
+      "extensionId": "shovelColorPicker",
       "capabilities": [
         "dom",
         "runtime"
@@ -1702,6 +1812,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/TheShovel/CustomStyles.js",
       "load": "url",
+      "extensionId": "shovelcss",
       "capabilities": [
         "dom",
         "runtime"
@@ -1718,6 +1829,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/TheShovel/LZ-String.js",
       "load": "url",
+      "extensionId": "shovellzcompress",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1731,6 +1843,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/TheShovel/ShovelUtils.js",
       "load": "url",
+      "extensionId": "ShovelUtils",
       "capabilities": [
         "runtime",
         "fetch-import"
@@ -1747,6 +1860,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/true-fantom/base.js",
       "load": "url",
+      "extensionId": "truefantombase",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1760,6 +1874,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/true-fantom/couplers.js",
       "load": "url",
+      "extensionId": "truefantomcouplers",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1773,6 +1888,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/true-fantom/math.js",
       "load": "url",
+      "extensionId": "truefantommath",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1786,6 +1902,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/true-fantom/network.js",
       "load": "url",
+      "extensionId": "truefantomnetwork",
       "capabilities": [
         "dom",
         "fetch-import"
@@ -1802,6 +1919,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/true-fantom/regexp.js",
       "load": "url",
+      "extensionId": "truefantomregexp",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {
@@ -1815,6 +1933,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/utilities.js",
       "load": "url",
+      "extensionId": "utilities",
       "capabilities": [
         "fetch-import"
       ],
@@ -1830,6 +1949,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/veggiecan/browserfullscreen.js",
       "load": "url",
+      "extensionId": "fullscreen0419",
       "capabilities": [
         "dom",
         "runtime"
@@ -1846,6 +1966,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/veggiecan/LongmanDictionary.js",
       "load": "url",
+      "extensionId": "longvegdictionary",
       "capabilities": [
         "dom",
         "fetch-import"
@@ -1862,6 +1983,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/veggiecan/mobilekeyboard.js",
       "load": "url",
+      "extensionId": "mobilekeyboard0419",
       "capabilities": [
         "dom"
       ],
@@ -1877,6 +1999,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/vercte/dictionaries.js",
       "load": "url",
+      "extensionId": "verctedictionaries",
       "capabilities": [
         "runtime"
       ],
@@ -1892,6 +2015,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/Xeltalliv/clippingblending.js",
       "load": "url",
+      "extensionId": "xeltallivclipblend",
       "capabilities": [
         "runtime"
       ],
@@ -1907,6 +2031,7 @@
       "transformed": false,
       "identity": "https://crispstrobe.github.io/extensions/Xeltalliv/simple3D.js",
       "load": "url",
+      "extensionId": "xeltallivSimple3D",
       "capabilities": [
         "dom",
         "runtime",
@@ -1924,6 +2049,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/XeroName/Deltatime.js",
       "load": "url",
+      "extensionId": "dtbyxeroname",
       "capabilities": [
         "runtime"
       ],
@@ -1939,6 +2065,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/XmerOriginals/closecontrol.js",
       "load": "url",
+      "extensionId": "xmerclosecontrol",
       "capabilities": [
         "dom"
       ],
@@ -1954,6 +2081,7 @@
       "transformed": true,
       "identity": "https://crispstrobe.github.io/extensions/ZXMushroom63/searchApi.js",
       "load": "url",
+      "extensionId": "zxmushroom63searchparams",
       "capabilities": [],
       "brokerCapabilities": [],
       "migration": {

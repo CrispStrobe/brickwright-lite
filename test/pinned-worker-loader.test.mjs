@@ -19,6 +19,11 @@ const loadManager = ({pin, verify, dispatch, adapter}) => {
         if (request === '../util/maybe-format-message') return value => value;
         if (request === './block-type') return {};
         if (request === './gallery-integrity') return {
+            // E5: the manager routes bare ids through these; this test loads URLs only.
+            GALLERY_EXTENSION_IDS: {},
+            galleryURLForExtensionId: () => null,
+            galleryURLForProjectEntry: () => null,
+            extensionIdForGalleryURL: () => null,
             pinForURL: () => pin,
             pinStatusFor: () => 'pinned',
             verifyGallerySource: verify

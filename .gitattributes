@@ -26,3 +26,6 @@ apps/tauri/src-tauri/src/native_broker_bootstrap.js -text
 # manifest and re-derived by test/i8086-bios-source-provenance.test.mjs; an
 # autocrlf checkout would move that digest exactly as it moved the broker's.
 overlay/scratch-gui/static/roms/i8086-bios.asm -text
+# Task E5: the bytes the gallery SERVES for three pins, hash-checked by
+# test/gallery-project-extensions.test.mjs against gallery-pins.json `served`.
+test/fixtures/gallery-served/** -text

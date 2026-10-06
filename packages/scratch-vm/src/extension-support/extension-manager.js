@@ -3,7 +3,15 @@ const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
 
 const BlockType = require('./block-type');
-const {galleryURLForSlug, pinForURL, pinStatusFor, verifyGallerySource} = require('./gallery-integrity');
+const {
+    GALLERY_EXTENSION_IDS,
+    extensionIdForGalleryURL,
+    galleryURLForExtensionId,
+    galleryURLForProjectEntry,
+    pinForURL,
+    pinStatusFor,
+    verifyGallerySource
+} = require('./gallery-integrity');
 // The four SPIKE ids that became `spikeprime`.
 //
 // Inlined rather than imported: the canonical table lives in the GUI
@@ -41,41 +49,32 @@ const resolveExtensionId = (id, options = {}) => {
     return id;
 };
 
-// TurboWarp gallery extensions a project names only by id (task E3).
+// Gallery extensions a project names by id (tasks E3, E5).
 //
-// A TurboWarp project records `extensions: ["Encoding"]` and, beside it, an
-// `extensionURLs` entry this VM never reads (stock sb3 deserialize drops it, and
-// Lite's own saves do not write one). Without a route the bare id fell to the
-// "Unknown extension id" branch below and every block of the extension stopped
-// working on open. These ids route to the gallery's CONTENT-PINNED copy of the
-// same extension: the bytes TurboWarp runs (CrispStrobe/extensions tracks
-// TurboWarp/extensions), fetched and hash-checked like any gallery pick, then run
-// in the worker or the adapter as their pin says. No copy is bundled here.
+// A project records the extensions it uses as ids (`extensions: ["Encoding"]`,
+// opcodes `Encoding_*`) and, when TurboWarp or Lite saved it, an `extensionURLs`
+// entry beside each. Without a route a gallery id fell to the "Unknown extension
+// id" branch below and every block of the extension stopped working on open.
+// Every PINNED gallery id now routes to the gallery's CONTENT-PINNED copy (the
+// bytes TurboWarp runs: CrispStrobe/extensions tracks TurboWarp/extensions),
+// fetched and hash-checked like any gallery pick, then run in the worker or the
+// adapter as its pin says. No copy is bundled here.
+//
+// The id -> slug map is DATA, not a hand list: each pin's generator-owned
+// `extensionId` (gallery-pins.json, read from the pinned source's getInfo() by
+// scripts/sync-gallery-pins.mjs). E3's two entries (Encoding, lmsTempVars2) are
+// two of its 128 rows. Bundled and lazy built-in ids are matched first in
+// loadExtensionURL, so a gallery copy of an extension Lite bundles never
+// replaces the bundled one.
 //
 // The parked WIP (23e9c7f44) bundled two partial clean-room re-implementations
-// under these ids instead. They were not ported: Encoding offered 2 of the 9
+// under E3's ids instead. They were not ported: Encoding offered 2 of the 9
 // blocks and Base64 only (the URL mode threw; unpadded input the original
 // decodes came back empty), and the temporary variables offered 4 of 13 opcodes
 // with 0 where the original reports "" and no reset on green flag / stop.
 //
-// Key: the id in the project; value: the gallery slug. Each entry must be pinned
-// in gallery-pins.json and its source must declare the id; both are held by
-// test/turbowarp-encoding.test.mjs and test/turbowarp-tempvars.test.mjs.
-const GALLERY_EXTENSION_IDS = Object.freeze({
-    Encoding: 'encoding',
-    lmsTempVars2: 'Lily/TempVariables2'
-});
-
-/**
- * The pinned gallery URL a bare TurboWarp extension id loads from, or null.
- * @param {string} id extension id as a project names it
- * @returns {string|null} exact pinned gallery URL
- */
-const galleryURLForExtensionId = id => (
-    Object.prototype.hasOwnProperty.call(GALLERY_EXTENSION_IDS, id) ?
-        galleryURLForSlug(GALLERY_EXTENSION_IDS[id]) :
-        null
-);
+// Held by test/gallery-project-extensions.test.mjs, test/turbowarp-encoding.test.mjs
+// and test/turbowarp-tempvars.test.mjs.
 
 // HTTP(S) URLs are candidates for the content-pinned compatibility path. Unpinned URLs are always
 // sent to the extension worker; see isTrustedExtensionURL / loadExtensionURL.
@@ -263,6 +262,15 @@ class ExtensionManager {
         this._loadedExtensions = new Map();
 
         /**
+         * Ids the project being loaded named with a URL that was refused (see
+         * loadProjectExtension). Its bare id must not then load a gallery copy by
+         * the back door (installTargets asks again by id). Reset per project.
+         * @type {Map.<string,string>} id -> the refusal message
+         * @private
+         */
+        this._refusedProjectExtensions = new Map();
+
+        /**
          * Keep a reference to the runtime so we can construct internal extension objects.
          * TODO: remove this in favor of extensions accessing the runtime as a service.
          * @type {Runtime}
@@ -393,7 +401,12 @@ class ExtensionManager {
             ));
         }
 
-        // A TurboWarp gallery id (see GALLERY_EXTENSION_IDS) loads the pinned gallery
+        // An id this project named with a refused URL stays refused (loadProjectExtension).
+        if (this._refusedProjectExtensions.has(extensionURL)) {
+            return Promise.reject(new Error(this._refusedProjectExtensions.get(extensionURL)));
+        }
+
+        // A pinned gallery id (see GALLERY_EXTENSION_IDS) loads the pinned gallery
         // copy below, exactly as if its URL had been picked from the gallery.
         const galleryURL = galleryURLForExtensionId(extensionURL);
         if (galleryURL) {
@@ -429,6 +442,62 @@ class ExtensionManager {
         }
 
         return this._loadSandboxedExtension(extensionURL);
+    }
+
+    /**
+     * Start loading a new project's extensions: forget the previous project's refusals.
+     */
+    beginProjectExtensions () {
+        this._refusedProjectExtensions.clear();
+    }
+
+    /**
+     * Load one extension a project file declares (task E5).
+     *
+     * Bundled and lazy built-in ids load as themselves whatever URL the file
+     * records. Otherwise the file's `extensionURLs` entry is honoured only when it
+     * names a pinned gallery extension registering this id (galleryURLForProjectEntry):
+     * then the PINNED copy loads, hash-checked. Any other URL is refused by name and
+     * never fetched, and the id stays refused for this project. With no entry the
+     * bare id routes through GALLERY_EXTENSION_IDS as before.
+     * @param {string} id extension id from the project's `extensions` list
+     * @param {?string} url the project's `extensionURLs[id]`, if any
+     * @returns {Promise} resolved once loaded; rejected with a message naming the id otherwise
+     */
+    loadProjectExtension (id, url) {
+        const resolved = resolveExtensionId(id);
+        if (hasOwn(lazyBuiltinExtensions, resolved) || hasOwn(builtinExtensions, resolved) ||
+            url === undefined || url === null) {
+            return this.loadExtensionURL(id);
+        }
+        const pinned = galleryURLForProjectEntry(id, url);
+        if (!pinned) {
+            const message = `Refusing extension "${id}": the project names ${JSON.stringify(String(url))}, ` +
+                'which is not a pinned gallery extension with that id. A project file cannot choose ' +
+                'code to load; add the extension from the gallery or a trusted URL instead.';
+            log.warn(message);
+            this._refusedProjectExtensions.set(id, message);
+            return Promise.reject(new Error(message));
+        }
+        if (this.isExtensionLoaded(id) || this.isExtensionLoaded(pinned)) return Promise.resolve();
+        return this.loadExtensionURL(pinned);
+    }
+
+    /**
+     * The exact pinned gallery URL a loaded extension id came from, for saving
+     * as the project's `extensionURLs[id]` (task E5). Null for bundled and lazy
+     * built-in ids, for an id loaded from any other URL, and for an id not loaded.
+     * @param {string} id extension id
+     * @returns {string|null} pinned gallery URL
+     */
+    galleryURLForLoadedExtension (id) {
+        if (hasOwn(lazyBuiltinExtensions, id) || hasOwn(builtinExtensions, id)) return null;
+        const serviceName = this._loadedExtensions.get(id);
+        if (!serviceName) return null;
+        for (const [key, service] of this._loadedExtensions) {
+            if (service === serviceName && extensionIdForGalleryURL(key) === id) return key;
+        }
+        return null;
     }
 
     /**
@@ -841,7 +910,7 @@ class ExtensionManager {
     }
 }
 
-// Read by the tests that hold each entry to its pin and its source's declared id.
+// Read by the tests that hold the id map to its pins and the sources' declared ids.
 ExtensionManager.GALLERY_EXTENSION_IDS = GALLERY_EXTENSION_IDS;
 
 module.exports = ExtensionManager;
