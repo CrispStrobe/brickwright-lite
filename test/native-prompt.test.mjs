@@ -893,6 +893,14 @@ const LEDGER = [
         unit: `overlay/scratch-gui/src/lib/${glue}`, callee: 'window.prompt', count: 1,
         why: "Emscripten's default stdin (FS_stdin_getChar, held below): the compilers read their " +
             'source from files and never read stdin'
+    })),
+    // The GPL SDCC toolchain is not in this repository (.gitignore): the app downloads it from
+    // CrispStrobe/sdcc-wasm when a user opts in, and CI fetches it for the Node gates, so these
+    // entries count only where it is present.
+    ...['cc1.js', 'sdas8051.js', 'sdcc.js', 'sdld.js'].map(glue => ({
+        unit: `overlay/scratch-gui/src/lib/sdcc-wasm/dist/${glue}`, callee: 'window.prompt', count: 1,
+        whenPresent: true,
+        why: "Emscripten's default stdin, as above (SDCC's tools read files; held below where present)"
     }))
 ];
 
@@ -917,6 +925,7 @@ const censusVerdict = calls => {
         }
     }
     for (const entry of LEDGER) {
+        if (entry.whenPresent && !existsSync(path.join(root, entry.unit))) continue;
         if (!counted.has(`${entry.unit}\t${entry.callee}`)) {
             problems.push(`ledger entry ${entry.unit} ${entry.callee} matches nothing: remove it`);
         }
@@ -976,12 +985,19 @@ test('census turns red on a new direct prompt() use, a stale count and a dead en
     assert.match(censusVerdict(more).join('\n'), /nqc\.js window\.prompt: 2 calls, the ledger says 1/);
 });
 
-test('the Emscripten glue reaches window.prompt only as its default stdin', () => {
-    for (const glue of ['nqc-wasm/dist/nqc.js', 'smallerc-wasm/dist/smlrc.js', 'smallerc-wasm/dist/smlrpp.js']) {
+test('the Emscripten glue reaches window.prompt only as its default stdin', t => {
+    const sdcc = ['cc1.js', 'sdas8051.js', 'sdcc.js', 'sdld.js'].map(glue => `sdcc-wasm/dist/${glue}`)
+        .filter(glue => existsSync(path.join(root, 'overlay/scratch-gui/src/lib', glue)));
+    t.diagnostic(`SDCC glue present: ${sdcc.length} of 4`);
+    for (const glue of ['nqc-wasm/dist/nqc.js', 'smallerc-wasm/dist/smlrc.js', 'smallerc-wasm/dist/smlrpp.js', ...sdcc]) {
         const source = read(`overlay/scratch-gui/src/lib/${glue}`);
+        // Inside FS_stdin_getChar: after its name, before its `return …buffer.shift()`.
         const at = source.indexOf('window.prompt(');
         const owner = source.lastIndexOf('FS_stdin_getChar', at);
-        assert.ok(owner > 0 && at - owner < 600, `${glue}: window.prompt is not inside FS_stdin_getChar`);
+        const end = source.indexOf('FS_stdin_getChar_buffer.shift()', at);
+        assert.ok(owner > 0 && end > at && end - owner < 3000 &&
+            !source.slice(owner, at).includes('FS_stdin_getChar_buffer.shift()'),
+        `${glue}: window.prompt is not inside FS_stdin_getChar`);
         assert.equal(source.indexOf('window.prompt(', at + 1), -1);
     }
 });
