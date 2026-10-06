@@ -33,6 +33,19 @@ export const DOS_TOOLCHAINS = Object.freeze({
         sourceName: 'PROG.BAS', outputName: null,           // interpreted; output is on screen, not a file
         run: false, verified: true
     },
+    // fe (rxi), MIT — a tiny Lisp (lambdas, closures, macros, GC) cross-compiled
+    // with ia16-elf-gcc (media-lab project `fe-dos`, ships as static/roms/fe.exe).
+    // Same shape as uBASIC: an INTERPRETER that reads its program from PROG.FE
+    // (INT 21h) and PRINTS during its run — no output FILE, the caller reads the
+    // compile-stage screen. 80186 variant (ia16). VERIFIED on the real bench.
+    'fe': {
+        id: 'fe', label: 'Lisp (fe on DOS)', language: 'fe', kind: 'dos-native',
+        source: 'fe-dos',                      // media-lab project; MIT Lisp interpreter
+        compiler: 'fe.exe', compilerFormat: 'exe',
+        variant: '80186',
+        sourceName: 'PROG.FE', outputName: null,
+        run: false, verified: true
+    },
     'gwbasic': {
         id: 'gwbasic', label: 'GW-BASIC (on DOS)', language: 'basic', kind: 'dos-native',
         source: 'gwbasic',                     // MIT GW-BASIC source (Microsoft, 2020) — needs a built GWBASIC.EXE
