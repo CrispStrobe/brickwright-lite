@@ -296,11 +296,20 @@ const deserPatch = `    deserializeProject (projectJSON, zip) {
         // AWAITED: lazy builtins (music, the LEGO family) arrive as chunks, and
         // the URL strip below must see them registered. A load that fails is
         // not fatal here — installTargets reports it the way it always did.
+        // E5: the URL a file records beside an id (extensionURLs, as TurboWarp and
+        // Lite save it) is honoured only when it names the pinned gallery copy of
+        // that id; anything else is refused by name and never fetched
+        // (ExtensionManager.loadProjectExtension).
+        this.extensionManager.beginProjectExtensions();
+        const declaredURLs = projectJSON.extensionURLs && typeof projectJSON.extensionURLs === 'object' ?
+            projectJSON.extensionURLs : {};
         const preloads = [];
         if (projectJSON.extensions && Array.isArray(projectJSON.extensions)) {
             for (const id of projectJSON.extensions) {
                 if (!this.extensionManager.isExtensionLoaded(id)) {
-                    preloads.push(Promise.resolve(this.extensionManager.loadExtensionURL(id)).catch(() => {}));
+                    const url = Object.prototype.hasOwnProperty.call(declaredURLs, id) ? declaredURLs[id] : null;
+                    preloads.push(Promise.resolve(this.extensionManager.loadProjectExtension(id, url))
+                        .catch(e => log.warn('Extension "' + id + '" did not load: ' + ((e && e.message) || e))));
                 }
             }
         }
@@ -350,8 +359,30 @@ const oldDeserPatch = deserAnchor + '\n' + preloadBlock.replace(
         // deserialization. Without this, sb3.js drops blocks whose extension
         // prefix is unknown, and the extension is never requested — circular.
         if (projectJSON.extensions`) + stripBlock;
-if (vm2.includes('_bwDeserializeCleared (projectJSON, zip) {')) {
+// The awaited shape before E5 (2026-10-06): preloads by bare id only. Moved to
+// the current shape in place, so an installed tree does not keep reading ids
+// while the manager expects project URLs to pass through loadProjectExtension.
+const e5Preload = deserPatch.slice(deserPatch.indexOf('        // E5: the URL a file records'),
+    deserPatch.indexOf('        if (preloads.length) {'));
+const e3Preload = `        const preloads = [];
+        if (projectJSON.extensions && Array.isArray(projectJSON.extensions)) {
+            for (const id of projectJSON.extensions) {
+                if (!this.extensionManager.isExtensionLoaded(id)) {
+                    preloads.push(Promise.resolve(this.extensionManager.loadExtensionURL(id)).catch(() => {}));
+                }
+            }
+        }
+`;
+const e3DeserPatch = deserPatch.replace(e5Preload, e3Preload);
+if (vm2.includes(deserPatch)) {
     console.log('  virtual-machine.js awaited pre-load + URL-strip already applied');
+} else if (vm2.includes(e3DeserPatch)) {
+    vm2 = vm2.replace(e3DeserPatch, deserPatch);
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (pre-load honours pinned project extension URLs)');
+} else if (vm2.includes('_bwDeserializeCleared (projectJSON, zip) {')) {
+    console.error('  ! virtual-machine.js carries an unrecognised awaited deserializeProject patch — reinstall scratch-vm');
+    process.exit(1);
 } else if (vm2.includes(oldDeserPatch)) {
     vm2 = vm2.replace(oldDeserPatch, deserPatch);
     writeFileSync(vmPath2, vm2);
@@ -394,6 +425,29 @@ if (vm2.includes('setStc (stc)')) {
     console.log('  patched virtual-machine.js (setStc)');
 } else {
     console.error('  ! virtual-machine.js setStc anchor not found');
+    process.exit(1);
+}
+
+// E5: a saved project records the pinned gallery URL of each gallery extension
+// it uses (extensionURLs, as TurboWarp writes it). The rules live in the overlay
+// module serialization/bw-gallery-urls.js; this hook calls it from toJSON, which
+// saveProjectSb3 and every in-app project read go through. A sprite has no
+// `extensions` list and passes through unchanged.
+vm2 = readFileSync(vmPath2, 'utf8');
+const vmToJSONAnchor = `        const sb3 = require('./serialization/sb3');
+        return StringUtil.stringify(sb3.serialize(this.runtime, optTargetId));`;
+const vmToJSONPatch = `        const sb3 = require('./serialization/sb3');
+        // Brickwright E5: + extensionURLs for pinned gallery extensions (bw-gallery-urls.js).
+        const bwGalleryURLs = require('./serialization/bw-gallery-urls');
+        return StringUtil.stringify(bwGalleryURLs.save(sb3.serialize(this.runtime, optTargetId), this.extensionManager));`;
+if (vm2.includes(`require('./serialization/bw-gallery-urls')`)) {
+    console.log('  virtual-machine.js E5 extensionURLs save hook already applied');
+} else if (vm2.split(vmToJSONAnchor).length === 2) {
+    vm2 = vm2.replace(vmToJSONAnchor, vmToJSONPatch);
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (E5 extensionURLs save hook)');
+} else {
+    console.error('  ! virtual-machine.js toJSON anchor not found exactly once — base VM version changed?');
     process.exit(1);
 }
 

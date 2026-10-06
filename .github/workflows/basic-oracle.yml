@@ -18,10 +18,17 @@
 # two engines actually agree. Same shape as ack-z80-cpm.yml — a CI-only build of
 # an upstream reference that this box's routine suite cannot carry.
 #
+# A SECOND reference, Matrix Brandy (GPL-2), makes it a THREE-engine,
+# cross-AUTHOR agreement: BBCSDL and the Z80 .COM are both R.T. Russell, so
+# Brandy — a different codebase by different authors — is the independent check
+# that neither Russell engine is simply agreeing with itself. Brandy is GPL and
+# never bundled or linked (built here for the oracle only, the ngspice
+# GPL-oracle-only regime); pinned in build-brandy-reference.sh (sha-const).
+#
 # BBCSDL is zlib-licensed and is NOT bundled or linked into the browser app; it
 # exists only so a real reference can run in CI/dev. Pinned to an immutable
 # commit inside build-bbcsdl-reference.sh (fetch-pinning classes it sha-const).
-name: BASIC oracle — BBCSDL reference vs the emulated BBC BASIC (Z80)
+name: BASIC oracle — emulated BBC BASIC (Z80) vs BBCSDL + Matrix Brandy
 on:
   workflow_dispatch:
   push:
@@ -29,6 +36,7 @@ on:
       - '.github/workflows/basic-oracle.yml'
       - 'scripts/verify-basic-oracle.mjs'
       - 'scripts/build-bbcsdl-reference.sh'
+      - 'scripts/build-brandy-reference.sh'
       - 'overlay/scratch-gui/src/lib/bw-debug/basic-twin-oracle.js'
       - 'overlay/scratch-gui/src/lib/sb3-creator.js'
       - 'overlay/scratch-gui/src/lib/sb3-creator-basic.js'
@@ -61,5 +69,10 @@ jobs:
       - name: Build the BBCSDL reference (host console bbcbasic) at the pinned commit
         run: bash scripts/build-bbcsdl-reference.sh
 
-      - name: Run the twin-run oracle (emulated BBC BASIC Z80 vs BBCSDL)
-        run: BBCSDL_BBCBASIC=tools/bbcsdl/bbcbasic node scripts/verify-basic-oracle.mjs
+      # Matrix Brandy's text console (tbrandy) is plain gcc, no SDL — no extra
+      # toolchain beyond what ubuntu-latest ships.
+      - name: Build the Matrix Brandy reference (host console tbrandy) at the pinned commit
+        run: bash scripts/build-brandy-reference.sh
+
+      - name: Run the twin-run oracle (emulated BBC BASIC Z80 vs BBCSDL + Matrix Brandy)
+        run: BBCSDL_BBCBASIC=tools/bbcsdl/bbcbasic BRANDY_BASIC=tools/brandy/tbrandy node scripts/verify-basic-oracle.mjs

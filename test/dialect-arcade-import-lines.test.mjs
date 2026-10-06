@@ -27,6 +27,12 @@
  *    warning is kept; E1 is to write a Boolean value through a word instead,
  *    e.g. `compare value (0) op "<" with (1)`). Counted exactly, so a new kind
  *    of warning, or more of these, is red.
+ *  - And the dialect's CONDITION-as-value warning (task D7, sb3-creator #54):
+ *    the importer writes MakeCode's `!x` in value positions as `not (truthiness
+ *    of value (x))` (21), `not (compare value … op … with …)` (2), `not (ticks
+ *    < 5)` (2) and once `key down arrow pressed?`, which the pinned parser USED
+ *    TO keep as the text silently. 26 such warnings; E1 is to write a negated truth value through a value word
+ *    (or the branch form) instead.
  *  - Every program that parses decompiles and reads back to a fixed point,
  *    except the four whose script has a hat with a comment-only body (a
  *    decompiler limit unrelated to these words: it reproduces with
@@ -50,6 +56,8 @@ const REFUSED = [{test: 'makecode-arcade-optional-procedure.test.mjs', text: 're
 
 // Counted 2026-10-05 over the frozen corpus at sb3-creator with E0's words.
 const COMPARISON_WARNINGS = 86;
+// Counted 2026-10-06 over the frozen corpus at sb3-creator with D7's rule (was 0: silent text).
+const CONDITION_WARNINGS = 26;
 const NOT_FIXED_POINT = 4;
 
 function parse(code) {
@@ -83,18 +91,21 @@ test('the pinned parser has the Arcade word table (156 opcodes)', () => {
 test('every program the Arcade importer emitted parses, with no unread line except the one refused by name', () => {
     const unread = [];
     let warnings = 0;
+    let conditions = 0;
     const other = [];
     for (const p of corpus.programs) {
         const {c, unread: lost} = parse(p.code);
         for (const l of lost) unread.push({test: p.test, text: l.text});
         for (const w of c.warnings) {
             if (/is a COMPARISON used where a value is expected/.test(w)) warnings++;
+            else if (/is a CONDITION used where a value is expected/.test(w)) conditions++;
             else other.push(`${p.test}: ${w}`);
         }
     }
     assert.deepEqual(unread, REFUSED);
-    assert.deepEqual(other, [], 'no warning but the comparison-as-value one');
+    assert.deepEqual(other, [], 'no warning but the comparison- and condition-as-value ones');
     assert.equal(warnings, COMPARISON_WARNINGS, 'comparison-as-value warnings over the corpus');
+    assert.equal(conditions, CONDITION_WARNINGS, 'condition-as-value warnings over the corpus');
 });
 
 test('the refused line is refused for what it is, not swallowed', () => {

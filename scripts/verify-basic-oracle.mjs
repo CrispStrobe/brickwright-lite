@@ -27,8 +27,9 @@
 // exits non-zero, naming the missing half — it never reports a twin PASS it did
 // not measure.
 
-import {readFileSync, existsSync} from 'node:fs';
+import {readFileSync, existsSync, writeFileSync, unlinkSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
+import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {runEmulatedBbc, compareTwin, normalizeConsole} from
@@ -37,6 +38,7 @@ import {runEmulatedBbc, compareTwin, normalizeConsole} from
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const COM_PATH = path.join(ROOT, 'overlay/scratch-gui/static/roms/bbcbasic.com');
 const DEFAULT_REF = path.join(ROOT, 'tools/bbcsdl/bbcbasic');
+const DEFAULT_BRANDY = path.join(ROOT, 'tools/brandy/tbrandy');
 
 const com = new Uint8Array(readFileSync(COM_PATH));
 
@@ -58,6 +60,30 @@ export function runReferenceBbc(bin, program, {inputs = []} = {}) {
     let end = raw.findIndex((l, i) => i > start && l.replace(/[^\x20-\x7e]/g, '') === '>*QUIT');
     if (end === -1) end = raw.length;
     return {output: raw.slice(start + 1, end).join('\n'), raw: res.stdout || '', reason: 'ok'};
+}
+
+// ── a SECOND, TRULY-FOREIGN reference engine: Matrix Brandy (GPL) ────────────
+//
+// BBCSDL and the emulated Z80 .COM are both R.T. Russell's BBC BASIC — one
+// author, so their agreement is one family checking itself. Matrix Brandy
+// (stardot/MatrixBrandy, GPL-2) is a DIFFERENT codebase by DIFFERENT authors,
+// so a THREE-engine agreement is real cross-implementation evidence. Brandy is
+// GPL and is NEVER bundled or linked: built on demand into gitignored tools/ by
+// scripts/build-brandy-reference.sh — the GPL-oracle-only regime ngspice
+// established. Its text build (`tbrandy`) loads a .bas, runs it (quit-at-end),
+// and prints through a VT layer, so strip the ANSI cursor controls it emits
+// (ESC[...<letter>); the normaliser folds the rest.
+export function runBrandyBbc(bin, program, {inputs = []} = {}) {
+    const tmp = path.join(tmpdir(), `brandy-${process.pid}-${Math.random().toString(36).slice(2)}.bas`);
+    writeFileSync(tmp, String(program));
+    try {
+        const res = spawnSync(bin, [tmp], {input: inputs.join('\n'), encoding: 'utf8', timeout: 30000, maxBuffer: 1 << 24});
+        if (res.error) throw new Error(`brandy failed to run: ${res.error.message}`);
+        const clean = (res.stdout || '').replace(/\x1b\[[0-9;?]*[A-Za-z]/g, '');
+        return {output: clean, raw: res.stdout || '', reason: 'ok'};
+    } finally {
+        try { unlinkSync(tmp); } catch { /* best effort */ }
+    }
 }
 
 // ── the generated-shape leg: dialect pseudocode → generateBASIC → BBC BASIC ──
@@ -127,9 +153,24 @@ function resolveReference() {
     return existsSync(bin) ? bin : null;
 }
 
+function resolveBrandy() {
+    const bin = process.env.BRANDY_BASIC || DEFAULT_BRANDY;
+    return existsSync(bin) ? bin : null;
+}
+
 async function main() {
     const args = process.argv.slice(2);
+    // The reference engines, each a DIFFERENT implementation of BBC BASIC. The
+    // emulated Z80 .COM is always present; BBCSDL (R.T. Russell, C) and Matrix
+    // Brandy (GPL, a different author entirely) join when built. Every present
+    // engine must twin-agree with the emulated one and the `expected` anchor —
+    // so with both references it is a THREE-engine agreement, and Brandy makes
+    // it cross-AUTHOR, not one family checking itself.
     const ref = resolveReference();
+    const brandy = resolveBrandy();
+    const references = [];
+    if (ref) references.push({engine: 'BBCSDL', bin: ref, run: (prog) => runReferenceBbc(ref, prog)});
+    if (brandy) references.push({engine: 'Brandy', bin: brandy, run: (prog) => runBrandyBbc(brandy, prog)});
     const fail = [];
     const note = [];
 
@@ -148,52 +189,57 @@ async function main() {
         fixtures = await buildFixtures();
     }
 
-    console.log(`reference: ${ref || '(none — set BBCSDL_BBCBASIC or run scripts/build-bbcsdl-reference.sh)'}`);
-    console.log(`fixtures : ${fixtures.length}\n`);
+    const engineList = references.length
+        ? references.map((r) => r.engine).join(' + ')
+        : '(none — set BBCSDL_BBCBASIC / BRANDY_BASIC or run scripts/build-bbcsdl-reference.sh + scripts/build-brandy-reference.sh)';
+    console.log(`reference engines: ${engineList}`);
+    console.log(`fixtures         : ${fixtures.length}\n`);
 
     for (const f of fixtures) {
         const emu = runEmulatedBbc(com, f.program);
-        let reference = null;
-        if (ref) {
-            try { reference = runReferenceBbc(ref, f.program); }
-            catch (e) { reference = {output: `<<reference error: ${e.message}>>`, reason: 'error'}; }
+        // Run every present reference and twin-compare each against the emulated
+        // engine (and the `expected` anchor). ALL must agree; a single
+        // disagreement reddens and names the engine that diverged.
+        let ok = true;
+        const details = [];
+        for (const r of references) {
+            let out;
+            try { out = r.run(f.program).output; }
+            catch (e) { out = `<<${r.engine} error: ${e.message}>>`; }
+            const v = compareTwin({emulated: emu.output, reference: out, expected: f.expected});
+            if (!v.pass) { ok = false; details.push(`vs ${r.engine}: ${v.detail || v.mismatch}`); }
         }
-        // With a reference, the real twin verdict. Without one, anchor the
-        // emulated side on `expected` so codegen is still gated — and record
-        // that the cross-engine half was not measured (never a silent pass).
-        const v = compareTwin({
-            emulated: emu.output,
-            reference: reference ? reference.output : emu.output,
-            expected: f.expected
-        });
-        const measuredTwin = !!ref;
-        const ok = v.pass && (measuredTwin || f.expected != null);
-        const tag = ok ? 'ok  ' : 'FAIL';
-        const half = measuredTwin ? 'twin' : 'emulated-only';
-        console.log(`${tag} [${f.kind}/${half}] ${f.name}`);
+        // With no reference at all, anchor the emulated side on `expected` so a
+        // codegen defect is still gated — never a silent pass.
+        if (references.length === 0) {
+            const v = compareTwin({emulated: emu.output, reference: emu.output, expected: f.expected});
+            if (!v.pass) { ok = false; details.push(v.detail || 'vs expected'); }
+        }
+        const measuredTwin = references.length > 0;
+        // A reference-less run with no anchor measured nothing — not a pass.
+        if (!measuredTwin && f.expected == null) { ok = false; note.push(f.name); }
+
+        const half = measuredTwin ? `twin×${references.length}` : 'emulated-only';
+        console.log(`${ok ? 'ok  ' : 'FAIL'} [${f.kind}/${half}] ${f.name}`);
         if (!ok) {
             fail.push(f.name);
-            console.log('     ' + (v.detail || 'see output').replace(/\n/g, '\n     '));
+            if (details.length) console.log('     ' + details.join('\n     ').replace(/\n(?!     )/g, '\n     '));
             if (emu.reason !== 'ok') console.log(`     emulated stop reason: ${emu.reason}`);
-        }
-        if (!measuredTwin && f.expected == null) {
-            note.push(f.name);
         }
     }
 
-    if (!ref) {
+    if (references.length === 0) {
         console.log('\nWARNING: no reference engine — the cross-engine twin check was NOT run.');
-        console.log('Build it:  scripts/build-bbcsdl-reference.sh   (then re-run, or set BBCSDL_BBCBASIC)');
+        console.log('Build them:  scripts/build-bbcsdl-reference.sh  and  scripts/build-brandy-reference.sh');
+    } else if (references.length === 1) {
+        console.log(`\nNote: only ${references[0].engine} ran; build the other reference for the full cross-author agreement.`);
     }
-    if (note.length) {
-        console.log(`\n${note.length} fixture(s) had neither a reference nor an expected anchor: ${note.join(', ')}`);
-    }
-    const unmeasured = !ref;
+    const unmeasured = references.length === 0;
     console.log(fail.length
         ? `\n${fail.length} fixture(s) FAILED: ${fail.join(', ')}`
         : unmeasured
             ? '\nEmulated + expected anchors passed; cross-engine twin NOT measured (no reference).'
-            : '\nAll twin-run oracle checks passed.');
+            : `\nAll twin-run oracle checks passed (${references.length}-engine agreement: ${references.map((r) => r.engine).join(', ')} vs emulated).`);
     // Red on any failure; also red when the cross-engine half could not run at
     // all (an honest "not measured", not a pass) unless explicitly allowed.
     process.exit(fail.length ? 1 : (unmeasured && !args.includes('--allow-no-reference')) ? 2 : 0);

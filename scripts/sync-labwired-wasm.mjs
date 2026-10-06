@@ -43,7 +43,7 @@ import {fetchRetry} from './lib-pin.mjs';
 
 /** The SOURCE commit of CrispStrobe/labwired-core the artifact was built from.
  *  Full 40 hex: an abbreviation is not a name anything can fetch by. */
-const PIN = '628b651f2c72c2c20fa0d15b9b20ef8abb367e13';
+const PIN = '31b6f8aade1af3329cf686438acb31bee204e23d';
 /** The release that carries the built artifact. */
 // The release lives on bw-board, not on the labwired fork: the fork stays a
 // clean mirror of upstream (it is synced, and a workflow of ours would diverge
@@ -51,15 +51,15 @@ const PIN = '628b651f2c72c2c20fa0d15b9b20ef8abb367e13';
 // from. Built and PUBLISHED by CI — two independent runners agreed byte for
 // byte before the asset was uploaded, so the sha256 below is a claim anyone can
 // re-derive rather than one machine's fingerprint.
-const TAG = 'labwired-wasm-628b651f';
+const TAG = 'labwired-wasm-31b6f8aa';
 const REPO = 'CrispStrobe/bw-board';
 // The WEB glue, not the nodejs one. The published release carries both: the
 // nodejs glue require()s and reads the module off disk, which cannot survive a
 // browser bundle. Asset names carry their target because a release's assets are
 // one flat namespace.
 const EXPECT = {
-    'web-labwired_wasm.js': 'e68b33b7050fe1a2c985fb5310b7e64aec8d2aad14a66c2cce69de37e3586e75',
-    'web-labwired_wasm_bg.wasm': '82175aea61c2acfc658c73fd52a2ff52fc6db221359a54b165372446dc99021c'
+    'web-labwired_wasm.js': 'c12e7c15f63dc4e623b07d1cf1614466b5e2ab67653ff794db1ccb522c6833dd',
+    'web-labwired_wasm_bg.wasm': '148cff452780cd5240779f425e3dbe8620cfd00d1365b5d4b21111f8d62be7c6'
 };
 /** What each asset is called once it is ours. */
 const LOCAL = {

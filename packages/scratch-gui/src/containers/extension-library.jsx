@@ -7,6 +7,7 @@ import {defineMessages, injectIntl, intlShape} from 'react-intl';
 import extensionLibraryContent from '../lib/libraries/extensions/index.jsx';
 import {getLegacySpikeVisible, LEGACY_SPIKE_CHANGE_EVENT} from '../lib/spike-legacy-debug';
 import {remoteExtensionsAllowed} from '../lib/distribution-policy';
+import {confirmAsync} from '../lib/native-dialog';
 
 import LibraryComponent from '../components/library/library.jsx';
 import extensionIcon from '../components/action-menu/icon--sprite.svg';
@@ -165,7 +166,7 @@ class ExtensionLibrary extends React.PureComponent {
         }
         return this.props.intl.formatMessage(m, values);
     }
-    handleItemSelect (item) {
+    async handleItemSelect (item) {
         if (item.disabled) return;
         if (item.legacySpikeDebug && !getLegacySpikeVisible()) return;
         const em = this.props.vm.extensionManager;
@@ -184,8 +185,9 @@ class ExtensionLibrary extends React.PureComponent {
         // weakening the user decision at this boundary.
         if (/^https?:\/\//.test(url) && !em.isTrustedExtensionURL(url)) {
             const newEntry = typeof em.pinStatusFor === 'function' && em.pinStatusFor(url) === 'unpinned';
-            // eslint-disable-next-line no-alert
-            if (!confirm(this.msg(newEntry ? messages.unpinned : messages.untrusted, {url}))) return;
+            // Awaited: in the desktop/iOS app `confirm` cannot block (lib/native-dialog.js), and
+            // this is the consent to run downloaded code.
+            if (!(await confirmAsync(this.msg(newEntry ? messages.unpinned : messages.untrusted, {url})))) return;
         }
         const done = () => (id ? this.props.onCategorySelected(id) : this.props.onRequestClose());
         if (em.isExtensionLoaded(url)) { done(); return; }

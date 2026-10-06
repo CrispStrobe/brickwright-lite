@@ -75,6 +75,73 @@ const galleryURLForSlug = slug => {
     return gallerySlugForURL(url) === slug && pinForURL(url) ? url : null;
 };
 
+// TurboWarp's own gallery. A TurboWarp project records the extensions it uses
+// as `extensionURLs` entries on this host. CrispStrobe/extensions tracks
+// TurboWarp/extensions slug for slug, so such a URL NAMES a slug; it is never
+// fetched. Lite loads its own pinned copy of that slug or nothing.
+const TURBOWARP_BASE = 'https://extensions.turbowarp.org/';
+
+/**
+ * id -> slug for every pinned gallery extension, from the generator-owned
+ * `extensionId` of each pin (scripts/sync-gallery-pins.mjs, extensionIdOf).
+ * Proof pins are test fixtures and are not routable by id.
+ */
+const GALLERY_EXTENSION_IDS = Object.freeze(Object.fromEntries(
+    Object.entries(pins.extensions)
+        .filter(([, pin]) => typeof pin.extensionId === 'string' && pin.extensionId)
+        .map(([slug, pin]) => [pin.extensionId, slug])
+));
+
+/**
+ * The pinned gallery URL a bare extension id loads from, or null.
+ * @param {string} id extension id as a project names it
+ * @returns {string|null} exact pinned gallery URL
+ */
+const galleryURLForExtensionId = id => (
+    typeof id === 'string' && Object.prototype.hasOwnProperty.call(GALLERY_EXTENSION_IDS, id) ?
+        galleryURLForSlug(GALLERY_EXTENSION_IDS[id]) :
+        null
+);
+
+/**
+ * The extension id an exact pinned gallery URL registers, or null.
+ * @param {string} value candidate URL
+ * @returns {string|null} the pin's extensionId
+ */
+const extensionIdForGalleryURL = value => {
+    const slug = gallerySlugForURL(value);
+    if (slug === null || galleryURLForSlug(slug) !== value) return null;
+    const id = pins.extensions[slug].extensionId;
+    return typeof id === 'string' && id ? id : null;
+};
+
+/**
+ * The pinned gallery URL a project's `extensionURLs` entry may load, or null.
+ *
+ * A project file is not a place a URL can come from: only an entry that NAMES
+ * a pinned gallery extension registering exactly `id` is honoured, and then
+ * the pinned copy is what loads. Two spellings name one: this gallery's own
+ * exact URL (what Lite saves) and TurboWarp's gallery URL for the same slug
+ * (what TurboWarp saves). Anything else — another host, an unpinned slug, a
+ * query string, a data: or blob: URL, a slug registering a different id — is
+ * null, and the caller refuses it by name.
+ * @param {string} id the id the project files the URL under
+ * @param {string} url the URL the project records for it
+ * @returns {string|null} exact pinned gallery URL to load
+ */
+const galleryURLForProjectEntry = (id, url) => {
+    if (typeof id !== 'string' || typeof url !== 'string') return null;
+    let candidate = url;
+    if (url.startsWith(TURBOWARP_BASE)) candidate = BASE + url.slice(TURBOWARP_BASE.length);
+    else if (!url.startsWith(BASE)) return null;
+    const slug = gallerySlugForURL(candidate);
+    if (slug === null) return null;
+    // The TurboWarp spelling must be just as plain as ours (no query, no %, no ..).
+    const pinned = galleryURLForSlug(slug);
+    if (pinned !== candidate) return null;
+    return extensionIdForGalleryURL(pinned) === id ? pinned : null;
+};
+
 /**
  * Why a URL is or is not trusted, so the UI can word its warning accordingly.
  *
@@ -119,4 +186,14 @@ const verifyGallerySource = async (url, bytes) => {
     return true;
 };
 
-module.exports = {galleryURLForSlug, pinForURL, pinStatusFor, sha256Hex, verifyGallerySource};
+module.exports = {
+    GALLERY_EXTENSION_IDS,
+    extensionIdForGalleryURL,
+    galleryURLForExtensionId,
+    galleryURLForProjectEntry,
+    galleryURLForSlug,
+    pinForURL,
+    pinStatusFor,
+    sha256Hex,
+    verifyGallerySource
+};

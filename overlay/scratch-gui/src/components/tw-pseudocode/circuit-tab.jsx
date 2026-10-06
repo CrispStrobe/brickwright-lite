@@ -12,6 +12,7 @@ import {setProjectTitle} from '../../reducers/project-title';
 import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 import {activateUndoSurface, registerUndoSurface} from '../../lib/global-undo.js';
+import {confirmAsync} from '../../lib/native-dialog.js';
 
 /**
  * The panel's own learner-facing strings. Not scratch-gui's, so not
@@ -1270,12 +1271,12 @@ class CircuitTab extends React.Component {
 
     /** Program-only starters (currently LEGO) have no fictional circuit to load. */
     async loadProgramOnlyStarter (example) {
-        if (typeof confirm === 'function') {
-            const message = /^de/i.test(navigator.language) ?
-                `„${example.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt. Nicht Gespeichertes geht verloren.` :
-                `Open "${example.id}"?\n\nThis replaces the current project. Anything unsaved is lost.`;
-            if (!confirm(message)) return {ok: false, cancelled: true};
-        }
+        const message = /^de/i.test(navigator.language) ?
+            `„${example.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt. Nicht Gespeichertes geht verloren.` :
+            `Open "${example.id}"?\n\nThis replaces the current project. Anything unsaved is lost.`;
+        // Awaited: a native dialog in the desktop/iOS app (lib/native-dialog.js). With no
+        // way to ask at all (a headless harness), go ahead, as before.
+        if (!(await confirmAsync(message, {unavailable: true}))) return {ok: false, cancelled: true};
         this.setState({loadingExample: example.id, examplesError: null});
         try {
             await this.loadExampleProgram(example, null);
@@ -1469,11 +1470,13 @@ class CircuitTab extends React.Component {
         // kind:'circuit' (it is ABOUT a circuit) and still declare pins
         // that need loading. The gate must be the file, not the tag.
         const hasProgram = !(opts && opts.circuitOnly) && !!(ex.files && ex.files.program);
-        if (hasProgram && typeof confirm === 'function') {
+        if (hasProgram) {
             const msg = /^de/i.test(navigator.language)
                 ? `„${ex.id}" öffnen?\n\nDas ersetzt das aktuelle Projekt — seine Blöcke, Pins und sein Board. Nicht Gespeichertes geht verloren.`
                 : `Open "${ex.id}"?\n\nThis replaces the current project — its blocks, its pins and its board. Anything unsaved is lost.`;
-            const ok = confirm(msg);
+            // Awaited: a native dialog in the desktop/iOS app (lib/native-dialog.js). With no
+            // way to ask at all (a headless harness), go ahead, as before.
+            const ok = await confirmAsync(msg, {unavailable: true});
             if (!ok) return {ok: false, cancelled: true};
         }
         this.setState({loadingExample: ex.id, examplesError: null});
