@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name.replace(/^Game_/,''),variable.value]));
 
@@ -25,7 +25,12 @@ async function verify(source,names,{done='registrationsDone',input=null,original
     };
     const imported=arcadeToPseudocode(source),run=await execute(imported);
     await execute({...imported,code:run.creator.decompile()});
-    return {expected};
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[]);
+    const again=await runPxtArcade(exported.ts+originalInput,{waitForGlobals:{[done]:true}});
+    for(const name of names)assert.equal(again[name],expected[name],name+' in exported PXT');
+    await execute(arcadeToPseudocode(exported.files));
+    return {expected,exported};
 }
 
 test('forever, life-zero and countdown callbacks retain scene registration sites and captured cells through Code/export',async()=>{
@@ -69,8 +74,9 @@ game.popScene()
 let restoredLife=info.life()
 let registrationsDone=parentForever && parentInterval && parentCountdown && childForever && childInterval && childCountdown && parentLifeWeight===4 && childLifeWeight===7
 `;
-    const {expected}=await verify(source,['parentForever','parentInterval','childForever','childInterval','parentLifeWeight','childLifeWeight','parentCountdown','childCountdown','restoredLife','registrationsDone']);
+    const {expected,exported}=await verify(source,['parentForever','parentInterval','childForever','childInterval','parentLifeWeight','childLifeWeight','parentCountdown','childCountdown','restoredLife','registrationsDone']);
     assert.equal(expected.parentLifeWeight,4);assert.equal(expected.childLifeWeight,7);assert.equal(expected.restoredLife,2);
+    assert.match(exported.ts,/game\.forever\(/);assert.match(exported.ts,/info\.player2\.onLifeZero\(/);assert.match(exported.ts,/info\.onCountdownEnd\(/);
 });
 
 test('scene sprite overlap and kind-destruction registrations retain typed event arguments and shared captures',async()=>{
@@ -98,8 +104,9 @@ install()
 while(!destroyedIdentity){pause(5)}
 let registrationsDone=overlapIdentity && destroyedIdentity && overlapWeight===9 && destroyedWeight===9
 `;
-    const {expected}=await verify(source,['overlapIdentity','destroyedIdentity','overlapWeight','destroyedWeight','destroyedX','registrationsDone']);
+    const {expected,exported}=await verify(source,['overlapIdentity','destroyedIdentity','overlapWeight','destroyedWeight','destroyedX','registrationsDone']);
     assert.equal(expected.destroyedX,30);
+    assert.match(exported.ts,/sprites\.onOverlap\(/);assert.match(exported.ts,/sprites\.onDestroyed\(/);assert.match(exported.ts,/: Sprite\[\]/);
 });
 
 test('scene button replacement and dynamic interval callbacks use captured registration values through Code/export',async()=>{
@@ -116,11 +123,12 @@ installButton(7)
 function installInterval(period:number){game.onUpdateInterval(period,function(){intervalReady=true})}
 installInterval(0)
 `;
-    const {expected}=await verify(source,['buttonWeight','buttonHits','intervalReady','registrationsDone'],{
+    const {expected,exported}=await verify(source,['buttonWeight','buttonHits','intervalReady','registrationsDone'],{
         originalInput:'\nwhile(!intervalReady){pause(5)}\ncontroller.A.setPressed(true)\nwhile(!registrationsDone){pause(5)}\ncontroller.A.setPressed(false)\npause(40)\ncontroller.B.setPressed(true)\npause(60)\ncontroller.B.setPressed(false)',
         input:async run=>{run.vm.postIOData('keyboard',{key:' ',isDown:true});await stepFrames(run.vm,8);run.vm.postIOData('keyboard',{key:' ',isDown:false});await stepFrames(run.vm,1);run.vm.postIOData('keyboard',{key:'z',isDown:true});await stepFrames(run.vm,8);run.vm.postIOData('keyboard',{key:'z',isDown:false});}
     });
     assert.equal(expected.buttonWeight,7);assert.equal(expected.buttonHits,1);
+    assert.match(exported.ts,/controller\.A\.onEvent\(/);assert.match(exported.ts,/game\.onUpdateInterval\(/);
 });
 
 test('a tap shorter than one frame delivers both scene button edges once through Code/export',async()=>{

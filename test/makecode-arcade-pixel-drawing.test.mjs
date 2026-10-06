@@ -6,11 +6,13 @@ import {runInNewContext} from 'node:vm';
 import {runProgram, SB3Creator} from './helpers/bw-vm.mjs';
 import {loadExtensionClass, probeExtension} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const require = createRequire(import.meta.url);
 const palette = [null,'#ffffff','#ff2121','#ff93c4','#ff8135','#fff609','#249ca3','#78dc52','#003fad','#87f2ff','#8e2ec4','#a4839f','#5c406c','#e5cdc4','#91463d','#000000'];
 const engine = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/image.js')(palette,
     require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js'));
+const exported = creator => projectToArcade(creator.project, {costumeSvg: (t,c) => creator.assets.get(c.assetId)?.data});
 
 test('drawing and pixel reading agree with pinned PXT at clipped edges, reversed lines, and fractional coordinates', () => {
     const source = readFileSync(new URL('../packages/scratch-gui/static/makecode/arcade/sim/common-sim.js', import.meta.url), 'utf8');
@@ -71,4 +73,9 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () { hero.image.set
     run.vm.greenFlag(); for(let i=0;i<10;i++)run.vm.runtime._step();
     assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0].image.pixels[0],2);
     const recreated = new SB3Creator(); recreated.parse(run.creator.decompile()); assert.deepEqual(recreated.warnings,[]);
+    const out = exported(run.creator); assert.deepEqual(out.unsupported,[]);
+    const built = await compile('arcade',out.files); assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    const again = arcadeToPseudocode(out.ts); assert.deepEqual(again.unsupported,[]);
+    const rerun = await runProgram(again.code,{frames:10,uploads:again.costumes,storage:true});
+    assert.deepEqual([...Object.values(rerun.vm.runtime.bwArcadeDeviceState.sprites)[0].image.pixels], [2,5,5,0,0,5,5,0,7,7,7,7]);
 });

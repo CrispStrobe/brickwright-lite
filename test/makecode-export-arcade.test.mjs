@@ -179,8 +179,17 @@ test('Arcade maths keeps every argument both ways (min/max/pow kept only the fir
     // No map reporter off the micro:bit: its definition, and said.
     assert.match(code, /set a to \(\(\(b - 0\) \* \(100 - 0\) \/ \(10 - 0\) \+ 0\)\)/);
     assert.ok(unsupported.some(u => /Math\.map\(\) — written out as its formula/.test(u)), unsupported.join('\n'));
-    // The way back, from the same maths written as Scratch arithmetic. (Exporting
-    // the value words the import now writes is task E2's.)
+    // The way back from the import's own words (task E2): the value words
+    // export as JavaScript's operators (a helper per operator); min and max
+    // keep the blocks' Scratch casts (a helper), power is Math.pow; every
+    // argument kept, nothing refused.
+    const back = exportOf(code);
+    assert.deepEqual(back.unsupported, []);
+    for (const call of [/__bwScratchMax\(0, __bwBinarySubtract\(b, \(0 \+ 1\)\)\)/, /__bwScratchMin\(a, 10\)/, /Math\.pow\(2, b\)/,
+        /Math\.abs\(__bwBinarySubtract\(a, b\)\)/, /function __bwBinarySubtract\(left: any, right: any\): number \{ return left - right \}/]) {
+        assert.match(back.ts, call);
+    }
+    // And from the same maths written as Scratch arithmetic.
     const {ts} = exportOf(`SPRITE s:\nWHEN flag clicked:\n${[
         'set a to max of 0 and (b - 1)', 'set b to min of a and 10', 'set a to 2 to the power of b',
         'set b to abs of (a - b)'].map(l => `  ${l}`).join('\n')}\n`);

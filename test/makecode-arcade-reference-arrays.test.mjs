@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(imported){
     assert.deepEqual(imported.unsupported,[]);
@@ -12,10 +13,13 @@ async function execute(imported){
 async function roundtrip(source,check){
     const imported=arcadeToPseudocode(source),run=await execute(imported);await check(run);
     await check(await execute({...imported,code:run.creator.decompile()}));
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));await check(await execute(arcadeToPseudocode(exported.ts)));
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,60);await check(run);
+    return exported;
 }
 test('Image arrays share aliases and element resources through indexing, assignment and mutation',async()=>{
-    await roundtrip(`let pictures=[img\`2 .\n. 5\`,img\`7 7\n7 7\`]
+    const exported=await roundtrip(`let pictures=[img\`2 .\n. 5\`,img\`7 7\n7 7\`]
 let alias=pictures
 let first=sprites.create(pictures[0],SpriteKind.Player)
 let second=sprites.create(pictures[1],SpriteKind.Food)
@@ -28,10 +32,10 @@ let arrayCount=alias.length`,run=>{
         assert.equal(a.image,c.image);assert.notEqual(a.image,b.image);
         assert.deepEqual([...a.image.pixels],[3,3,3,3]);assert.deepEqual([...b.image.pixels],[7,7,7,7]);
         assert.equal(vars(run).pictures,vars(run).alias);assert.equal(Number(vars(run).sample),3);assert.equal(Number(vars(run).arrayCount),2);
-    });
+    });assert.match(exported.ts,/pictures: Image\[\]/);
 });
 test('Sprite arrays preserve reference identity through procedure parameters, returns and for-of mutation',async()=>{
-    await roundtrip(`function makeActors(){return [sprites.create(img\`2\`,SpriteKind.Player),sprites.create(img\`7\`,SpriteKind.Food)]}
+    const exported=await roundtrip(`function makeActors(){return [sprites.create(img\`2\`,SpriteKind.Player),sprites.create(img\`7\`,SpriteKind.Food)]}
 function steer(actors:Sprite[]){for(let actor of actors){actor.x+=10};return actors}
 let actors=makeActors()
 let alias=steer(actors)
@@ -47,7 +51,7 @@ let located=actors.indexOf(actors[0])`,run=>{
         const [a,b,c]=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
         assert.equal(a.x,89.5);assert.equal(a.image.pixels[0],5);assert.equal(b.x,30);assert.equal(b.y,40);assert.equal(c.x,120);
         assert.equal(vars(run).actors,vars(run).alias);assert.equal(Number(vars(run).arrayCount),1);assert.equal(Number(vars(run).located),0);
-    });
+    });assert.match(exported.ts,/: Sprite\[\]/);
 });
 test('empty typed arrays infer pushed sprites and clearing changes every alias',async()=>{
     await roundtrip(`let actors:Sprite[]=[]
@@ -166,7 +170,7 @@ let value=numbers[1]`,run=>{
     });
 });
 test('nested Sprite arrays retain row aliases through procedures, iteration and removal',async()=>{
-    await roundtrip(`function makeRows(){return [[sprites.create(img\`2\`,SpriteKind.Player),sprites.create(img\`7\`,SpriteKind.Food)],[sprites.create(img\`5\`,SpriteKind.Enemy)]]}
+    const exported=await roundtrip(`function makeRows(){return [[sprites.create(img\`2\`,SpriteKind.Player),sprites.create(img\`7\`,SpriteKind.Food)],[sprites.create(img\`5\`,SpriteKind.Enemy)]]}
 function steerRows(rows:Sprite[][]){for(let row of rows){for(let actor of row){actor.x+=5}};return rows}
 let rows=makeRows()
 let alias=steerRows(rows)
@@ -180,10 +184,10 @@ let count=rows[0].length`,run=>{
         const [a,b,c]=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
         assert.equal(a.x,55);assert.equal(b.x,84.5);assert.equal(c.x,123);
         assert.equal(vars(run).rows,vars(run).alias);assert.equal(Number(vars(run).count),3);
-    });
+    });assert.match(exported.ts,/: Sprite\[\]\[\]/);
 });
 test('three-dimensional Image arrays preserve replacement, shared images and detached rows',async()=>{
-    await roundtrip(`let picture=img\`2\`
+    const exported=await roundtrip(`let picture=img\`2\`
 let cube=[[[picture]]]
 let layer=cube[0]
 let row=layer[0]
@@ -197,26 +201,26 @@ let count=cube[0].length`,run=>{
         const [a,b]=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
         assert.equal(a.image.pixels[0],7);assert.equal(b.image.pixels[0],3);assert.notEqual(a.image,b.image);
         assert.equal(vars(run).row,vars(run).detached);assert.equal(Number(vars(run).count),0);
-    });
+    });assert.match(exported.ts,/: Image\[\]\[\]\[\]/);
 });
 test('empty nested arrays infer Image rows passed through a procedure',async()=>{
-    await roundtrip(`function appendPicture(rows:Image[][],picture:Image){let row:Image[]=[];row.push(picture);rows.push(row);return row}
+    const exported=await roundtrip(`function appendPicture(rows:Image[][],picture:Image){let row:Image[]=[];row.push(picture);rows.push(row);return row}
 let rows:Image[][]=[]
 let row=appendPicture(rows,img\`7\`)
 let actor=sprites.create(rows[0][0],SpriteKind.Player)
 row[0].fill(3)`,run=>{
         const [actor]=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);assert.equal(actor.image.pixels[0],3);
-    });
+    });assert.match(exported.ts,/: Image\[\]\[\]/);
 });
 test('self-containing arrays remain finite type graphs and retain their runtime reference',async()=>{
-    await roundtrip(`let actor=sprites.create(img\`2\`,SpriteKind.Player)
+    const exported=await roundtrip(`let actor=sprites.create(img\`2\`,SpriteKind.Player)
 let values:any[]=[]
 values.push(values)
 let alias=values[0]
 let found=alias.indexOf(values)
 let count=alias.length`,run=>{
         assert.equal(vars(run).values,vars(run).alias);assert.equal(Number(vars(run).found),0);assert.equal(Number(vars(run).count),1);
-    });
+    });assert.match(exported.ts,/: any\[\]/);
 });
 test('array item conditions use JavaScript truthiness, including missing rows and boolean literals',async()=>{
     await roundtrip(`let actor=sprites.create(img\`2\`,SpriteKind.Player)

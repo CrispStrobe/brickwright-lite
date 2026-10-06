@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram, SB3Creator, stepFrames} from './helpers/bw-vm.mjs';
+import {compile} from '../scripts/lib/pxt-node.mjs';
 
 const value = (run, name) => run.vm.runtime.targets.flatMap(t => Object.values(t.variables)).find(v => v.name === name)?.value;
 async function execute(source) {
@@ -12,6 +13,7 @@ async function execute(source) {
     assert.deepEqual(run.errors, []); assert.deepEqual(run.creator.warnings, []);
     return run;
 }
+const exportProject = creator => projectToArcade(creator.project, {costumeSvg: (t,c) => creator.assets.get(c.assetId)?.data});
 
 test('image arguments retain identity through forwarded, recursive and local-alias calls', async () => {
     const source = `let picture=image.create(4,2)
@@ -42,6 +44,11 @@ let hero=sprites.create(picture,SpriteKind.Player)`;
     assert.deepEqual([0,1,2,3].map(x => read({IMAGE:value(run,'copied'),X:x,Y:0},{})),[1,2,3,0]);
     const fromCode = await runProgram(run.creator.decompile(),{frames:30,storage:true});
     assert.deepEqual(fromCode.errors,[]); assert.equal(value(fromCode,'sampled'),3); assert.equal(value(fromCode,'separate'),3);
+    const exported = exportProject(run.creator); assert.deepEqual(exported.unsupported,[]);
+    assert.match(exported.ts,/function Game_paint \(canvas: Image, color: number\)/);
+    assert.match(exported.ts,/function Game_forward \(surface: Image\)/);
+    const built = await compile('arcade',exported.files); assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    const again = await execute(exported.ts); assert.equal(value(again,'sampled'),3); assert.equal(value(again,'separate'),3);
     const saved = await run.vm.saveProjectSb3(); await run.vm.loadProject(Buffer.from(await saved.arrayBuffer())); run.vm.greenFlag();
     await stepFrames(run.vm,30); assert.equal(value(run,'sampled'),3); assert.equal(value(run,'separate'),3);
 });
@@ -55,6 +62,9 @@ paint(image.create(2,2))
 paint(hero.image.clone())`);
     assert.equal(value(run,'sampled'),7);
     assert.deepEqual([...Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0].image.pixels],[7,7]);
+    const exported = exportProject(run.creator); assert.deepEqual(exported.unsupported,[]);
+    const built = await compile('arcade',exported.files); assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    await execute(exported.ts);
 });
 
 test('standalone image procedures work and parameter names shadow global image bindings', async () => {
@@ -70,6 +80,9 @@ function number(picture: number) { picture.fill(7) }
 number(4)`);
     assert.ok(invalid.unsupported.some(x=>x.includes('picture.fill')),JSON.stringify(invalid));
     const creator = new SB3Creator(); creator.parse(run.creator.decompile()); assert.deepEqual(creator.warnings,[]);
+    const exported = exportProject(run.creator); assert.deepEqual(exported.unsupported,[]);
+    const built = await compile('arcade',exported.files); assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    await execute(exported.ts);
 });
 
 test('procedures create multiple sprites from passed images without copying shared resources', async () => {
@@ -83,4 +96,8 @@ picture.fill(7)`);
     assert.equal(sprites.length,2);assert.equal(sprites[0].x,40);assert.equal(sprites[1].x,40);
     assert.notEqual(sprites[0].image,sprites[1].image);
     assert.deepEqual([...sprites[0].image.pixels],[7,7]);assert.deepEqual([...sprites[1].image.pixels],[5,5]);
+    const exported = exportProject(run.creator); assert.deepEqual(exported.unsupported,[]);
+    const built = await compile('arcade',exported.files); assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    const again = await execute(exported.ts);
+    assert.deepEqual(Object.values(again.vm.runtime.bwArcadeDeviceState.sprites).map(s=>[...s.image.pixels]),[[7,7],[5,5]]);
 });

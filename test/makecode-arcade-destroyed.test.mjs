@@ -1,15 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 
 const source = `let victim: Sprite = null
 sprites.onCreated(SpriteKind.Enemy, function(s: Sprite) { s.lifespan = 100 })
 sprites.onDestroyed(SpriteKind.Enemy, function(s: Sprite) { info.changeScoreBy(s.x) })
 victim = sprites.create(img\`1\`, SpriteKind.Enemy)`;
 
-test('kind destruction callbacks retain their sprite handle through Code and Blocks', async () => {
+test('kind destruction callbacks retain their sprite handle and roundtrip to PXT', async () => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
     assert.match(imported.code, /WHEN arcade kind "Enemy" destroyed:/);
@@ -20,6 +21,16 @@ test('kind destruction callbacks retain their sprite handle through Code and Blo
     assert.deepEqual(creator.warnings, []);
     assert.ok(projectOpcodes(creator.project).has('arcade_whenSpriteDestroyed'));
     assert.match(creator.decompile(), /WHEN arcade kind "Enemy" destroyed:/);
+    const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => {
+        const asset = creator.assets.get(costume.assetId);
+        return asset?.type === 'svg' ? asset.data : null;
+    }});
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /sprites\.onDestroyed\(SpriteKind\.Enemy, function \(sprite: Sprite\)/);
+    if (hasRuntime('arcade')) {
+        const compiled = await compile('arcade', exported.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    }
 });
 
 test('lifespan destruction invokes one callback with the removed sprite snapshot', async () => {
@@ -79,6 +90,17 @@ alias.destroy()`;
     const live = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {}).filter(sprite => sprite.id);
     assert.equal(live.length, 1);
     assert.equal(live[0].id, vars.find(variable => variable.name === 'first')?.value);
+    const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => {
+        const asset = creator.assets.get(costume.assetId);
+        return asset?.type === 'svg' ? asset.data : null;
+    }});
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /first\.onDestroyed\(function \(\) \{/);
+    assert.match(exported.ts, /let alias: Sprite = null/);
+    if (hasRuntime('arcade')) {
+        const compiled = await compile('arcade', exported.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    }
 });
 
 test('latest per-sprite registration replaces the earlier one and runs before kind callbacks', async () => {
@@ -101,4 +123,11 @@ WHEN arcade kind "Enemy" destroyed:
     assert.deepEqual(run.errors, []);
     const vars = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}));
     assert.equal(Number(vars.find(variable => variable.name === 'order')?.value), 12);
+});
+
+test('an authored destruction callback without registration is reported on export', () => {
+    const creator = new SB3Creator();
+    creator.parse('DEVICE ARCADE\nSPRITE Game:\nWHEN arcade destruction handler "orphan" runs:\n  change score by 1\n');
+    const exported = projectToArcade(creator.project);
+    assert.ok(exported.unsupported.some(gap => /callback orphan has no registration/.test(gap)));
 });

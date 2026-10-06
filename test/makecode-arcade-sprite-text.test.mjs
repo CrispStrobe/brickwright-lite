@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 
 test('explicit sprite text agrees with the full original Arcade simulator across aliases, procedures and destruction',async()=>{
@@ -37,6 +38,11 @@ let retainedVx=hero.vx`;
     };
     const imported=arcadeToPseudocode(source),run=await execute(imported);
     await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));
+    await execute(arcadeToPseudocode(exported.ts));
+    const originalExported=await runPxtArcade(exported.ts);
+    for(const name of names)assert.equal(originalExported[name],expected[name],name+' in executed PXT export');
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,80);check(run);
 });
 
@@ -72,7 +78,7 @@ let collision=first==="arcade:1"`;
 });
 
 
-test('imported native value aliases retain booleans in assignments and procedure returns',async()=>{
+test('exported native value aliases retain booleans in assignments and procedure returns',async()=>{
     const source=`let hero=sprites.create(img\`1\`,SpriteKind.Player)
 hero.setPosition(0,0)
 let label=hero.toString()
@@ -84,6 +90,11 @@ let strict=copied===true`;
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:40,uploads:imported.costumes,storage:true});
     assert.deepEqual(run.errors,[]);
-    const expected=await runPxtArcade(source);
-    for(const name of ['first','second','copied','strict'])assert.equal(vars(run)[name],expected[name],name);
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const expected=await runPxtArcade(source),actual=await runPxtArcade(exported.ts);
+    for(const name of ['first','second','copied','strict'])assert.equal(actual[name],expected[name],name);
+    const again=arcadeToPseudocode(exported.ts);assert.deepEqual(again.unsupported,[]);
+    const returned=await runProgram(again.code,{frames:40,uploads:again.costumes,storage:true});
+    assert.deepEqual(returned.errors,[]);
+    for(const name of ['first','second','copied','strict'])assert.equal(vars(returned)[name],expected[name],name);
 });

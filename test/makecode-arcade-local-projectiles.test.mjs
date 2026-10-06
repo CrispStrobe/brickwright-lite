@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {compile, hasRuntime} from '../scripts/lib/pxt-node.mjs';
 import {SB3Creator, runProgram, projectOpcodes} from './helpers/bw-vm.mjs';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
 
 test('a function creates dynamic projectiles with per-call handles and destruction callbacks', async () => {
     const source = `let speed = 40
@@ -27,6 +28,17 @@ launch()`;
     const run = await runProgram(imported.code, {frames: 10, uploads: imported.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     assert.equal(run.vm.runtime.bwArcadeDeviceState.score, 2, 'both real projectile callbacks update Arcade score');
+    const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => {
+        const asset = creator.assets.get(costume.assetId);
+        return asset?.type === 'svg' ? asset.data : null;
+    }});
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /sprites\.createProjectile\(/);
+    assert.match(exported.ts, /\.onDestroyed\(function/);
+    if (hasRuntime('arcade')) {
+        const compiled = await compile('arcade', exported.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    }
 });
 
 test('a stationary projectile starts at the Arcade scene origin', async () => {

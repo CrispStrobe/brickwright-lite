@@ -1,15 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
-// Task E1 keeps the import half of these round trips; the export half (projectToArcade, then compiling or running the exported TypeScript in PXT, then re-importing it) returns with task E2 (docs/OPEN-TASKS-2026-09-29.md).
+import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(source,frames=120){const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported));const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);run.imported=imported;return run;}
 async function roundtrip(source,verify,frames=120){
     const run=await execute(source,frames);verify(run);
     const code=await runProgram(run.creator.decompile(),{frames,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);assert.deepEqual(code.creator.warnings,[]);verify(code);
-    const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,frames);verify(run);return {run};
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({ts:exported.ts,diagnostics:built.diagnostics}));verify(await execute(exported.ts,frames));
+    const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,frames);verify(run);return {run,exported};
 }
 
 test('scalar results, nesting, strings and early returns leave only their own invocation',async()=>{
@@ -48,11 +51,12 @@ let hero=sprites.create(picture,SpriteKind.Player)
 let friend=sprites.create(alias,SpriteKind.Enemy)
 let other=sprites.create(copy,SpriteKind.Food)
 alias.setPixel(0,0,2)`;
-    await roundtrip(source,run=>{
+    const {exported}=await roundtrip(source,run=>{
         const sprites=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);assert.equal(sprites.length,3);
         assert.equal(sprites[0].image,sprites[1].image);assert.notEqual(sprites[0].image,sprites[2].image);
         assert.deepEqual([...sprites[0].image.pixels],[2,7,7,7,7,7]);assert.deepEqual([...sprites[2].image.pixels],[7,7,7,7,7,7]);
     });
+    assert.match(exported.ts,/\): Image/);assert.match(exported.ts,/surface: Image/);
 });
 
 test('yielding functions resume with their own parameters and stop cancels pending results',async()=>{
@@ -144,12 +148,13 @@ alias.setImage(hero.image.clone())
 let observed=alias.x
 let nestedX=identity(hero).x
 identity(friend).y=75`;
-    await roundtrip(source,run=>{
+    const {exported}=await roundtrip(source,run=>{
         const v=vars(run);assert.equal(v.hero,v.alias);assert.equal(v.hero,v.moved);assert.notEqual(v.hero,v.friend);assert.equal(Number(v.observed),35);assert.equal(Number(v.nestedX),35);
         const s=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);assert.equal(s.length,2);
         assert.equal(s[0].x,35);assert.equal(s[0].y,40);assert.equal(s[1].x,30);assert.equal(s[1].y,75);
         assert.deepEqual([...s[0].image.pixels],Array(12).fill(7));assert.deepEqual([...s[1].image.pixels],Array(12).fill(2));
     });
+    assert.match(exported.ts,/\): Sprite/);assert.match(exported.ts,/sprite: Sprite/);assert.match(exported.ts,/let hero: Sprite = null/);
 });
 
 test('direct sprite and projectile returns remain native expressions through MakeCode',async()=>{
