@@ -185,6 +185,15 @@ try {
                         .find(li => ['New', 'Neu'].includes(li.textContent.trim())), 10000, 'File > New');
                     item.click();
                 };
+                // The editor exposes its VM before the default project has loaded; marking the
+                // project changed before then would be undone by that first load.
+                out.stage = 'default project';
+                await waitFor(() => {
+                    const state = store.getState().scratchGui.projectState;
+                    return vm.runtime.getTargetForStage() &&
+                        /^SHOWING_W/.test(String(state && state.loadingState));
+                }, 60000, 'the default project');
+                await sleep(1000);
                 out.stage = 'cancel';
                 dirty();
                 out.markerBefore = marker();
@@ -207,7 +216,8 @@ try {
                 tauri.core = original;
             }
             done(out);
-        })().catch(error => done({...out, fatal: `${out.stage}: ${String(error && error.stack || error)}`}));
+        })().catch(error => done({...out,
+            fatal: `${out.stage}: ${String(error && error.message || error)} @ ${String(error && error.stack)}`}));
     };
     const body = String(probe);
     const result = await call('POST', `/session/${session}/execute/async`, {
