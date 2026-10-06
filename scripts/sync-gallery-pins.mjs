@@ -141,6 +141,176 @@ const CAPABILITY_PATTERNS = Object.freeze({
     'nested-worker': /\b(?:new\s+)?(?:SharedWorker|Worker)\s*\(/
 });
 
+// THE EXTENSION ID A PIN REGISTERS (task E5)
+// ------------------------------------------
+// A project names a gallery extension by the id its getInfo() returns (block
+// opcodes are `<id>_<opcode>`, and `extensions` lists the ids). To route a
+// project's bare id to reviewed content the loader needs id -> slug, so each pin
+// records `extensionId`, read from the pinned REPO bytes without running them:
+// the `id` of the object literal the source's getInfo() method returns (a string
+// literal, or an identifier bound once to one). Only when no getInfo() return
+// can be read that way does the `// ID:` header count, and then only if the
+// source quotes it. The header is NOT the first choice because it is wrong for
+// three pins at 4fb33f88 (measured against each executed getInfo().id):
+// Clay/htmlEncode says clayhtmlencode but registers claytonhtmlencode,
+// CrispStrobe/csp says csp but registers cspSolver, Lily/ListTools says
+// lmsListTools but registers lmsData. Unreadable -> null: the pin still loads by
+// URL, it just cannot be reached from a bare id.
+const IDENT = /[A-Za-z0-9_$]/;
+
+// Index just past a string/template/comment/regex starting at i, or -1 if none starts there.
+function skipLiteral (text, i, prev) {
+    const c = text[i];
+    if (c === '"' || c === "'") {
+        for (let j = i + 1; j < text.length; j++) {
+            if (text[j] === '\\') j++;
+            else if (text[j] === c) return j + 1;
+            else if (text[j] === '\n') return j;
+        }
+        return text.length;
+    }
+    if (c === '`') {
+        for (let j = i + 1; j < text.length; j++) {
+            if (text[j] === '\\') j++;
+            else if (text[j] === '`') return j + 1;
+            else if (text[j] === '$' && text[j + 1] === '{') {
+                let depth = 1;
+                j += 2;
+                while (j < text.length && depth) {
+                    const skipped = skipLiteral(text, j, text[j - 1]);
+                    if (skipped > j) { j = skipped; continue; }
+                    if (text[j] === '{') depth++;
+                    else if (text[j] === '}') depth--;
+                    j++;
+                }
+                j--;
+            }
+        }
+        return text.length;
+    }
+    if (c === '/' && text[i + 1] === '/') {
+        const end = text.indexOf('\n', i);
+        return end === -1 ? text.length : end;
+    }
+    if (c === '/' && text[i + 1] === '*') {
+        const end = text.indexOf('*/', i + 2);
+        return end === -1 ? text.length : end + 2;
+    }
+    if (c === '/' && (prev === undefined || '(,=:[!&|?{};+-*%<>~^'.includes(prev))) {
+        let inClass = false;
+        for (let j = i + 1; j < text.length; j++) {
+            if (text[j] === '\\') j++;
+            else if (text[j] === '[') inClass = true;
+            else if (text[j] === ']') inClass = false;
+            else if (text[j] === '/' && !inClass) return j + 1;
+            else if (text[j] === '\n') return -1;
+        }
+        return -1;
+    }
+    return -1;
+}
+
+const stringValue = literal => {
+    const q = literal[0];
+    if (q !== '"' && q !== "'" && q !== '`') return null;
+    const body = literal.slice(1, -1);
+    if (literal[literal.length - 1] !== q || /[\\$\n]/.test(body)) return null;
+    return body;
+};
+
+// The `id` the first `return {...}` directly in the method body at `from` names.
+function returnedId (text, from) {
+    let depth = 1;
+    let prev;
+    let objectDepth = 0;
+    let afterReturn = false;
+    for (let i = from; i < text.length && depth > 0;) {
+        const skipped = skipLiteral(text, i, prev);
+        if (skipped > i) {
+            i = skipped;
+            prev = '"';
+            continue;
+        }
+        const c = text[i];
+        if (/\s/.test(c)) { i++; continue; }
+        if (IDENT.test(c)) {
+            let j = i;
+            while (j < text.length && IDENT.test(text[j])) j++;
+            const word = text.slice(i, j);
+            if (objectDepth === 1 && word === 'id' && (prev === '{' || prev === ',')) {
+                let k = j;
+                while (/\s/.test(text[k])) k++;
+                if (text[k] === ':') {
+                    k++;
+                    while (/\s/.test(text[k])) k++;
+                    const end = skipLiteral(text, k, ':');
+                    if (end > k) return stringValue(text.slice(k, end));
+                    let e = k;
+                    while (e < text.length && IDENT.test(text[e])) e++;
+                    const name = text.slice(k, e);
+                    if (!name || !/[\s,}]/.test(text[e] || '')) return null;
+                    const decl = new RegExp(`\\b(?:const|let|var)\\s+${name.replace(/\$/g, '\\$')}\\s*=\\s*`, 'g');
+                    const values = new Set();
+                    let d;
+                    while ((d = decl.exec(text))) {
+                        const at = d.index + d[0].length;
+                        const lit = skipLiteral(text, at, '=');
+                        const value = lit > at ? stringValue(text.slice(at, lit)) : null;
+                        if (value === null) return null;
+                        values.add(value);
+                    }
+                    return values.size === 1 ? [...values][0] : null;
+                }
+            }
+            afterReturn = depth === 1 && objectDepth === 0 && word === 'return';
+            prev = 'a';
+            i = j;
+            continue;
+        }
+        if (c === '{' || c === '(' || c === '[') {
+            if (objectDepth > 0) objectDepth++;
+            else if (afterReturn && c === '{') objectDepth = 1;
+            else if (!(afterReturn && c === '(')) {
+                afterReturn = false;
+                if (c === '{') depth++;
+            }
+            prev = c;
+            i++;
+            continue;
+        }
+        if (c === '}' || c === ')' || c === ']') {
+            if (objectDepth > 0) {
+                objectDepth--;
+                if (objectDepth === 0) return null;
+            } else if (c === '}') depth--;
+            afterReturn = false;
+            prev = c;
+            i++;
+            continue;
+        }
+        if (objectDepth === 0) afterReturn = false;
+        prev = c;
+        i++;
+    }
+    return null;
+}
+
+export function extensionIdOf (source) {
+    const text = Buffer.isBuffer(source) ? source.toString('utf8') : String(source);
+    const ids = new Set();
+    const start = /\bgetInfo\s*\(\s*\)\s*\{/g;
+    let m;
+    while ((m = start.exec(text))) {
+        const value = returnedId(text, m.index + m[0].length);
+        if (value) ids.add(value);
+    }
+    if (ids.size === 1) return [...ids][0];
+    if (ids.size > 1) return null;
+    const header = /^\/\/ ID:[ \t]*([A-Za-z0-9]+)[ \t]*\r?$/m.exec(text);
+    if (header && (text.includes(`"${header[1]}"`) || text.includes(`'${header[1]}'`))) return header[1];
+    return null;
+}
+
 export function classifyGallerySource (source) {
     const text = Buffer.isBuffer(source) ? source.toString('utf8') : String(source);
     return GALLERY_CAPABILITIES.filter(name => CAPABILITY_PATTERNS[name].test(text));
@@ -149,7 +319,8 @@ export function classifyGallerySource (source) {
 export function censusEntry (slug, source) {
     const capabilities = classifyGallerySource(source);
     return applyMigrationPolicy(slug, capabilities, {
-        identity: `${BASE}${slug}.js`, load: 'url', capabilities, brokerCapabilities: []
+        identity: `${BASE}${slug}.js`, load: 'url', extensionId: extensionIdOf(source),
+        capabilities, brokerCapabilities: []
     });
 }
 
@@ -193,6 +364,7 @@ export function validateGalleryContract (document, expectedSlugs) {
             `unclassified [${extra.join(', ')}]`);
     }
     const identities = new Set();
+    const extensionIds = new Set();
     for (const slug of actual) {
         const c = document.extensions[slug];
         if (!Array.isArray(c.capabilities) || !Array.isArray(c.brokerCapabilities) || !c.migration) {
@@ -202,6 +374,17 @@ export function validateGalleryContract (document, expectedSlugs) {
         identities.add(c.identity);
         if (c.identity !== `${document.base}${slug}.js` || c.load !== 'url') {
             throw new Error(`gallery census identity is not canonical for ${slug}`);
+        }
+        // E5: the id a project names this pin by. Routing a bare id needs exactly
+        // one pin per id; an id two pins claim would load whichever came first.
+        if (c.extensionId !== null && (typeof c.extensionId !== 'string' || !/^[A-Za-z0-9]+$/.test(c.extensionId))) {
+            throw new Error(`gallery census has a malformed extensionId for ${slug}`);
+        }
+        if (c.extensionId !== null) {
+            if (extensionIds.has(c.extensionId)) {
+                throw new Error(`gallery census has two pins registering extension id ${c.extensionId}`);
+            }
+            extensionIds.add(c.extensionId);
         }
         const unknown = c.capabilities.filter(name => !GALLERY_CAPABILITIES.includes(name));
         if (unknown.length) throw new Error(`gallery census has unknown capability for ${slug}: ${unknown.join(', ')}`);
@@ -277,6 +460,7 @@ export const authorityDeclarations = value => JSON.stringify(Object.fromEntries(
     Object.entries(value.extensions).map(([slug, pin]) => [slug, {
         identity: pin.identity,
         load: pin.load,
+        extensionId: pin.extensionId,
         capabilities: pin.capabilities,
         brokerCapabilities: pin.brokerCapabilities,
         migration: pin.migration
@@ -466,14 +650,19 @@ async function main () {
         const extensions = {};
         for (const [slug, pin] of Object.entries(current.extensions)) {
             let capabilities = pin.capabilities;
+            let extensionId = pin.extensionId === undefined ? null : pin.extensionId;
             if (sourceDir) {
                 const source = await readFile(path.join(sourceDir, 'extensions', `${slug}.js`));
                 if (sha256(source) !== pin.repo) {
                     throw new Error(`local immutable source differs from reviewed pin for ${slug}`);
                 }
                 capabilities = classifyGallerySource(source);
+                extensionId = extensionIdOf(source);
             }
-            extensions[slug] = applyMigrationPolicy(slug, capabilities, {...pin, capabilities});
+            const {served, repo, transformed, identity, load} = pin;
+            extensions[slug] = applyMigrationPolicy(slug, capabilities,
+                {served, repo, transformed, identity, load, extensionId, capabilities,
+                    brokerCapabilities: pin.brokerCapabilities});
         }
         const next = {...current, schemaVersion: GALLERY_CONTRACT_VERSION,
             extensions};
