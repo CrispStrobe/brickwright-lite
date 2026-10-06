@@ -1799,6 +1799,25 @@ option.
   `static/roms/cpm-bios.bin` (our BIOS), with `cpm-roms.provenance.json`
   beside them recording both upstreams, licences, holders and SHA-256s.
 
+## Microsoft BASIC for 6502 (V1.1) — MIT
+
+The "Microsoft BASIC (6502)" machine lesson boots Microsoft's original 1978
+6502 BASIC on the emulated Ben Eater 6502 (a `MICROSOFT BASIC V1.1` banner and
+an `OK` prompt over the 65C51 ACIA). Microsoft released the source under the
+**MIT licence**; the shipped ROM is that source assembled with `ca65` — not a
+scanned or dumped cartridge.
+
+- **Upstream:** https://github.com/microsoft/BASIC-M6502 (original macro source,
+  commit `7460af2c03ae19c0e60ff327489229d2005b9357`); built from
+  https://github.com/CrispStrobe/basic-m6502-bw (commit
+  `e1dcf16430f216b21888492235eb2defae13aa03`), a modern-assemblable port.
+- **Licence:** MIT, (c) Microsoft Corporation.
+- **What ships:** `static/roms/msbasic-6502.rom` — the built 32 KB ROM (at
+  `$8000`, vectors at `$FFFA`), with `msbasic-6502.provenance.json` beside it.
+  Packaged as the media-lab project `projects/ms-basic-6502` (its `fetch.sh`
+  reproduces this ROM byte-for-byte). Loaded at run time into the eater6502
+  machine's ROM region by the Machine Manager's `lesson-msbasic-6502`.
+
 ## uBASIC (DOS-native BASIC) — BSD-3-Clause
 
 The BASIC tab's "uBASIC on DOS" profile runs a real 16-bit MS-DOS

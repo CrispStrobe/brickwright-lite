@@ -1,0 +1,18 @@
+{
+  "note": "Microsoft BASIC for 6502 (V1.1), the MIT-licensed release of Microsoft's original 1978 6502 BASIC, assembled with ca65 into a 32 KB ROM at $8000 (reset/IRQ/NMI vectors at $FFFA). It boots on the eater6502 machine (RAM $0000-$3FFF, ROM $8000-$FFFF, 65C51 ACIA console at $5000) to the MICROSOFT BASIC V1.1 banner and the OK prompt over the ACIA serial console. Packaged as media-lab project projects/ms-basic-6502 (fetch.sh reproduces this byte-for-byte from the pinned buildable source).",
+  "rom": "msbasic-6502.rom",
+  "license": "MIT",
+  "holder": "Microsoft (1978); MIT release",
+  "historical": {
+    "repo": "github.com/microsoft/BASIC-M6502",
+    "commit": "7460af2c03ae19c0e60ff327489229d2005b9357",
+    "role": "original macro source (reference only; not assemblable by modern tools)"
+  },
+  "buildable": {
+    "repo": "github.com/CrispStrobe/basic-m6502-bw",
+    "commit": "e1dcf16430f216b21888492235eb2defae13aa03",
+    "buildTool": "ca65 / ld65 (cc65)"
+  },
+  "bytes": 32768,
+  "sha256": "89c5072ea5162f8990676492d8a4c04c8b4dd3d54186e48ca576f93f2e63816c"
+}
