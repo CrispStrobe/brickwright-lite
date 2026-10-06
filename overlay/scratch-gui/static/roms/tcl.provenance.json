@@ -1,0 +1,11 @@
+{
+  "note": "partcl (Serge Zaitsev), a minimal Tcl interpreter in portable C (set/proc/if/while, command substitution, prefix arithmetic), cross-compiled to a 16-bit MS-DOS MZ .EXE with ia16-elf-gcc. It is DOS-NATIVE: it runs on the bw-board 8086 DOS service bench, reads PROG.TCL via INT 21h, and prints via the C library. Packaged as media-lab project projects/tcl-dos (fetch.sh reproduces this byte-for-byte). Build tool ia16-elf-gcc is GPL but build-time only; the binary links permissive newlib + libi86.",
+  "rom": "tcl.exe",
+  "upstream": "github.com/zserge/partcl",
+  "commit": "1ed1df73907875ee770ac65e6546bd56fbc6f637",
+  "license": "MIT",
+  "holder": "Serge Zaitsev",
+  "buildTool": "ia16-elf-gcc -mcmodel=small -march=any_186 -O2",
+  "bytes": 32480,
+  "sha256": "13ec143ec671f671df45a0d4b7c8999ff4c6b51fbefb89151fe5257866abd327"
+}

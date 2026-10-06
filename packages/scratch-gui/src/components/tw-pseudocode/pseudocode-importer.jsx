@@ -163,7 +163,7 @@ const L10N = {
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
-        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe',
+        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl',
         nqcCompile: '⚙ Compile .rcx', nqcSend: '🧱 Send to RCX',
         nqcEmpty: 'Type some NQC first.',
         nqcNoCompiler: 'This build has no local NQC compiler.',
@@ -188,6 +188,8 @@ const L10N = {
         basicUbasicFailed: (m) => `The uBASIC (on DOS) route could not run: ${m}`,
         feRunning: 'Running your fe (Lisp) on the libre fe interpreter on the DOS bench…',
         feFailed: (m) => `The fe (Lisp on DOS) route could not run: ${m}`,
+        tclRunning: 'Running your Tcl on the libre partcl interpreter on the DOS bench…',
+        tclFailed: (m) => `The Tcl (partcl on DOS) route could not run: ${m}`,
         basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
         basic8086Failed: (m) => `The 8086 BASIC route could not run: ${m}`,
         apply: '✓ Apply art & convert to blocks', done: 'Done',
@@ -474,7 +476,7 @@ const L10N = {
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
-        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen',
+        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen',
         nqcCompile: '⚙ .rcx kompilieren', nqcSend: '🧱 An RCX senden',
         nqcEmpty: 'Zuerst NQC eingeben.',
         nqcNoCompiler: 'Dieser Build hat keinen lokalen NQC-Compiler.',
@@ -500,6 +502,8 @@ const L10N = {
         basicUbasicFailed: (m) => `Die uBASIC-(auf-DOS)-Route lief nicht: ${m}`,
         feRunning: 'Führe dein fe (Lisp) mit dem freien fe-Interpreter auf der DOS-Werkbank aus…',
         feFailed: (m) => `Die fe-(Lisp-auf-DOS)-Route lief nicht: ${m}`,
+        tclRunning: 'Führe dein Tcl mit dem freien partcl-Interpreter auf der DOS-Werkbank aus…',
+        tclFailed: (m) => `Die Tcl-(partcl-auf-DOS)-Route lief nicht: ${m}`,
         basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
         basic8086Failed: (m) => `Die 8086-BASIC-Route lief nicht: ${m}`,
         apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
@@ -844,7 +848,8 @@ const CODE_FILES = {
     // twenty-five years of example code expect to see.
     nqc:         {ext: 'nqc', mime: 'text/x-csrc',     base: 'program'},
     // fe (rxi), a tiny Lisp run as fe.exe on the DOS bench (DOS_TOOLCHAINS 'fe').
-    fe:          {ext: 'fe',  mime: 'text/plain',      base: 'program'}
+    fe:          {ext: 'fe',  mime: 'text/plain',      base: 'program'},
+    tcl:         {ext: 'tcl', mime: 'text/plain',      base: 'program'}
 };
 const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`)), '.s', '.lst'].join(',');
 
@@ -3027,6 +3032,36 @@ class PseudocodeImporter extends React.Component {
     }
 
     /**
+     * Run Tcl (zserge's partcl) through tcl.exe on the DOS bench
+     * (DOS_TOOLCHAINS 'tcl'), mirroring runFeOnDosInterp: the interpreter reads
+     * PROG.TCL (INT 21h) and prints during its run, so the output is the
+     * compile-stage screen (no output file).
+     */
+    async runTclOnDosInterp (code) {
+        const source = code != null ? code : this.activeCode();
+        if (!source.trim()) return;
+        this.setState({output: '', running: true, busy: true, status: this.L.tclRunning});
+        try {
+            const r = await runDosToolchain('tcl', source, {
+                // Shipped as a static ROM (MIT, provenance beside it) — fetched,
+                // never bundled into the JS.
+                fetchToolchain: async () => {
+                    const res = await fetch('static/roms/tcl.exe');
+                    if (!res.ok) throw new Error(`tcl.exe HTTP ${res.status}`);
+                    return {compiler: new Uint8Array(await res.arrayBuffer())};
+                },
+                maxSteps: 60_000_000
+            });
+            const stage = r.run || r.compile;
+            const screen = (stage && stage.screen) || '';
+            this.setState({output: screen.trim() || '(no output)', running: false, busy: false, status: ''});
+        } catch (e) {
+            this.setState({output: `Error: ${e.message}`, running: false, busy: false,
+                status: this.L.tclFailed(e.message)});
+        }
+    }
+
+    /**
      * Which chips an assembly source needs, from a declaration IN the source.
      *
      * `; BW-CHIPS: ne2000@320` on any line asks the bench for that card. It is
@@ -4991,7 +5026,7 @@ class PseudocodeImporter extends React.Component {
                     missed each other. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0, paddingRight: 40}}
                     data-testid="bw-lang-row">
-                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'], ['fe', 'λ fe'],
+                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'], ['fe', 'λ fe'], ['tcl', '○ Tcl'],
                         // The tab follows the DEVICE line, except when a
                         // MicroPython program was imported from a .hex: there
                         // is no pseudocode then, and hiding the tab would hide
@@ -5787,6 +5822,13 @@ class PseudocodeImporter extends React.Component {
                             style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
                             data-testid="bw-fe-run">
                             {this.L.runFe}
+                        </button>
+                    ) : null}
+                    {this.state.lang === 'tcl' && this.activeCode().trim() ? (
+                        <button onClick={() => this.runTclOnDosInterp()} disabled={this.state.running}
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                            data-testid="bw-tcl-run">
+                            {this.L.runTcl}
                         </button>
                     ) : null}
                     {this.state.lang === 'c' ? (
