@@ -293,6 +293,20 @@ const BIN = [
 const TO_PSEUDO = { '==': '=', '!=': '!=', '<': '<', '>': '>', '<=': '<=', '>=': '>=', '%': 'mod',
     '<<': 'shiftleft', '>>': 'shiftright' };
 
+/**
+ * `set v to <expr>`, or — when the expression is a CONDITION (a comparison,
+ * `and`/`or`/`not`, an active-low pin read) — the branch form the dialect
+ * spells a stored truth value with: a condition has no value form
+ * (docs/BOOLEAN-IN-VALUE-POSITION.md, task D7), and C's 1/0 is exactly what
+ * the branch assigns. `int v = digitalRead(2)` on an INPUT_PULLUP pin is
+ * `IF read d2 THEN: set v to 0 ELSE: set v to 1`, which re-reads faithfully.
+ */
+function setLinesFor(pad, v, e) {
+    if (!e || !e.bool) return [`${pad}set ${v} to ${e.text}`];
+    const [cond, yes, no] = e.not ? [e.not.text, 0, 1] : [e.text, 1, 0];
+    return [`${pad}IF ${cond} THEN:`, `${pad}  set ${v} to ${yes}`, `${pad}ELSE:`, `${pad}  set ${v} to ${no}`];
+}
+
 class ExprParser {
     constructor (cur, ctx) { this.c = cur; this.ctx = ctx; }
 
@@ -318,7 +332,7 @@ class ExprParser {
             this.c.next();
             const right = this.parse(level + 1);
             const op = word || TO_PSEUDO[v] || v;
-            left = { text: `${wrap(left, level)} ${op} ${wrap(right, level + 1)}`, level };
+            left = { text: `${wrap(left, level)} ${op} ${wrap(right, level + 1)}`, level, bool: level <= 1 || level === 5 };
         }
     }
 
@@ -328,7 +342,7 @@ class ExprParser {
             // Collapse `!(!expr)` → expr. Arises from active-low pins: `!P1_0` = `not read led`,
             // `!(!P1_0)` should be `read led`, not `not not read led`.
             if (x.text.startsWith('not ')) return { text: x.text.slice(4), level: x.level };
-            return { text: `not ${wrap(x, 99)}`, level: 99 };
+            return { text: `not ${wrap(x, 99)}`, level: 99, bool: true, not: x };
         }
         if (this.c.eat('~')) { const x = this.unary(); return { text: `bitnot ${wrap(x, 99)}`, level: 99 }; }
         if (this.c.eat('-')) { const x = this.unary(); return { text: `-${wrap(x, 99)}`, level: 99 }; }
@@ -382,6 +396,8 @@ class ExprParser {
                 return { text: `${tab[1]}[${inner}]`, level: 99 };
             }
             let result = { text: this.ctx.readName(t.v), level: 99 };
+            // An active-low pin reads as `not read <pin>`: a condition.
+            if (/^not read /.test(result.text)) result = { ...result, bool: true, not: { text: result.text.slice(4), level: 99 } };
             // Array subscript(s): `name[expr]` → `item expr of name`
             while (this.c.is('[')) {
                 this.c.next();   // eat '['
@@ -847,7 +863,7 @@ export default function cToPseudocode (source, opts = {}) {
                         const rhsCur = new Cursor(rhsTokens.map((tok) => ({
                             t: /^[0-9]/.test(tok) || /^0x/i.test(tok) ? 'num' : /^[A-Za-z_]/.test(tok) ? 'id' : 'op', v: tok })));
                         const rhsExpr = new ExprParser(rhsCur, ctx).parse(0);
-                        setLines.push(`${pad}set ${v} to ${rhsExpr.text}`);
+                        setLines.push(...setLinesFor(pad, v, rhsExpr));
                     }
                 }
             }
@@ -965,7 +981,7 @@ export default function cToPseudocode (source, opts = {}) {
                     const v = varName(initVar); usedVars.add(v);
                     const initCur2 = new Cursor([{ t: /^[0-9]/.test(initVal) || /^0x/i.test(initVal) ? 'num' : 'id', v: initVal }]);
                     const initExpr = new ExprParser(initCur2, ctx).parse(0);
-                    out.push(`${pad}set ${v} to ${initExpr.text}`);
+                    out.push(...setLinesFor(pad, v, initExpr));
                 }
                 // Parse the condition as a negation for REPEAT UNTIL
                 const condCur = new Cursor(cond.map((tok) => ({ t: /^[0-9]/.test(tok) || /^0x/i.test(tok) ? 'num' : /^[A-Za-z_]/.test(tok) ? 'id' : 'op', v: tok })));
@@ -1282,13 +1298,13 @@ export default function cToPseudocode (source, opts = {}) {
                     for (const lv of chain) {
                         if (SFRS.test(lv)) continue;
                         const v = varName(lv); usedVars.add(v);
-                        lines.push(`${pad}set ${v} to ${rhs.text}`);
+                        lines.push(...setLinesFor(pad, v, rhs));
                     }
                     return lines;
                 }
                 if (listByLen.has(name) && op === '=' && rhs.text === '0') return [`${pad}delete all of ${listByLen.get(name).name}`];
                 const v = varName(name); usedVars.add(v);
-                if (op === '=') return [`${pad}set ${v} to ${rhs.text}`];
+                if (op === '=') return setLinesFor(pad, v, rhs);
                 if (op === '+=' || op === '-=') return [`${pad}change ${v} by ${op === '-=' ? negNum(rhs.text) : rhs.text}`];
                 const COMPOUND = { '*=': '*', '/=': '/', '%=': '%' };
                 if (COMPOUND[op]) return [`${pad}set ${v} to ${v} ${COMPOUND[op]} ${rhs.text}`];
@@ -1543,6 +1559,7 @@ export default function cToPseudocode (source, opts = {}) {
             case 'bw_oled_show': return { text: '0', level: 99, stmt: `oled show ${a(0)}` };
             // Sensors (reporters)
             case 'bw_temperature': return { text: `temperature from ${a(0)}`, level: 99 };
+            case 'bw_chip_temp': return { text: 'chip temperature', level: 99 };
             case 'bw_light': return { text: `light from ${a(0)}`, level: 99 };
             case 'bw_distance': return { text: `distance from ${a(0)}`, level: 99 };
             case 'bw_flex': return { text: `flex of ${a(0)}`, level: 99 };
@@ -1616,7 +1633,11 @@ export default function cToPseudocode (source, opts = {}) {
             }
             if (name === 'digitalRead' && args.length >= 1) {
                 const p = pinOf(args[0]);
-                if (p) return { text: p.activeLow ? `not read ${p.name}` : `read ${p.name}`, level: 99 };
+                if (p) {
+                    return p.activeLow
+                        ? { text: `not read ${p.name}`, level: 99, bool: true, not: { text: `read ${p.name}`, level: 99 } }
+                        : { text: `read ${p.name}`, level: 99 };
+                }
             }
             if (name === 'analogRead' && args.length >= 1) {
                 const p = pinOf(args[0]);
@@ -2348,7 +2369,7 @@ export default function cToPseudocode (source, opts = {}) {
         'bw_oled_print_s', 'bw_oled_print_n', 'bw_oled_cursor',
         'bw_oled_hline', 'bw_oled_show',
         'oled_cmd', 'oled_data_start', 'oled_set_page_col', 'oled_putchar',
-        'bw_temperature', 'bw_light', 'bw_distance', 'bw_flex', 'bw_force',
+        'bw_temperature', 'bw_chip_temp', 'bw_light', 'bw_distance', 'bw_flex', 'bw_force',
         'bw_ir_code', 'bw_device_state',
         'bw_pressed', 'bw_above', 'bw_closer', 'bw_motion', 'bw_tilted', 'bw_energised',
         'bw_print', 'bw_print_num']);
