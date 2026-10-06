@@ -2,6 +2,28 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import {keyToBytes, textToBytes} from '../../lib/bw-debug/terminal-keys.js';
+import {confirmAsync} from '../../lib/native-dialog.js';
+
+/**
+ * An OSC 8 hyperlink the guest printed was clicked. xterm's default handler does
+ * `if (confirm(...)) window.open(...)`, and in the desktop/iOS app `confirm` returns an
+ * always-truthy Promise (lib/native-dialog.js), so it opened any link without asking. Same
+ * question and the same opener-less window, but the answer is awaited.
+ * @param {MouseEvent} event the click
+ * @param {string} uri the link target (xterm passes only http: and https: here)
+ * @returns {Promise<void>} settles once answered
+ */
+export const openTerminalLink = async (event, uri) => {
+    const go = await confirmAsync(`Do you want to navigate to ${uri}?\n\n` +
+        'WARNING: This link could potentially be dangerous');
+    if (!go) return;
+    const opened = window.open();
+    if (!opened) return;
+    try {
+        opened.opener = null;
+    } catch (error) { /* a cross-origin window may refuse; the URL is set either way */ }
+    opened.location.href = uri;
+};
 
 /**
  * The Linux lesson's console: a real terminal (xterm.js, MIT) on the guest's
@@ -74,7 +96,8 @@ class LinuxTerminal extends React.Component {
             cursorBlink: true,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
             fontSize: 12,
-            theme: {background: '#0d1117', foreground: '#d0d7de', cursor: '#2ecc71'}
+            theme: {background: '#0d1117', foreground: '#d0d7de', cursor: '#2ecc71'},
+            linkHandler: {activate: openTerminalLink}
         });
         this.term = term;
         const send = bytes => terminal.send(bytes);
