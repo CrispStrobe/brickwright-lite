@@ -14,6 +14,7 @@ import DebugCorrelatedTargets from './debug-correlated-targets.jsx';
 import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
 import {ps2ButtonBit, ps2Delta} from '../../lib/bw-machines/ps2-pointer.js';
+import {promptAsync} from '../../lib/native-dialog.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const PortLeds = React.lazy(() =>
@@ -1033,19 +1034,19 @@ class DebugPanel extends React.Component {
             {branchId: branch.branchId, eventCursor: boundary.boundaryCursor} : null;
     }
 
-    onAddBookmark () {
+    async onAddBookmark () {
         const cursor = this.selectedHistoryCursor();
         if (!cursor) return;
-        const label = window.prompt('Bookmark label');
+        const label = await promptAsync('Bookmark label');
         if (label === null) return;
         const result = this.state.runner.addDebugBookmark({cursor, label});
         this.setState({historyStatus: result});
     }
 
-    onAddAnnotation () {
+    async onAddAnnotation () {
         const cursor = this.selectedHistoryCursor();
         if (!cursor) return;
-        const annotation = window.prompt('Annotation');
+        const annotation = await promptAsync('Annotation');
         if (annotation === null) return;
         const result = this.state.runner.addDebugAnnotation({cursor, annotation});
         this.setState({historyStatus: result});

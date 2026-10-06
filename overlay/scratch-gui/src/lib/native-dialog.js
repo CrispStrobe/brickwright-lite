@@ -90,3 +90,73 @@ export const confirmAsync = (message, {unavailable = false} = {}) => (
  * @returns {Promise<void>} settles after the callback ran
  */
 export const blocklyConfirm = (message, callback) => confirmAsync(message).then(answer => callback(answer));
+
+// ---------------------------------------------------------------------------------------------
+// Text input (task E8).
+//
+// `window.prompt` is not replaced by tauri-plugin-dialog 2.7.1, so in the app it is the
+// webview's own, and on macOS and iOS that is nothing: the one WKUIDelegate wry 0.55.1 installs
+// on both (src/wkwebview/mod.rs:599-602, WryWebViewUIDelegate in
+// src/wkwebview/class/wry_web_view_ui_delegate.rs:97-261) implements the file-open panel (macOS
+// only), media capture and new-window methods, and not
+// webView:runJavaScriptTextInputPanelWithPrompt:defaultText:initiatedByFrame:completionHandler:.
+// WKWebView without that method behaves as if the user chose Cancel: every `prompt()` returns
+// null at once. WebKitGTK (Linux) and WebView2 (Windows) show their default dialogs (wry
+// connects no `script-dialog` handler and never calls SetAreDefaultScriptDialogsEnabled), and
+// Android's RustWebChromeClient.kt:196 implements onJsPrompt (without the default text). In the app the question is therefore asked by an in-app modal on every
+// platform — one behaviour, testable on the Linux e2e runner — and by `prompt` in a browser.
+//
+// The rule: never call `prompt(...)` directly. Ask through `promptAsync` and await it;
+// `test/native-prompt.test.mjs` holds every call site to that.
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The browser's prompt, read as a string or null. A non-string answer (a Promise from a replaced
+ * `window.prompt` is awaited first) is a Cancel; so is a missing `prompt` or one that throws.
+ * @param {string} message text to show
+ * @param {string} defaultValue the pre-filled answer
+ * @returns {Promise<?string>} the answer, or null on Cancel
+ */
+const browserPrompt = async (message, defaultValue) => {
+    const scope = typeof window !== 'undefined' ? window : globalThis;
+    if (!scope || typeof scope.prompt !== 'function') return null;
+    try {
+        const answer = await scope.prompt(message, defaultValue); // eslint-disable-line no-alert
+        return typeof answer === 'string' ? answer : null;
+    } catch (error) {
+        return null;
+    }
+};
+
+// The modal's code is loaded on first use (it is React and only the app needs it).
+const loadPromptModal = () => import(/* webpackChunkName: "prompt-modal" */ './prompt-modal.jsx')
+    .then(module => module.showPromptModal);
+
+/**
+ * True where `prompt` cannot be relied on and `promptAsync` shows the in-app modal instead.
+ * @returns {boolean} whether this is the Tauri app
+ */
+export const usesPromptModal = () => !!nativeInvoke();
+
+/**
+ * Ask for a line of text and WAIT for the answer: an in-app modal in the Tauri app (OK = the
+ * text, Cancel/Esc = null), the browser's `prompt` elsewhere (still synchronous there, so browser
+ * gates that accept or dismiss dialogs keep working).
+ * @param {string} message the question
+ * @param {string} [defaultValue] the pre-filled answer
+ * @returns {Promise<?string>} the text the user confirmed (possibly ''), or null on Cancel
+ */
+export const promptAsync = async (message, defaultValue = '') => {
+    const text = String(message === null || typeof message === 'undefined' ? '' : message);
+    const initial = defaultValue === null || typeof defaultValue === 'undefined' ? '' : String(defaultValue);
+    if (!usesPromptModal()) return browserPrompt(text, initial);
+    try {
+        const show = await loadPromptModal();
+        const answer = await show({message: text, defaultValue: initial});
+        return typeof answer === 'string' ? answer : null;
+    } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[brickwright] text input dialog failed', text, error);
+        return null;
+    }
+};

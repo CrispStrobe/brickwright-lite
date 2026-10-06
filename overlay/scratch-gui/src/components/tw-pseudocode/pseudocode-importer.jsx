@@ -68,7 +68,8 @@ import {isSpike3Program, runSpike3OnVirtualHub} from '../../lib/spike3-python-ru
 import {isSpikeExtensionLoaded} from '../../lib/spike-port-snapshot.js';
 import {createCodeRunFeedback} from '../../lib/spike-arena/code-run-feedback.js';
 // Every yes/no question is awaited: `window.confirm` cannot block in the desktop/iOS app.
-import {confirmAsync} from '../../lib/native-dialog.js';
+import {confirmAsync, promptAsync} from '../../lib/native-dialog.js';
+import {mathWithRandom, runWithReplayedInput} from '../../lib/replay-input.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
 // handoff has to name a tab index and a wrong one silently switches to Sounds.
@@ -1819,12 +1820,7 @@ class PseudocodeImporter extends React.Component {
      * laptop with no internet still have the .hex.
      */
     async openMakeCodeShare () {
-        let url;
-        try {
-            url = window.prompt(this.L.mcSharePrompt, '');
-        } catch (e) {
-            url = null;
-        }
+        const url = await promptAsync(this.L.mcSharePrompt, '');
         if (!url || !url.trim()) return;
         this.setState({status: this.L.mcShareLoading});
         try {
@@ -3674,8 +3670,15 @@ class PseudocodeImporter extends React.Component {
             buf.push('simulated board: using the Circuit tab\'s board.\n');
         }
         // eslint-disable-next-line no-new-func
-        const fn = new Function('console', 'prompt', 'bwBoard', code);
-        fn({log, error: log, warn: log, info: log}, (q) => window.prompt(q) || '', board);
+        const fn = new Function('console', 'prompt', 'bwBoard', 'Math', code);
+        // The program's `prompt(q)` must have its answer at once, and in the desktop/iOS app no
+        // dialog can block (lib/native-dialog.js), so the program is replayed with the answers
+        // collected so far (lib/replay-input.js); a Cancel reads as '' as it always did.
+        const start = buf.length;
+        await runWithReplayedInput(({prompt, random}) => {
+            buf.length = start;
+            fn({log, error: log, warn: log, info: log}, prompt, board, mathWithRandom(random));
+        }, async q => (await promptAsync(q)) || '');
         if (board) this.reportSimBoard(board, buf);
     }
 
@@ -3726,7 +3729,9 @@ class PseudocodeImporter extends React.Component {
         Sk.configure({
             output: (t) => buf.push(t),
             read: (f) => { if (Sk.builtinFiles && Sk.builtinFiles.files[f]) return Sk.builtinFiles.files[f]; throw new Error(`module ${f} not found`); },
-            inputfun: (p) => window.prompt(p) || '',
+            // A Promise is a Skulpt suspension (Sk.builtin.file.$readline, resumed by
+            // asyncToPromise below), so `input()` waits for the in-app dialog; Cancel reads ''.
+            inputfun: async (p) => (await promptAsync(p)) || '',
             inputfunTakesPrompt: true,
             __future__: Sk.python3
         });
@@ -3734,7 +3739,7 @@ class PseudocodeImporter extends React.Component {
     }
 
     // Run the generated code in-page. Interactive programs (that read input) need
-    // the synchronous main-thread `prompt()`, so they run inline with a forever-loop
+    // the main thread's dialog (promptAsync), so they run inline with a forever-loop
     // guard. Everything else runs in a Web Worker with a hard timeout — a runaway
     // loop is killed cleanly instead of freezing the tab.
     async run () {

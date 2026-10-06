@@ -56,6 +56,11 @@ on:
       - 'packages/scratch-gui/src/lib/native-dialog.js'
       - 'overlay/scratch-gui/src/containers/menu-bar-hoc.jsx'
       - 'packages/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'scripts/verify-native-prompt-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'packages/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'packages/scratch-gui/src/containers/extension-library.jsx'
       - 'scripts/verify-build-policy.mjs'
       - 'scripts/vercel-build.sh'
       - 'test/native-*.test.mjs'
@@ -105,6 +110,11 @@ on:
       - 'packages/scratch-gui/src/lib/native-dialog.js'
       - 'overlay/scratch-gui/src/containers/menu-bar-hoc.jsx'
       - 'packages/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'scripts/verify-native-prompt-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'packages/scratch-gui/src/lib/prompt-modal.jsx'
+      - 'overlay/scratch-gui/src/containers/extension-library.jsx'
+      - 'packages/scratch-gui/src/containers/extension-library.jsx'
       - 'scripts/verify-build-policy.mjs'
       - 'scripts/vercel-build.sh'
       - 'test/native-*.test.mjs'
@@ -292,6 +302,18 @@ jobs:
             xvfb-run -a dbus-run-session -- node scripts/verify-native-confirm-e2e.mjs \
             apps/tauri/src-tauri/target/debug/brickwright-tauri \
             2>&1 | tee e2e-evidence/native-confirm.log
+
+      # Task E8: on macOS/iOS window.prompt answers null at once (wry 0.55.1 has no WKWebView
+      # text-input panel), so the app asks for text with its own modal. This drives Extension
+      # from URL in the real WebView with window.prompt recording and answering null: the modal
+      # must appear, its answer must reach the next question, and Escape must cancel.
+      - name: Drive Extension from URL's text question through the real native WebView
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=15s 300s \
+            xvfb-run -a dbus-run-session -- node scripts/verify-native-prompt-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/native-prompt.log
 
       # CP3-E asks that the artifacts SHOW the real vertical slice. The log is the evidence: it
       # carries the realm dump (both documents, so "the frontend loaded" is visible rather than

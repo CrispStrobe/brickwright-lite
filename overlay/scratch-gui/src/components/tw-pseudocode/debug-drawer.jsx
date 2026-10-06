@@ -6,6 +6,7 @@ import {
 } from '../../lib/bw-debug/trace.js';
 import {PSW_BITS, sfrName} from '../../lib/bw-debug/opcodes.js';
 import {downloadTraceCsv} from '../../lib/bw-debug/trace-csv.js';
+import {promptAsync} from '../../lib/native-dialog.js';
 
 /**
  * "Under the hood" — parity with emu8051's TUI, as a GUI.
@@ -172,11 +173,14 @@ class DebugDrawer extends React.Component {
 
     toggle () { this.setState(s => ({open: !s.open})); }
 
-    /** Ask the user for a hex address. A prompt is honest about being a stopgap. */
-    askAddress (label, fallback, maximum = 0xFFFF) {
+    /**
+     * Ask the user for a hex address. A prompt is honest about being a stopgap. Awaited: in the
+     * desktop/iOS app `prompt` returns null at once (lib/native-dialog.js).
+     */
+    async askAddress (label, fallback, maximum = 0xFFFF) {
         const initial = Math.max(0, Number(fallback) || 0).toString(16).toUpperCase()
             .padStart(maximum > 0xFFFF ? 5 : 4, '0');
-        const raw = window.prompt(`${label} (hex)`, initial);
+        const raw = await promptAsync(`${label} (hex)`, initial);
         if (raw === null) return null;
         const n = parseInt(String(raw).replace(/^0x/i, ''), 16);
         return Number.isSafeInteger(n) && n >= 0 && n <= maximum ? n : null;
@@ -243,8 +247,8 @@ class DebugDrawer extends React.Component {
                     disabled={runToDisabled}
                     data-run-to-address
                     title={this.tx('runToHint')}
-                    onClick={() => {
-                        const address = this.askAddress(this.tx('runTo'), this.currentPc(),
+                    onClick={async () => {
+                        const address = await this.askAddress(this.tx('runTo'), this.currentPc(),
                             runToAddress.addressMax);
                         if (address !== null) runner.runToAddress(address);
                     }}
@@ -253,8 +257,8 @@ class DebugDrawer extends React.Component {
                     style={has('setPc') ? BTN : off}
                     disabled={!has('setPc')}
                     title={has('setPc') ? undefined : this.tx('noSetPc')}
-                    onClick={() => {
-                        const a = this.askAddress(this.tx('setPc'), this.currentPc());
+                    onClick={async () => {
+                        const a = await this.askAddress(this.tx('setPc'), this.currentPc());
                         if (a !== null) runner.setPc(a);
                     }}
                 >{this.tx('setPc')}</button>
@@ -312,8 +316,8 @@ class DebugDrawer extends React.Component {
                         style={BTN}
                         data-add-watchpoint
                         title={this.tx('watchHint')}
-                        onClick={() => {
-                            const a = this.askAddress(this.tx('addWatch'), 0x30);
+                        onClick={async () => {
+                            const a = await this.askAddress(this.tx('addWatch'), 0x30);
                             if (a === null) return;
                             const r = runner.toggleWatchpoint('iram', a);
                             // A refusal is shown, never swallowed: a watchpoint
@@ -441,8 +445,8 @@ class DebugDrawer extends React.Component {
      * the same writeMem the hex view uses means the two can never disagree
      * about what a register is.
      */
-    editRegister (name, value, where) {
-        const raw = window.prompt(`${name}`, where.wide ? hex16(value) : hex8(value));
+    async editRegister (name, value, where) {
+        const raw = await promptAsync(`${name}`, where.wide ? hex16(value) : hex8(value));
         if (raw === null) return;
         const v = parseInt(String(raw).replace(/^0x/i, ''), 16);
         if (!Number.isFinite(v)) return;
@@ -559,8 +563,8 @@ class DebugDrawer extends React.Component {
                         tabIndex={-1}
                         title={this.tx('setPc')}
                         style={{cursor: 'pointer'}}
-                        onClick={() => {
-                            const a = this.askAddress(this.tx('setPc'), regs.pc);
+                        onClick={async () => {
+                            const a = await this.askAddress(this.tx('setPc'), regs.pc);
                             if (a !== null) { this.props.runner.setPc(a); this.forceUpdate(); }
                         }}
                     >
@@ -624,8 +628,8 @@ class DebugDrawer extends React.Component {
                         tabIndex={-1}
                         title={this.tx('setPc')}
                         style={{cursor: 'pointer'}}
-                        onClick={() => {
-                            const a = this.askAddress(this.tx('setPc'), regs.pc);
+                        onClick={async () => {
+                            const a = await this.askAddress(this.tx('setPc'), regs.pc);
                             if (a !== null) { this.props.runner.setPc(a); this.forceUpdate(); }
                         }}
                     >
@@ -641,10 +645,10 @@ class DebugDrawer extends React.Component {
                             tabIndex={-1}
                             style={this.props.runner.canWriteRegs && this.props.runner.canWriteRegs() &&
                                 typeof v === 'number' ? {cursor: 'pointer'} : undefined}
-                            onClick={() => {
+                            onClick={async () => {
                                 const runner = this.props.runner;
                                 if (!runner.canWriteRegs || !runner.canWriteRegs() || typeof v !== 'number') return;
-                                const nv = this.askAddress(`${k.toUpperCase()} =`, v);
+                                const nv = await this.askAddress(`${k.toUpperCase()} =`, v);
                                 if (nv === null) return;
                                 const r = runner.writeReg(k, nv);
                                 this.setState({regWriteError: r && r.unsupported ? r.unsupported : null});
@@ -759,8 +763,8 @@ class DebugDrawer extends React.Component {
                                 tabIndex={-1}
                                 title={`${hex16(row.addr + i)} — ${this.tx('editHint')}`}
                                 style={{color: b ? '#ecf0f1' : '#4a5568', cursor: 'pointer', padding: '0 2px'}}
-                                onClick={() => {
-                                    const raw = window.prompt(
+                                onClick={async () => {
+                                    const raw = await promptAsync(
                                         `${spec.label} ${hex16(row.addr + i)}`, hex8(b));
                                     if (raw === null) return;
                                     const v = parseInt(String(raw).replace(/^0x/i, ''), 16);
