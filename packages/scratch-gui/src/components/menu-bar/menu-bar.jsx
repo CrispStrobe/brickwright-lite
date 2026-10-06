@@ -237,17 +237,19 @@ class MenuBar extends React.Component {
     handleGlobalUndo () {
         undoActiveSurface();
     }
-    handleClickNew () {
+    async handleClickNew () {
         // if the project is dirty, and user owns the project, we will autosave.
         // but if they are not logged in and can't save, user should consider
         // downloading or logging in first.
         // Note that if user is logged in and editing someone else's project,
         // they'll lose their work.
-        const readyToReplaceProject = this.props.confirmReadyToReplaceProject(
+        // The answer is awaited: in the desktop/iOS app the question is a native dialog that
+        // cannot block, and nothing may be replaced before the user has said yes.
+        this.props.onRequestCloseFile();
+        const readyToReplaceProject = await this.props.confirmReadyToReplaceProject(
             this.props.intl.formatMessage(sharedMessages.replaceProjectWarning)
         );
-        this.props.onRequestCloseFile();
-        if (readyToReplaceProject) {
+        if (readyToReplaceProject === true) {
             clearActiveLms();
             this.props.onClickNew(this.props.canSave && this.props.canCreateNew);
         }

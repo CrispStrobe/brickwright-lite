@@ -6,6 +6,7 @@ import {connect} from 'react-redux';
 import log from '../lib/log';
 import loadProjectFile from './bw-project-load';
 import sharedMessages from './shared-messages';
+import {confirmAsync} from './native-dialog';
 
 import {
     LoadingStates,
@@ -87,11 +88,10 @@ const SBFileUploaderHOC = function (WrappedComponent) {
         }
         // step 3: user has picked a file using the file chooser dialog.
         // We don't actually load the file here, we only decide whether to do so.
-        handleChange (e) {
+        async handleChange (e) {
             const {
                 intl,
                 isShowingWithoutId,
-                loadingState,
                 projectChanged,
                 userOwnsProject
             } = this.props;
@@ -103,15 +103,17 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 // we must confirm with the user that they really intend to
                 // replace it. (If they don't own the project and haven't
                 // changed it, no need to confirm.)
+                // The answer is awaited: in the desktop/iOS app the question is a native dialog
+                // that cannot block (lib/native-dialog.js).
                 let uploadAllowed = true;
                 if (userOwnsProject || (projectChanged && isShowingWithoutId)) {
-                    uploadAllowed = confirm( // eslint-disable-line no-alert
+                    uploadAllowed = await confirmAsync(
                         intl.formatMessage(sharedMessages.replaceProjectWarning)
                     );
                 }
-                if (uploadAllowed) {
-                    // cues step 4
-                    this.props.requestProjectUpload(loadingState);
+                if (uploadAllowed === true) {
+                    // cues step 4 (the state as it is now, after the question)
+                    this.props.requestProjectUpload(this.props.loadingState);
                 } else {
                     // skips ahead to step 7
                     this.removeFileObjects();

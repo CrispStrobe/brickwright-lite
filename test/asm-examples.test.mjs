@@ -123,8 +123,9 @@ test('the tab offers them, and does not eat what you typed', () => {
     assert.match(src, /data-testid="bw-asm-examples"/, 'no example picker in the ASM tab');
     assert.match(src, /loadAsmExample/);
     // Replacing a non-empty buffer without asking is how someone loses
-    // twenty minutes of assembly to a mis-click.
-    assert.match(src, /if \(current && !window\.confirm\(this\.L\.asmExampleReplace\)\) return;/);
+    // twenty minutes of assembly to a mis-click. The answer is awaited (task E6): in the
+    // desktop/iOS app `window.confirm` returns a Promise, which is always truthy.
+    assert.match(src, /if \(current && !\(await confirmAsync\(this\.L\.asmExampleReplace\)\)\) return;/);
     for (const key of ['asmExampleLabel', 'asmExamplePick', 'asmExampleReplace', 'asmExampleLoaded']) {
         assert.equal(src.split(`${key}:`).length - 1, 2, `${key} is not in both locales`);
     }

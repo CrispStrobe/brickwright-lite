@@ -8,6 +8,7 @@
 // native IPC access, after an explicit confirmation.
 
 import {remoteExtensionsAllowed} from './distribution-policy.js';
+import {confirmAsync} from './native-dialog.js';
 
 const collectUrls = () => {
     if (typeof window === 'undefined' || !window.location) return [];
@@ -58,8 +59,10 @@ export default function initUrlExtensions () {
                     const trusted = typeof mgr.isTrustedExtensionURL === 'function' &&
                         mgr.isTrustedExtensionURL(url);
                     if (!trusted) {
-                        // eslint-disable-next-line no-alert
-                        const ok = typeof window.confirm === 'function' && window.confirm(
+                        // Awaited: in the desktop/iOS app `confirm` cannot block
+                        // (lib/native-dialog.js). No way to ask means no consent: not loaded.
+                        // eslint-disable-next-line no-await-in-loop
+                        const ok = await confirmAsync(
                             `Load the extension from:\n\n${url}\n\n` +
                             'It will run in an isolated worker without editor or native-device access. ' +
                             'HTTP(S) requests remain available; direct WebSockets and nested workers are blocked. ' +
