@@ -121,6 +121,10 @@ test('(3) the stored verb×family matrix is exactly what the emitter branches sa
         'literal output is a language/runtime utility, not a physical-part verb');
     assert.equal(derived.random, undefined,
         'random selection is a language/runtime utility, not a physical-part verb');
+    assert.equal(derived.ask, undefined,
+        'reading a typed line is a language/runtime utility, not a physical-part verb');
+    assert.equal(derived.printPieces, undefined,
+        'joined output is a language/runtime utility, not a physical-part verb');
     // both directions, per verb, so removing an emitter branch reddens its cell
     assert.deepEqual(
         Object.fromEntries(VERBS.map((v) => [v, VERB_FAMILIES[v]])),
@@ -137,9 +141,10 @@ test('(3) the stored verb×family matrix is exactly what the emitter branches sa
     assert.deepEqual(derived.adc, ['8051', 'avr', 'arm'],
         'adc must be three families (8051, avr, arm): its flag is in the shared procedures_call '
         + 'case, which is NOT credited because that case is not dedicated to one verb');
-    assert.deepEqual(derived.tone, ['avr'],
-        'tone is avr-only: its 8051 branch is a "not yet implemented" stub and its arm branch a '
-        + '(void)freq no-op — both refusals by the no-op rule — and 6502 refuses by name');
+    // avr-only until sb3-creator #52 (task B11): the 8051 branch was a "not yet
+    // implemented" stub and the arm branch a (void)freq no-op. Both drive the pin now.
+    assert.deepEqual(derived.tone, ['8051', 'avr', 'arm'],
+        'tone is 8051, avr and arm; 6502 and z80 refuse it by name');
     // 8051 is the base dialect: present for every verb UNLESS the emitter's own
     // 8051 branch for that verb is a stub (classified by the no-op rule). The
     // exception set is DERIVED, not listed, so the day someone implements 8051

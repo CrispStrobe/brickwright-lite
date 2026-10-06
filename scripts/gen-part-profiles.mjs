@@ -68,9 +68,11 @@ const FAMS = Object.values(FAMILY);   // ['8051','avr','6502','z80','arm']
 // `print`, the bounded helpers' `printNumber`/`printText`, and the
 // language-level `numericLists`/`random` markers here: adding any of them to a
 // part profile would invent a bus capability merely to satisfy the census.
+// sb3-creator #52 (task B11) adds two more serial-language markers: `ask` (read
+// a typed line) and `printPieces` (print a join of text and numbers).
 const CONTROL = new Set([
     'delay', 'blockDelay', 'blockingDelay', 'now', 'print', 'printNumber', 'printText',
-    'numericLists', 'random', 'table', 'devices'
+    'printPieces', 'ask', 'numericLists', 'random', 'table', 'devices'
 ]);
 // A branch that warns or emits a "no <thing> on this machine" stub is a refusal,
 // not an implementation.

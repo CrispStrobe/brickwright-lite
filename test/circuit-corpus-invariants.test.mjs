@@ -211,7 +211,16 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // sense-light-barrier, sense-auto-dimmer, sense-twilight-switch,
     // morse-buzzer-message, binary-counter-buttons, dice-pips, reaction-duel,
     // two-toggle-keys, idea-generator. None removed.
-    assert.equal(files.length, 1349, 'the gate must cover the complete vendored corpus');
+    // 1349 -> 1395 on 2026-10-06 (task B11, sb3-creator #52 at c8edc8cc): +110
+    // -64. Added: the eight new examples' benches (clock-ds3231,
+    // eeprom-start-counter, guess-the-number, i2c-scanner, melody-lists,
+    // random-lucky-light, sense-distance-alarm, sense-thermometer-1wire; 74)
+    // and the ATmega/Pico/STM32 benches of seven tone examples now that tone
+    // lowers there (07-buzzer-siren, arduino-02-tone-keyboard/-melody/
+    // -multiple/-pitch-follower, arduino-sk-p06-light-theremin,
+    // arduino-sk-p07-keyboard; 36). Removed: the ATtiny benches of 40 printing
+    // examples, since print/ask are refused on the UART-less ATtinys (64).
+    assert.equal(files.length, 1395, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
