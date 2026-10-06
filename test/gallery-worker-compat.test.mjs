@@ -161,10 +161,12 @@ test('published migration counts distinguish proven, awaiting-proof and ambient 
     // host API at all, so it is awaiting runtime proof rather than blocked.
     // The other three read the VM runtime or the Web Speech API and are
     // deferred with a reason each.
-    // 24/103/1 = 128 after the TurboWarp sync of 2026-09-21. The cohort fell
-    // 25 -> 24 because upstream delisted CubesterYT/TurboHook in favour of
-    // CubesterYT/Webhooks, which did not inherit the promotion.
-    assert.deepEqual(counts, {worker: 24, deferred: 103, candidate: 1});
+    // 24/104/1 = 129 after the 2026-10-06 sync. The worker cohort stayed 24
+    // (it fell 25 -> 24 at the TurboWarp sync of 2026-09-21 when upstream
+    // delisted CubesterYT/TurboHook in favour of CubesterYT/Webhooks); the new
+    // arrival CrispStrobe/circuitcubes is deferred (Web Bluetooth), so only the
+    // deferred count moved 103 -> 104.
+    assert.deepEqual(counts, {worker: 24, deferred: 104, candidate: 1});
 });
 
 test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {
