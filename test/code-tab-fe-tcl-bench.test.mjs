@@ -1,7 +1,8 @@
 /**
  * The fe and Tcl tabs' generated code, RUN: the shipped static/roms/fe.exe
- * and tcl.exe on the real 8086 DOS bench, through runDosToolchain — the same
- * call the tab's ▶ Run button makes (runFeOnDosInterp / runTclOnDosInterp).
+ * and jim.exe (Jim Tcl, with its JIMLIB.TCL beside it) on the real 8086 DOS
+ * bench, through runDosToolchain — the same call the tab's ▶ Run button makes
+ * (runFeOnDosInterp / runTclOnDosInterp).
  *
  * The unit test (code-tab-fe-tcl.test.mjs) proves the text round-trips; this
  * proves the text is RIGHT: each corpus program prints exactly what Scratch
@@ -24,7 +25,12 @@ import feToPseudocode, {generateFe} from '../overlay/scratch-gui/src/lib/bw-lang
 const SB3Creator = (await import(path.join(SOURCE, 'src/lib/sb3-creator.js'))).default;
 const rom = name => new Uint8Array(readFileSync(
     fileURLToPath(new URL(`../overlay/scratch-gui/static/roms/${name}`, import.meta.url))));
-const EXE = {tcl: rom('tcl.exe'), fe: rom('fe.exe')};
+// The tab's Tcl runtime is Jim Tcl ('jim' route); fe runs on its own route.
+const ROUTE = {tcl: 'jim', fe: 'fe'};
+const TOOLCHAIN = {
+    tcl: {compiler: rom('jim.exe'), support: {'JIMLIB.TCL': new TextDecoder().decode(rom('jimlib.tcl'))}},
+    fe: {compiler: rom('fe.exe')}
+};
 
 const project = src => {
     const c = new SB3Creator();
@@ -36,9 +42,9 @@ const READ = {tcl: tclToPseudocode, fe: feToPseudocode};
 
 /** Run source on the bench; resolve to its printed lines and exit code. */
 async function run (lang, source) {
-    const r = await runDosToolchain(lang, source, {
-        fetchToolchain: async () => ({compiler: EXE[lang]}),
-        maxSteps: 60_000_000
+    const r = await runDosToolchain(ROUTE[lang], source, {
+        fetchToolchain: async () => TOOLCHAIN[lang],
+        maxSteps: 80_000_000
     });
     assert.ok(r.compile.terminated, `${lang} did not terminate`);
     const screen = r.compile.screen.replace(/\s+$/, '');
@@ -57,36 +63,40 @@ for (const [name, prog] of Object.entries(DOS_LANG_CORPUS)) {
     }
 }
 
-test('tcl on the DOS bench: a quoted word inside a bracket lexes (the `"go" ]` spacing)', async () => {
-    const g = generateTcl(project([
-        'GLOBAL s', 'WHEN flag clicked:', '  set s to "go"',
-        '  IF (s = "go") and (1 < 2) THEN:', '    say "both"', ''
-    ].join('\n')));
-    assert.match(g.tcl, /\[== \$s "go" \]/);
-    const r = await run('tcl', g.tcl);
-    // partcl compares atoi() of each side: "go" == "go" is 0 == 0, true.
-    assert.deepEqual(r.lines, ['both']);
-});
-
-test('tcl on the DOS bench: hand-written partcl and its blocks round trip print the same', async () => {
+test('tcl on the DOS bench: hand-written Tcl and its blocks round trip print the same', async () => {
     const original = [
         'set count 0',
-        'while {< $count 4} {',
-        '  set count [+ $count 1]',
-        '  if {== $count 2} {puts "two"} {>= $count 3} {puts "big $count"}',
+        'set seen {}',
+        'while {$count < 4} {',
+        '    incr count',
+        '    if {$count == 2} {puts "two"} elseif {$count >= 3} {puts "big $count"}',
+        '    lappend seen [expr {$count * $count}]',
         '}',
         'proc show {v} {',
-        '  puts "v=$v"',
+        '    puts "v=$v"',
         '}',
-        'show [* $count 2]'
+        'show [expr {$count * 2}]',
+        'foreach s $seen { puts -nonewline "$s " }',
+        'puts [format %.3f [expr {sqrt(2)}]]'
     ].join('\n') + '\n';
     const read = tclToPseudocode(original);
-    assert.deepEqual(read.warnings, []);
+    // puts -nonewline and format have no block: kept raw, run as written
+    assert.equal(read.warnings.length, 2, read.warnings.join('\n'));
     const regenerated = generateTcl(project(read.pseudocode));
     assert.equal(regenerated.ok, true, regenerated.reasons.join('; '));
     const [a, b] = [await run('tcl', original), await run('tcl', regenerated.tcl)];
-    assert.deepEqual(a.lines, ['two', 'big 3', 'big 4', 'v=8']);
+    assert.deepEqual(a.lines, ['two', 'big 3', 'big 4', 'v=8', '1 4 9 16 1.414']);
     assert.deepEqual(b.lines, a.lines, `regenerated:\n${regenerated.tcl}`);
+});
+
+test('tcl on the DOS bench: a runaway recursion ends with a message, not a crash or a hang', async () => {
+    // Jim keeps call frames on the heap and the stack is guarded; whichever
+    // of the two 64 KB-segment limits comes first, the run stops by name.
+    const r = await run('tcl', 'proc f {n} { f [incr n] }\nputs before\nf 0\nputs never\n');
+    assert.equal(r.lines[0], 'before');
+    assert.notEqual(r.exitCode, 0);
+    assert.match(r.screen, /out of memory|too many nested evaluations/);
+    assert.doesNotMatch(r.screen, /never/);
 });
 
 test('fe on the DOS bench: hand-written fe and its blocks round trip print the same', async () => {
@@ -116,7 +126,7 @@ test('fe on the DOS bench: hand-written fe and its blocks round trip print the s
 test('the generated code runs where the tab puts it: PROG.TCL / PROG.FE, exit 0, no error text', async () => {
     for (const lang of ['tcl', 'fe']) {
         const g = GEN[lang](project(DOS_LANG_CORPUS.counting.src));
-        const r = await runDosToolchain(lang, g[lang], {fetchToolchain: async () => ({compiler: EXE[lang]}), maxSteps: 60_000_000});
+        const r = await runDosToolchain(ROUTE[lang], g[lang], {fetchToolchain: async () => TOOLCHAIN[lang], maxSteps: 80_000_000});
         assert.ok(r.files.get(lang === 'tcl' ? 'PROG.TCL' : 'PROG.FE'), `${lang} source was mounted`);
         assert.equal(r.compile.exitCode, 0);
         assert.doesNotMatch(r.compile.screen, /error|\?!/i);
@@ -124,11 +134,12 @@ test('the generated code runs where the tab puts it: PROG.TCL / PROG.FE, exit 0,
 });
 
 // Real Tcl 8.x, as a person writes it — expr, incr, for, elseif, default
-// arguments, return values, recursion — read into blocks and written back as
-// partcl. `out` is what real tclsh 8.6 prints for the ORIGINAL (measured when
-// these were written; this suite does not run tclsh, which the build does not
-// ship). The live tclsh-vs-partcl differential is scripts/tcl-corpus-roundtrip.mjs,
-// over the private Rosetta Code corpus.
+// arguments, globals, lists, return values, recursion — read into blocks and
+// written back. `out` is what real tclsh 8.6 prints for the ORIGINAL
+// (measured when these were written; this suite does not run tclsh, which the
+// build does not ship); the original and the regenerated program must both
+// print it on the bench. The live tclsh-vs-Jim differential is
+// scripts/tcl-corpus-roundtrip.mjs, over the private Rosetta Code corpus.
 const REAL_TCL = {
     recursion: {
         src: [
@@ -163,10 +174,22 @@ const REAL_TCL = {
             'while {$n > 0} { incr n -3 }',
             'puts "n=$n pow=[expr {2 ** 5}] abs=[expr {abs(-4)}]"'
         ],
-        // bump is shared with the program through `global total`: that one
-        // cannot be partcl (a proc sees only its own frame), so it is
-        // refused — the rest is checked below without it.
-        refuse: 'uses the variable(s) total'
+        out: ['total:\t16', 'n=-2 pow=32 abs=4']
+    },
+    lists: {
+        src: [
+            'set words [list apple kiwi banana]',
+            'lappend words cherry',
+            'set long {}',
+            'foreach w $words {',
+            '    if {[string length $w] > 5} { lappend long $w }',
+            '}',
+            'puts "[llength $long] long: $long"',
+            'puts [lindex $words end]',
+            'puts [lsort $words]',
+            'puts [expr {"kiwi" in $words}]'
+        ],
+        out: ['2 long: banana cherry', 'cherry', 'apple banana cherry kiwi', '1']
     },
     loopsLocal: {
         src: [
@@ -187,19 +210,15 @@ const REAL_TCL = {
 };
 
 for (const [name, prog] of Object.entries(REAL_TCL)) {
-    test(`real Tcl → blocks → partcl on the DOS bench: "${name}"`, async () => {
+    test(`real Tcl → blocks → Tcl on the DOS bench: "${name}"`, async () => {
         const source = `${prog.src.join('\n')}\n`;
         const read = tclToPseudocode(source);
-        assert.deepEqual(read.warnings, [], read.pseudocode);
         const g = generateTcl(project(read.pseudocode));
-        if (prog.refuse) {
-            assert.equal(g.ok, false);
-            assert.ok(g.reasons.some(x => x.includes(prog.refuse)), g.reasons.join('; '));
-            return;
-        }
         assert.equal(g.ok, true, g.reasons.join('; '));
-        const r = await run('tcl', g.tcl);
-        assert.equal(r.exitCode, 0);
-        assert.deepEqual(r.lines, prog.out, `partcl:\n${g.tcl}`);
+        assert.equal(generateTcl(project(tclToPseudocode(g.tcl).pseudocode)).tcl, g.tcl, 'fixed point');
+        const [a, b] = [await run('tcl', source), await run('tcl', g.tcl)];
+        assert.equal(b.exitCode, 0, b.screen);
+        assert.deepEqual(a.lines, prog.out, `original:\n${source}`);
+        assert.deepEqual(b.lines, prog.out, `regenerated:\n${g.tcl}`);
     });
 }

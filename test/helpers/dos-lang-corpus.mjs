@@ -5,7 +5,8 @@
  * actually running the generated code).
  *
  * `out.tcl` / `out.fe` are what Scratch would say, in each interpreter's own
- * number format: partcl is 16-bit integer (7 / 2 is 3), fe is float (3.5).
+ * number format: Tcl (Jim Tcl) divides integers as integers (7 / 2 is 3), fe
+ * is float (3.5).
  * A language missing from `out` refuses the program by name — `refuse` holds
  * a fragment of the reason it must give.
  */
@@ -103,7 +104,8 @@ WHEN flag clicked:
         refuse: {fe: 'join'}
     },
     procWithGlobal: {
-        // fe custom blocks see globals; partcl procs do not.
+        // A custom block that changes a global: fe sees globals, Tcl gets a
+        // `global total` line in the proc.
         src: `GLOBAL total
 DEFINE add (k):
   change total by k
@@ -113,7 +115,6 @@ WHEN flag clicked:
   add 5
   say total
 `,
-        out: {fe: ['10']},
-        refuse: {tcl: 'sees only its own arguments'}
+        out: {tcl: ['10'], fe: ['10']}
     }
 };

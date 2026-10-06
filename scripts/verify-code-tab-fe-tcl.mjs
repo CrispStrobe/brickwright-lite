@@ -3,12 +3,12 @@
  * Browser acceptance for the Code tab's fe and Tcl tabs: blocks ⇄ text and ▶
  * Run, in the built editor, on the real 8086 DOS bench.
  *
- *   1. Pseudocode typed in the Pseudo tab → the Tcl tab derives partcl → ▶ Run
- *      prints what Scratch would.
+ *   1. Pseudocode typed in the Pseudo tab → the Tcl tab derives Tcl 8 → ▶ Run
+ *      (Jim Tcl on DOS) prints what Scratch would.
  *   2. The fe tab derives from that Tcl (Tcl → pseudocode → fe) → ▶ Run prints
  *      the same lines.
- *   3. Hand-written partcl → ⇦ To blocks → ▣ ⇨ From blocks → the fe tab holds
- *      the program as Lisp, and running it prints what the partcl printed.
+ *   3. Hand-written Tcl → ⇦ To blocks → ▣ ⇨ From blocks → the fe tab holds
+ *      the program as Lisp, and running it prints what the Tcl printed.
  *
  * The unit and bench tests (test/code-tab-fe-tcl*.test.mjs) prove the
  * converters and the interpreters; this proves the TAB wires them: the
@@ -40,9 +40,9 @@ const PSEUDO_OUT = ['30', '4', '3', '2'];
 
 const HAND_TCL = [
     'set count 0',
-    'while {< $count 4} {',
-    '  set count [+ $count 1]',
-    '  if {== $count 2} {puts "two"} {>= $count 3} {puts $count}',
+    'while {$count < 4} {',
+    '    incr count',
+    '    if {$count == 2} {puts "two"} elseif {$count >= 3} {puts $count}',
     '}'
 ].join('\n');
 const HAND_OUT = ['two', '3', '4'];
@@ -114,8 +114,8 @@ try {
     await page.waitForFunction(() => /puts \$total/.test(
         document.querySelector('.cm-content')?.innerText || ''), null, {timeout: 30000});
     const tcl = await editorText();
-    check(/proc # \{\} \{\}/.test(tcl) && /while \{< \$_r\d+ \$_n\d+\} \{/.test(tcl),
-        'Pseudo → Tcl tab derives partcl (helpers, counter loop)', tcl.replace(/\s+/g, ' ').slice(0, 160));
+    check(/^for \{set _r\d+ 0\} \{\$_r\d+ < \$_n\d+\} \{incr _r\d+\} \{/m.test(tcl) && !/proc # /.test(tcl),
+        'Pseudo → Tcl tab derives Tcl 8 (counter loop, no helper procs)', tcl.replace(/\s+/g, ' ').slice(0, 160));
     const tclOut = await runAndRead('tcl');
     check(JSON.stringify(tclOut) === JSON.stringify(PSEUDO_OUT), '▶ Run Tcl prints what Scratch would',
         JSON.stringify(tclOut));
@@ -137,7 +137,7 @@ try {
     await tab('○ Tcl').click();
     await typeInto(HAND_TCL);
     const handOut = await runAndRead('tcl');
-    check(JSON.stringify(handOut) === JSON.stringify(HAND_OUT), 'hand-written partcl runs', JSON.stringify(handOut));
+    check(JSON.stringify(handOut) === JSON.stringify(HAND_OUT), 'hand-written Tcl runs', JSON.stringify(handOut));
     await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
     await idle();
     await page.getByRole('button', {name: 'From blocks ⇨', exact: true}).click();

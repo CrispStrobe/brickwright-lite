@@ -188,8 +188,8 @@ const L10N = {
         basicUbasicFailed: (m) => `The uBASIC (on DOS) route could not run: ${m}`,
         feRunning: 'Running your fe (Lisp) on the libre fe interpreter on the DOS bench…',
         feFailed: (m) => `The fe (Lisp on DOS) route could not run: ${m}`,
-        tclRunning: 'Running your Tcl on the libre partcl interpreter on the DOS bench…',
-        tclFailed: (m) => `The Tcl (partcl on DOS) route could not run: ${m}`,
+        tclRunning: 'Running your Tcl on Jim Tcl, a libre interpreter, on the DOS bench…',
+        tclFailed: (m) => `The Tcl (Jim Tcl on DOS) route could not run: ${m}`,
         basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
         basic8086Failed: (m) => `The 8086 BASIC route could not run: ${m}`,
         apply: '✓ Apply art & convert to blocks', done: 'Done',
@@ -502,8 +502,8 @@ const L10N = {
         basicUbasicFailed: (m) => `Die uBASIC-(auf-DOS)-Route lief nicht: ${m}`,
         feRunning: 'Führe dein fe (Lisp) mit dem freien fe-Interpreter auf der DOS-Werkbank aus…',
         feFailed: (m) => `Die fe-(Lisp-auf-DOS)-Route lief nicht: ${m}`,
-        tclRunning: 'Führe dein Tcl mit dem freien partcl-Interpreter auf der DOS-Werkbank aus…',
-        tclFailed: (m) => `Die Tcl-(partcl-auf-DOS)-Route lief nicht: ${m}`,
+        tclRunning: 'Führe dein Tcl mit dem freien Jim-Tcl-Interpreter auf der DOS-Werkbank aus…',
+        tclFailed: (m) => `Die Tcl-(Jim-Tcl-auf-DOS)-Route lief nicht: ${m}`,
         basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
         basic8086Failed: (m) => `Die 8086-BASIC-Route lief nicht: ${m}`,
         apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
@@ -1032,18 +1032,21 @@ const SUPPORTED = {
     ],
     // What generateTcl writes and tclToPseudocode reads: partcl, measured.
     tcl: [
-        ['Overview', ['partcl (zserge) on the DOS bench — not full Tcl',
-            'Integers only, 16-bit: [* 300 300] is 24464',
-            'One WHEN flag clicked script + custom blocks (proc)']],
-        ['Statements', ['set n 5  /  set n [+ $n 1] → change n by 1', 'puts $n  →  say',
-            'wait 1  →  wait (no clock: a no-op)', 'return  →  stop this script']],
-        ['Control', ['if {> $n 3} {…} else {…}', 'while {== 1 1} {…}  →  forever',
-            'while {not [== $n 0]} {…}  →  repeat until', 'set _r1 0; while {< $_r1 N} {set _r1 [+ $_r1 1]; …}  →  repeat N']],
-        ['Expressions', ['prefix math: [+ a b] [- a b] [* a b] [/ a b]', '[> a b] [< a b] [== a b] (numbers only)',
-            '[and a b] [or a b] [not a] [mod a b] (helper procs)', '"text [set n] more"  →  join']],
-        ['Notes', ['A proc sees only its arguments: no globals inside custom blocks',
-            'No lists, random, or text ops besides join',
-            'The first error ends the run silently']]
+        ['Overview', ['Jim Tcl (Tcl 8 compatible) on the DOS bench',
+            'One WHEN flag clicked script + custom blocks (proc)',
+            'Tcl blocks cannot say is kept as a grey raw block and written back as is']],
+        ['Statements', ['set n 5  /  incr n  /  set n [expr {$n + x}] → change n by', 'puts $n  →  say',
+            'after 1000  →  wait 1 secs', 'return / exit  →  stop this script / stop all']],
+        ['Control', ['if {…} {…} elseif {…} {…} else {…}', 'while 1 {…}  →  forever',
+            'while {!(…)} {…}  →  repeat until', 'for {set _r1 0} {$_r1 < N} {incr _r1} {…}  →  repeat N',
+            'foreach x $L {…}  →  a counter walking the list']],
+        ['Expressions', ['expr {…}: + - * / % ** == != < > <= >= && || !', 'abs sqrt floor ceil exp log log10 round rand',
+            '[string length s] [string index s i] [string first a b]', '"text ${n} more"  →  join']],
+        ['Lists', ['lappend L x  →  add x to L', '[lindex $L i] [llength $L]  (Tcl counts from 0)',
+            'lset / linsert / lreplace  →  replace / insert / delete', '{x in $L}  →  L contains x']],
+        ['Notes', ['A proc\'s variables are its own (they show as proc_name); global shares one',
+            'A value from a proc comes back in proc_result',
+            'Integers divide as integers (7 / 2 is 3); the DOS heap is about 12 KB']]
     ],
     // What generateFe writes and feToPseudocode reads.
     fe: [
@@ -3094,23 +3097,32 @@ class PseudocodeImporter extends React.Component {
     }
 
     /**
-     * Run Tcl (zserge's partcl) through tcl.exe on the DOS bench
-     * (DOS_TOOLCHAINS 'tcl'), mirroring runFeOnDosInterp: the interpreter reads
-     * PROG.TCL (INT 21h) and prints during its run, so the output is the
-     * compile-stage screen (no output file).
+     * Run Tcl through Jim Tcl's jim.exe on the DOS bench (DOS_TOOLCHAINS
+     * 'jim'), mirroring runFeOnDosInterp: the interpreter reads PROG.TCL
+     * (INT 21h) and prints during its run, so the output is the compile-stage
+     * screen (no output file). Jim, not partcl: the tab reads and writes real
+     * Tcl (expr, lists, dicts, strings), and partcl has none of those. Jim's
+     * Tcl-coded library is a second file, JIMLIB.TCL, read on first use.
      */
     async runTclOnDosInterp (code) {
         const source = code != null ? code : this.activeCode();
         if (!source.trim()) return;
         this.setState({output: '', running: true, busy: true, status: this.L.tclRunning});
         try {
-            const r = await runDosToolchain('tcl', source, {
-                // Shipped as a static ROM (MIT, provenance beside it) — fetched,
-                // never bundled into the JS.
+            const r = await runDosToolchain('jim', source, {
+                // Shipped as static files (BSD-2, provenance beside them) —
+                // fetched, never bundled into the JS.
+                // Both paths literal, so the ROM census sees them.
                 fetchToolchain: async () => {
-                    const res = await fetch('static/roms/tcl.exe');
-                    if (!res.ok) throw new Error(`tcl.exe HTTP ${res.status}`);
-                    return {compiler: new Uint8Array(await res.arrayBuffer())};
+                    const bytes = async res => {
+                        if (!res.ok) throw new Error(`${res.url} HTTP ${res.status}`);
+                        return new Uint8Array(await res.arrayBuffer());
+                    };
+                    const [compiler, lib] = await Promise.all([
+                        fetch('static/roms/jim.exe').then(bytes),
+                        fetch('static/roms/jimlib.tcl').then(bytes)
+                    ]);
+                    return {compiler, support: {'JIMLIB.TCL': lib}};
                 },
                 maxSteps: 60_000_000
             });
