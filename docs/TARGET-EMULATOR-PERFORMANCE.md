@@ -1,5 +1,11 @@
 # Board targets and emulator performance
 
+Current handoff (2026-10-05): [target state and next lanes](TARGET-NEXT-LANES.md).
+Arcade controls and native PyBadge buttons are now qualified/merged; blocking
+SAM SPI has passed final engine CI but remains unmerged. Native display/DMA
+and CP13/CP14 remain open.
+The dated figures below are historical, not new measurements of today's main.
+
 Baseline measured 2026-09-28 from Lite `dec8f2a`, bw-board `7a4b1e1`, and
 LabWired `1cf3d3b8`. The exact-board follow-up uses LabWired engine commit
 `cdd2f1fa` (merged as `313252d4`) and bw-board `bdffe947` (the exact target
@@ -20,7 +26,7 @@ Run `npm run bench:board-targets` to repeat them; set `LABWIRED_WASM` and
 | Arduino Uno | avr8js; optional LabWired comparison | **3.38x** adapter | yes, ATmega328P | **yes** | no AVR CPU |
 | micro:bit v2 | MicroPython WASM for `.py`; MakeCode source is translated; ELF/HEX/UF2 can use the exact-board debugger | **3.32x optimized post-boot smoke median**; native active matrix/button guest **2.376x median, 2.272x minimum**. Predecessor main motion **0.890x / 0.887x FAILED**. Landed discovery/pull-mask candidate controlled EPYC 7763 medians **1.037x / 1.023x PASS**, versus predecessor **0.880x / 0.883x**; exact successor-main `ede33fb4` motion **1.290x median / 1.261x minimum PASS**, all five samples above 1x on EPYC 9V74. Proper ADC scan guest qualified/landed; countdown landed `8736e1ff`; historical isolated A/B **+7.79%**. Qualified combined GPIO candidate motion **1.396x / 1.369x**, controlled A/B **+8.396746%**, all ten candidate windows >=1x, all 40 RTx and strict relative-cost gates pass; fresh EPYC 7763 rebase motion **1.116x / 1.051x**, all five >=1x, fresh A/B PASS. GPIO PR137 landed `5fb3d7d4`, final-head native **1.127x / 1.117x** and full Core CI/A/B PASS; exact post-merge main measurement pending. Historical Nordic issue not declared closed here. Historical shared VPS under load **0.337x**, variable; browser active-I/O qualification pending | **yes, exact nRF52833 CPU/flash/GPIO/UART path**; native matrix/buttons, bounded analog routing, real ARM ADC scan and selected motion qualified upstream, not app-shipped; timed microphone/audio/browser qualification pending | no | no exact target |
 | MakeCode Arcade | PXT's source-level simulator | intentionally wall-paced | depends on selected Arcade board | no | depends on selected Arcade board |
-| PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier general tight-loop ceiling 1.76x | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; display/buttons/QSPI/USB incomplete | no | no exact target |
+| PyBadge / ATSAMD51J19 | PXT Arcade source-level simulator with qualified keyboard/mouse/touch controls; ELF/HEX/UF2 can use the exact-board debugger | **3.78x optimized post-boot smoke median**; earlier tight-loop ceiling 1.76x; neither is native game proof | **yes, exact ATSAMD51J19A CPU/flash/GPIO/Feather UART path**; upstream GPIO buttons merged; blocking SPI verified/unmerged; native display/DMA/audio/QSPI/USB incomplete, app adoption separate | no | no exact target |
 | SPIKE Prime | Independent virtual-hub model; optional build-pinned native Renode debugger on desktop | exact Renode F413 hosted CPU instruction loop **2.182x median, 1.962x minimum**; UI selects 1x | no exact F413 board | no | **exact STM32F413VG platform, guarded CPU-loop RTx, and Lite semantic debugger adapter qualified** |
 | EV3 | MakeCode source simulator where source is present; real-brick transport; optional build-pinned native Renode debugger on desktop | **1.548x median, 1.298x minimum** on a hosted ARM926 CPU instruction loop; full motor/peripheral workload RTx pending | no ARM9/AM1808 | no | **exact AM1808 foundation and Lite semantic debugger adapter qualified**: 300 MHz ARM926, high-vector SRAM, UART1, AINTC, GDB, GPIO/SPI display, raw ADC and ideal motor state; not yet full EV3 hardware |
 

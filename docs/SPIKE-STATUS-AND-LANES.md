@@ -1,0 +1,215 @@
+# SPIKE execution: current state and next lanes
+
+Recorded 2026-10-05. Refresh the public default branches and `LANES.md` before
+claiming a task. This is a bounded handover, not full firmware compatibility or
+physical SPIKE qualification. Repository-relative paths below belong to the
+named owner. Operational locations, reference images and raw transcripts are
+not public documentation inputs.
+
+## What works
+
+The same virtual hub and arena serve browser execution and desktop firmware
+execution. The execution selector chooses the program owner; 2D and 3D are views
+of the same world, not separate simulation backends. Open **SPIKE arena** from
+the Code view, use sandbox mode for free exploration, and select a supported
+execution route. Native firmware routes need a configured desktop package;
+they are unavailable in the ordinary web build.
+
+| Route | Program execution | Established scope | Remaining boundary |
+|---|---|---|---|
+| Browser simulator | Independent JavaScript backend runs Scratch/native commands and the supported converted LEGO Python subset | Shared motors, sensors, deterministic clock and arena; works without a firmware runtime | Not arbitrary Python or a physical hub model |
+| Small ARM simulation guest | Supported blocks/native program is compiled to the guest's bounded instruction format and executed by ARM code in Renode | Guest-driven motors, arena observations, completion and Stop | A small interpreter fixture, not the full operating system or arbitrary C loader |
+| Full NuttX firmware | Source-built kernel/userspace executes the native program runner or embedded MicroPython with the `brickwright` API | Upload, run, output, Stop, retained program and explicit storage workflows | Bounded APIs/limits; no general desktop Python, automatic webserver or qualified physical transport |
+| Upstream MicroPython application | User chooses an application image; Code-tab Python runs through raw REPL in the emulated CPU with `bwspike`/`bwhub` support | Default sensors, six-motor topology, feedback motor commands, hub I/O and shared arena | Different API from LEGO modules and NuttX; synchronous feedback commands, no active position hold |
+| Unchanged stock LEGO image | Separately supplied image admitted for bounded emulator/reference experiments | Image validation and recorded execution milestones | Complete boot, Code-tab program upload and modern IMU wire mapping remain unqualified; not a working interchangeable editor backend |
+
+No external firmware image is bundled or downloaded by the image chooser. C is
+used to build the source firmware and fixtures; the Code-tab native instruction
+runner does not imply arbitrary uploaded C executables. NuttX's embedded Python
+and the separate upstream MicroPython application are distinct routes.
+
+Firmware sessions own motor evolution. Native observations update the hub/world
+and arena inputs return to modeled devices; JavaScript must not advance a second
+motor controller over the same session. See [arena](SPIKE-ARENA.md),
+[firmware programs](SPIKE-FIRMWARE-PROGRAMS.md),
+[MicroPython GUI](spike-micropython-gui.md) and
+[Linux package](SPIKE-LINUX-DESKTOP.md).
+
+## Evidence and version boundaries
+
+[PR #631](https://github.com/CrispStrobe/brickwright-lite/pull/631) merged as
+`9c999cdd6274278e5e54f1c135d35af11fb5feac`. Code-tab feedback now follows
+actual firmware completion, faults and cancellation; Stop is installed during
+startup and terminal results survive cleanup. Its 73 focused tests passed;
+[merged-main qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37249838252)
+reported 5,512 passing tests, 15 documented skips and no failures. A terminal-state
+mutation was detected. These counts describe that qualification, not every later head.
+
+An installed Linux desktop run exercised actual Code-tab entry and arena controls:
+small-guest blocks/native execution, full NuttX Python driving A–F followed by
+Arena Stop, and upstream MicroPython 1.29.0 through the native image chooser,
+with motor/world motion, display/output and completion. Small-guest and
+MicroPython completion release ownership; full NuttX retains its program/storage
+session until explicit close or backend switch. Program completion does not
+promise electrical braking unless the program or route contract requests it.
+This is installed-GUI evidence, not signed-release or physical-hardware evidence.
+
+Newer [firmware PR #34](https://github.com/CrispStrobe/brickwright-spike-prime-fw/pull/34)
+qualified retained restart, virtual Bluetooth peers and LittleFS interruption
+fixtures. Its [current handover](https://github.com/CrispStrobe/brickwright-spike-prime-fw/blob/main/docs/project/next-steps.md)
+is authoritative for firmware L01–L13. Those newer capabilities are not implicitly
+present in the already tested desktop package. Firmware consumes specific Runtime
+and Infrastructure revisions; Runtime main's newer MicroPython SDK likewise does
+not automatically advance every consumer. Record each route's actual pins.
+
+## How a fresh agent starts
+
+1. Refresh the owning public repository; read its current claims and the linked
+   contracts. Claim only the paths needed by one lane, preserving other work.
+2. State the observable contract, required inputs, units, timing, cancellation,
+   ownership and unsupported errors before changing behavior. Use synthetic
+   fixtures for public tests and declare their limits.
+3. Add a regression that fails the old behavior; use a meaningful mutation where
+   practical. Test the actual guest/GUI when that is the capability being claimed.
+4. Land model/runtime work in its owning fork before advancing exact consumer
+   pins. Preserve notices and the overlay/package mirror in this repository.
+5. Record tested source, route/dependency pins, public CI, acceptance results and
+   remaining exclusions. Never relabel host-only evidence as guest or hardware proof.
+
+These are proposed tasks, not ownership claims. Existing non-SPIKE actuator work
+in `LANES.md` and [the broader queue](OPEN-TASKS-2026-09-29.md) retains its ownership.
+
+## Next-step lanes
+
+### G01 — Adopt the newer qualified firmware in the desktop package
+
+**Owner:** Brickwright Lite, after firmware L11. **Start:**
+`scripts/prepare-spike-nuttx-package.mjs`, `scripts/build-spike-linux-desktop.mjs`,
+`test/spike-linux-package.test.mjs`, `test/spike-nuttx-storage-exchange.test.mjs`.
+Read the firmware handover and actual current manifests first.
+
+Build/stage the reviewed source profiles using existing tools; record immutable
+Runtime/model/firmware inputs and retain their notices. Rebuild the configured
+package without external images. Exercise the actual Code tab for native and
+embedded Python: upload, complete, restart without upload, Stop, fault, save,
+close/reopen/load and retry. Define expected persistence and terminal feedback.
+**Done:** real guest and installed GUI observations establish every advertised
+operation; invalid manifests and stale sessions fail closed; package receipts
+match the tested artifacts. New firmware guest qualification is required before
+claiming adoption. Doable now with the documented build prerequisites.
+
+### G02 — Preserve lifecycle correctness under concurrent GUI actions
+
+**Owner:** Lite. **Start:** `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
+`renode-arena-session.js` in that directory,
+`overlay/scratch-gui/src/components/tw-pseudocode/`,
+`test/spike-code-run-feedback.test.mjs`, `test/spike-micropython-code-tab.test.mjs`.
+
+Add actual GUI cases for Stop during chooser/startup/final sampling, backend
+switch, pane disposal, reopen/reupload, UART generation change and late polls.
+Use a delayed/error-capable synthetic native boundary for races, then verify
+representative races with an actual owned guest. Preserve all #631 regressions.
+**Done:** one terminal result, no late world publication, no stale owner stopping
+its replacement and no leaked owned process. Mutating a terminal/ownership guard
+must fail the comparison. Doable now; no externally supplied firmware needed for
+small-guest/NuttX cases.
+
+### G03 — Qualify usable sandbox and responsive editor controls
+
+**Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,
+`overlay/scratch-gui/src/components/tw-pseudocode/`,
+`test/spike-arena-3d-pane.test.mjs`, `test/spike-arena-pane-units.test.mjs`.
+
+Inspect existing controls before adding UI. Test free sandbox access, shared
+2D/3D state, topology selection, reset/edit/save/reopen, and firmware ownership
+across view switches. Cover narrow desktop/mobile widths, long conversion/error
+messages, dismissible reports, collapsed/moved lessons and a right pane taking
+50–75% of the available width. Check keyboard/touch controls and translations.
+Include explicit image/backdrop selection, familiar undo icons, compact run
+controls and clearly labeled import actions in the overflow menu.
+Document what Identify A–F actually observes; unresolved identification must
+show a bounded error rather than an indefinite ellipsis.
+**Done:** real rendered UI remains resizable and usable; mode switches preserve
+one world and cannot start an unavailable backend. Doable now; this lane first
+records already working features and fixes only demonstrated gaps.
+
+### G04 — Extend API/topology parity through declared capabilities
+
+**Owners:** firmware L01/L02/L05/L06/L09, Runtime, then Lite. **Start:**
+[Runtime tasks](https://github.com/CrispStrobe/renode-spike-prime/blob/0bb3f3e40ec8e84afe6c7a63a03374a5a0553969/docs/SPIKE-STATUS-AND-LANES.md),
+`test/independent-spike-backend.test.mjs`, `test/spike-renode-arena-session.test.mjs`.
+
+Choose one supported command slice; compare identical external scenarios across
+browser, small guest, NuttX and upstream MicroPython only where each advertises
+it. Specify units, tolerances, simulated time, end actions and errors. Cover
+sequence/concurrency, boundary values, detach/load/no-progress and cancellation.
+Avoid claiming a timeout is measured stall or a completed move is active HOLD.
+**Done:** a published route-specific capability table and comparisons reject a
+broken observable behavior; shared hub/arena state remains single-owned. Contract
+work is doable now; guest motor/hotplug extensions depend on firmware lanes.
+
+### G05 — Finish portable packaging and dependency/licence closure
+
+**Owner:** Lite packaging, coordinated with firmware L11 and Runtime. **Start:**
+`scripts/build-spike-linux-desktop.mjs`, `test/spike-linux-package.test.mjs`,
+`docs/spike-micropython-installed-resources.md`, `docs/SPIKE-LINUX-DESKTOP.md`.
+
+Inventory exact distributed runtime/native libraries and source-built components;
+verify selected versions, licences, notices and applicable MPL/LGPL obligations.
+Resolve open source-to-binary provenance without rewriting artifact bytes.
+Test relocation, missing/tampered files, constrained resource admission and owned
+child cleanup. Add non-Unix staging as a separate reviewed contract rather than
+advertising it from Linux results. Signed installers/update channels need their
+own packaging and platform acceptance evidence.
+**Done:** an exact distributable closure, reproducible assembly instructions and
+platform-specific installed tests. Linux inventory work is doable now; other
+platform/signing tests require their build environment and credentials.
+
+### G06 — Improve model fidelity and unchanged-image bringup
+
+**Owners:** Infrastructure and Runtime; firmware L07/L08/L11. **Start:**
+[model tasks](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/blob/5a519ce5d9b5122bcf2ecedcbfd6f49d2735bbeb/docs/SPIKE-STATUS-AND-LANES.md).
+
+Implement one evidenced public peripheral contract at a time, then adopt exact
+pins and rerun affected guest workflows. Keep unknown modern IMU mapping false.
+Prepare source-only fixtures now; unchanged-image experiments require lawful
+operator-supplied inputs and remain separate from Code-tab compatibility.
+**Done:** model regression plus bounded real guest milestones, not elapsed time
+alone. Complete original-firmware boot and upload are explicitly pending.
+
+### G07 — Define program delivery over supported transports
+
+**Owners:** firmware transport/runner, Runtime virtual peers, Lite client UI.
+**Start:** firmware `docs/hubprogram.md`, `docs/project/classic-protocol.md`,
+`docs/project/ble-protocol.md`; Runtime `docs/spike-program-uart.md`; Lite
+`SPIKE-NUTTX.md` and `docs/SPIKE-FIRMWARE-PROGRAMS.md`.
+
+Inventory actual upload/run/output/Stop/status/storage endpoints before promising
+another listener. Define a bounded common program-delivery contract, protocol
+version, authentication/admission, chunk limits and failure/ownership rules.
+Qualify a virtual Bluetooth peer against real guest handling where supported.
+Specify a web-facing service as an external bridge unless an actual guest network
+interface and server are established; the editor's local Renode state service
+is not an on-hub webserver. Native program upload does not imply an arbitrary C
+executable loader; decide that ABI separately if required.
+**Done:** public capability tables name each implemented transport, actual guest
+upload/run/Stop/fault/reconnect tests pass, and unsupported modes refuse clearly.
+Contract and virtual transport work is doable now; physical USB/BLE and remote
+service deployment need separate hardware/security/platform qualification.
+
+## Reproducible starting checks
+
+From the Lite repository root, Node 22, with repository-prescribed dependencies:
+
+```sh
+node --test test/overlay-packages-pairs.test.mjs test/spike-code-run-feedback.test.mjs test/spike-micropython-code-tab.test.mjs test/spike-renode-arena-session.test.mjs test/spike-nuttx-storage-exchange.test.mjs test/spike-arena-pane-units.test.mjs test/spike-arena-3d-pane.test.mjs
+node --test test/independent-spike-backend.test.mjs test/independent-spike-controller.test.mjs test/spike-arena-sim.test.mjs
+```
+
+These are focused starting checks; they do not replace actual guest/installed GUI
+qualification. Follow the linked route guides for source assembly and image
+selection. Firmware source changes need its affected clean-build/guest matrix;
+documentation-only work needs documentation/source-policy checks. LabWired has
+no qualified SPIKE peripheral/firmware integration and is not a substitute for
+these Renode gates. Physical USB/BLE, radio security, electrical calibration and
+hardware release remain outside the demonstrated simulation scope.

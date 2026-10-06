@@ -72,6 +72,63 @@ export const LINUX_RISCV_MEDIA = Object.freeze({
     licences: Object.freeze(['GPL-2.0-only', 'LGPL-2.1-or-later'])
 });
 
+// ELKS 0.9.2 (Embeddable Linux Kernel Subset) — a real 16-bit Unix-like OS on the
+// i8086 machine. The official release floppy is GPL-2.0 and lives in brickwright-
+// media-lab on the `media/elks-v0.9.2` branch (byte-identical to the upstream
+// release asset; mirrored there because raw.githubusercontent sends CORS and the
+// GitHub release download does not). Its corresponding source is ghaerr/elks @
+// v0.9.2. Same pattern as the Linux lesson above.
+const ELKS_MEDIA_COMMIT = '1ebf1392e2c31f58c90d0c849c20c57e16c02614';
+const ELKS_RAW = `https://raw.githubusercontent.com/CrispStrobe/brickwright-media-lab/${ELKS_MEDIA_COMMIT}/projects/elks`;
+
+/** The pinned ELKS media. Mirrors brickwright-media-lab projects/elks/
+ *  brickwright-media.json — same floppy, same geometry/quirks. */
+export const ELKS_MEDIA = Object.freeze({
+    commit: ELKS_MEDIA_COMMIT,
+    floppy: Object.freeze({
+        url: `${ELKS_RAW}/fd1440-fat.img`,
+        sha256: '637a1d07ac1b18c7e8fafbf64911ceaa5864a37c60e23878d498534ccaae366b',
+        bytes: 1474560,
+        geometry: Object.freeze({cylinders: 80, heads: 2, sectors: 18, bytesPerSector: 512})
+    }),
+    quirks: Object.freeze(['at-floppy-drive-type']),
+    /** Corresponding source (GPL-2.0 §3): the upstream ELKS tag the floppy is built from. */
+    source: 'https://github.com/ghaerr/elks/tree/v0.9.2',
+    project: `${MEDIA_LAB}/tree/main/projects/elks`,
+    licences: Object.freeze(['GPL-2.0-only'])
+});
+// CP/M 2.2 lesson is self-contained: DRI's CCP+BDOS (static/roms/cpm22-64k.bin +
+// cpm-bios.bin) and BBC BASIC (static/roms/bbcbasic.com) all ship in this app.
+// The cpmsys boot slot points at BBC BASIC; this pins its bytes (same-origin, but
+// verified like any slot). Keep in step with the shipped file.
+const CPM_BBCBASIC_SHA256 = '833839801fe3edbb73b91613eb43ea6052822d2d09dafd08639d120ad3a6e1bd';
+
+// Microsoft BASIC for 6502 (V1.1, MIT) lesson is also self-contained: the 32 KB
+// ROM ships at static/roms/msbasic-6502.rom. It boots on the eater6502 machine,
+// whose config (RAM $0000-$3FFF, ROM $8000-$FFFF, 65C51 ACIA console at $5000) is
+// given inline here — the same config bw-board's EATER6502 preset uses, which the
+// media-lab project's proof relies on. Keep the SHA in step with the shipped ROM.
+const MSBASIC_ROM_SHA256 = '89c5072ea5162f8990676492d8a4c04c8b4dd3d54186e48ca576f93f2e63816c';
+const EATER6502_CONFIG = Object.freeze({
+    clockHz: 1_000_000,
+    regions: [
+        {kind: 'ram', start: 0x0000, end: 0x3fff},
+        {kind: 'rom', start: 0x8000, end: 0xffff}
+    ],
+    chips: [
+        {kind: 'via', name: 'via1', at: 0x6000},
+        {kind: 'acia', name: 'acia1', at: 0x5000}
+    ]
+});
+
+/** The ELKS display screen + keyboard (mirrors the media-lab manifest's widgets). */
+const ELKS_WIDGETS = Object.freeze([
+    {name: 'screen', type: 'simplevga', config: {width: 640, height: 200},
+        layout: {x: 0, y: 0, w: 24, h: 14}, source: 'video'},
+    {name: 'keyboard', type: 'keyboard', config: {},
+        layout: {x: 0, y: 15, w: 24, h: 3}, source: 'keyIn'}
+]);
+
 const TABLE = {
     en: {
         'lessons.heading': 'Lessons',
@@ -85,6 +142,28 @@ const TABLE = {
             'Run fetches them ({size}) from brickwright-media-lab and checks their SHA-256 first.',
         'lessons.cold': 'Boot from scratch',
         'linux.source': 'Source code',
+        'elks.title': 'ELKS on 8086',
+        'elks.summary': 'ELKS 0.9.2 — a real 16-bit Unix-like OS — boots on the emulated 8086 ' +
+            'from its 1.44 MB floppy. Run opens the kernel boot on the machine screen: it sizes ' +
+            'the disk, mounts the root filesystem and reaches a login. A free BIOS is built in.',
+        'elks.licence': 'ELKS is GPL-2.0. It is not part of this app: ' +
+            'Run fetches the floppy ({size}) from brickwright-media-lab and checks its SHA-256 first.',
+        'elks.source': 'Source code',
+        'cpm.title': 'BBC BASIC on CP/M 2.2',
+        'cpm.summary': 'DRI’s real CP/M 2.2 (CCP+BDOS, not a shim) boots on the emulated Z80 to the A> prompt. ' +
+            'BBC BASIC is on drive A: — type DIR to list it, BBCBASIC to run it. ' +
+            'The console is the Debug panel’s serial terminal. Everything ships in the app — no download.',
+        'cpm.licence': 'CP/M 2.2 is DRI’s redistributable release (2022 grant); BBC BASIC (Z80) is zlib (R.T. Russell). ' +
+            'Both ship in this app.',
+        'cpm.source': 'Project',
+        'msbasic.title': 'Microsoft BASIC on 6502',
+        'msbasic.summary': 'Microsoft’s original 1978 6502 BASIC (V1.1, the MIT release) boots on the emulated ' +
+            'Ben Eater 6502 to the MICROSOFT BASIC V1.1 banner and the OK prompt. Answer MEMORY SIZE? and ' +
+            'WIDTH? with Enter, then type a program (PRINT 2+2, or 10 FOR I=1 TO 3 …). ' +
+            'The console is the Debug panel’s serial terminal (the 65C51 ACIA). Ships in the app — no download.',
+        'msbasic.licence': 'Microsoft BASIC for 6502 is MIT (Microsoft’s 1978 source, MIT release; built with ca65). ' +
+            'It ships in this app.',
+        'msbasic.source': 'Project',
         'lessons.fetching': 'Fetching {title} ({size}) and checking SHA-256…',
         'lessons.failed': 'Could not start {title}: {reason}'
     },
@@ -100,6 +179,29 @@ const TABLE = {
             'Ausführen lädt sie ({size}) von brickwright-media-lab und prüft vorher ihre SHA-256.',
         'lessons.cold': 'Von Grund auf booten',
         'linux.source': 'Quellcode',
+        'elks.title': 'ELKS auf 8086',
+        'elks.summary': 'ELKS 0.9.2 — ein echtes 16-Bit-unixoides Betriebssystem — startet auf dem ' +
+            'emulierten 8086 von seiner 1,44-MB-Diskette. Ausführen zeigt den Kernel-Start auf dem ' +
+            'Maschinenbildschirm: Er erkennt die Diskettengeometrie, bindet das Wurzeldateisystem ein ' +
+            'und erreicht einen Login. Ein freies BIOS ist eingebaut.',
+        'elks.licence': 'ELKS steht unter GPL-2.0. Es ist nicht Teil dieser App: ' +
+            'Ausführen lädt die Diskette ({size}) von brickwright-media-lab und prüft vorher ihre SHA-256.',
+        'elks.source': 'Quellcode',
+        'cpm.title': 'BBC BASIC auf CP/M 2.2',
+        'cpm.summary': 'DRIs echtes CP/M 2.2 (CCP+BDOS, kein Shim) startet auf dem emulierten Z80 am A>-Prompt. ' +
+            'BBC BASIC liegt auf Laufwerk A: — DIR listet es, BBCBASIC startet es. ' +
+            'Die Konsole ist das serielle Terminal im Debug-Panel. Alles ist in der App enthalten — kein Download.',
+        'cpm.licence': 'CP/M 2.2 ist DRIs weitergabefähige Ausgabe (Freigabe 2022); BBC BASIC (Z80) steht unter zlib (R.T. Russell). ' +
+            'Beides ist in dieser App enthalten.',
+        'cpm.source': 'Projekt',
+        'msbasic.title': 'Microsoft BASIC auf 6502',
+        'msbasic.summary': 'Microsofts ursprüngliches 6502-BASIC von 1978 (V1.1, die MIT-Ausgabe) startet auf dem ' +
+            'emulierten Ben-Eater-6502 mit dem Banner MICROSOFT BASIC V1.1 und dem OK-Prompt. Beantworte MEMORY SIZE? ' +
+            'und WIDTH? mit der Eingabetaste und tippe dann ein Programm (PRINT 2+2 oder 10 FOR I=1 TO 3 …). ' +
+            'Die Konsole ist das serielle Terminal im Debug-Panel (der 65C51-ACIA). In der App enthalten — kein Download.',
+        'msbasic.licence': 'Microsoft BASIC für 6502 steht unter MIT (Microsofts Quellcode von 1978, MIT-Ausgabe; mit ca65 gebaut). ' +
+            'Es ist in dieser App enthalten.',
+        'msbasic.source': 'Projekt',
         'lessons.fetching': '{title} wird geladen ({size}) und per SHA-256 geprüft…',
         'lessons.failed': '{title} konnte nicht starten: {reason}'
     }
@@ -117,6 +219,8 @@ export const LINUX_DOWNLOAD_BYTES = LINUX_RISCV_MEDIA.kernel.bytes + LINUX_RISCV
     LINUX_RISCV_MEDIA.snapshot.bytes;
 /** Download of "Boot from scratch" (no snapshot). */
 export const LINUX_COLD_DOWNLOAD_BYTES = LINUX_RISCV_MEDIA.kernel.bytes + LINUX_RISCV_MEDIA.initrd.bytes;
+/** Total download of the ELKS lesson's Run (one floppy). */
+export const ELKS_DOWNLOAD_BYTES = ELKS_MEDIA.floppy.bytes;
 
 /**
  * The lessons, as machine configs plus what the manager shows beside them.
@@ -127,40 +231,149 @@ export const LINUX_COLD_DOWNLOAD_BYTES = LINUX_RISCV_MEDIA.kernel.bytes + LINUX_
  *            sourceLabel: string, size: string, coldSize: string, coldLabel: string}[]}
  */
 export function lessonMachines (locale) {
-    // A deliberately self-contained build omits separately hosted machine media. This is selected
-    // by webpack, not inferred from Tauri; normal native builds offer the same lesson as the web app.
+    // Lesson visibility follows ONLY the machine-image policy axis
+    // (test/native-store-code-policy.test.mjs): a build that denies remote
+    // machine images shows NO lessons at all — the whole feature is off. That
+    // includes the self-contained CP/M and MS BASIC lessons below, whose media
+    // ships in-app: they are gated the same way by product decision.
     if (!remoteMachineImagesAllowed()) return [];
     const t = (k, v) => lessonT(locale, k, v);
-    const config = newMachineConfig({
-        id: 'lesson-linux-riscv32',
-        title: t('linux.title'),
+    const rows = [];
+
+    // Remote GPL-media lessons: the kernel/floppy are fetched at run time from
+    // brickwright-media-lab and are never part of this build.
+    {
+        const config = newMachineConfig({
+            id: 'lesson-linux-riscv32',
+            title: t('linux.title'),
+            executionMode: 'functional',
+            machine: 'riscv32',
+            slots: {
+                kernel: {url: LINUX_RISCV_MEDIA.kernel.url, sha256: LINUX_RISCV_MEDIA.kernel.sha256},
+                initrd: {url: LINUX_RISCV_MEDIA.initrd.url, sha256: LINUX_RISCV_MEDIA.initrd.sha256},
+                snapshot: {url: LINUX_RISCV_MEDIA.snapshot.url, sha256: LINUX_RISCV_MEDIA.snapshot.sha256}
+            },
+            bootOrder: ['kernel'],
+            tags: ['lesson', 'linux', 'gpl-media'],
+            provenance: {
+                source: 'brickwright-media-lab/projects/riscv32-linux',
+                license: LINUX_RISCV_MEDIA.licences.join(' + '),
+                sourceCode: LINUX_RISCV_MEDIA.source
+            }
+        });
+        const coldSlots = {...config.slots};
+        delete coldSlots.snapshot;
+        const coldConfig = newMachineConfig({...config, slots: coldSlots, bootOrder: ['kernel']});
+
+        // ELKS 0.9.2 on the i8086 machine — the floppy is the boot medium (no cold
+        // variant: it IS the whole boot). The floppy slot selects the floppy-OS
+        // boot path; its geometry + the at-floppy-drive-type quirk are what ELKS
+        // needs to find /bin/init. A `video` widget mirrors the screen to Widgets.
+        const elksConfig = newMachineConfig({
+            id: 'lesson-elks-i8086',
+            title: t('elks.title'),
+            executionMode: 'functional',
+            machine: 'i8086',
+            machineConfig: 'PCXT8086',
+            slots: {
+                floppy: {
+                    url: ELKS_MEDIA.floppy.url,
+                    sha256: ELKS_MEDIA.floppy.sha256,
+                    geometry: {...ELKS_MEDIA.floppy.geometry}
+                }
+            },
+            quirks: [...ELKS_MEDIA.quirks],
+            bootOrder: ['floppy'],
+            widgets: ELKS_WIDGETS.map(w => ({...w})),
+            tags: ['lesson', 'elks', 'gpl-media'],
+            provenance: {
+                source: 'brickwright-media-lab/projects/elks',
+                license: ELKS_MEDIA.licences.join(' + '),
+                sourceCode: ELKS_MEDIA.source
+            }
+        });
+
+        rows.push({
+            config,
+            coldConfig,
+            coldLabel: t('lessons.cold'),
+            coldSize: mediaSize(LINUX_COLD_DOWNLOAD_BYTES),
+            summary: t('linux.summary'),
+            licence: t('linux.licence', {size: mediaSize(LINUX_DOWNLOAD_BYTES)}),
+            source: LINUX_RISCV_MEDIA.source,
+            sourceLabel: t('linux.source'),
+            size: mediaSize(LINUX_DOWNLOAD_BYTES)
+        }, {
+            config: elksConfig,
+            summary: t('elks.summary'),
+            licence: t('elks.licence', {size: mediaSize(ELKS_DOWNLOAD_BYTES)}),
+            source: ELKS_MEDIA.source,
+            sourceLabel: t('elks.source'),
+            size: mediaSize(ELKS_DOWNLOAD_BYTES)
+        });
+    }
+
+    // CP/M 2.2 (self-contained): DRI's real CCP+BDOS + BBC BASIC (Z80) both ship
+    // in this app's static/roms, so this lesson is offered even in a
+    // self-contained build. A `cpmsys` boot slot selects the real-CP/M boot
+    // (debug-runner attachZ80 cpm-system branch, which also loads the system ROMs
+    // from static/roms); the slot points at BBC BASIC, placed on drive A:. The
+    // title makes its CP/M 8.3 name BBCBASIC.COM, so it coincides with the copy
+    // the boot already loads — one A: entry, not a duplicate. The console is the
+    // Debug serial terminal (no video widget). CP/M 2.2 is DRI-redistributable
+    // and BBC BASIC is zlib, so neither is GPL media — hence not behind the gate.
+    const cpmConfig = newMachineConfig({
+        id: 'lesson-cpm-z80',
+        title: t('cpm.title'),
         executionMode: 'functional',
-        machine: 'riscv32',
-        slots: {
-            kernel: {url: LINUX_RISCV_MEDIA.kernel.url, sha256: LINUX_RISCV_MEDIA.kernel.sha256},
-            initrd: {url: LINUX_RISCV_MEDIA.initrd.url, sha256: LINUX_RISCV_MEDIA.initrd.sha256},
-            snapshot: {url: LINUX_RISCV_MEDIA.snapshot.url, sha256: LINUX_RISCV_MEDIA.snapshot.sha256}
-        },
-        bootOrder: ['kernel'],
-        tags: ['lesson', 'linux', 'gpl-media'],
+        machine: 'z80',
+        slots: {cpmsys: {url: 'static/roms/bbcbasic.com', sha256: CPM_BBCBASIC_SHA256}},
+        bootOrder: ['cpmsys'],
+        tags: ['lesson', 'cpm'],
         provenance: {
-            source: 'brickwright-media-lab/projects/riscv32-linux',
-            license: LINUX_RISCV_MEDIA.licences.join(' + '),
-            sourceCode: LINUX_RISCV_MEDIA.source
+            source: 'brickwright-media-lab/projects/bbc-basic-z80',
+            license: 'CP/M 2.2 (DRI redistributable, 2022 grant) + zlib (BBC BASIC Z80)',
+            sourceCode: `${MEDIA_LAB}/tree/main/projects/bbc-basic-z80`
         }
     });
-    const coldSlots = {...config.slots};
-    delete coldSlots.snapshot;
-    const coldConfig = newMachineConfig({...config, slots: coldSlots, bootOrder: ['kernel']});
-    return [{
-        config,
-        coldConfig,
-        coldLabel: t('lessons.cold'),
-        coldSize: mediaSize(LINUX_COLD_DOWNLOAD_BYTES),
-        summary: t('linux.summary'),
-        licence: t('linux.licence', {size: mediaSize(LINUX_DOWNLOAD_BYTES)}),
-        source: LINUX_RISCV_MEDIA.source,
-        sourceLabel: t('linux.source'),
-        size: mediaSize(LINUX_DOWNLOAD_BYTES)
-    }];
+    rows.push({
+        config: cpmConfig,
+        summary: t('cpm.summary'),
+        licence: t('cpm.licence'),
+        source: `${MEDIA_LAB}/tree/main/projects/bbc-basic-z80`,
+        sourceLabel: t('cpm.source'),
+        size: '25 KB'
+    });
+
+    // Microsoft BASIC for 6502 (self-contained): the MIT 32 KB ROM ships in
+    // static/roms. The `rom` slot has no profile — it loads as a ROM image into
+    // the eater6502 machine's ROM region ($8000-$FFFF). The inline machineConfig
+    // supplies the 65C51 ACIA the BASIC console talks to; output is the Debug
+    // serial terminal. MIT, not GPL media, so not behind the remote gate.
+    const msbasicConfig = newMachineConfig({
+        id: 'lesson-msbasic-6502',
+        title: t('msbasic.title'),
+        executionMode: 'functional',
+        machine: 'eater6502',
+        machineConfig: {regions: EATER6502_CONFIG.regions.map(r => ({...r})),
+            chips: EATER6502_CONFIG.chips.map(c => ({...c})), clockHz: EATER6502_CONFIG.clockHz},
+        slots: {rom: {url: 'static/roms/msbasic-6502.rom', sha256: MSBASIC_ROM_SHA256}},
+        bootOrder: ['rom'],
+        tags: ['lesson', 'msbasic'],
+        provenance: {
+            source: 'brickwright-media-lab/projects/ms-basic-6502',
+            license: 'MIT (Microsoft BASIC for 6502)',
+            sourceCode: `${MEDIA_LAB}/tree/main/projects/ms-basic-6502`
+        }
+    });
+    rows.push({
+        config: msbasicConfig,
+        summary: t('msbasic.summary'),
+        licence: t('msbasic.licence'),
+        source: `${MEDIA_LAB}/tree/main/projects/ms-basic-6502`,
+        sourceLabel: t('msbasic.source'),
+        size: '32 KB'
+    });
+
+    return rows;
 }
