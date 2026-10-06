@@ -7,7 +7,7 @@
   "CrispStrobe/devices": "reads the host's `stc` and `circuitBoard` seams off Scratch.vm.runtime to drive the simulated parts; the restricted worker exposes no VM runtime and therefore no board",
   "CrispStrobe/microbitplus": "resolves the open circuit through Scratch.vm.runtime.circuitBoard on every board-facing block; the restricted worker exposes no VM runtime and therefore no board",
   "CrispStrobe/circuit": "bootstraps locale from window.ReduxStore/storage events, document.documentElement, navigator.language, and Scratch.vm.runtime.getLocale; its fetch-like/runtime capability-model references are comments/JSDoc rather than executable imports",
-  "CrispStrobe/circuitcubes": "opens a Web Bluetooth device (navigator.bluetooth.requestDevice on the Nordic UART service) and bootstraps locale from window.ReduxStore/storage events, localStorage, document.documentElement, navigator.language, and Scratch.vm.runtime.getLocale; the restricted worker exposes none of those",
+  "CrispStrobe/circuitcubes": "opens Circuit Cubes over Web Bluetooth (navigator.bluetooth.requestDevice / getPrimaryService) and reads Scratch.vm.runtime plus window/localStorage/document state; the restricted worker exposes no Web Bluetooth, no VM runtime and no DOM",
   "CrispStrobe/csp": "bootstraps and live-updates module locale from window.ReduxStore, window storage events, document.documentElement, navigator.language, and Scratch.vm.runtime.getLocale",
   "CrispStrobe/ev3_direct": "uses navigator.serial for EV3 transport and Scratch.vm.runtime/DOM locale plumbing unavailable in the restricted worker",
   "CrispStrobe/ev3_lms_transpile": "its Scratch.fetch calls are worker-safe, but locale bootstrap still reads window, document, navigator, and Scratch.vm.runtime.getLocale",

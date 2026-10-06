@@ -23,8 +23,7 @@ test('gallery capability census closes the exact 129/129 pinned denominator', ()
     // devices, microbitplus and brickwright_tts were upstreamed on 2026-09-20.
     // What is being asserted is N of N: every pinned extension is censused,
     // with no silent remainder. The literal is here so that growth is a
-    // deliberate edit rather than a drifting denominator. 129 since
-    // CrispStrobe/circuitcubes joined the gallery (extensions #15, 2026-10-06).
+    // deliberate edit rather than a drifting denominator.
     assert.equal(slugs.length, 129);
     assert.equal(validateGalleryContract(pins, slugs), true);
     assert.equal(pins.schemaVersion, 2);
@@ -62,13 +61,13 @@ test('every deferred pin has a pin-specific reviewed reason and no generic scan 
     // fourth and is NOT here: it touches no host API at all, so it had nothing
     // to defer for. The two counts are asserted separately on purpose — a pin
     // with no reason and a reason with no pin are different faults.
-    // 103 since the TurboWarp sync of 2026-09-21: six arrivals (lab/video-sprites,
-    // SharkPool/Messages-Plus, SharkPool/Tune-Shark-V3, SamuelLouf/Geolocation,
-    // CubesterYT/Webhooks, NishiOwO/dectalk) less the delisted `sound`, whose
-    // reason had to go with it — a reason for a pin the gallery no longer has is
-    // exactly what the ledger-matches-denominator check exists to catch.
-    // 104 since CrispStrobe/circuitcubes (extensions #15, 2026-10-06): Web
-    // Bluetooth plus DOM/VM locale bootstrap, so it needed its own reason.
+    // 104 since the 2026-10-06 sync: 103 from the TurboWarp sync of 2026-09-21
+    // (six arrivals — lab/video-sprites, SharkPool/Messages-Plus,
+    // SharkPool/Tune-Shark-V3, SamuelLouf/Geolocation, CubesterYT/Webhooks,
+    // NishiOwO/dectalk — less the delisted `sound`, whose reason had to go with
+    // it) plus the new arrival CrispStrobe/circuitcubes (Web Bluetooth + VM
+    // runtime + DOM). A reason for a pin the gallery no longer has is exactly
+    // what the ledger-matches-denominator check exists to catch.
     assert.equal(deferred.length, 104);
     assert.equal(Object.keys(REVIEWED_DEFERRED_REASONS).length, 104);
     for (const [slug, pin] of deferred) {

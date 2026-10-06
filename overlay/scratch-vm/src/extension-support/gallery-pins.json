@@ -278,7 +278,7 @@
       "brokerCapabilities": [],
       "migration": {
         "status": "deferred",
-        "reason": "opens a Web Bluetooth device (navigator.bluetooth.requestDevice on the Nordic UART service) and bootstraps locale from window.ReduxStore/storage events, localStorage, document.documentElement, navigator.language, and Scratch.vm.runtime.getLocale; the restricted worker exposes none of those"
+        "reason": "opens Circuit Cubes over Web Bluetooth (navigator.bluetooth.requestDevice / getPrimaryService) and reads Scratch.vm.runtime plus window/localStorage/document state; the restricted worker exposes no Web Bluetooth, no VM runtime and no DOM"
       }
     },
     "CrispStrobe/csp": {
