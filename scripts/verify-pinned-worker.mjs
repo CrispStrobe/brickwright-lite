@@ -88,7 +88,7 @@ try {
     }, {url: extensionURL, stranger: STRANGER});
 
     const expected = {
-        scenarios: 3,
+        scenarios: 6,
         // Input is `<b>&"'`, so the tail is the double quote THEN the
         // apostrophe. It used to be the other way round here because
         // Clay/htmlEncode had its two cases crossed -- `"` returned &apos;
