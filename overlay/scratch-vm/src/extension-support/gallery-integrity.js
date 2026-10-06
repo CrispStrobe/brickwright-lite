@@ -64,6 +64,18 @@ const pinForURL = value => {
 };
 
 /**
+ * The exact gallery URL of a pinned slug, or null when the shipped pin map has no
+ * entry for it. Used to route a project's bare extension id to reviewed content.
+ * @param {string} slug gallery path without `.js`, e.g. `Lily/TempVariables2`
+ * @returns {string|null} the pinned URL, or null
+ */
+const galleryURLForSlug = slug => {
+    if (typeof slug !== 'string') return null;
+    const url = `${BASE}${slug}.js`;
+    return gallerySlugForURL(url) === slug && pinForURL(url) ? url : null;
+};
+
+/**
  * Why a URL is or is not trusted, so the UI can word its warning accordingly.
  *
  * The distinction earns its keep: a gallery entry published after this app was
@@ -107,4 +119,4 @@ const verifyGallerySource = async (url, bytes) => {
     return true;
 };
 
-module.exports = {pinForURL, pinStatusFor, sha256Hex, verifyGallerySource};
+module.exports = {galleryURLForSlug, pinForURL, pinStatusFor, sha256Hex, verifyGallerySource};
