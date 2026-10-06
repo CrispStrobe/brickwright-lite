@@ -221,8 +221,12 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // PIN MOVED c8edc8cc -> a69547b7 (2026-10-06, sb3-creator#53, task B11
     // follow-up): the referee seeds declared lists, a bench layout fix, one
     // gallery example's green-flag script. No parser change; the assertions re-ran.
+    // PIN MOVED a69547b7 -> 7b8415d5 (2026-10-06, sb3-creator#54, task D7): a
+    // condition in a value position warns (none in this fixture), the decompiler
+    // writes a Boolean block in a round slot as its condition, the C reader's
+    // branch form. The assertions re-ran.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'a69547b783a63dc538c47569ffe8993edc5a985b');
+        '7b8415d5ede7fc2c31e9ef8c35f24eab63b59441');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

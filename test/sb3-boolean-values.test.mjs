@@ -38,6 +38,23 @@ WHEN flag clicked:
     assert.equal(String(values.branched), '1');
 });
 
+// Task D7 (sb3-creator #54): E3's finding — `not (…)` in value position was the
+// text with NO warning — closed. Every condition form now gets the same rule
+// as a comparison: the text, and one warning naming the branch form.
+test('`not (…)` and the predicate forms used as values are warned about like a comparison', () => {
+    const creator = new SB3Creator(); creator.parse(`GLOBAL a = 4
+GLOBAL b = 7
+SPRITE Game:
+WHEN flag clicked:
+  set negated to not (a > b)
+  set pressed to key space pressed?
+  set both to (a > 1) and (b > 1)`);
+    const warned = creator.warnings.map(w => /^Line (\d+): "(.*)" is a CONDITION used where a value is expected/.exec(w));
+    assert.ok(warned.every(Boolean), `unexpected warning: ${creator.warnings.join(' | ')}`);
+    assert.deepEqual(warned.map(m => [Number(m[1]), m[2]]),
+        [[5, 'not (a > b)'], [6, 'key space pressed?'], [7, '(a > 1) and (b > 1)']]);
+});
+
 test('declared names containing Boolean words remain variable reads', () => {
     const creator = new SB3Creator(); creator.parse(`GLOBAL not ready = 4
 GLOBAL enabled and done = 7
