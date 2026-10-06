@@ -7,7 +7,7 @@ import {defineMessages, injectIntl, intlShape} from 'react-intl';
 import extensionLibraryContent from '../lib/libraries/extensions/index.jsx';
 import {getLegacySpikeVisible, LEGACY_SPIKE_CHANGE_EVENT} from '../lib/spike-legacy-debug';
 import {remoteExtensionsAllowed} from '../lib/distribution-policy';
-import {confirmAsync} from '../lib/native-dialog';
+import {confirmAsync, promptAsync} from '../lib/native-dialog';
 
 import LibraryComponent from '../components/library/library.jsx';
 import extensionIcon from '../components/action-menu/icon--sprite.svg';
@@ -174,8 +174,8 @@ class ExtensionLibrary extends React.PureComponent {
         let url = item.extensionURL || id;
         // The "Extension from URL" tile (and any entry without a URL/id) asks for a URL.
         if (item.custom || (!item.extensionURL && !id)) {
-            // eslint-disable-next-line no-alert
-            url = prompt(this.msg(messages.extensionUrl));
+            // Awaited: in the desktop/iOS app `prompt` returns null at once (lib/native-dialog.js).
+            url = await promptAsync(this.msg(messages.extensionUrl), '');
             if (!url) return;
             url = url.trim();
         }
