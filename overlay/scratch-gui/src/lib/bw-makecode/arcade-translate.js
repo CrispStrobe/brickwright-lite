@@ -47,6 +47,8 @@ import {
     ARCADE_PALETTE
 } from './arcade-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
+/** `sprites.castle`, `sprites.dungeon`, … : the namespaces PXT's built-in art lives in. */
+const BUILTIN_IMAGE_GROUPS = new Set(Object.keys(BUILTIN_IMAGES).map(key => key.slice(0, key.lastIndexOf('.'))));
 
 // MakeCode's true and false in a value position (see expr's Boolean case).
 const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
@@ -293,12 +295,12 @@ class ArcadeTranslator extends BaseTranslator {
     /** An x coordinate in Arcade units, as a stage-unit expression. */
     stageX (node) {
         if (node && node.type === 'Number') return num((Number(node.value) - HALF_WIDTH) * SCALE);
-        return `(${this.expr(node)} - ${HALF_WIDTH}) * ${SCALE}`;
+        return `(${this.side(node, '-', false)} - ${HALF_WIDTH}) * ${SCALE}`;
     }
 
     stageY (node) {
         if (node && node.type === 'Number') return num((HALF_HEIGHT - Number(node.value)) * SCALE);
-        return `(${HALF_HEIGHT} - ${this.expr(node)}) * ${SCALE}`;
+        return `(${HALF_HEIGHT} - ${this.side(node, '-', true)}) * ${SCALE}`;
     }
 
     /**
@@ -345,6 +347,17 @@ class ArcadeTranslator extends BaseTranslator {
             return this.assets[node.value.trim()] || null;
         }
         return parseImageLiteral(node.value);
+    }
+
+    /**
+     * An array REFERENCE (a value a variable holds), as the value-type graph
+     * says, unless the name was declared as a named Scratch list on the
+     * fixed-sprite path (\`new array "frameList"\`): then the list's own
+     * blocks read it, and a reference read would find an unset variable.
+     */
+    isArrayReference (node) {
+        if (!this.arrayReferences?.has(node)) return false;
+        return !(node?.type === 'Identifier' && this.arrays?.has(node.name) && !this.handleTemplates);
     }
 
     isBooleanValue (value) {
@@ -447,7 +460,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.op==='=' && st.expr.left?.type==='Identifier' && this.arrayReferences?.has(st.expr.left)) {
+        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.op==='=' && st.expr.left?.type==='Identifier' && this.isArrayReference(st.expr.left)) {
             const name=st.expr.left.name,value=this.expr(st.expr.right),pad='  '.repeat(indent);
             out.push((st.expr.left.temporary || this.localVars?.has(name))?`${pad}arcade set local ${name} to (${value})`:`${pad}set ${this.varName(name)} to ${value}`);return;
         }
@@ -457,15 +470,15 @@ class ArcadeTranslator extends BaseTranslator {
             else out.push(`${'  '.repeat(indent)}${this.note(`animation.Animation.${l.name} assignment ${n.op} requires animation property mutation support`)}`);
             return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && st.expr.left.name==='length' && this.arrayReferences?.has(st.expr.left.object)) {
+        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && st.expr.left.name==='length' && this.isArrayReference(st.expr.left.object)) {
             const n=st.expr,l=n.left,value=n.op==='='?this.expr(n.right):`(${this.expr(l)}) ${n.op.slice(0,-1)} (${this.expr(n.right)})`;
             out.push(`${'  '.repeat(indent)}mutate array reference (${this.expr(l.object)}) op "length" index (0) value (${value})`);return;
         }
-        if (st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Index' && this.arrayReferences?.has(st.expr.left.object)) {
+        if (st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Index' && this.isArrayReference(st.expr.left.object)) {
             const n=st.expr,l=n.left;const value=n.op==='='?this.arrayElementValue(n.right):this.expr({type:'Binary',op:n.op.slice(0,-1),left:l,right:n.right});
             out.push(`${'  '.repeat(indent)}mutate array reference (${this.expr(l.object)}) op "set" index (${this.expr(l.index)}) value (${value})`);return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.type==='Call' && st.expr.callee?.type==='Member' && this.arrayReferences?.has(st.expr.callee.object)) {
+        if(st.type==='ExpressionStatement' && st.expr?.type==='Call' && st.expr.callee?.type==='Member' && this.isArrayReference(st.expr.callee.object)) {
             const n=st.expr,op=n.callee.name,a=n.args||[];
             if(['push','unshift','insertAt','set','removeAt','removeElement','pop','shift','reverse'].includes(op)) {
                 const index=['insertAt','set','removeAt'].includes(op)?this.expr(a[0]):'0';
@@ -509,7 +522,7 @@ class ArcadeTranslator extends BaseTranslator {
         // form for a comparison (it warns and keeps the text), so a word that
         // reports a real boolean carries it (E0).
         if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
-        if(node?.type==='Index' && this.arrayReferences?.has(node.object))
+        if(node?.type==='Index' && this.isArrayReference(node.object))
             return `truthiness of item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if(this.handleTemplates && node && node.type!=='Boolean' &&
             !(node.type==='Binary' && ['==','!=','===','!==','<','>','<=','>=','&&','||'].includes(node.op)) &&
@@ -564,7 +577,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push(`Arcade Scene.${node.callee.name} requires native Scene method support`);return 'undefined value';
         }
         const owner=node.callee?.type==='Member' && node.callee.object;
-        if (owner && this.arrayReferences?.has(owner)) {
+        if (owner && this.isArrayReference(owner)) {
             const ref=this.expr(owner),op=node.callee.name,a=node.args||[];
             if (['pop','shift','removeAt'].includes(op)) return `${op} from array reference (${ref}) index (${a[0]?this.expr(a[0]):0})`;
             if (op==='get') return `item (${this.expr(a[0])}) of array reference (${ref})`;
@@ -573,7 +586,7 @@ class ArcadeTranslator extends BaseTranslator {
             if (op==='removeElement') return `calculate value (remove value (${this.arrayElementValue(a[0])}) from array reference (${ref})) op "+" with ((0 + (0)))`;
             if (op==='indexOf') return `index of (${this.arrayElementValue(a[0])}) in array reference (${ref}) from (${a[1]?this.expr(a[1]):0})`;
         }
-        if (this.path(node.callee)==='Math.pickRandom' && this.arrayReferences?.has(node.args?.[0])) {
+        if (this.path(node.callee)==='Math.pickRandom' && this.isArrayReference(node.args?.[0])) {
             return `random item of array reference (${this.expr(node.args[0])})`;
         }
         const name = this.path(node.callee);
@@ -882,8 +895,8 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return `arcade sprite array kind ${JSON.stringify(kind.name)}`;
         }
-        if (node?.type==='Index' && this.arrayReferences?.has(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
-        if (node?.type==='Member' && node.name==='length' && this.arrayReferences?.has(node.object)) return `length of array reference (${this.expr(node.object)})`;
+        if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
+        if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
 
         if (this.imageValueResources.has(node)) return this.imageRef(node);
         // The Arcade exporter writes a Scratch join as `"" + left + right`.
@@ -960,6 +973,14 @@ class ArcadeTranslator extends BaseTranslator {
             const owner = node.object.type === 'Identifier' ? node.object.name : 'a value';
             this.unsupported.push(
                 `${owner}.${node.name} — a sprite held in a variable, which the stage cannot follow`);
+            return '0';
+        }
+        // \`sprites.dungeon.someTile\`: built-in art we do not carry (an extension's
+        // namespace, or one newer than the pinned bundle). Falling through made a
+        // variable named \`someTile\` that silently held 0.
+        if (node && node.type === 'Member' && !BUILTIN_IMAGES[this.path(node)] &&
+            BUILTIN_IMAGE_GROUPS.has(this.path(node.object))) {
+            this.unsupported.push(`${this.path(node)} — built-in image art not available`);
             return '0';
         }
         return super.expr(node);

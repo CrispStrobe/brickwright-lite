@@ -21,7 +21,7 @@ import {fileURLToPath} from 'node:url';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {pixelsToSvg} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {ARCADE_PALETTE, parseImageLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
-import {importArtefact} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
+import {importArtefact, importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import JSZip from 'jszip';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -127,6 +127,68 @@ test('what has no Arcade counterpart is named and left as a comment where it sto
     assert.match(ts, /\/\/ looks_think/);
 });
 
+// ── Round-trip shapes MakeCode rejected (task F5 of docs/OPEN-TASKS-2026-09-29.md) ──
+const F5_SOURCES = {
+    // A value-returning function in a game that also stops: its stop guard
+    // was a bare \`return\` ("Not all code paths return a value").
+    'returning function with a stop guard': [
+        'function make (): Sprite {',
+        '    let enemy = sprites.create(img`1`, SpriteKind.Enemy)',
+        '    place(enemy, 10)',
+        '    enemy.vy = 10',
+        '    return enemy',
+        '}',
+        'function place (s: Sprite, edge: number) {',
+        '    s.x = randint(edge, 160 - edge)',
+        '}',
+        'let foe = make()',
+        'info.onLifeZero(function () {',
+        '    game.gameOver(false)',
+        '})'
+    ].join('\n'),
+    // A sprite created in an interval hat is cloned there; the hat's body
+    // spoke of \`self\`, which a plain onUpdateInterval handler lacks.
+    'interval hat of a cloned sprite': [
+        'let iceSprite: Sprite = null',
+        'game.onUpdateInterval(1000, function () {',
+        // Art from an extension package we do not carry keeps the older
+        // cloned-sprite translation (corpus arcade-a03d93d1…).
+        '    iceSprite = sprites.create(lab2imgs.icecube, SpriteKind.Enemy)',
+        '    iceSprite.setPosition(randint(8, 152), 0)',
+        '})'
+    ].join('\n'),
+    // A typed empty array on the fixed-sprite path became a named list, while
+    // \`.length\` / \`.push\` read an unset reference variable (a number).
+    'named array read by length': [
+        'let frameNum = 0',
+        'let frameList: Image[] = []',
+        'game.onUpdateInterval(500, function () {',
+        '    frameNum += 1',
+        '    if (frameNum >= frameList.length) {',
+        '        frameNum = 0',
+        '    }',
+        '})'
+    ].join('\n')
+};
+
+test('the F5 shapes export without a bare return, a free self, or a list read as a number', () => {
+    const exported = Object.fromEntries(Object.entries(F5_SOURCES).map(([id, src]) => {
+        const r = importProjectFiles({'main.ts': src, 'pxt.json': JSON.stringify({dependencies: {device: '*'}, files: ['main.ts']})},
+            {target: 'arcade', name: id});
+        return [id, {code: r.code, ts: exportOf(r.code, r.costumes || []).ts}];
+    }));
+    const returning = exported['returning function with a stop guard'].ts;
+    for (const fn of returning.split(/\nfunction /).filter(f => /^\S+ \([^)]*\): \w+ \{/.test(f))) {
+        assert.doesNotMatch(fn, /\breturn\s*$/m, `a bare return in a value-returning function:\n${fn}`);
+    }
+    const interval = exported['interval hat of a cloned sprite'].ts;
+    assert.match(interval, /game\.onUpdateInterval\(1000, function \(\) \{\n {4}const w = new _Wait\(\)\n {4}for \(const s of _all_iceSprite\(\)\) _spawnFor\(w, /);
+    assert.match(exported['interval hat of a cloned sprite'].code, /\(pick random 8 to 152\) - 80/);
+    const named = exported['named array read by length'];
+    assert.match(named.code, /length of array "frameList"/);
+    assert.doesNotMatch(named.code, /array reference \(frameList\)/);
+});
+
 // ── MakeCode's own compiler, over the whole corpus ─────────────────────────
 const STATIC = path.join(ROOT, 'packages/scratch-gui/static/makecode/arcade');
 const skip = fs.existsSync(path.join(STATIC, 'pxtworker.js')) ? false : 'MakeCode runtime not synced (npm run sync:makecode) — pxt compiler absent';
@@ -147,6 +209,12 @@ test('every lite game and every imported Arcade game exports to TypeScript MakeC
     for (const f of ['arcade-assets.hex', 'arcade-tilemap.hex', 'arcade-umlaut.hex', 'arcade-shield.hex']) {
         const r = await importArtefact(new Uint8Array(fs.readFileSync(path.join(ROOT, 'test/fixtures/makecode', f))), {name: f});
         corpus.push({id: f, src: r.code, uploads: r.costumes || []});
+    }
+    // Shapes the corpus audit found MakeCode rejecting after a round trip (F5).
+    for (const [id, src] of Object.entries(F5_SOURCES)) {
+        const r = importProjectFiles({'main.ts': src, 'pxt.json': JSON.stringify({dependencies: {device: '*'}, files: ['main.ts']})},
+            {target: 'arcade', name: id});
+        corpus.push({id, src: r.code, uploads: r.costumes || []});
     }
     assert.ok(corpus.length >= 40, `only ${corpus.length} programs`);
     const failed = [];

@@ -169,7 +169,9 @@ const wrapped = value => {
 };
 
 /** A value that says `of` (an array item, a letter), parenthesised unless it already is one group. */
-const ofGuard = value => (/\sof\s/.test(value) && !wrapped(value) ? `(${value})` : value);
+// \`pick random 8 to 152\` ends in an open slot too: \`pick random 8 to 152 - 80\`
+// reads back as random(8, 72), so it is parenthesised beside an operator.
+const ofGuard = value => ((/\sof\s/.test(value) || /^pick random /.test(value)) && !wrapped(value) ? `(${value})` : value);
 
 /** ` — it calls a.b(), c()` for a construct refused whole, or '' when it calls nothing. */
 const callList = calls => (calls && calls.length ? ` — not translated; it calls ${calls.map(c => `${c}()`).join(', ')}` : '');
@@ -432,7 +434,12 @@ export class BaseTranslator {
             }
             this.unsupported.push('a ? b : c inside an expression');
             return this.expr(node.consequent);
-        case 'Template': return '"(image)"';
+        // A template literal no translator claimed (an \`assets.animation\` the
+        // project does not carry, an image where no image fits): a placeholder,
+        // named, so the loss is visible.
+        case 'Template':
+            this.unsupported.push(`${node.tag || 'template'}\`…\` — image or asset literal not translated here`);
+            return '"(image)"';
         // An object literal is opaque here; say so, with the calls it made.
         case 'Object':
             // An object literal of a record type (a declared variable, a

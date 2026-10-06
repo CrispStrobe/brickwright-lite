@@ -35,6 +35,15 @@ test('type annotations end before the next statement while preserving multiline 
     assert.equal(tree.body[3].expr.left.name, 'count');
 });
 
+test('a function-typed parameter keeps its parenthesised type and the parameter list goes on (F9)', () => {
+    // The Arcade exporter's own runtime helpers declare \`fn: () => void\`; reading
+    // that back stopped at the type's closing \`)\` ("expected { but found =>").
+    const tree = parseMakeCodeTs('function _spawnFor (w: number, fn: (s: Sprite) => void, s: Sprite) {\n    fn(s)\n}\n' +
+        'function make (): () => number {\n    return null\n}');
+    assert.deepEqual(tree.body.map(st => st.type), ['FunctionDeclaration', 'FunctionDeclaration']);
+    assert.deepEqual(tree.body[0].params.slice(0, 3), ['w', 'fn', 's']);
+});
+
 test('default parameters become body statements only when the caller asks (Arcade), never for micro:bit', () => {
     const source = 'function f(a: number = 5, b?: number) { basic.showNumber(a) }';
     const plain = parseMakeCodeTs(source).body[0];
@@ -917,4 +926,32 @@ test('a MakeCode text with quotes, backslashes and escapes reaches the blocks as
     for (const want of ['say "hi" C:\\dir', "it's", 'a\tb', 'q "r"']) {
         assert.ok(texts.includes(want), `${JSON.stringify(want)} not among ${JSON.stringify(texts)}\n${code}`);
     }
+});
+
+// Found by the corpus audit (task F5 of docs/OPEN-TASKS-2026-09-29.md): three
+// imports that lost something without naming it.
+test('an untagged template literal is text with its placeholders, not an "(image)" placeholder', () => {
+    const out = microbitToPseudocode('let n = 3\nserial.writeLine(`player ${n + 1} ready`)\nserial.writeLine(`plain`)');
+    assert.match(out.code, /print \(\("player " join \(n \+ 1\)\) join " ready"\)/);
+    assert.match(out.code, /print "plain"/);
+    assert.doesNotMatch(out.code, /\(image\)/);
+    assert.deepEqual(out.unsupported, []);
+});
+
+test('Arcade built-in art stored as {data} entries (sprites.dungeon tiles) is carried; unknown art is named', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const {BUILTIN_IMAGES} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js');
+    assert.ok(BUILTIN_IMAGES['sprites.dungeon.stairLadder'], 'the object-form dungeon tiles are in the table');
+    const known = arcadeToPseudocode('let s = sprites.create(img`1`, SpriteKind.Player)\ntiles.placeOnRandomTile(s, sprites.dungeon.stairLadder)');
+    assert.deepEqual(known.unsupported, []);
+    assert.match(known.code, /on random tile image \(arcade frame image array/);
+    const unknown = arcadeToPseudocode('let s = sprites.create(img`1`, SpriteKind.Player)\ntiles.placeOnRandomTile(s, sprites.dungeon.noSuchTile)');
+    assert.deepEqual(unknown.unsupported, ['sprites.dungeon.noSuchTile — built-in image art not available']);
+    assert.doesNotMatch(unknown.code, /\(noSuchTile\)/);
+});
+
+test('a tagged asset literal no translator claims is named, not silently a text placeholder', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.animation`missing`, 75, false)');
+    assert.ok(out.unsupported.some(u => /assets\.animation`…` — image or asset literal not translated here/.test(u)), out.unsupported.join('; '));
 });

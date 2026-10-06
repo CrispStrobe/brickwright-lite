@@ -19,15 +19,16 @@ const tally = rows => Object.fromEntries(paths.map(label => [label, rows.reduce(
     const hasUnsupported = row.importUnsupported?.length || p.exportUnsupported?.length ||
         p.importUnsupported?.length;
     const status = p.error ? 'error' : p.compile?.status === 'fail' ? 'compile fail' :
+        p.compile?.status === 'source-invalid' ? 'source invalid' :
         hasLoss ? 'loss' : hasUnsupported ? 'partial' : 'preserved';
     acc[status] = (acc[status] || 0) + 1;
     return acc;
 }, {})]));
 const escape = s => String(s).replaceAll('|', '\\|').replaceAll('\n', ' ');
 const lines = ['# Conversion round trips', '',
-    `Generated ${report.generatedAt}; ${rows.length} inputs. “Preserved” means the measured structure and Arcade image pixels match and no converter reported an unsupported element. It does not prove program behavior.`, '',
-    '## Paths', '', '| corpus | permutation | preserved | partial | loss | compile fail | error |',
-    '|---|---|---:|---:|---:|---:|---:|'];
+    `Generated ${report.generatedAt}; ${rows.length} inputs. “Preserved” means the measured structure and Arcade image pixels match and no converter reported an unsupported element. It does not prove program behavior. “Source invalid” is a re-export MakeCode rejects whose original MakeCode itself rejects too (a documentation snippet with an undeclared name or a missing package).`, '',
+    '## Paths', '', '| corpus | permutation | preserved | partial | loss | compile fail | source invalid | error |',
+    '|---|---|---:|---:|---:|---:|---:|---:|'];
 for (const [name, chosen] of [
     ['Arcade TypeScript', rows.filter(r => r.target === 'arcade')],
     ['micro:bit TypeScript', rows.filter(r => r.target === 'microbit')],
@@ -35,7 +36,7 @@ for (const [name, chosen] of [
 ]) {
     for (const [label, counts] of Object.entries(tally(chosen))) {
         if (!Object.keys(counts).length) continue;
-        lines.push(`| ${name} | ${label} | ${counts.preserved || 0} | ${counts.partial || 0} | ${counts.loss || 0} | ${counts['compile fail'] || 0} | ${counts.error || 0} |`);
+        lines.push(`| ${name} | ${label} | ${counts.preserved || 0} | ${counts.partial || 0} | ${counts.loss || 0} | ${counts['compile fail'] || 0} | ${counts['source invalid'] || 0} | ${counts.error || 0} |`);
     }
 }
 const lost = new Map();

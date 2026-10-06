@@ -89,6 +89,7 @@ async function inspect (file) {
             {core: '*', radio: '*', microphone: '*'};
         const files = {'main.ts': fs.readFileSync(file, 'utf8'),
             'pxt.json': JSON.stringify({name: path.basename(file, '.ts'), dependencies, files: ['main.ts']})};
+        row.sourceFiles = files;
         const imported = importProjectFiles(files, {target, name: path.basename(file, '.ts')});
         originalCode = imported.code;
         originalAssets = imported.costumes || [];
@@ -174,11 +175,19 @@ async function inspect (file) {
                     const result = await compile(target, p.exportedFiles);
                     p.compile = {status: result.success ? 'pass' : 'fail',
                         diagnostics: (result.diagnostics || []).slice(0, 3).map(d => d.message)};
+                    // A documentation snippet that MakeCode itself rejects (an
+                    // undeclared sprite, a missing package or asset) cannot be
+                    // re-exported into a valid program: that failure is the source's.
+                    if (!result.success) {
+                        const original = await compile(target, row.sourceFiles);
+                        if (!original.success) p.compile.status = 'source-invalid';
+                    }
                 } catch (error) { p.compile = {status: 'fail', error: shortError(error)}; }
             }
         }
     }
     for (const p of row.paths) delete p.exportedFiles;
+    delete row.sourceFiles;
     return row;
 }
 
@@ -195,6 +204,7 @@ for (const r of rows) {
         const hasUnsupported = r.importUnsupported?.length || p.exportUnsupported?.length ||
             p.importUnsupported?.length;
         const key = p.error ? 'failed' : p.compile?.status === 'fail' ? 'compile-failed' :
+            p.compile?.status === 'source-invalid' ? 'source-invalid' :
             hasLoss ? 'loss' : hasUnsupported ? 'partial' : 'preserved';
         tally[`${p.label}: ${key}`] = (tally[`${p.label}: ${key}`] || 0) + 1;
     }

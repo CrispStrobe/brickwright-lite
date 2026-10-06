@@ -2334,14 +2334,19 @@ class ArcadeEmitter {
                     if (!this.cloneScripts.has(t.name)) this.cloneScripts.set(t.name, []);
                     this.cloneScripts.get(t.name).push(fn);
                 // ── Arcade event hats (E2: the import's arcade_when* words, back to their PXT calls) ──
-                } else if (b.opcode === 'arcade_whenUpdate') {
-                    handlers.push(`game.onUpdate(function () {\n${plainBody().join('\n')}\n})`);
-                } else if (b.opcode === 'arcade_whenInterval') {
-                    const period = this.literalNumber(b, 'PERIOD');
-                    if (period === null || period <= 0) {
+                } else if (b.opcode === 'arcade_whenUpdate' || b.opcode === 'arcade_whenInterval') {
+                    const period = b.opcode === 'arcade_whenInterval' ? this.literalNumber(b, 'PERIOD') : null;
+                    const api = b.opcode === 'arcade_whenUpdate' ? 'game.onUpdate(' : `game.onUpdateInterval(${period}, `;
+                    if (b.opcode === 'arcade_whenInterval' && (period === null || period <= 0)) {
                         handlers.push(`// ${this.note('Arcade interval period must be a fixed positive number')}`);
+                    } else if (clonable) {
+                        // A cloned sprite's hat runs in every instance, as the key hats
+                        // do; its body speaks of \`self\`, which a plain handler lacks.
+                        const {fn} = this.scriptFunction(b.opcode === 'arcade_whenUpdate' ? 'update' : 'interval', b, false);
+                        this.use('wait');
+                        handlers.push(`${api}function () {\n    const w = new _Wait()\n    for (const s of ${this.allOf(t.name)}) _spawnFor(w, ${fn}, s)\n})`);
                     } else {
-                        handlers.push(`game.onUpdateInterval(${period}, function () {\n${plainBody().join('\n')}\n})`);
+                        handlers.push(`${api}function () {\n${plainBody().join('\n')}\n})`);
                     }
                 } else if (b.opcode === 'arcade_whenSpriteCreated') {
                     const kind = this.kindExpr(b, 'KIND');
@@ -2386,7 +2391,10 @@ class ArcadeEmitter {
                     const returnType = returns ? `: ${this.arrayReturnTypes.get(key) || (this.imageReturnFunctions.has(key) ? 'Image' :
                         this.spriteReturnFunctions.has(key) ? 'Sprite' : this.valueReturnTypes.get(key) || 'any')}` : '';
                     const tail = returns && !returning(script.at(-1) || '') ? ['    return undefined'] : [];
-                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...script, ...tail];
+                    // A stop/clone guard exits with a bare \`return\`; in a function that
+                    // returns a value PXT rejects that ("Not all code paths return a value").
+                    const body = returns ? script.map(line => line.replace(/\breturn\s*$/, 'return undefined')) : script;
+                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...body, ...tail];
                     functions.push(`function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
                     continue;
