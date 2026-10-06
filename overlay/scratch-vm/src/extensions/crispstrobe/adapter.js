@@ -61,6 +61,20 @@ module.exports = function makeCrispExtension (source) {
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
                 vm: runtime && runtime.emit ? { runtime } : {}, runtime
             };
+            // Yes/no questions an extension can wait for (task E7). In the desktop/iOS app
+            // `window.confirm` returns a Promise (tauri-plugin-dialog), always truthy, so the
+            // CrispStrobe extensions ask through `Scratch.BWConfirm(message) -> Promise<boolean>`
+            // when the host offers it, and the browser's confirm otherwise. The GUI installs
+            // `runtime.confirmAsync` (lib/extension-confirm-hook.js: E6's confirmAsync, a native
+            // OK/Cancel in the app). Read at each question, not at load, so a hook installed
+            // after an extension loaded still answers; absent, the field is absent and the
+            // extension's own fallback runs.
+            Object.defineProperty(Scratch, 'BWConfirm', {
+                enumerable: true,
+                get: () => (runtime && typeof runtime.confirmAsync === 'function' ?
+                    message => runtime.confirmAsync(String(message)) :
+                    undefined)
+            });
             // In the browser the extension's top-level code (language detection etc.) runs with
             // the real window/navigator; we only inject Scratch.
             // eslint-disable-next-line no-new-func
