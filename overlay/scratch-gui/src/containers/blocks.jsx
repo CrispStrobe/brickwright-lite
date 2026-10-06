@@ -30,6 +30,7 @@ import {setConnectionModalExtensionId} from '../reducers/connection-modal';
 import {updateMetrics} from '../reducers/workspace-metrics';
 import LazyScratchBlocks from '../lib/lazy-scratch-blocks';
 import {activateUndoSurface, notifyUndoState, registerUndoSurface} from '../lib/global-undo.js';
+import {blocklyConfirm} from '../lib/native-dialog.js';
 
 import {
     activateTab,
@@ -81,6 +82,9 @@ class Blocks extends React.Component {
             'setLocale'
         ]);
         this.ScratchBlocks.prompt = this.handlePromptStart;
+        // "Delete N blocks?" / "Delete this variable (N uses)?": Blockly's default calls
+        // callback(window.confirm(...)), which in the desktop/iOS app is an always-truthy Promise.
+        this.ScratchBlocks.confirm = blocklyConfirm;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
         this.ScratchBlocks.recordSoundCallback = this.handleOpenSoundRecorder;
 
@@ -109,6 +113,9 @@ class Blocks extends React.Component {
             BubbleProto.__bwGuarded = true;
         }
         this.ScratchBlocks.prompt = this.handlePromptStart;
+        // "Delete N blocks?" / "Delete this variable (N uses)?": Blockly's default calls
+        // callback(window.confirm(...)), which in the desktop/iOS app is an always-truthy Promise.
+        this.ScratchBlocks.confirm = blocklyConfirm;
         this.ScratchBlocks.statusButtonCallback = this.handleConnectionModalStart;
         this.ScratchBlocks.recordSoundCallback = this.handleOpenSoundRecorder;
 

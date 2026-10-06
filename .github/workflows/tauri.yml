@@ -51,6 +51,11 @@ on:
       - 'packages/scratch-vm/src/extension-support/extension-manager.js'
       - '.github/workflows/tauri.yml'
       - 'scripts/verify-native-downloads-e2e.mjs'
+      - 'scripts/verify-native-confirm-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/native-dialog.js'
+      - 'packages/scratch-gui/src/lib/native-dialog.js'
+      - 'overlay/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'packages/scratch-gui/src/containers/menu-bar-hoc.jsx'
       - 'scripts/verify-build-policy.mjs'
       - 'scripts/vercel-build.sh'
       - 'test/native-*.test.mjs'
@@ -95,6 +100,11 @@ on:
       - 'packages/scratch-vm/src/extension-support/extension-manager.js'
       - '.github/workflows/tauri.yml'
       - 'scripts/verify-native-downloads-e2e.mjs'
+      - 'scripts/verify-native-confirm-e2e.mjs'
+      - 'overlay/scratch-gui/src/lib/native-dialog.js'
+      - 'packages/scratch-gui/src/lib/native-dialog.js'
+      - 'overlay/scratch-gui/src/containers/menu-bar-hoc.jsx'
+      - 'packages/scratch-gui/src/containers/menu-bar-hoc.jsx'
       - 'scripts/verify-build-policy.mjs'
       - 'scripts/vercel-build.sh'
       - 'test/native-*.test.mjs'
@@ -271,6 +281,17 @@ jobs:
             xvfb-run -a dbus-run-session -- node scripts/verify-native-downloads-e2e.mjs \
             apps/tauri/src-tauri/target/debug/brickwright-tauri \
             2>&1 | tee e2e-evidence/native-downloads.log
+
+      # Task E6: the dialog plugin's init script turns window.confirm into an always-truthy
+      # Promise. This drives File > New in the real WebView with the native message box answered
+      # from script: Cancel must keep the project, OK must replace it.
+      - name: Drive File > New's question through the real native WebView
+        run: |
+          set -o pipefail
+          timeout --signal=TERM --kill-after=15s 300s \
+            xvfb-run -a dbus-run-session -- node scripts/verify-native-confirm-e2e.mjs \
+            apps/tauri/src-tauri/target/debug/brickwright-tauri \
+            2>&1 | tee e2e-evidence/native-confirm.log
 
       # CP3-E asks that the artifacts SHOW the real vertical slice. The log is the evidence: it
       # carries the realm dump (both documents, so "the frontend loaded" is visible rather than
