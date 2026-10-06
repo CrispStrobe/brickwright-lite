@@ -51,6 +51,7 @@ import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
 // MakeCode's true and false in a value position (see expr's Boolean case).
 const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
 const ARCADE_FALSE = '(compare value (1) op "<" with (0))';
+const DELEGATE = Symbol('base statement');
 // MakeCode text as a dialect string literal, exactly. The dialect decodes
 // only \n \t \r \\ and \" inside quotes (it keeps \f, \b and \uXXXX as
 // literal text) and reads any other character as itself, so those five are
@@ -61,6 +62,17 @@ const arcadeTextLiteral = text => `"${String(text).replace(/["\\\n\r\t]/g, c => 
 // A Scratch predicate the base translator writes (`key a pressed?`,
 // `touching x?`): a condition, never a value (quoted text is not one).
 const isScratchPredicate = text => typeof text === 'string' && !/^["(]/.test(text.trim()) && /\?$/.test(text.trim());
+// A TypeScript expression whose value is a truth value, written by the base
+// translator in the CONDITION grammar (`not (…)`, `a < b`, `(…) and (…)`).
+const isTruthNode = node => !!node && (
+    (node.type === 'Binary' && ['==', '===', '!=', '!==', '<', '>', '<=', '>=', '&&', '||'].includes(node.op)) ||
+    (node.type === 'Unary' && node.op === '!'));
+// What expr() hands back for a call that is a CONDITION in the dialect: a
+// Scratch predicate (`key left arrow pressed?`, `touching ball`), or the
+// comparison `info.playerN.hasLife()` is. Never a Boolean reporter WORD
+// (`arcade a overlaps b`): those are values (docs/BOOLEAN-IN-VALUE-POSITION.md).
+const isConditionCall = (node, text) => node?.type === 'Call' && typeof text === 'string' &&
+    (isScratchPredicate(text) || /^touching /.test(text) || /^\S+ > 0$/.test(text));
 
 /** Arcade pixels → stage units. 160x120 scaled by 3 is 480x360 exactly. */
 const SCALE = 3;
@@ -375,7 +387,26 @@ class ArcadeTranslator extends BaseTranslator {
             depth=>out.push(`${'  '.repeat(depth)}arcade set local ${name} to (1)`),
             depth=>out.push(`${'  '.repeat(depth)}arcade set local ${name} to (0)`));
     }
+    /**
+     * A statement, with its own lines-before (this.pre) also for the
+     * statements written here rather than by the base translator: a truth
+     * value in one of their value slots is chosen into a variable on the
+     * lines before it (see truthAsValue), and those lines are THIS
+     * statement's, not the enclosing one's.
+     */
     statement(st, indent, out) {
+        const outerPre=this.pre,mark=out.length;
+        this.pre=[];
+        let delegated=false;
+        try {
+            delegated=this.arcadeStatement(st,indent,out)===DELEGATE;
+            if(this.pre.length)out.splice(mark,0,...this.pre.map(line=>`${'  '.repeat(indent)}${line}`));
+        } finally {
+            this.pre=outerPre;
+        }
+        if(delegated)super.statement(st,indent,out);
+    }
+    arcadeStatement(st, indent, out) {
         const target=st?.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left;
         if(target?.type==='Member' && (this.physicsEngineReferences?.has(target.object) || this.sceneReferences?.has(target.object))) {
             const n=st.expr,pad='  '.repeat(indent);
@@ -444,13 +475,13 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if (st.type === 'For' && st.init?.type === 'Declaration' && this.localVars?.has(st.init.decls[0]?.name)) {
             this.statementInner(st.init,indent,out);
-            out.push(`${'  '.repeat(indent)}REPEAT UNTIL not (${this.condition(st.test)}):`);
+            out.push(`${'  '.repeat(indent)}REPEAT UNTIL not (${this.repeatedCondition(st.test)}):`);
             this.block(st.body,indent+1,out);
             if(st.update)this.expressionStatement(st.update,indent+1,out);
             return;
         }
         if (st.type === 'Return') {out.push(`${'  '.repeat(indent)}arcade return value (${st.value ? this.arrayElementValue(st.value) : 'undefined value'})`);return;}
-        return super.statement(st, indent, out);
+        return DELEGATE;
     }
 
     varName(name) {
@@ -462,6 +493,17 @@ class ArcadeTranslator extends BaseTranslator {
         return super.varName(name);
     }
     condition (node) {
+        // The node being written as a condition is not a value: expr() on
+        // it (the base condition() calls it) writes the condition grammar.
+        const outer=this.conditionNode;
+        this.conditionNode=node;
+        try {
+            return this.conditionInner(node);
+        } finally {
+            this.conditionNode=outer;
+        }
+    }
+    conditionInner (node) {
         // MakeCode true/false. condition() results are also written into
         // value slots (assignments, arguments), where the dialect has no value
         // form for a comparison (it warns and keeps the text), so a word that
@@ -647,7 +689,10 @@ class ArcadeTranslator extends BaseTranslator {
                 const method = name.split('.').pop();
                 if (method === 'score') return playerVar('score', player);
                 if (method === 'life') return playerVar('lives', player);
-                if (method === 'hasLife') return `${playerVar('lives', player)} > 0`;
+                if (method === 'hasLife') {
+                    if (this.handleTemplates) {this.usesArrays = true; return `compare value (${playerVar('lives', player)}) op ">" with (0)`;}
+                    return `${playerVar('lives', player)} > 0`;
+                }
             }
 
             const imageOwner = node.callee?.object;
@@ -695,6 +740,41 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     /**
+     * A truth value in a VALUE slot (task E9). The dialect reads a condition
+     * there as literal text (with a warning), so a truth value that has no
+     * value word is chosen on the lines before its statement:
+     *   IF <condition> THEN: set _mcN to <true> ELSE: set _mcN to <false>
+     * and the slot reads _mcN. True and false are the program's own: 1 and 0
+     * on the fixed-sprite path (its Boolean literals are 1 and 0, and its
+     * conditions read a variable as `not (v = 0)`), the real Booleans
+     * ARCADE_TRUE / ARCADE_FALSE on the handle path, whose comparisons and
+     * `!` are already value words (compare value, truthiness of value).
+     * The condition() a node is being written for is not a value slot.
+     */
+    expr (node) {
+        const value=this.valueExpr(node);
+        if(!node || node===this.conditionNode)return value;
+        // On the fixed-sprite path a truth node's value text IS its condition
+        // (the base writes `!`, comparisons, && and || in that grammar).
+        if(!isConditionCall(node,value) && !(isTruthNode(node) && !this.handleTemplates))return value;
+        const repeated=this.inLoopCondition || this.inRepeatedCondition;
+        if(this.pre && !repeated)return this.truthAsValue(value);
+        this.unsupported.push(`${value} as a value ${repeated ? 'in a condition tested on every pass' : 'outside a statement'} (it cannot be chosen into a variable first)`);
+        return value;
+    }
+    /** A condition tested again and again: nothing in it can be chosen first. */
+    repeatedCondition (node) {
+        const was=this.inRepeatedCondition;this.inRepeatedCondition=true;
+        try {return this.condition(node);} finally {this.inRepeatedCondition=was;}
+    }
+    truthAsValue (condition) {
+        const name=`_mc${++this.temps}`;
+        this.declared.add(name);
+        const [yes,no]=this.handleTemplates?[ARCADE_TRUE,ARCADE_FALSE]:['1','0'];
+        this.pre.push(`IF ${condition} THEN:`,`  set ${name} to ${yes}`,'ELSE:',`  set ${name} to ${no}`);
+        return name;
+    }
+    /**
      * Property reads: `ball.x`, `ball.vx`, `sprite.width`.
      *
      * Positions come back in ARCADE units — `x position` is stage units,
@@ -704,7 +784,7 @@ class ArcadeTranslator extends BaseTranslator {
      * Another sprite's position is readable (`x position of ball`) even
      * though writing it is not.
      */
-    expr (node) {
+    valueExpr (node) {
         if(node?.type==='Member' && this.sceneReferences?.has(node.object)) {
             if(node.name==='physicsEngine')return `arcade physics engine of scene (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade Scene.${node.name} requires native Scene member support`);return 'undefined value';
@@ -913,7 +993,7 @@ class ArcadeTranslator extends BaseTranslator {
 
         if(['pauseUntil','control.waitUntil'].includes(name)) {
             const predicate=a[0];
-            if(a.length===1 && predicate?.type==='FunctionExpression' && !predicate.params.length && predicate.body.length===1 && predicate.body[0].type==='Return')push(`wait until ${this.condition(predicate.body[0].value)}`);
+            if(a.length===1 && predicate?.type==='FunctionExpression' && !predicate.params.length && predicate.body.length===1 && predicate.body[0].type==='Return')push(`wait until ${this.repeatedCondition(predicate.body[0].value)}`);
             else push(this.note(`${name}() requires a pure predicate callback`));
             return;
         }
