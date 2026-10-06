@@ -21,6 +21,7 @@ const emitterFile = join(root, 'overlay/scratch-gui/src/lib/sb3-creator.js');
 // 27 -> 46 entries at sb3-creator 0f14aedb (task B10): sb3-creator #49's
 // idea-generator (13), reaction-duel (2), sense-pir-alarm (2) and
 // sense-twilight-switch (2) print literal text; every earlier entry is unchanged.
+// 46 -> 48 at sb3-creator c8edc8cc (task B11): guess-the-number (2).
 const literalPrintBlocks = [
     'arduino-04-ascii-table:h(%a.I?g~**:9Pj+1?KE',
     'arduino-05-switch-case:0Q8p=FNNXb*[5]V+!AlU',
@@ -49,6 +50,8 @@ const literalPrintBlocks = [
     'arduino-sk-p11-crystal-ball:l%b.,h,Wup`Z.eQZMxe8',
     'arduino-sk-p11-crystal-ball:xyw[e_p[]R#xTCFmz9Ox',
     'arduino-sk-p11-crystal-ball:|7l:fbD=GKrs~lY9V)s,',
+    'guess-the-number:,9OMTnCv2EJf7F~?t}|H',
+    'guess-the-number:6Q*v,JSJK3X46BnP)9ca',
     'idea-generator:9u9`Km+[5KYVDEZ-zjO.',
     'idea-generator:@u[)WmZ*)_5xvP~ecl9h',
     'idea-generator:D92@6@9~dz/Vh0u`zxK,',
@@ -69,10 +72,29 @@ const literalPrintBlocks = [
     'sense-twilight-switch:/NL5w_#Pkq`+qFiN1hJ]',
     'sense-twilight-switch:zzu83yxwLX[i`6Rk5uRC'
 ];
+// 1 -> 4 edges at sb3-creator c8edc8cc (task B11): guess-the-number (1) and
+// random-lucky-light (2) pick random numbers; neither generates on the 8086.
+// The lucky-light ids moved at sb3-creator a69547b7 (#53): its new green-flag
+// script shifts the generated block ids; the two edges themselves are unchanged.
 const integerRandomEdges = [{
     program: 'arduino-sk-p11-crystal-ball',
     randomBlockId: 'vkBNDwMf7d6Z16c3aQUc',
     consumerBlockId: 'g)MC,FVO^_s8s3]^E[uv',
+    inputName: 'VALUE'
+}, {
+    program: 'guess-the-number',
+    randomBlockId: 'lVncw)swRZ75f{{dYvF}',
+    consumerBlockId: '}NV{rOJxrudnXL/;vbZ/',
+    inputName: 'VALUE'
+}, {
+    program: 'random-lucky-light',
+    randomBlockId: '?^`U-hkzO4)|+}5`4-B~',
+    consumerBlockId: 'lPX[[Qcc:(En%bT6@*I3',
+    inputName: 'VALUE'
+}, {
+    program: 'random-lucky-light',
+    randomBlockId: 'F@+LrE~CuGlvWVD*2leV',
+    consumerBlockId: '38j=*?2Q^rrwUq(CYPvJ',
     inputName: 'VALUE'
 }];
 
@@ -107,9 +129,16 @@ test('N2f production holds device 57 and mixed generation 85 without neutralisat
         // i8086-wait-reach's emitted set) and five are refused (four at the ADC
         // or PWM wall, dice-pips at its computed wait). No host C, and the
         // neutralisation lattice below still changes nothing.
+        // 295 / 131 retarget-refused / 161 parsed / 3 parse-failed / 76 refused ->
+        // 303 / 132 / 163 / 8 / 78 at sb3-creator c8edc8cc (task B11, #52): of
+        // its eight examples the five PART programs are parseFailed on the 8086
+        // and melody-lists, random-lucky-light and guess-the-number parse and are
+        // refused; tone + print is refused at retarget on the 8051 now, which
+        // moves arduino-02-tone-pitch-follower from refused to retargetRefused.
+        // Generated reach is unchanged.
         assert.deepEqual(report.variants.baseline.counts, {
-            programs: 295, retargetRefused: 131, parsed: 161, parseFailed: 3,
-            refused: 76, generatedHost: 28, generatedDevice: 57, generatedTotal: 85
+            programs: 303, retargetRefused: 132, parsed: 163, parseFailed: 8,
+            refused: 78, generatedHost: 28, generatedDevice: 57, generatedTotal: 85
         });
         assert.equal(report.variants.literalOnly.counts.generatedTotal, 85);
         assert.deepEqual(report.delta.literalOnly, [], 'literal neutralisation changed production reach');

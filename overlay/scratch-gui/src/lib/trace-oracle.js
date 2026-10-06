@@ -25,7 +25,7 @@
 
 /** Opcode surface the referee speaks. Everything else is a stated refusal. */
 const KNOWN = new Set([
-    'event_whenflagclicked',
+    'event_whenflagclicked', 'stc12_whenpin',
     'control_forever', 'control_repeat', 'control_if', 'control_if_else',
     'control_wait', 'control_wait_until', 'control_repeat_until',
     'data_setvariableto', 'data_changevariableby',
@@ -94,6 +94,15 @@ export function interpretTrace(project, opts = {}) {
 
     const vars = new Map();
     const lists = new Map(); // name → array of values
+    // A `GLOBAL LIST x = [..]` declaration is the list's contents at the green
+    // flag, stored on the target as Scratch stores it ({id: [name, values]}).
+    // The VM and the C builds start from it, so the referee does too; without
+    // this, `length of x` was 0 and a tune held in lists played nothing.
+    for (const target of (project && project.targets) || []) {
+        for (const [name, values] of Object.values(target.lists || {})) {
+            if (Array.isArray(values)) lists.set(name, [...values]);
+        }
+    }
     let now = 0;
 
     const emitPin = (name, intent) => {
@@ -135,6 +144,18 @@ export function interpretTrace(project, opts = {}) {
             if (b && b.opcode === 'event_whenflagclicked' && b.topLevel !== false) {
                 tasks.push({ frames: [{ block: b.next }], waitUntil: 0, done: !b.next,
                     spinNow: -1, spins: 0 });
+                blocksOf.set(tasks[tasks.length - 1], blocks);
+            }
+            // `WHEN <pin> pressed/released:` -- the C emitter's polled,
+            // EDGE-triggered task: the logical level is read once per
+            // millisecond, `prev` updates on every poll (running or not), and
+            // the body starts only on an edge seen while idle. One run per
+            // edge; a level held does not restart it.
+            if (b && b.opcode === 'stc12_whenpin' && b.topLevel !== false && b.next) {
+                const pin = String(b.fields && b.fields.PIN ? b.fields.PIN[0] : '');
+                const edge = String(b.fields && b.fields.EDGE ? b.fields.EDGE[0] : 'pressed');
+                tasks.push({ frames: [], waitUntil: 0, done: false, spinNow: -1, spins: 0,
+                    hat: { pin, edge, body: b.next, prev: 0, idle: true } });
                 blocksOf.set(tasks[tasks.length - 1], blocks);
             }
         }
@@ -292,6 +313,7 @@ export function interpretTrace(project, opts = {}) {
             case 'stc12_read': {
                 const pin = pinsByName.get(String(fld('PIN')).toLowerCase());
                 const s = stimAt(fld('PIN'));
+                if (!(pin && pin.direction === 'analog')) return logicalPin(fld('PIN'));
                 if (pin && pin.direction === 'analog') {
                     const full = (1 << adc.bits) - 1;
                     return s && s.volts !== undefined
@@ -335,6 +357,15 @@ export function interpretTrace(project, opts = {}) {
     // ---- one cooperative step of one task --------------------------------
     // Runs the task until it YIELDS (wait or loop back-edge) or its script
     // ends. Mirrors cTaskFrom's yield structure exactly.
+    /** The LOGICAL level of a digital input now (see stc12_read). */
+    function logicalPin(name) {
+        const pin = pinsByName.get(String(name).toLowerCase());
+        const s = stimAt(name);
+        const idleRaw = pin && pin.activeLow ? 1 : 0;
+        const raw = s ? (s.level ? 1 : 0) : idleRaw;
+        return pin && pin.activeLow ? (raw ? 0 : 1) : raw;
+    }
+
     function step(task) {
         const blocks = blocksOf.get(task);
         let guard = 0;
@@ -630,7 +661,23 @@ export function interpretTrace(project, opts = {}) {
         let ran = false;
         for (const task of tasks) {
             if (task.done || task.waitUntil > now) continue;
+            if (task.hat) {
+                const h = task.hat;
+                const level = logicalPin(h.pin);
+                const fired = h.edge === 'released' ? (!level && h.prev) : (level && !h.prev);
+                h.prev = level;
+                if (h.idle) {
+                    task.waitUntil = now + 1;          // poll again next millisecond
+                    if (!fired) continue;
+                    h.idle = false;
+                    task.frames = [{ block: h.body }];
+                }
+            }
             step(task);
+            if (task.hat && task.done) {               // the run ended: idle again
+                task.done = false; task.frames = []; task.hat.idle = true;
+                if (task.waitUntil <= now) task.waitUntil = now + 1;
+            }
             ran = true;
             // A loop that yields without EVER advancing time is a busy spin:
             // on the chip, real time passes and the loop runs at CPU speed
