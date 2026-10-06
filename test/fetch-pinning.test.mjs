@@ -295,6 +295,19 @@ const CENSUS = [
            + 'checkout is the immutable reference.'
     },
     {
+        file: 'scripts/build-brandy-reference.sh',
+        kind: 'git',
+        text: 'git clone --filter=blob:none "$BRANDY_REPO" "$WORK/MatrixBrandy"',
+        class: 'sha-const',
+        pin: 'BRANDY_COMMIT',
+        why: 'CI/dev-only build of the BASIC twin-run oracle\'s SECOND, cross-author reference '
+           + '(Matrix Brandy, GPL-2) as a host console tbrandy — NOT the browser bundle, NOT a '
+           + 'deployable; GPL oracle-only, the same regime as the ngspice circuit oracle. The '
+           + 'clone is checked out to the 40-hex BRANDY_COMMIT and the script exits 1 unless HEAD '
+           + 'equals it; nothing fetched is written into the tree (the binary lands in gitignored '
+           + 'tools/). The SHA checkout is the immutable reference.'
+    },
+    {
         file: '.github/workflows/build.yml',
         kind: 'git',
         text: 'git clone --filter=blob:none --no-checkout \\',
