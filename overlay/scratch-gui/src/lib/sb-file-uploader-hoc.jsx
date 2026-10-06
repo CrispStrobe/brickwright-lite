@@ -4,13 +4,7 @@ import PropTypes from 'prop-types';
 import {defineMessages, intlShape, injectIntl} from 'react-intl';
 import {connect} from 'react-redux';
 import log from '../lib/log';
-import {
-    inspectBrickwrightState,
-    applyBrickwrightInspection,
-    rollbackBrickwrightInspection
-} from './bw-project-bundle';
-import {inspectArtwork, applyArtwork} from './bw-artwork-bundle';
-import {unpackLms, setActiveLms, clearActiveLms} from './mindstorms-lms';
+import loadProjectFile from './bw-project-load';
 import sharedMessages from './shared-messages';
 
 import {
@@ -156,55 +150,9 @@ const SBFileUploaderHOC = function (WrappedComponent) {
                 this.props.onLoadingStarted();
                 const filename = this.fileToUpload && this.fileToUpload.name;
                 let loadingSuccess = false;
-                let rawFile = this.fileReader.result;
-                let lms = null;
-                let bundle;
-                let artwork;
-                Promise.resolve()
-                    .then(async () => {
-                        if (filename && /\.lms$/i.test(filename)) {
-                            lms = await unpackLms(rawFile);
-                            rawFile = lms.scratch;
-                        }
-                        artwork = await inspectArtwork(rawFile);
-                        return inspectBrickwrightState(rawFile);
-                    })
-                    .then(inspection => {
-                        if (inspection.outcome === 'invalid' || inspection.outcome === 'future') {
-                            if (typeof window !== 'undefined') {
-                                window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded',
-                                    {detail: inspection}));
-                            }
-                            const reason = inspection.reason || inspection.report?.action;
-                            throw new Error(
-                                `Brickwright project state ${inspection.outcome}: ${reason}`
-                            );
-                        }
-                        bundle = applyBrickwrightInspection(inspection);
-                        if (bundle.outcome === 'storage-failed') {
-                            throw new Error(`Brickwright project state storage failed: ${bundle.reason}`);
-                        }
-                        return this.props.vm.loadProject(rawFile).catch(error => {
-                            const rollback = rollbackBrickwrightInspection(bundle);
-                            if (!rollback.rolledBack) {
-                                error.message += `; auxiliary rollback failed: ${rollback.reason}`;
-                            }
-                            throw error;
-                        });
-                    })
-                    .then(() => {
-                        applyArtwork(artwork, this.props.vm);
-                        if (lms) setActiveLms(lms);
-                        else clearActiveLms();
-                        // A project that spans four tabs is only really loaded
-                        // when all four are. Tell the tabs their storage changed;
-                        // they seed from localStorage on mount and this is what
-                        // makes an already-mounted tab notice.
-                        if (bundle && typeof window !== 'undefined') {
-                            window.dispatchEvent(new CustomEvent('bw-project-bundle-loaded',
-                                {detail: bundle}));
-                        }
-                    })
+                // The whole load (preflight, rollback, every tab) is shared with the
+                // native Open dialog: lib/bw-project-load.js.
+                loadProjectFile(this.props.vm, this.fileReader.result, filename)
                     .then(() => {
                         if (filename) {
                             const uploadedProjectTitle = this.getProjectTitleFromFilename(filename);

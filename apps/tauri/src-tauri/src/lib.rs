@@ -120,6 +120,14 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
     builder
         .invoke_handler(tauri::generate_handler![
             fileio::save_project,
+            fileio::open_project_document,
+            fileio::open_recent_project,
+            fileio::recent_projects,
+            fileio::pending_project,
+            fileio::clear_project_document,
+            fileio::activate_project_document,
+            fileio::discard_open_project,
+            fileio::save_project_document,
             fileio::write_temp_project,
             fileio::is_mobile,
             fileio::share_file_native,
@@ -168,6 +176,7 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
             native_capability::native_broker_audit
         ])
         .manage(scratchlink::bridge::BridgeState::default())
+        .manage(fileio::Documents::default())
         .setup(move |app| {
             #[cfg(desktop)]
             native_broker::create(app, native_policy.clone())?;
@@ -231,6 +240,15 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
                         }
                     }
                 });
+            }
+            // Windows and Linux hand an associated project to a fresh launch as an argument.
+            #[cfg(any(target_os = "linux", windows))]
+            if let Some(path) = std::env::args_os()
+                .skip(1)
+                .map(std::path::PathBuf::from)
+                .find(|path| path.is_file())
+            {
+                fileio::emit_load_project(app.handle(), &path);
             }
             Ok(())
         })

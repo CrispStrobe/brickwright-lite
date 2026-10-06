@@ -2,12 +2,14 @@ import bindAll from 'lodash.bindall';
 import PropTypes from 'prop-types';
 import React from 'react';
 import {connect} from 'react-redux';
-import {projectTitleInitialState} from '../reducers/project-title';
+import {projectTitleInitialState, setProjectTitle} from '../reducers/project-title';
+import {setProjectUnchanged} from '../reducers/project-changed';
 import {showStandardAlertWithMessage} from '../reducers/alerts';
 import downloadBlob from '../lib/download-blob';
 import {attachBrickwrightState} from '../lib/bw-project-bundle';
 import {writeArtworkToZip} from '../lib/bw-artwork-bundle';
 import {packActiveLms} from '../lib/mindstorms-lms';
+import {saveNativeProject} from '../lib/tauri-bridge';
 /**
  * Project saver component passes a downloadProject function to its child.
  * It expects this child to be a function with the signature
@@ -21,6 +23,11 @@ import {packActiveLms} from '../lib/mindstorms-lms';
  *         {...props}
  *     />
  * )}</SB3Downloader>
+ *
+ * Called with no mode (or an event, as an onClick), it exports: a browser download, or in the
+ * app the share picker / Save As of lib/download-blob.js. In the desktop app it can instead
+ * save the project as a native document: `downloadProject('save')` writes back to the file
+ * that was opened, `downloadProject('saveAs')` asks where (lib/tauri-bridge.js).
  */
 class SB3Downloader extends React.Component {
     constructor (props) {
@@ -29,7 +36,9 @@ class SB3Downloader extends React.Component {
             'downloadProject'
         ]);
     }
-    downloadProject () {
+    downloadProject (mode) {
+        const documentMode = (mode === 'save' || mode === 'saveAs') && this.props.format === 'sb3' ?
+            mode : null;
         // EVERY step here can fail, and until 2026-08-24 none of them reported it.
         // saveProjectSb3() rejecting, or downloadBlob() throwing, produced an
         // unhandled promise rejection: no dialog, no console entry the user would
@@ -53,6 +62,14 @@ class SB3Downloader extends React.Component {
                 packActiveLms(content, this.props.projectFilename.replace(/\.sb3$/i, ''),
                     {unchanged: !this.props.projectChanged}) : content))
             .then(content => {
+                if (documentMode) {
+                    return saveNativeProject(this.props.projectFilename, content, documentMode)
+                        .then(result => {
+                            if (!result.saved) return;
+                            if (this.props.onSaveFinished) this.props.onSaveFinished();
+                            this.props.onDocumentSaved(result.name);
+                        });
+                }
                 if (this.props.onSaveFinished) {
                     this.props.onSaveFinished();
                 }
@@ -93,6 +110,7 @@ const getProjectFilename = (curTitle, defaultTitle) => {
 SB3Downloader.propTypes = {
     children: PropTypes.func,
     className: PropTypes.string,
+    onDocumentSaved: PropTypes.func,
     onExportError: PropTypes.func,
     onSaveFinished: PropTypes.func,
     projectFilename: PropTypes.string,
@@ -115,7 +133,12 @@ const mapStateToProps = state => ({
 // The dispatch prop was previously omitted entirely. It is needed now so an
 // export failure can reach the GUI rather than only the console.
 const mapDispatchToProps = dispatch => ({
-    onExportError: detail => dispatch(showStandardAlertWithMessage('exportError', detail))
+    onExportError: detail => dispatch(showStandardAlertWithMessage('exportError', detail)),
+    // A native document save leaves the editor in step with the file it wrote.
+    onDocumentSaved: name => {
+        if (name) dispatch(setProjectTitle(name.replace(/\.sb3$/i, '').substring(0, 100)));
+        dispatch(setProjectUnchanged());
+    }
 });
 
 export default connect(

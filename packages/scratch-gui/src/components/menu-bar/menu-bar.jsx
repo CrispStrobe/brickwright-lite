@@ -21,6 +21,12 @@ import MenuBarMenu from './menu-bar-menu.jsx';
 import {MenuItem, MenuSection} from '../menu/menu.jsx';
 import OfflineLibraryModal from '../offline-library/offline-library-modal.jsx';
 import {isNativeApp} from '../../lib/offline-assets.js';
+import {
+    nativeDocumentsAvailable,
+    nativeMessage,
+    openNativeProject,
+    recentNativeProjects
+} from '../../lib/tauri-bridge.js';
 import ProjectTitleInput from './project-title-input.jsx';
 import ExampleIntroButton from './example-intro-button.jsx';
 import AuthorInfo from './author-info.jsx';
@@ -188,21 +194,36 @@ class MenuBar extends React.Component {
             'getSaveToComputerHandler',
             'restoreOptionMessage',
             'handleOpenOfflineLibrary',
+            'handleOpenFileMenu',
+            'handleNativeOpen',
+            'rememberDocumentSaver',
             'handleCloseOfflineLibrary',
             'handleGlobalUndo'
         ]);
         // Local UI state for the Brickwright offline-library dialog (native app
         // only). Kept out of Redux — it's app-specific and self-contained.
-        this.state = {offlineLibraryOpen: false, globalCanUndo: false, undoSurface: 'blocks'};
+        this.state = {
+            offlineLibraryOpen: false,
+            globalCanUndo: false,
+            undoSurface: 'blocks',
+            // Desktop app: File > Load/Save use native project documents (lib/tauri-bridge.js).
+            nativeDocuments: false,
+            recentProjects: []
+        };
     }
     componentDidMount () {
+        this._mounted = true;
         document.addEventListener('keydown', this.handleKeyPress);
+        nativeDocumentsAvailable().then(nativeDocuments => {
+            if (this._mounted && nativeDocuments) this.setState({nativeDocuments});
+        });
         this._unsubscribeUndo = subscribeUndoState(({canUndo, surface}) => {
             this.setState({globalCanUndo: canUndo, undoSurface: surface});
         });
         this.activateTabUndoSurface();
     }
     componentWillUnmount () {
+        this._mounted = false;
         document.removeEventListener('keydown', this.handleKeyPress);
         if (this._unsubscribeUndo) this._unsubscribeUndo();
     }
@@ -231,6 +252,27 @@ class MenuBar extends React.Component {
             this.props.onClickNew(this.props.canSave && this.props.canCreateNew);
         }
         this.props.onRequestCloseFile();
+    }
+    handleOpenFileMenu () {
+        this.props.onClickFile();
+        if (!this.state.nativeDocuments) return;
+        recentNativeProjects()
+            .then(recentProjects => this._mounted && this.setState({recentProjects}))
+            .catch(() => this._mounted && this.setState({recentProjects: []}));
+    }
+    handleNativeOpen (path) {
+        this.props.onRequestCloseFile();
+        openNativeProject(path).catch(error => {
+            // eslint-disable-next-line no-console
+            console.error('[brickwright] open project failed', error);
+            nativeMessage(`Could not open the project: ${error.message || error}`);
+        });
+    }
+    // The File menu's own SB3Downloader exists only while the menu is open, so the save
+    // shortcut uses a second, always-mounted one (rendered with no output below).
+    rememberDocumentSaver (className, downloadProjectCallback) {
+        this.saveDocument = downloadProjectCallback;
+        return null;
     }
     handleOpenOfflineLibrary () {
         this.props.onRequestCloseFile();
@@ -311,14 +353,19 @@ class MenuBar extends React.Component {
     handleKeyPress (event) {
         const modifier = bowser.mac ? event.metaKey : event.ctrlKey;
         if (modifier && event.key === 's') {
-            this.props.onClickSave();
+            if (this.state.nativeDocuments && this.saveDocument) {
+                this.saveDocument('save');
+            } else {
+                this.props.onClickSave();
+            }
             event.preventDefault();
         }
     }
-    getSaveToComputerHandler (downloadProjectCallback) {
+    // `mode` is SB3Downloader's: none exports, 'save' / 'saveAs' save a native document.
+    getSaveToComputerHandler (downloadProjectCallback, mode) {
         return () => {
             this.props.onRequestCloseFile();
-            downloadProjectCallback();
+            downloadProjectCallback(mode);
             if (this.props.onProjectTelemetryEvent) {
                 const metadata = collectMetadata(this.props.vm, this.props.projectTitle, this.props.locale);
                 this.props.onProjectTelemetryEvent('projectDidSave', metadata);
@@ -486,7 +533,7 @@ class MenuBar extends React.Component {
                                 className={classNames(styles.menuBarItem, styles.hoverable, {
                                     [styles.active]: this.props.fileMenuOpen
                                 })}
-                                onMouseUp={this.props.onClickFile}
+                                onMouseUp={this.handleOpenFileMenu}
                             >
                                 <img src={fileIcon} />
                                 <span className={styles.collapsibleLabel}>
@@ -550,21 +597,49 @@ class MenuBar extends React.Component {
                                     )}
                                     <MenuSection>
                                         <MenuItem
-                                            onClick={this.props.onStartSelectingFileUpload}
+                                            onClick={this.state.nativeDocuments ?
+                                                () => this.handleNativeOpen() :
+                                                this.props.onStartSelectingFileUpload}
                                         >
                                             {this.props.intl.formatMessage(sharedMessages.loadFromComputerTitle)}
                                         </MenuItem>
-                                        <SB3Downloader>{(className, downloadProjectCallback) => (
+                                        {this.state.nativeDocuments && this.state.recentProjects.map(recent => (
                                             <MenuItem
-                                                className={className}
-                                                onClick={this.getSaveToComputerHandler(downloadProjectCallback)}
+                                                key={recent.path}
+                                                onClick={() => this.handleNativeOpen(recent.path)}
                                             >
-                                                <FormattedMessage
-                                                    defaultMessage="Save to your computer"
-                                                    description="Menu bar item for downloading a project to your computer" // eslint-disable-line max-len
-                                                    id="gui.menuBar.downloadToComputer"
-                                                />
+                                                {`Open recent: ${recent.name}`}
                                             </MenuItem>
+                                        ))}
+                                        <SB3Downloader>{(className, downloadProjectCallback) => (
+                                            <React.Fragment>
+                                                {this.state.nativeDocuments && (
+                                                    <MenuItem
+                                                        className={className}
+                                                        onClick={this.getSaveToComputerHandler(downloadProjectCallback, 'save')}
+                                                    >
+                                                        {'Save project'}
+                                                    </MenuItem>
+                                                )}
+                                                {this.state.nativeDocuments && (
+                                                    <MenuItem
+                                                        className={className}
+                                                        onClick={this.getSaveToComputerHandler(downloadProjectCallback, 'saveAs')}
+                                                    >
+                                                        {'Save project as…'}
+                                                    </MenuItem>
+                                                )}
+                                                <MenuItem
+                                                    className={className}
+                                                    onClick={this.getSaveToComputerHandler(downloadProjectCallback)}
+                                                >
+                                                    <FormattedMessage
+                                                        defaultMessage="Save to your computer"
+                                                        description="Menu bar item for downloading a project to your computer" // eslint-disable-line max-len
+                                                        id="gui.menuBar.downloadToComputer"
+                                                    />
+                                                </MenuItem>
+                                            </React.Fragment>
                                         )}</SB3Downloader>
                                         {hasActiveLms() && (
                                             <SB3Downloader format="lms">{(className, downloadProjectCallback) => (
@@ -948,6 +1023,9 @@ class MenuBar extends React.Component {
                 {aboutButton}
                 {this.state.offlineLibraryOpen && (
                     <OfflineLibraryModal onClose={this.handleCloseOfflineLibrary} />
+                )}
+                {this.state.nativeDocuments && (
+                    <SB3Downloader>{this.rememberDocumentSaver}</SB3Downloader>
                 )}
             </Box>
         );
