@@ -955,3 +955,20 @@ test('a tagged asset literal no translator claims is named, not silently a text 
     const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.animation`missing`, 75, false)');
     assert.ok(out.unsupported.some(u => /assets\.animation`…` — image or asset literal not translated here/.test(u)), out.unsupported.join('; '));
 });
+
+test('Arcade Math.percentChance, Math.clamp and control.millis translate as their PXT definitions (F11)', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const out = arcadeToPseudocode([
+        'let n = 0',
+        'if (Math.percentChance(25)) {',
+        '    n = 1',
+        '}',
+        'let c = Math.clamp(0, 10, n + 3)',
+        'let t = control.millis()'
+    ].join('\n'));
+    assert.deepEqual(out.unsupported, []);
+    // pxt-core: percentChance(p) is randomRange(0, 99) < p, exact at 0 and 100 too.
+    assert.match(out.code, /IF \(pick random 0 to 99\) < 25 THEN:/);
+    assert.match(out.code, /set c to min of \(max of \(n \+ 3\) and 0\) and 10/);
+    assert.match(out.code, /set t to timer \* 1000/);
+});

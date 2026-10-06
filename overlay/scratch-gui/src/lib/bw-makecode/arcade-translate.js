@@ -1722,6 +1722,32 @@ const liftExporterStops = program => {
     return {...program, body: statements(program.body)};
 };
 
+// PXT library calls that are, by their own definition, expressions the
+// translator already has, rewritten to those before translation:
+//   Math.percentChance(p) is \`Math.randomRange(0, 99) < p\` (pxt-core math.ts),
+//   Math.clamp(lo, hi, v) is min(max(v, lo), hi), each argument read once,
+//   control.millis() is the time since the program started, as game.runtime().
+const lowerLibraryCalls = program => {
+    const callee = node => node?.type === 'Call' && node.callee?.type === 'Member' && node.callee.object?.type === 'Identifier' ?
+        `${node.callee.object.name}.${node.callee.name}` : null;
+    const call = (object, name, args) => ({type: 'Call', callee: {type: 'Member', object: {type: 'Identifier', name: object}, name}, args});
+    const visit = node => {
+        if (Array.isArray(node)) return node.map(visit);
+        if (!node || typeof node !== 'object') return node;
+        const copy = {...node};
+        for (const key of Object.keys(copy)) copy[key] = visit(copy[key]);
+        const name = callee(copy), a = copy.args || [];
+        if (name === 'Math.percentChance' && a.length === 1) {
+            return {type: 'Binary', op: '<', left: {type: 'Call', callee: {type: 'Identifier', name: 'randint'},
+                args: [{type: 'Number', value: 0}, {type: 'Number', value: 99}]}, right: a[0]};
+        }
+        if (name === 'Math.clamp' && a.length === 3) return call('Math', 'min', [call('Math', 'max', [a[2], a[0]]), a[1]]);
+        if (name === 'control.millis' && a.length === 0) return call('game', 'runtime', []);
+        return copy;
+    };
+    return visit(program);
+};
+
 const inlineLegacyArrayHelpers = program => {
     if(!program.body.some(fn=>fn.type==='FunctionDeclaration' && /^__bw(?:Named(?:Parse|Json)Value|ArrayAccess)/.test(fn.name)))return program;
     const templates=legacyArrayHelperTemplates || (legacyArrayHelperTemplates=new Map([
@@ -3099,7 +3125,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(liftExporterStops(parseMakeCodeTs(source, {parameterDefaults: true})), source)));
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(parseMakeCodeTs(source, {parameterDefaults: true}))), source)));
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
     const flattened = namespaceBindings.program ? ast : null;
