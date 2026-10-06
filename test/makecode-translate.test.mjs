@@ -972,3 +972,26 @@ test('Arcade Math.percentChance, Math.clamp and control.millis translate as thei
     assert.match(out.code, /set c to min of \(max of \(n \+ 3\) and 0\) and 10/);
     assert.match(out.code, /set t to timer \* 1000/);
 });
+
+test('a sprite property written through a value the stage cannot follow is named, not `set 0 to`', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    // A loop variable over sprites on the fixed-sprite path (corpus arcade-013bd6d9…).
+    const loop = arcadeToPseudocode([
+        'let paddles: Sprite[] = []',
+        'game.onUpdate(function () {',
+        '    for (const paddle of paddles) {',
+        '        paddle.x = 10',
+        '        paddle.y += 2',
+        '    }',
+        '})'
+    ].join('\n'));
+    assert.doesNotMatch(loop.code, /^\s*(set|change) 0 (to|by)/m, loop.code);
+    assert.ok(loop.unsupported.some(u => /paddle\.x = … — a sprite held in a variable/.test(u)), loop.unsupported.join('; '));
+    // A text sprite on the value-sprite path (corpus arcade-0f16f8a1…).
+    const text = arcadeToPseudocode([
+        'let hero = sprites.create(img`1`, SpriteKind.Player)',
+        'let minus = textsprite.create("-")',
+        'minus.x += -30'
+    ].join('\n'));
+    assert.doesNotMatch(text.code, /^\s*(set|change) 0 (to|by)/m, text.code);
+});

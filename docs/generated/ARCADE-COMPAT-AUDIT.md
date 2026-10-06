@@ -1,12 +1,12 @@
 # Conversion compatibility audit
 
-Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessarily run correctly.
+Generated 2026-10-06T21:23:18.345Z; 184 files. A parsed project has not necessarily run correctly.
 
 | count | stage |
 |---:|---|
-| 83 | translated |
+| 84 | translated |
 | 53 | pxt-compile-failed |
-| 47 | partial |
+| 46 | partial |
 | 1 | parse-failed |
 
 ## Unsupported MakeCode elements
@@ -14,9 +14,8 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | occurrences | element |
 |---:|---|
 | 10 | arcade: scene.setBackgroundImage() with art we could not read |
+| 7 | arcade: scene.setTileMap() |
 | 7 | arcade: tiles.setTilemap() requires a readable literal tile map with wall layer and tile scale |
-| 6 | arcade: Math.percentChance() as a value |
-| 6 | arcade: scene.setTileMap() |
 | 6 | arcade: sprites.destroy() effect and duration — not rendered |
 | 5 | arcade: music.play() — Arcade's music has no stage equivalent |
 | 5 | arcade: powerUp.data — unsupported Arcade handle property |
@@ -37,41 +36,45 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 3 | arcade: sprite.setStayInScreen() — no stage equivalent |
 | 3 | arcade: sprite.setVelocity() — no stage equivalent |
 | 3 | arcade: sprite.z = … |
-| 3 | arcade: sprites.create() as a value |
 | 3 | arcade: sprites.createProjectileFromSide() as a value |
-| 2 | arcade: Array as a value |
 | 2 | arcade: carnival.startCountdownGame() |
-| 2 | arcade: Code to Blocks: Line 55: Empty body: "IF truthiness of value (0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 2 | arcade: control.millis() as a value |
+| 2 | arcade: Code to Blocks: Line 54: Empty body: "IF compare value (pick random 0 to 99) op "<" with ((0 + (4))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 2 | arcade: flamethrower: lab2imgs.flamethrower — sprite artwork is unavailable in this project |
 | 2 | arcade: game.setGameOverEffect() |
-| 2 | arcade: Math.clamp() as a value |
+| 2 | arcade: img`…` — image or asset literal not translated here |
 | 2 | arcade: myCorg.horizontalMovement() |
 | 2 | arcade: myCorg.updateSprite() |
 | 2 | arcade: myCorg.verticalMovement() |
 | 2 | arcade: pizza.setPlayersWith() |
-| 2 | arcade: scene.cameraFollowSprite() |
+| 2 | arcade: scene.getTilesByType() as a value |
 | 2 | arcade: scene.onHitTile() |
-| 2 | arcade: scene.setTileMap() — tilemaps have no stage equivalent |
 | 2 | arcade: screen.fill() |
 | 2 | arcade: screen.print() |
 | 2 | arcade: sprite.setFlag() — no stage equivalent |
+| 2 | arcade: sprites.create() as a value |
 | 2 | arcade: sprites.createProjectile() as a value |
 | 2 | arcade: sprites.destroyAllSpritesOfKind() |
 | 1 | arcade: __bwValue1.x — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: __bwValue1.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: __bwValue2.ay — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: __bwValue2.ay = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: __bwValue2.fillRect() |
-| 1 | arcade: __bwValue4.x — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: __bwValue4.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: __bwValue7.x — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: __bwValue7.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: animatedSprite.setImage() |
+| 1 | arcade: Array as a value |
+| 1 | arcade: assets.animation`…` — image or asset literal not translated here |
+| 1 | arcade: assets.image`…` — image or asset literal not translated here |
 | 1 | arcade: athlete: throw_imgs.dunk — sprite artwork is unavailable in this project |
 | 1 | arcade: ball.ay — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: ball.ay = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: ball.image.replace() |
 | 1 | arcade: ball.left — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: ball.overlapsWith() as a value |
 | 1 | arcade: ball.right — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: ball.vx — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: ball.vy — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: ball.vx = … — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: ball.vy = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: ball.y — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: blockSettings.writeNumberArray() |
 | 1 | arcade: blockSettings.writeStringArray() |
@@ -84,9 +87,10 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 1 | arcade: characterAnimations.loopFrames() |
 | 1 | arcade: Code to Blocks: Line 12: Empty body: "FOREVER:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 13: Empty body: "IF not (0 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 1 | arcade: Code to Blocks: Line 39: Empty body: "IF truthiness of value (0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 1 | arcade: Code to Blocks: Line 45: Empty body: "IF truthiness of value (celsius) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 1 | arcade: Code to Blocks: Line 51: Empty body: "IF compare value (temp) op ">" with ((0 + (0))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
+| 1 | arcade: Code to Blocks: Line 39: Empty body: "IF compare value (pick random 0 to 99) op "<" with ((0 + (10))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
+| 1 | arcade: Code to Blocks: Line 40: Empty body: "IF truthiness of value (celsius) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
+| 1 | arcade: Code to Blocks: Line 42: Empty body: "IF not (__bwValue1 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
+| 1 | arcade: Code to Blocks: Line 46: Empty body: "IF compare value (temp) op ">" with ((0 + (0))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 96: Empty body: "IF truthiness of value (arcade local __bwValue4) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: References unknown sprite "ExtraLife" (not a defined sprite) |
 | 1 | arcade: Code to Blocks: References unknown sprite "Food" (not a defined sprite) |
@@ -100,8 +104,8 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 1 | arcade: degree.setDigitColor() |
 | 1 | arcade: degree.setRadix() |
 | 1 | arcade: degree.setScale() |
-| 1 | arcade: degree.x — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: degree.y — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: degree.x = … — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: degree.y = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: effects.confetti.startScreenEffect() |
 | 1 | arcade: enemySprite.follow() — unsupported Arcade handle method |
 | 1 | arcade: finish: sprite image — sprite artwork is unavailable in this project |
@@ -111,7 +115,6 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 1 | arcade: flameSprite: lab2imgs.flame — sprite artwork is unavailable in this project |
 | 1 | arcade: flamethrower.x — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: flamethrower.y — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: flower.setFlag() |
 | 1 | arcade: fly: flies_imgs.fly — sprite artwork is unavailable in this project |
 | 1 | arcade: fly.setBounceOnWall() — Scratch scripts can only move their own sprite |
 | 1 | arcade: fly.setVelocity() — Scratch scripts can only move their own sprite |
@@ -143,7 +146,7 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 1 | arcade: minus.setDigitAlpha() |
 | 1 | arcade: minus.setDigitColor() |
 | 1 | arcade: minus.setRadix() |
-| 1 | arcade: minus.x — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: minus.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: music.baDing.play() |
 | 1 | arcade: music.pewPew.play() |
 | 1 | arcade: music.playSoundUntilDone() |
@@ -161,17 +164,18 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 1 | arcade: parseInt() as a value |
 | 1 | arcade: pizza.startEffect() — unsupported Arcade handle method |
 | 1 | arcade: player.onOverlap() — unsupported Arcade handle method |
-| 1 | arcade: projectile.y — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: projectile.y = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: r.onOverlap() — unsupported Arcade handle method |
 | 1 | arcade: Riri: sprite image — sprite artwork is unavailable in this project |
 | 1 | arcade: road: roadImg — sprite artwork is unavailable in this project |
 | 1 | arcade: roadImg.fillRect() |
 | 1 | arcade: roadImg.scroll() |
 | 1 | arcade: rockscout: sprite image — sprite artwork is unavailable in this project |
+| 1 | arcade: scene.cameraFollowSprite() |
 | 1 | arcade: scene.cameraShake() |
-| 1 | arcade: scene.getTilesByType() as a value |
 | 1 | arcade: scene.setBG() — tilemaps have no stage equivalent |
 | 1 | arcade: scene.setTile() — tilemaps have no stage equivalent |
+| 1 | arcade: scene.setTileMap() — tilemaps have no stage equivalent |
 | 1 | arcade: screen.clone() as a value |
 | 1 | arcade: sevenseg.createCounter() as a value |
 | 1 | arcade: sevenseg.createDigit() as a value |
@@ -182,7 +186,7 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 1 | arcade: sparksjr.onScore2() |
 | 1 | arcade: sprite.ay = … |
 | 1 | arcade: sprite.setBounceOnWall() |
-| 1 | arcade: sprite.x — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: sprite.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: sprites.assignPlayerImgs() |
 | 1 | arcade: sprites.createProjectile() in game.onUpdate callback — projectile artwork is unavailable |
 | 1 | arcade: sprites.createProjectile() in newHouse() — projectile artwork is unavailable |
@@ -203,8 +207,8 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | 1 | arcade: unit.setDigitColor() |
 | 1 | arcade: unit.setRadix() |
 | 1 | arcade: unit.setScale() |
-| 1 | arcade: unit.x — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: unit.y — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: unit.x = … — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: unit.y = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: Update as a value |
 | 1 | arcade: update expression used as a value |
 | 1 | arcade: valentine.set_win_lose_size() |
@@ -232,7 +236,6 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 
 | file | result |
 |---|---|
-| makecode/arcade/arcade-013bd6d9c7db77e4.ts | block-error: Array reference is null or expired |
 | makecode/arcade/arcade-0a35827ae40a2a51.ts | main.ts:2: Cannot redeclare block-scoped variable 'mySprite'. |
 | makecode/arcade/arcade-0f16f8a134442a82.ts | main.ts:4: Cannot find name 'sevenseg'. |
 | makecode/arcade/arcade-102e28d473a52b31.ts | main.ts:1: Property 'NPC' does not exist on type 'typeof SpriteKind'. |
@@ -259,14 +262,11 @@ Generated 2026-10-06T20:13:19.878Z; 184 files. A parsed project has not necessar
 | makecode/arcade/arcade-56f2735dfec807de.ts | main.ts:1: Cannot find name 'Corgio'. |
 | makecode/arcade/arcade-5840453b73b41d29.ts | main.ts:1: Cannot find name 'freethrow'. |
 | makecode/arcade/arcade-5d0c02f598d4eda3.ts | main.ts:2: Cannot find name 'bundles'. |
-| makecode/arcade/arcade-5eb37c864dd21005.ts | block-error: Array reference is null or expired |
 | makecode/arcade/arcade-60fd3a6d3fcf68de.ts | pxt_modules/game/textDialogs.ts:711: Assertion failed |
-| makecode/arcade/arcade-6782c0ede72e9f93.ts | block-error: Array reference is null or expired |
 | makecode/arcade/arcade-67958b6a5a875e41.ts | main.ts:2: Cannot find name 'newpizzaassets'. |
 | makecode/arcade/arcade-7b258f528af901d5.ts | main.ts:1: Property 'sendFlying' does not exist on type 'typeof sprites'. |
 | makecode/arcade/arcade-7c596cc3ff723b32.ts | pxt_modules/game/animation.ts:510: Cannot read properties of undefined (reading 'flags') |
 | makecode/arcade/arcade-7cf6f6fa5b8ff423.ts | main.ts:2: Cannot find name 'football'. |
-| makecode/arcade/arcade-85a1c4bedb4c8217.ts | block-error: Array reference is null or expired |
 | makecode/arcade/arcade-90a0e61d3299702c.ts | main.ts:14: Property 'Finish' does not exist on type 'typeof SpriteKind'. |
 | makecode/arcade/arcade-999ed460b9bd1d1e.ts | main.ts:3: Cannot find name 'bundles'. |
 | makecode/arcade/arcade-9c4a169d9d7f1171.ts | main.ts:1: Cannot find name 'smurfy'. |

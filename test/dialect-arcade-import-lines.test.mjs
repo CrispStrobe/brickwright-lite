@@ -43,8 +43,12 @@ const corpus = JSON.parse(readFileSync(new URL('./fixtures/makecode/arcade-impor
 // Programs whose decompiled text does not read back: a hat or a DEFINE whose
 // body is empty decompiles to a `# (empty)` the reader does not take as a body
 // (a decompiler limit unrelated to these words; E0 found the same class).
+// Each is a body whose only lines are \`# unsupported:\` comments, which the pinned
+// parser mis-attaches (task F6 of docs/OPEN-TASKS-2026-09-29.md). The fix is on
+// CrispStrobe/sb3-creator branch fix/trailing-comments-empty-bodies; with it this
+// list is EMPTY (measured 2026-10-06), so the pin move that brings it empties it.
 const NOT_FIXED_POINT = ['makecode-arcade-scenes-import.test.mjs', 'makecode-arcade-scenes-import.test.mjs',
-    'makecode-arcade-scenes-import.test.mjs'];
+    'makecode-arcade-scenes-import.test.mjs', 'makecode-arcade-terrain-events-import.test.mjs'];
 
 function parse (code) {
     const c = new SB3Creator();

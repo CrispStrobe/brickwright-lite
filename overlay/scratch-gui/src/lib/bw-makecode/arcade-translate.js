@@ -1533,6 +1533,14 @@ class ArcadeTranslator extends BaseTranslator {
 
         if (expr.type === 'Assignment' && expr.left.type === 'Member') {
             const owner = this.resolveSprite(expr.left.object);
+            // \`paddle.x = …\` where \`paddle\` is a loop variable or a parameter: no
+            // stage sprite to move. Falling through wrote \`set 0 to …\`, a variable
+            // literally named 0 (the property read as an unresolved value).
+            if (!owner && !(this.handleTemplates && this.handleRef(expr.left.object)) && SPRITE_PROPERTIES.has(expr.left.name)) {
+                const name = expr.left.object.type === 'Identifier' ? expr.left.object.name : 'a value';
+                push(this.note(`${name}.${expr.left.name} = … — a sprite held in a variable, which the stage cannot follow`));
+                return;
+            }
             if (owner) {
                 const property = expr.left.name;
                 // Velocity is the exception, and it costs nothing: vx and vy

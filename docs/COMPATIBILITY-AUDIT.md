@@ -64,64 +64,88 @@ docs, both MIT. `scripts/collect-makecode-corpus.mjs` re-extracts it. The corpus
 data: it is never shipped and never committed here. Lite's CI cannot reach it, so its
 tests use small inline fixtures.
 
-## Results on main (F2, 2026-10-06)
+## Results on main
 
-Lite `31a505c30` plus the F1 port. Corpus `brickwright-firmware-private` `19a52f6d6`
-(`compat-corpora/makecode`). Reports:
+Corpus: `brickwright-firmware-private` `19a52f6d6` (`compat-corpora/makecode`). The
+reports linked here are the current ones, generated with `--compile`:
 [Arcade](generated/ARCADE-COMPAT-AUDIT.md), [micro:bit](generated/MICROBIT-COMPAT-AUDIT.md),
-[round trips](generated/CONVERSION-ROUNDTRIPS.md). All three were generated with `--compile`.
+[round trips](generated/CONVERSION-ROUNDTRIPS.md).
 
-| corpus | static audit (no compiler) | with `--compile` | `--execute` (static rows, 24 frames) |
-|---|---|---|---|
-| Arcade 184 | **89 translated / 94 partial / 1 parse-failed** | 83 / 47 / 1, and 53 rejected by PXT itself | 171 stepped, 7 no green-flag thread, 5 block errors |
-| micro:bit 215 | 205 translated / 10 partial | 203 / 3, and 9 rejected by PXT | 214 stepped, 1 no green-flag thread |
+| | F2 (main `31a505c30` + F1) | after F5–F9, F11 (2026-10-06) |
+|---|---|---|
+| Arcade static audit | 89 translated / 94 partial / 1 parse-failed | **90 / 93 / 1** |
+| Arcade `--execute` (24 frames) | 171 stepped, 7 event-only, 5 block errors | **175 stepped, 7 event-only, 1 block error** |
+| Arcade MakeCode → Code → MakeCode | 70 preserved, 12 rejected by PXT, 1 error | **81 preserved, 0 rejected**, 0 errors, 2 "source invalid" |
+| micro:bit static audit | 205 / 10 | 205 / 10 |
+| micro:bit round trip | 197 preserved | 197 preserved |
 
-**Main against the parked WIP.** Both trees were run on the same corpus with the same
-static audit. The WIP's own run reproduces its 89 / 94 / 1. The WIP's stored reports in the
-corpus repository are an older baseline (2026-09-27, 27 translated).
+With `--compile`, PXT itself rejects 53 Arcade and 9 micro:bit documentation snippets as
+bare `.ts` files: undeclared names, or a missing package or asset. Those are counted apart
+from translation gaps. In the round trip, "source invalid" is a re-export that MakeCode
+rejects when it also rejects the original.
 
-- **Arcade:** same totals. 178 projects are identical. One is better on main
-  (`arcade-add5f539…`: `break` inside a loop now translates). One is worse
-  (`arcade-6ae4c8f0…`: "Array as a value"). Two partial projects gain a gap on main:
-  `arcade-318e958c…` "Update as a value" and `arcade-90a0e61d…` "Array as a value".
-- **micro:bit:** main is ahead, 205 / 10 against the WIP's 166 / 49. 39 projects are
-  better, none is worse.
+**Against the parked WIP.** Both trees were run on the same corpus and the same scripts; the
+WIP's own run reproduces its 89 / 94 / 1. The WIP's stored reports in the corpus
+repository are an older baseline (2026-09-27, 27 translated).
 
-**Round trips** (MakeCode → Code → MakeCode, re-compiled by PXT):
+- **micro:bit:** main is ahead in both views: 205 / 10 against 166 / 49 statically, and
+  197 preserved round trips against 106.
+- **Arcade static audit:** main is ahead, 90 / 93 / 1 against 89 / 94 / 1.
+- **Arcade round trip:** main preserves 81 against the WIP's 82. Three projects the WIP
+  preserves are not preserved on main, and two go the other way. Each of the three is named
+  below.
 
-- **Arcade:** 70 preserved, 42 partial, 58 with loss, 12 rejected by PXT, 1 error. The
-  parked WIP tree, run the same way (without the compiler), preserves **82**, so main is
-  behind here. 13 projects the WIP preserves are not preserved on main, and one goes the
-  other way. All 13 differ in block-opcode counts after the round trip: `operator_not` ×4,
-  `control_stop` ×4, `operator_equals` ×2, and one each of `data_changevariableby` and
-  `operator_multiply`. These are the opcodes E9 (`not` in value positions) and A5 (`stop`)
-  reshaped. Whether each one is an equivalent re-encoding or a real loss is still to be
-  checked.
-- **micro:bit:** 197 / 7 / 11, with none rejected. The WIP tree preserves 106.
-- **The SB3 hop:** it reports "loss" for every project. Plain Code text cannot carry
-  artwork bytes, so keep `.sb3` as the sharing format for art.
+**What F5–F9 and F11 fixed** (rows in section F of the task file):
 
-**Defects these runs found on main.** Each is a row in section F of the task file:
+- **F5 — Arcade re-exports MakeCode rejected (12 → 0):**
+  - A stop guard's bare `return` inside a value-returning function.
+  - A cloned sprite's interval/update hat that used an unbound `self`.
+  - A named list read as an array reference (`.length`/`.push` on a number).
+  - Globals typed `number` because the importer had turned unknown art (`sprites.dungeon.*`)
+    or an unread asset into a silent variable.
+- **Three silent import losses**, now carried or named:
+  - Untagged template strings with placeholders had become `"(image)"`.
+  - PXT's built-in art stored as `{data}` entries was missing. The table went from 507 to
+    763 images and now includes all of `sprites.dungeon`. Unknown built-in art is named.
+  - A sprite property written through a value the stage cannot follow (`paddle.x = …` in a
+    loop, a text sprite) had become `set 0 to …` / `change 0 by …`.
+- **F7 — run-time errors in partial projects (5 → 1):** an untranslated array stands in as
+  an empty one, and the named-list fix above closed two of them.
+- **F8 — Lite's own export reads back as itself:**
+  - The run-token machinery A5's `stop` blocks export is lifted back to `stop all` /
+    `stop other scripts in sprite`; before, `stop all` was lost.
+  - `!x` in a condition is `not` again (E9's `x === false` value form had leaked into
+    conditions).
+  - Literal say-block arguments stay literals.
+- **F9:** `fn: () => void` parameter types parse.
+- **F11:** `Math.percentChance` (6 projects), `Math.clamp` and `control.millis` translate as
+  their PXT definitions.
+- **Also:** `pick random a to b` is parenthesised as an operand. Before, it swallowed
+  `- 80` and read back as `randint(a, b - 80)`.
 
-1. **12 Arcade re-exports that PXT rejects.**
-   - `Argument of type 'number' is not assignable to parameter of type 'Image'` (×3) or
-     `'Sprite'` (×2).
-   - `Property 'length'` / `'push' does not exist on type 'number'` (×3).
-   - `Not all code paths return a value` (×3).
-   - `Cannot find name 'self'` (×1).
-2. **sb3-creator decompile of a comment-only script body.** In 4 projects
-   (`microbit-7d6ced57…`, `microbit-09623dfc…`, `arcade-6c646058…`, `arcade-e3f69fce…`),
-   a script whose body is only `# unsupported:` comments decompiles with the comments
-   outside its hat. The next script then reads as mis-indented, and the parser refuses it.
-   This belongs upstream in CrispStrobe/sb3-creator. Before D5, these lines were dropped
-   silently.
-3. **"Array reference is null or expired"** at run time in 5 partial Arcade projects:
-   `arcade-013bd6d9…`, `-28379fc0…`, `-5eb37c86…`, `-6782c0ed…`, `-85a1c4be…`.
-4. **Arcade reverse-path preservation is 70 on main against the WIP's 82** (see above),
-   in `not`/`stop`/comparison opcode counts.
-5. **One re-import error:** `arcade-f583b791…` re-exports an arrow function the TS
-   importer cannot read (`expected { but found "=>"`).
+**Still open, named:**
 
-The most frequent named Arcade gaps are in the generated report's frequency table. The top
-three are `scene.setBackgroundImage()` with unreadable art (10), `tiles.setTilemap()`
-without a literal wall layer (7), and `Math.percentChance()` as a value (6).
+1. **sb3-creator (F6), fixed upstream and waiting for a pin move:** a body made only of
+   `# comment` lines put its comments on the next script, and an empty hat's body indent
+   came from the following blank line. The fix is on CrispStrobe/sb3-creator branch
+   `fix/trailing-comments-empty-bodies` (3 commits). Its fast suite passes (1047/0) and its
+   slow suite passes (102/0). With it, every program the Arcade importer writes reaches a
+   decompile fixed point, and `test/dialect-arcade-import-lines` lists four that do not
+   until then. It also clears the 4 "error" rows on the MakeCode → Code → SB3 → Code path.
+2. **`arcade-28379fc0…` (1 block error):** MakeCode registers `game.onPaint` only after its
+   top-level code has run, while a Scratch hat is live from the green flag. The paint
+   handler runs before `snake` is set.
+3. **Round-trip differences against the WIP (3):**
+   - `arcade-268aab83…`: the fixed-sprite path keeps Arcade's score as a Scratch variable
+     `score`, which the exporter renames `score_`, so the Arcade HUD score is lost on
+     export. Changing that is a product decision.
+   - `arcade-a0f564a6…`: equivalent. Arithmetic re-imported through the value path is
+     `calculate value`, not `operator_multiply`.
+   - `arcade-6ae4c8f0…`: an array literal passed to a function is a named gap on the
+     fixed-sprite path. The doc snippet's function body is empty.
+4. **`sprite.data` (5 projects):** needs a new Arcade dialect word upstream in sb3-creator,
+   plus VM support.
+
+The most frequent named Arcade gaps are listed in the generated report's frequency table.
+The top one, `scene.setBackgroundImage()` with art we could not read (10), is art from
+project asset files or extension packages that a bare `.ts` snippet does not include.
