@@ -8,6 +8,10 @@ import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {SCENES_CONTROLLER_SOURCE} from '../test/fixtures/arcade-scenes.mjs';
+// Let the game run N Arcade frames (about 33 ms each): a wait on the VM's own
+// clock, not a wall-clock sleep, so a slow runner cannot cut it short.
+const settleFrames=(page,n)=>page.evaluate(n=>new Promise((done,fail)=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const stop=setTimeout(()=>{rt.removeListener('ARCADE_FRAME',f);fail(new Error('no Arcade frames'));},10000);const f=()=>{if(++c>=n){clearTimeout(stop);rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
+
 const source=SCENES_CONTROLLER_SOURCE;
 const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,['full terrain collision physics and scene lifecycle are not yet supported']);
 const build=path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
@@ -60,19 +64,19 @@ try{
             return [name,count];
         }));
     },ARCADE_PALETTE);
-    await waitDepth(0);await page.waitForTimeout(250);
+    await waitDepth(0);await settleFrames(page,8);
     await page.evaluate(()=>{window.__bwParentWorld=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;window.__bwPhysicalButtons=window.__bwParentWorld.buttons;});
     const initial=await state(),initialPixels=await pixels();assert.equal(initial.parentX,200);assert.equal(initial.score,11);assert.equal(initial.life,7);assert.equal(initialPixels.parent,144);assert.equal(initialPixels.child,0);
     const transitions=[];
     for(let cycle=0;cycle<2;cycle++){
-        await page.getByTestId('bw-arcade-a').click();await waitDepth(1);await page.waitForTimeout(150);
+        await page.getByTestId('bw-arcade-a').click();await waitDepth(1);await settleFrames(page,5);
         const child=await state(),childPixels=await pixels();assert.equal(child.parentWorldCurrent,false);assert.equal(child.physicalButtonsShared,true);assert.equal(child.pushEvents,(cycle+1)*2);assert.equal(child.score,33);assert.equal(child.life,4);assert.equal(childPixels.parent,0);assert.equal(childPixels.child,36);
-        await page.getByTestId('bw-arcade-a').click();await page.getByTestId('bw-arcade-right').click();await page.waitForTimeout(250);
+        await page.getByTestId('bw-arcade-a').click();await page.getByTestId('bw-arcade-right').click();await settleFrames(page,8);
         const paused=await state();assert.equal(paused.depth,1);assert.equal(paused.parentTicks,child.parentTicks);assert.ok(paused.childTicks>child.childTicks);assert.deepEqual(paused.ids,child.ids);
-        await page.getByTestId('bw-arcade-b').click();await waitDepth(0);await page.waitForTimeout(150);
+        await page.getByTestId('bw-arcade-b').click();await waitDepth(0);await settleFrames(page,5);
         const resumed=await state(),resumedPixels=await pixels();assert.equal(resumed.parentWorldCurrent,true);assert.equal(resumed.physicalButtonsShared,true);assert.equal(resumed.parentX,200+cycle*20);assert.equal(resumed.score,11);assert.equal(resumed.life,7);assert.ok(resumed.parentTicks>paused.parentTicks);assert.deepEqual(resumedPixels,initialPixels);
-        await page.getByTestId('bw-arcade-b').click();await page.waitForTimeout(100);const noExtraPop=await state();assert.equal(noExtraPop.depth,0);assert.equal(noExtraPop.childTicks,resumed.childTicks);assert.deepEqual(noExtraPop.ids,resumed.ids);
-        await page.getByTestId('bw-arcade-right').click();await page.waitForTimeout(150);assert.equal((await state()).parentX,220+cycle*20);
+        await page.getByTestId('bw-arcade-b').click();await settleFrames(page,4);const noExtraPop=await state();assert.equal(noExtraPop.depth,0);assert.equal(noExtraPop.childTicks,resumed.childTicks);assert.deepEqual(noExtraPop.ids,resumed.ids);
+        await page.getByTestId('bw-arcade-right').click();await settleFrames(page,5);assert.equal((await state()).parentX,220+cycle*20);
         transitions.push({child,childPixels,paused,resumed,resumedPixels});
     }
     await page.getByRole('tab',{name:'Code',exact:true}).click();

@@ -239,7 +239,6 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         argumentType: guiRequire('./node_modules/scratch-vm/src/extension-support/argument-type'),
         blockType: guiRequire('./node_modules/scratch-vm/src/extension-support/block-type'),
         castBoolean: guiRequire('./node_modules/scratch-vm/src/util/cast').toBoolean.toString()});
-    await page.getByTestId('bw-arcade-a').waitFor({state: 'visible', timeout: 30000});
     let creationOrder;
     if (creationOrderMode) {
         await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets

@@ -7,6 +7,10 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+// Let the game run N Arcade frames (about 33 ms each): a wait on the VM's own
+// clock, not a wall-clock sleep, so a slow runner cannot cut it short.
+const settleFrames=(page,n)=>page.evaluate(n=>new Promise((done,fail)=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const stop=setTimeout(()=>{rt.removeListener('ARCADE_FRAME',f);fail(new Error('no Arcade frames'));},10000);const f=()=>{if(++c>=n){clearTimeout(stop);rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
+
 const source=`let red=image.create(4,4)
 red.fill(2)
 let blue=image.create(4,4)
@@ -62,10 +66,10 @@ try{
     const settle=(n=3)=>page.evaluate(n=>new Promise(done=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const f=()=>{if(++c>=n){rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
     const initial=await state();assert.equal(initial.pixel,2);
     await page.getByTestId('bw-arcade-a').click();
-    const seen=new Set();for(let i=0;i<20;i++){const s=await state();seen.add(s.pixel);await page.waitForTimeout(35);}
+    const seen=new Set();for(let i=0;i<20;i++){const s=await state();seen.add(s.pixel);await settleFrames(page,2);}
     assert.ok(seen.has(2)&&seen.has(7),'controller A advances both actual frame images: '+JSON.stringify([...seen]));
     await page.getByTestId('bw-arcade-b').click();await settle();const stopped=await state();
-    await page.waitForTimeout(350);assert.equal((await state()).pixel,stopped.pixel,'controller B stops image playback');
+    await settleFrames(page,11);assert.equal((await state()).pixel,stopped.pixel,'controller B stops image playback');
     await page.getByTestId('bw-arcade-right').click();await settle();assert.equal((await state()).x,initial.x+10);
     const rendered=await page.evaluate(palette=>{
         const renderer=window.__brickwrightStore.getState().scratchGui.vm.runtime.renderer;renderer.draw();

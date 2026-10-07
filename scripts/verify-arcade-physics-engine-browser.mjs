@@ -8,6 +8,10 @@ import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {PHYSICS_ENGINE_CONTROLLER_SOURCE} from '../test/fixtures/arcade-physics-engine.mjs';
+// Let the game run N Arcade frames (about 33 ms each): a wait on the VM's own
+// clock, not a wall-clock sleep, so a slow runner cannot cut it short.
+const settleFrames=(page,n)=>page.evaluate(n=>new Promise((done,fail)=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const stop=setTimeout(()=>{rt.removeListener('ARCADE_FRAME',f);fail(new Error('no Arcade frames'));},10000);const f=()=>{if(++c>=n){clearTimeout(stop);rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
+
 const source=PHYSICS_ENGINE_CONTROLLER_SOURCE;
 const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
 const build=path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
@@ -63,7 +67,7 @@ try{
             return [name,count];
         }));
     },ARCADE_PALETTE);
-    await page.waitForTimeout(150);
+    await settleFrames(page,5);
     const initial=await state(),initialPixels=await pixels();assert.equal(initial.oldX,20);assert.equal(initial.oldVx,0);assert.equal(initial.newX,null);
     assert.deepEqual(initialPixels,{oldActor:324,newActor:0});
     const cycles=[];
@@ -72,11 +76,11 @@ try{
         const capped=await state();assert.equal(capped.phase,1);assert.equal(capped.capObserved,40);assert.ok(capped.oldX>20);assert.ok(capped.oldX<65);
         await page.getByTestId('bw-arcade-b').click();await waitValue('replacementObserved',true);
         const replaced=await state();assert.equal(replaced.phase,2);assert.equal(replaced.oldX,replaced.freezeX);assert.ok(replaced.newX>82);
-        await page.waitForTimeout(150);const heldOld=await state();assert.equal(heldOld.oldX,replaced.oldX);
+        await settleFrames(page,5);const heldOld=await state();assert.equal(heldOld.oldX,replaced.oldX);
         assert.deepEqual(await pixels(),{oldActor:324,newActor:324});
         await page.getByTestId('bw-arcade-up').click();await waitValue('restoredObserved',true);
         const restored=await state();assert.equal(restored.phase,3);assert.equal(restored.newX,restored.freezeX);assert.ok(restored.oldX>20);
-        await page.waitForTimeout(150);const heldNew=await state();assert.equal(heldNew.newX,restored.newX);
+        await settleFrames(page,5);const heldNew=await state();assert.equal(heldNew.newX,restored.newX);
         assert.deepEqual(await pixels(),{oldActor:324,newActor:324});
         await page.getByTestId('bw-arcade-down').click();await waitValue('phase',0);
         const reset=await state();assert.equal(reset.oldX,20);assert.equal(reset.oldVx,0);assert.equal(reset.newX,80);assert.equal(reset.newVx,0);
@@ -92,7 +96,7 @@ try{
     await page.getByTestId('bw-arcade-down').click();await waitValue('phase',0);
     await page.locator('[class*="green-flag_green-flag"]').first().click();
     await page.waitForFunction(()=>!document.querySelector('[data-testid="bw-arcade-runtime-diagnostic"]'),null,{timeout:30000});
-    await page.waitForTimeout(150);const restarted=await state();assert.equal(restarted.oldX,20);assert.equal(restarted.newX,null);assert.equal(restarted.diagnostic,null);assert.deepEqual(await pixels(),initialPixels);
+    await settleFrames(page,5);const restarted=await state();assert.equal(restarted.oldX,20);assert.equal(restarted.newX,null);assert.equal(restarted.diagnostic,null);assert.deepEqual(await pixels(),initialPixels);
     await page.getByRole('tab',{name:'Code',exact:true}).click();
     await page.getByRole('button',{name:'From blocks ⇨',exact:true}).click();
     await page.getByText('Read the current project into all languages. Edit any of them, then “To blocks”.',{exact:true}).waitFor({state:'visible',timeout:30000});

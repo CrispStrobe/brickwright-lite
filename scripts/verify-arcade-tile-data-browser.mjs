@@ -46,7 +46,6 @@ try{
         await vm.loadProject(Uint8Array.from(bytes));vm.runtime.bwDeviceId='arcade';vm.start();vm.greenFlag();
         localStorage.setItem('bw-debug-dock','arcade');window.dispatchEvent(new CustomEvent('bw-settings-change',{detail:{key:'bw-debug-dock',value:'arcade'}}));
     },bytes);
-    await page.getByTestId('bw-arcade-right').waitFor({state:'visible',timeout:30000});
     await page.waitForFunction(()=>{
         const vm=window.__brickwrightStore.getState().scratchGui.vm;
         const v=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(x=>[x.name.replace(/^Game_/,''),x.value]));

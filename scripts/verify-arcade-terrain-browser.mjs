@@ -8,6 +8,10 @@ import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {TERRAIN_CONTROLLER_SOURCE} from '../test/fixtures/arcade-terrain.mjs';
+// Let the game run N Arcade frames (about 33 ms each): a wait on the VM's own
+// clock, not a wall-clock sleep, so a slow runner cannot cut it short.
+const settleFrames=(page,n)=>page.evaluate(n=>new Promise((done,fail)=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const stop=setTimeout(()=>{rt.removeListener('ARCADE_FRAME',f);fail(new Error('no Arcade frames'));},10000);const f=()=>{if(++c>=n){clearTimeout(stop);rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
+
 const source=TERRAIN_CONTROLLER_SOURCE;
 const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,['full terrain collision physics and scene lifecycle are not yet supported']);
 const build=path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
@@ -67,7 +71,7 @@ try{
     await page.getByTestId('bw-arcade-a').click();
     await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.sprites||{}).some(s=>s.id && s.kind==='Player' && s.x>35),null,{timeout:30000});
     const through=await state();assert.ok(through.x>35);
-    await page.getByTestId('bw-arcade-b').click();await page.waitForTimeout(100);assert.equal((await state()).x,20);
+    await page.getByTestId('bw-arcade-b').click();await settleFrames(page,4);assert.equal((await state()).x,20);
     const rendered=await page.evaluate(palette=>{
         const renderer=window.__brickwrightStore.getState().scratchGui.vm.runtime.renderer;renderer.draw();
         const canvas=renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;

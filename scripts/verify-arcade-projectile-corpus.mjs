@@ -84,7 +84,6 @@ if(browserMode){
         const cdp=await page.context().newCDPSession(page);
         for(const id of ['eb2f435cf82b55e2','ed684a4cfd3026bf'].filter(id=>ids.includes(id))){
             await page.evaluate(async bytes=>{const vm=window.__brickwrightStore.getState().scratchGui.vm;await vm.loadProject(Uint8Array.from(bytes));vm.runtime.bwDeviceId='arcade';vm.start();vm.greenFlag();localStorage.setItem('bw-debug-dock','arcade');window.dispatchEvent(new CustomEvent('bw-settings-change',{detail:{key:'bw-debug-dock',value:'arcade'}}));},archives.get(id));
-            await page.getByTestId('bw-arcade-right').waitFor({state:'visible',timeout:30000});
             await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.sprites||{}).some(s=>s.controller),null,{timeout:15000});
             const before=await page.evaluate(()=>{const vm=window.__brickwrightStore.getState().scratchGui.vm;vm.quit();const s=Object.values(vm.runtime.bwArcadeDeviceState.sprites).find(s=>s.controller);return{x:s.x,y:s.y};});
             // Exercise the actual controller pane buttons, then advance fixed frames.

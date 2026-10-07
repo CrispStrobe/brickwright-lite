@@ -84,7 +84,6 @@ if(args.includes('--browser')){
             localStorage.setItem('bw-debug-dock','arcade');
             window.dispatchEvent(new CustomEvent('bw-settings-change',{detail:{key:'bw-debug-dock',value:'arcade'}}));
         },bytes);
-        await page.getByTestId('bw-arcade-right').waitFor({state:'visible',timeout:30000});
         await page.waitForFunction(()=>{
             const vm=window.__brickwrightStore.getState().scratchGui.vm;
             return Object.keys(vm.runtime.bwArcadeDeviceState?.sprites||{}).length===3 && !vm.runtime.threads.some(t=>t.target.blocks.getBlock(t.topBlock)?.opcode==='event_whenflagclicked');

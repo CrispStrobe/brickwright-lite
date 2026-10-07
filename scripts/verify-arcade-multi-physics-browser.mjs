@@ -8,6 +8,10 @@ import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {MULTI_PHYSICS_CONTROLLER_SOURCE} from '../test/fixtures/arcade-multi-physics.mjs';
+// Let the game run N Arcade frames (about 33 ms each): a wait on the VM's own
+// clock, not a wall-clock sleep, so a slow runner cannot cut it short.
+const settleFrames=(page,n)=>page.evaluate(n=>new Promise((done,fail)=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const stop=setTimeout(()=>{rt.removeListener('ARCADE_FRAME',f);fail(new Error('no Arcade frames'));},10000);const f=()=>{if(++c>=n){clearTimeout(stop);rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
+
 const source=MULTI_PHYSICS_CONTROLLER_SOURCE;
 const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
 const build=path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
@@ -60,7 +64,7 @@ try{
             return [name,count];
         }));
     },ARCADE_PALETTE);
-    await waitValue('pixelMaskTouch',false);await page.waitForTimeout(150);
+    await waitValue('pixelMaskTouch',false);await settleFrames(page,5);
     const initial=await state(),initialPixels=await pixels();assert.equal(initial.moverX,60);assert.equal(initial.targetX,68);assert.equal(initial.passes,0);
     assert.deepEqual(initialPixels,{mover:36,target:36,diagonal:18,antiDiagonal:18});
     const passes=[];
