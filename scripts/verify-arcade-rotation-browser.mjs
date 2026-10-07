@@ -187,6 +187,14 @@ try {
     report.failure = error.stack || String(error);
     if (page) {
         report.failureUrl = page.url();
+        report.failureRuntime = await page.evaluate(() => {
+            const runtime = window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime;
+            return {variables: runtime?.targets.flatMap(t => Object.values(t.variables))
+                .map(v => ({name: v.name, value: v.value})),
+                sprites: Object.entries(runtime?.bwArcadeDeviceState?.sprites || {})
+                    .map(([id, s]) => ({id, data: s.data, rotation: s.rotation, width: s.width, height: s.height})),
+                observation: window.__bwRotationObservation, device: runtime?.bwDeviceId};
+        }).catch(error => ({error: String(error)}));
         report.failureText = (await page.locator('body').innerText().catch(() => '')).slice(-12000);
         await page.screenshot({path: out.replace(/\.json$/, '') + '-failure.png'}).catch(() => {});
     }
