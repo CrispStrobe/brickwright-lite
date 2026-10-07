@@ -41,6 +41,8 @@
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {animationResourceFromDocument} from '../bw-animation-resources.js';
 import {encodeAnimationJres} from './animation-jres.js';
+import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
+import {validateDocument} from '../bw-artwork-bundle.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
@@ -233,7 +235,7 @@ class ArcadeEmitter {
                         name: resource.name, width: resource.width, height: resource.height,
                         intervalMs: resource.frames[0].durationMs, frames: images});
                     usedNames.add(resource.name);
-                    this.authoredAnimationArrays.set(resource.id, {...resource, nativeId, nativeEntry,
+                    this.authoredAnimationArrays.set(resource.id, {...resource, nativeId, nativeEntry, document,
                         variable: this.animationSymbol(`__bwAnimationFrames${this.authoredAnimationArrays.size}`),
                         literals: images.map(image => toImgLiteral(image))});
                 } catch (error) { this.note(error.message); }
@@ -2734,13 +2736,27 @@ export function projectToArcade (project, opts = {}) {
             `            case ${JSON.stringify(alias)}:`).join('\n') +
             `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
     } : {};
+    const sourceEntries = [];
+    for (const resource of resources) {
+        try { validateDocument(resource.document); }
+        catch (error) {
+            // The public behaviour exporter also accepts normalized frame-only
+            // inputs. They are not complete, editable artwork documents.
+            e.warn(`Animation "${resource.name}" rich source not exported: ${error.message}`);
+            continue;
+        }
+        sourceEntries.push({nativeId: resource.nativeEntry.namespace ?
+            `${resource.nativeEntry.namespace}.${resource.nativeEntry.id}` : resource.nativeEntry.id,
+        document: resource.document, nativeEntry: resource.nativeEntry});
+    }
+    if (sourceEntries.length) assetFiles[ANIMATION_COMPANION_PATH] = encodeAnimationCompanion(sourceEntries, e.palette);
     const name = opts.name || 'brickwright-game';
     const files = {
         'main.ts': ts,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
             name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresAnimationPackage ? {animation: '*'} : {})},
-            files: [...(resources.length ? ['images.g.ts', 'images.g.jres'] : []), 'main.ts'], preferredEditor: 'tsprj',
+            files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };

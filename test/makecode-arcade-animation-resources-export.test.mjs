@@ -13,12 +13,16 @@ import {runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
 const Creator = process.env.SB3_CREATOR_DIR ? (await import(pathToFileURL(
     path.join(process.env.SB3_CREATOR_DIR, 'src/utils/sb3Creator.js')).href)).default : VendoredCreator;
 const id = '12345678-1234-4234-8234-123456789abc';
-const layer = pixels => ({type: 'pixel', visible: true, opacity: 1,
+const layer = pixels => ({id: 'base', name: 'Pixels', locked: false, type: 'pixel', visible: true, opacity: 1,
     content: {kind: 'pixels', value: {width: 2, height: 1, pixels}}});
-const sourceDocument = () => ({version: 4, animation: {resource: {id, name: 'Walk'}, frames: [
-    {id: 'red', durationMs: 100, layers: [layer([2, 2])]},
-    {id: 'blue', durationMs: 100, layers: [layer([8, 8])]}
-]}});
+const sourceDocument = () => {
+    const frames = [
+        {id: 'red', durationMs: 100, activeLayerId: 'base', layers: [layer([2, 2])]},
+        {id: 'blue', durationMs: 100, activeLayerId: 'base', layers: [layer([8, 8])]}
+    ];
+    return {version: 4, layers: frames[0].layers, activeLayerId: 'base',
+        animation: {resource: {id, name: 'Walk'}, activeFrameId: 'red', frames}};
+};
 const program = resource => `DEVICE ARCADE
 GLOBAL actor
 GLOBAL frames

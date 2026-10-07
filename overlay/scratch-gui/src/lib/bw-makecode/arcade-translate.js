@@ -48,6 +48,7 @@ import {
     ARCADE_PALETTE
 } from './arcade-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
+import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from './animation-companion.js';
 import {HELPERS} from './arcade-runtime.js';
 /** `sprites.castle`, `sprites.dungeon`, … : the namespaces PXT's built-in art lives in. */
 const BUILTIN_IMAGE_GROUPS = new Set(Object.keys(BUILTIN_IMAGES).map(key => key.slice(0, key.lastIndexOf('.'))));
@@ -3147,7 +3148,8 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     const assets = {};
     const tilemaps = {};
-    const animationAliases = new Map(), animationDiagnostics = [], animationIds = new Set();
+    const animationAliases = new Map(), animationDiagnostics = [], animationIds = new Set(), nativeAnimations = [];
+    let duplicateAnimationId = false;
     for (const [filename, text] of Object.entries(map)) {
         if (/\.jres$/.test(filename)) {
             Object.assign(assets, parseJres(text));
@@ -3156,10 +3158,12 @@ export function arcadeToPseudocode (files, opts = {}) {
             for (const animation of parsedAnimations.animations) {
                 const duplicateId = animationIds.has(animation.id);
                 if (duplicateId) {
+                    duplicateAnimationId = true;
                     animationDiagnostics.push(`Duplicate animation asset ID: ${animation.id}`);
                     for (const [alias, prior] of animationAliases) if (prior?.id === animation.id) animationAliases.set(alias, null);
                 }
                 animationIds.add(animation.id);
+                nativeAnimations.push(animation);
                 for (const alias of animation.aliases) {
                     if (animationAliases.has(alias)) {
                         animationAliases.set(alias, null);
@@ -3170,6 +3174,20 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
+
+    let projectPalette = ARCADE_PALETTE;
+    if (nativeAnimations.length || map[ANIMATION_COMPANION_PATH] !== undefined) {
+        const config = JSON.parse(map['pxt.json'] || '{}');
+        if (config.palette !== undefined) projectPalette = [null, ...config.palette.slice(1)];
+    }
+    // Rich metadata never changes native fresh-array lowering. Recover source
+    // separately, and let the GUI's future resource transaction bind it explicitly.
+    const recovered = duplicateAnimationId && map[ANIMATION_COMPANION_PATH] === undefined ? {resources: [], warnings: []} :
+        recoverAnimationCompanion(map[ANIMATION_COMPANION_PATH], nativeAnimations, projectPalette);
+    const recoveredById = new Map(recovered.resources.map(resource => [resource.nativeId, resource]));
+    const animationResources = duplicateAnimationId ? [] : nativeAnimations.map(animation => ({...animation,
+        palette: [...projectPalette], document: recoveredById.get(animation.id)?.document || null,
+        ...(recoveredById.get(animation.id)?.reason ? {sourceReason: recoveredById.get(animation.id).reason} : {})}));
 
     // Native assets.animation produces a fresh Image[] per lookup. Lower to
     // the existing typed image-array machinery, preserving ordinary variable
@@ -3192,7 +3210,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
     const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source)));
-    const withAnimationDiagnostics = result => ({...result,
+    const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
         unsupported: [...new Set([...animationDiagnostics, ...result.unsupported])]});
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
@@ -3828,12 +3846,12 @@ export function arcadeToPseudocode (files, opts = {}) {
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
 
-    return {
+    return withAnimationDiagnostics({
         code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)],
         costumes,
         sprites: [...t.sprites.map(s => s.name), ...[...t.projectileTemplates.values()].map(t => t.name)]
-    };
+    });
 }
 
 export default arcadeToPseudocode;

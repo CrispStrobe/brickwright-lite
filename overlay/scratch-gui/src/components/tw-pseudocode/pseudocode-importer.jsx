@@ -1810,6 +1810,7 @@ class PseudocodeImporter extends React.Component {
                 res.note === 'ev3' ? this.L.mcEv3(label, res.project.name) :
                     this.L.mcMicrobit(label, res.project.name);
         }
+        if (res.warnings?.length) status += ` · ${res.warnings.join(' · ')}`;
         this.setState({
             lang: res.lang,
             importedPython: res.kind === 'micropython',

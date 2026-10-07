@@ -124,6 +124,8 @@ export function importProjectFiles (files = {}, opts = {}) {
             source: main,
             unsupported: translated.unsupported,
             costumes: translated.costumes,
+            animationResources: translated.animationResources,
+            warnings: translated.warnings || [],
             sprites: translated.sprites,
             files,
             project: {target, name, version: opts.version || ''},

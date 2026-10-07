@@ -11,6 +11,7 @@ import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
 import {decodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
+import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-companion.js';
 import {compile} from './lib/pxt-node.mjs';
 import {runArcadeSim} from './lib/makecode-arcade-sim.mjs';
 const option=name=>process.argv.includes(name)?process.argv[process.argv.indexOf(name)+1]:undefined;
@@ -302,7 +303,7 @@ try{
         });
         assert.deepEqual(nativeScreen,expectedNative,'all19200actual Brickwright pixels match authored footprint');
         report.nativeScreen={colour:nativeColour,pixelsCompared:nativeScreen.length};
-        await snapshot('renamed-reordered');report.journey.push('Pixel rename/reorder preserves UUID and updates bound playback without rewriting code');
+        const renamedSource=await snapshot('renamed-reordered');report.journey.push('Pixel rename/reorder preserves UUID and updates bound playback without rewriting code');
         await openCode();const actions=page.getByTestId('bw-code-actions');if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
         const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
         const download=await exported;assert.match(download.suggestedFilename(),/\.hex$/);
@@ -318,6 +319,13 @@ try{
         assert.deepEqual(nativeAnimation.frames.map(frame=>Array.from(frame.pixels)),
             [2,9,5].map(colour=>Array(6).fill(colour)),'download retains renamed native gallery frames, order, pixels and interval');
         report.nativeGallery={name:nativeAnimation.name,intervalMs:nativeAnimation.intervalMs,frames:nativeAnimation.frames.length};
+        assert.ok(nativeConfig.files.includes(ANIMATION_COMPANION_PATH));
+        const recoveredSource=recoverAnimationCompanion(embedded.files[ANIMATION_COMPANION_PATH],[nativeAnimation],ARCADE_PALETTE);
+        assert.deepEqual(recoveredSource.warnings,[]);
+        assert.deepEqual(recoveredSource.resources[0].document,renamedSource.document,
+            'actual downloaded companion validates and recovers exact UUID, frame IDs, palette and layers');
+        report.richCompanion={validated:true,resourceId:recoveredSource.resources[0].document.animation.resource.id,
+            guiTimelineRestored:false};
         const compiled=await compile('arcade',embedded.files);assert.equal(compiled.success,true,JSON.stringify(compiled.diagnostics));
         const original=await runArcadeSim(compiled.outfiles['binary.js'],{ms:1000});assert.equal(original.error,null);
         const originalSequence=sequence(original.serial.map(row=>Number(row.text)).filter(value=>[2,9,5].includes(value)));cycle(originalSequence,[2,9,5],'original PXT');
