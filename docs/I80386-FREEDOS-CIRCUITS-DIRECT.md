@@ -81,6 +81,18 @@ target `keyIn` calls while forwarding the original method with the same
 receiver and return value. It still requires visible guest pixels to change;
 the fifth failure is not a passing result.
 
+The [sixth hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37647337533)
+at `780b7a7ff7c737f632a90152f0d9ca38890aec10` retained
+[original artifact 11496105114](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11496105114)
+(247,016 bytes, SHA-256
+`c5123adaa338ebaac36584f734fd76cb30f07e966b1fd74aa9df1e2aeb28e785`).
+All 30 physical VDP keydown/up events were trusted and targeted the focused
+screen, but the observed machine target received zero `keyIn` calls; the guest
+pixels were unchanged as time advanced. This locates the missing route before
+the observed target method but does not yet distinguish a missing React callback
+prop, an unhandled React key event, or a changed runner/target. The next probe
+records those route facts without synthesizing input or relaxing the pixel gate.
+
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
 or a general native 386 backend. A live terminal CLI scenario remains a

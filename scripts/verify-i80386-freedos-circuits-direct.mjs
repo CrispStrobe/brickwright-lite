@@ -18,17 +18,53 @@ const observedAnchor="        assert.match(tabText,/PS2 DONE/,'guest mouse-progr
 // it never synthesizes input and preserves the guest pixel-response requirement.
 export function observeDirectCircuitKeys(target,element){
  const dom=[],targetCalls=[];
+ const eventRows=new WeakMap();
+ const document=element.ownerDocument;
  const original=target?.keyIn;
  const available=typeof original==='function';
  const ownDescriptor=available?Object.getOwnPropertyDescriptor(target,'keyIn'):undefined;
  let truncated=false;
  const append=(list,row)=>{if(list.length<64)list.push(row);else truncated=true;};
- const down=event=>append(dom,{type:'keydown',code:event.code,key:event.key,
-  trusted:event.isTrusted===true,onFocusedElement:event.target===element});
- const up=event=>append(dom,{type:'keyup',code:event.code,key:event.key,
-  trusted:event.isTrusted===true,onFocusedElement:event.target===element});
+ const captured=type=>event=>{
+  const row={type,code:event.code,key:event.key,
+   trusted:event.isTrusted===true,onFocusedElement:event.target===element};
+  eventRows.set(event,row);
+  append(dom,row);
+ };
+ const down=captured('keydown'),up=captured('keyup');
+ const bubble=event=>{
+  const row=eventRows.get(event);
+  if(row){row.documentBubbled=true;row.defaultPreventedAfterBubble=event.defaultPrevented===true;}
+ };
+ const reactRoute=()=>{
+  const key=Object.keys(element).find(name=>/^__react(?:InternalInstance|Fiber)\$/.test(name));
+  const host=key?element[key]:null;
+  let cursor=host,vdpProps=null,scancodePropType='unavailable',videoPropType='unavailable';
+  let panelFound=false,panelRunnerKeyIn='unavailable',panelScancodeFnMatches=false,
+   panelVideoFnMatches=false;
+  for(let depth=0;cursor&&depth<16;depth++,cursor=cursor.return){
+   const props=cursor.memoizedProps;
+   if(props&&Object.hasOwn(props,'videoFn')){
+    vdpProps=props;
+    scancodePropType=typeof props.sendScancodeFn;
+    videoPropType=typeof props.videoFn;
+   }
+   const panel=cursor.stateNode;
+   if(panel&&typeof panel._scancodeFn==='function'&&panel.state){
+    panelFound=true;
+    panelRunnerKeyIn=typeof panel.state.runner?.keyIn;
+    panelScancodeFnMatches=panel._scancodeFn===vdpProps?.sendScancodeFn;
+    panelVideoFnMatches=panel._videoFn===vdpProps?.videoFn;
+   }
+  }
+  return {fiberFound:!!host,hostKeyDown:typeof host?.memoizedProps?.onKeyDown,
+   hostKeyUp:typeof host?.memoizedProps?.onKeyUp,scancodePropType,videoPropType,
+   panelFound,panelRunnerKeyIn,panelScancodeFnMatches,panelVideoFnMatches};
+ };
  element.addEventListener('keydown',down,true);
  element.addEventListener('keyup',up,true);
+ document?.addEventListener('keydown',bubble,false);
+ document?.addEventListener('keyup',bubble,false);
  let wrapped=null;
  if(available){
   wrapped=function(...args){
@@ -46,10 +82,13 @@ export function observeDirectCircuitKeys(target,element){
    enumerable:ownDescriptor?.enumerable??false});
  }
  return {
-  snapshot:()=>({targetKeyInAvailable:available,dom:[...dom],targetCalls:[...targetCalls],truncated}),
+  snapshot:()=>({targetKeyInAvailable:available,reactRoute:reactRoute(),
+   dom:[...dom],targetCalls:[...targetCalls],truncated}),
   restore:()=>{
    element.removeEventListener('keydown',down,true);
    element.removeEventListener('keyup',up,true);
+   document?.removeEventListener('keydown',bubble,false);
+   document?.removeEventListener('keyup',bubble,false);
    if(available&&target.keyIn===wrapped){
     if(ownDescriptor)Object.defineProperty(target,'keyIn',ownDescriptor);
     else delete target.keyIn;
@@ -98,7 +137,8 @@ const circuitBlock=`        let circuitDirect=null;
             keyboardDiagnostics=await page.evaluate(()=>{
                 const observer=window.__circuitKeyObserver;
                 if(!observer)return {observerMissing:true};
-                const record=observer.snapshot();
+                let record;
+                try {record=observer.snapshot();} catch(error) {record={observerError:String(error)};}
                 try {observer.restore();} catch(error) {record.restoreError=String(error);}
                 delete window.__circuitKeyObserver;
                 return record;

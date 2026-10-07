@@ -104,6 +104,35 @@ test('Circuit key observer restores inherited and own keyIn property shapes',()=
  assert.deepEqual(Object.getOwnPropertyDescriptor(own,'keyIn'),descriptor);
 });
 
+test('Circuit diagnostic distinguishes React callback props from bubbled physical handling',()=>{
+ const elementListeners=new Map(),documentListeners=new Map();
+ const document={addEventListener:(name,fn)=>documentListeners.set(name,fn),
+  removeEventListener:(name,fn)=>{assert.equal(documentListeners.get(name),fn);documentListeners.delete(name);}};
+ const element={ownerDocument:document,
+  addEventListener:(name,fn)=>elementListeners.set(name,fn),
+  removeEventListener:(name,fn)=>{assert.equal(elementListeners.get(name),fn);elementListeners.delete(name);}};
+ const sendScancodeFn=()=>{},videoFn=()=>{};
+ const panel={_scancodeFn:sendScancodeFn,_videoFn:videoFn,
+  state:{runner:{keyIn(){}}}};
+ element.__reactInternalInstance$owned={memoizedProps:{onKeyDown(){},onKeyUp(){}},
+  return:{memoizedProps:{videoFn,sendScancodeFn},
+   return:{stateNode:panel,memoizedProps:{},return:null}}};
+ const observer=observeDirectCircuitKeys({keyIn(){return true;}},element);
+ const key={code:'KeyE',key:'e',isTrusted:true,target:element,defaultPrevented:false};
+ elementListeners.get('keydown')(key);
+ key.defaultPrevented=true;
+ documentListeners.get('keydown')(key);
+ assert.deepEqual(observer.snapshot().reactRoute,{fiberFound:true,hostKeyDown:'function',
+  hostKeyUp:'function',scancodePropType:'function',videoPropType:'function',
+  panelFound:true,panelRunnerKeyIn:'function',panelScancodeFnMatches:true,
+  panelVideoFnMatches:true});
+ assert.deepEqual(observer.snapshot().dom[0],{type:'keydown',code:'KeyE',key:'e',
+  trusted:true,onFocusedElement:true,documentBubbled:true,defaultPreventedAfterBubble:true});
+ observer.restore();
+ assert.equal(elementListeners.size,0);
+ assert.equal(documentListeners.size,0);
+});
+
 test('materialized browser observer instruments the real VDP element and target',()=>{
  const {generated}=deriveCircuitsProbe();
  const declaration=generated.match(/^\s*const installKeyObserver=Function\('element'.*\);$/m)?.[0];
