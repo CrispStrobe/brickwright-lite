@@ -1,6 +1,6 @@
 # FreeDOS direct Circuit input gate
 
-**Full guest qualification unrun at the current source checkpoint.** The optional browser gate extends the accepted
+**The bounded direct-input guest gate passed at tested source `327143c40bfd0e0655395ec7c6cdb940de72c305`.** The optional browser gate extends the accepted
 [FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) from its exact
 source bytes. It keeps the same owned marker HDD, FreeDOS floppy, Widgets
 boot/listing/fullscreen/PS/2 steps and Code roundtrip. While the Circuit tab
@@ -146,6 +146,13 @@ advanced to `557c4716`. The existing notice generator now emits both mirrors
 from the pinned packages' unchanged license bytes and the current source pins.
 The ninth attempt establishes no result for the corrected Controller-view
 roundtrip; a fresh installed browser run is required for full acceptance.
+
+The [tenth hosted run](I80386-FREEDOS-CIRCUITS-DIRECT-RESULTS.md) passed the
+full direct-input and tab-continuity gate on the reviewed source. Its compact
+[receipt](receipts/2026-10-07-freedos-circuits-direct.json) binds the original
+artifact, exact installed pins, actual canvas pixel change, physical key
+delivery and later shell output. The first nine attempts above remain
+historical failures or partial results; none is retroactively passing.
 
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,

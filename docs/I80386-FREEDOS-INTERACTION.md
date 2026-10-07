@@ -27,7 +27,7 @@ Guest text is decoded from actual mode-3 video pixels using the installed board'
 
 The report records the app build commit, index hash, media hashes, keyboard scancodes, pane dimensions, fullscreen bounds, tab identity, mouse events and screenshot hashes. Keep exact app/build and probe revisions separate: running a new probe against an earlier hosted app does not qualify newly changed application source. Reports and screenshots are operator output; review them before publishing. Failure diagnostics preserve the guest text and observed input.
 
-Remaining acceptance work includes drag capture outside the canvas, browser-reserved keys, an actual guest mouse driver/application, and direct input while Circuits is active. The accepted roundtrip returns to Code before typing its shell command. ISO/ATAPI, arbitrary DOSBox packages and disk writeback remain separate loading tasks.
+The separate [direct-Circuits browser result](I80386-FREEDOS-CIRCUITS-DIRECT-RESULTS.md) now clears physical shell input while Circuits is active at its own exact tested app source. Remaining acceptance work includes drag capture outside the canvas, browser-reserved keys and an actual guest mouse driver/application. ISO/ATAPI, arbitrary DOSBox packages and disk writeback remain separate loading tasks.
 
 ## Current observed state
 
