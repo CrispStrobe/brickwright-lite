@@ -59,7 +59,7 @@ test('literal and computed resource IDs export shared typed images and original 
         assert.deepEqual([...observed].sort(), [7, 8]);
         const logged = await runArcadeSim(compiled.outfiles['binary.js'], {ms: 75});
         assert.ok(logged.serial.some(entry => String(entry.text).includes('true')), 'repeated reporter calls share the same array');
-        const imported = arcadeToPseudocode(exported.ts);
+        const imported = arcadeToPseudocode(exported.files);
         assert.deepEqual(imported.unsupported, [], 'actual emitted original program remains importable');
         const second = new Creator(); second.parse(imported.code);
         assert.deepEqual(second.warnings, []);
