@@ -15,6 +15,18 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Original MakeCode Assets roundtrip — 2026-10-07
+
+Codex continues the claimed Arcade integration lane on
+`lane/arcade-original-assets-20261007`, stacked on PR710. Own native `.mkcd`
+project envelope export/import, current PNG envelope decoding, corresponding
+Code controls and CLI, live-original-editor qualification and capability ledger.
+The live editor rejected the prior uncompressed source HEX. The original PNG
+contains `{meta, source}`, which the earlier flat-map-only reader missed.
+The first original editor unedited return retained both animation companions;
+actual rename/timing/pixel edits invalidate only the changed resource companion.
+Qualification and publication for this follow-up remain in progress.
+
 ## Arcade resource picker follow-up — 2026-10-07
 
 The existing Arcade compatibility lane remains owned by Codex. PR704 merged

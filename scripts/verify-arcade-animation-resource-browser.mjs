@@ -357,7 +357,7 @@ try{
         await openCode();const actions=page.getByTestId('bw-code-actions');if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
         const download=await exported;assert.match(download.suggestedFilename(),/\.hex$/);
-        const hex=path.join(path.dirname(out),'animation-export.hex');await download.saveAs(hex);const bytes=await fs.readFile(hex);
+        const hex=path.join(path.dirname(out),'animation-export.mkcd');await download.saveAs(hex);const bytes=await fs.readFile(hex);
         const embedded=await unpackMakeCodeSource(bytes);assert.ok(embedded.files?.['main.ts']);await fs.writeFile(path.join(path.dirname(out),'animation-export.ts'),embedded.files['main.ts']);
         const nativeConfig=JSON.parse(embedded.files['pxt.json']);
         for(const file of ['images.g.jres','images.g.ts'])assert.ok(nativeConfig.files.includes(file),`native asset file ${file} is included`);
@@ -401,8 +401,8 @@ try{
         assert.deepEqual(await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.map(target=>target.id)),priorIds);
         assert.equal(await editor().innerText(),priorCode);assert.deepEqual(await resource(),priorResources);
         report.journey.push('malformed companion file import names the error and preserves the loaded VM, Code and published resources');
-        await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.hex',mimeType:'application/octet-stream',buffer:bytes});
-        await page.getByText(/Imported the Arcade game.*animation-export\.hex/).first().waitFor({state:'visible'});
+        await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.mkcd',mimeType:'application/octet-stream',buffer:bytes});
+        await page.getByText(/Imported the Arcade game.*animation-export\.mkcd/).first().waitFor({state:'visible'});
         if(await actions.getAttribute('open')!==null)await actions.locator('summary').click();
         assert.ok((await editor().innerText()).includes(`arcade animation fresh frames resource "${published.id}"`));
         await apply();
@@ -531,10 +531,10 @@ try{
 
         await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         const libraryDownload=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
-        const libraryHex=path.join(path.dirname(out),'animation-library-export.hex');await(await libraryDownload).saveAs(libraryHex);
-        const cliHex=path.join(path.dirname(out),'animation-library-cli.hex');
-        await promisify(execFile)(process.execPath,['scripts/makecode.mjs','to-hex',retainedLibrary.file,
-            '--target','arcade','--source','-o',cliHex],{timeout:30000});
+        const libraryHex=path.join(path.dirname(out),'animation-library-export.mkcd');await(await libraryDownload).saveAs(libraryHex);
+        const cliHex=path.join(path.dirname(out),'animation-library-cli.mkcd');
+        await promisify(execFile)(process.execPath,['scripts/makecode.mjs','to-project',retainedLibrary.file,
+            '--target','arcade','-o',cliHex],{timeout:30000});
         for(const [route,file] of [['GUI',libraryHex],['CLI',cliHex]]){
             const returned=await unpackMakeCodeSource(await fs.readFile(file));
             assert.ok(!returned.files['main.ts'].includes('Arcade_artworkSprite'),`${route}: library has no gameplay actor`);
@@ -642,10 +642,10 @@ try{
 
         await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         const [duplicateDownload]=await Promise.all([page.waitForEvent('download'),page.getByTestId('bw-makecode-arcade-export').click()]);
-        const duplicateHex=path.join(path.dirname(out),'animation-duplicate-libraries.hex');await duplicateDownload.saveAs(duplicateHex);
-        const duplicateCliHex=path.join(path.dirname(out),'animation-duplicate-libraries-cli.hex');
-        await promisify(execFile)(process.execPath,['scripts/makecode.mjs','to-hex',lifeFile,
-            '--target','arcade','--source','-o',duplicateCliHex],{timeout:30000});
+        const duplicateHex=path.join(path.dirname(out),'animation-duplicate-libraries.mkcd');await duplicateDownload.saveAs(duplicateHex);
+        const duplicateCliHex=path.join(path.dirname(out),'animation-duplicate-libraries-cli.mkcd');
+        await promisify(execFile)(process.execPath,['scripts/makecode.mjs','to-project',lifeFile,
+            '--target','arcade','-o',duplicateCliHex],{timeout:30000});
         const expectedDocuments=lifeSource.costumes.filter(row=>row.document.animation?.resource).map(row=>row.document);
         const ordered=documents=>[...documents].sort((a,b)=>a.animation.resource.id.localeCompare(b.animation.resource.id));
         for(const [route,file] of [['GUI',duplicateHex],['CLI',duplicateCliHex]]){
@@ -660,7 +660,7 @@ try{
             assert.ok(run.serial.some(row=>String(row.text).trim()==='4'),`${route}: duplicated library bindings run in original PXT`);
         }
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles(duplicateHex);
-        await page.getByText(/Imported the Arcade game.*animation-duplicate-libraries\.hex/).first().waitFor({state:'visible'});
+        await page.getByText(/Imported the Arcade game.*animation-duplicate-libraries\.mkcd/).first().waitFor({state:'visible'});
         if(await actions.getAttribute('open')!==null)await actions.locator('summary').click();
         await apply();
         assert.deepEqual((await resource()).map(row=>row.id).sort(),[published.id,copyId].sort());

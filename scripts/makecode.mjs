@@ -9,10 +9,12 @@
  *       embedded, so makecode.microbit.org reopens it as the project. For
  *       --target arcade it needs --board <variant> (ARCADE_HARDWARE, e.g. rp2040)
  *       and writes that board's firmware (.uf2, or .hex for nRF52833 boards);
- *       --source writes the project file arcade.makecode.com opens instead.
+ *       --source writes legacy source HEX for Brickwright. Use to-project
+ *       for a native project file the original MakeCode editors can open.
+ *   node scripts/makecode.mjs to-project <in.sb3|in.bw> [-o out.mkcd] [--target microbit|arcade]
  *   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts] [--target microbit|arcade]
  *       Just the MakeCode TypeScript (and the named list of what did not map).
- *   node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]
+ *   node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]
  *       A MakeCode project (from a bare main.ts for --target, its firmware, cartridge or share link) as a
  *       Scratch project, through the importer's translation; what did not
  *       translate is listed.
@@ -31,9 +33,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lib = rel => import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib', rel)).href);
 
 const USAGE = `usage:
+  node scripts/makecode.mjs to-project <in.sb3|in.bw> [-o out.mkcd] [--target microbit|arcade]
   node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target microbit|arcade] [--board variant] [--source]
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target microbit|arcade]
-  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]`;
+  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]`;
 
 function args (argv) {
     const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null};
@@ -132,6 +135,15 @@ async function main () {
         console.log(`wrote ${dest} (${out.unsupported.length} not translated)`);
         return 0;
     }
+    if (a.cmd === 'to-project') {
+        const out = await toMakeCode(a.input, a.target);
+        report(out);
+        const {makeCodeProjectFile} = await lib('bw-makecode/project-file.js');
+        const dest = a.output || `${base(a.input)}.${a.target}.mkcd`;
+        fs.writeFileSync(dest, makeCodeProjectFile(out.files, {name: out.name, target: a.target}));
+        console.log(`wrote ${dest} — native MakeCode project (no firmware)`);
+        return 0;
+    }
     if (a.cmd === 'to-hex') {
         const out = await toMakeCode(a.input, a.target);
         report(out);
@@ -140,7 +152,7 @@ async function main () {
             const dest = a.output || `${base(a.input)}.${a.target}-project.hex`;
             fs.writeFileSync(dest, makeCodeSourceHex(out.files, {name: out.name, target: a.target,
                 editorUrl: a.target === 'arcade' ? 'https://arcade.makecode.com/' : 'https://makecode.microbit.org/'}));
-            console.log(`wrote ${dest} — a project file for ${a.target === 'arcade' ? 'arcade.makecode.com' : 'makecode.microbit.org'} (no firmware)`);
+            console.log(`wrote ${dest} — legacy source HEX for Brickwright (no firmware); use to-project for the original MakeCode editor`);
             return 0;
         }
         if (!hasRuntime(a.target)) {

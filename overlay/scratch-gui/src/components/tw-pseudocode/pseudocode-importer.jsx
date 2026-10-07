@@ -118,7 +118,7 @@ const L10N = {
         mcSharePrompt: 'Paste a MakeCode share link:',
         mcShareLoading: 'Fetching the shared project…',
         mcExport: '⬆ To MakeCode',
-        mcExportTitle: 'Save this project as a .hex that makecode.microbit.org can import',
+        mcExportTitle: 'Save this project as a native MakeCode project (.mkcd)',
         mcExportDone: (f, u) => (u ?
             `Saved ${f} — drop it on makecode.microbit.org to open it there. ${u} block(s) had no MakeCode equivalent.` :
             `Saved ${f} — drop it on makecode.microbit.org to open it there.`),
@@ -431,7 +431,7 @@ const L10N = {
         mcSharePrompt: 'MakeCode-Freigabelink einfügen:',
         mcShareLoading: 'Geteiltes Projekt wird geladen…',
         mcExport: '⬆ Zu MakeCode',
-        mcExportTitle: 'Dieses Projekt als .hex speichern, die makecode.microbit.org importieren kann',
+        mcExportTitle: 'Dieses Projekt als natives MakeCode-Projekt (.mkcd) speichern',
         mcExportDone: (f, u) => (u ?
             `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen. Für ${u} Block/Blöcke gibt es in MakeCode keine Entsprechung.` :
             `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen.`),
@@ -1886,12 +1886,13 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             const project = creator.parse(source);
-            const {exportToMakeCode} = await import(
+            const {exportToMakeCode, makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = (source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright';
             const out = exportToMakeCode(project, {name: name.trim().slice(0, 40)});
-            await downloadBlob(out.filename, new Blob([out.hex], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: this.L.mcExportDone(out.filename, out.unsupported.length)});
+            const filename = out.filename.replace(/\.hex$/i, '.mkcd');
+            await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: name.trim().slice(0, 40), target: 'microbit'})], {type: 'application/octet-stream'}));
+            this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode export', (err && err.message) || String(err))});
         }
@@ -2144,12 +2145,12 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true});
         try {
             const out = await this.arcadeFromStage();
-            const {makeCodeSourceHex} = await import(
+            const {makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = JSON.parse(out.files['pxt.json']).name;
-            const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.hex`;
-            const hex = makeCodeSourceHex(out.files, {name, target: 'arcade', editorUrl: 'https://arcade.makecode.com/'});
-            await downloadBlob(filename, new Blob([hex], {type: 'application/octet-stream'}));
+            const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.mkcd`;
+            const projectFile = makeCodeProjectFile(out.files, {name, target: 'arcade'});
+            await downloadBlob(filename, new Blob([projectFile], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.arcDone(filename, out.unsupported.length, out.warnings.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode Arcade', (err && err.message) || String(err))});
