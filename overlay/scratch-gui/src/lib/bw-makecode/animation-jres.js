@@ -14,6 +14,12 @@ export class AnimationJresError extends Error {
     constructor (code, message) { super(message); this.name = 'AnimationJresError'; this.code = code; }
 }
 const fail = (code, message) => { throw new AnimationJresError(code, message); };
+const invalidNameCharacters = /[\u0000-\u001f\u0021-\u002c\u002e\u002f\u003a-\u0040\u005b-\u005e\u0060\u007b-\u007f]/;
+export const isNativeAnimationName = name => typeof name === 'string' && !!name.trim() &&
+    name.length <= 80 && !invalidNameCharacters.test(name);
+/** A projection for export only; authored names remain in the rich source. */
+export const nativeAnimationNameBase = name => String(name).trim()
+    .replace(new RegExp(invalidNameCharacters.source, 'g'), '_').slice(0, 80) || 'Animation';
 const integer = (value, max, code, label) => {
     if (!Number.isInteger(value) || value < 1 || value > max) fail(code, `Animation ${label} must be an integer in 1..${max}`);
 };
@@ -48,8 +54,7 @@ const identity = (entry, key, fallbackNamespace) => {
     // Microsoft PXT validateAssetName character rules: asset references place
     // this name directly inside a tagged template without escaping punctuation.
     // A richer Brickwright display name needs an explicit mapping outside here.
-    if (typeof name !== 'string' || !name.trim() || name.length > 80 ||
-        /[\u0000-\u001f\u0021-\u002c\u002e\u002f\u003a-\u0040\u005b-\u005e\u0060\u007b-\u007f]/.test(name)) {
+    if (!isNativeAnimationName(name)) {
         fail('NAME', 'Animation display name must contain 1..80 characters admissible in native MakeCode asset names');
     }
     return {id: qualified, short, namespace: ns, name};

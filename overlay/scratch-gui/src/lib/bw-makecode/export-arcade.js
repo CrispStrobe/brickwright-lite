@@ -40,7 +40,7 @@
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {animationResourceFromDocument} from '../bw-animation-resources.js';
-import {encodeAnimationJres} from './animation-jres.js';
+import {encodeAnimationJres, nativeAnimationNameBase} from './animation-jres.js';
 import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
 import {validateDocument} from '../bw-artwork-bundle.js';
 import {tilemapSource} from './tilemap-values.js';
@@ -205,7 +205,11 @@ class ArcadeEmitter {
                 fresh: this.animationSymbol('__bwAnimationFreshFrames'),
                 interval: this.animationSymbol('__bwAnimationInterval')};
         }
-        const assetNames = new Set((this.opts.animationDocuments || []).map(document => document?.animation?.resource?.name));
+        // Reserve projections before suffix allocation, so a duplicate cannot
+        // take another resource's existing display name or generated ID alias.
+        const assetNames = new Set((this.opts.animationDocuments || [])
+            .map(document => document?.animation?.resource?.name)
+            .filter(name => typeof name === 'string').map(nativeAnimationNameBase));
         const usedNames = new Set();
         if (!this.authoredAnimationArrays.size) {
             for (const document of this.opts.animationDocuments || []) {
@@ -217,9 +221,11 @@ class ArcadeEmitter {
                         continue;
                     }
                     for (const warning of resource.warnings) this.warn(warning);
-                    if (usedNames.has(resource.name)) {
-                        this.note(`Duplicate native animation display name: ${resource.name}`);
-                        continue;
+                    const baseName = nativeAnimationNameBase(resource.name);
+                    let nativeName = baseName, suffix = 2;
+                    while (usedNames.has(nativeName) || (nativeName !== baseName && assetNames.has(nativeName))) {
+                        const ending = ` ${suffix++}`;
+                        nativeName = baseName.slice(0, 80 - ending.length) + ending;
                     }
                     const images = resource.frames.map(frame => {
                         const image = {width: resource.width, height: resource.height, pixels: frame.pixels};
@@ -231,11 +237,12 @@ class ArcadeEmitter {
                         return remapPalette(image, resource.palette, this.palette);
                     });
                     let nativeId = `animation${this.authoredAnimationArrays.size}`;
-                    while (assetNames.has(nativeId)) nativeId += '_';
+                    while (assetNames.has(nativeId) || usedNames.has(nativeId) || nativeId === nativeName) nativeId += '_';
                     const nativeEntry = encodeAnimationJres({id: nativeId, namespace: 'myAnimations',
-                        name: resource.name, width: resource.width, height: resource.height,
+                        name: nativeName, width: resource.width, height: resource.height,
                         intervalMs: resource.frames[0].durationMs, frames: images});
-                    usedNames.add(resource.name);
+                    usedNames.add(nativeName);
+                    if (nativeName !== resource.name) this.warn(`Animation name ${JSON.stringify(resource.name)} mapped to ${JSON.stringify(nativeName)} for native export`);
                     this.authoredAnimationArrays.set(resource.id, {...resource, nativeId, nativeEntry, document,
                         variable: this.animationSymbol(`__bwAnimationFrames${this.authoredAnimationArrays.size}`),
                         literals: images.map(image => toImgLiteral(image))});
@@ -2737,7 +2744,7 @@ export function projectToArcade (project, opts = {}) {
     const assetFiles = resources.length ? {
         'images.g.jres': `${JSON.stringify(Object.fromEntries(resources.map(resource =>
             [`myAnimations.${resource.nativeId}`, resource.nativeEntry])), null, 4)}\n`,
-        'images.g.ts': `namespace ${e.animationFactoryNamespace} {\n    helpers._registerFactory("animation", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${resources.map(resource => [...new Set([resource.name, resource.nativeId])].map(alias =>
+        'images.g.ts': `namespace ${e.animationFactoryNamespace} {\n    helpers._registerFactory("animation", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${resources.map(resource => [...new Set([resource.nativeEntry.displayName, resource.nativeId])].map(alias =>
             `            case ${JSON.stringify(alias)}:`).join('\n') +
             `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
     } : {};

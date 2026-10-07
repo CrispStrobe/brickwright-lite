@@ -609,6 +609,35 @@ try{
         report.journey.push('library navigation/rename/disabled gameplay controls and Blocks/Sounds notices protect artwork');
         report.journey.push('actual duplicate/delete/Restore Sprite/save/reopen retains both hidden roles, renews copy UUID and restores bound playback');
 
+        await openCode();if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        const duplicateDownload=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
+        const duplicateHex=path.join(path.dirname(out),'animation-duplicate-libraries.hex');await(await duplicateDownload).saveAs(duplicateHex);
+        const duplicateCliHex=path.join(path.dirname(out),'animation-duplicate-libraries-cli.hex');
+        await promisify(execFile)(process.execPath,['scripts/makecode.mjs','to-hex',lifeFile,
+            '--target','arcade','--source','-o',duplicateCliHex],{timeout:30000});
+        const expectedDocuments=lifeSource.costumes.filter(row=>row.document.animation?.resource).map(row=>row.document);
+        const ordered=documents=>[...documents].sort((a,b)=>a.animation.resource.id.localeCompare(b.animation.resource.id));
+        for(const [route,file] of [['GUI',duplicateHex],['CLI',duplicateCliHex]]){
+            const returned=await unpackMakeCodeSource(await fs.readFile(file));
+            const entries=Object.values(JSON.parse(returned.files['images.g.jres']));assert.equal(entries.length,2);
+            assert.equal(new Set(entries.map(entry=>entry.displayName)).size,2);
+            const rich=recoverAnimationCompanion(returned.files[ANIMATION_COMPANION_PATH],entries.map(entry=>decodeAnimationJres(entry)),ARCADE_PALETTE);
+            assert.deepEqual(rich.warnings,[]);assert.deepEqual(ordered(rich.resources.map(row=>row.document)),ordered(expectedDocuments));
+            const built=await compile('arcade',returned.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+            assert.deepEqual(built.netAttempts,[]);
+            const run=await runArcadeSim(built.outfiles['binary.js'],{ms:75});assert.equal(run.error,null);
+            assert.ok(run.serial.some(row=>String(row.text).trim()==='4'),`${route}: duplicated library bindings run in original PXT`);
+        }
+        const duplicateStage=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+        await page.getByText('File',{exact:true}).first().click();const duplicateChooser=page.waitForEvent('filechooser');
+        await page.getByText('Load from your computer',{exact:true}).click();await(await duplicateChooser).setFiles(duplicateHex);
+        await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,duplicateStage);
+        assert.deepEqual((await resource()).map(row=>row.id).sort(),[published.id,copyId].sort());
+        await flag().click();await phase(1);await observePlayback('duplicate-native-reimported',[4,5,9]);await stop().click();
+        report.duplicateNativeExport={gui:true,cli:true,uniqueNativeNames:true,authoredNamesAndUuidsPreserved:true,
+            originalPxtCompiledAndRun:true,guiReimported:true};
+        report.journey.push('duplicated library GUI/CLI exports use unique native names, recover exact authored documents and UUIDs, run in original PXT and reimport with playback');
+
 
 
 

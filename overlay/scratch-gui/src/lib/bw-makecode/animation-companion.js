@@ -5,11 +5,11 @@
 import {validateDocument} from '../bw-artwork-bundle.js';
 import {animationResourceFromDocument} from '../bw-animation-resources.js';
 import {ARCADE_PALETTE, remapPalette} from './pixel-image.js';
-import {encodeAnimationJres, decodeAnimationJres} from './animation-jres.js';
+import {encodeAnimationJres, decodeAnimationJres, isNativeAnimationName} from './animation-jres.js';
 
 export const ANIMATION_COMPANION_PATH = 'brickwright-animation.json';
 export const ANIMATION_COMPANION_FORMAT = 'brickwright-animation';
-export const ANIMATION_COMPANION_VERSION = 1;
+export const ANIMATION_COMPANION_VERSION = 2;
 export const ANIMATION_COMPANION_LIMITS = Object.freeze({bytes: 16 * 1024 * 1024, resources: 128});
 export class AnimationCompanionError extends Error {
     constructor (code, message) { super(message); this.name = 'AnimationCompanionError'; this.code = code; }
@@ -68,7 +68,7 @@ const sameProjection = (left, right) => left && left.width === right.width && le
     left.intervalMs === right.intervalMs && Array.isArray(left.frames) && left.frames.length === right.frames.length &&
     left.frames.every((pixels, f) => Array.isArray(pixels) && pixels.length === right.frames[f].length &&
         pixels.every((pixel, i) => pixel === right.frames[f][i]));
-const validRecords = (records, palette) => {
+const validRecords = (records, palette, version = ANIMATION_COMPANION_VERSION) => {
     list(records, 'Animation companion resources');
     const nativeIds = new Set(), uuids = new Set();
     for (const record of records) {
@@ -76,6 +76,8 @@ const validRecords = (records, palette) => {
             record.nativeId.length > 160 || /[\u0000-\u001f\u007f]/.test(record.nativeId)) fail('IDENTITY', 'Invalid companion native asset ID');
         if (nativeIds.has(record.nativeId)) fail('DUPLICATE_NATIVE_ID', `Duplicate companion native asset ID: ${record.nativeId}`);
         nativeIds.add(record.nativeId);
+        if (version === 2 && !isNativeAnimationName(record.nativeName)) fail('NAME', 'Invalid companion exported native name');
+        if (version === 1 && record.nativeName !== undefined) fail('VERSION', 'Mapped native names require companion version2');
         const source = projectedSource(record.document, palette);
         const uuid = source.resource.id.toLowerCase();
         if (uuids.has(uuid)) fail('DUPLICATE_UUID', `Duplicate companion resource UUID: ${source.resource.id}`);
@@ -108,7 +110,7 @@ export function encodeAnimationCompanion (entries, projectPalette) {
         if (entry.nativeId !== native.id) fail('IDENTITY', 'Companion nativeId must equal the canonical emitted native asset ID');
         const nativeProjection = projectionOf(native);
         if (!sameProjection(nativeProjection, source.projection)) fail('PROJECTION', `Emitted native asset differs from rich source: ${entry.nativeId}`);
-        const record = {nativeId: entry.nativeId, document, nativeProjection};
+        const record = {nativeId: entry.nativeId, nativeName: native.name, document, nativeProjection};
         total += bytes(JSON.stringify(record));
         if (total > ANIMATION_COMPANION_LIMITS.bytes) fail('RESOURCE_LIMIT', 'Animation companion exceeds byte limit');
         resources.push(record);
@@ -137,9 +139,9 @@ export function recoverAnimationCompanion (companionText, nativeAnimations, proj
         try { payload = JSON.parse(companionText); }
         catch { fail('JSON', 'Animation companion JSON is malformed'); }
         if (!payload || payload.format !== ANIMATION_COMPANION_FORMAT) fail('SCHEMA', 'Unknown animation companion format');
-        if (payload.version !== ANIMATION_COMPANION_VERSION) fail('VERSION', 'Unsupported animation companion version');
+        if (![1, ANIMATION_COMPANION_VERSION].includes(payload.version)) fail('VERSION', 'Unsupported animation companion version');
         payload.palette = paletteOf(payload.palette);
-        validRecords(payload.resources, payload.palette);
+        validRecords(payload.resources, payload.palette, payload.version);
     }
     const records = new Map((payload?.resources || []).map(record => [record.nativeId, record]));
     const warnings = [], resources = [];
@@ -153,7 +155,11 @@ export function recoverAnimationCompanion (companionText, nativeAnimations, proj
             if (record) warnings.push(`Animation ${JSON.stringify(nativeId)} rich source not restored: ${reason}`);
         } else {
             const document = copy(record.document);
-            document.animation.resource.name = animation.name;
+            // Unchanged projected native names restore the authored name.
+            // An actual original-editor rename still follows the native asset.
+            if (payload.version === 1 || animation.name !== record.nativeName) {
+                document.animation.resource.name = animation.name;
+            }
             resources.push({nativeId, document});
         }
     }

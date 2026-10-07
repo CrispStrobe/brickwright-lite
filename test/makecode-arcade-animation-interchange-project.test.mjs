@@ -53,6 +53,26 @@ test('malformed companion refuses the project import atomically instead of disca
     assert.deepEqual(files,unchanged);
 });
 
+test('duplicate and nonnative display names preserve complete source through direct and embedded roundtrips',async()=>{
+    let docs=['Walk','Walk','Walk 2','Walk.left'].map((name,i)=>{
+        const d=document();d.animation.resource={id:`12345678-1234-4234-8234-${String(i+1).padStart(12,'0')}`,name};
+        d.animation.frames[0].layers[0].content.value.pixels[0]=i+1;
+        return d;
+    });
+    const original=structuredClone(docs);
+    for(let cycle=0;cycle<3;cycle++){
+        const exported=projectToArcade(creator().project,{animationDocuments:docs});
+        assert.deepEqual(exported.unsupported,[]);
+        const direct=importProjectFiles(exported.files,{target:'arcade'});
+        const embedded=await importArtefact(new TextEncoder().encode(makeCodeSourceHex(exported.files,{target:'arcade'})),{name:'duplicate.hex'});
+        for(const imported of [direct,embedded]){
+            assert.deepEqual(imported.unsupported,[]);
+            assert.deepEqual(imported.animationResources.map(row=>row.document),original);
+        }
+        docs=direct.animationResources.map(row=>row.document);
+    }
+});
+
 test('CLI source export reads current SB3 artwork bundles and includes native galleries plus rich source', async () => {
     const temp=await fs.mkdtemp(path.join(os.tmpdir(),'bw-animation-source-cli-'));
     try {

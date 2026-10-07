@@ -26,6 +26,27 @@ const fixture=(document=source(),palette=ARCADE_PALETTE,id='myAnimations.walk')=
 const rejected=(action,code)=>assert.throws(action,error=>error instanceof AnimationCompanionError && error.code===code);
 const edit=(text,fn)=>{const payload=JSON.parse(text);fn(payload);return JSON.stringify(payload);};
 
+test('mapped native names restore authored names while genuine native renames follow the editor',()=>{
+    const document=source();document.animation.resource.name='Walk.left';
+    const {entry,animation}=fixture();entry.document=document;
+    const text=encodeAnimationCompanion([entry]);
+    assert.equal(JSON.parse(text).version,2);
+    assert.equal(JSON.parse(text).resources[0].nativeName,'Walk');
+    assert.deepEqual(recoverAnimationCompanion(text,[animation]).resources[0].document,document);
+    const renamed={...animation,name:'Run'};
+    assert.equal(recoverAnimationCompanion(text,[renamed]).resources[0].document.animation.resource.name,'Run');
+    rejected(()=>recoverAnimationCompanion(edit(text,p=>p.resources[0].nativeName='bad.name'),[animation]),'NAME');
+    rejected(()=>recoverAnimationCompanion(edit(text,p=>delete p.resources[0].nativeName),[animation]),'NAME');
+    rejected(()=>recoverAnimationCompanion(edit(text,p=>p.version=1),[animation]),'VERSION');
+});
+
+test('legacy version1 companions retain their native rename semantics',()=>{
+    const {entry,animation}=fixture();
+    const legacy=edit(encodeAnimationCompanion([entry]),p=>{p.version=1;delete p.resources[0].nativeName;});
+    assert.deepEqual(recoverAnimationCompanion(legacy,[animation]).resources[0].document,entry.document);
+    assert.equal(recoverAnimationCompanion(legacy,[{...animation,name:'Legacy renamed'}]).resources[0].document.animation.resource.name,'Legacy renamed');
+});
+
 test('no-edit recovery retains UUID, frame IDs, layers and palette, with detached output documents',()=>{
     const {entry,animation}=fixture(),text=encodeAnimationCompanion([entry],ARCADE_PALETTE);
     const expected=structuredClone(entry.document);

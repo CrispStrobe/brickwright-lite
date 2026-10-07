@@ -12,7 +12,7 @@ import {runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
 const pixels = [[1,2,3,4,5,6],[7,8,9,10,11,12]];
 const document = (id='resource-1',name='Walking') => ({version:4,animation:{resource:{id,name},
     frames:pixels.map((values,i)=>({id:`frame-${i}`,durationMs:125,layers:[{type:'pixel',visible:true,opacity:1,
-        content:{kind:'pixels',value:{width:3,height:2,pixels:values}}}]}))}});
+        content:{kind:'pixels',value:{width:3,height:2,pixels:[...values]}}}]}))}});
 const project = () => {const c=new Creator();c.parse('DEVICE ARCADE\nWHEN flag clicked:\n  arcade log "ready"\n');assert.deepEqual(c.warnings,[]);return c.project;};
 const execute = async files => {
     const compiled=await compile('arcade',files);
@@ -60,14 +60,42 @@ test('native aliases avoid generated ID/display-name collisions and preserve Uni
     assert.deepEqual(await execute({...exported.files,'main.ts':'console.log(assets.animation`animation0`[0].getPixel(2,1)); console.log(assets.animation`走る`[1].getPixel(2,1));'}),['6','12']);
 });
 
-test('native assets refuse invalid display names and duplicate aliases explicitly',()=>{
+test('native export maps punctuation and duplicates without dropping resources',()=>{
     const bad=projectToArcade(project(),{animationDocuments:[document('one','bad.name')]});
-    assert.ok(bad.unsupported.some(message=>message.includes('display name')));
+    assert.deepEqual(bad.unsupported,[]);
+    assert.equal(Object.values(JSON.parse(bad.files['images.g.jres']))[0].displayName,'bad_name');
     const duplicate=projectToArcade(project(),{animationDocuments:[document('one','Walking'),document('two','Walking')]});
-    assert.ok(duplicate.unsupported.some(message=>message.includes('Duplicate native animation display name')));
+    assert.deepEqual(duplicate.unsupported,[]);
+    assert.deepEqual(Object.values(JSON.parse(duplicate.files['images.g.jres'])).map(row=>row.displayName),['Walking','Walking 2']);
     const none=projectToArcade(project());
     assert.equal(none.files['images.g.jres'],undefined);
     assert.equal(none.files['images.g.ts'],undefined);
+});
+
+test('duplicate names, reserved suffixes and punctuation have independent original-PXT factory lookups',async()=>{
+    const docs=[document('one','Walking'),document('two','Walking'),document('three','Walking 2'),
+        document('four','bad.name'),document('five','bad_name'),document('six',' animation0 ')];
+    docs.forEach((doc,i)=>doc.animation.frames.forEach(frame=>frame.layers[0].content.value.pixels.fill(i+1)));
+    const before=structuredClone(docs);
+    const exported=projectToArcade(project(),{animationDocuments:docs});
+    assert.deepEqual(exported.unsupported,[]);assert.deepEqual(docs,before);
+    const gallery=JSON.parse(exported.files['images.g.jres']),rows=Object.values(gallery);
+    assert.deepEqual(rows.map(row=>row.displayName),['Walking','Walking 3','Walking 2','bad_name','bad_name 2','animation0']);
+    const main=rows.flatMap((row,i)=>[row.displayName,row.id].map(alias=>
+        `console.log(assets.animation\`${alias}\`[0].getPixel(0,0));`)).join('\n');
+    const expected=docs.flatMap((_,i)=>[String(i+1),String(i+1)]);
+    assert.deepEqual(await execute({...exported.files,'main.ts':main}),expected);
+    assert.deepEqual(await execute({...exported.files,'main.ts':main,'images.g.ts':originalFactory(gallery)}),expected);
+});
+
+test('suffix allocation remains bounded and deterministic for maximum-length duplicate names',()=>{
+    const names=['a'.repeat(80),'a'.repeat(80),'a'.repeat(78)+' 2'];
+    const input={animationDocuments:names.map((name,i)=>document(`resource-${i}`,name))};
+    const a=projectToArcade(project(),input),b=projectToArcade(project(),input);
+    assert.deepEqual(a.unsupported,[]);assert.deepEqual(a.files,b.files);
+    const rows=Object.values(JSON.parse(a.files['images.g.jres']));
+    assert.equal(new Set(rows.map(row=>row.displayName)).size,3);
+    assert.ok(rows.every(row=>row.displayName.length<=80));
 });
 
 test('native generated factory namespace avoids saved user globals',async()=>{
