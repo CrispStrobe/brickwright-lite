@@ -209,3 +209,51 @@ parallel instead of in place.
 - Out of A4's scope and still named: move/turn/direction, glide, size and
   graphic effects, `think`, `ask`, variable monitors.
 - `stop` (task A5, below): no known gap beyond the ones named there.
+
+## Integration and remaining closure work — 2026-10-07
+
+The previous compatibility agent is paused. The integration owner in
+[LANES.md](../LANES.md) now owns its remaining converter, browser and editor
+work. Preserve the previous branch history and failed receipts; do not infer
+full support from the older tables in this document.
+
+The integration branch adopts sb3-creator
+`8ba3508eab2ad99b9d9a6478c9a45a7200ca4fde` after upstream PR59 merged.
+Rotation properties and `sprite.data` have bidirectional dialect words and
+native blocks/runtime/export. Focused tests exercise pinned original PXT,
+Brickwright VM, exported compilation/reimport, and SB3 save/load/restart.
+Data preserves array/Image/Sprite references; arbitrary object member access
+remains a named conversion gap. Rotation rendering gathers only visible pixels,
+including extremely large logical sprites; exact viewport pixels are compared
+with the original integer-shear raster. Huge rotated collision performance
+remains a separate unqualified limit.
+
+Current real-app counts and independent compile/runtime boundaries are in
+[the audit checkpoint](COMPATIBILITY-AUDIT.md). The fresh static Arcade scan
+still has 93 partial inputs and one malformed source. This is not full parity.
+
+Close the next families in this order, using affected-project counts rather
+than diagnostic occurrence counts:
+
+1. Fix the remaining runtime error at its actual translation/evaluation cause;
+   retain named unsupported paint, assets and effects until implemented.
+2. Separate incomplete single-file documentation snippets from complete project
+   imports; preserve package/artwork dependencies and name unavailable resources.
+3. Implement legacy tilemap calls and asset-backed tilemaps through the existing
+   map/location/wall model; add a usable tilemap painter and file roundtrips.
+4. Complete projectile signatures and dynamic sprite/property dispatch rather
+   than substituting a fixed Scratch target for a runtime sprite reference.
+5. Implement effects, dialogs, music and scene drawing against measured PXT
+   behaviour, including waiting, registration and lifecycle semantics.
+6. Integrate third-party extension families through explicit, licensed support
+   contracts; keep unknown package calls named until their APIs are implemented.
+7. Complete each authoring journey in the
+   [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md), including
+   graphics edits, controller use, save/reopen and original MakeCode execution.
+
+For every family require: a real affected corpus example; a focused original
+PXT comparison; Blocks/Code conversion; VM behaviour; exported original-PXT
+compilation and behaviour; SB3 persistence; and the relevant visible editor
+workflow. Rerun the same locked corpus after each batch. Record newly exposed
+gaps instead of weakening diagnostics. An invalid source input remains invalid;
+zero partial results alone cannot establish full runtime or authoring parity.
