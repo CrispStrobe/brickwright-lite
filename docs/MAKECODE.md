@@ -539,3 +539,30 @@ actual PNG chooser, painting, layers, Code/Blocks, SB3 reopen, playback and all
 19,200 original-PXT export pixels. Tilemap painting, animation action binding,
 custom-palette RGB equivalence and mixed native Arcade/Scratch Stage composition
 remain separate authoring/qualification work.
+
+
+## Published animation resources (candidate)
+
+The animation candidate adds **Frames → animation name → Publish animation**
+in Pixel. Create at least two frames with the same duration. Save/reopen as SB3
+preserves their editable source and stable identity; duplicating a costume
+creates another identity. Unequal timing produces an explicit error.
+
+The intended native Code/Blocks binding uses these reporters:
+
+```text
+(arcade animation frames resource "RESOURCE-UUID")
+(arcade animation interval resource "RESOURCE-UUID")
+```
+
+The Code picker inserts the selected UUID at the cursor. The frame reporter
+feeds the native image-animation block and the interval reporter supplies its
+uniform timing. These words depend on shared compiler PR62 and its subsequent
+consumer pin adoption. Full Code/Blocks/controller qualification is pending;
+this is not a claim that current main supports the complete journey.
+
+The reached browser qualification covers painting, publication, invalid timing
+and actual SB3 reopen. Original Arcade export tests verify shared image arrays
+and playback; editable timeline/UUID recovery through MakeCode is still open.
+See [the authoring gap ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding)
+for the remaining acceptance criteria.

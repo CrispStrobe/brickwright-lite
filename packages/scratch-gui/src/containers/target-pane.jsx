@@ -18,7 +18,7 @@ import {BLOCKS_DEFAULT_SCALE} from '../lib/layout-constants';
 import {handleFileUpload, spriteUpload} from '../lib/file-uploader.js';
 import sharedMessages from '../lib/shared-messages';
 import {emptySprite} from '../lib/empty-assets';
-import {copyCostumeDocument} from '../lib/bw-artwork-bundle';
+import {copyCostumeDocument, syncAnimationResources, captureTargetArtwork, restoreTargetArtwork} from '../lib/bw-artwork-bundle';
 import {highlightTarget} from '../reducers/targets';
 import {fetchSprite, fetchCode} from '../lib/backpack-api';
 import randomizeSpritePosition from '../lib/randomize-sprite-position';
@@ -78,8 +78,20 @@ class TargetPane extends React.Component {
         this.props.vm.postSpriteInfo({y});
     }
     handleDeleteSprite (id) {
-        const restoreSprite = this.props.vm.deleteSprite(id);
-        const restoreFun = () => restoreSprite().then(this.handleActivateBlocksTab);
+        const vm = this.props.vm;
+        const stage = vm.runtime.getTargetForStage();
+        const artwork = captureTargetArtwork(vm.runtime.getTargetById(id));
+        const restoreSprite = vm.deleteSprite(id);
+        syncAnimationResources(vm);
+        const restoreFun = () => {
+            // An Undo callback from another project must not import its sprite.
+            if (vm.runtime.getTargetForStage() !== stage) return Promise.resolve();
+            return restoreSprite().then(() => {
+                if (vm.runtime.getTargetForStage() !== stage) return;
+                restoreTargetArtwork(vm.editingTarget, artwork, vm);
+                this.handleActivateBlocksTab();
+            });
+        };
 
         this.props.dispatchUpdateRestore({
             restoreFun: restoreFun,
@@ -92,7 +104,7 @@ class TargetPane extends React.Component {
         const originals = vm.runtime.getTargetById(id)?.sprite?.costumes || [];
         return vm.duplicateSprite(id).then(() => {
             const copies = vm.editingTarget?.sprite?.costumes || [];
-            originals.forEach((costume, index) => copyCostumeDocument(costume, copies[index]));
+            originals.forEach((costume, index) => copyCostumeDocument(costume, copies[index], this.props.vm));
         });
     }
     handleExportSprite (id) {

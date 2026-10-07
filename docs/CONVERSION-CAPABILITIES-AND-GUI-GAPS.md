@@ -208,34 +208,52 @@ Export/reimport must preserve palette, frames, loop/action and supported timing.
 If variable durations require a runtime sequence, implement it explicitly rather
 than flattening timings. Include sheet and frames-as-costumes journeys.
 
-#### Next animation binding slice — proposed, not implemented
+#### Uniform animation resource candidate — implemented locally, adoption pending
 
-The Pixel timeline already retains per-frame IDs, layers and durations
-(20–10,000ms, up to64 frames). Exporting frames as costumes creates snapshots;
-it does not establish a runtime animation resource. The existing frame-image
-lookup uses a target name and contiguous costume positions, so it must not be
-used as the durable identity across rename/reorder.
+The candidate on `lane/arcade-animation-resources-20261007` implements:
 
-1. Add **Publish/Update animation** in the Frames panel. Persist a resource UUID
-   and display name alongside the source timeline; preserve frame IDs/order.
-   Duplication creates a distinct resource ID. Verify document reconstruction,
-   serialization and older-reader handling before declaring persistence closed.
-2. Expose the resource through a visible named Blocks picker and Code insertion
-   picker. Canonical words carry the resource ID, not a costume index or mutable
-   name. A typed frame-array reporter feeds the existing native image-animation
-   block; a uniform-interval reporter supplies the verified frame duration.
-3. Populate a runtime resource registry through artwork load/apply, update it
-   after edits and clear it on project replacement. A GUI-only source cache is
-   insufficient for runtime access. The exporter must receive complete source
-   explicitly rather than infer frames from the currently flattened costume.
-4. First qualify uniform timing with existing `runImageAnimation` behaviour and
-   equivalent original export. Unequal timing remains explicitly unavailable
-   for this binding until a variable-duration scheduler and equivalent exported
-   program are implemented. Do not flatten durations or expand frames by GCD.
-5. Accept only after visible creation, binding, controller trigger, Stop/restart,
-   rename/reorder/duplicate/delete, Code↔Blocks, SB3 reopen and original-PXT
-   behaviour comparisons pass. Resource identity and event behaviour need their
-   own observations; timeline persistence alone does not qualify playback.
+- **Publish/Update/Remove** with a persistent UUID and display name; frame IDs,
+  order, layers and palette remain editable. Duplication gets a fresh UUID.
+- Artwork document4/bundle5 persistence with older-reader opaque preservation.
+  Actual sprite deletion/Undo restores source onto recreated costume objects;
+  asset mismatch and duplicate identity fail atomically.
+- A named native Blocks resource menu, typed Image[] and interval reporters,
+  and Code insertion at the current selection with a single undoable edit.
+- Runtime resource snapshots shared across repeated reads. Revisions replace
+  the snapshot; already-running animations retain their existing image objects.
+  Start clears runtime handles, Stop preserves them, and actual project loading
+  clears the previous project's authored registry.
+- Explicit full-source export to shared original Arcade Image[] declarations,
+  computed ID lookup, saved scalar values and named missing-resource diagnostics.
+  Unequal durations are rejected rather than flattened.
+
+Local production-browser publication qualification passes: three painted3×2
+frames with two layers and100ms timing, rejected unequal timing preserving the
+prior resource, actual SB3 file chooser reopen, exact source/UUID and rendered
+asset preservation, and zero page errors. Actual-VM sprite Undo and replacement
+loading tests pass. Four original-PXT export tests pass against the explicitly
+selected reviewed producer source, including literal/computed IDs, shared array
+identity, image mutation/playback, missing IDs and generated-name collisions.
+That producer-source test override is qualification evidence, not consumer pin
+adoption.
+
+**Pending:** shared compiler [PR62](https://github.com/CrispStrobe/sb3-creator/pull/62)
+adds the two canonical words and literal resource menu shadows. Its exact-head
+hosted checks must pass and it must land before the consumer pin moves. The app
+still pins the earlier compiler; the complete Code↔Blocks/controller/export/
+reimport browser journey is not yet qualified. The full browser gate is
+`scripts/verify-arcade-animation-resource-browser.mjs`; its publication-only mode
+covers the reached boundary without claiming parser adoption.
+
+**U04 remains open.** Unequal-duration scheduling, action binding, sheet and
+frames-as-costumes journeys, complete controller stop/restart qualification and
+rich resource reconstruction from original MakeCode remain separate work.
+Original export tests prove playback behaviour; they do not preserve the
+editable timeline or UUID through MakeCode. Native image mutation affects the
+runtime snapshot, not authored Pixel layers. Deletion/Undo restores source;
+it does not promise a pristine copy of a previously mutated runtime snapshot
+until restart. Custom-palette original RGB equivalence remains unqualified.
+The locked corpus remains90 translated /93 partial /1 malformed.
 
 ### U05 — rotation/data/resources/callbacks
 

@@ -188,6 +188,37 @@ const getCostumeDocument = costume => {
     return costume ? fromRendered(costume) : null;
 };
 
+/** Preserve source across sprite Undo, whose ZIP roundtrip creates new costume objects. */
+const captureTargetArtwork = target => (target?.sprite?.costumes || []).map(costume => ({
+    renderedMd5ext: assetName(costume),
+    document: JSON.parse(JSON.stringify(getCostumeDocument(costume)))
+}));
+
+const restoreTargetArtwork = (target, snapshots, vm) => {
+    if (!originals(vm).includes(target)) throw new Error('Artwork restore target is no longer in this project');
+    const costumes = target.sprite?.costumes || [];
+    if (costumes.length !== snapshots.length) throw new Error('Artwork restore costume count differs');
+    // Validate all bindings before attaching any source. Identical assets at
+    // different positions can carry different editable documents.
+    const restored = snapshots.map((snapshot, index) => {
+        if (assetName(costumes[index]) !== snapshot.renderedMd5ext) {
+            throw new Error('Artwork restore costume asset differs');
+        }
+        return {renderedMd5ext: snapshot.renderedMd5ext,
+            document: validateDocument(JSON.parse(JSON.stringify(snapshot.document)))};
+    });
+    const previous = costumes.map(costume => documents.get(costume));
+    costumes.forEach((costume, index) => documents.set(costume, restored[index]));
+    try { syncAnimationResources(vm); }
+    catch (error) {
+        costumes.forEach((costume, index) => {
+            if (previous[index]) documents.set(costume, previous[index]);
+            else documents.delete(costume);
+        });
+        throw error;
+    }
+};
+
 /** Stable publication identity; independent of costume hashes, names and positions. */
 const newAnimationResourceId = () => {
     if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
@@ -375,4 +406,5 @@ const attachArtwork = async (blob, vm) => {
 
 export {ARTWORK_PATH, ARTWORK_FORMAT, ARTWORK_VERSION, inspectArtwork, applyArtwork,
     attachArtwork, writeArtworkToZip, artworkBundleVersion, getCostumeDocument, setCostumeDocument,
-    resetCostumeDocument, copyCostumeDocument, newAnimationResourceId, syncAnimationResources};
+    resetCostumeDocument, copyCostumeDocument, captureTargetArtwork, restoreTargetArtwork,
+    newAnimationResourceId, syncAnimationResources};

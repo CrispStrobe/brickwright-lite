@@ -23,7 +23,7 @@ import {
 } from '../../lib/bw-matrix/capabilities.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
-import {getCostumeDocument, inspectArtwork, applyArtwork} from '../../lib/bw-artwork-bundle.js';
+import {getCostumeDocument, inspectArtwork, applyArtwork, syncAnimationResources} from '../../lib/bw-artwork-bundle.js';
 import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
     captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../../lib/bw-code-artwork.js';
 
@@ -2057,6 +2057,7 @@ class PseudocodeImporter extends React.Component {
         const rasters = new Map();
         const palettes = new Map();
         const sounds = new Map();
+        const animationDocuments = [];
         for (const target of vm.runtime.targets) {
             if (!target.isOriginal) continue;
             // Sound bytes, for the export's tone check (a steady tone plays; sampled audio is named).
@@ -2066,17 +2067,29 @@ class PseudocodeImporter extends React.Component {
                 rasters.set(costume.assetId, await draw(costume.asset));
                 const artwork = getCostumeDocument(costume);
                 if (artwork?.palette) palettes.set(costume.assetId, artwork.palette);
+                if (artwork?.animation?.resource) animationDocuments.push(artwork);
             }
         }
         const {projectToArcade} = await import(
             /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/export-arcade.js');
         return projectToArcade(project, {
             name: 'brickwright-game',
+            animationDocuments,
             costumeSvg: (t, c) => svgs.get(c.assetId) || null,
             costumeRgba: (t, c) => rasters.get(c.assetId) || null,
             costumePalette: (t, c) => palettes.get(c.assetId) || null,
             soundData: (t, s) => sounds.get(s.assetId) || null
         });
+    }
+
+    insertAnimationResource (kind) {
+        try {
+            const resources = syncAnimationResources(this.props.vm);
+            const id = this.state.animationResourceId || resources.keys().next().value;
+            if (!resources.has(id)) throw new Error('Choose an available published animation.');
+            const text = `(arcade animation ${kind === 'frames' ? 'frames' : 'interval'} resource ${JSON.stringify(id)})`;
+            if (!this._cmEditor?.insertText?.(text)) this.setActiveCode(`${this.activeCode()}${text}`);
+        } catch (error) { this.setState({status: error.message}); }
     }
 
     async runAsArcade () {
@@ -5401,6 +5414,25 @@ class PseudocodeImporter extends React.Component {
                         ) : null}
                     </div>
                 )}
+                {this.state.lang === 'pseudocode' && this.currentDevice() === 'arcade' ? (() => {
+                    const resources = [...(this.props.vm.runtime.bwArcadeAnimationResources?.values() || [])];
+                    const id = this.state.animationResourceId || resources[0]?.id || '';
+                    return <div data-testid="bw-code-animation-resources" style={{display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0'}}>
+                        <label>Animation{' '}
+                            <select data-testid="bw-code-animation-picker" value={id}
+                                onChange={event => this.setState({animationResourceId: event.target.value})}>
+                                {!resources.length ? <option value="">{pickLocale(this.props.locale) === 'de' ? 'Zuerst in Pixel veröffentlichen' : 'Publish a timeline in Pixel first'}</option> : null}
+                                {resources.map(resource => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                            </select>
+                        </label>
+                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
+                            data-testid="bw-code-animation-insert-frames" onClick={() => this.insertAnimationResource('frames')}>
+                            {pickLocale(this.props.locale) === 'de' ? 'Bilder einfügen' : 'Insert frames'}</button>
+                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
+                            data-testid="bw-code-animation-insert-interval" onClick={() => this.insertAnimationResource('interval')}>
+                            {pickLocale(this.props.locale) === 'de' ? 'Intervall einfügen' : 'Insert interval'}</button>
+                    </div>;
+                })() : null}
                 {this.state.revealed ? (
                     <React.Suspense fallback={
                         <FallbackEditor
