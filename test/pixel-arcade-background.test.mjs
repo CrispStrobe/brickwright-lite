@@ -4,11 +4,12 @@ import {readFileSync} from 'node:fs';
 import JSZip from 'jszip';
 import {deflateSync, inflateSync} from 'node:zlib';
 import {scopeAfter} from './helpers/js-scope.mjs';
-import {ARCADE_PALETTE, editablePixelSize, MAX_PIXEL_DIMENSION, rasterEditorSize, quantizeRgba,
+import {ARCADE_PALETTE, editablePixelSize, MAX_PIXEL_DIMENSION, rasterEditorSize, isUnmarkedArcadeBackdrop, quantizeRgba,
     pixelsToSvg, svgToPixels, sliceSpriteSheet, toImgLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {blankLayer, resizeLayers, composeLayers, layersDocument, layersToSvg, sourceLayers, sourceFrames} from '../overlay/scratch-gui/src/lib/bw-pixel-layers.js';
-import {setCostumeDocument, getCostumeDocument, attachArtwork, inspectArtwork, applyArtwork} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
+import * as historicalReader from './fixtures/artwork-reader-v3.mjs';
+import {artworkBundleVersion, setCostumeDocument, getCostumeDocument, attachArtwork, inspectArtwork, applyArtwork} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 const source=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pixel-art-editor.jsx',import.meta.url),'utf8');
 const image={width:160,height:120,pixels:new Uint8Array(160*120)};
 for(const [offset,color] of [[0,2],[159,7],[119*160,5],[19199,9]])image.pixels[offset]=color;
@@ -85,6 +86,11 @@ test('160×120 layered animation persists through SB3 and rejects malformed/over
     const vm={runtime:{targets:[{isOriginal:true,isStage:true,sprite:{costumes:[costume]}}]}};
     const saved=await attachArtwork(await zip.generateAsync({type:'blob'}),vm);
     const savedZip=await JSZip.loadAsync(await saved.arrayBuffer());assert.deepEqual(await savedZip.file('background.png').async('nodebuffer'),png);
+    const raw=await savedZip.file('brickwright/artwork/v1.json').async('text');assert.equal(JSON.parse(raw).version,4);
+    const oldInspection=await historicalReader.inspectArtwork(await saved.arrayBuffer());assert.equal(oldInspection.outcome,'future');
+    historicalReader.applyArtwork(oldInspection,vm);
+    const oldSaved=await historicalReader.attachArtwork(saved,vm);
+    assert.equal(await (await JSZip.loadAsync(await oldSaved.arrayBuffer())).file('brickwright/artwork/v1.json').async('text'),raw,'actual v3 reader preserves unknown extended source byte for byte');
     const inspected=await inspectArtwork(await saved.arrayBuffer());assert.equal(inspected.outcome,'loaded');
     const reopened={...costume};assert.equal(applyArtwork(inspected,{runtime:{targets:[{isOriginal:true,isStage:true,sprite:{costumes:[reopened]}}]}}).count,1);
     assert.deepEqual(getCostumeDocument(reopened),doc);
@@ -96,7 +102,7 @@ test('160×120 layered animation persists through SB3 and rejects malformed/over
 
 test('actual editor opening recognizes a native PNG backdrop without shrinking it',async()=>{
     const bindings={getCostumeDocument,ARCADE_PALETTE,sourceLayers,sourceFrames,composeLayers,svgToPixels,
-        editablePixelSize,rasterEditorSize,quantizeRgba,blankLayer,
+        editablePixelSize,rasterEditorSize,isUnmarkedArcadeBackdrop,quantizeRgba,blankLayer,
         rasterize:async()=>({rgba:decodedRgba,w:160,h:120})};
     const load=new Function(...Object.keys(bindings),`return async function(size) ${scopeAfter(source,'async load (size) {')}`)(...Object.values(bindings));
     const costume={asset:{dataFormat:'png'}};
@@ -105,4 +111,34 @@ test('actual editor opening recognizes a native PNG backdrop without shrinking i
     await load.call(editor);assert.equal(editor.state.w,160);assert.equal(editor.state.h,120);assert.equal(editor.state.scale,3);
     assert.deepEqual(editor.state.image.pixels,image.pixels);assert.equal(editor.state.converted,true,'palette conversion remains disclosed');
     await load.call(editor,{w:160,h:120});assert.equal(editor.state.scale,3,'reconversion retains chosen backdrop display scale');
+});
+
+
+test('unmarked screen-sized Stage SVG is rasterized, while explicit indexed metadata stays exact',async()=>{
+    const unmarked='<svg xmlns="http://www.w3.org/2000/svg" width="480" height="360"><rect x="0" y="0" width="480" height="360" fill="#ff2121"/></svg>';
+    assert.deepEqual([svgToPixels(unmarked).width,svgToPixels(unmarked).height,svgToPixels(unmarked).scale],[4,3,120],'GCD is not the Stage logical grid');
+    assert.ok(isUnmarkedArcadeBackdrop(unmarked,true));assert.equal(isUnmarkedArcadeBackdrop(unmarked,false),false);
+    const uniform={width:160,height:120,pixels:new Uint8Array(19200).fill(2)};
+    const marked=pixelsToSvg(uniform,{scale:3});assert.equal(isUnmarkedArcadeBackdrop(marked,true),false);
+    for(const [svg,converted] of [[unmarked,true],[marked,false]]){
+        let rasterCalls=0;
+        const rgba=new Uint8Array(480*360*4);for(let index=0;index<480*360;index++)rgba.set([255,33,33,255],index*4);
+        const bindings={getCostumeDocument,ARCADE_PALETTE,sourceLayers,sourceFrames,composeLayers,svgToPixels,
+            editablePixelSize,rasterEditorSize,isUnmarkedArcadeBackdrop,quantizeRgba,blankLayer,
+            rasterize:async()=>{rasterCalls++;return {rgba,w:480,h:360};}};
+        const load=new Function(...Object.keys(bindings),`return async function(size) ${scopeAfter(source,'async load (size) {')}`)(...Object.values(bindings));
+        const costume={asset:{dataFormat:'svg',decodeText:()=>svg}};
+        const editor={props:{vm:{editingTarget:{isStage:true}}},state:{},costume:()=>costume,setState(patch){Object.assign(this.state,patch);}};
+        await load.call(editor);assert.equal(editor.state.w,160);assert.equal(editor.state.h,120);assert.equal(editor.state.scale,3);
+        assert.deepEqual(editor.state.image.pixels,uniform.pixels);assert.equal(editor.state.converted,converted);assert.equal(rasterCalls,converted?1:0);
+        assert.doesNotThrow(()=>setCostumeDocument(costume,layersDocument(editor.state.layers,160,120,3,editor.state.activeLayerId,ARCADE_PALETTE)));
+    }
+});
+
+
+test('extended bundle version is conditional, while existing document versions remain unchanged',()=>{
+    const document=size=>({version:3,layers:[{content:{kind:'pixels',value:{width:size,height:120}}}]});
+    assert.equal(artworkBundleVersion([{document:document(128)}]),3);
+    assert.equal(artworkBundleVersion([{document:document(160)}]),4);
+    assert.equal(artworkBundleVersion([]),1);
 });

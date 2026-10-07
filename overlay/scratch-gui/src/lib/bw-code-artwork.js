@@ -2,7 +2,7 @@
  * Declarations choose slots; the current VM supplies their actual artwork.
  * Never carry a source snapshot across a different loaded project.
  */
-import {ARTWORK_PATH, ARTWORK_FORMAT, getCostumeDocument} from './bw-artwork-bundle.js';
+import {ARTWORK_PATH, ARTWORK_FORMAT, artworkBundleVersion, getCostumeDocument} from './bw-artwork-bundle.js';
 
 const copy = value => JSON.parse(JSON.stringify(value));
 const originals = vm => (vm.runtime?.targets || []).filter(target => target.isOriginal !== false);
@@ -103,7 +103,7 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
             Math.max(0, (generated.costumes || []).length - 1));
     }
     if (records.length) zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT,
-        version: Math.max(...records.map(record => record.document.version)), costumes: records}));
+        version: artworkBundleVersion(records), costumes: records}));
     zip.file('project.json', JSON.stringify(project));
     return true;
 };

@@ -30,6 +30,19 @@ export const MAX_PIXEL_DIMENSION = 160;
 export const editablePixelSize = (width, height) => Number.isInteger(width) && Number.isInteger(height) &&
     width > 0 && height > 0 && width <= MAX_PIXEL_DIMENSION && height <= MAX_PIXEL_DIMENSION;
 
+/** An unmarked screen-sized Stage SVG uses physical display pixels, not a GCD art grid. */
+export const isUnmarkedArcadeBackdrop = (svg, isStage) => {
+    if (!isStage) return false;
+    const root = /<svg\b([^>]*)>/i.exec(String(svg || ''));
+    if (!root || /\bdata-bw-pixel-scale\s*=/i.test(root[1])) return false;
+    const dimension = name => {
+        const value = new RegExp(`\\b${name}=["']([0-9.]+)(?:px)?["']`, 'i').exec(root[1]);
+        return value ? Number(value[1]) : NaN;
+    };
+    const width = dimension('width'), height = dimension('height');
+    return (width === 160 && height === 120) || (width === 480 && height === 360);
+};
+
 /** Recognize native/3x Arcade backdrops without changing other costume conversions. */
 export const rasterEditorSize = (width, height, isStage = false) => {
     if (isStage && ((width === 160 && height === 120) || (width === 480 && height === 360))) {

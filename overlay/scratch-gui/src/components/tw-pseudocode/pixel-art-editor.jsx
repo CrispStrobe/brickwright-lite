@@ -24,7 +24,7 @@ import {blankLayer, clearSelectedPixels, composeLayers, containsCell, cropLayers
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels, wandSelection} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, MAX_PIXEL_DIMENSION, editablePixelSize, rasterEditorSize,
+    ARCADE_PALETTE, MAX_PIXEL_DIMENSION, editablePixelSize, rasterEditorSize, isUnmarkedArcadeBackdrop,
     svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
 } from '../../lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
@@ -340,8 +340,10 @@ class PixelArtEditor extends React.Component {
             }
         }
         if (!image && !size && costume.asset.dataFormat === 'svg') {
-            const px = svgToPixels(costume.asset.decodeText(), palette);
-            if (px && editablePixelSize(px.width, px.height)) {
+            const svg = costume.asset.decodeText();
+            const px = isUnmarkedArcadeBackdrop(svg, this.props.vm.editingTarget?.isStage) ? null :
+                svgToPixels(svg, palette);
+            if (px && editablePixelSize(px.width, px.height) && px.scale <= 64) {
                 image = {width: px.width, height: px.height, pixels: px.pixels};
                 scale = px.scale;
             }
