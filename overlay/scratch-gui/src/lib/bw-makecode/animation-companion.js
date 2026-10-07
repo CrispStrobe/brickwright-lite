@@ -120,7 +120,8 @@ export function encodeAnimationCompanion (entries, projectPalette) {
 /** Native resources survive absent/stale rich metadata; invalid metadata fails atomically. */
 export function recoverAnimationCompanion (companionText, nativeAnimations, projectPalette) {
     const palette = paletteOf(projectPalette);
-    list(nativeAnimations, 'Native animation resources');
+    // Companion record limits must not impose a new native-gallery count limit.
+    if (!Array.isArray(nativeAnimations)) fail('SCHEMA', 'Native animation resources must be an array');
     const native = new Map();
     for (const animation of nativeAnimations) {
         const normalized = nativeOf(animation);

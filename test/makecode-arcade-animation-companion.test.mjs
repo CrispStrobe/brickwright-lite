@@ -84,6 +84,21 @@ test('missing metadata/unused native assets remain explicit, unmodified fallback
     assert.equal(recoverAnimationCompanion(undefined,[animation]).resources[0].reason,'missing-companion');
 });
 
+test('companion metadata count limits do not restrict larger native galleries',()=>{
+    const {entry,animation}=fixture();
+    const gallery=[animation,...Array.from({length:128},(_,i)=>({...animation,id:`myAnimations.extra${i}`,name:`Extra ${i}`}))];
+    const before=structuredClone(gallery);
+    const missing=recoverAnimationCompanion(undefined,gallery);
+    assert.equal(missing.resources.length,129);
+    assert.ok(missing.resources.every(resource=>resource.document===null && resource.reason==='missing-companion'));
+    const recovered=recoverAnimationCompanion(encodeAnimationCompanion([entry]),gallery);
+    assert.equal(recovered.resources.length,129);
+    assert.deepEqual(recovered.resources[0].document,entry.document);
+    assert.ok(recovered.resources.slice(1).every(resource=>resource.document===null && resource.reason==='no-record'));
+    assert.deepEqual(gallery,before);
+    rejected(()=>recoverAnimationCompanion(undefined,{}),'SCHEMA');
+});
+
 test('malformed or duplicate metadata fails atomically before any recovered documents escape',()=>{
     const {entry,animation}=fixture(),text=encodeAnimationCompanion([entry]);
     rejected(()=>recoverAnimationCompanion('{',[animation]),'JSON');
