@@ -810,11 +810,11 @@ class ArcadeEmitter {
             return `[${args.join(', ')}]`;
         }
         case 'arcade_getscore':return 'info.score()';
-        case 'arrays_specialValue':return this.literalInput(b,'KIND')==='null'?'null':'undefined';
+        case 'arrays_specialValue':return (this.field(b,'KIND') || this.literalInput(b,'KIND'))==='null'?'null':'undefined';
         case 'arrays_valueCompare':
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
-            const op=this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
+            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
             const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
             if(!names[op] || unary && !['+','-'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
@@ -912,7 +912,21 @@ class ArcadeEmitter {
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
         case 'arcade_askForNumber': return `game.askForNumber(${v('QUESTION')})`;
-        case 'arcade_controllerStep': return `controller.d${this.field(b, 'AXIS') === 'y' ? 'y' : 'x'}(${v('STEP')})`;
+        case 'arcade_controllerStep': {
+            const literal=this.literal(b,'AXIS') ?? (this.field(b,'AXIS') || null);
+            if(literal!==null)return `controller.d${literal.toLowerCase()==='y'?'y':'x'}(${v('STEP')})`;
+            const key='controllerAxisStep';
+            if(!this.legacyValueHelpers.has(key)) {
+                let name='__bwControllerAxisStep';
+                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(value=>typeof value==='string'?value:value.name));
+                while(occupied.has(name))name+='_';
+                this.legacyValueHelpers.set(key,{name,source:`function ${name}(axis: any, step: number): number {
+    const direction = "" + axis
+    return direction === "y" || direction === "Y" ? controller.dy(step) : controller.dx(step)
+}`});
+            }
+            return `${this.legacyValueHelpers.get(key).name}(${this.arrayValue(b,'AXIS')}, ${v('STEP')})`;
+        }
         case 'arcade_getCaptured': {
             const name = this.literalInput(b,'NAME');
             if (!name || !this.compilingRegisteredCallbacks.size) { this.note('Arcade captured value needs a registered callback and fixed name');return this.na(); }
@@ -1830,6 +1844,7 @@ class ArcadeEmitter {
             return blocks[input];
         };
         const literal = (blocks, b, name) => {
+            if(b.fields?.[name])return String(b.fields[name][0]);
             const input = b.inputs?.[name]?.[1];
             return Array.isArray(input) ? String(input[1]) : String(blocks[input]?.fields?.TEXT?.[0] || '');
         };
