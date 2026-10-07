@@ -107,8 +107,14 @@ The installed React 16 renderer omits `code` from its synthetic keyboard
 event, although the native event retains it; the pinned Circuit UI reads only
 the synthetic field and therefore returns before forwarding a recognized
 PC key. A narrow Circuit UI source correction reads the native field when
-the synthetic one is absent. This diagnosis still requires a fresh installed
-browser run showing an actual guest pixel response before acceptance.
+the synthetic one is absent. Lite's proposed
+[consumer pin `0f4a005b`](https://github.com/CrispStrobe/bw-circuit-ui/commit/0f4a005b79c57f77ff0a5f0e875f3c8968c58803)
+contains only that source correction, its keyboard test and CI gate relative
+to the previously installed Circuit UI pin. The separate
+[Circuit UI PR81](https://github.com/CrispStrobe/bw-circuit-ui/pull/81)
+applies the same change on the newer main line; Lite does not adopt its other
+changes here. This diagnosis still requires a fresh installed browser run
+showing an actual guest pixel response before acceptance.
 
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
