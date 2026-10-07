@@ -2564,7 +2564,13 @@ class SB3Creator {
         const fields = {};
         for (const [p, text] of slots) {
             if (p.field) fields[p.slot] = [text, null];
-            else if (p.text || p.name) inputs[p.slot] = [1, [10, text]];
+            else if (p.menu) {
+                const canonical = p.choices.find(choice => choice.toLowerCase() === text.toLowerCase());
+                const shadow = this.menuInput(context, `arcade_menu_${p.menu}`, p.menu, canonical ?? p.choices[0]);
+                const value = canonical === undefined ? read(text) : null;
+                inputs[p.slot] = !value ? shadow : typeof value[1] === 'string' ? [3, value[1], shadow[1]] : value;
+                if (value && typeof value[1] !== 'string') delete context.extraBlocks[shadow[1]];
+            } else if (p.text || p.name) inputs[p.slot] = [1, [10, text]];
             else if (p.bool) inputs[p.slot] = this.arcadeBoolean(text, context);
             else if (p.cond && this.arcadeConditionLike(text, context)) inputs[p.slot] = [2, this.parseCondition(text, context)];
             else inputs[p.slot] = read(text);
@@ -2635,7 +2641,29 @@ class SB3Creator {
         return spellArcadeWord(entry, {
             value: (name) => this.dval(b.inputs[name], blocks),
             text: (name) => this.dtext(b.inputs[name], blocks),
-            field: (name) => (b.fields[name] ? b.fields[name][0] : ''),
+            menu: (name, menuName) => {
+                const input = b.inputs[name];
+                const menu = Array.isArray(input) && typeof input[1] === 'string' ? blocks[input[1]] : null;
+                if (menu?.opcode === `arcade_menu_${menuName}`) return menu.fields[menuName]?.[0] ?? '';
+                const choices = compileArcadeWord(entry).parts.find(p => p.slot === name)?.choices || [];
+                if (!input && choices.includes(b.fields[name]?.[0])) return b.fields[name][0];
+                // Parentheses distinguish variables named x/y from bare menu
+                // choices. Quoted text retains its literal spelling and case.
+                const value = this.dval(input, blocks);
+                return /^["(]/.test(value) ? value : `(${value})`;
+            },
+            field: (name) => {
+                if (b.fields[name]) return b.fields[name][0];
+                // Read pre-schema-fix saved literal inputs, but never turn an
+                // arbitrary reporter into a direct dropdown field. Native
+                // fields take precedence if both historical shapes exist.
+                if (/^arrays_(specialValue|valueBinary|valueUnary|valueCompare)$/.test(entry.op)) {
+                    const literal = b.inputs[name]?.[1];
+                    const part = compileArcadeWord(entry).parts.find(p => p.slot === name && p.field);
+                    if (Array.isArray(literal) && literal[0] === 10 && part?.choices.includes(literal[1])) return literal[1];
+                }
+                return '';
+            },
             cond: (name) => {
                 const input = b.inputs[name];
                 const ref = Array.isArray(input) && typeof input[1] === 'string' ? blocks[input[1]] : null;

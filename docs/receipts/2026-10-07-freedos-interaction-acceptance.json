@@ -1,0 +1,117 @@
+{
+  "schema": "brickwright-lite.freedos-interaction-acceptance.v1",
+  "result": "PASS",
+  "execution": "Operator-run actual Chromium against the official hosted app artifact; no guest implementation substitution.",
+  "probeRevision": "2f7097806fed5559b1aa53f538acf0c4562d613e",
+  "appSourceRevision": "8cdb766042d5fec01afa167bf53b0c9c95e9c90b",
+  "appBuildCheckout": "5278345b74cb9dcd5ee126fb552969d569bf864c",
+  "appBuildBase": "3f3b135e999d0e6b3ece0c552f1c95775df1f88c",
+  "appBuildRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37588422649",
+  "appArtifactApi": "https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11468531396",
+  "appArtifactBytes": 110538225,
+  "appArtifactSha256": "247ca69e8d4e663fc8972f799e7a01f35513e134eff9c1ae6096a0a2830bf87b",
+  "appBuildIndexSha256": "c8c50ffe7cd1e8db5abb93029fed450e0e9299f335ed8b658139cf62d73e576b",
+  "appMergeRevision": "d9749cabcbf9752f9de522dda3f7bc20b39c29cc",
+  "appMergeTree": "11e7df5af97dd406a60465c832b6ee572a1e7153",
+  "mergeAudit": "Merge tree equals the independently computed merge of base e1421dff162453bc2e88e87b7def5e15f572e4a1 and reviewed head. Actual guest execution used the separately identified hosted checkout, not a rebuilt merged-main app.",
+  "boardDependency": "a1126312288867127343c2f9bbdfcd2856a18508",
+  "ci": {
+    "enabledSuccess": 9,
+    "disabledSkipped": [
+      "deploy",
+      "verify-gui"
+    ]
+  },
+  "mediaSha256": {
+    "freedos14Floppy": "03df6088be016e57a6c44275f5bb9ab0244db71de1360957fd76ba83243b6a77",
+    "ownedBaseHdd": "2fa9c252f22cec4f8c5bdc82d1587293ffcaed791e0982384628d19a7316a851",
+    "ownedInteractionHdd": "fa600b54051d0f3d12793ff61316e4ddfb029e4b21b67aac4c3d4d1e608d3591"
+  },
+  "ownedGuestProgram": {
+    "source": "test/fixtures/i80386-freedos-interaction/mouse.asm",
+    "binaryBytes": 194,
+    "binarySha256": "b2874ac760be9c4922ff72bdd2341f31888c5f7fe355ad97a74d841fc7d62ec4"
+  },
+  "passedComponents": [
+    "Actual FreeDOS boot through Machine Manager and Widgets keyboard input",
+    "Owned C: listing with CMOUNTOK.TXT and MOUSE.COM",
+    "Fullscreen entry and exit",
+    "Pane divider drag enlarges the canvas",
+    "Guest-enabled PS/2 packet readback and accepted press/release",
+    "Circuits/Code roundtrip preserves output and guest time; shell prints tabok afterwards"
+  ],
+  "canvasBounds": {
+    "before": {
+      "x": 882.703125,
+      "y": 173,
+      "width": 709.296875,
+      "height": 827
+    },
+    "fullscreen": {
+      "x": 0,
+      "y": 31,
+      "width": 1600,
+      "height": 969
+    },
+    "resized": {
+      "x": 457.921875,
+      "y": 173,
+      "width": 1134.078125,
+      "height": 827
+    }
+  },
+  "guestProbeOutput": [
+    "PS2 READY",
+    "PS2 PACKET 09 00 00",
+    "PS2 DONE"
+  ],
+  "acceptedMouseEvents": [
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 1,
+      "result": true
+    },
+    {
+      "dx": 0,
+      "dy": 0,
+      "buttons": 0,
+      "result": true
+    }
+  ],
+  "tabs": {
+    "circuitTargetPreserved": true,
+    "before": {
+      "timeNs": 69189408667,
+      "media": 2
+    },
+    "after": {
+      "timeNs": 71906129667,
+      "media": 3
+    },
+    "preservedOutput": "PS2 DONE",
+    "shellResponse": "tabok",
+    "mediaCountInterpretation": "Repeated same-detail announcement is deduplicated by the retained debugger; count alone is not a reload indicator."
+  },
+  "uncaughtPageErrors": [],
+  "elapsedSeconds": 120.404,
+  "screenshotSha256": {
+    "cListing": "b914d0458e156f1b293a2b430d3a29974966b19f486babe0f90441bfca95cc9f",
+    "finalMouseAndShell": "ef6da1fdd95c8f6a12b227ad014dbd181bdb8106c181143cdf2b3a5256a6e871"
+  },
+  "privateRawDiagnosticSha256": {
+    "report.json": "40124427d6ceb26568ad54156cc6d98fc224a1aa32771b6bfb9926083e1b5309",
+    "tab-continuity.json": "d0b11ff7b7f8152446966e44cc599ec302989fc725e6cd89a0b0cb904a10ffc1",
+    "mouse-before-tabs.json": "06c57e9a22ba246c9ef18f4460df62e1e139e67ac00a0c0c9ac4108afd1acdfd"
+  },
+  "audit": "Root and a separate read-only reviewer verified artifact provenance, raw result, screenshot hashes and guest observations; the reviewer also inspected the listing and final screen.",
+  "scope": "One bounded FreeDOS scenario on the functional JS 386 GUI. Hardware polling, not INT33 mouse-driver compatibility. No general OS, native-addon GUI, physical RTx or performance claim.",
+  "remaining": [
+    "Drag capture outside the canvas",
+    "Browser-reserved keys",
+    "Guest mouse driver/application",
+    "Direct input while the Circuits tab is active",
+    "DOSBox ZIP admission and ISO/ATAPI",
+    "Adoption and actual GUI qualification of later bw-board revisions"
+  ]
+}

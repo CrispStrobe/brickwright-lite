@@ -181,7 +181,13 @@ try {
         await page.waitForFunction(t => {
             const select = document.querySelector('[data-testid="bw-device-select"]');
             const source = document.querySelector('.cm-content')?.textContent || '';
-            return select?.value === t && source.includes(`DEVICE ${t.toUpperCase()}`);
+            // The text changes before asynchronous project loading finishes.
+            // Require the applied project, not the previous runtime device.
+            const runtime = window.__vm?.runtime;
+            const toBlocks = document.querySelector('button[title^="Compile this"]');
+            return select?.value === t && source.includes(`DEVICE ${t.toUpperCase()}`) &&
+                runtime?.bwDeviceId === t && runtime?.stc?.device?.toLowerCase() === t &&
+                toBlocks && !toBlocks.disabled;
         }, target, {timeout: 15000});
         const runtimeDevice = await page.evaluate(() => window.__vm?.runtime?.bwDeviceId);
         const status = await page.locator('[role="status"]').last().textContent().catch(() => '');

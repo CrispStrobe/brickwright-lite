@@ -18,7 +18,7 @@ module.exports = makeExt(`// Name: Arcade
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
   const imageEngine = (${require('./image').toString()})(speechPalette, ${require('./image-pxt').toString()});
-  const {RotatedBoundingBox} = (${require('./rotation-pxt').toString()})();
+  const {RotatedBoundingBox, rasterWindow: rotatedRasterWindow, rasterFootprint: rotatedRasterFootprint} = (${require('./rotation-pxt').toString()})();
 
   const spriteFlags = {AutoDestroy: 4, StayInScreen: 8, DestroyOnWall: 16, BounceOnWall: 32, Invisible: 128, RelativeToCamera: 512,
     GhostThroughTiles: 1024, GhostThroughWalls: 2048, GhostThroughSprites: 4096, Ghost: 7168};
@@ -1439,6 +1439,10 @@ module.exports = makeExt(`// Name: Arcade
           this._rotatedBBox.setRotation(Number(value)||0);extension._recalcSpriteSize(this);this.x=x;this.y=y;}});
       Object.defineProperty(sprite,'rotationDegrees',{enumerable:true,configurable:true,
         get(){return this.rotation*180/Math.PI;},set(value){this.rotation=Number(value)*Math.PI/180;}});
+      // PXT lazily replaces any falsy stored data with a new object.
+      Object.defineProperty(sprite,'data',{enumerable:true,configurable:true,
+        get(){if(!Scratch.BWValues.truth(this._data))this._data={};return this._data;},
+        set(value){this._data=value;}});
       for (const axis of ['x', 'y']) {
         const storage = axis === 'x' ? '_fx' : '_fy', size = axis === 'x' ? 'width' : 'height';
         Object.defineProperty(sprite, axis, {enumerable:true, configurable:true,
@@ -2241,8 +2245,17 @@ module.exports = makeExt(`// Name: Arcade
     _spriteRasterWindow(sprite){
       const view=this._spriteViewPosition(sprite),left=view.x-sprite.width/2,top=view.y-sprite.height/2;
       const fullWidth=Math.max(0,sprite.width|0),fullHeight=Math.max(0,sprite.height|0);
-      const x=Math.max(0,-left),y=Math.max(0,-top);
-      const width=Math.max(0,Math.min(fullWidth,160-left)-x),height=Math.max(0,Math.min(fullHeight,120-top)-y);
+      // __drawCore culls using logical bounds before scattering the image.
+      const camera=this._camera(),relative=!!(sprite.flags & spriteFlags.RelativeToCamera);
+      const logicalLeft=sprite._fx/256-(relative?0:camera.drawOffsetX),logicalTop=sprite._fy/256-(relative?0:camera.drawOffsetY);
+      if(logicalLeft+sprite.width<0 || logicalTop+sprite.height<0 || logicalLeft>160 || logicalTop>120)
+        return {x:0,y:0,width:0,height:0,key:'empty'};
+      const bounds=sprite._rotatedBBox && sprite.image ? rotatedRasterFootprint(sprite.image,sprite.sx,sprite.sy,sprite.rotation) :
+        {left:0,top:0,right:fullWidth-1,bottom:fullHeight-1};
+      if(sprite._rotatedBBox && (left>=160 || top>=120 || left+bounds.cullWidth<0 || top+bounds.cullHeight<0))
+        return {x:0,y:0,width:0,height:0,key:'empty'};
+      const x=Math.max(bounds.left,-left),y=Math.max(bounds.top,-top);
+      const width=Math.max(0,Math.min(bounds.right+1,160-left)-x),height=Math.max(0,Math.min(bounds.bottom+1,120-top)-y);
       // Completely hidden sprites share a single transparent skin, regardless
       // of their distance from the viewport. No raster grows with sprite scale.
       if(!width || !height)return {x:0,y:0,width:0,height:0,key:'empty'};
@@ -2251,14 +2264,7 @@ module.exports = makeExt(`// Name: Arcade
     _scaledSpriteImage(sprite,window=this._spriteRasterWindow(sprite)){
       const source=sprite.image,{x,y,width,height}=window;
       if(sprite._rotatedBBox){
-        // PXT drawSprite: imageDrawScaledRotated at the sprite's left/top, here
-        // into a box-sized raster, then the visible window of it.
-        const fullWidth=Math.max(0,sprite.width|0),fullHeight=Math.max(0,sprite.height|0);
-        const full={width:fullWidth,height:fullHeight,pixels:new Uint8Array(fullWidth*fullHeight)};
-        if(fullWidth && fullHeight)imageEngine.drawScaledRotated(full,source,0,0,sprite.sx,sprite.sy,sprite.rotation);
-        const pixels=new Uint8Array(width*height);
-        for(let row=0;row<height;row++)for(let col=0;col<width;col++)pixels[row*width+col]=full.pixels[(row+y)*fullWidth+col+x];
-        return {width,height,pixels};
+        return rotatedRasterWindow(source,sprite.sx,sprite.sy,sprite.rotation,window);
       }
       if(sprite._sx===256 && sprite._sy===256 && x===0 && y===0 && width===source.width && height===source.height)return source;
       const pixels=new Uint8Array(width*height);

@@ -16,6 +16,14 @@ mod renode_debugger;
 mod renode_rsp;
 #[path = "../../../apps/tauri/src-tauri/src/renode_supervisor.rs"]
 mod renode_supervisor;
+#[path = "../../../apps/tauri/src-tauri/src/spike_program_uart_contract.rs"]
+mod spike_program_uart_contract;
+#[path = "../../../apps/tauri/src-tauri/src/spike_local_image.rs"]
+mod spike_local_image;
+#[path = "../../../apps/tauri/src-tauri/src/spike_staged_image.rs"]
+mod spike_staged_image;
+#[path = "../../../apps/tauri/src-tauri/src/spike_micropython_launch.rs"]
+mod spike_micropython_launch;
 use serde_json::{json, Value};
 use std::io::{BufRead, Write};
 use std::time::{Duration, Instant};

@@ -93,3 +93,43 @@ copyleft source/relink evidence. Receipts therefore explicitly record
 `redistributionValidated: false`; assembled packages stay private until that
 review is complete. The commands reproduce the assembly process and record exact
 inputs; they do not claim byte-identical Rust builds or physical SPIKE accuracy.
+
+
+## Restarting a retained NuttX program
+
+With retained-restart-capable full NuttX firmware, the arena offers **Restart
+program** after completion, Stop or a runtime fault. This sends START for the
+program already retained by the guest; it does not compile the current editor,
+upload replacement bytes, reload storage or create a new emulator session. Use
+the Code-tab Run action to upload edited source. Loading saved storage remains
+explicit and reaches READY; **Run loaded program** starts that loaded program.
+
+The arena exposes Stop while a program start is pending. Stop cancels a queued
+START or sends STOP after an in-flight START, retaining the program/session.
+Closed, uncertain, busy or uncommitted sessions refuse restart; errors from older
+firmware remain visible. Completion feedback is rearmed only after an accepted
+RUNNING response, and late responses cannot update a disposed/replacement pane.
+Restarting a faulting program may reproduce its fault. No physical hub upload is
+involved.
+
+The focused command/session and actual-pane-method regressions are reproducible
+from the repository root:
+
+```sh
+node --test test/spike-nuttx-restart.test.mjs test/spike-renode-arena-session.test.mjs test/spike-code-run-feedback.test.mjs
+```
+
+These synthetic boundary tests do not replace the actual guest and installed
+GUI qualification required when adopting new firmware/package inputs.
+
+The source-only native qualification driver imports the production policy,
+supervisor, image-admission/staging and program-UART contract modules. Its unit
+checks are reproducible independently of a WebView:
+
+```sh
+cargo test --locked --offline --manifest-path tools/renode-arena-proof/Cargo.toml
+```
+
+Execution through this closed test transport still requires the exact staged
+package pins. It exercises the native runtime boundary, but does not establish
+installed-GUI or Tauri ACL acceptance.

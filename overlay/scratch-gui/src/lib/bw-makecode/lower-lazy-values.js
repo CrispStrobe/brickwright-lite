@@ -62,6 +62,15 @@ export function lowerLazyValues(program) {
     function expression(node) {
         if(!node)return {prefix:[],value:node};
         if(node.type==='FunctionExpression')return {prefix:[],value:{...node,body:body(node.body)}};
+        if(node.type==='Update' && ['Identifier','Member','Index'].includes(node.argument?.type)) {
+            changed=true;
+            const target=lvalue(node.argument),prefix=[...target.prefix];
+            const previous=save({type:'Unary',op:'+',argument:target.value},prefix);
+            const next=save({type:'Binary',op:node.op==='++'?'+':'-',left:previous,right:{type:'Number',value:'1'}},prefix);
+            prefix.push({type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:target.value,right:next,valuePreserving:true}});
+            return {prefix,value:node.prefix?next:previous};
+        }
+
         if(node.type==='Binary' && ['&&','||'].includes(node.op)){
             changed=true;const left=expression(node.left),prefix=[...left.prefix],result=save(left.value,prefix);
             const right=expression(node.right);
@@ -136,6 +145,9 @@ export function lowerLazyValues(program) {
                 return [...prefix,{...st,expr:{type:'Assignment',op:'=',left:target.value,
                     right:{type:'Binary',op:st.expr.op==='++'?'+':'-',left:previous,right:{type:'Number',value:'1'}}}}];
             }
+            // Standalone identifier updates already have editable statement
+            // blocks; only consumed update results need invocation cells.
+            if(st.expr?.type==='Update')return [st];
             const result=expression(st.expr);return [...result.prefix,{...st,expr:result.value}];
         }
         return [st];

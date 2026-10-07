@@ -53,3 +53,33 @@ test('opposing Arcade directions cancel', async () => {
         assert.ok(Number(vars.find(variable => variable.name === name)?.value) === 0);
     }
 });
+
+test('a reporter in the native axis socket retains its selected direction through Arcade export', async () => {
+    const code = `DEVICE ARCADE
+SPRITE Game:
+  LOCAL axis
+  LOCAL vertical
+  WHEN flag clicked:
+    set axis to "Y"
+    set vertical to (arcade controller (axis) step 90)
+`;
+    const exercise = async pseudocode => {
+        const run = await runProgram(pseudocode, {frames: 2, keys: ['ArrowRight', 'ArrowUp']});
+        assert.deepEqual(run.errors, []);
+        assert.deepEqual(run.creator.warnings, []);
+        const value = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
+            .find(variable => variable.name.replace(/^Game_/, '') === 'vertical');
+        assert.equal(Number(value?.value), -3, 'the dynamic Y axis must read up, not right');
+        return run;
+    };
+    const run = await exercise(code);
+    const exported = projectToArcade(run.creator.project);
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /controller\.dy\(step\)/);
+    assert.match(exported.ts, /controller\.dx\(step\)/);
+    const compiled = await compile('arcade', exported.files);
+    assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    const reimported = arcadeToPseudocode(exported.ts);
+    assert.deepEqual(reimported.unsupported, []);
+    await exercise(reimported.code);
+});

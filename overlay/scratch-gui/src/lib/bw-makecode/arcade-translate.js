@@ -220,7 +220,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
-        this.imageReferences = references.images;this.spriteReferences = references.sprites;
+        this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.spriteResultFunctions = references.spriteFunctions;
@@ -947,6 +947,9 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push(`${this.path(node)} — unsupported Arcade handle property`);
             return '0';
         }
+        if(node?.type==='Member' && this.dataReferences?.has(node.object)) {
+            this.unsupported.push(`Sprite.data.${node.name} requires arbitrary object member support`);return 'undefined value';
+        }
         if (node && node.type === 'Member' && node.object.type === 'Identifier' &&
             node.object.name === 'screen') {
             if (node.name === 'width') return String(HALF_WIDTH * 2);
@@ -1449,6 +1452,10 @@ class ArcadeTranslator extends BaseTranslator {
     expressionStatement (expr, indent, out) {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
+        const dataTarget=expr.type==='Assignment'?expr.left:expr.type==='Update'?expr.argument:null;
+        if(dataTarget?.type==='Member' && this.dataReferences?.has(dataTarget.object) && !this.spriteReferences?.has(dataTarget.object)) {
+            push(this.note(`Sprite.data.${dataTarget.name} assignment requires arbitrary object member support`));return;
+        }
 
         if(this.handleTemplates && (expr.type==='Assignment' && expr.left?.type==='Identifier' || expr.type==='Update' && expr.argument?.type==='Identifier')) {
             const target=expr.type==='Update'?expr.argument:expr.left;
@@ -2035,7 +2042,13 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     // Join array element constraints as a graph, so nested arrays and aliases
     // retain their element types without unrolling recursive array types.
     const graph = new ValueTypeGraph();
-    const cell = (node, owner) => node?.type === 'Identifier' ? binding(owner,node.name) : node;
+    const cell = (node, owner) => {
+        if(node?.type === 'Identifier')return binding(owner,node.name);
+        if(node?.type === 'Member' && node.name === 'data') {
+            const value=graph.property(cell(node.object,owner),'data');graph.add(value,'SpriteData');return value;
+        }
+        return node;
+    };
     const connect = (left,right) => {if(left && right)graph.merge(left,right);};
     for (const fn of functions.values()) fn.resultCell = Symbol('procedure result');
     for (const {node,owner} of entries) {
@@ -2079,8 +2092,10 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(receiver && op==='clone' && !node.args.length && graph.has(receiver,'Image'))graph.add(value,'Image');
         }
     } while(revision!==graph.revision);
+    const data = new WeakSet();
     for (const {node, owner} of entries) {
         const value=cell(node,owner);
+        if(graph.has(value,'SpriteData'))data.add(node);
         if (graph.has(value,'array')) arrays.add(node);
         if (graph.has(value,'string')) strings.add(node);
         if (graph.has(value,'boolean')) booleans.add(node);
@@ -2094,7 +2109,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans,
+    return {images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };

@@ -33,6 +33,8 @@ export class RenodeArenaSession {
         this.onStopped = onStopped;
         this.closed = false;
         this.started = false;
+        this.retainedProgram = false;
+        this.programStartEpoch = 0;
         this.tail = Promise.resolve();
     }
     call (operation, args = {}) {
@@ -118,8 +120,11 @@ export class RenodeArenaSession {
                     return new Uint8Array(frame.lifecycle?.nuttxProgramReply || []);
                 }, 1, {topology: this.topology});
                 this.uploading = true;
-                try { await this.programClient.upload(this.source === null ? this.program : this.source,
-                    {python: this.source !== null}); } finally { this.uploading = false; }
+                try {
+                    await this.programClient.upload(this.source === null ? this.program : this.source,
+                        {python: this.source !== null});
+                    this.retainedProgram = true;
+                } finally { this.uploading = false; }
             }
             if (!this.closed) { this.schedule(); }
         })();
@@ -298,6 +303,7 @@ export class RenodeArenaSession {
     observeProgram (status) {
         if (!status || ![0, 1, 2, 3, 4, 5].includes(status.state)) return;
         this.programState = status.state;
+        if (status.state === 0) this.retainedProgram = false;
         if (status.state !== 1) this.loaded = false;
         this.onProgramState(status.state, this.storageSupported, status.error ?? status.runtimeError);
     }
@@ -312,7 +318,7 @@ export class RenodeArenaSession {
             await this.tail;
             if (this.closed) throw new Error('NuttX session is closed');
             const reply = await this.programClient[operation]();
-            if (operation === 'load') this.loaded = true;
+            if (operation === 'load') { this.loaded = true; this.retainedProgram = true; }
             this.observeProgram(reply);
             return reply;
         } catch (error) {
@@ -339,25 +345,80 @@ export class RenodeArenaSession {
             }
             await this.programClient.stop();
             this.program = program; this.source = source; this.loaded = false; this.completed = false;
+            this.retainedProgram = false;
             const reply = await this.programClient.upload(source === null ? program : source, {python: source !== null});
+            this.retainedProgram = true;
             this.observeProgram(reply); return reply;
         } finally { this.uploading = false; this.schedule(); }
     }
     async startProgram () {
         if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.uploading || this.storageBusy) throw new Error('NuttX program is unavailable or busy');
         if (!this.loaded || this.programState !== 1) throw new Error('Load the saved program to READY before running it');
-        this.completed = false;
+        return this.controlProgram('start');
+    }
+    get canRestartProgram () {
+        return Boolean(this.nuttx && this.storageSupported && this.retainedProgram && this.programClient &&
+            !this.closed && !this.storageUncertain && !this.uploading && !this.storageBusy && !this.controlOperation &&
+            [3, 4, 5].includes(this.programState));
+    }
+    async restartProgram () {
+        if (!this.canRestartProgram) throw new Error('Retained NuttX program is unavailable or busy');
         return this.controlProgram('start');
     }
     async stopProgram () {
         if (this.closed || this.storageUncertain || !this.programClient) throw new Error('NuttX program is unavailable');
+        this.programStartEpoch++;
+        if (this.programStopping) return this.programStopping;
+        if (this.controlOperation === 'start') {
+            // Cancel a queued START, or serialize STOP behind an already sent START.
+            // Keep the retained program and the session; do not interrupt storage.
+            this.programStopping = (async () => {
+                try {
+                    await this.tail;
+                    if (this.closed) throw new Error('NuttX session is closed');
+                    const reply = await this.programClient.stop();
+                    if (this.closed) throw new Error('NuttX session is closed');
+                    this.observeProgram(reply);
+                    return reply;
+                } finally {
+                    this.programStopping = null;
+                    if (!this.controlOperation) this.storageBusy = false;
+                    this.schedule();
+                }
+            })();
+            return this.programStopping;
+        }
         return this.controlProgram('stop');
     }
     async controlProgram (operation) {
         if (this.storageBusy) throw new Error('NuttX program is busy');
+        const epoch = this.programStartEpoch;
+        const requireCurrentStart = () => {
+            if (operation === 'start' && epoch !== this.programStartEpoch) {
+                throw Object.assign(new Error('NuttX program start cancelled'), {name: 'AbortError'});
+            }
+        };
+        this.controlOperation = operation;
         this.storageBusy = true; clearTimeout(this.timer);
-        try { await this.tail; if (this.closed) throw new Error('NuttX session is closed'); const reply = await this.programClient[operation](); this.observeProgram(reply); return reply; }
-        finally { this.storageBusy = false; this.schedule(); }
+        try {
+            await this.tail;
+            if (this.closed) throw new Error('NuttX session is closed');
+            requireCurrentStart();
+            const reply = await this.programClient[operation]();
+            if (this.closed) throw new Error('NuttX session is closed');
+            requireCurrentStart();
+            if (operation === 'start') {
+                if (reply.state !== 2) throw new Error('Firmware did not start the retained program');
+                this.completed = false;
+            }
+            this.observeProgram(reply);
+            return reply;
+        }
+        finally {
+            this.controlOperation = null;
+            this.storageBusy = Boolean(this.programStopping);
+            this.schedule();
+        }
     }
     get completion () { return this.stopping || this.execution || this.tail; }
     cancel () {

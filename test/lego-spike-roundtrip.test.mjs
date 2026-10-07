@@ -240,13 +240,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // body's trailing comments stay in its script, an empty hat leaves the next
     // script alone, a comment above DEFINE is the definition's. Parser and host
     // C only; this fixture has no comments. The assertions re-ran.
-    // PIN MOVED 98748eea -> 8ba3508e (2026-10-07, sb3-creator#59, task F4): the
-    // Arcade property word gains rotation, rotationDegrees and data. Arcade
-    // dialect only; no SPIKE word moved. The assertions re-ran. Pinned
-    // deliberately behind upstream main (#60-#63, other lanes' Arcade work that
-    // needs its own Lite changes: 95 Lite tests fail with it).
+    // PIN MOVED 98748eea -> 8ba3508e (2026-10-07, sb3-creator#59):
+    // Arcade rotation/rotationDegrees/data property words only; the shared
+    // parser includes #58's comment and empty-body repairs.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '8ba3508eab2ad99b9d9a6478c9a45a7200ca4fde');
+        '2d2a562812c6e34525021ccacd421b1d20151c15');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

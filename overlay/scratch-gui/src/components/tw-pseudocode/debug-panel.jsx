@@ -531,18 +531,25 @@ class DebugPanel extends React.Component {
         // loading an example kept the previous runner alive whenever the
         // device stayed the same, and the PINS panel showed the former
         // example's pins (owner report, 2026-08-17). Keyed on the pin
-        // SIGNATURE, not the event alone — PROJECT_CHANGED also fires on
-        // every block edit, and killing a live run for an unrelated edit
-        // would be worse than the staleness.
+        // A live run survives same-pin edits. Once stopped, however, its
+        // session still holds the old image; the next Run would skip build().
+        // Code/Circuit navigation no longer unmounts this panel, so an edit
+        // must invalidate that stopped session explicitly.
         const rt0 = this.props.vm && this.props.vm.runtime;
         this._pinSig = JSON.stringify((rt0 && rt0.stc && rt0.stc.pins) || []);
         this._onProjectChanged = () => {
             const rt = this.props.vm && this.props.vm.runtime;
             const sig = JSON.stringify((rt && rt.stc && rt.stc.pins) || []);
-            if (sig === this._pinSig) return;
+            const pinsChanged = sig !== this._pinSig;
+            const stoppedImage = this._runnerStoppedExplicitly &&
+                (this.state.runner || this._runnerPromise);
+            if (this._projectChangeInvalidating || (!pinsChanged && !stoppedImage)) return;
+            this._projectChangeInvalidating = true;
             this._pinSig = sig;
             this._teardownRunner();
-            this.setState({runner: null, ui: {phase: 'idle', message: ''}});
+            this.setState({runner: null, ui: {phase: 'idle', message: ''}}, () => {
+                this._projectChangeInvalidating = false;
+            });
         };
         if (rt0 && rt0.on) rt0.on('PROJECT_CHANGED', this._onProjectChanged);
         // The runner announces WHICH board it drives (designer / example /
@@ -809,6 +816,7 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
+        this._runnerStoppedExplicitly = false;
         this._mouseLeave();
         // The host shows a runner's board only while that runner lives (B8).
         if (this.props.onRunnerGone) this.props.onRunnerGone();
@@ -874,6 +882,9 @@ class DebugPanel extends React.Component {
     }
 
     async onStart () {
+        // The runner is no longer a stopped image once a new start begins.
+        // `ui.phase` may still read idle while attach() is awaiting chunks.
+        this._runnerStoppedExplicitly = false;
         const runner = await this.runner();
         const phase = this.state.ui.phase;
         if (phase === 'paused') runner.resume();
@@ -944,7 +955,11 @@ class DebugPanel extends React.Component {
     }
 
     onPause () { if (this.state.runner) this.state.runner.pause(); }
-    onStop () { if (this.state.runner) this.state.runner.stop(); }
+    onStop () {
+        if (!this.state.runner) return;
+        this._runnerStoppedExplicitly = true;
+        this.state.runner.stop();
+    }
     async onStep () { (await this.runner()).step('block'); }
     onReverseStep () {
         const runner = this.state.runner;
