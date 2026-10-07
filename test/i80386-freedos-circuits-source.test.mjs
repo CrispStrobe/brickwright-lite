@@ -17,6 +17,8 @@ test('direct Circuit probe is an exact accepted-browser derivative with a real V
  assert.match(generated,/debuggerView\.getAttribute\('aria-pressed'\)/);
  assert.match(generated,/vdpCanvas\.click\(\)/);
  assert.match(generated,/vdp\.evaluate\(el=>document\.activeElement===el\)/);
+ assert.match(generated,/const circuitTextObserver=Function\('canvas'/);
+ assert.doesNotMatch(generated,/const circuitTextObserver=`canvas =>/,'string arrow cannot be passed to locator.evaluate');
  assert.match(generated,/vdpCanvas\.evaluate\(circuitTextObserver\)/);
  assert.match(generated,/actual Circuit VDP pixels show guest shell response/);
  assert.match(generated,/Circuit guest output survives Code return/);
@@ -37,6 +39,36 @@ test('direct Circuit probe is an exact accepted-browser derivative with a real V
   const parsed=spawnSync(process.execPath,['--check',generatedPath],{encoding:'utf8',timeout:5000});
   assert.equal(parsed.status,0,parsed.stderr);
  }finally{rmSync(directory,{recursive:true,force:true});}
+});
+
+test('callable Circuit pixel observer decodes canvas bytes and rejects mismatched frames',()=>{
+ const {generated}=deriveCircuitsProbe();
+ const declaration=generated.match(/^\s*const circuitTextObserver=Function\('canvas',.*\);$/m)?.[0];
+ assert.ok(declaration,'one self-contained callable canvas observer');
+ const source=execFileSync('git',['show','HEAD:scripts/lib/i80386-vga-text.mjs'],{encoding:'utf8'});
+ const decoderSource=source.slice(source.indexOf('export function decodeTextPixels')).replace(/^export /,'');
+ const decodeTextPixels=runInNewContext(`${decoderSource}\ndecodeTextPixels`);
+ const rows=Array.from({length:16},(_,i)=>i===0?0x81:i===1?0x42:0);
+ const observer=runInNewContext(`${declaration}\ncircuitTextObserver`,{
+  decodeTextPixels,fixedTextGlyphs:()=>[['X',rows]]});
+ assert.equal(typeof observer,'function','Playwright must receive a function, not its source string');
+ const rgba=new Uint8ClampedArray(720*400*4);
+ for(let i=3;i<rgba.length;i+=4)rgba[i]=255;
+ for(let y=0;y<16;y++)for(let x=0;x<8;x++)if(rows[y]&(1<<x)){
+  const offset=(y*720+x)*4;rgba[offset]=rgba[offset+1]=rgba[offset+2]=255;
+ }
+ let observedExtent=null;
+ const canvas={width:720,height:400,getContext:kind=>{
+  assert.equal(kind,'2d');return {getImageData:(x,y,width,height)=>{
+   observedExtent=[x,y,width,height];return {data:rgba};
+  }};
+ }};
+ assert.equal(observer(canvas)[0],'X','actual rendered glyph pixels reach the decoder');
+ assert.deepEqual(observedExtent,[0,0,720,400]);
+ rgba[0]=rgba[1]=rgba[2]=0;
+ assert.equal(observer(canvas)[0],'?','changed rendered pixels fail the glyph observation');
+ rgba[0]=rgba[1]=rgba[2]=255;
+ assert.throws(()=>observer({...canvas,width:719}),/expected complete fixed-font/);
 });
 
 test('production build version derives from exact PR head, not ambient merge commit',()=>{

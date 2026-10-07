@@ -24,7 +24,7 @@ const circuitBlock=`        let circuitDirect=null;
         const vdpCanvas=vdp.locator('canvas');
         await vdpCanvas.click();
         assert.equal(await vdp.evaluate(el=>document.activeElement===el),true,'physical VDP canvas click focuses actual Circuit keyboard target');
-        const circuitTextObserver=\`canvas => (\${decodeTextPixels.toString()})({mode:3,width:canvas.width,height:canvas.height,rgba:canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data},\${JSON.stringify(fixedTextGlyphs())})\`;
+        const circuitTextObserver=Function('canvas','return ('+decodeTextPixels.toString()+')({mode:3,width:canvas.width,height:canvas.height,rgba:canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height).data},'+JSON.stringify(fixedTextGlyphs())+')');
         const circuitText=()=>vdpCanvas.evaluate(circuitTextObserver);
         const circuitShot=async label=>{const file=join(output,label+'.png');const bytes=await vdpCanvas.screenshot({path:file});return {file,sha256:sha256(bytes)};};
         let circuitBeforeText='',circuitBeforeError='';const circuitReadyDeadline=Date.now()+30000;

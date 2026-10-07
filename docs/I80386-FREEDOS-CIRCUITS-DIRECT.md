@@ -52,6 +52,18 @@ canvas through the browser pointer path, and checks actual VDP focus before
 typing. The third attempt does not establish a Circuit input response; the
 corrected source has not yet passed the hosted guest gate.
 
+The [fourth hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37640159639)
+passed the physical Debugger-button and VDP-canvas focus checks. Its retained
+screen visibly shows FreeDOS and `PS2 DONE`, but the probe stopped before
+Circuit keys because its pixel observer was supplied to Playwright as a
+string containing an arrow function. The locator evaluated that string as a
+function value without invoking it on the canvas, so the pixel assertion
+received no decoded text. The correction supplies an actual callable canvas
+observer. A deterministic source control verifies that it decodes rendered
+glyph pixels and rejects changed pixels and frame dimensions. The fourth
+attempt remains a failure, and the corrected probe still requires a fresh
+hosted pixel-response result.
+
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
 or a general native 386 backend. A live terminal CLI scenario remains a
