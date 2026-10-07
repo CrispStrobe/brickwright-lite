@@ -59,6 +59,8 @@ export const installAnimationImport = async (zip, resources, hashBytes) => {
         comments: {}, costumes: [], sounds: [], currentCostume: 0, volume: 100, layerOrder: project.targets.length,
         visible: false, x: 0, y: 0, size: 100, direction: 90, draggable: false, rotationStyle: 'all around'};
     const targetIndex = project.targets.length, assets = [], records = [];
+    const reservedNames = new Set(prepared.map(resource => resource.document.animation.resource.name));
+    const costumeNames = new Set();
     for (const resource of prepared) {
         const document = resource.document, rendered = animationResourceFromDocument(document);
         const svg = pixelsToSvg({width: rendered.width, height: rendered.height, pixels: rendered.frames.find(frame => frame.id === document.animation.activeFrameId).pixels},
@@ -67,7 +69,16 @@ export const installAnimationImport = async (zip, resources, hashBytes) => {
         const assetId = await hashBytes(bytes);
         if (!/^[a-f0-9]{32}$/.test(assetId)) throw new Error('Invalid animation render storage identity');
         const md5ext = `${assetId}.svg`, costumeIndex = library.costumes.length;
-        library.costumes.push({name: rendered.name, assetId, md5ext, dataFormat: 'svg', bitmapResolution: 1,
+        // Different resource UUIDs may render identical pixels and share an
+        // authored name. Scratch rejects identical costume records, so allocate
+        // distinct carrier names without changing the source documents.
+        let costumeName = rendered.name, suffix = 2;
+        while (costumeNames.has(costumeName) || (costumeName !== rendered.name && reservedNames.has(costumeName))) {
+            const ending = ` ${suffix++}`;
+            costumeName = rendered.name.slice(0, 80 - ending.length) + ending;
+        }
+        costumeNames.add(costumeName);
+        library.costumes.push({name: costumeName, assetId, md5ext, dataFormat: 'svg', bitmapResolution: 1,
             rotationCenterX: rendered.width * (document.pixelScale || 3) / 2,
             rotationCenterY: rendered.height * (document.pixelScale || 3) / 2});
         assets.push({md5ext, bytes});

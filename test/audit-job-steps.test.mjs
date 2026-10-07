@@ -32,8 +32,26 @@ test('API listing identifies the job, direct endpoint supplies its step conclusi
     }, {env: apiEnv, sleep: async () => assert.fail('no retry expected')});
     assert.deepEqual(jobs, [detail]);
     assert.equal(calls.length, 2);
-    assert.ok(calls[1].url.endsWith('/actions/jobs/123'));
+    assert.ok(new URL(calls[1].url).pathname.endsWith('/actions/jobs/123'));
     assert.equal(calls[1].options.headers['Cache-Control'], 'no-cache');
+});
+
+test('repeated API polls bypass cached incomplete snapshots even in the same clock millisecond', async () => {
+    const cache = new Map(), calls = [];
+    let completed = false;
+    const fetchCached = async (url, options) => {
+        calls.push(url);assert.equal(options.cache, 'no-store');
+        if (!cache.has(url)) cache.set(url, url.includes('/actions/jobs/') ?
+            {...apiJob, steps: [{name: 'Browser gate — fixture', status: completed ? 'completed' : 'in_progress', conclusion: completed ? 'success' : null}]} :
+            {total_count: 1, jobs: [apiJob]});
+        return jsonResponse(cache.get(url));
+    };
+    const options = {env: apiEnv, now: () => 123, sleep: async () => assert.fail('no retry expected')};
+    const first = await fetchJobs(fetchCached, options);completed = true;
+    const second = await fetchJobs(fetchCached, options);
+    assert.equal(first[0].steps[0].status, 'in_progress');
+    assert.equal(second[0].steps[0].status, 'completed');
+    assert.equal(new Set(calls).size, 4, 'both listing and detail receive a new cache key');
 });
 
 test('direct endpoint cannot substitute another run, attempt, matrix leg or job', async () => {

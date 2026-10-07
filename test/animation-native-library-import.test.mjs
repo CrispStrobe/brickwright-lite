@@ -94,6 +94,31 @@ test('embedded native import chooses resource identities once; legacy lowering r
     const plans=prepareAnimationImport(imported.animationResources);
     assert.deepEqual(plans.map(r=>r.document),imported.animationResources.map(r=>r.document));
 });
+test('identical rich resources receive distinct Scratch carrier costumes and survive real VM reload',async()=>{
+    const imported=importProjectFiles(files(),{target:'arcade',animationResources:true});
+    const first=imported.animationResources[0],second=structuredClone(first);
+    second.id='myAnimations.copy';second.name='Walk copy';
+    second.document.animation.resource.id=imported.animationResources[1].document.animation.resource.id;
+    imported.animationResources=[first,second];
+    const expected=structuredClone(imported.animationResources.map(row=>row.document));
+    const f=await build(imported),project=JSON.parse(await f.zip.file('project.json').async('text'));
+    assert.deepEqual(imported.animationResources.map(row=>row.document),expected);
+    const costumes=project.targets.at(-1).costumes;
+    assert.deepEqual(costumes.map(row=>row.name),['Walk','Walk 2']);
+    assert.equal(costumes[0].assetId,costumes[1].assetId,'identical pixels share the exact storage asset');
+    const opened=await open(f.bytes,project);
+    try {
+        const zip=await JSZip.loadAsync(await(await opened.vm.saveProjectSb3()).arrayBuffer());
+        assert.equal(await writeArtworkToZip(zip,opened.vm),true);
+        const saved=await zip.generateAsync({type:'uint8array'});
+        const reopened=await open(saved,JSON.parse(await zip.file('project.json').async('text')));
+        try {
+            assert.deepEqual(reopened.inspection.records.filter(row=>row.document.animation?.resource)
+                .map(row=>row.document),expected);
+            assert.equal(reopened.vm.runtime.bwArcadeAnimationResources.size,2);
+        } finally {reopened.vm.quit();}
+    } finally {opened.vm.quit();}
+});
 test('failed native preflight and hash failures leave the generated ZIP unchanged',async()=>{
     const imported=importProjectFiles(files(),{target:'arcade',animationResources:true});
     const creator=new Creator();creator.parse(imported.code);

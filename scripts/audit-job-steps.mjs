@@ -108,15 +108,20 @@ export const expectedForShard = (workflowText, shard) => {
  * shares a rate limit with every other run in flight and a busy afternoon has
  * already produced a 403 on the same token today.
  */
-export const fetchJobs = async (fetchImpl = fetch, {env = process.env, sleep = ms => new Promise(r => setTimeout(r, ms))} = {}) => {
+let apiReadSequence = 0;
+export const fetchJobs = async (fetchImpl = fetch, {env = process.env, sleep = ms => new Promise(r => setTimeout(r, ms)), now = Date.now} = {}) => {
     const {GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: runId, GH_TOKEN, GITHUB_TOKEN} = env;
     const token = GH_TOKEN || GITHUB_TOKEN;
     if (!repo || !runId || !token) throw new Error('GITHUB_REPOSITORY, GITHUB_RUN_ID and GH_TOKEN are required outside --file mode');
     const once = async () => {
+        // Actions responses advertise max-age=60. Each audit poll must read
+        // fresh state rather than reuse that entire one-minute cache window.
+        const readKey = `${now()}-${++apiReadSequence}`;
         const jobs = [];
         for (let page = 1; page <= 10; page++) {
-            const res = await fetchImpl(`https://api.github.com/repos/${repo}/actions/runs/${runId}/jobs?per_page=100&page=${page}`, {
-                headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
+            const res = await fetchImpl(`https://api.github.com/repos/${repo}/actions/runs/${runId}/jobs?per_page=100&page=${page}&bw_audit_read=${readKey}`, {
+                cache: 'no-store',
+                headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Cache-Control': 'no-cache'}
             });
             if (!res.ok) throw new Error(`GitHub HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
             const body = await res.json();
@@ -132,7 +137,8 @@ export const fetchJobs = async (fetchImpl = fetch, {env = process.env, sleep = m
         if (mine.length === 1) {
             const listed = mine[0];
             if (!Number.isSafeInteger(listed.id) || listed.id <= 0) throw new Error('listed job has no valid numeric identity');
-            const res = await fetchImpl(`https://api.github.com/repos/${repo}/actions/jobs/${listed.id}`, {
+            const res = await fetchImpl(`https://api.github.com/repos/${repo}/actions/jobs/${listed.id}?bw_audit_read=${readKey}`, {
+                cache: 'no-store',
                 headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Cache-Control': 'no-cache'}
             });
             if (!res.ok) throw new Error(`GitHub job HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);

@@ -352,7 +352,7 @@ try{
         assert.deepEqual(nativeScreen,expectedNative,'all19200actual Brickwright pixels match authored footprint');
         report.nativeScreen={colour:nativeColour,pixelsCompared:nativeScreen.length};
         const renamedSource=await snapshot('renamed-reordered');report.journey.push('Pixel rename/reorder preserves UUID and updates bound playback without rewriting code');
-        await openCode();const actions=page.getByTestId('bw-code-actions');if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        await openCode();const actions=page.getByTestId('bw-code-actions');if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
         const download=await exported;assert.match(download.suggestedFilename(),/\.hex$/);
         const hex=path.join(path.dirname(out),'animation-export.hex');await download.saveAs(hex);const bytes=await fs.readFile(hex);
@@ -388,7 +388,7 @@ try{
         assert.ok(matchingScreen,'original simulation reaches the same authored frame');
         assert.deepEqual(matchingScreen,nativeScreen,'all19200actual Brickwright and original PXT pixels agree at the same frame');
         report.originalPxt={compiled:true,sequence:originalSequence,pixelsCompared:screen.length,actualNativePixelsCompared:matchingScreen.length,compilerNetworkAttempts:compiled.netAttempts};
-        if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         const priorIds=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.map(target=>target.id));
         const priorCode=await editor().innerText(),priorResources=await resource();
         const malformed=Buffer.from(makeCodeSourceHex({...embedded.files,[ANIMATION_COMPANION_PATH]:'{broken'},
@@ -401,7 +401,7 @@ try{
         report.journey.push('malformed companion file import names the error and preserves the loaded VM, Code and published resources');
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.hex',mimeType:'application/octet-stream',buffer:bytes});
         await page.getByText(/Imported the Arcade game.*animation-export\.hex/).first().waitFor({state:'visible'});
-        if(await actions.getAttribute('open'))await actions.locator('summary').click();
+        if(await actions.getAttribute('open')!==null)await actions.locator('summary').click();
         assert.ok((await editor().innerText()).includes(`arcade animation fresh frames resource "${published.id}"`));
         await apply();
         const automaticLibrary=await page.evaluate(()=>{
@@ -527,7 +527,7 @@ try{
         report.journey.push('explicit hidden library fixture opens in Pixel, edits and SB3 reopen retain role, UUID and rich source');
         report.journey.push('Code excludes library declarations and preserves hidden carriers; fresh/shared runtime lookups play edited source');
 
-        await openCode();if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         const libraryDownload=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
         const libraryHex=path.join(path.dirname(out),'animation-library-export.hex');await(await libraryDownload).saveAs(libraryHex);
         const cliHex=path.join(path.dirname(out),'animation-library-cli.hex');
@@ -609,9 +609,9 @@ try{
         report.journey.push('library navigation/rename/disabled gameplay controls and Blocks/Sounds notices protect artwork');
         report.journey.push('actual duplicate/delete/Restore Sprite/save/reopen retains both hidden roles, renews copy UUID and restores bound playback');
 
-        await openCode();if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
-        const duplicateDownload=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
-        const duplicateHex=path.join(path.dirname(out),'animation-duplicate-libraries.hex');await(await duplicateDownload).saveAs(duplicateHex);
+        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        const [duplicateDownload]=await Promise.all([page.waitForEvent('download'),page.getByTestId('bw-makecode-arcade-export').click()]);
+        const duplicateHex=path.join(path.dirname(out),'animation-duplicate-libraries.hex');await duplicateDownload.saveAs(duplicateHex);
         const duplicateCliHex=path.join(path.dirname(out),'animation-duplicate-libraries-cli.hex');
         await promisify(execFile)(process.execPath,['scripts/makecode.mjs','to-hex',lifeFile,
             '--target','arcade','--source','-o',duplicateCliHex],{timeout:30000});
@@ -628,10 +628,10 @@ try{
             const run=await runArcadeSim(built.outfiles['binary.js'],{ms:75});assert.equal(run.error,null);
             assert.ok(run.serial.some(row=>String(row.text).trim()==='4'),`${route}: duplicated library bindings run in original PXT`);
         }
-        const duplicateStage=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
-        await page.getByText('File',{exact:true}).first().click();const duplicateChooser=page.waitForEvent('filechooser');
-        await page.getByText('Load from your computer',{exact:true}).click();await(await duplicateChooser).setFiles(duplicateHex);
-        await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,duplicateStage);
+        await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles(duplicateHex);
+        await page.getByText(/Imported the Arcade game.*animation-duplicate-libraries\.hex/).first().waitFor({state:'visible'});
+        if(await actions.getAttribute('open')!==null)await actions.locator('summary').click();
+        await apply();
         assert.deepEqual((await resource()).map(row=>row.id).sort(),[published.id,copyId].sort());
         await flag().click();await phase(1);await observePlayback('duplicate-native-reimported',[4,5,9]);await stop().click();
         report.duplicateNativeExport={gui:true,cli:true,uniqueNativeNames:true,authoredNamesAndUuidsPreserved:true,
