@@ -1,4 +1,4 @@
-# Target state and actionable lanes — 2026-10-05
+# Target state and actionable lanes — 2026-10-07
 
 This is the current handoff for this target/performance series. Refresh main
 and open PRs before implementation and claim a bounded scope under
@@ -10,8 +10,8 @@ source-bound results, not measurements of today's main.
 
 | Target | Preserved route / proof | Remaining boundary |
 | --- | --- | --- |
-| Arduboy / ATmega32U4 | Existing avr8js adapter, historical hosted 3.93x | Current representative-game/full-app latency |
-| Blinkenrocket / ATtiny88 | Existing avr8js board callbacks, historical hosted 7.09x | No second LabWired ATtiny88 model; not needed for the existing route |
+| Arduboy / ATmega32U4 | Existing avr8js adapter, hosted target smoke 5.561x (receipt below) | Representative-game/full-app latency |
+| Blinkenrocket / ATtiny88 | Existing avr8js board callbacks, hosted target smoke 10.227x (receipt below) | No second LabWired ATtiny88 model; not needed for the existing route |
 | micro:bit | MakeCode/MicroPython source-level experience; native exact-board selected I/O proofs | CP13 shared IRQ/audio/browser |
 | Arcade / PyBadge | PXT source simulator; real keyboard/mouse/touch controls qualified | Native ST7735/DMAC and full CP14 |
 | SPIKE Prime | Independent virtual hub; optional build-pinned Renode desktop debugger; newer firmware ledger | Profile-specific packaged qualification/full workload RTx, not universal firmware support |
@@ -34,10 +34,24 @@ Recent progress:
   merged native PyBadge GPIO-clocked buttons and shared non-finite-input
   rejection; that engine merge does not silently change Lite's WASM pin.
 - [LabWired PR152](https://github.com/CrispStrobe/labwired-core/pull/152)
-  is verified but unmerged at this snapshot. Seven actual-board SPI tests
-  passed on its predecessor head; final head `d95bbb12` now has all enabled
-  checks passing in [run37269646155](https://github.com/CrispStrobe/labwired-core/actions/runs/37269646155).
-  Native pixels, DMAC, split IRQ and dynamic clocks remain separate work.
+  merged as `67920fcf8d82c74f3cc63285181fe26db93cf720`. Merged-main
+  [Rust Core CI37481145753](https://github.com/CrispStrobe/labwired-core/actions/runs/37481145753)
+  passed, but [Core Perf37481145682](https://github.com/CrispStrobe/labwired-core/actions/runs/37481145682)
+  measured native PyBadge **0.05x**, batch **1**, against generic ATSAMD51
+  **67.97x**, batch **1023.8**. The idle SPI walk requirement is being repaired
+  in [PR159](https://github.com/CrispStrobe/labwired-core/pull/159); qualification
+  is owed. Native pixels, DMAC, split IRQ and dynamic clocks remain separate.
+- Lite's current source-bound WASM pin in `scripts/sync-labwired-wasm.mjs`
+  remains **`31b6f8aade1af3329cf686438acb31bee204e23d`**, before that SPI merge.
+  Do not silently adopt newer source or attribute its features/regression to
+  this artifact. [WASM publication37438840274](https://github.com/CrispStrobe/bw-board/actions/runs/37438840274)
+  passed builds/determinism and 108 integration tests (zero failures/skips),
+  but its motion job was **skipped**: active WASM motion/RAM/GPIO remains owed.
+- Lite [target performance37463042960](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37463042960)
+  on `23bc15cf4e9f5910f1f7455425b238cccd4c4834` measured Arduboy **5.561x**,
+  ATtiny88 **10.227x**, Uno **5.178x**, micro:bit-class WASM **26.818x** and
+  PyBadge-class WASM **33.417x**. The WASM rows are terminal post-boot smoke,
+  not motion, display, a native game or whole-board proof.
 - Newer main includes offline SPIKE Linux packaging and bounded UART/state/
   control routes. Read [desktop packaging](SPIKE-LINUX-DESKTOP.md),
   [native UART](spike-micropython-native-uart.md) and
@@ -62,8 +76,10 @@ usability, not physical PyBadge fidelity.
 **Dependencies/files/acceptance:** follow
 [LabWired P1–P5](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/target-next-lanes.md)
 and [panel/runtime contract](https://github.com/CrispStrobe/labwired-core/blob/main/docs/boards/pybadge-native.md).
-Order: land verified SPI after documentation reconciliation; IRQ/clock and ST7735 RGB444/LUT/reset;
-DMAC/driver completion; active native guest. Buttons and five NeoPixels already
+Order: qualify the idle-SPI regression repair (P0); blocking ST7735
+RGB444/LUT/reset/orientation (P3); split IRQ routing (P2) and then DMAC/driver
+completion (P4) as separate bounded changes; active native guest (P5).
+SPI itself has landed; do not redo its merge. Buttons and five NeoPixels already
 exist. Prepare permissive app fixtures/debugger observations without duplicating
 engine models in Lite. Consumer adoption belongs to C.
 
@@ -132,6 +148,11 @@ guest/debugger positive and negative proof. No private OS/recovery image is
 needed; CPU-loop throughput/ideal motors do not mean full EV3 hardware/dynamics.
 
 ## G — SPIKE use the newer canonical firmware ledger (existing owner-led work)
+
+Desktop firmware adoption G01 is **claimed** on 2026-10-07 in
+[LANES.md](../LANES.md), branch `lane/spike-desktop-adoption-20261007`.
+Do not duplicate its packaging, retained-program restart or installed-GUI work.
+The target/performance continuation owns no paths in that claim.
 
 Read firmware [next steps](https://github.com/CrispStrobe/brickwright-spike-prime-fw/blob/main/docs/project/next-steps.md),
 [capabilities](https://github.com/CrispStrobe/brickwright-spike-prime-fw/blob/main/docs/project/capabilities.md)
