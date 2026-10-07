@@ -193,7 +193,14 @@ try {
                 .map(v => ({name: v.name, value: v.value})),
                 sprites: Object.entries(runtime?.bwArcadeDeviceState?.sprites || {})
                     .map(([id, s]) => ({id, data: s.data, rotation: s.rotation, width: s.width, height: s.height})),
-                observation: window.__bwRotationObservation, device: runtime?.bwDeviceId};
+                observation: window.__bwRotationObservation, device: runtime?.bwDeviceId,
+                stepping: Boolean(runtime?._steppingInterval), vmStatus: window.__brickwrightStore?.getState()?.scratchGui?.vmStatus,
+                threads: runtime?.threads.map(t => ({status: t.status, stack: t.stack})),
+                primitives: ['arcade_createImage', 'arcade_setSpriteProperty', 'arcade_createImageSprite']
+                    .map(op => [op, typeof runtime?._primitives?.[op]]),
+                targets: runtime?.targets.map(t => ({name: t.getName(), isOriginal: t.isOriginal,
+                    hats: Object.values(t.blocks._blocks).filter(b => b.topLevel)
+                        .map(b => ({id:b.id, opcode:b.opcode, next:b.next}))}))};
         }).catch(error => ({error: String(error)}));
         report.failureText = (await page.locator('body').innerText().catch(() => '')).slice(-12000);
         await page.screenshot({path: out.replace(/\.json$/, '') + '-failure.png'}).catch(() => {});
