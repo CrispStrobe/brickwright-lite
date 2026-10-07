@@ -20,11 +20,13 @@ const browser = await chromium.launch(process.env.BW_BROWSER ?
 const report = {generatedAt: new Date().toISOString(),
     authoring: 'visible Code entry → To blocks → controller → Stop/restart → From blocks → Arcade download → file reimport',
     unsupported: imported.unsupported, skinBoundary: 'visible renderer skin only; transient allocation boundedness is covered by rotation-viewport runtime tests',
-    samples: [], errors: []};
+    samples: [], errors: [], consoleErrors: [], failedRequests: []};
 let page;
 try {
     page = await browser.newPage({viewport: {width: 1600, height: 1000}, acceptDownloads: true});
     page.on('pageerror', error => report.errors.push(error.message));
+    page.on('console', message => { if (message.type() === 'error') report.consoleErrors.push(message.text()); });
+    page.on('requestfailed', request => report.failedRequests.push({url: request.url(), reason: request.failure()?.errorText}));
     await page.addInitScript(() => {
         localStorage.setItem('bw-starter-v1-complete', '1');
         localStorage.setItem('bw-right-pane-hidden', '0');
@@ -198,6 +200,8 @@ try {
                 sprites: Object.entries(runtime?.bwArcadeDeviceState?.sprites || {})
                     .map(([id, s]) => ({id, data: s.data, rotation: s.rotation, width: s.width, height: s.height})),
                 observation: window.__bwRotationObservation, device: runtime?.bwDeviceId,
+                loadedExtensions: Array.from(window.__brickwrightStore?.getState()?.scratchGui?.vm?.extensionManager?._loadedExtensions?.keys() || []),
+                pendingExtensions: Array.from(window.__brickwrightStore?.getState()?.scratchGui?.vm?.extensionManager?._pendingBuiltinLoads?.keys() || []),
                 stepping: Boolean(runtime?._steppingInterval), vmStatus: window.__brickwrightStore?.getState()?.scratchGui?.vmStatus,
                 threads: runtime?.threads.map(t => ({status: t.status, stack: t.stack})),
                 primitives: ['arcade_createImage', 'arcade_setSpriteProperty', 'arcade_createImageSprite']
