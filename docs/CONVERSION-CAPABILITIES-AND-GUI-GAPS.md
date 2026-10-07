@@ -1,6 +1,6 @@
 # Conversion capabilities and GUI closure ledger
 
-Reviewed 2026-10-07 against Lite main
+Baseline reviewed 2026-10-07 against Lite main
 [`168457065`](https://github.com/CrispStrobe/brickwright-lite/commit/16845706545b115b76dd04f391cdebb1c3204e4c).
 The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
@@ -12,6 +12,8 @@ not a second active owner. SPIKE G01, CPU and hardware ownership remain separate
 means an existing regression, not a fresh successful run at this head.
 **Pending branch** means outside reviewed main and awaiting qualification.
 Missing authoring controls and missing browser evidence are different gaps.
+Integration updates below describe `lane/arcade-integration-20261007`; they do
+not claim an installed release or a merged implementation.
 
 Track five independent results per feature: import diagnostics, Blocks/Code
 roundtrip, runtime behaviour, original MakeCode compilation/behaviour, and user
@@ -27,8 +29,9 @@ compiler acceptance alone does not establish full compatibility.
   defines actual blocks, menus and execution, with image/speech helper modules.
 - Code words: `overlay/scratch-gui/src/lib/arcadeDialect.js` is bidirectional.
   Parser changes belonging to sb3-creator land upstream first, then receive an
-  explicit Lite pin adoption. Reviewed main pins sb3-creator
-  `85973b6a10fcd546b489e2bc441dc217a97436f4` in `vendor-pins.json`.
+  explicit Lite pin adoption. The integration branch adopts sb3-creator
+  `8ba3508eab2ad99b9d9a6478c9a45a7200ca4fde` after upstream PR59 passed
+  its enabled checks and merged; exact vendor identity and mirrors pass locally.
 - File/share import UI: `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
   stages imported costumes in `uploads`; **To blocks** applies them to parsed
   sprites. Whole-project import already carries assets. Pasting only `.code`
@@ -57,7 +60,7 @@ verification scripts under `scripts/`. These pointers do not claim fresh passes.
 | C01 Values and arrays | Present: Boolean/value operators, undefined/null, legacy named and shared reference arrays | Identity and typed array export present | `-reference-arrays`, `-named-arrays`, `-array-coercion`, `-value-arithmetic`, `bw-sb3-values`. Author nested Sprite/Image arrays, mutate, switch editors and reopen; distinguish preserved values from dead run-bound references. |
 | C02 Sprites/projectiles | Present: handles, kinds, creation/destruction, source projectiles, aliases/collections/procedures | Image templates and native execution/export present | `-sprite-collections`, `-projectile-source`, `-local-projectiles`, `-created-order`, `-destroyed`. Need approachable image/kind/reference selection and authored lifecycle browser proof. |
 | C03 Properties/flags/scaling | Present: property/flag blocks, axes/anchors/proportional inputs | Fixed-point geometry, viewport crop and export present | `-sprite-fixed-point`, `-flags`, `-scaling`, `-viewport-scaling-runtime`, `-viewport-scaling-renderer`. Prove actual menu use, fractional/zero/nonuniform scale, camera movement and save/export/reimport. |
-| C04 Rotation/sprite data | Pending F4 adds rotation/rotationDegrees/data to property menu; main dialect lacks those words | Pending rotated bbox/raster/scaled overlaps and import/export mappings | Branch `makecode-arcade-rotation.test.mjs`. Qualify dialect adoption, data types, walls/anchors/large viewport and actual UI authoring. Artwork quarter turns are already a separate editor feature. |
+| C04 Rotation/sprite data | Integration: rotation/rotationDegrees/data property words, blocks and qualified upstream dialect adoption | Rotated geometry/raster, viewport-bounded scaled rendering and reference-preserving data import/export | Focused `-rotation`, `-rotation-viewport`, `-data-types` tests pass, including original PXT, VM, export/reimport and SB3 restart. Browser authoring is still under qualification. Huge rotated collision performance remains unqualified. Artwork quarter turns are a separate editor feature. |
 | C05 Images/shared resources | Present: create/clone, dimensions/pixels, drawing/blit/mutation, sprite/background image refs | Shared identity, generated images, parameters and export present | `-image-values`, `-shared-images`, `-image-parameters`, `-generated-images`, `-image-blit`, `-image-mutation`, `-pixel-drawing`. Need source/render transaction and alias invalidation proof after editor changes. |
 | C06 Literal/gallery artwork | Import returns assets alongside code; frame-image blocks reference templates | SVG costume assets, built-ins and image literal export present | `-literal-images`, `-generated-sources`, `-background-images`. Whole-file asset staging exists; verify it in browser and add an explicit Code-plus-assets path instead of silently substituting art. |
 | C07 Pixel/palette/layers | Existing Costumes Pixel editor | Indexed tools, selections, layers/opacity/locking, custom/preset palettes, PNG/sheets and palette-aware export present | `makecode-pixel-image`, `pixel-layers`, `verify-pixel-source-roundtrip`, `verify-pixel-colour-slots`, `verify-pixel-crop`. Need authored game's exact pixel/palette/export proof. Current editor dimensions cap at128×128. |
@@ -77,9 +80,20 @@ verification scripts under `scripts/`. These pointers do not claim fresh passes.
 
 The paused checkpoint
 [`9fba4739d`](https://github.com/CrispStrobe/brickwright-lite/commit/9fba4739d3549780e01cd9dc111b73fc9d826f54)
-contains F4 rotation/data. Preserve its history/failures; it is not reviewed main
-or proof of GUI/shipped-package completion. Review associated sb3-creator branch
-`feat/arcade-rotation-data-properties` before qualified exact-pin adoption.
+contains F4 rotation/data and is preserved by a merge into the integration
+branch. Its original scaled rotation allocated the entire image; the integration
+implements bounded viewport sampling and tests exact pixels against pinned PXT.
+The associated sb3-creator branch `feat/arcade-rotation-data-properties` merged
+as PR59 and is adopted at the exact pin above. Sprite.data now preserves
+array/Image/Sprite identity and lazily creates an object for a falsy stored
+value; arbitrary object member access remains a named conversion gap. These
+source qualifications do not establish GUI or shipped-package completion.
+
+Browser qualification found that a Code `DEVICE ARCADE` header does not
+synchronize the visible device selector, which controls Game Console discovery.
+Selecting Arcade through the actual dropdown exposes the controller pane.
+Track header/selector synchronization and a discoverable source-to-stage route
+as an open C13/C18 GUI gap, independently of runtime controller support.
 
 - “No animation editor” is false for artwork: the Pixel editor has one. Runtime
   binding and timing preservation are the remaining user journey.
