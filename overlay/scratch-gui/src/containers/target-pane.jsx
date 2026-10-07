@@ -81,14 +81,16 @@ class TargetPane extends React.Component {
         const vm = this.props.vm;
         const stage = vm.runtime.getTargetForStage();
         const artwork = captureTargetArtwork(vm.runtime.getTargetById(id));
+        const libraryRole = vm.runtime.getTargetById(id)?.bwAssetLibrary;
         const restoreSprite = vm.deleteSprite(id);
         syncAnimationResources(vm);
         const restoreFun = () => {
             // An Undo callback from another project must not import its sprite.
             if (vm.runtime.getTargetForStage() !== stage) return Promise.resolve();
-            return restoreSprite().then(() => {
+            return restoreSprite().then(async () => {
                 if (vm.runtime.getTargetForStage() !== stage) return;
                 restoreTargetArtwork(vm.editingTarget, artwork, vm);
+                if (libraryRole) (await import('../lib/bw-asset-library')).setAssetLibraryRole(vm.editingTarget, libraryRole);
                 this.handleActivateBlocksTab();
             });
         };
@@ -102,9 +104,11 @@ class TargetPane extends React.Component {
     handleDuplicateSprite (id) {
         const vm = this.props.vm;
         const originals = vm.runtime.getTargetById(id)?.sprite?.costumes || [];
-        return vm.duplicateSprite(id).then(() => {
+        const libraryRole = vm.runtime.getTargetById(id)?.bwAssetLibrary;
+        return vm.duplicateSprite(id).then(async () => {
             const copies = vm.editingTarget?.sprite?.costumes || [];
             originals.forEach((costume, index) => copyCostumeDocument(costume, copies[index], this.props.vm));
+            if (libraryRole) (await import('../lib/bw-asset-library')).setAssetLibraryRole(vm.editingTarget, libraryRole);
         });
     }
     handleExportSprite (id) {

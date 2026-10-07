@@ -439,6 +439,62 @@ try{
         report.nativeEditorBounds.runtimeAndVisibleEndpoints=true;
         report.journey.push('actual Code-to-Blocks reporters run one-frame resources at both native interval endpoints with exact visible pixels');
 
+        // An explicit owned SB3 fixture qualifies the library foundation. This
+        // does not claim automatic native MakeCode library reconstruction.
+        const libraryZip=await JSZip.loadAsync(await fs.readFile(path.join(path.dirname(out),'animation-code-blocks.sb3')));
+        const libraryProject=JSON.parse(await libraryZip.file('project.json').async('text'));
+        const source=JSON.parse(await libraryZip.file('brickwright/artwork/v1.json').async('text'));
+        const sourceRow=source.costumes.find(row=>row.document.animation?.resource);
+        assert.ok(sourceRow);
+        const libraryDocument=JSON.parse(JSON.stringify(sourceRow.document));
+        const carrier=JSON.parse(JSON.stringify(libraryProject.targets[sourceRow.targetIndex].costumes[sourceRow.costumeIndex]));
+        sourceRow.document={version:1,layers:[{id:'base',type:'vector',name:'Artwork',visible:true,locked:false,opacity:1,
+            content:{kind:'asset',value:sourceRow.renderedMd5ext}}]};
+        const libraryName='Arcade artwork';
+        assert.ok(!libraryProject.targets.some(target=>target.name===libraryName));
+        const libraryIndex=libraryProject.targets.length;
+        libraryProject.targets.push({isStage:false,name:libraryName,variables:{},lists:{},broadcasts:{},blocks:{},comments:{},
+            currentCostume:0,costumes:[carrier],sounds:[],volume:100,visible:false,x:0,y:0,size:100,direction:90,
+            draggable:false,rotationStyle:'all around',layerOrder:libraryIndex});
+        source.version=7;source.libraries=[{targetIndex:libraryIndex,role:{version:1,kind:'arcade-animation'}}];
+        source.costumes.push({targetIndex:libraryIndex,costumeIndex:0,renderedMd5ext:carrier.md5ext,document:libraryDocument});
+        libraryZip.file('project.json',JSON.stringify(libraryProject));
+        libraryZip.file('brickwright/artwork/v1.json',JSON.stringify(source));
+        const libraryFile=path.join(path.dirname(out),'animation-library-fixture.sb3');
+        await fs.writeFile(libraryFile,await libraryZip.generateAsync({type:'nodebuffer'}));
+        const loadLibrary=async file=>{
+            const old=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+            await page.getByText('File',{exact:true}).first().click();const chosen=page.waitForEvent('filechooser');
+            await page.getByText('Load from your computer',{exact:true}).click();await(await chosen).setFiles(file);
+            await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,old);
+        };
+        await loadLibrary(libraryFile);await pixels(libraryName);await panel('frames');
+        assert.equal(await page.getByTestId('bw-pixel-animation-name').inputValue(),'Walk');
+        await paintFrame(4);await page.getByTestId('bw-pixel-publish-animation').click();
+        await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.get(id)?.frames[0].pixels[0]===4,published.id);
+        const editedLibrary=await snapshot('library-edited',{bundleVersion:7});
+        await loadLibrary(editedLibrary.file);
+        await openCode();await page.getByRole('button',{name:/From blocks/}).first().click();
+        await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor({state:'visible'});
+        const libraryCode=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
+        assert.ok(!libraryCode.includes(`SPRITE ${libraryName}:`),'resource library has no program declaration');
+        await apply();await flag().click();await phase(1);await observePlayback('library-source-edited',[4,5,9]);await stop().click();
+        const libraryState=await page.evaluate(name=>{
+            const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            const library=runtime.targets.find(target=>target.getName()===name);
+            const vars=runtime.targets.flatMap(target=>Object.values(target.variables));
+            return {role:library?.bwAssetLibrary,visible:library?.visible,
+                freshPixel:vars.find(variable=>variable.name==='freshPixel')?.value,
+                sharedPixel:vars.find(variable=>variable.name==='sharedPixel')?.value};
+        },libraryName);
+        assert.deepEqual(libraryState,{role:{version:1,kind:'arcade-animation'},visible:false,freshPixel:4,sharedPixel:4});
+        const retainedLibrary=await snapshot('library-code-blocks',{bundleVersion:7});
+        assert.deepEqual(retainedLibrary.document,editedLibrary.document);
+        report.assetLibrary={fixture:true,automaticNativeImport:false,pixelEdited:true,codeBlocksRetained:true,sb3Reopened:true,observed:libraryState};
+        report.journey.push('explicit hidden library fixture opens in Pixel, edits and SB3 reopen retain role, UUID and rich source');
+        report.journey.push('Code excludes library declarations and preserves hidden carriers; fresh/shared runtime lookups play edited source');
+
+
     }
     assert.deepEqual(report.pageErrors,[]);
     assert.deepEqual(report.consoleMessages.filter(message=>/Workspace Update Error|Connection checks failed|could not attach artwork|could not repack artwork|Built-in extension arcade failed/.test(message)),[]);

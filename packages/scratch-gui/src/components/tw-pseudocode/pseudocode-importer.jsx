@@ -2038,7 +2038,9 @@ class PseudocodeImporter extends React.Component {
      */
     async arcadeFromStage () {
         const vm = this.props.vm;
-        const project = JSON.parse(vm.toJSON());
+        const {assetLibraryRecords, withoutAssetLibraries} = await import('../../lib/bw-asset-library.js');
+        const savedProject = JSON.parse(vm.toJSON());
+        const project = withoutAssetLibraries(savedProject, assetLibraryRecords(vm, savedProject));
         const draw = asset => new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
@@ -4712,7 +4714,9 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true, status: this.L.stReading, conversionReport: null});
         try {
             const SB3Creator = (await this.lib()).default;
-            const project = JSON.parse(this.props.vm.toJSON());
+            const {assetLibraryRecords, withoutAssetLibraries} = await import('../../lib/bw-asset-library.js');
+            const savedProject = JSON.parse(this.props.vm.toJSON());
+            const project = withoutAssetLibraries(savedProject, assetLibraryRecords(this.props.vm, savedProject));
             const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile.startsWith('i8086') ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
             const mpResult = new SB3Creator().generateMicroPython(project);
             const buffers = {

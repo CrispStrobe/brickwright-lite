@@ -91,7 +91,9 @@ async function readProject (file) {
         warnings.push(`Editable artwork source not exported: ${artwork.reason || 'unsupported future artwork version'}`);
     }
     const costumePalette = (t, c) => palettes.get(`${project.targets.indexOf(t)}:${t.costumes.indexOf(c)}`) || null;
-    return {project, costumeSvg, costumePalette, soundData, animationDocuments, warnings};
+    const {withoutAssetLibraries} = await lib('bw-asset-library.js');
+    return {project: withoutAssetLibraries(project, artwork.libraries || []),
+        costumeSvg, costumePalette, soundData, animationDocuments, warnings};
 }
 
 /** The MakeCode files for a project, for a target, with what did not map. */

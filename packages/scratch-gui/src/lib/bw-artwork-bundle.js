@@ -10,7 +10,7 @@ import {editablePixelSize} from './bw-makecode/pixel-image.js';
 
 const ARTWORK_PATH = 'brickwright/artwork/v1.json';
 const ARTWORK_FORMAT = 'brickwright-artwork';
-const ARTWORK_VERSION = 6;
+const ARTWORK_VERSION = 7;
 const MAX_ARTWORK_BYTES = 64 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 
@@ -279,6 +279,8 @@ const inspectArtwork = async input => {
         if (payload.version > ARTWORK_VERSION) {
             return {outcome: 'future', records: [], raw, signature: costumeSignature(project)};
         }
+        const libraryInfo = payload.libraries === undefined ? {} :
+            (await import('./bw-asset-library.js')).inspectAssetLibraries(project, payload);
         const records = [];
         let inflatedLayerBytes = 0;
         for (const record of payload.costumes) {
@@ -307,7 +309,7 @@ const inspectArtwork = async input => {
             }
             records.push(record);
         }
-        return {outcome: 'loaded', records};
+        return {outcome: 'loaded', records, ...libraryInfo};
     } catch (error) {
         return {outcome: 'invalid', records: [], reason: error.message};
     }
@@ -324,8 +326,10 @@ const applyArtwork = (inspection, vm) => {
     if (vm?.runtime) vm.runtime.bwArcadeAnimationResources = new Map();
     preservedFuture = inspection?.outcome === 'future' ?
         {raw: inspection.raw, signature: inspection.signature} : null;
+    for (const target of originals(vm)) delete target.bwAssetLibrary;
     if (inspection?.outcome !== 'loaded') return {outcome: inspection?.outcome || 'legacy', count: 0};
     const targets = originals(vm);
+    inspection.applyLibraries?.(targets);
     let count = 0;
     for (const record of inspection.records) {
         const costume = targets[record.targetIndex]?.sprite?.costumes?.[record.costumeIndex];
@@ -378,8 +382,11 @@ const writeArtworkToZip = async (zip, vm) => {
                     document: validateDocument(document)});
             }
         }
-        const version = artworkBundleVersion(costumes);
-        zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT, version, costumes}));
+        const libraries = targets.some(target => target.bwAssetLibrary) ?
+            (await import('./bw-asset-library.js')).assetLibraryRecords(vm, project) : [];
+        const version = libraries.length ? 7 : artworkBundleVersion(costumes);
+        zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT, version, costumes,
+            ...(libraries.length ? {libraries} : {})}));
         return true;
     } catch (error) {
         // A source failure may not turn a valid Scratch project into an unsaveable one.
