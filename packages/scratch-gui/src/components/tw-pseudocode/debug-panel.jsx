@@ -541,7 +541,7 @@ class DebugPanel extends React.Component {
             const rt = this.props.vm && this.props.vm.runtime;
             const sig = JSON.stringify((rt && rt.stc && rt.stc.pins) || []);
             const pinsChanged = sig !== this._pinSig;
-            const stoppedImage = this.state.ui.phase === 'idle' &&
+            const stoppedImage = this._runnerStoppedExplicitly &&
                 (this.state.runner || this._runnerPromise);
             if (this._projectChangeInvalidating || (!pinsChanged && !stoppedImage)) return;
             this._projectChangeInvalidating = true;
@@ -816,6 +816,7 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
+        this._runnerStoppedExplicitly = false;
         this._mouseLeave();
         // The host shows a runner's board only while that runner lives (B8).
         if (this.props.onRunnerGone) this.props.onRunnerGone();
@@ -881,6 +882,9 @@ class DebugPanel extends React.Component {
     }
 
     async onStart () {
+        // The runner is no longer a stopped image once a new start begins.
+        // `ui.phase` may still read idle while attach() is awaiting chunks.
+        this._runnerStoppedExplicitly = false;
         const runner = await this.runner();
         const phase = this.state.ui.phase;
         if (phase === 'paused') runner.resume();
@@ -951,7 +955,11 @@ class DebugPanel extends React.Component {
     }
 
     onPause () { if (this.state.runner) this.state.runner.pause(); }
-    onStop () { if (this.state.runner) this.state.runner.stop(); }
+    onStop () {
+        if (!this.state.runner) return;
+        this._runnerStoppedExplicitly = true;
+        this.state.runner.stop();
+    }
     async onStep () { (await this.runner()).step('block'); }
     onReverseStep () {
         const runner = this.state.runner;
