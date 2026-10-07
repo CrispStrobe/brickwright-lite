@@ -100,10 +100,19 @@ try {
             if (colour >= 0) histogram[colour]++;
             for (let offset = 0; offset < 4; offset++) hash = Math.imul(hash ^ pixels[index + offset], 16777619);
         }
+        const paletteScreen = [], offPaletteSamples = [];
+        for (let y = 0; y < 120; y++) for (let x = 0; x < 160; x++) {
+            const px = Math.floor((x + 0.5) * copy.width / 160);
+            const py = Math.floor((y + 0.5) * copy.height / 120);
+            const offset = (py * copy.width + px) * 4;
+            const colour = rgb.findIndex(value => value && value.every((channel, i) => pixels[offset + i] === channel));
+            paletteScreen.push(colour);
+            if (colour < 0) offPaletteSamples.push({x, y, rgba: Array.from(pixels.slice(offset, offset + 4))});
+        }
         return {phase: variables.phase, data: actor?.data, rotation: actor?.rotation,
             rotationDegrees: actor?.rotationDegrees, width: actor?.width, height: actor?.height,
             skin: skin?.size ? Array.from(skin.size) : null,
-            canvas: [copy.width, copy.height], histogram, hash: hash >>> 0,
+            canvas: [copy.width, copy.height], histogram, hash: hash >>> 0, paletteScreen, offPaletteSamples,
             blockErrors: window.__bwRotationObservation.blockErrors,
             diagnostics: window.__bwRotationObservation.diagnostics};
     }, ARCADE_PALETTE);
