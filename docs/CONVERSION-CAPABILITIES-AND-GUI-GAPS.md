@@ -210,7 +210,8 @@ than flattening timings. Include sheet and frames-as-costumes journeys.
 
 #### Uniform animation resource candidate — implemented locally, adoption pending
 
-The candidate on `lane/arcade-animation-resources-20261007` implements:
+The candidate in [draft PR704](https://github.com/CrispStrobe/brickwright-lite/pull/704)
+on `lane/arcade-animation-resources-20261007` implements:
 
 - **Publish/Update/Remove** with a persistent UUID and display name; frame IDs,
   order, layers and palette remain editable. Duplication gets a fresh UUID.
@@ -227,7 +228,8 @@ The candidate on `lane/arcade-animation-resources-20261007` implements:
   computed ID lookup, saved scalar values and named missing-resource diagnostics.
   Unequal durations are rejected rather than flattened.
 
-Local production-browser publication qualification passes: three painted3×2
+Local production build and repeated publication-browser qualification pass at
+source `abce5092194e493d59745adeed32798b19de1a35`: three painted3×2
 frames with two layers and100ms timing, rejected unequal timing preserving the
 prior resource, actual SB3 file chooser reopen, exact source/UUID and rendered
 asset preservation, and zero page errors. Actual-VM sprite Undo and replacement
