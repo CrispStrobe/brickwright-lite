@@ -17,7 +17,7 @@ import {compile, hasRuntime} from './lib/pxt-node.mjs';
 
 
 // Report identity contains hashes and declared public identities, never host paths.
-function auditProvenance (files, corpusCommit) {
+function snapshotIdentity () {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
     const git = args => {
         const result = spawnSync('git', args, {cwd: root, encoding: 'utf8'});
@@ -30,19 +30,42 @@ function auditProvenance (files, corpusCommit) {
         try { return JSON.parse(fs.readFileSync(path.join(root, name), 'utf8')); }
         catch { return null; }
     };
+    return {source: {commit: git(['rev-parse', 'HEAD']), dirty: status === null ? null : !!status,
+        trackedDiffSha256: diff === null ? null : sha256(diff),
+        statusSha256: status === null ? null : sha256(status),
+        untrackedInputs: 'contents not covered by trackedDiffSha256 or statusSha256'},
+    vendorPins: readJSON('vendor-pins.json'),
+    makecodeVersions: readJSON('packages/scratch-gui/static/makecode/VERSIONS.json'),
+    node: process.version};
+}
+
+// Capture before collecting or processing corpus inputs. Never replace this with
+// the final HEAD: a long audit may span unrelated commits in its checkout.
+const invocationAt = new Date().toISOString();
+const invocationIdentity = snapshotIdentity();
+
+function auditProvenance (files, corpusCommit) {
+    const sha256 = value => createHash('sha256').update(value).digest('hex');
     let unreadableFiles = 0;
     const inputHashes = files.map(file => {
         try { return sha256(fs.readFileSync(file)); }
         catch { unreadableFiles++; return 'unreadable'; }
     }).sort();
-    return {source: {commit: git(['rev-parse', 'HEAD']), dirty: status === null ? null : !!status,
-        trackedDiffSha256: diff === null ? null : sha256(diff),
-        untrackedInputs: 'not covered by trackedDiffSha256'},
-    corpus: {declaredCommit: corpusCommit || null, commitVerified: false,
-        fileCount: files.length, unreadableFiles, contentMultisetSha256: sha256(JSON.stringify(inputHashes))},
-    vendorPins: readJSON('vendor-pins.json'),
-    makecodeVersions: readJSON('packages/scratch-gui/static/makecode/VERSIONS.json'),
-    node: process.version};
+    return {...invocationIdentity, invocationAt,
+        corpus: {declaredCommit: corpusCommit || null, commitVerified: false,
+            fileCount: files.length, unreadableFiles, contentMultisetSha256: sha256(JSON.stringify(inputHashes))}};
+}
+
+function finishProvenance (provenance) {
+    const endIdentity = snapshotIdentity();
+    return {...provenance, completedAt: new Date().toISOString(),
+        endIdentity,
+        changeDetection: {
+            sourceChanged: JSON.stringify(provenance.source) !== JSON.stringify(endIdentity.source),
+            vendorPinsChanged: JSON.stringify(provenance.vendorPins) !== JSON.stringify(endIdentity.vendorPins),
+            makecodeVersionsChanged: JSON.stringify(provenance.makecodeVersions) !== JSON.stringify(endIdentity.makecodeVersions),
+            boundary: 'Endpoint comparison only; transient edits and untracked file contents are not verified.'
+        }};
 }
 
 function rankGaps (rows, elements) {
@@ -85,6 +108,7 @@ const collect = name => fs.statSync(name).isDirectory() ?
     /\.(ts|sb3)$/i.test(name) ? [name] : [];
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
+const provenance = auditProvenance(files, corpusCommit);
 const shortError = error => String(error?.message || error).slice(0, 400);
 const projectFacts = project => {
     const opcodes = new Map();
@@ -273,7 +297,7 @@ for (const r of rows) {
     }
 }
 const report = {schema: 'brickwright/conversion-roundtrips/v1', generatedAt: new Date().toISOString(),
-    provenance: auditProvenance(files, corpusCommit),
+    provenance: finishProvenance(provenance),
     qualificationBoundary: 'Preserved describes measured structure and artwork only; runtime and behavioral equivalence are not measured.',
     gapRanking: rankGaps(rows, row => [
         ...(row.importUnsupported || []).map(x => `import: ${x}`),
