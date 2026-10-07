@@ -72,8 +72,11 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
             const costume = liveCostumes.includes(row.costume) ? row.costume : null;
             if (!costume) throw new Error(`Cannot preserve artwork: missing costume ${generated.name}/${declaration}`);
             const asset = costume.asset;
-            const filename = costume.md5ext || costume.md5 || `${costume.assetId}.${costume.dataFormat}`;
-            if (!asset?.data || !filename || `${asset.assetId}.${asset.dataFormat}` !== filename) {
+            // updateSvg may publish the new Asset before refreshing legacy md5ext.
+            // The Asset owns both the current bytes and their content identity.
+            const filename = asset?.assetId && ['svg', 'png'].includes(asset.dataFormat) ?
+                `${asset.assetId}.${asset.dataFormat}` : null;
+            if (!asset?.data || !filename) {
                 throw new Error(`Cannot preserve artwork: asset unavailable for ${generated.name}/${costume.name}`);
             }
             // VM costume descriptors include an Asset object. Keep the portable
@@ -85,7 +88,7 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
             }
             descriptor.md5ext = filename;
             descriptor.assetId = asset.assetId;
-            descriptor.dataFormat = costume.dataFormat || asset.dataFormat;
+            descriptor.dataFormat = asset.dataFormat;
             // Keep the declaration metadata for subsequent Code generations.
             for (const field of ['_spec', '_shapeSpec']) {
                 if (generatedCostume[field] !== undefined) descriptor[field] = generatedCostume[field];
@@ -106,4 +109,34 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
     return true;
 };
 
-export {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork};
+// Compression and artwork inspection are asynchronous. A user can keep drawing
+// in Costumes while Code is busy; do not replace that newer edit with this ZIP.
+const revisionDescriptor = costume => JSON.stringify(['name', 'rotationCenterX', 'rotationCenterY',
+    'bitmapResolution'].map(key => costume[key]));
+const captureCodeArtworkRevision = (vm, context) => {
+    if (!codeArtworkMatches(vm, context)) throw new Error('The loaded project changed while preparing artwork.');
+    return originals(vm).map(target => ({target, currentCostume: target.currentCostume,
+        costumes: (target.sprite?.costumes || []).map(costume => ({costume, asset: costume.asset,
+            id: costume.asset?.assetId, format: costume.asset?.dataFormat,
+            bytes: costume.asset?.data ? new Uint8Array(costume.asset.data).slice() : null,
+            descriptor: revisionDescriptor(costume), document: JSON.stringify(getCostumeDocument(costume))}))}));
+};
+const codeArtworkRevisionMatches = (vm, revision) => {
+    const current = originals(vm);
+    return current.length === revision.length && revision.every((row, targetIndex) => {
+        const target = current[targetIndex];
+        const costumes = target.sprite?.costumes || [];
+        return target === row.target && target.currentCostume === row.currentCostume &&
+            costumes.length === row.costumes.length && row.costumes.every((saved, index) => {
+                const costume = costumes[index]; const asset = costume?.asset;
+                return costume === saved.costume && asset === saved.asset && asset?.assetId === saved.id &&
+                    asset?.dataFormat === saved.format && revisionDescriptor(costume) === saved.descriptor &&
+                    JSON.stringify(getCostumeDocument(costume)) === saved.document &&
+                    (saved.bytes ? asset?.data?.length === saved.bytes.length &&
+                        saved.bytes.every((byte, byteIndex) => asset.data[byteIndex] === byte) : !asset?.data);
+            });
+    });
+};
+
+export {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
+    captureCodeArtworkRevision, codeArtworkRevisionMatches};
