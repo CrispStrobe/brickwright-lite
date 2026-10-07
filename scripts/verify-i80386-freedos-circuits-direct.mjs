@@ -13,6 +13,51 @@ const circuitAnchor="        await page.getByRole('tab',{name:/Circuit/}).click(
 const reportAnchor='        interactions = {before,fullscreen,resized,circuitTargetPreserved:true,beforeTabs,afterTabs,tabText,guestMousePacket:';
 const observedAnchor="        assert.match(tabText,/PS2 DONE/,'guest mouse-program output survives tab roundtrip');";
 
+// Runs only in the browser around physical VDP keys. It observes the trusted
+// DOM events and forwards the real target method with its original receiver;
+// it never synthesizes input or changes the success criterion.
+export function observeDirectCircuitKeys(target,element){
+ const dom=[],targetCalls=[];
+ const original=target?.keyIn;
+ const available=typeof original==='function';
+ const ownDescriptor=available?Object.getOwnPropertyDescriptor(target,'keyIn'):undefined;
+ let truncated=false;
+ const append=(list,row)=>{if(list.length<64)list.push(row);else truncated=true;};
+ const down=event=>append(dom,{type:'keydown',code:event.code,key:event.key,
+  trusted:event.isTrusted===true,onFocusedElement:event.target===element});
+ const up=event=>append(dom,{type:'keyup',code:event.code,key:event.key,
+  trusted:event.isTrusted===true,onFocusedElement:event.target===element});
+ element.addEventListener('keydown',down,true);
+ element.addEventListener('keyup',up,true);
+ let wrapped=null;
+ if(available){
+  wrapped=function(...args){
+   const row={scancode:args[0],receiverIsTarget:this===target};
+   try{
+    const result=original.apply(this,args);
+    row.returnType=typeof result;
+    row.accepted=result===true;
+    row.refused=result===false;
+    append(targetCalls,row);
+    return result;
+   }catch(error){row.threw=true;append(targetCalls,row);throw error;}
+  };
+  Object.defineProperty(target,'keyIn',{value:wrapped,writable:true,configurable:true,
+   enumerable:ownDescriptor?.enumerable??false});
+ }
+ return {
+  snapshot:()=>({targetKeyInAvailable:available,dom:[...dom],targetCalls:[...targetCalls],truncated}),
+  restore:()=>{
+   element.removeEventListener('keydown',down,true);
+   element.removeEventListener('keyup',up,true);
+   if(available&&target.keyIn===wrapped){
+    if(ownDescriptor)Object.defineProperty(target,'keyIn',ownDescriptor);
+    else delete target.keyIn;
+   }
+  }
+ };
+}
+
 const circuitBlock=`        let circuitDirect=null;
         try {
         const debuggerView=page.getByRole('button',{name:'Debugger',exact:true});
@@ -35,23 +80,50 @@ const circuitBlock=`        let circuitDirect=null;
         }
         assert.match(circuitBeforeText,/PS2 DONE/,'actual Circuit VDP pixels retain prior guest output: '+circuitBeforeError);
         const circuitBefore={timeNs:Number(await page.evaluate(()=>window.__benchTarget.timeNs())),screen:await circuitShot('circuit-before'),text:circuitBeforeText};
-        for(const key of ['e','c','h','o','Space','c','i','r','c','u','i','t','o','k','Enter']){
-            await page.keyboard.press(key);
-            await waitForGuestTime(100_000_000);
-        }
-        let circuitAfterText='';const circuitDeadline=Date.now()+30000;
-        while(Date.now()<circuitDeadline){
-            circuitAfterText=await circuitText();
-            if(/^circuitok\\s*$/m.test(circuitAfterText))break;
-            await waitForGuestTime(100_000_000);
+        const installKeyObserver=Function('element','window.__circuitKeyObserver=('+${JSON.stringify(observeDirectCircuitKeys.toString())}+')(window.__benchTarget,element);return window.__circuitKeyObserver.snapshot()');
+        const keyObserverStart=await vdp.evaluate(installKeyObserver);
+        let circuitAfterText='',keyboardDiagnostics=null;
+        try {
+            for(const key of ['e','c','h','o','Space','c','i','r','c','u','i','t','o','k','Enter']){
+                await page.keyboard.press(key);
+                await waitForGuestTime(100_000_000);
+            }
+            const circuitDeadline=Date.now()+30000;
+            while(Date.now()<circuitDeadline){
+                circuitAfterText=await circuitText();
+                if(/^circuitok\\s*$/m.test(circuitAfterText))break;
+                await waitForGuestTime(100_000_000);
+            }
+        } finally {
+            keyboardDiagnostics=await page.evaluate(()=>{
+                const observer=window.__circuitKeyObserver;
+                if(!observer)return {observerMissing:true};
+                const record=observer.snapshot();
+                try {observer.restore();} catch(error) {record.restoreError=String(error);}
+                delete window.__circuitKeyObserver;
+                return record;
+            }).catch(error=>({observerError:String(error)}));
+            await writeFile(join(output,'circuit-keyboard-diagnostic.json'),
+                JSON.stringify({keyObserverStart,keyboardDiagnostics},null,2)+'\\n').catch(()=>{});
         }
         circuitDirect={before:circuitBefore,after:{timeNs:Number(await page.evaluate(()=>window.__benchTarget.timeNs())),
             screen:await circuitShot('circuit-after'),text:circuitAfterText},focused:await vdp.evaluate(el=>document.activeElement===el),
-            tabSelected:await page.getByRole('tab',{name:/Circuit/}).getAttribute('aria-selected'),keys:'echo circuitok,Enter'};
+            tabSelected:await page.getByRole('tab',{name:/Circuit/}).getAttribute('aria-selected'),keys:'echo circuitok,Enter',
+            keyObserverStart,keyboardDiagnostics};
         await writeFile(join(output,'circuit-direct.json'),JSON.stringify(circuitDirect,null,2)+'\\n');
         assert.equal(circuitDirect.tabSelected,'true','guest response observed while Circuit tab is selected');
         assert.equal(circuitDirect.focused,true,'Circuit VDP remains focused after physical keys');
         assert.match(circuitAfterText,/^circuitok\\s*$/m,'actual Circuit VDP pixels show guest shell response');
+        const expectedCircuitScans=[18,146,46,174,35,163,24,152,57,185,
+            46,174,23,151,19,147,46,174,22,150,23,151,20,148,24,152,37,165,28,156];
+        assert.deepEqual(keyboardDiagnostics?.targetCalls?.map(event=>event.scancode),expectedCircuitScans,
+            'actual Circuit VDP path forwards the exact make/break sequence');
+        assert.equal(keyboardDiagnostics?.dom?.length,expectedCircuitScans.length,
+            'physical VDP receives one keydown/up per requested key');
+        assert.ok(keyboardDiagnostics.dom.every(event=>event.trusted&&event.onFocusedElement),
+            'trusted physical events target the focused Circuit VDP');
+        assert.ok(keyboardDiagnostics.targetCalls.every(event=>event.receiverIsTarget&&!event.threw),
+            'target keyIn is called with its original receiver');
         assert.ok(circuitDirect.after.timeNs>=circuitBefore.timeNs,'guest clock continues through Circuit input');
         } catch(error) {
             const failure={error:String(error),phase:'Circuit direct input',partial:circuitDirect,

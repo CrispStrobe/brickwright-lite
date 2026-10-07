@@ -6,7 +6,7 @@ import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {runInNewContext} from 'node:vm';
-import {deriveCircuitsProbe} from '../scripts/verify-i80386-freedos-circuits-direct.mjs';
+import {deriveCircuitsProbe,observeDirectCircuitKeys} from '../scripts/verify-i80386-freedos-circuits-direct.mjs';
 
 test('direct Circuit probe is an exact accepted-browser derivative with a real VDP key route',()=>{
  const {generated,generatedSha256}=deriveCircuitsProbe();
@@ -21,6 +21,10 @@ test('direct Circuit probe is an exact accepted-browser derivative with a real V
  assert.doesNotMatch(generated,/const circuitTextObserver=`canvas =>/,'string arrow cannot be passed to locator.evaluate');
  assert.match(generated,/vdpCanvas\.evaluate\(circuitTextObserver\)/);
  assert.match(generated,/actual Circuit VDP pixels show guest shell response/);
+ assert.match(generated,/keyObserverStart,keyboardDiagnostics/);
+ assert.match(generated,/Object\.defineProperty\(target,'keyIn'/);
+ assert.match(generated,/keyboardDiagnostics\?\.targetCalls\?\.map\(event=>event\.scancode\),expectedCircuitScans/);
+ assert.match(generated,/keyboardDiagnostics\.dom\.every\(event=>event\.trusted&&event\.onFocusedElement\)/);
  assert.match(generated,/Circuit guest output survives Code return/);
  assert.doesNotMatch(generated,/window\.__benchTarget\.keyIn\(/,'no diagnostic input injection');
  assert.doesNotMatch(generated,/\.click\(\{force:true\}\)|\.focus\(\)/,'no bypass of physical click or browser focus');
@@ -39,6 +43,83 @@ test('direct Circuit probe is an exact accepted-browser derivative with a real V
   const parsed=spawnSync(process.execPath,['--check',generatedPath],{encoding:'utf8',timeout:5000});
   assert.equal(parsed.status,0,parsed.stderr);
  }finally{rmSync(directory,{recursive:true,force:true});}
+});
+
+test('Circuit key observer forwards actual target calls and restores on success and throw',()=>{
+ const listeners=new Map();
+ const element={
+  addEventListener:(name,fn)=>listeners.set(name,fn),
+  removeEventListener:(name,fn)=>{assert.equal(listeners.get(name),fn);listeners.delete(name);}
+ };
+ const error=new Error('guest input refusal');
+ const calls=[];
+ const original=function(sc){calls.push([this,sc]);if(sc===99)throw error;return sc===30;};
+ const target={keyIn:original};
+ const observer=observeDirectCircuitKeys(target,element);
+ const down={code:'KeyA',key:'a',isTrusted:true,target:element};
+ listeners.get('keydown')(down);
+ assert.equal(target.keyIn(30),true);
+ assert.equal(target.keyIn(31),false);
+ const foreign={name:'other receiver'};
+ assert.equal(target.keyIn.call(foreign,30),true);
+ assert.throws(()=>target.keyIn(99),caught=>caught===error);
+ listeners.get('keyup')({...down});
+ const snapshot=observer.snapshot();
+ assert.equal(snapshot.targetKeyInAvailable,true);
+ assert.deepEqual(snapshot.dom.map(event=>[event.type,event.code,event.trusted,event.onFocusedElement]),
+  [['keydown','KeyA',true,true],['keyup','KeyA',true,true]]);
+ assert.deepEqual(snapshot.targetCalls.map(call=>[call.scancode,call.receiverIsTarget,call.returnType,call.accepted,call.refused,call.threw]),
+  [[30,true,'boolean',true,false,undefined],[31,true,'boolean',false,true,undefined],
+   [30,false,'boolean',true,false,undefined],[99,true,undefined,undefined,undefined,true]]);
+ assert.deepEqual(calls,[[target,30],[target,31],[foreign,30],[target,99]]);
+ observer.restore();
+ assert.equal(target.keyIn,original);
+ assert.equal(listeners.size,0);
+ const absent=observeDirectCircuitKeys({},element);
+ assert.equal(absent.snapshot().targetKeyInAvailable,false);
+ absent.restore();
+ assert.equal(listeners.size,0);
+});
+
+test('Circuit key observer restores inherited and own keyIn property shapes',()=>{
+ const element={addEventListener(){},removeEventListener(){}};
+ const inherited=function(sc){return [this,sc];};
+ const prototype={keyIn:inherited};
+ const target=Object.create(prototype);
+ assert.equal(Object.hasOwn(target,'keyIn'),false);
+ const observer=observeDirectCircuitKeys(target,element);
+ assert.equal(Object.hasOwn(target,'keyIn'),true);
+ assert.deepEqual(target.keyIn(30),[target,30]);
+ observer.restore();
+ assert.equal(Object.hasOwn(target,'keyIn'),false);
+ assert.equal(target.keyIn,inherited);
+ const own=Object.create(prototype);
+ const ownMethod=function(sc){return sc;};
+ const descriptor={value:ownMethod,writable:false,configurable:true,enumerable:false};
+ Object.defineProperty(own,'keyIn',descriptor);
+ const ownObserver=observeDirectCircuitKeys(own,element);
+ assert.equal(own.keyIn(31),31);
+ ownObserver.restore();
+ assert.deepEqual(Object.getOwnPropertyDescriptor(own,'keyIn'),descriptor);
+});
+
+test('materialized browser observer instruments the real VDP element and target',()=>{
+ const {generated}=deriveCircuitsProbe();
+ const declaration=generated.match(/^\s*const installKeyObserver=Function\('element'.*\);$/m)?.[0];
+ assert.ok(declaration,'one browser-side observer installer');
+ const events=new Map();
+ const element={addEventListener:(name,fn)=>events.set(name,fn),
+  removeEventListener:(name,fn)=>{assert.equal(events.get(name),fn);events.delete(name);}};
+ const target={keyIn(sc){return sc===30;}};
+ const window={__benchTarget:target};
+ const install=runInNewContext(`${declaration}\ninstallKeyObserver`,{window});
+ assert.equal(install(element).targetKeyInAvailable,true);
+ assert.equal(typeof window.__circuitKeyObserver.restore,'function');
+ events.get('keydown')({type:'keydown',code:'KeyA',key:'a',isTrusted:true,target:element});
+ assert.equal(target.keyIn(30),true);
+ assert.deepEqual([...window.__circuitKeyObserver.snapshot().targetCalls].map(call=>call.scancode),[30]);
+ window.__circuitKeyObserver.restore();
+ assert.equal(events.size,0);
 });
 
 test('callable Circuit pixel observer decodes canvas bytes and rejects mismatched frames',()=>{

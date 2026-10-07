@@ -64,6 +64,23 @@ glyph pixels and rejects changed pixels and frame dimensions. The fourth
 attempt remains a failure, and the corrected probe still requires a fresh
 hosted pixel-response result.
 
+The [fifth hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37643740464)
+at `50f12bdf215b1a572cbade711c4fd2d6b773004f` reached the corrected
+pixel observer. The Circuit VDP decoded the prior FreeDOS prompt and `PS2 DONE`,
+and the visible canvas accepted a physical click and retained focus. After
+physical `echo circuitok` keys, guest time advanced from 68.2 to 99.9 seconds,
+but the before/after Circuit canvas pixel SHA-256 and decoded text were
+identical. The run therefore failed the real guest-response gate. Its
+[original artifact 11494886005](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11494886005)
+is 245,565 bytes, SHA-256
+`ebee7c6199b94d90c0511cbdb70074ba533d95b8fcd1dcf1573a17e078c16e10`.
+The retained Widgets-keyboard scan list observes only the Widgets mirror
+callback, so its lack of new scans does not establish whether the Circuit VDP
+forwarded keys. This follow-up records trusted VDP DOM key events and actual
+target `keyIn` calls while forwarding the original method with the same
+receiver and return value. It still requires visible guest pixels to change;
+the fifth failure is not a passing result.
+
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
 or a general native 386 backend. A live terminal CLI scenario remains a
