@@ -79,14 +79,7 @@ module.exports = function initializePxtRotation() {
             this._height = (maxY - minY) | 0;
         }
     }
-    // Gather only visible output pixels. The simulator scatters every scaled
-    // source pixel through three truncating shears. Truncation at zero can map
-    // several inputs to one output: verify all integer preimages, then retain
-    // the last nontransparent writer in its original row/column order.
-    function rasterWindow(source, sx, sy, angle, window) {
-        const {x: cropX, y: cropY, width, height} = window;
-        const pixels = new Uint8Array(width * height);
-        if (!width || !height || sx <= 0 || sy <= 0) return {width, height, pixels};
+    function shearGeometry(source, sx, sy, angle) {
         angle %= 2 * Math.PI;
         if (angle < 0) angle += 2 * Math.PI;
         const flip = angle > Math.PI / 2 && angle <= 3 * Math.PI / 2;
@@ -101,6 +94,37 @@ module.exports = function initializePxtRotation() {
         };
         const corners = [[0, 0], [sw - 1, 0], [sw - 1, sh - 1], [0, sh - 1]].map(([x, y]) => shear(x, y));
         const minX = Math.min(...corners.map(p => p[0])), minY = Math.min(...corners.map(p => p[1]));
+        const maxX=Math.max(...corners.map(p=>p[0])),maxY=Math.max(...corners.map(p=>p[1]));
+        return {xs,ys,sw,sh,flip,minX,minY,maxX,maxY};
+    }
+    // Bounds enclose every integer source-lattice scatter, including pixels
+    // outside the separately calculated Sprite bounding box. Interval bounds
+    // may include transparent space; they never change logical sprite geometry.
+    function rasterFootprint(source, sx, sy, angle) {
+        if(sx<=0 || sy<=0)return {left:0,top:0,right:-1,bottom:-1};
+        const {xs,ys,sw,sh,minX,minY,maxX,maxY}=shearGeometry(source,sx,sy,angle);
+        const truncRange=(low,high)=>{
+            if(!Number.isFinite(low) || !Number.isFinite(high))return [0,0];
+            if(low < -2147483648 || high > 2147483647)return [-2147483648,2147483647];
+            return [low|0,high|0];
+        };
+        const product=(range,factor)=>factor>=0?[range[0]*factor,range[1]*factor]:[range[1]*factor,range[0]*factor];
+        const add=(a,b)=>truncRange(a[0]+b[0],a[1]+b[1]);
+        const x=[0,Math.ceil(sw)-1],y=[0,Math.ceil(sh)-1];
+        const firstX=add(x,product(y,xs));
+        const outY=add(y,product(firstX,ys));
+        const outX=add(firstX,product(outY,xs));
+        return {left:outX[0]-minX,top:outY[0]-minY,right:outX[1]-minX,bottom:outY[1]-minY,cullWidth:maxX-minX,cullHeight:maxY-minY};
+    }
+    // Gather only visible output pixels. The simulator scatters every scaled
+    // source pixel through three truncating shears. Truncation at zero can map
+    // several inputs to one output: verify all integer preimages, then retain
+    // the last nontransparent writer in its original row/column order.
+    function rasterWindow(source, sx, sy, angle, window) {
+        const {x: cropX, y: cropY, width, height} = window;
+        const pixels = new Uint8Array(width * height);
+        if (!width || !height || sx <= 0 || sy <= 0) return {width, height, pixels};
+        const {xs,ys,sw,sh,flip,minX,minY}=shearGeometry(source,sx,sy,angle);
         const maxInputX = Math.ceil(sw) - 1, maxInputY = Math.ceil(sh) - 1;
         // Invert ToInt32(n + offset), including its 2^32 wrapping. Each
         // preimage is checked with the actual forward operation; the small
@@ -136,5 +160,5 @@ module.exports = function initializePxtRotation() {
         }
         return {width, height, pixels};
     }
-    return {RotatedBoundingBox, rasterWindow};
+    return {RotatedBoundingBox, rasterWindow, rasterFootprint};
 };
