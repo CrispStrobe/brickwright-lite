@@ -208,34 +208,235 @@ Export/reimport must preserve palette, frames, loop/action and supported timing.
 If variable durations require a runtime sequence, implement it explicitly rather
 than flattening timings. Include sheet and frames-as-costumes journeys.
 
-#### Next animation binding slice — proposed, not implemented
+#### Uniform animation resource candidate — full browser journey qualified locally
 
-The Pixel timeline already retains per-frame IDs, layers and durations
-(20–10,000ms, up to64 frames). Exporting frames as costumes creates snapshots;
-it does not establish a runtime animation resource. The existing frame-image
-lookup uses a target name and contiguous costume positions, so it must not be
-used as the durable identity across rename/reorder.
+The candidate in [draft PR704](https://github.com/CrispStrobe/brickwright-lite/pull/704)
+on `lane/arcade-animation-resources-20261007` implements:
 
-1. Add **Publish/Update animation** in the Frames panel. Persist a resource UUID
-   and display name alongside the source timeline; preserve frame IDs/order.
-   Duplication creates a distinct resource ID. Verify document reconstruction,
-   serialization and older-reader handling before declaring persistence closed.
-2. Expose the resource through a visible named Blocks picker and Code insertion
-   picker. Canonical words carry the resource ID, not a costume index or mutable
-   name. A typed frame-array reporter feeds the existing native image-animation
-   block; a uniform-interval reporter supplies the verified frame duration.
-3. Populate a runtime resource registry through artwork load/apply, update it
-   after edits and clear it on project replacement. A GUI-only source cache is
-   insufficient for runtime access. The exporter must receive complete source
-   explicitly rather than infer frames from the currently flattened costume.
-4. First qualify uniform timing with existing `runImageAnimation` behaviour and
-   equivalent original export. Unequal timing remains explicitly unavailable
-   for this binding until a variable-duration scheduler and equivalent exported
-   program are implemented. Do not flatten durations or expand frames by GCD.
-5. Accept only after visible creation, binding, controller trigger, Stop/restart,
-   rename/reorder/duplicate/delete, Code↔Blocks, SB3 reopen and original-PXT
-   behaviour comparisons pass. Resource identity and event behaviour need their
-   own observations; timeline persistence alone does not qualify playback.
+- **Publish/Update/Remove** with a persistent UUID and display name; frame IDs,
+  order, layers and palette remain editable. Duplication gets a fresh UUID.
+- Artwork document4/bundle5 persistence with older-reader opaque preservation.
+  Actual sprite deletion/Undo restores source onto recreated costume objects;
+  asset mismatch and duplicate identity fail atomically.
+- A named native Blocks resource menu, typed Image[] and interval reporters,
+  and Code insertion at the current selection with a single undoable edit.
+- Runtime resource snapshots shared across repeated reads. Revisions replace
+  the snapshot; already-running animations retain their existing image objects.
+  Start clears runtime handles, Stop preserves them, and actual project loading
+  clears the previous project's authored registry.
+- Explicit full-source export to shared original Arcade Image[] declarations,
+  computed ID lookup, saved scalar values and named missing-resource diagnostics.
+  Unequal durations are rejected rather than flattened.
+
+Local production build and repeated publication-browser qualification pass at
+source `abce5092194e493d59745adeed32798b19de1a35`: three painted3×2
+frames with two layers and100ms timing, rejected unequal timing preserving the
+prior resource, actual SB3 file chooser reopen, exact source/UUID and rendered
+asset preservation, and zero page errors. Actual-VM sprite Undo and replacement
+loading tests pass. Four original-PXT export tests pass against the explicitly
+selected reviewed producer source, including literal/computed IDs, shared array
+identity, image mutation/playback, missing IDs and generated-name collisions.
+That historical producer-source override was qualification evidence; current
+consumer adoption is recorded below.
+
+Three publication-browser journeys now qualify **Add Extension → Arcade**,
+scrolling to both native resource reporters, dragging each into the workspace,
+selecting the published name, and observing the stored UUID in the actual VM
+block fields. The library description now identifies the full game APIs.
+The full production-browser gate passes six journeys on source
+`89700204711ce470ebb7a77e511ec960fa1e8b6d`: real Code picker insertion,
+Code→Blocks, native resource menu selection, B stop/A restart, Stop/green flag
+restart, Pixel rename/reorder with stable UUID, original Arcade export and file
+reimport with repeated controller stop/restart. Six playback samples contain
+zero invalid frames after readiness. All19,200 actual Brickwright and original
+PXT pixels match for the same authored frame; compilation makes no network
+attempts and the page reports zero errors. The boundary is three3×2 layered
+frames, uniform100ms timing and the default palette.
+
+This journey exposed and repaired two actual runtime defects: template-free
+image sprites had no drawable, and template-backed image animation restored a
+blank costume between frames. Native drawables now have transform, visibility,
+scene and destruction ownership; both paths retain their skin during animation.
+The first native renderer/resource/scaling/scene batch passed24 tests; after the
+skin-retention change, the affected renderer/resource batch passed10 without
+skips. Failed attempts remain preserved. The earlier native renderer browser
+attempt used a development build; the final passing journey explicitly used
+`NODE_ENV=production`.
+
+The native animation JRES codec now passes eight tests against the retained
+original PXT encoder/decoder, package normalizer, emitter and asset-name validator.
+Native hyphen/Unicode IDs and namespaces are supported with explicit printable
+reference bounds; native display-name restrictions remain separate. This is the
+format layer, not native asset-editor integration. Native gallery export now
+includes unused published resources and generated factories; main code caches
+used resources once. Native gallery import lowers tagged lookups to typed image
+arrays with original alias and allocation behaviour. Focused tests execute the
+actual original emitter/compiler/simulator and verify exact pixels, frame order,
+intervals, alias refusal and generated-name collisions. The explicit production build and full six-journey browser gate pass at
+`8bca7037c`, including actual downloaded native gallery frames/timing and
+19,200 original-PXT screen pixels. Unused imported assets
+are validated but are not yet persistent GUI resources. See the
+[animation interchange contract](ARCADE-ANIMATION-INTERCHANGE.md) for rich-source
+recovery, persistent resource reconstruction and original-editor acceptance.
+
+**Adopted:** shared compiler [PR62](https://github.com/CrispStrobe/sb3-creator/pull/62)
+merged at
+[`33ce7380e388e20b7c3a30e8ea84d1b774c30248`](https://github.com/CrispStrobe/sb3-creator/commit/33ce7380e388e20b7c3a30e8ea84d1b774c30248)
+and the app pins that exact producer. Consumer source
+[`96e812a23`](https://github.com/CrispStrobe/brickwright-lite/commit/96e812a2355a193bfb92cfb4b6982d82299792ad)
+includes both canonical words and literal resource menu shadows. Two highlight
+tests, four explicit provider identity tests (zero skips), eight codec tests and
+four vendored original-export tests pass. The complete browser journey is now
+locally qualified at the source and boundary above. Its gate,
+`scripts/verify-arcade-animation-resource-browser.mjs`, is registered in CI with
+zero hosted timing readings and a provisional budget. Hosted exact-head checks
+remain pending; native original-MakeCode asset editing remains unqualified.
+
+Rich-source transport now emits a versioned companion beside native galleries.
+Matching imports recover exact source documents/UUIDs through the file/project
+conversion API; edited native frames/order/timing/palette keep their native data
+and receive stale-source warnings. Malformed or duplicate metadata fails before
+project replacement. Current SB3 artwork bundles also reach the CLI exporter,
+including unused animation resources. Native galleries have no new128-asset
+limit; that bound applies only to companion source records. This is source
+transport, not an editable imported GUI library or live resource rebinding.
+At `55da1b20e`, the production build and seven browser journeys pass, including
+exact downloaded source recovery and an atomic malformed-file refusal. The
+affected integration batch passes20 tests, final companion/project/overlay
+batch17, and all seven CLI regressions; no skips in these batches.
+
+At product source `9f6ace3da`, both ordinary production and React profiling
+builds pass. Native animation decoding/companion validation stays deferred;
+initial JavaScript4,466,111 bytes passes the unchanged4,467,136-byte limit.
+The final animation and background browser gates each pass seven journeys.
+See the [interchange qualification](ARCADE-ANIMATION-INTERCHANGE.md) for exact
+scope and the emitted ownership receipt. Hosted final-head checks remain pending.
+
+Pixel publication now supports one-frame resources and exact1–65,535ms timing
+using document5/bundle6. Older bundle5 readers preserve the source unchanged;
+legacy document validation remains unchanged. Focused tests include actual
+original-PXT compilation/execution at both interval endpoints, companion
+recovery, SB3 persistence and Undo. The imported editable library remains open; fresh-copy
+resource lookup is the next qualified candidate below; see the [timeline bounds](ARCADE-ANIMATION-INTERCHANGE.md#native-timeline-bounds).
+
+At product source `f945e7feb`, runtime endpoint tests pass6/6 and the verified
+profiling production app passes nine browser journeys, including endpoint
+Code-to-Blocks playback and visible pixels. Initial JavaScript4,466,357 bytes
+passes the unchanged4,467,136 limit. CLI/current-bundle tests pass3/3; original
+PXT still matches all19,200 screen pixels. Earlier stale-served-build failures
+are retained in the evidence; no budgets or assertions were relaxed.
+
+#### Fresh lookups — compiler adopted and full browser journey qualified locally
+
+The adopted candidate adds `arcade animation fresh frames resource "<UUID>"`
+and a native Blocks reporter beside the shared-frames and interval reporters.
+Each evaluation allocates its own array, images, pixels and palettes from
+unmodified authored data. Shared lookups retain their existing shared identity.
+Code exposes **Insert fresh frames** as one selection-replacing, undoable edit.
+The exporter emits original `assets.animation` factory calls for fresh lookups.
+
+The focused consumer batch passes18/18 against the explicitly selected producer
+candidate in [sb3-creator PR63](https://github.com/CrispStrobe/sb3-creator/pull/63),
+including original-PXT execution of literal/computed UUIDs, independent arrays
+and images, isolated mutation and unchanged shared lookup behaviour. Both UUID
+forms also pass the complete Brickwright → Arcade → Brickwright → Arcade
+permutation with imported artwork attached and exact returned pixel values.
+Missing IDs and helper-name collisions pass original execution. Producer
+qualification passes284/284 focused tests. Its Python/JavaScript mappings retain
+all three distinct resource calls through conversion; the standalone Scratch
+renderer shim still has neutral placeholders and is not qualified playback.
+All enabled producer checks passed; PR63 merged at `983aa61f` with the reviewed
+tree unchanged. Official consumer sync adopts that exact pin and four provider
+identity tests pass. The adopted consumer batch passes29/29 without a producer
+override. At product source `fbac95e16b`, the profiling production build passes
+all emitted ownership gates with4,466,357 initial bytes against the unchanged
+4,467,136 limit. The verified bundle passes all ten full browser journeys,
+including actual fresh-frame Code insertion, Code-to-Blocks, independent arrays,
+isolated mutation, unchanged shared playback and controller stop/restart.
+All19,200 actual original-PXT/Brickwright screen pixels agree, compilation
+attempts no network requests and the page reports zero errors. See the
+[emitted receipt](receipts/2026-10-07-arcade-animation-fresh-lookups.json).
+A separate four-journey publication gate drags all three native resource
+reporters from Add Extension → Arcade, selects their actual dropdowns and
+checks the published name and UUID in the VM.
+Hosted final-head consumer qualification remains required.
+
+The next product source `794cc9082` implements the explicit library-role and
+Code retention foundation. Bundle7 persists the role independently of names;
+old bundle6 readers retain opaque source. Actual VM save/reopen, Code projection,
+name collision, source retention and malformed-role checks pass. The final
+foundation batch passes45/45; the earlier batch with CLI regressions passes51/51.
+At qualified product source `6f29dc3e3`, the profiling production app passes
+all ownership gates at4,467,115 initial bytes against the unchanged4,467,136
+limit. Thirteen actual browser journeys pass, including an explicit library
+fixture edited in Pixel, SB3 reopen, Code/Blocks retention and fresh/shared
+playback. Actual GUI and CLI exports retain exact edited native/rich source and
+run in original PXT while omitting the library actor. Earlier budget and browser
+harness failures remain preserved. The final focused batch passes46/46, including
+delayed role-restoration ownership. This does not yet install native imported
+resources; final-head hosted qualification remains required. See the [foundation contract](ARCADE-ANIMATION-INTERCHANGE.md#explicit-asset-library-foundation).
+
+To close the imported-library gap next:
+
+1. Add an explicit, versioned hidden asset-library target role; never infer the
+   role from a name or insert carrier costumes onto gameplay actors or Stage.
+2. Build and validate resource carriers inside the generated SB3 before loading
+   it, with atomic failure and a generation guard against late imports.
+3. Bind native factory lookups to fresh reporters. Preserve unused resources,
+   recovered UUIDs and rich source; create validated source documents and new
+   IDs when no valid companion exists. Stale source cannot overwrite native edits.
+4. Preserve the role through Code/Blocks and SB3 save/reopen. Test rename,
+   duplicate, deletion/Undo and exclusion from gameplay export.
+5. Qualify actual original Assets edit/save/download, then Brickwright import,
+   Pixel edit, controller playback and return export. Native format tests alone
+   cannot close that editor journey.
+
+**U04 remains open.** Unequal-duration scheduling, action binding, sheet and
+frames-as-costumes journeys and
+rich resource reconstruction from original MakeCode remain separate work.
+Original export tests prove playback behaviour; they do not preserve the
+editable timeline or UUID through MakeCode. Native image mutation affects the
+runtime snapshot, not authored Pixel layers. Deletion/Undo restores source;
+it does not promise a pristine copy of a previously mutated runtime snapshot
+until restart. Custom-palette original RGB equivalence remains unqualified.
+The locked corpus remains90 translated /93 partial /1 malformed.
+
+Automatic native import follow-up: GUI file/share and CLI import now use the
+same validated library installation transaction, including unused assets and
+fresh UUID reporter bindings. The transaction/CLI test observes original-PXT
+alias mutation9 versus independent lookup2 and preserves source through repeated
+imports. All14 production browser journeys pass with zero page errors; the
+automatic imported library survives Pixel editing, save/reopen, Code/Blocks and
+controller playback. Emitted ownership passes at4,467,115 bytes with the
+unchanged4,467,136 limit. See the
+[receipt](receipts/2026-10-07-arcade-native-animation-library-import.json).
+Library navigation, script/visibility protection and identity-safe
+rename/delete/Undo/duplicate operations are implemented in the
+[library safeguards follow-up](ARCADE-ANIMATION-INTERCHANGE.md#artwork-library-controls-and-lifecycle).
+Blocks and Sounds explain the library role and route to artwork; gameplay
+controls and queued Blockly model edits are disabled while the explicit role
+is present. Copies get new resource UUIDs; Undo restores the original identity
+onto the actual restored target, independently of editing selection. Invalid
+library source refuses saving. Original Assets editing/download, costume
+drag/share source transport, sprite-file transport and corpus-wide closure
+remain open. See the
+[transaction contract](ARCADE-ANIMATION-INTERCHANGE.md#automatic-native-resource-import-transaction).
+
+Native export now allocates unique MakeCode-safe names for duplicate or
+nonnative authored names, without changing UUID bindings or authored documents.
+Companion version2 records that name projection and restores exact authored
+names unless the native editor actually renamed the asset; version1 remains
+readable. Original-PXT factory execution and repeated direct/embedded
+roundtrips pass in the39-test focused batch. All17 production browser journeys
+pass, including duplicated-library GUI/CLI original-PXT export and Code-file
+reimport/To Blocks/playback. See
+[native animation names](ARCADE-ANIMATION-INTERCHANGE.md#native-animation-names-and-authored-identity).
+The Blocks and Code resource pickers still need distinguishable labels when
+two authored resources have the same display name. Their UUID values remain
+distinct; resolving native export names does not close that authoring gap.
+The browser roundtrip also exposed `Error: undefined` for a string-valued VM
+validation rejection. Conversion diagnostics must retain and explain its
+validation path/message; that presentation fix remains required.
 
 ### U05 — rotation/data/resources/callbacks
 
@@ -349,7 +550,7 @@ The seven states above need concrete user journeys, not just symbol counts:
   do not qualify failure preservation or every menu choice.
 
 Unknown remains unknown. A census row is full only when every applicable gate
-has evidence. The 156 canonical Arcade/Arrays operations (161 forms with aliases)
+has evidence. The158 canonical Arcade/Arrays operations (163 forms with aliases)
 are confirmed by `ARCADE_WORDS`; they are not 156 original APIs or a coverage
 percentage. A shared opcode can expose several API properties; conversely one
 public API can require several authoring/resource operations.
@@ -452,7 +653,7 @@ This cross-reference prevents details from disappearing during reconciliation.
 ## Complete Code word inventory
 
 The [generated authoring vocabulary](generated/ARCADE-AUTHORING-VOCABULARY.md)
-lists all 156 canonical Arcade/Arrays forms and 161 forms including aliases,
+lists all158 canonical Arcade/Arrays forms and163 forms including aliases,
 with block identities, shapes and Code spellings at the adopted parser pin.
 Use it when checking palette discoverability; vocabulary presence alone does
 not establish any of the five qualification results above.
@@ -485,7 +686,7 @@ and direct SB3 reopen together before claiming a fully synchronized target UI.
 ### Current shared compiler adoption
 
 The current vendor pin is sb3-creator
-`2d2a562812c6e34525021ccacd421b1d20151c15`, following upstream PR60 and PR61.
-It includes native Arrays dropdown fields and reporter-capable controller-axis
-menus. Earlier PR59 qualification above is historical; it does not replace the
+`33ce7380e388e20b7c3a30e8ea84d1b774c30248`, following shared compiler PR60–PR62.
+It includes native Arrays dropdown fields, reporter-capable controller-axis
+menus and named animation frame/interval resource reporters. Earlier PR59 qualification above is historical; it does not replace the
 current native-schema browser gate or close every resource/event menu.

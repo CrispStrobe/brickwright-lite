@@ -1,0 +1,65 @@
+{
+  "source": "6f29dc3e317b7cfd0c25ce600fe912e50ba8801a",
+  "initialBytes": 4467115,
+  "limit": 4467136,
+  "proof": [
+    {
+      "name": "arcade-animation-assets.js",
+      "modules": [
+        {
+          "chunks": [
+            2182
+          ],
+          "initial": false
+        }
+      ]
+    },
+    {
+      "name": "animation-jres.js",
+      "modules": [
+        {
+          "chunks": [
+            2182
+          ],
+          "initial": false
+        }
+      ]
+    },
+    {
+      "name": "animation-companion.js",
+      "modules": [
+        {
+          "chunks": [
+            2182
+          ],
+          "initial": false
+        }
+      ]
+    },
+    {
+      "name": "bw-asset-library.js",
+      "modules": [
+        {
+          "chunks": [
+            3115,
+            8797
+          ],
+          "initial": false
+        },
+        {
+          "chunks": [
+            3115,
+            8797
+          ],
+          "initial": false
+        }
+      ]
+    }
+  ],
+  "format": "brickwright-arcade-animation-deferred-proof",
+  "version": 1,
+  "build": "production React profiling",
+  "webpackOwnershipGate": "passed",
+  "statsSha256": "cb8d50a2a02daa4fe080cae5cccc7228c916937d869d56306b8ac3728a32867d",
+  "boundary": "Explicit asset-library persistence and Code handoff foundation. Automatic native library reconstruction remains open; hosted final-head qualification required."
+}

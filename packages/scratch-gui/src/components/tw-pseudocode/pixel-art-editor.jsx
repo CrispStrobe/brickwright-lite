@@ -18,7 +18,7 @@ import React from 'react';
 import styles from './pixel-art-editor.css';
 import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
-import {getCostumeDocument, setCostumeDocument} from '../../lib/bw-artwork-bundle.js';
+import {getCostumeDocument, setCostumeDocument, newAnimationResourceId, syncAnimationResources} from '../../lib/bw-artwork-bundle.js';
 import {blankLayer, clearSelectedPixels, composeLayers, containsCell, cropLayers, lassoSelection, layersDocument, layersToSvg,
     copySelectedPixels, moveSelectedPixels, outlinePixels, pasteSelectedPixels, replaceColourPixels,
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
@@ -72,6 +72,8 @@ const L10N = {
         'px.replaceFrom': 'Replace index', 'px.outline': 'Outline',
         'px.copySelection': 'Copy selection', 'px.cutSelection': 'Cut selection',
         'px.pasteSelection': 'Paste selection', 'px.pastedLayer': 'Pasted pixels',
+        'px.animationName': 'Animation name', 'px.publishAnimation': 'Publish animation',
+        'px.updateAnimation': 'Update animation', 'px.removeAnimation': 'Remove binding',
         'px.frames': 'Frames', 'px.addFrame': 'Add frame', 'px.duplicateFrame': 'Duplicate frame',
         'px.deleteFrame': 'Delete frame', 'px.frameDuration': 'Frame duration (ms)',
         'px.play': 'Play', 'px.pause': 'Pause', 'px.onionSkin': 'Onion skin',
@@ -130,6 +132,8 @@ const L10N = {
         'px.replaceFrom': 'Index ersetzen', 'px.outline': 'Umriss',
         'px.copySelection': 'Auswahl kopieren', 'px.cutSelection': 'Auswahl ausschneiden',
         'px.pasteSelection': 'Auswahl einfügen', 'px.pastedLayer': 'Eingefügte Pixel',
+        'px.animationName': 'Animationsname', 'px.publishAnimation': 'Animation veröffentlichen',
+        'px.updateAnimation': 'Animation aktualisieren', 'px.removeAnimation': 'Bindung entfernen',
         'px.frames': 'Einzelbilder', 'px.addFrame': 'Einzelbild hinzufügen',
         'px.duplicateFrame': 'Einzelbild duplizieren', 'px.deleteFrame': 'Einzelbild löschen',
         'px.frameDuration': 'Bilddauer (ms)', 'px.play': 'Abspielen', 'px.pause': 'Pause',
@@ -254,7 +258,7 @@ class PixelArtEditor extends React.Component {
             scale: 4, zoom: 1, ...colourSlots, choosingSecondary: false,
             replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null, tolerance: 0,
-            frames: [], activeFrameId: null, framesOpen: false, panel: null, exportingFrames: false,
+            frames: [], activeFrameId: null, animationResource: null, animationName: '', animationError: '', animationWarnings: [], framesOpen: false, panel: null, exportingFrames: false,
             onionSkin: false, playing: false,
             sheetMode: false, sheetName: '', sheetWidth: 0, sheetHeight: 0,
             sheetFrameWidth: 16, sheetFrameHeight: 16, sheetPixelScale: 1,
@@ -364,19 +368,22 @@ class PixelArtEditor extends React.Component {
         const savedFrames = !size && sourceFrames(document, image.width, image.height);
         const frames = savedFrames || [{id: 'frame-1', durationMs: 100, layers,
             activeLayerId: layers[layers.length - 1].id}];
+        const animationResource = size ? this.state.animationResource : savedFrames ? document.animation.resource || null : null;
+        const animationName = size ? this.state.animationName : animationResource?.name || costume.name || 'Animation';
         const activeFrameId = savedFrames ? document.animation.activeFrameId : frames[0].id;
         const activeLayerId = layers.some(layer => layer.id === document?.activeLayerId) ?
             document.activeLayerId : layers[layers.length - 1].id;
         this.undoStack = [];
         this.redoStack = [];
         this.pixelClipboard = null;
-        this.setState({image, layers, activeLayerId, frames, activeFrameId, playing: false,
+        this.setState({image, layers, activeLayerId, frames, activeFrameId, animationResource, animationName,
+            animationError: '', animationWarnings: [], playing: false,
             panel: null, framesOpen: false,
             sheetMode: false, sheetPreview: [], sheetError: '',
             selection: null, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: '',
             original: {layers, activeLayerId, frames, activeFrameId,
-                selection: null, palette, scale, w: image.width, h: image.height},
+                selection: null, palette, scale, animationResource, animationName, w: image.width, h: image.height},
             palette,
             scale, zoom: 1, converted, status: '',
             w: image.width, h: image.height});
@@ -476,6 +483,7 @@ class PixelArtEditor extends React.Component {
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
             selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
+            animationResource: this.state.animationResource, animationName: this.state.animationName,
             w: this.state.w, h: this.state.h});
         if (this.undoStack.length > 80) this.undoStack.shift();
         this.redoStack = [];
@@ -486,6 +494,7 @@ class PixelArtEditor extends React.Component {
         this.redoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
             selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
+            animationResource: this.state.animationResource, animationName: this.state.animationName,
             w: this.state.w, h: this.state.h});
         this.restore(this.undoStack.pop());
     }
@@ -495,6 +504,7 @@ class PixelArtEditor extends React.Component {
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
             selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
+            animationResource: this.state.animationResource, animationName: this.state.animationName,
             w: this.state.w, h: this.state.h});
         this.restore(this.redoStack.pop());
     }
@@ -567,7 +577,8 @@ class PixelArtEditor extends React.Component {
     }
 
     setFrameDuration (value) {
-        const durationMs = Math.max(20, Math.min(10000, Math.round(Number(value) || 100)));
+        const durationMs = Number(value);
+        if (!Number.isInteger(durationMs) || durationMs < 1 || durationMs > 65535) return;
         const frame = this.state.frames.find(item => item.id === this.state.activeFrameId);
         if (!frame || frame.durationMs === durationMs) return;
         this.remember();
@@ -1279,25 +1290,61 @@ class PixelArtEditor extends React.Component {
     }
 
     hasUnsavedChanges () {
-        const {original, layers, frames, palette, w, h, scale} = this.state;
+        const {original, layers, frames, palette, w, h, scale, animationResource, animationName} = this.state;
         return Boolean(original && (layers !== original.layers || frames !== original.frames ||
-            palette !== original.palette || w !== original.w || h !== original.h || scale !== original.scale));
+            palette !== original.palette || w !== original.w || h !== original.h || scale !== original.scale ||
+            animationResource !== original.animationResource || animationName !== original.animationName));
     }
 
-    save () {
-        this.stopPlayback();
-        const {image, scale, layers, activeLayerId, activeFrameId, palette} = this.state;
-        const vm = this.props.vm;
-        if (!image || !vm) return;
+    publishAnimation () {
+        const name = this.state.animationName.trim();
+        if (!name || name.length > 80) {
+            this.setState({animationError: 'Animation name must contain 1–80 characters.'});
+            return;
+        }
         const frames = this.materializeFrames();
-        const svg = layersToSvg(layers, image.width, image.height, scale, palette);
-        vm.updateSvg(this.props.costumeIndex, svg, (image.width * scale) / 2, (image.height * scale) / 2);
-        setCostumeDocument(this.costume(), layersDocument(layers, image.width, image.height, scale, activeLayerId,
-            palette, frames.length > 1 ? {frames, activeFrameId} : null));
-        this.setState({frames, original: {layers, activeLayerId, frames, activeFrameId,
-            selection: null, palette, scale,
-            w: image.width, h: image.height},
-            converted: false, status: 'saved'});
+        if (!frames.length || frames.some(frame => frame.durationMs !== frames[0].durationMs)) {
+            this.setState({animationError: 'Publishing requires frames with equal durations. Unequal durations remain editable.'});
+            return;
+        }
+        try {
+            const resource = {id: this.state.animationResource?.id || newAnimationResourceId(), name};
+            this.save(resource);
+        } catch (error) { this.setState({animationError: error.message}); }
+    }
+
+    removeAnimationBinding () { this.save(null); }
+
+    save (resourceOverride) {
+        if (resourceOverride?.preventDefault) resourceOverride = undefined;
+        this.stopPlayback();
+        const {image, scale, layers, activeLayerId, activeFrameId, palette, animationResource, animationName} = this.state;
+        const vm = this.props.vm;
+        if (!image || !vm) return false;
+        const selectedResource = resourceOverride === undefined ? animationResource : resourceOverride;
+        const resource = selectedResource && resourceOverride === undefined ?
+            {...selectedResource, name: animationName.trim()} : selectedResource;
+        const frames = this.materializeFrames();
+        const document = layersDocument(layers, image.width, image.height, scale, activeLayerId,
+            palette, frames.length > 1 || resource || frames[0].durationMs !== 100 ? {frames, activeFrameId, resource} : null);
+        try {
+            const resources = syncAnimationResources(vm, {costume: this.costume(), document, validateOnly: true});
+            const warnings = resource ? resources.get(resource.id)?.warnings || [] : [];
+            const svg = layersToSvg(layers, image.width, image.height, scale, palette);
+            if (resourceOverride !== undefined) this.remember();
+            vm.updateSvg(this.props.costumeIndex, svg, (image.width * scale) / 2, (image.height * scale) / 2);
+            setCostumeDocument(this.costume(), document);
+            syncAnimationResources(vm);
+            const name = resource?.name || animationName;
+            this.setState({frames, animationResource: resource, animationName: name, animationError: '', animationWarnings: warnings,
+                original: {layers, activeLayerId, frames, activeFrameId, animationResource: resource, animationName: name,
+                    selection: null, palette, scale, w: image.width, h: image.height},
+                converted: false, status: 'saved'});
+            return true;
+        } catch (error) {
+            this.setState({animationError: error.message});
+            return false;
+        }
     }
 
     exportPng () {
@@ -1342,7 +1389,7 @@ class PixelArtEditor extends React.Component {
         if (!image || !target || !storage || frames.length < 2 || this.state.exportingFrames) return;
         // Keep the complete animation on its original costume. The additional
         // Scratch costumes have independent pixel documents and flat SVG renders.
-        this.save();
+        if (!this.save()) return;
         const name = this.costume()?.name || 'Costume';
         const targetId = target.id;
         this.setState({exportingFrames: true, status: ''});
@@ -1476,6 +1523,7 @@ class PixelArtEditor extends React.Component {
         const {image, layers, activeLayerId, selection, colour, secondaryColour, choosingSecondary,
             replaceFrom, brushSize, tool, tolerance, mirror, converted,
             frames, activeFrameId, panel, onionSkin, playing, status, exportingFrames, w, h, zoom, palette,
+            animationResource, animationName, animationError, animationWarnings,
             sheetMode, sheetName, sheetWidth, sheetHeight, sheetFrameWidth, sheetFrameHeight,
             sheetPixelScale, sheetPreview, sheetError,
             renamingLayerId, renameValue, literalMode, literalText, literalError, paletteError} =
@@ -1805,6 +1853,13 @@ class PixelArtEditor extends React.Component {
                         onClick={() => this.sheetFile.current?.click()}>{t(locale, 'px.importSheet')}</button>
                     <input ref={this.sheetFile} type="file" accept="image/png,.png" style={{display: 'none'}}
                         data-testid="bw-pixel-sheet-file" onChange={event => this.loadSheet(event)} />
+                    <label style={{fontSize: 12}}>{t(locale, 'px.animationName')}
+                        <input type="text" maxLength="80" value={animationName} data-testid="bw-pixel-animation-name"
+                            onChange={event => { this.remember(); this.setState({animationName: event.target.value}); }} /></label>
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-publish-animation"
+                        onClick={() => this.publishAnimation()}>{t(locale, animationResource ? 'px.updateAnimation' : 'px.publishAnimation')}</button>
+                    {animationResource ? <button type="button" style={btn(false)} data-testid="bw-pixel-remove-animation"
+                        onClick={() => this.removeAnimationBinding()}>{t(locale, 'px.removeAnimation')}</button> : null}
                     {frames.map((frame, index) => <button key={frame.id} type="button"
                         style={btn(frame.id === activeFrameId)} data-testid={`bw-pixel-frame-${index}`}
                         aria-label={frame.name || t(locale, 'px.frameNumber', {number: index + 1})}
@@ -1828,7 +1883,7 @@ class PixelArtEditor extends React.Component {
                         disabled={frameIndex >= frames.length - 1} onClick={() => this.moveFrame(1)}>→</button>
                     <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12,
                         whiteSpace: 'nowrap', flexShrink: 0}}>{t(locale, 'px.frameDuration')}
-                        <input type="number" min="20" max="10000" step="10" style={{width: 64}}
+                        <input type="number" min="1" max="65535" step="1" style={{width: 64}}
                             data-testid="bw-pixel-frame-duration" value={activeFrame.durationMs}
                             onChange={event => this.setFrameDuration(event.target.value)} /></label>
                     {frames.length > 1 ? <label style={{display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -1889,6 +1944,8 @@ class PixelArtEditor extends React.Component {
                                 style={{width: 40, height: 40, display: 'block'}} />{index + 1}</div>)}
                     </div> : null}
                 </div> : null}
+                {animationError ? <div role="alert" data-testid="bw-pixel-animation-error" style={{color: '#b91c1c'}}>{animationError}</div> : null}
+                {animationWarnings.length ? <div role="status" data-testid="bw-pixel-animation-warnings">{animationWarnings.join(' ')}</div> : null}
                 <div ref={this.viewport} data-testid="bw-pixel-viewport" onWheel={this.onWheel}
                     style={{flex: '1 1 auto', minHeight: 180, overflow: 'auto', background: '#f1f5f9',
                         position: 'relative', borderRadius: 8}}>

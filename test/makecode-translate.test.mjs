@@ -950,10 +950,24 @@ test('Arcade built-in art stored as {data} entries (sprites.dungeon tiles) is ca
     assert.doesNotMatch(unknown.code, /\(noSuchTile\)/);
 });
 
-test('a tagged asset literal no translator claims is named, not silently a text placeholder', async () => {
+test('a genuinely unclaimed asset tag remains an exact named generic refusal', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.futureResource`missing`, 75, false)');
+    assert.deepEqual(out.unsupported, ['assets.futureResource`…` — image or asset literal not translated here']);
+    assert.match(out.code, /# unsupported: assets\.futureResource`…` — image or asset literal not translated here/);
+    // The generic lowerer retains its explicitly refused diagnostic placeholder;
+    // it must never silently substitute the tag's source text as image frames.
+    assert.doesNotMatch(out.code, /frames \("missing"\)/);
+});
+
+test('a claimed native animation with no resource has a precise missing-reference diagnostic and undefined frames', async () => {
     const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.animation`missing`, 75, false)');
-    assert.ok(out.unsupported.some(u => /assets\.animation`…` — image or asset literal not translated here/.test(u)), out.unsupported.join('; '));
+    assert.deepEqual(out.unsupported, ['Missing animation asset reference: "missing"']);
+    assert.match(out.code, /arcade animate sprite \(hero\) frames \(undefined value\) interval \(75\)/);
+    assert.doesNotMatch(out.code, /frames \("(?:missing|\(image\))"\)/);
+    assert.doesNotMatch(out.code, /arcade animation frames resource|arcade frame image array/);
+    assert.deepEqual(out.animationResources || [], [], 'no animation resource is fabricated for the missing gallery');
 });
 
 test('Arcade Math.percentChance, Math.clamp and control.millis translate as their PXT definitions (F11)', async () => {

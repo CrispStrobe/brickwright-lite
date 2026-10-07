@@ -539,3 +539,38 @@ actual PNG chooser, painting, layers, Code/Blocks, SB3 reopen, playback and all
 19,200 original-PXT export pixels. Tilemap painting, animation action binding,
 custom-palette RGB equivalence and mixed native Arcade/Scratch Stage composition
 remain separate authoring/qualification work.
+
+
+## Published animation resources (candidate)
+
+The animation candidate adds **Frames → animation name → Publish animation**
+in Pixel. Create at least two frames with the same duration. Save/reopen as SB3
+preserves their editable source and stable identity; duplicating a costume
+creates another identity. Unequal timing produces an explicit error.
+
+The candidate native Code/Blocks binding uses these reporters:
+
+```text
+(arcade animation frames resource "RESOURCE-UUID")
+(arcade animation interval resource "RESOURCE-UUID")
+```
+
+The Code picker inserts the selected UUID at the cursor. The frame reporter
+feeds the native image-animation block and the interval reporter supplies its
+uniform timing. Shared compiler PR62 is merged and adopted at `33ce738`.
+Actual native Blocks drag/drop and resource menu selection are qualified.
+The candidate full Code/Blocks/controller/export/reimport journey passes locally
+on production source `897002047`; hosted qualification remains pending before
+merge. This is not a claim that current main includes the candidate.
+
+The reached browser qualification covers painting, publication, invalid timing,
+SB3 reopen, native binding, controller stop/restart, rename/reorder and original
+Arcade export/reimport playback. All19,200 pixels match original Arcade.
+Exports now include native animation gallery files, including unused published
+resources. Native animation imports preserve playback and typed image-array
+behaviour. A validated companion also carries layers, frame IDs and resource UUIDs;
+matching conversion imports recover that source separately from playback code.
+Restoring it into Pixel timelines and original Assets editor qualification remain
+open. The CLI reads current SB3 artwork bundles and exports these resources too.
+See [the authoring gap ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding)
+for the remaining acceptance criteria.

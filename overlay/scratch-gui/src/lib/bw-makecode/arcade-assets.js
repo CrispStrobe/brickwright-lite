@@ -23,6 +23,7 @@
  * @module
  */
 
+
 /**
  * The default Arcade palette, from pxt-arcade's own documentation.
  * Index 0 is transparent; index 15 is black, as is the (unused) 0 entry.

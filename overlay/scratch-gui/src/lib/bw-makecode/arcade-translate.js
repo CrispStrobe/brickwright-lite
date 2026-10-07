@@ -32,6 +32,7 @@
 
 import {decodeTilemap, parseNativeTilemaps} from './tilemap-values.js';
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
+import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
@@ -46,7 +47,9 @@ import {
     imageToSvg,
     ARCADE_PALETTE
 } from './arcade-assets.js';
+import {parseAnimationJres} from './arcade-animation-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
+import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from './animation-companion.js';
 import {HELPERS} from './arcade-runtime.js';
 /** `sprites.castle`, `sprites.dungeon`, … : the namespaces PXT's built-in art lives in. */
 const BUILTIN_IMAGE_GROUPS = new Set(Object.keys(BUILTIN_IMAGES).map(key => key.slice(0, key.lastIndexOf('.'))));
@@ -782,6 +785,7 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        if (node?.bwAnimationResourceId) return `arcade animation fresh frames resource ${JSON.stringify(node.bwAnimationResourceId)}`;
         const value=this.valueExpr(node);
         if(!node || node===this.conditionNode)return value;
         // On the fixed-sprite path a truth node's value text IS its condition
@@ -3146,12 +3150,75 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     const assets = {};
     const tilemaps = {};
+    const animationAliases = new Map(), animationDiagnostics = [], animationIds = new Set(), nativeAnimations = [];
+    let duplicateAnimationId = false;
     for (const [filename, text] of Object.entries(map)) {
-        if (/\.jres$/.test(filename)) Object.assign(assets, parseJres(text));
+        if (/\.jres$/.test(filename)) {
+            Object.assign(assets, parseJres(text));
+            const parsedAnimations = parseAnimationJres(text);
+            animationDiagnostics.push(...parsedAnimations.unsupported.map(message => `${filename}: ${message}`));
+            for (const animation of parsedAnimations.animations) {
+                const duplicateId = animationIds.has(animation.id);
+                if (duplicateId) {
+                    duplicateAnimationId = true;
+                    animationDiagnostics.push(`Duplicate animation asset ID: ${animation.id}`);
+                    for (const [alias, prior] of animationAliases) if (prior?.id === animation.id) animationAliases.set(alias, null);
+                }
+                animationIds.add(animation.id);
+                nativeAnimations.push(animation);
+                for (const alias of animation.aliases) {
+                    if (animationAliases.has(alias)) {
+                        animationAliases.set(alias, null);
+                        animationDiagnostics.push(`Ambiguous animation asset alias: ${JSON.stringify(alias)}`);
+                    } else animationAliases.set(alias, duplicateId ? null : animation);
+                }
+            }
+        }
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(parseMakeCodeTs(source, {parameterDefaults: true}))), source)));
+    let projectPalette = ARCADE_PALETTE;
+    if (nativeAnimations.length || map[ANIMATION_COMPANION_PATH] !== undefined) {
+        const config = JSON.parse(map['pxt.json'] || '{}');
+        if (config.palette !== undefined) projectPalette = [null, ...config.palette.slice(1)];
+    }
+    // Recover rich source only when it matches native pixels. Resource import
+    // optionally binds fresh factories to an explicitly installed artwork library.
+    const recovered = duplicateAnimationId && map[ANIMATION_COMPANION_PATH] === undefined ? {resources: [], warnings: []} :
+        recoverAnimationCompanion(map[ANIMATION_COMPANION_PATH], nativeAnimations, projectPalette);
+    const recoveredById = new Map(recovered.resources.map(resource => [resource.nativeId, resource]));
+    let animationResources = duplicateAnimationId ? [] : nativeAnimations.map(animation => ({...animation,
+        palette: [...projectPalette], document: recoveredById.get(animation.id)?.document || null,
+        ...(recoveredById.get(animation.id)?.reason ? {sourceReason: recoveredById.get(animation.id).reason} : {})}));
+
+    if (opts.animationResources) animationResources = prepareAnimationImport(animationResources);
+    const resourceIds = new Map(animationResources.map(resource => [resource.id, resource.document?.animation.resource.id]));
+
+    // Native assets.animation produces a fresh Image[] per lookup. Lower to
+    // the existing typed image-array machinery, preserving ordinary variable
+    // aliases/mutation. Resource mode annotates the same typed array AST so
+    // inference stays intact while emission uses the fresh resource reporter.
+    const lowerAnimationAssets = node => {
+        if (!node || typeof node !== 'object') return node;
+        if (node.type === 'Template' && node.tag === 'assets.animation') {
+            const alias = node.value.trim(), animation = animationAliases.get(alias);
+            if (!animation) {
+                animationDiagnostics.push(`${animationAliases.has(alias) ? 'Ambiguous' : 'Missing'} animation asset reference: ${JSON.stringify(alias)}`);
+                return {type: 'Undefined'};
+            }
+            return {type: 'Array', ...(opts.animationResources ? {bwAnimationResourceId: resourceIds.get(animation.id)} : {}),
+                items: animation.frames.map(frame => ({type: 'Template', tag: 'img',
+                value: Array.from({length: animation.height}, (_, y) =>
+                    Array.from(frame.pixels.subarray(y * animation.width, (y + 1) * animation.width),
+                        index => index.toString(16)).join(' ')).join('\n')}))};
+        }
+        if (Array.isArray(node)) return node.map(lowerAnimationAssets);
+        return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
+    };
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source)));
+    const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
+        unsupported: [...new Set([...animationDiagnostics, ...result.unsupported])]});
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
     const flattened = namespaceBindings.program ? ast : null;
@@ -3159,15 +3226,15 @@ export function arcadeToPseudocode (files, opts = {}) {
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
     const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps);
-    if (namedEvents) return namedEvents;
+    if (namedEvents) return withAnimationDiagnostics(namedEvents);
     const creationEvents = flattened && translateCreationEvents(flattened, assets);
-    if (creationEvents) return creationEvents;
+    if (creationEvents) return withAnimationDiagnostics(creationEvents);
     const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets);
-    if (sideProjectiles) return sideProjectiles;
+    if (sideProjectiles) return withAnimationDiagnostics(sideProjectiles);
     const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets);
-    if (overlapOnly) return overlapOnly;
+    if (overlapOnly) return withAnimationDiagnostics(overlapOnly);
     const t = new ArcadeTranslator(assets, tilemaps);
-    t.unsupported.push(...namespaceBindings.unsupported);
+    t.unsupported.push(...animationDiagnostics, ...namespaceBindings.unsupported);
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
@@ -3786,12 +3853,12 @@ export function arcadeToPseudocode (files, opts = {}) {
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
 
-    return {
+    return withAnimationDiagnostics({
         code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)],
         costumes,
         sprites: [...t.sprites.map(s => s.name), ...[...t.projectileTemplates.values()].map(t => t.name)]
-    };
+    });
 }
 
 export default arcadeToPseudocode;
