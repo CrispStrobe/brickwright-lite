@@ -548,7 +548,7 @@ in Pixel. Create at least two frames with the same duration. Save/reopen as SB3
 preserves their editable source and stable identity; duplicating a costume
 creates another identity. Unequal timing produces an explicit error.
 
-The intended native Code/Blocks binding uses these reporters:
+The candidate native Code/Blocks binding uses these reporters:
 
 ```text
 (arcade animation frames resource "RESOURCE-UUID")
@@ -557,8 +557,9 @@ The intended native Code/Blocks binding uses these reporters:
 
 The Code picker inserts the selected UUID at the cursor. The frame reporter
 feeds the native image-animation block and the interval reporter supplies its
-uniform timing. These words depend on shared compiler PR62 and its subsequent
-consumer pin adoption. Full Code/Blocks/controller qualification is pending;
+uniform timing. Shared compiler PR62 is merged and adopted at `33ce738`.
+Actual native Blocks drag/drop and resource menu selection are qualified.
+Full Code/Blocks/controller qualification is pending;
 this is not a claim that current main supports the complete journey.
 
 The reached browser qualification covers painting, publication, invalid timing

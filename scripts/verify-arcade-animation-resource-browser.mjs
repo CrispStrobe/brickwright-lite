@@ -108,6 +108,7 @@ const observePlayback=async(label,expected,ms=1100)=>{
         }
         return rows;
     },{ms,palette:ARCADE_PALETTE});
+    report.playbackDiagnostics={label,samples};
     const firstReady=samples.findIndex(row=>row.pixels?.length===6&&expected.includes(row.pixels[0])&&expected.includes(row.visible));
     assert.ok(firstReady>=0,`${label}: actual sprite and visible renderer become ready`);
     const ready=samples.slice(firstReady);
@@ -214,7 +215,7 @@ try{
         await page.getByTestId('bw-code-animation-insert-frames').click();
         await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText('\n  set interval to ');
         await page.getByTestId('bw-code-animation-insert-interval').click();
-        await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  arcade animate sprite actor frames frames interval interval loop true\n  set phase to 1\nWHEN space key pressed:\n  arcade animate sprite actor frames frames interval interval loop true\n  set phase to 1\nWHEN z key pressed:\n  arcade stop animations of actor type 1\n  set phase to 2\nWHEN arcade every 20 ms:\n  arcade log (arcade pixel of actor x 0 y 0)\n`);
+        await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  arcade animate sprite actor frames frames interval interval loop (1 = 1)\n  set phase to 1\nWHEN space key pressed:\n  arcade animate sprite actor frames frames interval interval loop (1 = 1)\n  set phase to 1\nWHEN z key pressed:\n  arcade stop animations of actor type 1\n  set phase to 2\nWHEN arcade every 20 ms:\n  arcade log (arcade pixel of actor x 0 y 0)\n`);
         const inserted=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
         assert.ok(inserted.includes(`arcade animation frames resource "${published.id}"`));assert.ok(inserted.includes(`arcade animation interval resource "${published.id}"`));
         await apply();
@@ -231,8 +232,7 @@ try{
             const rect=field.getSvgRoot().getBoundingClientRect();return {id:menu.id,x:rect.x+rect.width/2,y:rect.y+rect.height/2,value:field.getValue()};
         });
         assert.equal(dropdown.value,published.id);assert.ok(dropdown.x>0&&dropdown.y>0&&dropdown.y<1100);
-        const escaped=await page.evaluate(id=>CSS.escape(id),dropdown.id);
-        await page.locator(`g[data-id=${escaped}] > g[data-argument-type="dropdown"]`).click();
+        await page.mouse.click(dropdown.x,dropdown.y);
         await page.getByRole('menuitemcheckbox',{name:'Walk',exact:true}).click();
         await page.waitForFunction(({id,uuid})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target=>
             target.blocks._blocks[id]?.fields?.animationAssets?.value===uuid),{id:dropdown.id,uuid:published.id});
@@ -314,7 +314,7 @@ try{
         report.journey.push('actual Arcade download compiles/runs in original PXT; frame order/fullscreen pixels and file-reimport behaviour match');
     }
     assert.deepEqual(report.pageErrors,[]);
-    assert.deepEqual(report.consoleMessages.filter(message=>/Workspace Update Error|could not attach artwork|could not repack artwork|Built-in extension arcade failed/.test(message)),[]);
+    assert.deepEqual(report.consoleMessages.filter(message=>/Workspace Update Error|Connection checks failed|could not attach artwork|could not repack artwork|Built-in extension arcade failed/.test(message)),[]);
     assert.ok(!report.timedOut);report.status='passed';
 }catch(error){
     report.status='failed';report.failure=error.stack||String(error);
