@@ -71,7 +71,6 @@
         "smoke:debugger": "node scripts/smoke-debugger.mjs",
         "toolchain": "node scripts/bw-toolchain.mjs",
         "verify:sw": "node scripts/verify-service-worker.mjs",
-        "verify:arcade-rotation": "node scripts/verify-arcade-rotation-browser.mjs",
         "verify:interaction": "node scripts/verify-interaction.mjs",
         "verify:circuit-ux": "node scripts/verify-circuit-ux.mjs",
         "verify:circuit-rendering": "node scripts/verify-circuit-rendering.mjs",
