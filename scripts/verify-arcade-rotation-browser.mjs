@@ -58,6 +58,13 @@ try {
                 block.opcode === 'arcade_setSpriteProperty' &&
                 ['rotation', 'rotationDegrees'].includes(block.fields?.PROPERTY?.value))),
         null, {timeout: 30000});
+        await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible', timeout: 30000});
+        await page.waitForFunction(() => {
+            const vm = window.__brickwrightStore.getState().scratchGui.vm;
+            return vm.extensionManager.isExtensionLoaded('arcade') &&
+                typeof vm.runtime._primitives.arcade_createImage === 'function' &&
+                typeof vm.runtime._primitives.arcade_setSpriteProperty === 'function';
+        }, null, {timeout: 30000});
     };
     await apply();
     // Select the product's actual console view after DEVICE ARCADE is applied.
