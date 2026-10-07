@@ -1342,12 +1342,17 @@ instruction-level ATmega328P emulation (Arduino Uno/Nano) for the
 circuit simulator. Imported as `avr8js` via the bw-board adapter
 (`bw-board/avr8js-adapter.js` in the installed package).
 
-- **Version:** 0.21.0
+- **Version:** 0.21.1-bw.1 (upstream 0.21.1 plus one fix, below)
 - **Licence:** MIT — Copyright (c) 2019-2025 Uri Shaked
-- **Source:** https://github.com/wokwi/avr8js
+- **Source:** https://github.com/CrispStrobe/avr8js at
+  `feea84c43e36e578841b5fce640202823b69b7f7`, a fork of
+  https://github.com/wokwi/avr8js; bw-board depends on it by git commit.
+- **Modified:** the ATtiny25/45/85 Timer/Counter1 PWM mode counts
+  single-slope (0..OCR1C, restart at $00) instead of up and down, latches
+  OCR1A/OCR1B at OCR1C and drives the inverted ~OC1A/~OC1B outputs
+  (datasheet 2586Q, section 12.2.2). The fork's FORK.md lists the changes;
+  its built `dist/` is committed.
 - **Usage:** AVR CPU simulation, I/O port + timer + ADC peripherals.
-  No source code from avr8js is modified; the package is consumed as
-  a published npm dependency.
 
 ## digitaljs — BSD-2-Clause (HEADLESS CORE ONLY)
 
@@ -1865,6 +1870,29 @@ permissive newlib + libi86 runtime, and carries no GCC-runtime copyleft.
   `projects/fe-dos` (its `fetch.sh` reproduces this binary byte-for-byte).
   Loaded at run time and driven by `runDosToolchain('fe', …)` over the
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.FE`.
+
+## partcl (DOS-native Tcl) — MIT
+
+The code tab's "Tcl (partcl on DOS)" language runs a real 16-bit MS-DOS
+interpreter on the 8086 DOS bench. The interpreter is **partcl** by **Serge
+Zaitsev**, a minimal Tcl in a few hundred lines of portable C (`set`/`proc`/
+`if`/`while`, command substitution, prefix arithmetic), distributed under the
+**MIT licence**.
+
+It is compiled — unmodified except for an added `PROG.TCL`-reading DOS
+front-end (`dosmain.c`) — to a 16-bit MS-DOS `.EXE` with `ia16-elf-gcc` (the
+tkchia GCC port for 16-bit x86). That GCC port is GPL, but it is a **build-time
+tool only**: the shipped binary is MIT partcl linked against the permissive
+newlib + libi86 runtime, and carries no GCC-runtime copyleft.
+
+- **Upstream:** https://github.com/zserge/partcl (commit
+  `1ed1df73907875ee770ac65e6546bd56fbc6f637`)
+- **Licence:** MIT, (c) Serge Zaitsev
+- **What ships:** `static/roms/tcl.exe` — the built interpreter, with
+  `tcl.provenance.json` beside it. Packaged as the media-lab project
+  `projects/tcl-dos` (its `fetch.sh` reproduces this binary byte-for-byte).
+  Loaded at run time and driven by `runDosToolchain('tcl', …)` over the
+  bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL`.
 
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 

@@ -231,8 +231,13 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // AVR/ARM (#56). The parser change a SPIKE line could meet is the
     // `chip temperature` reporter -- not a SPIKE word and not in this
     // fixture; the assertions re-ran.
+    // PIN MOVED fcea15f3 -> 85973b6a (2026-10-06, sb3-creator#57, task B13):
+    // the ATtinys' full-duplex software UART and ADC/PWM/servo emission, the
+    // ATtiny88's chip temperature, gallery device lists. The parser changes are
+    // ATtiny-only PIN declarations (ADC pins by port, PWM on PB1/PB4, none on
+    // the tiny88) -- no SPIKE word and not in this fixture; the assertions re-ran.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'fcea15f3bcaa2d7d21f99f3d9ff58b9ee4be9142');
+        '85973b6a10fcd546b489e2bc441dc217a97436f4');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

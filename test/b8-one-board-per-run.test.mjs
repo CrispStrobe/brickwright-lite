@@ -28,6 +28,7 @@ import {BoardImpl} from 'bw-board';
 
 import {runnerCompilesProjectBlocks, boardTimeBase} from
     '../overlay/scratch-gui/src/lib/bw-debug/debug-runner.js';
+import {applyBenchTemperature} from '../overlay/scratch-gui/src/lib/bench-temperature.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(ROOT, 'overlay/scratch-gui/src');
@@ -114,8 +115,8 @@ test('the circuit tab shows a runner\'s board only while its run lives', () => {
     const body = method(tab, 'handleRunnerChange (runner, ui)');
     // eslint-disable-next-line no-new-func
     const handle = new Function('advanceDebugPhase', 'shouldRefreshDesignerDebugState', 'DEBUG_LIVE_REFRESH_MS',
-        `return function (runner, ui) {${body}};`)(
-        () => ({next: null, dispatch: false}), () => true, 250);
+        'applyBenchTemperature', `return function (runner, ui) {${body}};`)(
+        () => ({next: null, dispatch: false}), () => true, 250, applyBenchTemperature);
     const runnerBoard = {id: 'runner'};
     const host = (state) => {
         const self = {state: {...state}, _markReactUpdate () {}, labelForBlock: () => 'x',

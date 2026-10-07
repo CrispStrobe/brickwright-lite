@@ -29,6 +29,41 @@
   const Cast = Scratch.Cast;
 
   // ============================================================================
+  // YES/NO QUESTIONS
+  // ----------------------------------------------------------------------------
+  // The browser's confirm() blocks and answers true or false, but a host may
+  // replace it. In BrickWright Lite's desktop and iOS app the dialog plugin
+  // turns window.confirm into an async function, so confirm(...) returns a
+  // Promise, which is always truthy: "if (confirm(...))" went ahead without
+  // asking. A host that can ask and wait provides
+  //     Scratch.BWConfirm(message) -> Promise<boolean>
+  // (the same pattern as Scratch.BWValues); anywhere else the browser's own
+  // confirm is used. Either way the answer is awaited, and only exactly true
+  // is a yes: a Promise, a rejection or a missing dialog is a no.
+  // ============================================================================
+  const askYesNo = (message) => {
+    const text = String(message);
+    const host =
+      typeof Scratch !== "undefined" &&
+      Scratch &&
+      typeof Scratch.BWConfirm === "function"
+        ? Scratch.BWConfirm
+        : null;
+    let answer;
+    try {
+      if (host) answer = host(text);
+      else if (typeof confirm === "function") answer = confirm(text);
+      else answer = false;
+    } catch (error) {
+      answer = false;
+    }
+    return Promise.resolve(answer).then(
+      (value) => value === true,
+      () => false
+    );
+  };
+
+  // ============================================================================
   // TRANSLATIONS
   // ============================================================================
   const translations = {
@@ -147,6 +182,7 @@
       getColor: "[PORT] color",
       getReflection: "[PORT] reflection",
       getAmbientLight: "[PORT] ambient light",
+      getColorRGB: "[PORT] raw [CHANNEL]",
       getForce: "[PORT] force",
       isForceSensorPressed: "[PORT] force sensor pressed?",
       whenColor: "when [PORT] sees [COLOR]",
@@ -293,6 +329,7 @@
       getColor: "[PORT] Farbe",
       getReflection: "[PORT] Reflexion",
       getAmbientLight: "[PORT] Umgebungslicht",
+      getColorRGB: "[PORT] Rohwert [CHANNEL]",
       getForce: "[PORT] Kraft",
       isForceSensorPressed: "[PORT] Kraftsensor gedrückt?",
       whenColor: "wenn [PORT] sieht [COLOR]",
@@ -636,15 +673,37 @@
       this._lastSendTime = 0;
       this._sendInterval = 1000 / maxRate;
     }
-    okayToSend() {
+    /**
+     * Reserves the next send slot and returns how many milliseconds to wait
+     * for it (0 = send now). Slots are handed out in call order, so commands
+     * keep their order and none is lost.
+     *
+     * The limiter used to DROP a command that came too soon after the previous
+     * one (okayToSend() returned false and the send was skipped), and said so
+     * to nobody. Two blocks that run within 25 ms of each other --
+     * which happens whenever a busy browser fires two VM steps back to back --
+     * lost the second: "start moving" vanished after "set movement speed",
+     * and the robot never moved. A command is a request the program made; it
+     * is delayed, never discarded. The caller's promise resolves when it is
+     * actually sent, so a block that sends in a loop waits for its slot
+     * instead of queueing without bound.
+     */
+    reserve() {
       const now = Date.now();
-      if (now - this._lastSendTime >= this._sendInterval) {
-        this._lastSendTime = now;
-        return true;
-      }
-      return false;
+      const slot = Math.max(now, this._lastSendTime + this._sendInterval);
+      this._lastSendTime = slot;
+      return slot - now;
     }
   }
+
+  /** Runs send() in the limiter's next slot; see RateLimiter.reserve. */
+  const whenSlot = (limiter, isConnected, send) => {
+    const wait = limiter.reserve();
+    if (wait <= 0) return send();
+    return new Promise((resolve) => setTimeout(resolve, wait)).then(() =>
+      isConnected() ? send() : undefined
+    );
+  };
 
   // ============================================================================
   // JSONRPC CLASS
@@ -1784,8 +1843,13 @@
      */
     sendRaw(text, useLimiter = false, id = null) {
       if (!this.isConnected()) return Promise.resolve();
-      if (useLimiter && !this._rateLimiter.okayToSend())
-        return Promise.resolve();
+      if (useLimiter) {
+        return whenSlot(
+          this._rateLimiter,
+          () => this.isConnected(),
+          () => this.sendRaw(text, false, id)
+        );
+      }
 
       const options = {
         message: Base64Util.uint8ArrayToBase64(new TextEncoder().encode(text)),
@@ -2396,8 +2460,13 @@ continuous_sensor_loop()
 
     _send(message, useLimiter = false) {
       if (!this.isConnected()) return Promise.resolve();
-      if (useLimiter && !this._rateLimiter.okayToSend())
-        return Promise.resolve();
+      if (useLimiter) {
+        return whenSlot(
+          this._rateLimiter,
+          () => this.isConnected(),
+          () => this._send(message, false)
+        );
+      }
       const packed = COBS.pack(message);
       return Promise.resolve(
         this._link.write(
@@ -4575,6 +4644,18 @@ continuous_sensor_loop()
         );
         this.usedSensors.add(port);
         return `(get_sensor("${port}").get()[1] if get_sensor("${port}") else 0)`;
+      } else if (block.opcode === "spikeprime_getColorRGB") {
+        const port = this.getInputValue(block, "PORT", blocks).replace(
+          /"/g,
+          ""
+        );
+        const channel = this.getInputValue(block, "CHANNEL", blocks).replace(
+          /"/g,
+          ""
+        );
+        const idx = { red: 3, green: 4, blue: 5 }[channel] ?? 3;
+        this.usedSensors.add(port);
+        return `(get_sensor("${port}").get()[${idx}] if get_sensor("${port}") else 0)`;
       } else if (block.opcode === "spikeprime_getForce") {
         const port = this.getInputValue(block, "PORT", blocks).replace(
           /"/g,
@@ -5675,6 +5756,26 @@ continuous_sensor_loop()
             },
           },
           {
+            // One raw channel of the colour sensor, 0-1024, as the hub sends
+            // it: both firmware generations carry red, green and blue in the
+            // colour record (SPIKE 3 Python's color_sensor.rgbi() items 0-2).
+            opcode: "getColorRGB",
+            text: t("getColorRGB"),
+            blockType: BlockType.REPORTER,
+            arguments: {
+              PORT: {
+                type: ArgumentType.STRING,
+                menu: "PORT",
+                defaultValue: "A",
+              },
+              CHANNEL: {
+                type: ArgumentType.STRING,
+                menu: "RGB_CHANNEL",
+                defaultValue: "red",
+              },
+            },
+          },
+          {
             opcode: "getForce",
             text: t("getForce"),
             blockType: BlockType.REPORTER,
@@ -5902,6 +6003,10 @@ continuous_sensor_loop()
           },
           AXIS: { acceptReporters: false, items: ["pitch", "roll", "yaw"] },
           AXIS_XYZ: { acceptReporters: false, items: ["x", "y", "z"] },
+          RGB_CHANNEL: {
+            acceptReporters: false,
+            items: ["red", "green", "blue"],
+          },
           DIRECTION: {
             acceptReporters: false,
             items: [
@@ -6197,22 +6302,26 @@ continuous_sensor_loop()
         "_"
       );
 
-      if (!confirm(`Delete ${filename} from hub?`)) {
-        return;
-      }
+      // Nothing is sent until the user has answered, and only OK deletes.
+      return askYesNo("Delete " + filename + " from hub?").then((yes) => {
+        if (!yes) {
+          return;
+        }
 
-      console.log(`🗑️ Deleting ${filename}...`);
+        console.log("🗑️ Deleting " + filename + "...");
 
-      const deleteCommand = `import uos; uos.remove("${filename}"); print("✓ Deleted")`;
+        const deleteCommand =
+          'import uos; uos.remove("' + filename + '"); print("✓ Deleted")';
 
-      return this._peripheral
-        .sendPythonCommand(deleteCommand)
-        .then(() => {
-          alert(`✓ Deleted ${filename}`);
-        })
-        .catch((error) => {
-          alert(`❌ Delete failed: ${error.message}`);
-        });
+        return this._peripheral
+          .sendPythonCommand(deleteCommand)
+          .then(() => {
+            alert("✓ Deleted " + filename);
+          })
+          .catch((error) => {
+            alert("❌ Delete failed: " + error.message);
+          });
+      });
     }
 
     listScriptsOnHub() {
@@ -6713,13 +6822,20 @@ continuous_sensor_loop()
       const axis = Cast.toString(args.AXIS);
       return this._peripheral.angle[axis] || 0;
     }
+    // The AXIS menu names a rotation (yaw, pitch, roll); both hubs report
+    // the gyro per sensor axis (x, y, z). Yaw is the turn about z, the axis
+    // that points up out of a flat hub; pitch is about y and roll about x.
+    // Reading gyro[axis] with the menu's word found no such key, so these
+    // blocks reported 0 whatever the hub sent.
+    _gyroAxis(axis) {
+      const name = Cast.toString(axis).toLowerCase();
+      return { yaw: "z", pitch: "y", roll: "x" }[name] || name;
+    }
     getGyroRate(args) {
-      const axis = Cast.toString(args.AXIS);
-      return this._peripheral.gyro[axis] || 0;
+      return this._peripheral.gyro[this._gyroAxis(args.AXIS)] || 0;
     }
     getFilteredGyroRate(args) {
-      const axis = Cast.toString(args.AXIS);
-      return this._peripheral.gyroFiltered[axis] || 0;
+      return this._peripheral.gyroFiltered[this._gyroAxis(args.AXIS)] || 0;
     }
     getAcceleration(args) {
       const axis = Cast.toString(args.AXIS);
@@ -6979,6 +7095,14 @@ continuous_sensor_loop()
       const port = Cast.toString(args.PORT).trim().toUpperCase();
       const portData = this._peripheral.portValues[port];
       if (portData && portData.type === "color") return portData.ambient || 0;
+      return 0;
+    }
+    getColorRGB(args) {
+      const port = Cast.toString(args.PORT).trim().toUpperCase();
+      const channel = Cast.toString(args.CHANNEL).toLowerCase();
+      if (!["red", "green", "blue"].includes(channel)) return 0;
+      const portData = this._peripheral.portValues[port];
+      if (portData && portData.type === "color") return portData[channel] || 0;
       return 0;
     }
     getForce(args) {

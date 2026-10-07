@@ -162,10 +162,12 @@ test('chip temperature: the gallery example, and a refusal by name where there i
     const index = JSON.parse(fs.readFileSync(path.join(ROOT, 'overlay/scratch-gui/examples/index.json'), 'utf8'));
     const entry = (Array.isArray(index) ? index : index.examples).find((e) => e.id === 'chip-thermometer');
     assert.ok(entry, 'chip-thermometer ships');
+    // B13 (sb3-creator#57) gave the ATtiny88 its sensor (ADC8, 8008H Table 17-2):
+    // it moved from the refusals below into the example's devices.
     assert.deepEqual([...entry.devices].sort(),
-        ['arduino-nano', 'arduino-uno', 'atmega168p', 'attiny85', 'pico', 'stm32f030']);
+        ['arduino-nano', 'arduino-uno', 'atmega168p', 'attiny85', 'attiny88', 'pico', 'stm32f030']);
     const src = fs.readFileSync(path.join(ROOT, 'overlay/scratch-gui/examples', entry.files.program), 'utf8');
-    for (const device of ['stc12c5a60s2', 'arduino-mega', 'attiny88']) {
+    for (const device of ['stc12c5a60s2', 'arduino-mega']) {
         const r = SB3Creator.retargetPseudocode(src, device);
         assert.equal(r.ok, false, device);
         assert.ok(r.reasons.some((w) => /chip temperature needs an on-die sensor/.test(w)), `${device}: ${r.reasons.join('; ')}`);

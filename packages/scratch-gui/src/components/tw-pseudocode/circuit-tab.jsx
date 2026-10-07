@@ -13,6 +13,8 @@ import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 import {activateUndoSurface, registerUndoSurface} from '../../lib/global-undo.js';
 import {confirmAsync} from '../../lib/native-dialog.js';
+import {applyBenchTemperature, clampBenchTemperature, loadBenchTemperature, saveBenchTemperature} from
+    '../../lib/bench-temperature.js';
 
 /**
  * The panel's own learner-facing strings. Not scratch-gui's, so not
@@ -167,8 +169,12 @@ class CircuitTab extends React.Component {
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
             circuitData: null, loadingExample: null,
-            machineBooted: false, pendingExampleTitle: null};
+            machineBooted: false, pendingExampleTitle: null,
+            // The air every part sits in (lib/bench-temperature.js): the chips'
+            // on-die sensors and the temperature-dependent parts read it.
+            benchC: loadBenchTemperature()};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
+        this.handleBenchTemperature = this.handleBenchTemperature.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
         this.loadExample = this.loadExample.bind(this);
         this._boxRef = React.createRef();
@@ -1656,6 +1662,8 @@ class CircuitTab extends React.Component {
      */
     handleRunnerChange (runner, ui) {
         const board = runner.board();
+        // The runner builds its own board for a run; it sits on the same bench.
+        applyBenchTemperature(board, this.state.benchC);
         // A stopped runner must not leave a ghost session on screen: after
         // Stop the phase is 'idle' (or 'error'), ui.session is stale or
         // null, and passing the last debugState through kept the designer's
@@ -2000,6 +2008,7 @@ class CircuitTab extends React.Component {
                         // Same diagnosis hook the standalone harness exposes —
                         // production incidents get measured, not guessed at.
                         window.__board = board;
+                        applyBenchTemperature(board, this.state.benchC);
                         // Publish the board so the Code tab's sim runner can use it
                         // instead of building its own. One board, one truth.
                         const vm = this.props.vm;
@@ -2027,6 +2036,10 @@ class CircuitTab extends React.Component {
                         onCircuitEdit={this.handleCircuitEdit}
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
+                        // The control is the designer's (its "More circuit controls"
+                        // menu, bw-circuit-ui BenchTemperature.jsx); the value is ours.
+                        benchTemperature={this.state.benchC}
+                        onBenchTemperatureChange={this.handleBenchTemperature}
                     embedded={this._portalOn}
                     // The debugger belongs to the designer's Instruments
                     // column in both the Code Blocks portal and the dedicated
@@ -2117,6 +2130,22 @@ class CircuitTab extends React.Component {
                 </React.Suspense>
             </PanelBoundary>
         );
+    }
+
+    /**
+     * The bench temperature control (rendered by the designer). Every board this tab shows moves with it:
+     * the designer's (which the Scratch VM's reporters read through
+     * runtime.circuitBoard) and a debug runner's while its run lives.
+     */
+    handleBenchTemperature (value) {
+        const c = clampBenchTemperature(value);
+        if (c === null) return;
+        saveBenchTemperature(c);
+        if (c !== this.state.benchC) this.setState({benchC: c});
+        const vm = this.props.vm;
+        const boards = new Set([this.state.board, typeof window === 'undefined' ? null : window.__board,
+            vm && vm.runtime ? vm.runtime.circuitBoard : null]);
+        for (const board of boards) applyBenchTemperature(board, c);
     }
 
     /** Designer | Warnings | Parts list | Examples. */

@@ -3,7 +3,7 @@
 The exact bytes `https://crispstrobe.github.io/extensions/<slug>.js` served on
 2026-10-06 for three pins, each matching its `served` SHA-256 in
 `overlay/scratch-vm/src/extension-support/gallery-pins.json` (gallery commit
-`4fb33f88d0ac46c291f3e4896f09c729f75f37f5`). They are the reviewed repository
+`a1dd6cbc3da4b690d00aa61710198353989616b8`). They are the reviewed repository
 source with the gallery build's generated l10n prelude, which is why they are
 not the `repo` bytes in `../gallery-worker-sources/`.
 
