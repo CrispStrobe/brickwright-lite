@@ -182,7 +182,8 @@ try {
         const slot = block.opcode === 'arrays_specialValue' ? 'KIND' :
             /^arrays_value(Binary|Unary|Compare)$/.test(block.opcode) ? 'OP' : null;
         if (slot) { block.inputs[slot] = [1, [10, block.fields[slot][0]]]; delete block.fields[slot]; }
-        if (block.opcode === 'arcade_controllerStep') {
+        if (block.opcode === 'arcade_controllerStep' && block.inputs.AXIS?.[0] === 1 &&
+            target.blocks[block.inputs.AXIS[1]]?.opcode === 'arcade_menu_axes') {
             block.fields.AXIS = ['y', null];
             const menuId = block.inputs.AXIS[1];
             delete block.inputs.AXIS;
