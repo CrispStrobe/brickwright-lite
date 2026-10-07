@@ -34,12 +34,14 @@ function scancodeMap() {
     return Function(`return {${m[1]}}`)();
 }
 
-test('the map is keyed on e.code, not e.key, and the codes are set 1', () => {
+test('the map uses physical code with React 16 native-event fallback, not e.key', () => {
     // e.key is the CHARACTER after modifiers, so a map keyed on it sends the
     // code for '1' when someone types '!' — the same key, a different scancode
     // in the map's eyes. Set 1 is positional and so is e.code.
-    assert.match(vdp, /BROWSER_TO_SCANCODE\[e\.code\]/,
-        'the lookup must use e.code; e.key would mis-send every shifted key');
+    assert.equal((vdp.match(/BROWSER_TO_SCANCODE\[e\.code \?\? e\.nativeEvent\?\.code\]/g) || []).length, 2,
+        'keydown and keyup must use the physical code even when React 16 omits the synthetic code');
+    assert.doesNotMatch(vdp, /BROWSER_TO_SCANCODE\[e\.key\]/,
+        'e.key would mis-send shifted keys');
     const map = scancodeMap();
     // Spot values from the real set-1 table, chosen across the whole range.
     for (const [code, sc] of [['KeyA', 0x1e], ['KeyZ', 0x2c], ['Digit1', 0x02],

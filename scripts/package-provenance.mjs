@@ -12,6 +12,7 @@ export function githubIdentityMatches(value, owner, name, sha) {
         `git+ssh://git@github.com/${owner}/${name}.git${suffix}`,
         `git+https://github.com/${owner}/${name}.git${suffix}`,
         `https://github.com/${owner}/${name}.git${suffix}`,
+        `https://github.com/${owner}/${name}${suffix}`,
         ...(sha === undefined ? [`git@github.com:${owner}/${name}.git`] : [])
     ].includes(value);
 }
