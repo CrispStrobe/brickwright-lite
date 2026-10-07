@@ -32,6 +32,7 @@
 
 import {decodeTilemap, parseNativeTilemaps} from './tilemap-values.js';
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
+import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
@@ -784,6 +785,7 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        if (node?.bwAnimationResourceId) return `arcade animation fresh frames resource ${JSON.stringify(node.bwAnimationResourceId)}`;
         const value=this.valueExpr(node);
         if(!node || node===this.conditionNode)return value;
         // On the fixed-sprite path a truth node's value text IS its condition
@@ -3180,18 +3182,22 @@ export function arcadeToPseudocode (files, opts = {}) {
         const config = JSON.parse(map['pxt.json'] || '{}');
         if (config.palette !== undefined) projectPalette = [null, ...config.palette.slice(1)];
     }
-    // Rich metadata never changes native fresh-array lowering. Recover source
-    // separately, and let the GUI's future resource transaction bind it explicitly.
+    // Recover rich source only when it matches native pixels. Resource import
+    // optionally binds fresh factories to an explicitly installed artwork library.
     const recovered = duplicateAnimationId && map[ANIMATION_COMPANION_PATH] === undefined ? {resources: [], warnings: []} :
         recoverAnimationCompanion(map[ANIMATION_COMPANION_PATH], nativeAnimations, projectPalette);
     const recoveredById = new Map(recovered.resources.map(resource => [resource.nativeId, resource]));
-    const animationResources = duplicateAnimationId ? [] : nativeAnimations.map(animation => ({...animation,
+    let animationResources = duplicateAnimationId ? [] : nativeAnimations.map(animation => ({...animation,
         palette: [...projectPalette], document: recoveredById.get(animation.id)?.document || null,
         ...(recoveredById.get(animation.id)?.reason ? {sourceReason: recoveredById.get(animation.id).reason} : {})}));
 
+    if (opts.animationResources) animationResources = prepareAnimationImport(animationResources);
+    const resourceIds = new Map(animationResources.map(resource => [resource.id, resource.document?.animation.resource.id]));
+
     // Native assets.animation produces a fresh Image[] per lookup. Lower to
     // the existing typed image-array machinery, preserving ordinary variable
-    // aliases/mutation without inventing persistent editable resource metadata.
+    // aliases/mutation. Resource mode annotates the same typed array AST so
+    // inference stays intact while emission uses the fresh resource reporter.
     const lowerAnimationAssets = node => {
         if (!node || typeof node !== 'object') return node;
         if (node.type === 'Template' && node.tag === 'assets.animation') {
@@ -3200,7 +3206,8 @@ export function arcadeToPseudocode (files, opts = {}) {
                 animationDiagnostics.push(`${animationAliases.has(alias) ? 'Ambiguous' : 'Missing'} animation asset reference: ${JSON.stringify(alias)}`);
                 return {type: 'Undefined'};
             }
-            return {type: 'Array', items: animation.frames.map(frame => ({type: 'Template', tag: 'img',
+            return {type: 'Array', ...(opts.animationResources ? {bwAnimationResourceId: resourceIds.get(animation.id)} : {}),
+                items: animation.frames.map(frame => ({type: 'Template', tag: 'img',
                 value: Array.from({length: animation.height}, (_, y) =>
                     Array.from(frame.pixels.subarray(y * animation.width, (y + 1) * animation.width),
                         index => index.toString(16)).join(' ')).join('\n')}))};

@@ -402,7 +402,19 @@ try{
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.hex',mimeType:'application/octet-stream',buffer:bytes});
         await page.getByText(/Imported the Arcade game.*animation-export\.hex/).first().waitFor({state:'visible'});
         if(await actions.getAttribute('open'))await actions.locator('summary').click();
-        await apply();await flag().click();await phase(1);await observePlayback('original-export-reimport',[2,9,5]);
+        assert.ok((await editor().innerText()).includes(`arcade animation fresh frames resource "${published.id}"`));
+        await apply();
+        const automaticLibrary=await page.evaluate(()=>{
+            const vm=window.__brickwrightStore.getState().scratchGui.vm;
+            const target=vm.runtime.targets.find(t=>t.bwAssetLibrary);
+            return target&&{name:target.getName(),visible:target.visible,role:target.bwAssetLibrary,
+                scripts:target.blocks.getScripts().length,costumes:target.sprite.costumes.length};
+        });
+        assert.deepEqual(automaticLibrary,{name:'Arcade artwork',visible:false,
+            role:{version:1,kind:'arcade-animation'},scripts:0,costumes:1});
+        assert.equal((await resource())[0].id,published.id);
+        report.nativeImport={automatic:true,library:automaticLibrary,companionIdentityPreserved:true};
+        await flag().click();await phase(1);await observePlayback('original-export-reimport',[2,9,5]);
         await page.getByTestId('bw-arcade-b').click();await phase(2);
         const importedStopped=await page.evaluate(async()=>{
             const rows=[];for(let index=0;index<12;index++){await new Promise(resolve=>requestAnimationFrame(resolve));
@@ -413,6 +425,22 @@ try{
         });assert.ok(importedStopped.every(pixels=>JSON.stringify(pixels)===JSON.stringify(importedStopped[0])),'reimported B stops actual animation');
         await page.getByTestId('bw-arcade-a').click();await phase(1);await observePlayback('reimported-controller-restart',[2,9,5]);await stop().click();
         report.journey.push('actual Arcade download compiles/runs in original PXT; frame order/fullscreen pixels and file-reimport behaviour match');
+        await pixels('Arcade artwork');await panel('frames');
+        await page.getByTestId('bw-pixel-frame-0').click();
+        await page.getByTestId('bw-pixel-frames-toggle').click();await paintFrame(4);await panel('frames');
+        await page.getByTestId('bw-pixel-publish-animation').click();
+        await flag().click();await phase(1);await observePlayback('automatic-library-pixel-edit',[4,9,5]);await stop().click();
+        const autoSaved=await snapshot('automatic-library-edited',{bundleVersion:7});
+        const autoStage=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+        await page.getByText('File',{exact:true}).first().click();const autoChooser=page.waitForEvent('filechooser');
+        await page.getByText('Load from your computer',{exact:true}).click();await(await autoChooser).setFiles(autoSaved.file);
+        await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,autoStage);
+        await openCode();await page.getByRole('button',{name:/From blocks/}).first().click();
+        await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor({state:'visible'});
+        assert.doesNotMatch(await editor().innerText(),/^SPRITE Arcade artwork/m);
+        await apply();await flag().click();await phase(1);await observePlayback('automatic-library-reopen-code-blocks',[4,9,5]);await stop().click();
+        report.nativeImport.pixelEdited=true;report.nativeImport.sb3Reopened=true;report.nativeImport.codeBlocksRetained=true;
+        report.journey.push('automatic native import preserves companion UUID, installs a hidden library and survives Pixel edit/save/reopen/Code/Blocks/controller playback');
         for(const duration of [1,65535]){
             const oldStage=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
             await page.getByText('File',{exact:true}).first().click();const chooser=page.waitForEvent('filechooser');

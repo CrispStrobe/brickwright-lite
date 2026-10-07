@@ -415,3 +415,46 @@ The predecessor's hosted build at documentation head `07d9265b7` stopped on an
 intentional SPIKE compiler pin assertion left at33ce7380. The expected pin now
 names983aa61f after reviewing and rerunning its unchanged motor/distance/extension
 and roundtrip checks; no assertion was removed. Its original failure is retained.
+
+
+## Automatic native resource import transaction
+
+GUI file/share imports and CLI `to-sb3` now request resource-aware lowering.
+The low-level translator retains its ordinary inline-array mode for callers
+that do not install artwork. Both modes infer the same typed image arrays;
+resource mode emits fresh-frame UUID reporters at native factory expressions.
+A factory lookup therefore remains independent, while ordinary variable aliases
+continue to share their array and image objects.
+
+All valid native animations, including unused gallery entries, receive source
+costumes in an explicit hidden artwork library. Exact matching companions keep
+their UUIDs, frame IDs, layers and palette. Native-only assets receive validated
+version5 documents and secure new UUIDs, chosen once during import preparation.
+The installation revalidates the pending plan against native pixels/timing and
+uses the storage hash of the exact rendered SVG bytes. It prepares every render,
+hash and binding before mutating the owned generated ZIP. Invalid documents,
+conflicting identities or storage failures abort before VM replacement.
+
+Code compilation installs the library before artwork inspection and VM loading.
+Pending imports clear at unrelated project, file, example and From blocks
+boundaries. File/share results check their request identity and original Stage;
+compilation checks its pending plan, Stage and authored buffer after asynchronous
+preparation. CLI import uses the same installer, then validates the bundle before
+writing its output.
+
+The focused regression batch passes51/51. A separate four-test transaction and
+CLI batch additionally observes exported fresh semantics in original PXT:
+mutated alias9, independent lookup2, frame count2. CLI import/export/import retains
+unused artwork and exact source identities, compiles without network attempts,
+and passes actual storage/load/source/save checks. Initial test harness failures
+are retained: live costumes use storage assets rather than serialized md5ext,
+headless stepping needs the normal VM startup sequence and device declarations,
+and saves need the GUI artwork attachment path and include ordinary costume
+source records as well as animation records.
+
+Production browser and emitted ownership qualification for this new transaction
+are pending. Original MakeCode Assets editing/download, clear library navigation
+and protection from accidental gameplay scripts/visibility, and actual library
+rename/delete/Undo/duplicate UI journeys remain open. These are required GUI
+closure work; the explicit role validator currently refuses executable/visible
+libraries. No corpus partial has been reclassified by these synthetic checks.

@@ -21,6 +21,7 @@
  * 3 the runtime is not synced. What was not translated is always printed.
  */
 import fs from 'node:fs';
+import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import JSZip from 'jszip';
@@ -193,11 +194,11 @@ async function main () {
                 {core: '*', radio: '*', microphone: '*'};
             const files = {'main.ts': fs.readFileSync(a.input, 'utf8'),
                 'pxt.json': JSON.stringify({name: base(a.input), dependencies, files: ['main.ts']})};
-            res = mc.importProjectFiles(files, {target: a.target, name: base(a.input)});
+            res = mc.importProjectFiles(files, {target: a.target, name: base(a.input), animationResources: true});
         } else {
             res = /^https?:\/\//.test(a.input) || /^[_S][A-Za-z0-9-]{10,}$/.test(a.input) ?
-                await mc.importShareLink(a.input) :
-                await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)), {name: path.basename(a.input)});
+                await mc.importShareLink(a.input, {animationResources: true}) :
+                await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)), {name: path.basename(a.input), animationResources: true});
         }
         if (res.lang !== 'pseudocode') {
             console.error(`this is a ${res.project && res.project.target} project in ${res.lang}; only translated projects become .sb3`);
@@ -213,7 +214,18 @@ async function main () {
         }
         const blob = await cr.generateSB3();
         const dest = a.output || `${base(a.input) || 'project'}.sb3`;
-        fs.writeFileSync(dest, Buffer.from(await blob.arrayBuffer()));
+        let bytes = new Uint8Array(await blob.arrayBuffer());
+        if (res.animationResources?.length) {
+            const {default: ZIP} = await import('jszip');
+            const {installAnimationImport} = await lib('bw-animation-import.js');
+            const zip = await ZIP.loadAsync(bytes);
+            await installAnimationImport(zip, res.animationResources, data => createHash('md5').update(data).digest('hex'));
+            bytes = await zip.generateAsync({type: 'uint8array', compression: 'DEFLATE'});
+            const {inspectArtwork} = await lib('bw-artwork-bundle.js');
+            const inspection = await inspectArtwork(bytes);
+            if (inspection.outcome !== 'loaded') throw new Error(inspection.reason || 'Invalid animation import');
+        }
+        fs.writeFileSync(dest, bytes);
         if (a.bw) fs.writeFileSync(a.bw, res.code);
         console.log(`wrote ${dest}${a.bw ? ` and ${a.bw}` : ''} — ${res.project.target} project "${res.project.name}", ` +
             `${(res.unsupported || []).length} not translated`);

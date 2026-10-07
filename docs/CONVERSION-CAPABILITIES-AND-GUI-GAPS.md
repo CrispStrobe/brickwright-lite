@@ -401,6 +401,16 @@ it does not promise a pristine copy of a previously mutated runtime snapshot
 until restart. Custom-palette original RGB equivalence remains unqualified.
 The locked corpus remains90 translated /93 partial /1 malformed.
 
+Automatic native import follow-up: GUI file/share and CLI import now use the
+same validated library installation transaction, including unused assets and
+fresh UUID reporter bindings. The transaction/CLI test observes original-PXT
+alias mutation9 versus independent lookup2 and preserves source through repeated
+imports. Production browser and ownership qualification for this delta are
+pending. Library navigation, script/visibility protection and actual
+rename/delete/Undo/duplicate UI journeys remain required; original Assets
+editing/download and corpus-wide closure are still open. See the
+[transaction contract](ARCADE-ANIMATION-INTERCHANGE.md#automatic-native-resource-import-transaction).
+
 ### U05 — rotation/data/resources/callbacks
 
 After F4 integration select radians/degrees/data through real block menus and

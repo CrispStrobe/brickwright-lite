@@ -1258,6 +1258,9 @@ class PseudocodeImporter extends React.Component {
         this._onLoadPseudocode = event => {
             const code = event && event.detail && event.detail.code;
             if (typeof code !== 'string') return;
+            this._animationImport = null;
+            this._makeCodeRequest = null;
+            this._codeArtwork = null;
             this.setState({lang: 'pseudocode', output: null, status: '',
                 buffers: {...this.state.buffers, pseudocode: code}}, () => {
                 Promise.resolve(this.compile()).catch(e => this.setState({status: e.message}));
@@ -1285,6 +1288,8 @@ class PseudocodeImporter extends React.Component {
             // sidecar leaves the current authoring transaction untouched.
             if (outcome === 'legacy' || outcome === 'loaded') {
                 this._codeArtwork = null;
+                this._animationImport = null;
+                this._makeCodeRequest = null;
                 this.setState({uploads: []});
             }
             // The status line below is the Code tab's own surface, and opening a
@@ -1481,6 +1486,8 @@ class PseudocodeImporter extends React.Component {
         const reader = new FileReader();
         reader.onload = () => {
             this._codeArtwork = null;
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             this.setState(st => ({
             lang, uploads: [],
             // Same exclusivity the editor's own onChange uses: one authored
@@ -1732,6 +1739,7 @@ class PseudocodeImporter extends React.Component {
     }
 
     openArtefactFile (file) {
+        const request = this._makeCodeRequest = {stage: this.props.vm.runtime.getTargetForStage()};
         this.setState({status: this.L.mcReading(file.name)});
         const reader = new FileReader();
         reader.onload = async () => {
@@ -1739,13 +1747,14 @@ class PseudocodeImporter extends React.Component {
             try {
                 const {importArtefact} = await import(
                     /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
-                res = await importArtefact(new Uint8Array(reader.result), {name: file.name});
+                res = await importArtefact(new Uint8Array(reader.result), {name: file.name, animationResources: true});
             } catch (err) {
                 this.setState({status: err && err.code === 'NO_EMBEDDED_SOURCE' ?
                     this.L.mcNoSource(file.name, err.format) :
                     this.L.mcFailed(file.name, (err && err.message) || String(err))});
                 return;
             }
+            if (this._makeCodeRequest !== request || this.props.vm.runtime.getTargetForStage() !== request.stage) return;
             // A downloaded MicroPython hex is runtime + script, so importing
             // one to read its Python also hands us the runtime the flash
             // button needs. Keeping it here means that button never has to
@@ -1783,6 +1792,8 @@ class PseudocodeImporter extends React.Component {
             return;
         }
         this._codeArtwork = null;
+        this._animationImport = null;
+        this._makeCodeRequest = null;
 
         // What the "MakeCode source" download hands back: the recovered
         // files themselves, untouched by any translation.
@@ -1810,6 +1821,8 @@ class PseudocodeImporter extends React.Component {
                 res.note === 'ev3' ? this.L.mcEv3(label, res.project.name) :
                     this.L.mcMicrobit(label, res.project.name);
         }
+        this._animationImport = res.animationResources?.length ?
+            {resources: res.animationResources, stage: this.props.vm.runtime.getTargetForStage()} : null;
         if (res.warnings?.length) status += ` · ${res.warnings.join(' · ')}`;
         this.setState({
             lang: res.lang,
@@ -1842,10 +1855,12 @@ class PseudocodeImporter extends React.Component {
         const url = await promptAsync(this.L.mcSharePrompt, '');
         if (!url || !url.trim()) return;
         this.setState({status: this.L.mcShareLoading});
+        const request = this._makeCodeRequest = {stage: this.props.vm.runtime.getTargetForStage()};
         try {
             const {importShareLink} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
-            const res = await importShareLink(url.trim());
+            const res = await importShareLink(url.trim(), {animationResources: true});
+            if (this._makeCodeRequest !== request || this.props.vm.runtime.getTargetForStage() !== request.stage) return;
             this.applyMakeCodeImport(res, res.project.name || url.trim());
         } catch (err) {
             this.setState({status: this.L.mcFailed(url.trim(), (err && err.message) || String(err))});
@@ -4347,6 +4362,8 @@ class PseudocodeImporter extends React.Component {
             // Nano + 8-LED chaser showed an stc12, 2026-08-17). setState is
             // async — compile in its callback, on the NEW buffer.
             this._codeArtwork = null;
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             this.setState({busy: false, lang: 'pseudocode', output: null, uploads: [],
                 status: warnings.length ? warnings.join('; ') : '',
                 buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}},
@@ -4431,6 +4448,8 @@ class PseudocodeImporter extends React.Component {
         const src = loaded && loaded[key];
         if (!src) return;
         this._codeArtwork = null;
+        this._animationImport = null;
+        this._makeCodeRequest = null;
         this.setState({uploads: []});
         this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();
@@ -4533,6 +4552,9 @@ class PseudocodeImporter extends React.Component {
         const lang = typeof pseudocode === 'string' ? 'pseudocode' : this.state.lang;
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
+        const pending = this._animationImport;
+        const stage = this.props.vm.runtime.getTargetForStage();
+        const activeAtStart = this.activeCode();
         try {
             let source = typeof pseudocode === 'string' ? pseudocode : this.activeCode();
             let parseWarnings = [];
@@ -4588,20 +4610,31 @@ class PseudocodeImporter extends React.Component {
             const blob = await creator.generateSB3();
             let projectBytes = await blob.arrayBuffer();
             let artwork = null;
-            if (context) {
+            if (context || pending) {
                 const module = await import('jszip');
                 const ZIP = module.default || module;
                 const zip = await ZIP.loadAsync(projectBytes);
-                retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
-                const revision = captureCodeArtworkRevision(this.props.vm, context);
+                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                const revision = context && captureCodeArtworkRevision(this.props.vm, context);
+                if (pending) {
+                    if (pending.stage !== stage) throw new Error('The loaded project changed since this animation import. Import it again.');
+                    const {installAnimationImport} = await import('../../lib/bw-animation-import.js');
+                    const storage = this.props.vm.runtime.storage;
+                    await installAnimationImport(zip, pending.resources, bytes => storage.createAsset(
+                        storage.AssetType.ImageVector, storage.DataFormat.SVG, bytes, null, true).assetId);
+                }
                 projectBytes = await zip.generateAsync({type: 'arraybuffer', compression: 'DEFLATE'});
                 artwork = await inspectArtwork(projectBytes);
-                if (artwork.outcome === 'invalid' || !codeArtworkMatches(this.props.vm, context) ||
-                    !codeArtworkRevisionMatches(this.props.vm, revision)) {
+                if (artwork.outcome === 'invalid' || (context && (!codeArtworkMatches(this.props.vm, context) ||
+                    !codeArtworkRevisionMatches(this.props.vm, revision)))) {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
+            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending ||
+                this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
             await this.props.vm.loadProject(projectBytes);
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             if (artwork) {
                 applyArtwork(artwork, this.props.vm);
                 this._codeArtwork = captureCodeArtwork(this.props.vm, declarations);
@@ -4731,6 +4764,8 @@ class PseudocodeImporter extends React.Component {
             this.setState({importedPython: false});
             const baseline = new SB3Creator();
             baseline.parse(buffers.pseudocode);
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             this._codeArtwork = captureCodeArtwork(this.props.vm, baseline.project);
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
             this.setState({
