@@ -101,3 +101,50 @@ test('Stop keeps image lifetime; restart and project load rebuild resource handl
         assert.equal(g.arcade._image(BWValues.arrayValue(g.runtime, after)[0]).pixels[0], 2);
     }
 });
+
+// Real installed VM source, owned overlay extension class. Headless: no
+// renderer/storage or GUI applyArtwork; this qualifies deserialization/events,
+// resource and handle lifetimes, not artwork restoration or rendered pixels.
+test('actual VM loadProject clears prior publications without GUI artwork restoration', async () => {
+    const {importGuiDependency} = await import('./helpers/bw-integrated.mjs');
+    const VM = (await importGuiDependency('scratch-vm/src/index.js')).default;
+    const vm = new VM(), arcade = new Arcade(vm.runtime);
+    const service = vm.extensionManager._registerInternalExtension(arcade);
+    vm.extensionManager._loadedExtensions.set('arcade', service);
+    const project = name => JSON.stringify({targets: [{isStage: true, name: 'Stage', variables: {marker: ['marker', name]}, lists: {},
+        broadcasts: {}, blocks: {}, comments: {}, currentCostume: 0,
+        costumes: [{assetId: 'cd21514d0531fdffb22204e0ec5ed84a', name: 'backdrop', dataFormat: 'svg',
+            md5ext: 'cd21514d0531fdffb22204e0ec5ed84a.svg', rotationCenterX: 240, rotationCenterY: 180}], sounds: [],
+        volume: 100, layerOrder: 0}], monitors: [], extensions: [], meta: {semver: '3.0.0'}});
+    try {
+        await vm.loadProject(project('Published project'));
+        const {resource} = setup();
+        vm.runtime.bwArcadeAnimationResources.set(resource.id, resource);
+        const first = arcade.animationAssetFrames({RESOURCE: resource.id});
+        const firstImage = BWValues.arrayValue(vm.runtime, first)[0];
+        assert.equal(arcade._image(firstImage).pixels[0], 2);
+        vm.greenFlag();
+        assert.strictEqual(vm.runtime.bwArcadeAnimationResources.get(resource.id), resource);
+        const restarted = arcade.animationAssetFrames({RESOURCE: resource.id});
+        assert.notStrictEqual(restarted, first, 'real greenFlag rebuilds handles');
+        vm.stopAll();
+        assert.strictEqual(arcade.animationAssetFrames({RESOURCE: resource.id}), restarted);
+        let loaded = 0;
+        vm.runtime.on('PROJECT_LOADED', () => loaded++);
+        await vm.loadProject(project('Empty replacement'));
+        assert.equal(loaded, 1, 'actual loader emitted the lifecycle event');
+        assert.equal(vm.runtime.getTargetForStage().variables.marker.value, 'Empty replacement');
+        assert.equal(vm.runtime.bwArcadeAnimationResources.size, 0);
+        assert.equal(BWValues.arrayValue(vm.runtime, restarted), undefined);
+        assert.equal(arcade._image(firstImage), null);
+        const errors = [];
+        vm.runtime.on('BLOCKS_ERROR', message => errors.push(message));
+        assert.equal(BWValues.decode(arcade.animationAssetFrames({RESOURCE: resource.id})), undefined);
+        assert.match(errors[0], /art:walk.*missing or deleted/);
+        assert.match(arcade.getAnimationAssets()[0].text, /No animation assets/);
+        vm.greenFlag();
+        assert.equal(vm.runtime.bwArcadeAnimationResources.size, 0, 'restart cannot revive prior project artwork');
+    } finally {
+        vm.quit();
+    }
+});
