@@ -20,3 +20,19 @@ test('export retains saved scalar values before the first flag script', async ()
     assert.ok(run.serial.some(entry => String(entry.text).includes('saved text')));
     assert.ok(run.serial.some(entry => String(entry.text).includes('42')));
 });
+
+
+test('saved zero remains observable before text and Boolean assignment without numeric inference', async () => {
+    const creator = new SB3Creator();
+    creator.parse('DEVICE ARCADE\nGLOBAL text\nGLOBAL flag\nWHEN flag clicked:\n  arcade log (text)\n  arcade log (flag)\n  set text to "changed"\n  set flag to (compare value 1 op "===" with 1)\n  arcade log (text)\n  arcade log (flag)\n');
+    assert.deepEqual(creator.warnings, []);
+    const exported = projectToArcade(creator.project);
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /let text: any = 0/);
+    assert.match(exported.ts, /let flag: any = 0/);
+    const compiled = await compile('arcade', exported.files);
+    assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+    const run = await runArcadeSim(compiled.outfiles['binary.js'], {ms: 100});
+    assert.equal(run.error, null);
+    assert.deepEqual(run.serial.map(entry => String(entry.text).trim()), ['0','0','changed','true']);
+});
