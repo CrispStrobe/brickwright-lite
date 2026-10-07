@@ -247,8 +247,13 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // two Arcade animation resource reporters, native literal menu shadows and
     // quoted stable IDs; no SPIKE word changed. Exact-head producer checks
     // passed, merged tree equals reviewed fd1d93fa, and this fixture is rerun.
+    // PIN MOVED 33ce7380 -> 983aa61f (2026-10-07, sb3-creator#63):
+    // fresh Arcade resource lookup and reversible resource bridge metadata only.
+    // Reviewed producer merge tree matches c7b74f1b; all enabled checks passed.
+    // SPIKE declarations, extension URL, motor fields, distance and decompile
+    // assertions below are unchanged and rerun at this exact consumer pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '33ce7380e388e20b7c3a30e8ea84d1b774c30248');
+        '983aa61f2fa44901074763b7347588b4e210fc77');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
