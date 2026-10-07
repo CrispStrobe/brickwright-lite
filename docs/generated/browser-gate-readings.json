@@ -7148,6 +7148,12 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — Arcade rotation, data, controller and file roundtrip": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

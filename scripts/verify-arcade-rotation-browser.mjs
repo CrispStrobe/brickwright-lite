@@ -67,6 +67,10 @@ try {
         }, null, {timeout: 30000});
     };
     await apply();
+    // Prove the successful apply survives leaving Code: the editor must actually
+    // disappear before using the generated Blocks project's console controls.
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await editor.waitFor({state: 'hidden', timeout: 30000});
     // Select the product's actual console view after DEVICE ARCADE is applied.
     await page.getByTitle('Game Console', {exact: true}).click();
     const flag = page.locator('[class*="green-flag_green-flag"]').first();
