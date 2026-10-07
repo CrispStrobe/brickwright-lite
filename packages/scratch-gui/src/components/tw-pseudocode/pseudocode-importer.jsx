@@ -1456,8 +1456,6 @@ class PseudocodeImporter extends React.Component {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
         if (!file) return;
-        this._codeArtwork = null;
-        this.setState({uploads: []});
         this.publishGameControls(null);
         this._makeCodeProject = null;
         // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
@@ -1474,8 +1472,10 @@ class PseudocodeImporter extends React.Component {
             return;
         }
         const reader = new FileReader();
-        reader.onload = () => this.setState(st => ({
-            lang,
+        reader.onload = () => {
+            this._codeArtwork = null;
+            this.setState(st => ({
+            lang, uploads: [],
             // Same exclusivity the editor's own onChange uses: one authored
             // buffer at a time, so a stale translation of the PREVIOUS source
             // cannot sit in another tab pretending to match.
@@ -1484,7 +1484,9 @@ class PseudocodeImporter extends React.Component {
             asmMode: lang === 'asm' ? 'source' : st.asmMode,
             output: null,
             status: this.L.openDone(file.name, LANG_LABEL[lang] || lang)
-        }));
+            }));
+        };
+        reader.onerror = () => this.setState({status: this.L.stError(`Could not read ${file.name}`)});
         reader.readAsText(file);
     }
 
@@ -1762,7 +1764,6 @@ class PseudocodeImporter extends React.Component {
      * the part worth having in one place.
      */
     applyMakeCodeImport (res, label) {
-        this._codeArtwork = null;
         // Whatever arrived, the previous project's touch controls are gone.
         this.publishGameControls(null);
 
@@ -1774,6 +1775,7 @@ class PseudocodeImporter extends React.Component {
             this.runArduboyProgram(res.hex, label);
             return;
         }
+        this._codeArtwork = null;
 
         // What the "MakeCode source" download hands back: the recovered
         // files themselves, untouched by any translation.
@@ -4272,8 +4274,6 @@ class PseudocodeImporter extends React.Component {
     // SB3Creator.retargetPseudocode; a refusal shows its reasons in the status
     // line (the tab's existing warning surface) and loads nothing.
     async loadCatalogExample (ex, deviceOverride) {
-        this._codeArtwork = null;
-        this.setState({uploads: []});
         this.publishGameControls(null);
         this._lastCatalogExample = ex;
         // A row's device chip passes its device explicitly; a plain row
@@ -4321,7 +4321,8 @@ class PseudocodeImporter extends React.Component {
             // chip and the debugger said 'no pins declared' (owner report:
             // Nano + 8-LED chaser showed an stc12, 2026-08-17). setState is
             // async — compile in its callback, on the NEW buffer.
-            this.setState({busy: false, lang: 'pseudocode', output: null,
+            this._codeArtwork = null;
+            this.setState({busy: false, lang: 'pseudocode', output: null, uploads: [],
                 status: warnings.length ? warnings.join('; ') : '',
                 buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}},
             () => {

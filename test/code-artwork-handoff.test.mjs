@@ -95,3 +95,58 @@ test('explicit new SVG upload overrides the retained first costume', () => {
     assert.deepEqual(project.targets[1].costumes[0], {name: 'costume1'});
     assert.equal(project.targets[1].costumes[1].assetId, 'walk');
 });
+
+// Execute the real source-file method: rejected/unreadable inputs must keep
+// the old Code-to-graphics handoff, because they have not replaced its source.
+import {readFileSync} from 'node:fs';
+import {scopeAfter} from './helpers/js-scope.mjs';
+const importer = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
+const openBody = scopeAfter(importer, 'openCodeFile (e) {');
+const openSetup = () => {
+    let reader;
+    class Reader {constructor () {reader = this;} readAsText () {}}
+    const retained = {original: true};
+    const component = {_codeArtwork: retained, state: {lang: 'pseudocode', uploads: [{svg: 'pending'}],
+        buffers: {pseudocode: 'old program'}}, publishGameControls () {}, openArtefactFile () {},
+        langForFile: name => name.endsWith('.bw') ? 'pseudocode' : null,
+        L: {openBad: name => `Bad ${name}`, openDone: name => `Opened ${name}`, stError: message => message},
+        setState (patch) {Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch);}};
+    component.openCodeFile = new Function('FileReader', 'isImportableArtefact', 'LANG_LABEL',
+        `return function (e) ${openBody}`)(Reader, name => name.endsWith('.hex'), {});
+    const open = name => component.openCodeFile({target: {files: [{name}], value: name}});
+    return {component, retained, open, reader: () => reader};
+};
+for (const name of ['unsupported.foo', 'corrupt.hex']) {
+    test(`rejected ${name} retains the prior artwork handoff and pending uploads`, () => {
+        const s = openSetup(); s.open(name);
+        assert.equal(s.component._codeArtwork, s.retained);
+        assert.deepEqual(s.component.state.uploads, [{svg: 'pending'}]);
+        assert.equal(s.component.state.buffers.pseudocode, 'old program');
+    });
+}
+test('a failed source read retains artwork; a completed source read clears it atomically', () => {
+    const s = openSetup(); s.open('new.bw');
+    assert.equal(s.component._codeArtwork, s.retained, 'opening the picker is not a successful read');
+    s.reader().onerror();
+    assert.equal(s.component._codeArtwork, s.retained);
+    assert.deepEqual(s.component.state.uploads, [{svg: 'pending'}]);
+    s.reader().result = 'new program'; s.reader().onload();
+    assert.equal(s.component._codeArtwork, null);
+    assert.deepEqual(s.component.state.uploads, []);
+    assert.equal(s.component.state.buffers.pseudocode, 'new program');
+});
+
+
+test('a freshly edited Asset is authoritative even while VM descriptor hashes are stale', () => {
+    const s = setup(); const current = s.actor.sprite.costumes[0];
+    current.asset = {assetId: 'new-render', dataFormat: 'svg', data: new Uint8Array([8, 8, 9])};
+    setCostumeDocument(current, animatedDocument());
+    const project = clone(s.declarations);
+    retainCodeArtwork(s.zip, project, s.vm, s.context);
+    assert.equal(current.md5ext, 'actor.svg', 'fixture reproduces stale descriptor');
+    assert.equal(project.targets[1].costumes[0].md5ext, 'new-render.svg');
+    assert.equal(project.targets[1].costumes[0].assetId, 'new-render');
+    assert.deepEqual(s.files.get('new-render.svg'), new Uint8Array([8, 8, 9]));
+    const records = JSON.parse(s.files.get(ARTWORK_PATH)).costumes;
+    assert.equal(records.find(row => row.targetIndex === 1 && row.costumeIndex === 0).renderedMd5ext, 'new-render.svg');
+});

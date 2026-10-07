@@ -72,8 +72,11 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
             const costume = liveCostumes.includes(row.costume) ? row.costume : null;
             if (!costume) throw new Error(`Cannot preserve artwork: missing costume ${generated.name}/${declaration}`);
             const asset = costume.asset;
-            const filename = costume.md5ext || costume.md5 || `${costume.assetId}.${costume.dataFormat}`;
-            if (!asset?.data || !filename || `${asset.assetId}.${asset.dataFormat}` !== filename) {
+            // updateSvg may publish the new Asset before refreshing legacy md5ext.
+            // The Asset owns both the current bytes and their content identity.
+            const filename = asset?.assetId && ['svg', 'png'].includes(asset.dataFormat) ?
+                `${asset.assetId}.${asset.dataFormat}` : null;
+            if (!asset?.data || !filename) {
                 throw new Error(`Cannot preserve artwork: asset unavailable for ${generated.name}/${costume.name}`);
             }
             // VM costume descriptors include an Asset object. Keep the portable
@@ -85,7 +88,7 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
             }
             descriptor.md5ext = filename;
             descriptor.assetId = asset.assetId;
-            descriptor.dataFormat = costume.dataFormat || asset.dataFormat;
+            descriptor.dataFormat = asset.dataFormat;
             // Keep the declaration metadata for subsequent Code generations.
             for (const field of ['_spec', '_shapeSpec']) {
                 if (generatedCostume[field] !== undefined) descriptor[field] = generatedCostume[field];
