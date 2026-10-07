@@ -457,3 +457,8 @@ if (!check) {
         process.exit(1);
     }
 }
+
+// The authoring vocabulary names this pin and inventories these exact dialect
+// words. Regenerate it with a sync; check it without writing in check mode.
+await execFileP(process.execPath, [path.join(here, 'generate-arcade-authoring-inventory.mjs'),
+    ...(check ? ['--check'] : [])], {cwd: path.join(here, '..')});

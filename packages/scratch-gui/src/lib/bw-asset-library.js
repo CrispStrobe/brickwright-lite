@@ -3,6 +3,7 @@
  * ignores the private runtime property. Libraries contain artwork, never scripts.
  */
 const ASSET_LIBRARY_ROLE = Object.freeze({version: 1, kind: 'arcade-animation'});
+const guarded = new WeakSet();
 const getAssetLibraryRole = target => target?.bwAssetLibrary || null;
 const validateAssetLibraryTarget = (target, role) => {
     if (!role || role.version !== 1 || role.kind !== ASSET_LIBRARY_ROLE.kind) {
@@ -19,6 +20,23 @@ const validateAssetLibraryTarget = (target, role) => {
 const setAssetLibraryRole = (target, role) => {
     validateAssetLibraryTarget(target, role);
     Object.defineProperty(target, 'bwAssetLibrary', {value: Object.freeze({...role}), configurable: true});
+    if (!guarded.has(target)) {
+        guarded.add(target);
+        // The UI hides gameplay editing. Keep the model safe against queued
+        // Blockly events and runtime Show commands as selection changes.
+        if (target.setVisible) {
+            const setVisible = target.setVisible;
+            target.setVisible = function (visible) {
+                return setVisible.call(this, this.bwAssetLibrary ? false : visible);
+            };
+        }
+        if (target.blocks?.blocklyListen) {
+            const listen = target.blocks.blocklyListen;
+            target.blocks.blocklyListen = function (event) {
+                if (!target.bwAssetLibrary) return listen.call(this, event);
+            };
+        }
+    }
 };
 const validateAssetLibraries = (project, libraries = []) => {
     if (!Array.isArray(libraries)) throw new Error('Invalid asset library records');

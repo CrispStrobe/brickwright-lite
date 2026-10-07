@@ -548,6 +548,67 @@ try{
         }
         report.assetLibrary.guiAndCliOriginalExport=true;
         report.journey.push('GUI and CLI export omit the library actor, retain edited native/rich resources and run in original PXT');
+        await pixels('Arcade artwork');
+        await page.getByRole('button',{name:'Scratch Stage',exact:true}).click();
+        assert.deepEqual(await page.getByTestId('bw-image-target').locator('optgroup[label="Artwork libraries"] option').allTextContents(),['Arcade artwork']);
+        await page.getByTestId('bw-library-sprite-label').waitFor({state:'visible'});
+        const info=page.getByTestId('bw-sprite-info');
+        assert.equal(await info.getByRole('button',{name:'Show sprite',exact:true}).isDisabled(),true);
+        assert.equal(await info.getByPlaceholder('x',{exact:true}).isDisabled(),true);
+        const nameInput=info.getByPlaceholder('Name',{exact:true});
+        assert.equal(await nameInput.isDisabled(),false);
+        await nameInput.fill('Robot artwork');await nameInput.press('Enter');
+        await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getName()==='Robot artwork');
+        assert.equal((await resource())[0].id,published.id);
+        const renamedLibrary=await snapshot('library-renamed',{bundleVersion:7});
+        assert.deepEqual(renamedLibrary.document,retainedLibrary.document);
+        await page.getByRole('tab',{name:'Blocks',exact:true}).click();
+        await page.getByTestId('bw-library-notice').waitFor({state:'visible'});
+        assert.equal(await page.locator('.blocklySvg:visible').count(),0);
+        await page.screenshot({path:path.join(path.dirname(out),'library-blocks-notice.png')});
+        await page.getByRole('tab',{name:'Sounds',exact:true}).click();
+        await page.getByTestId('bw-library-notice').waitFor({state:'visible'});
+        await page.getByTestId('bw-library-edit-artwork').click();
+        await pixels('Robot artwork');
+        const tile=page.locator('[class*="sprite-selector-item_sprite-selector-item"]').filter({has:page.getByText('Robot artwork',{exact:true})});
+        await tile.click({button:'right'});
+        await page.locator('.react-contextmenu--visible').getByText('duplicate',{exact:true}).click();
+        await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t=>t.bwAssetLibrary).length===2);
+        const lifecycle=await page.evaluate(()=>{
+            const vm=window.__brickwrightStore.getState().scratchGui.vm;
+            return vm.runtime.targets.filter(t=>t.bwAssetLibrary).map(t=>({name:t.getName(),visible:t.visible,
+                scripts:t.blocks.getScripts().length,role:t.bwAssetLibrary}));
+        });
+        assert.equal(lifecycle.length,2);assert.ok(lifecycle.every(t=>!t.visible&&!t.scripts));
+        const duplicatedResources=await resource();assert.equal(duplicatedResources.length,2);
+        const copyId=duplicatedResources.find(row=>row.id!==published.id).id;assert.notEqual(copyId,published.id);
+        const a={...duplicatedResources[0],id:null,revision:null},b={...duplicatedResources[1],id:null,revision:null};assert.deepEqual(a,b);
+        await pixels('Robot artwork');await tile.getByRole('button',{name:'Delete',exact:true}).click();
+        await page.getByRole('dialog',{name:'Confirm Asset Deletion'}).getByRole('button',{name:'Delete',exact:true}).click();
+        await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t=>t.bwAssetLibrary).length===1);
+        assert.deepEqual((await resource()).map(row=>row.id),[copyId]);
+        await page.getByText('Edit',{exact:true}).first().click();
+        await page.getByText('Restore Sprite',{exact:true}).click();
+        await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t=>t.bwAssetLibrary).length===2);
+        assert.deepEqual((await resource()).map(row=>row.id).sort(),[published.id,copyId].sort());
+        await page.getByText('File',{exact:true}).first().click();const lifeDownload=page.waitForEvent('download');
+        await page.getByText('Save to your computer',{exact:true}).click();
+        const lifeFile=path.join(path.dirname(out),'animation-library-lifecycle.sb3');await(await lifeDownload).saveAs(lifeFile);
+        const lifeZip=await JSZip.loadAsync(await fs.readFile(lifeFile));
+        const lifeSource=JSON.parse(await lifeZip.file('brickwright/artwork/v1.json').async('text'));
+        assert.equal(lifeSource.libraries.length,2);
+        assert.deepEqual(lifeSource.costumes.filter(r=>r.document.animation?.resource).map(r=>r.document.animation.resource.id).sort(),[published.id,copyId].sort());
+        const lifeStage=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+        await page.getByText('File',{exact:true}).first().click();const lifeChooser=page.waitForEvent('filechooser');
+        await page.getByText('Load from your computer',{exact:true}).click();await(await lifeChooser).setFiles(lifeFile);
+        await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,lifeStage);
+        await flag().click();await phase(1);await observePlayback('library-lifecycle-reopened',[4,5,9]);await stop().click();
+        report.librarySafeguards={artworkGroup:true,renamePreservesSource:true,visibilityDisabled:true,
+            blocksUnavailable:true,soundsUnavailable:true,duplicateRenewsIdentity:true,deleteAndUndoRestoresIdentity:true,
+            libraries:lifecycle,sb3Reopened:true};
+        report.journey.push('library navigation/rename/disabled gameplay controls and Blocks/Sounds notices protect artwork');
+        report.journey.push('actual duplicate/delete/Restore Sprite/save/reopen retains both hidden roles, renews copy UUID and restores bound playback');
+
 
 
 

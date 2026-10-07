@@ -352,7 +352,12 @@ class CostumeTab extends React.Component {
                     className={styles.targetSelect}
                 >
                     <optgroup label={intl.locale.startsWith('de') ? 'Kostüme' : 'Costumes'}>
-                        {Object.values(this.props.sprites).map(sprite => (
+                        {Object.values(this.props.sprites).filter(sprite => !vm.runtime.getTargetById(sprite.id)?.bwAssetLibrary).map(sprite => (
+                            <option key={sprite.id} value={sprite.id}>{sprite.name}</option>
+                        ))}
+                    </optgroup>
+                    <optgroup label={intl.locale.startsWith('de') ? 'Bildbibliotheken' : 'Artwork libraries'}>
+                        {Object.values(this.props.sprites).filter(sprite => vm.runtime.getTargetById(sprite.id)?.bwAssetLibrary).map(sprite => (
                             <option key={sprite.id} value={sprite.id}>{sprite.name}</option>
                         ))}
                     </optgroup>

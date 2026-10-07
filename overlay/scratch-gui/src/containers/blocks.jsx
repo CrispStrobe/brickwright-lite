@@ -34,6 +34,7 @@ import {blocklyConfirm} from '../lib/native-dialog.js';
 
 import {
     activateTab,
+    COSTUMES_TAB_INDEX,
     SOUNDS_TAB_INDEX
 } from '../reducers/editor-tab';
 
@@ -45,6 +46,8 @@ const addFunctionListener = (object, property, callback) => {
         return result;
     };
 };
+
+const AssetLibraryNotice = React.lazy(() => import('../components/asset-library/notice.jsx'));
 
 const DroppableBlocks = DropAreaHOC([
     DragConstants.BACKPACK_CODE
@@ -138,7 +141,7 @@ class Blocks extends React.Component {
         this._undoStateListener = () => notifyUndoState();
         this.workspace.addChangeListener(this._undoStateListener);
         this._unregisterUndo = registerUndoSurface('blocks', {
-            canUndo: () => !!(this.workspace && this.workspace.undoStack_ && this.workspace.undoStack_.length),
+            canUndo: () => !this.props.artworkOnly && !!(this.workspace && this.workspace.undoStack_ && this.workspace.undoStack_.length),
             undo: () => {
                 if (!this.workspace) return false;
                 this.workspace.undo(false);
@@ -216,6 +219,7 @@ class Blocks extends React.Component {
     }
     shouldComponentUpdate (nextProps, nextState) {
         return (
+            this.props.artworkOnly !== nextProps.artworkOnly ||
             this.state.prompt !== nextState.prompt ||
             this.props.isVisible !== nextProps.isVisible ||
             this._renderedToolboxXML !== nextProps.toolboxXML ||
@@ -227,6 +231,7 @@ class Blocks extends React.Component {
         );
     }
     componentDidUpdate (prevProps) {
+        if (this.props.artworkOnly !== prevProps.artworkOnly) this.workspace.setVisible(this.props.isVisible && !this.props.artworkOnly);
         // If any modals are open, call hideChaff to close z-indexed field editors
         if (this.props.anyModalVisible && !prevProps.anyModalVisible) {
             this.ScratchBlocks.hideChaff();
@@ -250,7 +255,7 @@ class Blocks extends React.Component {
         // @todo hack to reload the workspace due to gui bug #413
         if (this.props.isVisible) { // Scripts tab
             activateUndoSurface('blocks');
-            this.workspace.setVisible(true);
+            this.workspace.setVisible(!this.props.artworkOnly);
             if (prevProps.locale !== this.props.locale || this.props.locale !== this.props.vm.getLocale()) {
                 // call setLocale if the locale has changed, or changed while the blocks were hidden.
                 // vm.getLocale() will be out of sync if locale was changed while not visible
@@ -439,6 +444,7 @@ class Blocks extends React.Component {
             let {editingTarget: target, runtime} = this.props.vm;
             const stage = runtime.getTargetForStage();
             if (!target) target = stage; // If no editingTarget, use the stage
+            if (target?.bwAssetLibrary) return '<xml xmlns="http://www.w3.org/1999/xhtml"></xml>';
 
             const stageCostumes = stage.getCostumes();
             const targetCostumes = target.getCostumes();
@@ -624,6 +630,7 @@ class Blocks extends React.Component {
         ws.toolbox_.scrollToCategoryById('myBlocks');
     }
     handleDrop (dragInfo) {
+        if (this.props.vm.editingTarget?.bwAssetLibrary) return;
         fetch(dragInfo.payload.bodyUrl)
             .then(response => response.json())
             .then(blocks => this.props.vm.shareBlocksToTarget(blocks, this.props.vm.editingTarget.id))
@@ -635,6 +642,8 @@ class Blocks extends React.Component {
     render () {
         /* eslint-disable no-unused-vars */
         const {
+            artworkOnly,
+            onEditArtwork,
             anyModalVisible,
             canUseCloud,
             customProceduresVisible,
@@ -659,7 +668,11 @@ class Blocks extends React.Component {
         /* eslint-enable no-unused-vars */
         return (
             <React.Fragment>
+                {artworkOnly && <React.Suspense fallback={null}>
+                    <AssetLibraryNotice locale={this.props.locale} onEditArtwork={onEditArtwork} />
+                </React.Suspense>}
                 <DroppableBlocks
+                    style={artworkOnly ? {display: 'none'} : undefined}
                     componentRef={this.setBlocks}
                     onDrop={this.handleDrop}
                     {...props}
@@ -699,6 +712,8 @@ class Blocks extends React.Component {
 }
 
 Blocks.propTypes = {
+    artworkOnly: PropTypes.bool,
+    onEditArtwork: PropTypes.func,
     anyModalVisible: PropTypes.bool,
     canUseCloud: PropTypes.bool,
     customProceduresVisible: PropTypes.bool,
@@ -757,6 +772,7 @@ Blocks.defaultProps = {
 };
 
 const mapStateToProps = state => ({
+    artworkOnly: Boolean(state.scratchGui.vm.editingTarget?.bwAssetLibrary),
     anyModalVisible: (
         Object.keys(state.scratchGui.modals).some(key => state.scratchGui.modals[key]) ||
         state.scratchGui.mode.isFullScreen
@@ -771,6 +787,7 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = dispatch => ({
+    onEditArtwork: () => dispatch(activateTab(COSTUMES_TAB_INDEX)),
     onActivateColorPicker: callback => dispatch(activateColorPicker(callback)),
     onActivateCustomProcedures: (data, callback) => dispatch(activateCustomProcedures(data, callback)),
     onOpenConnectionModal: id => {

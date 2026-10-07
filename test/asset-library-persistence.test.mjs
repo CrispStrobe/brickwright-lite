@@ -6,9 +6,10 @@ import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {ASSET_LIBRARY_ROLE, getAssetLibraryRole, setAssetLibraryRole, assetLibraryRecords,
     withoutAssetLibraries, validateAssetLibraries, restoreAssetLibraryRole} from '../overlay/scratch-gui/src/lib/bw-asset-library.js';
 import {ARTWORK_PATH, ARTWORK_FORMAT, inspectArtwork, applyArtwork, writeArtworkToZip,
-    getCostumeDocument} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
+    getCostumeDocument, attachArtwork} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 import {captureCodeArtwork, retainCodeArtwork, captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
+import {deleteTargetArtwork, duplicateTargetArtwork} from '../overlay/scratch-gui/src/lib/bw-target-artwork-operations.js';
 const copy = value => JSON.parse(JSON.stringify(value));
 const role = {...ASSET_LIBRARY_ROLE};
 const document = () => {
@@ -158,4 +159,67 @@ test('delayed Undo/duplicate role restoration uses the captured target and rejec
     vm.runtime.targets=[stage,unrelated];
     assert.equal(restoreAssetLibraryRole(vm,library,role,stage),false);
     assert.equal(getAssetLibraryRole(library),null);
+});
+
+
+test('library model ignores queued Blockly creation and Show, while normal actors remain editable',async()=>{
+    const f=await fixture(),vm=await open(f.bytes);
+    try {
+        const library=vm.runtime.targets.find(getAssetLibraryRole),actor=vm.runtime.targets.find(t=>t.getName()==='Actor');
+        const event={type:'create',blockId:'queued',xml:{outerHTML:'<block type="event_whenflagclicked" id="queued" x="0" y="0"></block>'}};
+        vm.setEditingTarget(library.id);vm.blockListener(event);vm.postSpriteInfo({visible:true});
+        assert.deepEqual(library.blocks._blocks,{});assert.equal(library.visible,false);
+        vm.setEditingTarget(actor.id);vm.blockListener(event);vm.postSpriteInfo({visible:true});
+        assert.equal(actor.blocks._blocks.queued.opcode,'event_whenflagclicked');assert.equal(actor.visible,true);
+        // A role cleared by project-source restoration must not leave stale guards.
+        applyArtwork({outcome:'legacy'},vm);vm.setEditingTarget(library.id);vm.blockListener(event);library.setVisible(true);
+        assert.equal(library.blocks._blocks.queued.opcode,'event_whenflagclicked');assert.equal(library.visible,true);
+    } finally {vm.quit();}
+});
+test('deferred duplicate preserves library artwork with renewed UUIDs despite a selection change',async()=>{
+    const f=await fixture(),vm=await open(f.bytes);
+    try {
+        const library=vm.runtime.targets.find(getAssetLibraryRole),actor=vm.runtime.targets.find(t=>t.getName()==='Actor');
+        const duplicate=vm.duplicateSprite.bind(vm);
+        vm.duplicateSprite=async id=>{await duplicate(id);vm.setEditingTarget(actor.id);};
+        const result=await duplicateTargetArtwork(vm,library,vm.runtime.getTargetForStage());
+        assert.deepEqual(getAssetLibraryRole(result),role);assert.equal(getAssetLibraryRole(actor),null);
+        const expected=document(),actual=copy(getCostumeDocument(result.sprite.costumes[0]));
+        assert.notEqual(actual.animation.resource.id,expected.animation.resource.id);
+        actual.animation.resource.id=expected.animation.resource.id;assert.deepEqual(actual,expected);
+        assert.equal(vm.runtime.bwArcadeAnimationResources.size,2);
+        result.setVisible(true);assert.equal(result.visible,false);
+    } finally {vm.quit();}
+});
+test('deferred delete/Undo restores the actual library and source, and refuses another project',async()=>{
+    const f=await fixture(),vm=await open(f.bytes);
+    try {
+        const stage=vm.runtime.getTargetForStage(),library=vm.runtime.targets.find(getAssetLibraryRole);
+        const actor=vm.runtime.targets.find(t=>t.getName()==='Actor'),remove=vm.deleteSprite.bind(vm);
+        vm.deleteSprite=id=>{const restore=remove(id);return async()=>{await restore();vm.setEditingTarget(actor.id);};};
+        let restored;
+        const undo=deleteTargetArtwork(vm,library,stage,target=>{restored=target;});
+        assert.equal(vm.runtime.bwArcadeAnimationResources.size,0);assert.equal(await undo(),true);
+        assert.deepEqual(getAssetLibraryRole(restored),role);assert.equal(getAssetLibraryRole(actor),null);
+        assert.deepEqual(getCostumeDocument(restored.sprite.costumes[0]),document());
+        assert.equal(deleteTargetArtwork(vm,restored,{}),null);
+        assert.equal(await duplicateTargetArtwork(vm,restored,{}),null);
+        const lateUndo=deleteTargetArtwork(vm,restored,stage);
+        await vm.loadProject(f.bytes);const count=vm.runtime.targets.length;
+        assert.equal(await lateUndo(),false);assert.equal(vm.runtime.targets.length,count);
+    } finally {vm.quit();}
+});
+test('an invalid library refuses saving instead of dropping all editable source',async()=>{
+    const f=await fixture(),vm=await open(f.bytes);
+    try {
+        const library=vm.runtime.targets.find(getAssetLibraryRole);library.visible=true;
+        const blob=await vm.saveProjectSb3();const zip=await JSZip.loadAsync(await blob.arrayBuffer());
+        await assert.rejects(writeArtworkToZip(zip,vm),/hidden sprite/);
+        await assert.rejects(attachArtwork(blob,vm),/hidden sprite/);
+        library.visible=false;
+        const recovered=await JSZip.loadAsync(await (await vm.saveProjectSb3()).arrayBuffer());
+        assert.equal(await writeArtworkToZip(recovered,vm),true);
+        const inspection=await inspectArtwork(await recovered.generateAsync({type:'uint8array'}));
+        assert.equal(inspection.outcome,'loaded',inspection.reason);
+    } finally {vm.quit();}
 });

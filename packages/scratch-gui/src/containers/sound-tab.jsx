@@ -40,6 +40,8 @@ import {
 import {setRestore} from '../reducers/restore-deletion';
 import {showStandardAlert, closeAlertWithId} from '../reducers/alerts';
 
+const AssetLibraryNotice = React.lazy(() => import('../components/asset-library/notice.jsx'));
+
 class SoundTab extends React.Component {
     constructor (props) {
         super(props);
@@ -200,6 +202,11 @@ class SoundTab extends React.Component {
             return null;
         }
 
+        if (vm.editingTarget.bwAssetLibrary) return (
+            <React.Suspense fallback={null}>
+                <AssetLibraryNotice locale={intl.locale} onEditArtwork={this.props.onActivateCostumesTab} />
+            </React.Suspense>
+        );
         const sprite = vm.editingTarget.sprite;
 
         const sounds = sprite.sounds ? sprite.sounds.map(sound => (

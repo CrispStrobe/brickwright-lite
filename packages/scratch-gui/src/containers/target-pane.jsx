@@ -18,14 +18,10 @@ import {BLOCKS_DEFAULT_SCALE} from '../lib/layout-constants';
 import {handleFileUpload, spriteUpload} from '../lib/file-uploader.js';
 import sharedMessages from '../lib/shared-messages';
 import {emptySprite} from '../lib/empty-assets';
-import {copyCostumeDocument, syncAnimationResources, captureTargetArtwork, restoreTargetArtwork} from '../lib/bw-artwork-bundle';
 import {highlightTarget} from '../reducers/targets';
 import {fetchSprite, fetchCode} from '../lib/backpack-api';
 import randomizeSpritePosition from '../lib/randomize-sprite-position';
 import downloadBlob from '../lib/download-blob';
-
-const restoreLibraryRole = (vm, target, role, stage) => role &&
-    import('../lib/bw-asset-library').then(module => module.restoreAssetLibraryRole(vm, target, role, stage));
 
 class TargetPane extends React.Component {
     constructor (props) {
@@ -72,7 +68,7 @@ class TargetPane extends React.Component {
         this.props.vm.postSpriteInfo({size});
     }
     handleChangeSpriteVisibility (visible) {
-        this.props.vm.postSpriteInfo({visible});
+        if (!this.props.vm.editingTarget?.bwAssetLibrary) this.props.vm.postSpriteInfo({visible});
     }
     handleChangeSpriteX (x) {
         this.props.vm.postSpriteInfo({x});
@@ -81,40 +77,15 @@ class TargetPane extends React.Component {
         this.props.vm.postSpriteInfo({y});
     }
     handleDeleteSprite (id) {
-        const vm = this.props.vm;
-        const stage = vm.runtime.getTargetForStage();
-        const artwork = captureTargetArtwork(vm.runtime.getTargetById(id));
-        const libraryRole = vm.runtime.getTargetById(id)?.bwAssetLibrary;
-        const restoreSprite = vm.deleteSprite(id);
-        syncAnimationResources(vm);
-        const restoreFun = () => {
-            // An Undo callback from another project must not import its sprite.
-            if (vm.runtime.getTargetForStage() !== stage) return Promise.resolve();
-            return restoreSprite().then(() => {
-                if (vm.runtime.getTargetForStage() !== stage) return;
-                restoreTargetArtwork(vm.editingTarget, artwork, vm);
-                if (libraryRole) return restoreLibraryRole(vm, vm.editingTarget, libraryRole, stage)
-                    .then(restored => { if (restored) this.handleActivateBlocksTab(); });
-                this.handleActivateBlocksTab();
-            });
-        };
-
-        this.props.dispatchUpdateRestore({
-            restoreFun: restoreFun,
-            deletedItem: 'Sprite'
+        const vm = this.props.vm, target = vm.runtime.getTargetById(id), stage = vm.runtime.getTargetForStage();
+        return import('../lib/bw-target-artwork-operations').then(module => {
+            const restoreFun = module.deleteTargetArtwork(vm, target, stage, () => this.handleActivateBlocksTab());
+            if (restoreFun) this.props.dispatchUpdateRestore({restoreFun, deletedItem: 'Sprite'});
         });
-
     }
     handleDuplicateSprite (id) {
-        const vm = this.props.vm;
-        const originals = vm.runtime.getTargetById(id)?.sprite?.costumes || [];
-        const libraryRole = vm.runtime.getTargetById(id)?.bwAssetLibrary;
-        const stage = vm.runtime.getTargetForStage();
-        return vm.duplicateSprite(id).then(() => {
-            const copies = vm.editingTarget?.sprite?.costumes || [];
-            originals.forEach((costume, index) => copyCostumeDocument(costume, copies[index], this.props.vm));
-            return restoreLibraryRole(vm, vm.editingTarget, libraryRole, stage);
-        });
+        const vm = this.props.vm, target = vm.runtime.getTargetById(id), stage = vm.runtime.getTargetForStage();
+        return import('../lib/bw-target-artwork-operations').then(module => module.duplicateTargetArtwork(vm, target, stage));
     }
     handleExportSprite (id) {
         const spriteName = this.props.vm.runtime.getTargetById(id).getName();
@@ -127,6 +98,7 @@ class TargetPane extends React.Component {
     }
     handleSelectSprite (id) {
         this.props.vm.setEditingTarget(id);
+        if (this.props.vm.editingTarget?.bwAssetLibrary) this.props.onActivateTab(COSTUMES_TAB_INDEX);
         if (this.props.stage && id !== this.props.stage.id) {
             this.props.onHighlightTarget(id);
         }
@@ -191,6 +163,7 @@ class TargetPane extends React.Component {
         }
     }
     shareBlocks (blocks, targetId, optFromTargetId) {
+        if (this.props.vm.runtime.getTargetById(targetId)?.bwAssetLibrary) return Promise.resolve();
         // Position the top-level block based on the scroll position.
         const topBlock = blocks.find(block => block.topLevel);
         if (topBlock) {
@@ -224,6 +197,8 @@ class TargetPane extends React.Component {
     }
     handleDrop (dragInfo) {
         const {sprite: targetId} = this.props.hoveredTarget;
+        if (this.props.vm.runtime.getTargetById(targetId)?.bwAssetLibrary &&
+            [DragConstants.SOUND, DragConstants.BACKPACK_SOUND, DragConstants.BACKPACK_CODE].includes(dragInfo.dragType)) return;
         if (dragInfo.dragType === DragConstants.SPRITE) {
             // Add one to both new and target index because we are not counting/moving the stage
             this.props.vm.reorderTarget(dragInfo.index + 1, dragInfo.newIndex + 1);
@@ -279,6 +254,7 @@ class TargetPane extends React.Component {
         return (
             <TargetPaneComponent
                 {...componentProps}
+                artworkOnly={Boolean(this.props.vm.editingTarget?.bwAssetLibrary)}
                 fileInputRef={this.setFileInput}
                 onActivateBlocksTab={this.handleActivateBlocksTab}
                 onChangeSpriteDirection={this.handleChangeSpriteDirection}

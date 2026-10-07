@@ -196,7 +196,7 @@ const captureTargetArtwork = target => (target?.sprite?.costumes || []).map(cost
     document: JSON.parse(JSON.stringify(getCostumeDocument(costume)))
 }));
 
-const restoreTargetArtwork = (target, snapshots, vm) => {
+const restoreTargetArtwork = (target, snapshots, vm, {renewResourceIds = false} = {}) => {
     if (!originals(vm).includes(target)) throw new Error('Artwork restore target is no longer in this project');
     const costumes = target.sprite?.costumes || [];
     if (costumes.length !== snapshots.length) throw new Error('Artwork restore costume count differs');
@@ -206,8 +206,9 @@ const restoreTargetArtwork = (target, snapshots, vm) => {
         if (assetName(costumes[index]) !== snapshot.renderedMd5ext) {
             throw new Error('Artwork restore costume asset differs');
         }
-        return {renderedMd5ext: snapshot.renderedMd5ext,
-            document: validateDocument(JSON.parse(JSON.stringify(snapshot.document)))};
+        const document = JSON.parse(JSON.stringify(snapshot.document));
+        if (renewResourceIds && document.animation?.resource) document.animation.resource.id = newAnimationResourceId();
+        return {renderedMd5ext: snapshot.renderedMd5ext, document: validateDocument(document)};
     });
     const previous = costumes.map(costume => documents.get(costume));
     costumes.forEach((costume, index) => documents.set(costume, restored[index]));
@@ -338,6 +339,7 @@ const applyArtwork = (inspection, vm) => {
         count++;
     }
     const resourceError = refreshAnimationResources(vm);
+    if (inspection.libraries?.length) vm.emitTargetsUpdate?.();
     return {outcome: 'loaded', count, ...(resourceError ? {resourceError} : {})};
 };
 
@@ -392,6 +394,7 @@ const writeArtworkToZip = async (zip, vm) => {
         // A source failure may not turn a valid Scratch project into an unsaveable one.
         // eslint-disable-next-line no-console
         console.warn('[brickwright] could not attach artwork source', error);
+        if (originals(vm).some(target => target.bwAssetLibrary)) throw error;
         return false;
     }
 };
@@ -411,6 +414,7 @@ const attachArtwork = async (blob, vm) => {
     } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('[brickwright] could not repack artwork source', error);
+        if (originals(vm).some(target => target.bwAssetLibrary)) throw error;
         return blob;
     }
 };
