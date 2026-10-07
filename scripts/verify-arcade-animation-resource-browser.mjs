@@ -183,13 +183,31 @@ try{
                 assert.ok(fieldRect,`${opcode}: native resource menu exists`);
                 if(fieldRect.y>120&&fieldRect.y<900)break;
                 await page.mouse.move(230,500);await page.mouse.wheel(0,fieldRect.y>900?400:-400);
-                await page.waitForTimeout(80);
+                await page.waitForFunction(({opcode,previousY})=>{
+                    const block=window.Blockly.getMainWorkspace().getFlyout().getWorkspace().getAllBlocks(false).find(block=>block.type===opcode);
+                    const field=block?.getInputTargetBlock('RESOURCE')?.getField('animationAssets');
+                    const rect=field?.getSvgRoot()?.getBoundingClientRect();
+                    const y=rect&&rect.y+rect.height/2;
+                    return Number.isFinite(y)&&(y!==previousY||(y>120&&y<900));
+                },{opcode,previousY:fieldRect.y});
             }
             assert.ok(fieldRect.y>120&&fieldRect.y<900,`${opcode}: resource block is reachable by toolbox scrolling`);
             assert.ok(fieldRect.options.some(([name,id])=>name==='Walk'&&id===published.id));
             // Drag the real reporter out of the flyout before editing its
             // menu; flyout defaults can be rebuilt as the palette scrolls.
-            await page.waitForTimeout(350);
+            await page.evaluate(async opcode=>{
+                const deadline=performance.now()+2000;
+                let previous='',stable=0;
+                while(performance.now()<deadline){
+                    await new Promise(resolve=>requestAnimationFrame(resolve));
+                    const block=window.Blockly.getMainWorkspace().getFlyout().getWorkspace().getAllBlocks(false).find(block=>block.type===opcode);
+                    const rect=block?.getSvgRoot()?.getBoundingClientRect();
+                    const key=rect&&rect.width>0&&rect.height>0?JSON.stringify([rect.x,rect.y,rect.width,rect.height]):'';
+                    stable=key&&key===previous?stable+1:0;previous=key;
+                    if(stable>=3)return;
+                }
+                throw new Error(opcode+': flyout bounds did not settle before dragging');
+            },opcode);
             const source=await page.evaluate(opcode=>{
                 const block=window.Blockly.getMainWorkspace().getFlyout().getWorkspace().getAllBlocks(false).find(block=>block.type===opcode);
                 const rect=block.getSvgRoot().getBoundingClientRect();return {x:rect.x+45,y:rect.y+rect.height/2};
