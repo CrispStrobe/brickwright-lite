@@ -19,14 +19,37 @@ Its explicit application bounds are160×160,64 frames,1MiB packed bytes;
 intervals are1–65,535ms. Existing GUI publication is narrower:2–64 frames,
 20–10,000ms and uniform timing. Outside-policy input produces named errors;
 it is not resized, coerced or truncated. Palette RGB and rich source are not
-represented by this native binary format.
+represented by this native binary format. Native IDs/namespaces are bounded
+nonblank printable references, not JavaScript identifiers. Display names follow
+original MakeCode asset-name rules; they are not silently sanitized.
+
+The decoder accepts explicit native IDs/namespaces, including entries normalized
+by original `Package.parseJRes`. Its raw-gallery convenience arguments use a
+qualified fallback key once; this intentionally does not reproduce original
+PXT's double-prefix edge case for missing IDs and already-qualified gallery
+keys. Keep the original gallery key when generating native factory aliases.
 
 `test/makecode-arcade-animation-jres.test.mjs` invokes the actual retained
-Microsoft PXT worker encoder, decoder and name validator. Six tests cover
-asymmetric odd/even layouts, large bounds, frame counts, native key/namespace
-resolution and malformed input. The combined maximum resource has an exact
-local roundtrip; original-worker goldens test the dimension/count bounds
+Microsoft PXT worker encoder, decoder, package normalizer, emitter and name
+validator. Eight tests cover asymmetric odd/even layouts, large bounds, frame counts, native key/namespace
+resolution, hyphen/Unicode IDs and namespaces, and malformed input. The combined
+maximum resource has an exact local roundtrip; original-worker goldens test the dimension/count bounds
 separately. This is compiler-format evidence, not original asset-editor evidence.
+
+## Adopted native authoring boundary
+
+The shared parser [PR62](https://github.com/CrispStrobe/sb3-creator/pull/62) is
+merged and the consumer now pins
+[`33ce7380e388e20b7c3a30e8ea84d1b774c30248`](https://github.com/CrispStrobe/sb3-creator/commit/33ce7380e388e20b7c3a30e8ea84d1b774c30248).
+At consumer source
+[`96e812a23`](https://github.com/CrispStrobe/brickwright-lite/commit/96e812a2355a193bfb92cfb4b6982d82299792ad),
+the canonical frame/interval resource words and native menu shadows are adopted.
+Three publication-browser journeys qualify the named Blocks reporters, actual
+palette drag/drop and UUID picker storage alongside Pixel publication/SB3
+persistence. Eight codec tests, two highlight tests, four explicit producer
+identity tests (zero skips), and four vendored original-export tests pass. These are separate finite boundaries:
+the full controller/export/reimport browser gate is still being debugged and has
+not passed. Native original-MakeCode animation asset editing is also still open.
 
 ## Original generated asset contract
 

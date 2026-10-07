@@ -208,7 +208,7 @@ Export/reimport must preserve palette, frames, loop/action and supported timing.
 If variable durations require a runtime sequence, implement it explicitly rather
 than flattening timings. Include sheet and frames-as-costumes journeys.
 
-#### Uniform animation resource candidate — implemented locally, adoption pending
+#### Uniform animation resource candidate — parser adopted, full browser gate open
 
 The candidate in [draft PR704](https://github.com/CrispStrobe/brickwright-lite/pull/704)
 on `lane/arcade-animation-resources-20261007` implements:
@@ -236,30 +236,37 @@ asset preservation, and zero page errors. Actual-VM sprite Undo and replacement
 loading tests pass. Four original-PXT export tests pass against the explicitly
 selected reviewed producer source, including literal/computed IDs, shared array
 identity, image mutation/playback, missing IDs and generated-name collisions.
-That producer-source test override is qualification evidence, not consumer pin
-adoption.
+That historical producer-source override was qualification evidence; current
+consumer adoption is recorded below.
 
-A later publication-only browser run also qualifies **Add Extension → Arcade**,
+Three publication-browser journeys now qualify **Add Extension → Arcade**,
 scrolling to both native resource reporters, dragging each into the workspace,
 selecting the published name, and observing the stored UUID in the actual VM
 block fields. The library description now identifies the full game APIs.
 The full gate fixture has been corrected for a Stage-only new project and an
 explicit image actor; its controller-after-reimport and actual19,200-pixel
-comparisons are implemented but remain unrun until parser adoption.
+comparisons are implemented; the full gate is being debugged after adoption and
+is not yet qualified.
 
-The native animation JRES codec now passes six tests against the retained
-original PXT encoder/decoder and asset-name validator. This is the format
-layer, not native asset-editor integration. See the
+The native animation JRES codec now passes eight tests against the retained
+original PXT encoder/decoder, package normalizer, emitter and asset-name validator.
+Native hyphen/Unicode IDs and namespaces are supported with explicit printable
+reference bounds; native display-name restrictions remain separate. This is the
+format layer, not native asset-editor integration. See the
 [animation interchange contract](ARCADE-ANIMATION-INTERCHANGE.md) for exporter,
 importer, rich-source recovery and original-editor acceptance work still open.
 
-**Pending:** shared compiler [PR62](https://github.com/CrispStrobe/sb3-creator/pull/62)
-adds the two canonical words and literal resource menu shadows. Its exact-head
-hosted checks must pass and it must land before the consumer pin moves. The app
-still pins the earlier compiler; the complete Code↔Blocks/controller/export/
-reimport browser journey is not yet qualified. The full browser gate is
-`scripts/verify-arcade-animation-resource-browser.mjs`; its publication-only mode
-covers the reached boundary without claiming parser adoption.
+**Adopted:** shared compiler [PR62](https://github.com/CrispStrobe/sb3-creator/pull/62)
+merged at
+[`33ce7380e388e20b7c3a30e8ea84d1b774c30248`](https://github.com/CrispStrobe/sb3-creator/commit/33ce7380e388e20b7c3a30e8ea84d1b774c30248)
+and the app pins that exact producer. Consumer source
+[`96e812a23`](https://github.com/CrispStrobe/brickwright-lite/commit/96e812a2355a193bfb92cfb4b6982d82299792ad)
+includes both canonical words and literal resource menu shadows. Two highlight
+tests, four explicit provider identity tests (zero skips), eight codec tests and
+four vendored original-export tests pass. The complete Code↔Blocks/controller/export/reimport
+browser journey is still being debugged, not qualified. Its gate is
+`scripts/verify-arcade-animation-resource-browser.mjs`; publication-only evidence
+does not establish the full journey or native original-MakeCode asset editing.
 
 **U04 remains open.** Unequal-duration scheduling, action binding, sheet and
 frames-as-costumes journeys, complete controller stop/restart qualification and
