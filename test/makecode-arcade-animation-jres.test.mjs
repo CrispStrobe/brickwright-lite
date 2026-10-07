@@ -79,16 +79,18 @@ test('hyphen and Unicode identities agree with original package normalization, d
         ['myAnimations','walk-left','Walk left','myAnimations.walk-left','walk-left'],
         ['myAnimations','走る','走る','myAnimations.走る','走る'],
         ['custom-ns','walk-left','Walk','custom-ns.walk-left','custom-ns.walk-left'],
-        ['動き','走る','走る','動き.走る','動き.走る']
+        ['動き','走る','走る','動き.走る','動き.走る'],
+        ['','walk-left','Walk','walk-left','walk-left']
     ]){
         const entry=encodeAnimationJres({...sample(),id,namespace,name});
-        oracle.jres={'*':{mimeType:'image/x-mkcd-f4',dataEncoding:'base64',namespace:'myImages'},[key]:entry};
+        oracle.jres={'*':{mimeType:'image/x-mkcd-f4',dataEncoding:'base64',namespace:namespace===''?'':'myImages'},[key]:entry};
         const normalized=JSON.parse(vm.runInContext(`JSON.stringify(pxt.Package.prototype.parseJRes.call({
             getFiles:()=>['images.g.jres'],readFile:()=>JSON.stringify(jres)}))`,oracle,{timeout:1000}));
         const native=Object.values(normalized)[0];
-        assert.equal(decodeAnimationJres(entry).id,`${namespace}.${id}`);
+        const qualified=namespace?`${namespace}.${id}`:id;
+        assert.equal(decodeAnimationJres(entry).id,qualified);
         assert.equal(decodeAnimationJres(native).id,originalDecode(native).id);
-        assert.equal(originalDecode(native).id,`${namespace}.${id}`);
+        assert.equal(originalDecode(native).id,qualified);
         const emitted=vm.runInContext('pxt.emitProjectImages(jres)',oracle,{timeout:1000});
         assert.ok(emitted.includes(`case "${alias}":`),emitted);
         assert.deepEqual(plain(decodeAnimationJres(native)).frames,sample().frames);
@@ -105,6 +107,7 @@ test('hyphen and Unicode identities agree with original package normalization, d
 
 test('identity strings are bounded printable references, not JavaScript identifiers',()=>{
     for(const field of ['id','namespace'])for(const invalid of ['', ' ', '\n','x\u007f', 'x'.repeat(161)]){
+        if(field==='namespace' && invalid==='')continue;
         rejects(()=>encodeAnimationJres({...sample(),[field]:invalid}),'IDENTITY');
     }
     rejects(()=>encodeAnimationJres({...sample(),namespace:'x'.repeat(155),id:'too-long'}),'IDENTITY');

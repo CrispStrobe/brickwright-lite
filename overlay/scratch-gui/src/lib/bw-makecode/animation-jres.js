@@ -30,17 +30,18 @@ const identity = (entry, key, fallbackNamespace) => {
     const printable = value => typeof value === 'string' && value.trim().length > 0 &&
         value.length <= ANIMATION_JRES_LIMITS.identityCharacters && !/[\u0000-\u001f\u007f]/.test(value);
     const namespace = entry.namespace ?? fallbackNamespace ?? 'myAnimations';
-    if (!printable(namespace)) fail('IDENTITY', 'Animation namespace must be bounded nonblank printable text');
+    if (namespace !== '' && !printable(namespace)) fail('IDENTITY', 'Animation namespace must be empty or bounded nonblank printable text');
     const ns = namespace.replace(/\.$/, '');
-    if (!printable(ns)) fail('IDENTITY', 'Animation namespace is empty');
+    if (namespace !== '' && !printable(ns)) fail('IDENTITY', 'Animation namespace is empty');
     const raw = entry.id ?? key;
     if (!printable(raw)) fail('IDENTITY', 'Animation asset ID must be bounded nonblank printable text');
     // Consume explicit IDs as PXT does after Package.parseJRes: an already
     // qualified ID stays qualified; a short ID receives the namespace once.
     // For app-normalized raw gallery entries, `key` is a fallback ID, not an
     // instruction to reproduce Package.parseJRes's double-prefix edge case.
-    const short = raw.startsWith(`${ns}.`) ? raw.slice(ns.length + 1) : raw;
-    if (!printable(short) || `${ns}.${short}`.length > ANIMATION_JRES_LIMITS.identityCharacters) {
+    const short = ns && raw.startsWith(`${ns}.`) ? raw.slice(ns.length + 1) : raw;
+    const qualified = ns ? `${ns}.${short}` : short;
+    if (!printable(short) || qualified.length > ANIMATION_JRES_LIMITS.identityCharacters) {
         fail('IDENTITY', 'Animation qualified asset ID exceeds identity bounds');
     }
     const name = entry.displayName ?? short;
@@ -51,7 +52,7 @@ const identity = (entry, key, fallbackNamespace) => {
         /[\u0000-\u001f\u0021-\u002c\u002e\u002f\u003a-\u0040\u005b-\u005e\u0060\u007b-\u007f]/.test(name)) {
         fail('NAME', 'Animation display name must contain 1..80 characters admissible in native MakeCode asset names');
     }
-    return {id: `${ns}.${short}`, short, namespace: ns, name};
+    return {id: qualified, short, namespace: ns, name};
 };
 const base64Encode = text => {
     if (typeof btoa === 'function') return btoa(text);
@@ -104,6 +105,8 @@ export function encodeAnimationJres (animation) {
 
 /**
  * Decode a native entry with explicit/Package-normalized id and namespace.
+ * An explicit empty namespace keeps IDs unqualified, as original PXT does;
+ * an omitted namespace retains the app convenience default myAnimations.
  * Callers may instead supply app-normalized raw-gallery key/default namespace;
  * a qualified fallback key is treated as canonical (never double-prefixed).
  * This function does not perform Package.parseJRes or choose generated factory

@@ -40,6 +40,7 @@ import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
 import {
     parseImageLiteral,
     parseJres,
+    parseAnimationJres,
     parseTilemaps,
     renderTilemap,
     decodeMkcdImage,
@@ -3146,12 +3147,53 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     const assets = {};
     const tilemaps = {};
+    const animationAliases = new Map(), animationDiagnostics = [], animationIds = new Set();
     for (const [filename, text] of Object.entries(map)) {
-        if (/\.jres$/.test(filename)) Object.assign(assets, parseJres(text));
+        if (/\.jres$/.test(filename)) {
+            Object.assign(assets, parseJres(text));
+            const parsedAnimations = parseAnimationJres(text);
+            animationDiagnostics.push(...parsedAnimations.unsupported.map(message => `${filename}: ${message}`));
+            for (const animation of parsedAnimations.animations) {
+                const duplicateId = animationIds.has(animation.id);
+                if (duplicateId) {
+                    animationDiagnostics.push(`Duplicate animation asset ID: ${animation.id}`);
+                    for (const [alias, prior] of animationAliases) if (prior?.id === animation.id) animationAliases.set(alias, null);
+                }
+                animationIds.add(animation.id);
+                for (const alias of animation.aliases) {
+                    if (animationAliases.has(alias)) {
+                        animationAliases.set(alias, null);
+                        animationDiagnostics.push(`Ambiguous animation asset alias: ${JSON.stringify(alias)}`);
+                    } else animationAliases.set(alias, duplicateId ? null : animation);
+                }
+            }
+        }
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(parseMakeCodeTs(source, {parameterDefaults: true}))), source)));
+    // Native assets.animation produces a fresh Image[] per lookup. Lower to
+    // the existing typed image-array machinery, preserving ordinary variable
+    // aliases/mutation without inventing persistent editable resource metadata.
+    const lowerAnimationAssets = node => {
+        if (!node || typeof node !== 'object') return node;
+        if (node.type === 'Template' && node.tag === 'assets.animation') {
+            const alias = node.value.trim(), animation = animationAliases.get(alias);
+            if (!animation) {
+                animationDiagnostics.push(`${animationAliases.has(alias) ? 'Ambiguous' : 'Missing'} animation asset reference: ${JSON.stringify(alias)}`);
+                return {type: 'Undefined'};
+            }
+            return {type: 'Array', items: animation.frames.map(frame => ({type: 'Template', tag: 'img',
+                value: Array.from({length: animation.height}, (_, y) =>
+                    Array.from(frame.pixels.subarray(y * animation.width, (y + 1) * animation.width),
+                        index => index.toString(16)).join(' ')).join('\n')}))};
+        }
+        if (Array.isArray(node)) return node.map(lowerAnimationAssets);
+        return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
+    };
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source)));
+    const withAnimationDiagnostics = result => ({...result,
+        unsupported: [...new Set([...animationDiagnostics, ...result.unsupported])]});
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
     const flattened = namespaceBindings.program ? ast : null;
@@ -3159,15 +3201,15 @@ export function arcadeToPseudocode (files, opts = {}) {
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
     const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps);
-    if (namedEvents) return namedEvents;
+    if (namedEvents) return withAnimationDiagnostics(namedEvents);
     const creationEvents = flattened && translateCreationEvents(flattened, assets);
-    if (creationEvents) return creationEvents;
+    if (creationEvents) return withAnimationDiagnostics(creationEvents);
     const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets);
-    if (sideProjectiles) return sideProjectiles;
+    if (sideProjectiles) return withAnimationDiagnostics(sideProjectiles);
     const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets);
-    if (overlapOnly) return overlapOnly;
+    if (overlapOnly) return withAnimationDiagnostics(overlapOnly);
     const t = new ArcadeTranslator(assets, tilemaps);
-    t.unsupported.push(...namespaceBindings.unsupported);
+    t.unsupported.push(...animationDiagnostics, ...namespaceBindings.unsupported);
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
