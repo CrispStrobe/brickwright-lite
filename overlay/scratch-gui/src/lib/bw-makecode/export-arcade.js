@@ -873,7 +873,7 @@ class ArcadeEmitter {
         case 'arcade_spriteToString': return `${v('ID')}.toString()`;
         case 'arcade_spriteProperty': {
             const property = this.field(b, 'PROPERTY');
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
             return `${v('ID')}.${property}`;
         }
         case 'arcade_menu_scaleAnchors': return String(Number(this.field(b,'scaleAnchors')));
@@ -1462,7 +1462,7 @@ class ArcadeEmitter {
         case 'arcade_setSpritePosition': push(`${v('ID')}.setPosition(${v('X')}, ${v('Y')})`); return;
         case 'arcade_setSpriteProperty': {
             const property = this.field(b, 'PROPERTY');
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
             if (['width', 'height'].includes(property)) push(`// ${this.note(`Arcade sprite ${property} needs image resizing`)}`);
             else push(`${v('ID')}.${property} = ${v('VALUE')}`);
             return;
@@ -1901,7 +1901,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_tileLocation'){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
-                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileLocationProperty'){const id=Symbol('tile numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
@@ -2334,14 +2334,19 @@ class ArcadeEmitter {
                     if (!this.cloneScripts.has(t.name)) this.cloneScripts.set(t.name, []);
                     this.cloneScripts.get(t.name).push(fn);
                 // ── Arcade event hats (E2: the import's arcade_when* words, back to their PXT calls) ──
-                } else if (b.opcode === 'arcade_whenUpdate') {
-                    handlers.push(`game.onUpdate(function () {\n${plainBody().join('\n')}\n})`);
-                } else if (b.opcode === 'arcade_whenInterval') {
-                    const period = this.literalNumber(b, 'PERIOD');
-                    if (period === null || period <= 0) {
+                } else if (b.opcode === 'arcade_whenUpdate' || b.opcode === 'arcade_whenInterval') {
+                    const period = b.opcode === 'arcade_whenInterval' ? this.literalNumber(b, 'PERIOD') : null;
+                    const api = b.opcode === 'arcade_whenUpdate' ? 'game.onUpdate(' : `game.onUpdateInterval(${period}, `;
+                    if (b.opcode === 'arcade_whenInterval' && (period === null || period <= 0)) {
                         handlers.push(`// ${this.note('Arcade interval period must be a fixed positive number')}`);
+                    } else if (clonable) {
+                        // A cloned sprite's hat runs in every instance, as the key hats
+                        // do; its body speaks of \`self\`, which a plain handler lacks.
+                        const {fn} = this.scriptFunction(b.opcode === 'arcade_whenUpdate' ? 'update' : 'interval', b, false);
+                        this.use('wait');
+                        handlers.push(`${api}function () {\n    const w = new _Wait()\n    for (const s of ${this.allOf(t.name)}) _spawnFor(w, ${fn}, s)\n})`);
                     } else {
-                        handlers.push(`game.onUpdateInterval(${period}, function () {\n${plainBody().join('\n')}\n})`);
+                        handlers.push(`${api}function () {\n${plainBody().join('\n')}\n})`);
                     }
                 } else if (b.opcode === 'arcade_whenSpriteCreated') {
                     const kind = this.kindExpr(b, 'KIND');
@@ -2386,7 +2391,10 @@ class ArcadeEmitter {
                     const returnType = returns ? `: ${this.arrayReturnTypes.get(key) || (this.imageReturnFunctions.has(key) ? 'Image' :
                         this.spriteReturnFunctions.has(key) ? 'Sprite' : this.valueReturnTypes.get(key) || 'any')}` : '';
                     const tail = returns && !returning(script.at(-1) || '') ? ['    return undefined'] : [];
-                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...script, ...tail];
+                    // A stop/clone guard exits with a bare \`return\`; in a function that
+                    // returns a value PXT rejects that ("Not all code paths return a value").
+                    const body = returns ? script.map(line => line.replace(/\breturn\s*$/, 'return undefined')) : script;
+                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...body, ...tail];
                     functions.push(`function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
                     continue;

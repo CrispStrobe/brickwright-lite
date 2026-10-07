@@ -132,7 +132,5 @@ test('MakeCode countdown callback runs at zero and can continue the game', async
     const run = await runProgram(translated.code, {frames: 40});
     assert.deepEqual(run.errors, []);
     assert.equal(run.vm.runtime.bwArcadeDeviceState?.gameOver, undefined);
-    const score = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
-        .find(variable => variable.name === 'score');
-    assert.equal(score?.value, 7);
+    assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score), 7);
 });

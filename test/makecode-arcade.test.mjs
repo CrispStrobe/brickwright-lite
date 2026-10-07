@@ -366,10 +366,11 @@ test('animation objects retain every frame without a fixed costume cap', () => {
     assert.deepEqual(out.unsupported, []);
 });
 
-test('the per-player info API writes the same variables the plain one does', () => {
+test('the per-player info API writes the same score the plain one does', () => {
     // MakeCode's plain `info.setScore()` IS player one, so player one must
-    // share those variables — a game that mixes both forms (the pong does)
-    // would otherwise keep two scores that drift apart.
+    // share that score — a game that mixes both forms (the pong does) would
+    // otherwise keep two scores that drift apart. Scores are the Arcade
+    // extension's own (player one is its plain score); lives stay variables.
     const {code, unsupported} = arcadeToPseudocode(`
         let hero = sprites.create(img\`1\`, SpriteKind.Player)
         info.setScore(0)
@@ -381,9 +382,10 @@ test('the per-player info API writes the same variables the plain one does', () 
         })
     `);
     assert.deepEqual(unsupported, []);
-    assert.match(code, /set score to 0/);
-    assert.match(code, /change score by 1/, 'player one is the plain variable');
-    assert.match(code, /set score2 to 5/, 'and only the others get a suffix');
+    assert.match(code, /arcade set score to 0/);
+    assert.match(code, /arcade change score player \(1\) by \(1\)/, 'player one, which the extension shares with the plain score');
+    assert.match(code, /arcade set score player \(2\) to \(5\)/);
+    assert.match(code, /arcade change score by 1/);
     assert.match(code, /IF lives2 > 0 THEN:/, 'hasLife is a comparison, not a refusal');
     assert.match(code, /IF lives > 0 THEN:/);
 });
