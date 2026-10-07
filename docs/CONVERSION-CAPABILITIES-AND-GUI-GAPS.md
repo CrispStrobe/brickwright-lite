@@ -162,6 +162,39 @@ a player/camera and steer into walls/overlap tiles. Undo/redo, rename a tile,
 save/reopen, export/run in MakeCode and reimport both layers. Internal JSON
 injection does not count as creating a map through the GUI.
 
+#### Legacy tilemaps need a separate implementation
+
+The pinned `color-coded-tilemap` package does not make `scene.setTileMap` an
+alias for modern `tiles.setTilemap`. Preserve the mutable map Image reference,
+scene-local legacy mode, default16px scale, and persistent numeric0–15 tileset
+entries containing image references and type-wide wall flags. Setting a tile
+before a map must work; changing maps retains that legacy tileset. Missing
+images use their palette-index colour. Tile artwork clips/pads at the top-left
+rather than stretching. Outside an enabled map is wall; a disabled map is not.
+Legacy Tile references retain their originating map and numeric `tileSet`.
+`onHitTile` is a wall-index collision event, not a modern overlap-tile event.
+
+Reuse modern rendering/physics infrastructure behind mode-aware accessors,
+without rewriting these semantics into per-cell wall snapshots. Deliver native
+words/typed Blocks, numeric colour/map pickers, tileset image/wall/scale tools,
+and export the original scene APIs with the `color-coded-tilemap` dependency.
+Test operation order, map switches, retained references, map/image mutations,
+defaults, clipping, wall collisions, real editor save/reopen and original PXT
+export/run/reimport. Then rerun the affected corpus; unrelated extension and
+empty-body refusals must remain named.
+
+The latest locked-input inspection finds eight projects referencing legacy
+maps (the exact standalone refusal ranking has seven), five referencing legacy
+tile definitions (exact ranking four), and two wall-hit callback users. These
+are affected-project observations, not promised reductions in partials.
+
+Resource recovery is independent: all ten background-art refusals in this
+corpus reference unavailable assets in bare TypeScript inputs. Recover complete
+original project/JRES/extension assets with provenance; do not generate substitute
+art or count those as ten unimplemented background APIs. Projectile statement
+lowering, missing projectile images and source-handle typing are likewise
+separate cases despite sharing an API family name.
+
 ### U04 — animation binding
 
 Create three frames in the existing editor, set durations, duplicate/reorder,
