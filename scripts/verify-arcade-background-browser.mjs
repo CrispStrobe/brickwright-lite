@@ -151,6 +151,7 @@ try {
     assert.equal((await stageState()).format,'png','actual upload remains native PNG before Pixel save');
     assert.deepEqual(await canvasCorners(),expectedColours(BACKGROUND_CORNERS),'browser PNG decode and initial Pixel display preserve corners');
     report.journey.push('native160×120 PNG uploaded through visible Stage file chooser and decoded at full logical size');
+    await panel('more'); // the newly decoded PNG resets editor panels after selection
     await page.getByTestId('bw-pixel-arcade-background').click();
     assert.equal(await page.getByTestId('bw-pixel-w').inputValue(),'160');
     assert.equal(await page.getByTestId('bw-pixel-h').inputValue(),'120');
