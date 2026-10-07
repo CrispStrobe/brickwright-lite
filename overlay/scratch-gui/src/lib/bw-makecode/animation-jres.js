@@ -9,7 +9,7 @@
  * Names/IDs are native asset references, not Brickwright editable-source UUIDs.
  */
 export const ANIMATION_JRES_MIME = 'application/mkcd-animation';
-export const ANIMATION_JRES_LIMITS = Object.freeze({dimension: 160, frames: 64, packedBytes: 1024 * 1024});
+export const ANIMATION_JRES_LIMITS = Object.freeze({dimension: 160, frames: 64, packedBytes: 1024 * 1024, identityCharacters: 160});
 export class AnimationJresError extends Error {
     constructor (code, message) { super(message); this.name = 'AnimationJresError'; this.code = code; }
 }
@@ -27,15 +27,22 @@ const layout = (width, height, count, interval) => {
     return {stride, size};
 };
 const identity = (entry, key, fallbackNamespace) => {
+    const printable = value => typeof value === 'string' && value.trim().length > 0 &&
+        value.length <= ANIMATION_JRES_LIMITS.identityCharacters && !/[\u0000-\u001f\u007f]/.test(value);
     const namespace = entry.namespace ?? fallbackNamespace ?? 'myAnimations';
-    if (typeof namespace !== 'string' || !/^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*\.?$/.test(namespace)) {
-        fail('IDENTITY', 'Animation namespace is invalid');
-    }
+    if (!printable(namespace)) fail('IDENTITY', 'Animation namespace must be bounded nonblank printable text');
     const ns = namespace.replace(/\.$/, '');
+    if (!printable(ns)) fail('IDENTITY', 'Animation namespace is empty');
     const raw = entry.id ?? key;
-    if (typeof raw !== 'string' || !raw.length) fail('IDENTITY', 'Animation asset ID is missing');
+    if (!printable(raw)) fail('IDENTITY', 'Animation asset ID must be bounded nonblank printable text');
+    // Consume explicit IDs as PXT does after Package.parseJRes: an already
+    // qualified ID stays qualified; a short ID receives the namespace once.
+    // For app-normalized raw gallery entries, `key` is a fallback ID, not an
+    // instruction to reproduce Package.parseJRes's double-prefix edge case.
     const short = raw.startsWith(`${ns}.`) ? raw.slice(ns.length + 1) : raw;
-    if (!/^[A-Za-z_$][\w$]*$/.test(short)) fail('IDENTITY', 'Animation asset ID is invalid');
+    if (!printable(short) || `${ns}.${short}`.length > ANIMATION_JRES_LIMITS.identityCharacters) {
+        fail('IDENTITY', 'Animation qualified asset ID exceeds identity bounds');
+    }
     const name = entry.displayName ?? short;
     // Microsoft PXT validateAssetName character rules: asset references place
     // this name directly inside a tagged template without escaping punctuation.
@@ -95,7 +102,13 @@ export function encodeAnimationJres (animation) {
         data: base64Encode(Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')), displayName: native.name};
 }
 
-/** Decode one native entry; gallery key/default namespace supply omitted IDs. */
+/**
+ * Decode a native entry with explicit/Package-normalized id and namespace.
+ * Callers may instead supply app-normalized raw-gallery key/default namespace;
+ * a qualified fallback key is treated as canonical (never double-prefixed).
+ * This function does not perform Package.parseJRes or choose generated factory
+ * aliases: retain the original gallery key when generating images.g.ts.
+ */
 export function decodeAnimationJres (entry, {key, namespace} = {}) {
     if (!entry || typeof entry !== 'object' || entry.mimeType !== ANIMATION_JRES_MIME) fail('MIME', 'Expected native animation JRES MIME');
     if (entry.dataEncoding !== undefined && entry.dataEncoding !== 'base64') fail('ENCODING', 'Only packed native animation encoding is supported');

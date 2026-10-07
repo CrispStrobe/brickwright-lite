@@ -69,9 +69,45 @@ test('native key/default namespace lookup retains asset identity independently f
     assert.equal(decodeAnimationJres(entry,{key:'walk',namespace:'myAnimations.'}).id,'myAnimations.walk');
     assert.equal(decodeAnimationJres({...entry,displayName:'Renamed'},{key:'myAnimations.walk'}).name,'Renamed');
     rejects(()=>decodeAnimationJres(entry),'IDENTITY');
-    rejects(()=>encodeAnimationJres({...sample(),id:'myAnimations.bad.name'}),'IDENTITY');
+    assert.equal(decodeAnimationJres(encodeAnimationJres({...sample(),id:'myAnimations.bad.name',name:'Valid'})).id,'myAnimations.bad.name');
     rejects(()=>encodeAnimationJres({...sample(),name:''}),'NAME');
     rejects(()=>encodeAnimationJres({...sample(),name:'a'.repeat(81)}),'NAME');
+});
+
+test('hyphen and Unicode identities agree with original package normalization, decoder and factory aliases',()=>{
+    for(const [namespace,id,name,key,alias] of [
+        ['myAnimations','walk-left','Walk left','myAnimations.walk-left','walk-left'],
+        ['myAnimations','走る','走る','myAnimations.走る','走る'],
+        ['custom-ns','walk-left','Walk','custom-ns.walk-left','custom-ns.walk-left'],
+        ['動き','走る','走る','動き.走る','動き.走る']
+    ]){
+        const entry=encodeAnimationJres({...sample(),id,namespace,name});
+        oracle.jres={'*':{mimeType:'image/x-mkcd-f4',dataEncoding:'base64',namespace:'myImages'},[key]:entry};
+        const normalized=JSON.parse(vm.runInContext(`JSON.stringify(pxt.Package.prototype.parseJRes.call({
+            getFiles:()=>['images.g.jres'],readFile:()=>JSON.stringify(jres)}))`,oracle,{timeout:1000}));
+        const native=Object.values(normalized)[0];
+        assert.equal(decodeAnimationJres(entry).id,`${namespace}.${id}`);
+        assert.equal(decodeAnimationJres(native).id,originalDecode(native).id);
+        assert.equal(originalDecode(native).id,`${namespace}.${id}`);
+        const emitted=vm.runInContext('pxt.emitProjectImages(jres)',oracle,{timeout:1000});
+        assert.ok(emitted.includes(`case "${alias}":`),emitted);
+        assert.deepEqual(plain(decodeAnimationJres(native)).frames,sample().frames);
+    }
+    // Explicit contract for raw-gallery convenience: the app canonicalizes a
+    // fully-qualified fallback key once, unlike original Package.parseJRes.
+    const raw=encodeAnimationJres({...sample(),id:'walk-left'});delete raw.id;
+    assert.equal(decodeAnimationJres(raw,{key:'myAnimations.walk-left'}).id,'myAnimations.walk-left');
+    oracle.jres={'*':{namespace:'myAnimations'},'myAnimations.walk-left':raw};
+    const normalized=JSON.parse(vm.runInContext(`JSON.stringify(pxt.Package.prototype.parseJRes.call({
+        getFiles:()=>['images.g.jres'],readFile:()=>JSON.stringify(jres)}))`,oracle,{timeout:1000}));
+    assert.equal(Object.values(normalized)[0].id,'myAnimations.myAnimations.walk-left');
+});
+
+test('identity strings are bounded printable references, not JavaScript identifiers',()=>{
+    for(const field of ['id','namespace'])for(const invalid of ['', ' ', '\n','x\u007f', 'x'.repeat(161)]){
+        rejects(()=>encodeAnimationJres({...sample(),[field]:invalid}),'IDENTITY');
+    }
+    rejects(()=>encodeAnimationJres({...sample(),namespace:'x'.repeat(155),id:'too-long'}),'IDENTITY');
 });
 
 test('native names agree with actual original PXT validator including Unicode and punctuation',()=>{
