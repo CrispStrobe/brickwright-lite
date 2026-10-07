@@ -43,6 +43,7 @@ try {
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     const editor = page.locator('[data-testid="bw-code-editor"] .cm-content');
     await editor.waitFor({state: 'visible', timeout: 30000});
+    await page.getByTestId('bw-device-select').selectOption('arcade');
     await editor.fill(imported.code);
     const apply = async () => {
         await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
