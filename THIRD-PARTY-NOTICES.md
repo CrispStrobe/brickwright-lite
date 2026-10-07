@@ -1871,6 +1871,29 @@ permissive newlib + libi86 runtime, and carries no GCC-runtime copyleft.
   Loaded at run time and driven by `runDosToolchain('fe', …)` over the
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.FE`.
 
+## partcl (DOS-native Tcl) — MIT
+
+The code tab's "Tcl (partcl on DOS)" language runs a real 16-bit MS-DOS
+interpreter on the 8086 DOS bench. The interpreter is **partcl** by **Serge
+Zaitsev**, a minimal Tcl in a few hundred lines of portable C (`set`/`proc`/
+`if`/`while`, command substitution, prefix arithmetic), distributed under the
+**MIT licence**.
+
+It is compiled — unmodified except for an added `PROG.TCL`-reading DOS
+front-end (`dosmain.c`) — to a 16-bit MS-DOS `.EXE` with `ia16-elf-gcc` (the
+tkchia GCC port for 16-bit x86). That GCC port is GPL, but it is a **build-time
+tool only**: the shipped binary is MIT partcl linked against the permissive
+newlib + libi86 runtime, and carries no GCC-runtime copyleft.
+
+- **Upstream:** https://github.com/zserge/partcl (commit
+  `1ed1df73907875ee770ac65e6546bd56fbc6f637`)
+- **Licence:** MIT, (c) Serge Zaitsev
+- **What ships:** `static/roms/tcl.exe` — the built interpreter, with
+  `tcl.provenance.json` beside it. Packaged as the media-lab project
+  `projects/tcl-dos` (its `fetch.sh` reproduces this binary byte-for-byte).
+  Loaded at run time and driven by `runDosToolchain('tcl', …)` over the
+  bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL`.
+
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 
 The **fully-free 386** machine boots FreeDOS in the browser on redistributable

@@ -24,6 +24,10 @@ const UBASIC_EXE = new Uint8Array(readFileSync(
 // MIT fe (rxi) built with ia16-elf-gcc).
 const FE_EXE = new Uint8Array(readFileSync(
     fileURLToPath(new URL('../overlay/scratch-gui/static/roms/fe.exe', import.meta.url))));
+// The libre DOS-native Tcl this repo ships (media-lab project `tcl-dos`,
+// MIT partcl (zserge) built with ia16-elf-gcc).
+const TCL_EXE = new Uint8Array(readFileSync(
+    fileURLToPath(new URL('../overlay/scratch-gui/static/roms/tcl.exe', import.meta.url))));
 
 // A 40-byte real .COM: INT 21h create OUT.TXT, write "HI", close, exit(0).
 const FILE_WRITER = new Uint8Array([
@@ -166,6 +170,42 @@ test('runDosToolchain("fe", …) runs the shipped fe Lisp on the real DOS bench'
     }
     // The user's program was mounted where the interpreter reads it.
     assert.ok(r.files.get('PROG.FE'), 'PROG.FE was mounted for the interpreter');
+});
+
+test('the DOS-native Tcl (partcl) route is verified and shaped like fe', () => {
+    const tcl = DOS_TOOLCHAINS['tcl'];
+    assert.ok(tcl && tcl.kind === 'dos-native');
+    assert.equal(tcl.verified, true);
+    assert.equal(tcl.language, 'tcl');
+    assert.equal(tcl.compilerFormat, 'exe');
+    assert.equal(tcl.variant, '80186');
+    assert.equal(tcl.sourceName, 'PROG.TCL');
+    assert.equal(tcl.outputName, null);
+    assert.equal(tcl.run, false);
+});
+
+test('runDosToolchain("tcl", …) runs the shipped partcl Tcl on the real DOS bench', async () => {
+    // The EXACT production path; the fetcher returns the shipped static/roms/tcl.exe.
+    // The proven media-lab demo: a banner, 6*7, and a recursive factorial proc.
+    const program = [
+        'puts "partcl on DOS (8086)"',
+        'set x 6',
+        'puts [* $x 7]',
+        'proc fact {n} { if {<= $n 1} {return 1} {return [* $n [fact [- $n 1]]]} }',
+        'puts [fact 5]',
+        'puts [fact 6]', ''
+    ].join('\n');
+    const r = await runDosToolchain('tcl', program, {
+        fetchToolchain: async () => ({compiler: TCL_EXE}),
+        maxSteps: 60_000_000
+    });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.terminated, 'the interpreter terminated');
+    assert.equal(r.compile.exitCode, 0);
+    for (const want of ['partcl on DOS (8086)', '42', '120', '720']) {
+        assert.ok(r.compile.screen.includes(want), `expected ${want} in ${JSON.stringify(r.compile.screen)}`);
+    }
+    assert.ok(r.files.get('PROG.TCL'), 'PROG.TCL was mounted for the interpreter');
 });
 
 test('runDosToolchain runs a DOS-native route through the bench (fetch composition)', async () => {
