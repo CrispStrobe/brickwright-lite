@@ -194,6 +194,9 @@ try {
         'exported/reimported controller rotation preserves pixels');
     report.export = {filename: download.suggestedFilename(), bytes: bytes.length};
     assert.deepEqual(report.errors, []);
+    assert.deepEqual(report.consoleErrors.filter(message =>
+        /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),
+    [], 'Blocks workspace and Arcade loader report no failures');
     report.status = 'passed';
 } catch (error) {
     report.status = 'failed';
