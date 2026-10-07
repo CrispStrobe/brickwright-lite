@@ -31,7 +31,7 @@ const readCode=()=>editor().evaluate(element=>element.cmTile.root.view.state.doc
 const stageState=()=>page.evaluate(()=>{
     const stage=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();
     const costume=stage.getCostumes()[stage.currentCostume];
-    return {id:stage.id,name:costume.name,assetId:costume.asset.assetId,format:costume.asset.dataFormat,currentCostume:stage.currentCostume};
+    return {id:stage.id,name:costume.name,assetId:costume.asset.assetId,format:costume.asset.dataFormat,bitmapResolution:costume.bitmapResolution,currentCostume:stage.currentCostume};
 });
 const panel=async name=>{
     const toggle=page.getByTestId(`bw-pixel-${name}-toggle`);
