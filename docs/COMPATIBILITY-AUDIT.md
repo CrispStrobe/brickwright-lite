@@ -88,7 +88,7 @@ This is integration-branch evidence; it is not a claim that a shipped package ha
 | Runtime smoke among the 130 original-compile-pass inputs | **127 stepped / 3 event-only / 0 block errors** |
 | Runtime behavioural equivalence | **Not measured** by the 24-frame smoke audit |
 | Fresh micro:bit audit, 215 inputs | Static **205 translated / 10 partial**; original compile **206 pass / 9 fail**; runtime **205 stepped / 1 event-only / 0 block errors** |
-| Fresh conversion permutations | Rerun pending; historical figures below are not current qualification |
+| Fresh conversion permutations, 399 inputs | 398 converted / 1 malformed input; MakeCode→Code→MakeCode **279 structurally preserved / 61 loss / 56 partial / 2 source-invalid**; runtime equivalence not measured |
 
 The combined legacy stage tally masks some static translation gaps behind original-compile
 failures. Keep the independent static result and compiler result together. A bare source
@@ -96,9 +96,9 @@ file missing its package or asset can fail PXT without establishing that the com
 original app is invalid. Conversely, a successful PXT compile or a stepped VM does not
 establish faithful behaviour.
 
-Fresh [Arcade report](generated/ARCADE-COMPAT-AUDIT.md) and
-[micro:bit report](generated/MICROBIT-COMPAT-AUDIT.md); the historical
-[roundtrip report](generated/CONVERSION-ROUNDTRIPS.md) awaits its pending rerun.
+Fresh [Arcade report](generated/ARCADE-COMPAT-AUDIT.md),
+[micro:bit report](generated/MICROBIT-COMPAT-AUDIT.md) and
+[roundtrip report](generated/CONVERSION-ROUNDTRIPS.md).
 The Arcade runner snapshots invocation identity and detects changes by completion:
 its final source differs because browser harness and speech factory fixes landed
 while the cached-module audit ran. Dependency pins and MakeCode versions stayed
@@ -118,7 +118,9 @@ tracks Blocks, Code, asset editors, original MakeCode checks and authoring evide
   not imply general JavaScript object support.
 - Arcade's global `score` and `lives` variables map to native Info state on export.
   The earlier lost-HUD observation is historical, not an outstanding product decision.
-  Its affected real-app roundtrip still needs the pending permutation evidence.
+  The fresh Arcade MakeCode→Code→MakeCode permutation preserves 82 projects
+  structurally, up from the historical 81; 50 show structural loss, 49 are partial
+  and two exports fail compilation alongside their original bare sources.
 
 ### Next gap families
 
@@ -211,9 +213,9 @@ zero block errors; paint support remains incomplete and named.
 Three roundtrip differences against the parked WIP were recorded: Arcade HUD score
 renaming, equivalent arithmetic represented as `calculate value` rather than
 `operator_multiply`, and an array literal passed to an empty-body function. Native score
-mapping has since been implemented. The pending full permutation run must establish the
-present disposition of all three; neither structural opcode differences nor prior counts
-alone establish behaviour.
+mapping has since been implemented. The fresh full permutation run records current structural losses separately
+from compilation; structural opcode differences and prior counts alone do not
+establish behaviour.
 
 The historical five-project `sprite.data` gap is addressed by the implemented dialect,
 VM reference identity and typed export described above. Arbitrary object members remain
@@ -234,3 +236,27 @@ Babel hoisted object-spread helpers outside a function serialized with
 a regression transforms and isolates the exported factory before checking its
 rendered speech pixels. Production rebuild and controller qualification remain
 separate from the headless corpus smoke above.
+
+### Plain Code and binary assets
+
+The complete permutation run at invocation source `bfecedb74` retains 197
+structurally preserved micro:bit re-exports, 11 structural losses and 7 partials.
+Across both targets, 396 re-exports compile in original PXT and two are rejected
+alongside their original bare sources. One malformed input never converts.
+
+The SB3→plain Code→project path reports binary assets absent for all 398
+converted inputs, including default Scratch media. The archive metadata route
+and plain text asset transport are different gates. A Code file naming a
+costume does not contain its image bytes. Complete Code-plus-assets authoring
+and share/archive handoff remains an explicit GUI/storage task. Do not erase
+that loss merely because opcode metadata survives.
+
+### Browser qualification boundary
+
+The production authored rotation game completes the visible Code, Blocks,
+controller, Stop/restart, download and file-reimport journey with 12 observed
+states. Its actual downloaded source compiles in original PXT. The original
+simulator comparison additionally exposed a raster footprint extending beyond
+PXT's truncated collision box; that full-stage pixel mismatch is a separate
+blocking renderer defect under repair. Repeated definition/input warnings are
+retained; successful interaction does not imply a warning-free editor.
