@@ -262,3 +262,37 @@ compilation and behaviour; SB3 persistence; and the relevant visible editor
 workflow. Rerun the same locked corpus after each batch. Record newly exposed
 gaps instead of weakening diagnostics. An invalid source input remains invalid;
 zero partial results alone cannot establish full runtime or authoring parity.
+
+
+## Native authoring closure contract
+
+The user's requested capability is native Brickwright authoring as well as
+conversion: supported MakeCode functionality must be reachable in pseudocode,
+editable Blocks and appropriate graphics/resource controls, then run in Lite
+and export as an editable original MakeCode project. A TypeScript-only import,
+raw JSON parameter or imported game that happens to execute leaves native
+creation/editing unqualified.
+
+The [native authoring closure map](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#native-makecode-authoring-closure-map--2026-10-07)
+records concrete N01–N16 Arcade and M01–M05 other-target families against pinned
+public source declarations. It preserves the historical G01–G27 crosswalk and
+existing C/U identifiers. Its statuses distinguish import/runtime, native words,
+Blocks schemas, resource editing and original export; the full declaration join
+is still to be generated. In particular, the pinned Arcade `apiInfo` omits the
+core game's symbols, so the census must also read bundled TypeScript/declaration
+sources and package dependencies. Counting only existing Blocks or current
+corpus examples would miss public capabilities.
+
+Implement through the existing modules and upstream parser pin process. Each
+new family must add its native word/typed block, resource interface when needed,
+runtime semantics, original-PXT export and a visible authoring journey together.
+The immediate sequence is schema/declaration census, asset-aware editing,
+tilemap painting, animation binding, then drawing/effects/audio/dialog/Info and
+remaining controller/storage/target families. Use affected-project ranking
+within each dependency-ready phase. Do not publish a full capability result
+from the 156 existing dialect operations or the zero-error 24-frame smoke.
+
+The unchanged real-app count at this reviewed checkpoint remains 93 partial
+Arcade inputs and one malformed input. Retain that evidence while implementing
+native GUI gaps; closing a control/schema defect may improve authoring without
+changing the corpus's static translation count. Measure and report both.

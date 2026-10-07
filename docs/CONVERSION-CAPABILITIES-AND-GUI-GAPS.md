@@ -163,6 +163,141 @@ with minimal regression, implementation, original comparison, roundtrips and
 browser authoring proof. Assign disjoint files under the integration claim and
 refresh remote ownership before each implementation slice.
 
+## Native MakeCode authoring closure map — 2026-10-07
+
+Reviewed source checkpoint `d7a9f7364`, with the preserved corpus results in
+[COMPATIBILITY-AUDIT.md](COMPATIBILITY-AUDIT.md). This review inspected source and
+existing menus; it did not run new games or browser journeys. Existing reports
+remain **90 translated / 93 partial / 1 malformed Arcade input**, with **283 named
+gap occurrences** after the consumed-update fix. The compiler-valid runtime smoke
+is **127 stepped / 3 event-only / 0 block errors**. These finite measurements do not
+establish that users can author every supported feature.
+
+The deliverable is a native Brickwright program: pseudocode, actual editable
+Blocks, associated resource editors, runtime behaviour, and original MakeCode
+export. Requiring a user to write TypeScript or manipulate internal JSON to reach
+a capability leaves its native authoring gate open. TypeScript remains an
+interchange/source route; it is not evidence for those missing controls.
+
+### Pinned API inputs and census rules
+
+The local synced `VERSIONS.json` records Arcade **pxt-arcade@4.2.1 /
+pxt-core@13.2.1**, micro:bit **pxt-microbit@9.1.1 / pxt-core@13.0.1**,
+Calliope **3.0.30 / 6.0.23**, EV3 **1.4.41 / 9.3.19**, and Adafruit **1.6.8 /
+6.2.6**. [sync-makecode-runtime.mjs](../scripts/sync-makecode-runtime.mjs) owns
+these exact licensed package inputs. This is the closure target for this
+checkpoint, not a claim about every later MakeCode release or external package.
+
+A crucial census trap: the pinned Arcade target's
+`apiInfo["libs/game"].apis.byQName` is empty, although `bundledpkgs.game` includes
+the public game, Sprite, scene and tile APIs. Enumerating only `apiInfo` would
+silently omit the core game surface. Combine bundled `.ts` and `.d.ts`
+declarations, package manifests and transitive dependencies with API metadata.
+Retain overloads, default arguments, enum members, block metadata and resource
+field editors. Include public Code-only APIs, not just APIs with a MakeCode
+block annotation. Mark private/internal implementation helpers separately; do
+not count them as missing user-facing features or silently lose public members.
+
+Each public declaration needs a durable record keyed by target/version/package,
+qualified name and signature. Record these independent states:
+
+1. Import: supported signatures, named refusals and required dependencies.
+2. Native pseudocode: canonical word, operand types and roundtrip spelling.
+3. Blocks: opcode, shape, visible palette route, argument/default/menu schema,
+   Boolean/reporting sockets and dynamic menu behaviour.
+4. Resources: asset picker/editor, rename/delete/undo, reference identity and
+   persistence; use “not applicable” only when no resource exists.
+5. Runtime: tested behaviour, timing and lifecycle; distinguish stage simulation,
+   native guest, connected device and unmeasured physical behaviour.
+6. Original MakeCode export: emitted public call/type, project manifest/assets,
+   original compiler acceptance and behaviour comparison.
+7. GUI: create from blank through visible controls, edit, switch editors,
+   save/reopen, export/run/reimport, and the linked browser receipt.
+
+Unknown remains unknown. A census row is full only when every applicable gate
+has evidence. The 156 canonical Arcade/Arrays operations (161 forms with aliases)
+are confirmed by `ARCADE_WORDS`; they are not 156 original APIs or a coverage
+percentage. A shared opcode can expose several API properties; conversely one
+public API can require several authoring/resource operations.
+
+### Actionable Arcade family map
+
+The following rows are concrete starting records, not an exhaustive declaration
+census. “Present” below refers to inspected implementation; each listed missing
+control or proof remains an open native authoring gate.
+
+| Closure ID / pinned public APIs | Import and runtime status | Native Code and Blocks | Resource/editor and original export closure |
+| --- | --- | --- | --- |
+| N01 `Sprite` properties, `setScale`, `setScaleCore`, `data`; `sprites.create` | Supported subsets, rotation and reference data are implemented; arbitrary object-member operations refused | Existing property/scale words and menus. Prove typed reporter sockets, real dropdown edits, aliases and failed-input diagnostics | Select an Image/kind/reference through usable controls; edit art with shared identity; export typed data without losing arrays/Images/Sprites. Preserve the existing exact-pixel rotation proof. |
+| N02 `scene.setTileMap`, `scene.setTile`, `scene.getTilesByType`, `tiles.setTilemap` | Legacy calls and unavailable map assets remain named real-corpus gaps; native map/location/wall runtime exists | Existing raw map/location words are insufficient for map creation | U03 painter: tile palette, terrain and wall layers, tile scale, tile references and map dimensions; rename/delete/undo/save/reopen; export the correct legacy or modern map representation. |
+| N03 `animation.runImageAnimation`, `animation.createAnimation`, `animation.runMovementAnimation` | Frame/action animations implemented; movement path engine explicitly missing despite the stop-animation movement menu | Existing frame/action/interval words. Add actual movement/path words and matching blocks when the engine exists | Bind existing Pixel timeline frames to native Image arrays/actions; keep frame durations. Add path editing/presets, stop-type behaviour and original export/playback; the existing movement menu does not establish support. |
+| N04 `Image.drawRect/drawCircle/fillCircle/fillTriangle`, `image.imageBlit` and screen drawing | Image pixels, fills, lines, flips, replacement and two blit forms exist; these do not cover every Image/screen operation | Extend the existing image operation family for each missing overload rather than hide it inside text/JSON | Validate clipping, transparency, source/destination aliasing and palette index; provide native shape choices and resource pickers. Export each shape through a valid public PXT call. |
+| N05 `game.onPaint/onShade`, `scene.createRenderable`, `scene.addBackgroundLayer`, `scene.cameraShake` | Paint and shake appear as named corpus gaps; camera follow/centering is implemented | No corresponding dedicated paint/shade/renderable/layer/shake words in the reviewed dialect | Editable draw callbacks, z/priority and layer images; scheduling relative to physics/HUD, camera and scenes; rendered pixels and original export. Do not reinterpret “zero smoke errors” as paint support. |
+| N06 `effects.starField`, `ParticleEffect.start`, Sprite destruction effects/duration | Screen particles and destruction effects remain named gaps | No native effect/particle authoring words in the reviewed dialect | Effect choice, duration and source-sprite controls; scene push/pop, destruction and restart lifecycle; compare seeded/measurable behaviour without substituting an empty implementation. |
+| N07 `music.play`, `playTone`, `createSong`, `createSoundEffect`, `PlaybackMode` | Import explicitly refuses both `music.playTone` and `music.play`; exporter can emit tones/notes/rests from Scratch constructs. This is a directional coverage gap | No native Arcade music resource/playback words; generic Scratch sound blocks do not expose all PXT song/envelope/playback options | Song/track/note and sound-envelope authoring, volume/tempo/playback mode, stop/pause/scene lifecycle. Original compilation plus audible/timing observations; a tone export is not full music support. |
+| N08 `game.ask`, `askForNumber`, `askForString`, `setDialogFrame/Cursor/TextColor/Font` | Splash/long text and one-argument number/text prompts exist; prompt options and `game.ask` value forms remain gaps | Existing text/question words; digit/length limits and dialog appearance need native operands/blocks | Prompt interaction, cancellation/focus, blocking order and selected font/frame assets; export options exactly. Avoid declaring all dialogs absent or complete. |
+| N09 `info.onScore`, `highScore`, `changeCountdownBy`, `showScore/showLife/showCountdown`, HUD colours and life image | Score/life players1–4 and start/stop/countdown callbacks exist; broader Info surface is not covered by these words | Add missing predicates/reporters/events/HUD setters with player and value types; audit existing numeric player fields for valid range/feedback | Life icon and HUD colour editing, scene-local vs persistent scores, threshold callbacks and original export; persistent high score needs an explicit persistence contract. |
+| N10 `ArcadePhysicsEngine` and `scene.Scene` public members; frame priorities | Resource creation/replacement, three engine settings and selected scene callbacks exist; this is not the full engine/scheduler API | Native scene/engine references exist, but arbitrary public engine methods and event-context priorities need a declaration-by-declaration audit | Resource inspector/picker and callback navigation; validate add/remove/move/overlap/draw where public, cancellation and frame ordering against PXT before exposing unsupported controls. |
+| N11 `controller.player2/3/4`, button repeat configuration, `mp.*` | Single controller widgets and selected button/event bindings exist; Info's player states do not establish multiplayer controller/network support | No native `mp.*` family in the reviewed dialect. Audit player-specific controller signatures and repeat defaults separately | Distinct player bindings and held-input release; keyboard/touch mappings; explicit local vs network session model, disconnect/reconnect and export dependency. Hardware sensors/vibration are separately unmeasured. |
+| N12 `settings.read/writeNumber/String/Buffer/JSON`, `settings.list/remove/exists` | No native settings family in the reviewed dialect | Add typed persistence words/blocks and clear missing-storage diagnostics | Persistence inspector/reset, key lifecycle and limits. Preserve restart/save/reopen semantics and original target package dependencies; do not confuse SB3 project storage with game settings. |
+| N13 `assets.image/tile/tilemap/animation/song` and package exports | Literal/file imports carry separate assets; incomplete bare `.ts` snippets may omit them | Native resource references need discoverable asset-aware Code/Blocks routes | U02 transaction, then tile/animation/song authoring; names and aliases remain stable through palette edits, file/share import, save/reopen and original manifests. Code-only paste cannot silently create replacement artwork. |
+| N14 Standard language, arrays, functions, namespaces and enums | Value/reference/type/lazy-expression machinery exists; some constructs/packages remain named gaps | Existing Arrays/Code words need the same real Blocks-schema checks as Arcade words | Nested resource arrays, recursive/local/captured lifetimes, rename, default/optional arguments and evaluated-once expressions; retain the documented complex-index PXT/JavaScript difference as a measured boundary. |
+| N15 `color`/`palette` packages, `image.setPalette` and shader/render options | Editor palettes and indexed art exist; dynamic game palette/shader semantics are not qualified by those tools | Inventory actual public palette/shader functions and add native words/blocks for supported operations; no percentage claimed | Compare palette-index identity and visible colours across runtime palette changes, scene push/pop and export; custom editor presets alone cannot prove runtime palette APIs. |
+| N16 Optional Arcade target packages: sensors, vibration, pins/serial/radio, network services and board APIs | Bundled target includes optional controller sensors, radio, settings/network and hardware packages; default-game translation is not their coverage | Give each public package its own API/native word/block/export rows and explicit simulator/device requirements | Respect manifest and selected-board capability; add appropriate widgets/device configuration and original target compilation. Connected hardware/network qualification remains unmeasured here, and native target owners retain engine implementation ownership. |
+
+
+For N04 and N10, inspect the complete pinned public signatures before adding
+controls: a similarly named internal image shim or engine method may not be a
+stable user API. Record its actual exported declaration and package, and qualify
+the public export route. Presence in a source file alone is not a completion gate.
+
+### micro:bit and other MakeCode targets
+
+Keep these lanes independent from Arcade. The fresh 215-input micro:bit static
+audit is **205 translated / 10 partial**; original compilation **206 pass / 9
+fail**, runtime smoke **205 stepped / 1 event-only / 0 block errors**. Other census
+reports can use different package-complete inputs and classifications; do not
+combine their totals or call these counts API coverage.
+
+| Closure ID | Present source routes | Required native breadth and evidence |
+| --- | --- | --- |
+| M01 Display, input and events | `microbit-translate.js` handles LED images, buttons, acceleration, rotation, compass/light/temperature/sound and selected gesture/touch/sound events | Inventory every public `basic`, `led`, `input`, `images` signature/default; edit 5×5 art through real controls; drive actual sensor widgets and prove thresholds/event ordering. Full sensor/physical equivalence is unmeasured. |
+| M02 Pins, buffers and buses | Digital/analog reads/writes and selected pin events are mapped | Pinned core includes `pins.i2cReadNumber/i2cWriteNumber`, SPI and serial APIs beyond the two handled serial writes. These lack corresponding explicit translator cases in the reviewed file. Census buffers/number formats, pulse durations, bus setup/transactions and serial receive/framing; provide native blocks/code and suitable simulator models before declaring support. |
+| M03 Radio and music | Selected radio packet fields/send/receive and melody/tone controls are mapped; send-time packet metadata is explicitly refused | Audit all packet fields, callbacks, timing and channel/configuration; radio simulator peer behaviour versus actual device remains separate. Audit micro:bit V2 audio/microphone APIs independently from Arcade music. |
+| M04 Bluetooth, datalogger and packages | Pinned target bundles Bluetooth and datalogger; recognising a namespace in the parser is not API implementation | Native forms and service/configuration/receive controls for supported BLE profiles; datalogger `createCV/logData/setColumns/getRows`, storage UI and exact export dependencies. Required connected-device evidence stays open until observed. |
+| M05 Calliope, EV3 and Adafruit | Distinct pinned compiler/target routes exist | Build separate public declaration, native authoring and device/simulator ledgers. No fresh complete API/GUI census was performed here. Share controls/resources where semantics match; keep target-specific refusals, permissions and hardware limits explicit. |
+
+### Implementation order and required artifacts
+
+1. **Declaration and schema census (N01–N16/M01–M05):** check in a reproducible
+   public-signature map and join it with the existing authoring vocabulary and
+   runtime `getInfo()` schema. Fail on unclassified public declarations,
+   unresolved opcode implementations, menu/slot type mismatches and missing
+   export status/mapping records. An explicit named unsupported row remains a gap, not a pass.
+2. **U02 assets and native operand editing:** complete the current resource
+   handoff and Blocks menu/socket work first. Attach exact edited-block,
+   save/reopen and original-PXT evidence, including failure-path preservation.
+3. **U03/N02 and U04/N03:** deliver visual tilemap and animation binding, using
+   existing Pixel tools. Qualify a user-authored level with walls and animated
+   sprites before expanding effects/music.
+4. **N04–N10:** implement image/drawing, projectiles, effect/audio/dialog/Info
+   families in affected-project order, with native words/blocks and editors in
+   the same slice. Package-backed input recovery must remain distinguishable
+   from implementing a missing API.
+5. **N11–N16 and M01–M05:** close remaining controller/network/storage/language
+   and per-target families. Reuse shared typed resources without conflating
+   target or physical evidence. Every hardware-dependent feature needs a useful
+   simulated model or explicit device requirement, plus truthful qualification.
+6. **U06 blank-project game acceptance:** maps, walls, animated player,
+   projectiles, rotating hazards, score/life, two scenes and sound, created via
+   native Code/Blocks/graphics; controller playback, undo/redo, save/reopen,
+   original MakeCode export/run/reimport. Continue the API ledger after this
+   finite game passes; one complete game cannot prove all public capabilities.
+
+This map supplies concrete work and gate definitions. It does not give a date
+for zero partials: the locked corpus and the public API/authoring census are
+independent completion measures, and newly measured gaps must remain visible.
+
 ## Historical GUI checklist cross-reference
 
 The earlier handoff used G01–G27. Preserve those identifiers in existing issues;
