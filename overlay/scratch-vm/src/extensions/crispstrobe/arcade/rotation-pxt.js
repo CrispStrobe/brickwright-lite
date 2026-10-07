@@ -2,7 +2,8 @@
 // rotated bounding box: its corners, the axis-aligned size it occupies (which
 // becomes the sprite's width and height) and the separating-axis overlap test.
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
-// TypeScript to JavaScript only; the arithmetic is unchanged (task F4).
+// Bounding-box port: TypeScript to JavaScript only; its arithmetic is unchanged.
+// rasterWindow below independently gathers the pinned simulator scatter output.
 module.exports = function initializePxtRotation() {
     function checkForNonIntersection(a, ax, ay, b, bx, by) {
         // we only need to check the first two sides because the

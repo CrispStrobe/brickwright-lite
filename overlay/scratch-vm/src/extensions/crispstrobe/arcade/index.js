@@ -1439,6 +1439,10 @@ module.exports = makeExt(`// Name: Arcade
           this._rotatedBBox.setRotation(Number(value)||0);extension._recalcSpriteSize(this);this.x=x;this.y=y;}});
       Object.defineProperty(sprite,'rotationDegrees',{enumerable:true,configurable:true,
         get(){return this.rotation*180/Math.PI;},set(value){this.rotation=Number(value)*Math.PI/180;}});
+      // PXT lazily replaces any falsy stored data with a new object.
+      Object.defineProperty(sprite,'data',{enumerable:true,configurable:true,
+        get(){if(!Scratch.BWValues.truth(this._data))this._data={};return this._data;},
+        set(value){this._data=value;}});
       for (const axis of ['x', 'y']) {
         const storage = axis === 'x' ? '_fx' : '_fy', size = axis === 'x' ? 'width' : 'height';
         Object.defineProperty(sprite, axis, {enumerable:true, configurable:true,

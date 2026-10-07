@@ -156,4 +156,90 @@ test('MakeCode rotation and data import, run like the original, and export back'
     assert.match(ts, /hero\.rotationDegrees = 30/);
     assert.match(ts, /hero\.rotation = /);
     assert.match(ts, /hero\.data = 7/);
+    const exportedOriginal = await runPxtArcade(ts);
+    for (const name of ['w', 'h', 'w2', 'deg', 'd']) assert.equal(exportedOriginal[name], original[name], `exported ${name}`);
+    const reimported = arcadeToPseudocode(ts);
+    assert.deepEqual(reimported.unsupported, []);
+    const rerun = await runProgram(reimported.code, {frames: 4, uploads: reimported.costumes, storage: true});
+    const rerunValues = Object.fromEntries(rerun.vm.runtime.targets.flatMap(t => Object.values(t.variables || {})).map(v => [v.name, v.value]));
+    for (const name of ['w', 'h', 'w2', 'deg', 'd']) assert.equal(Number(rerunValues[name]), original[name], `reimported ${name}`);
+    const {stepFrames} = await import('./helpers/bw-vm.mjs');
+    await run.vm.loadProject(Buffer.from(await (await run.vm.saveProjectSb3()).arrayBuffer()));
+    run.vm.greenFlag();await stepFrames(run.vm,4);
+    for (const name of ['w', 'h', 'w2', 'deg', 'd']) assert.equal(value(name), original[name], `SB3 ${name}`);
+
+});
+
+
+test('Sprite.data lazy defaults and reference aliases match original PXT across export and SB3', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const {projectToArcade} = await import('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js');
+    const {runProgram, stepFrames} = await import('./helpers/bw-vm.mjs');
+    const source = `let hero=sprites.create(image.create(2,2),SpriteKind.Player)
+let first=hero.data
+let lazySame=first===hero.data
+hero.data=0
+let zeroReplaced=hero.data!==0
+let zeroFresh=first!==hero.data
+let second=hero.data
+hero.data=false
+let falseReplaced=hero.data!==false
+let falseFresh=second!==hero.data
+hero.data=""
+let emptyReplaced=hero.data!==""
+hero.data=undefined
+let undefinedReplaced=hero.data!==undefined
+let arrayHero=sprites.create(image.create(2,2),SpriteKind.Player)
+let numbers=[2,3]
+arrayHero.data=numbers
+let arrayAlias=arrayHero.data
+let arraySame=arrayAlias===numbers
+arrayAlias.push(7)
+let arrayChanged=numbers.length
+let imageHero=sprites.create(image.create(2,2),SpriteKind.Player)
+let picture=image.create(2,1)
+picture.fill(5)
+let heroAlias=imageHero
+heroAlias.data=picture
+let imageAlias=imageHero.data
+let imageSame=imageAlias===picture
+imageAlias.setPixel(0,0,9)
+let imageChanged=picture.getPixel(0,0)
+let spriteHero=sprites.create(image.create(2,2),SpriteKind.Player)
+spriteHero.data=imageHero
+let spriteAlias=spriteHero.data
+let spriteSame=spriteAlias===imageHero
+spriteAlias.vx=37
+let spriteChanged=imageHero.vx`;
+    const names=['lazySame','zeroReplaced','zeroFresh','falseReplaced','falseFresh','emptyReplaced','undefinedReplaced','arraySame','arrayChanged','imageSame','imageChanged','spriteSame','spriteChanged'];
+    const expected = await runPxtArcade(source);
+    const values = run => Object.fromEntries(run.vm.runtime.targets.flatMap(t => Object.values(t.variables || {})).map(v => [v.name, v.value]));
+    const check = run => {
+        assert.deepEqual(run.errors, []);
+        const actual=values(run);
+        for (const name of names) assert.equal(actual[name],expected[name],name);
+        assert.equal(actual.arrayAlias,actual.numbers);
+        assert.equal(actual.imageAlias,actual.picture);
+        assert.equal(actual.spriteAlias,actual.imageHero);
+    };
+    const execute = async imported => {
+        assert.deepEqual(imported.unsupported, []);
+        const run = await runProgram(imported.code,{frames:20,uploads:imported.costumes,storage:true});
+        check(run);return run;
+    };
+    const imported=arcadeToPseudocode(source), run=await execute(imported);
+    await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[]);
+    const exportedOriginal=await runPxtArcade(exported.ts);
+    for(const name of names)assert.equal(exportedOriginal[name],expected[name],`exported ${name}`);
+    await execute(arcadeToPseudocode(exported.ts));
+    await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));
+    run.vm.greenFlag();await stepFrames(run.vm,20);check(run);
+});
+
+test('Sprite.data arbitrary object members remain explicit unsupported diagnostics', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const imported=arcadeToPseudocode('let hero=sprites.create(image.create(2,2),SpriteKind.Player)\nhero.data.points=7\nlet points=hero.data.points');
+    assert.ok(imported.unsupported.length, 'object member access must not be silently translated');
 });
