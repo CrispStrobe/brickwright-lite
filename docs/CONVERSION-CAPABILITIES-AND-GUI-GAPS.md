@@ -361,6 +361,21 @@ reporters from Add Extension → Arcade, selects their actual dropdowns and
 checks the published name and UUID in the VM.
 Hosted final-head consumer qualification remains required.
 
+The next product source `794cc9082` implements the explicit library-role and
+Code retention foundation. Bundle7 persists the role independently of names;
+old bundle6 readers retain opaque source. Actual VM save/reopen, Code projection,
+name collision, source retention and malformed-role checks pass. The final
+foundation batch passes45/45; the earlier batch with CLI regressions passes51/51.
+At qualified product source `6f29dc3e3`, the profiling production app passes
+all ownership gates at4,467,115 initial bytes against the unchanged4,467,136
+limit. Thirteen actual browser journeys pass, including an explicit library
+fixture edited in Pixel, SB3 reopen, Code/Blocks retention and fresh/shared
+playback. Actual GUI and CLI exports retain exact edited native/rich source and
+run in original PXT while omitting the library actor. Earlier budget and browser
+harness failures remain preserved. The final focused batch passes46/46, including
+delayed role-restoration ownership. This does not yet install native imported
+resources; final-head hosted qualification remains required. See the [foundation contract](ARCADE-ANIMATION-INTERCHANGE.md#explicit-asset-library-foundation).
+
 To close the imported-library gap next:
 
 1. Add an explicit, versioned hidden asset-library target role; never infer the

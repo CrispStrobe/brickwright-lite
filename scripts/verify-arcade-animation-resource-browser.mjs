@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {execFile} from 'node:child_process';
+import {promisify} from 'node:util';
 import JSZip from 'jszip';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
@@ -470,7 +472,10 @@ try{
         };
         await loadLibrary(libraryFile);await pixels(libraryName);await panel('frames');
         assert.equal(await page.getByTestId('bw-pixel-animation-name').inputValue(),'Walk');
-        await paintFrame(4);await page.getByTestId('bw-pixel-publish-animation').click();
+        await page.getByTestId('bw-pixel-frame-0').click();
+        await page.getByTestId('bw-pixel-frames-toggle').click();
+        await page.getByTestId('bw-pixel-frame-duration').waitFor({state:'hidden'});
+        await paintFrame(4);await panel('frames');await page.getByTestId('bw-pixel-publish-animation').click();
         await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.get(id)?.frames[0].pixels[0]===4,published.id);
         const editedLibrary=await snapshot('library-edited',{bundleVersion:7});
         await loadLibrary(editedLibrary.file);
@@ -493,6 +498,29 @@ try{
         report.assetLibrary={fixture:true,automaticNativeImport:false,pixelEdited:true,codeBlocksRetained:true,sb3Reopened:true,observed:libraryState};
         report.journey.push('explicit hidden library fixture opens in Pixel, edits and SB3 reopen retain role, UUID and rich source');
         report.journey.push('Code excludes library declarations and preserves hidden carriers; fresh/shared runtime lookups play edited source');
+
+        await openCode();if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        const libraryDownload=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
+        const libraryHex=path.join(path.dirname(out),'animation-library-export.hex');await(await libraryDownload).saveAs(libraryHex);
+        const cliHex=path.join(path.dirname(out),'animation-library-cli.hex');
+        await promisify(execFile)(process.execPath,['scripts/makecode.mjs','to-hex',retainedLibrary.file,
+            '--target','arcade','--source','-o',cliHex],{timeout:30000});
+        for(const [route,file] of [['GUI',libraryHex],['CLI',cliHex]]){
+            const returned=await unpackMakeCodeSource(await fs.readFile(file));
+            assert.ok(!returned.files['main.ts'].includes('Arcade_artworkSprite'),`${route}: library has no gameplay actor`);
+            const entries=Object.values(JSON.parse(returned.files['images.g.jres']));assert.equal(entries.length,1);
+            const native=decodeAnimationJres(entries[0]);
+            assert.deepEqual(native.frames.map(frame=>Array.from(frame.pixels)),[4,5,9].map(colour=>Array(6).fill(colour)));
+            const rich=recoverAnimationCompanion(returned.files[ANIMATION_COMPANION_PATH],[native],ARCADE_PALETTE);
+            assert.deepEqual(rich.warnings,[]);assert.deepEqual(rich.resources[0].document,retainedLibrary.document);
+            const built=await compile('arcade',returned.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+            assert.deepEqual(built.netAttempts,[]);
+            const run=await runArcadeSim(built.outfiles['binary.js'],{ms:75});assert.equal(run.error,null);
+            assert.ok(run.serial.some(row=>String(row.text).trim()==='4'),`${route}: original PXT plays the edited library frame`);
+        }
+        report.assetLibrary.guiAndCliOriginalExport=true;
+        report.journey.push('GUI and CLI export omit the library actor, retain edited native/rich resources and run in original PXT');
+
 
 
     }
