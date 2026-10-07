@@ -134,6 +134,10 @@ const phase=expected=>page.waitForFunction(value=>window.__brickwrightStore.getS
 try{
     await page.addInitScript(()=>{localStorage.clear();sessionStorage.clear();localStorage.setItem('bw-starter-v1-complete','1');});
     await page.goto(process.env.BW_BASE_URL||process.env.PROOF_URL||'http://localhost:8617/',{waitUntil:'domcontentloaded',timeout:45000});
+    report.pageScripts=await page.locator('script[src]').evaluateAll(elements=>elements.map(element=>element.getAttribute('src')));
+    if(process.env.BW_EXPECT_GUI_BUNDLE)assert.ok(report.pageScripts.some(src=>src.endsWith(process.env.BW_EXPECT_GUI_BUNDLE)),
+        'browser must load the expected qualified production GUI bundle');
+
     await openCode();await page.getByTestId('bw-device-select').selectOption('arcade');
     await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwDeviceId==='arcade');
     await pixels();await panel('more');
@@ -393,6 +397,34 @@ try{
         });assert.ok(importedStopped.every(pixels=>JSON.stringify(pixels)===JSON.stringify(importedStopped[0])),'reimported B stops actual animation');
         await page.getByTestId('bw-arcade-a').click();await phase(1);await observePlayback('reimported-controller-restart',[2,9,5]);await stop().click();
         report.journey.push('actual Arcade download compiles/runs in original PXT; frame order/fullscreen pixels and file-reimport behaviour match');
+        for(const duration of [1,65535]){
+            const oldStage=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+            await page.getByText('File',{exact:true}).first().click();const chooser=page.waitForEvent('filechooser');
+            await page.getByText('Load from your computer',{exact:true}).click();
+            await (await chooser).setFiles(path.join(path.dirname(out),`animation-single-${duration}.sb3`));
+            await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,oldStage);
+            await openCode();await page.getByRole('button',{name:/From blocks/}).first().click();
+            await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor({state:'visible'});
+            const baseline=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
+            await editor().fill(`DEVICE ARCADE\nGLOBAL nativeActor\nGLOBAL nativeFrames\nGLOBAL nativeInterval\n${baseline.replace(/^DEVICE[^\n]*\n?/m,'').trimEnd()}\nSPRITE NativeEndpoint:\nWHEN flag clicked:\n  hide\n  arcade set background color to 1\n  set nativeActor to arcade create image (arcade new image width 3 height 2) template "" kind "Player"\n  arcade set position of nativeActor x 80 y 60\n  arcade set scale of nativeActor to 8 anchor 0\n  set nativeFrames to arcade animation frames resource "${singleId}"\n  set nativeInterval to arcade animation interval resource "${singleId}"\n  arcade animate sprite nativeActor frames nativeFrames interval nativeInterval loop (1 = 1)\n`);
+            await apply();await flag().click();
+            await page.waitForFunction(({duration,palette})=>{
+                const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+                const variables=runtime.targets.flatMap(target=>Object.values(target.variables));
+                const actor=variables.find(variable=>variable.name==='nativeActor')?.value;
+                const interval=variables.find(variable=>variable.name==='nativeInterval')?.value;
+                const image=runtime.bwArcadeDeviceState?.sprites?.[actor]?.image;
+                if(Number(interval)!==duration||image?.pixels.length!==6||!Array.from(image.pixels).every(pixel=>pixel===2))return false;
+                const canvas=runtime.renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
+                const context=copy.getContext('2d');context.drawImage(canvas,0,0);
+                const rgb=context.getImageData(Math.floor(copy.width/2),Math.floor(copy.height/2),1,1).data;
+                return palette[2].slice(1).match(/../g).every((value,index)=>parseInt(value,16)===rgb[index]);
+            },{duration,palette:ARCADE_PALETTE});
+            await stop().click();
+        }
+        report.nativeEditorBounds.runtimeAndVisibleEndpoints=true;
+        report.journey.push('actual Code-to-Blocks reporters run one-frame resources at both native interval endpoints with exact visible pixels');
+
     }
     assert.deepEqual(report.pageErrors,[]);
     assert.deepEqual(report.consoleMessages.filter(message=>/Workspace Update Error|Connection checks failed|could not attach artwork|could not repack artwork|Built-in extension arcade failed/.test(message)),[]);
@@ -401,6 +433,15 @@ try{
     report.status='failed';report.failure=error.stack||String(error);
     report.body=await page.locator('body').innerText().then(text=>text.slice(-12000)).catch(()=>null);
     report.resources=await resource().catch(()=>null);
+    report.runtimeDiagnostics=await page.evaluate(()=>{
+        const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        const variables=runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>({name:variable.name,value:variable.value}));
+        const canvas=runtime.renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
+        const context=copy.getContext('2d');context.drawImage(canvas,0,0);
+        return {device:runtime.bwDeviceId,variables,sprites:runtime.bwArcadeDeviceState?.sprites,
+            centreRgba:Array.from(context.getImageData(Math.floor(copy.width/2),Math.floor(copy.height/2),1,1).data)};
+    }).catch(()=>null);
+
     await page.screenshot({path:out.replace(/\.json$/,'')+'-failure.png'}).catch(()=>{});throw error;
 }finally{
     clearTimeout(deadline);await fs.writeFile(out,JSON.stringify(report,null,2)+'\n');await browser.close();

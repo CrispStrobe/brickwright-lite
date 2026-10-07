@@ -256,3 +256,38 @@ one/two-frame resources at1ms and65,535ms, native gallery decoding, source
 recovery and behavioural reimport. Policy/authoring controls pass31/31. These
 synthetic cases do not change the locked corpus tally or establish editable
 native imports. Production-browser qualification is recorded separately below.
+
+
+### Final timing qualification
+
+At product source `f945e7feb0522833c1794fe802fee6afc28f1507`, the runtime
+resource reporters also accept1–65,535ms. Six runtime tests pass, including
+actual frame advancement and invalid-value refusal. Three CLI/project tests
+pass, covering both ordinary bundle5 source and single-frame bundle6 source at
+both interval endpoints. Artwork roundtrip/import/wait checks pass17/17.
+
+The production React profiling build passes the unchanged ownership gate with
+4,466,357 initial JavaScript bytes against a4,467,136-byte limit. Native parser,
+codec and companion modules remain deferred in chunk2182; the
+[emitted receipt](receipts/2026-10-07-arcade-animation-native-bounds.json) binds
+these observations to the raw stats hash. This is a bundle ownership/size proof,
+not a startup latency measurement.
+
+That verified profiling production app passes nine browser journeys, including
+actual one-frame publication and SB3 reopen at1ms/65,535ms, Code-to-Blocks live
+resource reporters at both endpoints, and exact visible pixels. Existing
+controller, source-recovery, malformed-file and original-PXT journeys still
+pass:19,200 actual Brickwright/original screen pixels agree and no page errors
+occur. The browser records its served script identities and can require an
+expected GUI bundle before starting.
+
+An earlier ordinary production build and its eight-journey gate passed before
+the runtime bound was updated. Two subsequent endpoint checks accidentally
+served that older ordinary output rather than the corrected profiling output;
+their unchanged failures and observed undefined frame/interval values are
+preserved. Serving the correct build fixes those failures without weakening
+assertions or timing budgets. Two profiling builds stopped for runtime/preparation
+corrections are also preserved. Browser policy checks pass25/25. Fresh hosted
+qualification is required before merge; editable imported library installation,
+fresh-copy native lookup, original Assets editing and93 corpus partials remain
+open.

@@ -319,6 +319,13 @@ original-PXT compilation/execution at both interval endpoints, companion
 recovery, SB3 persistence and Undo. The imported editable library and fresh-copy
 resource operation remain open; see the [timeline bounds](ARCADE-ANIMATION-INTERCHANGE.md#native-timeline-bounds).
 
+At product source `f945e7feb`, runtime endpoint tests pass6/6 and the verified
+profiling production app passes nine browser journeys, including endpoint
+Code-to-Blocks playback and visible pixels. Initial JavaScript4,466,357 bytes
+passes the unchanged4,467,136 limit. CLI/current-bundle tests pass3/3; original
+PXT still matches all19,200 screen pixels. Earlier stale-served-build failures
+are retained in the evidence; no budgets or assertions were relaxed.
+
 **U04 remains open.** Unequal-duration scheduling, action binding, sheet and
 frames-as-costumes journeys and
 rich resource reconstruction from original MakeCode remain separate work.
