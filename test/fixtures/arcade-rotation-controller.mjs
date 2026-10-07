@@ -40,3 +40,12 @@ controller.down.onEvent(ControllerButtonEvent.Pressed,function(){
     phase=0
 })
 `;
+
+// Measured full-screen output of the actual exported fixture in pinned PXT
+// Arcade4.2.1, including its draw footprint beyond the24×15 rotated bbox.
+// Do not derive this oracle from Lite's bbox or renderer skin dimensions.
+export const ROTATION_CONTROLLER_INITIAL_PIXELS = Array.from({length: 160 * 120}, (_, offset) => {
+    const x = offset % 160, y = Math.floor(offset / 160);
+    if (x < 68 || x >= 92 || y < 52 || y >= 68) return 1;
+    return [2, 5, 9, 7, 8, 10][Math.floor((y - 52) / 8) * 3 + Math.floor((x - 68) / 8)];
+});

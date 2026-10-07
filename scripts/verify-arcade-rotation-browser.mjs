@@ -7,7 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {ROTATION_CONTROLLER_SOURCE} from '../test/fixtures/arcade-rotation-controller.mjs';
+import {ROTATION_CONTROLLER_SOURCE, ROTATION_CONTROLLER_INITIAL_PIXELS} from '../test/fixtures/arcade-rotation-controller.mjs';
 
 const imported = arcadeToPseudocode(ROTATION_CONTROLLER_SOURCE);
 assert.deepEqual(imported.unsupported, [], 'fixture imports without named gaps');
@@ -146,6 +146,12 @@ try {
     await flag.click();
     await page.getByTestId('bw-arcade-a').waitFor({state: 'visible', timeout: 30000});
     const initial = await sample('initial', 0, 'ready', 0);
+    const mismatchPixels = initial.paletteScreen.reduce((count, colour, index) =>
+        count + Number(colour !== ROTATION_CONTROLLER_INITIAL_PIXELS[index]), 0);
+    report.originalPixelComparison = {oracle: 'pinned PXT Arcade4.2.1 full-stage exported fixture',
+        pixels: ROTATION_CONTROLLER_INITIAL_PIXELS.length, mismatchPixels};
+    assert.equal(mismatchPixels, 0, 'full-stage pixels match original PXT, including footprint outside the rotated bbox');
+    assert.deepEqual(initial.offPaletteSamples, [], 'logical pixel centres remain palette colours');
     for (let cycle = 0; cycle < 2; cycle++) {
         await press('a');
         const quarter = await sample(`quarter${cycle}`, 1, 'quarter', Math.PI / 2);
