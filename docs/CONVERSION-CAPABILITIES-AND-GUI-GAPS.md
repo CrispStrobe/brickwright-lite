@@ -312,6 +312,13 @@ The final animation and background browser gates each pass seven journeys.
 See the [interchange qualification](ARCADE-ANIMATION-INTERCHANGE.md) for exact
 scope and the emitted ownership receipt. Hosted final-head checks remain pending.
 
+Pixel publication now supports one-frame resources and exact1–65,535ms timing
+using document5/bundle6. Older bundle5 readers preserve the source unchanged;
+legacy document validation remains unchanged. Focused tests include actual
+original-PXT compilation/execution at both interval endpoints, companion
+recovery, SB3 persistence and Undo. The imported editable library and fresh-copy
+resource operation remain open; see the [timeline bounds](ARCADE-ANIMATION-INTERCHANGE.md#native-timeline-bounds).
+
 **U04 remains open.** Unequal-duration scheduling, action binding, sheet and
 frames-as-costumes journeys and
 rich resource reconstruction from original MakeCode remain separate work.

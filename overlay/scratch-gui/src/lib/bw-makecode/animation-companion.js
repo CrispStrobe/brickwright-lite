@@ -40,7 +40,9 @@ const projectedSource = (document, palette) => {
     let normalized;
     try {
         validateDocument(document);
-        if (document.version !== 4) fail('DOCUMENT', 'Animation companion source requires resource document version4');
+        if (![4, 5].includes(document.version) || !document.animation?.resource) {
+            fail('DOCUMENT', 'Animation companion source requires a resource document version4 or5');
+        }
         normalized = animationResourceFromDocument(document);
     } catch (error) {
         if (error instanceof AnimationCompanionError) throw error;
@@ -146,9 +148,6 @@ export function recoverAnimationCompanion (companionText, nativeAnimations, proj
         let reason = !payload ? 'missing-companion' : !record ? 'no-record' :
             !matching(payload.palette, palette) ? 'project-palette-changed' :
                 !sameProjection(record.nativeProjection, projectionOf(animation)) ? 'stale-projection' : null;
-        if (!reason && (animation.frames.length < 2 || animation.intervalMs < 20 || animation.intervalMs > 10000)) {
-            reason = 'outside-editor-bounds';
-        }
         if (reason) {
             resources.push({nativeId, document: null, reason});
             if (record) warnings.push(`Animation ${JSON.stringify(nativeId)} rich source not restored: ${reason}`);

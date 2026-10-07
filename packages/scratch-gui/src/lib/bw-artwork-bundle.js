@@ -10,7 +10,7 @@ import {editablePixelSize} from './bw-makecode/pixel-image.js';
 
 const ARTWORK_PATH = 'brickwright/artwork/v1.json';
 const ARTWORK_FORMAT = 'brickwright-artwork';
-const ARTWORK_VERSION = 5;
+const ARTWORK_VERSION = 6;
 const MAX_ARTWORK_BYTES = 64 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 
@@ -63,10 +63,10 @@ const validateLayers = (layers, expectedSize = null) => {
 };
 
 const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
-    if (!isObject(doc) || ![1, 2, 3, 4].includes(doc.version)) {
+    if (!isObject(doc) || ![1, 2, 3, 4, 5].includes(doc.version)) {
         throw new Error('artwork document must contain layers');
     }
-    if (doc.version === 2 || ([3, 4].includes(doc.version) && Object.prototype.hasOwnProperty.call(doc, 'palette'))) {
+    if (doc.version === 2 || ([3, 4, 5].includes(doc.version) && Object.prototype.hasOwnProperty.call(doc, 'palette'))) {
         if (!Array.isArray(doc.palette) || doc.palette.length !== 16 || doc.palette[0] !== null ||
             !doc.palette.slice(1).every(colour => /^#[0-9a-f]{6}$/i.test(colour))) {
             throw new Error('invalid artwork palette');
@@ -81,13 +81,13 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
         !doc.layers.some(layer => layer.id === doc.activeLayerId)) throw new Error('invalid active layer');
     if (byteLength(JSON.stringify(doc)) > maxBytes) throw new Error('artwork document is too large');
     if (doc.animation) {
-        if (![3, 4].includes(doc.version) || !pixelSize || !isObject(doc.animation) ||
-            !Array.isArray(doc.animation.frames) || doc.animation.frames.length < 2 ||
+        if (![3, 4, 5].includes(doc.version) || !pixelSize || !isObject(doc.animation) ||
+            !Array.isArray(doc.animation.frames) || doc.animation.frames.length < (doc.version === 5 ? 1 : 2) ||
             doc.animation.frames.length > 64 || typeof doc.animation.activeFrameId !== 'string') {
             throw new Error('invalid artwork animation');
         }
         const resource = doc.animation.resource;
-        if (doc.version === 4) {
+        if (doc.version === 4 || (doc.version === 5 && resource !== undefined)) {
             if (!isObject(resource) || typeof resource.id !== 'string' ||
                 !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resource.id) ||
                 typeof resource.name !== 'string' || !resource.name.trim() || resource.name.length > 80) {
@@ -99,7 +99,7 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
             if (!isObject(frame) || typeof frame.id !== 'string' || !frame.id || frameIds.has(frame.id) ||
                 (Object.prototype.hasOwnProperty.call(frame, 'name') &&
                     (typeof frame.name !== 'string' || !frame.name.trim() || frame.name.length > 80)) ||
-                !Number.isInteger(frame.durationMs) || frame.durationMs < 20 || frame.durationMs > 10000 ||
+                !Number.isInteger(frame.durationMs) || frame.durationMs < (doc.version === 5 ? 1 : 20) || frame.durationMs > (doc.version === 5 ? 65535 : 10000) ||
                 typeof frame.activeLayerId !== 'string') throw new Error('invalid artwork frame');
             frameIds.add(frame.id);
             if (!Array.isArray(frame.layers) || !frame.layers.some(layer => layer.id === frame.activeLayerId)) {
@@ -114,7 +114,7 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
         const active = doc.animation.frames.find(frame => frame.id === doc.animation.activeFrameId);
         if (JSON.stringify(active.layers) !== JSON.stringify(doc.layers) ||
             active.activeLayerId !== doc.activeLayerId) throw new Error('active frame differs from costume source');
-    } else if ([3, 4].includes(doc.version)) {
+    } else if ([3, 4, 5].includes(doc.version)) {
         throw new Error(`version ${doc.version} artwork requires animation`);
     }
     return doc;
@@ -123,11 +123,13 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
 // Versions 1–3 readers cap indexed layers at128×128. Advertise the extended
 // bounds at bundle level so those readers preserve the opaque source as future.
 // Readers through bundle4 lack published resource bindings, which require bundle5.
+// Native timing and single-frame timelines require document5/bundle6; older
+// readers preserve this source as opaque future data instead of dropping frames.
 const artworkBundleVersion = records => Math.max(1, ...records.map(record => {
     const document = record.document;
     const extended = document.layers.some(layer => layer.content.kind === 'pixels' &&
         (layer.content.value.width > 128 || layer.content.value.height > 128));
-    return document.version === 4 ? 5 : Math.max(document.version, extended ? 4 : 1);
+    return document.version === 5 ? 6 : document.version === 4 ? 5 : Math.max(document.version, extended ? 4 : 1);
 }));
 
 const fromRendered = costume => ({
@@ -287,7 +289,9 @@ const inspectArtwork = async input => {
             const costume = project.targets?.[record.targetIndex]?.costumes?.[record.costumeIndex];
             if (!costume || costume.md5ext !== record.renderedMd5ext) continue;
             validateDocument(record.document);
-            if (record.document.version > payload.version) throw new Error('artwork document exceeds bundle version');
+            if (record.document.version > payload.version || (record.document.version === 5 && payload.version < 6)) {
+                throw new Error('artwork document exceeds bundle version');
+            }
             // Every asset reference must point to the matching render or another ZIP asset.
             for (const layer of record.document.layers) {
                 if (layer.content.kind === 'asset' && !zip.file(layer.content.value)) {

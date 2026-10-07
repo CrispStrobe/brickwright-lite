@@ -62,17 +62,17 @@ const paintFrame=async colour=>{
     await page.mouse.move(box.x+box.width*5/6,box.y+box.height*3/4,{steps:3});
     await page.mouse.up();
 };
-const snapshot=async label=>{
+const snapshot=async (label,{bundleVersion=5,documentVersion=4,frameCount=3}={})=>{
     await page.getByText('File',{exact:true}).first().click();
     const downloaded=page.waitForEvent('download');
     await page.getByText('Save to your computer',{exact:true}).click();
     const file=path.join(path.dirname(out),`animation-${label}.sb3`);await (await downloaded).saveAs(file);
     const zip=await JSZip.loadAsync(await fs.readFile(file));
     const artwork=JSON.parse(await zip.file('brickwright/artwork/v1.json').async('text'));
-    assert.equal(artwork.version,5);
+    assert.equal(artwork.version,bundleVersion);
     const records=artwork.costumes.filter(row=>row.document.animation?.resource);assert.equal(records.length,1);
-    const record=records[0];assert.equal(record.document.version,4);
-    assert.equal(record.document.animation.frames.length,3);assert.equal(record.document.layers.length,2);
+    const record=records[0];assert.equal(record.document.version,documentVersion);
+    assert.equal(record.document.animation.frames.length,frameCount);assert.equal(record.document.layers.length,2);
     const render=await zip.file(record.renderedMd5ext).async('nodebuffer');
     return {file,document:record.document,assetHash:crypto.createHash('sha256').update(render).digest('hex')};
 };
@@ -139,6 +139,33 @@ try{
     await pixels();await panel('more');
     await page.getByTestId('bw-pixel-w').fill('3');await page.getByTestId('bw-pixel-h').fill('2');
     await panel('layers');await page.getByTestId('bw-pixel-add-layer').click();
+    await paintFrame(2);await panel('frames');
+    await page.getByTestId('bw-pixel-animation-name').fill('Single');
+    let singleId;
+    for(const duration of [1,65535]){
+        const input=page.getByTestId('bw-pixel-frame-duration');
+        assert.equal(await input.getAttribute('min'),'1');assert.equal(await input.getAttribute('max'),'65535');
+        await input.fill(String(duration));await page.getByTestId('bw-pixel-publish-animation').click();
+        await page.waitForFunction(ms=>{
+            const rows=[...(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.values()||[])];
+            return rows.length===1&&rows[0].frames.length===1&&rows[0].frames[0].durationMs===ms;
+        },duration);
+        const single=(await resource())[0];
+        if(singleId)assert.equal(single.id,singleId);else singleId=single.id;
+        const saved=await snapshot(`single-${duration}`,{bundleVersion:6,documentVersion:5,frameCount:1});
+        assert.equal(saved.document.animation.frames[0].durationMs,duration);
+        const previous=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+        await page.getByText('File',{exact:true}).first().click();const load=page.waitForEvent('filechooser');
+        await page.getByText('Load from your computer',{exact:true}).click();await (await load).setFiles(saved.file);
+        await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,previous);
+        await pixels();await panel('frames');
+        assert.equal(await page.getByTestId('bw-pixel-frame-duration').inputValue(),String(duration));
+        assert.deepEqual((await resource())[0],single);
+    }
+    report.nativeEditorBounds={singleResourceId:singleId,intervalEndpoints:[1,65535],sb3Reopened:true};
+    report.journey.push('actual Pixel publishes one frame at both native duration endpoints and SB3 reopen preserves timing and UUID');
+    await page.getByTestId('bw-pixel-remove-animation').click();
+    await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.size===0);
     for(const [index,colour] of [2,5,9].entries()){
         if(index){await panel('frames');await page.getByTestId('bw-pixel-add-frame').click();}
         await paintFrame(colour);await panel('frames');

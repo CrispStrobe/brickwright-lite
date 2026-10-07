@@ -577,7 +577,8 @@ class PixelArtEditor extends React.Component {
     }
 
     setFrameDuration (value) {
-        const durationMs = Math.max(20, Math.min(10000, Math.round(Number(value) || 100)));
+        const durationMs = Number(value);
+        if (!Number.isInteger(durationMs) || durationMs < 1 || durationMs > 65535) return;
         const frame = this.state.frames.find(item => item.id === this.state.activeFrameId);
         if (!frame || frame.durationMs === durationMs) return;
         this.remember();
@@ -1302,8 +1303,8 @@ class PixelArtEditor extends React.Component {
             return;
         }
         const frames = this.materializeFrames();
-        if (frames.length < 2 || frames.some(frame => frame.durationMs !== frames[0].durationMs)) {
-            this.setState({animationError: 'Publishing requires at least two frames with equal durations. Unequal durations remain editable.'});
+        if (!frames.length || frames.some(frame => frame.durationMs !== frames[0].durationMs)) {
+            this.setState({animationError: 'Publishing requires frames with equal durations. Unequal durations remain editable.'});
             return;
         }
         try {
@@ -1325,9 +1326,8 @@ class PixelArtEditor extends React.Component {
             {...selectedResource, name: animationName.trim()} : selectedResource;
         const frames = this.materializeFrames();
         const document = layersDocument(layers, image.width, image.height, scale, activeLayerId,
-            palette, frames.length > 1 ? {frames, activeFrameId, resource} : null);
+            palette, frames.length > 1 || resource || frames[0].durationMs !== 100 ? {frames, activeFrameId, resource} : null);
         try {
-            if (resource && frames.length < 2) throw new Error('A published animation requires at least two frames. Remove its binding to save one frame.');
             const resources = syncAnimationResources(vm, {costume: this.costume(), document, validateOnly: true});
             const warnings = resource ? resources.get(resource.id)?.warnings || [] : [];
             const svg = layersToSvg(layers, image.width, image.height, scale, palette);
@@ -1883,7 +1883,7 @@ class PixelArtEditor extends React.Component {
                         disabled={frameIndex >= frames.length - 1} onClick={() => this.moveFrame(1)}>→</button>
                     <label style={{display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12,
                         whiteSpace: 'nowrap', flexShrink: 0}}>{t(locale, 'px.frameDuration')}
-                        <input type="number" min="20" max="10000" step="10" style={{width: 64}}
+                        <input type="number" min="1" max="65535" step="1" style={{width: 64}}
                             data-testid="bw-pixel-frame-duration" value={activeFrame.durationMs}
                             onChange={event => this.setFrameDuration(event.target.value)} /></label>
                     {frames.length > 1 ? <label style={{display: 'inline-flex', alignItems: 'center', gap: 4,

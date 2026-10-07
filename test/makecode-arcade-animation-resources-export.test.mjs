@@ -7,6 +7,8 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 import {runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
+import {decodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
+import {recoverAnimationCompanion, ANIMATION_COMPANION_PATH} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-companion.js';
 
 // Producer qualification may use its exact reviewed source before consumer
 // adoption. Normal CI uses the vendored pin; no parser source is copied here.
@@ -110,4 +112,35 @@ test('animation helper names avoid saved variables first referenced after the re
     const run = await runArcadeSim(compiled.outfiles['binary.js'], {ms: 75});
     assert.equal(run.error, null);
     for (const value of ['42', 'saved', '17']) assert.ok(run.serial.some(entry => String(entry.text).includes(value)), value);
+});
+
+
+test('single-frame and endpoint native durations export as real assets and compile in original PXT', async () => {
+    const creator = new Creator(); creator.parse(program(`"${id}"`));
+    for (const count of [1, 2]) for (const intervalMs of [1, 65535]) {
+        const document = sourceDocument(); document.version = 5;
+        document.animation.frames = document.animation.frames.slice(0, count);
+        document.animation.frames.forEach(frame => { frame.durationMs = intervalMs; });
+        const exported = projectToArcade(creator.project, {animationDocuments: [document]});
+        assert.deepEqual(exported.unsupported, []);
+        assert.deepEqual(exported.warnings, []);
+        const jres = JSON.parse(exported.files['images.g.jres']);
+        const animations = Object.entries(jres).filter(([, value]) => value.mimeType === 'application/mkcd-animation')
+            .map(([key, value]) => decodeAnimationJres(value, key, jres['*']?.namespace));
+        assert.equal(animations.length, 1);
+        assert.equal(animations[0].intervalMs, intervalMs);
+        assert.equal(animations[0].frames.length, count);
+        const restored = recoverAnimationCompanion(exported.files[ANIMATION_COMPANION_PATH], animations);
+        assert.deepEqual(restored.warnings, []);
+        assert.deepEqual(restored.resources[0].document, document);
+        const compiled = await compile('arcade', exported.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+        const run = await runArcadeSim(compiled.outfiles['binary.js'], {ms: 75});
+        assert.equal(run.error, null);
+        assert.ok(run.screen()[59 * 160 + 79]);
+        assert.ok(run.serial.some(entry => String(entry.text).includes('true')));
+        const imported = arcadeToPseudocode(exported.files);
+        assert.deepEqual(imported.unsupported, []);
+        assert.deepEqual(imported.animationResources[0].document, document);
+    }
 });

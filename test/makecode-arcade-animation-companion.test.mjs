@@ -135,3 +135,18 @@ test('encode rejects unbound/mismatched source and enforces byte, count and pale
         p.resources[0].nativeProjection={frames:projection.frames,intervalMs:projection.intervalMs,height:projection.height,width:projection.width};});
     assert.deepEqual(recoverAnimationCompanion(reordered,[animation]).warnings,[],'JSON object key order is not pixel identity');
 });
+
+test('version5 source restores single-frame and full native timing without fallback or clamping', () => {
+    for (const count of [1, 2]) for (const intervalMs of [1, 19, 10001, 65535]) {
+        const document = source(); document.version = 5;
+        document.animation.frames = document.animation.frames.slice(0, count);
+        document.animation.frames.forEach(frame => { frame.durationMs = intervalMs; });
+        const {entry, animation} = fixture(document);
+        const text = encodeAnimationCompanion([entry]);
+        const result = recoverAnimationCompanion(text, [animation]);
+        assert.deepEqual(result.warnings, []);
+        assert.deepEqual(result.resources[0].document, document);
+        assert.equal(animation.frames.length, count);
+        assert.equal(animation.intervalMs, intervalMs);
+    }
+});

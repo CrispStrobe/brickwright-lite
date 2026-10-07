@@ -8,6 +8,7 @@ import {blankLayer,layersDocument,layersToSvg,composeLayers,sourceFrames} from '
 import {setCostumeDocument,getCostumeDocument,newAnimationResourceId,syncAnimationResources,copyCostumeDocument,
     resetCostumeDocument,applyArtwork,attachArtwork,inspectArtwork,artworkBundleVersion,ARTWORK_PATH} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 import * as oldReader from './fixtures/artwork-reader-v4.mjs';
+import * as bundle5Reader from './fixtures/artwork-reader-v5.mjs';
 const source=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pixel-art-editor.jsx',import.meta.url),'utf8');
 const clone=value=>structuredClone(value);
 const binding={id:'12345678-1234-4234-8234-123456789abc',name:'Walk'};
@@ -33,6 +34,7 @@ const methods={
     undo:method('undo () {','',{}),
     restore:method('restore (snapshot) {','snapshot',{composeLayers})
 };
+methods.setFrameDuration = method('setFrameDuration (value) {','value',{});
 const editorFixture=(published=false)=>{
     const f=fixture(),doc=document(published?binding:null),frames=sourceFrames(doc,2,1),layers=frames[0].layers;
     setCostumeDocument(f.costume,doc);syncAnimationResources(f.vm);
@@ -127,4 +129,77 @@ test('published animation survives SB3 and older readers preserve future bundle 
     const old=await oldReader.inspectArtwork(await saved.arrayBuffer());assert.equal(old.outcome,'future');oldReader.applyArtwork(old,f.vm);
     const oldSaved=await oldReader.attachArtwork(saved,f.vm);
     assert.equal(await (await JSZip.loadAsync(await oldSaved.arrayBuffer())).file(ARTWORK_PATH).async('text'),payload);
+});
+
+test('single-frame native publication, duration editing, removal and Undo retain exact timing', () => {
+    for (const duration of [1, 19, 100, 10001, 65535]) {
+        const f = editorFixture();
+        f.editor.state.frames = [f.editor.state.frames[0]];
+        f.editor.setFrameDuration(String(duration));
+        assert.equal(f.editor.state.frames[0].durationMs, duration);
+        f.editor.publishAnimation();
+        assert.equal(f.writes(), 1);
+        const doc = getCostumeDocument(f.costume);
+        assert.equal(doc.version, 5);
+        assert.equal(artworkBundleVersion([{document: doc}]), 6);
+        assert.equal(doc.animation.frames.length, 1);
+        assert.equal(doc.animation.frames[0].durationMs, duration);
+        const id = doc.animation.resource.id;
+        assert.equal(f.vm.runtime.bwArcadeAnimationResources.get(id).frames[0].durationMs, duration);
+        assert.equal(sourceFrames(doc, 2, 1)[0].durationMs, duration);
+        f.editor.removeAnimationBinding();
+        assert.equal(f.vm.runtime.bwArcadeAnimationResources.size, 0);
+        if (duration !== 100) assert.equal(getCostumeDocument(f.costume).animation.frames[0].durationMs, duration);
+        f.editor.undo();
+        assert.equal(f.editor.save(), true);
+        assert.equal(getCostumeDocument(f.costume).animation.resource.id, id);
+        assert.equal(f.vm.runtime.bwArcadeAnimationResources.get(id).frames[0].durationMs, duration);
+    }
+});
+
+test('duration input refuses invalid values without coercion, artwork writes or Undo entries', () => {
+    const f = editorFixture();
+    for (const input of ['', 'x', '0', '-1', '1.5', '65536', 'Infinity']) {
+        const frames = f.editor.state.frames;
+        f.editor.setFrameDuration(input);
+        assert.equal(f.editor.state.frames, frames);
+        assert.equal(f.editor.undoStack.length, 0);
+        assert.equal(f.writes(), 0);
+    }
+});
+
+test('extended native timing keeps legacy document validation and bundle versions honest', async () => {
+    for (const duration of [1, 65535]) {
+        const f = editorFixture();
+        f.editor.state.frames.forEach(frame => { frame.durationMs = duration; });
+        f.editor.publishAnimation();
+        const doc = getCostumeDocument(f.costume);
+        assert.equal(doc.version, 5);
+        for (const version of [3, 4]) {
+            const legacy = clone(doc); legacy.version = version;
+            if (version === 3) delete legacy.animation.resource;
+            assert.throws(() => setCostumeDocument(f.costume, legacy), /invalid artwork frame/);
+        }
+        const zip = new JSZip();
+        zip.file('project.json', JSON.stringify({targets: [{isStage: false, name: 'Actor',
+            costumes: [{name: 'Painted', md5ext: 'art.svg', dataFormat: 'svg'}]}]}));
+        zip.file('art.svg', '<svg/>');
+        const saved = await attachArtwork(await zip.generateAsync({type: 'blob'}), f.vm);
+        const opened = await JSZip.loadAsync(await saved.arrayBuffer());
+        const raw = await opened.file(ARTWORK_PATH).async('text');
+        assert.equal(JSON.parse(raw).version, 6);
+        const inspection = await inspectArtwork(await saved.arrayBuffer());
+        assert.equal(inspection.outcome, 'loaded');
+        applyArtwork(inspection, f.vm);
+        assert.equal(getCostumeDocument(f.costume).animation.frames[0].durationMs, duration);
+        const old = await bundle5Reader.inspectArtwork(await saved.arrayBuffer());
+        assert.equal(old.outcome, 'future');
+        bundle5Reader.applyArtwork(old, f.vm);
+        const oldSaved = await bundle5Reader.attachArtwork(saved, f.vm);
+        const oldZip = await JSZip.loadAsync(await oldSaved.arrayBuffer());
+        assert.equal(await oldZip.file(ARTWORK_PATH).async('text'), raw);
+        const downgraded = JSON.parse(raw); downgraded.version = 5;
+        opened.file(ARTWORK_PATH, JSON.stringify(downgraded));
+        assert.equal((await inspectArtwork(await opened.generateAsync({type: 'arraybuffer'}))).outcome, 'invalid');
+    }
 });

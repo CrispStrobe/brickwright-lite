@@ -57,3 +57,17 @@ test('runtime SVG uses a resource palette without changing ordinary image defaul
     assert.match(engine.svg(image), /#123456/);
     assert.match(engine.svg(image, ARCADE_PALETTE), new RegExp(ARCADE_PALETTE[2]));
 });
+
+test('native resource source accepts versioned endpoint timing and refuses out-of-range values', () => {
+    const source = document(); source.version = 5; source.animation.frames.length = 1;
+    for (const interval of [1, 65535]) {
+        source.animation.frames[0].durationMs = interval;
+        assert.equal(animationResourceFromDocument(source).frames[0].durationMs, interval);
+    }
+    for (const interval of [0, -1, 1.5, 65536, NaN]) {
+        source.animation.frames[0].durationMs = interval;
+        assert.throws(() => animationResourceFromDocument(source), /equal frame durations/);
+    }
+    source.animation.frames = [];
+    assert.throws(() => animationResourceFromDocument(source), /requires 1–64 frames/);
+});

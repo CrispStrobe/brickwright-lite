@@ -73,7 +73,9 @@ const serializeLayers = (layers, width, height) => layers.map(layer => ({id: lay
 const layersDocument = (layers, width, height, scale, activeLayerId, palette = ARCADE_PALETTE,
     animation = null) => {
     const customPalette = palette.some((colour, index) => colour !== ARCADE_PALETTE[index]);
-    return {version: animation?.resource ? 4 : animation ? 3 : customPalette ? 2 : 1,
+    const nativeBounds = animation && (animation.frames.length === 1 ||
+        animation.frames.some(frame => frame.durationMs < 20 || frame.durationMs > 10000));
+    return {version: nativeBounds ? 5 : animation?.resource ? 4 : animation ? 3 : customPalette ? 2 : 1,
         ...(customPalette ? {palette: [...palette]} : {}), pixelScale: scale, activeLayerId,
         layers: serializeLayers(layers, width, height),
         ...(animation ? {animation: {activeFrameId: animation.activeFrameId,
@@ -85,7 +87,7 @@ const layersDocument = (layers, width, height, scale, activeLayerId, palette = A
 };
 
 const sourceFrames = (document, width, height) => {
-    if (![3, 4].includes(document?.version) || !document.animation) return null;
+    if (![3, 4, 5].includes(document?.version) || !document.animation) return null;
     const frames = document.animation.frames.map(frame => ({id: frame.id, durationMs: frame.durationMs,
         name: frame.name || '',
         activeLayerId: frame.activeLayerId, layers: sourceLayers({layers: frame.layers}, width, height)}));

@@ -10,13 +10,16 @@ export const animationResourceFromDocument = document => {
         typeof resource.name !== 'string' || !resource.name.trim() || resource.name.length > 80) {
         throw new Error('Animation resource requires a stable ID and a name of 1–80 characters.');
     }
-    if (!Array.isArray(animation.frames) || animation.frames.length < 2 || animation.frames.length > 64) {
-        throw new Error(`Animation "${resource.name}" requires 2–64 frames.`);
+    const minFrames = document.version === 5 ? 1 : 2;
+    const minDuration = document.version === 5 ? 1 : 20;
+    const maxDuration = document.version === 5 ? 65535 : 10000;
+    if (!Array.isArray(animation.frames) || animation.frames.length < minFrames || animation.frames.length > 64) {
+        throw new Error(`Animation "${resource.name}" requires ${minFrames}–64 frames.`);
     }
     const interval = animation.frames[0].durationMs;
-    if (!Number.isInteger(interval) || interval < 20 || interval > 10000 ||
+    if (!Number.isInteger(interval) || interval < minDuration || interval > maxDuration ||
         animation.frames.some(frame => frame.durationMs !== interval)) {
-        throw new Error(`Animation "${resource.name}" requires equal frame durations (20–10,000 ms).`);
+        throw new Error(`Animation "${resource.name}" requires equal frame durations (${minDuration}–${maxDuration} ms).`);
     }
     const palette = document.palette || ARCADE_PALETTE;
     if (!Array.isArray(palette) || palette.length !== 16 || palette[0] !== null ||

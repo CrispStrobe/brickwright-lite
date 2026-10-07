@@ -21,8 +21,9 @@ different from the column-major `image/x-mkcd-f4` image encoding.
 The codec validates native namespace/ID and display names, timing, frame/pixel
 counts, palette indices, exact payload length, padding and canonical encoding.
 Its explicit application bounds are160×160,64 frames,1MiB packed bytes;
-intervals are1–65,535ms. Existing GUI publication is narrower:2–64 frames,
-20–10,000ms and uniform timing. Outside-policy input produces named errors;
+intervals are1–65,535ms. Pixel publication now supports1–64 frames,
+1–65,535ms and uniform timing. Extended timelines use document5/bundle6;
+ordinary timelines retain their existing document/bundle versions. Outside-policy input produces named errors;
 it is not resized, coerced or truncated. Palette RGB and rich source are not
 represented by this native binary format. Native IDs/namespaces are bounded
 nonblank printable references, not JavaScript identifiers. Display names follow
@@ -211,10 +212,10 @@ Native factory references create fresh arrays and images per lookup, while the
 existing Brickwright frame-resource reporter returns a shared cached array.
 Live imported resource bindings therefore need a fresh-copy access operation
 with correct mutation/alias semantics; replacing every native lookup with the
-cached reporter is incorrect. Native files also allow one frame and intervals
-outside the current GUI publication bounds. Preserve these behaviours and
-report editing limits explicitly until versioned persistence/UI supports them;
-do not duplicate frames or clamp timing to manufacture compatibility.
+cached reporter is incorrect. Pixel publication and versioned persistence now preserve native single-frame
+resources and1–65,535ms intervals. Native imports can use those timelines
+without frame duplication or timing clamps. The dedicated library transaction
+and fresh-copy access operation remain open.
 
 Reuse the existing bundle document validator and resource normalizer rather
 than adding a second definition of valid layers. A bounded, versioned companion
@@ -234,3 +235,24 @@ an actual Assets edit/save/download journey; compiler acceptance is insufficient
 Variable-duration scheduling, attached action bindings and custom-palette RGB
 qualification remain distinct work. Neither the native format nor the current
 uniform interval reporter should silently flatten those differences.
+
+
+## Native timeline bounds
+
+Pixel accepts exact integer frame durations in1–65,535ms and publishes one-frame
+resources. Invalid input is refused before creating an Undo entry or changing
+artwork. Removing a resource binding retains nondefault timing; Undo restores
+the original UUID. Unequal frame durations remain editable and cannot publish
+as a uniform native resource.
+
+Extended bounds use artwork document5 and bundle6. Documents3/4 retain their
+previous validation rules. An older bundle5 reader recognizes the newer bundle
+as future source and preserves its raw bytes; a document5 falsely marked as
+bundle5 is refused. The companion accepts validated resource documents4/5 and
+recovers endpoint timing without an editor-bound fallback.
+
+Focused tests pass50/50, including actual original-PXT compile/simulation of
+one/two-frame resources at1ms and65,535ms, native gallery decoding, source
+recovery and behavioural reimport. Policy/authoring controls pass31/31. These
+synthetic cases do not change the locked corpus tally or establish editable
+native imports. Production-browser qualification is recorded separately below.
