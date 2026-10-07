@@ -18,7 +18,7 @@ module.exports = makeExt(`// Name: Arcade
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
   const imageEngine = (${require('./image').toString()})(speechPalette, ${require('./image-pxt').toString()});
-  const {RotatedBoundingBox} = (${require('./rotation-pxt').toString()})();
+  const {RotatedBoundingBox, rasterWindow: rotatedRasterWindow} = (${require('./rotation-pxt').toString()})();
 
   const spriteFlags = {AutoDestroy: 4, StayInScreen: 8, DestroyOnWall: 16, BounceOnWall: 32, Invisible: 128, RelativeToCamera: 512,
     GhostThroughTiles: 1024, GhostThroughWalls: 2048, GhostThroughSprites: 4096, Ghost: 7168};
@@ -2251,14 +2251,7 @@ module.exports = makeExt(`// Name: Arcade
     _scaledSpriteImage(sprite,window=this._spriteRasterWindow(sprite)){
       const source=sprite.image,{x,y,width,height}=window;
       if(sprite._rotatedBBox){
-        // PXT drawSprite: imageDrawScaledRotated at the sprite's left/top, here
-        // into a box-sized raster, then the visible window of it.
-        const fullWidth=Math.max(0,sprite.width|0),fullHeight=Math.max(0,sprite.height|0);
-        const full={width:fullWidth,height:fullHeight,pixels:new Uint8Array(fullWidth*fullHeight)};
-        if(fullWidth && fullHeight)imageEngine.drawScaledRotated(full,source,0,0,sprite.sx,sprite.sy,sprite.rotation);
-        const pixels=new Uint8Array(width*height);
-        for(let row=0;row<height;row++)for(let col=0;col<width;col++)pixels[row*width+col]=full.pixels[(row+y)*fullWidth+col+x];
-        return {width,height,pixels};
+        return rotatedRasterWindow(source,sprite.sx,sprite.sy,sprite.rotation,window);
       }
       if(sprite._sx===256 && sprite._sy===256 && x===0 && y===0 && width===source.width && height===source.height)return source;
       const pixels=new Uint8Array(width*height);

@@ -78,5 +78,62 @@ module.exports = function initializePxtRotation() {
             this._height = (maxY - minY) | 0;
         }
     }
-    return {RotatedBoundingBox};
+    // Gather only visible output pixels. The simulator scatters every scaled
+    // source pixel through three truncating shears. Truncation at zero can map
+    // several inputs to one output: verify all integer preimages, then retain
+    // the last nontransparent writer in its original row/column order.
+    function rasterWindow(source, sx, sy, angle, window) {
+        const {x: cropX, y: cropY, width, height} = window;
+        const pixels = new Uint8Array(width * height);
+        if (!width || !height || sx <= 0 || sy <= 0) return {width, height, pixels};
+        angle %= 2 * Math.PI;
+        if (angle < 0) angle += 2 * Math.PI;
+        const flip = angle > Math.PI / 2 && angle <= 3 * Math.PI / 2;
+        if (flip) angle = (angle + Math.PI) % (2 * Math.PI);
+        const xs = -Math.tan(angle / 2), ys = Math.sin(angle);
+        const sw = source.width * sx, sh = source.height * sy;
+        const shear = (x, y) => {
+            let a = (x + y * xs) | 0;
+            const b = (y + a * ys) | 0;
+            a = (a + b * xs) | 0;
+            return [a, b];
+        };
+        const corners = [[0, 0], [sw - 1, 0], [sw - 1, sh - 1], [0, sh - 1]].map(([x, y]) => shear(x, y));
+        const minX = Math.min(...corners.map(p => p[0])), minY = Math.min(...corners.map(p => p[1]));
+        const maxInputX = Math.ceil(sw) - 1, maxInputY = Math.ceil(sh) - 1;
+        // Invert ToInt32(n + offset), including its 2^32 wrapping. Each
+        // preimage is checked with the actual forward operation; the small
+        // neighbourhood includes both sides of the truncation discontinuity.
+        const preimages = (target, offset, low, high) => {
+            const result = [], period = 4294967296;
+            const first = Math.ceil((low + offset - target - 2) / period);
+            const last = Math.floor((high + offset - target + 2) / period);
+            for (let k = first; k <= last; k++) {
+                const base = Math.floor(target + k * period - offset);
+                for (let d = -1; d <= 2; d++) {
+                    const n = base + d;
+                    if (n >= low && n <= high && ((n + offset) | 0) === target) result.push(n);
+                }
+            }
+            return result;
+        };
+        for (let row = 0; row < height; row++) for (let col = 0; col < width; col++) {
+            const outX = col + cropX + minX, outY = row + cropY + minY;
+            let lastX = -1, lastY = -1, color = 0;
+            for (const a of preimages(outX, outY * xs, -2147483648, 2147483647)) {
+                for (const y of preimages(outY, a * ys, 0, maxInputY)) {
+                    for (const x of preimages(a, y * xs, 0, maxInputX)) {
+                        if (y < lastY || (y === lastY && x <= lastX)) continue;
+                        const ix = ((flip ? sw - x - 1 : x) / sx) | 0;
+                        const iy = ((flip ? sh - y - 1 : y) / sy) | 0;
+                        const c = ix >= 0 && iy >= 0 && ix < source.width && iy < source.height ? source.pixels[iy * source.width + ix] : 0;
+                        if (c) {lastX = x; lastY = y; color = c;}
+                    }
+                }
+            }
+            pixels[row * width + col] = color;
+        }
+        return {width, height, pixels};
+    }
+    return {RotatedBoundingBox, rasterWindow};
 };
