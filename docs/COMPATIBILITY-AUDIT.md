@@ -234,8 +234,8 @@ Production browser qualification exposed a speech factory serialization failure:
 Babel hoisted object-spread helpers outside a function serialized with
 `Function.toString()`. Self-contained copies fix the actual factory boundary;
 a regression transforms and isolates the exported factory before checking its
-rendered speech pixels. Production rebuild and controller qualification remain
-separate from the headless corpus smoke above.
+rendered speech pixels. Production rebuild and controller qualification pass at app source
+`57f9b9d29`; they remain separate from the headless corpus smoke above.
 
 ### Plain Code and binary assets
 
@@ -257,6 +257,16 @@ The production authored rotation game completes the visible Code, Blocks,
 controller, Stop/restart, download and file-reimport journey with 12 observed
 states. Its actual downloaded source compiles in original PXT. The original
 simulator comparison additionally exposed a raster footprint extending beyond
-PXT's truncated collision box; that full-stage pixel mismatch is a separate
-blocking renderer defect under repair. Repeated definition/input warnings are
-retained; successful interaction does not imply a warning-free editor.
+PXT's truncated collision box. The renderer now preserves that footprint without
+changing collision geometry: 211,200 exact original stage pixels pass in 11
+focused cases, and the rebuilt browser matches all 19,200 initial-stage palette
+pixels. Two controller cycles, Stop/restart and file reimport preserve the
+observed images. Repeated definition/input warnings remain recorded; successful
+interaction does not imply a warning-free editor.
+
+The existing MakeCode GUI gate also passes all 31 checks against the same built
+app and fully synchronized pinned runtime: micro:bit import/simulator/universal
+HEX, original Arcade on-screen A press/release, actual PyBadge UF2 download and
+family validation, imported costume Pixel editor, live Scratch→Arcade
+compilation/drawing, EV3 simulator and invalid-file diagnostics. These are
+browser/compiler checks, not physical hardware qualification.

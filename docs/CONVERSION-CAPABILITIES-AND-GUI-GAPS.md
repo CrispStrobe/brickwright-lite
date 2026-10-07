@@ -14,6 +14,8 @@ means an existing regression, not a fresh successful run at this head.
 Missing authoring controls and missing browser evidence are different gaps.
 Integration updates below describe `lane/arcade-integration-20261007`; they do
 not claim an installed release or a merged implementation.
+Production app source `57f9b9d29` passes the 12-state controller journey,
+19,200 original initial-stage pixels, and 31 existing MakeCode browser checks.
 
 Track five independent results per feature: import diagnostics, Blocks/Code
 roundtrip, runtime behaviour, original MakeCode compilation/behaviour, and user
@@ -60,7 +62,7 @@ verification scripts under `scripts/`. These pointers do not claim fresh passes.
 | C01 Values and arrays | Present: Boolean/value operators, undefined/null, legacy named and shared reference arrays | Identity and typed array export present | `-reference-arrays`, `-named-arrays`, `-array-coercion`, `-value-arithmetic`, `bw-sb3-values`. Author nested Sprite/Image arrays, mutate, switch editors and reopen; distinguish preserved values from dead run-bound references. |
 | C02 Sprites/projectiles | Present: handles, kinds, creation/destruction, source projectiles, aliases/collections/procedures | Image templates and native execution/export present | `-sprite-collections`, `-projectile-source`, `-local-projectiles`, `-created-order`, `-destroyed`. Need approachable image/kind/reference selection and authored lifecycle browser proof. |
 | C03 Properties/flags/scaling | Present: property/flag blocks, axes/anchors/proportional inputs | Fixed-point geometry, viewport crop and export present | `-sprite-fixed-point`, `-flags`, `-scaling`, `-viewport-scaling-runtime`, `-viewport-scaling-renderer`. Prove actual menu use, fractional/zero/nonuniform scale, camera movement and save/export/reimport. |
-| C04 Rotation/sprite data | Integration: rotation/rotationDegrees/data property words, blocks and qualified upstream dialect adoption | Rotated geometry/raster, viewport-bounded scaled rendering and reference-preserving data import/export | Focused `-rotation`, `-rotation-viewport`, `-data-types` tests pass, including original PXT, VM, export/reimport and SB3 restart. Browser authoring is still under qualification. Huge rotated collision performance remains unqualified. Artwork quarter turns are a separate editor feature. |
+| C04 Rotation/sprite data | Integration: rotation/rotationDegrees/data property words, blocks and qualified upstream dialect adoption | Rotated geometry/raster, viewport-bounded scaled rendering and reference-preserving data import/export | Focused `-rotation`, `-rotation-viewport`, `-data-types` tests pass, including original PXT, VM, export/reimport and SB3 restart. Production Code→Blocks/controller/export/file-reimport passes 12 observed states; initial stage matches all 19,200 original PXT palette pixels. Huge rotated collision performance remains unqualified. Artwork quarter turns are a separate editor feature. |
 | C05 Images/shared resources | Present: create/clone, dimensions/pixels, drawing/blit/mutation, sprite/background image refs | Shared identity, generated images, parameters and export present | `-image-values`, `-shared-images`, `-image-parameters`, `-generated-images`, `-image-blit`, `-image-mutation`, `-pixel-drawing`. Need source/render transaction and alias invalidation proof after editor changes. |
 | C06 Literal/gallery artwork | Import returns assets alongside code; frame-image blocks reference templates | SVG costume assets, built-ins and image literal export present | `-literal-images`, `-generated-sources`, `-background-images`. Whole-file asset staging exists; verify it in browser and add an explicit Code-plus-assets path instead of silently substituting art. |
 | C07 Pixel/palette/layers | Existing Costumes Pixel editor | Indexed tools, selections, layers/opacity/locking, custom/preset palettes, PNG/sheets and palette-aware export present | `makecode-pixel-image`, `pixel-layers`, `verify-pixel-source-roundtrip`, `verify-pixel-colour-slots`, `verify-pixel-crop`. Need authored game's exact pixel/palette/export proof. Current editor dimensions cap at128×128. |
@@ -93,7 +95,10 @@ Browser qualification found that a Code `DEVICE ARCADE` header does not
 synchronize the visible device selector, which controls Game Console discovery.
 Selecting Arcade through the actual dropdown exposes the controller pane.
 Track header/selector synchronization and a discoverable source-to-stage route
-as an open C13/C18 GUI gap, independently of runtime controller support.
+as a C13/C18 gap repaired in this integration: successful project application now
+publishes device hints and the header event after loading. Focused tests retain
+the prior device on parse/load failure. Direct SB3 reopen synchronization still
+needs its own visible qualification.
 
 - “No animation editor” is false for artwork: the Pixel editor has one. Runtime
   binding and timing preservation are the remaining user journey.
@@ -182,3 +187,16 @@ lists all 156 canonical Arcade/Arrays forms and 161 forms including aliases,
 with block identities, shapes and Code spellings at the adopted parser pin.
 Use it when checking palette discoverability; vocabulary presence alone does
 not establish any of the five qualification results above.
+
+## Observed editor warnings requiring follow-up
+
+The qualified production browser journey retains 996 Blockly definition
+overwrite warnings and ignored nonexistent input warnings for
+`arrays_valueBinary.OP` (17) and `arrays_specialValue.KIND` (4). Its VM,
+workspace update and extension loader error gates pass; this does not make the
+editor warning-free. C01/C18 still require authored dropdown edits and
+Blocks→Code→Blocks/save/reopen fixtures that prove those operands persist.
+Inspect the actual block definitions and serialized inputs; do not silence
+these warnings or infer all Blocks editing works from Code-authored playback.
+Audio gesture and unavailable optional native-runtime resource warnings are
+separate boundaries, retained in the private receipts.
