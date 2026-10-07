@@ -35,7 +35,7 @@ const captureCodeArtwork = (vm, declarations) => {
         }));
         slots.set(key, unique(rows, row => row.key, 'costume declaration'));
     }
-    return {targets, slots};
+    return {targets, slots, byTarget};
 };
 
 const codeArtworkMatches = (vm, context) => {
@@ -51,11 +51,10 @@ const codeArtworkMatches = (vm, context) => {
  */
 const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
     if (!codeArtworkMatches(vm, context)) return false;
-    const targets = unique(originals(vm), targetKey, 'target');
     const records = [];
     for (const [targetIndex, generated] of (project.targets || []).entries()) {
         const key = targetKey(generated);
-        const live = targets.get(key);
+        const live = context.byTarget.get(key);
         const prior = context.slots.get(key);
         if (!live || !prior) continue;
         const liveCostumes = live.sprite?.costumes || [];

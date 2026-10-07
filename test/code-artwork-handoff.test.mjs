@@ -166,3 +166,12 @@ for (const edit of ['asset', 'bytes', 'document', 'center']) {
         assert.equal(codeArtworkRevisionMatches(s.vm, revision), false);
     });
 }
+
+
+test('a live GUI sprite rename keeps the captured source slot bound to its actual target', () => {
+    const s = setup(); s.actor.name = 'Renamed in GUI';
+    const project = clone(s.declarations);
+    retainCodeArtwork(s.zip, project, s.vm, s.context);
+    assert.equal(project.targets[1].costumes[0].assetId, 'actor');
+    assert.equal(project.targets[1].costumes[1].assetId, 'walk');
+});
