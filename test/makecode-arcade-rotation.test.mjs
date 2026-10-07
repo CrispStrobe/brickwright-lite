@@ -192,7 +192,7 @@ let undefinedReplaced=hero.data!==undefined
 let arrayHero=sprites.create(image.create(2,2),SpriteKind.Player)
 let numbers=[2,3]
 arrayHero.data=numbers
-let arrayAlias=arrayHero.data
+let arrayAlias:number[]=arrayHero.data
 let arraySame=arrayAlias===numbers
 arrayAlias.push(7)
 let arrayChanged=numbers.length
@@ -201,13 +201,13 @@ let picture=image.create(2,1)
 picture.fill(5)
 let heroAlias=imageHero
 heroAlias.data=picture
-let imageAlias=imageHero.data
+let imageAlias:Image=imageHero.data
 let imageSame=imageAlias===picture
 imageAlias.setPixel(0,0,9)
 let imageChanged=picture.getPixel(0,0)
 let spriteHero=sprites.create(image.create(2,2),SpriteKind.Player)
 spriteHero.data=imageHero
-let spriteAlias=spriteHero.data
+let spriteAlias:Sprite=spriteHero.data
 let spriteSame=spriteAlias===imageHero
 spriteAlias.vx=37
 let spriteChanged=imageHero.vx`;
@@ -231,6 +231,9 @@ let spriteChanged=imageHero.vx`;
     await execute({...imported,code:run.creator.decompile()});
     const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
     assert.deepEqual(exported.unsupported,[]);
+    assert.match(exported.ts,/arrayAlias\s*:\s*number\[\]/,'array data remains statically typed for PXT array shims');
+    assert.match(exported.ts,/imageAlias\s*:\s*Image/);
+    assert.match(exported.ts,/spriteAlias\s*:\s*Sprite/);
     const exportedOriginal=await runPxtArcade(exported.ts);
     for(const name of names)assert.equal(exportedOriginal[name],expected[name],`exported ${name}`);
     await execute(arcadeToPseudocode(exported.ts));
