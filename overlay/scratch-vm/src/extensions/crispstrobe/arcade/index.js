@@ -76,7 +76,7 @@ module.exports = makeExt(`// Name: Arcade
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
-        runtime.on('RUNTIME_DISPOSED', () => {cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();});
+        runtime.on('RUNTIME_DISPOSED', () => {cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
           cancelCreations();
           this._terrainStopped = false;
@@ -619,6 +619,10 @@ module.exports = makeExt(`// Name: Arcade
     _sceneVisible(bundle, visible) {
       const renderer=this._runtime?.renderer;
       for(const [id,target] of Object.entries(bundle.state.spriteTargets || {}))target.setVisible?.(visible && !bundle.state.sprites[id]?.invisible);
+      for(const [id,sprite] of Object.entries(bundle.state.sprites || {})) {
+        const entry=this._imageSkins.get(id);
+        if(entry?.drawableId!==undefined)renderer?.updateDrawableVisible?.(entry.drawableId,visible && !sprite.invisible);
+      }
       for(const key of ['_background','_backgroundImage','_tilemapDrawable'])if(bundle[key])renderer?.updateDrawableVisible?.(bundle[key].drawable,visible);
       for(const entry of bundle._speech.values())if(entry.drawableId!==undefined)renderer?.updateDrawableVisible?.(entry.drawableId,visible && entry.target?.visible!==false);
     }
@@ -1154,7 +1158,7 @@ module.exports = makeExt(`// Name: Arcade
     _positionSprite(id) {
       const s = this._sprite(id);
       const target = this._state().spriteTargets[id];
-      if (s && target && target.setXY) {
+      if (s && ((target && target.setXY) || this._imageSkins.get(id)?.drawableId!==undefined)) {
         let crop;
         if(s.image && this._runtime?.renderer){
           crop=this._spriteRasterWindow(s);
@@ -1165,7 +1169,8 @@ module.exports = makeExt(`// Name: Arcade
         // center millions of pixels away; subtracting that again in the GPU
         // loses pixel precision even though the viewport is only 160x120.
         if(crop){view.x+=crop.x+crop.width/2-s.width/2;view.y+=crop.y+crop.height/2-s.height/2;}
-        target.setXY((view.x-80)*3,(60-view.y)*3);
+        if(target?.setXY)target.setXY((view.x-80)*3,(60-view.y)*3);
+        else this._runtime.renderer.updateDrawablePosition(this._imageSkins.get(id).drawableId,[(view.x-80)*3,(60-view.y)*3]);
       }
     }
     _speechOwner(id, target) {
@@ -1656,6 +1661,7 @@ module.exports = makeExt(`// Name: Arcade
         if(['sx','sy','scale','rotation','rotationDegrees'].includes(name))this._renderSpriteImageIfPresent(sprite);
         this._clampSprite(sprite);
         if (['sx','sy','scale','rotation','rotationDegrees','x', 'y', 'left', 'right', 'top', 'bottom'].includes(name)) this._positionSprite(String(args.ID));
+        if(name==='z')this._orderSpriteDrawables();
         this._changed();
       };
       return moved?.then ? moved.then(finish) : finish();
@@ -1932,7 +1938,11 @@ module.exports = makeExt(`// Name: Arcade
       sprite.ghostThroughTiles = !!(sprite.flags & spriteFlags.GhostThroughTiles);
       sprite.invisible = !!(sprite.flags & spriteFlags.Invisible);
       const target = this._state().spriteTargets[String(args.ID)];
-      if (String(args.FLAG) === 'Invisible' && target?.setVisible) target.setVisible(!sprite.invisible);
+      if (String(args.FLAG) === 'Invisible') {
+        if(target?.setVisible)target.setVisible(!sprite.invisible);
+        const drawable=this._imageSkins.get(sprite.id)?.drawableId;
+        if(drawable!==undefined)this._runtime?.renderer?.updateDrawableVisible(drawable,!sprite.invisible && this._state().sprites[sprite.id]===sprite);
+      }
       if (String(args.FLAG) === 'RelativeToCamera') this._positionSprite(sprite.id);
       if (String(args.FLAG) === 'StayInScreen') {
         this._clampSprite(sprite);
@@ -2007,7 +2017,8 @@ module.exports = makeExt(`// Name: Arcade
       const entry = this._imageSkins.get(id);
       if (!entry) return;
       // Restore the authored skin before destroying this sprite's private skin.
-      entry.target.setCostume?.(entry.target.currentCostume);
+      entry.target?.setCostume?.(entry.target.currentCostume);
+      if(entry.drawableId!==undefined)this._runtime?.renderer?.destroyDrawable(entry.drawableId,'sprite');
       this._runtime?.renderer?.destroySkin(entry.skinId);
       this._imageSkins.delete(id);
     }
@@ -2264,7 +2275,7 @@ module.exports = makeExt(`// Name: Arcade
     setSpriteImage(args) {
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID), image = this._image(args.IMAGE);
       if (!sprite || !image) return;
-      this._clearImage(sprite.id);
+      if(this._imageSkins.get(sprite.id)?.drawableId===undefined)this._clearImage(sprite.id);
       sprite.image = image;
       delete sprite._wallHitbox;
       sprite._imageWidth=image.width;sprite._imageHeight=image.height;this._recalcSpriteSize(sprite);
@@ -2371,12 +2382,25 @@ module.exports = makeExt(`// Name: Arcade
           if(am[row*a._imageWidth+col] && bm[(sy>>16)*b._imageWidth+(sx>>16)])return true;
       return false;
     }
+    _orderSpriteDrawables() {
+      const renderer=this._runtime?.renderer;
+      if(!renderer?.setDrawableOrder)return;
+      const state=this._state();
+      // Arcade's z then creation order applies equally to native drawables and
+      // template clones. Leave ordinary Scratch layering alone without a native sprite.
+      if(!Object.keys(state.sprites).some(id=>this._imageSkins.get(id)?.drawableId!==undefined))return;
+      const ordered=Object.values(state.sprites).sort((a,b)=>a.z-b.z || a.pxtId-b.pxtId);
+      for(const sprite of ordered) {
+        const drawable=this._imageSkins.get(sprite.id)?.drawableId ?? state.spriteTargets[sprite.id]?.drawableID;
+        if(drawable!==undefined)renderer.setDrawableOrder(drawable,Infinity,'sprite');
+      }
+    }
     _renderSpriteImage(id,window) {
       const sprite = this._sprite(id), target = this._state().spriteTargets[id];
       sprite.mask = sprite.image.pixels.map(color => color ? 1 : 0);
       const renderer = this._runtime?.renderer;
-      if (renderer && target?.drawableID != null) {
-        this._scalePixelTarget(target);
+      if (renderer) {
+        if(target?.drawableID!=null)this._scalePixelTarget(target);
         window=window || this._spriteRasterWindow(sprite);
         const rendered=this._scaledSpriteImage(sprite,window);
         const svg = imageEngine.svg(rendered.width && rendered.height ? rendered :
@@ -2385,8 +2409,15 @@ module.exports = makeExt(`// Name: Arcade
         let entry = this._imageSkins.get(sprite.id);
         if (!entry) {
           entry = {target, skinId: renderer.createSVGSkin(svg, center),windowKey:window.key};
+          if(target?.drawableID==null)entry.drawableId=renderer.createDrawable('sprite');
           this._imageSkins.set(sprite.id, entry);
-          renderer.updateDrawableSkinId(target.drawableID, entry.skinId);
+          const drawable=entry.drawableId ?? target.drawableID;
+          renderer.updateDrawableSkinId(drawable, entry.skinId);
+          if(entry.drawableId!==undefined) {
+            renderer.updateDrawableScale(drawable,[75,75]);
+            renderer.updateDrawableVisible(drawable,!sprite.invisible);
+          }
+          this._orderSpriteDrawables();
         } else {renderer.updateSVGSkin(entry.skinId, svg, center);entry.windowKey=window.key;}
         this._positionSprite(id);
         this._runtime.requestRedraw?.();
