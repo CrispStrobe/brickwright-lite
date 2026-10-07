@@ -30,10 +30,17 @@ test('Scratch Stage transparency retains its white matte through original Arcade
 
 test('native Arcade scene primitives retain their own default background', () => {
     const creator = new SB3Creator();
-    creator.parse('DEVICE ARCADE\nWHEN flag clicked:\n  arcade set background color 0\n');
+    creator.parse('DEVICE ARCADE\nWHEN flag clicked:\n  arcade set background color to 0\n');
     assert.deepEqual(creator.warnings, []);
     const exported = projectToArcade(creator.project);
     assert.deepEqual(exported.unsupported, []);
     assert.doesNotMatch(exported.ts, /scene\.setBackgroundColor\(1\)/);
     assert.match(exported.ts, /scene\.setBackgroundColor\(0\)/);
+});
+
+test('value-only Arcade projects do not acquire a Stage matte without backdrop graphics', () => {
+    const creator = new SB3Creator();
+    creator.parse('DEVICE ARCADE\nGLOBAL value = 3\n');
+    const exported = projectToArcade(creator.project);
+    assert.doesNotMatch(exported.ts, /scene\.setBackgroundColor\(1\)/);
 });

@@ -2179,7 +2179,6 @@ class ArcadeEmitter {
         // change those programs merely because they also have a Scratch Stage.
         const nativeArcade = this.project.targets.some(target => Object.values(target.blocks || {})
             .some(block => block?.opcode?.startsWith('arcade_')));
-        if (!nativeArcade) out.push('scene.setBackgroundColor(1)');
         const flagScripts = [];                             // green-flag scripts: {script, clonable, sv, plain}
         const handlers = [];
         const functions = [];
@@ -2564,10 +2563,14 @@ class ArcadeEmitter {
                 '}',
                 this.dispatcher('_backdropHats', this.backdropHats, 'name')
             ].join('\n'));
+            if (!nativeArcade) out.push('scene.setBackgroundColor(1)');
             out.push('scene.setBackgroundImage(_backdrops[_bd])');
         } else if (stage && this.opts.stageBackground) {
             const bg = this.opts.stageBackground(stage);
-            if (bg) out.push(`scene.setBackgroundImage(${toImgLiteral(bg)})`);
+            if (bg) {
+                if (!nativeArcade) out.push('scene.setBackgroundColor(1)');
+                out.push(`scene.setBackgroundImage(${toImgLiteral(bg)})`);
+            }
         }
         // The green flag's scripts run side by side. An imported Arcade program
         // (one flag script, nothing that can stop it) is its own startup code, run
