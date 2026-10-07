@@ -166,6 +166,15 @@ class ArcadeEmitter {
         this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
     }
 
+    /** Scratch clears the Stage to white underneath transparent backdrop pixels. */
+    stageMatte () {
+        const index = nearestIndex([255, 255, 255], this.palette);
+        if (!/^#?ffffff$/i.test(String(this.palette[index]).trim())) {
+            this.warn('Stage white matte quantized to the nearest opaque project palette colour');
+        }
+        return `scene.setBackgroundColor(${index})`;
+    }
+
     /** Record what kind of value a variable is given, for its declaration. */
     assign (tsName, expr, explicitKind) {
         if (explicitKind) {
@@ -2563,12 +2572,12 @@ class ArcadeEmitter {
                 '}',
                 this.dispatcher('_backdropHats', this.backdropHats, 'name')
             ].join('\n'));
-            if (!nativeArcade) out.push('scene.setBackgroundColor(1)');
+            if (!nativeArcade) out.push(this.stageMatte());
             out.push('scene.setBackgroundImage(_backdrops[_bd])');
         } else if (stage && this.opts.stageBackground) {
             const bg = this.opts.stageBackground(stage);
             if (bg) {
-                if (!nativeArcade) out.push('scene.setBackgroundColor(1)');
+                if (!nativeArcade) out.push(this.stageMatte());
                 out.push(`scene.setBackgroundImage(${toImgLiteral(bg)})`);
             }
         }

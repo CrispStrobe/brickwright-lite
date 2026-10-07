@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {pixelsToSvg} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
+import {ARCADE_PALETTE, pixelsToSvg} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 import {runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
 import {AUTHORED_CORNERS, backgroundPixels} from './fixtures/arcade-background-artwork.mjs';
@@ -44,3 +44,29 @@ test('value-only Arcade projects do not acquire a Stage matte without backdrop g
     const exported = projectToArcade(creator.project);
     assert.doesNotMatch(exported.ts, /scene\.setBackgroundColor\(1\)/);
 });
+
+for (const callbackOnly of [false, true]) {
+    test(`Stage matte follows custom palette white (${callbackOnly ? 'background callback' : 'backdrop scripts'})`, () => {
+        const creator = new SB3Creator();
+        creator.parse('DEVICE ARCADE\nBACKDROP art\n' +
+            (callbackOnly ? '' : 'WHEN flag clicked:\n  switch backdrop to "art"\n') +
+            'SPRITE Player:\n  WHEN flag clicked:\n    show\n');
+        assert.deepEqual(creator.warnings, []);
+        const palette = [...ARCADE_PALETTE];
+        palette[1] = '#123456';
+        palette[15] = '#ffffff';
+        const options = {
+            costumePalette: () => palette,
+            costumeSvg: () => pixelsToSvg({width: 1, height: 1, pixels: [1]}),
+            stageBackground: () => ({width: 160, height: 120, pixels: new Uint8Array(19200)})
+        };
+        const exported = projectToArcade(creator.project, options);
+        assert.match(exported.ts, /scene\.setBackgroundColor\(15\)/);
+        assert.equal(JSON.parse(exported.files['pxt.json']).palette[15], '#ffffff');
+        assert.deepEqual(exported.warnings, []);
+        palette[15] = '#eeeeee';
+        const quantized = projectToArcade(creator.project, options);
+        assert.match(quantized.ts, /scene\.setBackgroundColor\(15\)/);
+        assert.ok(quantized.warnings.includes('Stage white matte quantized to the nearest opaque project palette colour'));
+    });
+}
