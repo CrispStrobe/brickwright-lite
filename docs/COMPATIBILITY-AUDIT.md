@@ -74,20 +74,20 @@ tests use small inline fixtures.
 
 The previous Arcade agent is paused. The active integration lane in
 [LANES.md](../LANES.md) owns the preserved branch work and its qualification.
-Source checkpoint: [`60562a619`](https://github.com/CrispStrobe/brickwright-lite/commit/60562a619).
+Source checkpoint: [`bfecedb74`](https://github.com/CrispStrobe/brickwright-lite/commit/bfecedb74).
 The fresh generated Arcade audit records exact tested source
-[`3ef1213c0`](https://github.com/CrispStrobe/brickwright-lite/commit/3ef1213c0), clean,
+[`293cf62a8`](https://github.com/CrispStrobe/brickwright-lite/commit/293cf62a8), clean at invocation,
 and declared corpus commit `19a52f6d65ab9e8adc90bb19a6e3ea04544a1339`.
 This is integration-branch evidence; it is not a claim that a shipped package has adopted it.
 
 | Independent gate | Observed result |
 |---|---|
-| Static Arcade translation, 184 inputs | **90 translated / 93 partial / 1 parse-failed**; 285 named gap occurrences |
+| Static Arcade translation, 184 inputs | **90 translated / 93 partial / 1 parse-failed**; 283 named gap occurrences (285 before the consumed-update fix) |
 | Original MakeCode compilation | **130 pass / 54 fail**, including the malformed fixture that also fails translation parsing |
 | Combined legacy `--compile` stage tally | **84 translated / 46 partial / 53 pxt-compile-failed / 1 parse-failed** |
-| Runtime smoke among the 130 original-compile-pass inputs | **126 stepped / 3 event-only / 1 block error** |
+| Runtime smoke among the 130 original-compile-pass inputs | **127 stepped / 3 event-only / 0 block errors** |
 | Runtime behavioural equivalence | **Not measured** by the 24-frame smoke audit |
-| Fresh micro:bit audit | Rerun pending; historical figures below are not current qualification |
+| Fresh micro:bit audit, 215 inputs | Static **205 translated / 10 partial**; original compile **206 pass / 9 fail**; runtime **205 stepped / 1 event-only / 0 block errors** |
 | Fresh conversion permutations | Rerun pending; historical figures below are not current qualification |
 
 The combined legacy stage tally masks some static translation gaps behind original-compile
@@ -96,9 +96,13 @@ file missing its package or asset can fail PXT without establishing that the com
 original app is invalid. Conversely, a successful PXT compile or a stepped VM does not
 establish faithful behaviour.
 
-Fresh [Arcade report](generated/ARCADE-COMPAT-AUDIT.md); historical
-[micro:bit report](generated/MICROBIT-COMPAT-AUDIT.md) and
-[roundtrip report](generated/CONVERSION-ROUNDTRIPS.md) await replacement by their pending runs.
+Fresh [Arcade report](generated/ARCADE-COMPAT-AUDIT.md) and
+[micro:bit report](generated/MICROBIT-COMPAT-AUDIT.md); the historical
+[roundtrip report](generated/CONVERSION-ROUNDTRIPS.md) awaits its pending rerun.
+The Arcade runner snapshots invocation identity and detects changes by completion:
+its final source differs because browser harness and speech factory fixes landed
+while the cached-module audit ran. Dependency pins and MakeCode versions stayed
+unchanged. The recorded invocation source identifies this run, not its final head.
 The [conversion capabilities and GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md)
 tracks Blocks, Code, asset editors, original MakeCode checks and authoring evidence separately.
 
@@ -212,3 +216,18 @@ The historical five-project `sprite.data` gap is addressed by the implemented di
 VM reference identity and typed export described above. Arbitrary object members remain
 named refusals. Consult the fresh generated ranking rather than treating this historical
 list as the current backlog.
+
+### Additional verified fixes and boundaries
+
+Consumed `++`/`--` expressions preserve prefix/postfix results, numeric conversion,
+lazy branches, argument order and evaluated-once receiver/index semantics.
+Original PXT, export/reimport and SB3 fixtures pass. The pinned PXT compiler
+re-evaluates a side-effecting complex index during an update; a separate test
+records that difference from JavaScript's evaluated-once contract.
+
+Production browser qualification exposed a speech factory serialization failure:
+Babel hoisted object-spread helpers outside a function serialized with
+`Function.toString()`. Self-contained copies fix the actual factory boundary;
+a regression transforms and isolates the exported factory before checking its
+rendered speech pixels. Production rebuild and controller qualification remain
+separate from the headless corpus smoke above.

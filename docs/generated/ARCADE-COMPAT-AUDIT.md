@@ -1,8 +1,10 @@
 # Conversion compatibility audit
 
-Generated 2026-10-07T06:18:00.789Z; 184 files. A parsed project has not necessarily run correctly.
+Generated 2026-10-07T06:31:33.615Z; 184 files. A parsed project has not necessarily run correctly.
 
-Source commit: 3ef1213c0b4daacf82f4235a1e2c9f54dc124879; dirty: false. Corpus declared commit: 19a52f6d65ab9e8adc90bb19a6e3ea04544a1339 (not independently verified).
+Source commit: 293cf62a81d7e02d2b2a71f91e61f11c1c1e559e; dirty: false. Corpus declared commit: 19a52f6d65ab9e8adc90bb19a6e3ea04544a1339 (not independently verified).
+
+Endpoint source changed during run: true; vendor pins changed: false; MakeCode versions changed: false.
 
 Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 
@@ -51,12 +53,12 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 2 | 2 | arcade: sprites.destroyAllSpritesOfKind() |
 | 1 | 1 | arcade: __bwValue1.x — a sprite held in a variable, which the stage cannot follow |
 | 1 | 1 | arcade: __bwValue1.x = … — a sprite held in a variable, which the stage cannot follow |
+| 1 | 1 | arcade: __bwValue11.x — a sprite held in a variable, which the stage cannot follow |
+| 1 | 1 | arcade: __bwValue11.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | 1 | arcade: __bwValue2.ay — a sprite held in a variable, which the stage cannot follow |
 | 1 | 1 | arcade: __bwValue2.ay = … — a sprite held in a variable, which the stage cannot follow |
-| 1 | 1 | arcade: __bwValue2.fillRect() |
+| 1 | 1 | arcade: __bwValue4.fillRect() |
 | 1 | 1 | arcade: __bwValue4.x = … — a sprite held in a variable, which the stage cannot follow |
-| 1 | 1 | arcade: __bwValue7.x — a sprite held in a variable, which the stage cannot follow |
-| 1 | 1 | arcade: __bwValue7.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | 1 | arcade: animatedSprite.setImage() |
 | 1 | 1 | arcade: Array as a value |
 | 1 | 1 | arcade: assets.animation`…` — image or asset literal not translated here |
@@ -86,7 +88,7 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | 1 | arcade: Code to Blocks: Line 40: Empty body: "IF truthiness of value (celsius) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | 1 | arcade: Code to Blocks: Line 42: Empty body: "IF not (__bwValue1 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | 1 | arcade: Code to Blocks: Line 46: Empty body: "IF compare value (temp) op ">" with ((0 + (0))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 1 | 1 | arcade: Code to Blocks: Line 96: Empty body: "IF truthiness of value (arcade local __bwValue4) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
+| 1 | 1 | arcade: Code to Blocks: Line 99: Empty body: "IF truthiness of value (arcade local __bwValue6) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | 1 | arcade: Code to Blocks: References unknown sprite "ExtraLife" (not a defined sprite) |
 | 1 | 1 | arcade: Code to Blocks: References unknown sprite "Food" (not a defined sprite) |
 | 1 | 1 | arcade: Code to Blocks: References unknown sprite "NPC" (not a defined sprite) |
@@ -204,8 +206,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | 1 | arcade: unit.setScale() |
 | 1 | 1 | arcade: unit.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | 1 | arcade: unit.y = … — a sprite held in a variable, which the stage cannot follow |
-| 1 | 1 | arcade: Update as a value |
-| 1 | 1 | arcade: update expression used as a value |
 | 1 | 1 | arcade: valentine.set_win_lose_size() |
 | 1 | 1 | arcade: value.place() |
 | 1 | 1 | parse-failed |
@@ -262,12 +262,12 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 2 | arcade: sprites.destroyAllSpritesOfKind() |
 | 1 | arcade: __bwValue1.x — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: __bwValue1.x = … — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: __bwValue11.x — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: __bwValue11.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: __bwValue2.ay — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: __bwValue2.ay = … — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: __bwValue2.fillRect() |
+| 1 | arcade: __bwValue4.fillRect() |
 | 1 | arcade: __bwValue4.x = … — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: __bwValue7.x — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: __bwValue7.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: animatedSprite.setImage() |
 | 1 | arcade: Array as a value |
 | 1 | arcade: assets.animation`…` — image or asset literal not translated here |
@@ -297,7 +297,7 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | arcade: Code to Blocks: Line 40: Empty body: "IF truthiness of value (celsius) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 42: Empty body: "IF not (__bwValue1 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 46: Empty body: "IF compare value (temp) op ">" with ((0 + (0))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 1 | arcade: Code to Blocks: Line 96: Empty body: "IF truthiness of value (arcade local __bwValue4) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
+| 1 | arcade: Code to Blocks: Line 99: Empty body: "IF truthiness of value (arcade local __bwValue6) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: References unknown sprite "ExtraLife" (not a defined sprite) |
 | 1 | arcade: Code to Blocks: References unknown sprite "Food" (not a defined sprite) |
 | 1 | arcade: Code to Blocks: References unknown sprite "NPC" (not a defined sprite) |
@@ -415,8 +415,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | arcade: unit.setScale() |
 | 1 | arcade: unit.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: unit.y = … — a sprite held in a variable, which the stage cannot follow |
-| 1 | arcade: Update as a value |
-| 1 | arcade: update expression used as a value |
 | 1 | arcade: valentine.set_win_lose_size() |
 | 1 | arcade: value.place() |
 
@@ -452,7 +450,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | input 27 | fail |
 | input 29 | pass |
 | input 32 | fail |
-| input 33 | pass |
 | input 35 | fail |
 | input 37 | fail |
 | input 38 | fail |
