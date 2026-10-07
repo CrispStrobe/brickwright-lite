@@ -127,6 +127,15 @@ run in MakeCode and reimport. Assert identity and exact palette pixels. Repeat
 file/share import and an explicit Code-plus-assets path. Plain text alone must
 name absent assets. Reuse artwork source/archive models and atomic rendering.
 
+The current bounded U02 implementation preserves live costume/backdrop bytes,
+centres, palette/layer documents and frame durations during in-app From Blocks
+→ fresh Pixel edit → Code edit → To Blocks, including SB3 save/reopen. The
+required browser gate is `scripts/verify-code-artwork-browser.mjs`; helper tests
+also exercise PNG bytes, failed imports, external project replacement and edits
+during asynchronous ZIP construction. The real browser fixture uses SVG.
+This does not close portable plain-Code asset transport, sampled sounds,
+animation-to-runtime binding, or the full original-MakeCode resource journey.
+
 ### U03 — tilemap authoring
 
 Create two tiles in the Pixel editor, paint a map/walls, choose tile size, place
@@ -180,6 +189,15 @@ a capability leaves its native authoring gate open. TypeScript remains an
 interchange/source route; it is not evidence for those missing controls.
 
 ### Pinned API inputs and census rules
+
+The reproducible [public declaration inventory](generated/MAKECODE-PUBLIC-API-CENSUS.md)
+now supplies the pinned source baseline. Generate its complete signature and
+editor-metadata JSON with `node scripts/makecode-api-census.mjs --out census.json
+--markdown census.md` after syncing the runtime. The scanner refuses a missing
+or mismatched target manifest. Its records include internal and optional-package
+candidates: resolve visibility, inheritance and dependencies before joining
+public signatures to the seven evidence columns below. Counts are not coverage.
+
 
 The local synced `VERSIONS.json` records Arcade **pxt-arcade@4.2.1 /
 pxt-core@13.2.1**, micro:bit **pxt-microbit@9.1.1 / pxt-core@13.0.1**,

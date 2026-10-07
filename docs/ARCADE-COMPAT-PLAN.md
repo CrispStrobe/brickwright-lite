@@ -13,6 +13,29 @@ carries a small Static TypeScript runtime,
 `overlay/scratch-gui/src/lib/bw-makecode/arcade-runtime.js`, and emits only
 the helpers a program uses.
 
+## Native authoring closure baseline
+
+Use the [conversion and GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md)
+and [pinned original declaration inventory](generated/MAKECODE-PUBLIC-API-CENSUS.md)
+together. Inventory records are candidates, not a support percentage. Classify
+public signatures and join import, pseudocode, native block schema, resource
+editor, runtime, original export and visible GUI evidence separately.
+
+Current producer adoption includes [sb3-creator PR60](https://github.com/CrispStrobe/sb3-creator/pull/60)
+and [PR61](https://github.com/CrispStrobe/sb3-creator/pull/61), pinned at
+`2d2a562812c6e34525021ccacd421b1d20151c15`. Their reviewed heads passed all
+enabled checks before merge; each merge tree matched its reviewed tree. These
+fix actual arrays dropdown fields and the Arcade controller axis reporter/menu
+socket. Lite consumes those shapes, migrates validated historical slots before
+project loading, and refuses obsolete nonliteral slots rather than guessing.
+
+The locked 184-input Arcade corpus still measures **90 translated / 93 partial /
+1 malformed input** after this adoption. Editor schema correctness does not
+remove importer refusals. Finish the required native menu and artwork browser
+gates for this candidate, then implement visual tilemap authoring and animation
+binding. Keep the complete authored-game journey and per-API ledger open until
+their separate original-runtime evidence exists.
+
 ## Support matrix (task A4, 2026-09-29)
 
 "Before" is origin/main `76d21c170`. There, every construct below was emitted
