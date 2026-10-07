@@ -40,12 +40,12 @@ const paint = async (colour, x, y) => {
 const savePixels = async () => {
     const before = await page.evaluate(() => {
         const vm = window.__brickwrightStore.getState().scratchGui.vm;
-        return vm.editingTarget.sprite.costumes[0].assetId;
+        return vm.editingTarget.sprite.costumes[0].asset.assetId;
     });
     await page.getByTestId('bw-pixel-save').click();
     await page.waitForFunction(prior => {
         const vm = window.__brickwrightStore.getState().scratchGui.vm;
-        return vm.editingTarget.sprite.costumes[0].assetId !== prior;
+        return vm.editingTarget.sprite.costumes[0].asset.assetId !== prior;
     }, before);
 };
 const archive = async label => {
@@ -144,7 +144,7 @@ try {
     if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name: 'unrelated.bw',
         mimeType: 'text/plain', buffer: Buffer.from('SPRITE Sprite1:\n  WHEN flag clicked:\n    say "new project"\n')});
-    await page.getByTestId('bw-code-status').getByText(/Opened unrelated/).waitFor({state: 'visible'});
+    await page.getByTestId('bw-code-status').getByText(/Loaded unrelated/).waitFor({state: 'visible'});
     if (await actions.getAttribute('open')) await actions.locator('summary').click();
     await apply();
     const unrelated = await archive('unrelated');
