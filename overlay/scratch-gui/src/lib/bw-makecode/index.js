@@ -116,7 +116,7 @@ export function importProjectFiles (files = {}, opts = {}) {
     // its artwork becomes costumes. What does not survive is listed, not
     // dropped — see arcade-translate.js.
     if (target === 'arcade' && files['main.ts']) {
-        const translated = arcadeToPseudocode(files, {name});
+        const translated = arcadeToPseudocode(files, {name, animationResources: opts.animationResources});
         return {
             kind: 'makecode',
             lang: 'pseudocode',
@@ -124,6 +124,8 @@ export function importProjectFiles (files = {}, opts = {}) {
             source: main,
             unsupported: translated.unsupported,
             costumes: translated.costumes,
+            animationResources: translated.animationResources,
+            warnings: translated.warnings || [],
             sprites: translated.sprites,
             files,
             project: {target, name, version: opts.version || ''},
@@ -170,6 +172,7 @@ export function importProjectFiles (files = {}, opts = {}) {
 export async function importShareLink (input, opts = {}) {
     const shared = await fetchSharedProject(input, opts);
     const result = importProjectFiles(shared.files, {
+        animationResources: opts.animationResources,
         target: inferTarget(shared.files, String(input)),
         name: shared.meta.name || shared.id
     });
@@ -254,6 +257,7 @@ export async function importArtefact (bytes, opts = {}) {
     const project = describeProject(res.meta);
     const files = res.files || {};
     const shaped = importProjectFiles(files, {
+        animationResources: opts.animationResources,
         target: project.target === 'unknown' ? inferTarget(files) : project.target,
         name: project.name || name,
         version: project.version

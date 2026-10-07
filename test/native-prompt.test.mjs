@@ -252,6 +252,7 @@ const SITES = [
                 'await __stopImport()');
             assert.notEqual(stopped, method, 'the MakeCode import could not be stopped');
             const self = {
+                props: {vm: {runtime: {getTargetForStage: () => 'owned-stage'}}},
                 L: {mcSharePrompt: 'Paste a MakeCode share link', mcShareLoading: 'loading',
                     mcFailed: url => { fetched = url; return 'failed'; }},
                 setState () {}

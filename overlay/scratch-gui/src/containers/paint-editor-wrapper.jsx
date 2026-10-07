@@ -4,7 +4,7 @@ import {FormattedMessage} from 'react-intl';
 import bindAll from 'lodash.bindall';
 import VM from 'scratch-vm';
 import {inlineSvgFonts} from 'scratch-svg-renderer';
-import {getCostumeDocument, resetCostumeDocument, setCostumeDocument} from '../lib/bw-artwork-bundle';
+import {getCostumeDocument, resetCostumeDocument, setCostumeDocument, syncAnimationResources} from '../lib/bw-artwork-bundle';
 
 import {connect} from 'react-redux';
 import DynamicReducerContext from '../lib/dynamic-reducer-context';
@@ -117,8 +117,9 @@ class PaintEditorWrapper extends React.Component {
                 rotationCenterY,
                 2 /* bitmapResolution */);
             if (bitmapDocument) setCostumeDocument(costume, bitmapDocument);
-            else resetCostumeDocument(costume);
+            else resetCostumeDocument(costume, this.props.vm);
         }
+        syncAnimationResources(this.props.vm);
     }
     render () {
         if (!this.props.imageId) return null;

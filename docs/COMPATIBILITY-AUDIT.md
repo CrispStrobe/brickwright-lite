@@ -60,6 +60,22 @@ Gap rankings count affected projects separately from diagnostic occurrences.
 - **`--limit N`:** gives a repeatable smoke run in sorted path order.
 - **Exit code:** nonzero for read, parse, missing-asset or missing-opcode rows.
 
+## Browser checks
+
+The Arcade behaviour the audit cannot see (drawing, the controller, dialogs, scenes) has its
+own checks in `scripts/verify-arcade-*.mjs`, ported from the parked WIP as task F3. Each one
+serves `packages/scratch-gui/build`, so build the GUI first:
+
+```sh
+npm run verify:arcade-camera          # one journey; see package.json for the rest
+BW_ARCADE_CORPUS=…/compat-corpora/makecode/arcade npm run verify:arcade-projectile-corpus
+```
+
+The 15 checks that need no corpus run on the heavy browser shard of `build.yml`. The 7
+`*-corpus` checks read programs from the private corpus, so CI cannot run them; they are listed
+in `KNOWN_UNWIRED` in `test/gate-coverage.test.mjs`. Each writes a JSON report under
+`test-results/`.
+
 ## Where the corpus lives
 
 The corpus is the pinned 828-file set in the private repository

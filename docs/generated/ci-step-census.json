@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-07T17:28:13.014Z",
+ "generatedAt": "2026-10-07T20:07:49.943Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "a87a7b447",
  "newestMainRun": 36409366028,
@@ -1743,6 +1743,12 @@
    "workflow": "basic-oracle.yml",
    "branch": "feat/basic-oracle-ci-20261005",
    "sha": "d428b52cc"
+  },
+  {
+   "run": 37660250589,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "428c00934"
   },
   {
    "run": 37653831331,
@@ -6418,7 +6424,7 @@
    "sourceSha": "d428b52cc"
   },
   "i80386-freedos-circuits-direct-actual.yml": {
-   "runs": 8,
+   "runs": 9,
    "stepsInFile": [
     "Authenticate source and materialize the exact probe",
     "Install and build the same-head app",
@@ -6431,8 +6437,8 @@
    "inFileInNoRun": [],
    "steps": {
     "Authenticate source and materialize the exact probe": {
-     "existed": 8,
-     "ran": 8,
+     "existed": 9,
+     "ran": 9,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -6444,8 +6450,8 @@
      "class": "always"
     },
     "Install and build the same-head app": {
-     "existed": 8,
-     "ran": 8,
+     "existed": 9,
+     "ran": 9,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -6457,36 +6463,8 @@
      "class": "always"
     },
     "Obtain and authenticate official free guest media": {
-     "existed": 8,
+     "existed": 9,
      "ran": 7,
-     "existedMain": 0,
-     "ranMain": 0,
-     "skippedInFailedRuns": 1,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": null,
-     "class": "sometimes",
-     "why": "upstream failure — skipped only in runs where an earlier job failed"
-    },
-    "Bind app build, pins, probe and media before guest": {
-     "existed": 8,
-     "ran": 7,
-     "existedMain": 0,
-     "ranMain": 0,
-     "skippedInFailedRuns": 1,
-     "skippedInGreenRuns": 0,
-     "jobs": [
-      "browser"
-     ],
-     "clause": null,
-     "class": "sometimes",
-     "why": "upstream failure — skipped only in runs where an earlier job failed"
-    },
-    "Install bounded Chromium and execute actual Circuit guest input": {
-     "existed": 8,
-     "ran": 6,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 2,
@@ -6498,9 +6476,37 @@
      "class": "sometimes",
      "why": "upstream failure — skipped only in runs where an earlier job failed"
     },
+    "Bind app build, pins, probe and media before guest": {
+     "existed": 9,
+     "ran": 7,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 2,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "sometimes",
+     "why": "upstream failure — skipped only in runs where an earlier job failed"
+    },
+    "Install bounded Chromium and execute actual Circuit guest input": {
+     "existed": 9,
+     "ran": 6,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 3,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "sometimes",
+     "why": "upstream failure — skipped only in runs where an earlier job failed"
+    },
     "Inventory bounded original evidence": {
-     "existed": 8,
-     "ran": 8,
+     "existed": 9,
+     "ran": 9,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -6512,8 +6518,8 @@
      "class": "always"
     },
     "Retain first result or failure without media/build binaries": {
-     "existed": 8,
-     "ran": 8,
+     "existed": 9,
+     "ran": 9,
      "existedMain": 0,
      "ranMain": 0,
      "skippedInFailedRuns": 0,
@@ -6527,19 +6533,19 @@
    },
    "jobs": {
     "browser": {
-     "existed": 8,
-     "ran": 8,
+     "existed": 9,
+     "ran": 9,
      "existedMain": 0,
      "ranMain": 0,
      "class": "always"
     }
    },
-   "sourceSha": "c766b2c2e"
+   "sourceSha": "428c00934"
   }
  },
  "lastRefresh": {
   "workflow": "i80386-freedos-circuits-direct-actual.yml",
-  "at": "2026-10-07T17:28:13.014Z",
-  "sourceSha": "c766b2c2e"
+  "at": "2026-10-07T20:07:49.943Z",
+  "sourceSha": "428c00934"
  }
 }

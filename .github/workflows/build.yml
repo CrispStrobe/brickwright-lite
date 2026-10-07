@@ -1181,6 +1181,18 @@ jobs:
           path: test-results/arcade-background-browser/
           if-no-files-found: error
 
+      - name: Browser gate — Arcade animation resources across Pixel Code Blocks and original export
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-animation-resource-browser.mjs --out test-results/arcade-animation-resource-browser/current.json
+      - name: Upload arcade-animation-resource-browser authoring observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arcade-animation-resource-browser
+          path: test-results/arcade-animation-resource-browser/
+          if-no-files-found: error
+
       # Keep the debugger acceptance checks at the front of the browser queue.
       # They reuse this job's one build, server and Chromium installation, but
       # now report before the unrelated product journeys rather than after
@@ -2037,6 +2049,100 @@ jobs:
         timeout-minutes: 3  # derived: p95 6 s × 3 → 3 min over 20 green runs to 36823340082; max 7 s in run 36405371611 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-arduboy.mjs
+      # Arcade journeys ported from the parked WIP (task F3 of
+      # docs/OPEN-TASKS-2026-09-29.md). Each serves packages/scratch-gui/build
+      # itself and drives the visible editor and controller. On the heavy shard:
+      # light ran 21 of its 30 minutes on 2026-10-07, heavy 16.
+      - name: Browser gate — Arcade animation frames through Code, Blocks and the controller
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-animation-browser.mjs
+      - name: Browser gate — Arcade camera follow, centre and reset draw sprites, tiles and HUD
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-camera-browser.mjs
+      - name: Browser gate — Arcade friction and velocity under the controller
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-friction-browser.mjs
+      - name: Browser gate — Arcade image reads and writes stay inside their bounds
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-image-bounds.mjs
+      - name: Browser gate — Arcade physics for several sprites at once
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-multi-physics-browser.mjs
+      - name: Browser gate — Arcade physics engine settings and the no-progress diagnostic
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-physics-engine-browser.mjs
+      - name: Browser gate — Arcade sprite scaling through the controller
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-scaling-browser.mjs
+      - name: Browser gate — Arcade scene push and pop keep each world and its retained diagnostic
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-scenes-browser.mjs
+      - name: Browser gate — Arcade speech bubbles render on the stage
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-speech.mjs
+      - name: Browser gate — Arcade splash screen shows on the stage and a button dismisses it
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-splash.mjs
+      - name: Browser gate — Arcade sprite values agree with the pinned simulator
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-sprite-values.mjs
+      - name: Browser gate — Arcade terrain collisions under the controller
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-terrain-browser.mjs
+      - name: Browser gate — Arcade terrain wall-hit events
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-terrain-events-browser.mjs
+      - name: Browser gate — Arcade tile data reads and writes
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-tile-data-browser.mjs
+      - name: Browser gate — Arcade viewport and camera clamping
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: |
+          mkdir -p test-results
+          node scripts/verify-arcade-viewport-browser.mjs
       # MEASURE the browser waits, on a runner instead of a developer box.
       #
       # docs/WAIT-CENSUS.md: lite has 119 `timeout: N` bounding literals and not
