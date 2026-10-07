@@ -97,8 +97,8 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (156 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 156);
+test('the pinned parser has the Arcade word table (158 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 158);
 });
 
 test('every program the Arcade importer writes parses, with no unread line and no warning', () => {
