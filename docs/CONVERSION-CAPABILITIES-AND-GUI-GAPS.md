@@ -208,6 +208,35 @@ Export/reimport must preserve palette, frames, loop/action and supported timing.
 If variable durations require a runtime sequence, implement it explicitly rather
 than flattening timings. Include sheet and frames-as-costumes journeys.
 
+#### Next animation binding slice — proposed, not implemented
+
+The Pixel timeline already retains per-frame IDs, layers and durations
+(20–10,000ms, up to64 frames). Exporting frames as costumes creates snapshots;
+it does not establish a runtime animation resource. The existing frame-image
+lookup uses a target name and contiguous costume positions, so it must not be
+used as the durable identity across rename/reorder.
+
+1. Add **Publish/Update animation** in the Frames panel. Persist a resource UUID
+   and display name alongside the source timeline; preserve frame IDs/order.
+   Duplication creates a distinct resource ID. Verify document reconstruction,
+   serialization and older-reader handling before declaring persistence closed.
+2. Expose the resource through a visible named Blocks picker and Code insertion
+   picker. Canonical words carry the resource ID, not a costume index or mutable
+   name. A typed frame-array reporter feeds the existing native image-animation
+   block; a uniform-interval reporter supplies the verified frame duration.
+3. Populate a runtime resource registry through artwork load/apply, update it
+   after edits and clear it on project replacement. A GUI-only source cache is
+   insufficient for runtime access. The exporter must receive complete source
+   explicitly rather than infer frames from the currently flattened costume.
+4. First qualify uniform timing with existing `runImageAnimation` behaviour and
+   equivalent original export. Unequal timing remains explicitly unavailable
+   for this binding until a variable-duration scheduler and equivalent exported
+   program are implemented. Do not flatten durations or expand frames by GCD.
+5. Accept only after visible creation, binding, controller trigger, Stop/restart,
+   rename/reorder/duplicate/delete, Code↔Blocks, SB3 reopen and original-PXT
+   behaviour comparisons pass. Resource identity and event behaviour need their
+   own observations; timeline persistence alone does not qualify playback.
+
 ### U05 — rotation/data/resources/callbacks
 
 After F4 integration select radians/degrees/data through real block menus and
