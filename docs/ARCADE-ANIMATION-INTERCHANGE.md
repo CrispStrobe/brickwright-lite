@@ -144,6 +144,23 @@ existing artwork/resource synchronization and Code artwork retention. Clear
 pending imports at the same unrelated-file/example/project boundaries as other
 artwork. A half-valid document must never replace the loaded project.
 
+Do not append resource carriers to existing actors or Stage: doing so changes
+costume/backdrop counts and index behaviour. A dedicated hidden resource-library
+target needs an explicit persistent role, preserved visibility through
+Code↔Blocks, and exporter exclusion from gameplay actor creation. Name-based
+recognition is insufficient. Rename/delete/Undo/duplication must preserve or
+renew identities appropriately. The current Code artwork retention does not
+preserve such a role or visibility; implement that before introducing carriers.
+
+Native factory references create fresh arrays and images per lookup, while the
+existing Brickwright frame-resource reporter returns a shared cached array.
+Live imported resource bindings therefore need a fresh-copy access operation
+with correct mutation/alias semantics; replacing every native lookup with the
+cached reporter is incorrect. Native files also allow one frame and intervals
+outside the current GUI publication bounds. Preserve these behaviours and
+report editing limits explicitly until versioned persistence/UI supports them;
+do not duplicate frames or clamp timing to manufacture compatibility.
+
 Reuse the existing bundle document validator and resource normalizer rather
 than adding a second definition of valid layers. A bounded, versioned companion
 must bind unique native IDs and resource UUIDs to source documents and their
