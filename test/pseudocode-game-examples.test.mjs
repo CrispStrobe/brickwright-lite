@@ -2475,6 +2475,17 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
         coil.postIOData('keyboard', {key: 'ArrowUp', isDown: false});
         const beforeY = Number(value(coil, 'headY').value);
         const beforeOxygen = Number(value(coil, 'oxygen').value);
+        // Isolate the dash's cost from the independently tested random reward
+        // and crash paths. inspect coil cell can add back one oxygen for food,
+        // making a successful dash look like no dash to the net-value wait.
+        // Both valid grid cells are outside the northward movement column.
+        // This ambiguity is real; the cause of the hosted stall is unconfirmed.
+        const headX = Number(value(coil, 'headX').value);
+        const awayX = offset => ((headX + 9 + offset) % 19) - 9;
+        value(coil, 'foodX').value = awayX(4);
+        value(coil, 'foodY').value = beforeY;
+        value(coil, 'bombX').value = awayX(15);
+        value(coil, 'bombY').value = beforeY;
         coil.postIOData('keyboard', {key: ' ', isDown: true});
         // vm.start() also owns a real-time stepping interval. Four immediate
         // manual steps raced that interval on a loaded CI runner and could
@@ -2511,7 +2522,10 @@ test('lunar dash and rocket thrust consume resources in the live Scratch VM', as
         assert.notEqual(Number(value(coil, 'oxygen').value), beforeOxygen,
             `the dash never fired: oxygen stayed at ${beforeOxygen} through ${waited} steps ` +
             'over a 10s deadline. This is the WAIT expiring, not the dash spending the wrong ' +
-            'amount — and at ten seconds it is no longer a slow runner, so look at the game.');
+            'amount — and at ten seconds it is no longer a slow runner, so look at the game. ' +
+            `Actual game state: ${JSON.stringify(Object.fromEntries(['started', 'active', 'winner', 'lives',
+                'oxygen', 'headX', 'headY', 'dirX', 'dirY', 'foodX', 'foodY', 'bombX', 'bombY', 'crashLock',
+                'trailX', 'trailY'].map(name => [name, value(coil, name).value])))}`);
         assert.equal(Number(value(coil, 'oxygen').value), beforeOxygen - 1,
             'dash did not spend exactly one oxygen');
         assert.ok(Number(value(coil, 'headY').value) > beforeY, 'dash did not advance an extra grid cell');

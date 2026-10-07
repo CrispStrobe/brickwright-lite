@@ -508,3 +508,34 @@ off — `MicroBitThermometer` asks `sd_softdevice_is_enabled` unconditionally, a
 `ble_running()` does whenever pxt's `pairing_mode` is set — and it builds with
 yotta. A SoftDevice-free V1 base needs a DAL change or an SVC stub, not a
 switch; measured and not attempted.
+
+## Author a full-screen Arcade backdrop
+
+In **Code**, choose **Arcade**, then open **Backdrops → Pixel**. Use the target
+picker to choose **Backdrops** if a sprite is selected. Open **More** and choose
+**Arcade background160×120**. Paint with the palette and tools, add layers if
+needed, then **Save**. The preset displays each Arcade pixel at three Scratch
+units. Native160×120 PNG uploads keep their logical dimensions even when
+Scratch stores the bitmap at double resolution.
+
+Use a backdrop-switch block, or the corresponding Code command:
+
+```text
+DEVICE ARCADE
+BACKDROP art
+WHEN flag clicked:
+  switch backdrop to "art"
+```
+
+Replace `art` with your actual backdrop name. **From Blocks → Code edit → To
+Blocks** retains the current artwork; save an SB3 to carry the editable layers
+and palette to another device. Plain Code text alone does not carry the binary
+artwork. Arcade export includes the background. Transparent Scratch Stage
+pixels keep their white matte; a custom palette without white produces a named
+quantization warning.
+
+This journey is covered by `scripts/verify-arcade-background-browser.mjs`:
+actual PNG chooser, painting, layers, Code/Blocks, SB3 reopen, playback and all
+19,200 original-PXT export pixels. Tilemap painting, animation action binding,
+custom-palette RGB equivalence and mixed native Arcade/Scratch Stage composition
+remain separate authoring/qualification work.

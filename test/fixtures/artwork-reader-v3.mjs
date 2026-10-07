@@ -1,3 +1,4 @@
+// Unmodified historical v3 reader from brickwright-lite6c4276daa9d3167341469c6394e35b5c87f09f7b.
 /**
  * Editable artwork lives beside, never instead of, Scratch costume assets.
  * Scratch reads project.json and its SVG/PNG assets; it ignores this ZIP entry.
@@ -5,11 +6,9 @@
  * costume in project.json. This prevents a stale source from silently replacing
  * artwork edited by Scratch or an older Brickwright.
  */
-import {editablePixelSize} from './bw-makecode/pixel-image.js';
-
 const ARTWORK_PATH = 'brickwright/artwork/v1.json';
 const ARTWORK_FORMAT = 'brickwright-artwork';
-const ARTWORK_VERSION = 4;
+const ARTWORK_VERSION = 3;
 const MAX_ARTWORK_BYTES = 64 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 
@@ -44,7 +43,8 @@ const validateLayers = (layers, expectedSize = null) => {
         if (layer.content.kind === 'pixels') {
             const value = layer.content.value;
             if (layer.type !== 'pixel' || !isObject(value) || !Number.isInteger(value.width) ||
-                !editablePixelSize(value.width, value.height) || !Array.isArray(value.pixels) ||
+                !Number.isInteger(value.height) || value.width < 1 || value.height < 1 ||
+                value.width > 128 || value.height > 128 || !Array.isArray(value.pixels) ||
                 value.pixels.length !== value.width * value.height ||
                 !value.pixels.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 15)) {
                 throw new Error('invalid pixel source');
@@ -110,15 +110,6 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
     }
     return doc;
 };
-
-// Versions 1–3 readers cap indexed layers at128×128. Advertise the extended
-// bounds at bundle level so those readers preserve the opaque source as future.
-const artworkBundleVersion = records => Math.max(1, ...records.map(record => {
-    const document = record.document;
-    const extended = document.layers.some(layer => layer.content.kind === 'pixels' &&
-        (layer.content.value.width > 128 || layer.content.value.height > 128));
-    return Math.max(document.version, extended ? 4 : 1);
-}));
 
 const fromRendered = costume => ({
     version: 1,
@@ -293,7 +284,7 @@ const writeArtworkToZip = async (zip, vm) => {
                     document: validateDocument(document)});
             }
         }
-        const version = artworkBundleVersion(costumes);
+        const version = Math.max(1, ...costumes.map(record => record.document.version));
         zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT, version, costumes}));
         return true;
     } catch (error) {
@@ -324,5 +315,5 @@ const attachArtwork = async (blob, vm) => {
 };
 
 export {ARTWORK_PATH, ARTWORK_FORMAT, ARTWORK_VERSION, inspectArtwork, applyArtwork,
-    attachArtwork, writeArtworkToZip, artworkBundleVersion, getCostumeDocument, setCostumeDocument,
+    attachArtwork, writeArtworkToZip, getCostumeDocument, setCostumeDocument,
     resetCostumeDocument, copyCostumeDocument};

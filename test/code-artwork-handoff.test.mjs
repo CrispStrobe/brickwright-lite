@@ -191,3 +191,15 @@ for (const outcome of ['legacy', 'loaded', 'future', 'invalid', 'storage-failed'
         assert.deepEqual(component.state.uploads, accepted ? [] : [{svg: 'pending'}]);
     });
 }
+
+test('Code handoff marks full-screen editable artwork as future-safe bundle4', () => {
+    const s = setup(), document = animatedDocument();
+    for (const layers of [document.layers, ...document.animation.frames.map(frame => frame.layers)]) {
+        layers[0].content.value = {width:160,height:120,pixels:Array(19200).fill(2)};
+    }
+    setCostumeDocument(s.stage.sprite.costumes[1], document);
+    assert.equal(retainCodeArtwork(s.zip, clone(s.declarations), s.vm, s.context), true);
+    const saved = JSON.parse(s.files.get(ARTWORK_PATH));
+    assert.equal(saved.version, 4);
+    assert.equal(saved.costumes.find(record => record.targetIndex === 0 && record.costumeIndex === 1).document.version, 3);
+});

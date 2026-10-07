@@ -25,6 +25,36 @@ import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
 
 export {ARCADE_PALETTE};
 
+// Bound each editable layer; the bundle also caps total document bytes/frames.
+export const MAX_PIXEL_DIMENSION = 160;
+export const editablePixelSize = (width, height) => Number.isInteger(width) && Number.isInteger(height) &&
+    width > 0 && height > 0 && width <= MAX_PIXEL_DIMENSION && height <= MAX_PIXEL_DIMENSION;
+
+/** An unmarked screen-sized Stage SVG uses physical display pixels, not a GCD art grid. */
+export const isUnmarkedArcadeBackdrop = (svg, isStage) => {
+    if (!isStage) return false;
+    const root = /<svg\b([^>]*)>/i.exec(String(svg || ''));
+    if (!root || /\bdata-bw-pixel-scale\s*=/i.test(root[1])) return false;
+    const dimension = name => {
+        const value = new RegExp(`\\b${name}=["']([0-9.]+)(?:px)?["']`, 'i').exec(root[1]);
+        return value ? Number(value[1]) : NaN;
+    };
+    const width = dimension('width'), height = dimension('height');
+    return (width === 160 && height === 120) || (width === 480 && height === 360);
+};
+
+/** Recognize native/3x Arcade backdrops without changing other costume conversions. */
+export const rasterEditorSize = (width, height, isStage = false, bitmapResolution = 1) => {
+    const resolution = Number.isFinite(bitmapResolution) && bitmapResolution > 0 ? bitmapResolution : 1;
+    const logicalWidth = width / resolution, logicalHeight = height / resolution;
+    if (isStage && ((logicalWidth === 160 && logicalHeight === 120) ||
+        (logicalWidth === 480 && logicalHeight === 360))) {
+        return {width: 160, height: 120, scale: 3};
+    }
+    return {width: Math.min(64, Math.max(4, Math.round(width / 4))),
+        height: Math.min(64, Math.max(4, Math.round(height / 4))), scale: 4};
+};
+
 const hexToRgb = hex => {
     const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex || '').trim());
     return m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : null;
@@ -183,10 +213,10 @@ export function quantizeRgba (rgba, srcW, srcH, width, height, palette = ARCADE_
 export function sliceSpriteSheet (rgba, sheetWidth, sheetHeight, frameWidth, frameHeight,
     pixelScale = 1, palette = ARCADE_PALETTE) {
     if (![sheetWidth, sheetHeight, frameWidth, frameHeight, pixelScale].every(Number.isInteger) ||
-        !sheetWidth || !sheetHeight || !frameWidth || !frameHeight || !pixelScale ||
+        sheetWidth < 1 || sheetHeight < 1 || frameWidth < 1 || frameHeight < 1 || pixelScale < 1 ||
         sheetWidth % frameWidth || sheetHeight % frameHeight ||
         frameWidth % pixelScale || frameHeight % pixelScale ||
-        frameWidth / pixelScale > 128 || frameHeight / pixelScale > 128 ||
+        !editablePixelSize(frameWidth / pixelScale, frameHeight / pixelScale) ||
         rgba.length !== sheetWidth * sheetHeight * 4) return null;
     const columns = sheetWidth / frameWidth;
     const rows = sheetHeight / frameHeight;

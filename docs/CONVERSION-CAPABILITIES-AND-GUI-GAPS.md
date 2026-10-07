@@ -31,7 +31,7 @@ compiler acceptance alone does not establish full compatibility.
   defines actual blocks, menus and execution, with image/speech helper modules.
 - Code words: `overlay/scratch-gui/src/lib/arcadeDialect.js` is bidirectional.
   Parser changes belonging to sb3-creator land upstream first, then receive an
-  explicit Lite pin adoption. The integration branch adopts sb3-creator
+  explicit Lite pin adoption. The earlier integration adopted sb3-creator
   `8ba3508eab2ad99b9d9a6478c9a45a7200ca4fde` after upstream PR59 passed
   its enabled checks and merged; exact vendor identity and mirrors pass locally.
 - File/share import UI: `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
@@ -65,7 +65,7 @@ verification scripts under `scripts/`. These pointers do not claim fresh passes.
 | C04 Rotation/sprite data | Integration: rotation/rotationDegrees/data property words, blocks and qualified upstream dialect adoption | Rotated geometry/raster, viewport-bounded scaled rendering and reference-preserving data import/export | Focused `-rotation`, `-rotation-viewport`, `-data-types` tests pass, including original PXT, VM, export/reimport and SB3 restart. Production Code→Blocks/controller/export/file-reimport passes 12 observed states; initial stage matches all 19,200 original PXT palette pixels. Huge rotated collision performance remains unqualified. Artwork quarter turns are a separate editor feature. |
 | C05 Images/shared resources | Present: create/clone, dimensions/pixels, drawing/blit/mutation, sprite/background image refs | Shared identity, generated images, parameters and export present | `-image-values`, `-shared-images`, `-image-parameters`, `-generated-images`, `-image-blit`, `-image-mutation`, `-pixel-drawing`. Need source/render transaction and alias invalidation proof after editor changes. |
 | C06 Literal/gallery artwork | Import returns assets alongside code; frame-image blocks reference templates | SVG costume assets, built-ins and image literal export present | `-literal-images`, `-generated-sources`, `-background-images`. Whole-file asset staging exists; verify it in browser and add an explicit Code-plus-assets path instead of silently substituting art. |
-| C07 Pixel/palette/layers | Existing Costumes Pixel editor | Indexed tools, selections, layers/opacity/locking, custom/preset palettes, PNG/sheets and palette-aware export present | `makecode-pixel-image`, `pixel-layers`, `verify-pixel-source-roundtrip`, `verify-pixel-colour-slots`, `verify-pixel-crop`. Need authored game's exact pixel/palette/export proof. Current editor dimensions cap at128×128. |
+| C07 Pixel/palette/layers | Existing Costumes Pixel editor | Indexed tools, selections, layers/opacity/locking, custom/preset palettes, PNG/sheets and palette-aware export present | `makecode-pixel-image`, `pixel-layers`, `verify-pixel-source-roundtrip`, `verify-pixel-colour-slots`, `verify-pixel-crop`. Full-screen background authoring qualified locally at `ecba43152`: 160×120 preset, PNG logical resolution, layers, Code handoff, SB3 reopen and all19,200 original-export pixels. Controls/source allow160×160; larger editable images and arbitrary PNG variants remain unqualified. |
 | C08 Tilemaps/locations | Present map data, locations/images/walls, placement/type queries and terrain callbacks | Decoder preserves indices/walls/tile size; collision/export present | `-tile-data`, `-terrain`, `-terrain-events` and import/runtime variants. **Dedicated tilemap painter missing:** raw data blocks are not usable visual map authoring. Add tile/wall layers, map asset picker and scale-aware editing. |
 | C09 Animations | Present handles/actions, frames/intervals, image-animation and stop blocks | Runtime/export present. Pixel editor already has timeline/durations/reorder/thumbnails/playback/onion skin, sheet routes and frames-as-costumes | `-animation`, `-animation-runtime`, `-animation-defaults`, `pixel-layers`. Need binding edited frames/durations to Animation/Image[] and actions, with actual game playback/export. Graphics preview alone is insufficient. |
 | C10 Scenes/camera/physics | Present scene refs/push/pop, camera center/follow/property and physics resource creation/replacement/properties | Scene state, terrain, friction and export present | `-scenes`, `-scene-registrations`, `-camera`, `-physics-engine`, `-multi-physics`, `-friction`. Need resource selection/navigation and browser restoration proof. Broader engine methods/scheduling need separate measured census. |
@@ -138,11 +138,16 @@ animation-to-runtime binding, or the full original-MakeCode resource journey.
 
 #### Next graphics slices, in dependency order
 
-1. **Full-screen artwork:** make the Pixel editor, `bw-makecode/pixel-image.js`
-   and `bw-artwork-bundle.js` agree on logical image dimensions. The current
-   128×128 controls/validation and 64×64 raster fallback must not shrink a
-   160×120 Arcade background. Add a visible background preset and test corner
-   pixels, layers, save/reopen, Code handoff and all 19,200 original-export pixels.
+1. **Full-screen artwork:** the stacked background candidate now qualifies a
+   visible160×120 preset, logical PNG resolution, corner painting, layers,
+   resize/undo, Code handoff and SB3 save/reopen. Production `ecba43152` and
+   harness `5a043f26c` match all19,200 actual Brickwright playback pixels against
+   the actual downloaded export compiled/run in original PXT. Version4 artwork
+   bounds retain source through the historical version3 reader. Default-palette
+   Stage transparency matches white; custom palettes select their white slot
+   and report quantization when none exists. Custom-palette original RGB parity,
+   mixed native-Arcade/Scratch Stage composition and images beyond160×160 remain
+   open. This local qualification is separate from hosted CI/merge status.
 2. **Animation asset binding:** reuse the existing 64-frame timeline, durations,
    layers, sheets and frame-as-costumes export. Add stable asset/action pickers
    and bindings to native words/blocks. Existing runtime/export intervals are
@@ -162,6 +167,39 @@ a player/camera and steer into walls/overlap tiles. Undo/redo, rename a tile,
 save/reopen, export/run in MakeCode and reimport both layers. Internal JSON
 injection does not count as creating a map through the GUI.
 
+#### Legacy tilemaps need a separate implementation
+
+The pinned `color-coded-tilemap` package does not make `scene.setTileMap` an
+alias for modern `tiles.setTilemap`. Preserve the mutable map Image reference,
+scene-local legacy mode, default16px scale, and persistent numeric0–15 tileset
+entries containing image references and type-wide wall flags. Setting a tile
+before a map must work; changing maps retains that legacy tileset. Missing
+images use their palette-index colour. Tile artwork clips/pads at the top-left
+rather than stretching. Outside an enabled map is wall; a disabled map is not.
+Legacy Tile references retain their originating map and numeric `tileSet`.
+`onHitTile` is a wall-index collision event, not a modern overlap-tile event.
+
+Reuse modern rendering/physics infrastructure behind mode-aware accessors,
+without rewriting these semantics into per-cell wall snapshots. Deliver native
+words/typed Blocks, numeric colour/map pickers, tileset image/wall/scale tools,
+and export the original scene APIs with the `color-coded-tilemap` dependency.
+Test operation order, map switches, retained references, map/image mutations,
+defaults, clipping, wall collisions, real editor save/reopen and original PXT
+export/run/reimport. Then rerun the affected corpus; unrelated extension and
+empty-body refusals must remain named.
+
+The latest locked-input inspection finds eight projects referencing legacy
+maps (the exact standalone refusal ranking has seven), five referencing legacy
+tile definitions (exact ranking four), and two wall-hit callback users. These
+are affected-project observations, not promised reductions in partials.
+
+Resource recovery is independent: all ten background-art refusals in this
+corpus reference unavailable assets in bare TypeScript inputs. Recover complete
+original project/JRES/extension assets with provenance; do not generate substitute
+art or count those as ten unimplemented background APIs. Projectile statement
+lowering, missing projectile images and source-handle typing are likewise
+separate cases despite sharing an API family name.
+
 ### U04 — animation binding
 
 Create three frames in the existing editor, set durations, duplicate/reorder,
@@ -169,6 +207,35 @@ bind to a sprite/action, trigger/stop/restart with buttons and save/reopen.
 Export/reimport must preserve palette, frames, loop/action and supported timing.
 If variable durations require a runtime sequence, implement it explicitly rather
 than flattening timings. Include sheet and frames-as-costumes journeys.
+
+#### Next animation binding slice — proposed, not implemented
+
+The Pixel timeline already retains per-frame IDs, layers and durations
+(20–10,000ms, up to64 frames). Exporting frames as costumes creates snapshots;
+it does not establish a runtime animation resource. The existing frame-image
+lookup uses a target name and contiguous costume positions, so it must not be
+used as the durable identity across rename/reorder.
+
+1. Add **Publish/Update animation** in the Frames panel. Persist a resource UUID
+   and display name alongside the source timeline; preserve frame IDs/order.
+   Duplication creates a distinct resource ID. Verify document reconstruction,
+   serialization and older-reader handling before declaring persistence closed.
+2. Expose the resource through a visible named Blocks picker and Code insertion
+   picker. Canonical words carry the resource ID, not a costume index or mutable
+   name. A typed frame-array reporter feeds the existing native image-animation
+   block; a uniform-interval reporter supplies the verified frame duration.
+3. Populate a runtime resource registry through artwork load/apply, update it
+   after edits and clear it on project replacement. A GUI-only source cache is
+   insufficient for runtime access. The exporter must receive complete source
+   explicitly rather than infer frames from the currently flattened costume.
+4. First qualify uniform timing with existing `runImageAnimation` behaviour and
+   equivalent original export. Unequal timing remains explicitly unavailable
+   for this binding until a variable-duration scheduler and equivalent exported
+   program are implemented. Do not flatten durations or expand frames by GCD.
+5. Accept only after visible creation, binding, controller trigger, Stop/restart,
+   rename/reorder/duplicate/delete, Code↔Blocks, SB3 reopen and original-PXT
+   behaviour comparisons pass. Resource identity and event behaviour need their
+   own observations; timeline persistence alone does not qualify playback.
 
 ### U05 — rotation/data/resources/callbacks
 
@@ -250,6 +317,36 @@ qualified name and signature. Record these independent states:
    original compiler acceptance and behaviour comparison.
 7. GUI: create from blank through visible controls, edit, switch editors,
    save/reopen, export/run/reimport, and the linked browser receipt.
+
+#### Cross-surface acceptance for every public capability
+
+The seven states above need concrete user journeys, not just symbol counts:
+
+- **Native Code:** author defaults, optional operands, nested reporters and
+  callback parameters directly. Invalid types/options identify the operand and
+  preserve the loaded project. Code↔Blocks retains scope and evaluation order.
+- **Blocks menus and sockets:** exercise every public enum/menu option. Literal
+  menus serialize as fields; reporter-capable menus retain computed values.
+  Check defaults, invalid selections, choices after resource rename/delete and
+  historical-project migration. One schema gate does not cover every menu.
+- **Events:** create handlers visibly, including button/player, sprite kinds
+  and callback parameters. Verify captures, registration order, duplicate
+  registration, scene changes, Stop/restart and input release. Trigger an
+  event-only program and observe its effect before marking runtime complete.
+- **Resources:** create/select/edit/rename/duplicate/delete through the editor.
+  Preserve identities, palettes, dimensions, centers, layers, animation timing
+  and package dependencies through undo, Code↔Blocks, save/reopen and original
+  export/reimport. Missing resources remain named. Canceled/failed imports and
+  concurrent edits preserve existing work. Verify future-source preservation
+  by historical readers wherever that compatibility is promised.
+- **Diagnostics:** distinguish missing assets/packages, unsupported signatures,
+  malformed input, runtime errors and original compiler errors. Navigate to the
+  affected source, block or resource when known. Never invent a location or
+  count placeholder output as full support.
+- **Evidence:** record target/version/package, exact source/dependency heads,
+  user route, inputs, observations and limits. Cover Code-first, Blocks-first
+  and resource-editor-first creation where applicable. Successful paths alone
+  do not qualify failure preservation or every menu choice.
 
 Unknown remains unknown. A census row is full only when every applicable gate
 has evidence. The 156 canonical Arcade/Arrays operations (161 forms with aliases)
@@ -347,7 +444,7 @@ This cross-reference prevents details from disappearing during reconciliation.
 | G05 values; G06 procedures/captures; G07 arrays; G26 namespaces/enums | C01, C11, C16, U05 |
 | G08 sprite identity; G09 terrain APIs; G10 tilemap painter | C02–C04, C08, U03/U05 |
 | G11 controller; G12 timing; G13 text/dialogs | C12–C13, C17, U06 |
-| G14 asset selection; G15 image aliases; G16 size/transparency/tools | C05–C07, U02; retain128×128 editor limit audit |
+| G14 asset selection; G15 image aliases; G16 size/transparency/tools | C05–C07, U02; audit160×160 editing bounds and larger-source refusal |
 | G17 layer/disposal; G18 animation binding; G19 scene/physics authoring | C08–C10, U03–U06; repeat clear/reload without stale drawables |
 | G20 readable inspectors; G22 audio; G23 target selection; G24 export dependencies | C17–C18; separate source, simulation, firmware and physical evidence |
 | G21 micro:bit/Calliope; G27 TurboWarp; G25 coverage linkage | C15, U01/U06; target-specific real examples and truthful diagnostics |
@@ -384,3 +481,11 @@ editor header and clears runtime hints immediately without applying a new
 project. The integration preserves that existing route; its hints can differ
 from the still-loaded project. C18 must qualify clear selection, failed apply
 and direct SB3 reopen together before claiming a fully synchronized target UI.
+
+### Current shared compiler adoption
+
+The current vendor pin is sb3-creator
+`2d2a562812c6e34525021ccacd421b1d20151c15`, following upstream PR60 and PR61.
+It includes native Arrays dropdown fields and reporter-capable controller-axis
+menus. Earlier PR59 qualification above is historical; it does not replace the
+current native-schema browser gate or close every resource/event menu.

@@ -24,7 +24,8 @@ import {blankLayer, clearSelectedPixels, composeLayers, containsCell, cropLayers
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels, wandSelection} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
+    ARCADE_PALETTE, MAX_PIXEL_DIMENSION, editablePixelSize, rasterEditorSize, isUnmarkedArcadeBackdrop,
+    svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
 } from '../../lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
 import {PALETTE_PRESETS} from '../../lib/bw-makecode/palette-presets.js';
@@ -32,6 +33,7 @@ import {PALETTE_PRESETS} from '../../lib/bw-makecode/palette-presets.js';
 const L10N = {
     en: {
         'px.pencil': 'Pencil', 'px.fill': 'Fill', 'px.erase': 'Eraser', 'px.pick': 'Pick colour',
+        'px.arcadeBackground': 'Arcade background 160×120',
         'px.size': 'Size', 'px.save': 'Save', 'px.revert': 'Revert', 'px.saved': 'Saved to the costume.',
         'px.converted': 'This costume was not pixel art: it was converted to {w}×{h} palette pixels. Saving replaces it.',
         'px.reconvert': 'Convert at this size', 'px.none': 'Select a costume to edit.',
@@ -49,7 +51,7 @@ const L10N = {
         'px.showLiteral': 'Show Arcade img', 'px.importLiteral': 'Import Arcade img',
         'px.applyLiteral': 'Add as layer', 'px.closeLiteral': 'Close',
         'px.invalidLiteral': 'Paste one complete Arcade img literal with equal-length rows and valid colours.',
-        'px.largeLiteral': 'Arcade image exceeds the 128×128 pixel-editor limit.',
+        'px.largeLiteral': 'Arcade image exceeds the 160×160 pixel-editor limit.',
         'px.translucentLiteral': 'Arcade img cannot represent partly transparent layers. Set their opacity to 0% or 100% first.',
         'px.literalHint': 'The imported image becomes a new editable layer. Existing layers are kept.',
         'px.copyLiteral': 'Copy', 'px.literalLabel': 'Arcade img literal',
@@ -80,13 +82,14 @@ const L10N = {
         'px.sheetFrameWidth': 'Frame width (PNG px)', 'px.sheetFrameHeight': 'Frame height (PNG px)',
         'px.sheetScale': 'PNG pixels per art pixel', 'px.sheetPreview': 'Preview slices',
         'px.sheetReplace': 'Replace frames with slices', 'px.sheetClose': 'Close sheet import',
-        'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 128×128 art pixels.',
+        'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 160×160 art pixels.',
         'px.sheetHint': 'Rows are read left to right. Colours match the current palette; replacing frames is undoable.',
         'px.frameNumber': 'Frame {number}', 'px.frameName': 'Frame name',
         'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
         'px.tolerance': 'Tolerance', 'px.more': 'More options'
     },
     de: {
+        'px.arcadeBackground': 'Arcade-Hintergrund 160×120',
         'px.pencil': 'Stift', 'px.fill': 'Füllen', 'px.erase': 'Radierer', 'px.pick': 'Farbe aufnehmen',
         'px.size': 'Größe', 'px.save': 'Speichern', 'px.revert': 'Verwerfen', 'px.saved': 'Im Kostüm gespeichert.',
         'px.converted': 'Dieses Kostüm war keine Pixelgrafik: Es wurde in {w}×{h} Palettenpixel umgewandelt. Speichern ersetzt es.',
@@ -106,7 +109,7 @@ const L10N = {
         'px.showLiteral': 'Arcade-img anzeigen', 'px.importLiteral': 'Arcade-img importieren',
         'px.applyLiteral': 'Als Ebene hinzufügen', 'px.closeLiteral': 'Schließen',
         'px.invalidLiteral': 'Ein vollständiges Arcade-img mit gleich langen Zeilen und gültigen Farben einfügen.',
-        'px.largeLiteral': 'Das Arcade-Bild überschreitet die Grenze von 128×128 Pixeln.',
+        'px.largeLiteral': 'Das Arcade-Bild überschreitet die Grenze von 160×160 Pixeln.',
         'px.translucentLiteral': 'Arcade-img unterstützt keine teilweise transparenten Ebenen. Deckkraft zuerst auf 0 % oder 100 % setzen.',
         'px.literalHint': 'Das importierte Bild wird eine neue bearbeitbare Ebene. Bestehende Ebenen bleiben erhalten.',
         'px.copyLiteral': 'Kopieren', 'px.literalLabel': 'Arcade-img-Literal',
@@ -138,7 +141,7 @@ const L10N = {
         'px.sheetFrameWidth': 'Bildbreite (PNG-Pixel)', 'px.sheetFrameHeight': 'Bildhöhe (PNG-Pixel)',
         'px.sheetScale': 'PNG-Pixel pro Grafikpixel', 'px.sheetPreview': 'Schnitte vorschauen',
         'px.sheetReplace': 'Bilder durch Schnitte ersetzen', 'px.sheetClose': 'Import schließen',
-        'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 128×128 Grafikpixel verwenden.',
+        'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 160×160 Grafikpixel verwenden.',
         'px.sheetHint': 'Zeilen werden von links gelesen. Farben nutzen die aktuelle Palette; Ersetzen kann rückgängig gemacht werden.',
         'px.frameNumber': 'Bild {number}', 'px.frameName': 'Bildname',
         'px.lasso': 'Lasso', 'px.wand': 'Zauberstab',
@@ -324,7 +327,7 @@ class PixelArtEditor extends React.Component {
         if (!costume) { this.setState({image: null}); return; }
         let image = null;
         let layers = null;
-        let scale = 4;
+        let scale = size ? this.state.scale : 4;
         const document = getCostumeDocument(costume);
         const palette = document?.palette || [...ARCADE_PALETTE];
         const first = document?.layers?.[0];
@@ -337,8 +340,10 @@ class PixelArtEditor extends React.Component {
             }
         }
         if (!image && !size && costume.asset.dataFormat === 'svg') {
-            const px = svgToPixels(costume.asset.decodeText(), palette);
-            if (px) {
+            const svg = costume.asset.decodeText();
+            const px = isUnmarkedArcadeBackdrop(svg, this.props.vm.editingTarget?.isStage) ? null :
+                svgToPixels(svg, palette);
+            if (px && editablePixelSize(px.width, px.height) && Number.isInteger(px.scale) && px.scale >= 1 && px.scale <= 64) {
                 image = {width: px.width, height: px.height, pixels: px.pixels};
                 scale = px.scale;
             }
@@ -347,8 +352,10 @@ class PixelArtEditor extends React.Component {
         if (!image) {
             const {rgba, w, h} = await rasterize(costume);
             if (this.loadToken !== token) return;
-            const tw = size ? size.w : Math.min(64, Math.max(4, Math.round(w / 4)));
-            const th = size ? size.h : Math.min(64, Math.max(4, Math.round(h / 4)));
+            const dimensions = rasterEditorSize(w, h, this.props.vm.editingTarget?.isStage, costume.bitmapResolution);
+            const tw = size ? size.w : dimensions.width;
+            const th = size ? size.h : dimensions.height;
+            if (!size) scale = dimensions.scale;
             image = quantizeRgba(rgba, w, h, tw, th, palette);
             converted = true;
         }
@@ -369,7 +376,7 @@ class PixelArtEditor extends React.Component {
             selection: null, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: '',
             original: {layers, activeLayerId, frames, activeFrameId,
-                selection: null, palette, w: image.width, h: image.height},
+                selection: null, palette, scale, w: image.width, h: image.height},
             palette,
             scale, zoom: 1, converted, status: '',
             w: image.width, h: image.height});
@@ -468,7 +475,7 @@ class PixelArtEditor extends React.Component {
         if (this.state.playing) this.stopPlayback();
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
-            selection: this.state.selection, palette: this.state.palette,
+            selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
             w: this.state.w, h: this.state.h});
         if (this.undoStack.length > 80) this.undoStack.shift();
         this.redoStack = [];
@@ -478,7 +485,7 @@ class PixelArtEditor extends React.Component {
         if (!this.undoStack.length) return;
         this.redoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
-            selection: this.state.selection, palette: this.state.palette,
+            selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
             w: this.state.w, h: this.state.h});
         this.restore(this.undoStack.pop());
     }
@@ -487,7 +494,7 @@ class PixelArtEditor extends React.Component {
         if (!this.redoStack.length) return;
         this.undoStack.push({layers: this.state.layers, activeLayerId: this.state.activeLayerId,
             frames: this.state.frames, activeFrameId: this.state.activeFrameId,
-            selection: this.state.selection, palette: this.state.palette,
+            selection: this.state.selection, palette: this.state.palette, scale: this.state.scale,
             w: this.state.w, h: this.state.h});
         this.restore(this.redoStack.pop());
     }
@@ -1036,16 +1043,16 @@ class PixelArtEditor extends React.Component {
         else this.undo();
     }
 
-    resize (w, h) {
-        const W = Math.max(1, Math.min(128, w | 0));
-        const H = Math.max(1, Math.min(128, h | 0));
-        if (W === this.state.w && H === this.state.h) return;
+    resize (w, h, scale = this.state.scale) {
+        const W = Math.max(1, Math.min(MAX_PIXEL_DIMENSION, w | 0));
+        const H = Math.max(1, Math.min(MAX_PIXEL_DIMENSION, h | 0));
+        if (W === this.state.w && H === this.state.h && scale === this.state.scale) return;
         this.remember();
         this.setState(state => {
             const frames = this.materializeFrames(state).map(frame => ({...frame,
                 layers: resizeLayers(frame.layers, state.w, state.h, W, H)}));
             const layers = frames.find(frame => frame.id === state.activeFrameId).layers;
-            return {frames, layers, image: composeLayers(layers, W, H), w: W, h: H,
+            return {frames, layers, image: composeLayers(layers, W, H), w: W, h: H, scale,
                 selection: null, status: ''};
         });
     }
@@ -1125,7 +1132,7 @@ class PixelArtEditor extends React.Component {
             this.setState({literalError: t(locale, 'px.invalidLiteral')});
             return;
         }
-        if (parsed.width > 128 || parsed.height > 128) {
+        if (!editablePixelSize(parsed.width, parsed.height)) {
             this.setState({literalError: t(locale, 'px.largeLiteral')});
             return;
         }
@@ -1272,9 +1279,9 @@ class PixelArtEditor extends React.Component {
     }
 
     hasUnsavedChanges () {
-        const {original, layers, frames, palette, w, h} = this.state;
+        const {original, layers, frames, palette, w, h, scale} = this.state;
         return Boolean(original && (layers !== original.layers || frames !== original.frames ||
-            palette !== original.palette || w !== original.w || h !== original.h));
+            palette !== original.palette || w !== original.w || h !== original.h || scale !== original.scale));
     }
 
     save () {
@@ -1288,7 +1295,7 @@ class PixelArtEditor extends React.Component {
         setCostumeDocument(this.costume(), layersDocument(layers, image.width, image.height, scale, activeLayerId,
             palette, frames.length > 1 ? {frames, activeFrameId} : null));
         this.setState({frames, original: {layers, activeLayerId, frames, activeFrameId,
-            selection: null, palette,
+            selection: null, palette, scale,
             w: image.width, h: image.height},
             converted: false, status: 'saved'});
     }
@@ -1539,11 +1546,14 @@ class PixelArtEditor extends React.Component {
                     display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center'}}>
                     {this.props.editorTools}
                     <span style={{fontSize: 12, marginLeft: 8}}>{t(locale, 'px.size')}</span>
-                    <input type="number" min="1" max="128" value={w} style={{width: 52}} data-testid="bw-pixel-w"
+                    <input type="number" min="1" max={MAX_PIXEL_DIMENSION} value={w} style={{width: 52}} data-testid="bw-pixel-w"
                         onChange={e => this.resize(Number(e.target.value), h)} />
                     <span style={{fontSize: 12}}>×</span>
-                    <input type="number" min="1" max="128" value={h} style={{width: 52}} data-testid="bw-pixel-h"
+                    <input type="number" min="1" max={MAX_PIXEL_DIMENSION} value={h} style={{width: 52}} data-testid="bw-pixel-h"
                         onChange={e => this.resize(w, Number(e.target.value))} />
+                    {this.props.vm.editingTarget?.isStage ? <button type="button" style={btn(false)}
+                        data-testid="bw-pixel-arcade-background" onClick={() => this.resize(160, 120, 3)}>
+                        {t(locale, 'px.arcadeBackground')}</button> : null}
                     {converted ? (
                         <button type="button" style={btn(false)} onClick={() => this.load({w, h})}>{t(locale, 'px.reconvert')}</button>
                     ) : null}

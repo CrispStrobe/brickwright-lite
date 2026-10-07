@@ -166,6 +166,15 @@ class ArcadeEmitter {
         this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
     }
 
+    /** Scratch clears the Stage to white underneath transparent backdrop pixels. */
+    stageMatte () {
+        const index = nearestIndex([255, 255, 255], this.palette);
+        if (!/^#?ffffff$/i.test(String(this.palette[index]).trim())) {
+            this.warn('Stage white matte quantized to the nearest opaque project palette colour');
+        }
+        return `scene.setBackgroundColor(${index})`;
+    }
+
     /** Record what kind of value a variable is given, for its declaration. */
     assign (tsName, expr, explicitKind) {
         if (explicitKind) {
@@ -2174,6 +2183,11 @@ class ArcadeEmitter {
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
+        // Scratch's Stage composites transparent backdrop pixels over white.
+        // Native Arcade primitives own their scene defaults instead; do not
+        // change those programs merely because they also have a Scratch Stage.
+        const nativeArcade = this.project.targets.some(target => Object.values(target.blocks || {})
+            .some(block => block?.opcode?.startsWith('arcade_')));
         const flagScripts = [];                             // green-flag scripts: {script, clonable, sv, plain}
         const handlers = [];
         const functions = [];
@@ -2558,10 +2572,14 @@ class ArcadeEmitter {
                 '}',
                 this.dispatcher('_backdropHats', this.backdropHats, 'name')
             ].join('\n'));
+            if (!nativeArcade) out.push(this.stageMatte());
             out.push('scene.setBackgroundImage(_backdrops[_bd])');
         } else if (stage && this.opts.stageBackground) {
             const bg = this.opts.stageBackground(stage);
-            if (bg) out.push(`scene.setBackgroundImage(${toImgLiteral(bg)})`);
+            if (bg) {
+                if (!nativeArcade) out.push(this.stageMatte());
+                out.push(`scene.setBackgroundImage(${toImgLiteral(bg)})`);
+            }
         }
         // The green flag's scripts run side by side. An imported Arcade program
         // (one flag script, nothing that can stop it) is its own startup code, run

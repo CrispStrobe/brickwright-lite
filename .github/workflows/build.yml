@@ -1169,6 +1169,18 @@ jobs:
           path: test-results/arcade-schema-browser/
           if-no-files-found: error
 
+      - name: Browser gate — Arcade full-screen background authoring and original export
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-background-browser.mjs --out test-results/arcade-background-browser/current.json
+      - name: Upload arcade-background-browser authoring observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arcade-background-browser
+          path: test-results/arcade-background-browser/
+          if-no-files-found: error
+
       # Keep the debugger acceptance checks at the front of the browser queue.
       # They reuse this job's one build, server and Chromium installation, but
       # now report before the unrelated product journeys rather than after
