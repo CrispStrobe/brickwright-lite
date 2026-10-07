@@ -1,6 +1,6 @@
 # x86 GUI checkpoint and task handoff
 
-Updated 2026-10-05. Shared CPU/device work belongs in bw-board; UI behavior belongs here. Start with the [board checkpoint and seven implementation lanes](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-NEXT-LANES.md), [GUI guide](I80386-GUI.md), [loading scope](X86-LOADING-SCOPE.md), and [generated language/device matrix](generated/LANGUAGE-DEVICE-MATRIX.md). Refresh both default branches and inspect completed receipts before repeating a task.
+Updated 2026-10-07. Shared CPU/device work belongs in bw-board; UI behavior belongs here. Start with the [board checkpoint and seven implementation lanes](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-NEXT-LANES.md), [GUI guide](I80386-GUI.md), [loading scope](X86-LOADING-SCOPE.md), and [generated language/device matrix](generated/LANGUAGE-DEVICE-MATRIX.md). Refresh both default branches and inspect completed receipts before repeating a task.
 
 ## Current boundary
 
@@ -8,13 +8,15 @@ The functional experimental 386 AT exposes console/VGA and keyboard/mouse routes
 
 The board's new native page-fault recovery result is a finite diagnostic fixture. Its compact native cold path remains slower than JS in the measured paired gate. Neither result introduces a general native GUI backend. The GUI's **Native blocks** checkbox selects the JS native-block dispatcher, not a Bochs Node addon. There is no wired 386 target.
 
-At this documentation checkpoint, `package.json` pins bw-board to `31c6499a617e274505386dbbc9d3a955e8f527ac`. The new board results are upstream evidence; this documentation change does not adopt a new dependency or claim they ran in Lite. Read the current pin and lockfile again before an implementation change.
+The refreshed source pins bw-board to `a1126312288867127343c2f9bbdfcd2856a18508`. Earlier checkpoint documentation described an older pin. Board diagnostic results remain distinct from actual consumer qualification; read the current pin and lockfile before another adoption.
 
 ## Task A: real free-media GUI acceptance
 
 **Start:** `scripts/verify-i80386-freedos-real-browser.mjs`, `scripts/verify-i80386-freedos-vga-browser.mjs`, `scripts/verify-i80386-local-hdd-gui.mjs`, `scripts/verify-machine-widgets.mjs`, and the corresponding media/mouse tests. First inspect existing results and distinguish synthetic media, headless adapter and actual browser execution; extend a proven harness rather than creating a parallel one.
 
 **Work:** use a freely licensed FreeDOS image and redistributable BIOS with recorded hashes. Boot via Machine Manager; verify a visible guest prompt, typed command response, guest-enabled mouse, tab transitions, focus, resizing, full-screen entry/exit and drag capture. Retain failure UI and media-lifetime checks. Cover browser-reserved keys and the documented absence of Pointer Lock.
+
+The [optional real FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) extends the existing harness with an owned PS/2 guest program and nonmutating pixel observation. Its exact observed result must accompany any completion claim.
 
 **Deliverable:** a bounded browser scenario, exact build/dependency identities and screen/input evidence. **Done when:** the actual guest responds through Widgets and remains usable in Circuits and Code. Update `docs/I80386-GUI.md` and matrix inputs from the observed result. If the existing receipt already clears a criterion, preserve it and take the next uncovered criterion.
 

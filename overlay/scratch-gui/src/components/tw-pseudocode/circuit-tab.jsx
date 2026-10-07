@@ -1957,11 +1957,18 @@ class CircuitTab extends React.Component {
             this._portalRendered = true;
             return [
                 ReactDOM.createPortal(solo, this._stageHost),
-                ReactDOM.createPortal(this.renderDebugPanel(), this._ensureDebugHost())
+                ReactDOM.createPortal(this.renderDebugPanel(), this._ensureDebugHost(), 'debug-panel')
             ];
         }
         if (!Designer) {
-            return <div style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>;
+            // Loading the circuit designer changes only the view. Keep the
+            // already-running debugger portal mounted while that chunk loads;
+            // unmounting DebugPanel destroys its runner and replays the media.
+            return [
+                <div key="designer-loading" style={{...box, color: '#64748b'}}>{'Loading the circuit designer…'}</div>,
+                (this.state.machineBooted || stcDrives(stc)) &&
+                    ReactDOM.createPortal(this.renderDebugPanel(), this._ensureDebugHost(), 'debug-panel')
+            ];
         }
         this._portalOn = this._stagePortalOn();
         // On the dedicated Circuit tab 'solo' behaves as 'top': the designer
@@ -2079,7 +2086,7 @@ class CircuitTab extends React.Component {
             </div>
         );
         const panelPortal = ReactDOM.createPortal(
-            this.renderDebugPanel(), this._ensureDebugHost());
+            this.renderDebugPanel(), this._ensureDebugHost(), 'debug-panel');
         if (this._portalOn) {
             this._portalRendered = true;
             return [ReactDOM.createPortal(content, this._stageHost), panelPortal];
