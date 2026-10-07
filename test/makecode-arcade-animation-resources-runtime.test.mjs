@@ -1,0 +1,93 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import {createRequire} from 'node:module';
+import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
+const BWValues = createRequire(import.meta.url)(VM_SRC + '/util/bw-values');
+const Arcade = loadExtensionClass('arcade');
+const palette = [null, '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609', '#249ca3', '#78dc52',
+    '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
+function setup() {
+    const runtime = new EventEmitter(), arcade = new Arcade(runtime), errors = [];
+    runtime.on('BLOCKS_ERROR', message => errors.push(message));
+    const resource = {id: 'art:walk', name: 'Walk', width: 1, height: 1, palette: palette.slice(), revision: 1,
+        frames: [{id: 'red', durationMs: 100, pixels: new Uint8Array([2])},
+            {id: 'pink', durationMs: 100, pixels: new Uint8Array([3])}]};
+    runtime.bwArcadeAnimationResources = new Map([[resource.id, resource]]);
+    const frames = () => arcade.animationAssetFrames({RESOURCE: resource.id});
+    return {runtime, arcade, errors, resource, frames};
+}
+test('resource menus use persistent ids and reporters share typed arrays and image identity', () => {
+    const g = setup(), first = g.frames(), second = g.frames();
+    assert.strictEqual(first, second);
+    const images = BWValues.arrayValue(g.runtime, first);
+    assert.equal(images.length, 2);
+    assert.equal(g.arcade._image(images[0]).pixels[0], 2);
+    assert.deepEqual(g.arcade._image(images[0]).palette, palette);
+    assert.deepEqual(g.arcade._image(g.arcade.cloneImage({IMAGE: images[0]})).palette, palette);
+    assert.equal(setup().arcade._image(images[0]), null, 'references cannot cross projects');
+    g.arcade.mutateImage({IMAGE: images[0], OP: 'fill', COLOR: 7});
+    assert.equal(g.arcade._image(BWValues.arrayValue(g.runtime, g.frames())[0]).pixels[0], 7);
+    assert.equal(g.resource.frames[0].pixels[0], 2, 'runtime mutation does not edit authored source');
+    g.resource.name = 'Renamed';
+    assert.deepEqual(g.arcade.getAnimationAssets(), [{text: 'Renamed', value: 'art:walk'}]);
+    const info = g.arcade.getInfo();
+    for (const opcode of ['animationAssetFrames', 'animationAssetInterval']) {
+        assert.equal(info.blocks.find(block => block.opcode === opcode).arguments.RESOURCE.menu, 'animationAssets');
+    }
+    assert.equal(info.menus.animationAssets.acceptReporters, true);
+    assert.equal(BWValues.decode(g.arcade.animationAssetInterval({RESOURCE: g.resource.id})), 100);
+    assert.deepEqual(g.errors, []);
+});
+test('revisions snapshot new frames while running animation retains previous image objects', () => {
+    const g = setup(), oldReference = g.frames(), oldImages = BWValues.arrayValue(g.runtime, oldReference);
+    const actor = g.arcade.createImageSprite({IMAGE: oldImages[0], TEMPLATE: '', KIND: 'Player'});
+    g.arcade.runImageAnimation({ID: actor, FRAMES: oldReference, INTERVAL: 100, LOOP: true});
+    g.arcade._advance(.05);
+    assert.equal(g.arcade.spritePixel({ID: actor, X: 0, Y: 0}), 2);
+    g.resource.revision = 'content-hash:revision-2';
+    g.resource.frames[1].pixels[0] = 7;
+    const replacement = g.frames();
+    assert.notStrictEqual(replacement, oldReference);
+    assert.equal(g.arcade._image(BWValues.arrayValue(g.runtime, replacement)[1]).pixels[0], 7);
+    g.arcade._advance(.05);
+    assert.equal(g.arcade.spritePixel({ID: actor, X: 0, Y: 0}), 3);
+    g.arcade.runImageAnimation({ID: actor, FRAMES: replacement, INTERVAL: 100, LOOP: true});
+    g.arcade._advance(.1);
+    assert.equal(g.arcade.spritePixel({ID: actor, X: 0, Y: 0}), 7);
+});
+test('missing, deleted and malformed resources report their identity without invented values', () => {
+    const g = setup();
+    g.frames();
+    g.runtime.bwArcadeAnimationResources.delete(g.resource.id);
+    for (const method of ['animationAssetFrames', 'animationAssetInterval']) {
+        assert.equal(BWValues.decode(g.arcade[method]({RESOURCE: g.resource.id})), undefined);
+    }
+    assert.ok(g.errors.every(error => error.includes('art:walk') && error.includes('missing or deleted')));
+    assert.match(g.arcade.getAnimationAssets()[0].text, /No animation assets/);
+    g.runtime.bwArcadeAnimationResources.set(g.resource.id, g.resource);
+    const invalid = [() => { g.resource.frames[1].durationMs = 101; },
+        () => { g.resource.frames[1].pixels[0] = 16; },
+        () => { g.resource.width = 161; }];
+    for (const mutate of invalid) {
+        mutate();
+        assert.equal(BWValues.decode(g.frames()), undefined);
+        assert.equal(BWValues.decode(g.arcade.animationAssetInterval({RESOURCE: g.resource.id})), undefined);
+        assert.match(g.errors.at(-1), /Arcade animation asset "art:walk": invalid/);
+        g.resource.frames[1].durationMs = 100; g.resource.frames[1].pixels[0] = 3; g.resource.width = 1;
+    }
+});
+test('Stop keeps image lifetime; restart and project load rebuild resource handles', () => {
+    const g = setup(), first = g.frames(), oldImage = BWValues.arrayValue(g.runtime, first)[0];
+    g.runtime.emit('PROJECT_STOP_ALL');
+    assert.strictEqual(g.frames(), first);
+    assert.ok(g.arcade._image(oldImage));
+    for (const event of ['PROJECT_START', 'PROJECT_LOADED']) {
+        const before = g.frames(), old = BWValues.arrayValue(g.runtime, before)[0];
+        g.runtime.emit(event);
+        assert.equal(g.arcade._image(old), null);
+        const after = g.frames();
+        assert.notStrictEqual(after, before);
+        assert.equal(g.arcade._image(BWValues.arrayValue(g.runtime, after)[0]).pixels[0], 2);
+    }
+});

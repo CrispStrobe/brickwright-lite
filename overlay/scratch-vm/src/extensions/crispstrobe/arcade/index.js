@@ -49,6 +49,7 @@ module.exports = makeExt(`// Name: Arcade
       this._nextTileLocationId = 0;
       this._imageIds = new WeakMap();
       this._frameImages = new Map();
+      this._animationAssetCache = new Map();
       this._frameDefinitions = new Map();
       this._nextImageId = 0;
       this._creationWaits = new Set();
@@ -75,7 +76,7 @@ module.exports = makeExt(`// Name: Arcade
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
-        runtime.on('RUNTIME_DISPOSED', () => {cancelCreations();this._clearTilemap();this._tileLocations.clear();});
+        runtime.on('RUNTIME_DISPOSED', () => {cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();});
         const reset = () => {
           cancelCreations();
           this._terrainStopped = false;
@@ -111,6 +112,7 @@ module.exports = makeExt(`// Name: Arcade
           this._clearTilemap();
           this._imageIds = new WeakMap();
           this._frameImages.clear();
+          this._animationAssetCache.clear();
           this._frameDefinitions.clear();
           runtime.bwArcadeDeviceState = {};
           this._currentEvent = null;
@@ -339,6 +341,12 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'setAnimationInterval', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade animation [ANIMATION] interval [INTERVAL] ms',
             arguments: {...str('ANIMATION', ''), ...n('INTERVAL', 100)} },
+          { opcode: 'animationAssetFrames', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade animation asset [RESOURCE] frames',
+            arguments: {RESOURCE: {type: Scratch.ArgumentType.STRING, menu: 'animationAssets', defaultValue: 'none'}} },
+          { opcode: 'animationAssetInterval', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade animation asset [RESOURCE] interval ms',
+            arguments: {RESOURCE: {type: Scratch.ArgumentType.STRING, menu: 'animationAssets', defaultValue: 'none'}} },
           { opcode: 'runImageAnimation', blockType: Scratch.BlockType.COMMAND,
             text: 'animate Arcade sprite [ID] frames [FRAMES] interval [INTERVAL] ms loop [LOOP]',
             arguments: {...str('ID', ''), ...str('FRAMES', ''), ...n('INTERVAL', 500), LOOP: {type: Scratch.ArgumentType.BOOLEAN}} },
@@ -540,6 +548,7 @@ module.exports = makeExt(`// Name: Arcade
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
+          ,animationAssets: {acceptReporters: true, items: 'getAnimationAssets'}
           ,animationProperties: {acceptReporters: false, items: ['image', 'action', 'interval']}
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
           ,imageProperties: {acceptReporters: false, items: ['width', 'height']}
@@ -2023,7 +2032,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     cloneImage(args) {
       const image = this._image(args.IMAGE);
-      return image ? this._imageHandle({width: image.width, height: image.height, pixels: image.pixels.slice()}) : '';
+      return image ? this._imageHandle({width: image.width, height: image.height, pixels: image.pixels.slice(), ...(image.palette ? {palette: image.palette.slice()} : {})}) : '';
     }
     imageProperty(args) {
       const image = this._image(args.IMAGE);
@@ -2139,6 +2148,58 @@ module.exports = makeExt(`// Name: Arcade
     setAnimationInterval(args) {
       const animation = this._animation(args.ANIMATION);
       if (animation) animation.interval = this._animationNumericValue(args.INTERVAL);
+    }
+    getAnimationAssets() {
+      const resources = this._runtime?.bwArcadeAnimationResources;
+      const items = resources instanceof Map ? [...resources].map(([id, resource]) =>
+        ({text: String(resource?.name || id), value: String(id)})) : [];
+      return items.length ? items : [{text: 'No animation assets — create one in Pixel', value: 'none'}];
+    }
+    _animationAsset(value) {
+      const id = String(Scratch.BWValues.decode(value));
+      const resource = this._runtime?.bwArcadeAnimationResources?.get?.(id);
+      const fail = reason => {
+        this._animationAssetCache.delete(id);
+        this._runtime?.emit?.('BLOCKS_ERROR', 'Arcade animation asset "' + id + '": ' + reason + '.');
+        return null;
+      };
+      if (!resource) return fail('missing or deleted resource');
+      const {width, height, palette, frames, revision} = resource;
+      if (resource.id !== id || typeof resource.name !== 'string' || !resource.name.trim() ||
+          !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 160 || height > 160 ||
+          !((Number.isInteger(revision) && revision >= 0) || (typeof revision === 'string' && revision.length > 0)) || !Array.isArray(palette) || palette.length !== 16 ||
+          palette[0] !== null || !Array.from(palette.slice(1)).every(colour => /^#[0-9a-f]{6}$/i.test(colour)) ||
+          !Array.isArray(frames) || !frames.length || frames.length > 64) return fail('invalid resource metadata');
+      const ids = new Set();
+      const interval = frames[0]?.durationMs;
+      for (const frame of frames) {
+        if (!frame || typeof frame.id !== 'string' || !frame.id || ids.has(frame.id) ||
+            !Number.isInteger(frame.durationMs) || frame.durationMs < 20 || frame.durationMs > 10000 ||
+            frame.durationMs !== interval || !ArrayBuffer.isView(frame.pixels) ||
+            typeof frame.pixels.every !== 'function' || frame.pixels.length !== width * height ||
+            !frame.pixels.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 15)) {
+          return fail('invalid frames or nonuniform frame duration');
+        }
+        ids.add(frame.id);
+      }
+      return resource;
+    }
+    animationAssetFrames(args) {
+      const resource = this._animationAsset(args.RESOURCE);
+      if (!resource) return Scratch.BWValues.encode(undefined);
+      const cached = this._animationAssetCache.get(resource.id);
+      if (cached?.revision === resource.revision) return cached.reference;
+      // Snapshot authored pixels. Existing animations keep their actual image
+      // objects when the editor publishes a later resource revision.
+      const images = resource.frames.map(frame => this._imageHandle({width: resource.width, height: resource.height,
+        pixels: Uint8Array.from(frame.pixels), palette: resource.palette.slice()}));
+      const reference = Scratch.BWValues.arrayReference(this._runtime, images);
+      this._animationAssetCache.set(resource.id, {revision: resource.revision, reference});
+      return reference;
+    }
+    animationAssetInterval(args) {
+      const resource = this._animationAsset(args.RESOURCE);
+      return Scratch.BWValues.encode(resource ? resource.frames[0].durationMs : undefined);
     }
     runImageAnimation(args) {
       const sprite = this._spriteValues.get(String(args.ID));
@@ -2314,7 +2375,7 @@ module.exports = makeExt(`// Name: Arcade
         window=window || this._spriteRasterWindow(sprite);
         const rendered=this._scaledSpriteImage(sprite,window);
         const svg = imageEngine.svg(rendered.width && rendered.height ? rendered :
-          {width: 1, height: 1, pixels: new Uint8Array(1)});
+          {width: 1, height: 1, pixels: new Uint8Array(1)}, sprite.image.palette);
         const center = [window.width * 2, window.height * 2];
         let entry = this._imageSkins.get(sprite.id);
         if (!entry) {
