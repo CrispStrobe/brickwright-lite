@@ -3,6 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {conversionFailure} from '../overlay/scratch-gui/src/lib/bw-conversion-error.js';
 import {codeArtworkMatches} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
 import {balancedFrom, scopeAfter} from './helpers/js-scope.mjs';
 const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
@@ -43,9 +44,9 @@ const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, load
         lib: async () => ({default: Creator}), genOpts: () => ({})};
     component.publishAppliedDevice = new Function('DEVICE_BY_ID', 'window', 'CustomEvent',
         `return function (stc) ${publishBody}`)(devices, window, Event);
-    component.compile = new Function('TWO_WAY', 'classifyConversionWarnings', 'LANG_LABEL', 'window', 'codeArtworkMatches',
+    component.compile = new Function('TWO_WAY', 'classifyConversionWarnings', 'LANG_LABEL', 'window', 'codeArtworkMatches', 'conversionFailure',
         `return async function ({strict = false, pseudocode = null} = {}) ${compileBody}`)(new Set(['pseudocode']),
-        () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window, codeArtworkMatches);
+        () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window, codeArtworkMatches, conversionFailure);
     Creator.RETARGET_POOLS = {calliopemini: {}};
     Creator.retargetPseudocode = (text, device) => ({ok: true, warnings: [],
         pseudocode: text.replace(/^DEVICE\s+\S+/im, `DEVICE ${device.toUpperCase()}`)});
