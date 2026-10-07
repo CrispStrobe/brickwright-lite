@@ -104,6 +104,7 @@ const sameArtwork=(actual,expected)=>{
 try {
     await page.addInitScript(()=>{
         localStorage.clear();sessionStorage.clear();localStorage.setItem('bw-starter-v1-complete','1');
+        localStorage.setItem('bw-right-pane-hidden','0');localStorage.setItem('bw-debug-dock','arcade');
     });
     await page.goto(base,{waitUntil:'domcontentloaded',timeout:90000});
     await openCode();
@@ -185,6 +186,33 @@ try {
     await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
     await page.getByRole('tab',{name:'Blocks',exact:true}).click();
     await editor().waitFor({state:'hidden'});
+    await page.getByTitle('Game Console',{exact:true}).click();
+    await page.locator('[class*="green-flag_green-flag"]:visible').first().click();
+    await page.waitForFunction(name=>{
+        const vm=window.__brickwrightStore.getState().scratchGui.vm;
+        const stage=vm.runtime.getTargetForStage();
+        return stage.getCostumes()[stage.currentCostume].name===name&&
+            vm.runtime.targets.some(target=>!target.isStage&&target.getName()==='Game'&&!target.visible)&&
+            vm.runtime.renderer._allDrawables[stage.drawableID]?.skin?._svgImageLoaded;
+    },backdrop);
+    const nativePixels=await page.evaluate(palette=>{
+        const renderer=window.__brickwrightStore.getState().scratchGui.vm.runtime.renderer;
+        renderer.draw();
+        const canvas=document.createElement('canvas');canvas.width=renderer.canvas.width;canvas.height=renderer.canvas.height;
+        const context=canvas.getContext('2d');context.drawImage(renderer.canvas,0,0);
+        const rgba=context.getImageData(0,0,canvas.width,canvas.height).data;
+        const colours=palette.map(value=>value?value.slice(1).match(/../g).map(x=>parseInt(x,16)):[0,0,0]);
+        const result=[];
+        for(let y=0;y<120;y++)for(let x=0;x<160;x++){
+            const offset=(Math.floor((y+.5)*canvas.height/120)*canvas.width+Math.floor((x+.5)*canvas.width/160))*4;
+            result.push(colours.findIndex(rgb=>rgb.every((channel,i)=>channel===rgba[offset+i])));
+        }
+        return result;
+    },ARCADE_PALETTE);
+    report.bwliteRuntime={pixels:nativePixels,corners:AUTHORED_CORNERS.map(([x,y])=>nativePixels[y*160+x]),
+        boundary:'Actual Scratch Stage playback; transparent Stage matte is compared separately from native Arcade scene composition.'};
+    assert.deepEqual(report.bwliteRuntime.corners,AUTHORED_CORNERS.map(([, ,colour])=>colour),'actual Brickwright playback shows authored corner pixels');
+    report.journey.push('actual green-flag playback renders the authored full-screen Stage backdrop');
     const after=await archive('code-blocks');sameArtwork(after,before);
     report.journey.push('actual Code apply and return to Blocks retain full-screen background layers and bytes');
     await page.getByText('File',{exact:true}).click();
@@ -212,6 +240,8 @@ try {
     const screen=original.screen();assert.equal(screen.length,19200);
     assert.deepEqual(screen,backgroundPixels(AUTHORED_CORNERS),'all19200pixels of actual downloaded export render identically in original PXT');
     report.originalPxt={compiled:true,pixelsCompared:screen.length,screenSha256:crypto.createHash('sha256').update(screen).digest('hex'),compilerNetworkAttempts:compiled.netAttempts};
+    report.bwliteRuntime.originalDifferences=nativePixels.reduce((n,colour,index)=>n+Number(colour!==screen[index]),0);
+    report.bwliteRuntime.remainingGap=report.bwliteRuntime.originalDifferences?'Scratch Stage and native Arcade transparent-background composition differ; native resource/scene binding remains open.':null;
     report.artwork={name:before.costume.name,sha256:before.sha256,width:160,height:120,layers:2,scale:3};
     report.journey.push('actual Arcade download compiles and renders all19200pixels exactly in original PXT');
     assert.deepEqual(report.pageErrors,[]);
