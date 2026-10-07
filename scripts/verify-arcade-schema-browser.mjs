@@ -62,6 +62,12 @@ try {
     const apply = async () => {
         await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
         await page.getByText('Blocks loaded.', {exact: true}).waitFor();
+        await page.waitForFunction(() => {
+            const vm = window.__brickwrightStore.getState().scratchGui.vm;
+            return vm.extensionManager.isExtensionLoaded('arrays') && vm.extensionManager.isExtensionLoaded('arcade') &&
+                typeof vm.runtime._primitives.arrays_valueBinary === 'function' &&
+                typeof vm.runtime._primitives.arcade_controllerStep === 'function';
+        });
         await blocksTab();
     };
     await codeTab();
@@ -81,7 +87,7 @@ try {
             const field = fieldBlock?.getField(fieldName);
             if (!field) throw new Error(`Missing native field ${type}/${fieldName}`);
             const rect = field.getSvgRoot().getBoundingClientRect();
-            return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, before: field.getValue()};
+            return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, before: field.getValue(), blockId: fieldBlock.id};
         }, {type, variable, fieldName});
         assert.ok(bounds.x > 0 && bounds.y > 0 && bounds.y < 1200, 'dropdown is visibly reachable');
         await page.mouse.click(bounds.x, bounds.y);
@@ -95,6 +101,9 @@ try {
                 (!variable || b.getParent()?.getField('VARIABLE')?.getText() === variable));
             return (type === 'arcade_controllerStep' ? block?.getInputTargetBlock('AXIS') : block)?.getFieldValue(fieldName) === choice;
         }, {type, variable, fieldName, choice});
+        await page.waitForFunction(({blockId, fieldName, choice}) => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+            .some(target => target.blocks._blocks[blockId]?.fields?.[fieldName]?.value === choice),
+        {blockId: bounds.blockId, fieldName, choice});
         report.edits.push({type, variable, fieldName, before: bounds.before, choice});
     };
     await edit('arrays_valueBinary', 'left', 'OP', '-');
@@ -215,6 +224,10 @@ try {
 } catch (error) {
     report.status = 'failed'; report.failure = error.stack || String(error);
     if (page) {
+        report.failureBlocks = await page.evaluate(() => window.Blockly?.getMainWorkspace()?.getAllBlocks(false)
+            .filter(b => /^(arrays_value|arrays_special|arcade_controller)/.test(b.type))
+            .map(b => ({type: b.type, parent: b.getParent()?.getField('VARIABLE')?.getText(),
+                fields: b.inputList.flatMap(i => i.fieldRow).filter(f => f.name).map(f => ({name: f.name, value: f.getValue()}))}))).catch(() => null);
         report.failureText = (await page.locator('body').innerText().catch(() => '')).slice(-10000);
         await page.screenshot({path: path.join(path.dirname(out), 'failure.png')}).catch(() => {});
     }
