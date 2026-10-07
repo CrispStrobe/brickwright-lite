@@ -218,6 +218,11 @@ try{
         const inserted=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
         assert.ok(inserted.includes(`arcade animation frames resource "${published.id}"`));assert.ok(inserted.includes(`arcade animation interval resource "${published.id}"`));
         await apply();
+        // Wait for the visible workspace render, not only VM deserialization.
+        await page.waitForFunction(()=>{
+            const block=window.Blockly.getMainWorkspace().getAllBlocks(false).find(block=>block.type==='arcade_animationAssetFrames');
+            return block?.getInputTargetBlock('RESOURCE')?.getField('animationAssets')?.getSvgRoot()?.isConnected;
+        });
         // The generated reporter owns a real dynamic native menu shadow.
         const dropdown=await page.evaluate(()=>{
             const block=window.Blockly.getMainWorkspace().getAllBlocks(false).find(block=>block.type==='arcade_animationAssetFrames');

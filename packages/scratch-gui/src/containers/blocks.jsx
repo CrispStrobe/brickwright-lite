@@ -405,16 +405,28 @@ class Blocks extends React.Component {
         }
     }
     onScriptGlowOn (data) {
-        this.workspace.glowStack(data.id, true);
+        // VM execution continues while the selected project/workspace changes.
+        // Only a rendered block in this workspace has a visual highlight.
+        const block = this.workspace?.getBlockById(data.id);
+        if (block?.rendered) this.workspace.glowStack(data.id, true);
     }
     onScriptGlowOff (data) {
-        this.workspace.glowStack(data.id, false);
+        // VM execution continues while the selected project/workspace changes.
+        // Only a rendered block in this workspace has a visual highlight.
+        const block = this.workspace?.getBlockById(data.id);
+        if (block?.rendered) this.workspace.glowStack(data.id, false);
     }
     onBlockGlowOn (data) {
-        this.workspace.glowBlock(data.id, true);
+        // VM execution continues while the selected project/workspace changes.
+        // Only a rendered block in this workspace has a visual highlight.
+        const block = this.workspace?.getBlockById(data.id);
+        if (block?.rendered) this.workspace.glowBlock(data.id, true);
     }
     onBlockGlowOff (data) {
-        this.workspace.glowBlock(data.id, false);
+        // VM execution continues while the selected project/workspace changes.
+        // Only a rendered block in this workspace has a visual highlight.
+        const block = this.workspace?.getBlockById(data.id);
+        if (block?.rendered) this.workspace.glowBlock(data.id, false);
     }
     onVisualReport (data) {
         this.workspace.reportValue(data.id, data.value);
