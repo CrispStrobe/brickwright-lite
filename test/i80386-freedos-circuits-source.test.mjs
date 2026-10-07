@@ -24,6 +24,7 @@ test('direct Circuit probe is an exact accepted-browser derivative with a real V
  assert.match(generated,/keyObserverStart,keyboardDiagnostics/);
  assert.match(generated,/Object\.defineProperty\(target,'keyIn'/);
  assert.match(generated,/keyboardDiagnostics\?\.targetCalls\?\.map\(event=>event\.scancode\),expectedCircuitScans/);
+ assert.match(generated,/!keyboardDiagnostics\.observerError&&!keyboardDiagnostics\.restoreError/);
  assert.match(generated,/keyboardDiagnostics\.dom\.every\(event=>event\.trusted&&event\.onFocusedElement\)/);
  assert.match(generated,/Circuit guest output survives Code return/);
  assert.doesNotMatch(generated,/window\.__benchTarget\.keyIn\(/,'no diagnostic input injection');

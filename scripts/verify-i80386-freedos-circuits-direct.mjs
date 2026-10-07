@@ -15,7 +15,7 @@ const observedAnchor="        assert.match(tabText,/PS2 DONE/,'guest mouse-progr
 
 // Runs only in the browser around physical VDP keys. It observes the trusted
 // DOM events and forwards the real target method with its original receiver;
-// it never synthesizes input or changes the success criterion.
+// it never synthesizes input and preserves the guest pixel-response requirement.
 export function observeDirectCircuitKeys(target,element){
  const dom=[],targetCalls=[];
  const original=target?.keyIn;
@@ -114,6 +114,9 @@ const circuitBlock=`        let circuitDirect=null;
         assert.equal(circuitDirect.tabSelected,'true','guest response observed while Circuit tab is selected');
         assert.equal(circuitDirect.focused,true,'Circuit VDP remains focused after physical keys');
         assert.match(circuitAfterText,/^circuitok\\s*$/m,'actual Circuit VDP pixels show guest shell response');
+        assert.ok(keyboardDiagnostics&&!keyboardDiagnostics.observerMissing&&
+            !keyboardDiagnostics.observerError&&!keyboardDiagnostics.restoreError,
+            'Circuit keyboard observer and cleanup completed');
         const expectedCircuitScans=[18,146,46,174,35,163,24,152,57,185,
             46,174,23,151,19,147,46,174,22,150,23,151,20,148,24,152,37,165,28,156];
         assert.deepEqual(keyboardDiagnostics?.targetCalls?.map(event=>event.scancode),expectedCircuitScans,
