@@ -1,0 +1,242 @@
+#!/usr/bin/env node
+/** Visible Pixel publication → persistent resource picker → editable Blocks → playback/export.
+ * VM/Blockly access observes only. MakeCode interchange proves behaviour, not rich timeline/UUID retention.
+ */
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import JSZip from 'jszip';
+import {chromium} from 'playwright';
+import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
+import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
+import {compile} from './lib/pxt-node.mjs';
+import {runArcadeSim} from './lib/makecode-arcade-sim.mjs';
+const option=name=>process.argv.includes(name)?process.argv[process.argv.indexOf(name)+1]:undefined;
+const out=path.resolve(option('--out')||process.env.BW_ANIMATION_REPORT||'test-results/arcade-animation-resource-browser/current.json');
+await fs.mkdir(path.dirname(out),{recursive:true});
+const publicationOnly=process.argv.includes('--publication-only');
+const report={status:'running',mode:publicationOnly?'publication-only':'full',generatedAt:new Date().toISOString(),journey:[],samples:[],pageErrors:[],consoleMessages:[],
+    boundary:'Uniform100ms synthetic3×2 timeline; default palette. LocalSB3/Code↔Blocks preserve rich resource identity. Original MakeCode export/reimport verifies behaviour only; editable timeline/UUID interchange is unqualified.'};
+const browser=await chromium.launch(process.env.BW_BROWSER?{executablePath:process.env.BW_BROWSER}:{});
+const deadline=setTimeout(()=>{report.timedOut=true;void browser.close().catch(()=>{});},180000);
+const page=await browser.newPage({viewport:{width:1600,height:1100},acceptDownloads:true});
+page.setDefaultTimeout(15000);
+page.on('dialog',dialog=>dialog.accept());
+page.on('pageerror',error=>report.pageErrors.push(error.message));
+page.on('console',message=>{if(['warning','error'].includes(message.type()))report.consoleMessages.push(message.text());});
+const editor=()=>page.getByTestId('bw-code-editor').locator('.cm-content');
+const openCode=async()=>{
+    await page.getByRole('tab',{name:'Code',exact:true}).click();
+    await page.getByTestId('bw-pixel-canvas').waitFor({state:'hidden'});
+    await editor().waitFor({state:'visible'});
+};
+const panel=async name=>{
+    const button=page.getByTestId(`bw-pixel-${name}-toggle`);
+    if(await button.getAttribute('aria-expanded')!=='true')await button.click();
+};
+const pixels=async()=>{
+    await page.getByRole('tab',{name:/Costumes|Backdrops/,exact:true}).click();
+    if(!(await page.getByTestId('bw-pixel-canvas').isVisible()))await page.getByTestId('bw-pixel-toggle').click();
+    await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});
+};
+const resource=()=>page.evaluate(()=>{
+    const rows=[...(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.values()||[])];
+    return rows.map(row=>({...row,frames:row.frames.map(frame=>({...frame,pixels:Array.from(frame.pixels)}))}));
+});
+const paintFrame=async colour=>{
+    await page.getByTestId(`bw-pixel-colour-${colour}`).click();
+    await page.getByTestId('bw-pixel-tool-filledRect').click();
+    const canvas=page.getByTestId('bw-pixel-canvas');await canvas.scrollIntoViewIfNeeded();
+    const box=await canvas.boundingBox();assert.ok(box&&box.width>0&&box.height>0);
+    await page.mouse.move(box.x+box.width/6,box.y+box.height/4);
+    await page.mouse.down();
+    await page.mouse.move(box.x+box.width*5/6,box.y+box.height*3/4,{steps:3});
+    await page.mouse.up();
+};
+const snapshot=async label=>{
+    await page.getByText('File',{exact:true}).first().click();
+    const downloaded=page.waitForEvent('download');
+    await page.getByText('Save to your computer',{exact:true}).click();
+    const file=path.join(path.dirname(out),`animation-${label}.sb3`);await (await downloaded).saveAs(file);
+    const zip=await JSZip.loadAsync(await fs.readFile(file));
+    const artwork=JSON.parse(await zip.file('brickwright/artwork/v1.json').async('text'));
+    assert.equal(artwork.version,5);
+    const records=artwork.costumes.filter(row=>row.document.animation?.resource);assert.equal(records.length,1);
+    const record=records[0];assert.equal(record.document.version,4);
+    assert.equal(record.document.animation.frames.length,3);assert.equal(record.document.layers.length,2);
+    const render=await zip.file(record.renderedMd5ext).async('nodebuffer');
+    return {file,document:record.document,assetHash:crypto.createHash('sha256').update(render).digest('hex')};
+};
+const apply=async()=>{
+    const prior=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByRole('button',{name:/To blocks/}).first().click();
+    await page.waitForFunction(id=>{
+        const vm=window.__brickwrightStore.getState().scratchGui.vm;
+        const button=document.querySelector('button[title^="Compile this"]');
+        return vm.runtime.getTargetForStage()?.id!==id&&button&&!button.disabled;
+    },prior);
+    await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
+    await page.waitForFunction(()=>{
+        const vm=window.__brickwrightStore.getState().scratchGui.vm;
+        return vm.extensionManager.isExtensionLoaded('arcade')&&typeof vm.runtime._primitives.arcade_runImageAnimation==='function';
+    });
+    await page.getByRole('tab',{name:'Blocks',exact:true}).click();
+    await editor().waitFor({state:'hidden'});
+};
+const sequence=values=>values.filter((value,index)=>index===0||value!==values[index-1]);
+const cycle=(actual,expected,label)=>{
+    assert.ok(actual.length>=expected.length,`${label}: enough distinct frames (${actual})`);
+    assert.ok(actual.slice(0,-expected.length+1).some((_,index)=>expected.every((value,offset)=>actual[index+offset]===value)),`${label}: expected ordered cycle ${expected}, observed ${actual}`);
+};
+const observePlayback=async(label,expected,ms=1100)=>{
+    const samples=await page.evaluate(async({ms,palette})=>{
+        const rows=[],start=performance.now();
+        while(performance.now()-start<ms){
+            await new Promise(resolve=>requestAnimationFrame(resolve));
+            const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            const variables=runtime.targets.flatMap(target=>Object.values(target.variables));
+            const actor=variables.find(variable=>variable.name==='actor'||variable.name.endsWith('_actor'))?.value;
+            const sprite=runtime.bwArcadeDeviceState?.sprites?.[actor];
+            const image=sprite?.image;
+            runtime.renderer.draw();
+            const canvas=runtime.renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
+            const context=copy.getContext('2d');context.drawImage(canvas,0,0);
+            const rgb=Array.from(context.getImageData(Math.floor(copy.width/2),Math.floor(copy.height/2),1,1).data);
+            const visible=palette.findIndex(colour=>colour&&colour.slice(1).match(/../g).map(v=>parseInt(v,16)).every((channel,index)=>channel===rgb[index]));
+            rows.push({t:Math.round(performance.now()-start),pixels:image?Array.from(image.pixels):null,width:image?.width,height:image?.height,visible});
+        }
+        return rows;
+    },{ms,palette:ARCADE_PALETTE});
+    const valid=samples.filter(row=>row.pixels?.length===6&&expected.includes(row.pixels[0]));
+    assert.ok(valid.length>0,`${label}: actual sprite image exists`);
+    for(const row of valid){assert.equal(row.width,3);assert.equal(row.height,2);assert.ok(row.pixels.every(pixel=>pixel===row.pixels[0]),'whole authored frame pixels');}
+    const images=sequence(valid.map(row=>row.pixels[0])),visible=sequence(samples.map(row=>row.visible).filter(value=>expected.includes(value)));
+    cycle(images,expected,`${label} image`);cycle(visible,expected,`${label} visible RGB`);
+    report.samples.push({label,imageSequence:images,visibleSequence:visible,observedFrames:samples.length});
+};
+const flag=()=>page.locator('[class*="green-flag_green-flag"]').first();
+const stop=()=>page.locator('[class*="stop-all_stop-all"]').first();
+const phase=expected=>page.waitForFunction(value=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+    .flatMap(target=>Object.values(target.variables)).some(variable=>(variable.name==='phase'||variable.name.endsWith('_phase'))&&Number(variable.value)===value),expected);
+try{
+    await page.addInitScript(()=>{localStorage.clear();sessionStorage.clear();localStorage.setItem('bw-starter-v1-complete','1');});
+    await page.goto(process.env.BW_BASE_URL||process.env.PROOF_URL||'http://localhost:8617/',{waitUntil:'domcontentloaded',timeout:45000});
+    await openCode();await page.getByTestId('bw-device-select').selectOption('arcade');
+    await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwDeviceId==='arcade');
+    await pixels();await panel('more');
+    await page.getByTestId('bw-pixel-w').fill('3');await page.getByTestId('bw-pixel-h').fill('2');
+    await panel('layers');await page.getByTestId('bw-pixel-add-layer').click();
+    for(const [index,colour] of [2,5,9].entries()){
+        if(index){await panel('frames');await page.getByTestId('bw-pixel-add-frame').click();}
+        await paintFrame(colour);await panel('frames');
+        await page.getByTestId('bw-pixel-frame-duration').fill('100');
+        if(index)await page.getByTestId('bw-pixel-frame-name').fill(`Step ${index+1}`);
+    }
+    await page.getByTestId('bw-pixel-animation-name').fill('Walk');
+    await page.getByTestId('bw-pixel-publish-animation').click();
+    await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.size===1);
+    const published=(await resource())[0];assert.equal(published.name,'Walk');assert.deepEqual(published.palette,ARCADE_PALETTE);
+    assert.deepEqual(published.frames.map(frame=>frame.pixels),[2,5,9].map(colour=>Array(6).fill(colour)));
+    assert.ok(published.frames.every(frame=>frame.durationMs===100));report.resourceId=published.id;
+    const authored=await snapshot('published');
+    report.journey.push('three actual Pixel frames, layers and uniform timing publish a stable named animation');
+    await panel('frames');await page.getByTestId('bw-pixel-frame-duration').fill('240');
+    await page.getByTestId('bw-pixel-publish-animation').click();
+    await page.getByTestId('bw-pixel-animation-error').waitFor({state:'visible'});
+    assert.match(await page.getByTestId('bw-pixel-animation-error').innerText(),/equal durations/);
+    assert.deepEqual((await resource())[0],published,'failed publication preserves prior registry');
+    await page.getByTestId('bw-pixel-frame-duration').fill('100');await page.getByTestId('bw-pixel-publish-animation').click();
+    const prior=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByText('File',{exact:true}).first().click();const chooser=page.waitForEvent('filechooser');
+    await page.getByText('Load from your computer',{exact:true}).click();await (await chooser).setFiles(authored.file);
+    await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,prior);
+    await pixels();await panel('frames');
+    assert.equal(await page.getByTestId('bw-pixel-animation-name').inputValue(),'Walk');
+    const reopened=await snapshot('reopened');assert.deepEqual(reopened.document,authored.document);assert.equal(reopened.assetHash,authored.assetHash);
+    assert.deepEqual((await resource())[0],published);
+    report.journey.push('unequal publication preserves prior art/resource; actual SB3 reopen retains UUID, frames, palette and layers');
+    if(!publicationOnly){
+        await openCode();await page.getByRole('button',{name:/From blocks/}).first().click();
+        await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor({state:'visible'});
+        const generated=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
+        const target=/^SPRITE ([^:\n]+):/m.exec(generated)?.[1];assert.ok(target,'authoring target available');
+        const device=/^DEVICE[^\n]*/m.exec(generated)?.[0]||'DEVICE ARCADE';
+        await editor().fill(`${device}\nGLOBAL actor\nGLOBAL frames\nGLOBAL interval\nGLOBAL phase\n${generated.replace(/^DEVICE[^\n]*\n?/m,'').trimEnd()}\nWHEN flag clicked:\n  hide\n  arcade set background color to 1\n  set actor to arcade create image (arcade new image width 3 height 2) template ${JSON.stringify(target)} kind "Player"\n  arcade set position of actor x 80 y 60\n  arcade set scale of actor to 8 anchor 0\n  set frames to `);
+        await editor().click();await page.keyboard.press('Control+End');
+        await page.getByTestId('bw-code-animation-picker').selectOption(published.id);
+        await page.getByTestId('bw-code-animation-insert-frames').click();
+        await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText('\n  set interval to ');
+        await page.getByTestId('bw-code-animation-insert-interval').click();
+        await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  arcade animate sprite actor frames frames interval interval loop true\n  set phase to 1\nWHEN space key pressed:\n  arcade animate sprite actor frames frames interval interval loop true\n  set phase to 1\nWHEN z key pressed:\n  arcade stop animations of actor type 1\n  set phase to 2\nWHEN arcade every 20 ms:\n  arcade log (arcade pixel of actor x 0 y 0)\n`);
+        const inserted=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
+        assert.ok(inserted.includes(`arcade animation frames resource "${published.id}"`));assert.ok(inserted.includes(`arcade animation interval resource "${published.id}"`));
+        await apply();
+        // The generated reporter owns a real dynamic native menu shadow.
+        const dropdown=await page.evaluate(()=>{
+            const block=window.Blockly.getMainWorkspace().getAllBlocks(false).find(block=>block.type==='arcade_animationAssetFrames');
+            const menu=block?.getInputTargetBlock('RESOURCE'),field=menu?.getField('animationAssets');
+            if(!field)throw new Error('Missing animation asset dropdown');
+            const rect=field.getSvgRoot().getBoundingClientRect();return {id:menu.id,x:rect.x+rect.width/2,y:rect.y+rect.height/2,value:field.getValue()};
+        });
+        assert.equal(dropdown.value,published.id);assert.ok(dropdown.x>0&&dropdown.y>0&&dropdown.y<1100);
+        const escaped=await page.evaluate(id=>CSS.escape(id),dropdown.id);
+        await page.locator(`g[data-id=${escaped}] > g[data-argument-type="dropdown"]`).click();
+        await page.getByRole('menuitemcheckbox',{name:'Walk',exact:true}).click();
+        await page.waitForFunction(({id,uuid})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target=>
+            target.blocks._blocks[id]?.fields?.animationAssets?.value===uuid),{id:dropdown.id,uuid:published.id});
+        report.journey.push('actual Code picker inserts typed frames/interval; real Blocks dropdown displays name and stores UUID');
+        const roundtrip=await snapshot('code-blocks');assert.deepEqual(roundtrip.document,authored.document);assert.equal(roundtrip.assetHash,authored.assetHash);
+        const pane=page.locator('[data-right-pane-toggle]');if(await pane.getAttribute('aria-pressed')!=='true')await pane.click();
+        await page.getByTitle('Game Console',{exact:true}).click();await flag().click();await phase(1);
+        await observePlayback('initial',[2,5,9]);
+        await page.getByTestId('bw-arcade-b').click();await phase(2);
+        const stopped=await page.evaluate(async()=>{
+            const rows=[];for(let index=0;index<12;index++){await new Promise(resolve=>requestAnimationFrame(resolve));
+                const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+                const actor=runtime.targets.flatMap(target=>Object.values(target.variables)).find(v=>v.name==='actor'||v.name.endsWith('_actor'))?.value;
+                rows.push(Array.from(runtime.bwArcadeDeviceState.sprites[actor].image.pixels));}
+            return rows;
+        });assert.ok(stopped.every(pixels=>JSON.stringify(pixels)===JSON.stringify(stopped[0])),'B stops actual image animation');
+        await page.getByTestId('bw-arcade-a').click();await phase(1);await observePlayback('controller-restart',[2,5,9]);
+        await stop().click();await flag().click();await phase(1);await observePlayback('green-flag-restart',[2,5,9]);await stop().click();
+        report.journey.push('actual controller B stops, A restarts, Stop/green flag resets; authored pixels and visible colours cycle in order');
+        await pixels();await panel('frames');await page.getByTestId('bw-pixel-frame-2').click();
+        await page.getByRole('button',{name:'Earlier frame',exact:true}).click();
+        await page.getByTestId('bw-pixel-animation-name').fill('Run');await page.getByTestId('bw-pixel-publish-animation').click();
+        await page.waitForFunction(uuid=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.get(uuid)?.name==='Run',published.id);
+        const reordered=(await resource())[0];assert.equal(reordered.id,published.id);assert.deepEqual(reordered.frames.map(frame=>frame.pixels[0]),[2,9,5]);
+        await page.getByRole('tab',{name:'Blocks',exact:true}).click();await page.getByTestId('bw-pixel-canvas').waitFor({state:'hidden'});
+        await flag().click();await phase(1);await observePlayback('renamed-reordered',[2,9,5]);await stop().click();
+        await snapshot('renamed-reordered');report.journey.push('Pixel rename/reorder preserves UUID and updates bound playback without rewriting code');
+        await openCode();const actions=page.getByTestId('bw-code-actions');if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
+        const download=await exported;assert.match(download.suggestedFilename(),/\.hex$/);
+        const hex=path.join(path.dirname(out),'animation-export.hex');await download.saveAs(hex);const bytes=await fs.readFile(hex);
+        const embedded=await unpackMakeCodeSource(bytes);assert.ok(embedded.files?.['main.ts']);await fs.writeFile(path.join(path.dirname(out),'animation-export.ts'),embedded.files['main.ts']);
+        const compiled=await compile('arcade',embedded.files);assert.equal(compiled.success,true,JSON.stringify(compiled.diagnostics));
+        const original=await runArcadeSim(compiled.outfiles['binary.js'],{ms:1000});assert.equal(original.error,null);
+        const originalSequence=sequence(original.serial.map(row=>Number(row.text)).filter(value=>[2,9,5].includes(value)));cycle(originalSequence,[2,9,5],'original PXT');
+        const screen=original.screen(),colour=screen[60*160+80];assert.ok([2,9,5].includes(colour));
+        const expected=Uint8Array.from({length:19200},(_,index)=>{const x=index%160,y=Math.floor(index/160);return x>=68&&x<92&&y>=52&&y<68?colour:1;});
+        assert.deepEqual(screen,expected,'all19200original screen pixels match authored scaled frame footprint');
+        report.originalPxt={compiled:true,sequence:originalSequence,pixelsCompared:screen.length,compilerNetworkAttempts:compiled.netAttempts};
+        if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.hex',mimeType:'application/octet-stream',buffer:bytes});
+        await page.getByText(/Imported the Arcade game.*animation-export\.hex/).first().waitFor({state:'visible'});
+        if(await actions.getAttribute('open'))await actions.locator('summary').click();
+        await apply();await flag().click();await phase(1);await observePlayback('original-export-reimport',[2,9,5]);await stop().click();
+        report.journey.push('actual Arcade download compiles/runs in original PXT; frame order/fullscreen pixels and file-reimport behaviour match');
+    }
+    assert.deepEqual(report.pageErrors,[]);
+    assert.deepEqual(report.consoleMessages.filter(message=>/Workspace Update Error|could not attach artwork|could not repack artwork|Built-in extension arcade failed/.test(message)),[]);
+    assert.ok(!report.timedOut);report.status='passed';
+}catch(error){
+    report.status='failed';report.failure=error.stack||String(error);
+    report.body=await page.locator('body').innerText().then(text=>text.slice(-12000)).catch(()=>null);
+    report.resources=await resource().catch(()=>null);
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-failure.png'}).catch(()=>{});throw error;
+}finally{
+    clearTimeout(deadline);await fs.writeFile(out,JSON.stringify(report,null,2)+'\n');await browser.close();
+    console.log(JSON.stringify({status:report.status,mode:report.mode,journeys:report.journey.length}));
+}
