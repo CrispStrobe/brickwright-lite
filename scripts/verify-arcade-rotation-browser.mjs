@@ -128,8 +128,19 @@ try {
                 .map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
             return runtime.bwArcadeDeviceState?.sprites?.[vars.actor]?.data === expected;
         }, data, {timeout: 30000});
-        await page.waitForTimeout(100);
+        // VM assignments finish before the browser decodes the new SVG. Wait
+        // for the actual renderer resource, including slow/shared CI hosts.
+        await page.waitForFunction(() => {
+            const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            const vars = Object.fromEntries(runtime.targets.flatMap(t => Object.values(t.variables))
+                .map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
+            const target = runtime.bwArcadeDeviceState?.spriteTargets?.[vars.actor];
+            const drawable = runtime.renderer._allDrawables[target?.drawableID];
+            const skin = drawable?.skin || drawable?._skin;
+            return skin?._svgImageLoaded === true;
+        }, null, {timeout: 30000});
         const actual = await observe();
+        report.samples.push({label, ...actual});
         assert.deepEqual(actual.blockErrors, [], `${label}: no VM block errors`);
         assert.deepEqual(actual.diagnostics, [], `${label}: no runtime diagnostics`);
         assert.equal(actual.data, data, `${label}: sprite data survives without numeric coercion`);
@@ -143,7 +154,6 @@ try {
             for (const colour of [2, 5, 9, 7, 8, 10]) assert.ok(actual.histogram[colour] > 0,
                 `${label}: asymmetric source colour${colour} is visible`);
         }
-        report.samples.push({label, ...actual});
         return actual;
     };
     const press = async name => page.getByTestId(`bw-arcade-${name}`).click();
