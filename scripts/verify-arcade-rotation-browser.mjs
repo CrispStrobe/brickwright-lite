@@ -25,7 +25,7 @@ let page;
 try {
     page = await browser.newPage({viewport: {width: 1600, height: 1000}, acceptDownloads: true});
     page.on('pageerror', error => report.errors.push(error.message));
-    page.on('console', message => { if (message.type() === 'error') report.consoleErrors.push(message.text()); });
+    page.on('console', message => { if (['error', 'warning'].includes(message.type())) report.consoleErrors.push(message.text()); });
     page.on('requestfailed', request => report.failedRequests.push({url: request.url(), reason: request.failure()?.errorText}));
     await page.addInitScript(() => {
         localStorage.setItem('bw-starter-v1-complete', '1');
