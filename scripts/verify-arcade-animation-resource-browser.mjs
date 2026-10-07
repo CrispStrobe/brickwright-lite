@@ -35,10 +35,15 @@ const panel=async name=>{
     const button=page.getByTestId(`bw-pixel-${name}-toggle`);
     if(await button.getAttribute('aria-expanded')!=='true')await button.click();
 };
-const pixels=async()=>{
+const pixels=async(targetLabel)=>{
     await page.getByRole('tab',{name:/Costumes|Backdrops/,exact:true}).click();
     if(!(await page.getByTestId('bw-pixel-canvas').isVisible()))await page.getByTestId('bw-pixel-toggle').click();
     await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});
+    if(targetLabel){
+        const choices=page.getByTestId('bw-image-target');
+        if(await choices.isVisible())await choices.selectOption({label:targetLabel});
+        else {await panel('more');await page.getByTestId('bw-image-target-pixel').selectOption({label:targetLabel});}
+    }
 };
 const resource=()=>page.evaluate(()=>{
     const rows=[...(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.values()||[])];
@@ -252,7 +257,8 @@ try{
         await page.getByTestId('bw-arcade-a').click();await phase(1);await observePlayback('controller-restart',[2,5,9]);
         await stop().click();await flag().click();await phase(1);await observePlayback('green-flag-restart',[2,5,9]);await stop().click();
         report.journey.push('actual controller B stops, A restarts, Stop/green flag resets; authored pixels and visible colours cycle in order');
-        await pixels();await panel('frames');await page.getByTestId('bw-pixel-frame-2').click();
+        // The authored resource belongs to Stage; Code apply selects the Game script host.
+        await pixels('Backdrops');await panel('frames');await page.getByTestId('bw-pixel-frame-2').click();
         await page.getByRole('button',{name:'Earlier frame',exact:true}).click();
         await page.getByTestId('bw-pixel-animation-name').fill('Run');await page.getByTestId('bw-pixel-publish-animation').click();
         await page.waitForFunction(uuid=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.get(uuid)?.name==='Run',published.id);

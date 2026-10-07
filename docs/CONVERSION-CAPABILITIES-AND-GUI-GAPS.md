@@ -493,7 +493,7 @@ This cross-reference prevents details from disappearing during reconciliation.
 ## Complete Code word inventory
 
 The [generated authoring vocabulary](generated/ARCADE-AUTHORING-VOCABULARY.md)
-lists all 156 canonical Arcade/Arrays forms and 161 forms including aliases,
+lists all158 canonical Arcade/Arrays forms and163 forms including aliases,
 with block identities, shapes and Code spellings at the adopted parser pin.
 Use it when checking palette discoverability; vocabulary presence alone does
 not establish any of the five qualification results above.
@@ -526,7 +526,7 @@ and direct SB3 reopen together before claiming a fully synchronized target UI.
 ### Current shared compiler adoption
 
 The current vendor pin is sb3-creator
-`2d2a562812c6e34525021ccacd421b1d20151c15`, following upstream PR60 and PR61.
-It includes native Arrays dropdown fields and reporter-capable controller-axis
-menus. Earlier PR59 qualification above is historical; it does not replace the
+`33ce7380e388e20b7c3a30e8ea84d1b774c30248`, following shared compiler PR60–PR62.
+It includes native Arrays dropdown fields, reporter-capable controller-axis
+menus and named animation frame/interval resource reporters. Earlier PR59 qualification above is historical; it does not replace the
 current native-schema browser gate or close every resource/event menu.
