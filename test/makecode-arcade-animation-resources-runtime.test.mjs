@@ -148,3 +148,25 @@ test('actual VM loadProject clears prior publications without GUI artwork restor
         vm.quit();
     }
 });
+
+test('published native endpoint intervals reach actual runtime reporters and image animation', () => {
+    for (const count of [1, 2]) for (const duration of [1, 65535]) {
+        const g = setup(); g.resource.frames.length = count;
+        g.resource.frames.forEach(frame => { frame.durationMs = duration; });
+        const reference = g.frames(), images = BWValues.arrayValue(g.runtime, reference);
+        assert.equal(images.length, count);
+        assert.equal(BWValues.decode(g.arcade.animationAssetInterval({RESOURCE: g.resource.id})), duration);
+        const actor = g.arcade.createImageSprite({IMAGE: images[0], TEMPLATE: '', KIND: 'Player'});
+        g.arcade.runImageAnimation({ID: actor, FRAMES: reference, INTERVAL: duration, LOOP: true});
+        g.arcade._advance(0.0005);
+        assert.equal(g.arcade.spritePixel({ID: actor, X: 0, Y: 0}), 2);
+        g.arcade._advance(duration / 1000);
+        assert.equal(g.arcade.spritePixel({ID: actor, X: 0, Y: 0}), count === 1 ? 2 : 3);
+        assert.deepEqual(g.errors, []);
+    }
+    for (const duration of [0, 65536, 1.5]) {
+        const g = setup(); g.resource.frames.forEach(frame => { frame.durationMs = duration; });
+        assert.equal(BWValues.decode(g.frames()), undefined);
+        assert.match(g.errors[0], /invalid frames/);
+    }
+});

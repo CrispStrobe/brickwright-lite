@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import JSZip from 'jszip';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
-import {ARTWORK_PATH, ARTWORK_FORMAT} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
+import {ARTWORK_PATH, ARTWORK_FORMAT, artworkBundleVersion} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {importProjectFiles, importArtefact, makeCodeSourceHex} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import {ANIMATION_COMPANION_PATH} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-companion.js';
@@ -56,13 +56,18 @@ test('malformed companion refuses the project import atomically instead of disca
 test('CLI source export reads current SB3 artwork bundles and includes native galleries plus rich source', async () => {
     const temp=await fs.mkdtemp(path.join(os.tmpdir(),'bw-animation-source-cli-'));
     try {
+      for (const interval of [null, 1, 65535]) {
         const cr=creator(),source=document(),zip=await JSZip.loadAsync(await (await cr.generateSB3()).arrayBuffer());
+        if (interval !== null) {
+            source.version = 5; source.animation.frames.length = 1;
+            source.animation.frames[0].durationMs = interval;
+        }
         const project=JSON.parse(await zip.file('project.json').async('string'));
         const svg=imageToSvg({width:2,height:1,pixels:Uint8Array.from([2,3])},undefined,1);
         const assetId=createHash('md5').update(svg).digest('hex'),md5ext=`${assetId}.svg`;
         project.targets[0].costumes[0]={name:'Animation source',assetId,md5ext,dataFormat:'svg',rotationCenterX:1,rotationCenterY:0.5};
         zip.file(md5ext,svg);zip.file('project.json',JSON.stringify(project));
-        zip.file(ARTWORK_PATH,JSON.stringify({format:ARTWORK_FORMAT,version:5,costumes:[
+        zip.file(ARTWORK_PATH,JSON.stringify({format:ARTWORK_FORMAT,version:artworkBundleVersion([{document:source}]),costumes:[
             {targetIndex:0,costumeIndex:0,renderedMd5ext:md5ext,document:source}]}));
         const input=path.join(temp,'source.sb3'),output=path.join(temp,'source.hex');
         await fs.writeFile(input,await zip.generateAsync({type:'nodebuffer'}));
@@ -72,5 +77,6 @@ test('CLI source export reads current SB3 artwork bundles and includes native ga
         const imported=await importArtefact(await fs.readFile(output),{name:'source.hex'});
         assert.equal(imported.animationResources.length,1);
         assert.deepEqual(imported.animationResources[0].document,source);
+      }
     } finally {await fs.rm(temp,{recursive:true,force:true});}
 });

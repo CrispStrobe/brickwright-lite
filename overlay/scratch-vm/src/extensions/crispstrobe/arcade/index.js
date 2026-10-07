@@ -2190,7 +2190,7 @@ module.exports = makeExt(`// Name: Arcade
       const interval = frames[0]?.durationMs;
       for (const frame of frames) {
         if (!frame || typeof frame.id !== 'string' || !frame.id || ids.has(frame.id) ||
-            !Number.isInteger(frame.durationMs) || frame.durationMs < 20 || frame.durationMs > 10000 ||
+            !Number.isInteger(frame.durationMs) || frame.durationMs < 1 || frame.durationMs > 65535 ||
             frame.durationMs !== interval || !ArrayBuffer.isView(frame.pixels) ||
             typeof frame.pixels.every !== 'function' || frame.pixels.length !== width * height ||
             !frame.pixels.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 15)) {
