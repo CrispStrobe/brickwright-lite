@@ -6,8 +6,8 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const cuiPin = '11c3d1d71b1ce1ce9b21bc6761f1e8602c3d8f51';
-const boardPin = '4869e77752e110910ac56520bc1f47a9cded97f4';
+const cuiPin = '4f35519f156916bc30e7fcc2948e6dcc27fae394';
+const boardPin = 'a1126312288867127343c2f9bbdfcd2856a18508';
 const cli = path.join(root, 'node_modules/bw-circuit-ui/bin/bwc.mjs');
 const env = {...process.env}; delete env.BW_BOARD;
 const run = (file, prefix = []) => spawnSync(process.execPath,

@@ -223,7 +223,11 @@ test('every shipped circuit resolves every wire endpoint into a real electrical 
     // 1395 -> 1488 on 2026-10-06 (task B12, sb3-creator #55 at 70488a68): +93.
     // 87 ATtiny85/ATtiny88 benches for 53 examples that print, ask or play a
     // tone (the ATtinys do all three now), and chip-thermometer's 6.
-    assert.equal(files.length, 1488, 'the gate must cover the complete vendored corpus');
+    // 1488 -> 1509 on 2026-10-06 (task B13, sb3-creator #57 at 85973b6a): +21.
+    // 34 new benches (33 analog examples on the ATtiny85, whose ADC pins became
+    // reachable, and chip-thermometer's ATtiny88), 13 removed (servo/motor on the
+    // ATtinys, and disp-rgb-light's NeoPixel off every non-8051 board).
+    assert.equal(files.length, 1509, 'the gate must cover the complete vendored corpus');
     assert.deepEqual(failures, []);
 });
 
@@ -378,9 +382,11 @@ test('every selectable example × MCU combination resolves to an overlap-free be
         // 137/1064 -> 138/1156 (total 1201 -> 1294) on 2026-10-06 (task B12,
         // sb3-creator #55): chip-thermometer, +1 authored and +5 retargeted;
         // 53 examples gain ATtiny targets, +87.
+        // 138/1156 -> 138/1177 (total 1294 -> 1315) on 2026-10-06 (task B13,
+        // sb3-creator #57): +34 ATtiny benches, -13 refused combinations.
         authored: 138,
-        retargeted: 1156,
-        total: 1294
+        retargeted: 1177,
+        total: 1315
     });
 });
 
