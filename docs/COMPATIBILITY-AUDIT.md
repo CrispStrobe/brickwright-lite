@@ -33,14 +33,20 @@ stderr.
 
 ```sh
 npm run compat:audit -- --target arcade --compile --execute \
-  --out arcade.json --markdown docs/generated/ARCADE-COMPAT-AUDIT.md makecode/arcade
+  --corpus-commit CORPUS_FULL_SHA --out arcade.json --markdown docs/generated/ARCADE-COMPAT-AUDIT.md makecode/arcade
 npm run compat:audit -- --target microbit --compile --execute \
-  --out microbit.json --markdown docs/generated/MICROBIT-COMPAT-AUDIT.md makecode/microbit
-node scripts/conversion-roundtrips.mjs --compile --out roundtrips.json makecode/arcade makecode/microbit
+  --corpus-commit CORPUS_FULL_SHA --out microbit.json --markdown docs/generated/MICROBIT-COMPAT-AUDIT.md makecode/microbit
+node scripts/conversion-roundtrips.mjs --compile --corpus-commit CORPUS_FULL_SHA --out roundtrips.json makecode/arcade makecode/microbit
 node scripts/report-roundtrips.mjs roundtrips.json docs/generated/CONVERSION-ROUNDTRIPS.md
 ```
 
-Run these from the corpus root, so the reports carry corpus-relative paths.
+Run these from the Lite checkout, with the corpus input paths supplied explicitly.
+Replace `CORPUS_FULL_SHA` with the corpus's immutable 40-character commit. It is a declared
+identity, not independent verification of the files. JSON also records the input content
+multiset hash, source commit and dirty status, tracked-diff hash, exact vendor pins and
+synced MakeCode versions. Preserve full JSON privately; review public Markdown before
+publishing. Public summaries use anonymous input numbers and omit raw failure diagnostics.
+Gap rankings count affected projects separately from diagnostic occurrences.
 
 - **Stages:** `translated` (no named gap, no Code-to-Blocks warning), `partial` (at least
   one named gap or warning), `parse-failed`, and `pxt-compile-failed` (with `--compile`).
@@ -64,12 +70,78 @@ docs, both MIT. `scripts/collect-makecode-corpus.mjs` re-extracts it. The corpus
 data: it is never shipped and never committed here. Lite's CI cannot reach it, so its
 tests use small inline fixtures.
 
-## Results on main
+## Current checkpoint — 2026-10-07
 
-Corpus: `brickwright-firmware-private` `19a52f6d6` (`compat-corpora/makecode`). The
-reports linked here are the current ones, generated with `--compile`:
-[Arcade](generated/ARCADE-COMPAT-AUDIT.md), [micro:bit](generated/MICROBIT-COMPAT-AUDIT.md),
-[round trips](generated/CONVERSION-ROUNDTRIPS.md).
+The previous Arcade agent is paused. The active integration lane in
+[LANES.md](../LANES.md) owns the preserved branch work and its qualification.
+Source checkpoint: [`60562a619`](https://github.com/CrispStrobe/brickwright-lite/commit/60562a619).
+The fresh generated Arcade audit records exact tested source
+[`3ef1213c0`](https://github.com/CrispStrobe/brickwright-lite/commit/3ef1213c0), clean,
+and declared corpus commit `19a52f6d65ab9e8adc90bb19a6e3ea04544a1339`.
+This is integration-branch evidence; it is not a claim that a shipped package has adopted it.
+
+| Independent gate | Observed result |
+|---|---|
+| Static Arcade translation, 184 inputs | **90 translated / 93 partial / 1 parse-failed**; 285 named gap occurrences |
+| Original MakeCode compilation | **130 pass / 54 fail**, including the malformed fixture that also fails translation parsing |
+| Combined legacy `--compile` stage tally | **84 translated / 46 partial / 53 pxt-compile-failed / 1 parse-failed** |
+| Runtime smoke among the 130 original-compile-pass inputs | **126 stepped / 3 event-only / 1 block error** |
+| Runtime behavioural equivalence | **Not measured** by the 24-frame smoke audit |
+| Fresh micro:bit audit | Rerun pending; historical figures below are not current qualification |
+| Fresh conversion permutations | Rerun pending; historical figures below are not current qualification |
+
+The combined legacy stage tally masks some static translation gaps behind original-compile
+failures. Keep the independent static result and compiler result together. A bare source
+file missing its package or asset can fail PXT without establishing that the complete
+original app is invalid. Conversely, a successful PXT compile or a stepped VM does not
+establish faithful behaviour.
+
+Fresh [Arcade report](generated/ARCADE-COMPAT-AUDIT.md); historical
+[micro:bit report](generated/MICROBIT-COMPAT-AUDIT.md) and
+[roundtrip report](generated/CONVERSION-ROUNDTRIPS.md) await replacement by their pending runs.
+The [conversion capabilities and GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md)
+tracks Blocks, Code, asset editors, original MakeCode checks and authoring evidence separately.
+
+### Changes since the historical checkpoint
+
+- F6 parser fixes are adopted. Lite pins sb3-creator
+  `8ba3508eab2ad99b9d9a6478c9a45a7200ca4fde`, including the merged
+  [Sprite data dialect PR59](https://github.com/CrispStrobe/sb3-creator/pull/59).
+  Empty bodies parse but still produce a named warning; the audit keeps that warning
+  visible as partial rather than silently discarding it.
+- `Sprite.data` is implemented as reference identity, including typed payload export.
+  Arbitrary object-member operations remain explicitly refused; support for `data` does
+  not imply general JavaScript object support.
+- Arcade's global `score` and `lives` variables map to native Info state on export.
+  The earlier lost-HUD observation is historical, not an outstanding product decision.
+  Its affected real-app roundtrip still needs the pending permutation evidence.
+
+### Next gap families
+
+The fresh ranking identifies these leading named families. Counts overlap across projects;
+do not sum them as a number of distinct partial apps.
+
+| Affected projects | Named family | Next qualification |
+|---:|---|---|
+| 10 | Background image artwork unavailable | Recover complete project assets/manifests; distinguish missing corpus inputs from unsupported rendering |
+| 7 | Legacy `scene.setTileMap()` | Implement and compare the legacy map format through runtime and export |
+| 7 | `tiles.setTilemap()` without a readable literal map | Preserve wall layer, tile scale and asset references |
+| 6 | Sprite destruction effect/duration | Implement rendering and lifetime scheduling against original MakeCode |
+| 5 | `music.play()` | Implement supported music forms and playback timing |
+| 5 | `sprites.createProjectile()` | Close importer/runtime/export overloads with real-app fixtures |
+| 4 each | Starfield screen effect, `game.ask()` value, `music.playSound()`, legacy `scene.setTile()` | Separate implementations with targeted original-runtime checks |
+
+The remaining paint-handler block error also needs startup-order qualification: registering
+`game.onPaint` before top-level sprite initialization must not run the handler too early.
+Work each family through a reproducer, source implementation, original-runtime comparison,
+roundtrip permutations, real GUI authoring/save/reopen and a corpus recount. Do not lower
+partial counts by suppressing diagnostics or removing difficult programs.
+
+## Historical checkpoint — 2026-10-06
+
+Corpus: `brickwright-firmware-private` `19a52f6d6` (`compat-corpora/makecode`).
+The table and comparisons below preserve the previous measurements; they do not qualify
+the current integration source.
 
 | | F2 (main `31a505c30` + F1) | after F5–F9, F11 (2026-10-06) |
 |---|---|---|
@@ -123,29 +195,20 @@ repository are an older baseline (2026-09-27, 27 translated).
 - **Also:** `pick random a to b` is parenthesised as an operand. Before, it swallowed
   `- 80` and read back as `randint(a, b - 80)`.
 
-**Still open, named:**
+### Historical unresolved observations and present disposition
 
-1. **sb3-creator (F6), fixed upstream and waiting for a pin move:** a body made only of
-   `# comment` lines put its comments on the next script, and an empty hat's body indent
-   came from the following blank line. The fix is on CrispStrobe/sb3-creator branch
-   `fix/trailing-comments-empty-bodies` (3 commits). Its fast suite passes (1047/0) and its
-   slow suite passes (102/0). With it, every program the Arcade importer writes reaches a
-   decompile fixed point, and `test/dialect-arcade-import-lines` lists four that do not
-   until then. It also clears the 4 "error" rows on the MakeCode → Code → SB3 → Code path.
-2. **`arcade-28379fc0…` (1 block error):** MakeCode registers `game.onPaint` only after its
-   top-level code has run, while a Scratch hat is live from the green flag. The paint
-   handler runs before `snake` is set.
-3. **Round-trip differences against the WIP (3):**
-   - `arcade-268aab83…`: the fixed-sprite path keeps Arcade's score as a Scratch variable
-     `score`, which the exporter renames `score_`, so the Arcade HUD score is lost on
-     export. Changing that is a product decision.
-   - `arcade-a0f564a6…`: equivalent. Arithmetic re-imported through the value path is
-     `calculate value`, not `operator_multiply`.
-   - `arcade-6ae4c8f0…`: an array literal passed to a function is a named gap on the
-     fixed-sprite path. The doc snippet's function body is empty.
-4. **`sprite.data` (5 projects):** needs a new Arcade dialect word upstream in sb3-creator,
-   plus VM support.
+At the 2026-10-06 checkpoint, F6 was awaiting a parser pin move; that pin move is now
+complete. The one `game.onPaint` startup-order block error remains visible in the fresh
+Arcade smoke run.
 
-The most frequent named Arcade gaps are listed in the generated report's frequency table.
-The top one, `scene.setBackgroundImage()` with art we could not read (10), is art from
-project asset files or extension packages that a bare `.ts` snippet does not include.
+Three roundtrip differences against the parked WIP were recorded: Arcade HUD score
+renaming, equivalent arithmetic represented as `calculate value` rather than
+`operator_multiply`, and an array literal passed to an empty-body function. Native score
+mapping has since been implemented. The pending full permutation run must establish the
+present disposition of all three; neither structural opcode differences nor prior counts
+alone establish behaviour.
+
+The historical five-project `sprite.data` gap is addressed by the implemented dialect,
+VM reference identity and typed export described above. Arbitrary object members remain
+named refusals. Consult the fresh generated ranking rather than treating this historical
+list as the current backlog.
