@@ -200,3 +200,9 @@ Inspect the actual block definitions and serialized inputs; do not silence
 these warnings or infer all Blocks editing works from Code-authored playback.
 Audio gesture and unavailable optional native-runtime resource warnings are
 separate boundaries, retained in the private receipts.
+
+Device consistency follow-up: the legacy **no chips** selection removes the
+editor header and clears runtime hints immediately without applying a new
+project. The integration preserves that existing route; its hints can differ
+from the still-loaded project. C18 must qualify clear selection, failed apply
+and direct SB3 reopen together before claiming a fully synchronized target UI.
