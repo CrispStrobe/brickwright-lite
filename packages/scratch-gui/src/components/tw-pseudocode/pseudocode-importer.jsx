@@ -3229,7 +3229,7 @@ class PseudocodeImporter extends React.Component {
                     // matching bench, exactly like loading an example does —
                     // retargeting only the text left the VM and the Circuit
                     // tab on the old device.
-                    Promise.resolve(this.compile()).catch(() => {});
+                    Promise.resolve(this.compile({pseudocode: result.pseudocode})).catch(() => {});
                     const bench = resolvedBench && resolvedBench.retargeted
                         ? resolvedBench.path
                         : null;
@@ -3262,7 +3262,7 @@ class PseudocodeImporter extends React.Component {
             // only the editor text, leaving the VM and generated MicroPython
             // on the previous device. Compile this route too, and await it so
             // the Calliope tab cannot open onto an empty/stale derivation.
-            await this.compile();
+            await this.compile({pseudocode: nextSource});
             if (['microbit', 'calliopemini'].includes(deviceId)) {
                 const generated = await this.deriveBuffer(nextSource, 'pseudocode', 'micropython');
                 if (!generated.error) {
@@ -4492,12 +4492,15 @@ class PseudocodeImporter extends React.Component {
             asmTargetForDevice(this.currentDevice()) === 'i8086';
     }
 
-    async compile ({strict = false} = {}) {
-        const lang = this.state.lang;
+    async compile ({strict = false, pseudocode = null} = {}) {
+        // A device retarget compiles the rewritten canonical program even when
+        // a generated, one-way language tab is visible. Ordinary To blocks still
+        // compiles the active editable language and keeps its existing checks.
+        const lang = typeof pseudocode === 'string' ? 'pseudocode' : this.state.lang;
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         try {
-            let source = this.activeCode();
+            let source = typeof pseudocode === 'string' ? pseudocode : this.activeCode();
             let parseWarnings = [];
             if (lang === 'asm') {
                 const lift = (await import(/* webpackChunkName: "bw-asm-reader" */ '../../lib/bw-asm/asm-8086-to-pseudocode.js')).default;

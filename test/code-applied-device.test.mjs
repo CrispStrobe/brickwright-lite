@@ -5,12 +5,12 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {balancedFrom, scopeAfter} from './helpers/js-scope.mjs';
 const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
-const signature = 'async compile ({strict = false} = {}) {';
+const signature = 'async compile ({strict = false, pseudocode = null} = {}) {';
 const compileBody = balancedFrom(source, source.indexOf(signature) + signature.length - 1, '{', '}');
 const publishBody = scopeAfter(source, 'publishAppliedDevice (stc) {');
-const devices = {arcade: {core: 'arcade'}, microbit: {core: 'microbit'}, uno: {core: 'avr'}};
+const devices = {arcade: {core: 'arcade'}, microbit: {core: 'microbit'}, calliopemini: {core: 'microbit'}, uno: {core: 'avr'}};
 const Event = class { constructor (type, options) { this.type = type; this.detail = options.detail; } };
-const setup = ({program = 'DEVICE ARCADE', parseError, loadError, deferred = false, setStc = true} = {}) => {
+const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, loadError, deferred = false, setStc = true} = {}) => {
     const events = [], calls = [];
     const window = {dispatchEvent: event => events.push(event)};
     let finishLoad;
@@ -31,17 +31,23 @@ const setup = ({program = 'DEVICE ARCADE', parseError, loadError, deferred = fal
         generateBASIC () { return {ok: true, basic: ''}; }
         generateMicroPython () { return {ok: true, py: ''}; }
     }
-    const component = {props: {vm}, state: {lang: 'pseudocode', buffers: {pseudocode: program},
+    const component = {props: {vm}, state: {lang, buffers: {pseudocode: program, micropython: 'from microbit import *'},
         uploads: [], basicProfile: 'ms', basicLineNumbers: false},
         L: {stCompiling: 'compiling', stLoaded: 'loaded', stError: error => error},
-        setState (patch) { Object.assign(this.state, patch); },
-        activeCode () { return this.state.buffers.pseudocode; },
+        setState (patch, done) { Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch); done?.(); },
+        activeCode () { return this.state.buffers[this.state.lang]; }, canLiftAsm: () => false, loadCatalog () {},
+        deriveBuffer: async source => ({code: source}),
         lib: async () => ({default: Creator}), genOpts: () => ({})};
     component.publishAppliedDevice = new Function('DEVICE_BY_ID', 'window', 'CustomEvent',
         `return function (stc) ${publishBody}`)(devices, window, Event);
     component.compile = new Function('TWO_WAY', 'classifyConversionWarnings', 'LANG_LABEL', 'window',
-        `return async function ({strict = false} = {}) ${compileBody}`)(new Set(['pseudocode']),
+        `return async function ({strict = false, pseudocode = null} = {}) ${compileBody}`)(new Set(['pseudocode']),
         () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window);
+    Creator.RETARGET_POOLS = {calliopemini: {}};
+    Creator.retargetPseudocode = (text, device) => ({ok: true, warnings: [],
+        pseudocode: text.replace(/^DEVICE\s+\S+/im, `DEVICE ${device.toUpperCase()}`)});
+    component.setDevice = new Function('DEVICE_BY_ID', 'resolveExampleBench', 'window',
+        `return async function (deviceId) ${scopeAfter(source, 'async setDevice (deviceId) {')}`)(devices, () => null, window);
     return {component, runtime, events, calls, finishLoad};
 };
 
@@ -82,3 +88,24 @@ test('fallback VM metadata path publishes the actual parsed target too', async (
     assert.equal(runtime.stc.device, 'uno'); assert.equal(runtime.bwDeviceId, 'uno');
     assert.equal(runtime.bwDeviceCore, 'avr'); assert.equal(events.length, 1);
 });
+
+for (const pins of ['', '\nPIN led = P0 OUTPUT']) {
+    for (const lang of ['micropython', 'javascript', 'asm']) {
+        test(`retarget from ${lang} applies canonical pseudocode (${pins ? 'pins' : 'no pins'})`, async () => {
+            const {component, runtime, events, finishLoad} = setup({
+                program: `DEVICE MICROBIT${pins}`, lang, deferred: true});
+            const retargeting = component.setDevice('calliopemini');
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(runtime.bwDeviceId, 'microbit', 'old device remains while loading');
+            assert.deepEqual(events, []);
+            finishLoad();
+            await retargeting;
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(runtime.stc.device, 'calliopemini');
+            assert.equal(runtime.bwDeviceId, 'calliopemini');
+            assert.equal(component.state.lang, lang, 'generated view stays selected');
+            assert.equal(events.length, 1);
+            assert.equal(component.state.conversionReport.direction, 'Pseudocode → Blocks');
+        });
+    }
+}
