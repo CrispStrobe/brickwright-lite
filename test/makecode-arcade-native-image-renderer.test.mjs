@@ -124,6 +124,18 @@ test('template image sprites keep clone drawable ownership and authored skin res
     assert.equal(added, 1); assert.equal(g.drawables.size, 1);
     assert.strictEqual(g.entry(id).target, clone); assert.equal(g.entry(id).drawableId, undefined);
     assert.equal(g.arcade._state().spriteTargets[id], clone);
+    const entry = g.entry(id), skin = entry.skinId, drawable = clone.drawableID;
+    g.arcade.runImageAnimation({ID: id, FRAMES: BWValues.arrayReference(g.runtime, [g.first, g.second]), INTERVAL: 100, LOOP: true});
+    g.arcade._advance(.1);
+    assert.strictEqual(g.entry(id), entry);
+    assert.equal(g.drawables.get(drawable).skin, skin);
+    assert.match(g.skins.get(skin).svg, /#fff609/);
+    g.arcade._advance(.1);
+    assert.strictEqual(g.entry(id), entry);
+    assert.equal(g.drawables.get(drawable).skin, skin);
+    assert.match(g.skins.get(skin).svg, /#ff2121/);
+    assert.equal(restored, 0, 'animation never swaps back to authored costume between frames');
+    assert.equal(g.drawables.size, 1); assert.equal(g.skins.size, 1);
     g.arcade.destroySprite({ID: id});
     assert.equal(restored, 1); assert.equal(disposed, 1);
     assert.equal(g.drawables.size, 0); assert.equal(g.skins.size, 0);

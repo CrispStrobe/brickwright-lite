@@ -2275,7 +2275,9 @@ module.exports = makeExt(`// Name: Arcade
     setSpriteImage(args) {
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID), image = this._image(args.IMAGE);
       if (!sprite || !image) return;
-      if(this._imageSkins.get(sprite.id)?.drawableId===undefined)this._clearImage(sprite.id);
+      // Keep the same private skin while image frames change. Restoring the
+      // authored costume and creating a fresh asynchronous SVG skin here can
+      // expose a blank frame; costume changes/destruction/reset own restoration.
       sprite.image = image;
       delete sprite._wallHitbox;
       sprite._imageWidth=image.width;sprite._imageHeight=image.height;this._recalcSpriteSize(sprite);
