@@ -50,3 +50,27 @@ for (const failureAt of ['getInfo', '_refreshExtensionPrimitives']) {
         assert.equal(logged.length, 2);
     });
 }
+
+test('strict refresh drains successful siblings before rejecting a failed apply', async () => {
+    let finishRegistration;
+    const pending = new Promise(resolve => { finishRegistration = resolve; });
+    const failure = new Error('first extension failed');
+    const dispatch = {call: async (service, method) => {
+        if (service === 'failed') throw failure;
+        if (method === 'getInfo') return {id: 'arrays'};
+        await pending;
+    }};
+    const refresh = new Function('dispatch', 'log',
+        `return function ({throwOnError = false} = {}) ${refreshBody}`)(dispatch, {error () {}});
+    const manager = {_loadedExtensions: new Map([['broken', 'failed'], ['arrays', 'healthy']]),
+        _prepareExtensionInfo: (service, info) => info};
+    let completed = false;
+    const refreshing = refresh.call(manager, {throwOnError: true});
+    const observed = refreshing.then(() => { completed = true; }, () => { completed = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(completed, false, 'a late sibling cannot be allowed to overwrite the next apply');
+    finishRegistration();
+    await assert.rejects(refreshing, error => error === failure);
+    await observed;
+    assert.equal(completed, true);
+});

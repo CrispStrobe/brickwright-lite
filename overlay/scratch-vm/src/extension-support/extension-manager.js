@@ -632,6 +632,7 @@ class ExtensionManager {
      * @returns {Promise} resolved once all the extensions have been reinitialized
      */
     refreshBlocks ({throwOnError = false} = {}) {
+        const failures = [];
         // Deduplicate: an extension loaded by URL is keyed by both URL and ID,
         // so iterating values() would call getInfo twice for the same service.
         const allPromises = Array.from(new Set(this._loadedExtensions.values())).map(serviceName =>
@@ -642,10 +643,15 @@ class ExtensionManager {
                 })
                 .catch(e => {
                     log.error(`Failed to refresh built-in extension primitives: ${JSON.stringify(e)}`);
-                    if (throwOnError) throw e;
+                    if (throwOnError) failures.push(e);
                 })
         );
-        return Promise.all(allPromises);
+        return Promise.all(allPromises).then(results => {
+            // A failed apply must remain busy until sibling registrations drain,
+            // otherwise their late schema updates can overwrite the next apply.
+            if (failures.length) throw failures[0];
+            return results;
+        });
     }
 
     allocateWorker () {
