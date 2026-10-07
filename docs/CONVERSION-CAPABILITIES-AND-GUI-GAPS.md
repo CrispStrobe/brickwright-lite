@@ -136,6 +136,25 @@ during asynchronous ZIP construction. The real browser fixture uses SVG.
 This does not close portable plain-Code asset transport, sampled sounds,
 animation-to-runtime binding, or the full original-MakeCode resource journey.
 
+#### Next graphics slices, in dependency order
+
+1. **Full-screen artwork:** make the Pixel editor, `bw-makecode/pixel-image.js`
+   and `bw-artwork-bundle.js` agree on logical image dimensions. The current
+   128×128 controls/validation and 64×64 raster fallback must not shrink a
+   160×120 Arcade background. Add a visible background preset and test corner
+   pixels, layers, save/reopen, Code handoff and all 19,200 original-export pixels.
+2. **Animation asset binding:** reuse the existing 64-frame timeline, durations,
+   layers, sheets and frame-as-costumes export. Add stable asset/action pickers
+   and bindings to native words/blocks. Existing runtime/export intervals are
+   uniform; unequal durations require an explicit scheduler and equivalent
+   exported code. Qualify controller trigger, stop/restart and identity after
+   rename/reorder. Editable timeline persistence alone does not close U04.
+3. **Tilemap painter:** reuse `bw-makecode/tilemap-values.js` and its existing
+   indices/walls/images representation, bounds and tile scales. Add tile palette,
+   paint/erase/fill, independent wall layer, dimensions/scale and a map picker for
+   `arcade_setTilemap`. Preserve dynamic expressions when they are not literal
+   editable resources. Qualify scrolling, collisions and exact exported layers.
+
 ### U03 — tilemap authoring
 
 Create two tiles in the Pixel editor, paint a map/walls, choose tile size, place
