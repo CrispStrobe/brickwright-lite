@@ -1,6 +1,6 @@
 # FreeDOS direct Circuit input gate
 
-**Guest unrun at the current source checkpoint.** The optional browser gate extends the accepted
+**Full guest qualification unrun at the current source checkpoint.** The optional browser gate extends the accepted
 [FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) from its exact
 source bytes. It keeps the same owned marker HDD, FreeDOS floppy, Widgets
 boot/listing/fullscreen/PS/2 steps and Code roundtrip. While the Circuit tab
@@ -107,14 +107,31 @@ The installed React 16 renderer omits `code` from its synthetic keyboard
 event, although the native event retains it; the pinned Circuit UI reads only
 the synthetic field and therefore returns before forwarding a recognized
 PC key. A narrow Circuit UI source correction reads the native field when
-the synthetic one is absent. Lite's proposed
+the synthetic one is absent. Lite's eighth-attempt
 [consumer pin `0f4a005b`](https://github.com/CrispStrobe/bw-circuit-ui/commit/0f4a005b79c57f77ff0a5f0e875f3c8968c58803)
 contains only that source correction, its keyboard test and CI gate relative
 to the previously installed Circuit UI pin. The separate
 [Circuit UI PR81](https://github.com/CrispStrobe/bw-circuit-ui/pull/81)
 applies the same change on the newer main line; Lite does not adopt its other
-changes here. This diagnosis still requires a fresh installed browser run
-showing an actual guest pixel response before acceptance.
+changes here.
+
+The [eighth hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37653831331)
+at `c766b2c2ec05b3654ca7865d451134eb8d12d97c` retained
+[original artifact 11498327697](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11498327697)
+(102,499 bytes, SHA-256
+`a048b699d4b3e122e9f94f1dbf2136b1cc1db00c5b73ad833b0552d6e5e5be6c`).
+The direct Circuit input portion passed: all 30 trusted, focused make/break
+events were accepted by the target, the actual VDP canvas changed, and its
+decoded guest pixels showed `echo circuitok` and a separate `circuitok` output
+line. The **full interaction gate still failed** after the probe clicked Code:
+it waited for the AT canvas while the Debugger view remained selected, so the
+canvas was hidden and the later `tabok` shell check never ran. The corrected
+probe physically selects the Controller view, checks its selected state, and
+retains the original canvas, shell-output and guest-time checks. That corrected
+source has not yet run in the hosted browser. The proposed narrow
+[consumer pin `557c4716`](https://github.com/CrispStrobe/bw-circuit-ui/commit/557c4716236536829456818789c50772d0e65fa8)
+adds only the CI registration correction to the eighth-attempt pin; it does
+not adopt unrelated Circuit UI main-line changes.
 
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,

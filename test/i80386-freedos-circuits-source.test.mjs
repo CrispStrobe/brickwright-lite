@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {execFileSync,spawnSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {existsSync,mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
+import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {runInNewContext} from 'node:vm';
@@ -27,13 +27,21 @@ test('direct Circuit probe is an exact accepted-browser derivative with a real V
  assert.match(generated,/!keyboardDiagnostics\.observerError&&!keyboardDiagnostics\.restoreError/);
  assert.match(generated,/keyboardDiagnostics\.dom\.every\(event=>event\.trusted&&event\.onFocusedElement\)/);
  assert.match(generated,/Circuit guest output survives Code return/);
+ assert.match(generated,/const controllerView=page\.getByRole\('button',\{name:'Controller',exact:true\}\)/);
+ assert.match(generated,/await controllerView\.click\(\)/);
+ assert.match(generated,/controllerView\.getAttribute\('aria-pressed'\)/);
+ assert.match(generated,/Code tab stays selected after view switch/);
+ assert.match(generated,/await canvas\.waitFor\(\{state:'visible'\}\);\n        await canvas\.click\(\)/);
  assert.doesNotMatch(generated,/window\.__benchTarget\.keyIn\(/,'no diagnostic input injection');
  assert.doesNotMatch(generated,/\.click\(\{force:true\}\)|\.focus\(\)/,'no bypass of physical click or browser focus');
- const stage=execFileSync('git',['show','HEAD:overlay/scratch-gui/src/components/stage-header/stage-header.jsx'],{encoding:'utf8'});
- const buttons=execFileSync('git',['show','HEAD:packages/scratch-gui/src/components/toggle-buttons/toggle-buttons.jsx'],{encoding:'utf8'});
- const panel=execFileSync('git',['show','HEAD:overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx'],{encoding:'utf8'});
+ const stage=readFileSync(new URL('../overlay/scratch-gui/src/components/stage-header/stage-header.jsx',import.meta.url),'utf8');
+ const buttons=readFileSync(new URL('../packages/scratch-gui/src/components/toggle-buttons/toggle-buttons.jsx',import.meta.url),'utf8');
+ const panel=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx',import.meta.url),'utf8');
  assert.match(stage,/handleClick: \(\) => \{ setCircuitView\(\{fullWidth: true, dock: 'right'\}\); setView\('solo'\); \}/);
  assert.match(stage,/title: intl\.formatMessage\(messages\.debuggerFull\)/);
+ assert.match(stage,/handleClick: \(\) => \{ setCircuitView\(\{fullWidth: true, dock: 'controller'\}\); setView\('controller'\); \}/);
+ assert.match(stage,/title: intl\.formatMessage\(messages\.controllerPanel\)/);
+ assert.match(stage,/controllerPanel: \{\s*defaultMessage: 'Controller'/);
  assert.match(buttons,/aria-label=\{button\.title\}/);
  assert.match(buttons,/aria-pressed=\{button\.isSelected\}/);
  assert.match(panel,/onMouseDown=\{this\.state\.runner\.mouseIn \? this\._mouseDown : undefined\}/);
@@ -156,7 +164,7 @@ test('callable Circuit pixel observer decodes canvas bytes and rejects mismatche
  const {generated}=deriveCircuitsProbe();
  const declaration=generated.match(/^\s*const circuitTextObserver=Function\('canvas',.*\);$/m)?.[0];
  assert.ok(declaration,'one self-contained callable canvas observer');
- const source=execFileSync('git',['show','HEAD:scripts/lib/i80386-vga-text.mjs'],{encoding:'utf8'});
+ const source=readFileSync(new URL('../scripts/lib/i80386-vga-text.mjs',import.meta.url),'utf8');
  const decoderSource=source.slice(source.indexOf('export function decodeTextPixels')).replace(/^export /,'');
  const decodeTextPixels=runInNewContext(`${decoderSource}\ndecodeTextPixels`);
  const rows=Array.from({length:16},(_,i)=>i===0?0x81:i===1?0x42:0);
@@ -183,9 +191,7 @@ test('callable Circuit pixel observer decodes canvas bytes and rejects mismatche
 });
 
 test('production build version derives from exact PR head, not ambient merge commit',()=>{
- const overlayPath=new URL('../overlay/scratch-gui/webpack.config.js',import.meta.url);
- const overlay=existsSync(overlayPath)?readFileSync(overlayPath,'utf8'):
-  execFileSync('git',['show','HEAD:overlay/scratch-gui/webpack.config.js'],{encoding:'utf8'});
+ const overlay=readFileSync(new URL('../overlay/scratch-gui/webpack.config.js',import.meta.url),'utf8');
  const workflow=readFileSync(new URL('../.github/workflows/i80386-freedos-circuits-direct-actual.yml',import.meta.url),'utf8');
  const source=overlay.match(/const buildVersion = \(\) => \{[\s\S]*?\n\};/)?.[0];
  assert.ok(source,'actual webpack buildVersion source');

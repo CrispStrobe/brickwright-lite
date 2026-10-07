@@ -12,6 +12,7 @@ export const parentSha256='0cb78e14ac17c882fa4bfe62d65320f5fe27d66891d76ccaa1cd0
 const circuitAnchor="        await page.getByRole('tab',{name:/Circuit/}).click();\n";
 const reportAnchor='        interactions = {before,fullscreen,resized,circuitTargetPreserved:true,beforeTabs,afterTabs,tabText,guestMousePacket:';
 const observedAnchor="        assert.match(tabText,/PS2 DONE/,'guest mouse-program output survives tab roundtrip');";
+const returnToCodeAnchor="        assert.equal(await page.evaluate(() => window.__interactionTarget === window.__benchTarget),true,'same machine survives Circuit tab');\n        await page.getByRole('tab',{name:'Code',exact:true}).click();";
 
 // Runs only in the browser around physical VDP keys. It observes the trusted
 // DOM events and forwards the real target method with its original receiver;
@@ -189,6 +190,11 @@ export function deriveCircuitsProbe(){
  assert.equal(sha256(parent),parentSha256,'exact accepted FreeDOS interaction probe');
  const edits=[];
  let generated=replaceOnce(parent,circuitAnchor,circuitAnchor+circuitBlock,'Circuit tab',edits);
+ generated=replaceOnce(generated,returnToCodeAnchor,returnToCodeAnchor+"\n"+
+  "        const controllerView=page.getByRole('button',{name:'Controller',exact:true});\n"+
+  "        await controllerView.click();\n"+
+  "        assert.equal(await controllerView.getAttribute('aria-pressed'),'true','physical Controller view is selected for Code keyboard');\n"+
+  "        assert.equal(await page.getByRole('tab',{name:'Code',exact:true}).getAttribute('aria-selected'),'true','Code tab stays selected after view switch');",'Code controller view',edits);
  generated=replaceOnce(generated,observedAnchor,observedAnchor+"\n        assert.match(tabText,/^circuitok\\s*$/m,'Circuit guest output survives Code return');",'Code continuity',edits);
  generated=replaceOnce(generated,reportAnchor,reportAnchor.replace('guestMousePacket:','circuitDirect,guestMousePacket:'),'interaction receipt',edits);
  generated=replaceOnce(generated,"schema:'brickwright-lite.i80386-freedos-real-browser.v1'", "schema:'brickwright-lite.i80386-freedos-circuits-direct.v1'",'success schema',edits);
