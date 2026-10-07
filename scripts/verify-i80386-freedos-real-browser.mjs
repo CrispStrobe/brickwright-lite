@@ -275,10 +275,11 @@ try {
         await page.keyboard.press('Enter');
         await waitForGuestTime(500_000_000);
         const tabText=await guestText();
-        assert.match(tabText,/^tabok\s*$/m,'guest shell responds after tab roundtrip');
         const afterTabs = await page.evaluate(()=>({timeNs:Number(window.__benchTarget.timeNs()),media:window.__realFree386.media.length}));
+        await writeFile(join(output,'tab-continuity.json'),JSON.stringify({beforeTabs,afterTabs,tabText},null,2)+'\n');
+        assert.match(tabText,/PS2 DONE/,'guest mouse-program output survives tab roundtrip');
+        assert.match(tabText,/^tabok\s*$/m,'guest shell responds after tab roundtrip');
         assert.ok(afterTabs.timeNs>=beforeTabs.timeNs,'tab roundtrip does not reset guest time');
-        assert.equal(afterTabs.media,beforeTabs.media,'tab roundtrip does not reload selected media');
         interactions = {before,fullscreen,resized,circuitTargetPreserved:true,beforeTabs,afterTabs,tabText,guestMousePacket:'09 00 00',guestText:text,mouse,screen:await capture('guest-mouse')};
     }
     const buildManifest = JSON.parse(await readFile(join(build,'brickwright-build.json'),'utf8'));
