@@ -128,7 +128,7 @@ try {
     if (await pane.getAttribute('aria-pressed') !== 'true') await pane.click();
     await page.locator('[class*="green-flag_green-flag"]').first().click();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
-        .flatMap(target => Object.values(target.variables)).some(variable => variable.name === 'handoff' && variable.value === 17));
+        .flatMap(target => Object.values(target.variables)).some(variable => variable.name === 'handoff' && Number(variable.value) === 17));
     const after = await archive('after');
     assert.deepEqual(artworkShape(after), artworkShape(before), 'all sprite/backdrop descriptors remain exact');
     assert.deepEqual(after.assets, before.assets, 'raw asset bytes remain exact, including the edit after From blocks');
