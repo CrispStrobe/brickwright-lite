@@ -166,6 +166,16 @@ try {
     report.status = 'passed';
 } catch (error) {
     report.status = 'failed'; report.failure = error.stack || String(error);
+    report.runtime = await page.evaluate(() => {
+        const state = window.__brickwrightStore?.getState()?.scratchGui;
+        const runtime = state?.vm?.runtime;
+        return {device: runtime?.bwDeviceId, stcDevice: runtime?.stc?.device,
+            stepping: Boolean(runtime?._steppingInterval), status: state?.vmStatus,
+            threads: runtime?.threads.map(thread => ({status: thread.status, stack: thread.stack})),
+            targets: runtime?.targets.map(target => ({name: target.getName(), id: target.id,
+                variables: Object.values(target.variables),
+                scripts: Object.values(target.blocks._blocks).filter(block => block.topLevel)}))};
+    }).catch(error => ({error: String(error)}));
     report.body = (await page.locator('body').innerText()).slice(-10000);
     await page.screenshot({path: out.replace(/\.json$/, '') + '-failure.png'}).catch(() => {});
     throw error;
