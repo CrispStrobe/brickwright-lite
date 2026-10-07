@@ -1,6 +1,6 @@
 # FreeDOS direct Circuit input gate
 
-**Unrun source checkpoint.** The optional browser gate extends the accepted
+**Guest unrun at the current source checkpoint.** The optional browser gate extends the accepted
 [FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) from its exact
 source bytes. It keeps the same owned marker HDD, FreeDOS floppy, Widgets
 boot/listing/fullscreen/PS/2 steps and Code roundtrip. While the Circuit tab
@@ -23,6 +23,15 @@ official FreeDOS 1.4 floppy and owned HDD, then keeps original screenshots,
 guest text, clocks and first-failure logs. It uploads no guest media or app
 bundle. The result must be audited against the original artifact before any
 acceptance claim.
+
+The [first hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37627418944)
+stopped before build completion or guest launch. The installed-package verifier
+rejected the exact GitHub HTTPS checkout origin without the optional `.git`
+suffix. The narrow correction accepts that exact owner/repository URL while
+retaining the pinned commit, package payload and single-engine checks. The
+first artifact's inventory named the generated probe, but its upload omitted
+the `.mjs` file; the corrected workflow retains it for independent rehashing.
+That attempt establishes no Circuit key or guest result.
 
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,

@@ -175,4 +175,5 @@ jobs:
             ${{ runner.temp }}/freedos-circuits-evidence/*.txt
             ${{ runner.temp }}/freedos-circuits-evidence/*.stdout
             ${{ runner.temp }}/freedos-circuits-evidence/*.stderr
+            ${{ runner.temp }}/freedos-circuits-evidence/*.mjs
             ${{ runner.temp }}/freedos-circuits-evidence/*.png
