@@ -170,12 +170,10 @@ try {
     await openCode();
     await page.getByRole('button',{name:/From blocks/}).first().click();
     await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor({state:'visible'});
-    const generated=await readCode();assert.match(generated,/STAGE:/);assert.match(generated,/SPRITE /);
-    // Add ordinary authored hats: show this backdrop and hide the default sprite
-    // so a full-screen comparison measures only the user's background.
+    const generated=await readCode();assert.match(generated,/BACKDROP arcade-background/);
+    // From Blocks can legitimately contain only Stage declarations.
     const backdrop=(await stageState()).name;
-    const program=generated.replace(/^SPRITE /m,`  WHEN flag clicked:\n    switch backdrop to ${JSON.stringify(backdrop)}\nSPRITE `)
-        .trimEnd()+'\n  WHEN flag clicked:\n    hide\n';
+    const program=generated.trimEnd()+`\nWHEN flag clicked:\n  switch backdrop to ${JSON.stringify(backdrop)}\nSPRITE Game:\n  WHEN flag clicked:\n    hide\n`;
     await editor().fill(program);
     const prior=(await stageState()).id;
     await page.getByRole('button',{name:/To blocks/}).first().click();
