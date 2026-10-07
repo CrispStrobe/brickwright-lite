@@ -125,7 +125,7 @@ const MAX_ANIMATION_FRAMES = 24;
 const SPRITE_PROPERTIES = new Set([
     'x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
     'width', 'height', 'left', 'right', 'top', 'bottom',
-    'image', 'kind', 'lifespan', 'z'
+    'image', 'kind', 'lifespan', 'z', 'rotation', 'rotationDegrees', 'data'
 ]);
 
 const playerVar = (base, player) => (player > 1 ? `${base}${player}` : base);
@@ -940,7 +940,7 @@ class ArcadeTranslator extends BaseTranslator {
         const handle = node?.type === 'Member' && this.handleRef(node.object);
         if (handle) {
             if (['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan'].includes(node.name)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(node.name)) {
                 return `arcade property ${node.name} of ${handle}`;
             }
             if (node.name === 'image') return `arcade image of ${handle}`;
@@ -1512,7 +1512,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (handle) {
             const property = expr.left.name;
             if (!['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan'].includes(property)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(property)) {
                 push(this.note(`${this.path(expr.left)} = … — unsupported Arcade handle property`));
                 return;
             }
@@ -3032,7 +3032,7 @@ const translateSideProjectiles = (ast, assets) => {
         if (st.type === 'ExpressionStatement' && st.expr?.type === 'Assignment' &&
             st.expr.left?.type === 'Member' && st.expr.left.object?.type === 'Identifier' &&
             vars.has(st.expr.left.object.name) &&
-            ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'lifespan'].includes(st.expr.left.name)) continue;
+            ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(st.expr.left.name)) continue;
         return null;
     }
     t.claimNames(ast);

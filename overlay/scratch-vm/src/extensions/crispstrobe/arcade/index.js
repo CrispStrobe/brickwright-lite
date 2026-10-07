@@ -18,6 +18,7 @@ module.exports = makeExt(`// Name: Arcade
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
   const imageEngine = (${require('./image').toString()})(speechPalette, ${require('./image-pxt').toString()});
+  const {RotatedBoundingBox} = (${require('./rotation-pxt').toString()})();
 
   const spriteFlags = {AutoDestroy: 4, StayInScreen: 8, DestroyOnWall: 16, BounceOnWall: 32, Invisible: 128, RelativeToCamera: 512,
     GhostThroughTiles: 1024, GhostThroughWalls: 2048, GhostThroughSprites: 4096, Ghost: 7168};
@@ -534,7 +535,8 @@ module.exports = makeExt(`// Name: Arcade
           ,physicsEngineProperties: {acceptReporters:false,items:['maxSpeed','minStep','maxStep']}
           ,scaleAnchors:{acceptReporters:true,items:[{text:'middle',value:'0'},{text:'top',value:'1'},{text:'left',value:'2'},{text:'right',value:'4'},{text:'bottom',value:'8'},{text:'top left',value:'3'},{text:'top right',value:'5'},{text:'bottom left',value:'10'},{text:'bottom right',value:'12'}]}
           ,spriteProperties: {acceptReporters: false, items: ['x', 'y', 'left', 'right', 'top', 'bottom',
-            'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'width', 'height', 'z', 'lifespan']}
+            'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'width', 'height', 'z', 'lifespan',
+            'rotation', 'rotationDegrees', 'data']}
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
@@ -1426,6 +1428,17 @@ module.exports = makeExt(`// Name: Arcade
       for(const [property,storage] of [['sx','_sx'],['sy','_sy']])Object.defineProperty(sprite,property,{enumerable:true,configurable:true,
         get(){return this[storage]/256;},set(value){const x=this.x,y=this.y;this[storage]=(Math.max(0,Number(value))*256)|0;extension._recalcSpriteSize(this);this.y=y;this.x=x;}});
       Object.defineProperty(sprite,'scale',{enumerable:true,configurable:true,get(){return Math.max(this.sx,this.sy);},set(value){this.sy=value;this.sx=value;}});
+      // PXT Sprite.rotation (radians): the first rotation gives the sprite a
+      // rotated bounding box, whose axis-aligned size becomes its width and
+      // height; the center stays put. The box is not enumerable: it points back
+      // at the sprite, and a destroyed sprite's {...copy} must not carry it.
+      Object.defineProperty(sprite,'rotation',{enumerable:true,configurable:true,
+        get(){return this._rotatedBBox?this._rotatedBBox.rotation:0;},
+        set(value){const x=this.x,y=this.y;
+          if(!this._rotatedBBox)Object.defineProperty(this,'_rotatedBBox',{enumerable:false,configurable:true,writable:true,value:new RotatedBoundingBox(this,this.width,this.height)});
+          this._rotatedBBox.setRotation(Number(value)||0);extension._recalcSpriteSize(this);this.x=x;this.y=y;}});
+      Object.defineProperty(sprite,'rotationDegrees',{enumerable:true,configurable:true,
+        get(){return this.rotation*180/Math.PI;},set(value){this.rotation=Number(value)*Math.PI/180;}});
       for (const axis of ['x', 'y']) {
         const storage = axis === 'x' ? '_fx' : '_fy', size = axis === 'x' ? 'width' : 'height';
         Object.defineProperty(sprite, axis, {enumerable:true, configurable:true,
@@ -1450,8 +1463,15 @@ module.exports = makeExt(`// Name: Arcade
       }
     }
     _recalcSpriteSize(sprite) {
-      sprite.width=(((sprite._imageWidth*sprite.sx)*256)|0)/256;
-      sprite.height=(((sprite._imageHeight*sprite.sy)*256)|0)/256;
+      if(sprite._rotatedBBox){
+        // PXT recalcSize: the rotated box takes the scaled image size, and the
+        // sprite's size is the box's (an integer).
+        sprite._rotatedBBox.setDimensions(sprite._imageWidth*sprite.sx,sprite._imageHeight*sprite.sy);
+        sprite.width=sprite._rotatedBBox.width;sprite.height=sprite._rotatedBBox.height;
+      } else {
+        sprite.width=(((sprite._imageWidth*sprite.sx)*256)|0)/256;
+        sprite.height=(((sprite._imageHeight*sprite.sy)*256)|0)/256;
+      }
       delete sprite._wallHitbox;
     }
     *_setSpriteScalePropertySteps(sprite,property,value,util){
@@ -1593,7 +1613,10 @@ module.exports = makeExt(`// Name: Arcade
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       const name = String(args.PROPERTY);
       if (!sprite || !['x', 'y', 'left', 'right', 'top', 'bottom',
-        'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'width', 'height', 'z', 'lifespan'].includes(name)) return;
+        'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'width', 'height', 'z', 'lifespan',
+        'rotation', 'rotationDegrees', 'data'].includes(name)) return;
+      // PXT Sprite.data holds any value; it is stored as given, not as a number.
+      if (name === 'data') { sprite.data = args.VALUE; this._changed(); return; }
       const value = Number(args.VALUE);
       if(['sx','sy','scale'].includes(name)){
         const finish=()=>{this._renderSpriteImageIfPresent(sprite);this._positionSprite(sprite.id);this._changed();};
@@ -1612,9 +1635,9 @@ module.exports = makeExt(`// Name: Arcade
         sprite._fx = oldX; sprite._fy = oldY;moved=this._moveSpriteExplicit(sprite, dx, dy, util);
       }
       const finish = () => {
-        if(['sx','sy','scale'].includes(name))this._renderSpriteImageIfPresent(sprite);
+        if(['sx','sy','scale','rotation','rotationDegrees'].includes(name))this._renderSpriteImageIfPresent(sprite);
         this._clampSprite(sprite);
-        if (['sx','sy','scale','x', 'y', 'left', 'right', 'top', 'bottom'].includes(name)) this._positionSprite(String(args.ID));
+        if (['sx','sy','scale','rotation','rotationDegrees','x', 'y', 'left', 'right', 'top', 'bottom'].includes(name)) this._positionSprite(String(args.ID));
         this._changed();
       };
       return moved?.then ? moved.then(finish) : finish();
@@ -1624,6 +1647,8 @@ module.exports = makeExt(`// Name: Arcade
       return !!sprite?._wallObstacles?.[Number(args.DIRECTION)];
     }
     _wallHitbox(sprite) {
+      // PXT game.calculateHitBox: a rotated sprite's hitbox is its whole box.
+      if(sprite._rotatedBBox)return {left:0,top:0,width:sprite.width,height:sprite.height};
       const image = this._imageForSprite(sprite.id, {quiet: true}), pixels = image?.pixels || sprite.mask;
       let left = 0, top = 0, right = sprite._imageWidth - 1, bottom = sprite._imageHeight - 1;
       if (pixels) {
@@ -2225,6 +2250,16 @@ module.exports = makeExt(`// Name: Arcade
     }
     _scaledSpriteImage(sprite,window=this._spriteRasterWindow(sprite)){
       const source=sprite.image,{x,y,width,height}=window;
+      if(sprite._rotatedBBox){
+        // PXT drawSprite: imageDrawScaledRotated at the sprite's left/top, here
+        // into a box-sized raster, then the visible window of it.
+        const fullWidth=Math.max(0,sprite.width|0),fullHeight=Math.max(0,sprite.height|0);
+        const full={width:fullWidth,height:fullHeight,pixels:new Uint8Array(fullWidth*fullHeight)};
+        if(fullWidth && fullHeight)imageEngine.drawScaledRotated(full,source,0,0,sprite.sx,sprite.sy,sprite.rotation);
+        const pixels=new Uint8Array(width*height);
+        for(let row=0;row<height;row++)for(let col=0;col<width;col++)pixels[row*width+col]=full.pixels[(row+y)*fullWidth+col+x];
+        return {width,height,pixels};
+      }
       if(sprite._sx===256 && sprite._sy===256 && x===0 && y===0 && width===source.width && height===source.height)return source;
       const pixels=new Uint8Array(width*height);
       const fullWidth=Math.max(0,sprite.width|0),fullHeight=Math.max(0,sprite.height|0);
@@ -2236,6 +2271,23 @@ module.exports = makeExt(`// Name: Arcade
         for(let col=0,sx=x*dx;col<width;col++,sx+=dx)
           pixels[row*width+col]=source.pixels[(sy>>16)*source.width+(sx>>16)];
       return {width,height,pixels};
+    }
+    // PXT Sprite.overlapsWith past the hitbox test, for a rotated sprite (\`a\`
+    // is \`this\`): the rotated boxes first, then the simulator's pixel test,
+    // with \`other\`'s image as the destination exactly as PXT passes it.
+    _rotatedSpriteOverlap(a,b){
+      if(!a._rotatedBBox)return this._rotatedSpriteOverlap(b,a);
+      const ai=a.image||this._imageForSprite(a.id,{quiet:true}),bi=b.image||this._imageForSprite(b.id,{quiet:true});
+      if(!ai || !bi)return true;
+      // this.left - other.left, truncated by the helper's \`| 0\` (not each edge floored).
+      const dx=((a._fx-b._fx)/256)|0,dy=((a._fy-b._fy)/256)|0;
+      if(b._rotatedBBox){
+        if(!a._rotatedBBox.overlaps(b._rotatedBBox))return false;
+        return imageEngine.overlapsTwoScaledRotated(bi,dx,dy,b.sx,b.sy,b.rotation,ai,a.sx,a.sy,a.rotation);
+      }
+      const bl=b._fx/256,bt=b._fy/256;
+      if(!a._rotatedBBox.overlapsAABB(bl,bt,bl+b.width,bt+b.height))return false;
+      return imageEngine.overlapsScaledRotated(bi,dx,dy,ai,a.sx,a.sy,a.rotation);
     }
     _scaledSpriteOverlap(a,b,am,bm){
       if(!a.sx || !a.sy || !b.sx || !b.sy)return false;
@@ -2325,6 +2377,7 @@ module.exports = makeExt(`// Name: Arcade
       const al=a._fx+ab.left*256,ar=al+(ab.width-1)*256,at=a._fy+ab.top*256,ad=at+(ab.height-1)*256;
       const bl=b._fx+bb.left*256,br=bl+(bb.width-1)*256,bt=b._fy+bb.top*256,bd=bt+(bb.height-1)*256;
       if(al>br || at>bd || ar<bl || ad<bt)return false;
+      if(a._rotatedBBox || b._rotatedBBox)return this._rotatedSpriteOverlap(a,b);
       const am = this._spriteMask(a), bm = this._spriteMask(b);
       if (!am || !bm) return true;
       if(a._sx!==256 || a._sy!==256 || b._sx!==256 || b._sy!==256)return this._scaledSpriteOverlap(a,b,am,bm);
