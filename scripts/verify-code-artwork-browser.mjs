@@ -124,6 +124,8 @@ try {
     await page.keyboard.press('Control+a');
     await page.keyboard.insertText(`GLOBAL handoff = 0\n${originalCode.trimEnd()}\n  WHEN flag clicked:\n    set handoff to 17\n`);
     await apply();
+    const pane = page.locator('[data-right-pane-toggle]');
+    if (await pane.getAttribute('aria-pressed') !== 'true') await pane.click();
     await page.locator('[class*="green-flag_green-flag"]').first().click();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
         .flatMap(target => Object.values(target.variables)).some(variable => variable.name === 'handoff' && variable.value === 17));
