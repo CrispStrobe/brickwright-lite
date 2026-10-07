@@ -668,7 +668,10 @@ class ArcadeTranslator extends BaseTranslator {
             return `arcade player (${playerOf(name)}) ${property}`;
         }
         switch (name) {
-        case 'info.score': return this.handleTemplates?'arcade score':'score';
+        // Arcade's score is the game's on-screen score: the extension's own, on both
+        // paths. (The fixed-sprite path used to keep it in a Scratch variable named
+        // `score`, which the export could not tell from a user's, so the HUD was lost.)
+        case 'info.score': return 'arcade score';
         case 'info.life': return 'lives';
         case 'game.askForNumber':
             if (a.length === 1) return `arcade ask number ${this.expr(a[0])}`;
@@ -714,7 +717,7 @@ class ArcadeTranslator extends BaseTranslator {
             if (/^info\.player\d\./.test(name || '')) {
                 const player = playerOf(name);
                 const method = name.split('.').pop();
-                if (method === 'score') return playerVar('score', player);
+                if (method === 'score') return `arcade player (${player}) score`;
                 if (method === 'life') return playerVar('lives', player);
                 if (method === 'hasLife') {
                     if (this.handleTemplates) {this.usesArrays = true; return `compare value (${playerVar('lives', player)}) op ">" with (0)`;}
@@ -1270,21 +1273,21 @@ class ArcadeTranslator extends BaseTranslator {
             return;
 
         case 'info.setScore':
-            push(`${this.handleTemplates?'arcade set score to':'set score to'} ${this.expr(a[0])}`);
+            push(`arcade set score to ${this.expr(a[0])}`);
             return;
-        // The per-player forms write the same variables the plain API does,
+        // The per-player forms: player one IS the plain score in the extension,
         // so a game that mixes both stays consistent.
         case 'info.player1.setScore':
         case 'info.player2.setScore':
         case 'info.player3.setScore':
         case 'info.player4.setScore':
-            push(`set ${playerVar('score', playerOf(name))} to ${this.expr(a[0])}`);
+            push(`arcade set score player (${playerOf(name)}) to (${this.expr(a[0])})`);
             return;
         case 'info.player1.changeScoreBy':
         case 'info.player2.changeScoreBy':
         case 'info.player3.changeScoreBy':
         case 'info.player4.changeScoreBy':
-            push(`change ${playerVar('score', playerOf(name))} by ${this.expr(a[0])}`);
+            push(`arcade change score player (${playerOf(name)}) by (${this.expr(a[0])})`);
             return;
         case 'info.player1.setLife':
         case 'info.player2.setLife':
@@ -1299,7 +1302,7 @@ class ArcadeTranslator extends BaseTranslator {
             push(`change ${playerVar('lives', playerOf(name))} by ${this.expr(a[0])}`);
             return;
         case 'info.changeScoreBy':
-            push(`${this.handleTemplates?'arcade change score by':'change score by'} ${this.expr(a[0])}`);
+            push(`arcade change score by ${this.expr(a[0])}`);
             return;
         case 'info.setLife':
             push(`set lives to ${this.expr(a[0])}`);

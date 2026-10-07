@@ -18,16 +18,16 @@ test('life zero callback waits for life to be granted, then rearms after revival
     const variable = name => run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
         .find(value => value.name === name);
     const step = () => { for (let i = 0; i < 10; i++) run.vm.runtime._step(); };
-    assert.equal(Number(variable('score').value), 0);
+    assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score ?? 0), 0);
     variable('lives').value = 2;
     step();
-    assert.equal(Number(variable('score').value), 0);
+    assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score ?? 0), 0);
     variable('lives').value = 0;
     step();
-    assert.equal(Number(variable('score').value), 1);
+    assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score ?? 0), 1);
     assert.equal(Number(variable('lives').value), 2);
     step();
     variable('lives').value = 0;
     step();
-    assert.equal(Number(variable('score').value), 2);
+    assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score ?? 0), 2);
 });
