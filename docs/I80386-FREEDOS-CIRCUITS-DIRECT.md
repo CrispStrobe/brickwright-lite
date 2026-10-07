@@ -1,0 +1,30 @@
+# FreeDOS direct Circuit input gate
+
+**Unrun source checkpoint.** The optional browser gate extends the accepted
+[FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) from its exact
+source bytes. It keeps the same owned marker HDD, FreeDOS floppy, Widgets
+boot/listing/fullscreen/PS/2 steps and Code roundtrip. While the Circuit tab
+remains selected, it focuses the visible VDP face, sends the physical browser
+keys for `echo circuitok`, and requires `circuitok` to appear as a separate
+guest shell output line in the Circuit VDP **canvas pixels**. The observation
+reads rendered pixels; it does not write guest memory or call the diagnostic
+target's input API. After returning to Code, the probe requires both that
+output and `PS2 DONE` to remain visible, a working `tabok` command, and
+nondecreasing guest time.
+
+The source-only control authenticates the earlier probe SHA-256
+`0cb78e14ac17c882fa4bfe62d65320f5fe27d66891d76ccaa1cd01436d75fc92`,
+proves a reversible derivative and parses the generated module. It does not
+prove the Circuit VDP receives a key in a running browser. Run the actual
+gate only from an exact reviewed pull-request head with the dedicated
+`x86-freedos-circuits-actual` label. The hosted workflow builds that same app
+head, verifies the installed board and Circuit UI pins, authenticates the
+official FreeDOS 1.4 floppy and owned HDD, then keeps original screenshots,
+guest text, clocks and first-failure logs. It uploads no guest media or app
+bundle. The result must be audited against the original artifact before any
+acceptance claim.
+
+This bounded input check does not establish drag capture beyond the canvas,
+browser-reserved key handling, an INT33 mouse application, disk writeback,
+or a general native 386 backend. A live terminal CLI scenario remains a
+separate acceptance task.

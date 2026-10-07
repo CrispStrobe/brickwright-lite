@@ -1,0 +1,178 @@
+name: FreeDOS direct Circuits input actual browser gate
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freedos-circuits-${{ github.event.pull_request.head.sha }}
+  cancel-in-progress: false
+
+jobs:
+  browser:
+    if: >-
+      github.event.label.name == 'x86-freedos-circuits-actual' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    env:
+      BW_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      NODE_OPTIONS: ''
+      NODE_PATH: ''
+      LD_PRELOAD: ''
+      LD_AUDIT: ''
+      NODE_V8_COVERAGE: ''
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: app
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: CrispStrobe/bw-board
+          ref: a1126312288867127343c2f9bbdfcd2856a18508
+          path: board
+          persist-credentials: false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: CrispStrobe/bw-circuit-ui
+          ref: 4f35519f156916bc30e7fcc2948e6dcc27fae394
+          path: circuit-ui
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.23.3
+      - name: Authenticate source and materialize the exact probe
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/freedos-circuits-evidence"
+          mkdir "$evidence"
+          test "$(git -C app rev-parse HEAD)" = "$BW_EXPECTED_HEAD"
+          test "$(git -C board rev-parse HEAD)" = a1126312288867127343c2f9bbdfcd2856a18508
+          test "$(git -C circuit-ui rev-parse HEAD)" = 4f35519f156916bc30e7fcc2948e6dcc27fae394
+          test -z "$(git -C app status --porcelain)"
+          test "$(node --version)" = v22.23.3
+          cd app
+          timeout 30s node --test test/i80386-freedos-circuits-source.test.mjs \
+            > "$evidence/source-control.stdout" 2> "$evidence/source-control.stderr"
+          timeout 30s node scripts/verify-i80386-freedos-circuits-direct.mjs \
+            "$evidence/circuit-probe.mjs" > "$evidence/materialize.stdout" 2> "$evidence/materialize.stderr"
+          node --check "$evidence/circuit-probe.mjs"
+          sha256sum package.json package-lock.json vendor-pins.json scripts/verify-i80386-freedos-real-browser.mjs \
+            > "$evidence/source-input-sha256.txt"
+      - name: Install and build the same-head app
+        timeout-minutes: 30
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd app
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run vendor
+          node scripts/integrate.mjs
+          cd packages/scratch-gui
+          npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+          cd ../..
+          node scripts/apply-vm-overlay.mjs
+          node scripts/apply-paint-overlay.mjs
+          node scripts/apply-render-overlay.mjs
+          node scripts/pin-packages.mjs --verify-installed \
+            --source bw-board=../board --source bw-circuit-ui=../circuit-ui \
+            --installed-root node_modules --installed-root packages/scratch-gui/node_modules
+          node scripts/package-upstream-notices.mjs --check
+          cd packages/scratch-gui
+          NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+      - name: Obtain and authenticate official free guest media
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/freedos-circuits-evidence"
+          media="$RUNNER_TEMP/freedos-circuits-media"
+          mkdir "$media"
+          timeout 180s curl --fail --location --silent --show-error --retry 2 \
+            https://download.freedos.org/1.4/FD14-FloppyEdition.zip \
+            -o "$media/FD14-FloppyEdition.zip" 2> "$evidence/media-download.stderr"
+          echo '45b1fa7c52dd996c3bfa5e352ffcd410781b952a6ad629f15a4c9ec4bbaefc5a  '"$media/FD14-FloppyEdition.zip" | sha256sum --check
+          unzip -p "$media/FD14-FloppyEdition.zip" 120m/x86BOOT.img > "$media/x86BOOT-1200.img"
+          echo '03df6088be016e57a6c44275f5bb9ab0244db71de1360957fd76ba83243b6a77  '"$media/x86BOOT-1200.img" | sha256sum --check
+          node app/scripts/prepare-i80386-freedos-interaction.mjs \
+            "$GITHUB_WORKSPACE/board" "$media/type1-hdd.img" \
+            > "$evidence/owned-hdd.json" 2> "$evidence/owned-hdd.stderr"
+          sha256sum "$media/FD14-FloppyEdition.zip" "$media/x86BOOT-1200.img" "$media/type1-hdd.img" \
+            > "$evidence/media-sha256.txt"
+      - name: Bind app build, pins, probe and media before guest
+        timeout-minutes: 3
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'JS' > "$RUNNER_TEMP/freedos-circuits-evidence/admission.json"
+          import assert from 'node:assert/strict';
+          import {createHash} from 'node:crypto';
+          import {readFileSync} from 'node:fs';
+          import {join} from 'node:path';
+          const sha=b=>createHash('sha256').update(b).digest('hex');
+          const app=join(process.env.GITHUB_WORKSPACE,'app');
+          const evidence=join(process.env.RUNNER_TEMP,'freedos-circuits-evidence');
+          const build=join(app,'packages/scratch-gui/build');
+          const manifest=JSON.parse(readFileSync(join(build,'brickwright-build.json')));
+          const source=JSON.parse(readFileSync(join(evidence,'circuit-probe.mjs.source.json')));
+          const pins=JSON.parse(readFileSync(join(app,'vendor-pins.json')));
+          assert.equal(manifest.commit,process.env.BW_EXPECTED_HEAD,'same-head app build');
+          assert.equal(source.probeHead,process.env.BW_EXPECTED_HEAD,'same-head probe');
+          assert.equal(sha(readFileSync(join(evidence,'circuit-probe.mjs'))),source.generatedSha256);
+          assert.equal(pins['bw-board'],'a1126312288867127343c2f9bbdfcd2856a18508');
+          assert.equal(pins['bw-circuit-ui'],'4f35519f156916bc30e7fcc2948e6dcc27fae394');
+          console.log(JSON.stringify({schema:'brickwright-lite.i80386-freedos-circuits-admission.v1',
+            appHead:manifest.commit,probeHead:source.probeHead,probeSha256:source.generatedSha256,
+            buildIndexSha256:sha(readFileSync(join(build,'index.html'))),pins}));
+          JS
+      - name: Install bounded Chromium and execute actual Circuit guest input
+        timeout-minutes: 18
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd app
+          for attempt in 1 2 3; do
+            if timeout 300s npx playwright install --with-deps chromium; then break; fi
+            test "$attempt" -lt 3
+          done
+          evidence="$RUNNER_TEMP/freedos-circuits-evidence"
+          media="$RUNNER_TEMP/freedos-circuits-media"
+          export FREEDOS_PROBE_REPO_ROOT="$GITHUB_WORKSPACE/app"
+          export FREEDOS_GUI_BUILD="$GITHUB_WORKSPACE/app/packages/scratch-gui/build"
+          export FREEDOS_IMAGE="$media/x86BOOT-1200.img"
+          export FREEDOS_HDD="$media/type1-hdd.img"
+          export FREEDOS_PROBE_OUTPUT="$evidence"
+          export FREEDOS_INTERACTION=1
+          export FREEDOS_MAX_MS=600000
+          timeout 650s node "$evidence/circuit-probe.mjs" \
+            > "$evidence/guest.stdout" 2> "$evidence/guest.stderr"
+      - name: Inventory bounded original evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/freedos-circuits-evidence" <<'PY'
+          import hashlib,json,pathlib,sys
+          root=pathlib.Path(sys.argv[1]);root.mkdir(exist_ok=True)
+          files={p.name:{'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+                 for p in sorted(root.iterdir()) if p.is_file() and p.name!='artifact-inventory.json'}
+          (root/'artifact-inventory.json').write_text(json.dumps({'files':files},indent=2)+'\n')
+          PY
+      - name: Retain first result or failure without media/build binaries
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: freedos-circuits-direct-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/freedos-circuits-evidence/*.json
+            ${{ runner.temp }}/freedos-circuits-evidence/*.txt
+            ${{ runner.temp }}/freedos-circuits-evidence/*.stdout
+            ${{ runner.temp }}/freedos-circuits-evidence/*.stderr
+            ${{ runner.temp }}/freedos-circuits-evidence/*.png
