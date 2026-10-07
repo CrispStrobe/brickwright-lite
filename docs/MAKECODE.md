@@ -568,7 +568,9 @@ SB3 reopen, native binding, controller stop/restart, rename/reorder and original
 Arcade export/reimport playback. All19,200 pixels match original Arcade.
 Exports now include native animation gallery files, including unused published
 resources. Native animation imports preserve playback and typed image-array
-behaviour. Editable timeline/layers/UUID recovery through MakeCode and original
-Assets editor qualification remain open.
+behaviour. A validated companion also carries layers, frame IDs and resource UUIDs;
+matching conversion imports recover that source separately from playback code.
+Restoring it into Pixel timelines and original Assets editor qualification remain
+open. The CLI reads current SB3 artwork bundles and exports these resources too.
 See [the authoring gap ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding)
 for the remaining acceptance criteria.

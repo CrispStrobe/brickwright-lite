@@ -1,12 +1,13 @@
 # Native Arcade animation interchange
 
 Status: native gallery export and behavioural import implemented and locally
-tested against original PXT. Persistent resource reconstruction, rich-source
-recovery and original-editor qualification remain open. This extends U04 in the
+tested against original PXT. Validated rich-source companion transport is
+implemented; persistent GUI resource reconstruction and original-editor
+qualification remain open. This extends U04 in the
 [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding).
 The uniform-resource production-browser journey is locally qualified as recorded
-in the ledger. Original native animation asset editing and rich-resource
-interchange remain open. No locked corpus partial result is closed by these
+in the ledger. Original native animation asset editing and editable GUI resource recovery
+remain open. No locked corpus partial result is closed by these
 format or synthetic authoring tests alone.
 
 ## Reached format boundary
@@ -76,6 +77,28 @@ The saved-zero scalar test separately passes against original PXT. Earlier
 failures remain preserved, including a stopped preview server and a harness
 assertion that read shared dimensions from individual decoded frames.
 
+## Companion transport qualification
+
+At product source `55da1b20e`, the explicit production build passes. The browser
+gate passes seven journeys: its downloaded companion recovers exactly the
+current source document, including UUID, frame IDs, layers and palette. A real
+malformed companion file import reports the error and preserves loaded target
+identities, Code and published resources. Valid file reimport, controller
+stop/restart, native gallery data and all19,200 original-PXT pixels still pass;
+there are no page errors or compiler network attempts. The recovered document
+is not yet installed into an editable imported Pixel timeline.
+
+The affected project/import/export/overlay batch passes20 tests; the final
+companion/project/overlay batch passes17, including native galleries larger than
+128 assets. All seven existing CLI tests pass, including firmware roundtrips.
+Companion unit cases cover native edits, missing/unused/deleted entries, palette
+remapping, source validation, duplicate identities and bounded malformed input.
+The first combined run passed24/25: its new file fixture passed a source string
+where the byte importer requires bytes; the corrected three project tests pass.
+This fixture failure is preserved, alongside the previous hosted single stale
+unclaimed-animation diagnostic test. Native fresh-array runtime semantics are
+unchanged by source recovery.
+
 ## Original generated asset contract
 
 Original PXT `emitProjectImages(jres)` emits `images.g.ts` with
@@ -114,15 +137,20 @@ names and generated variable collisions.
    animation galleries are parsed separately from image assets. Tagged lookups
    lower to typed image arrays with original allocation and alias semantics.
    Malformed entries and ambiguous aliases produce diagnostics. Unused assets
-   are validated but do not yet become editable GUI resources; rich documents
-   and stable UUIDs are not reconstructed by this lowering.
-3. **Rich source:** design a versioned companion file listed in `pxt.json.files`,
-   keyed by native asset ID. Store UUID, layered document and normalized
-   dimensions/frame pixels/order/interval/palette revision. Reattach original
-   layers only after exact validation against the current native asset. On a
-   MakeCode edit, retain the edited native frames and issue a named stale-source
-   diagnostic. Reject malformed or duplicate metadata atomically. Without valid
-   metadata allocate a new UUID; do not infer identity from a mutable name.
+   are validated but do not yet become editable GUI resources. Rich documents
+   and stable UUIDs arrive separately through companion recovery below; this
+   lowering preserves the native factory allocation semantics.
+3. **Validated rich-source transport implemented; GUI restoration open:**
+   `brickwright-animation.json` is listed in `pxt.json.files`. Version1 records
+   bind canonical native asset IDs to complete validated source documents and
+   exact exported projections. A no-edit match recovers UUIDs, frame IDs,
+   layers and palette; native name changes update the label. Pixels, order,
+   dimensions, timing or project-palette edits invalidate old source with a named
+   warning while retaining native assets. Malformed/future metadata or duplicate
+   bindings fail atomically. Missing metadata remains valid native playback.
+   The companion is limited to16MiB and128 source records; this count limit does
+   not restrict native gallery imports. Recovered documents are separate from
+   image-array code and are not yet installed into an editable GUI library.
 4. **Original GUI:** open the exported project in actual MakeCode Assets, locate
    the animation, edit name/frame order/pixels/timing, save/download and reimport
    in Brickwright. Verify native asset-backed blocks and test whether the
@@ -136,9 +164,11 @@ names and generated variable collisions.
 ## Next persistent-resource transaction
 
 Keep native resources separate from costume imports. `arcade-assets.js` already
-returns all valid animation entries, including unused entries. Carry these
-through `arcadeToPseudocode`, `importProjectFiles` and `applyMakeCodeImport` into
-the existing compile transaction. Generate validated resource carrier costumes
+returns all valid animation entries, including unused entries. These now travel
+through `arcadeToPseudocode` and `importProjectFiles` with independently validated
+rich documents and named recovery warnings. `applyMakeCodeImport` displays those
+warnings but does not yet install the resources. Carry them into the existing
+compile transaction next. Generate validated resource carrier costumes
 and artwork metadata inside the SB3 before `vm.loadProject`, then use the
 existing artwork/resource synchronization and Code artwork retention. Clear
 pending imports at the same unrelated-file/example/project boundaries as other

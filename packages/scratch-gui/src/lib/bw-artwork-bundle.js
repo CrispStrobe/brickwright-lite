@@ -407,4 +407,4 @@ const attachArtwork = async (blob, vm) => {
 export {ARTWORK_PATH, ARTWORK_FORMAT, ARTWORK_VERSION, inspectArtwork, applyArtwork,
     attachArtwork, writeArtworkToZip, artworkBundleVersion, getCostumeDocument, setCostumeDocument,
     resetCostumeDocument, copyCostumeDocument, captureTargetArtwork, restoreTargetArtwork,
-    newAnimationResourceId, syncAnimationResources};
+    newAnimationResourceId, syncAnimationResources, validateDocument};

@@ -10,6 +10,7 @@ import JSZip from 'jszip';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
+import {makeCodeSourceHex} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
 import {decodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
 import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-companion.js';
 import {compile} from './lib/pxt-node.mjs';
@@ -341,6 +342,16 @@ try{
         assert.deepEqual(matchingScreen,nativeScreen,'all19200actual Brickwright and original PXT pixels agree at the same frame');
         report.originalPxt={compiled:true,sequence:originalSequence,pixelsCompared:screen.length,actualNativePixelsCompared:matchingScreen.length,compilerNetworkAttempts:compiled.netAttempts};
         if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
+        const priorIds=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.map(target=>target.id));
+        const priorCode=await editor().innerText(),priorResources=await resource();
+        const malformed=Buffer.from(makeCodeSourceHex({...embedded.files,[ANIMATION_COMPANION_PATH]:'{broken'},
+            {name:'invalid-animation-source',target:'arcade'}));
+        await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+            name:'invalid-animation-source.hex',mimeType:'application/octet-stream',buffer:malformed});
+        await page.getByText('Could not read invalid-animation-source.hex: Animation companion JSON is malformed',{exact:true}).waitFor({state:'visible'});
+        assert.deepEqual(await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.map(target=>target.id)),priorIds);
+        assert.equal(await editor().innerText(),priorCode);assert.deepEqual(await resource(),priorResources);
+        report.journey.push('malformed companion file import names the error and preserves the loaded VM, Code and published resources');
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.hex',mimeType:'application/octet-stream',buffer:bytes});
         await page.getByText(/Imported the Arcade game.*animation-export\.hex/).first().waitFor({state:'visible'});
         if(await actions.getAttribute('open'))await actions.locator('summary').click();

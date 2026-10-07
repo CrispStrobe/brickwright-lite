@@ -292,6 +292,19 @@ locally qualified at the source and boundary above. Its gate,
 zero hosted timing readings and a provisional budget. Hosted exact-head checks
 remain pending; native original-MakeCode asset editing remains unqualified.
 
+Rich-source transport now emits a versioned companion beside native galleries.
+Matching imports recover exact source documents/UUIDs through the file/project
+conversion API; edited native frames/order/timing/palette keep their native data
+and receive stale-source warnings. Malformed or duplicate metadata fails before
+project replacement. Current SB3 artwork bundles also reach the CLI exporter,
+including unused animation resources. Native galleries have no new128-asset
+limit; that bound applies only to companion source records. This is source
+transport, not an editable imported GUI library or live resource rebinding.
+At `55da1b20e`, the production build and seven browser journeys pass, including
+exact downloaded source recovery and an atomic malformed-file refusal. The
+affected integration batch passes20 tests, final companion/project/overlay
+batch17, and all seven CLI regressions; no skips in these batches.
+
 **U04 remains open.** Unequal-duration scheduling, action binding, sheet and
 frames-as-costumes journeys and
 rich resource reconstruction from original MakeCode remain separate work.
