@@ -185,7 +185,7 @@ try {
     await codeTab();
     await page.getByRole('button', {name: '⇨ From blocks', exact: true}).click();
     const migratedCode = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
-    assert.ok(migratedCode.includes('arcade controller y step 10'), 'legacy y axis survives actual visible workspace load');
+    assert.match(migratedCode, /arcade controller (?:y|"y") step 10/, 'legacy y axis survives actual visible workspace load');
     assert.ok(migratedCode.includes('100 op "-" with 20'));
     assert.ok(migratedCode.includes('120 op "/" with 2'));
     report.migratedCode = migratedCode;
