@@ -121,3 +121,15 @@ node --test test/spike-nuttx-restart.test.mjs test/spike-renode-arena-session.te
 
 These synthetic boundary tests do not replace the actual guest and installed
 GUI qualification required when adopting new firmware/package inputs.
+
+The source-only native qualification driver imports the production policy,
+supervisor, image-admission/staging and program-UART contract modules. Its unit
+checks are reproducible independently of a WebView:
+
+```sh
+cargo test --locked --offline --manifest-path tools/renode-arena-proof/Cargo.toml
+```
+
+Execution through this closed test transport still requires the exact staged
+package pins. It exercises the native runtime boundary, but does not establish
+installed-GUI or Tauri ACL acceptance.
