@@ -1,6 +1,8 @@
 // Ported unchanged from the parked Codex WIP (task F3 of docs/OPEN-TASKS-2026-09-29.md).
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {createRequire} from 'node:module';
 const require = createRequire(import.meta.url);
 const create = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech.js');
@@ -59,4 +61,26 @@ test('international speech selects the PXT 12x12 font', () => {
     assert.equal(r.renderText.font.charWidth, 12);
     assert.equal(r.renderText.height, 12);
     assert.ok(count(e.render(r, owner, 0, 0), 2) > 0);
+});
+
+
+test('production object-spread transpilation leaves the serialized speech factory self-contained', () => {
+    const root = process.env.BW_INTEGRATED_ROOT || path.resolve(import.meta.dirname, '..');
+    const guiRequire = createRequire(path.join(root, 'packages/scratch-gui/package.json'));
+    const {transformSync} = guiRequire('@babel/core');
+    const objectSpread = guiRequire('@babel/plugin-proposal-object-rest-spread');
+    const source = fs.readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech.js', import.meta.url), 'utf8');
+    const transformed = transformSync(source, {configFile: false, babelrc: false,
+        plugins: [objectSpread]}).code;
+    const module = {exports: {}};
+    new Function('module', transformed)(module);
+    // Exactly the boundary used by the bundled extension: only the exported
+    // function survives. Helpers in its original module scope are unavailable.
+    const isolated = new Function(`return (${module.exports.toString()})`)();
+    const e = isolated(initialize, fonts);
+    const r = e.create('A', -1, false, 2, 9, false, owner, 0);
+    const pixels = e.render(r, owner, 0, 0);
+    assert.equal(count(pixels, 2), 14);
+    assert.equal(count(pixels, 9), 58);
+    assert.equal(owner.flags, undefined); // owner bridge copies rather than mutating
 });
