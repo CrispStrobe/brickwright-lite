@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {scopeAfter} from './helpers/js-scope.mjs';
+import {balancedFrom} from './helpers/js-scope.mjs';
 const source = readFileSync(new URL('../overlay/scratch-vm/src/extension-support/extension-manager.js', import.meta.url), 'utf8');
+const signature = 'refreshBlocks ({throwOnError = false} = {}) {';
+const refreshBody = balancedFrom(source, source.indexOf(signature) + signature.length - 1, '{', '}');
 
 test('refresh waits for runtime registration, deduplicating URL and id aliases', async () => {
     let finishRegistration;
@@ -15,7 +17,7 @@ test('refresh waits for runtime registration, deduplicating URL and id aliases',
         return registration;
     }};
     const refresh = new Function('dispatch', 'log',
-        `return function () ${scopeAfter(source, 'refreshBlocks () {')}`)(dispatch,
+        `return function ({throwOnError = false} = {}) ${refreshBody}`)(dispatch,
         {error: message => { throw new Error(message); }});
     const manager = {_loadedExtensions: new Map([['arrays', 'arraysService'], ['https://example.invalid/arrays', 'arraysService']]),
         _prepareExtensionInfo: (service, info) => info};
@@ -28,3 +30,23 @@ test('refresh waits for runtime registration, deduplicating URL and id aliases',
     await refreshing;
     assert.equal(completed, true);
 });
+
+for (const failureAt of ['getInfo', '_refreshExtensionPrimitives']) {
+    test(`strict refresh rejects ${failureAt} failure instead of publishing readiness`, async () => {
+        const failure = new Error(`${failureAt} failed`);
+        const logged = [];
+        const dispatch = {call: async (service, method) => {
+            if (method === failureAt) throw failure;
+            return {id: 'arrays'};
+        }};
+        const refresh = new Function('dispatch', 'log',
+            `return function ({throwOnError = false} = {}) ${refreshBody}`)(dispatch,
+            {error: message => logged.push(message)});
+        const manager = {_loadedExtensions: new Map([['arrays', 'arraysService']]),
+            _prepareExtensionInfo: (service, info) => info};
+        await assert.rejects(refresh.call(manager, {throwOnError: true}), error => error === failure);
+        assert.equal(logged.length, 1);
+        await refresh.call(manager); // existing background refresh retains its logging policy
+        assert.equal(logged.length, 2);
+    });
+}

@@ -11,7 +11,7 @@ const compileBody = balancedFrom(source, source.indexOf(signature) + signature.l
 const publishBody = scopeAfter(source, 'publishAppliedDevice (stc) {');
 const devices = {arcade: {core: 'arcade'}, microbit: {core: 'microbit'}, calliopemini: {core: 'microbit'}, uno: {core: 'avr'}};
 const Event = class { constructor (type, options) { this.type = type; this.detail = options.detail; } };
-const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, loadError, deferred = false, setStc = true, deferredRefresh = false} = {}) => {
+const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, loadError, deferred = false, setStc = true, deferredRefresh = false, refreshError} = {}) => {
     const events = [], calls = [];
     const window = {dispatchEvent: event => events.push(event)};
     let finishLoad;
@@ -20,7 +20,7 @@ const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, load
     const pendingRefresh = new Promise(resolve => { finishRefresh = resolve; });
     const runtime = {bwDeviceId: 'microbit', bwDeviceCore: 'microbit', stc: {device: 'microbit'},
         targets: [], getTargetForStage: () => null};
-    const vm = {runtime, extensionManager: {refreshBlocks () { if (deferredRefresh) return pendingRefresh; }},
+    const vm = {runtime, extensionManager: {refreshBlocks (options) { assert.equal(options.throwOnError, true); if (refreshError) return Promise.reject(new Error(refreshError)); if (deferredRefresh) return pendingRefresh; }},
         async loadProject () { calls.push('load'); if (loadError) throw new Error(loadError); if (deferred) await pendingLoad; calls.push('loaded'); },
         toJSON: () => JSON.stringify({targets: []})};
     if (setStc) vm.setStc = stc => { calls.push('stc'); runtime.stc = stc; };
@@ -126,3 +126,12 @@ for (const pins of ['', '\nPIN led = P0 OUTPUT']) {
         });
     }
 }
+
+test('failed native block refresh is reported and never announces loaded', async () => {
+    const {component} = setup({refreshError: 'arrays schema registration failed'});
+    await component.compile();
+    assert.equal(component.state.busy, false);
+    assert.notEqual(component.state.status, 'loaded');
+    assert.match(component.state.status, /arrays schema registration failed/);
+    await assert.rejects(component.compile({strict: true}), /arrays schema registration failed/);
+});

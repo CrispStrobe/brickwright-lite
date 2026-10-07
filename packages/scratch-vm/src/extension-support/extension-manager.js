@@ -627,9 +627,11 @@ class ExtensionManager {
 
     /**
      * Regenerate blockinfo for any loaded extensions
+     * @param {object} options refresh behaviour
+     * @param {boolean} options.throwOnError reject if any extension cannot refresh
      * @returns {Promise} resolved once all the extensions have been reinitialized
      */
-    refreshBlocks () {
+    refreshBlocks ({throwOnError = false} = {}) {
         // Deduplicate: an extension loaded by URL is keyed by both URL and ID,
         // so iterating values() would call getInfo twice for the same service.
         const allPromises = Array.from(new Set(this._loadedExtensions.values())).map(serviceName =>
@@ -640,6 +642,7 @@ class ExtensionManager {
                 })
                 .catch(e => {
                     log.error(`Failed to refresh built-in extension primitives: ${JSON.stringify(e)}`);
+                    if (throwOnError) throw e;
                 })
         );
         return Promise.all(allPromises);
