@@ -44,10 +44,11 @@ test('CLI reports both a real MakeCode import and a missing Scratch extension op
     } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
 
-test('CLI accepts empty bodies after parser adoption', () => {
+test('CLI preserves the named empty-body warning without treating it as a parse failure', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-compat-warnings-'));
     try {
-        // Empty bodies are valid MakeCode and now survive Code-to-Blocks.
+        // Empty bodies parse, but the parser still reports its named warning.
+        // Keep that warning visible in the static compatibility classification.
         fs.writeFileSync(path.join(dir, 'optional.ts'), 'if (0) {\n}\nlet x = 1\n');
         const json = path.join(dir, 'audit.json');
         const run = spawnSync(process.execPath, ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', CLI,
@@ -55,8 +56,12 @@ test('CLI accepts empty bodies after parser adoption', () => {
         {cwd: ROOT, encoding: 'utf8'});
         assert.equal(run.status, 0, run.stderr);
         const row = JSON.parse(fs.readFileSync(json, 'utf8')).rows[0];
-        assert.equal(row.stage, 'translated');
-        assert.deepEqual(row.unsupported, []);
+        assert.equal(row.stage, 'partial');
+        assert.equal(row.staticTranslation.status, 'partial');
+        assert.ok(row.blockCount > 0);
+        assert.ok(row.unsupported.some(gap => gap.includes('Code to Blocks:') &&
+            gap.includes('Empty body')));
+        assert.equal(row.qualification.behavioralEquivalence, 'not-measured');
     } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
 
