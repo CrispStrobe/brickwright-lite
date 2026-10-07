@@ -49,7 +49,11 @@ try {
     page.on('pageerror', error => report.errors.push(error.message));
     page.on('dialog', dialog => dialog.accept());
     page.on('console', message => { if (['warning', 'error'].includes(message.type())) report.warnings.push(message.text()); });
-    await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
+    await page.addInitScript(() => {
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-right-pane-hidden', '0');
+        localStorage.setItem('bw-debug-dock', 'arcade');
+    });
     await page.goto(process.env.BW_BASE_URL || process.env.PROOF_URL || 'http://127.0.0.1:8620/', {waitUntil: 'domcontentloaded'});
     await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm);
     const editor = page.locator('[data-testid="bw-code-editor"] .cm-content');
@@ -87,15 +91,15 @@ try {
             const field = fieldBlock?.getField(fieldName);
             if (!field) throw new Error(`Missing native field ${type}/${fieldName}`);
             const rect = field.getSvgRoot().getBoundingClientRect();
-            return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, before: field.getValue(), blockId: fieldBlock.id};
+            return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2, before: field.getValue(), blockId: fieldBlock.id, outerBlockId: block.id};
         }, {type, variable, fieldName});
         assert.ok(bounds.x > 0 && bounds.y > 0 && bounds.y < 1200, 'dropdown is visibly reachable');
-        await page.mouse.click(bounds.x, bounds.y);
+        const escapedId = await page.evaluate(id => CSS.escape(id), bounds.outerBlockId);
+        const nesting = type === 'arcade_controllerStep' ? ' ' : ' > ';
+        await page.locator(`g[data-id=${escapedId}]${nesting}g[data-argument-type="dropdown"]`).click();
         const item = page.getByRole('menuitemcheckbox', {name: choice, exact: true});
         await item.waitFor({state: 'visible'});
-        const itemBounds = await item.boundingBox();
-        assert.ok(itemBounds, 'menu choice is visibly reachable');
-        await page.mouse.click(itemBounds.x + itemBounds.width / 2, itemBounds.y + itemBounds.height / 2);
+        await item.click();
         await page.waitForFunction(({type, variable, fieldName, choice}) => {
             const block = window.Blockly.getMainWorkspace().getAllBlocks(false).find(b => b.type === type &&
                 (!variable || b.getParent()?.getField('VARIABLE')?.getText() === variable));
@@ -113,7 +117,9 @@ try {
     await edit('arrays_valueUnary', 'negative', 'OP', '-');
     await edit('arrays_valueCompare', null, 'OP', '>=');
     await edit('arcade_controllerStep', 'axis', 'axes', 'y');
-    const expected = {left: 80, top: 60, product: 42, empty: null, negative: -5, compared: 1, axis: 0};
+    // Scratch's immediate numeric shadow stores the assigned marker as text;
+    // arithmetic reporters remain numbers and null must remain actual null.
+    const expected = {left: 80, top: 60, product: 42, empty: null, negative: -5, compared: '1', axis: 0};
     const run = async label => {
         await page.locator('[class*="green-flag_green-flag"]').first().click();
         await page.waitForFunction(() => {
@@ -133,8 +139,8 @@ try {
         assert.deepEqual(position, {x: 80, y: 60}, 'edited subtraction/division position the actual Arcade sprite');
         assert.deepEqual(actual, expected, `${label} keeps arithmetic, special value, comparison and axis semantics`);
     };
-    await run('native-dropdown-edits');
     await page.getByTitle('Game Console', {exact: true}).click();
+    await run('native-dropdown-edits');
     const up = page.getByTestId('bw-arcade-up');
     await up.waitFor({state: 'visible'});
     const upBounds = await up.boundingBox();
