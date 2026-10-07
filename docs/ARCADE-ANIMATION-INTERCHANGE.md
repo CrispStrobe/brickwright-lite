@@ -289,5 +289,56 @@ preserved. Serving the correct build fixes those failures without weakening
 assertions or timing budgets. Two profiling builds stopped for runtime/preparation
 corrections are also preserved. Browser policy checks pass25/25. Fresh hosted
 qualification is required before merge; editable imported library installation,
-fresh-copy native lookup, original Assets editing and93 corpus partials remain
-open.
+original Assets editing and93 corpus partials remain open. Fresh-copy native
+lookup is implemented in the continuation below.
+
+
+## Fresh and shared frame lookups
+
+Consumer product source `fbac95e16bef9cf1cb289e0e503d328380ce8622` adopts
+[sb3-creator PR63](https://github.com/CrispStrobe/sb3-creator/pull/63) at its
+qualified merge `983aa61f2fa44901074763b7347588b4e210fc77`. All enabled producer
+checks passed and the merge tree matches the reviewed head. Official consumer
+sync and four vendor identity tests verify the adopted source.
+
+```text
+set shared to arcade animation frames resource "<resource UUID>"
+set independent to arcade animation fresh frames resource "<resource UUID>"
+set interval to arcade animation interval resource "<resource UUID>"
+```
+
+The first reporter shares a cached array and runtime images. The second creates
+a new array and new images on each evaluation, including independent pixels and
+palettes; it reads authored source rather than the possibly mutated shared cache.
+All three accept native UUID menus or computed IDs and diagnose missing resources.
+The native Blocks menu includes both frame operations. Code offers **Insert
+frames**, **Insert fresh frames** and **Insert interval** with selection replacement
+and a single Undo transaction. Python/JavaScript conversion retains distinct
+reversible host-runtime calls; standalone generated renderer playback is unqualified.
+
+Original Arcade export uses `assets.animation` factory calls for fresh lookups
+and cached arrays for shared lookups. Actual original-PXT tests verify literal
+and computed IDs, isolated image/array mutations, unchanged shared identity,
+missing-resource results and helper-name collisions. Complete Brickwright →
+Arcade → Brickwright → Arcade permutations attach the imported artwork through
+the normal creator API and preserve all observed pixel values and identities.
+A failed first permutation harness omitted that artwork step; its exact output
+is retained. This does not establish an editable imported asset library.
+
+Adopted consumer tests pass29/29 without a producer override. The profiling
+production build passes all emitted ownership gates:4,466,357 initial bytes
+against the unchanged4,467,136 limit, with native asset/parser/companion modules
+remaining deferred. The [emitted receipt](receipts/2026-10-07-arcade-animation-fresh-lookups.json)
+binds those observations to the exact raw stats hash.
+
+The verified emitted bundle passes all ten full browser journeys, including
+actual fresh-frame Code picker insertion, Code-to-Blocks, independent arrays,
+isolated mutation and shared animation playback, controller stop/restart,
+SB3 reopen, native timing endpoints and export/reimport. All19,200 actual
+original-PXT/Brickwright screen pixels agree; compilation makes no network
+attempts and the page reports zero errors. A separate four-journey publication gate drags all three native resource
+reporters from Add Extension → Arcade, selects their actual dropdowns and
+checks the published name and UUID in the VM.
+Hosted final-head consumer checks
+remain required before merge. Editable imported resource carriers, original
+Assets editing, variable timing and action binding remain open.

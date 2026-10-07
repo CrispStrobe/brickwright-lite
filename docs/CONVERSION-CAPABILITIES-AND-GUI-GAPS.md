@@ -326,9 +326,9 @@ passes the unchanged4,467,136 limit. CLI/current-bundle tests pass3/3; original
 PXT still matches all19,200 screen pixels. Earlier stale-served-build failures
 are retained in the evidence; no budgets or assertions were relaxed.
 
-#### Fresh lookups — candidate, producer browser CI running
+#### Fresh lookups — compiler adopted and full browser journey qualified locally
 
-The next candidate adds `arcade animation fresh frames resource "<UUID>"`
+The adopted candidate adds `arcade animation fresh frames resource "<UUID>"`
 and a native Blocks reporter beside the shared-frames and interval reporters.
 Each evaluation allocates its own array, images, pixels and palettes from
 unmodified authored data. Shared lookups retain their existing shared identity.
@@ -345,7 +345,21 @@ Missing IDs and helper-name collisions pass original execution. Producer
 qualification passes284/284 focused tests. Its Python/JavaScript mappings retain
 all three distinct resource calls through conversion; the standalone Scratch
 renderer shim still has neutral placeholders and is not qualified playback.
-Compiler adoption and the updated visible browser journey remain pending.
+All enabled producer checks passed; PR63 merged at `983aa61f` with the reviewed
+tree unchanged. Official consumer sync adopts that exact pin and four provider
+identity tests pass. The adopted consumer batch passes29/29 without a producer
+override. At product source `fbac95e16b`, the profiling production build passes
+all emitted ownership gates with4,466,357 initial bytes against the unchanged
+4,467,136 limit. The verified bundle passes all ten full browser journeys,
+including actual fresh-frame Code insertion, Code-to-Blocks, independent arrays,
+isolated mutation, unchanged shared playback and controller stop/restart.
+All19,200 actual original-PXT/Brickwright screen pixels agree, compilation
+attempts no network requests and the page reports zero errors. See the
+[emitted receipt](receipts/2026-10-07-arcade-animation-fresh-lookups.json).
+A separate four-journey publication gate drags all three native resource
+reporters from Add Extension → Arcade, selects their actual dropdowns and
+checks the published name and UUID in the VM.
+Hosted final-head consumer qualification remains required.
 
 To close the imported-library gap next:
 
