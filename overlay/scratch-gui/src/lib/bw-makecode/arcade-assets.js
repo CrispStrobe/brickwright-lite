@@ -180,9 +180,12 @@ export function parseAnimationJres (text) {
                 dataEncoding: entry.dataEncoding || gallery['*']?.dataEncoding,
                 id: entry.id ?? `${prefix}${key}`};
             const animation = decodeAnimationJres(normalized);
-            const nativeAlias = key.startsWith('myAnimations.') ? key.slice('myAnimations.'.length) : key;
+            // Original emitProjectImages strips only a single myAnimations
+            // segment. Canonical resource IDs are not extra lookup aliases.
+            const remainder = key.startsWith('myAnimations.') ? key.slice('myAnimations.'.length) : null;
+            const nativeAlias = remainder !== null && !remainder.includes('.') ? remainder : key;
             animations.push({...animation, galleryKey: key,
-                aliases: [...new Set([animation.id, nativeAlias, entry.displayName].filter(value => typeof value === 'string' && value.length))]});
+                aliases: [...new Set([nativeAlias, entry.displayName].filter(value => typeof value === 'string' && value.length))]});
         } catch (error) {
             unsupported.push(`Animation asset ${JSON.stringify(key)}: ${error.code || error.name}: ${error.message}`);
         }

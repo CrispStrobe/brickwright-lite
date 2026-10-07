@@ -8,6 +8,8 @@ import {parseAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {encodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram} from './helpers/bw-vm.mjs';
+import {compile} from '../scripts/lib/pxt-node.mjs';
+import {runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
 const entry=(id='walk-left',name='Walk')=>encodeAnimationJres({id,name,width:3,height:1,intervalMs:100,
     frames:[{pixels:[2,3,4]},{pixels:[5,6,7]}]});
 const gallery=(entries={'myAnimations.walk-left':entry()})=>JSON.stringify({
@@ -22,7 +24,7 @@ test('native animation gallery normalization retains explicit IDs, wildcard defa
     const result=parseAnimationJres(gallery({'myAnimations.walk-left':entry(),walk:defaulted,'動き.走る':unicode}));
     assert.deepEqual(result.unsupported,[]);
     assert.deepEqual(result.animations.map(resource=>resource.id),['myAnimations.walk-left','myImages.walk','動き.走る']);
-    assert.deepEqual(result.animations[0].aliases,['myAnimations.walk-left','walk-left','Walk']);
+    assert.deepEqual(result.animations[0].aliases,['walk-left','Walk']);
     assert.deepEqual(result.animations[0].frames.map(frame=>[...frame.pixels]),[[2,3,4],[5,6,7]]);
     assert.equal(result.animations[0].intervalMs,100);
     const inherited=entry();delete inherited.mimeType;delete inherited.dataEncoding;
@@ -71,7 +73,7 @@ test('native animation references execute as typed Image arrays with aliasing an
     const main=`let first=assets.animation\`Walk\`
 let alias=first
 let second=assets.animation\`walk-left\`
-let qualified=assets.animation\`myAnimations.walk-left\`
+let qualified=assets.animation\`  walk-left  \`
 let original=first[0].getPixel(0,0)
 first[0].setPixel(0,0,9)
 let changed=alias[0].getPixel(0,0)
@@ -108,6 +110,33 @@ animation.runImageAnimation(hero,assets.animation\`走る\`,100,true)`,{'動き.
     assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{storage:true,uploads:imported.costumes,frames:2});
     try{assert.deepEqual(run.errors,[]);assert.equal(vars(run.vm).colour,6);}finally{run.vm.quit();}
+});
+
+test('lookup aliases and whitespace match compiled original PXT factories, not canonical resource IDs',async()=>{
+    const entries={'myAnimations.walk-left':entry(),
+        'custom.jump':{...entry('jump','Jump'),namespace:'custom'},
+        'myAnimations.spaced':entry('spaced',' Walk space '),
+        'myAnimations.deep.walk':entry('deep.walk','Deep walk')};
+    const names=['Walk','walk-left','myAnimations.walk-left','  walk-left  ',
+        'custom.jump','jump',' Walk space ','Walk space','spaced','myAnimations.deep.walk','deep.walk'];
+    const expected=[2,2,-1,2,2,-1,-1,-1,2,2,-1];
+    const dir=path.join(INTEGRATED,'static/makecode/arcade');
+    const oracle=vm.createContext({console:{log(){},warn(){},error(){},debug(){}},
+        setTimeout,clearTimeout,setInterval,clearInterval,TextEncoder,TextDecoder,atob,btoa});
+    oracle.global=oracle;oracle.self=oracle;
+    vm.runInContext(fs.readFileSync(path.join(dir,'pxtworker.js'),'utf8'),oracle,{timeout:10000});
+    oracle.gallery=JSON.parse(gallery(entries));
+    const nativeFiles={'main.ts':names.map((name,i)=>`let frames${i}=assets.animation\`${name}\`;console.log("${i}:"+(frames${i}?frames${i}.length:-1))`).join('\n'),
+        'images.g.jres':gallery(entries),'images.g.ts':vm.runInContext('pxt.emitProjectImages(gallery)',oracle,{timeout:1000}),
+        'pxt.json':JSON.stringify({name:'native-animation-aliases',dependencies:{device:'*'},files:['main.ts','images.g.ts','images.g.jres']})};
+    const built=await compile('arcade',nativeFiles);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+    const original=await runArcadeSim(built.outfiles['binary.js'],{ms:10});assert.equal(original.error,null);
+    assert.deepEqual(original.serial.map(row=>String(row.text)),expected.map((n,i)=>`${i}:${n}`));
+    for(const [index,name] of names.entries()){
+        const imported=arcadeToPseudocode(files(`let frames=assets.animation\`${name}\``,entries));
+        if(expected[index]===2)assert.deepEqual(imported.unsupported,[],name);
+        else assert.ok(imported.unsupported.some(message=>message.includes('Missing animation asset reference')),name);
+    }
 });
 
 test('malformed native assets, missing galleries and ambiguous aliases remain named import diagnostics',()=>{
