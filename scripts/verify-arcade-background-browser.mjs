@@ -69,6 +69,28 @@ const canvasCorners=()=>page.getByTestId('bw-pixel-canvas').evaluate((canvas,cor
     return corners.map(([x,y])=>Array.from(context.getImageData(Math.floor((x+.5)*cell),Math.floor((y+.5)*cell),1,1).data));
 },BACKGROUND_CORNERS);
 const expectedColours=corners=>corners.map(([, ,colour])=>[...ARCADE_PALETTE[colour].slice(1).match(/../g).map(value=>parseInt(value,16)),255]);
+const waitForCanvasCorners=async (expected,label)=>{
+    // VM costume selection precedes React's asynchronous PNG rasterization.
+    // The old SVG canvas can still be visible with the same160×120 dimensions.
+    // Wait on the actual new pixels, not selected costume name/dimensions alone.
+    try {
+        await page.waitForFunction(({corners,expected})=>{
+            const canvas=document.querySelector('[data-testid="bw-pixel-canvas"]');
+            if(!canvas || !canvas.getClientRects().length || !canvas.width)return false;
+            const cell=canvas.width/160,context=canvas.getContext('2d');
+            return corners.every(([x,y],i)=>{
+                const rgba=context.getImageData(Math.floor((x+.5)*cell),Math.floor((y+.5)*cell),1,1).data;
+                return expected[i].every((channel,c)=>channel===rgba[c]);
+            });
+        },{corners:BACKGROUND_CORNERS,expected},{timeout:15000});
+    } catch(error) {
+        // Preserve concrete observed pixels and selection alongside the timeout.
+        // Genuine decoder/load failures remain failures; no pixels are substituted.
+        report.canvasReadinessFailure={label,expected,actual:await canvasCorners().catch(()=>null),
+            stage:await stageState().catch(()=>null),error:String(error)};
+        throw error;
+    }
+};
 const archive=async label=>{
     await page.getByText('File',{exact:true}).click();
     const pending=page.waitForEvent('download');
@@ -149,6 +171,7 @@ try {
     await page.waitForFunction(()=>document.querySelector('[data-testid="bw-pixel-w"]')?.value==='160'&&
         document.querySelector('[data-testid="bw-pixel-h"]')?.value==='120');
     assert.equal((await stageState()).format,'png','actual upload remains native PNG before Pixel save');
+    await waitForCanvasCorners(expectedColours(BACKGROUND_CORNERS),'native PNG import');
     assert.deepEqual(await canvasCorners(),expectedColours(BACKGROUND_CORNERS),'browser PNG decode and initial Pixel display preserve corners');
     report.journey.push('native160×120 PNG uploaded through visible Stage file chooser and decoded at full logical size');
     await panel('more'); // the newly decoded PNG resets editor panels after selection
@@ -224,6 +247,7 @@ try {
     await openStagePixels();await panel('more');
     assert.equal(await page.getByTestId('bw-pixel-w').inputValue(),'160');
     assert.equal(await page.getByTestId('bw-pixel-h').inputValue(),'120');
+    await waitForCanvasCorners(expectedColours(AUTHORED_CORNERS),'SB3 reopen');
     assert.deepEqual(await canvasCorners(),expectedColours(AUTHORED_CORNERS));
     const reopened=await archive('reopened');sameArtwork(reopened,before);
     report.journey.push('actual SB3 reopen retains160×120 editable source and exactrender');
