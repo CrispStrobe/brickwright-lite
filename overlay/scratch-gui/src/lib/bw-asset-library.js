@@ -72,3 +72,11 @@ export const inspectAssetLibraries = (project, payload) => {
         for (const record of libraries) setAssetLibraryRole(targets[record.targetIndex], record.role);
     }};
 };
+
+
+/** A delayed module load must never label a newly selected or replaced target. */
+export const restoreAssetLibraryRole = (vm, target, role, stage) => {
+    if (vm.runtime.getTargetForStage() !== stage || !vm.runtime.targets.includes(target)) return false;
+    setAssetLibraryRole(target, role);
+    return true;
+};

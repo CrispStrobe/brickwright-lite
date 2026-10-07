@@ -24,6 +24,9 @@ import {fetchSprite, fetchCode} from '../lib/backpack-api';
 import randomizeSpritePosition from '../lib/randomize-sprite-position';
 import downloadBlob from '../lib/download-blob';
 
+const restoreLibraryRole = (vm, target, role, stage) => role &&
+    import('../lib/bw-asset-library').then(module => module.restoreAssetLibraryRole(vm, target, role, stage));
+
 class TargetPane extends React.Component {
     constructor (props) {
         super(props);
@@ -87,10 +90,11 @@ class TargetPane extends React.Component {
         const restoreFun = () => {
             // An Undo callback from another project must not import its sprite.
             if (vm.runtime.getTargetForStage() !== stage) return Promise.resolve();
-            return restoreSprite().then(async () => {
+            return restoreSprite().then(() => {
                 if (vm.runtime.getTargetForStage() !== stage) return;
                 restoreTargetArtwork(vm.editingTarget, artwork, vm);
-                if (libraryRole) (await import('../lib/bw-asset-library')).setAssetLibraryRole(vm.editingTarget, libraryRole);
+                if (libraryRole) return restoreLibraryRole(vm, vm.editingTarget, libraryRole, stage)
+                    .then(restored => { if (restored) this.handleActivateBlocksTab(); });
                 this.handleActivateBlocksTab();
             });
         };
@@ -105,10 +109,11 @@ class TargetPane extends React.Component {
         const vm = this.props.vm;
         const originals = vm.runtime.getTargetById(id)?.sprite?.costumes || [];
         const libraryRole = vm.runtime.getTargetById(id)?.bwAssetLibrary;
-        return vm.duplicateSprite(id).then(async () => {
+        const stage = vm.runtime.getTargetForStage();
+        return vm.duplicateSprite(id).then(() => {
             const copies = vm.editingTarget?.sprite?.costumes || [];
             originals.forEach((costume, index) => copyCostumeDocument(costume, copies[index], this.props.vm));
-            if (libraryRole) (await import('../lib/bw-asset-library')).setAssetLibraryRole(vm.editingTarget, libraryRole);
+            return restoreLibraryRole(vm, vm.editingTarget, libraryRole, stage);
         });
     }
     handleExportSprite (id) {

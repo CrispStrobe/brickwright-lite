@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import {createHash} from 'node:crypto';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {ASSET_LIBRARY_ROLE, getAssetLibraryRole, setAssetLibraryRole, assetLibraryRecords,
-    withoutAssetLibraries, validateAssetLibraries} from '../overlay/scratch-gui/src/lib/bw-asset-library.js';
+    withoutAssetLibraries, validateAssetLibraries, restoreAssetLibraryRole} from '../overlay/scratch-gui/src/lib/bw-asset-library.js';
 import {ARTWORK_PATH, ARTWORK_FORMAT, inspectArtwork, applyArtwork, writeArtworkToZip,
     getCostumeDocument} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 import {captureCodeArtwork, retainCodeArtwork, captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
@@ -144,4 +144,18 @@ test('library rename or visibility changes during compression invalidate the Cod
         library.visible=false;assert.equal(codeArtworkRevisionMatches(vm,revision),true);
         vm.renameSprite(library.id,'Changed');assert.equal(codeArtworkRevisionMatches(vm,revision),false);
     } finally {vm.quit();}
+});
+
+
+test('delayed Undo/duplicate role restoration uses the captured target and rejects replaced projects',()=>{
+    const stage={isStage:true},library={isStage:false,visible:false,blocks:{},variables:{},sounds:[]};
+    const unrelated={isStage:false,visible:false,blocks:{},variables:{},sounds:[]};
+    const vm={editingTarget:unrelated,runtime:{targets:[stage,library,unrelated],getTargetForStage:()=>stage}};
+    assert.equal(restoreAssetLibraryRole(vm,library,role,stage),true);
+    assert.deepEqual(getAssetLibraryRole(library),role);assert.equal(getAssetLibraryRole(unrelated),null);
+    delete library.bwAssetLibrary;
+    assert.equal(restoreAssetLibraryRole(vm,library,role,{isStage:true}),false);
+    vm.runtime.targets=[stage,unrelated];
+    assert.equal(restoreAssetLibraryRole(vm,library,role,stage),false);
+    assert.equal(getAssetLibraryRole(library),null);
 });
