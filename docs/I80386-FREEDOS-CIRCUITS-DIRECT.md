@@ -133,6 +133,20 @@ source has not yet run in the hosted browser. The proposed narrow
 adds only the CI registration correction to the eighth-attempt pin; it does
 not adopt unrelated Circuit UI main-line changes.
 
+The [ninth hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37660250589)
+at `428c00934938f596200466ed838aeb157fac101a` retained
+[original artifact 11501990608](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11501990608)
+(11,228 bytes, SHA-256
+`e5a38a9976eb06f0dbfcfebc3e5a454e649e2675012d6c31e98d2ed9de354ca3`)
+and stopped before media or guest execution. Its source-control and exact
+probe materialization passed,
+but the build gate found two stale `bw-packages.sources.json` notice mirrors:
+they still named the eighth-attempt Circuit UI pin after the proposed pin
+advanced to `557c4716`. The existing notice generator now emits both mirrors
+from the pinned packages' unchanged license bytes and the current source pins.
+The ninth attempt establishes no result for the corrected Controller-view
+roundtrip; a fresh installed browser run is required for full acceptance.
+
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
 or a general native 386 backend. A live terminal CLI scenario remains a
