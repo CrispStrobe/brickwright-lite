@@ -160,3 +160,11 @@ This cross-reference prevents details from disappearing during reconciliation.
 | G17 layer/disposal; G18 animation binding; G19 scene/physics authoring | C08–C10, U03–U06; repeat clear/reload without stale drawables |
 | G20 readable inspectors; G22 audio; G23 target selection; G24 export dependencies | C17–C18; separate source, simulation, firmware and physical evidence |
 | G21 micro:bit/Calliope; G27 TurboWarp; G25 coverage linkage | C15, U01/U06; target-specific real examples and truthful diagnostics |
+
+## Complete Code word inventory
+
+The [generated authoring vocabulary](generated/ARCADE-AUTHORING-VOCABULARY.md)
+lists all 156 canonical Arcade/Arrays forms and 161 forms including aliases,
+with block identities, shapes and Code spellings at the adopted parser pin.
+Use it when checking palette discoverability; vocabulary presence alone does
+not establish any of the five qualification results above.
