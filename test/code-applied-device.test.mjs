@@ -11,14 +11,16 @@ const compileBody = balancedFrom(source, source.indexOf(signature) + signature.l
 const publishBody = scopeAfter(source, 'publishAppliedDevice (stc) {');
 const devices = {arcade: {core: 'arcade'}, microbit: {core: 'microbit'}, calliopemini: {core: 'microbit'}, uno: {core: 'avr'}};
 const Event = class { constructor (type, options) { this.type = type; this.detail = options.detail; } };
-const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, loadError, deferred = false, setStc = true} = {}) => {
+const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, loadError, deferred = false, setStc = true, deferredRefresh = false} = {}) => {
     const events = [], calls = [];
     const window = {dispatchEvent: event => events.push(event)};
     let finishLoad;
     const pendingLoad = new Promise(resolve => { finishLoad = resolve; });
+    let finishRefresh;
+    const pendingRefresh = new Promise(resolve => { finishRefresh = resolve; });
     const runtime = {bwDeviceId: 'microbit', bwDeviceCore: 'microbit', stc: {device: 'microbit'},
         targets: [], getTargetForStage: () => null};
-    const vm = {runtime, extensionManager: {refreshBlocks () {}},
+    const vm = {runtime, extensionManager: {refreshBlocks () { if (deferredRefresh) return pendingRefresh; }},
         async loadProject () { calls.push('load'); if (loadError) throw new Error(loadError); if (deferred) await pendingLoad; calls.push('loaded'); },
         toJSON: () => JSON.stringify({targets: []})};
     if (setStc) vm.setStc = stc => { calls.push('stc'); runtime.stc = stc; };
@@ -49,8 +51,22 @@ const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, load
         pseudocode: text.replace(/^DEVICE\s+\S+/im, `DEVICE ${device.toUpperCase()}`)});
     component.setDevice = new Function('DEVICE_BY_ID', 'resolveExampleBench', 'window',
         `return async function (deviceId) ${scopeAfter(source, 'async setDevice (deviceId) {')}`)(devices, () => null, window);
-    return {component, runtime, events, calls, finishLoad};
+    return {component, runtime, events, calls, finishLoad, finishRefresh};
 };
+
+test('Code stays busy until the native block definitions have finished refreshing', async () => {
+    const {component, finishRefresh} = setup({deferredRefresh: true});
+    let complete = false;
+    const compiling = component.compile().then(() => { complete = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(complete, false);
+    assert.equal(component.state.busy, true);
+    assert.notEqual(component.state.status, 'loaded');
+    finishRefresh();
+    await compiling;
+    assert.equal(component.state.busy, false);
+    assert.equal(component.state.status, 'loaded');
+});
 
 test('DEVICE ARCADE is published only after the generated project loads', async () => {
     const {component, runtime, events, calls, finishLoad} = setup({deferred: true});
