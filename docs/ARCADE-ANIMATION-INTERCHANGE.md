@@ -452,8 +452,18 @@ headless stepping needs the normal VM startup sequence and device declarations,
 and saves need the GUI artwork attachment path and include ordinary costume
 source records as well as animation records.
 
-Production browser and emitted ownership qualification for this new transaction
-are pending. Original MakeCode Assets editing/download, clear library navigation
+At product source `7a4101798e304e459a1b40d77b5c2d8bee0dbb2e`, the production
+build and emitted ownership checks pass at4,467,115 initial JavaScript bytes
+against the unchanged4,467,136 limit. The installer remains deferred. All14
+full browser journeys pass with zero page errors, including actual automatic
+file import, matching companion UUID, Pixel editing, SB3 save/reopen,
+Code/Blocks retention and controller playback of the edited frames. The
+original19200-pixel comparison still passes. The
+[receipt](receipts/2026-10-07-arcade-native-animation-library-import.json) binds
+the source, emitted graph and browser harness. Hosted final-head checks remain
+required.
+
+Original MakeCode Assets editing/download, clear library navigation
 and protection from accidental gameplay scripts/visibility, and actual library
 rename/delete/Undo/duplicate UI journeys remain open. These are required GUI
 closure work; the explicit role validator currently refuses executable/visible

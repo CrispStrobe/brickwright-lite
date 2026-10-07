@@ -405,8 +405,12 @@ Automatic native import follow-up: GUI file/share and CLI import now use the
 same validated library installation transaction, including unused assets and
 fresh UUID reporter bindings. The transaction/CLI test observes original-PXT
 alias mutation9 versus independent lookup2 and preserves source through repeated
-imports. Production browser and ownership qualification for this delta are
-pending. Library navigation, script/visibility protection and actual
+imports. All14 production browser journeys pass with zero page errors; the
+automatic imported library survives Pixel editing, save/reopen, Code/Blocks and
+controller playback. Emitted ownership passes at4,467,115 bytes with the
+unchanged4,467,136 limit. See the
+[receipt](receipts/2026-10-07-arcade-native-animation-library-import.json).
+Library navigation, script/visibility protection and actual
 rename/delete/Undo/duplicate UI journeys remain required; original Assets
 editing/download and corpus-wide closure are still open. See the
 [transaction contract](ARCADE-ANIMATION-INTERCHANGE.md#automatic-native-resource-import-transaction).
