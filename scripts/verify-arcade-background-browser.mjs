@@ -44,6 +44,8 @@ const openCode=async()=>{
 };
 const openStagePixels=async()=>{
     await page.getByRole('tab',{name:/Costumes|Backdrops/,exact:true}).click();
+    if(!(await page.getByTestId('bw-pixel-canvas').isVisible()))await page.getByTestId('bw-pixel-toggle').click();
+    await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});
     const choices=page.getByTestId('bw-image-target');
     if(await choices.isVisible())await choices.selectOption({label:'Backdrops'});
     else {
@@ -218,7 +220,7 @@ try {
     report.status='passed';
 } catch(error) {
     report.status='failed';report.failure=error.stack||String(error);
-    report.body=(await page.locator('body').innerText()).slice(-12000);
+    report.body=(await page.locator('body').first().innerText().catch(()=>'' )).slice(-12000);
     report.stage=await stageState().catch(error=>({error:String(error)}));
     await page.screenshot({path:out.replace(/\.json$/,'')+'-failure.png'}).catch(()=>{});
     throw error;
