@@ -576,3 +576,42 @@ the actual duplicate-costume validation failure and all attempts are preserved.
 Hosted final-head checks, original Assets editing/companion retention,
 distinguishable duplicate names in authoring pickers and string-valued VM error
 presentation remain open. The corpus still has93 partial cases.
+
+
+### Duplicate resource pickers and conversion validation details
+
+PR704 merged at `9e869b97e7bfe8680dd43f8b51568edb5199b7dd` after all11
+enabled checks passed on `24480d493dd89925461b488c1858f659a33739be`,
+including both browser jobs. Reviewed and merged trees matched exactly.
+This completes hosted qualification of the native-name and audit repairs above.
+
+The follow-up shares label generation between the Arcade Blocks dropdown and
+Code animation picker. Duplicate authored names show their artwork owner and
+costume; identical owner labels receive a unique UUID suffix. Labels are
+presentation only: the selected value remains the full resource UUID. Live
+owner renames update labels without changing source documents, frame revisions
+or bindings. Unique resource names retain their simple labels.
+
+Code conversion failures now handle serialized VM validation objects, plain
+strings and normal Errors. Scratch validation paths and messages appear in the
+status and unsupported-elements report. SB3 diagnostics take precedence over
+unrelated SB2 schema failures. Strict conversion still rejects the original
+error. A negative integration fixture inserts an identical costume into a
+real generated SB3, executes the actual Code compile method with the real VM,
+and verifies the rejection is explained and the prior loaded project survives.
+
+At product source `1c0749b0d9c8dfd72dd8d70a912e30936d3fb742`, the focused
+batch passes27/27 and packaging/diagnostics passes11/11, with zero skips.
+The production build has zero errors and4,357,698 initial JavaScript bytes
+under the unchanged4,467,136 limit. All18 browser journeys pass with zero
+page errors. The actual Code picker inserts the copy UUID; the actual Blocks
+dropdown selects it and restores the original binding. Both expose identical,
+distinct owner labels. Existing export/reimport/original-PXT/playback checks
+remain passing. The [receipt](receipts/2026-10-07-arcade-resource-picker-errors.json)
+binds the source, bundle, graph and harness. The initial test-loader, method
+extraction, build-directory and dependency-export failures remain preserved.
+
+The shared helper uses the same narrow webpack VM source-alias convention as
+the existing broker adapter; no dependency export map or compiler pin changes.
+Hosted follow-up checks, original MakeCode Assets editing/download/companion
+retention and the93-case partial corpus remain open.

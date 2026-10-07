@@ -1,0 +1,49 @@
+{
+  "source": "1c0749b0d9c8dfd72dd8d70a912e30936d3fb742",
+  "producerPin": "983aa61f2fa44901074763b7347588b4e210fc77",
+  "initialBytes": 4357698,
+  "limit": 4467136,
+  "bundle": "gui.cf2b6b70.js",
+  "statsSha256": "c277c8a21358ebc83cdc3c43f97276f853cabdbe9c14ac98d298e14ea91d66c6",
+  "browserHarnessSha256": "f75d70e5e027e1d19012b509f0767458c4306c8560ebf0605d96d05c3e6049a7",
+  "tests": {
+    "focused": 27,
+    "packagingAndDiagnostics": 11,
+    "skips": 0
+  },
+  "browser": {
+    "journeys": 18,
+    "pageErrors": 0,
+    "duplicatePicker": {
+      "options": [
+        {
+          "text": "Walk \u2014 Robot artwork / backdrop1",
+          "value": "b5aecbfd-a25e-4955-9165-8a14e62f02d8"
+        },
+        {
+          "text": "Walk \u2014 Robot artwork2 / backdrop1",
+          "value": "8ace013e-cb17-4250-aa73-cefe634cd048"
+        }
+      ],
+      "codeInsertedCopyUuid": true,
+      "blocksSelectedCopyUuid": true,
+      "originalBindingRestored": true
+    },
+    "duplicateNativeExport": {
+      "gui": true,
+      "cli": true,
+      "uniqueNativeNames": true,
+      "authoredNamesAndUuidsPreserved": true,
+      "originalPxtCompiledAndRun": true,
+      "guiReimported": true
+    }
+  },
+  "preservedFailures": [
+    "initial test loader lacked the new VM support module",
+    "test method extraction selected the default-argument object instead of the method body",
+    "initial build invoked outside the GUI package",
+    "dependency export map required the existing narrow webpack source-alias pattern"
+  ],
+  "boundary": "Actual Code and Blocks picker selection on synthetic duplicate resources; existing GUI/CLI exports, original PXT execution and native reimport/playback remain passing. Real VM validation rejection is tested headlessly through the actual Code compile method. Original MakeCode Assets editor modification/download/companion retention and corpus-wide closure remain unqualified. Corpus baseline unchanged: 90 translated, 93 partial, 1 malformed.",
+  "hostedFinalHead": "pending"
+}

@@ -54,6 +54,8 @@ const resource=()=>page.evaluate(()=>{
     const rows=[...(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources?.values()||[])];
     return rows.map(row=>({...row,frames:row.frames.map(frame=>({...frame,pixels:Array.from(frame.pixels)}))}));
 });
+// Target IDs belong to a VM load; resource UUIDs and authored ownership labels persist.
+const persistentResource = row => ({...row, source: {...row.source, targetId: null}});
 const paintFrame=async colour=>{
     await page.getByTestId(`bw-pixel-colour-${colour}`).click();
     await page.getByTestId('bw-pixel-tool-filledRect').click();
@@ -166,7 +168,7 @@ try{
         await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,previous);
         await pixels();await panel('frames');
         assert.equal(await page.getByTestId('bw-pixel-frame-duration').inputValue(),String(duration));
-        assert.deepEqual((await resource())[0],single);
+        assert.deepEqual(persistentResource((await resource())[0]),persistentResource(single));
     }
     report.nativeEditorBounds={singleResourceId:singleId,intervalEndpoints:[1,65535],sb3Reopened:true};
     report.journey.push('actual Pixel publishes one frame at both native duration endpoints and SB3 reopen preserves timing and UUID');
@@ -199,7 +201,7 @@ try{
     await pixels();await panel('frames');
     assert.equal(await page.getByTestId('bw-pixel-animation-name').inputValue(),'Walk');
     const reopened=await snapshot('reopened');assert.deepEqual(reopened.document,authored.document);assert.equal(reopened.assetHash,authored.assetHash);
-    assert.deepEqual((await resource())[0],published);
+    assert.deepEqual(persistentResource((await resource())[0]),persistentResource(published));
     report.journey.push('unequal publication preserves prior art/resource; actual SB3 reopen retains UUID, frames, palette and layers');
     if(publicationOnly){
         await openCode();await page.getByTestId('bw-device-select').selectOption('arcade');
