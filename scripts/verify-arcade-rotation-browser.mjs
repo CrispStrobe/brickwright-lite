@@ -53,6 +53,8 @@ try {
         null, {timeout: 30000});
     };
     await apply();
+    // Select the product's actual console view after DEVICE ARCADE is applied.
+    await page.getByTitle('Game Console', {exact: true}).click();
     const flag = page.locator('[class*="green-flag_green-flag"]').first();
     const stop = page.locator('[class*="stop-all_stop-all"]').first();
     const waitPhase = phase => page.waitForFunction(expected => {
@@ -182,6 +184,11 @@ try {
 } catch (error) {
     report.status = 'failed';
     report.failure = error.stack || String(error);
+    if (page) {
+        report.failureUrl = page.url();
+        report.failureText = (await page.locator('body').innerText().catch(() => '')).slice(-12000);
+        await page.screenshot({path: out.replace(/\.json$/, '') + '-failure.png'}).catch(() => {});
+    }
     throw error;
 } finally {
     await fs.writeFile(out, `${JSON.stringify(report, null, 2)}\n`);
