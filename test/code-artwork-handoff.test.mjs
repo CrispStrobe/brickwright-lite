@@ -175,3 +175,19 @@ test('a live GUI sprite rename keeps the captured source slot bound to its actua
     assert.equal(project.targets[1].costumes[0].assetId, 'actor');
     assert.equal(project.targets[1].costumes[1].assetId, 'walk');
 });
+
+
+const bundleBody = scopeAfter(importer, 'this._onBundleLoaded = event => {');
+for (const outcome of ['legacy', 'loaded', 'future', 'invalid', 'storage-failed']) {
+    test(`external bundle outcome ${outcome} resets artwork only when the project was accepted`, () => {
+        const context = {};
+        const component = {_codeArtwork: context, props: {}, state: {uploads: [{svg: 'pending'}]},
+            readAutosave: () => null, publishGameControls () {},
+            setState (patch) {Object.assign(this.state, patch);}};
+        component.handleBundle = new Function('LANG_LABEL', `return function (event) ${bundleBody}`)({});
+        component.handleBundle({detail: {outcome}});
+        const accepted = outcome === 'legacy' || outcome === 'loaded';
+        assert.equal(component._codeArtwork, accepted ? null : context);
+        assert.deepEqual(component.state.uploads, accepted ? [] : [{svg: 'pending'}]);
+    });
+}

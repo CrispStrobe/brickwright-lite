@@ -1281,6 +1281,12 @@ class PseudocodeImporter extends React.Component {
             const outcome = event?.detail?.outcome;
             const refused = outcome === 'future' || outcome === 'invalid' ||
                 outcome === 'storage-failed';
+            // This event follows a successful external project load. A refused
+            // sidecar leaves the current authoring transaction untouched.
+            if (outcome === 'legacy' || outcome === 'loaded') {
+                this._codeArtwork = null;
+                this.setState({uploads: []});
+            }
             // The status line below is the Code tab's own surface, and opening a
             // project changes the active tab — so on its own the notice is
             // written where the learner is no longer looking (measured: the text
