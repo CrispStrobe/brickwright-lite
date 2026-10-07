@@ -615,3 +615,15 @@ The shared helper uses the same narrow webpack VM source-alias convention as
 the existing broker adapter; no dependency export map or compiler pin changes.
 Hosted follow-up checks, original MakeCode Assets editing/download/companion
 retention and the93-case partial corpus remain open.
+
+
+Hosted follow-up found three old extracted-method device tests that omitted
+the new formatter binding; the real product browser jobs both passed. The
+harness now supplies the actual imported formatter and all15 affected tests
+pass. Main PR709 was merged into this branch, preserving its stage and
+unsupported-diagnostic changes. At integration source
+`968877994643949878a48869b81c013a3878e691`, the refreshed production build has
+zero errors and4,360,502 initial bytes; all18 browser journeys still pass with
+zero page errors. Refreshed focused tests pass23/23; mirror and embedded-factory
+checks pass2/2. The original failing hosted log is retained privately. Exact-head
+hosted requalification remains required before merge.

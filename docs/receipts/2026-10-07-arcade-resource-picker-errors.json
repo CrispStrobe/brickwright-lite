@@ -45,5 +45,18 @@
     "dependency export map required the existing narrow webpack source-alias pattern"
   ],
   "boundary": "Actual Code and Blocks picker selection on synthetic duplicate resources; existing GUI/CLI exports, original PXT execution and native reimport/playback remain passing. Real VM validation rejection is tested headlessly through the actual Code compile method. Original MakeCode Assets editor modification/download/companion retention and corpus-wide closure remain unqualified. Corpus baseline unchanged: 90 translated, 93 partial, 1 malformed.",
-  "hostedFinalHead": "pending"
+  "hostedFinalHead": "pending",
+  "mainIntegration": {
+    "main": "249cd0984",
+    "productSource": "968877994643949878a48869b81c013a3878e691",
+    "bundle": "gui.5a14b9f7.js",
+    "initialBytes": 4360502,
+    "statsSha256": "3cc137d9166e2d3b36480b412b4f1de3cd693f57289e0c3d6d950cb8b54adb2c",
+    "browserJourneys": 18,
+    "pageErrors": 0,
+    "affectedDeviceAndDiagnosticTests": 15,
+    "refreshedFocusedTests": 23,
+    "mirrorAndEmbeddedFactoryTests": 2,
+    "preservedHostedFailure": "e277cd821 full unit job: three extracted-method tests omitted conversionFailure binding; repaired by supplying the actual imported formatter. Product browser jobs passed."
+  }
 }
