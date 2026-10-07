@@ -19,6 +19,8 @@ GLOBAL compared
 GLOBAL axis
 GLOBAL actor
 GLOBAL image
+GLOBAL dynamicAxis
+GLOBAL dynamicStep
 SPRITE Game:
 WHEN flag clicked:
   set left to calculate value 100 op "+" with 20
@@ -34,6 +36,9 @@ WHEN flag clicked:
   arcade mutate image fill image color 2 replacement 0
   set actor to arcade create image image template "Game" kind "Player"
   arcade set position of actor x left y top
+  set dynamicAxis to "Y"
+WHEN arcade updates:
+  set dynamicStep to arcade controller (dynamicAxis) step 90
 `;
 const report = {generatedAt: new Date().toISOString(), authoring: 'Code → visible Blocks dropdown edits → From blocks → To blocks → File save/reopen',
     edits: [], samples: [], warnings: [], errors: []};
@@ -120,10 +125,24 @@ try {
         assert.deepEqual(actual, expected, `${label} keeps arithmetic, special value, comparison and axis semantics`);
     };
     await run('native-dropdown-edits');
+    await page.getByTitle('Game Console', {exact: true}).click();
+    const up = page.getByTestId('bw-arcade-up');
+    await up.waitFor({state: 'visible'});
+    const upBounds = await up.boundingBox();
+    await page.mouse.move(upBounds.x + upBounds.width / 2, upBounds.y + upBounds.height / 2);
+    await page.mouse.down();
+    try {
+        await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+            .flatMap(t => Object.values(t.variables)).some(v => v.name.replace(/^(?:Game_)+/, '') === 'dynamicStep' && v.value === -3));
+        report.dynamicController = {axis: 'Y', step: 90, heldUpResult: -3};
+    } finally { await page.mouse.up(); }
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .flatMap(t => Object.values(t.variables)).some(v => v.name.replace(/^(?:Game_)+/, '') === 'dynamicStep' && v.value === 0));
     await codeTab();
-    await page.getByRole('button', {name: '⇨ From blocks', exact: true}).click();
+    await page.getByRole('button', {name: 'From blocks ⇨', exact: true}).click();
     const decompiled = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
     for (const word of ['100 op "-" with 20', '120 op "/" with 2', '7 op "*" with 6', 'null value', '5 op "-"', '7 op ">=" with 6', 'arcade controller y step 10']) assert.ok(decompiled.includes(word), word);
+    assert.ok(decompiled.includes('arcade controller (dynamicAxis) step 90'), 'dynamic axis remains a reporter after visible Blocks');
     report.decompiled = decompiled;
     await apply();
     await run('code-blocks-reconstruction');
@@ -183,7 +202,7 @@ try {
         .some(b => b.type === 'arrays_specialValue' && b.getFieldValue('KIND') === 'null'));
     await run('legacy-sb3-preload-migration');
     await codeTab();
-    await page.getByRole('button', {name: '⇨ From blocks', exact: true}).click();
+    await page.getByRole('button', {name: 'From blocks ⇨', exact: true}).click();
     const migratedCode = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
     assert.match(migratedCode, /arcade controller (?:y|"y") step 10/, 'legacy y axis survives actual visible workspace load');
     assert.ok(migratedCode.includes('100 op "-" with 20'));
