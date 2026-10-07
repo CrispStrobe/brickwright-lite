@@ -379,6 +379,9 @@ cfgs.forEach(c => {
     // since the dependency exports only its main entry.
     c.resolve.alias['scratch-vm/src/extension-support/native-renode-capability.js$'] =
         path.join(path.dirname(vmSrc), 'extension-support/native-renode-capability.js');
+    // The GUI and sandboxed Arcade extension share UUID-preserving menu labels.
+    c.resolve.alias['scratch-vm/src/util/bw-animation-resource-menu.js$'] =
+        path.join(path.dirname(vmSrc), 'util/bw-animation-resource-menu.js');
     // cat-blocks is a 65 MiB Easter-egg dependency (cat-themed blocks for "time travel to
     // 2020"). Aliasing it to scratch-blocks eliminates a duplicate blockly parse+compile
     // pass — the feature degrades gracefully to showing normal blocks.
