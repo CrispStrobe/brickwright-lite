@@ -267,9 +267,17 @@ The native animation JRES codec now passes eight tests against the retained
 original PXT encoder/decoder, package normalizer, emitter and asset-name validator.
 Native hyphen/Unicode IDs and namespaces are supported with explicit printable
 reference bounds; native display-name restrictions remain separate. This is the
-format layer, not native asset-editor integration. See the
-[animation interchange contract](ARCADE-ANIMATION-INTERCHANGE.md) for exporter,
-importer, rich-source recovery and original-editor acceptance work still open.
+format layer, not native asset-editor integration. Native gallery export now
+includes unused published resources and generated factories; main code caches
+used resources once. Native gallery import lowers tagged lookups to typed image
+arrays with original alias and allocation behaviour. Focused tests execute the
+actual original emitter/compiler/simulator and verify exact pixels, frame order,
+intervals, alias refusal and generated-name collisions. The explicit production build and full six-journey browser gate pass at
+`8bca7037c`, including actual downloaded native gallery frames/timing and
+19,200 original-PXT screen pixels. Unused imported assets
+are validated but are not yet persistent GUI resources. See the
+[animation interchange contract](ARCADE-ANIMATION-INTERCHANGE.md) for rich-source
+recovery, persistent resource reconstruction and original-editor acceptance.
 
 **Adopted:** shared compiler [PR62](https://github.com/CrispStrobe/sb3-creator/pull/62)
 merged at

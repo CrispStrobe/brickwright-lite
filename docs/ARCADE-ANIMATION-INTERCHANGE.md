@@ -1,7 +1,8 @@
 # Native Arcade animation interchange
 
-Status: format codec implemented and locally tested; asset exporter/importer
-wiring and original-editor qualification remain open. This extends U04 in the
+Status: native gallery export and behavioural import implemented and locally
+tested against original PXT. Persistent resource reconstruction, rich-source
+recovery and original-editor qualification remain open. This extends U04 in the
 [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding).
 The uniform-resource production-browser journey is locally qualified as recorded
 in the ledger. Original native animation asset editing and rich-resource
@@ -50,16 +51,43 @@ the canonical frame/interval resource words and native menu shadows are adopted.
 Three publication-browser journeys qualify the named Blocks reporters, actual
 palette drag/drop and UUID picker storage alongside Pixel publication/SB3
 persistence. Eight codec tests, two highlight tests, four explicit producer
-identity tests (zero skips), and four vendored original-export tests pass. These are separate finite boundaries:
-the full controller/export/reimport browser gate is still being debugged and has
-not passed. Native original-MakeCode animation asset editing is also still open.
+identity tests (zero skips), and four vendored original-export tests pass. The
+full production controller/export/reimport journey subsequently passed at
+`89700204711ce470ebb7a77e511ec960fa1e8b6d`, before native gallery wiring.
+Native original-MakeCode animation asset editing remains open.
+
+## Native wiring qualification
+
+At source `8bca7037c`, the explicit production build passes. The full browser
+journey passes six workflows with zero page errors and zero invalid playback
+frames after readiness. The downloaded HEX contains a native gallery named
+`Run`, three exact3×2 frames in the edited order and100ms timing, with both
+asset files listed in `pxt.json`. Original PXT compiles those downloaded files
+without network attempts; all19,200 same-frame screen pixels match Brickwright.
+File reimport and repeated controller stop/restart pass. This is native asset
+transport and playback evidence, not original Assets editor or rich-source
+reconstruction evidence.
+
+The final export/import/integrated-overlay batch passes21 tests without skips;
+the browser budget/shard/timeout/wait contracts pass25. The earlier affected
+export/census batch passed119 tests with two stale integrated-copy failures;
+after synchronization, both overlay checks pass in the final focused batch.
+The saved-zero scalar test separately passes against original PXT. Earlier
+failures remain preserved, including a stopped preview server and a harness
+assertion that read shared dimensions from individual decoded frames.
 
 ## Original generated asset contract
 
 Original PXT `emitProjectImages(jres)` emits `images.g.ts` with
 `helpers._registerFactory("animation", function (name: string) {...})`.
 Its switch checks `helpers.stringTrim(name)` and returns an Image[] for the
-asset's native ID or display name. Each lookup allocates a new array; no
+generated gallery-key alias or display name. Canonical IDs are identities,
+not necessarily lookup aliases: ordinary galleries accept a short key, custom
+namespaces and nested gallery keys can require the full key. The importer
+reproduces the original package/emitter rules, including wildcard defaults,
+explicit empty namespaces and double-prefix normalization. Actual original
+compile/simulation tests cover eleven alias lookups and reject names for which
+the original factory returns null. Each lookup allocates a new array; no
 factory cache or interval reporter exists. Native references use
 `assets.animation` tagged templates. The original
 [asset template declarations](https://github.com/microsoft/pxt-arcade/blob/2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea/libs/game/assetTemplates.ts)
@@ -74,15 +102,20 @@ names and generated variable collisions.
 
 ## Remaining implementation sequence
 
-1. **Native export:** emit real animation JRES and generated factory declarations;
-   use cached `assets.animation` references and explicit uniform intervals.
-   Compare output with the original emitter and execute original PXT. Preserve
-   computed resource-ID lookup and runtime image/array identity.
-2. **Native import:** parse animation entries separately from ordinary images,
-   resolve canonical namespace IDs and display names, and lower named asset
-   references to persistent resource reporters. Return complete resource source
-   through the shared project-import pipeline, including unused assets. Keep
-   attached `animation.Animation` objects separate from named frame resources.
+1. **Native export implemented:** published resources, including unused ones,
+   emit real `images.g.jres` entries and `images.g.ts` factories. Main code caches
+   each used resource once, preserving shared array identity and computed UUID
+   lookup. Uniform intervals remain explicit. Native ID/display-name collisions
+   and user-global namespace collisions are handled; invalid names and duplicate
+   aliases produce diagnostics. Original emitter substitution and actual PXT
+   execution verify exact dimensions, frame order, pixels and fresh factory
+   arrays. Palette remapping precedes both native and factory encoding.
+2. **Behavioural native import implemented; persistent resources open:** native
+   animation galleries are parsed separately from image assets. Tagged lookups
+   lower to typed image arrays with original allocation and alias semantics.
+   Malformed entries and ambiguous aliases produce diagnostics. Unused assets
+   are validated but do not yet become editable GUI resources; rich documents
+   and stable UUIDs are not reconstructed by this lowering.
 3. **Rich source:** design a versioned companion file listed in `pxt.json.files`,
    keyed by native asset ID. Store UUID, layered document and normalized
    dimensions/frame pixels/order/interval/palette revision. Reattach original
@@ -99,6 +132,32 @@ names and generated variable collisions.
    controller trigger/stop/restart and exact original playback. No-edit imports
    should recover validated source/UUID; edited assets must never resurrect
    stale layers. Test duplicate/renamed/deleted resources and generated names.
+
+## Next persistent-resource transaction
+
+Keep native resources separate from costume imports. `arcade-assets.js` already
+returns all valid animation entries, including unused entries. Carry these
+through `arcadeToPseudocode`, `importProjectFiles` and `applyMakeCodeImport` into
+the existing compile transaction. Generate validated resource carrier costumes
+and artwork metadata inside the SB3 before `vm.loadProject`, then use the
+existing artwork/resource synchronization and Code artwork retention. Clear
+pending imports at the same unrelated-file/example/project boundaries as other
+artwork. A half-valid document must never replace the loaded project.
+
+Reuse the existing bundle document validator and resource normalizer rather
+than adding a second definition of valid layers. A bounded, versioned companion
+must bind unique native IDs and resource UUIDs to source documents and their
+exact exported projection. Compare dimensions, ordered pixels, interval and
+palette against current JRES after the same palette remapping as export.
+No-edit matches may restore UUIDs/layers; changed native pixels/order/timing or
+palette must retain the edited native asset under a fresh identity and emit a
+stale-source diagnostic. Names alone do not establish resource identity.
+
+Acceptance must cover unused assets, multiple resources, duplicate UUID/ID
+bindings, malformed/future metadata, renamed/deleted/edited native assets,
+transparent pixels, custom palettes, SB3 reopen/Undo and Code↔Blocks. Test both
+file and share imports. Original editor companion-file retention still needs
+an actual Assets edit/save/download journey; compiler acceptance is insufficient.
 
 Variable-duration scheduling, attached action bindings and custom-palette RGB
 qualification remain distinct work. Neither the native format nor the current

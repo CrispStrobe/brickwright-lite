@@ -565,6 +565,10 @@ merge. This is not a claim that current main includes the candidate.
 
 The reached browser qualification covers painting, publication, invalid timing,
 SB3 reopen, native binding, controller stop/restart, rename/reorder and original
-Arcade export/reimport playback. All19,200 pixels match original Arcade; editable timeline/UUID recovery through MakeCode is still open.
+Arcade export/reimport playback. All19,200 pixels match original Arcade.
+Exports now include native animation gallery files, including unused published
+resources. Native animation imports preserve playback and typed image-array
+behaviour. Editable timeline/layers/UUID recovery through MakeCode and original
+Assets editor qualification remain open.
 See [the authoring gap ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding)
 for the remaining acceptance criteria.

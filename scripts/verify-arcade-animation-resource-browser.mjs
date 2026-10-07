@@ -10,6 +10,7 @@ import JSZip from 'jszip';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
+import {decodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
 import {compile} from './lib/pxt-node.mjs';
 import {runArcadeSim} from './lib/makecode-arcade-sim.mjs';
 const option=name=>process.argv.includes(name)?process.argv[process.argv.indexOf(name)+1]:undefined;
@@ -307,6 +308,16 @@ try{
         const download=await exported;assert.match(download.suggestedFilename(),/\.hex$/);
         const hex=path.join(path.dirname(out),'animation-export.hex');await download.saveAs(hex);const bytes=await fs.readFile(hex);
         const embedded=await unpackMakeCodeSource(bytes);assert.ok(embedded.files?.['main.ts']);await fs.writeFile(path.join(path.dirname(out),'animation-export.ts'),embedded.files['main.ts']);
+        const nativeConfig=JSON.parse(embedded.files['pxt.json']);
+        for(const file of ['images.g.jres','images.g.ts'])assert.ok(nativeConfig.files.includes(file),`native asset file ${file} is included`);
+        const nativeEntries=Object.values(JSON.parse(embedded.files['images.g.jres']));
+        assert.equal(nativeEntries.length,1);
+        const nativeAnimation=decodeAnimationJres(nativeEntries[0]);
+        assert.equal(nativeAnimation.name,'Run');assert.equal(nativeAnimation.intervalMs,100);
+        assert.deepEqual([nativeAnimation.width,nativeAnimation.height],[3,2]);
+        assert.deepEqual(nativeAnimation.frames.map(frame=>Array.from(frame.pixels)),
+            [2,9,5].map(colour=>Array(6).fill(colour)),'download retains renamed native gallery frames, order, pixels and interval');
+        report.nativeGallery={name:nativeAnimation.name,intervalMs:nativeAnimation.intervalMs,frames:nativeAnimation.frames.length};
         const compiled=await compile('arcade',embedded.files);assert.equal(compiled.success,true,JSON.stringify(compiled.diagnostics));
         const original=await runArcadeSim(compiled.outfiles['binary.js'],{ms:1000});assert.equal(original.error,null);
         const originalSequence=sequence(original.serial.map(row=>Number(row.text)).filter(value=>[2,9,5].includes(value)));cycle(originalSequence,[2,9,5],'original PXT');
