@@ -38,9 +38,18 @@ Recent progress:
   [Rust Core CI37481145753](https://github.com/CrispStrobe/labwired-core/actions/runs/37481145753)
   passed, but [Core Perf37481145682](https://github.com/CrispStrobe/labwired-core/actions/runs/37481145682)
   measured native PyBadge **0.05x**, batch **1**, against generic ATSAMD51
-  **67.97x**, batch **1023.8**. The idle SPI walk requirement is being repaired
-  in [PR159](https://github.com/CrispStrobe/labwired-core/pull/159); qualification
-  is owed. Native pixels, DMAC, split IRQ and dynamic clocks remain separate.
+  **67.97x**, batch **1023.8**. That is the pre-repair baseline.
+- Idle-controller repair [LabWired PR159](https://github.com/CrispStrobe/labwired-core/pull/159)
+  merged as `ae127c89b9f60ed8a239f82858859c31ef8255af`, tested source
+  `547da6da814afd0375199b192db7e3e2416042a0`, with identical review/merge trees
+  and all 20 enabled correctness checks passed. Two full native chip-spin runs
+  pass all 42 absolute floors; PyBadge medians **61.4713x / 84.1056x**, batch
+  **1023.8**. The first run's F411 relative-cost failure is preserved; the full
+  repeat and two valid isolated candidate comparisons pass unchanged baselines.
+  Read [receipts and open measurement stability work](https://github.com/CrispStrobe/labwired-core/blob/main/docs/receipts/2026-10-07-sam-spi-p0/README.md).
+  These runner-specific spin rates are not active display, full-board batching,
+  WASM or app-pin adoption. Full-board GPIO still requires interval 1.
+  Native pixels, DMAC, split IRQ and dynamic clocks remain separate.
 - Lite's current source-bound WASM pin in `scripts/sync-labwired-wasm.mjs`
   remains **`31b6f8aade1af3329cf686438acb31bee204e23d`**, before that SPI merge.
   Do not silently adopt newer source or attribute its features/regression to
@@ -76,7 +85,8 @@ usability, not physical PyBadge fidelity.
 **Dependencies/files/acceptance:** follow
 [LabWired P1–P5](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/target-next-lanes.md)
 and [panel/runtime contract](https://github.com/CrispStrobe/labwired-core/blob/main/docs/boards/pybadge-native.md).
-Order: qualify the idle-SPI regression repair (P0); blocking ST7735
+P0's bounded idle-controller repair has landed; preserve its stability follow-up.
+Next order: blocking ST7735
 RGB444/LUT/reset/orientation (P3); split IRQ routing (P2) and then DMAC/driver
 completion (P4) as separate bounded changes; active native guest (P5).
 SPI itself has landed; do not redo its merge. Buttons and five NeoPixels already
