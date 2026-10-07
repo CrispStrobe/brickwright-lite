@@ -160,7 +160,7 @@ try {
         await page.getByTestId('bw-pixel-tool-pencil').click();
         const canvas=page.getByTestId('bw-pixel-canvas');await canvas.scrollIntoViewIfNeeded();
         const box=await canvas.boundingBox();
-        await page.mouse.click(box.x+box.width*(x+.5)/160,box.y+box.height*(y+.5)/120);
+        await canvas.click({position:{x:box.width*(x+.5)/160,y:box.height*(y+.5)/120}});
     }
     assert.deepEqual(await canvasCorners(),expectedColours(AUTHORED_CORNERS));
     await savePixels();
