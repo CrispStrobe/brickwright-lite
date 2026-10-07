@@ -87,11 +87,12 @@ at `780b7a7ff7c737f632a90152f0d9ca38890aec10` retained
 (247,016 bytes, SHA-256
 `c5123adaa338ebaac36584f734fd76cb30f07e966b1fd74aa9df1e2aeb28e785`).
 All 30 physical VDP keydown/up events were trusted and targeted the focused
-screen, but the observed machine target received zero `keyIn` calls; the guest
-pixels were unchanged as time advanced. This locates the missing route before
-the observed target method but does not yet distinguish a missing React callback
-prop, an unhandled React key event, or a changed runner/target. The next probe
-records those route facts without synthesizing input or relaxing the pixel gate.
+screen, but the wrapped target method received zero `keyIn` calls; the guest
+pixels were unchanged as time advanced. The route between focused DOM events
+and the observed target remains unresolved: a missing React callback prop,
+an unhandled React key event, or a changed runner/target remain possible. The
+next probe records those route facts without synthesizing input or relaxing
+the pixel gate.
 
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
