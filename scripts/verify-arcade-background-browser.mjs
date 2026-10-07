@@ -124,7 +124,7 @@ try {
         document.querySelector('[data-testid="bw-pixel-h"]')?.value==='120');
     await page.getByTestId('bw-pixel-arcade-background').click();
     await page.getByTestId('bw-pixel-w').fill('159');
-    await page.getByRole('button',{name:'Undo',exact:true}).click();
+    await page.getByTestId('bw-pixel-primary-toolbar').getByRole('button',{name:'Undo',exact:true}).click();
     assert.equal(await page.getByTestId('bw-pixel-w').inputValue(),'160');
     assert.deepEqual(await canvasCorners(),expectedColours(BACKGROUND_CORNERS.map(([x,y])=>[x,y,2])));
     await savePixels();
