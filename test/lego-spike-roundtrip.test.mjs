@@ -236,8 +236,15 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // ATtiny88's chip temperature, gallery device lists. The parser changes are
     // ATtiny-only PIN declarations (ADC pins by port, PWM on PB1/PB4, none on
     // the tiny88) -- no SPIKE word and not in this fixture; the assertions re-ran.
+    // PIN MOVED 85973b6a -> 98748eea (2026-10-07, sb3-creator#58, task F6): a
+    // body's trailing comments stay in its script, an empty hat leaves the next
+    // script alone, a comment above DEFINE is the definition's. Parser and host
+    // C only; this fixture has no comments. The assertions re-ran.
+    // PIN MOVED 98748eea -> 8ba3508e (2026-10-07, sb3-creator#59):
+    // Arcade rotation/rotationDegrees/data property words only; the shared
+    // parser includes #58's comment and empty-body repairs.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '85973b6a10fcd546b489e2bc441dc217a97436f4');
+        '2d2a562812c6e34525021ccacd421b1d20151c15');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

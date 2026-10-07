@@ -13,7 +13,9 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         for (let offset = 0; offset + stride <= data.length; offset += stride) {
             glyphs.set(data[offset] | data[offset + 1] << 8, data.slice(offset + 2, offset + stride));
         }
-        decoded[key] = {...font, glyphs};
+        // This factory crosses the adapter boundary through Function.toString().
+        // Object spread makes Babel hoist a helper outside that serialized body.
+        decoded[key] = Object.assign({}, font, {glyphs});
     }
     class PixelImage {
         constructor(width, height) {
@@ -89,7 +91,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
     pxt.Flag = {Destroyed: 1, RelativeToCamera: 2};
     pxt.create = img => new BubbleSprite(img);
     function ownerFor(sprite) {
-        const owner = {...sprite, flags: 0};
+        const owner = Object.assign({}, sprite, {flags: 0});
         owner.left = owner.x - owner.width / 2;
         owner.top = owner.y - owner.height / 2;
         owner._hitbox = {oy: 0};

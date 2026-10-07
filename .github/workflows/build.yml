@@ -1132,6 +1132,43 @@ jobs:
           BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/editor-responsive-receipts
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-editor-responsive.mjs
 
+      - name: Browser gate — Arcade rotation, data, controller and file roundtrip
+        id: arcade_rotation_browser
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-rotation-browser.mjs --out test-results/arcade-rotation-browser/current.json
+      - name: Upload Arcade controller and file-roundtrip observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arcade-rotation-browser
+          path: test-results/arcade-rotation-browser/
+          if-no-files-found: error
+
+      - name: Browser gate — Code artwork edits persist through Blocks and project reopen
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-code-artwork-browser.mjs --out test-results/code-artwork-browser/current.json
+      - name: Upload code-artwork-browser authoring observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: code-artwork-browser
+          path: test-results/code-artwork-browser/
+          if-no-files-found: error
+
+      - name: Browser gate — Arcade native Blocks fields survive editing and project reopen
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-schema-browser.mjs --out test-results/arcade-schema-browser/current.json
+      - name: Upload arcade-schema-browser authoring observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arcade-schema-browser
+          path: test-results/arcade-schema-browser/
+          if-no-files-found: error
+
       # Keep the debugger acceptance checks at the front of the browser queue.
       # They reuse this job's one build, server and Chromium installation, but
       # now report before the unrelated product journeys rather than after

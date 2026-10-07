@@ -47,6 +47,9 @@ import {
     ARCADE_PALETTE
 } from './arcade-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
+import {HELPERS} from './arcade-runtime.js';
+/** `sprites.castle`, `sprites.dungeon`, … : the namespaces PXT's built-in art lives in. */
+const BUILTIN_IMAGE_GROUPS = new Set(Object.keys(BUILTIN_IMAGES).map(key => key.slice(0, key.lastIndexOf('.'))));
 
 // MakeCode's true and false in a value position (see expr's Boolean case).
 const ARCADE_TRUE = '(compare value (0) op "<" with (1))';
@@ -122,7 +125,7 @@ const MAX_ANIMATION_FRAMES = 24;
 const SPRITE_PROPERTIES = new Set([
     'x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
     'width', 'height', 'left', 'right', 'top', 'bottom',
-    'image', 'kind', 'lifespan', 'z'
+    'image', 'kind', 'lifespan', 'z', 'rotation', 'rotationDegrees', 'data'
 ]);
 
 const playerVar = (base, player) => (player > 1 ? `${base}${player}` : base);
@@ -217,7 +220,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
-        this.imageReferences = references.images;this.spriteReferences = references.sprites;
+        this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.spriteResultFunctions = references.spriteFunctions;
@@ -293,12 +296,12 @@ class ArcadeTranslator extends BaseTranslator {
     /** An x coordinate in Arcade units, as a stage-unit expression. */
     stageX (node) {
         if (node && node.type === 'Number') return num((Number(node.value) - HALF_WIDTH) * SCALE);
-        return `(${this.expr(node)} - ${HALF_WIDTH}) * ${SCALE}`;
+        return `(${this.side(node, '-', false)} - ${HALF_WIDTH}) * ${SCALE}`;
     }
 
     stageY (node) {
         if (node && node.type === 'Number') return num((HALF_HEIGHT - Number(node.value)) * SCALE);
-        return `(${HALF_HEIGHT} - ${this.expr(node)}) * ${SCALE}`;
+        return `(${HALF_HEIGHT} - ${this.side(node, '-', true)}) * ${SCALE}`;
     }
 
     /**
@@ -345,6 +348,17 @@ class ArcadeTranslator extends BaseTranslator {
             return this.assets[node.value.trim()] || null;
         }
         return parseImageLiteral(node.value);
+    }
+
+    /**
+     * An array REFERENCE (a value a variable holds), as the value-type graph
+     * says, unless the name was declared as a named Scratch list on the
+     * fixed-sprite path (\`new array "frameList"\`): then the list's own
+     * blocks read it, and a reference read would find an unset variable.
+     */
+    isArrayReference (node) {
+        if (!this.arrayReferences?.has(node)) return false;
+        return !(node?.type === 'Identifier' && this.arrays?.has(node.name) && !this.handleTemplates);
     }
 
     isBooleanValue (value) {
@@ -441,13 +455,18 @@ class ArcadeTranslator extends BaseTranslator {
         if (st.type==='Declaration' && this.handleTemplates) {
             const pad='  '.repeat(indent);
             for(const d of st.decls){
-                const value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
+                const gaps=this.unsupported.length;
+                let value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
+                // An array we could not translate (already named as a gap) stands in as an
+                // EMPTY array, so \`for (const t of scene.getTilesByType(4))\` runs no times
+                // instead of failing at run time on "Array reference is null or expired".
+                if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
                 else out.push(`${pad}set ${this.varName(d.name)} to ${value}`);
             }
             return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.op==='=' && st.expr.left?.type==='Identifier' && this.arrayReferences?.has(st.expr.left)) {
+        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.op==='=' && st.expr.left?.type==='Identifier' && this.isArrayReference(st.expr.left)) {
             const name=st.expr.left.name,value=this.expr(st.expr.right),pad='  '.repeat(indent);
             out.push((st.expr.left.temporary || this.localVars?.has(name))?`${pad}arcade set local ${name} to (${value})`:`${pad}set ${this.varName(name)} to ${value}`);return;
         }
@@ -457,15 +476,15 @@ class ArcadeTranslator extends BaseTranslator {
             else out.push(`${'  '.repeat(indent)}${this.note(`animation.Animation.${l.name} assignment ${n.op} requires animation property mutation support`)}`);
             return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && st.expr.left.name==='length' && this.arrayReferences?.has(st.expr.left.object)) {
+        if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && st.expr.left.name==='length' && this.isArrayReference(st.expr.left.object)) {
             const n=st.expr,l=n.left,value=n.op==='='?this.expr(n.right):`(${this.expr(l)}) ${n.op.slice(0,-1)} (${this.expr(n.right)})`;
             out.push(`${'  '.repeat(indent)}mutate array reference (${this.expr(l.object)}) op "length" index (0) value (${value})`);return;
         }
-        if (st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Index' && this.arrayReferences?.has(st.expr.left.object)) {
+        if (st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Index' && this.isArrayReference(st.expr.left.object)) {
             const n=st.expr,l=n.left;const value=n.op==='='?this.arrayElementValue(n.right):this.expr({type:'Binary',op:n.op.slice(0,-1),left:l,right:n.right});
             out.push(`${'  '.repeat(indent)}mutate array reference (${this.expr(l.object)}) op "set" index (${this.expr(l.index)}) value (${value})`);return;
         }
-        if(st.type==='ExpressionStatement' && st.expr?.type==='Call' && st.expr.callee?.type==='Member' && this.arrayReferences?.has(st.expr.callee.object)) {
+        if(st.type==='ExpressionStatement' && st.expr?.type==='Call' && st.expr.callee?.type==='Member' && this.isArrayReference(st.expr.callee.object)) {
             const n=st.expr,op=n.callee.name,a=n.args||[];
             if(['push','unshift','insertAt','set','removeAt','removeElement','pop','shift','reverse'].includes(op)) {
                 const index=['insertAt','set','removeAt'].includes(op)?this.expr(a[0]):'0';
@@ -509,7 +528,15 @@ class ArcadeTranslator extends BaseTranslator {
         // form for a comparison (it warns and keeps the text), so a word that
         // reports a real boolean carries it (E0).
         if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
-        if(node?.type==='Index' && this.arrayReferences?.has(node.object))
+        // \`!x\` AS A CONDITION is the dialect's \`not\`; E9's \`x === false\` value form is
+        // for value slots only. Written through it, Lite's own export (\`while (!(!c))\`)
+        // came back as nested value comparisons and lost every operator_not.
+        if(this.handleTemplates && node?.type==='Unary' && node.op==='!') {
+            const inner=node.argument;
+            if(inner?.type==='Unary' && inner.op==='!')return this.condition(inner.argument);
+            return `not (${this.condition(inner)})`;
+        }
+        if(node?.type==='Index' && this.isArrayReference(node.object))
             return `truthiness of item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if(this.handleTemplates && node && node.type!=='Boolean' &&
             !(node.type==='Binary' && ['==','!=','===','!==','<','>','<=','>=','&&','||'].includes(node.op)) &&
@@ -564,7 +591,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push(`Arcade Scene.${node.callee.name} requires native Scene method support`);return 'undefined value';
         }
         const owner=node.callee?.type==='Member' && node.callee.object;
-        if (owner && this.arrayReferences?.has(owner)) {
+        if (owner && this.isArrayReference(owner)) {
             const ref=this.expr(owner),op=node.callee.name,a=node.args||[];
             if (['pop','shift','removeAt'].includes(op)) return `${op} from array reference (${ref}) index (${a[0]?this.expr(a[0]):0})`;
             if (op==='get') return `item (${this.expr(a[0])}) of array reference (${ref})`;
@@ -573,7 +600,7 @@ class ArcadeTranslator extends BaseTranslator {
             if (op==='removeElement') return `calculate value (remove value (${this.arrayElementValue(a[0])}) from array reference (${ref})) op "+" with ((0 + (0)))`;
             if (op==='indexOf') return `index of (${this.arrayElementValue(a[0])}) in array reference (${ref}) from (${a[1]?this.expr(a[1]):0})`;
         }
-        if (this.path(node.callee)==='Math.pickRandom' && this.arrayReferences?.has(node.args?.[0])) {
+        if (this.path(node.callee)==='Math.pickRandom' && this.isArrayReference(node.args?.[0])) {
             return `random item of array reference (${this.expr(node.args[0])})`;
         }
         const name = this.path(node.callee);
@@ -641,7 +668,10 @@ class ArcadeTranslator extends BaseTranslator {
             return `arcade player (${playerOf(name)}) ${property}`;
         }
         switch (name) {
-        case 'info.score': return this.handleTemplates?'arcade score':'score';
+        // Arcade's score is the game's on-screen score: the extension's own, on both
+        // paths. (The fixed-sprite path used to keep it in a Scratch variable named
+        // `score`, which the export could not tell from a user's, so the HUD was lost.)
+        case 'info.score': return 'arcade score';
         case 'info.life': return 'lives';
         case 'game.askForNumber':
             if (a.length === 1) return `arcade ask number ${this.expr(a[0])}`;
@@ -687,7 +717,7 @@ class ArcadeTranslator extends BaseTranslator {
             if (/^info\.player\d\./.test(name || '')) {
                 const player = playerOf(name);
                 const method = name.split('.').pop();
-                if (method === 'score') return playerVar('score', player);
+                if (method === 'score') return `arcade player (${player}) score`;
                 if (method === 'life') return playerVar('lives', player);
                 if (method === 'hasLife') {
                     if (this.handleTemplates) {this.usesArrays = true; return `compare value (${playerVar('lives', player)}) op ">" with (0)`;}
@@ -882,8 +912,8 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return `arcade sprite array kind ${JSON.stringify(kind.name)}`;
         }
-        if (node?.type==='Index' && this.arrayReferences?.has(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
-        if (node?.type==='Member' && node.name==='length' && this.arrayReferences?.has(node.object)) return `length of array reference (${this.expr(node.object)})`;
+        if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
+        if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
 
         if (this.imageValueResources.has(node)) return this.imageRef(node);
         // The Arcade exporter writes a Scratch join as `"" + left + right`.
@@ -910,12 +940,15 @@ class ArcadeTranslator extends BaseTranslator {
         const handle = node?.type === 'Member' && this.handleRef(node.object);
         if (handle) {
             if (['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan'].includes(node.name)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(node.name)) {
                 return `arcade property ${node.name} of ${handle}`;
             }
             if (node.name === 'image') return `arcade image of ${handle}`;
             this.unsupported.push(`${this.path(node)} — unsupported Arcade handle property`);
             return '0';
+        }
+        if(node?.type==='Member' && this.dataReferences?.has(node.object)) {
+            this.unsupported.push(`Sprite.data.${node.name} requires arbitrary object member support`);return 'undefined value';
         }
         if (node && node.type === 'Member' && node.object.type === 'Identifier' &&
             node.object.name === 'screen') {
@@ -962,6 +995,14 @@ class ArcadeTranslator extends BaseTranslator {
                 `${owner}.${node.name} — a sprite held in a variable, which the stage cannot follow`);
             return '0';
         }
+        // \`sprites.dungeon.someTile\`: built-in art we do not carry (an extension's
+        // namespace, or one newer than the pinned bundle). Falling through made a
+        // variable named \`someTile\` that silently held 0.
+        if (node && node.type === 'Member' && !BUILTIN_IMAGES[this.path(node)] &&
+            BUILTIN_IMAGE_GROUPS.has(this.path(node.object))) {
+            this.unsupported.push(`${this.path(node)} — built-in image art not available`);
+            return '0';
+        }
         return super.expr(node);
     }
 
@@ -978,6 +1019,9 @@ class ArcadeTranslator extends BaseTranslator {
         const push = line => out.push(pad + line);
         const name = this.path(node.callee);
         const a = node.args || [];
+        // Lite's own export's stop machinery, lifted back by liftExporterStops.
+        if (name === '__bwStopAll') { push('stop all'); return; }
+        if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
         if (this.functions.some(fn=>fn.name===name)) {
             const fn=this.sourceFunctions?.get(name),actual=[...a];
             if(this.handleTemplates && fn && a.length<fn.params.length){
@@ -1232,21 +1276,21 @@ class ArcadeTranslator extends BaseTranslator {
             return;
 
         case 'info.setScore':
-            push(`${this.handleTemplates?'arcade set score to':'set score to'} ${this.expr(a[0])}`);
+            push(`arcade set score to ${this.expr(a[0])}`);
             return;
-        // The per-player forms write the same variables the plain API does,
+        // The per-player forms: player one IS the plain score in the extension,
         // so a game that mixes both stays consistent.
         case 'info.player1.setScore':
         case 'info.player2.setScore':
         case 'info.player3.setScore':
         case 'info.player4.setScore':
-            push(`set ${playerVar('score', playerOf(name))} to ${this.expr(a[0])}`);
+            push(`arcade set score player (${playerOf(name)}) to (${this.expr(a[0])})`);
             return;
         case 'info.player1.changeScoreBy':
         case 'info.player2.changeScoreBy':
         case 'info.player3.changeScoreBy':
         case 'info.player4.changeScoreBy':
-            push(`change ${playerVar('score', playerOf(name))} by ${this.expr(a[0])}`);
+            push(`arcade change score player (${playerOf(name)}) by (${this.expr(a[0])})`);
             return;
         case 'info.player1.setLife':
         case 'info.player2.setLife':
@@ -1261,7 +1305,7 @@ class ArcadeTranslator extends BaseTranslator {
             push(`change ${playerVar('lives', playerOf(name))} by ${this.expr(a[0])}`);
             return;
         case 'info.changeScoreBy':
-            push(`${this.handleTemplates?'arcade change score by':'change score by'} ${this.expr(a[0])}`);
+            push(`arcade change score by ${this.expr(a[0])}`);
             return;
         case 'info.setLife':
             push(`set lives to ${this.expr(a[0])}`);
@@ -1338,9 +1382,14 @@ class ArcadeTranslator extends BaseTranslator {
             push(this.note(`sprite.${method}() arguments`));
             return;
         }
+        // A literal argument stays a literal in the block's slot: \`false\` is 0 and
+        // \`-1\` is -1, as when the import supplies the default (Lite's own export
+        // writes them out; read as value words they changed the blocks on a round trip).
+        const literal = node => node?.type === 'Boolean' ? (node.value ? '1' : '0') :
+            node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number' ? num(-Number(node.argument.value)) : null;
         const optional = (index, fallback) => args[index] &&
             args[index].type !== 'Null' &&
-            !(args[index].type === 'Identifier' && args[index].name === 'undefined') ? this.expr(args[index]) : fallback;
+            !(args[index].type === 'Identifier' && args[index].name === 'undefined') ? literal(args[index]) ?? this.expr(args[index]) : fallback;
         const escapes = {n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', '0': '\0'};
         const decode = value => value.replace(/\\(?:u\{([0-9a-f]+)\}|u([0-9a-f]{4})|x([0-9a-f]{2})|([\s\S]))/gi,
             (_, point, unicode, hex, char) => point || unicode || hex ?
@@ -1403,6 +1452,10 @@ class ArcadeTranslator extends BaseTranslator {
     expressionStatement (expr, indent, out) {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
+        const dataTarget=expr.type==='Assignment'?expr.left:expr.type==='Update'?expr.argument:null;
+        if(dataTarget?.type==='Member' && this.dataReferences?.has(dataTarget.object) && !this.spriteReferences?.has(dataTarget.object)) {
+            push(this.note(`Sprite.data.${dataTarget.name} assignment requires arbitrary object member support`));return;
+        }
 
         if(this.handleTemplates && (expr.type==='Assignment' && expr.left?.type==='Identifier' || expr.type==='Update' && expr.argument?.type==='Identifier')) {
             const target=expr.type==='Update'?expr.argument:expr.left;
@@ -1466,7 +1519,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (handle) {
             const property = expr.left.name;
             if (!['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan'].includes(property)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(property)) {
                 push(this.note(`${this.path(expr.left)} = … — unsupported Arcade handle property`));
                 return;
             }
@@ -1490,6 +1543,14 @@ class ArcadeTranslator extends BaseTranslator {
 
         if (expr.type === 'Assignment' && expr.left.type === 'Member') {
             const owner = this.resolveSprite(expr.left.object);
+            // \`paddle.x = …\` where \`paddle\` is a loop variable or a parameter: no
+            // stage sprite to move. Falling through wrote \`set 0 to …\`, a variable
+            // literally named 0 (the property read as an unresolved value).
+            if (!owner && !(this.handleTemplates && this.handleRef(expr.left.object)) && SPRITE_PROPERTIES.has(expr.left.name)) {
+                const name = expr.left.object.type === 'Identifier' ? expr.left.object.name : 'a value';
+                push(this.note(`${name}.${expr.left.name} = … — a sprite held in a variable, which the stage cannot follow`));
+                return;
+            }
             if (owner) {
                 const property = expr.left.name;
                 // Velocity is the exception, and it costs nothing: vx and vy
@@ -1592,6 +1653,115 @@ const desugarForOf = (program, source) => {
                 body: [{type: 'Declaration', kind: node.kind || 'let',
                     decls: [{name: node.name, init: {type: 'Index', object: id(array), index: id(index)}}]}, ...body]}
         ]};
+    };
+    return visit(program);
+};
+
+// Lite's own Arcade export carries the run-token machinery that makes Scratch's
+// \`stop\` blocks work in PXT (arcade-runtime.js \`tok\`/\`others\`, export-arcade.js
+// stop()). Read back as user code it became DEFINE _tok / _dead / _stopAll and
+// the \`stop all\` itself was lost. When that machinery is present VERBATIM, this
+// lifts it back: \`_stopAll()\` is \`stop all\`, a mark of \`_stopOthers\` is \`stop
+// other scripts in sprite\`, and the run-token lines and their guards vanish.
+let exporterTokenTemplates;
+const liftExporterStops = program => {
+    const shape = node => JSON.stringify(node, (key, value) => (key === 'line' ? undefined : value));
+    const templates = exporterTokenTemplates || (exporterTokenTemplates = new Map(
+        parseMakeCodeTs(`${HELPERS.tok.ts}\n${HELPERS.others.ts}`).body
+            .filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, shape(fn)])));
+    const declared = new Map(program.body.filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, fn]));
+    const stopAll = declared.get('_stopAll');
+    const generated = ['_tok', '_dead'].every(name => declared.has(name) && shape(declared.get(name)) === templates.get(name)) &&
+        (!stopAll || stopAll.body?.[0]?.type === 'ExpressionStatement' && stopAll.body[0].expr?.type === 'Assignment' &&
+            stopAll.body[0].expr.left?.name === '_stopMark' && stopAll.body[0].expr.right?.name === '_tokens');
+    if (!generated) return program;
+    const helpers = new Set(['_tok', '_dead', '_stopAll',
+        ...['_stopOthers', '_othersStopped'].filter(name => declared.has(name) && shape(declared.get(name)) === templates.get(name))]);
+    const isId = (node, name) => node?.type === 'Identifier' && (name instanceof RegExp ? name.test(node.name) : node.name === name);
+    const isCall = (node, name) => node?.type === 'Call' && isId(node.callee, name);
+    const marker = name => ({type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Identifier', name}, args: []}});
+    // A guard term the export adds at each yield; anything else in the test stays.
+    const guardTerm = node => isCall(node, '_dead') && isId(node.args?.[0], '_t') ||
+        isCall(node, '_othersStopped') && isId(node.args?.[1], '_t') ||
+        node?.type === 'Binary' && node.op === '&&' && node.left?.type === 'Binary' && node.left.op === '<=' &&
+            isId(node.left.left, '_t') && isId(node.left.right, /^_som_/);
+    const terms = node => node?.type === 'Binary' && node.op === '||' ? [...terms(node.left), ...terms(node.right)] : [node];
+    const bareReturn = st => st?.type === 'Return' && !st.value ||
+        st?.type === 'Block' && st.body?.length === 1 && bareReturn(st.body[0]) ||
+        Array.isArray(st) && st.length === 1 && bareReturn(st[0]);
+    const statements = list => {
+        const out = [];
+        for (let i = 0; i < list.length; i++) {
+            const st = list[i];
+            if (st?.type === 'FunctionDeclaration' && helpers.has(st.name)) continue;
+            if (st?.type === 'Declaration' && st.decls.every(d => /^(_tokens|_stopMark|_som_\w+|_sok_\w+)$/.test(d.name) && !d.init?.type?.startsWith('Call') ||
+                d.name === '_t' && isCall(d.init, '_tok'))) continue;
+            if (st?.type === 'If' && !st.alternate && bareReturn(st.consequent)) {
+                const all = terms(st.test);
+                const kept = all.filter(term => !guardTerm(term));
+                if (kept.length === 0) continue;
+                if (kept.length < all.length) {
+                    out.push({...st, test: kept.reduce((left, right) => ({type: 'Binary', op: '||', left, right}))});
+                    continue;
+                }
+            }
+            const expr = st?.type === 'ExpressionStatement' && st.expr;
+            if (isCall(expr, '_stopAll') && !expr.args?.length) {
+                out.push(marker('__bwStopAll'));
+                if (bareReturn(list[i + 1])) i++;
+                continue;
+            }
+            if (isCall(expr, '_stopOthers') && isId(expr.args?.[1], '_t')) {
+                out.push(marker('__bwStopOthers'));
+                continue;
+            }
+            // \`_som_X = _tokens\` then \`_sok_X = _t\`: stop other scripts of a sprite that is never cloned.
+            if (expr?.type === 'Assignment' && isId(expr.left, /^_som_/) && isId(expr.right, '_tokens')) {
+                const next = list[i + 1]?.expr;
+                if (next?.type === 'Assignment' && isId(next.left, /^_sok_/) && isId(next.right, '_t')) i++;
+                out.push(marker('__bwStopOthers'));
+                continue;
+            }
+            out.push(visit(st));
+        }
+        return out;
+    };
+    const visit = node => {
+        if (Array.isArray(node)) return statements(node);
+        if (!node || typeof node !== 'object') return node;
+        const copy = {...node};
+        for (const key of Object.keys(copy)) {
+            if (Array.isArray(copy[key])) copy[key] = copy[key].every(x => x && typeof x === 'object' && 'type' in x) &&
+                ['body', 'consequent', 'alternate', 'cases'].includes(key) ? statements(copy[key]) : copy[key].map(visit);
+            else if (copy[key] && typeof copy[key] === 'object') copy[key] = visit(copy[key]);
+        }
+        return copy;
+    };
+    return {...program, body: statements(program.body)};
+};
+
+// PXT library calls that are, by their own definition, expressions the
+// translator already has, rewritten to those before translation:
+//   Math.percentChance(p) is \`Math.randomRange(0, 99) < p\` (pxt-core math.ts),
+//   Math.clamp(lo, hi, v) is min(max(v, lo), hi), each argument read once,
+//   control.millis() is the time since the program started, as game.runtime().
+const lowerLibraryCalls = program => {
+    const callee = node => node?.type === 'Call' && node.callee?.type === 'Member' && node.callee.object?.type === 'Identifier' ?
+        `${node.callee.object.name}.${node.callee.name}` : null;
+    const call = (object, name, args) => ({type: 'Call', callee: {type: 'Member', object: {type: 'Identifier', name: object}, name}, args});
+    const visit = node => {
+        if (Array.isArray(node)) return node.map(visit);
+        if (!node || typeof node !== 'object') return node;
+        const copy = {...node};
+        for (const key of Object.keys(copy)) copy[key] = visit(copy[key]);
+        const name = callee(copy), a = copy.args || [];
+        if (name === 'Math.percentChance' && a.length === 1) {
+            return {type: 'Binary', op: '<', left: {type: 'Call', callee: {type: 'Identifier', name: 'randint'},
+                args: [{type: 'Number', value: 0}, {type: 'Number', value: 99}]}, right: a[0]};
+        }
+        if (name === 'Math.clamp' && a.length === 3) return call('Math', 'min', [call('Math', 'max', [a[2], a[0]]), a[1]]);
+        if (name === 'control.millis' && a.length === 0) return call('game', 'runtime', []);
+        return copy;
     };
     return visit(program);
 };
@@ -1872,7 +2042,13 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     // Join array element constraints as a graph, so nested arrays and aliases
     // retain their element types without unrolling recursive array types.
     const graph = new ValueTypeGraph();
-    const cell = (node, owner) => node?.type === 'Identifier' ? binding(owner,node.name) : node;
+    const cell = (node, owner) => {
+        if(node?.type === 'Identifier')return binding(owner,node.name);
+        if(node?.type === 'Member' && node.name === 'data') {
+            const value=graph.property(cell(node.object,owner),'data');graph.add(value,'SpriteData');return value;
+        }
+        return node;
+    };
     const connect = (left,right) => {if(left && right)graph.merge(left,right);};
     for (const fn of functions.values()) fn.resultCell = Symbol('procedure result');
     for (const {node,owner} of entries) {
@@ -1916,8 +2092,10 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(receiver && op==='clone' && !node.args.length && graph.has(receiver,'Image'))graph.add(value,'Image');
         }
     } while(revision!==graph.revision);
+    const data = new WeakSet();
     for (const {node, owner} of entries) {
         const value=cell(node,owner);
+        if(graph.has(value,'SpriteData'))data.add(node);
         if (graph.has(value,'array')) arrays.add(node);
         if (graph.has(value,'string')) strings.add(node);
         if (graph.has(value,'boolean')) booleans.add(node);
@@ -1931,7 +2109,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans,
+    return {images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -2869,7 +3047,7 @@ const translateSideProjectiles = (ast, assets) => {
         if (st.type === 'ExpressionStatement' && st.expr?.type === 'Assignment' &&
             st.expr.left?.type === 'Member' && st.expr.left.object?.type === 'Identifier' &&
             vars.has(st.expr.left.object.name) &&
-            ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'lifespan'].includes(st.expr.left.name)) continue;
+            ['x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(st.expr.left.name)) continue;
         return null;
     }
     t.claimNames(ast);
@@ -2973,7 +3151,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(parseMakeCodeTs(source, {parameterDefaults: true}), source)));
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(parseMakeCodeTs(source, {parameterDefaults: true}))), source)));
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
     const flattened = namespaceBindings.program ? ast : null;

@@ -9,6 +9,7 @@ import {inspectArtwork, applyArtwork} from './bw-artwork-bundle';
 import unblockAudio from './audio-context-unblock.js';
 import installSpikeProjectMigration from './spike-project-migration.js';
 import installEv3ProjectMigration from './ev3-project-migration.js';
+import installArcadeProjectMigration from './arcade-project-migration.js';
 import installNqcCompiler from './nqc-runtime-hook.js';
 import installRcxDownloader from './rcx-download-hook.js';
 import installExtensionConfirm from './extension-confirm-hook.js';
@@ -41,6 +42,7 @@ const vmManagerHOC = function (WrappedComponent) {
             // than configuring it, and is idempotent by design.
             installSpikeProjectMigration(this.props.vm);
             installEv3ProjectMigration(this.props.vm);
+            installArcadeProjectMigration(this.props.vm);
             // And the RCX extension's local compiler, for the same reason it
             // is here rather than at a call site: it patches the VM, is
             // idempotent, and must be in place before any extension loads.

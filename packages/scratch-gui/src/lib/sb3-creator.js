@@ -2254,6 +2254,18 @@ class SB3Creator {
         this._pendingComment = '';
     }
 
+    // Add comment text to a block, joining it to a comment the block already has.
+    // Used for a body's trailing `# comment` lines (see parseStructure).
+    appendBlockComment(target, block, blockId, text) {
+        if (!text || !block) return;
+        const existing = block.comment && target.comments && target.comments[block.comment];
+        if (existing) { existing.text = `${existing.text}\n${text}`; return; }
+        const pending = this._pendingComment;
+        this._pendingComment = text;
+        this.attachPendingComment(target, block, blockId);
+        this._pendingComment = pending;
+    }
+
     // Determine if a variable should be global.
     // Explicit GLOBAL/LOCAL declarations win; otherwise fall back to the legacy
     // magic-name list (kept only for backwards compatibility) or Stage scope.
@@ -2552,7 +2564,13 @@ class SB3Creator {
         const fields = {};
         for (const [p, text] of slots) {
             if (p.field) fields[p.slot] = [text, null];
-            else if (p.text || p.name) inputs[p.slot] = [1, [10, text]];
+            else if (p.menu) {
+                const canonical = p.choices.find(choice => choice.toLowerCase() === text.toLowerCase());
+                const shadow = this.menuInput(context, `arcade_menu_${p.menu}`, p.menu, canonical ?? p.choices[0]);
+                const value = canonical === undefined ? read(text) : null;
+                inputs[p.slot] = !value ? shadow : typeof value[1] === 'string' ? [3, value[1], shadow[1]] : value;
+                if (value && typeof value[1] !== 'string') delete context.extraBlocks[shadow[1]];
+            } else if (p.text || p.name) inputs[p.slot] = [1, [10, text]];
             else if (p.bool) inputs[p.slot] = this.arcadeBoolean(text, context);
             else if (p.cond && this.arcadeConditionLike(text, context)) inputs[p.slot] = [2, this.parseCondition(text, context)];
             else inputs[p.slot] = read(text);
@@ -2623,7 +2641,29 @@ class SB3Creator {
         return spellArcadeWord(entry, {
             value: (name) => this.dval(b.inputs[name], blocks),
             text: (name) => this.dtext(b.inputs[name], blocks),
-            field: (name) => (b.fields[name] ? b.fields[name][0] : ''),
+            menu: (name, menuName) => {
+                const input = b.inputs[name];
+                const menu = Array.isArray(input) && typeof input[1] === 'string' ? blocks[input[1]] : null;
+                if (menu?.opcode === `arcade_menu_${menuName}`) return menu.fields[menuName]?.[0] ?? '';
+                const choices = compileArcadeWord(entry).parts.find(p => p.slot === name)?.choices || [];
+                if (!input && choices.includes(b.fields[name]?.[0])) return b.fields[name][0];
+                // Parentheses distinguish variables named x/y from bare menu
+                // choices. Quoted text retains its literal spelling and case.
+                const value = this.dval(input, blocks);
+                return /^["(]/.test(value) ? value : `(${value})`;
+            },
+            field: (name) => {
+                if (b.fields[name]) return b.fields[name][0];
+                // Read pre-schema-fix saved literal inputs, but never turn an
+                // arbitrary reporter into a direct dropdown field. Native
+                // fields take precedence if both historical shapes exist.
+                if (/^arrays_(specialValue|valueBinary|valueUnary|valueCompare)$/.test(entry.op)) {
+                    const literal = b.inputs[name]?.[1];
+                    const part = compileArcadeWord(entry).parts.find(p => p.slot === name && p.field);
+                    if (Array.isArray(literal) && literal[0] === 10 && part?.choices.includes(literal[1])) return literal[1];
+                }
+                return '';
+            },
             cond: (name) => {
                 const input = b.inputs[name];
                 const ref = Array.isArray(input) && typeof input[1] === 'string' ? blocks[input[1]] : null;
@@ -7534,6 +7574,20 @@ class SB3Creator {
             const ni = nextIndent(idx);
             return ni > headerIndent ? ni : headerIndent + 2;
         };
+        // The body indent of a hat or DEFINE at \`idx\`. Its body is the lines
+        // after it, deeper or (an older flat style) at its own indent — unless
+        // the next line of code is another script's header: then the body is
+        // EMPTY. Taken from the raw next line, a blank line made it 0, and in a
+        // STAGE:/SPRITE section the next script then read as over-indented.
+        const scriptBodyIndent = (idx) => {
+            const own = getIndent(lines[idx]);
+            let j = idx + 1;
+            while (j < lines.length && (!lines[j].trim() || lines[j].trim().startsWith('#'))) j++;
+            if (j >= lines.length) return own + 2;
+            const ni = getIndent(lines[j]);
+            if (ni > own) return nextIndent(idx);
+            return ni === own && !/^(WHEN|DEFINE|SPRITE|STAGE)\b/i.test(lines[j].trim()) ? own : own + 2;
+        };
 
         const stage = this.createStage();
         this.project.targets.push(stage);
@@ -7544,6 +7598,22 @@ class SB3Creator {
             let firstBlockId = null;
             let lastBlockId = null;
             const allBlocks = {};
+            // A comment handed in by the caller (ELSE's) is not this body's own.
+            const inherited = this._pendingComment;
+            // `# comment` lines at the END of a body have no block after them to
+            // attach to. They belong to this body: its last block, or — an empty
+            // body — the block that opened it (returned as trailingComment).
+            // Left pending, they attached to the next block created anywhere,
+            // e.g. the next script's FOREVER, and its own comment was lost.
+            const finish = () => {
+                let trailingComment = '';
+                if (this._pendingComment && this._pendingComment !== inherited) {
+                    if (lastBlockId) this.appendBlockComment(target, allBlocks[lastBlockId], lastBlockId, this._pendingComment);
+                    else trailingComment = this._pendingComment;
+                    this._pendingComment = '';
+                }
+                return { blocks: allBlocks, firstBlockId, endIndex: i, trailingComment };
+            };
 
             const linkBlock = (newBlockData) => {
                 if (!newBlockData || !newBlockData.block) return;
@@ -7567,7 +7637,9 @@ class SB3Creator {
                 }
 
                 // A `# comment` line buffers onto the next block created (see linkBlock).
+                // One indented less than this body is written for the code after it.
                 if (line.trim().startsWith('#')) {
+                    if (getIndent(line) < indentLevel) break;
                     const text = line.trim().replace(/^#+\s?/, '');
                     this._pendingComment = this._pendingComment ? `${this._pendingComment}\n${text}` : text;
                     i++;
@@ -7597,7 +7669,7 @@ class SB3Creator {
                     // the pending comment aside here the body's first statement
                     // swallows it — and the decompiler then writes it one level in,
                     // which is not what was written and does not survive a round trip.
-                    const ownComment = this._pendingComment;
+                    let ownComment = this._pendingComment;
                     this._pendingComment = '';
 
                     if (trimmed.toUpperCase().startsWith('FOREVER')) {
@@ -7647,6 +7719,7 @@ class SB3Creator {
                                 childResult.blocks[childResult.firstBlockId].parent = lastBlockId;
                                 Object.assign(allBlocks, childResult.blocks);
                             }
+                            this.appendBlockComment(target, allBlocks[lastBlockId], lastBlockId, childResult.trailingComment);
                             i = childResult.endIndex;
                             continue;
                         } else {
@@ -7663,6 +7736,7 @@ class SB3Creator {
                     if (newBlockData) {
                         const childResult = parseStructure(i + 1, childIndent(i, currentIndent), target);
                         const blockId = Object.keys(newBlockData.block)[0];
+                        if (childResult.trailingComment) ownComment = [ownComment, childResult.trailingComment].filter(Boolean).join('\n');
                         
                         if (childResult.firstBlockId) {
                             newBlockData.block[blockId].inputs.SUBSTACK = [2, childResult.firstBlockId];
@@ -7704,7 +7778,7 @@ class SB3Creator {
                 i++;
             }
 
-            return { blocks: allBlocks, firstBlockId, endIndex: i };
+            return finish();
         };
 
         // First pass: collect sprite names and register all custom-block signatures so
@@ -7812,13 +7886,14 @@ class SB3Creator {
                     this.scriptCount++;
                     this.attachPendingComment(currentTarget, eventData.block[eventId], eventId);
                     
-                    const nextLineIndent = (i + 1 < lines.length) ? getIndent(lines[i + 1]) : 0;
+                    const nextLineIndent = scriptBodyIndent(i);
                     const result = parseStructure(i + 1, nextLineIndent, currentTarget);
                     
                     if (result.firstBlockId) {
                         eventData.block[eventId].next = result.firstBlockId;
                         result.blocks[result.firstBlockId].parent = eventId;
                     }
+                    this.appendBlockComment(currentTarget, eventData.block[eventId], eventId, result.trailingComment);
 
                     Object.assign(currentTarget.blocks, eventData.block, eventData.extraBlocks || {}, result.blocks);
                     i = result.endIndex;
@@ -7837,15 +7912,18 @@ class SB3Creator {
                     defData.block[defId].x = 50 + (this.scriptCount % 3) * 350;
                     defData.block[defId].y = 50 + Math.floor(this.scriptCount / 3) * 300;
                     this.scriptCount++;
+                    // A comment written above DEFINE is the definition's, as above WHEN.
+                    this.attachPendingComment(currentTarget, defData.block[defId], defId);
 
                     this.currentProcArgs = defData.args;
-                    const nextLineIndent = (i + 1 < lines.length) ? getIndent(lines[i + 1]) : 0;
+                    const nextLineIndent = scriptBodyIndent(i);
                     const result = parseStructure(i + 1, nextLineIndent, currentTarget);
 
                     if (result.firstBlockId) {
                         defData.block[defId].next = result.firstBlockId;
                         result.blocks[result.firstBlockId].parent = defId;
                     }
+                    this.appendBlockComment(currentTarget, defData.block[defId], defId, result.trailingComment);
 
                     Object.assign(currentTarget.blocks, defData.block, defData.extraBlocks || {}, result.blocks);
                     this.currentProcArgs = null;
@@ -13027,7 +13105,12 @@ class SB3Creator {
                     protos.push(`void ${fn}(${params});`);
                     // The marker keeps the exact proccode and warp flag, which a flat
                     // C name cannot encode — the same reason Python emits defblock().
+                    // A comment attached to the definition, as to a hat: `//`, so the
+                    // way back (cHostToPseudocode) puts it above DEFINE again.
+                    const defNote = this.codeCommentLines(b.id || Object.keys(blocks)
+                        .find((k) => blocks[k] === b), '', '//');
                     defs.push([
+                        ...defNote,
                         `/* DEFINE ${m.proccode} */`,
                         `void ${fn}(${params})`, '{',
                         `    scratch_defblock(${this.hcStr(m.proccode)}, bw_num(${m.warp === 'true' ? 1 : 0}));`,

@@ -303,7 +303,9 @@ class Parser {
                 complete = t.type !== 'punct' && !prefixes.has(t.value);
             }
             if (depth === 0 && t.type === 'punct' && (t.value === '=' || t.value === ';' || t.value === ',')) return isArray;
-            if (depth === 0 && t.type === 'punct' && t.value === ')') return isArray;
+            // (An unmatched `)` ends the type above, before the decrement; a
+            // `)` that closes the type's own `(`, as in `fn: () => void`, is
+            // part of the type and is consumed here.)
             this.lastType += this.next().value;
         }
     }
@@ -906,7 +908,11 @@ class Parser {
         }
         if (t.type === 'template') {
             this.next();
-            return {type: 'Template', value: t.value};
+            // An UNTAGGED template with a placeholder is a string: \`player ${p.id}\`
+            // is "player " + p.id. Without one it stays a Template: micro:bit's
+            // \`basic.showLeds(\`# . #…\`)\` is a picture, read by its translator.
+            // (A tagged one, img\`…\`, is art: see the postfix loop.)
+            return (t.value.includes('${') && templateString(t.value)) || {type: 'Template', value: t.value};
         }
         if (t.type === 'true' || t.type === 'false') {
             this.next();
@@ -1011,6 +1017,44 @@ class Parser {
  *   value heap) may ask for it: one that lowers `undefined` to 0 would apply
  *   the default when 0 was passed.
  */
+/**
+ * An untagged template's text as string concatenation, or null when it cannot
+ * be read as one. Each \`${…}\` is parsed as an expression of its own.
+ */
+function templateString (raw) {
+    const parts = [];
+    let text = '';
+    for (let i = 0; i < raw.length; i++) {
+        if (raw[i] === '\\' && i + 1 < raw.length) {
+            const escaped = raw[++i];
+            text += {n: '\n', t: '\t', r: '\r'}[escaped] ?? escaped;
+            continue;
+        }
+        if (raw[i] === '$' && raw[i + 1] === '{') {
+            let depth = 1;
+            let j = i + 2;
+            while (j < raw.length && depth) {
+                if (raw[j] === '{') depth++;
+                else if (raw[j] === '}') depth--;
+                j++;
+            }
+            if (depth) return null;
+            const parser = new Parser(tokenize(raw.slice(i + 2, j - 1)));
+            let expr;
+            try { expr = parser.parseExpression(); } catch (e) { return null; }
+            if (!parser.at('eof')) return null;
+            parts.push({type: 'String', value: text}, expr);
+            text = '';
+            i = j - 1;
+            continue;
+        }
+        text += raw[i];
+    }
+    parts.push({type: 'String', value: text});
+    // \`${n}\` alone is still text: "" + n, as in TypeScript.
+    return parts.reduce((left, right) => ({type: 'Binary', op: '+', left, right}));
+}
+
 export function parseMakeCodeTs (source, opts = {}) {
     const parser = new Parser(tokenize(source));
     parser.parameterDefaults = Boolean(opts.parameterDefaults);

@@ -23,7 +23,12 @@ for (const file of Object.keys(device).filter(name => name.endsWith('.jres')).so
     const data = JSON.parse(device[file]);
     const namespace = data['*']?.namespace;
     if (!namespace || data['*']?.mimeType !== 'image/x-mkcd-f4') continue;
-    for (const [name, value] of Object.entries(data)) {
+    for (const [name, entry] of Object.entries(data)) {
+        // An entry is either the image's base64 string or an object carrying it
+        // as \`data\` (sprites.dungeon's tiles, \`{data, tilemapTile}\`). An object
+        // with another mimeType is not an image (an animation lists frame names).
+        const value = typeof entry === 'string' ? entry :
+            entry && typeof entry === 'object' && (!entry.mimeType || entry.mimeType === 'image/x-mkcd-f4') ? entry.data : null;
         if (name === '*' || typeof value !== 'string' || !value.startsWith('hwQ')) continue;
         const key = `${namespace}.${name}`;
         if (entries.has(key) && entries.get(key) !== value) throw new Error(`conflicting Arcade image ${key}`);

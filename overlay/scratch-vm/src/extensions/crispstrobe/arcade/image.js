@@ -64,5 +64,16 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
         return '<svg xmlns="http://www.w3.org/2000/svg" width="' + width * 4 + '" height="' + height * 4 +
             '" viewBox="0 0 ' + width * 4 + ' ' + height * 4 + '" shape-rendering="crispEdges">' + rects.join('') + '</svg>';
     };
-    return {decode, mutate, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y)};
+    // Scaled and rotated sprites (task F4): the pinned simulator's own routines.
+    // Its args are a RefCollection; getAt is all of it these use.
+    const collection = values => ({getAt: i => values[i]});
+    const drawScaledRotated = (image, source, x, y, sx, sy, angle) =>
+        operations.drawScaledRotatedImage(adapter(image), adapter(source), collection([x | 0, y | 0, sx, sy, angle]));
+    const overlapsScaledRotated = (image, x, y, source, sx, sy, angle) =>
+        operations.checkOverlapsScaledRotatedImage(adapter(image), adapter(source), collection([x | 0, y | 0, sx, sy, angle]));
+    const overlapsTwoScaledRotated = (image, x, y, imageSx, imageSy, imageAngle, source, sx, sy, angle) =>
+        operations.checkOverlapsTwoScaledRotatedImages(adapter(image), adapter(source),
+            collection([x | 0, y | 0, imageSx, imageSy, imageAngle, sx, sy, angle]));
+    return {decode, mutate, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
+        drawScaledRotated, overlapsScaledRotated, overlapsTwoScaledRotated};
 };
