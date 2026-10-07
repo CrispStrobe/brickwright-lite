@@ -19,6 +19,11 @@ page.on('pageerror', error => report.errors.push(error.message));
 page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push(message.text());});
 const code = () => page.getByRole('tab', {name: 'Code', exact: true});
 const editor = () => page.getByTestId('bw-code-editor').locator('.cm-content');
+const openCode = async () => {
+    await code().click();
+    await page.getByTestId('bw-pixel-canvas').waitFor({state: 'hidden'});
+    await editor().waitFor({state: 'visible'});
+};
 const panel = async name => {
     const toggle = page.getByTestId(`bw-pixel-${name}-toggle`);
     if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click();
@@ -100,7 +105,7 @@ try {
     await paint(11, 0.61, 0.37);
     await savePixels();
     report.journey.push('authored layers and two-frame animation with visible Pixel controls');
-    await code().click();
+    await openCode();
     await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.getByText('Read the current project into all languages.', {exact: false}).first()
         .waitFor({state: 'visible'});
@@ -114,7 +119,7 @@ try {
     const animation = before.artwork.costumes.find(record => record.document.animation);
     assert.equal(animation.document.animation.frames.length, 2);
     assert.equal(animation.document.layers.length, 2);
-    await code().click();
+    await openCode();
     await editor().click();
     await page.keyboard.press('Control+a');
     await page.keyboard.insertText(`GLOBAL handoff = 0\n${originalCode.trimEnd()}\n  WHEN flag clicked:\n    set handoff to 17\n`);
@@ -139,7 +144,7 @@ try {
     assert.deepEqual(reopened.assets, after.assets);
     assert.deepEqual(reopened.artwork, after.artwork);
     report.journey.push('actual SB3 save/reopen retains editable animation and exact artwork');
-    await code().click();
+    await openCode();
     const actions = page.getByTestId('bw-code-actions');
     if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name: 'unrelated.bw',
