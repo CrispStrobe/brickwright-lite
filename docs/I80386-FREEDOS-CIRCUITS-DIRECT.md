@@ -42,6 +42,16 @@ to Webpack at build time and verifies its seven-character manifest projection
 against that full head. The original second failure remains a failure; no
 guest input or Circuit pixel response was observed in it.
 
+The [third hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37632115411)
+passed source, build and free-media admission and booted the guest, retaining
+the listing and PS/2 output. It stopped before sending Circuit keys: the
+probe tried to click the VDP parent while the Controller pane's AT canvas
+covered its click point. The correction uses the visible Debugger view button
+to show the full VDP while keeping the Circuit tab selected, clicks the VDP
+canvas through the browser pointer path, and checks actual VDP focus before
+typing. The third attempt does not establish a Circuit input response; the
+corrected source has not yet passed the hosted guest gate.
+
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
 or a general native 386 backend. A live terminal CLI scenario remains a

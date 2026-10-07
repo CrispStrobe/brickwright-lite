@@ -15,11 +15,15 @@ const observedAnchor="        assert.match(tabText,/PS2 DONE/,'guest mouse-progr
 
 const circuitBlock=`        let circuitDirect=null;
         try {
+        const debuggerView=page.getByRole('button',{name:'Debugger',exact:true});
+        await debuggerView.click();
+        assert.equal(await debuggerView.getAttribute('aria-pressed'),'true','physical Debugger view button is selected');
+        assert.equal(await page.getByRole('tab',{name:/Circuit/}).getAttribute('aria-selected'),'true','Circuit tab stays selected for direct input');
         const vdp=page.locator('[data-vdp-screen]:visible').first();
         await vdp.waitFor({state:'visible',timeout:30000});
-        await vdp.click();
-        assert.equal(await vdp.evaluate(el=>document.activeElement===el),true,'actual Circuit VDP has keyboard focus');
         const vdpCanvas=vdp.locator('canvas');
+        await vdpCanvas.click();
+        assert.equal(await vdp.evaluate(el=>document.activeElement===el),true,'physical VDP canvas click focuses actual Circuit keyboard target');
         const circuitTextObserver=\`canvas => (\${decodeTextPixels.toString()})({mode:3,width:canvas.width,height:canvas.height,rgba:canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data},\${JSON.stringify(fixedTextGlyphs())})\`;
         const circuitText=()=>vdpCanvas.evaluate(circuitTextObserver);
         const circuitShot=async label=>{const file=join(output,label+'.png');const bytes=await vdpCanvas.screenshot({path:file});return {file,sha256:sha256(bytes)};};
