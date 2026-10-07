@@ -36,6 +36,7 @@ let page;
 try {
     page = await browser.newPage({viewport: {width: 1600, height: 1200}, acceptDownloads: true});
     page.on('pageerror', error => report.errors.push(error.message));
+    page.on('dialog', dialog => dialog.accept());
     page.on('console', message => { if (['warning', 'error'].includes(message.type())) report.warnings.push(message.text()); });
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     await page.goto(process.env.BW_BASE_URL || process.env.PROOF_URL || 'http://127.0.0.1:8620/', {waitUntil: 'domcontentloaded'});
