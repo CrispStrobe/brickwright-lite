@@ -3133,6 +3133,23 @@ class PseudocodeImporter extends React.Component {
         return m ? m[1].toLowerCase() : null;
     }
 
+    // Publish the device of the successfully loaded project, not a tentative
+    // editor header. The stage header listens to this event to offer its console.
+    publishAppliedDevice (stc) {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const deviceId = typeof stc?.device === 'string' ? stc.device.toLowerCase() : '';
+        const info = DEVICE_BY_ID[deviceId];
+        if (runtime) {
+            runtime.bwDeviceCore = info ? info.core : null;
+            runtime.bwDeviceId = deviceId || null;
+        }
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-device-id', value: deviceId}
+            }));
+        }
+    }
+
     // Set the DEVICE in the pseudocode buffer. When the code has PIN declarations,
     // retargetPseudocode rewrites them to the target's conventional pins and reports
     // any hard blockers ("no ADC on this chip"). Code without pins just gets its
@@ -3154,13 +3171,7 @@ class PseudocodeImporter extends React.Component {
                 showCatalog: false, status: '',
                 buffers: {...s.buffers, pseudocode: (s.buffers.pseudocode || '').replace(/^DEVICE\s+[\w-]+[^\n]*\n?/im, '')}
             }));
-            if (this.props.vm && this.props.vm.runtime) {
-                this.props.vm.runtime.bwDeviceCore = null;
-                this.props.vm.runtime.bwDeviceId = null;
-            }
-            window.dispatchEvent(new CustomEvent('bw-settings-change', {
-                detail: {key: 'bw-device-id', value: ''}
-            }));
+            this.publishAppliedDevice(null);
             return;
         }
         const info = DEVICE_BY_ID[deviceId];
@@ -3261,15 +3272,8 @@ class PseudocodeImporter extends React.Component {
                 }
             }
         }
-        // Publish core on the runtime so the debug panel can pick the right emulator
-        if (this.props.vm && this.props.vm.runtime) {
-            this.props.vm.runtime.bwDeviceCore = info.core;
-            this.props.vm.runtime.bwDeviceId = deviceId;
-        }
-        // Broadcast device change so the stage-header can show/hide the micro:bit button
-        window.dispatchEvent(new CustomEvent('bw-settings-change', {
-            detail: {key: 'bw-device-id', value: deviceId}
-        }));
+        // compile() publishes the applied project's device after loadProject.
+        // A refused or failed retarget must retain the running project's hints.
     }
 
     // Real hardware, two minutes: generate MicroPython and push it to a
@@ -4574,6 +4578,7 @@ class PseudocodeImporter extends React.Component {
             } else {
                 this.props.vm.runtime.stc = stc;
             }
+            this.publishAppliedDevice(stc);
             // Re-call getInfo() on loaded extensions so device-dependent gating
             // (e.g. hiding PWM blocks on AVR, PCA blocks on STC89) takes effect.
             if (this.props.vm.extensionManager && this.props.vm.extensionManager.refreshBlocks) {
