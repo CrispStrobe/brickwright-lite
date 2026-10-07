@@ -13,8 +13,8 @@ import {noCircuitMessage} from '../../lib/example-device-only.js';
 import {getIsAnyCreatingNewState} from '../../reducers/project-state';
 import {activateUndoSurface, registerUndoSurface} from '../../lib/global-undo.js';
 import {confirmAsync} from '../../lib/native-dialog.js';
-import {BENCH_MAX_C, BENCH_MIN_C, applyBenchTemperature, clampBenchTemperature, loadBenchTemperature,
-    saveBenchTemperature} from '../../lib/bench-temperature.js';
+import {applyBenchTemperature, clampBenchTemperature, loadBenchTemperature, saveBenchTemperature} from
+    '../../lib/bench-temperature.js';
 
 /**
  * The panel's own learner-facing strings. Not scratch-gui's, so not
@@ -37,9 +37,7 @@ const PANEL_L10N = {
         'examples.notVendored': 'The example gallery is not part of this build yet (examples/index.json: {message}). The examples exist — they are published by bw-cfront and need vendoring into the app.',
         'examples.indexFailed': 'The starter project index could not be loaded.',
         'app.republished': 'A new version was published while this tab was open. Reloading…',
-        'a11y.dismiss': 'Dismiss',
-        'bench.title': 'Bench temperature: the air around the board. The chips\' own temperature sensors and every temperature-dependent part read it.',
-        'bench.label': 'Bench temperature in degrees Celsius'
+        'a11y.dismiss': 'Dismiss'
     },
     de: {
         'drc.noExport': 'Dieser Build des Schaltungs-Designers exportiert runDrc noch nicht.',
@@ -53,9 +51,7 @@ const PANEL_L10N = {
         'examples.notVendored': 'Die Beispielgalerie gehört noch nicht zu diesem Build (examples/index.json: {message}). Die Beispiele existieren — sie werden von bw-cfront veröffentlicht und müssen in die App übernommen werden.',
         'examples.indexFailed': 'Der Index der Startprojekte konnte nicht geladen werden.',
         'app.republished': 'Eine neue Version wurde veröffentlicht, während dieser Tab offen war. Wird neu geladen…',
-        'a11y.dismiss': 'Schließen',
-        'bench.title': 'Umgebungstemperatur: die Luft um die Platine. Die Temperatursensoren der Chips und alle temperaturabhängigen Bauteile lesen sie.',
-        'bench.label': 'Umgebungstemperatur in Grad Celsius'
+        'a11y.dismiss': 'Schließen'
     }
 };
 const pt = makeT(PANEL_L10N);
@@ -176,7 +172,7 @@ class CircuitTab extends React.Component {
             machineBooted: false, pendingExampleTitle: null,
             // The air every part sits in (lib/bench-temperature.js): the chips'
             // on-die sensors and the temperature-dependent parts read it.
-            benchC: loadBenchTemperature(), benchDraft: null};
+            benchC: loadBenchTemperature()};
         this.handleRunnerChange = this.handleRunnerChange.bind(this);
         this.handleBenchTemperature = this.handleBenchTemperature.bind(this);
         this.handleCircuitReady = this.handleCircuitReady.bind(this);
@@ -2040,6 +2036,10 @@ class CircuitTab extends React.Component {
                         onCircuitEdit={this.handleCircuitEdit}
                         onDeclarationChange={this.handleDeclarationChange}
                         panelNav={this.renderPanelStrip()}
+                        // The control is the designer's (its "More circuit controls"
+                        // menu, bw-circuit-ui BenchTemperature.jsx); the value is ours.
+                        benchTemperature={this.state.benchC}
+                        onBenchTemperatureChange={this.handleBenchTemperature}
                     embedded={this._portalOn}
                     // The debugger belongs to the designer's Instruments
                     // column in both the Code Blocks portal and the dedicated
@@ -2133,7 +2133,7 @@ class CircuitTab extends React.Component {
     }
 
     /**
-     * The bench temperature control. Every board this tab shows moves with it:
+     * The bench temperature control (rendered by the designer). Every board this tab shows moves with it:
      * the designer's (which the Scratch VM's reporters read through
      * runtime.circuitBoard) and a debug runner's while its run lives.
      */
@@ -2148,7 +2148,7 @@ class CircuitTab extends React.Component {
         for (const board of boards) applyBenchTemperature(board, c);
     }
 
-    /** Designer | Warnings | Parts list | Examples, and the bench temperature. */
+    /** Designer | Warnings | Parts list | Examples. */
     renderPanelStrip () {
         const {panel} = this.state;
         const drc = this.drcWarnings();
@@ -2205,30 +2205,6 @@ class CircuitTab extends React.Component {
                 ))}
             </div>
             <span style={{flex: 1}} />
-            <label
-                data-bench-temperature
-                title={pt(this.props.locale, 'bench.title')}
-                style={{display: 'inline-flex', alignItems: 'center', gap: 3, color: '#475569', whiteSpace: 'nowrap'}}
-            >
-                <span aria-hidden="true">{'🌡'}</span>
-                <input
-                    type="number"
-                    aria-label={pt(this.props.locale, 'bench.label')}
-                    min={BENCH_MIN_C}
-                    max={BENCH_MAX_C}
-                    step={1}
-                    // While typing, show what was typed ("-", "1" on the way to
-                    // "12"); a valid number applies at once; blur shows the value in force.
-                    value={this.state.benchDraft === null ? this.state.benchC : this.state.benchDraft}
-                    onChange={e => {
-                        this.setState({benchDraft: e.target.value});
-                        this.handleBenchTemperature(e.target.value);
-                    }}
-                    onBlur={() => this.setState({benchDraft: null})}
-                    style={{width: 46, padding: '1px 3px', fontSize: 11.5, border: '1px solid #cbd5e1', borderRadius: 4}}
-                />
-                {'°C'}
-            </label>
             </div>
         );
     }

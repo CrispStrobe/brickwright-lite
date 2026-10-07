@@ -90,7 +90,7 @@ test('the VM: the bundled stc12 reporter reads the temperature the control set',
     assert.equal(ext.chiptemp(), -10);
 });
 
-test('the Circuit tab applies the setting wherever a board appears, and shows the control', () => {
+test('the Circuit tab applies the setting wherever a board appears, and hands the control its value', () => {
     assert.match(TAB, /benchC: loadBenchTemperature\(\)/, 'the setting is loaded with the tab');
     assert.match(method(TAB, 'handleRunnerChange (runner, ui)'),
         /const board = runner\.board\(\);\s*\/\/[^\n]*\n\s*applyBenchTemperature\(board, this\.state\.benchC\);/,
@@ -107,9 +107,13 @@ test('the Circuit tab applies the setting wherever a board appears, and shows th
     }
     assert.match(handler, /for \(const board of boards\) applyBenchTemperature\(board, c\);/);
     assert.match(handler, /saveBenchTemperature\(c\)/);
-    const strip = method(TAB, 'renderPanelStrip ()');
-    assert.match(strip, /data-bench-temperature/);
-    assert.match(strip, /onChange=\{e => \{[\s\S]*this\.handleBenchTemperature\(e\.target\.value\)/);
+    // The control is bw-circuit-ui's (BenchTemperature.jsx, in the designer's
+    // "More circuit controls" menu): in this tab's panel strip it overflowed the
+    // designer's 150 px navigation slot and covered the view switcher.
+    assert.doesNotMatch(method(TAB, 'renderPanelStrip ()'), /bench/i, 'not in the panel strip');
+    const designer = TAB.slice(TAB.indexOf('<Designer'), TAB.indexOf('embedded={this._portalOn}'));
+    assert.match(designer, /benchTemperature=\{this\.state\.benchC\}/);
+    assert.match(designer, /onBenchTemperatureChange=\{this\.handleBenchTemperature\}/);
 });
 
 // The chip path, end to end: an ATtiny88 program built by avr-gcc from the C the
