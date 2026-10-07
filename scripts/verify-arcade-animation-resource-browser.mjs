@@ -108,12 +108,15 @@ const observePlayback=async(label,expected,ms=1100)=>{
         }
         return rows;
     },{ms,palette:ARCADE_PALETTE});
-    const valid=samples.filter(row=>row.pixels?.length===6&&expected.includes(row.pixels[0]));
-    assert.ok(valid.length>0,`${label}: actual sprite image exists`);
-    for(const row of valid){assert.equal(row.width,3);assert.equal(row.height,2);assert.ok(row.pixels.every(pixel=>pixel===row.pixels[0]),'whole authored frame pixels');}
-    const images=sequence(valid.map(row=>row.pixels[0])),visible=sequence(samples.map(row=>row.visible).filter(value=>expected.includes(value)));
+    const firstReady=samples.findIndex(row=>row.pixels?.length===6&&expected.includes(row.pixels[0])&&expected.includes(row.visible));
+    assert.ok(firstReady>=0,`${label}: actual sprite and visible renderer become ready`);
+    const ready=samples.slice(firstReady);
+    const invalid=ready.filter(row=>row.width!==3||row.height!==2||row.pixels?.length!==6||
+        !row.pixels.every(pixel=>pixel===row.pixels[0])||!expected.includes(row.pixels[0])||!expected.includes(row.visible));
+    assert.deepEqual(invalid,[],`${label}: no missing or unexpected frame after readiness`);
+    const images=sequence(ready.map(row=>row.pixels[0])),visible=sequence(ready.map(row=>row.visible));
     cycle(images,expected,`${label} image`);cycle(visible,expected,`${label} visible RGB`);
-    report.samples.push({label,imageSequence:images,visibleSequence:visible,observedFrames:samples.length});
+    report.samples.push({label,imageSequence:images,visibleSequence:visible,observedFrames:samples.length,readinessFrames:firstReady,invalidFrames:invalid.length});
 };
 const flag=()=>page.locator('[class*="green-flag_green-flag"]').first();
 const stop=()=>page.locator('[class*="stop-all_stop-all"]').first();
@@ -156,13 +159,56 @@ try{
     const reopened=await snapshot('reopened');assert.deepEqual(reopened.document,authored.document);assert.equal(reopened.assetHash,authored.assetHash);
     assert.deepEqual((await resource())[0],published);
     report.journey.push('unequal publication preserves prior art/resource; actual SB3 reopen retains UUID, frames, palette and layers');
+    if(publicationOnly){
+        await openCode();await page.getByTestId('bw-device-select').selectOption('arcade');
+        await page.getByRole('tab',{name:'Blocks',exact:true}).click();
+        await page.getByTitle('Add Extension',{exact:true}).click();await page.getByText('Arcade',{exact:true}).click();
+        await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
+        for(const opcode of ['arcade_animationAssetFrames','arcade_animationAssetInterval']){
+            let fieldRect=null;
+            for(let attempt=0;attempt<24;attempt++){
+                fieldRect=await page.evaluate(opcode=>{
+                    const block=window.Blockly.getMainWorkspace().getFlyout().getWorkspace().getAllBlocks(false).find(block=>block.type===opcode);
+                    const field=block?.getInputTargetBlock('RESOURCE')?.getField('animationAssets');
+                    if(!field)return null;
+                    const rect=field.getSvgRoot().getBoundingClientRect();
+                    return {x:rect.x+rect.width/2,y:rect.y+rect.height/2,options:field.getOptions()};
+                },opcode);
+                assert.ok(fieldRect,`${opcode}: native resource menu exists`);
+                if(fieldRect.y>120&&fieldRect.y<900)break;
+                await page.mouse.move(230,500);await page.mouse.wheel(0,fieldRect.y>900?400:-400);
+                await page.waitForTimeout(80);
+            }
+            assert.ok(fieldRect.y>120&&fieldRect.y<900,`${opcode}: resource block is reachable by toolbox scrolling`);
+            assert.ok(fieldRect.options.some(([name,id])=>name==='Walk'&&id===published.id));
+            // Drag the real reporter out of the flyout before editing its
+            // menu; flyout defaults can be rebuilt as the palette scrolls.
+            await page.waitForTimeout(350);
+            const source=await page.evaluate(opcode=>{
+                const block=window.Blockly.getMainWorkspace().getFlyout().getWorkspace().getAllBlocks(false).find(block=>block.type===opcode);
+                const rect=block.getSvgRoot().getBoundingClientRect();return {x:rect.x+45,y:rect.y+rect.height/2};
+            },opcode);
+            await page.mouse.move(source.x,source.y);await page.mouse.down();
+            await page.mouse.move(650,opcode==='arcade_animationAssetFrames'?260:360,{steps:15});await page.mouse.up();
+            await page.waitForFunction(opcode=>window.Blockly.getMainWorkspace().getAllBlocks(false).some(block=>block.type===opcode),opcode);
+            const selected=await page.evaluate(opcode=>{
+                const block=window.Blockly.getMainWorkspace().getAllBlocks(false).find(block=>block.type===opcode);
+                const menu=block.getInputTargetBlock('RESOURCE'),field=menu.getField('animationAssets'),rect=field.getSvgRoot().getBoundingClientRect();
+                return {id:menu.id,x:rect.x+rect.width/2,y:rect.y+rect.height/2};
+            },opcode);
+            await page.mouse.click(selected.x,selected.y);
+            await page.getByRole('menuitemcheckbox',{name:'Walk',exact:true}).click();
+            await page.waitForFunction(({id,uuid})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target=>
+                target.blocks._blocks[id]?.fields?.animationAssets?.value===uuid),{id:selected.id,uuid:published.id});
+        }
+        report.journey.push('Add Extension → Arcade exposes reachable native frame/interval pickers with published name and UUID');
+    }
     if(!publicationOnly){
         await openCode();await page.getByRole('button',{name:/From blocks/}).first().click();
         await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor({state:'visible'});
         const generated=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
-        const target=/^SPRITE ([^:\n]+):/m.exec(generated)?.[1];assert.ok(target,'authoring target available');
         const device=/^DEVICE[^\n]*/m.exec(generated)?.[0]||'DEVICE ARCADE';
-        await editor().fill(`${device}\nGLOBAL actor\nGLOBAL frames\nGLOBAL interval\nGLOBAL phase\n${generated.replace(/^DEVICE[^\n]*\n?/m,'').trimEnd()}\nWHEN flag clicked:\n  hide\n  arcade set background color to 1\n  set actor to arcade create image (arcade new image width 3 height 2) template ${JSON.stringify(target)} kind "Player"\n  arcade set position of actor x 80 y 60\n  arcade set scale of actor to 8 anchor 0\n  set frames to `);
+        await editor().fill(`${device}\nGLOBAL actor\nGLOBAL frames\nGLOBAL interval\nGLOBAL phase\n${generated.replace(/^DEVICE[^\n]*\n?/m,'').trimEnd()}\nSPRITE Game:\nWHEN flag clicked:\n  hide\n  arcade set background color to 1\n  set actor to arcade create image (arcade new image width 3 height 2) template "" kind "Player"\n  arcade set position of actor x 80 y 60\n  arcade set scale of actor to 8 anchor 0\n  set frames to `);
         await editor().click();await page.keyboard.press('Control+End');
         await page.getByTestId('bw-code-animation-picker').selectOption(published.id);
         await page.getByTestId('bw-code-animation-insert-frames').click();
@@ -208,6 +254,24 @@ try{
         const reordered=(await resource())[0];assert.equal(reordered.id,published.id);assert.deepEqual(reordered.frames.map(frame=>frame.pixels[0]),[2,9,5]);
         await page.getByRole('tab',{name:'Blocks',exact:true}).click();await page.getByTestId('bw-pixel-canvas').waitFor({state:'hidden'});
         await flag().click();await phase(1);await observePlayback('renamed-reordered',[2,9,5]);await stop().click();
+        const nativeScreen=await page.evaluate(palette=>{
+            const renderer=window.__brickwrightStore.getState().scratchGui.vm.runtime.renderer;renderer.draw();
+            const canvas=document.createElement('canvas');canvas.width=renderer.canvas.width;canvas.height=renderer.canvas.height;
+            const context=canvas.getContext('2d');context.drawImage(renderer.canvas,0,0);
+            const rgba=context.getImageData(0,0,canvas.width,canvas.height).data;
+            const colours=palette.map(value=>value?value.slice(1).match(/../g).map(channel=>parseInt(channel,16)):[0,0,0]);
+            return Array.from({length:19200},(_,index)=>{
+                const x=index%160,y=Math.floor(index/160);
+                const offset=(Math.floor((y+.5)*canvas.height/120)*canvas.width+Math.floor((x+.5)*canvas.width/160))*4;
+                return colours.findIndex(rgb=>rgb.every((channel,c)=>channel===rgba[offset+c]));
+            });
+        },ARCADE_PALETTE);
+        const nativeColour=nativeScreen[60*160+80];assert.ok([2,9,5].includes(nativeColour));
+        const expectedNative=Array.from({length:19200},(_,index)=>{
+            const x=index%160,y=Math.floor(index/160);return x>=68&&x<92&&y>=52&&y<68?nativeColour:1;
+        });
+        assert.deepEqual(nativeScreen,expectedNative,'all19200actual Brickwright pixels match authored footprint');
+        report.nativeScreen={colour:nativeColour,pixelsCompared:nativeScreen.length};
         await snapshot('renamed-reordered');report.journey.push('Pixel rename/reorder preserves UUID and updates bound playback without rewriting code');
         await openCode();const actions=page.getByTestId('bw-code-actions');if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
         const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
@@ -220,12 +284,28 @@ try{
         const screen=original.screen(),colour=screen[60*160+80];assert.ok([2,9,5].includes(colour));
         const expected=Uint8Array.from({length:19200},(_,index)=>{const x=index%160,y=Math.floor(index/160);return x>=68&&x<92&&y>=52&&y<68?colour:1;});
         assert.deepEqual(screen,expected,'all19200original screen pixels match authored scaled frame footprint');
-        report.originalPxt={compiled:true,sequence:originalSequence,pixelsCompared:screen.length,compilerNetworkAttempts:compiled.netAttempts};
+        let matchingScreen=null;
+        for(const ms of [75,175,275,375]){
+            const sample=await runArcadeSim(compiled.outfiles['binary.js'],{ms});assert.equal(sample.error,null);
+            if(sample.screen()[60*160+80]===nativeColour){matchingScreen=Array.from(sample.screen());break;}
+        }
+        assert.ok(matchingScreen,'original simulation reaches the same authored frame');
+        assert.deepEqual(matchingScreen,nativeScreen,'all19200actual Brickwright and original PXT pixels agree at the same frame');
+        report.originalPxt={compiled:true,sequence:originalSequence,pixelsCompared:screen.length,actualNativePixelsCompared:matchingScreen.length,compilerNetworkAttempts:compiled.netAttempts};
         if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'animation-export.hex',mimeType:'application/octet-stream',buffer:bytes});
         await page.getByText(/Imported the Arcade game.*animation-export\.hex/).first().waitFor({state:'visible'});
         if(await actions.getAttribute('open'))await actions.locator('summary').click();
-        await apply();await flag().click();await phase(1);await observePlayback('original-export-reimport',[2,9,5]);await stop().click();
+        await apply();await flag().click();await phase(1);await observePlayback('original-export-reimport',[2,9,5]);
+        await page.getByTestId('bw-arcade-b').click();await phase(2);
+        const importedStopped=await page.evaluate(async()=>{
+            const rows=[];for(let index=0;index<12;index++){await new Promise(resolve=>requestAnimationFrame(resolve));
+                const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+                const actor=runtime.targets.flatMap(target=>Object.values(target.variables)).find(v=>v.name==='actor'||v.name.endsWith('_actor'))?.value;
+                rows.push(Array.from(runtime.bwArcadeDeviceState.sprites[actor].image.pixels));}
+            return rows;
+        });assert.ok(importedStopped.every(pixels=>JSON.stringify(pixels)===JSON.stringify(importedStopped[0])),'reimported B stops actual animation');
+        await page.getByTestId('bw-arcade-a').click();await phase(1);await observePlayback('reimported-controller-restart',[2,9,5]);await stop().click();
         report.journey.push('actual Arcade download compiles/runs in original PXT; frame order/fullscreen pixels and file-reimport behaviour match');
     }
     assert.deepEqual(report.pageErrors,[]);

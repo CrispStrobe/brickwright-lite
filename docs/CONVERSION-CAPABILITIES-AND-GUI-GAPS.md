@@ -239,6 +239,20 @@ identity, image mutation/playback, missing IDs and generated-name collisions.
 That producer-source test override is qualification evidence, not consumer pin
 adoption.
 
+A later publication-only browser run also qualifies **Add Extension → Arcade**,
+scrolling to both native resource reporters, dragging each into the workspace,
+selecting the published name, and observing the stored UUID in the actual VM
+block fields. The library description now identifies the full game APIs.
+The full gate fixture has been corrected for a Stage-only new project and an
+explicit image actor; its controller-after-reimport and actual19,200-pixel
+comparisons are implemented but remain unrun until parser adoption.
+
+The native animation JRES codec now passes six tests against the retained
+original PXT encoder/decoder and asset-name validator. This is the format
+layer, not native asset-editor integration. See the
+[animation interchange contract](ARCADE-ANIMATION-INTERCHANGE.md) for exporter,
+importer, rich-source recovery and original-editor acceptance work still open.
+
 **Pending:** shared compiler [PR62](https://github.com/CrispStrobe/sb3-creator/pull/62)
 adds the two canonical words and literal resource menu shadows. Its exact-head
 hosted checks must pass and it must land before the consumer pin moves. The app
