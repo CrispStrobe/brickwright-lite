@@ -34,6 +34,12 @@ try {
         {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.waitForFunction(() => Boolean(window.__brickwrightStore?.getState()?.scratchGui?.vm),
         null, {timeout: 60000});
+    await page.evaluate(() => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        window.__bwRotationObservation = {blockErrors: [], diagnostics: []};
+        runtime.on('BLOCKS_ERROR', error => window.__bwRotationObservation.blockErrors.push(String(error)));
+        runtime.on('ARCADE_RUNTIME_DIAGNOSTIC', issue => window.__bwRotationObservation.diagnostics.push(issue));
+    });
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     const editor = page.locator('[data-testid="bw-code-editor"] .cm-content');
     await editor.waitFor({state: 'visible', timeout: 30000});
@@ -82,7 +88,8 @@ try {
             rotationDegrees: actor?.rotationDegrees, width: actor?.width, height: actor?.height,
             skin: skin?.size ? Array.from(skin.size) : null,
             canvas: [copy.width, copy.height], histogram, hash: hash >>> 0,
-            diagnostics: runtime.bwArcadeRuntimeDiagnostic || null};
+            blockErrors: window.__bwRotationObservation.blockErrors,
+            diagnostics: window.__bwRotationObservation.diagnostics};
     }, ARCADE_PALETTE);
     const sample = async (label, phase, data, angle, huge = false) => {
         await waitPhase(phase);
@@ -94,6 +101,8 @@ try {
         }, data, {timeout: 30000});
         await page.waitForTimeout(100);
         const actual = await observe();
+        assert.deepEqual(actual.blockErrors, [], `${label}: no VM block errors`);
+        assert.deepEqual(actual.diagnostics, [], `${label}: no runtime diagnostics`);
         assert.equal(actual.data, data, `${label}: sprite data survives without numeric coercion`);
         assert.ok(Math.abs(actual.rotation - angle) < 1e-9, `${label}: angle`);
         assert.ok(actual.skin && actual.skin[0] <= 640 && actual.skin[1] <= 480,
@@ -153,10 +162,11 @@ try {
     if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
         name: 'arcade-rotation-export.hex', mimeType: 'application/octet-stream', buffer: bytes});
-    await page.waitForFunction(() => {
-        const element = document.querySelector('[data-testid="bw-code-editor"] .cm-content');
-        return element?.cmTile?.root?.view?.state?.doc?.toString()?.includes('rotationDegrees');
-    }, null, {timeout: 30000});
+    await page.getByText(/Imported the Arcade game.*arcade-rotation-export\.hex/).first()
+        .waitFor({state: 'visible', timeout: 30000});
+    const reimportedCode = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
+    assert.match(reimportedCode, /rotationDegrees/);
+    assert.doesNotMatch(reimportedCode, /# unsupported/i);
     if (await actions.getAttribute('open')) await actions.locator('summary').click();
     await apply();
     await flag.click();
