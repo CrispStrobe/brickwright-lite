@@ -59,7 +59,7 @@ test('a reporter in the native axis socket retains its selected direction throug
 SPRITE Game:
   LOCAL axis
   LOCAL vertical
-  WHEN FLAG:
+  WHEN flag clicked:
     set axis to "Y"
     set vertical to (arcade controller (axis) step 90)
 `;

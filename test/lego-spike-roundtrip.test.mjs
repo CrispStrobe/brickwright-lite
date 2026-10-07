@@ -244,7 +244,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // Arcade rotation/rotationDegrees/data property words only; the shared
     // parser includes #58's comment and empty-body repairs.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '8ba3508eab2ad99b9d9a6478c9a45a7200ca4fde');
+        '3fe92a639b01b3b903d9e6d5717ed1b0c17d798f');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
