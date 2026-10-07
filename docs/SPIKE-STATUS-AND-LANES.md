@@ -1,6 +1,6 @@
 # SPIKE execution: current state and next lanes
 
-Recorded 2026-10-05. Refresh the public default branches and `LANES.md` before
+Recorded 2026-10-05; candidate adoption checkpoint 2026-10-07. Refresh the public default branches and `LANES.md` before
 claiming a task. This is a bounded handover, not full firmware compatibility or
 physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
@@ -61,6 +61,58 @@ is authoritative for firmware L01–L13. Those newer capabilities are not implic
 present in the already tested desktop package. Firmware consumes specific Runtime
 and Infrastructure revisions; Runtime main's newer MicroPython SDK likewise does
 not automatically advance every consumer. Record each route's actual pins.
+
+## 2026-10-07 desktop adoption candidate
+
+[PR #695](https://github.com/CrispStrobe/brickwright-lite/pull/695) adds retained
+NuttX program restart to the arena. Tested package source is
+`2b36862fb39f34a990eb296c734e9e800ed884c8`; its production frontend was built at
+`0af782bdfe15774416690d09c724b19b4019c23c`, with no production overlay/Tauri
+source changes between those heads. This is a private qualification candidate,
+not a newly distributed installer or an automatic update to every desktop.
+
+The own NuttX build used firmware source
+`4e326e7a62624acc865002b256230042d1f50d63`, full-NuttX Runtime inputs
+`756b684eee56ba698a931a14b3f4885cb8d8ada6` and Infrastructure inputs
+`fe4ad383c7392527433783fcec455daa7ddc2bb7`. The native Renode executable was
+retained from the earlier verified desktop input; matching newer helper/model
+source does not establish its source-to-binary provenance. G05 remains open.
+Compiler/config/linker/notice/TI-exclusion gates passed. Measured userspace flash
+was 592,780 bytes and static RAM 88,144 bytes for this build.
+
+Actual extracted-candidate GUI checks passed Code-tab Python execution on all
+six motors, Arena Stop, retained restart and repeated Stop with matching Code
+feedback. Save/Load reached READY without automatically running, and explicit
+Run completed with output. A fresh app process recovered the saved Python
+program, ran it explicitly and moved the motor. From a fresh editor profile,
+Code-tab pseudocode compiled into Scratch blocks, ran in full NuttX, moved the
+shared motor/arena and completed. GUI fault/restart checks retained the failed
+status and traceback while clearing Code Stop. The separate small ARM guest GUI route also
+passed Start, motion and Stop. Native-driver guest checks additionally passed
+native/Python retained restart, repeated runtime fault, SAVE and fresh-process
+native-program recovery. The JavaScript regression set passed 81 tests; the
+native driver's Rust suite passed 129, with 10 ignored. Restart availability,
+cancellation and pane-ownership mutations were detected. Raw receipts remain
+private.
+
+The desktop supervisor still bounds a session to 120 wall-clock seconds. A
+long combined scenario reached that bound; shorter separate sessions passed.
+The first comprehensive six-motor guest fixture reached its 300-second external
+wall bound. A later run passed with a 900-second external bound: per-port native
+speed and relative position, concurrent six-port motion, cancellation and Python.
+For the six -30-degree position moves, observed final deltas ranged from
+-28.90 to -28.17 degrees, within the declared 3-degree fixture tolerance. Both
+the failed attempt and the later pass remain preserved. This does not establish
+every motor/control case or physical SPIKE behavior. Firmware/reference and
+release licence boundaries from the preceding handover remain in force.
+
+A separate UI limitation was observed: starting from a saved Python view,
+requesting Pseudocode with an empty conversion buffer can leave the editor in
+Python mode with an error. G03 should reproduce that transition and provide an
+explicit usable path into an empty Pseudocode editor; the fresh-profile native
+execution result does not qualify that transition. Keep changes in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` with its
+current owner until the overlapping claim is released.
 
 ## How a fresh agent starts
 
