@@ -21,6 +21,7 @@ GLOBAL actor
 GLOBAL image
 GLOBAL dynamicAxis
 GLOBAL dynamicStep
+GLOBAL runComplete
 SPRITE Game:
 WHEN flag clicked:
   set left to calculate value 100 op "+" with 20
@@ -37,6 +38,7 @@ WHEN flag clicked:
   set actor to arcade create image image template "Game" kind "Player"
   arcade set position of actor x left y top
   set dynamicAxis to "Y"
+  change runComplete by 1
 WHEN arcade updates:
   set dynamicStep to arcade controller (dynamicAxis) step 90
 `;
@@ -121,11 +123,22 @@ try {
     // arithmetic reporters remain numbers and null must remain actual null.
     const expected = {left: 80, top: 60, product: 42, empty: null, negative: -5, compared: '1', axis: 0};
     const run = async label => {
-        await page.locator('[class*="green-flag_green-flag"]').first().click();
-        await page.waitForFunction(() => {
+        // Scratch keeps variable values across green flags. A previous product42
+        // cannot establish that this run has finished creating/positioning its
+        // sprite. Observe a fresh final-instruction counter, independently of
+        // the operand and position assertions below.
+        const previousCompletion = await page.evaluate(() => {
             const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
-            return runtime.targets.flatMap(t => Object.values(t.variables)).some(v => v.name.replace(/^(?:Game_)+/, '') === 'product' && v.value === 42);
+            const variable = runtime.targets.flatMap(t => Object.values(t.variables))
+                .find(v => v.name.replace(/^(?:Game_)+/, '') === 'runComplete');
+            return Number(variable?.value) || 0;
         });
+        await page.locator('[class*="green-flag_green-flag"]').first().click();
+        await page.waitForFunction(previous => {
+            const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            return runtime.targets.flatMap(t => Object.values(t.variables)).some(v =>
+                v.name.replace(/^(?:Game_)+/, '') === 'runComplete' && Number(v.value) > previous);
+        }, previousCompletion);
         const values = await page.evaluate(() => Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
             .flatMap(t => Object.values(t.variables)).map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value])));
         const actual = Object.fromEntries(Object.keys(expected).map(name => [name, values[name]]));
