@@ -8,13 +8,70 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--compile] [--execute] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--execute] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {importArtefact, importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
+
+
+// Report identity contains hashes and declared public identities, never host paths.
+function auditProvenance (files, corpusCommit) {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const git = args => {
+        const result = spawnSync('git', args, {cwd: root, encoding: 'utf8'});
+        return result.status === 0 ? result.stdout.trim() : null;
+    };
+    const sha256 = value => createHash('sha256').update(value).digest('hex');
+    const diff = git(['diff', '--binary', 'HEAD']);
+    const status = git(['status', '--porcelain', '--untracked-files=normal']);
+    const readJSON = name => {
+        try { return JSON.parse(fs.readFileSync(path.join(root, name), 'utf8')); }
+        catch { return null; }
+    };
+    let unreadableFiles = 0;
+    const inputHashes = files.map(file => {
+        try { return sha256(fs.readFileSync(file)); }
+        catch { unreadableFiles++; return 'unreadable'; }
+    }).sort();
+    return {source: {commit: git(['rev-parse', 'HEAD']), dirty: status === null ? null : !!status,
+        trackedDiffSha256: diff === null ? null : sha256(diff),
+        untrackedInputs: 'not covered by trackedDiffSha256'},
+    corpus: {declaredCommit: corpusCommit || null, commitVerified: false,
+        fileCount: files.length, unreadableFiles, contentMultisetSha256: sha256(JSON.stringify(inputHashes))},
+    vendorPins: readJSON('vendor-pins.json'),
+    makecodeVersions: readJSON('packages/scratch-gui/static/makecode/VERSIONS.json'),
+    node: process.version};
+}
+
+// Public summaries redact paths, URLs and credential-shaped strings. Full diagnostics remain in JSON.
+function publicText (value) {
+    return String(value).replace(/(?:https?:\/\/|data:)[^\s|]+/g, '[URL omitted]')
+        .replace(/(?:[A-Za-z]:[\\/]|\/(?:home|mnt|tmp|Users|var|root|opt)\/)[^\s|]+/g, '[path omitted]')
+        .replace(/(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+/g, '[credential omitted]');
+}
+
+function rankGaps (rows, elements) {
+    const families = new Map();
+    for (const [index, row] of rows.entries()) {
+        for (const element of elements(row)) {
+            const key = String(element);
+            if (!families.has(key)) families.set(key, {family: key, projects: new Set(), occurrences: 0});
+            const item = families.get(key);
+            item.projects.add(index);
+            item.occurrences++;
+        }
+    }
+    return [...families.values()].map(item => ({family: item.family,
+        affectedProjects: item.projects.size, occurrences: item.occurrences}))
+        .sort((a, b) => b.affectedProjects - a.affectedProjects ||
+            b.occurrences - a.occurrences || a.family.localeCompare(b.family));
+}
 
 const supported = new Set(['.ts', '.hex', '.uf2', '.elf', '.sb3']);
 const scratchBuiltins = new Set(['ev3', 'microbit', 'text2speech', 'videoSensing', 'wedo2',
@@ -30,6 +87,7 @@ let exactCoreOpcodes = null;
 const args = process.argv.slice(2);
 let target = 'microbit';
 let out = null;
+let corpusCommit = null;
 let markdown = null;
 let doCompile = false;
 let execute = false;
@@ -38,6 +96,7 @@ const inputs = [];
 for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a === '--target') target = args[++i];
+    else if (a === '--corpus-commit') corpusCommit = args[++i];
     else if (a === '--out') out = args[++i];
     else if (a === '--markdown') markdown = args[++i];
     else if (a === '--limit') limit = Number(args[++i]);
@@ -48,7 +107,7 @@ for (let i = 0; i < args.length; i++) {
 }
 if (!inputs.length || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--compile] [--execute] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--execute] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -59,6 +118,7 @@ function collect (name) {
         (inputs.includes(name) && path.extname(name).toLowerCase() === '.png') ? [name] : [];
 }
 
+if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
 const rows = [];
 const tally = {};
@@ -110,6 +170,7 @@ async function makecode (file) {
         row.stage = 'parse-failed';
         row.reason = normalize(error);
     }
+    row.staticTranslation = {status: row.stage};
     if (doCompile && preCompile) row.compile = preCompile;
     else if (doCompile) {
         if (!hasRuntime(row.target)) row.compile = {status: 'unavailable', reason: 'run npm run sync:makecode'};
@@ -224,6 +285,11 @@ async function sb3 (file) {
 for (const file of files) {
     try {
         const row = path.extname(file).toLowerCase() === '.sb3' ? await sb3(file) : await makecode(file);
+        row.staticTranslation ||= {status: row.stage};
+        row.qualification = {staticTranslation: row.staticTranslation.status,
+            originalCompile: row.compile?.status || 'not-requested',
+            runtimeSmoke: row.execution?.status || (execute ? 'not-run' : 'not-requested'),
+            behavioralEquivalence: 'not-measured'};
         rows.push(row);
         tally[row.stage] = (tally[row.stage] || 0) + 1;
     } catch (error) {
@@ -232,7 +298,13 @@ for (const file of files) {
     }
 }
 const report = {schema: 'brickwright/compat-audit/v1', generatedAt: new Date().toISOString(),
-    count: rows.length, tally, rows};
+    provenance: auditProvenance(files, corpusCommit),
+    qualificationBoundary: 'Static translation, original compilation, and runtime smoke are independent; stepped is not behavioral equivalence.',
+    gapRanking: rankGaps(rows, row => [
+        ...(row.unsupported || []).map(x => `${row.target}: ${x}`),
+        ...(row.missingOpcodes || []).map(x => `scratch: ${x.opcode}`),
+        ...(['parse-failed', 'read-failed'].includes(row.stage) ? [row.stage] : [])
+    ]), count: rows.length, tally, rows};
 if (out) fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
 if (markdown) {
     const counts = values => {
@@ -240,29 +312,31 @@ if (markdown) {
         for (const value of values) map.set(value, (map.get(value) || 0) + 1);
         return [...map].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     };
-    const escape = value => String(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
-    const displayURL = url => url.startsWith('data:') ?
-        `embedded data URL (${url.length} characters; full URL in JSON report)` : url;
+    const escape = value => publicText(value).replaceAll('|', '\\|').replaceAll('\n', ' ');
     const table = entries => entries.length ? entries.map(([value, n]) => `| ${n} | ${escape(value)} |`).join('\n') : '| 0 | none |';
     const problems = rows.flatMap(r => (r.unsupported || []).map(x => `${r.target}: ${x}`));
     const missing = rows.flatMap(r => (r.missingOpcodes || []).map(x => x.opcode));
     const unverified = rows.flatMap(r => (r.externalOpcodes || []).map(x => x.opcode));
     const external = rows.flatMap(r => Object.entries(r.extensionURLs || {})
         .filter(([id]) => (r.externalOpcodes || []).some(x => x.opcode.startsWith(`${id}_`)))
-        .map(([id, url]) => `${id}: ${displayURL(url)}`));
+        .map(([id]) => id));
     const failed = rows.filter(r => r.reason || r.compile?.status === 'fail' ||
         ['failed', 'block-error', 'no-green-flag-thread'].includes(r.execution?.status));
     const lines = ['# Conversion compatibility audit', '',
         `Generated ${report.generatedAt}; ${rows.length} files. A parsed project has not necessarily run correctly.`, '',
+        `Source commit: ${report.provenance.source.commit}; dirty: ${report.provenance.source.dirty}. Corpus declared commit: ${corpusCommit || 'not supplied'} (not independently verified).`, '',
+        'Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.', '',
+        '## Gap ranking by affected projects', '', '| projects | occurrences | family |', '|---:|---:|---|',
+        ...report.gapRanking.map(g => `| ${g.affectedProjects} | ${g.occurrences} | ${escape(g.family)} |`), '',
         '| count | stage |', '|---:|---|', table(counts(rows.map(r => r.stage))), '',
         '## Unsupported MakeCode elements', '', '| occurrences | element |', '|---:|---|', table(counts(problems)), '',
         '## Missing Scratch opcodes', '', '| occurrences | opcode |', '|---:|---|', table(counts(missing)), '',
         '## External extensions requiring runtime validation or an offline implementation', '',
-        '| projects | extension and URL |', '|---:|---|', table(counts(external)), '',
+        '| projects | extension |', '|---:|---|', table(counts(external)), '',
         '### Their unverified opcodes', '', '| projects | opcode |', '|---:|---|', table(counts(unverified)), '',
         '## Failures and execution limits', '', '| file | result |', '|---|---|',
-        ...failed.map(r => `| ${escape(r.file)} | ${escape(r.reason ||
-            r.compile?.diagnostics?.[0] || r.compile?.reason || r.execution?.reason ||
+        ...failed.map(r => `| input ${rows.indexOf(r) + 1} | ${escape(r.reason ? `${r.stage}; full diagnostic in private JSON` :
+            r.compile?.status || r.execution?.status ||
             [r.execution?.status, r.execution?.errors?.[0]].filter(Boolean).join(': '))} |`),
         ...(failed.length ? [] : ['| none | none |']), ''];
     fs.writeFileSync(markdown, lines.join('\n'));

@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /** Exercise conversion permutations on a pinned corpus, preserving every loss.
- * Usage: node scripts/conversion-roundtrips.mjs --out report.json [--limit N] [--compile] DIR...
+ * Usage: node scripts/conversion-roundtrips.mjs --out report.json [--limit N] [--compile] [--corpus-commit SHA] DIR...
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {importProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/index.js';
@@ -12,25 +15,75 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
 
+
+// Report identity contains hashes and declared public identities, never host paths.
+function auditProvenance (files, corpusCommit) {
+    const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+    const git = args => {
+        const result = spawnSync('git', args, {cwd: root, encoding: 'utf8'});
+        return result.status === 0 ? result.stdout.trim() : null;
+    };
+    const sha256 = value => createHash('sha256').update(value).digest('hex');
+    const diff = git(['diff', '--binary', 'HEAD']);
+    const status = git(['status', '--porcelain', '--untracked-files=normal']);
+    const readJSON = name => {
+        try { return JSON.parse(fs.readFileSync(path.join(root, name), 'utf8')); }
+        catch { return null; }
+    };
+    let unreadableFiles = 0;
+    const inputHashes = files.map(file => {
+        try { return sha256(fs.readFileSync(file)); }
+        catch { unreadableFiles++; return 'unreadable'; }
+    }).sort();
+    return {source: {commit: git(['rev-parse', 'HEAD']), dirty: status === null ? null : !!status,
+        trackedDiffSha256: diff === null ? null : sha256(diff),
+        untrackedInputs: 'not covered by trackedDiffSha256'},
+    corpus: {declaredCommit: corpusCommit || null, commitVerified: false,
+        fileCount: files.length, unreadableFiles, contentMultisetSha256: sha256(JSON.stringify(inputHashes))},
+    vendorPins: readJSON('vendor-pins.json'),
+    makecodeVersions: readJSON('packages/scratch-gui/static/makecode/VERSIONS.json'),
+    node: process.version};
+}
+
+function rankGaps (rows, elements) {
+    const families = new Map();
+    for (const [index, row] of rows.entries()) {
+        for (const element of elements(row)) {
+            const key = String(element);
+            if (!families.has(key)) families.set(key, {family: key, projects: new Set(), occurrences: 0});
+            const item = families.get(key);
+            item.projects.add(index);
+            item.occurrences++;
+        }
+    }
+    return [...families.values()].map(item => ({family: item.family,
+        affectedProjects: item.projects.size, occurrences: item.occurrences}))
+        .sort((a, b) => b.affectedProjects - a.affectedProjects ||
+            b.occurrences - a.occurrences || a.family.localeCompare(b.family));
+}
+
 const argv = process.argv.slice(2);
 let out = null;
+let corpusCommit = null;
 let limit = Infinity;
 let compileExports = false;
 const inputs = [];
 for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--out') out = argv[++i];
+    else if (argv[i] === '--corpus-commit') corpusCommit = argv[++i];
     else if (argv[i] === '--limit') limit = Number(argv[++i]);
     else if (argv[i] === '--compile') compileExports = true;
     else if (argv[i].startsWith('-')) throw new Error(`unknown option ${argv[i]}`);
     else inputs.push(argv[i]);
 }
-if (!out || !inputs.length || !Number.isInteger(limit) && limit !== Infinity) {
-    console.error('usage: node scripts/conversion-roundtrips.mjs --out report.json [--limit N] [--compile] DIR...');
+if (!out || !inputs.length || !Number.isInteger(limit) && limit !== Infinity || limit < 0) {
+    console.error('usage: node scripts/conversion-roundtrips.mjs --out report.json [--limit N] [--compile] [--corpus-commit SHA] DIR...');
     process.exit(2);
 }
 const collect = name => fs.statSync(name).isDirectory() ?
     fs.readdirSync(name).sort().flatMap(child => collect(path.join(name, child))) :
     /\.(ts|sb3)$/i.test(name) ? [name] : [];
+if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
 const shortError = error => String(error?.message || error).slice(0, 400);
 const projectFacts = project => {
@@ -180,13 +233,23 @@ async function inspect (file) {
                     // re-exported into a valid program: that failure is the source's.
                     if (!result.success) {
                         const original = await compile(target, row.sourceFiles);
+                        p.originalCompile = {status: original.success ? 'pass' : 'fail',
+                            diagnostics: (original.diagnostics || []).slice(0, 3).map(d => d.message)};
                         if (!original.success) p.compile.status = 'source-invalid';
                     }
                 } catch (error) { p.compile = {status: 'fail', error: shortError(error)}; }
             }
         }
     }
-    for (const p of row.paths) delete p.exportedFiles;
+    for (const p of row.paths) {
+        const loss = p.binaryAssetsNotRepresented || Object.values(p.differences || {}).some(v => v.length);
+        const unsupported = row.importUnsupported?.length || p.exportUnsupported?.length || p.importUnsupported?.length;
+        p.qualification = {structuralRoundtrip: p.error ? 'failed' : loss ? 'loss' : unsupported ? 'partial' : 'preserved',
+            exportedCompile: p.compile?.status === 'source-invalid' ? 'fail' : p.compile?.status || 'not-run',
+            originalCompile: p.originalCompile?.status || 'not-run',
+            runtime: 'not-measured', behavioralEquivalence: 'not-measured'};
+        delete p.exportedFiles;
+    }
     delete row.sourceFiles;
     return row;
 }
@@ -210,6 +273,17 @@ for (const r of rows) {
     }
 }
 const report = {schema: 'brickwright/conversion-roundtrips/v1', generatedAt: new Date().toISOString(),
-    count: rows.length, tally, rows};
+    provenance: auditProvenance(files, corpusCommit),
+    qualificationBoundary: 'Preserved describes measured structure and artwork only; runtime and behavioral equivalence are not measured.',
+    gapRanking: rankGaps(rows, row => [
+        ...(row.importUnsupported || []).map(x => `import: ${x}`),
+        ...(row.paths || []).flatMap(p => [
+            ...(p.exportUnsupported || []).map(x => `export: ${x}`),
+            ...(p.importUnsupported || []).map(x => `reimport: ${x}`),
+            ...(p.differences?.lostOpcodes || []).map(x => `lost opcode: ${x.name}`),
+            ...(p.binaryAssetsNotRepresented ? ['binary assets absent from plain text'] : []),
+            ...(p.error ? [`${p.label}: conversion error`] : [])
+        ]), ...(row.error ? ['parse error'] : [])
+    ]), count: rows.length, tally, rows};
 fs.writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`);
 console.log(JSON.stringify({count: rows.length, tally, report: out}, null, 2));

@@ -25,10 +25,18 @@ test('CLI reports both a real MakeCode import and a missing Scratch extension op
         const json = path.join(dir, 'audit.json');
         const md = path.join(dir, 'audit.md');
         const run = spawnSync(process.execPath, ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', CLI,
-            '--out', json, '--markdown', md, dir], {cwd: ROOT, encoding: 'utf8'});
+            '--out', json, '--markdown', md, '--corpus-commit', '1'.repeat(40), dir], {cwd: ROOT, encoding: 'utf8'});
         assert.equal(run.status, 1, run.stderr);
         const report = JSON.parse(fs.readFileSync(json, 'utf8'));
         assert.equal(report.count, 2);
+        assert.equal(report.provenance.corpus.declaredCommit, '1'.repeat(40));
+        assert.equal(report.provenance.corpus.commitVerified, false);
+        assert.match(report.provenance.source.commit, /^[a-f0-9]{40}$/);
+        assert.match(report.provenance.corpus.contentMultisetSha256, /^[a-f0-9]{64}$/);
+        assert.ok(report.provenance.vendorPins['sb3-creator']);
+        assert.deepEqual(report.gapRanking.find(g => g.family === 'scratch: unknownwidget_doThing'),
+            {family: 'scratch: unknownwidget_doThing', affectedProjects: 1, occurrences: 1});
+        assert.ok(!fs.readFileSync(md, 'utf8').includes(dir));
         assert.ok(report.rows.some(r => r.target === 'microbit' && r.translated));
         assert.deepEqual(report.rows.find(r => r.format === 'sb3').missingOpcodes.map(x => x.opcode),
             ['unknownwidget_doThing']);
@@ -36,11 +44,10 @@ test('CLI reports both a real MakeCode import and a missing Scratch extension op
     } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
 
-test('CLI counts Code-to-Blocks warnings as partial imports', () => {
+test('CLI accepts empty bodies after parser adoption', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-compat-warnings-'));
     try {
-        // The WIP's case (an optional parameter left out) translates cleanly
-        // on main since E0/E1, so it no longer warns. An empty \`if\` body still does.
+        // Empty bodies are valid MakeCode and now survive Code-to-Blocks.
         fs.writeFileSync(path.join(dir, 'optional.ts'), 'if (0) {\n}\nlet x = 1\n');
         const json = path.join(dir, 'audit.json');
         const run = spawnSync(process.execPath, ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', CLI,
@@ -48,9 +55,8 @@ test('CLI counts Code-to-Blocks warnings as partial imports', () => {
         {cwd: ROOT, encoding: 'utf8'});
         assert.equal(run.status, 0, run.stderr);
         const row = JSON.parse(fs.readFileSync(json, 'utf8')).rows[0];
-        assert.equal(row.stage, 'partial');
-        assert.ok(row.unsupported.some(gap => gap.includes('Code to Blocks:') &&
-            gap.includes('Empty body')));
+        assert.equal(row.stage, 'translated');
+        assert.deepEqual(row.unsupported, []);
     } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
 
@@ -95,5 +101,8 @@ hero.image.fill(5)
         assert.equal(row.stage, 'translated', JSON.stringify(row.unsupported));
         assert.deepEqual(row.execution.errors, []);
         assert.equal(row.execution.status, 'stepped');
+        assert.equal(row.qualification.behavioralEquivalence, 'not-measured');
+        assert.equal(row.qualification.staticTranslation, 'translated');
+        assert.equal(row.qualification.originalCompile, 'not-requested');
     } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
