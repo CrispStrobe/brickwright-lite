@@ -37,8 +37,12 @@ const identity = (entry, key, fallbackNamespace) => {
     const short = raw.startsWith(`${ns}.`) ? raw.slice(ns.length + 1) : raw;
     if (!/^[A-Za-z_$][\w$]*$/.test(short)) fail('IDENTITY', 'Animation asset ID is invalid');
     const name = entry.displayName ?? short;
-    if (typeof name !== 'string' || !name.trim() || name.length > 80 || /[\u0000-\u001f\u007f]/.test(name)) {
-        fail('NAME', 'Animation display name must contain 1..80 printable characters');
+    // Microsoft PXT validateAssetName character rules: asset references place
+    // this name directly inside a tagged template without escaping punctuation.
+    // A richer Brickwright display name needs an explicit mapping outside here.
+    if (typeof name !== 'string' || !name.trim() || name.length > 80 ||
+        /[\u0000-\u001f\u0021-\u002c\u002e\u002f\u003a-\u0040\u005b-\u005e\u0060\u007b-\u007f]/.test(name)) {
+        fail('NAME', 'Animation display name must contain 1..80 characters admissible in native MakeCode asset names');
     }
     return {id: `${ns}.${short}`, short, namespace: ns, name};
 };
@@ -48,13 +52,14 @@ const base64Encode = text => {
     fail('ENCODING', 'Base64 encoder is unavailable');
 };
 const base64Decode = text => {
-    if (typeof text !== 'string' || !text.length || text.length % 4 ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(text)) {
-        fail('ENCODING', 'Animation data must be canonical base64 ASCII hex');
-    }
-    // Bound before decoding or allocating attacker-controlled data.
+    if (typeof text !== 'string') fail('ENCODING', 'Animation data must be canonical base64 ASCII hex');
+    // Bound before scanning, decoding or allocating attacker-controlled data.
     if (text.length > Math.ceil(ANIMATION_JRES_LIMITS.packedBytes * 2 / 3) * 4) {
         fail('RESOURCE_LIMIT', 'Animation encoded resource exceeds byte limit');
+    }
+    if (!text.length || text.length % 4 ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(text)) {
+        fail('ENCODING', 'Animation data must be canonical base64 ASCII hex');
     }
     const decoded = typeof atob === 'function' ? atob(text) :
         typeof Buffer !== 'undefined' ? Buffer.from(text, 'base64').toString('latin1') :

@@ -74,6 +74,22 @@ test('native key/default namespace lookup retains asset identity independently f
     rejects(()=>encodeAnimationJres({...sample(),name:'a'.repeat(81)}),'NAME');
 });
 
+test('native names agree with actual original PXT validator including Unicode and punctuation',()=>{
+    for(const name of ['Walk','walk cycle-2','under_score','Über','走る','🐾',
+        'bad`name','bad"name',"bad'name",'bad.name','bad:name','bad/name','bad\\name',
+        'bad$name','bad!name','bad[name]','bad@name','bad\nname','bad\u007fname']){
+        oracle.nameToValidate=name;
+        const accepted=vm.runInContext('pxt.validateAssetName(nameToValidate)',oracle,{timeout:1000});
+        if(accepted) {
+            const entry=encodeAnimationJres({...sample(),name});
+            assert.equal(decodeAnimationJres(entry).name,name);
+        } else {
+            rejects(()=>encodeAnimationJres({...sample(),name}),'NAME');
+            rejects(()=>decodeAnimationJres({...encodeAnimationJres(sample()),displayName:name}),'NAME');
+        }
+    }
+});
+
 test('encoder refuses invalid dimensions/count/timing and pixels without coercion or truncation',()=>{
     for(const width of [0,-1,1.5,161,65536,NaN]) rejects(()=>encodeAnimationJres({...sample(),width}),'DIMENSIONS');
     for(const intervalMs of [0,-1,.5,65536,Infinity]) rejects(()=>encodeAnimationJres({...sample(),intervalMs}),'INTERVAL');
@@ -88,6 +104,7 @@ test('encoder refuses invalid dimensions/count/timing and pixels without coercio
 
 test('decoder rejects malformed, truncated, oversized and noncanonical resources before allocating frames',()=>{
     const entry=encodeAnimationJres(sample());
+    rejects(()=>decodeAnimationJres({...entry,data:'!'.repeat(ANIMATION_JRES_LIMITS.packedBytes*3)}),'RESOURCE_LIMIT');
     rejects(()=>decodeAnimationJres({...entry,mimeType:'image/x-mkcd-f4'}),'MIME');
     rejects(()=>decodeAnimationJres({...entry,dataEncoding:'json'}),'ENCODING');
     for(const data of ['', '!!!!',entry.data+'\n',btoa('zz'),btoa('abc')]) rejects(()=>decodeAnimationJres({...entry,data}),'ENCODING');
