@@ -362,16 +362,22 @@ not establish any of the five qualification results above.
 
 ## Observed editor warnings requiring follow-up
 
-The qualified production browser journey retains 996 Blockly definition
-overwrite warnings and ignored nonexistent input warnings for
-`arrays_valueBinary.OP` (17) and `arrays_specialValue.KIND` (4). Its VM,
-workspace update and extension loader error gates pass; this does not make the
-editor warning-free. C01/C18 still require authored dropdown edits and
-Blocks→Code→Blocks/save/reopen fixtures that prove those operands persist.
-Inspect the actual block definitions and serialized inputs; do not silence
-these warnings or infer all Blocks editing works from Code-authored playback.
-Audio gesture and unavailable optional native-runtime resource warnings are
-separate boundaries, retained in the private receipts.
+Historical rotation qualification retained 996 Blockly definition overwrite
+warnings and ignored nonexistent input warnings for `arrays_valueBinary.OP`
+(17) and `arrays_specialValue.KIND` (4). These exposed real field/input schema
+corruption; their original failures remain preserved.
+
+The native schema gate now passes on production source `7b00d0b32`: seven real
+menu edits (`-`, `/`, `*`, `null`, unary `-`, `>=`, controller `y`) reach both
+workspace and serialized VM fields. Four execution phases preserve actual
+sprite position `(80,60)` and operand results: edited workspace, Code↔Blocks,
+SB3 save/reopen and historical five-slot migration through the File chooser.
+A computed `"Y"` axis with the physically held Up widget produces `-3` and
+returns to zero on release. This gate observes no page errors or schema/workspace
+warnings. It does not establish that every other editor journey is warning-free.
+A subsequent refresh failure-barrier change must receive final candidate CI.
+Audio gesture and unavailable optional native-runtime resource warnings remain
+separate boundaries, retained in private receipts.
 
 Device consistency follow-up: the legacy **no chips** selection removes the
 editor header and clears runtime hints immediately without applying a new
