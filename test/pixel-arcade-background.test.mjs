@@ -142,3 +142,23 @@ test('extended bundle version is conditional, while existing document versions r
     assert.equal(artworkBundleVersion([{document:document(160)}]),4);
     assert.equal(artworkBundleVersion([]),1);
 });
+
+test('fractional inferred SVG grid is converted before it can create an unsaveable document', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="0.5" height="0.5"><rect x="0" y="0" width="1" height="1" fill="#ff2121"/></svg>';
+    assert.equal(svgToPixels(svg).scale, 0.5);
+    let rasterCalls = 0;
+    const bindings = {getCostumeDocument, ARCADE_PALETTE, sourceLayers, sourceFrames, composeLayers, svgToPixels,
+        editablePixelSize, rasterEditorSize, isUnmarkedArcadeBackdrop, quantizeRgba, blankLayer,
+        rasterize: async () => { rasterCalls++; return {rgba: new Uint8Array([255, 33, 33, 255]), w: 1, h: 1}; }};
+    const load = new Function(...Object.keys(bindings), `return async function(size) ${scopeAfter(source, 'async load (size) {')}`)(...Object.values(bindings));
+    const costume = {asset: {dataFormat: 'svg', decodeText: () => svg}};
+    const editor = {props: {vm: {editingTarget: {isStage: false}}}, state: {}, costume: () => costume,
+        setState (patch) { Object.assign(this.state, patch); }};
+    await load.call(editor);
+    assert.equal(rasterCalls, 1);
+    assert.equal(editor.state.converted, true);
+    assert.equal(editor.state.scale, 4);
+    assert.deepEqual(Array.from(editor.state.image.pixels), Array(16).fill(2));
+    assert.doesNotThrow(() => setCostumeDocument(costume, layersDocument(editor.state.layers, 4, 4,
+        editor.state.scale, editor.state.activeLayerId, ARCADE_PALETTE)));
+});

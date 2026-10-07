@@ -343,7 +343,7 @@ class PixelArtEditor extends React.Component {
             const svg = costume.asset.decodeText();
             const px = isUnmarkedArcadeBackdrop(svg, this.props.vm.editingTarget?.isStage) ? null :
                 svgToPixels(svg, palette);
-            if (px && editablePixelSize(px.width, px.height) && px.scale <= 64) {
+            if (px && editablePixelSize(px.width, px.height) && Number.isInteger(px.scale) && px.scale >= 1 && px.scale <= 64) {
                 image = {width: px.width, height: px.height, pixels: px.pixels};
                 scale = px.scale;
             }
