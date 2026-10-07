@@ -582,7 +582,36 @@ try{
         assert.equal(lifecycle.length,2);assert.ok(lifecycle.every(t=>!t.visible&&!t.scripts));
         const duplicatedResources=await resource();assert.equal(duplicatedResources.length,2);
         const copyId=duplicatedResources.find(row=>row.id!==published.id).id;assert.notEqual(copyId,published.id);
-        const a={...duplicatedResources[0],id:null,revision:null},b={...duplicatedResources[1],id:null,revision:null};assert.deepEqual(a,b);
+        const a={...duplicatedResources[0],id:null,revision:null,source:null},b={...duplicatedResources[1],id:null,revision:null,source:null};assert.deepEqual(a,b);
+        assert.notEqual(duplicatedResources[0].source.targetId,duplicatedResources[1].source.targetId);
+        await openCode();
+        const picker=page.getByTestId('bw-code-animation-picker');
+        const options=await picker.locator('option').evaluateAll(nodes=>nodes.map(node=>({text:node.textContent,value:node.value})));
+        assert.equal(options.length,2);assert.equal(new Set(options.map(row=>row.text)).size,2);
+        for(const row of duplicatedResources)assert.ok(options.find(option=>option.value===row.id).text.includes(row.source.targetName));
+        await picker.selectOption(copyId);
+        const beforeInsert=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
+        await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText('\n');
+        await page.getByTestId('bw-code-animation-insert-fresh').click();
+        assert.ok((await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString())).includes(`arcade animation fresh frames resource "${copyId}"`));
+        // Restore the source through the actual editor, leaving gameplay bindings unchanged.
+        await editor().fill(beforeInsert);
+        await pixels('Game');await page.getByRole('tab',{name:'Blocks',exact:true}).click();
+        await page.waitForFunction(()=>window.Blockly?.getMainWorkspace()?.getAllBlocks(false).some(block=>block.type==='arcade_animationAssetFrames'));
+        const duplicateMenu=await page.evaluate(()=>{
+            const block=window.Blockly.getMainWorkspace().getAllBlocks(false).find(block=>block.type==='arcade_animationAssetFrames');
+            const menu=block.getInputTargetBlock('RESOURCE'),field=menu.getField('animationAssets'),rect=field.getSvgRoot().getBoundingClientRect();
+            return {id:menu.id,x:rect.x+rect.width/2,y:rect.y+rect.height/2,options:field.getOptions().map(([text,value])=>({text,value}))};
+        });
+        assert.deepEqual(duplicateMenu.options,options);
+        await page.mouse.click(duplicateMenu.x,duplicateMenu.y);
+        await page.getByRole('menuitemcheckbox',{name:options.find(row=>row.value===copyId).text,exact:true}).click();
+        await page.waitForFunction(({id,uuid})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target=>target.blocks._blocks[id]?.fields?.animationAssets?.value===uuid),{id:duplicateMenu.id,uuid:copyId});
+        await page.mouse.click(duplicateMenu.x,duplicateMenu.y);
+        await page.getByRole('menuitemcheckbox',{name:options.find(row=>row.value===published.id).text,exact:true}).click();
+        await page.waitForFunction(({id,uuid})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target=>target.blocks._blocks[id]?.fields?.animationAssets?.value===uuid),{id:duplicateMenu.id,uuid:published.id});
+        report.duplicatePicker={options,codeInsertedCopyUuid:true,blocksSelectedCopyUuid:true,originalBindingRestored:true};
+        report.journey.push('duplicate Code and Blocks labels identify artwork owners and both real controls select the copy UUID');
         await pixels('Robot artwork');await tile.getByRole('button',{name:'Delete',exact:true}).click();
         await page.getByRole('dialog',{name:'Confirm Asset Deletion'}).getByRole('button',{name:'yes',exact:true}).click();
         await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t=>t.bwAssetLibrary).length===1);

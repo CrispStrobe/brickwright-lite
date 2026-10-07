@@ -63,6 +63,11 @@ test('native imports install used and unused animations with fresh runtime seman
     try {
         const library=vm.runtime.targets.find(getAssetLibraryRole);
         assert.equal(library.visible,false);assert.equal(library.sprite.costumes.length,2);
+        for (const resource of vm.runtime.bwArcadeAnimationResources.values()) {
+            assert.equal(resource.source.targetId, library.id);
+            assert.equal(resource.source.targetName, library.getName());
+            assert.ok(library.sprite.costumes.some(costume => costume.name === resource.source.costumeName));
+        }
         assert.deepEqual(library.blocks._blocks,{});
         for (const costume of library.sprite.costumes) {
             assert.equal(project.targets.at(-1).costumes[library.sprite.costumes.indexOf(costume)].md5ext,`${costume.asset.assetId}.svg`);

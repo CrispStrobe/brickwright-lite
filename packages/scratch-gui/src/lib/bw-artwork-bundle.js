@@ -242,6 +242,8 @@ const syncAnimationResources = (vm, {costume: proposedCostume, document: propose
         validateDocument(document);
         const resource = animationResourceFromDocument(document);
         if (resources.has(resource.id)) throw new Error(`Duplicate animation resource ID: ${resource.id}`);
+        resource.source = {targetId: target.id, targetName: target.getName?.() || target.sprite?.name,
+            costumeName: costume.name};
         resources.set(resource.id, resource);
     }
     if (!validateOnly && vm?.runtime) vm.runtime.bwArcadeAnimationResources = resources;
