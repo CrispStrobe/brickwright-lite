@@ -25,7 +25,12 @@ The live editor rejected the prior uncompressed source HEX. The original PNG
 contains `{meta, source}`, which the earlier flat-map-only reader missed.
 The first original editor unedited return retained both animation companions;
 actual rename/timing/pixel edits invalidate only the changed resource companion.
-Qualification and publication for this follow-up remain in progress.
+Product source `86935c2d7d5fe4f6fae378c847d17ba2819fd18e` passes123 focused
+tests,18 existing browser journeys and4 live-original-editor journeys. Final
+live editor and Brickwright return have zero page errors; visible edited
+playback passes. Build has zero errors and4,360,502 initial bytes. See
+[the receipt](docs/receipts/2026-10-07-original-makecode-assets-roundtrip.json).
+Hosted final-head qualification remains pending. Corpus93 partial is unchanged.
 
 ## Arcade resource picker follow-up — 2026-10-07
 

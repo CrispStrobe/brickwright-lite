@@ -695,3 +695,22 @@ The current vendor pin is sb3-creator
 It includes native Arrays dropdown fields, reporter-capable controller-axis
 menus and named animation frame/interval resource reporters. Earlier PR59 qualification above is historical; it does not replace the
 current native-schema browser gate or close every resource/event menu.
+
+### U04 follow-up: original Assets editor exchange
+
+Native `.mkcd` GUI/CLI export and `.mkcd`/`.pxt`/current PNG import replace the
+previous unqualified source-only HEX exchange route. The live-original-editor
+fixture covers real Assets selection, unedited PNG Save, used-animation rename,
+timing and fill edits, PNG download, Brickwright file import/To Blocks and
+visible game playback. Exact rich source and UUIDs survive the unedited return;
+stale edited source is explicitly replaced while the untouched resource retains
+its identity. See [the contract and finite boundaries](ARCADE-ANIMATION-INTERCHANGE.md#original-makecode-assets-editor-and-native-project-files).
+
+Remaining U04 work includes unequal-duration scheduling, action binding, sheets,
+frames-as-costumes, custom-palette equivalence, sprite/costume transport and
+broader real-project Assets roundtrips. Native timing metadata edits do not
+rewrite independent numeric playback arguments already present in source.
+Original-editor reopening of compiled firmware's embedded source is still
+unqualified; the earlier uncompressed HEX self-roundtrip cannot qualify it.
+The corpus remains90 translated /93 partial /1 malformed; no case is upgraded
+by this synthetic fixture alone.

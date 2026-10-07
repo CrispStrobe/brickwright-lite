@@ -163,7 +163,7 @@ async function main () {
             const {ARCADE_HARDWARE} = await lib('bw-makecode/pxt-runtime.js');
             if (!a.board || !ARCADE_HARDWARE[a.board]) {
                 console.error(`Arcade firmware needs --board (${Object.keys(ARCADE_HARDWARE).join(', ')}); ` +
-                    '--source writes the project file arcade.makecode.com opens instead');
+                    'to-project --target arcade writes a native project file instead');
                 return 2;
             }
         }
@@ -175,7 +175,7 @@ async function main () {
         } catch (e) {
             if (e.code === 'NO_BASE_HEX') {
                 console.error(`refused: ${e.message}. ${a.target === 'arcade' ?
-                    `no firmware base is synced for ${a.board} — \`npm run sync:makecode\` fetches it; --source writes the project file arcade.makecode.com opens.` :
+                    `no firmware base is synced for ${a.board} — \`npm run sync:makecode\` fetches it; to-project --target arcade writes a native project file.` :
                     'A C++ package outside MakeCode\'s default set needs its cloud compiler.'}`);
                 return 1;
             }

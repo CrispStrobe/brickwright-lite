@@ -627,3 +627,44 @@ zero errors and4,360,502 initial bytes; all18 browser journeys still pass with
 zero page errors. Refreshed focused tests pass23/23; mirror and embedded-factory
 checks pass2/2. The original failing hosted log is retained privately. Exact-head
 hosted requalification remains required before merge.
+
+### Original MakeCode Assets editor and native project files
+
+The GUI's **To MakeCode** downloads and CLI `to-project` now write native
+`.mkcd` project envelopes containing `{meta, source}` and every generated file.
+Both Arcade and micro:bit exports use this container. File import accepts
+`.mkcd`, `.pxt`, compressed native projects and current MakeCode PNG envelopes,
+while retaining historical flat file-map PNG support. No firmware, cloud
+account or compression service is needed to export the JSON project.
+
+This corrects two observed integration defects: the live Arcade editor rejected
+our previous uncompressed source-only HEX, and its downloaded PNG contains a
+compressed project envelope rather than the bare file map our reader expected.
+Self-import of the old HEX did not establish acceptance by the original editor.
+The legacy `to-hex --source` API remains for Brickwright readers; use
+`to-project` for editor exchange. Original-editor reopening of source embedded
+in compiled firmware remains a separate unqualified path.
+
+The opt-in `scripts/verify-makecode-assets-roundtrip.mjs` imports a genuine GUI
+export through the original editor's Import File controls, opens both animations
+in Assets, saves an unedited PNG, changes the used animation through actual
+name/timing/fill controls, downloads again and imports that PNG through
+Brickwright Code and To Blocks. The unedited return preserves both exact rich
+source documents and UUIDs. A native edit invalidates only its stale companion:
+import generates a new UUID and source document for that animation and retains
+the untouched animation exactly. Its changed first frame appears in the running
+Brickwright stage. Stale companion diagnostics remain visible.
+
+Asset timing metadata is preserved as250ms. The existing game's exported
+numeric playback argument remains100ms: changing native asset metadata does
+not rewrite that independent code argument. This qualification does not claim
+that MakeCode's Assets editor preserves Brickwright layers on modified art;
+modified art is reconstructed from its native flattened frames. Arbitrary
+projects, custom palettes, firmware reimport and the93 partial corpus cases
+remain open. The live editor test is opt-in because it depends on the external
+editor and records its exact version and any exceptions.
+
+Protocol references: Microsoft PXT's
+[project serialization](https://github.com/microsoft/pxt/blob/master/pxtlib/package.ts)
+and [editor project import](https://github.com/microsoft/pxt/blob/master/webapp/src/app.tsx).
+See the [qualification receipt](receipts/2026-10-07-original-makecode-assets-roundtrip.json).

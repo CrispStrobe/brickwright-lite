@@ -356,7 +356,7 @@ try{
         const renamedSource=await snapshot('renamed-reordered');report.journey.push('Pixel rename/reorder preserves UUID and updates bound playback without rewriting code');
         await openCode();const actions=page.getByTestId('bw-code-actions');if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
-        const download=await exported;assert.match(download.suggestedFilename(),/\.hex$/);
+        const download=await exported;assert.match(download.suggestedFilename(),/\.mkcd$/);
         const hex=path.join(path.dirname(out),'animation-export.mkcd');await download.saveAs(hex);const bytes=await fs.readFile(hex);
         const embedded=await unpackMakeCodeSource(bytes);assert.ok(embedded.files?.['main.ts']);await fs.writeFile(path.join(path.dirname(out),'animation-export.ts'),embedded.files['main.ts']);
         const nativeConfig=JSON.parse(embedded.files['pxt.json']);

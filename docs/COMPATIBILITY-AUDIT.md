@@ -17,6 +17,8 @@ ported: TurboWarp is clean-room only for this project.
 npm run makecode -- to-sb3 game.ts --target arcade -o game.sb3 --bw game.bw
 npm run makecode -- to-sb3 microbit.hex -o microbit.sb3
 npm run makecode -- to-ts game.sb3 --target arcade -o main.ts
+npm run makecode -- to-project game.sb3 --target arcade -o game.mkcd
+npm run makecode -- to-sb3 game.mkcd -o returned.sb3
 npm run makecode -- to-hex game.sb3 --target arcade --board rp2040 -o game.uf2
 npm run makecode -- to-hex robot.bw --target microbit -o robot.hex
 ```
