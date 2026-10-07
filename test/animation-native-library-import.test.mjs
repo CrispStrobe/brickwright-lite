@@ -49,7 +49,7 @@ const open = async (bytes, project) => {
         vm.extensionManager._loadedExtensions.set(id,service);
     }
     const inspection=await inspectArtwork(bytes);assert.equal(inspection.outcome,'loaded',inspection.reason);
-    await vm.loadProject(bytes);assert.equal(applyArtwork(inspection,vm).count,2);
+    await vm.loadProject(bytes);assert.equal(applyArtwork(inspection,vm).count,inspection.records.length);
     return {vm,inspection};
 };
 test('native imports install used and unused animations with fresh runtime semantics and real storage hashes',async()=>{

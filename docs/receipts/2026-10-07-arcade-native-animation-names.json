@@ -1,0 +1,45 @@
+{
+  "source": "6f78b0151f15711725ae4d10f0449f9cdfca4dbb",
+  "producerPin": "983aa61f2fa44901074763b7347588b4e210fc77",
+  "initialBytes": 4357538,
+  "limit": 4467136,
+  "statsSha256": "bb0a5814e1997a2c0fcda44bd0de39c62d5e9be6561ff74f22b195160a8f55dd",
+  "bundle": "gui.b16f4317.js",
+  "companionVersion": 2,
+  "legacyCompanionVersionsAccepted": [
+    1
+  ],
+  "tests": {
+    "focusedRegression": 39,
+    "codecLibraryHandoffPolicy": 40,
+    "auditShardTimeoutPinning": 53,
+    "finalOverlayPairs": 1,
+    "skips": 0
+  },
+  "browser": {
+    "journeys": 17,
+    "pageErrors": 0,
+    "duplicateNativeExport": {
+      "gui": true,
+      "cli": true,
+      "uniqueNativeNames": true,
+      "authoredNamesAndUuidsPreserved": true,
+      "originalPxtCompiledAndRun": true,
+      "guiReimported": true
+    },
+    "originalPixelsCompared": 19200
+  },
+  "browserHarnessSha256": "f692070704e9438d234b9a23a27823f8fc3a88ce647a53b965af62a1dc10044b",
+  "nativeImportTestSha256": "3e41916aec93cb6821fcf712f32406b670c94f4b47d77cc9a226c25c3081a639",
+  "preservedFailures": [
+    "shared-array fixture",
+    "menu boolean attribute and pending download handling",
+    "wrong SB3 chooser for native file",
+    "identical carrier costumes rejected by Scratch validator",
+    "save fixture counted only animations",
+    "hosted predecessor audit incomplete API step snapshot",
+    "stopped hung diagnostic API request"
+  ],
+  "boundary": "Synthetic duplicate-library GUI/CLI export, exact rich-source recovery, original PXT compilation/execution and GUI native-file reimport/To Blocks/playback. Original Assets editing/download/companion retention, duplicate labels in authoring pickers and string-valued VM error presentation remain open. No corpus reclassification.",
+  "hostedFinalHead": "pending"
+}

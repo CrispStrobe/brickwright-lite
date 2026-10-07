@@ -508,10 +508,71 @@ binds the source, graph and harness. Hosted final-head qualification remains
 required. Earlier budget, Blockly and selector failures are preserved privately.
 
 Costume drag/share source transport, sprite-file library transport, and original
-MakeCode Assets editing/download still require qualification. Duplicating rich
-resources preserves their display names; native MakeCode export currently
-diagnoses duplicate animation display names. Resolving that naming boundary
-without changing UUID bindings is required before claiming native export of
-duplicated libraries. These safeguards
+MakeCode Assets editing/download still require qualification. Native names for
+duplicated libraries are handled in the follow-up below. These safeguards
 do not promise protection against arbitrary direct VM mutation. Whole-corpus
 compatibility remains90 translated /93 partial /1 malformed.
+
+### Native animation names and authored identity
+
+The exporter allocates a distinct native display name for every resource UUID.
+It trims surrounding whitespace and projects punctuation forbidden by MakeCode
+to underscores. Duplicate names receive bounded numeric suffixes; allocation
+reserves all projected source names before choosing suffixes and keeps native
+ID aliases clear of those names. Both the downloaded gallery and its generated
+factory use the same allocated names. Mappings produce explicit warnings.
+Authored documents are never renamed or mutated during export.
+
+Rich animation companions now use version2 with the exact exported native name
+beside each native ID, source document and pixel/timing projection. If that
+native name is unchanged, recovery retains the original authored display name,
+UUID, layers and frame identities. A native asset that keeps its ID but changes
+its name recovers with that new name and the retained UUID. Version1 companions remain readable
+with their original rename semantics. A version2 record with a missing or
+invalid native name, a downgraded mapped record, and unknown versions are
+refused explicitly. Original MakeCode retention of the companion remains
+unqualified; native playback does not depend on it.
+
+The final focused export/import/companion/native-library batch passes39/39 without skips. Actual
+original PXT compiles and runs both generated and original-emitter factories
+for duplicate names, reserved suffixes, punctuation and alias collisions; every
+lookup returns its own resource pixels. Maximum-length names stay bounded and
+allocation is deterministic. Three direct and embedded export/import cycles
+preserve complete source documents for duplicate and nonnative names. An
+initial independent-pixel test fixture accidentally shared source arrays; that
+failed attempt is preserved and the corrected fixture owns its arrays.
+
+The expanded browser journey exposed a real Scratch schema boundary: two
+different resource UUIDs can have identical names and rendered pixels, producing
+identical carrier costume records that Scratch refuses. Native import now
+allocates distinct carrier costume names without changing source documents or
+storage hashes. A real-VM test loads both resources, saves and reloads them,
+checking exact source and both UUIDs. Its initial save assertion incorrectly
+counted only animation records; it now checks application of every inspected
+source record and separately verifies the two animation documents.
+
+The preceding hosted heavy job remained unaudited because one completed gate
+was still reported unfinished. GitHub's job response advertises a60-second
+cache lifetime. Each listing/detail poll now has a unique read key and requests
+no cache reuse; the audit still requires completed steps, exact run/attempt/job
+identity and the existing one-minute polling window. A cache-snapshot adversary
+and the full audit/shard/timeout/pinning batch pass53/53. Authenticated and
+public fresh-key API reads returned the correct job identity; an earlier
+diagnostic request hung and was stopped, not counted as success. Hosted
+qualification of this audit repair remains required.
+
+At product source `6f78b0151f15711725ae4d10f0449f9cdfca4dbb`, production
+startup is4,357,538 bytes against the unchanged4,467,136 limit. All17 browser
+journeys pass with zero page errors, including duplicate-library GUI and CLI
+downloads, exact companion recovery of both authored documents, original-PXT
+compilation/execution, native-file import through Code, To Blocks and returned
+animation playback. The original19,200-pixel comparison still passes. Final
+overlay-pair validation passes; the separate codec/library/handoff batch
+passes40/40. The
+[emitted receipt](receipts/2026-10-07-arcade-native-animation-names.json)
+binds the product source, emitted graph and harness. Initial menu/download
+handling and use of the SB3 chooser for a native file were harness failures;
+the actual duplicate-costume validation failure and all attempts are preserved.
+Hosted final-head checks, original Assets editing/companion retention,
+distinguishable duplicate names in authoring pickers and string-valued VM error
+presentation remain open. The corpus still has93 partial cases.

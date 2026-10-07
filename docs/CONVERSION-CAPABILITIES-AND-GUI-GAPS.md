@@ -422,6 +422,22 @@ drag/share source transport, sprite-file transport and corpus-wide closure
 remain open. See the
 [transaction contract](ARCADE-ANIMATION-INTERCHANGE.md#automatic-native-resource-import-transaction).
 
+Native export now allocates unique MakeCode-safe names for duplicate or
+nonnative authored names, without changing UUID bindings or authored documents.
+Companion version2 records that name projection and restores exact authored
+names unless the native editor actually renamed the asset; version1 remains
+readable. Original-PXT factory execution and repeated direct/embedded
+roundtrips pass in the39-test focused batch. All17 production browser journeys
+pass, including duplicated-library GUI/CLI original-PXT export and Code-file
+reimport/To Blocks/playback. See
+[native animation names](ARCADE-ANIMATION-INTERCHANGE.md#native-animation-names-and-authored-identity).
+The Blocks and Code resource pickers still need distinguishable labels when
+two authored resources have the same display name. Their UUID values remain
+distinct; resolving native export names does not close that authoring gap.
+The browser roundtrip also exposed `Error: undefined` for a string-valued VM
+validation rejection. Conversion diagnostics must retain and explain its
+validation path/message; that presentation fix remains required.
+
 ### U05 — rotation/data/resources/callbacks
 
 After F4 integration select radians/degrees/data through real block menus and
