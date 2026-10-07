@@ -1643,10 +1643,12 @@ committed file differs from the pinned bundle:
   in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js`
   (`scripts/generate-arcade-image-operations.mjs`); text layout and speech bubbles
   (`game/renderText.ts`, `game/spritesay.ts`, transpiled) in `speech-pxt.js`, and the
+  rotated sprite geometry (`game/rotation.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/rotation-pxt.js`, and the
   6x8 `font8` (`screen/text.ts`) in `speech-fonts.json`
   (`scripts/generate-arcade-speech.mjs`).
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
-  Microsoft Corporation: the 507 built-in images (`sprites.castle.tileGrass1`, ...;
+  Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`
   (`scripts/generate-arcade-builtin-images.mjs`).
 - **font12** of pxt-common-packages (`screen/font12.jres`), a 12x12 pixel font based on
