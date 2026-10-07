@@ -235,19 +235,24 @@ still has 93 partial inputs and one malformed source. This is not full parity.
 Close the next families in this order, using affected-project counts rather
 than diagnostic occurrence counts:
 
-1. Fix the remaining runtime error at its actual translation/evaluation cause;
-   retain named unsupported paint, assets and effects until implemented.
-2. Separate incomplete single-file documentation snippets from complete project
+The consumed-update runtime error is repaired; the refreshed compiler-valid
+Arcade smoke has zero block errors. Paint, assets and effects stay named until
+implemented. The production controller journey passes 12 states and all 19,200
+initial-stage pixels match actual original PXT execution. Focused rendering
+checks cover 211,200 original stage pixels; this finite coverage is not full
+game equivalence.
+
+1. Separate incomplete single-file documentation snippets from complete project
    imports; preserve package/artwork dependencies and name unavailable resources.
-3. Implement legacy tilemap calls and asset-backed tilemaps through the existing
+2. Implement legacy tilemap calls and asset-backed tilemaps through the existing
    map/location/wall model; add a usable tilemap painter and file roundtrips.
-4. Complete projectile signatures and dynamic sprite/property dispatch rather
+3. Complete projectile signatures and dynamic sprite/property dispatch rather
    than substituting a fixed Scratch target for a runtime sprite reference.
-5. Implement effects, dialogs, music and scene drawing against measured PXT
+4. Implement effects, dialogs, music and scene drawing against measured PXT
    behaviour, including waiting, registration and lifecycle semantics.
-6. Integrate third-party extension families through explicit, licensed support
+5. Integrate third-party extension families through explicit, licensed support
    contracts; keep unknown package calls named until their APIs are implemented.
-7. Complete each authoring journey in the
+6. Complete each authoring journey in the
    [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md), including
    graphics edits, controller use, save/reopen and original MakeCode execution.
 
