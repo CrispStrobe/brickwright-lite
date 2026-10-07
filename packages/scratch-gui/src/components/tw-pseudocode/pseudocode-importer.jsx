@@ -23,7 +23,8 @@ import {
 } from '../../lib/bw-matrix/capabilities.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
-import {getCostumeDocument} from '../../lib/bw-artwork-bundle.js';
+import {getCostumeDocument, inspectArtwork, applyArtwork} from '../../lib/bw-artwork-bundle.js';
+import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork} from '../../lib/bw-code-artwork.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -1455,6 +1456,8 @@ class PseudocodeImporter extends React.Component {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
         if (!file) return;
+        this._codeArtwork = null;
+        this.setState({uploads: []});
         this.publishGameControls(null);
         this._makeCodeProject = null;
         // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
@@ -1759,6 +1762,7 @@ class PseudocodeImporter extends React.Component {
      * the part worth having in one place.
      */
     applyMakeCodeImport (res, label) {
+        this._codeArtwork = null;
         // Whatever arrived, the previous project's touch controls are gone.
         this.publishGameControls(null);
 
@@ -4268,6 +4272,8 @@ class PseudocodeImporter extends React.Component {
     // SB3Creator.retargetPseudocode; a refusal shows its reasons in the status
     // line (the tab's existing warning surface) and loads nothing.
     async loadCatalogExample (ex, deviceOverride) {
+        this._codeArtwork = null;
+        this.setState({uploads: []});
         this.publishGameControls(null);
         this._lastCatalogExample = ex;
         // A row's device chip passes its device explicitly; a plain row
@@ -4398,6 +4404,8 @@ class PseudocodeImporter extends React.Component {
         const loaded = key && (await this._loadBundledExamples());
         const src = loaded && loaded[key];
         if (!src) return;
+        this._codeArtwork = null;
+        this.setState({uploads: []});
         this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();
         const exampleDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
@@ -4549,8 +4557,27 @@ class PseudocodeImporter extends React.Component {
                 if (!ok) missing.push(name);
             });
             if (strict && (parseWarnings.length || creator.warnings.length)) throw new Error([...parseWarnings, ...creator.warnings].join(' · '));
+            const declarations = JSON.parse(JSON.stringify(creator.project));
+            const context = codeArtworkMatches(this.props.vm, this._codeArtwork) ? this._codeArtwork : null;
             const blob = await creator.generateSB3();
-            await this.props.vm.loadProject(await blob.arrayBuffer());
+            let projectBytes = await blob.arrayBuffer();
+            let artwork = null;
+            if (context) {
+                const module = await import('jszip');
+                const ZIP = module.default || module;
+                const zip = await ZIP.loadAsync(projectBytes);
+                retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                projectBytes = await zip.generateAsync({type: 'arraybuffer', compression: 'DEFLATE'});
+                artwork = await inspectArtwork(projectBytes);
+                if (artwork.outcome === 'invalid' || !codeArtworkMatches(this.props.vm, context)) {
+                    throw new Error(artwork.reason || 'The loaded project changed while preparing artwork. Read From blocks again.');
+                }
+            }
+            await this.props.vm.loadProject(projectBytes);
+            if (artwork) {
+                applyArtwork(artwork, this.props.vm);
+                this._codeArtwork = captureCodeArtwork(this.props.vm, declarations);
+            }
             // Auto-select the first sprite with scripts so the Blocks palette
             // shows meaningful blocks, not "Stage selected — no motion blocks".
             const vm = this.props.vm;
@@ -4672,9 +4699,13 @@ class PseudocodeImporter extends React.Component {
                 micropython: mpResult.ok ? mpResult.py : `# === Cannot generate MicroPython ===\n${mpResult.reasons.map(s => '# ' + s).join('\n')}`
             };
             this.setState({importedPython: false});
+            const baseline = new SB3Creator();
+            baseline.parse(buffers.pseudocode);
+            this._codeArtwork = captureCodeArtwork(this.props.vm, baseline.project);
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
             this.setState({
                 buffers,
+                uploads: [], // the live project now owns its artwork; old import SVGs are stale
                 output: null,
                 status: unsupported ?
                     `Read into all languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
