@@ -94,6 +94,22 @@ an unhandled React key event, or a changed runner/target remain possible. The
 next probe records those route facts without synthesizing input or relaxing
 the pixel gate.
 
+The [seventh hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37650021025)
+at `a5e63608dca10706ab619c8d1d5a0db60802202c` retained
+[original artifact 11496508160](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11496508160)
+(249,068 bytes, SHA-256
+`74b6bc8c2dc815229e7ce0746c156ea1f17bb2d2cd3ff1147567b3b6d61244a1`).
+All 15 keydown and 15 keyup events were trusted, focused and bubbled through
+the document. The VDP's mounted React props and panel runner exposed the
+scancode callback, yet the observed target received no calls. No keydown was
+consumed and the guest pixels stayed identical while guest time advanced.
+The installed React 16 renderer omits `code` from its synthetic keyboard
+event, although the native event retains it; the pinned Circuit UI reads only
+the synthetic field and therefore returns before forwarding a recognized
+PC key. A narrow Circuit UI source correction reads the native field when
+the synthetic one is absent. This diagnosis still requires a fresh installed
+browser run showing an actual guest pixel response before acceptance.
+
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
 or a general native 386 backend. A live terminal CLI scenario remains a
