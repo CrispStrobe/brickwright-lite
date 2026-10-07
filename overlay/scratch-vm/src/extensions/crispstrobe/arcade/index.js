@@ -122,7 +122,12 @@ module.exports = makeExt(`// Name: Arcade
           runtime.emit('ARCADE_DIALOG', null);
           this._changed();
         };
-        runtime.on('PROJECT_LOADED', reset);
+        runtime.on('PROJECT_LOADED', () => {
+          // Registry publications belong to the loaded project. GUI artwork
+          // restoration repopulates them after successful deserialization.
+          runtime.bwArcadeAnimationResources = new Map();
+          reset();
+        });
         runtime.on('PROJECT_START', reset);
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);

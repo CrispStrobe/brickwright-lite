@@ -81,11 +81,21 @@ test('Stop keeps image lifetime; restart and project load rebuild resource handl
     const g = setup(), first = g.frames(), oldImage = BWValues.arrayValue(g.runtime, first)[0];
     g.runtime.emit('PROJECT_STOP_ALL');
     assert.strictEqual(g.frames(), first);
+    assert.strictEqual(g.runtime.bwArcadeAnimationResources.get(g.resource.id), g.resource);
     assert.ok(g.arcade._image(oldImage));
     for (const event of ['PROJECT_START', 'PROJECT_LOADED']) {
         const before = g.frames(), old = BWValues.arrayValue(g.runtime, before)[0];
         g.runtime.emit(event);
         assert.equal(g.arcade._image(old), null);
+        if (event === 'PROJECT_LOADED') {
+            assert.equal(g.runtime.bwArcadeAnimationResources.size, 0);
+            assert.equal(BWValues.decode(g.frames()), undefined, 'old project publication cannot leak');
+            // Successful GUI artwork restoration publishes the new project.
+            g.runtime.bwArcadeAnimationResources.set(g.resource.id, g.resource);
+        } else {
+            assert.strictEqual(g.runtime.bwArcadeAnimationResources.get(g.resource.id), g.resource,
+                'Start preserves authored registry while rebuilding handles');
+        }
         const after = g.frames();
         assert.notStrictEqual(after, before);
         assert.equal(g.arcade._image(BWValues.arrayValue(g.runtime, after)[0]).pixels[0], 2);
