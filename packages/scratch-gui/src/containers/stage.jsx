@@ -29,6 +29,7 @@ class Stage extends React.Component {
             'detachMouseEvents',
             'handleDoubleClick',
             'handleQuestionAnswered',
+            'handleArcadeDialogDismiss',
             'onMouseUp',
             'onMouseMove',
             'onMouseDown',
@@ -37,6 +38,7 @@ class Stage extends React.Component {
             'onWheel',
             'updateRect',
             'questionListener',
+            'arcadeDialogListener',
             'setDragCanvas',
             'clearDragCanvas',
             'drawDragCanvas',
@@ -49,7 +51,8 @@ class Stage extends React.Component {
             dragOffset: null,
             dragId: null,
             colorInfo: null,
-            question: null
+            question: null,
+            arcadeDialog: null
         };
         if (this.props.vm.renderer) {
             this.renderer = this.props.vm.renderer;
@@ -139,6 +142,7 @@ class Stage extends React.Component {
             this.boxObserver.observe(this.canvas);
         }
         this.props.vm.runtime.addListener('QUESTION', this.questionListener);
+        this.props.vm.runtime.addListener('ARCADE_DIALOG', this.arcadeDialogListener);
     }
     /**
      * Size the renderer's drawing buffer to the laid-out box, and RECORD what
@@ -161,6 +165,7 @@ class Stage extends React.Component {
             this.state.colorInfo !== nextState.colorInfo ||
             this.props.isFullScreen !== nextProps.isFullScreen ||
             this.state.question !== nextState.question ||
+            this.state.arcadeDialog !== nextState.arcadeDialog ||
             this.props.micIndicator !== nextProps.micIndicator ||
             this.props.isStarted !== nextProps.isStarted;
     }
@@ -180,9 +185,17 @@ class Stage extends React.Component {
         this.detachRectEvents();
         this.stopColorPickingLoop();
         this.props.vm.runtime.removeListener('QUESTION', this.questionListener);
+        this.props.vm.runtime.removeListener('ARCADE_DIALOG', this.arcadeDialogListener);
     }
     questionListener (question) {
         this.setState({question: question});
+    }
+    arcadeDialogListener (dialog) {
+        this.setState({arcadeDialog: dialog});
+    }
+    handleArcadeDialogDismiss () {
+        const dialog = this.state.arcadeDialog;
+        if (dialog && dialog.dismiss) dialog.dismiss();
     }
     handleQuestionAnswered (answer) {
         this.setState({question: null}, () => {
@@ -498,7 +511,9 @@ class Stage extends React.Component {
                 colorInfo={this.state.colorInfo}
                 dragRef={this.setDragCanvas}
                 question={this.state.question}
+                arcadeDialog={this.state.arcadeDialog}
                 onDoubleClick={this.handleDoubleClick}
+                onArcadeDialogDismiss={this.handleArcadeDialogDismiss}
                 onQuestionAnswered={this.handleQuestionAnswered}
                 {...props}
             />

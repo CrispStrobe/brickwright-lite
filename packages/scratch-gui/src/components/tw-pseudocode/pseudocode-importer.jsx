@@ -4712,16 +4712,19 @@ class PseudocodeImporter extends React.Component {
             const baseline = new SB3Creator();
             baseline.parse(buffers.pseudocode);
             this._codeArtwork = captureCodeArtwork(this.props.vm, baseline.project);
-            const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
+            // Diagnostics sit inside scripts too, indented, so match any indent and
+            // list each one: a count of column-0 comments reported "✓ OK" for them.
+            const unsupportedDiagnostics = Array.from(buffers.pseudocode.matchAll(/^\s*# unsupported:\s*(.*)$/gm), match => match[1].trim());
+            const unsupported = unsupportedDiagnostics.length;
             this.setState({
                 buffers,
                 uploads: [], // the live project now owns its artwork; old import SVGs are stale
                 output: null,
                 status: unsupported ?
-                    `Read into all languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
+                    `Read into all languages — ${unsupported} unsupported diagnostic(s) retained in Code.` :
                     'Read the current project into all languages. Edit any of them, then “To blocks”.',
                 conversionReport: {direction: 'Blocks → Code', preserved: true, changed: [],
-                    unsupported: unsupported ? [`${unsupported} block(s) left as unsupported comments`] : []}
+                    unsupported: unsupportedDiagnostics}
             });
         } catch (e) {
             this.setState({status: this.L.stError(e.message), conversionReport: {

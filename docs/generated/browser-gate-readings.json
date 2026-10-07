@@ -7172,6 +7172,96 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — Arcade animation frames through Code, Blocks and the controller": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade camera follow, centre and reset draw sprites, tiles and HUD": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade friction and velocity under the controller": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade image reads and writes stay inside their bounds": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade physics for several sprites at once": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade physics engine settings and the no-progress diagnostic": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade sprite scaling through the controller": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade scene push and pop keep each world and its retained diagnostic": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade speech bubbles render on the stage": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade splash screen shows on the stage and a button dismisses it": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade sprite values agree with the pinned simulator": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade terrain collisions under the controller": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade terrain wall-hit events": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade tile data reads and writes": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade viewport and camera clamping": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }
