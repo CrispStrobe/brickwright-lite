@@ -282,6 +282,18 @@ const CENSUS = [
            + 'to build unless HEAD equals that full commit SHA.'
     },
     {
+        file: 'tools/jim-dos/build.sh',
+        kind: 'git',
+        text: 'git clone -q --filter=blob:none --no-checkout https://github.com/msteveb/jimtcl.git "$tmp/jimtcl"',
+        class: 'sha-const',
+        pin: 'JIMTCL_COMMIT',
+        why: 'dev-only rebuild of static/roms/jim.exe (the Tcl tab\'s interpreter): the clone '
+           + 'has no checkout; the three source files are checked out at the 40-hex '
+           + 'JIMTCL_COMMIT, and jimsh0.c must match the sha256 recorded in '
+           + 'jim.provenance.json or the script exits 1. The binary it builds is committed '
+           + 'with its provenance; the browser build never runs this.'
+    },
+    {
         file: 'scripts/build-bbcsdl-reference.sh',
         kind: 'git',
         text: 'git clone --filter=blob:none "$BBCSDL_REPO" "$WORK/BBCSDL"',

@@ -99,6 +99,7 @@ try {
     await page.addInitScript(() => {
         localStorage.setItem('bw-starter-v1-complete', '1');
         localStorage.removeItem('bw-code-autosave');
+        localStorage.removeItem('bw-code-extra-langs');
         sessionStorage.clear();
     });
     console.log(`Opening ${URL} ...`);
@@ -107,6 +108,12 @@ try {
     await tab('🧩 Pseudo').waitFor({timeout: 30000});
     await tab('🧩 Pseudo').click();
     await page.locator('.cm-content:visible').first().waitFor({timeout: 30000});
+
+    // fe and Tcl are offered on request: hidden until the ＋ is pressed.
+    check(await tab('○ Tcl').count() === 0 && await tab('λ fe').count() === 0,
+        'fe and Tcl tabs are hidden until asked for');
+    await page.getByTestId('bw-more-langs').click();
+    await tab('○ Tcl').waitFor({timeout: 10000});
 
     // 1. Pseudocode → Tcl → run.
     await typeInto(PSEUDO);

@@ -58,6 +58,9 @@
         "sync:microbitsim": "node scripts/sync-microbit-sim.mjs",
         "sync:microbitsim:check": "node scripts/sync-microbit-sim.mjs --check",
         "makecode": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/makecode.mjs",
+        "compat:audit": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/compat-audit.mjs",
+        "compat:roundtrips": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/conversion-roundtrips.mjs",
+        "collect:makecode-corpus": "node scripts/collect-makecode-corpus.mjs",
         "sync:makecode": "node scripts/sync-makecode-runtime.mjs",
         "sync:makecode:check": "node scripts/sync-makecode-runtime.mjs --check",
         "sync:makecode-extensions": "node scripts/sync-makecode-extensions.mjs",
@@ -119,8 +122,8 @@
         "node": ">=22"
     },
     "devDependencies": {
-        "bw-board": "github:CrispStrobe/bw-board#4869e77752e110910ac56520bc1f47a9cded97f4",
-        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#11c3d1d71b1ce1ce9b21bc6761f1e8602c3d8f51",
+        "bw-board": "github:CrispStrobe/bw-board#a1126312288867127343c2f9bbdfcd2856a18508",
+        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#4f35519f156916bc30e7fcc2948e6dcc27fae394",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
         "playwright": "^1.62.1",

@@ -13,6 +13,29 @@ carries a small Static TypeScript runtime,
 `overlay/scratch-gui/src/lib/bw-makecode/arcade-runtime.js`, and emits only
 the helpers a program uses.
 
+## Native authoring closure baseline
+
+Use the [conversion and GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md)
+and [pinned original declaration inventory](generated/MAKECODE-PUBLIC-API-CENSUS.md)
+together. Inventory records are candidates, not a support percentage. Classify
+public signatures and join import, pseudocode, native block schema, resource
+editor, runtime, original export and visible GUI evidence separately.
+
+Current producer adoption includes [sb3-creator PR60](https://github.com/CrispStrobe/sb3-creator/pull/60)
+and [PR61](https://github.com/CrispStrobe/sb3-creator/pull/61), pinned at
+`2d2a562812c6e34525021ccacd421b1d20151c15`. Their reviewed heads passed all
+enabled checks before merge; each merge tree matched its reviewed tree. These
+fix actual arrays dropdown fields and the Arcade controller axis reporter/menu
+socket. Lite consumes those shapes, migrates validated historical slots before
+project loading, and refuses obsolete nonliteral slots rather than guessing.
+
+The locked 184-input Arcade corpus still measures **90 translated / 93 partial /
+1 malformed input** after this adoption. Editor schema correctness does not
+remove importer refusals. Finish the required native menu and artwork browser
+gates for this candidate, then implement visual tilemap authoring and animation
+binding. Keep the complete authored-game journey and per-API ledger open until
+their separate original-runtime evidence exists.
+
 ## Support matrix (task A4, 2026-09-29)
 
 "Before" is origin/main `76d21c170`. There, every construct below was emitted
@@ -209,3 +232,90 @@ parallel instead of in place.
 - Out of A4's scope and still named: move/turn/direction, glide, size and
   graphic effects, `think`, `ask`, variable monitors.
 - `stop` (task A5, below): no known gap beyond the ones named there.
+
+## Integration and remaining closure work — 2026-10-07
+
+The previous compatibility agent is paused. The integration owner in
+[LANES.md](../LANES.md) now owns its remaining converter, browser and editor
+work. Preserve the previous branch history and failed receipts; do not infer
+full support from the older tables in this document.
+
+The integration branch adopts sb3-creator
+`8ba3508eab2ad99b9d9a6478c9a45a7200ca4fde` after upstream PR59 merged.
+Rotation properties and `sprite.data` have bidirectional dialect words and
+native blocks/runtime/export. Focused tests exercise pinned original PXT,
+Brickwright VM, exported compilation/reimport, and SB3 save/load/restart.
+Data preserves array/Image/Sprite references; arbitrary object member access
+remains a named conversion gap. Rotation rendering gathers only visible pixels,
+including extremely large logical sprites; exact viewport pixels are compared
+with the original integer-shear raster. Huge rotated collision performance
+remains a separate unqualified limit.
+
+Current real-app counts and independent compile/runtime boundaries are in
+[the audit checkpoint](COMPATIBILITY-AUDIT.md). The fresh static Arcade scan
+still has 93 partial inputs and one malformed source. This is not full parity.
+
+Close the next families in this order, using affected-project counts rather
+than diagnostic occurrence counts:
+
+The consumed-update runtime error is repaired; the refreshed compiler-valid
+Arcade smoke has zero block errors. Paint, assets and effects stay named until
+implemented. The production controller journey passes 12 states and all 19,200
+initial-stage pixels match actual original PXT execution. Focused rendering
+checks cover 211,200 original stage pixels; this finite coverage is not full
+game equivalence.
+
+1. Separate incomplete single-file documentation snippets from complete project
+   imports; preserve package/artwork dependencies and name unavailable resources.
+2. Implement legacy tilemap calls and asset-backed tilemaps through the existing
+   map/location/wall model; add a usable tilemap painter and file roundtrips.
+3. Complete projectile signatures and dynamic sprite/property dispatch rather
+   than substituting a fixed Scratch target for a runtime sprite reference.
+4. Implement effects, dialogs, music and scene drawing against measured PXT
+   behaviour, including waiting, registration and lifecycle semantics.
+5. Integrate third-party extension families through explicit, licensed support
+   contracts; keep unknown package calls named until their APIs are implemented.
+6. Complete each authoring journey in the
+   [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md), including
+   graphics edits, controller use, save/reopen and original MakeCode execution.
+
+For every family require: a real affected corpus example; a focused original
+PXT comparison; Blocks/Code conversion; VM behaviour; exported original-PXT
+compilation and behaviour; SB3 persistence; and the relevant visible editor
+workflow. Rerun the same locked corpus after each batch. Record newly exposed
+gaps instead of weakening diagnostics. An invalid source input remains invalid;
+zero partial results alone cannot establish full runtime or authoring parity.
+
+
+## Native authoring closure contract
+
+The user's requested capability is native Brickwright authoring as well as
+conversion: supported MakeCode functionality must be reachable in pseudocode,
+editable Blocks and appropriate graphics/resource controls, then run in Lite
+and export as an editable original MakeCode project. A TypeScript-only import,
+raw JSON parameter or imported game that happens to execute leaves native
+creation/editing unqualified.
+
+The [native authoring closure map](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#native-makecode-authoring-closure-map--2026-10-07)
+records concrete N01–N16 Arcade and M01–M05 other-target families against pinned
+public source declarations. It preserves the historical G01–G27 crosswalk and
+existing C/U identifiers. Its statuses distinguish import/runtime, native words,
+Blocks schemas, resource editing and original export; the full declaration join
+is still to be generated. In particular, the pinned Arcade `apiInfo` omits the
+core game's symbols, so the census must also read bundled TypeScript/declaration
+sources and package dependencies. Counting only existing Blocks or current
+corpus examples would miss public capabilities.
+
+Implement through the existing modules and upstream parser pin process. Each
+new family must add its native word/typed block, resource interface when needed,
+runtime semantics, original-PXT export and a visible authoring journey together.
+The immediate sequence is schema/declaration census, asset-aware editing,
+tilemap painting, animation binding, then drawing/effects/audio/dialog/Info and
+remaining controller/storage/target families. Use affected-project ranking
+within each dependency-ready phase. Do not publish a full capability result
+from the 156 existing dialect operations or the zero-error 24-frame smoke.
+
+The unchanged real-app count at this reviewed checkpoint remains 93 partial
+Arcade inputs and one malformed input. Retain that evidence while implementing
+native GUI gaps; closing a control/schema defect may improve authoring without
+changing the corpus's static translation count. Measure and report both.

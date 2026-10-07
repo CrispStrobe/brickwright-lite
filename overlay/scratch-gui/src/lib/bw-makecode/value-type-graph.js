@@ -9,7 +9,7 @@ export class ValueTypeGraph {
 
     node (key) {
         if (!this.nodes.has(key)) {
-            const node = {parent: null, types: new Set(), element: null};
+            const node = {parent: null, types: new Set(), element: null, properties: new Map()};
             node.parent = node;
             this.nodes.set(key, node);
         }
@@ -43,8 +43,21 @@ export class ValueTypeGraph {
             for (const type of y.types) x.types.add(type);
             if (x.element && y.element) pending.push([x.element, y.element]);
             else if (y.element) x.element = y.element;
+            for (const [name, value] of y.properties) {
+                if (x.properties.has(name)) pending.push([x.properties.get(name), value]);
+                else x.properties.set(name, value);
+            }
             this.revision++;
         }
+    }
+
+    property (key, name) {
+        const node = this.node(key);
+        if (!node.properties.has(name)) {
+            node.properties.set(name, Symbol(`property ${name}`));
+            this.revision++;
+        }
+        return node.properties.get(name);
     }
 
     element (key) {

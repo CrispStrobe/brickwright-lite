@@ -401,10 +401,17 @@ test('the importer treats fe and Tcl as two-way languages everywhere one must be
     // TWO_WAY nor EDITABLE_ONE_WAY is read-only.
     assert.match(importer, /const TWO_WAY = new Set\(\[[^\]]*'fe', 'tcl'\]\)/);
     assert.match(importer, /nqc: 'NQC', fe: 'fe \(Lisp\)', tcl: 'Tcl'\}/, 'LANG_LABEL');
-    // Every buffer initialiser carries both, or editing another tab drops them
-    // and a tab opened from a file loses its text on the next keystroke.
-    const inits = importer.match(/micropython: '',? ?(nqc: '', )?fe: '', tcl: ''/g) || [];
-    assert.equal(inits.length, 4, `buffer initialisers with fe+tcl: ${inits.length}`);
+    // Every buffer reset is built from LANG_LABEL, so no tab is left without a
+    // buffer (a missing one made activeCode() undefined: "can't access
+    // property trim" when the Code tab opened).
+    assert.equal((importer.match(/Object\.fromEntries\(Object\.keys\(LANG_LABEL\)\.map\(l => \[l, ''\]\)\)/g) || []).length, 5);
+    assert.doesNotMatch(importer, /buffers: \{pseudocode: ''/, 'a hand-written buffer list is back');
+    assert.match(importer, /return this\.state\.buffers\[this\.state\.lang\] \?\? '';/);
+    // fe and Tcl are offered from the ＋ at the end of the tab row, remembered
+    // per browser, and stay visible while open or holding text.
+    assert.match(importer, /const EXTRA_LANGS = \[\['fe', 'λ fe'\], \['tcl', '○ Tcl'\]\];/);
+    assert.match(importer, /\.\.\.EXTRA_LANGS\.filter\(\(\[l\]\) => this\.state\.extraLangs \|\| this\.state\.lang === l \|\|/);
+    assert.match(importer, /data-testid="bw-more-langs"/);
     // compile() reads them, and both regenerate paths write them.
     assert.match(importer, /\} else if \(DOS_LANG\[lang\]\) \{\n\s+const res = \(await DOS_LANG\[lang\]\.load\(\)\)\.default\(source\);/);
     assert.match(importer, /for \(const \[l, code\] of Object\.entries\(await generateDosLangs\(proj\)\)\) if \(l !== lang\) nb\[l\] = code;/);

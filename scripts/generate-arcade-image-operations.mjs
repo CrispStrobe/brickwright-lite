@@ -20,21 +20,36 @@ const declarations = methods.map(name => {
     if (depth) throw new Error(`Unclosed pinned PXT method ${name}`);
     return source.slice(start, end);
 }).join('\n');
-const hash = createHash('sha256').update(declarations).digest('hex');
+// Sprite rotation (task F4): the simulator's scaled-and-rotated draw and its two
+// overlap tests, with their constants and float "fixed point" helpers, taken as
+// one contiguous block. Its \`ImageMethods.x = x\` registrations are dropped.
+const rotationStart = source.indexOf('const TWO_PI = 2 * Math.PI;');
+const rotationEndMarker = 'ImageMethods._checkOverlapsTwoScaledRotatedImages = _checkOverlapsTwoScaledRotatedImages;';
+const rotationEnd = source.indexOf(rotationEndMarker, rotationStart);
+if (rotationStart < 0 || rotationEnd < 0) throw new Error('Missing pinned PXT scaled-rotated image methods');
+const rotation = source.slice(rotationStart, rotationEnd + rotationEndMarker.length)
+    .split('\n').filter(line => !/^\s*ImageMethods\.\w+ = \w+;\s*$/.test(line)).join('\n');
+for (const name of ['parseShearArgs', 'drawScaledRotatedImage', '_checkOverlapsScaledRotatedImage', '_checkOverlapsTwoScaledRotatedImages']) {
+    if (!rotation.includes(`function ${name}(`)) throw new Error(`Missing pinned PXT method ${name}`);
+}
+const hash = createHash('sha256').update(declarations).update(rotation).digest('hex');
 const output = `// Generated from pinned pxt-common-packages simulator image algorithms (MIT).
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // Source algorithms SHA-256: ${hash}
 // Regenerate: node scripts/generate-arcade-image-operations.mjs
 module.exports = function initializePxtImageOperations() {
 ${declarations}
-return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith};
+${rotation}
+return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith,
+    drawScaledRotatedImage, checkOverlapsScaledRotatedImage: _checkOverlapsScaledRotatedImage,
+    checkOverlapsTwoScaledRotatedImages: _checkOverlapsTwoScaledRotatedImages};
 };
 `;
 const target = resolve(root, 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js');
 if (process.argv.includes('--check')) {
     if (readFileSync(target, 'utf8') !== output) throw new Error('image-pxt.js differs from the pinned PXT simulator — run scripts/generate-arcade-image-operations.mjs');
-    console.log(`Verified seven image operations (${hash.slice(0,12)}) against the pinned PXT simulator.`);
+    console.log(`Verified ten image operations (${hash.slice(0,12)}) against the pinned PXT simulator.`);
 } else {
     writeFileSync(target, output);
-    console.log(`Generated seven image operations (${hash.slice(0,12)}).`);
+    console.log(`Generated ten image operations (${hash.slice(0,12)}).`);
 }

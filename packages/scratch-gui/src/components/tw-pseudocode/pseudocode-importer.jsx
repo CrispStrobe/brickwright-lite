@@ -23,7 +23,9 @@ import {
 } from '../../lib/bw-matrix/capabilities.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
-import {getCostumeDocument} from '../../lib/bw-artwork-bundle.js';
+import {getCostumeDocument, inspectArtwork, applyArtwork} from '../../lib/bw-artwork-bundle.js';
+import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
+    captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../../lib/bw-code-artwork.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -190,6 +192,8 @@ const L10N = {
         feFailed: (m) => `The fe (Lisp on DOS) route could not run: ${m}`,
         tclRunning: 'Running your Tcl on Jim Tcl, a libre interpreter, on the DOS bench…',
         tclFailed: (m) => `The Tcl (Jim Tcl on DOS) route could not run: ${m}`,
+        moreLangsTitle: 'More languages: fe (Lisp) and Tcl, run on the DOS bench',
+        lessLangsTitle: 'Hide the extra languages (fe, Tcl)',
         basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
         basic8086Failed: (m) => `The 8086 BASIC route could not run: ${m}`,
         apply: '✓ Apply art & convert to blocks', done: 'Done',
@@ -504,6 +508,8 @@ const L10N = {
         feFailed: (m) => `Die fe-(Lisp-auf-DOS)-Route lief nicht: ${m}`,
         tclRunning: 'Führe dein Tcl mit dem freien Jim-Tcl-Interpreter auf der DOS-Werkbank aus…',
         tclFailed: (m) => `Die Tcl-(Jim-Tcl-auf-DOS)-Route lief nicht: ${m}`,
+        moreLangsTitle: 'Weitere Sprachen: fe (Lisp) und Tcl, laufen auf der DOS-Werkbank',
+        lessLangsTitle: 'Die weiteren Sprachen (fe, Tcl) ausblenden',
         basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
         basic8086Failed: (m) => `Die 8086-BASIC-Route lief nicht: ${m}`,
         apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
@@ -889,8 +895,14 @@ const deviceHelp = id => DEVICE_HELP[id] || (/^(arduino|atmega|attiny)/.test(id 
 // `LED_ON 0` idiom — every inference reported as a warning, never guessed silently).
 // The one thing it will not do is invert the cooperative-scheduler form; it says so.
 // DEVICE_CHIP_LABELS imported from ../../lib/device-labels.js
-// fe and Tcl read and write through bw-lang/fe.js and bw-lang/tcl.js: the
-// subset each DOS interpreter actually runs, refused by name past that.
+// fe and Tcl read and write through bw-lang/fe.js and bw-lang/tcl.js (Tcl
+// keeps what blocks cannot say as raw blocks; fe refuses it by name).
+/** Tabs offered on request (the ＋ in the tab row): [lang, label]. */
+const EXTRA_LANGS = [['fe', 'λ fe'], ['tcl', '○ Tcl']];
+const EXTRA_LANGS_KEY = 'bw-code-extra-langs';
+const readExtraLangs = () => {
+    try { return localStorage.getItem(EXTRA_LANGS_KEY) === '1'; } catch (e) { return false; }
+};
 const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic', 'fe', 'tcl']);
 
 /**
@@ -1161,7 +1173,13 @@ class PseudocodeImporter extends React.Component {
         this.state = {revealed: props.isVisible !== false, lang: 'pseudocode', importedPython: false,
             // The Arcade board picker: the boards (null until loaded) and the one chosen.
             arcadeBoards: null, arcadeBoard: '',
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: '', fe: '', tcl: ''},
+            // One empty buffer per tab, from LANG_LABEL (the list of tabs);
+            // every buffer reset is built the same way, so no language is
+            // ever left without one — a missing buffer made activeCode()
+            // undefined and crashed the tab on open.
+            buffers: Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])),
+            // fe and Tcl tabs offered (the ＋ in the tab row)
+            extraLangs: readExtraLangs(),
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
@@ -1341,6 +1359,12 @@ class PseudocodeImporter extends React.Component {
             const outcome = event?.detail?.outcome;
             const refused = outcome === 'future' || outcome === 'invalid' ||
                 outcome === 'storage-failed';
+            // This event follows a successful external project load. A refused
+            // sidecar leaves the current authoring transaction untouched.
+            if (outcome === 'legacy' || outcome === 'loaded') {
+                this._codeArtwork = null;
+                this.setState({uploads: []});
+            }
             // The status line below is the Code tab's own surface, and opening a
             // project changes the active tab — so on its own the notice is
             // written where the learner is no longer looking (measured: the text
@@ -1383,8 +1407,7 @@ class PseudocodeImporter extends React.Component {
                 this.publishGameControls(null);
                 this.setState({
                     lang: 'pseudocode',
-                    buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                        asm: '', micropython: '', nqc: '', fe: '', tcl: ''},
+                    buffers: Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])),
                     status: ''
                 });
             } else if (refused) {
@@ -1533,17 +1556,20 @@ class PseudocodeImporter extends React.Component {
             return;
         }
         const reader = new FileReader();
-        reader.onload = () => this.setState(st => ({
-            lang,
+        reader.onload = () => {
+            this._codeArtwork = null;
+            this.setState(st => ({
+            lang, uploads: [],
             // Same exclusivity the editor's own onChange uses: one authored
             // buffer at a time, so a stale translation of the PREVIOUS source
             // cannot sit in another tab pretending to match.
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                asm: '', micropython: '', nqc: '', fe: '', tcl: '', [lang]: String(reader.result)},
+            buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [lang]: String(reader.result)},
             asmMode: lang === 'asm' ? 'source' : st.asmMode,
             output: null,
             status: this.L.openDone(file.name, LANG_LABEL[lang] || lang)
-        }));
+            }));
+        };
+        reader.onerror = () => this.setState({status: this.L.stError(`Could not read ${file.name}`)});
         reader.readAsText(file);
     }
 
@@ -1832,6 +1858,7 @@ class PseudocodeImporter extends React.Component {
             this.runArduboyProgram(res.hex, label);
             return;
         }
+        this._codeArtwork = null;
 
         // What the "MakeCode source" download hands back: the recovered
         // files themselves, untouched by any translation.
@@ -1864,8 +1891,7 @@ class PseudocodeImporter extends React.Component {
             importedPython: res.kind === 'micropython',
             // Same exclusivity openCodeFile keeps: one authored buffer, so
             // no stale translation of a previous source can masquerade.
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                asm: '', micropython: '', [res.lang]: res.code},
+            buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [res.lang]: res.code},
             // The game's artwork rides the same route as an SVG the user
             // drops in themselves: compile() applies `uploads` to the
             // sprites it just parsed, so the costumes land with the code.
@@ -1975,6 +2001,31 @@ class PseudocodeImporter extends React.Component {
             return {files: {...files, 'pxt.json': `${JSON.stringify(cfg, null, 4)}\n`}, name, target: 'calliopemini'};
         }
         return {files, name, target: 'microbit'};
+    }
+
+    /**
+     * Whether to offer ▶ Run in MakeCode for `target`: not when this build
+     * does not serve that target's runtime (made without npm run
+     * sync:makecode) — the button could only fail. Unknown until the probe
+     * answers (one HEAD request, cached), and offered meanwhile.
+     */
+    makeCodeRunOffered (target) {
+        const known = (this.state.mcRuntime || {})[target];
+        if (known === undefined) {
+            this._mcProbes = this._mcProbes || new Set();
+            if (!this._mcProbes.has(target)) {
+                this._mcProbes.add(target);
+                // A HEAD request for the file the compiler loads first (served
+                // under static/makecode/<target>/ by sync:makecode), made here
+                // rather than through pxt-runtime.js so that showing a button
+                // never loads the compiler's chunk.
+                fetch(`static/makecode/${target}/target.json`, {method: 'HEAD'})
+                    .then(r => r.ok, () => false)
+                    .then(ok => { if (!this._unmounted) this.setState(st => ({mcRuntime: {...st.mcRuntime, [target]: ok}})); });
+            }
+            return true;
+        }
+        return known;
     }
 
     /** A MakeCode failure in words: the runtime, the firmware base, or the program. */
@@ -2266,13 +2317,20 @@ class PseudocodeImporter extends React.Component {
         } catch (e) { /* a browser that refuses CustomEvent cannot be helped here */ }
     }
 
+    /** Show or hide the on-request tabs (fe, Tcl); remembered per browser. */
+    toggleExtraLangs () {
+        const on = !this.state.extraLangs;
+        try { localStorage.setItem(EXTRA_LANGS_KEY, on ? '1' : '0'); } catch (e) { /* private mode: this session only */ }
+        this.setState({extraLangs: on});
+    }
+
     activeCode () {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return this.state.asmListing;
-        return this.state.buffers[this.state.lang];
+        return this.state.buffers[this.state.lang] ?? '';
     }
     setActiveCode (text) {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
-        this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', fe: '', tcl: '', [s.lang]: text}}));
+        this.setState(s => ({buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [s.lang]: text}}));
     }
 
     // Lazily import the compiler through the registering door, which injects this
@@ -3207,6 +3265,23 @@ class PseudocodeImporter extends React.Component {
         return m ? m[1].toLowerCase() : null;
     }
 
+    // Publish the device of the successfully loaded project, not a tentative
+    // editor header. The stage header listens to this event to offer its console.
+    publishAppliedDevice (stc) {
+        const runtime = this.props.vm && this.props.vm.runtime;
+        const deviceId = typeof stc?.device === 'string' ? stc.device.toLowerCase() : '';
+        const info = DEVICE_BY_ID[deviceId];
+        if (runtime) {
+            runtime.bwDeviceCore = info ? info.core : null;
+            runtime.bwDeviceId = deviceId || null;
+        }
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {
+                detail: {key: 'bw-device-id', value: deviceId}
+            }));
+        }
+    }
+
     // Set the DEVICE in the pseudocode buffer. When the code has PIN declarations,
     // retargetPseudocode rewrites them to the target's conventional pins and reports
     // any hard blockers ("no ADC on this chip"). Code without pins just gets its
@@ -3228,13 +3303,7 @@ class PseudocodeImporter extends React.Component {
                 showCatalog: false, status: '',
                 buffers: {...s.buffers, pseudocode: (s.buffers.pseudocode || '').replace(/^DEVICE\s+[\w-]+[^\n]*\n?/im, '')}
             }));
-            if (this.props.vm && this.props.vm.runtime) {
-                this.props.vm.runtime.bwDeviceCore = null;
-                this.props.vm.runtime.bwDeviceId = null;
-            }
-            window.dispatchEvent(new CustomEvent('bw-settings-change', {
-                detail: {key: 'bw-device-id', value: ''}
-            }));
+            this.publishAppliedDevice(null);
             return;
         }
         const info = DEVICE_BY_ID[deviceId];
@@ -3292,7 +3361,7 @@ class PseudocodeImporter extends React.Component {
                     // matching bench, exactly like loading an example does —
                     // retargeting only the text left the VM and the Circuit
                     // tab on the old device.
-                    Promise.resolve(this.compile()).catch(() => {});
+                    Promise.resolve(this.compile({pseudocode: result.pseudocode})).catch(() => {});
                     const bench = resolvedBench && resolvedBench.retargeted
                         ? resolvedBench.path
                         : null;
@@ -3325,7 +3394,7 @@ class PseudocodeImporter extends React.Component {
             // only the editor text, leaving the VM and generated MicroPython
             // on the previous device. Compile this route too, and await it so
             // the Calliope tab cannot open onto an empty/stale derivation.
-            await this.compile();
+            await this.compile({pseudocode: nextSource});
             if (['microbit', 'calliopemini'].includes(deviceId)) {
                 const generated = await this.deriveBuffer(nextSource, 'pseudocode', 'micropython');
                 if (!generated.error) {
@@ -3335,15 +3404,8 @@ class PseudocodeImporter extends React.Component {
                 }
             }
         }
-        // Publish core on the runtime so the debug panel can pick the right emulator
-        if (this.props.vm && this.props.vm.runtime) {
-            this.props.vm.runtime.bwDeviceCore = info.core;
-            this.props.vm.runtime.bwDeviceId = deviceId;
-        }
-        // Broadcast device change so the stage-header can show/hide the micro:bit button
-        window.dispatchEvent(new CustomEvent('bw-settings-change', {
-            detail: {key: 'bw-device-id', value: deviceId}
-        }));
+        // compile() publishes the applied project's device after loadProject.
+        // A refused or failed retarget must retain the running project's hints.
     }
 
     // Real hardware, two minutes: generate MicroPython and push it to a
@@ -4385,7 +4447,8 @@ class PseudocodeImporter extends React.Component {
             // chip and the debugger said 'no pins declared' (owner report:
             // Nano + 8-LED chaser showed an stc12, 2026-08-17). setState is
             // async — compile in its callback, on the NEW buffer.
-            this.setState({busy: false, lang: 'pseudocode', output: null,
+            this._codeArtwork = null;
+            this.setState({busy: false, lang: 'pseudocode', output: null, uploads: [],
                 status: warnings.length ? warnings.join('; ') : '',
                 buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}},
             () => {
@@ -4468,6 +4531,8 @@ class PseudocodeImporter extends React.Component {
         const loaded = key && (await this._loadBundledExamples());
         const src = loaded && loaded[key];
         if (!src) return;
+        this._codeArtwork = null;
+        this.setState({uploads: []});
         this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();
         const exampleDevice = (src.match(/^DEVICE\s+([\w-]+)/im) || [])[1];
@@ -4562,12 +4627,15 @@ class PseudocodeImporter extends React.Component {
             asmTargetForDevice(this.currentDevice()) === 'i8086';
     }
 
-    async compile ({strict = false} = {}) {
-        const lang = this.state.lang;
+    async compile ({strict = false, pseudocode = null} = {}) {
+        // A device retarget compiles the rewritten canonical program even when
+        // a generated, one-way language tab is visible. Ordinary To blocks still
+        // compiles the active editable language and keeps its existing checks.
+        const lang = typeof pseudocode === 'string' ? 'pseudocode' : this.state.lang;
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         try {
-            let source = this.activeCode();
+            let source = typeof pseudocode === 'string' ? pseudocode : this.activeCode();
             let parseWarnings = [];
             if (lang === 'asm') {
                 const lift = (await import(/* webpackChunkName: "bw-asm-reader" */ '../../lib/bw-asm/asm-8086-to-pseudocode.js')).default;
@@ -4620,8 +4688,29 @@ class PseudocodeImporter extends React.Component {
                 if (!ok) missing.push(name);
             });
             if (strict && (parseWarnings.length || creator.warnings.length)) throw new Error([...parseWarnings, ...creator.warnings].join(' · '));
+            const declarations = JSON.parse(JSON.stringify(creator.project));
+            const context = codeArtworkMatches(this.props.vm, this._codeArtwork) ? this._codeArtwork : null;
             const blob = await creator.generateSB3();
-            await this.props.vm.loadProject(await blob.arrayBuffer());
+            let projectBytes = await blob.arrayBuffer();
+            let artwork = null;
+            if (context) {
+                const module = await import('jszip');
+                const ZIP = module.default || module;
+                const zip = await ZIP.loadAsync(projectBytes);
+                retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                const revision = captureCodeArtworkRevision(this.props.vm, context);
+                projectBytes = await zip.generateAsync({type: 'arraybuffer', compression: 'DEFLATE'});
+                artwork = await inspectArtwork(projectBytes);
+                if (artwork.outcome === 'invalid' || !codeArtworkMatches(this.props.vm, context) ||
+                    !codeArtworkRevisionMatches(this.props.vm, revision)) {
+                    throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
+                }
+            }
+            await this.props.vm.loadProject(projectBytes);
+            if (artwork) {
+                applyArtwork(artwork, this.props.vm);
+                this._codeArtwork = captureCodeArtwork(this.props.vm, declarations);
+            }
             // Auto-select the first sprite with scripts so the Blocks palette
             // shows meaningful blocks, not "Stage selected — no motion blocks".
             const vm = this.props.vm;
@@ -4652,10 +4741,11 @@ class PseudocodeImporter extends React.Component {
             } else {
                 this.props.vm.runtime.stc = stc;
             }
+            this.publishAppliedDevice(stc);
             // Re-call getInfo() on loaded extensions so device-dependent gating
             // (e.g. hiding PWM blocks on AVR, PCA blocks on STC89) takes effect.
             if (this.props.vm.extensionManager && this.props.vm.extensionManager.refreshBlocks) {
-                this.props.vm.extensionManager.refreshBlocks();
+                await this.props.vm.extensionManager.refreshBlocks({throwOnError: true});
             }
             // Write the persistence comment on the stage target
             if (stc) {
@@ -4744,9 +4834,13 @@ class PseudocodeImporter extends React.Component {
                 ...(await generateDosLangs(project))
             };
             this.setState({importedPython: false});
+            const baseline = new SB3Creator();
+            baseline.parse(buffers.pseudocode);
+            this._codeArtwork = captureCodeArtwork(this.props.vm, baseline.project);
             const unsupported = (buffers.pseudocode.match(/^# unsupported:/gm) || []).length;
             this.setState({
                 buffers,
+                uploads: [], // the live project now owns its artwork; old import SVGs are stale
                 output: null,
                 status: unsupported ?
                     `Read into all languages — ${unsupported} block(s) not representable in pseudocode (left as comments).` :
@@ -4935,8 +5029,10 @@ class PseudocodeImporter extends React.Component {
                             {this.L.exportMakeCode}
                         </button>
                     ) : null}
-                    {(this._makeCodeProject && MAKECODE_RUNNABLE.includes(this._makeCodeProject.target)) ||
-                        ['microbit', 'calliopemini'].includes(this.currentDevice()) ? (
+                    {((this._makeCodeProject && MAKECODE_RUNNABLE.includes(this._makeCodeProject.target)) ||
+                        ['microbit', 'calliopemini'].includes(this.currentDevice())) &&
+                        this.makeCodeRunOffered(this._makeCodeProject ? this._makeCodeProject.target :
+                            (this.currentDevice() === 'calliopemini' ? 'calliopemini' : 'microbit')) ? (
                             <button type="button" onClick={() => this.runInMakeCode()} style={item}
                                 title={this.L.mcRunTitle} disabled={this.state.busy}
                                 data-testid="bw-makecode-run">{this.L.mcRun}</button>
@@ -5106,7 +5202,13 @@ class PseudocodeImporter extends React.Component {
                     missed each other. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0, paddingRight: 40}}
                     data-testid="bw-lang-row">
-                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'], ['fe', 'λ fe'], ['tcl', '○ Tcl'],
+                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
+                        // fe and Tcl run on the DOS bench and are niche: they
+                        // are offered from the ＋ button at the end of the row
+                        // (remembered per browser), and stay while one is
+                        // open or holds text, so nothing vanishes under you.
+                        ...EXTRA_LANGS.filter(([l]) => this.state.extraLangs || this.state.lang === l ||
+                            (this.state.buffers[l] || '').trim()),
                         // The tab follows the DEVICE line, except when a
                         // MicroPython program was imported from a .hex: there
                         // is no pseudocode then, and hiding the tab would hide
@@ -5134,6 +5236,14 @@ class PseudocodeImporter extends React.Component {
                             </button>
                         );
                     })}
+                    <button type="button" data-testid="bw-more-langs" aria-pressed={!!this.state.extraLangs}
+                        onClick={() => this.toggleExtraLangs()}
+                        title={this.state.extraLangs ? this.L.lessLangsTitle : this.L.moreLangsTitle}
+                        aria-label={this.state.extraLangs ? this.L.lessLangsTitle : this.L.moreLangsTitle}
+                        style={{padding: '6px 8px', border: '1px dashed #cbd5e1', borderBottom: 'none', borderRadius: '8px 8px 0 0',
+                            cursor: 'pointer', fontSize: 13, background: 'transparent', color: '#64748b', position: 'relative', top: 1}}>
+                        {this.state.extraLangs ? '−' : '＋'}
+                    </button>
                     <span style={{flex: 1, minWidth: 4}} />
                     {/* Compact controls */}
                     <React.Fragment>

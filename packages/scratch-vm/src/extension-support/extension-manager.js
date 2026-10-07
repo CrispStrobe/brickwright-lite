@@ -627,22 +627,31 @@ class ExtensionManager {
 
     /**
      * Regenerate blockinfo for any loaded extensions
+     * @param {object} options refresh behaviour
+     * @param {boolean} options.throwOnError reject if any extension cannot refresh
      * @returns {Promise} resolved once all the extensions have been reinitialized
      */
-    refreshBlocks () {
+    refreshBlocks ({throwOnError = false} = {}) {
+        const failures = [];
         // Deduplicate: an extension loaded by URL is keyed by both URL and ID,
         // so iterating values() would call getInfo twice for the same service.
         const allPromises = Array.from(new Set(this._loadedExtensions.values())).map(serviceName =>
             dispatch.call(serviceName, 'getInfo')
                 .then(info => {
                     info = this._prepareExtensionInfo(serviceName, info);
-                    dispatch.call('runtime', '_refreshExtensionPrimitives', info);
+                    return dispatch.call('runtime', '_refreshExtensionPrimitives', info);
                 })
                 .catch(e => {
                     log.error(`Failed to refresh built-in extension primitives: ${JSON.stringify(e)}`);
+                    if (throwOnError) failures.push(e);
                 })
         );
-        return Promise.all(allPromises);
+        return Promise.all(allPromises).then(results => {
+            // A failed apply must remain busy until sibling registrations drain,
+            // otherwise their late schema updates can overwrite the next apply.
+            if (failures.length) throw failures[0];
+            return results;
+        });
     }
 
     allocateWorker () {

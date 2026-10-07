@@ -1342,12 +1342,17 @@ instruction-level ATmega328P emulation (Arduino Uno/Nano) for the
 circuit simulator. Imported as `avr8js` via the bw-board adapter
 (`bw-board/avr8js-adapter.js` in the installed package).
 
-- **Version:** 0.21.0
+- **Version:** 0.21.1-bw.1 (upstream 0.21.1 plus one fix, below)
 - **Licence:** MIT — Copyright (c) 2019-2025 Uri Shaked
-- **Source:** https://github.com/wokwi/avr8js
+- **Source:** https://github.com/CrispStrobe/avr8js at
+  `feea84c43e36e578841b5fce640202823b69b7f7`, a fork of
+  https://github.com/wokwi/avr8js; bw-board depends on it by git commit.
+- **Modified:** the ATtiny25/45/85 Timer/Counter1 PWM mode counts
+  single-slope (0..OCR1C, restart at $00) instead of up and down, latches
+  OCR1A/OCR1B at OCR1C and drives the inverted ~OC1A/~OC1B outputs
+  (datasheet 2586Q, section 12.2.2). The fork's FORK.md lists the changes;
+  its built `dist/` is committed.
 - **Usage:** AVR CPU simulation, I/O port + timer + ADC peripherals.
-  No source code from avr8js is modified; the package is consumed as
-  a published npm dependency.
 
 ## digitaljs — BSD-2-Clause (HEADLESS CORE ONLY)
 
@@ -1638,10 +1643,12 @@ committed file differs from the pinned bundle:
   in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js`
   (`scripts/generate-arcade-image-operations.mjs`); text layout and speech bubbles
   (`game/renderText.ts`, `game/spritesay.ts`, transpiled) in `speech-pxt.js`, and the
+  rotated sprite geometry (`game/rotation.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/rotation-pxt.js`, and the
   6x8 `font8` (`screen/text.ts`) in `speech-fonts.json`
   (`scripts/generate-arcade-speech.mjs`).
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
-  Microsoft Corporation: the 507 built-in images (`sprites.castle.tileGrass1`, ...;
+  Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`
   (`scripts/generate-arcade-builtin-images.mjs`).
 - **font12** of pxt-common-packages (`screen/font12.jres`), a 12x12 pixel font based on

@@ -1,66 +1,54 @@
 /**
- * Every line the parked Arcade importer writes parses on Lite's pinned
- * sb3-creator (task E0 of docs/OPEN-TASKS-2026-09-29.md).
+ * Every line the Arcade importer writes parses on Lite's pinned sb3-creator,
+ * with no warning — in particular no truth value written where a value is
+ * expected (tasks E0 and E9 of docs/OPEN-TASKS-2026-09-29.md).
  *
- * WHY. The Arcade importer parked from the Codex WIP (arcade-translate.js, on
- * local branch lane/e1-arcade-import) writes about 140 dialect words for the
- * `arcade` and `arrays` extensions — sprites, images, tiles, scenes, handler
- * registration, a call frame's locals, array REFERENCES and MakeCode values.
- * The pinned parser had none of them, and since D5 a line it cannot read
- * refuses the whole program: E1's first attempt turned 18 green Arcade tests
- * red. E0 put the words upstream (sb3-creator arcadeDialect.js, one table read
- * by the parser and the decompiler) and the array-reference blocks they map to
- * (CrispStrobe/extensions arrays.js). This test holds the result against
- * everything the importer actually emitted, so E1 can land its translator on
- * a parser that reads it.
+ * WHY. The Arcade importer (arcade-translate.js) writes about 140 dialect
+ * words for the `arcade` and `arrays` extensions. Since D5 a line the parser
+ * cannot read refuses the whole program, and since D7 every CONDITION-grammar
+ * form in a value slot (`not (…)`, a comparison, `key a pressed?`, `touching
+ * x`) is read as its literal text with a warning naming the branch form. A
+ * translated `!x` that becomes the text "not (x = 0)" is a game that runs and
+ * is wrong, so the importer must write a truth value in a value slot through a
+ * value word (`compare value …`, `truthiness of value …`) or choose it first
+ * (`IF c THEN: set _mcN to 1 ELSE: set _mcN to 0`, the branch form).
  *
- * WHAT IT READS. test/fixtures/makecode/arcade-import-dialect-e1.json: the 290
- * distinct programs the importer emitted while its 76 tests ran, frozen (the
- * importer itself is E1's to land, not this test's).
+ * WHAT IT READS. test/fixtures/makecode/arcade-import-inputs.json: every
+ * distinct input the importer was given while the makecode-arcade-* and
+ * makecode-export-arcade* tests ran (scripts/capture-arcade-import-corpus.mjs).
+ * Each is translated again HERE, by the importer of this tree: E0 froze the
+ * WIP importer's output instead, and that gate went on measuring a translator
+ * E1 had already replaced.
  *
- * WHAT IT HOLDS.
- *  - Every program parses with no unread line (D5's gate), except the one
- *    named below, which is refused BY NAME, not dropped.
- *  - The only warnings are the dialect's comparison-as-value warning: the
- *    importer writes MakeCode's `true`/`false` as `(0 < 1)`/`(1 < 0)` in value
- *    positions, which this dialect deliberately has no value form for (the
- *    warning is kept; E1 is to write a Boolean value through a word instead,
- *    e.g. `compare value (0) op "<" with (1)`). Counted exactly, so a new kind
- *    of warning, or more of these, is red.
- *  - And the dialect's CONDITION-as-value warning (task D7, sb3-creator #54):
- *    the importer writes MakeCode's `!x` in value positions as `not (truthiness
- *    of value (x))` (21), `not (compare value … op … with …)` (2), `not (ticks
- *    < 5)` (2) and once `key down arrow pressed?`, which the pinned parser USED
- *    TO keep as the text silently. 26 such warnings; E1 is to write a negated truth value through a value word
- *    (or the branch form) instead.
- *  - Every program that parses decompiles and reads back to a fixed point,
- *    except the four whose script has a hat with a comment-only body (a
- *    decompiler limit unrelated to these words: it reproduces with
- *    `WHEN flag clicked:` and a comment).
- *  - The vendored word table is the one this corpus was read with.
+ * COUNTS. Comparison-as-value / condition-as-value warnings:
+ *  - E0's frozen WIP output (290 programs, 2026-10-05; D7's rule): 86 / 26.
+ *  - The importer E1 landed (#660), over this corpus (433 inputs, 417
+ *    programs; a7d738ad1): 0 / 0 — E1 had already written true/false and `!x`
+ *    through `compare value`. The paths this corpus does not reach (the
+ *    fixed-sprite path's `!x` and comparisons as values, `key … pressed?`,
+ *    `touching …`, `info.playerN.hasLife()`) are held form by slot in
+ *    makecode-arcade-truth-values.test.mjs: 41 / 196 warnings in 183 of
+ *    1080 cells before E9, 0 / 0 after.
+ *  - E9: 0 / 0 here, asserted as zero.
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {ARCADE_DIALECT_OPS} from '../overlay/scratch-gui/src/lib/arcadeDialect.js';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 
-const corpus = JSON.parse(readFileSync(new URL('./fixtures/makecode/arcade-import-dialect-e1.json', import.meta.url), 'utf8'));
+const corpus = JSON.parse(readFileSync(new URL('./fixtures/makecode/arcade-import-inputs.json', import.meta.url), 'utf8'));
 
-// The one emitted line the parser refuses: a call that leaves out a MakeCode
-// optional argument (`function repeatIt(message: string, times?: number)`,
-// called `repeatIt("Hello")`). The WIP parser filled the gap with 0 and a
-// warning; E0 did not port that, so the line is refused by name. E1 is to
-// write the missing argument (MakeCode passes undefined: `undefined value`).
-const REFUSED = [{test: 'makecode-arcade-optional-procedure.test.mjs', text: 'repeatIt "Hello"'}];
+// Programs whose decompiled text does not read back: a hat or a DEFINE whose
+// body is empty decompiles to a `# (empty)` the reader does not take as a body
+// (a decompiler limit unrelated to these words; E0 found the same class).
+// Every program the importer writes reaches a decompile fixed point. Four did
+// not until sb3-creator 98748ee (task F6 of docs/OPEN-TASKS-2026-09-29.md):
+// a body of only \`# unsupported:\` comments was mis-attached by the parser.
+const NOT_FIXED_POINT = [];
 
-// Counted 2026-10-05 over the frozen corpus at sb3-creator with E0's words.
-const COMPARISON_WARNINGS = 86;
-// Counted 2026-10-06 over the frozen corpus at sb3-creator with D7's rule (was 0: silent text).
-const CONDITION_WARNINGS = 26;
-const NOT_FIXED_POINT = 4;
-
-function parse(code) {
+function parse (code) {
     const c = new SB3Creator();
     try {
         c.parse(code);
@@ -71,15 +59,40 @@ function parse(code) {
     }
 }
 
-test('the frozen corpus is what the importer emitted for its 76 tests', () => {
-    assert.equal(corpus.programs.length, 290);
-    assert.equal(corpus.source.testFiles, 76);
-    assert.equal(new Set(corpus.programs.map(p => p.test)).size, corpus.source.testFilesTranslating);
-    const lines = new Set(corpus.programs.flatMap(p => p.code.split('\n').map(l => l.trim()).filter(Boolean)));
+/** Warnings of a parse, by kind. */
+function census (warnings) {
+    const out = {comparison: 0, condition: 0, other: []};
+    for (const w of warnings) {
+        if (/is a COMPARISON used where a value is expected/.test(w)) out.comparison++;
+        else if (/is a CONDITION used where a value is expected/.test(w)) out.condition++;
+        else out.other.push(w);
+    }
+    return out;
+}
+
+// Translated once, by this tree's importer; distinct programs only.
+const programs = [];
+{
+    const seen = new Set();
+    for (const input of corpus.inputs) {
+        const {code} = arcadeToPseudocode(corpus.sources[input.files], input.opts);
+        if (seen.has(code)) continue;
+        seen.add(code);
+        programs.push({test: input.test, code});
+    }
+}
+
+test('the corpus is what the importer was given by its tests', () => {
+    assert.equal(corpus.inputs.length, 433);
+    assert.equal(corpus.testFiles.length, 82);
+    assert.equal(new Set(corpus.inputs.map(i => i.test)).size, corpus.testFilesTranslating);
+    assert.equal(corpus.testFilesTranslating, 68);
+    assert.equal(programs.length, 417);
+    const lines = new Set(programs.flatMap(p => p.code.split('\n').map(l => l.trim()).filter(Boolean)));
     assert.ok(lines.size > 3500, `${lines.size} distinct lines`);
     // Every word family the importer uses is in it (not a corpus of plain Scratch).
     for (const word of ['arcade set local', 'arcade register', 'WHEN arcade', 'new array reference from',
-        'calculate value', 'truthiness of value', 'arcade projectile', 'arcade set tilemap data']) {
+        'calculate value', 'truthiness of value', 'compare value', 'arcade projectile', 'arcade set tilemap data']) {
         assert.ok([...lines].some(l => l.includes(word)), word);
     }
 });
@@ -88,52 +101,47 @@ test('the pinned parser has the Arcade word table (156 opcodes)', () => {
     assert.equal(ARCADE_DIALECT_OPS.length, 156);
 });
 
-test('every program the Arcade importer emitted parses, with no unread line except the one refused by name', () => {
+test('every program the Arcade importer writes parses, with no unread line and no warning', () => {
     const unread = [];
-    let warnings = 0;
-    let conditions = 0;
-    const other = [];
-    for (const p of corpus.programs) {
+    const total = {comparison: 0, condition: 0, other: []};
+    for (const p of programs) {
         const {c, unread: lost} = parse(p.code);
         for (const l of lost) unread.push({test: p.test, text: l.text});
-        for (const w of c.warnings) {
-            if (/is a COMPARISON used where a value is expected/.test(w)) warnings++;
-            else if (/is a CONDITION used where a value is expected/.test(w)) conditions++;
-            else other.push(`${p.test}: ${w}`);
-        }
+        const w = census(c.warnings);
+        total.comparison += w.comparison;
+        total.condition += w.condition;
+        total.other.push(...w.other.map(x => `${p.test}: ${x}`));
     }
-    assert.deepEqual(unread, REFUSED);
-    assert.deepEqual(other, [], 'no warning but the comparison- and condition-as-value ones');
-    assert.equal(warnings, COMPARISON_WARNINGS, 'comparison-as-value warnings over the corpus');
-    assert.equal(conditions, CONDITION_WARNINGS, 'condition-as-value warnings over the corpus');
-});
-
-test('the refused line is refused for what it is, not swallowed', () => {
-    const program = corpus.programs.find(p => p.code.includes(REFUSED[0].text));
-    const {unread} = parse(program.code);
-    assert.equal(unread.length, 1);
-    assert.equal(unread[0].text, REFUSED[0].text);
-    assert.match(unread[0].reason, /no statement of this dialect reads it/);
+    assert.deepEqual(unread, []);
+    assert.deepEqual(total.other, [], 'no other warning');
+    assert.equal(total.comparison, 0, 'comparison-as-value warnings over the corpus');
+    assert.equal(total.condition, 0, 'condition-as-value warnings over the corpus');
 });
 
 test('what parses reads back through the decompiler to a fixed point', () => {
     const moved = [];
-    for (const p of corpus.programs) {
-        const {c, unread} = parse(p.code);
-        if (unread.length) continue;
+    for (const p of programs) {
+        const {c} = parse(p.code);
         const once = c.decompile();
         const again = parse(once);
         if (again.unread.length || again.c.decompile() !== once) moved.push(p.test);
     }
-    assert.equal(moved.length, NOT_FIXED_POINT, `not a fixed point: ${moved.join(', ')}`);
-    assert.deepEqual([...new Set(moved)].sort(),
-        ['makecode-arcade-runs.test.mjs', 'makecode-arcade-scenes-import.test.mjs']);
+    assert.deepEqual(moved, NOT_FIXED_POINT);
 });
 
-test('the gate can fail: a word dropped from the emitted text is reported with its line', () => {
-    const program = corpus.programs.find(p => p.code.includes('\n  arcade set local '));
+test('the gate can fail: a dropped word is unread, a condition in a value slot is counted', () => {
+    const program = programs.find(p => p.code.includes('\n  arcade set local '));
     const broken = program.code.replace('\n  arcade set local ', '\n  arcade put local ');
     const {unread} = parse(broken);
     assert.equal(unread.length, 1);
     assert.match(unread[0].text, /^arcade put local /);
+
+    // What the importer wrote before E9 on the fixed-sprite path for
+    // `takes(!flag)`, and on both paths for `say(controller.left.isPressed())`.
+    for (const line of ['takes (not (not (flag = 0)))', 'say key left arrow pressed?']) {
+        const {c} = parse(`SPRITE Game:\nWHEN flag clicked:\n  set flag to 0\n  ${line}\nDEFINE takes (v):\n  set flag to v\n`);
+        assert.equal(census(c.warnings).condition, 1, line);
+    }
+    const {c} = parse('SPRITE Game:\nWHEN flag clicked:\n  set n to 0\n  set r to n < 3\n');
+    assert.equal(census(c.warnings).comparison, 1);
 });

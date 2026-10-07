@@ -166,6 +166,15 @@ class ArcadeEmitter {
         this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
     }
 
+    /** Scratch clears the Stage to white underneath transparent backdrop pixels. */
+    stageMatte () {
+        const index = nearestIndex([255, 255, 255], this.palette);
+        if (!/^#?ffffff$/i.test(String(this.palette[index]).trim())) {
+            this.warn('Stage white matte quantized to the nearest opaque project palette colour');
+        }
+        return `scene.setBackgroundColor(${index})`;
+    }
+
     /** Record what kind of value a variable is given, for its declaration. */
     assign (tsName, expr, explicitKind) {
         if (explicitKind) {
@@ -810,11 +819,11 @@ class ArcadeEmitter {
             return `[${args.join(', ')}]`;
         }
         case 'arcade_getscore':return 'info.score()';
-        case 'arrays_specialValue':return this.literalInput(b,'KIND')==='null'?'null':'undefined';
+        case 'arrays_specialValue':return (this.field(b,'KIND') || this.literalInput(b,'KIND'))==='null'?'null':'undefined';
         case 'arrays_valueCompare':
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
-            const op=this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
+            const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
             const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
             if(!names[op] || unary && !['+','-'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
@@ -873,7 +882,7 @@ class ArcadeEmitter {
         case 'arcade_spriteToString': return `${v('ID')}.toString()`;
         case 'arcade_spriteProperty': {
             const property = this.field(b, 'PROPERTY');
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
             return `${v('ID')}.${property}`;
         }
         case 'arcade_menu_scaleAnchors': return String(Number(this.field(b,'scaleAnchors')));
@@ -912,7 +921,21 @@ class ArcadeEmitter {
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
         case 'arcade_askForNumber': return `game.askForNumber(${v('QUESTION')})`;
-        case 'arcade_controllerStep': return `controller.d${this.field(b, 'AXIS') === 'y' ? 'y' : 'x'}(${v('STEP')})`;
+        case 'arcade_controllerStep': {
+            const literal=this.literal(b,'AXIS') ?? (this.field(b,'AXIS') || null);
+            if(literal!==null)return `controller.d${literal.toLowerCase()==='y'?'y':'x'}(${v('STEP')})`;
+            const key='controllerAxisStep';
+            if(!this.legacyValueHelpers.has(key)) {
+                let name='__bwControllerAxisStep';
+                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(value=>typeof value==='string'?value:value.name));
+                while(occupied.has(name))name+='_';
+                this.legacyValueHelpers.set(key,{name,source:`function ${name}(axis: any, step: number): number {
+    const direction = "" + axis
+    return direction === "y" || direction === "Y" ? controller.dy(step) : controller.dx(step)
+}`});
+            }
+            return `${this.legacyValueHelpers.get(key).name}(${this.arrayValue(b,'AXIS')}, ${v('STEP')})`;
+        }
         case 'arcade_getCaptured': {
             const name = this.literalInput(b,'NAME');
             if (!name || !this.compilingRegisteredCallbacks.size) { this.note('Arcade captured value needs a registered callback and fixed name');return this.na(); }
@@ -1462,7 +1485,7 @@ class ArcadeEmitter {
         case 'arcade_setSpritePosition': push(`${v('ID')}.setPosition(${v('X')}, ${v('Y')})`); return;
         case 'arcade_setSpriteProperty': {
             const property = this.field(b, 'PROPERTY');
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
             if (['width', 'height'].includes(property)) push(`// ${this.note(`Arcade sprite ${property} needs image resizing`)}`);
             else push(`${v('ID')}.${property} = ${v('VALUE')}`);
             return;
@@ -1820,7 +1843,7 @@ class ArcadeEmitter {
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
         const graphAnimationValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
-        const parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
+        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
@@ -1830,6 +1853,7 @@ class ArcadeEmitter {
             return blocks[input];
         };
         const literal = (blocks, b, name) => {
+            if(b.fields?.[name])return String(b.fields[name][0]);
             const input = b.inputs?.[name]?.[1];
             return Array.isArray(input) ? String(input[1]) : String(blocks[input]?.fields?.TEXT?.[0] || '');
         };
@@ -1901,7 +1925,10 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_tileLocation'){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
-                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_spriteProperty' && value.fields?.PROPERTY?.[0]==='data'){
+                    const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
+                }
+                if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileLocationProperty'){const id=Symbol('tile numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
@@ -1967,6 +1994,10 @@ class ArcadeEmitter {
                         captureLinks.push([`${scope}:capture:${name}`,!explicit.has(name) || captured && !local?`${key}:capture:${name}`:localKey(name)]);
                     }
                 }
+                if(block.opcode==='arcade_setSpriteProperty' && literal(blocks,block,'PROPERTY')==='data') {
+                    const id=Symbol('sprite data assignment');dataProperties.push([ref(inputBlock(blocks,block,'ID')),id]);
+                    connect(id,ref(inputBlock(blocks,block,'VALUE')));
+                }
                 if(block.opcode==='arcade_setCaptured')connect(`${key}:capture:${literal(blocks,block,'NAME')}`,ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'arcade_setLocal') connect(localKey(literal(blocks,block,'NAME')),ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'data_setvariableto') connect(`variable:${block.fields.VARIABLE[1] || block.fields.VARIABLE[0]}`,ref(inputBlock(blocks,block,'VALUE')));
@@ -1992,6 +2023,8 @@ class ArcadeEmitter {
         const graph=new ValueTypeGraph();
         for(const [values,type] of [[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [a,b] of edges)graph.merge(a,b);
+        for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
+        for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
         for(const [array,value] of elements)if(array && value){graph.add(array,'array');graph.merge(graph.element(array),value);}
         for(const [id,type] of specialTypes)graph.add(id,type);
         const inferValueOperations=()=>{
@@ -2150,6 +2183,11 @@ class ArcadeEmitter {
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
+        // Scratch's Stage composites transparent backdrop pixels over white.
+        // Native Arcade primitives own their scene defaults instead; do not
+        // change those programs merely because they also have a Scratch Stage.
+        const nativeArcade = this.project.targets.some(target => Object.values(target.blocks || {})
+            .some(block => block?.opcode?.startsWith('arcade_')));
         const flagScripts = [];                             // green-flag scripts: {script, clonable, sv, plain}
         const handlers = [];
         const functions = [];
@@ -2334,14 +2372,19 @@ class ArcadeEmitter {
                     if (!this.cloneScripts.has(t.name)) this.cloneScripts.set(t.name, []);
                     this.cloneScripts.get(t.name).push(fn);
                 // ── Arcade event hats (E2: the import's arcade_when* words, back to their PXT calls) ──
-                } else if (b.opcode === 'arcade_whenUpdate') {
-                    handlers.push(`game.onUpdate(function () {\n${plainBody().join('\n')}\n})`);
-                } else if (b.opcode === 'arcade_whenInterval') {
-                    const period = this.literalNumber(b, 'PERIOD');
-                    if (period === null || period <= 0) {
+                } else if (b.opcode === 'arcade_whenUpdate' || b.opcode === 'arcade_whenInterval') {
+                    const period = b.opcode === 'arcade_whenInterval' ? this.literalNumber(b, 'PERIOD') : null;
+                    const api = b.opcode === 'arcade_whenUpdate' ? 'game.onUpdate(' : `game.onUpdateInterval(${period}, `;
+                    if (b.opcode === 'arcade_whenInterval' && (period === null || period <= 0)) {
                         handlers.push(`// ${this.note('Arcade interval period must be a fixed positive number')}`);
+                    } else if (clonable) {
+                        // A cloned sprite's hat runs in every instance, as the key hats
+                        // do; its body speaks of \`self\`, which a plain handler lacks.
+                        const {fn} = this.scriptFunction(b.opcode === 'arcade_whenUpdate' ? 'update' : 'interval', b, false);
+                        this.use('wait');
+                        handlers.push(`${api}function () {\n    const w = new _Wait()\n    for (const s of ${this.allOf(t.name)}) _spawnFor(w, ${fn}, s)\n})`);
                     } else {
-                        handlers.push(`game.onUpdateInterval(${period}, function () {\n${plainBody().join('\n')}\n})`);
+                        handlers.push(`${api}function () {\n${plainBody().join('\n')}\n})`);
                     }
                 } else if (b.opcode === 'arcade_whenSpriteCreated') {
                     const kind = this.kindExpr(b, 'KIND');
@@ -2386,7 +2429,10 @@ class ArcadeEmitter {
                     const returnType = returns ? `: ${this.arrayReturnTypes.get(key) || (this.imageReturnFunctions.has(key) ? 'Image' :
                         this.spriteReturnFunctions.has(key) ? 'Sprite' : this.valueReturnTypes.get(key) || 'any')}` : '';
                     const tail = returns && !returning(script.at(-1) || '') ? ['    return undefined'] : [];
-                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...script, ...tail];
+                    // A stop/clone guard exits with a bare \`return\`; in a function that
+                    // returns a value PXT rejects that ("Not all code paths return a value").
+                    const body = returns ? script.map(line => line.replace(/\breturn\s*$/, 'return undefined')) : script;
+                    const lines = [...locals.map(name => this.localDeclaration(name, key)), ...body, ...tail];
                     functions.push(`function ${fn} (${params.join(', ')})${returnType} {\n${lines.join('\n')}\n}`);
                 } else if (/^(procedures_prototype|argument_|.*_menu$)/.test(b.opcode)) {
                     continue;
@@ -2526,10 +2572,14 @@ class ArcadeEmitter {
                 '}',
                 this.dispatcher('_backdropHats', this.backdropHats, 'name')
             ].join('\n'));
+            if (!nativeArcade) out.push(this.stageMatte());
             out.push('scene.setBackgroundImage(_backdrops[_bd])');
         } else if (stage && this.opts.stageBackground) {
             const bg = this.opts.stageBackground(stage);
-            if (bg) out.push(`scene.setBackgroundImage(${toImgLiteral(bg)})`);
+            if (bg) {
+                if (!nativeArcade) out.push(this.stageMatte());
+                out.push(`scene.setBackgroundImage(${toImgLiteral(bg)})`);
+            }
         }
         // The green flag's scripts run side by side. An imported Arcade program
         // (one flag script, nothing that can stop it) is its own startup code, run

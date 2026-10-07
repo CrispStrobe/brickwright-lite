@@ -36,7 +36,7 @@ test('pseudocode-importer has micropython buffer and tab', () => {
     const setDevice = src.slice(src.indexOf('async setDevice (deviceId)'), src.indexOf('async deployToPico'));
     assert.match(setDevice, /pseudocode: result\.pseudocode, micropython: ''/,
         'retargeting can reuse stale MicroPython from the previous device/source');
-    assert.match(setDevice, /await new Promise\(resolve => this\.setState[\s\S]{0,900}await this\.compile\(\)/,
+    assert.match(setDevice, /await new Promise\(resolve => this\.setState[\s\S]{0,900}await this\.compile\(\{pseudocode: nextSource\}\)/,
         'pinless micro:bit examples are not rebuilt when retargeted to Calliope');
     assert.match(setDevice, /deriveBuffer\(nextSource, 'pseudocode', 'micropython'\)/,
         'pinless Calliope retarget does not derive generated code from the rewritten source');

@@ -1,0 +1,141 @@
+// Exercise the actual JSX methods with deferred/rejected VM loads. A header is
+// only a proposed device until the generated project has loaded successfully.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {codeArtworkMatches} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
+import {balancedFrom, scopeAfter} from './helpers/js-scope.mjs';
+const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
+const signature = 'async compile ({strict = false, pseudocode = null} = {}) {';
+const compileBody = balancedFrom(source, source.indexOf(signature) + signature.length - 1, '{', '}');
+const publishBody = scopeAfter(source, 'publishAppliedDevice (stc) {');
+const devices = {arcade: {core: 'arcade'}, microbit: {core: 'microbit'}, calliopemini: {core: 'microbit'}, uno: {core: 'avr'}};
+const Event = class { constructor (type, options) { this.type = type; this.detail = options.detail; } };
+const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, loadError, deferred = false, setStc = true, deferredRefresh = false, refreshError} = {}) => {
+    const events = [], calls = [];
+    const window = {dispatchEvent: event => events.push(event)};
+    let finishLoad;
+    const pendingLoad = new Promise(resolve => { finishLoad = resolve; });
+    let finishRefresh;
+    const pendingRefresh = new Promise(resolve => { finishRefresh = resolve; });
+    const runtime = {bwDeviceId: 'microbit', bwDeviceCore: 'microbit', stc: {device: 'microbit'},
+        targets: [], getTargetForStage: () => null};
+    const vm = {runtime, extensionManager: {refreshBlocks (options) { assert.equal(options.throwOnError, true); if (refreshError) return Promise.reject(new Error(refreshError)); if (deferredRefresh) return pendingRefresh; }},
+        async loadProject () { calls.push('load'); if (loadError) throw new Error(loadError); if (deferred) await pendingLoad; calls.push('loaded'); },
+        toJSON: () => JSON.stringify({targets: []})};
+    if (setStc) vm.setStc = stc => { calls.push('stc'); runtime.stc = stc; };
+    class Creator {
+        constructor () { this.warnings = []; this.project = {targets: []}; }
+        parse (text) { if (parseError) throw new Error(parseError); const device = text.match(/^DEVICE\s+(\S+)/im)?.[1]; this.project.stc = device ? {device: device.toLowerCase()} : null; }
+        async generateSB3 () { return {arrayBuffer: async () => new ArrayBuffer(0)}; }
+        generatePython () { return ''; }
+        generateJavaScript () { return ''; }
+        generateC () { return ''; }
+        generateBASIC () { return {ok: true, basic: ''}; }
+        generateMicroPython () { return {ok: true, py: ''}; }
+    }
+    const component = {props: {vm}, state: {lang, buffers: {pseudocode: program, micropython: 'from microbit import *'},
+        uploads: [], basicProfile: 'ms', basicLineNumbers: false},
+        L: {stCompiling: 'compiling', stLoaded: 'loaded', stError: error => error},
+        setState (patch, done) { Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch); done?.(); },
+        activeCode () { return this.state.buffers[this.state.lang]; }, canLiftAsm: () => false, loadCatalog () {},
+        deriveBuffer: async source => ({code: source}),
+        lib: async () => ({default: Creator}), genOpts: () => ({})};
+    component.publishAppliedDevice = new Function('DEVICE_BY_ID', 'window', 'CustomEvent',
+        `return function (stc) ${publishBody}`)(devices, window, Event);
+    // DOS_LANG / generateDosLangs: the fe and Tcl tabs, which compile() also
+    // regenerates; none here (stubs keep the sandbox to the names it gives).
+    component.compile = new Function('TWO_WAY', 'classifyConversionWarnings', 'LANG_LABEL', 'window', 'codeArtworkMatches',
+        'DOS_LANG', 'generateDosLangs',
+        `return async function ({strict = false, pseudocode = null} = {}) ${compileBody}`)(new Set(['pseudocode']),
+        () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window, codeArtworkMatches,
+        {}, async () => ({}));
+    Creator.RETARGET_POOLS = {calliopemini: {}};
+    Creator.retargetPseudocode = (text, device) => ({ok: true, warnings: [],
+        pseudocode: text.replace(/^DEVICE\s+\S+/im, `DEVICE ${device.toUpperCase()}`)});
+    component.setDevice = new Function('DEVICE_BY_ID', 'resolveExampleBench', 'window',
+        `return async function (deviceId) ${scopeAfter(source, 'async setDevice (deviceId) {')}`)(devices, () => null, window);
+    return {component, runtime, events, calls, finishLoad, finishRefresh};
+};
+
+test('Code stays busy until the native block definitions have finished refreshing', async () => {
+    const {component, finishRefresh} = setup({deferredRefresh: true});
+    let complete = false;
+    const compiling = component.compile().then(() => { complete = true; });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(complete, false);
+    assert.equal(component.state.busy, true);
+    assert.notEqual(component.state.status, 'loaded');
+    finishRefresh();
+    await compiling;
+    assert.equal(component.state.busy, false);
+    assert.equal(component.state.status, 'loaded');
+});
+
+test('DEVICE ARCADE is published only after the generated project loads', async () => {
+    const {component, runtime, events, calls, finishLoad} = setup({deferred: true});
+    const compiling = component.compile();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(calls, ['load']);
+    assert.equal(runtime.bwDeviceId, 'microbit');
+    assert.deepEqual(events, []);
+    finishLoad(); await compiling;
+    assert.deepEqual(calls, ['load', 'loaded', 'stc']);
+    assert.equal(runtime.bwDeviceId, 'arcade');
+    assert.equal(runtime.bwDeviceCore, 'arcade');
+    assert.deepEqual(events.map(event => [event.type, event.detail]),
+        [['bw-settings-change', {key: 'bw-device-id', value: 'arcade'}]]);
+    assert.equal(component.state.status, 'loaded');
+});
+for (const failure of [{parseError: 'invalid source'}, {loadError: 'bad archive'}]) {
+    test(`failed application retains previous device: ${Object.values(failure)[0]}`, async () => {
+        const {component, runtime, events} = setup(failure);
+        await component.compile();
+        assert.equal(runtime.bwDeviceId, 'microbit');
+        assert.equal(runtime.bwDeviceCore, 'microbit');
+        assert.deepEqual(events, []);
+        assert.equal(component.state.conversionReport.preserved, false);
+    });
+}
+test('a successfully applied ordinary Scratch project clears stale device hints', async () => {
+    const {component, runtime, events} = setup({program: 'SPRITE Game:'});
+    await component.compile();
+    assert.equal(runtime.bwDeviceId, null); assert.equal(runtime.bwDeviceCore, null);
+    assert.deepEqual(events.map(event => event.detail), [{key: 'bw-device-id', value: ''}]);
+});
+test('fallback VM metadata path publishes the actual parsed target too', async () => {
+    const {component, runtime, events} = setup({program: 'DEVICE UNO', setStc: false});
+    await component.compile();
+    assert.equal(runtime.stc.device, 'uno'); assert.equal(runtime.bwDeviceId, 'uno');
+    assert.equal(runtime.bwDeviceCore, 'avr'); assert.equal(events.length, 1);
+});
+
+for (const pins of ['', '\nPIN led = P0 OUTPUT']) {
+    for (const lang of ['micropython', 'javascript', 'asm']) {
+        test(`retarget from ${lang} applies canonical pseudocode (${pins ? 'pins' : 'no pins'})`, async () => {
+            const {component, runtime, events, finishLoad} = setup({
+                program: `DEVICE MICROBIT${pins}`, lang, deferred: true});
+            const retargeting = component.setDevice('calliopemini');
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(runtime.bwDeviceId, 'microbit', 'old device remains while loading');
+            assert.deepEqual(events, []);
+            finishLoad();
+            await retargeting;
+            await new Promise(resolve => setImmediate(resolve));
+            assert.equal(runtime.stc.device, 'calliopemini');
+            assert.equal(runtime.bwDeviceId, 'calliopemini');
+            assert.equal(component.state.lang, lang, 'generated view stays selected');
+            assert.equal(events.length, 1);
+            assert.equal(component.state.conversionReport.direction, 'Pseudocode → Blocks');
+        });
+    }
+}
+
+test('failed native block refresh is reported and never announces loaded', async () => {
+    const {component} = setup({refreshError: 'arrays schema registration failed'});
+    await component.compile();
+    assert.equal(component.state.busy, false);
+    assert.notEqual(component.state.status, 'loaded');
+    assert.match(component.state.status, /arrays schema registration failed/);
+    await assert.rejects(component.compile({strict: true}), /arrays schema registration failed/);
+});

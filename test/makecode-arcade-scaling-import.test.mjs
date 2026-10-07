@@ -20,9 +20,10 @@ test('invalid scaling calls and undeclared or shadowed anchors retain named diag
   assert.ok(result.unsupported.some(note=>/scale|Scale|anchor|Anchor/.test(note)),expression);
  }
 });
-test('rotation remains a named unsupported feature',()=>{
+test('rotation imports as a native sprite property',()=>{
  const result=arcadeToPseudocode('let actor=sprites.create(img`5`,SpriteKind.Player);actor.rotation=1');
- assert.ok(result.unsupported.some(note=>note.includes('rotation')));
+ assert.deepEqual(result.unsupported,[]);
+ assert.match(result.code,/arcade set rotation of actor to 1/);
 });
 
 test('actual authored controller scene imports all scaling commands',()=>{

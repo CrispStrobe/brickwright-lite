@@ -7154,6 +7154,30 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — Arcade rotation, data, controller and file roundtrip": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Code artwork edits persist through Blocks and project reopen": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade native Blocks fields survive editing and project reopen": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade full-screen background authoring and original export": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

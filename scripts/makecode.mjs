@@ -7,12 +7,13 @@
  *   node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex] [--target microbit|arcade]
  *       A real micro:bit firmware (V1 + V2 universal .hex) with the project
  *       embedded, so makecode.microbit.org reopens it as the project. For
- *       --target arcade there is no firmware base yet (refused by name); use
- *       --source to get the project file arcade.makecode.com opens instead.
+ *       --target arcade it needs --board <variant> (ARCADE_HARDWARE, e.g. rp2040)
+ *       and writes that board's firmware (.uf2, or .hex for nRF52833 boards);
+ *       --source writes the project file arcade.makecode.com opens instead.
  *   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts] [--target microbit|arcade]
  *       Just the MakeCode TypeScript (and the named list of what did not map).
- *   node scripts/makecode.mjs to-sb3 <in.hex|in.uf2|in.png|share-url> [-o out.sb3] [--bw out.bw]
- *       A MakeCode project (from its firmware, cartridge or share link) as a
+ *   node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]
+ *       A MakeCode project (from a bare main.ts for --target, its firmware, cartridge or share link) as a
  *       Scratch project, through the importer's translation; what did not
  *       translate is listed.
  *
@@ -29,16 +30,17 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lib = rel => import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib', rel)).href);
 
 const USAGE = `usage:
-  node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex] [--target microbit|arcade] [--source]
+  node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target microbit|arcade] [--board variant] [--source]
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target microbit|arcade]
-  node scripts/makecode.mjs to-sb3 <in.hex|in.uf2|in.png|share-url> [-o out.sb3] [--bw out.bw]`;
+  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]`;
 
 function args (argv) {
-    const out = {cmd: argv[0], input: null, output: null, target: 'microbit', source: false, bw: null};
+    const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null};
     for (let i = 1; i < argv.length; i++) {
         const a = argv[i];
         if (a === '-o') out.output = argv[++i];
         else if (a === '--target') out.target = argv[++i];
+        else if (a === '--board') out.board = argv[++i];
         else if (a === '--source') out.source = true;
         else if (a === '--bw') out.bw = argv[++i];
         else if (!out.input) out.input = a;
@@ -46,6 +48,7 @@ function args (argv) {
     }
     if (!out.cmd || !out.input) throw Object.assign(new Error('missing command or input'), {usage: true});
     if (!['microbit', 'arcade'].includes(out.target)) throw Object.assign(new Error(`unknown --target ${out.target}`), {usage: true});
+    if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
     return out;
 }
 
@@ -149,14 +152,23 @@ async function main () {
             console.error('the MakeCode runtime is not synced — run `npm run sync:makecode`');
             return 3;
         }
+        if (a.target === 'arcade') {
+            const {ARCADE_HARDWARE} = await lib('bw-makecode/pxt-runtime.js');
+            if (!a.board || !ARCADE_HARDWARE[a.board]) {
+                console.error(`Arcade firmware needs --board (${Object.keys(ARCADE_HARDWARE).join(', ')}); ` +
+                    '--source writes the project file arcade.makecode.com opens instead');
+                return 2;
+            }
+        }
         let r;
         try {
-            r = await compile(a.target, out.files, {native: true,
-                embedSource: {files: out.files, name: out.name, editorUrl: 'https://makecode.microbit.org/'}});
+            r = await compile(a.target, out.files, {native: true, hwVariant: a.board,
+                embedSource: {files: out.files, name: out.name, editorUrl: a.target === 'arcade' ?
+                    'https://arcade.makecode.com/' : 'https://makecode.microbit.org/'}});
         } catch (e) {
             if (e.code === 'NO_BASE_HEX') {
                 console.error(`refused: ${e.message}. ${a.target === 'arcade' ?
-                    'Arcade firmware bases are not built yet; --source writes the project file arcade.makecode.com opens.' :
+                    `no firmware base is synced for ${a.board} — \`npm run sync:makecode\` fetches it; --source writes the project file arcade.makecode.com opens.` :
                     'A C++ package outside MakeCode\'s default set needs its cloud compiler.'}`);
                 return 1;
             }
@@ -167,18 +179,32 @@ async function main () {
             console.error(`MakeCode did not compile the export (${r.diagnostics.length} error(s))`);
             return 1;
         }
-        const hex = r.outfiles['binary.hex'];
-        const dest = a.output || `${base(a.input)}.hex`;
-        fs.writeFileSync(dest, hex);
-        console.log(`wrote ${dest} — ${(hex.length / 1024).toFixed(0)} KB micro:bit firmware (V1 + V2), project embedded; ` +
+        const {firmwareFile} = await lib('bw-makecode/pxt-runtime.js');
+        const firmware = firmwareFile(r.outfiles);
+        if (!firmware) { console.error('MakeCode compiled no firmware file'); return 1; }
+        const dest = a.output || `${base(a.input)}${a.target === 'arcade' ? `-${a.board}` : ''}${path.extname(firmware.name)}`;
+        fs.writeFileSync(dest, firmware.bytes);
+        console.log(`wrote ${dest} — ${(firmware.bytes.length / 1024).toFixed(0)} KB ` +
+            `${a.target === 'arcade' ? `Arcade ${a.board}` : 'micro:bit (V1 + V2)'} firmware, project embedded; ` +
             `${out.unsupported.length} not translated`);
         return 0;
     }
     if (a.cmd === 'to-sb3') {
         const mc = await lib('bw-makecode/index.js');
-        const res = /^https?:\/\//.test(a.input) || /^[_S][A-Za-z0-9-]{10,}$/.test(a.input) ?
-            await mc.importShareLink(a.input) :
-            await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)), {name: path.basename(a.input)});
+        let res;
+        if (/\.ts$/i.test(a.input)) {
+            // A bare main.ts carries no pxt.json: give it the target's default
+            // packages. A program that needs another package fails by name.
+            const dependencies = a.target === 'arcade' ? {device: '*'} :
+                {core: '*', radio: '*', microphone: '*'};
+            const files = {'main.ts': fs.readFileSync(a.input, 'utf8'),
+                'pxt.json': JSON.stringify({name: base(a.input), dependencies, files: ['main.ts']})};
+            res = mc.importProjectFiles(files, {target: a.target, name: base(a.input)});
+        } else {
+            res = /^https?:\/\//.test(a.input) || /^[_S][A-Za-z0-9-]{10,}$/.test(a.input) ?
+                await mc.importShareLink(a.input) :
+                await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)), {name: path.basename(a.input)});
+        }
         if (res.lang !== 'pseudocode') {
             console.error(`this is a ${res.project && res.project.target} project in ${res.lang}; only translated projects become .sb3`);
             return 1;
