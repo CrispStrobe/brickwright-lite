@@ -5,6 +5,8 @@
  * costume in project.json. This prevents a stale source from silently replacing
  * artwork edited by Scratch or an older Brickwright.
  */
+import {editablePixelSize} from './bw-makecode/pixel-image.js';
+
 const ARTWORK_PATH = 'brickwright/artwork/v1.json';
 const ARTWORK_FORMAT = 'brickwright-artwork';
 const ARTWORK_VERSION = 3;
@@ -42,8 +44,7 @@ const validateLayers = (layers, expectedSize = null) => {
         if (layer.content.kind === 'pixels') {
             const value = layer.content.value;
             if (layer.type !== 'pixel' || !isObject(value) || !Number.isInteger(value.width) ||
-                !Number.isInteger(value.height) || value.width < 1 || value.height < 1 ||
-                value.width > 128 || value.height > 128 || !Array.isArray(value.pixels) ||
+                !editablePixelSize(value.width, value.height) || !Array.isArray(value.pixels) ||
                 value.pixels.length !== value.width * value.height ||
                 !value.pixels.every(pixel => Number.isInteger(pixel) && pixel >= 0 && pixel <= 15)) {
                 throw new Error('invalid pixel source');
