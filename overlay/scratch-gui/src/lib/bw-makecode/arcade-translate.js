@@ -40,13 +40,13 @@ import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
 import {
     parseImageLiteral,
     parseJres,
-    parseAnimationJres,
     parseTilemaps,
     renderTilemap,
     decodeMkcdImage,
     imageToSvg,
     ARCADE_PALETTE
 } from './arcade-assets.js';
+import {parseAnimationJres} from './arcade-animation-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
 import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from './animation-companion.js';
 import {HELPERS} from './arcade-runtime.js';

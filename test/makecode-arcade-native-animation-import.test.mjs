@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import {INTEGRATED} from './helpers/bw-integrated.mjs';
-import {parseAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
+import {parseAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-animation-assets.js';
 import {encodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram} from './helpers/bw-vm.mjs';

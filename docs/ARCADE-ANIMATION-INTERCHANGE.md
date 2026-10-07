@@ -163,7 +163,7 @@ names and generated variable collisions.
 
 ## Next persistent-resource transaction
 
-Keep native resources separate from costume imports. `arcade-assets.js` already
+Keep native resources separate from costume imports. `arcade-animation-assets.js` already
 returns all valid animation entries, including unused entries. These now travel
 through `arcadeToPseudocode` and `importProjectFiles` with independently validated
 rich documents and named recovery warnings. `applyMakeCodeImport` displays those
