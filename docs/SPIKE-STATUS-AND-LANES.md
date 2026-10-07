@@ -64,8 +64,13 @@ not automatically advance every consumer. Record each route's actual pins.
 
 ## 2026-10-07 desktop adoption candidate
 
-[PR #695](https://github.com/CrispStrobe/brickwright-lite/pull/695) adds retained
-NuttX program restart to the arena. Tested package source is
+[PR #695](https://github.com/CrispStrobe/brickwright-lite/pull/695) merged as
+`0faacb84211a5d6df8b4d3ed8ed9127c14b76fc5`, adding retained NuttX program
+restart to the arena. All seven enabled
+[reviewed-head checks](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37579912369)
+passed; the two main-only deployment jobs were not enabled on the PR. The merge
+tree matched the reviewed plan, preserving the tested production source and
+unrelated task/claim documentation. Tested package source is
 `2b36862fb39f34a990eb296c734e9e800ed884c8`; its production frontend was built at
 `0af782bdfe15774416690d09c724b19b4019c23c`, with no production overlay/Tauri
 source changes between those heads. This is a private qualification candidate,
@@ -87,7 +92,10 @@ Run completed with output. A fresh app process recovered the saved Python
 program, ran it explicitly and moved the motor. From a fresh editor profile,
 Code-tab pseudocode compiled into Scratch blocks, ran in full NuttX, moved the
 shared motor/arena and completed. GUI fault/restart checks retained the failed
-status and traceback while clearing Code Stop. The separate small ARM guest GUI route also
+status and traceback while clearing Code Stop. Stop during pending native
+startup closed the owned session, retained terminal feedback and published no
+late motor motion after cleanup. Cleanup can wait for native startup to unwind;
+this is not an instantaneous native process abort. The separate small ARM guest GUI route also
 passed Start, motion and Stop. Native-driver guest checks additionally passed
 native/Python retained restart, repeated runtime fault, SAVE and fresh-process
 native-program recovery. The JavaScript regression set passed 81 tests; the
