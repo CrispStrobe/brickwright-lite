@@ -32,7 +32,7 @@ test('resource menus use persistent ids and reporters share typed arrays and ima
     g.resource.name = 'Renamed';
     assert.deepEqual(g.arcade.getAnimationAssets(), [{text: 'Renamed', value: 'art:walk'}]);
     const info = g.arcade.getInfo();
-    for (const opcode of ['animationAssetFrames', 'animationAssetInterval']) {
+    for (const opcode of ['animationAssetFrames', 'animationAssetFreshFrames', 'animationAssetInterval']) {
         assert.equal(info.blocks.find(block => block.opcode === opcode).arguments.RESOURCE.menu, 'animationAssets');
     }
     assert.equal(info.menus.animationAssets.acceptReporters, true);
@@ -60,7 +60,7 @@ test('missing, deleted and malformed resources report their identity without inv
     const g = setup();
     g.frames();
     g.runtime.bwArcadeAnimationResources.delete(g.resource.id);
-    for (const method of ['animationAssetFrames', 'animationAssetInterval']) {
+    for (const method of ['animationAssetFrames', 'animationAssetFreshFrames', 'animationAssetInterval']) {
         assert.equal(BWValues.decode(g.arcade[method]({RESOURCE: g.resource.id})), undefined);
     }
     assert.ok(g.errors.every(error => error.includes('art:walk') && error.includes('missing or deleted')));
@@ -72,6 +72,7 @@ test('missing, deleted and malformed resources report their identity without inv
     for (const mutate of invalid) {
         mutate();
         assert.equal(BWValues.decode(g.frames()), undefined);
+        assert.equal(BWValues.decode(g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id})), undefined);
         assert.equal(BWValues.decode(g.arcade.animationAssetInterval({RESOURCE: g.resource.id})), undefined);
         assert.match(g.errors.at(-1), /Arcade animation asset "art:walk": invalid/);
         g.resource.frames[1].durationMs = 100; g.resource.frames[1].pixels[0] = 3; g.resource.width = 1;
@@ -169,4 +170,37 @@ test('published native endpoint intervals reach actual runtime reporters and ima
         assert.equal(BWValues.decode(g.frames()), undefined);
         assert.match(g.errors[0], /invalid frames/);
     }
+});
+
+test('fresh resource lookup owns each array, image, pixels and palette independently of shared mutations', () => {
+    const g = setup();
+    const shared = g.frames(), a = g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id});
+    const b = g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id});
+    assert.notStrictEqual(a, b); assert.notStrictEqual(a, shared);
+    const first = BWValues.arrayValue(g.runtime, a), second = BWValues.arrayValue(g.runtime, b);
+    const cached = BWValues.arrayValue(g.runtime, shared);
+    assert.notStrictEqual(first, second); assert.notStrictEqual(first[0], second[0]);
+    assert.notStrictEqual(first[0], cached[0]);
+    const left = g.arcade._image(first[0]), right = g.arcade._image(second[0]);
+    assert.notStrictEqual(left.pixels, right.pixels); assert.notStrictEqual(left.palette, right.palette);
+    assert.notStrictEqual(left.palette, g.resource.palette);
+    g.arcade.mutateImage({IMAGE: first[0], OP: 'fill', COLOR: 7}); first.pop();
+    g.arcade.mutateImage({IMAGE: cached[0], OP: 'fill', COLOR: 9});
+    assert.equal(first.length, 1); assert.equal(second.length, 2);
+    assert.equal(right.pixels[0], 2); assert.equal(g.resource.frames[0].pixels[0], 2);
+    assert.strictEqual(g.frames(), shared);
+    const next = BWValues.arrayValue(g.runtime, g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id}));
+    assert.equal(next.length, 2); assert.equal(g.arcade._image(next[0]).pixels[0], 2);
+    g.resource.frames[0].pixels[0] = 4; g.resource.revision++;
+    const edited = BWValues.arrayValue(g.runtime, g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id}));
+    assert.equal(g.arcade._image(edited[0]).pixels[0], 4);
+    assert.equal(right.pixels[0], 2, 'previous lookup retains its image');
+    assert.deepEqual(g.errors, []);
+    const other = setup(); assert.equal(other.arcade._image(edited[0]), null);
+    g.runtime.emit('PROJECT_START'); assert.equal(g.arcade._image(edited[0]), null);
+    const reset = g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id});
+    assert.equal(g.arcade._image(BWValues.arrayValue(g.runtime, reset)[0]).pixels[0], 4);
+    g.runtime.emit('PROJECT_LOADED');
+    assert.equal(BWValues.decode(g.arcade.animationAssetFreshFrames({RESOURCE: g.resource.id})), undefined);
+    assert.match(g.errors.at(-1), /missing or deleted/);
 });

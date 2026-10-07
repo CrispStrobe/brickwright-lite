@@ -202,6 +202,7 @@ class ArcadeEmitter {
             };
             this.animationFactoryNamespace = this.animationSymbol('__bwAnimationAssets');
             this.animationFunctionNames = {frames: this.animationSymbol('__bwAnimationFrames'),
+                fresh: this.animationSymbol('__bwAnimationFreshFrames'),
                 interval: this.animationSymbol('__bwAnimationInterval')};
         }
         const assetNames = new Set((this.opts.animationDocuments || []).map(document => document?.animation?.resource?.name));
@@ -250,7 +251,8 @@ class ArcadeEmitter {
         const menu = this.block(b.inputs?.RESOURCE?.[1]);
         if (menu?.opcode === 'arcade_menu_animationAssets') id = menu.fields?.animationAssets?.[0];
         if (id !== null && !this.authoredAnimationArrays.has(id)) this.note(`Animation resource unavailable: ${id}`);
-        const method = b.opcode === 'arcade_animationAssetFrames' ? this.animationFunctionNames.frames : this.animationFunctionNames.interval;
+        const method = b.opcode === 'arcade_animationAssetFrames' ? this.animationFunctionNames.frames :
+            b.opcode === 'arcade_animationAssetFreshFrames' ? this.animationFunctionNames.fresh : this.animationFunctionNames.interval;
         return `${method}("" + ${this.arrayValue(b, 'RESOURCE')})`;
     }
 
@@ -936,6 +938,7 @@ class ArcadeEmitter {
             if(op==='removeAt')return `${this.referenceArrayValue(b)}.removeAt(${v('INDEX')})`;
             this.note('Array reference take operation must be pop, shift or removeAt');return this.na();
         }
+        case 'arcade_animationAssetFreshFrames':
         case 'arcade_animationAssetFrames':
         case 'arcade_animationAssetInterval': return this.authoredAnimation(b);
         case 'arcade_createImage': return `image.create(${v('WIDTH')}, ${v('HEIGHT')})`;
@@ -2024,7 +2027,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_physicsEngineProperty'){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
                 if(value.opcode==='arcade_animationProperty'){const id=Symbol('animation property');(literal(blocks,value,'PROPERTY')==='image'?images:numbers).add(id);return id;}
-                if(value.opcode==='arcade_animationAssetFrames') {
+                if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(value.opcode)) {
                     const id=Symbol('authored animation array'), item=Symbol('authored animation image');
                     arrays.add(id); images.add(item); elements.push([id,item]); return id;
                 }
@@ -2572,6 +2575,8 @@ class ArcadeEmitter {
             for (const resource of resources) out.push(`let ${resource.variable}: Image[] = assets.animation\`${resource.nativeId}\``);
             out.push(`function ${this.animationFunctionNames.frames} (id: string): Image[] {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return ${resource.variable}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
+            out.push(`function ${this.animationFunctionNames.fresh} (id: string): Image[] {\n${resources.map(resource =>
+                `    if (id == ${JSON.stringify(resource.id)}) return assets.animation\`${resource.nativeId}\``).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
             out.push(`function ${this.animationFunctionNames.interval} (id: string): number {\n${resources.map(resource =>
                 `    if (id == ${JSON.stringify(resource.id)}) return ${resource.frames[0].durationMs}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
         }

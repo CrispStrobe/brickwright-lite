@@ -204,7 +204,7 @@ try{
         await page.getByRole('tab',{name:'Blocks',exact:true}).click();
         await page.getByTitle('Add Extension',{exact:true}).click();await page.getByText('Arcade',{exact:true}).click();
         await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
-        for(const opcode of ['arcade_animationAssetFrames','arcade_animationAssetInterval']){
+        for(const opcode of ['arcade_animationAssetFrames','arcade_animationAssetFreshFrames','arcade_animationAssetInterval']){
             let fieldRect=null;
             for(let attempt=0;attempt<24;attempt++){
                 fieldRect=await page.evaluate(opcode=>{
@@ -247,7 +247,7 @@ try{
                 const rect=block.getSvgRoot().getBoundingClientRect();return {x:rect.x+45,y:rect.y+rect.height/2};
             },opcode);
             await page.mouse.move(source.x,source.y);await page.mouse.down();
-            await page.mouse.move(650,opcode==='arcade_animationAssetFrames'?260:360,{steps:15});await page.mouse.up();
+            await page.mouse.move(650,{arcade_animationAssetFrames:260,arcade_animationAssetFreshFrames:360,arcade_animationAssetInterval:460}[opcode],{steps:15});await page.mouse.up();
             await page.waitForFunction(opcode=>window.Blockly.getMainWorkspace().getAllBlocks(false).some(block=>block.type===opcode),opcode);
             const selected=await page.evaluate(opcode=>{
                 const block=window.Blockly.getMainWorkspace().getAllBlocks(false).find(block=>block.type===opcode);
@@ -259,22 +259,28 @@ try{
             await page.waitForFunction(({id,uuid})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target=>
                 target.blocks._blocks[id]?.fields?.animationAssets?.value===uuid),{id:selected.id,uuid:published.id});
         }
-        report.journey.push('Add Extension → Arcade exposes reachable native frame/interval pickers with published name and UUID');
+        report.journey.push('Add Extension → Arcade exposes reachable native shared/fresh-frame and interval pickers with published name and UUID');
     }
     if(!publicationOnly){
         await openCode();await page.getByRole('button',{name:/From blocks/}).first().click();
         await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor({state:'visible'});
         const generated=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
         const device=/^DEVICE[^\n]*/m.exec(generated)?.[0]||'DEVICE ARCADE';
-        await editor().fill(`${device}\nGLOBAL actor\nGLOBAL frames\nGLOBAL interval\nGLOBAL phase\n${generated.replace(/^DEVICE[^\n]*\n?/m,'').trimEnd()}\nSPRITE Game:\nWHEN flag clicked:\n  hide\n  arcade set background color to 1\n  set actor to arcade create image (arcade new image width 3 height 2) template "" kind "Player"\n  arcade set position of actor x 80 y 60\n  arcade set scale of actor to 8 anchor 0\n  set frames to `);
+        await editor().fill(`${device}\nGLOBAL actor\nGLOBAL frames\nGLOBAL interval\nGLOBAL phase\nGLOBAL freshFirst\nGLOBAL freshSecond\nGLOBAL freshPixel\nGLOBAL sharedPixel\nGLOBAL freshSame\n${generated.replace(/^DEVICE[^\n]*\n?/m,'').trimEnd()}\nSPRITE Game:\nWHEN flag clicked:\n  hide\n  arcade set background color to 1\n  set actor to arcade create image (arcade new image width 3 height 2) template "" kind "Player"\n  arcade set position of actor x 80 y 60\n  arcade set scale of actor to 8 anchor 0\n  set frames to `);
         await editor().click();await page.keyboard.press('Control+End');
         await page.getByTestId('bw-code-animation-picker').selectOption(published.id);
         await page.getByTestId('bw-code-animation-insert-frames').click();
         await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText('\n  set interval to ');
         await page.getByTestId('bw-code-animation-insert-interval').click();
+        for(const variable of ['freshFirst','freshSecond']){
+            await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  set ${variable} to `);
+            await page.getByTestId('bw-code-animation-insert-fresh').click();
+        }
+        await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  arcade set image pixel (item 0 of array reference (freshFirst)) x 0 y 0 color 7\n  set freshPixel to arcade image pixel (item 0 of array reference (freshSecond)) x 0 y 0\n  set sharedPixel to arcade image pixel (item 0 of array reference (frames)) x 0 y 0\n  set freshSame to compare value (freshFirst) op "===" with (freshSecond)`);
+
         await editor().click();await page.keyboard.press('Control+End');await page.keyboard.insertText(`\n  arcade animate sprite actor frames frames interval interval loop (1 = 1)\n  set phase to 1\nWHEN space key pressed:\n  arcade animate sprite actor frames frames interval interval loop (1 = 1)\n  set phase to 1\nWHEN z key pressed:\n  arcade stop animations of actor type 1\n  set phase to 2\nWHEN arcade every 20 ms:\n  arcade log (arcade pixel of actor x 0 y 0)\n`);
         const inserted=await editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
-        assert.ok(inserted.includes(`arcade animation frames resource "${published.id}"`));assert.ok(inserted.includes(`arcade animation interval resource "${published.id}"`));
+        assert.ok(inserted.includes(`arcade animation frames resource "${published.id}"`));assert.ok(inserted.includes(`arcade animation fresh frames resource "${published.id}"`));assert.ok(inserted.includes(`arcade animation interval resource "${published.id}"`));
         await apply();
         // Wait for the visible workspace render, not only VM deserialization.
         await page.waitForFunction(()=>{
@@ -309,6 +315,14 @@ try{
         await page.getByTestId('bw-arcade-a').click();await phase(1);await observePlayback('controller-restart',[2,5,9]);
         await stop().click();await flag().click();await phase(1);await observePlayback('green-flag-restart',[2,5,9]);await stop().click();
         report.journey.push('actual controller B stops, A restarts, Stop/green flag resets; authored pixels and visible colours cycle in order');
+        const freshState=await page.evaluate(()=>{
+            const variables=window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(target=>Object.values(target.variables));
+            return Object.fromEntries(['freshPixel','sharedPixel','freshSame'].map(name=>[name,variables.find(variable=>variable.name===name)?.value]));
+        });
+        assert.deepEqual(freshState,{freshPixel:2,sharedPixel:2,freshSame:false});
+        report.freshLookup={codePicker:true,mutationIsolated:true,observed:freshState};
+        report.journey.push('actual fresh-frame Code picker builds distinct arrays/images; mutating one lookup preserves another and shared playback');
+
         // The authored resource belongs to Stage; Code apply selects the Game script host.
         await pixels('Backdrops');await panel('frames');await page.getByTestId('bw-pixel-frame-2').click();
         await page.getByRole('button',{name:'Earlier frame',exact:true}).click();

@@ -78,3 +78,14 @@ test('failed Pixel save blocks costume selection and target mutation; successful
     assert.equal(saves, 2, 'unchanged artwork requires no save');
     assert.equal(switches, 2);
 });
+
+test('fresh insertion is a separate undoable Code operation', () => {
+    const cm = editor();
+    const control = {state: {animationResourceId: 'walk'}, props: {vm: {}}, _cmEditor: cm,
+        setActiveCode() { assert.fail('live editor owns insertion'); }};
+    insertResource(new Map([['walk', {}]])).call(control, 'fresh');
+    assert.equal(cm._view.state.doc.toString(), 'before (arcade animation fresh frames resource "walk") after');
+    assert.equal(undoDepth(cm._view.state), 1);
+    assert.equal(undo({state: cm._view.state, dispatch: spec => cm._view.dispatch(spec)}), true);
+    assert.equal(cm._view.state.doc.toString(), 'before SELECT after');
+});

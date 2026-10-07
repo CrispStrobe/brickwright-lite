@@ -83,8 +83,9 @@ test('missing and duplicate resources remain named export refusals', () => {
 
 
 test('computed missing IDs preserve undefined results and report names in original execution', async () => {
+  for (const operation of ['frames', 'fresh frames', 'interval']) {
     const creator = new Creator();
-    creator.parse(`DEVICE ARCADE\nGLOBAL key = "missing"\nGLOBAL result\nWHEN flag clicked:\n  set result to (arcade animation frames resource (key))\n  arcade log (compare value (result) op "===" with (undefined value))\n`);
+    creator.parse(`DEVICE ARCADE\nGLOBAL key = "missing"\nGLOBAL result\nWHEN flag clicked:\n  set result to (arcade animation ${operation} resource (key))\n  arcade log (compare value (result) op "===" with (undefined value))\n`);
     assert.deepEqual(creator.warnings, []);
     const exported = projectToArcade(creator.project, {animationDocuments: [sourceDocument()]});
     assert.deepEqual(exported.unsupported, []);
@@ -94,24 +95,26 @@ test('computed missing IDs preserve undefined results and report names in origin
     assert.equal(run.error, null);
     assert.ok(run.serial.some(entry => String(entry.text).includes('Animation resource unavailable: missing')));
     assert.ok(run.serial.some(entry => String(entry.text).includes('true')));
+  }
 });
 
 
 test('animation helper names avoid saved variables first referenced after the resource', async () => {
     const creator = new Creator();
-    creator.parse(program(`"${id}"`).replace('GLOBAL actor', 'GLOBAL __bwAnimationFrames0 = 42\nGLOBAL __bwAnimationFrames = "saved"\nGLOBAL __bwAnimationInterval = 17\nGLOBAL actor') +
-        '  arcade log (__bwAnimationFrames0)\n  arcade log (__bwAnimationFrames)\n  arcade log (__bwAnimationInterval)\n');
+    creator.parse(program(`"${id}"`).replace('GLOBAL actor', 'GLOBAL __bwAnimationFrames0 = 42\nGLOBAL __bwAnimationFrames = "saved"\nGLOBAL __bwAnimationInterval = 17\nGLOBAL __bwAnimationFreshFrames = 23\nGLOBAL actor') +
+        '  arcade log (__bwAnimationFrames0)\n  arcade log (__bwAnimationFrames)\n  arcade log (__bwAnimationInterval)\n  arcade log (__bwAnimationFreshFrames)\n');
     assert.deepEqual(creator.warnings, []);
     const exported = projectToArcade(creator.project, {animationDocuments: [sourceDocument()]});
     assert.deepEqual(exported.unsupported, []);
     assert.match(exported.ts, /let __bwAnimationFrames0_: Image\[\]/);
     assert.match(exported.ts, /function __bwAnimationFrames_ \(id: string\)/);
     assert.match(exported.ts, /function __bwAnimationInterval_ \(id: string\)/);
+    assert.match(exported.ts, /function __bwAnimationFreshFrames_ \(id: string\)/);
     const compiled = await compile('arcade', exported.files);
     assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
     const run = await runArcadeSim(compiled.outfiles['binary.js'], {ms: 75});
     assert.equal(run.error, null);
-    for (const value of ['42', 'saved', '17']) assert.ok(run.serial.some(entry => String(entry.text).includes(value)), value);
+    for (const value of ['42', 'saved', '17', '23']) assert.ok(run.serial.some(entry => String(entry.text).includes(value)), value);
 });
 
 
@@ -142,5 +145,66 @@ test('single-frame and endpoint native durations export as real assets and compi
         const imported = arcadeToPseudocode(exported.files);
         assert.deepEqual(imported.unsupported, []);
         assert.deepEqual(imported.animationResources[0].document, document);
+    }
+});
+
+test('fresh resource export preserves native factory allocation and isolates array/image mutations in original PXT', async () => {
+    for (const resource of [`"${id}"`, '(key)']) {
+        const source = `DEVICE ARCADE
+GLOBAL key = "${id}"
+GLOBAL shared
+GLOBAL first
+GLOBAL second
+GLOBAL third
+GLOBAL discarded
+WHEN flag clicked:
+  set shared to arcade animation frames resource ${resource}
+  set first to arcade animation fresh frames resource ${resource}
+  set second to arcade animation fresh frames resource ${resource}
+  arcade log (compare value (first) op "===" with (second))
+  arcade log (compare value (item 0 of array reference (first)) op "===" with (item 0 of array reference (second)))
+  arcade set image pixel (item 0 of array reference (first)) x 0 y 0 color 7
+  arcade log (arcade image pixel (item 0 of array reference (second)) x 0 y 0)
+  arcade log (arcade image pixel (item 0 of array reference (shared)) x 0 y 0)
+  arcade set image pixel (item 0 of array reference (shared)) x 0 y 0 color 9
+  set third to arcade animation fresh frames resource ${resource}
+  arcade log (arcade image pixel (item 0 of array reference (third)) x 0 y 0)
+  arcade log (compare value (shared) op "===" with (arcade animation frames resource ${resource}))
+  set discarded to (pop from array reference (first) index 0)
+  arcade log (length of array reference (first))
+  arcade log (length of array reference (second))
+`;
+        const creator = new Creator(); creator.parse(source);
+        assert.deepEqual(creator.warnings, []);
+        const output = projectToArcade(creator.project, {animationDocuments: [sourceDocument()]});
+        assert.deepEqual(output.unsupported, []); assert.deepEqual(output.warnings, []);
+        assert.match(output.ts, /let first: Image\[\]/);
+        assert.match(output.ts, /function __bwAnimationFreshFrames.*\n.*return assets\.animation`/);
+        const compiled = await compile('arcade', output.files);
+        assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
+        const executed = await runArcadeSim(compiled.outfiles['binary.js'], {ms: 100});
+        assert.equal(executed.error, null);
+        assert.deepEqual(executed.serial.map(row => String(row.text).trim()), ['false','false','2','2','2','true','1','2']);
+        // A complete BW → native → BW → native permutation must retain the
+        // allocation distinction, even before editable library restoration.
+        const imported = arcadeToPseudocode(output.files);
+        assert.deepEqual(imported.unsupported, []);
+        const roundtrip = new Creator(); roundtrip.parse(imported.code);
+        assert.deepEqual(roundtrip.warnings, []);
+        for (const costume of imported.costumes) {
+            const applied = costume.mode === 'add' ?
+                roundtrip.addCustomSVGCostume(costume.sprite, costume.svg, costume.name) :
+                roundtrip.applyCustomSVG(costume.sprite, costume.svg);
+            assert.equal(applied, true, `attach imported artwork: ${costume.sprite}`);
+        }
+        const returned = projectToArcade(roundtrip.project, {
+            costumeSvg: (_target, costume) => roundtrip.assets.get(costume.assetId)?.data || null
+        });
+        assert.deepEqual(returned.unsupported, []);
+        const rebuilt = await compile('arcade', returned.files);
+        assert.equal(rebuilt.success, true, JSON.stringify(rebuilt.diagnostics));
+        const rerun = await runArcadeSim(rebuilt.outfiles['binary.js'], {ms: 100});
+        assert.equal(rerun.error, null);
+        assert.deepEqual(rerun.serial.map(row => String(row.text).trim()), ['false','false','2','2','2','true','1','2']);
     }
 });

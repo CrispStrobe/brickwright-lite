@@ -2088,7 +2088,9 @@ class PseudocodeImporter extends React.Component {
             const resources = syncAnimationResources(this.props.vm);
             const id = this.state.animationResourceId || resources.keys().next().value;
             if (!resources.has(id)) throw new Error('Choose an available published animation.');
-            const text = `(arcade animation ${kind === 'frames' ? 'frames' : 'interval'} resource ${JSON.stringify(id)})`;
+            const word = {frames: 'frames', fresh: 'fresh frames', interval: 'interval'}[kind];
+            if (!word) throw new Error('Unknown animation resource operation.');
+            const text = `(arcade animation ${word} resource ${JSON.stringify(id)})`;
             if (!this._cmEditor?.insertText?.(text)) this.setActiveCode(`${this.activeCode()}${text}`);
         } catch (error) { this.setState({status: error.message}); }
     }
@@ -5429,6 +5431,10 @@ class PseudocodeImporter extends React.Component {
                         <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
                             data-testid="bw-code-animation-insert-frames" onClick={() => this.insertAnimationResource('frames')}>
                             {pickLocale(this.props.locale) === 'de' ? 'Bilder einfügen' : 'Insert frames'}</button>
+                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
+                            title={pickLocale(this.props.locale) === 'de' ? 'Jeder Aufruf erzeugt neue Bilder und ein neues Array.' : 'Each call creates new images and a new array.'}
+                            data-testid="bw-code-animation-insert-fresh" onClick={() => this.insertAnimationResource('fresh')}>
+                            {pickLocale(this.props.locale) === 'de' ? 'Frische Bilder einfügen' : 'Insert fresh frames'}</button>
                         <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
                             data-testid="bw-code-animation-insert-interval" onClick={() => this.insertAnimationResource('interval')}>
                             {pickLocale(this.props.locale) === 'de' ? 'Intervall einfügen' : 'Insert interval'}</button>

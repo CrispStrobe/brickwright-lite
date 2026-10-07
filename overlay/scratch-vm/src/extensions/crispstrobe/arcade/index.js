@@ -349,6 +349,9 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'animationAssetFrames', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade animation asset [RESOURCE] frames',
             arguments: {RESOURCE: {type: Scratch.ArgumentType.STRING, menu: 'animationAssets', defaultValue: 'none'}} },
+          { opcode: 'animationAssetFreshFrames', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade animation asset [RESOURCE] fresh frames',
+            arguments: {RESOURCE: {type: Scratch.ArgumentType.STRING, menu: 'animationAssets', defaultValue: 'none'}} },
           { opcode: 'animationAssetInterval', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade animation asset [RESOURCE] interval ms',
             arguments: {RESOURCE: {type: Scratch.ArgumentType.STRING, menu: 'animationAssets', defaultValue: 'none'}} },
@@ -2212,6 +2215,15 @@ module.exports = makeExt(`// Name: Arcade
       const reference = Scratch.BWValues.arrayReference(this._runtime, images);
       this._animationAssetCache.set(resource.id, {revision: resource.revision, reference});
       return reference;
+    }
+    animationAssetFreshFrames(args) {
+      const resource = this._animationAsset(args.RESOURCE);
+      if (!resource) return Scratch.BWValues.encode(undefined);
+      // Start from authored data, never the shared (possibly mutated) cache.
+      // Each evaluation owns its array, image handles, pixels and palettes.
+      const images = resource.frames.map(frame => this._imageHandle({width: resource.width, height: resource.height,
+        pixels: Uint8Array.from(frame.pixels), palette: resource.palette.slice()}));
+      return Scratch.BWValues.arrayReference(this._runtime, images);
     }
     animationAssetInterval(args) {
       const resource = this._animationAsset(args.RESOURCE);

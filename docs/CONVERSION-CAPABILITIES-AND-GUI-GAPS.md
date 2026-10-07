@@ -316,8 +316,8 @@ Pixel publication now supports one-frame resources and exact1–65,535ms timing
 using document5/bundle6. Older bundle5 readers preserve the source unchanged;
 legacy document validation remains unchanged. Focused tests include actual
 original-PXT compilation/execution at both interval endpoints, companion
-recovery, SB3 persistence and Undo. The imported editable library and fresh-copy
-resource operation remain open; see the [timeline bounds](ARCADE-ANIMATION-INTERCHANGE.md#native-timeline-bounds).
+recovery, SB3 persistence and Undo. The imported editable library remains open; fresh-copy
+resource lookup is the next qualified candidate below; see the [timeline bounds](ARCADE-ANIMATION-INTERCHANGE.md#native-timeline-bounds).
 
 At product source `f945e7feb`, runtime endpoint tests pass6/6 and the verified
 profiling production app passes nine browser journeys, including endpoint
@@ -325,6 +325,42 @@ Code-to-Blocks playback and visible pixels. Initial JavaScript4,466,357 bytes
 passes the unchanged4,467,136 limit. CLI/current-bundle tests pass3/3; original
 PXT still matches all19,200 screen pixels. Earlier stale-served-build failures
 are retained in the evidence; no budgets or assertions were relaxed.
+
+#### Fresh lookups — candidate, producer browser CI running
+
+The next candidate adds `arcade animation fresh frames resource "<UUID>"`
+and a native Blocks reporter beside the shared-frames and interval reporters.
+Each evaluation allocates its own array, images, pixels and palettes from
+unmodified authored data. Shared lookups retain their existing shared identity.
+Code exposes **Insert fresh frames** as one selection-replacing, undoable edit.
+The exporter emits original `assets.animation` factory calls for fresh lookups.
+
+The focused consumer batch passes18/18 against the explicitly selected producer
+candidate in [sb3-creator PR63](https://github.com/CrispStrobe/sb3-creator/pull/63),
+including original-PXT execution of literal/computed UUIDs, independent arrays
+and images, isolated mutation and unchanged shared lookup behaviour. Both UUID
+forms also pass the complete Brickwright → Arcade → Brickwright → Arcade
+permutation with imported artwork attached and exact returned pixel values.
+Missing IDs and helper-name collisions pass original execution. Producer
+qualification passes284/284 focused tests. Its Python/JavaScript mappings retain
+all three distinct resource calls through conversion; the standalone Scratch
+renderer shim still has neutral placeholders and is not qualified playback.
+Compiler adoption and the updated visible browser journey remain pending.
+
+To close the imported-library gap next:
+
+1. Add an explicit, versioned hidden asset-library target role; never infer the
+   role from a name or insert carrier costumes onto gameplay actors or Stage.
+2. Build and validate resource carriers inside the generated SB3 before loading
+   it, with atomic failure and a generation guard against late imports.
+3. Bind native factory lookups to fresh reporters. Preserve unused resources,
+   recovered UUIDs and rich source; create validated source documents and new
+   IDs when no valid companion exists. Stale source cannot overwrite native edits.
+4. Preserve the role through Code/Blocks and SB3 save/reopen. Test rename,
+   duplicate, deletion/Undo and exclusion from gameplay export.
+5. Qualify actual original Assets edit/save/download, then Brickwright import,
+   Pixel edit, controller playback and return export. Native format tests alone
+   cannot close that editor journey.
 
 **U04 remains open.** Unequal-duration scheduling, action binding, sheet and
 frames-as-costumes journeys and
