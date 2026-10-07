@@ -238,10 +238,11 @@ try {
     const compiled=await compile('arcade',embedded.files);assert.equal(compiled.success,true,JSON.stringify(compiled.diagnostics));
     const original=await runArcadeSim(compiled.outfiles['binary.js'],{ms:1000});assert.equal(original.error,null);
     const screen=original.screen();assert.equal(screen.length,19200);
-    assert.deepEqual(screen,backgroundPixels(AUTHORED_CORNERS),'all19200pixels of actual downloaded export render identically in original PXT');
+    assert.deepEqual(Array.from(screen),nativePixels,'all19200pixels of actual downloaded export match actual Brickwright playback, including transparent Stage composition');
     report.originalPxt={compiled:true,pixelsCompared:screen.length,screenSha256:crypto.createHash('sha256').update(screen).digest('hex'),compilerNetworkAttempts:compiled.netAttempts};
     report.bwliteRuntime.originalDifferences=nativePixels.reduce((n,colour,index)=>n+Number(colour!==screen[index]),0);
-    report.bwliteRuntime.remainingGap=report.bwliteRuntime.originalDifferences?'Scratch Stage and native Arcade transparent-background composition differ; native resource/scene binding remains open.':null;
+    assert.equal(report.bwliteRuntime.originalDifferences,0);
+    report.bwliteRuntime.remainingGap=null;
     report.artwork={name:before.costume.name,sha256:before.sha256,width:160,height:120,layers:2,scale:3};
     report.journey.push('actual Arcade download compiles and renders all19200pixels exactly in original PXT');
     assert.deepEqual(report.pageErrors,[]);

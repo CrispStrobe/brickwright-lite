@@ -2174,6 +2174,12 @@ class ArcadeEmitter {
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
+        // Scratch's Stage composites transparent backdrop pixels over white.
+        // Native Arcade primitives own their scene defaults instead; do not
+        // change those programs merely because they also have a Scratch Stage.
+        const nativeArcade = this.project.targets.some(target => Object.values(target.blocks || {})
+            .some(block => block?.opcode?.startsWith('arcade_')));
+        if (!nativeArcade) out.push('scene.setBackgroundColor(1)');
         const flagScripts = [];                             // green-flag scripts: {script, clonable, sv, plain}
         const handlers = [];
         const functions = [];
