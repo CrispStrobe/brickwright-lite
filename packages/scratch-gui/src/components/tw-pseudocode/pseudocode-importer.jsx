@@ -23,7 +23,7 @@ import {
 } from '../../lib/bw-matrix/capabilities.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
-import {getCostumeDocument, inspectArtwork, applyArtwork} from '../../lib/bw-artwork-bundle.js';
+import {getCostumeDocument, inspectArtwork, applyArtwork, syncAnimationResources} from '../../lib/bw-artwork-bundle.js';
 import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
     captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../../lib/bw-code-artwork.js';
 
@@ -1258,6 +1258,9 @@ class PseudocodeImporter extends React.Component {
         this._onLoadPseudocode = event => {
             const code = event && event.detail && event.detail.code;
             if (typeof code !== 'string') return;
+            this._animationImport = null;
+            this._makeCodeRequest = null;
+            this._codeArtwork = null;
             this.setState({lang: 'pseudocode', output: null, status: '',
                 buffers: {...this.state.buffers, pseudocode: code}}, () => {
                 Promise.resolve(this.compile()).catch(e => this.setState({status: e.message}));
@@ -1285,6 +1288,8 @@ class PseudocodeImporter extends React.Component {
             // sidecar leaves the current authoring transaction untouched.
             if (outcome === 'legacy' || outcome === 'loaded') {
                 this._codeArtwork = null;
+                this._animationImport = null;
+                this._makeCodeRequest = null;
                 this.setState({uploads: []});
             }
             // The status line below is the Code tab's own surface, and opening a
@@ -1481,6 +1486,8 @@ class PseudocodeImporter extends React.Component {
         const reader = new FileReader();
         reader.onload = () => {
             this._codeArtwork = null;
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             this.setState(st => ({
             lang, uploads: [],
             // Same exclusivity the editor's own onChange uses: one authored
@@ -1732,6 +1739,7 @@ class PseudocodeImporter extends React.Component {
     }
 
     openArtefactFile (file) {
+        const request = this._makeCodeRequest = {stage: this.props.vm.runtime.getTargetForStage()};
         this.setState({status: this.L.mcReading(file.name)});
         const reader = new FileReader();
         reader.onload = async () => {
@@ -1739,13 +1747,14 @@ class PseudocodeImporter extends React.Component {
             try {
                 const {importArtefact} = await import(
                     /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
-                res = await importArtefact(new Uint8Array(reader.result), {name: file.name});
+                res = await importArtefact(new Uint8Array(reader.result), {name: file.name, animationResources: true});
             } catch (err) {
                 this.setState({status: err && err.code === 'NO_EMBEDDED_SOURCE' ?
                     this.L.mcNoSource(file.name, err.format) :
                     this.L.mcFailed(file.name, (err && err.message) || String(err))});
                 return;
             }
+            if (this._makeCodeRequest !== request || this.props.vm.runtime.getTargetForStage() !== request.stage) return;
             // A downloaded MicroPython hex is runtime + script, so importing
             // one to read its Python also hands us the runtime the flash
             // button needs. Keeping it here means that button never has to
@@ -1783,6 +1792,8 @@ class PseudocodeImporter extends React.Component {
             return;
         }
         this._codeArtwork = null;
+        this._animationImport = null;
+        this._makeCodeRequest = null;
 
         // What the "MakeCode source" download hands back: the recovered
         // files themselves, untouched by any translation.
@@ -1810,6 +1821,9 @@ class PseudocodeImporter extends React.Component {
                 res.note === 'ev3' ? this.L.mcEv3(label, res.project.name) :
                     this.L.mcMicrobit(label, res.project.name);
         }
+        this._animationImport = res.animationResources?.length ?
+            {resources: res.animationResources, stage: this.props.vm.runtime.getTargetForStage()} : null;
+        if (res.warnings?.length) status += ` · ${res.warnings.join(' · ')}`;
         this.setState({
             lang: res.lang,
             importedPython: res.kind === 'micropython',
@@ -1841,10 +1855,12 @@ class PseudocodeImporter extends React.Component {
         const url = await promptAsync(this.L.mcSharePrompt, '');
         if (!url || !url.trim()) return;
         this.setState({status: this.L.mcShareLoading});
+        const request = this._makeCodeRequest = {stage: this.props.vm.runtime.getTargetForStage()};
         try {
             const {importShareLink} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
-            const res = await importShareLink(url.trim());
+            const res = await importShareLink(url.trim(), {animationResources: true});
+            if (this._makeCodeRequest !== request || this.props.vm.runtime.getTargetForStage() !== request.stage) return;
             this.applyMakeCodeImport(res, res.project.name || url.trim());
         } catch (err) {
             this.setState({status: this.L.mcFailed(url.trim(), (err && err.message) || String(err))});
@@ -2037,7 +2053,9 @@ class PseudocodeImporter extends React.Component {
      */
     async arcadeFromStage () {
         const vm = this.props.vm;
-        const project = JSON.parse(vm.toJSON());
+        const {assetLibraryRecords, withoutAssetLibraries} = await import('../../lib/bw-asset-library.js');
+        const savedProject = JSON.parse(vm.toJSON());
+        const project = withoutAssetLibraries(savedProject, assetLibraryRecords(vm, savedProject));
         const draw = asset => new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
@@ -2057,6 +2075,7 @@ class PseudocodeImporter extends React.Component {
         const rasters = new Map();
         const palettes = new Map();
         const sounds = new Map();
+        const animationDocuments = [];
         for (const target of vm.runtime.targets) {
             if (!target.isOriginal) continue;
             // Sound bytes, for the export's tone check (a steady tone plays; sampled audio is named).
@@ -2066,17 +2085,31 @@ class PseudocodeImporter extends React.Component {
                 rasters.set(costume.assetId, await draw(costume.asset));
                 const artwork = getCostumeDocument(costume);
                 if (artwork?.palette) palettes.set(costume.assetId, artwork.palette);
+                if (artwork?.animation?.resource) animationDocuments.push(artwork);
             }
         }
         const {projectToArcade} = await import(
             /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/export-arcade.js');
         return projectToArcade(project, {
             name: 'brickwright-game',
+            animationDocuments,
             costumeSvg: (t, c) => svgs.get(c.assetId) || null,
             costumeRgba: (t, c) => rasters.get(c.assetId) || null,
             costumePalette: (t, c) => palettes.get(c.assetId) || null,
             soundData: (t, s) => sounds.get(s.assetId) || null
         });
+    }
+
+    insertAnimationResource (kind) {
+        try {
+            const resources = syncAnimationResources(this.props.vm);
+            const id = this.state.animationResourceId || resources.keys().next().value;
+            if (!resources.has(id)) throw new Error('Choose an available published animation.');
+            const word = {frames: 'frames', fresh: 'fresh frames', interval: 'interval'}[kind];
+            if (!word) throw new Error('Unknown animation resource operation.');
+            const text = `(arcade animation ${word} resource ${JSON.stringify(id)})`;
+            if (!this._cmEditor?.insertText?.(text)) this.setActiveCode(`${this.activeCode()}${text}`);
+        } catch (error) { this.setState({status: error.message}); }
     }
 
     async runAsArcade () {
@@ -4329,6 +4362,8 @@ class PseudocodeImporter extends React.Component {
             // Nano + 8-LED chaser showed an stc12, 2026-08-17). setState is
             // async — compile in its callback, on the NEW buffer.
             this._codeArtwork = null;
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             this.setState({busy: false, lang: 'pseudocode', output: null, uploads: [],
                 status: warnings.length ? warnings.join('; ') : '',
                 buffers: {pseudocode: src, python: '', javascript: '', c: '', basic: '', asm: '', micropython: ''}},
@@ -4413,6 +4448,8 @@ class PseudocodeImporter extends React.Component {
         const src = loaded && loaded[key];
         if (!src) return;
         this._codeArtwork = null;
+        this._animationImport = null;
+        this._makeCodeRequest = null;
         this.setState({uploads: []});
         this.publishGameControls(GROUPS[0].items.some(([gameKey]) => gameKey === key) ? key : null);
         const device = this.currentDevice();
@@ -4515,6 +4552,9 @@ class PseudocodeImporter extends React.Component {
         const lang = typeof pseudocode === 'string' ? 'pseudocode' : this.state.lang;
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
+        const pending = this._animationImport;
+        const stage = this.props.vm.runtime.getTargetForStage();
+        const activeAtStart = this.activeCode();
         try {
             let source = typeof pseudocode === 'string' ? pseudocode : this.activeCode();
             let parseWarnings = [];
@@ -4570,20 +4610,31 @@ class PseudocodeImporter extends React.Component {
             const blob = await creator.generateSB3();
             let projectBytes = await blob.arrayBuffer();
             let artwork = null;
-            if (context) {
+            if (context || pending) {
                 const module = await import('jszip');
                 const ZIP = module.default || module;
                 const zip = await ZIP.loadAsync(projectBytes);
-                retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
-                const revision = captureCodeArtworkRevision(this.props.vm, context);
+                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                const revision = context && captureCodeArtworkRevision(this.props.vm, context);
+                if (pending) {
+                    if (pending.stage !== stage) throw new Error('The loaded project changed since this animation import. Import it again.');
+                    const {installAnimationImport} = await import('../../lib/bw-animation-import.js');
+                    const storage = this.props.vm.runtime.storage;
+                    await installAnimationImport(zip, pending.resources, bytes => storage.createAsset(
+                        storage.AssetType.ImageVector, storage.DataFormat.SVG, bytes, null, true).assetId);
+                }
                 projectBytes = await zip.generateAsync({type: 'arraybuffer', compression: 'DEFLATE'});
                 artwork = await inspectArtwork(projectBytes);
-                if (artwork.outcome === 'invalid' || !codeArtworkMatches(this.props.vm, context) ||
-                    !codeArtworkRevisionMatches(this.props.vm, revision)) {
+                if (artwork.outcome === 'invalid' || (context && (!codeArtworkMatches(this.props.vm, context) ||
+                    !codeArtworkRevisionMatches(this.props.vm, revision)))) {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
+            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending ||
+                this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
             await this.props.vm.loadProject(projectBytes);
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             if (artwork) {
                 applyArtwork(artwork, this.props.vm);
                 this._codeArtwork = captureCodeArtwork(this.props.vm, declarations);
@@ -4696,7 +4747,9 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true, status: this.L.stReading, conversionReport: null});
         try {
             const SB3Creator = (await this.lib()).default;
-            const project = JSON.parse(this.props.vm.toJSON());
+            const {assetLibraryRecords, withoutAssetLibraries} = await import('../../lib/bw-asset-library.js');
+            const savedProject = JSON.parse(this.props.vm.toJSON());
+            const project = withoutAssetLibraries(savedProject, assetLibraryRecords(this.props.vm, savedProject));
             const basicResult = new SB3Creator().generateBASIC(project, {profile: this.state.basicProfile.startsWith('i8086') ? 'ms' : this.state.basicProfile, lineNumbers: this.state.basicLineNumbers});
             const mpResult = new SB3Creator().generateMicroPython(project);
             const buffers = {
@@ -4711,6 +4764,8 @@ class PseudocodeImporter extends React.Component {
             this.setState({importedPython: false});
             const baseline = new SB3Creator();
             baseline.parse(buffers.pseudocode);
+            this._animationImport = null;
+            this._makeCodeRequest = null;
             this._codeArtwork = captureCodeArtwork(this.props.vm, baseline.project);
             // Diagnostics sit inside scripts too, indented, so match any indent and
             // list each one: a count of column-0 comments reported "✓ OK" for them.
@@ -5404,6 +5459,29 @@ class PseudocodeImporter extends React.Component {
                         ) : null}
                     </div>
                 )}
+                {this.state.lang === 'pseudocode' && this.currentDevice() === 'arcade' ? (() => {
+                    const resources = [...(this.props.vm.runtime.bwArcadeAnimationResources?.values() || [])];
+                    const id = this.state.animationResourceId || resources[0]?.id || '';
+                    return <div data-testid="bw-code-animation-resources" style={{display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0'}}>
+                        <label>Animation{' '}
+                            <select data-testid="bw-code-animation-picker" value={id}
+                                onChange={event => this.setState({animationResourceId: event.target.value})}>
+                                {!resources.length ? <option value="">{pickLocale(this.props.locale) === 'de' ? 'Zuerst in Pixel veröffentlichen' : 'Publish a timeline in Pixel first'}</option> : null}
+                                {resources.map(resource => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                            </select>
+                        </label>
+                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
+                            data-testid="bw-code-animation-insert-frames" onClick={() => this.insertAnimationResource('frames')}>
+                            {pickLocale(this.props.locale) === 'de' ? 'Bilder einfügen' : 'Insert frames'}</button>
+                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
+                            title={pickLocale(this.props.locale) === 'de' ? 'Jeder Aufruf erzeugt neue Bilder und ein neues Array.' : 'Each call creates new images and a new array.'}
+                            data-testid="bw-code-animation-insert-fresh" onClick={() => this.insertAnimationResource('fresh')}>
+                            {pickLocale(this.props.locale) === 'de' ? 'Frische Bilder einfügen' : 'Insert fresh frames'}</button>
+                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
+                            data-testid="bw-code-animation-insert-interval" onClick={() => this.insertAnimationResource('interval')}>
+                            {pickLocale(this.props.locale) === 'de' ? 'Intervall einfügen' : 'Insert interval'}</button>
+                    </div>;
+                })() : null}
                 {this.state.revealed ? (
                     <React.Suspense fallback={
                         <FallbackEditor

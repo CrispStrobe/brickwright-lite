@@ -39,6 +39,10 @@
  * @module
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
+import {animationResourceFromDocument} from '../bw-animation-resources.js';
+import {encodeAnimationJres, nativeAnimationNameBase} from './animation-jres.js';
+import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
+import {validateDocument} from '../bw-artwork-bundle.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
@@ -115,6 +119,7 @@ class ArcadeEmitter {
         // stays a Boolean. A Scratch-only project keeps Scratch's numbers.
         this.arcadeValues = project.targets.some(t => Object.values(t.blocks || {})
             .some(b => b && /^(arcade|arrays)_/.test(b.opcode || '')));
+        this.initialGlobals = new Map();
         this.globals = new Map();       // Scratch variable id|name -> TS name
         this.fnNames = new Map();       // `${target}:${proccode}` -> TS name
         this.target = null;
@@ -141,6 +146,8 @@ class ArcadeEmitter {
         this.artPixels = new Map();
         this.handleTemplateVars = new Map();
         this.frameArrays = new Map();
+        this.authoredAnimationArrays = new Map();
+        this.usesAnimationResources = false;
         this.sharedImageArrays = new Map();
         this.imageVars = new Set();
         this.handleVars = new Set();
@@ -163,6 +170,7 @@ class ArcadeEmitter {
             const palette = costume && opts.costumePalette?.(target, costume);
             return isPalette(palette) ? palette : ARCADE_PALETTE;
         });
+        palettes.push(...(opts.animationDocuments || []).map(document => document.palette).filter(isPalette));
         this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
     }
 
@@ -173,6 +181,86 @@ class ArcadeEmitter {
             this.warn('Stage white matte quantized to the nearest opaque project palette colour');
         }
         return `scene.setBackgroundColor(${index})`;
+    }
+
+    prepareAuthoredAnimations () {
+        if (this.authoredAnimationsPrepared) return;
+        this.authoredAnimationsPrepared = true;
+        if (!this.animationFunctionNames) {
+            const declaredVariables = this.project.targets.flatMap(target => Object.values(target.variables || {}).map(variable => {
+                let name = ident(target.isStage || this.isGlobalVar(variable[0]) ? variable[0] : `${target.name}_${variable[0]}`);
+                if (RESERVED.has(name)) name += '_';
+                return name;
+            }));
+            const occupied = new Set([...declaredVariables, ...this.globals.values(), ...this.fnNames.values(), ...this.spriteVar.values(),
+                ...[...this.sharedImageArrays.values(), ...this.frameArrays.values()].map(array => array.name)]);
+            this.animationSymbol = base => {
+                let name = base;
+                while (occupied.has(name)) name += '_';
+                occupied.add(name);
+                return name;
+            };
+            this.animationFactoryNamespace = this.animationSymbol('__bwAnimationAssets');
+            this.animationFunctionNames = {frames: this.animationSymbol('__bwAnimationFrames'),
+                fresh: this.animationSymbol('__bwAnimationFreshFrames'),
+                interval: this.animationSymbol('__bwAnimationInterval')};
+        }
+        // Reserve projections before suffix allocation, so a duplicate cannot
+        // take another resource's existing display name or generated ID alias.
+        const assetNames = new Set((this.opts.animationDocuments || [])
+            .map(document => document?.animation?.resource?.name)
+            .filter(name => typeof name === 'string').map(nativeAnimationNameBase));
+        const usedNames = new Set();
+        if (!this.authoredAnimationArrays.size) {
+            for (const document of this.opts.animationDocuments || []) {
+                if (!document?.animation?.resource) continue;
+                try {
+                    const resource = animationResourceFromDocument(document);
+                    if (this.authoredAnimationArrays.has(resource.id)) {
+                        this.note(`Duplicate animation resource ID: ${resource.id}`);
+                        continue;
+                    }
+                    for (const warning of resource.warnings) this.warn(warning);
+                    const baseName = nativeAnimationNameBase(resource.name);
+                    let nativeName = baseName, suffix = 2;
+                    while (usedNames.has(nativeName) || (nativeName !== baseName && assetNames.has(nativeName))) {
+                        const ending = ` ${suffix++}`;
+                        nativeName = baseName.slice(0, 80 - ending.length) + ending;
+                    }
+                    const images = resource.frames.map(frame => {
+                        const image = {width: resource.width, height: resource.height, pixels: frame.pixels};
+                        if (samePalette(resource.palette, this.palette)) return image;
+                        if (resource.palette.some((colour, index) => index && !this.palette.some(target =>
+                            String(target).toLowerCase() === String(colour).toLowerCase()))) {
+                            this.warn(`Animation "${resource.name}" colours quantized to the exported project palette`);
+                        }
+                        return remapPalette(image, resource.palette, this.palette);
+                    });
+                    let nativeId = `animation${this.authoredAnimationArrays.size}`;
+                    while (assetNames.has(nativeId) || usedNames.has(nativeId) || nativeId === nativeName) nativeId += '_';
+                    const nativeEntry = encodeAnimationJres({id: nativeId, namespace: 'myAnimations',
+                        name: nativeName, width: resource.width, height: resource.height,
+                        intervalMs: resource.frames[0].durationMs, frames: images});
+                    usedNames.add(nativeName);
+                    if (nativeName !== resource.name) this.warn(`Animation name ${JSON.stringify(resource.name)} mapped to ${JSON.stringify(nativeName)} for native export`);
+                    this.authoredAnimationArrays.set(resource.id, {...resource, nativeId, nativeEntry, document,
+                        variable: this.animationSymbol(`__bwAnimationFrames${this.authoredAnimationArrays.size}`),
+                        literals: images.map(image => toImgLiteral(image))});
+                } catch (error) { this.note(error.message); }
+            }
+        }
+    }
+
+    authoredAnimation (b) {
+        this.usesAnimationResources = true;
+        this.prepareAuthoredAnimations();
+        let id = this.literalInput(b, 'RESOURCE');
+        const menu = this.block(b.inputs?.RESOURCE?.[1]);
+        if (menu?.opcode === 'arcade_menu_animationAssets') id = menu.fields?.animationAssets?.[0];
+        if (id !== null && !this.authoredAnimationArrays.has(id)) this.note(`Animation resource unavailable: ${id}`);
+        const method = b.opcode === 'arcade_animationAssetFrames' ? this.animationFunctionNames.frames :
+            b.opcode === 'arcade_animationAssetFreshFrames' ? this.animationFunctionNames.fresh : this.animationFunctionNames.interval;
+        return `${method}("" + ${this.arrayValue(b, 'RESOURCE')})`;
     }
 
     /** Record what kind of value a variable is given, for its declaration. */
@@ -433,6 +521,13 @@ class ArcadeEmitter {
         let ts = ident(target.isStage || this.isGlobalVar(name) ? name : `${target.name}_${name}`);
         if (RESERVED.has(ts)) ts = `${ts}_`;
         this.globals.set(key, ts);
+        const owner = this.isGlobalVar(name) ? this.project.targets.find(candidate => candidate.isStage) : target;
+        const initial = Object.values(owner.variables || {}).find(variable => variable[0] === name)?.[1];
+        if (['string', 'number', 'boolean'].includes(typeof initial) &&
+            (typeof initial !== 'number' || Number.isFinite(initial))) {
+            this.initialGlobals.set(ts, initial);
+            if (typeof initial !== 'number' || initial !== 0) this.assign(ts, '', typeof initial);
+        }
         return ts;
     }
 
@@ -850,6 +945,9 @@ class ArcadeEmitter {
             if(op==='removeAt')return `${this.referenceArrayValue(b)}.removeAt(${v('INDEX')})`;
             this.note('Array reference take operation must be pop, shift or removeAt');return this.na();
         }
+        case 'arcade_animationAssetFreshFrames':
+        case 'arcade_animationAssetFrames':
+        case 'arcade_animationAssetInterval': return this.authoredAnimation(b);
         case 'arcade_createImage': return `image.create(${v('WIDTH')}, ${v('HEIGHT')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
         case 'arcade_imageProperty': return `${v('IMAGE')}.${this.field(b,'PROPERTY')}`;
@@ -1522,7 +1620,7 @@ class ArcadeEmitter {
             push(`game.showLongText(${v('TEXT', '""')}, DialogLayout.${layout})`);
             return;
         }
-        case 'arcade_log': push(`console.log(${v('TEXT', '""')})`); return;
+        case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
         case 'arcade_gameover': push('game.over(false)'); return;
         case 'procedures_call': {
             const code = b.mutation && b.mutation.proccode;
@@ -1936,6 +2034,11 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_physicsEngineProperty'){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
                 if(value.opcode==='arcade_animationProperty'){const id=Symbol('animation property');(literal(blocks,value,'PROPERTY')==='image'?images:numbers).add(id);return id;}
+                if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(value.opcode)) {
+                    const id=Symbol('authored animation array'), item=Symbol('authored animation image');
+                    arrays.add(id); images.add(item); elements.push([id,item]); return id;
+                }
+                if(value.opcode==='arcade_animationAssetInterval'){const id=Symbol('animation interval');numbers.add(id);return id;}
                 if(value.opcode==='arcade_spritesOfKind'){const id=`${key}:sprite-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if (['arrays_createReference','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(value.opcode)) {
                     const id=`${key}:array-value:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
@@ -2465,8 +2568,24 @@ class ArcadeEmitter {
             // A variable given both text and numbers is `any` — Scratch's own
             // variables are untyped, and that is the honest translation.
             const arrayKind=[...kinds].find(kind=>kind.endsWith('[]'));
+            const initial = this.initialGlobals.has(n) ? JSON.stringify(this.initialGlobals.get(n)) : '0';
+            // Scratch's saved zero is a real initial value, even when the
+            // script later assigns text or Boolean values. Keep both types.
+            const initialScalarType = typeof this.initialGlobals.get(n);
+            const mixedInitialScalar = this.initialGlobals.has(n) &&
+                ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') ? `let ${n}: any = 0` : kinds.has('string') ? `let ${n} = ""` : kinds.has('boolean') ? `let ${n} = false` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = 0`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+        }
+        if (this.usesAnimationResources) {
+            const resources = [...this.authoredAnimationArrays.values()];
+            for (const resource of resources) out.push(`let ${resource.variable}: Image[] = assets.animation\`${resource.nativeId}\``);
+            out.push(`function ${this.animationFunctionNames.frames} (id: string): Image[] {\n${resources.map(resource =>
+                `    if (id == ${JSON.stringify(resource.id)}) return ${resource.variable}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
+            out.push(`function ${this.animationFunctionNames.fresh} (id: string): Image[] {\n${resources.map(resource =>
+                `    if (id == ${JSON.stringify(resource.id)}) return assets.animation\`${resource.nativeId}\``).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
+            out.push(`function ${this.animationFunctionNames.interval} (id: string): number {\n${resources.map(resource =>
+                `    if (id == ${JSON.stringify(resource.id)}) return ${resource.frames[0].durationMs}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
         }
         for (const {name, frames} of [...this.frameArrays.values(), ...this.sharedImageArrays.values()]) {
             out.push(`let ${name}: Image[] = [${frames.map(frame => toImgLiteral(frame)).join(', ')}]`);
@@ -2612,18 +2731,44 @@ class ArcadeEmitter {
  * @param {(target, costume) => string|null} [opts.costumeSvg] the costume's SVG text, if it is an SVG
  * @param {(target, costume) => {rgba, width, height}|null} [opts.costumeRgba] its pixels, for anything else
  * @param {(target, costume) => Array<string|null>|null} [opts.costumePalette] editable palette, if any
+ * @param {Array<object>} [opts.animationDocuments] full published Pixel timeline source documents
  * @param {(stage) => object|null} [opts.stageBackground] a 160x120 palette image for the backdrop
  * @returns {{ts: string, files: object, unsupported: string[], warnings: string[]}}
  */
 export function projectToArcade (project, opts = {}) {
     const e = new ArcadeEmitter(project, opts);
     const ts = e.emit();
+    // Publish unused assets as well, without introducing unused main-code helpers.
+    e.prepareAuthoredAnimations();
+    const resources = [...e.authoredAnimationArrays.values()];
+    const assetFiles = resources.length ? {
+        'images.g.jres': `${JSON.stringify(Object.fromEntries(resources.map(resource =>
+            [`myAnimations.${resource.nativeId}`, resource.nativeEntry])), null, 4)}\n`,
+        'images.g.ts': `namespace ${e.animationFactoryNamespace} {\n    helpers._registerFactory("animation", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${resources.map(resource => [...new Set([resource.nativeEntry.displayName, resource.nativeId])].map(alias =>
+            `            case ${JSON.stringify(alias)}:`).join('\n') +
+            `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
+    } : {};
+    const sourceEntries = [];
+    for (const resource of resources) {
+        try { validateDocument(resource.document); }
+        catch (error) {
+            // The public behaviour exporter also accepts normalized frame-only
+            // inputs. They are not complete, editable artwork documents.
+            e.warn(`Animation "${resource.name}" rich source not exported: ${error.message}`);
+            continue;
+        }
+        sourceEntries.push({nativeId: resource.nativeEntry.namespace ?
+            `${resource.nativeEntry.namespace}.${resource.nativeEntry.id}` : resource.nativeEntry.id,
+        document: resource.document, nativeEntry: resource.nativeEntry});
+    }
+    if (sourceEntries.length) assetFiles[ANIMATION_COMPANION_PATH] = encodeAnimationCompanion(sourceEntries, e.palette);
     const name = opts.name || 'brickwright-game';
     const files = {
         'main.ts': ts,
+        ...assetFiles,
         'pxt.json': `${JSON.stringify({
             name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresAnimationPackage ? {animation: '*'} : {})},
-            files: ['main.ts'], preferredEditor: 'tsprj',
+            files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };

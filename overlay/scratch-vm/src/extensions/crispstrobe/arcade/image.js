@@ -52,14 +52,14 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
         } else return false;
         return true;
     };
-    const svg = image => {
+    const svg = (image, paletteOverride = image.palette || palette) => {
         const {width, height, pixels} = image;
         const rects = [];
         for (let y = 0; y < height; y++) for (let x = 0; x < width;) {
             const color = pixels[y * width + x]; const start = x++;
             while (x < width && pixels[y * width + x] === color) x++;
             if (color) rects.push('<rect x="' + start * 4 + '" y="' + y * 4 + '" width="' + (x - start) * 4 +
-                '" height="4" fill="' + palette[color] + '"/>');
+                '" height="4" fill="' + paletteOverride[color] + '"/>');
         }
         return '<svg xmlns="http://www.w3.org/2000/svg" width="' + width * 4 + '" height="' + height * 4 +
             '" viewBox="0 0 ' + width * 4 + ' ' + height * 4 + '" shape-rendering="crispEdges">' + rects.join('') + '</svg>';

@@ -108,25 +108,49 @@ export const expectedForShard = (workflowText, shard) => {
  * shares a rate limit with every other run in flight and a busy afternoon has
  * already produced a 403 on the same token today.
  */
-const fetchJobs = async (fetchImpl = fetch) => {
-    const {GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: runId, GH_TOKEN, GITHUB_TOKEN} = process.env;
+let apiReadSequence = 0;
+export const fetchJobs = async (fetchImpl = fetch, {env = process.env, sleep = ms => new Promise(r => setTimeout(r, ms)), now = Date.now} = {}) => {
+    const {GITHUB_REPOSITORY: repo, GITHUB_RUN_ID: runId, GH_TOKEN, GITHUB_TOKEN} = env;
     const token = GH_TOKEN || GITHUB_TOKEN;
     if (!repo || !runId || !token) throw new Error('GITHUB_REPOSITORY, GITHUB_RUN_ID and GH_TOKEN are required outside --file mode');
     const once = async () => {
+        // Actions responses advertise max-age=60. Each audit poll must read
+        // fresh state rather than reuse that entire one-minute cache window.
+        const readKey = `${now()}-${++apiReadSequence}`;
         const jobs = [];
         for (let page = 1; page <= 10; page++) {
-            const res = await fetchImpl(`https://api.github.com/repos/${repo}/actions/runs/${runId}/jobs?per_page=100&page=${page}`, {
-                headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
+            const res = await fetchImpl(`https://api.github.com/repos/${repo}/actions/runs/${runId}/jobs?per_page=100&page=${page}&bw_audit_read=${readKey}`, {
+                cache: 'no-store',
+                headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Cache-Control': 'no-cache'}
             });
             if (!res.ok) throw new Error(`GitHub HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
             const body = await res.json();
             jobs.push(...(body.jobs || []));
             if (jobs.length >= (body.total_count || 0) || !(body.jobs || []).length) break;
         }
+        // The run listing identifies the job; read its steps from the job
+        // endpoint as well. Keep identity checks explicit so a stale listing
+        // cannot substitute another run, attempt or matrix leg's conclusions.
+        const jobName = env.BW_JOB_NAME || env.GITHUB_JOB || 'build';
+        const attempt = Number(env.GITHUB_RUN_ATTEMPT || 0);
+        const mine = jobs.filter(j => j.name === jobName && (!attempt || Number(j.run_attempt || attempt) === attempt));
+        if (mine.length === 1) {
+            const listed = mine[0];
+            if (!Number.isSafeInteger(listed.id) || listed.id <= 0) throw new Error('listed job has no valid numeric identity');
+            const res = await fetchImpl(`https://api.github.com/repos/${repo}/actions/jobs/${listed.id}?bw_audit_read=${readKey}`, {
+                cache: 'no-store',
+                headers: {Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', 'Cache-Control': 'no-cache'}
+            });
+            if (!res.ok) throw new Error(`GitHub job HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
+            const detail = await res.json();
+            if (detail.id !== listed.id || detail.name !== jobName || String(detail.run_id) !== String(runId) ||
+                (attempt && Number(detail.run_attempt) !== attempt)) throw new Error('direct job response identity does not match this run and attempt');
+            jobs[jobs.indexOf(listed)] = detail;
+        }
         return jobs;
     };
     try { return await once(); } catch (first) {
-        await new Promise(r => setTimeout(r, 15000));
+        await sleep(15000);
         try { return await once(); } catch (second) { throw new Error(`${second.message} (after one retry; first attempt: ${first.message})`); }
     }
 };

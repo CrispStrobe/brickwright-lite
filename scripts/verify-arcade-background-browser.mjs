@@ -70,8 +70,8 @@ const canvasCorners=()=>page.getByTestId('bw-pixel-canvas').evaluate((canvas,cor
 },BACKGROUND_CORNERS);
 const expectedColours=corners=>corners.map(([, ,colour])=>[...ARCADE_PALETTE[colour].slice(1).match(/../g).map(value=>parseInt(value,16)),255]);
 const waitForCanvasCorners=async (expected,label)=>{
-    // VM costume selection precedes React's asynchronous PNG rasterization.
-    // The old SVG canvas can still be visible with the same160×120 dimensions.
+    // VM costume selection precedes React's asynchronous image rasterization.
+    // The old canvas can still be visible with the same160×120 dimensions.
     // Wait on the actual new pixels, not selected costume name/dimensions alone.
     try {
         await page.waitForFunction(({corners,expected})=>{
@@ -142,7 +142,14 @@ try {
         const stage=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();
         return stage.getCostumes()[stage.currentCostume]?.name.includes('uniform-background');
     });
-    await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});await panel('more');
+    await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});
+    // Unmarked SVGs also rasterize asynchronously. load() closes panels when
+    // it commits the decoded image; opening More on the previous canvas can
+    // leave a detached preset button. Observe the uploaded SVG's actual pixels
+    // before opening its controls, just as for the PNG import below.
+    await waitForCanvasCorners(expectedColours(BACKGROUND_CORNERS.map(([x,y])=>[x,y,2])),
+        'unmarked Stage SVG import');
+    await panel('more');
     await page.waitForFunction(()=>document.querySelector('[data-testid="bw-pixel-w"]')?.value==='160'&&
         document.querySelector('[data-testid="bw-pixel-h"]')?.value==='120');
     await page.getByTestId('bw-pixel-arcade-background').click();
