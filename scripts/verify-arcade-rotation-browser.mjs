@@ -58,12 +58,12 @@ try {
     const waitPhase = phase => page.waitForFunction(expected => {
         const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
         return runtime.targets.flatMap(target => Object.values(target.variables)).some(variable =>
-            variable.name.replace(/^Game_/, '') === 'phase' && variable.value === expected);
+            variable.name.replace(/^(?:Game_)+/, '') === 'phase' && variable.value === expected);
     }, phase, {timeout: 30000});
     const observe = () => page.evaluate(palette => {
         const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
         const variables = Object.fromEntries(runtime.targets.flatMap(target => Object.values(target.variables))
-            .map(variable => [variable.name.replace(/^Game_/, ''), variable.value]));
+            .map(variable => [variable.name.replace(/^(?:Game_)+/, ''), variable.value]));
         const world = runtime.bwArcadeDeviceState;
         const actor = world?.sprites?.[variables.actor];
         const target = world?.spriteTargets?.[variables.actor];
@@ -96,7 +96,7 @@ try {
         await page.waitForFunction(expected => {
             const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
             const vars = Object.fromEntries(runtime.targets.flatMap(t => Object.values(t.variables))
-                .map(v => [v.name.replace(/^Game_/, ''), v.value]));
+                .map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
             return runtime.bwArcadeDeviceState?.sprites?.[vars.actor]?.data === expected;
         }, data, {timeout: 30000});
         await page.waitForTimeout(100);
