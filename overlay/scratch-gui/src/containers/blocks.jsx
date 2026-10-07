@@ -444,7 +444,9 @@ class Blocks extends React.Component {
             let {editingTarget: target, runtime} = this.props.vm;
             const stage = runtime.getTargetForStage();
             if (!target) target = stage; // If no editingTarget, use the stage
-            if (target?.bwAssetLibrary) return '<xml xmlns="http://www.w3.org/1999/xhtml"></xml>';
+            // Blockly cannot change an existing categorized toolbox to flyout
+            // mode. Keep its category structure while removing all blocks.
+            if (target?.bwAssetLibrary) return '<xml xmlns="http://www.w3.org/1999/xhtml"><category name="Artwork library" id="bw-artwork-library"></category></xml>';
 
             const stageCostumes = stage.getCostumes();
             const targetCostumes = target.getCostumes();

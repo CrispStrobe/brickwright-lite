@@ -563,12 +563,12 @@ try{
         const renamedLibrary=await snapshot('library-renamed',{bundleVersion:7});
         assert.deepEqual(renamedLibrary.document,retainedLibrary.document);
         await page.getByRole('tab',{name:'Blocks',exact:true}).click();
-        await page.getByTestId('bw-library-notice').waitFor({state:'visible'});
+        await page.locator('[data-testid="bw-library-notice"]:visible').waitFor({state:'visible'});
         assert.equal(await page.locator('.blocklySvg:visible').count(),0);
         await page.screenshot({path:path.join(path.dirname(out),'library-blocks-notice.png')});
         await page.getByRole('tab',{name:'Sounds',exact:true}).click();
-        await page.getByTestId('bw-library-notice').waitFor({state:'visible'});
-        await page.getByTestId('bw-library-edit-artwork').click();
+        await page.locator('[data-testid="bw-library-notice"]:visible').waitFor({state:'visible'});
+        await page.locator('[data-testid="bw-library-edit-artwork"]:visible').click();
         await pixels('Robot artwork');
         const tile=page.locator('[class*="sprite-selector-item_sprite-selector-item"]').filter({has:page.getByText('Robot artwork',{exact:true})});
         await tile.click({button:'right'});
@@ -584,7 +584,7 @@ try{
         const copyId=duplicatedResources.find(row=>row.id!==published.id).id;assert.notEqual(copyId,published.id);
         const a={...duplicatedResources[0],id:null,revision:null},b={...duplicatedResources[1],id:null,revision:null};assert.deepEqual(a,b);
         await pixels('Robot artwork');await tile.getByRole('button',{name:'Delete',exact:true}).click();
-        await page.getByRole('dialog',{name:'Confirm Asset Deletion'}).getByRole('button',{name:'Delete',exact:true}).click();
+        await page.getByRole('dialog',{name:'Confirm Asset Deletion'}).getByRole('button',{name:'yes',exact:true}).click();
         await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t=>t.bwAssetLibrary).length===1);
         assert.deepEqual((await resource()).map(row=>row.id),[copyId]);
         await page.getByText('Edit',{exact:true}).first().click();
