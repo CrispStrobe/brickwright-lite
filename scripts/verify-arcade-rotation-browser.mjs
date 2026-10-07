@@ -44,6 +44,10 @@ try {
     const editor = page.locator('[data-testid="bw-code-editor"] .cm-content');
     await editor.waitFor({state: 'visible', timeout: 30000});
     await page.getByTestId('bw-device-select').selectOption('arcade');
+    // Retargeting applies its existing buffer asynchronously before publishing
+    // the selected device; wait for completion before authoring the new game.
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.bwDeviceId === 'arcade',
+        null, {timeout: 30000});
     await editor.fill(imported.code);
     const apply = async () => {
         await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
