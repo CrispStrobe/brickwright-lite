@@ -305,6 +305,13 @@ exact downloaded source recovery and an atomic malformed-file refusal. The
 affected integration batch passes20 tests, final companion/project/overlay
 batch17, and all seven CLI regressions; no skips in these batches.
 
+At product source `9f6ace3da`, both ordinary production and React profiling
+builds pass. Native animation decoding/companion validation stays deferred;
+initial JavaScript4,466,111 bytes passes the unchanged4,467,136-byte limit.
+The final animation and background browser gates each pass seven journeys.
+See the [interchange qualification](ARCADE-ANIMATION-INTERCHANGE.md) for exact
+scope and the emitted ownership receipt. Hosted final-head checks remain pending.
+
 **U04 remains open.** Unequal-duration scheduling, action binding, sheet and
 frames-as-costumes journeys and
 rich resource reconstruction from original MakeCode remain separate work.

@@ -99,6 +99,31 @@ This fixture failure is preserved, alongside the previous hosted single stale
 unclaimed-animation diagnostic test. Native fresh-array runtime semantics are
 unchanged by source recovery.
 
+## Deferred loading and final local qualification
+
+Native gallery parsing now lives in `arcade-animation-assets.js`, separate from
+shared Pixel image rendering. The earlier hosted head had pulled the codec
+into startup through shared artwork helpers. At product source `9f6ace3da`,
+the production React profiling build passes the existing webpack ownership gate:
+initial JavaScript is4,466,111 bytes, below the unchanged4,467,136-byte limit.
+The [emitted ownership receipt](receipts/2026-10-07-arcade-animation-deferred.json)
+identifies all three native animation parser/codec/companion modules in a
+noninitial chunk. This qualifies emitted ownership/bytes, not startup latency.
+
+The final ordinary production build also passes. Its animation gate passes all
+seven journeys again with exact companion source recovery, atomic malformed-file
+refusal and19,200 original-PXT pixels. The background gate separately passes
+seven journeys after observing decoded SVG corner pixels before opening controls.
+The saved hosted failure showed the asynchronous SVG load closing that panel;
+no fixed sleep, forced click, timeout increase or assertion waiver was added.
+
+The translation/companion batch passes140 tests without skips; after the module
+split the native import/project/overlay batch passes16. Browser budget/shard/
+timeout/wait contracts pass25. The stale hosted unclaimed-tag test now asserts
+separate exact diagnostics for unsupported tags and missing native animations.
+The earlier hosted build and both browser failures remain preserved. Fresh
+final-head hosted qualification remains required before merging PR704.
+
 ## Original generated asset contract
 
 Original PXT `emitProjectImages(jres)` emits `images.g.ts` with
