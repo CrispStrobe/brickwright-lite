@@ -24,7 +24,8 @@ import {
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
 import {getCostumeDocument, inspectArtwork, applyArtwork} from '../../lib/bw-artwork-bundle.js';
-import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork} from '../../lib/bw-code-artwork.js';
+import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
+    captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../../lib/bw-code-artwork.js';
 
 // The example sources — upstream's and the locally-authored games, kept in
 // separate files so the upstream one stays synchronizable — are 266 KiB raw
@@ -4568,10 +4569,12 @@ class PseudocodeImporter extends React.Component {
                 const ZIP = module.default || module;
                 const zip = await ZIP.loadAsync(projectBytes);
                 retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                const revision = captureCodeArtworkRevision(this.props.vm, context);
                 projectBytes = await zip.generateAsync({type: 'arraybuffer', compression: 'DEFLATE'});
                 artwork = await inspectArtwork(projectBytes);
-                if (artwork.outcome === 'invalid' || !codeArtworkMatches(this.props.vm, context)) {
-                    throw new Error(artwork.reason || 'The loaded project changed while preparing artwork. Read From blocks again.');
+                if (artwork.outcome === 'invalid' || !codeArtworkMatches(this.props.vm, context) ||
+                    !codeArtworkRevisionMatches(this.props.vm, revision)) {
+                    throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
             await this.props.vm.loadProject(projectBytes);

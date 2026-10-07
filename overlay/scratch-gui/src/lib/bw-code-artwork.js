@@ -109,4 +109,34 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
     return true;
 };
 
-export {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork};
+// Compression and artwork inspection are asynchronous. A user can keep drawing
+// in Costumes while Code is busy; do not replace that newer edit with this ZIP.
+const revisionDescriptor = costume => JSON.stringify(['name', 'rotationCenterX', 'rotationCenterY',
+    'bitmapResolution'].map(key => costume[key]));
+const captureCodeArtworkRevision = (vm, context) => {
+    if (!codeArtworkMatches(vm, context)) throw new Error('The loaded project changed while preparing artwork.');
+    return originals(vm).map(target => ({target, currentCostume: target.currentCostume,
+        costumes: (target.sprite?.costumes || []).map(costume => ({costume, asset: costume.asset,
+            id: costume.asset?.assetId, format: costume.asset?.dataFormat,
+            bytes: costume.asset?.data ? new Uint8Array(costume.asset.data).slice() : null,
+            descriptor: revisionDescriptor(costume), document: JSON.stringify(getCostumeDocument(costume))}))}));
+};
+const codeArtworkRevisionMatches = (vm, revision) => {
+    const current = originals(vm);
+    return current.length === revision.length && revision.every((row, targetIndex) => {
+        const target = current[targetIndex];
+        const costumes = target.sprite?.costumes || [];
+        return target === row.target && target.currentCostume === row.currentCostume &&
+            costumes.length === row.costumes.length && row.costumes.every((saved, index) => {
+                const costume = costumes[index]; const asset = costume?.asset;
+                return costume === saved.costume && asset === saved.asset && asset?.assetId === saved.id &&
+                    asset?.dataFormat === saved.format && revisionDescriptor(costume) === saved.descriptor &&
+                    JSON.stringify(getCostumeDocument(costume)) === saved.document &&
+                    (saved.bytes ? asset?.data?.length === saved.bytes.length &&
+                        saved.bytes.every((byte, byteIndex) => asset.data[byteIndex] === byte) : !asset?.data);
+            });
+    });
+};
+
+export {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
+    captureCodeArtworkRevision, codeArtworkRevisionMatches};

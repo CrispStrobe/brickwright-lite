@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
+import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
+    captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
 import {ARTWORK_PATH, setCostumeDocument, applyArtwork, getCostumeDocument} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -150,3 +151,18 @@ test('a freshly edited Asset is authoritative even while VM descriptor hashes ar
     const records = JSON.parse(s.files.get(ARTWORK_PATH)).costumes;
     assert.equal(records.find(row => row.targetIndex === 1 && row.costumeIndex === 0).renderedMd5ext, 'new-render.svg');
 });
+
+
+for (const edit of ['asset', 'bytes', 'document', 'center']) {
+    test(`a concurrent ${edit} edit invalidates the pre-load artwork revision`, () => {
+        const s = setup(); const revision = captureCodeArtworkRevision(s.vm, s.context);
+        assert.equal(codeArtworkRevisionMatches(s.vm, revision), true);
+        const costume = s.actor.sprite.costumes[0];
+        if (edit === 'asset') costume.asset = {...costume.asset, assetId: 'edited'};
+        if (edit === 'bytes') costume.asset.data[0] = 99;
+        if (edit === 'document') setCostumeDocument(costume, animatedDocument());
+        if (edit === 'center') costume.rotationCenterX = 22;
+        assert.equal(codeArtworkMatches(s.vm, s.context), true, 'target identity alone misses this edit');
+        assert.equal(codeArtworkRevisionMatches(s.vm, revision), false);
+    });
+}
