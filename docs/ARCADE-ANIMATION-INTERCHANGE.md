@@ -3,7 +3,10 @@
 Status: format codec implemented and locally tested; asset exporter/importer
 wiring and original-editor qualification remain open. This extends U04 in the
 [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding).
-No locked corpus partial result is closed by format tests alone.
+The uniform-resource production-browser journey is locally qualified as recorded
+in the ledger. Original native animation asset editing and rich-resource
+interchange remain open. No locked corpus partial result is closed by these
+format or synthetic authoring tests alone.
 
 ## Reached format boundary
 

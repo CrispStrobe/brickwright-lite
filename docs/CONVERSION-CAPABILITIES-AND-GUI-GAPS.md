@@ -208,7 +208,7 @@ Export/reimport must preserve palette, frames, loop/action and supported timing.
 If variable durations require a runtime sequence, implement it explicitly rather
 than flattening timings. Include sheet and frames-as-costumes journeys.
 
-#### Uniform animation resource candidate — parser adopted, full browser gate open
+#### Uniform animation resource candidate — full browser journey qualified locally
 
 The candidate in [draft PR704](https://github.com/CrispStrobe/brickwright-lite/pull/704)
 on `lane/arcade-animation-resources-20261007` implements:
@@ -243,10 +243,25 @@ Three publication-browser journeys now qualify **Add Extension → Arcade**,
 scrolling to both native resource reporters, dragging each into the workspace,
 selecting the published name, and observing the stored UUID in the actual VM
 block fields. The library description now identifies the full game APIs.
-The full gate fixture has been corrected for a Stage-only new project and an
-explicit image actor; its controller-after-reimport and actual19,200-pixel
-comparisons are implemented; the full gate is being debugged after adoption and
-is not yet qualified.
+The full production-browser gate passes six journeys on source
+`89700204711ce470ebb7a77e511ec960fa1e8b6d`: real Code picker insertion,
+Code→Blocks, native resource menu selection, B stop/A restart, Stop/green flag
+restart, Pixel rename/reorder with stable UUID, original Arcade export and file
+reimport with repeated controller stop/restart. Six playback samples contain
+zero invalid frames after readiness. All19,200 actual Brickwright and original
+PXT pixels match for the same authored frame; compilation makes no network
+attempts and the page reports zero errors. The boundary is three3×2 layered
+frames, uniform100ms timing and the default palette.
+
+This journey exposed and repaired two actual runtime defects: template-free
+image sprites had no drawable, and template-backed image animation restored a
+blank costume between frames. Native drawables now have transform, visibility,
+scene and destruction ownership; both paths retain their skin during animation.
+The first native renderer/resource/scaling/scene batch passed24 tests; after the
+skin-retention change, the affected renderer/resource batch passed10 without
+skips. Failed attempts remain preserved. The earlier native renderer browser
+attempt used a development build; the final passing journey explicitly used
+`NODE_ENV=production`.
 
 The native animation JRES codec now passes eight tests against the retained
 original PXT encoder/decoder, package normalizer, emitter and asset-name validator.
@@ -263,13 +278,14 @@ and the app pins that exact producer. Consumer source
 [`96e812a23`](https://github.com/CrispStrobe/brickwright-lite/commit/96e812a2355a193bfb92cfb4b6982d82299792ad)
 includes both canonical words and literal resource menu shadows. Two highlight
 tests, four explicit provider identity tests (zero skips), eight codec tests and
-four vendored original-export tests pass. The complete Code↔Blocks/controller/export/reimport
-browser journey is still being debugged, not qualified. Its gate is
-`scripts/verify-arcade-animation-resource-browser.mjs`; publication-only evidence
-does not establish the full journey or native original-MakeCode asset editing.
+four vendored original-export tests pass. The complete browser journey is now
+locally qualified at the source and boundary above. Its gate,
+`scripts/verify-arcade-animation-resource-browser.mjs`, is registered in CI with
+zero hosted timing readings and a provisional budget. Hosted exact-head checks
+remain pending; native original-MakeCode asset editing remains unqualified.
 
 **U04 remains open.** Unequal-duration scheduling, action binding, sheet and
-frames-as-costumes journeys, complete controller stop/restart qualification and
+frames-as-costumes journeys and
 rich resource reconstruction from original MakeCode remain separate work.
 Original export tests prove playback behaviour; they do not preserve the
 editable timeline or UUID through MakeCode. Native image mutation affects the
@@ -390,7 +406,7 @@ The seven states above need concrete user journeys, not just symbol counts:
   do not qualify failure preservation or every menu choice.
 
 Unknown remains unknown. A census row is full only when every applicable gate
-has evidence. The 156 canonical Arcade/Arrays operations (161 forms with aliases)
+has evidence. The158 canonical Arcade/Arrays operations (163 forms with aliases)
 are confirmed by `ARCADE_WORDS`; they are not 156 original APIs or a coverage
 percentage. A shared opcode can expose several API properties; conversely one
 public API can require several authoring/resource operations.

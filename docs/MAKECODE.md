@@ -559,11 +559,12 @@ The Code picker inserts the selected UUID at the cursor. The frame reporter
 feeds the native image-animation block and the interval reporter supplies its
 uniform timing. Shared compiler PR62 is merged and adopted at `33ce738`.
 Actual native Blocks drag/drop and resource menu selection are qualified.
-Full Code/Blocks/controller qualification is pending;
-this is not a claim that current main supports the complete journey.
+The candidate full Code/Blocks/controller/export/reimport journey passes locally
+on production source `897002047`; hosted qualification remains pending before
+merge. This is not a claim that current main includes the candidate.
 
-The reached browser qualification covers painting, publication, invalid timing
-and actual SB3 reopen. Original Arcade export tests verify shared image arrays
-and playback; editable timeline/UUID recovery through MakeCode is still open.
+The reached browser qualification covers painting, publication, invalid timing,
+SB3 reopen, native binding, controller stop/restart, rename/reorder and original
+Arcade export/reimport playback. All19,200 pixels match original Arcade; editable timeline/UUID recovery through MakeCode is still open.
 See [the authoring gap ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding)
 for the remaining acceptance criteria.
