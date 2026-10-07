@@ -352,7 +352,7 @@ class PixelArtEditor extends React.Component {
         if (!image) {
             const {rgba, w, h} = await rasterize(costume);
             if (this.loadToken !== token) return;
-            const dimensions = rasterEditorSize(w, h, this.props.vm.editingTarget?.isStage);
+            const dimensions = rasterEditorSize(w, h, this.props.vm.editingTarget?.isStage, costume.bitmapResolution);
             const tw = size ? size.w : dimensions.width;
             const th = size ? size.h : dimensions.height;
             if (!size) scale = dimensions.scale;

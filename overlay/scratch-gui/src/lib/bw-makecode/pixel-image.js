@@ -44,8 +44,11 @@ export const isUnmarkedArcadeBackdrop = (svg, isStage) => {
 };
 
 /** Recognize native/3x Arcade backdrops without changing other costume conversions. */
-export const rasterEditorSize = (width, height, isStage = false) => {
-    if (isStage && ((width === 160 && height === 120) || (width === 480 && height === 360))) {
+export const rasterEditorSize = (width, height, isStage = false, bitmapResolution = 1) => {
+    const resolution = Number.isFinite(bitmapResolution) && bitmapResolution > 0 ? bitmapResolution : 1;
+    const logicalWidth = width / resolution, logicalHeight = height / resolution;
+    if (isStage && ((logicalWidth === 160 && logicalHeight === 120) ||
+        (logicalWidth === 480 && logicalHeight === 360))) {
         return {width: 160, height: 120, scale: 3};
     }
     return {width: Math.min(64, Math.max(4, Math.round(width / 4))),

@@ -162,3 +162,10 @@ test('fractional inferred SVG grid is converted before it can create an unsaveab
     assert.doesNotThrow(() => setCostumeDocument(costume, layersDocument(editor.state.layers, 4, 4,
         editor.state.scale, editor.state.activeLayerId, ARCADE_PALETTE)));
 });
+
+test('Scratch bitmap-resolution metadata preserves full-screen Stage imports', () => {
+    assert.deepEqual(rasterEditorSize(320, 240, true, 2), {width: 160, height: 120, scale: 3});
+    assert.deepEqual(rasterEditorSize(960, 720, true, 2), {width: 160, height: 120, scale: 3});
+    assert.deepEqual(rasterEditorSize(320, 240, false, 2), {width: 64, height: 60, scale: 4});
+    assert.deepEqual(rasterEditorSize(160, 120, true, NaN), {width: 160, height: 120, scale: 3});
+});
