@@ -33,6 +33,15 @@ first artifact's inventory named the generated probe, but its upload omitted
 the `.mjs` file; the corrected workflow retains it for independent rehashing.
 That attempt establishes no Circuit key or guest result.
 
+The [second hosted attempt](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37629972190)
+built the app and authenticated the free media, but stopped at the preguest
+build admission. Webpack stamped the ambient pull-request merge revision in
+its seven-character build manifest, while the gate expected the reviewed
+pull-request head. The corrected build supplies the exact checked-out head
+to Webpack at build time and verifies its seven-character manifest projection
+against that full head. The original second failure remains a failure; no
+guest input or Circuit pixel response was observed in it.
+
 This bounded input check does not establish drag capture beyond the canvas,
 browser-reserved key handling, an INT33 mouse application, disk writeback,
 or a general native 386 backend. A live terminal CLI scenario remains a

@@ -85,8 +85,15 @@ jobs:
             --source bw-board=../board --source bw-circuit-ui=../circuit-ui \
             --installed-root node_modules --installed-root packages/scratch-gui/node_modules
           node scripts/package-upstream-notices.mjs --check
+          test "$(git rev-parse HEAD)" = "$BW_EXPECTED_HEAD"
+          git diff --quiet HEAD -- overlay/scratch-gui/webpack.config.js
+          cmp overlay/scratch-gui/webpack.config.js packages/scratch-gui/webpack.config.js
           cd packages/scratch-gui
-          NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+          GITHUB_SHA="$BW_EXPECTED_HEAD" NODE_ENV=production NODE_OPTIONS=--max-old-space-size=2560 npm run build
+          cd ../..
+          test "$(git rev-parse HEAD)" = "$BW_EXPECTED_HEAD"
+          git diff --quiet HEAD -- overlay/scratch-gui/webpack.config.js
+          cmp overlay/scratch-gui/webpack.config.js packages/scratch-gui/webpack.config.js
       - name: Obtain and authenticate official free guest media
         timeout-minutes: 8
         shell: bash
@@ -123,13 +130,15 @@ jobs:
           const manifest=JSON.parse(readFileSync(join(build,'brickwright-build.json')));
           const source=JSON.parse(readFileSync(join(evidence,'circuit-probe.mjs.source.json')));
           const pins=JSON.parse(readFileSync(join(app,'vendor-pins.json')));
-          assert.equal(manifest.commit,process.env.BW_EXPECTED_HEAD,'same-head app build');
+          assert.match(process.env.BW_EXPECTED_HEAD,/^[0-9a-f]{40}$/);
+          assert.equal(manifest.commit,process.env.BW_EXPECTED_HEAD.slice(0,7),'same-head app build');
           assert.equal(source.probeHead,process.env.BW_EXPECTED_HEAD,'same-head probe');
           assert.equal(sha(readFileSync(join(evidence,'circuit-probe.mjs'))),source.generatedSha256);
           assert.equal(pins['bw-board'],'a1126312288867127343c2f9bbdfcd2856a18508');
           assert.equal(pins['bw-circuit-ui'],'4f35519f156916bc30e7fcc2948e6dcc27fae394');
           console.log(JSON.stringify({schema:'brickwright-lite.i80386-freedos-circuits-admission.v1',
-            appHead:manifest.commit,probeHead:source.probeHead,probeSha256:source.generatedSha256,
+            appHead:process.env.BW_EXPECTED_HEAD,buildManifestCommit:manifest.commit,
+            probeHead:source.probeHead,probeSha256:source.generatedSha256,
             buildIndexSha256:sha(readFileSync(join(build,'index.html'))),pins}));
           JS
       - name: Install bounded Chromium and execute actual Circuit guest input
