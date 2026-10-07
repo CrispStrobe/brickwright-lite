@@ -177,7 +177,8 @@ try {
     await page.waitForFunction(() => window.Blockly.getMainWorkspace().getAllBlocks(false)
         .some(b => b.type === 'arrays_specialValue' && b.getFieldValue('KIND') === 'null'));
     const reopenedAxis = await page.evaluate(() => window.Blockly.getMainWorkspace().getAllBlocks(false)
-        .find(b => b.type === 'arcade_controllerStep')?.getInputTargetBlock('AXIS')?.getFieldValue('axes'));
+        .find(b => b.type === 'arcade_controllerStep' && b.getParent()?.getField('VARIABLE')?.getText() === 'axis')
+        ?.getInputTargetBlock('AXIS')?.getFieldValue('axes'));
     assert.equal(reopenedAxis, 'y', 'actual native axis dropdown survives saved archive reopening');
     await run('saved-sb3-reopened');
     report.archive = {filename: download.suggestedFilename(), bytes: (await fs.stat(archive)).size};
