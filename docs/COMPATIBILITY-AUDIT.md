@@ -135,8 +135,10 @@ do not sum them as a number of distinct partial apps.
 | 5 | `sprites.createProjectile()` | Close importer/runtime/export overloads with real-app fixtures |
 | 4 each | Starfield screen effect, `game.ask()` value, `music.playSound()`, legacy `scene.setTile()` | Separate implementations with targeted original-runtime checks |
 
-The remaining paint-handler block error also needs startup-order qualification: registering
-`game.onPaint` before top-level sprite initialization must not run the handler too early.
+The former array block error was caused by a consumed update expression being
+replaced with zero, skipping initialization. Executing that update clears the
+error. `game.onPaint` remains a named unsupported feature; its eventual
+implementation still needs registration and startup-order qualification.
 Work each family through a reproducer, source implementation, original-runtime comparison,
 roundtrip permutations, real GUI authoring/save/reopen and a corpus recount. Do not lower
 partial counts by suppressing diagnostics or removing difficult programs.
@@ -202,8 +204,9 @@ repository are an older baseline (2026-09-27, 27 translated).
 ### Historical unresolved observations and present disposition
 
 At the 2026-10-06 checkpoint, F6 was awaiting a parser pin move; that pin move is now
-complete. The one `game.onPaint` startup-order block error remains visible in the fresh
-Arcade smoke run.
+complete. The array error formerly attributed to paint startup is now traced
+to skipped consumed-update initialization and fixed. The fresh Arcade smoke has
+zero block errors; paint support remains incomplete and named.
 
 Three roundtrip differences against the parked WIP were recorded: Arcade HUD score
 renaming, equivalent arithmetic represented as `calculate value` rather than
