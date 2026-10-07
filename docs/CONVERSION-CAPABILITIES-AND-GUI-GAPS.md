@@ -410,9 +410,16 @@ automatic imported library survives Pixel editing, save/reopen, Code/Blocks and
 controller playback. Emitted ownership passes at4,467,115 bytes with the
 unchanged4,467,136 limit. See the
 [receipt](receipts/2026-10-07-arcade-native-animation-library-import.json).
-Library navigation, script/visibility protection and actual
-rename/delete/Undo/duplicate UI journeys remain required; original Assets
-editing/download and corpus-wide closure are still open. See the
+Library navigation, script/visibility protection and identity-safe
+rename/delete/Undo/duplicate operations are implemented in the
+[library safeguards follow-up](ARCADE-ANIMATION-INTERCHANGE.md#artwork-library-controls-and-lifecycle).
+Blocks and Sounds explain the library role and route to artwork; gameplay
+controls and queued Blockly model edits are disabled while the explicit role
+is present. Copies get new resource UUIDs; Undo restores the original identity
+onto the actual restored target, independently of editing selection. Invalid
+library source refuses saving. Original Assets editing/download, costume
+drag/share source transport, sprite-file transport and corpus-wide closure
+remain open. See the
 [transaction contract](ARCADE-ANIMATION-INTERCHANGE.md#automatic-native-resource-import-transaction).
 
 ### U05 — rotation/data/resources/callbacks

@@ -463,8 +463,55 @@ original19200-pixel comparison still passes. The
 the source, emitted graph and browser harness. Hosted final-head checks remain
 required.
 
-Original MakeCode Assets editing/download, clear library navigation
-and protection from accidental gameplay scripts/visibility, and actual library
-rename/delete/Undo/duplicate UI journeys remain open. These are required GUI
-closure work; the explicit role validator currently refuses executable/visible
-libraries. No corpus partial has been reclassified by these synthetic checks.
+The follow-up library safeguards are described below. Original MakeCode Assets
+editing/download remains open. No corpus partial has been reclassified by these
+synthetic checks.
+
+### Artwork library controls and lifecycle
+
+Libraries appear in a separate Artwork libraries group in the Pixel target
+picker. Their sprite controls show an explicit hidden-library label. Rename is
+available; visibility, position, size and direction controls are disabled.
+Selecting a library opens artwork. Blocks and Sounds show an explanation and an
+Edit artwork button. The hidden Blockly workspace retains a categorized empty
+toolbox: Blockly rejects changing an existing categorized toolbox to flyout
+mode. Queued Blockly model events and attempts to show the library are refused
+while its explicit role is present. Clearing that role restores ordinary target
+behavior. Sound and code backpack drops are refused for library targets.
+
+Duplication snapshots source before asynchronous work and finds the actual new
+target by identity, independently of subsequent editing selection. The copy
+retains layers/frame identities and receives fresh resource UUIDs. Delete/Undo
+restores source, roles and original UUIDs onto the actual restored target.
+Operations check their captured Stage and reject stale project ownership or
+ambiguous newly added targets. Saving a project with an invalid library source
+fails explicitly rather than silently dropping its authored resource bundle.
+
+Actual-VM regression tests cover queued edits, visibility, deliberate selection
+changes during duplicate/Undo, stale ownership and invalid-source save failure.
+The regression batch passes83 tests with one explicitly unavailable full vendor
+history check skipped; the adopted-producer contract batch passes27 tests with
+one unrelated STC compiler check skipped. The CI audit request path now reads
+the identified job directly, validates run/attempt/job identities and fails
+closed on unreadable responses. Its audit/shard/timeout/pinning batch passes
+52 tests. Completion requirements and the one-minute audit window are unchanged.
+
+At product source `0a187a8c62ef19543d5fb89f598bdd6843c67014`, the production
+build passes the unchanged startup limit:4,357,538 bytes against4,467,136.
+The sprite pane is a noninitial chunk. All16 browser journeys pass with zero
+page errors and19,200 matching original-PXT pixels, including real library
+rename, duplicate, delete, Restore Sprite, save/reopen and controller playback.
+Both library roles survive; duplication renews the resource UUID and Undo
+restores the original binding. Final mirror/handoff tests pass22/22. The
+[emitted receipt](receipts/2026-10-07-arcade-artwork-library-safeguards.json)
+binds the source, graph and harness. Hosted final-head qualification remains
+required. Earlier budget, Blockly and selector failures are preserved privately.
+
+Costume drag/share source transport, sprite-file library transport, and original
+MakeCode Assets editing/download still require qualification. Duplicating rich
+resources preserves their display names; native MakeCode export currently
+diagnoses duplicate animation display names. Resolving that naming boundary
+without changing UUID bindings is required before claiming native export of
+duplicated libraries. These safeguards
+do not promise protection against arbitrary direct VM mutation. Whole-corpus
+compatibility remains90 translated /93 partial /1 malformed.
