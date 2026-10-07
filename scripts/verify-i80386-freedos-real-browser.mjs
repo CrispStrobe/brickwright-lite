@@ -17,6 +17,8 @@ import {existsSync} from 'node:fs';
 import {extname, join, normalize, resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
+import {interactionHdd} from './lib/i80386-freedos-interaction.mjs';
+import {fixedTextGlyphs,decodeTextPixels} from './lib/i80386-vga-text.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = resolve(process.env.FREEDOS_GUI_BUILD || join(root, 'packages/scratch-gui/build'));
@@ -25,11 +27,13 @@ const hddPath = process.env.FREEDOS_HDD;
 if (!floppyPath || !hddPath) throw new Error('Set FREEDOS_IMAGE and FREEDOS_HDD to local image paths');
 if (!existsSync(join(build, 'index.html'))) throw new Error('Build packages/scratch-gui first');
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const [floppy, hdd] = await Promise.all([readFile(floppyPath), readFile(hddPath)]);
+const interaction = process.env.FREEDOS_INTERACTION === '1';
+const [floppy, baseHdd] = await Promise.all([readFile(floppyPath), readFile(hddPath)]);
+const hdd = interaction ? interactionHdd(baseHdd) : baseHdd;
 const mediaHashes = {floppy:sha256(floppy), hdd:sha256(hdd)};
 const expectedMedia = {floppy:'03df6088be016e57a6c44275f5bb9ab0244db71de1360957fd76ba83243b6a77',
     hdd:'2fa9c252f22cec4f8c5bdc82d1587293ffcaed791e0982384628d19a7316a851'};
-assert.deepEqual(mediaHashes, expectedMedia, 'expected FreeDOS 1.4 floppy and generated type-1 HDD');
+assert.deepEqual({floppy:sha256(floppy),hdd:sha256(baseHdd)}, expectedMedia, 'expected FreeDOS 1.4 floppy and generated type-1 HDD');
 const expectedScreen = {installer:'3212c5e4cf31db57579736e199c01b919979b475a94cfc9f351713314e884883',
     prompt:'b8bbdd592c3759a06d42b6159ed31326e95e73c4c2b77743e6e7d310cf1a5752',
     cMounted:'2954dec2a2cdd0eb75bea45d3f7c00316ac7d6ff864b78d24f07efe68f169f1c'};
@@ -56,6 +60,10 @@ const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 page.on('crash', () => errors.push('page crashed'));
 const started = Date.now();
+// Decode inside Chromium: transferring a million pixel numbers each poll can
+// dominate the guest run. The serialized function and font are trusted source.
+const textObserver = `(${decodeTextPixels.toString()})(window.__benchTarget.video(),${JSON.stringify(fixedTextGlyphs())})`;
+const guestText = () => page.evaluate(textObserver);
 const output = process.env.FREEDOS_PROBE_OUTPUT || await mkdtemp(join(tmpdir(), 'lite-free386-real-browser-'));
 await mkdir(output, {recursive:true});
 const capture = async label => {
@@ -86,7 +94,7 @@ try {
     await page.addInitScript(() => {
         localStorage.clear(); localStorage.setItem('bw-starter-v1-complete', '1');
         indexedDB.deleteDatabase('bw-machines');
-        window.__realFree386 = {media:[], mirror:null, keyScans:[]};
+        window.__realFree386 = {media:[], mirror:null, keyScans:[], mouse:[]};
         window.addEventListener('bw-machine-media-load', e => {
             const d = e.detail;
             if (d?.machinePreset === 'freedos-vga') window.__realFree386.media.push({
@@ -109,7 +117,11 @@ try {
         window.bwMirrorMachineVideo = p => {
             window.__realFree386.mirror = {widget:p.widget,hasVideo:typeof p.videoFn === 'function',
                 hasKeyboard:typeof p.keyInFn === 'function'};
-            return original({...p, keyInFn:sc => {
+            return original({...p, mouseInFn:event => {
+                const result = p.mouseInFn?.(event);
+                window.__realFree386.mouse.push({...event,result});
+                return result;
+            }, keyInFn:sc => {
                 window.__realFree386.keyScans.push(sc);
                 return p.keyInFn(sc);
             }});
@@ -151,6 +163,7 @@ try {
                 video:{frame:v?.frame, width:v?.width, height:v?.height,
                     mode:v?.mode, why:v?.why, lit}};
         });
+        if (interaction && dirSent) state.text = await guestText();
         finalTarget = state;
         if (tick % 3 === 0 || (!declined && state.pc === 156847 && state.halted)) {
             const label = String(tick).padStart(3, '0');
@@ -193,13 +206,80 @@ try {
                 keys:'dir c:,Enter',scans,elapsedSec:(Date.now()-started)/1000}));
             dirSent = true;
         }
-        if (dirSent && state.video.lit === 75246) {
+        if (dirSent && (interaction ? /CMOUNTOK\s+TXT/.test(state.text) && /MOUSE\s+COM/.test(state.text) : state.video.lit === 75246)) {
             cMountCapture = await capture('c-mounted');
-            if (cMountCapture.sha256 === expectedScreen.cMounted) {
+            if (interaction || cMountCapture.sha256 === expectedScreen.cMounted) {
                 passed = true;
                 break;
             }
         }
+    }
+    let interactions = null;
+    if (interaction && passed) {
+        const canvas = page.getByTestId('bw-machine-canvas');
+        await page.evaluate(() => {window.__interactionTarget = window.__benchTarget;});
+        const before = await canvas.boundingBox();
+        await page.getByTestId('bw-machine-fullscreen').click();
+        await page.waitForFunction(() => document.fullscreenElement !== null);
+        const fullscreen = await canvas.boundingBox();
+        assert.ok(fullscreen.width > 1400 && fullscreen.height > 850,'real guest screen fills fullscreen');
+        await page.getByTestId('bw-machine-fullscreen').click();
+        await page.waitForFunction(() => document.fullscreenElement === null);
+        const divider = page.getByRole('separator', {name:'Resize the stage column'});
+        let resized = null;
+        await divider.waitFor({state:'visible'});
+        {
+            const box = await divider.boundingBox();
+            await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+            await page.mouse.down(); await page.mouse.move(450,box.y+box.height/2); await page.mouse.up();
+            resized = await canvas.boundingBox();
+            assert.ok(resized.width > before.width+100,'drag expands the real guest pane');
+        }
+        await canvas.click();
+        for (const key of ['c',':','\\','m','o','u','s','e','.','c','o','m']) {
+            if (key === ':') {await page.keyboard.down('Shift');await page.keyboard.press('Semicolon');await page.keyboard.up('Shift');}
+            else await page.keyboard.press(key === '\\' ? 'Backslash' : key);
+            await waitForGuestTime(100_000_000);
+        }
+        await page.keyboard.press('Enter');
+        const hasText = async expected => {
+            const deadline=Date.now()+30000;
+            while(Date.now()<deadline) {
+                if((await guestText()).includes(expected))return;
+                await waitForGuestTime(100_000_000);
+            }
+            await capture('interaction-failure');
+            const diagnostics={expected,text:await guestText(),input:await page.evaluate(()=>window.__realFree386),target:await page.evaluate(()=>({state:window.__benchTarget.state?.(),timeNs:String(window.__benchTarget.timeNs?.()),regs:window.__benchTarget.regs?.()}))};
+            await writeFile(join(output,'interaction-failure.json'),JSON.stringify(diagnostics,null,2)+'\n');
+            console.error('INTERACTION FAILURE',JSON.stringify(diagnostics));
+            throw new Error(`guest pixels did not show ${expected}`);
+        };
+        await hasText('PS2 READY');
+        await page.mouse.down({button:'left'});await page.mouse.up({button:'left'});
+        await hasText('PS2 PACKET 09 00 00');
+        await hasText('PS2 DONE');
+        const text = await guestText();
+        const mouse = await page.evaluate(() => window.__realFree386.mouse);
+        await writeFile(join(output,'mouse-before-tabs.json'),JSON.stringify({text,mouse,screen:await capture('mouse-before-tabs')},null,2)+'\n');
+        assert.ok(mouse.some(e=>e.result===true && e.buttons===1),'real guest enabled and accepted PS/2 button');
+        const beforeTabs = await page.evaluate(()=>({timeNs:Number(window.__benchTarget.timeNs()),media:window.__realFree386.media.length}));
+        await page.getByRole('tab',{name:/Circuit/}).click();
+        assert.equal(await page.evaluate(() => window.__interactionTarget === window.__benchTarget),true,'same machine survives Circuit tab');
+        await page.getByRole('tab',{name:'Code',exact:true}).click();
+        await canvas.waitFor({state:'visible'});
+        await canvas.click();
+        for(const key of ['e','c','h','o','Space','t','a','b','o','k']) {
+            await page.keyboard.press(key);
+            await waitForGuestTime(100_000_000);
+        }
+        await page.keyboard.press('Enter');
+        await waitForGuestTime(500_000_000);
+        const tabText=await guestText();
+        assert.match(tabText,/^tabok\s*$/m,'guest shell responds after tab roundtrip');
+        const afterTabs = await page.evaluate(()=>({timeNs:Number(window.__benchTarget.timeNs()),media:window.__realFree386.media.length}));
+        assert.ok(afterTabs.timeNs>=beforeTabs.timeNs,'tab roundtrip does not reset guest time');
+        assert.equal(afterTabs.media,beforeTabs.media,'tab roundtrip does not reload selected media');
+        interactions = {before,fullscreen,resized,circuitTargetPreserved:true,beforeTabs,afterTabs,tabText,guestMousePacket:'09 00 00',guestText:text,mouse,screen:await capture('guest-mouse')};
     }
     const buildManifest = JSON.parse(await readFile(join(build,'brickwright-build.json'),'utf8'));
     const report = {schema:'brickwright-lite.i80386-freedos-real-browser.v1', passed,
@@ -208,13 +288,18 @@ try {
         mediaSha256:mediaHashes, media:media.media,mirror:media.mirror,
         input:'Widgets physical keyboard: n, Enter, d i r Space c Shift+Semicolon Enter',
         keyScans:await page.evaluate(() => window.__realFree386.keyScans),
-        installerCapture,promptCapture,cMountCapture,declined,dirSent,
+        installerCapture,promptCapture,cMountCapture,declined,dirSent,interactions,
         finalTarget,errors,milestones};
     await writeFile(join(output,'report.json'),JSON.stringify(report,null,2)+'\n');
     console.log('DONE',JSON.stringify({passed,elapsedSec:report.elapsedSec,
         installerCapture,promptCapture,cMountCapture,errors,output}));
     assert.equal(errors.length,0,'uncaught page errors');
     assert.equal(passed,true,'FreeDOS C: marker must appear on the Widgets canvas');
+} catch(error) {
+    const failure={schema:'brickwright-lite.i80386-freedos-real-browser-failure.v1',error:String(error),elapsedSec:(Date.now()-started)/1000,errors};
+    try {failure.text=await guestText();failure.input=await page.evaluate(()=>window.__realFree386);failure.target=await page.evaluate(()=>({regs:window.__benchTarget?.regs?.(),timeNs:String(window.__benchTarget?.timeNs?.())}));failure.screen=await capture('failure');} catch(observationError) {failure.observationError=String(observationError);}
+    await writeFile(join(output,'failure.json'),JSON.stringify(failure,null,2)+'\n');
+    throw error;
 } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));
