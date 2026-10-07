@@ -17,6 +17,8 @@ GLOBAL empty
 GLOBAL negative
 GLOBAL compared
 GLOBAL axis
+GLOBAL actor
+GLOBAL image
 SPRITE Game:
 WHEN flag clicked:
   set left to calculate value 100 op "+" with 20
@@ -28,6 +30,10 @@ WHEN flag clicked:
   IF compare value 7 op "<" with 6 THEN:
     set compared to 1
   set axis to arcade controller x step 10
+  set image to arcade new image width 3 height 2
+  arcade mutate image fill image color 2 replacement 0
+  set actor to arcade create image image template "Game" kind "Player"
+  arcade set position of actor x left y top
 `;
 const report = {generatedAt: new Date().toISOString(), authoring: 'Code → visible Blocks dropdown edits → From blocks → To blocks → File save/reopen',
     edits: [], samples: [], warnings: [], errors: []};
@@ -103,7 +109,14 @@ try {
         const values = await page.evaluate(() => Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
             .flatMap(t => Object.values(t.variables)).map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value])));
         const actual = Object.fromEntries(Object.keys(expected).map(name => [name, values[name]]));
-        report.samples.push({label, values: actual});
+        const position = await page.evaluate(() => {
+            const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            const actor = runtime.targets.flatMap(t => Object.values(t.variables)).find(v => v.name.replace(/^(?:Game_)+/, '') === 'actor');
+            const sprite = runtime.bwArcadeDeviceState?.sprites?.[actor?.value];
+            return sprite ? {x: sprite.x, y: sprite.y} : null;
+        });
+        report.samples.push({label, values: actual, position});
+        assert.deepEqual(position, {x: 80, y: 60}, 'edited subtraction/division position the actual Arcade sprite');
         assert.deepEqual(actual, expected, `${label} keeps arithmetic, special value, comparison and axis semantics`);
     };
     await run('native-dropdown-edits');
