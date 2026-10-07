@@ -155,6 +155,7 @@ try {
     assert.equal(await page.getByTestId('bw-pixel-h').inputValue(),'120');
     await panel('layers');
     await page.getByTestId('bw-pixel-add-layer').click();
+    await page.getByTestId('bw-pixel-layers-toggle').click(); // close the floating panel before painting behind it
     for(const [x,y,colour] of AUTHORED_CORNERS){
         await page.getByTestId(`bw-pixel-colour-${colour}`).click();
         await page.getByTestId('bw-pixel-tool-pencil').click();
