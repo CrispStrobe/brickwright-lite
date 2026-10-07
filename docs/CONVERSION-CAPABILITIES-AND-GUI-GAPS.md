@@ -68,6 +68,9 @@ verification scripts under `scripts/`. These pointers do not claim fresh passes.
 | C12 Info/text/dialogs | Present players1–4 score/life, countdown/game-over, speech/splash/long text/questions | Native speech/fonts and dialog export present | `-say-text`, `-sprite-text`, `-splash`, `-ask`, `-life-zero`. Prove expression editing, player selection, blocking interaction and restart. |
 | C13 Controller | Present button hats/predicates, control bindings and device buttons | Keyboard-edge and binding execution present | `-controller-bindings`, `-controller-step`, `-keyboard-edges`, `-controls`, `-runs`. Drive authored games through real widgets/keyboard; cancel/focus/Stop/restart must release held inputs. |
 | C14 Scratch→Arcade constructs | Existing broadcasts, costumes/backdrops, clones, lists, pen, stop and music authoring | Export maps these via helpers; sampled audio, mouse, some effects/instruments, clone-local lists and unsupported flags retain named limits | `makecode-export-arcade-constructs`, `makecode-export-arcade`; [export matrix](ARCADE-COMPAT-PLAN.md). Show actionable refusals/warnings with affected construct/location before export. |
+| C16 Namespaces/enums and evaluation order | Present converter binding/type/lazy-value machinery, but user presentation needs audit | Preserve qualified/exported/private/shadowed bindings, numeric enums, initialization order, optional/default arguments and single evaluation through export | `makecode-namespace-bindings`, `-namespace-runtime`, `-optional-procedure`, `-lazy-values`. Author and rename scoped values without leaking generated internals or changing identity/order. |
+| C17 Timing and audio | Update/interval/forever and sound controls exist | Full frame/fiber scheduling and richer Arcade music/effects remain independent gaps | `-update`, `-interval`, `-forever`, export construct tests. Audit waiting/parallel lifecycle and meaningful audio timing against PXT; do not infer full music parity from steady tones. |
+| C18 Inspectors and export choices | Watchers, value display and export affordances require audit | Resource IDs must not replace operands; source/package export differs from native firmware output | Test understandable arrays/references/null/nonfinite display without changed equality/serialization. Preserve dependencies/artwork and exact board/runtime selection; physical qualification stays separate. |
 | C15 Other targets/TurboWarp | Target routes and diagnostics exist; not an Arcade parity claim | micro:bit, EV3, native targets and TurboWarp have different APIs and qualification | [MakeCode guide](MAKECODE.md), [census](generated/MAKECODE-CENSUS.md), target-specific tests. Keep target counts separate; clean-room TurboWarp additions need their own provenance and behaviour evidence. |
 
 ## Pending work and stale statements
@@ -89,7 +92,7 @@ or proof of GUI/shipped-package completion. Review associated sb3-creator branch
 
 ## Ordered closure lanes and acceptance checks
 
-### G01 — baseline and truthful diagnostics
+### U01 — baseline and truthful diagnostics
 
 After integration run the locked real-app census against exact pins. Separate
 intentional unsupported tests from real programs. List every named gap,
@@ -97,7 +100,7 @@ affected app, diagnostic, runtime/export failure and roundtrip permutation.
 Preserve original failures and compare identical inputs. User diagnostics should
 identify construct, reason and location where available. Refusal is never full.
 
-### G02 — asset-aware Code/graphics handoff
+### U02 — asset-aware Code/graphics handoff
 
 Use real controls to import literal images, backdrop and shared Image; switch
 Code→Blocks→Code, edit a pixel/palette colour, save SB3, reopen, export Arcade,
@@ -105,14 +108,14 @@ run in MakeCode and reimport. Assert identity and exact palette pixels. Repeat
 file/share import and an explicit Code-plus-assets path. Plain text alone must
 name absent assets. Reuse artwork source/archive models and atomic rendering.
 
-### G03 — tilemap authoring
+### U03 — tilemap authoring
 
 Create two tiles in the Pixel editor, paint a map/walls, choose tile size, place
 a player/camera and steer into walls/overlap tiles. Undo/redo, rename a tile,
 save/reopen, export/run in MakeCode and reimport both layers. Internal JSON
 injection does not count as creating a map through the GUI.
 
-### G04 — animation binding
+### U04 — animation binding
 
 Create three frames in the existing editor, set durations, duplicate/reorder,
 bind to a sprite/action, trigger/stop/restart with buttons and save/reopen.
@@ -120,7 +123,7 @@ Export/reimport must preserve palette, frames, loop/action and supported timing.
 If variable durations require a runtime sequence, implement it explicitly rather
 than flattening timings. Include sheet and frames-as-costumes journeys.
 
-### G05 — rotation/data/resources/callbacks
+### U05 — rotation/data/resources/callbacks
 
 After F4 integration select radians/degrees/data through real block menus and
 roundtrip Code without coercion. Compare asymmetric scaled art, collision,
@@ -128,7 +131,7 @@ camera and aliasing against PXT. Author scene/physics references and captured
 callbacks through usable controls; rename, switch scenes, Stop/restart and
 save/export/reimport. Internal block construction alone is insufficient.
 
-### G06 — complete authored game
+### U06 — complete authored game
 
 Build entirely in Lite: editable map/walls, animated player, rotating hazard,
 projectile, score/life, two scenes and sound. Drive actual controller widgets in
@@ -140,3 +143,20 @@ Prioritize families by affected real apps and shared dependencies. Close each
 with minimal regression, implementation, original comparison, roundtrips and
 browser authoring proof. Assign disjoint files under the integration claim and
 refresh remote ownership before each implementation slice.
+
+## Historical GUI checklist cross-reference
+
+The earlier handoff used G01–G27. Preserve those identifiers in existing issues;
+U01–U06 above are delivery groups, not renumbered versions of those issues.
+This cross-reference prevents details from disappearing during reconciliation.
+
+| Earlier IDs | Current family / delivery |
+| --- | --- |
+| G01 import discovery; G02 actionable diagnostics; G03 dialect audit; G04 permutations | C06, U01–U02; parser/source-location and offline reopen checks |
+| G05 values; G06 procedures/captures; G07 arrays; G26 namespaces/enums | C01, C11, C16, U05 |
+| G08 sprite identity; G09 terrain APIs; G10 tilemap painter | C02–C04, C08, U03/U05 |
+| G11 controller; G12 timing; G13 text/dialogs | C12–C13, C17, U06 |
+| G14 asset selection; G15 image aliases; G16 size/transparency/tools | C05–C07, U02; retain128×128 editor limit audit |
+| G17 layer/disposal; G18 animation binding; G19 scene/physics authoring | C08–C10, U03–U06; repeat clear/reload without stale drawables |
+| G20 readable inspectors; G22 audio; G23 target selection; G24 export dependencies | C17–C18; separate source, simulation, firmware and physical evidence |
+| G21 micro:bit/Calliope; G27 TurboWarp; G25 coverage linkage | C15, U01/U06; target-specific real examples and truthful diagnostics |
