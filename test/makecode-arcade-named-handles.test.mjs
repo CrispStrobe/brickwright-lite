@@ -50,7 +50,8 @@ test('a pinned fire game keeps named handles and both event parameters', () => {
     assert.match(result.code, /set fireSource to \(arcade create template/);
     assert.match(result.code, /arcade register creation kind "FireSource" as "__bwCreated1"/);
     assert.match(result.code, /WHEN arcade creation handler "__bwCreated1" runs:/);
-    assert.match(result.code, /WHEN arcade every 500 ms:/);
+    assert.match(result.code, /arcade register interval \(500\) as "__bwInterval1"/);
+    assert.match(result.code, /WHEN arcade interval handler "__bwInterval1" runs:/);
     assert.match(result.code, /WHEN arcade kinds "Player" and "FireSource" overlap:/);
     assert.match(result.code, /arcade destroy arcade event second/);
     assert.match(result.code, /arcade set position of \(arcade event first\) x \(pick random 0 to 160\) y \(pick random 0 to 120\)/);
@@ -128,7 +129,7 @@ test('MakeCode countdown callback runs at zero and can continue the game', async
     const source = `info.onCountdownEnd(function () { info.changeScoreBy(7) })\ninfo.startCountdown(1)`;
     const translated = arcadeToPseudocode(source);
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /WHEN arcade countdown ends:/);
+    assert.match(translated.code, /arcade register countdown/);
     const run = await runProgram(translated.code, {frames: 40});
     assert.deepEqual(run.errors, []);
     assert.equal(run.vm.runtime.bwArcadeDeviceState?.gameOver, undefined);

@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 import {readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
 
-import {runProgram} from './helpers/bw-vm.mjs';
+import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
 import {
     ARCADE_PALETTE,
@@ -40,6 +40,19 @@ const fixture = name =>
     new Uint8Array(readFileSync(join(REPO, 'test', 'fixtures', 'makecode', name)));
 
 const projectOf = async name => (await unpackMakeCodeSource(fixture(name))).files;
+
+const nativeCase = async body => {
+    const imported=arcadeToPseudocode(`let b=sprites.create(img\`1 1\n1 1\`,SpriteKind.Player)
+let observed=0
+let v=8
+game.onUpdate(function(){${body}})`);
+    assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:2,uploads:imported.costumes,storage:true});
+    assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+    const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+    return {run,vars,sprite:run.vm.runtime.bwArcadeDeviceState.sprites[vars.b]};
+};
+
 
 test('an img literal is read with MakeCode\'s own character set', () => {
     // The `img` shim's groups are ["0.", "1#", "2T", ...]: hex digit or
@@ -103,7 +116,7 @@ test('a real Arcade game becomes sprites, costumes and scripts', async () => {
     assert.deepEqual(out.sprites, ['Game', '__arcadeTemplate1', '__arcadeTemplate2',
         '__arcadeTemplate3', '__arcadeBackground1']);
     assert.equal(out.costumes.length, 4, 'three instance templates and the background retain artwork');
-    assert.match(out.code, /WHEN up arrow key pressed:/);
+    assert.match(out.code, /arcade register button "up" event \(2049\)/);
     assert.match(out.code, /WHEN arcade kinds "Enemy" and "Player" overlap:/);
     assert.match(out.code, /change score by/);
     assert.match(out.code, /arcade create template "__arcadeTemplate2" kind "Enemy"/);
@@ -117,7 +130,10 @@ test('timed spawns preserve their own positions, artwork and native velocities',
     assert.deepEqual(run.errors, []);
     assert.deepEqual(run.creator.warnings, []);
     const state = run.vm.runtime.bwArcadeDeviceState;
-    const enemy = Object.values(state.sprites).find(sprite => sprite.kind === 'Enemy');
+    const enemies = Object.values(state.sprites).filter(sprite => sprite.kind === 'Enemy');
+    assert.ok(enemies.length >= 2,'interval first fires immediately, then again after2500ms');
+    const enemy = enemies.at(-1);
+    assert.ok(enemies[0].x < enemy.x,'the earlier instance has continued moving');
     assert.ok(enemy, 'the 2500ms callback creates an independent instance');
     assert.equal(enemy.vx, -40);
     assert.ok(enemy.x >= 150 && enemy.x <= 160, `enemy starts at the right edge: ${enemy.x}`);
@@ -128,20 +144,9 @@ test('timed spawns preserve their own positions, artwork and native velocities',
     assert.ok(state.backgroundImage.pixels.some(pixel => pixel !== 0));
 });
 
-test('coordinates are converted, and stay in Arcade units in between', () => {
-    const {code} = arcadeToPseudocode(`
-        let hero = sprites.create(img\`1\`, SpriteKind.Player)
-        hero.x = 80
-        hero.y = 0
-        game.onUpdate(function () {
-            if (hero.x > 100) { hero.x = 0 }
-        })
-    `);
-    assert.match(code, /set x to 0\b/, '80 is the middle of a 160-wide screen');
-    assert.match(code, /set y to 180\b/, 'y 0 is the top, which is +180 on the stage');
-    // The comparison is the game's own arithmetic and must not silently
-    // switch units halfway through.
-    assert.match(code, /\(x position \/ 3 \+ 80\) > 100/);
+test('native position writes and comparisons retain Arcade coordinates', async () => {
+    const {sprite,vars}=await nativeCase('b.x=80;b.y=0;if(b.x>100){b.x=0};observed=b.x');
+    assert.equal(sprite.x,80);assert.equal(sprite.y,0);assert.equal(vars.observed,80);
 });
 
 test('Arcade screen.width and screen.height use the imported stage dimensions', () => {
@@ -160,23 +165,14 @@ test('constant and changing background colors use the Arcade runtime command', (
     assert.match(changed.code, /arcade set background color to 2\n  arcade set background color to 3/);
 });
 
-test('what Scratch cannot express is refused by name', () => {
-    // A script that moves TWO sprites can only ever be one of them. The
-    // script lands on the sprite it mentions first and the other one's
-    // writes are refused — a Scratch script cannot move its neighbour.
-    const {code, unsupported} = arcadeToPseudocode(`
-        let hero = sprites.create(img\`1\`, SpriteKind.Player)
-        let coin = sprites.create(img\`2\`, SpriteKind.Food)
-        game.onUpdate(function () {
-            coin.x = 10
-            hero.x = 20
-            coin.startEffect(effects.confetti)
-        })
-    `);
-    assert.match(code, /set x to -210/, 'the sprite it does own is translated');
-    assert.ok(unsupported.some(u => /hero\.x/.test(u)), 'the other one is refused');
-    assert.ok(unsupported.some(u => /startEffect/.test(u)), 'and so are effects');
-    assert.match(code, /# unsupported: hero\.x/, 'each refusal is said where it happened');
+test('one native update can move multiple sprites while unsupported effects stay diagnosed', () => {
+    const {code,unsupported}=arcadeToPseudocode(`let hero=sprites.create(img\`1\`,SpriteKind.Player)
+let coin=sprites.create(img\`2\`,SpriteKind.Food)
+game.onUpdate(function(){coin.x=10;hero.x=20;coin.startEffect(effects.confetti)})`);
+    assert.match(code,/arcade set x of coin to/);assert.match(code,/arcade set x of hero to/);
+    assert.ok(!unsupported.some(u=>/hero\.x|coin\.x/.test(u)));
+    assert.ok(unsupported.some(u=>/startEffect/.test(u)));
+    assert.match(code,/# unsupported:.*startEffect/);
 });
 
 test('the former hostile Pong fixture translates logical values without refusals', async () => {
@@ -204,8 +200,8 @@ test('the translation compiles into the sprites and blocks it names', {skip: can
         }
     }
     for (const expected of [
-        'event_whenflagclicked', 'event_whenkeypressed', 'arcade_whenInterval',
-        'arcade_whenUpdate', 'arcade_whenSpritesOverlap', 'arcade_createSprite',
+        'event_whenflagclicked', 'arcade_registerButtonHandler', 'arcade_registerIntervalHandler',
+        'arcade_registerUpdateHandler', 'arcade_whenSpritesOverlap', 'arcade_createSprite',
         'arcade_setSpriteProperty', 'arcade_setSpriteAutoDestroy',
         'arcade_setBackgroundImage', 'arcade_frameImage', 'arcade_spriteProperty',
         'arcade_changescore', 'operator_random'
@@ -282,23 +278,21 @@ test('sprite kinds are numbers, not refusals', () => {
     assert.ok(!out.unsupported.some(u => /SpriteKind/.test(u)));
 });
 
-test('the controller reads as the keyboard, both ways', () => {
-    // moveSprite becomes arrow-key motion; isPressed becomes the key
-    // sensing block. Between them they cover how nearly every Arcade
-    // game reads input.
-    const {code, unsupported} = arcadeToPseudocode(`
-        let hero = sprites.create(img\`1\`, SpriteKind.Player)
-        controller.moveSprite(hero, 100, 0)
-        game.onUpdate(function () {
-            if (controller.left.isPressed()) { hero.x += -2 }
-            if (controller.A.isPressed()) { hero.y += -5 }
-        })
-    `);
-    assert.match(code, /IF key left arrow pressed\? THEN:/);
-    assert.match(code, /IF key space pressed\? THEN:/, 'the A button is the space bar');
-    assert.match(code, /change y by 15/, "Arcade's y grows downwards and the stage's grows up");
-    assert.match(code, /IF key right arrow pressed\? THEN:/, 'moveSprite drives the arrows');
-    assert.deepEqual(unsupported, []);
+test('native controller bindings and sensing use real keyboard input', async () => {
+    const imported=arcadeToPseudocode(`let hero=sprites.create(img\`1 1\n1 1\`,SpriteKind.Player)
+hero.setPosition(80,60)
+controller.moveSprite(hero,100,0)
+let seenLeft=false
+let seenA=false
+game.onUpdate(function(){if(controller.left.isPressed()){seenLeft=true};if(controller.A.isPressed()){seenA=true}})`);
+    assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:3,uploads:imported.costumes,storage:true});
+    run.vm.postIOData('keyboard',{key:'ArrowLeft',isDown:true});run.vm.postIOData('keyboard',{key:' ',isDown:true});await stepFrames(run.vm,3);
+    const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
+    assert.equal(vars.seenLeft,true);assert.equal(vars.seenA,true);
+    const sprite=run.vm.runtime.bwArcadeDeviceState.sprites[vars.hero];assert.equal(sprite.vx,-100);assert.ok(sprite.x<80);
+    run.vm.postIOData('keyboard',{key:'ArrowLeft',isDown:false});run.vm.postIOData('keyboard',{key:' ',isDown:false});await stepFrames(run.vm,1);assert.equal(sprite.vx,0);
+    assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
 });
 
 test('sprite dimensions and edges use the decoded image geometry', () => {
@@ -386,41 +380,26 @@ test('the per-player info API writes the same score the plain one does', () => {
     assert.match(code, /arcade change score player \(1\) by \(1\)/, 'player one, which the extension shares with the plain score');
     assert.match(code, /arcade set score player \(2\) to \(5\)/);
     assert.match(code, /arcade change score by 1/);
-    assert.match(code, /IF lives2 > 0 THEN:/, 'hasLife is a comparison, not a refusal');
-    assert.match(code, /IF lives > 0 THEN:/);
+    assert.match(code, /compare value \(lives2\) op ">" with \(0\)/);
+    assert.match(code, /compare value \(lives\) op ">" with \(0\)/);
 });
 
-// The pinned Arcade runtime (game/info.ts raiseLifeZero) fires when lives are
-// at or below 0 and then clears them to null, so the handler fires again once
-// lives are set again. Here: it waits for lives above 0, then for lives below
-// 1. (Lives set straight to 0 without ever being positive fire in MakeCode and
-// not here.)
-test('onLifeZero waits for positive lives and can rearm after a callback restores them', () => {
-    const {code} = arcadeToPseudocode(`
+// Native life-zero registration preserves the original assigned-zero behavior;
+// runtime and original PXT revival checks live in the focused registration tests.
+test('onLifeZero retains a player registration without a positive-life polling prerequisite', () => {
+    const {code,unsupported} = arcadeToPseudocode(`
         let hero = sprites.create(img\`1\`, SpriteKind.Player)
         info.player2.onLifeZero(function () { game.over() })
     `);
-    assert.match(code, /wait until lives2 > 0\n    wait until lives2 < 1/);
+    assert.deepEqual(unsupported, []);
+    assert.match(code, /arcade register life zero player \(2\)/);
+    assert.doesNotMatch(code, /wait until lives/);
     assert.match(code, /stop all/);
 });
 
-test('a sprite knows its own size, because we decoded the picture', () => {
-    // The game does bounds arithmetic with `paddle.width`. We built that
-    // costume from a decoded image, so the number is exact rather than a
-    // guess — and the edges follow from the centre and the size, in the
-    // Arcade units the surrounding arithmetic is written in.
-    const {code, unsupported} = arcadeToPseudocode(`
-        let paddle = sprites.create(img\`
-            . . . .
-            1 1 1 1
-        \`, SpriteKind.Player)
-        game.onUpdate(function () {
-            if (paddle.x > paddle.width) { paddle.x = paddle.left }
-        })
-    `);
-    assert.deepEqual(unsupported, []);
-    assert.match(code, /\(x position \/ 3 \+ 80\) > 4/, 'width is the literal 4');
-    assert.match(code, /- 2\b/, 'and left is the centre minus half of it');
+test('native sprite geometry uses decoded width and half-width edges', async () => {
+    const {sprite,vars}=await nativeCase('b.x=80;observed=b.width;b.x=b.left');
+    assert.equal(vars.observed,2);assert.equal(sprite.x,79);
 });
 
 test('a Sprite alias initialized with null reads the selected Sprite width', async () => {
@@ -442,146 +421,38 @@ test('a Sprite alias initialized with null reads the selected Sprite width', asy
     assert.deepEqual(run.errors,[]);
 });
 
-test('another script may set velocity, because velocity is a variable', () => {
-    // Position needs the sprite itself; velocity does not. vx and vy live
-    // in a shared variable the owning sprite's motion loop reads every
-    // frame, so a cross-sprite write is exact and immediate — no
-    // broadcast, no frame of lag.
-    const {code, unsupported} = arcadeToPseudocode(`
-        let ball = sprites.create(img\`1\`, SpriteKind.Player)
-        let paddle = sprites.create(img\`2\`, SpriteKind.Food)
-        game.onUpdate(function () {
-            paddle.x = 10
-            ball.vy = -50
-        })
-    `);
-    assert.match(code, /set ball_vy to \(0 - 50\)/, "the ball's velocity, set from the paddle's script");
-    assert.ok(!unsupported.some(u => /ball\.vy/.test(u)), 'and not refused');
-    // And the position write, which this script DOES own, is transformed:
-    // 10 Arcade units from the left is (10 - 80) * 3 on the stage.
-    assert.match(code, /set x to -210/);
-    assert.deepEqual(unsupported, []);
+test('one native callback moves a neighbour and changes another sprite velocity', async () => {
+    const imported=arcadeToPseudocode(`let ball=sprites.create(img\`1\`,SpriteKind.Player)
+let paddle=sprites.create(img\`2\`,SpriteKind.Food)
+game.onUpdate(function(){paddle.x=10;ball.vy=-50})`);
+    assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:2,uploads:imported.costumes,storage:true});
+    const sprites=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
+    assert.equal(sprites.find(s=>s.kind==='Food').x,10);assert.equal(sprites.find(s=>s.kind==='Player').vy,-50);
+    assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
 });
 
-test('velocity compound assignments preserve their operator', () => {
-    const {code, unsupported} = arcadeToPseudocode(`
-        let ball = sprites.create(img\`1\`, SpriteKind.Player)
-        game.onUpdate(function () {
-            ball.vx += 3
-            ball.vx -= 2
-            ball.vy *= -1
-        })
-    `);
-
-    assert.match(code, /change ball_vx by 3/);
-    assert.match(code, /change ball_vx by \(0 - 2\)/);
-    assert.match(code, /set ball_vy to ball_vy \* \(0 - 1\)/);
-    assert.deepEqual(unsupported, []);
+test('native velocity compound assignments preserve addition, subtraction and multiplication', async () => {
+    const {sprite}=await nativeCase('b.vx=8;b.vy=8;b.vx+=3;b.vx-=2;b.vy*=-1');
+    assert.equal(sprite.vx,9);assert.equal(sprite.vy,-8);
 });
 
-test('trigonometry converts radians to degrees, and binds correctly', {skip: canCompile ? false :
-    'packages/scratch-gui not integrated'}, () => {
-    // MakeCode's Math.cos takes RADIANS; the block takes DEGREES. Reading
-    // one as the other is wrong in a way that still runs. And the shape
-    // matters as much as the numbers: `a * -cos(x)` written without
-    // brackets becomes `(a*0) - cos(x)`.
-    const {code} = arcadeToPseudocode(`
-        let b = sprites.create(img\`1\`, SpriteKind.Player)
-        game.onUpdate(function () { b.vx = 5 * -Math.cos(Math.PI) })
-    `);
-    assert.match(code, /5 \* \(0 - cos of \(/, 'the negation is bracketed inside the product');
-
-    const project = new SB3Creator().parse(code);
-    const blocks = project.targets.flatMap(t => Object.values(t.blocks || {}));
-    const mathop = blocks.find(b => b && b.opcode === 'operator_mathop');
-    assert.ok(mathop, 'a mathop block');
-    assert.equal(mathop.fields.OPERATOR[0], 'cos');
-    // Its argument must be the CONVERSION block, not a bare angle: if the
-    // multiplication bound outside the mathop, the degrees never arrive.
-    assert.equal(typeof mathop.inputs.NUM[1], 'string', 'the argument is a block, not a literal');
-    assert.ok(blocks.some(b => b && b.opcode === 'operator_multiply'),
-        'and the outer product survived');
+test('native trigonometry preserves radians and unary-minus precedence', async () => {
+    const {sprite}=await nativeCase('b.vx=5 * -Math.cos(Math.PI)');assert.equal(sprite.vx,5);
 });
 
-test('position compound assignments keep their sign and their operator', () => {
-    // Two sign flips that compose: `-=` reverses the move, and Arcade's y
-    // grows DOWNWARD while the stage's grows up. Treating every compound
-    // operator as `+=` sent a sprite the wrong way on `x -= n`, and was
-    // right on `y -= n` only by accident.
-    const {code} = arcadeToPseudocode(`
-        let b = sprites.create(img\`1\`, SpriteKind.Player)
-        game.onUpdate(function () {
-            b.x += 5
-            b.x -= 5
-            b.y += 5
-            b.y -= 5
-        })
-    `);
-    const moves = code.split('\n').map(l => l.trim()).filter(l => /^change [xy] by/.test(l));
-    assert.deepEqual(moves, [
-        'change x by 15',
-        'change x by -15',
-        'change y by -15',
-        'change y by 15'
-    ]);
+test('native position compounds preserve both Arcade axes and their operators', async () => {
+    const {sprite}=await nativeCase('b.x=40;b.y=40;b.x+=5;b.x-=5;b.y+=5;b.y-=5');
+    assert.equal(sprite.x,40);assert.equal(sprite.y,40);
 });
 
-test('scaling a position scales the Arcade coordinate, not the stage one', () => {
-    // `x *= 2` doubles the ARCADE x. The stage's origin is elsewhere, so
-    // doubling the stage number is a different move entirely — and
-    // `change x by 6` (which is what an add-shaped fallback produced) is
-    // not even the same kind of operation.
-    const {code} = arcadeToPseudocode(`
-        let b = sprites.create(img\`1\`, SpriteKind.Player)
-        game.onUpdate(function () { b.x *= 2 })
-    `);
-    assert.match(code, /set x to /, 'a scale is a set, never a change-by');
-    assert.match(code, /x position \/ 3 \+ 80/, 'read back into Arcade units first');
-    assert.doesNotMatch(code, /change x by 6/);
+test('scaling native position uses the Arcade coordinate', async () => {
+    const {sprite}=await nativeCase('b.x=40;b.x*=2');assert.equal(sprite.x,80);
 });
 
-test('every compound operator survives on every kind of target', () => {
-    // Three separate bugs of one class have now been fixed here — the
-    // unary-minus precedence one, the velocity one, and the position one —
-    // and each was an operator quietly becoming a different operator, in
-    // code that compiled and ran. A substring assertion passes on all
-    // three, so this is the whole matrix, spelled out.
-    //
-    // The y rows carry TWO sign flips that compose: `-=` reverses the
-    // move, and Arcade's y grows downward while the stage's grows up.
-    // `vx`/`vy` stay in Arcade units — the motion loop applies the flip
-    // where it is used — which is why they do not mirror the y rows.
-    const EXPECTED = {
-        'v +=': 'change v by 4',
-        'v -=': 'change v by 0 - 4',
-        'v *=': 'set v to v * 4',
-        'v /=': 'set v to v / 4',
-        'b.x +=': 'change x by 12',
-        'b.x -=': 'change x by -12',
-        'b.x *=': 'set x to ((((x position / 3 + 80)) * 4) - 80) * 3',
-        'b.x /=': 'set x to ((((x position / 3 + 80)) / 4) - 80) * 3',
-        'b.y +=': 'change y by -12',
-        'b.y -=': 'change y by 12',
-        'b.y *=': 'set y to (60 - (((60 - y position / 3)) * 4)) * 3',
-        'b.y /=': 'set y to (60 - (((60 - y position / 3)) / 4)) * 3',
-        'b.vx +=': 'change b_vx by 4',
-        'b.vx -=': 'change b_vx by (0 - 4)',
-        'b.vx *=': 'set b_vx to b_vx * 4',
-        'b.vx /=': 'set b_vx to b_vx / 4',
-        'b.vy +=': 'change b_vy by 4',
-        'b.vy -=': 'change b_vy by (0 - 4)',
-        'b.vy *=': 'set b_vy to b_vy * 4',
-        'b.vy /=': 'set b_vy to b_vy / 4'
-    };
-
-    for (const [key, expected] of Object.entries(EXPECTED)) {
-        const {code} = arcadeToPseudocode(`
-            let b = sprites.create(img\`1\`, SpriteKind.Player)
-            let v = 0
-            game.onUpdate(function () { ${key} 4 })
-        `);
-        const lines = code.split('\n');
-        const update = lines.findIndex(line => /WHEN arcade updates:/.test(line));
-        assert.equal((lines[update + 1] || '').trim(), expected, `${key} 4`);
+test('every compound operator executes on scalar, position and velocity targets', async () => {
+    for(const target of ['v','b.x','b.y','b.vx','b.vy'])for(const [op,expected] of [['+=',12],['-=',4],['*=',32],['/=',2]]){
+        const {vars}=await nativeCase(`${target}=8;${target}${op}4;observed=${target}`);
+        assert.equal(Number(vars.observed),expected,`${target} ${op}4`);
     }
 });

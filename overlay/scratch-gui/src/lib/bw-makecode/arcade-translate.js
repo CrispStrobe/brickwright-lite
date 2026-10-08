@@ -252,6 +252,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
         } while (added);
         this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
+        this.nativeInfoProgram=this.sceneStackProgram || containsAst(node,value=>value.type==='Call' && isInfoRegistration(this.path(value.callee)));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
         this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
@@ -685,11 +686,11 @@ class ArcadeTranslator extends BaseTranslator {
             return `arcade create template "${template.name}" kind "${template.kind}" ` +
                 `width ${template.width} height ${template.height}`;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
+        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
             if(a.length){this.unsupported.push(`${name} requires no arguments`);return 'undefined value';}
             return `arcade life player (${playerOf(name)})`;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.(hasLife|score|hasScore)$/.test(name||'')) {
+        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.(hasLife|score|hasScore)$/.test(name||'')) {
             if(a.length){this.unsupported.push(`${name} requires no arguments`);return 'undefined value';}
             const method=name.split('.').pop(),property=method==='hasLife'?'has life':method==='hasScore'?'has score':'score';
             return `arcade player (${playerOf(name)}) ${property}`;
@@ -1148,16 +1149,17 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
             push(name==='game.pushScene'?'arcade push scene':'arcade pop scene');return;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
+        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one life value`));return;}
             push(name.endsWith('.setLife')?`arcade set life player (${playerOf(name)}) to (${this.expr(a[0])})`:`arcade change life player (${playerOf(name)}) by (${this.expr(a[0])})`);return;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.(setScore|changeScoreBy)$/.test(name||'')) {
+        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.(setScore|changeScoreBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one score value`));return;}
             push(name.endsWith('.setScore')?`arcade set score player (${playerOf(name)}) to (${this.expr(a[0])})`:`arcade change score player (${playerOf(name)}) by (${this.expr(a[0])})`);return;
         }
         if(isFrameRegistration(name) && (this.boundSourceGlobals?.has('game') || this.sourceFunctions?.has('game') || this.localVars?.has('game') || this.currentParameters?.has('game') || this.capturedBindings.has('game'))){push(this.note(`${name} refers to a shadowed game binding`));return;}
         if(isButtonRegistration(name) && (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller'))){push(this.note(`${name} refers to a shadowed controller binding`));return;}
+        if(isInfoRegistration(name) && (this.boundSourceGlobals?.has('info') || this.sourceFunctions?.has('info') || this.localVars?.has('info') || this.currentParameters?.has('info') || this.capturedBindings.has('info'))){push(this.note(`${name} refers to a shadowed info binding`));return;}
         const sceneSpec=(this.sceneStackProgram || isIndependentRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
@@ -2280,7 +2282,8 @@ const containsAst = (node,predicate) => node && typeof node==='object' &&
     (predicate(node) || Object.values(node).some(value=>Array.isArray(value)?value.some(child=>containsAst(child,predicate)):containsAst(value,predicate)));
 const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval'].includes(name);
 const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '');
-const isIndependentRegistration = name => isFrameRegistration(name) || isButtonRegistration(name);
+const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
+const isIndependentRegistration = name => isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name);
 const sceneRegistrationSpec = name => {
     const specs={
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
@@ -2757,7 +2760,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     }
     if (calls.some(call => ['control.runInParallel','forever'].includes(nameOf(call)) &&
         (call.args?.length !== 1 || call.args[0]?.type !== 'FunctionExpression'))) return null;
-    for (const call of calls) if (!t.sceneStackProgram && ['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'info.onCountdownEnd'].includes(nameOf(call)) &&
+    for (const call of calls) if (!t.sceneStackProgram && ['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap'].includes(nameOf(call)) &&
         !call.args?.some(arg => arg.type === 'FunctionExpression')) return null;
 
     for (const st of ast.body) if (st.type === 'Declaration') for (const d of st.decls) {
@@ -3078,7 +3081,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         (callOf(st) && ![
             ...(t.sceneStackProgram?[]:['sprites.onDestroyed','sprites.onOverlap']),
             'control.runInParallel',
-            ...(t.sceneStackProgram?[]:['forever','info.onCountdownEnd','info.onLifeZero',...Array.from({length:4},(_,i)=>`info.player${i+1}.onLifeZero`)])].includes(nameOf(callOf(st)))));
+            ...(t.sceneStackProgram?[]:['forever'])].includes(nameOf(callOf(st)))));
     {
         out.push('WHEN flag clicked:', '  hide');
         for (const st of setup) t.statement(st, 1, out);
@@ -3101,7 +3104,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         emitCallbackBody(call.args[0],2);out.push('');
     }
     for (const call of calls) {
-        if(isButtonRegistration(nameOf(call)))continue;
+        if(isButtonRegistration(nameOf(call)) || isInfoRegistration(nameOf(call)))continue;
         if(t.sceneStackProgram && (sceneRegistrationSpec(nameOf(call)) || nameOf(call)==='info.onCountdownEnd' || /^info(?:\.player[1-4])?\.onLifeZero$/.test(nameOf(call)||'')))continue;
         if (nameOf(call) === 'sprites.onDestroyed') {
             const handler = call.args.find(arg => arg.type === 'FunctionExpression');
@@ -3118,17 +3121,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
             out.push(`WHEN arcade kinds "${kindOf(call.args[0])}" and "${kindOf(call.args[1])}" overlap:`);
             emitCallbackBody(handler);
             t.handleAliases = new Map();
-            out.push('');
-        } else if (/^info(?:\.player[1-4])?\.onLifeZero$/.test(nameOf(call) || '')) {
-            const handler=call.args.find(arg=>arg.type==='FunctionExpression');
-            if(!handler){t.unsupported.push(`${nameOf(call)}() requires a callback`);continue;}
-            const variable=playerVar('lives',playerOf(nameOf(call)));
-            out.push('WHEN flag clicked:','  FOREVER:',`    wait until ${variable} > 0`,`    wait until ${variable} < 1`);
-            emitCallbackBody(handler,2);out.push('');
-        } else if (nameOf(call) === 'info.onCountdownEnd') {
-            const handler = call.args.find(arg => arg.type === 'FunctionExpression');
-            out.push('WHEN arcade countdown ends:');
-            emitCallbackBody(handler);
             out.push('');
         }
     }

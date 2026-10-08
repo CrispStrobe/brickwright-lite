@@ -126,12 +126,12 @@ test('scene-dependent forever wrappers and HUD events register at their executio
     }
 });
 
-test('legacy source without scene lifecycle retains its existing authored callback representation',()=>{
+test('frame and button callbacks register without scene lifecycle selection',()=>{
     const result=arcadeToPseudocode(setup+'game.onUpdate(function(){actor.x+=1});controller.A.onEvent(ControllerButtonEvent.Pressed,function(){actor.y+=1})');
     assert.deepEqual(result.unsupported,[]);
-    assert.doesNotMatch(result.code,/arcade register update|arcade register button/);
-    assert.match(result.code,/WHEN arcade updates:/);
-    assert.match(result.code,/WHEN space key pressed:/);
+    assert.match(result.code,/arcade register update/);
+    assert.match(result.code,/arcade register button/);
+    assert.doesNotMatch(result.code,/WHEN arcade updates:|WHEN space key pressed:/);
 });
 
 test('default and multiplayer life primitives retain scene-local native state',()=>{

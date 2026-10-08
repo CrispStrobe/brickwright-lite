@@ -168,10 +168,12 @@ const shellQuote = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // the strictness exists so a gate named in an `echo` cannot look protected, and `echo` is not a
 // wrapper. Each token must be a wrapper name, a flag, `--`, or a timeout duration.
 const WRAPPERS = '(?:xvfb-run|dbus-run-session|timeout|env|nice|stdbuf|setsid|--|-{1,2}[A-Za-z0-9-]+|\\d+[smh]?)';
+// Node's module preload precedes the entry script; it does not replace it.
+const NODE_IMPORTS = `(?:--import(?:=|\\s+)(?:"[^"]+"|'[^']+'|[^\\s]+)\\s+)*`;
 const runInvokesGate = (run, gate) => new RegExp(
     `(?:^|[;&|]\\s*)\\s*(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\\s]+)\\s+)*` +
     `(?:${WRAPPERS}\\s+)*` +
-    `node\\s+(?:\\./)?scripts/${shellQuote(gate)}(?=\\s|$)`,
+    `node\\s+${NODE_IMPORTS}(?:\\./)?scripts/${shellQuote(gate)}(?=\\s|$)`,
     'm'
 ).test(run);
 const workflowRuns = workflowTexts.flatMap(workflowRunScalars);
@@ -328,6 +330,8 @@ test('a wrapper runs a gate; a mention of one does not', () => {
     const gate = 'verify-example.mjs';
     for (const run of [
         `node scripts/${gate}`,
+        `node --import ./scripts/lib/register-gui-scope.mjs scripts/${gate}`,
+        `node --import=./scripts/lib/register-gui-scope.mjs scripts/${gate}`,
         `xvfb-run -a dbus-run-session -- node scripts/${gate}`,
         `PROOF_URL=http://localhost:8617/ node scripts/${gate}`,
         `timeout 600 node scripts/${gate}`,
@@ -337,6 +341,8 @@ test('a wrapper runs a gate; a mention of one does not', () => {
     }
     for (const run of [
         `echo node scripts/${gate}`,
+        `echo node --import ./scripts/lib/register-gui-scope.mjs scripts/${gate}`,
+        `node --import scripts/${gate}`,
         `echo "remember to run node scripts/${gate}"`,
         `# node scripts/${gate}`
     ]) {

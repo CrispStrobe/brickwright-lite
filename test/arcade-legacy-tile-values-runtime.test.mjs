@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {createRequire} from 'node:module';
-import {loadExtensionClass} from './helpers/bw-extensions.mjs';
-const require=createRequire(import.meta.url),values=require('../packages/scratch-gui/node_modules/scratch-vm/src/util/bw-values.js');
+import {loadExtensionClass,VM_SRC} from './helpers/bw-extensions.mjs';
+const require=createRequire(import.meta.url),values=require(`${VM_SRC}/util/bw-values.js`);
 const Arcade=loadExtensionClass('arcade');
 test('legacy Tile values reject modern locations, other runtimes and stale project references',()=>{
  const runtime=new EventEmitter(),ext=new Arcade(runtime),other=new Arcade(new EventEmitter());
