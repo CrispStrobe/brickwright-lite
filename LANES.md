@@ -1629,3 +1629,5 @@ Code artwork ownership result: implementation `70e7e0b46`, harness `f2d92ffd5`; 
 ## Tutorial project input recovery — 2026-10-08
 
 Root claims `lane/arcade-tutorial-project-inputs-20261008`, stacked on Code artwork ownership. Scope: offline tutorial asset/package/custom-code project assembly through the conversion CLI, exact pinned tutorial input recovery in the private corpus, tests and missing-input ledger. Keep the184 standalone input baseline unchanged; no invented assets or blanket full-compatibility claim.
+
+Tutorial input recovery result: clean tested source `e1a2528e2`; ten immutable tutorial documents and assembled native projects recovered separately from the184-source baseline. Six gallery background refusals resolve; four package-image refusals remain. All ten original compilation gates unavailable for named offline packages; ten partial fragments step24 frames without block errors.15 affected tests and14 gate checks pass. Supplemental code and custom palette rendering are now explicit gaps. Receipt: [tutorial inputs](docs/receipts/2026-10-08-tutorial-project-inputs.json). No full-game, new GUI build or baseline count reduction claimed.

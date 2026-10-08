@@ -574,3 +574,26 @@ Restoring it into Pixel timelines and original Assets editor qualification remai
 open. The CLI reads current SB3 artwork bundles and exports these resources too.
 See [the authoring gap ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding)
 for the remaining acceptance criteria.
+
+## Recover complete tutorial inputs offline
+
+A saved tutorial code fence can reference gallery art, custom code and packages
+that live elsewhere in its Markdown document. Assemble those declared inputs
+with the exact saved program before comparing it with a full project:
+
+```sh
+node scripts/makecode.mjs tutorial-to-project tutorial.md --main main.ts --target arcade -o tutorial.mkcd
+node scripts/makecode.mjs to-sb3 tutorial.mkcd -o tutorial.sb3 --bw tutorial.bw
+node scripts/compat-audit.mjs --target arcade --compile --execute --out audit.json tutorial.mkcd
+```
+
+The assembler preserves `assetjson` files, palette/configuration, `customts`
+files, and `package` declarations, including bare bundled package names. It
+replaces the template `main.ts` with the explicitly selected source, rejects
+conflicting or missing files, and performs no package download or code execution.
+The native project is suitable as an input to the existing MakeCode file route;
+assembly itself is not a compatibility claim. Arcade imports now explicitly
+name supplemental TypeScript files and nondefault palette rendering that are
+not implemented. Audits discover `.mkcd` and `.pxt` files and report missing
+offline extension packages as unavailable compilation gates with their names.
+See the [pinned ten-project input receipt](receipts/2026-10-08-tutorial-project-inputs.json).

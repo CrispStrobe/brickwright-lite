@@ -86,9 +86,34 @@ and fresh pasted code executes without stale-template upload warnings. Existing
 rotation, projectile and destruction journeys still pass; page errors:0.
 See the [receipt](receipts/2026-10-08-code-artwork-ownership.json).
 
-Next: distinguish missing asset/package inputs from importer failures in the
-10 unreadable background cases; implement legacy tilemap calls as real native
-resource operations; then address boolean dialogs, paint callbacks and effects.
+### Tutorial background input audit — 2026-10-08
+
+The ten generic unreadable-background cases in the old184-source report are
+saved tutorial snippets. Six reference gallery images supplied in the pinned
+tutorials' `assetjson`; four reference extension-package images. The offline
+`tutorial-to-project` CLI assembles all ten native projects without replacing
+the original snippets or inventing artwork. Six background-art refusals retire
+on these additional recovered inputs; the four package-image refusals remain.
+Eight documents also supply supplemental custom TypeScript.
+
+All ten recovered projects still have named translation gaps and unavailable
+original compilation because their external packages are absent offline. Each
+partial translated fragment steps24 frames with zero block errors; this does
+not qualify original gameplay. The original184 input importer totals remain
+93 translated /90 partial /1 malformed.15 affected tests and14 gate checks pass.
+
+Next implementation lanes: translate supplemental project source files in the
+original compiler's ordering, implement native custom-palette rendering across
+Code/Blocks/Pixel/export, and review/pin required extension packages before
+offline compiler adoption. Do not remove package dependencies to obtain a pass.
+The CLI preserves them; the audit now records typed `NO_EXTENSION` errors as
+unavailable with exact dependency names. See the
+[receipt](receipts/2026-10-08-tutorial-project-inputs.json) and
+[CLI instructions](MAKECODE.md#recover-complete-tutorial-inputs-offline).
+
+Next: recover/pin the identified package inputs, implement supplemental
+project source and palette rendering, and implement legacy tilemap calls as
+real native resource operations; then address boolean dialogs, paint callbacks and effects.
 Each family still needs its own Code/Blocks/resource-editor, runtime, original
 export and actual user-control journeys. Keep unequal animation timing, action
 binding, sheets and custom-palette qualification in the animation lane.
