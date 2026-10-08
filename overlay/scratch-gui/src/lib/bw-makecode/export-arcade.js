@@ -1509,7 +1509,8 @@ class ArcadeEmitter {
         case 'arcade_setCaptured': {
             const name = this.literalInput(b,'NAME');
             if (!name || !this.compilingRegisteredCallbacks.size) push(`// ${this.note('Arcade captured assignment needs a registered callback and fixed name')}`);
-            else push(`${ident(name)} = ${v('VALUE')}`);
+            // Captured cells retain their Arcade value type, including boolean.
+            else push(`${ident(name)} = ${this.arrayValue(b,'VALUE')}`);
             return;
         }
         case 'arcade_registerSpriteDestroyed': {

@@ -1156,7 +1156,8 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length!==1){push(this.note(`${name} requires one score value`));return;}
             push(name.endsWith('.setScore')?`arcade set score player (${playerOf(name)}) to (${this.expr(a[0])})`:`arcade change score player (${playerOf(name)}) by (${this.expr(a[0])})`);return;
         }
-        const sceneSpec=this.sceneStackProgram && sceneRegistrationSpec(name);
+        if(isFrameRegistration(name) && (this.boundSourceGlobals?.has('game') || this.sourceFunctions?.has('game') || this.localVars?.has('game') || this.currentParameters?.has('game') || this.capturedBindings.has('game'))){push(this.note(`${name} refers to a shadowed game binding`));return;}
+        const sceneSpec=(this.sceneStackProgram || isFrameRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
             if(!registration){push(this.note(`${name} requires exact arguments, fixed sprite kinds and a supported inline callback; lifecycle oldScene access is not yet supported`));return;}
@@ -2276,6 +2277,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
 
 const containsAst = (node,predicate) => node && typeof node==='object' &&
     (predicate(node) || Object.values(node).some(value=>Array.isArray(value)?value.some(child=>containsAst(child,predicate)):containsAst(value,predicate)));
+const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval'].includes(name);
 const sceneRegistrationSpec = name => {
     const specs={
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
@@ -2320,7 +2322,7 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             for (const param of node.params || []) bindings.set(param, {key:translator.varName(param),owner});
             for (const local of localNames(node.body)) bindings.set(local, {key:local,owner});
         }
-        const spec=node.type==='Call' && (specs[translator.path(node.callee)] || translator.sceneStackProgram && sceneRegistrationSpec(translator.path(node.callee)));
+        const spec=node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isFrameRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
         if (spec) {
             const handler=node.args?.[spec.handlerIndex];
             const kind=node.args?.[0];
@@ -2598,6 +2600,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
+        if(node.type==='Call' && isFrameRegistration(t.path(node.callee)))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
@@ -2718,41 +2721,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     const frameDeclaration = st => st.type === 'Declaration' && st.decls.every(d => frameArrays.has(d.name));
     const plainDeclaration = st => st.type === 'Declaration' && st.decls.every(d =>
         !frameArrays.has(d.name) && !(d.init?.type === 'Call' && nameOf(d.init) === 'sprites.create'));
-    const intervals = t.sceneStackProgram?[]:calls.filter(call => nameOf(call) === 'game.onUpdateInterval');
-    const updates = t.sceneStackProgram?[]:calls.filter(call => nameOf(call) === 'game.onUpdate');
-    if (intervals.some(call => call.args?.[1]?.type !== 'FunctionExpression')) return null;
-    if (updates.some(call => call.args?.length !== 1 || call.args[0]?.type !== 'FunctionExpression')) return null;
-    // The older fixed-target path is useful for updates that only touch one
-    // sprite. Use runtime handles when a condition compares different sprite
-    // instances; that relationship cannot be represented by script ownership.
-    if (updates.length && !hasCreationCallbacks && !names.includes('sprites.onOverlap')) {
-        const createdNames = new Set(createAssignments.map(st => st.expr.left.name));
-        const referencedHandles = node => {
-            const found = new Set();
-            const visit = value => {
-                if (!value || typeof value !== 'object') return;
-                if (value.type === 'Member' && value.object?.type === 'Identifier' &&
-                    createdNames.has(value.object.name)) found.add(value.object.name);
-                for (const child of Object.values(value)) {
-                    if (Array.isArray(child)) child.forEach(visit);
-                    else if (child && typeof child === 'object') visit(child);
-                }
-            };
-            visit(node);
-            return found;
-        };
-        const needsCrossSpriteHandles = updates.some(call => {
-            const visit = body => (body || []).some(st => {
-                if (st.type === 'If' && referencedHandles(st.test).size > 1) return true;
-                return st.type === 'If' ? visit(st.consequent) || visit(st.alternate) :
-                    ['For', 'While', 'Block'].includes(st.type) && visit(st.body);
-            });
-            return visit(call.args[0].body);
-        });
-        const customKindSprite = createdNames.size === 1 && ast.body.some(st =>
-            st.type === 'Namespace' && st.name === 'SpriteKind');
-        if (!needsCrossSpriteHandles && !customKindSprite && !requiresSpriteRuntime) return null;
-    }
     const creates = [...createAssignments.map(st => st.expr.right),
         ...localCreateAssignments.map(st => st.expr.right), ...standaloneCreates,
         ...localCreates.map(item => item.call), ...returnedCreates];
@@ -3106,7 +3074,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         plainDeclaration(st) ||
         ['If', 'For', 'While','Block'].includes(st.type) ||
         (callOf(st) && ![
-            ...(t.sceneStackProgram?[]:['sprites.onDestroyed','sprites.onOverlap','game.onUpdateInterval','game.onUpdate']),
+            ...(t.sceneStackProgram?[]:['sprites.onDestroyed','sprites.onOverlap']),
             'control.runInParallel',
             ...(t.sceneStackProgram?[]:['forever','info.onCountdownEnd','info.onLifeZero',...Array.from({length:4},(_,i)=>`info.player${i+1}.onLifeZero`)])].includes(nameOf(callOf(st))) &&
             (t.sceneStackProgram || !/^controller\.(A|B|up|down|left|right)\.onEvent$/.test(nameOf(callOf(st)) || ''))));
@@ -3130,18 +3098,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     for (const call of calls.filter(call => !t.sceneStackProgram && nameOf(call) === 'forever')) {
         out.push('WHEN flag clicked:', '  FOREVER:');
         emitCallbackBody(call.args[0],2);out.push('');
-    }
-    for (const call of intervals) {
-        const ms = Number(call.args[0]?.value);
-        if (!Number.isFinite(ms) || ms <= 0) return null;
-        out.push(`WHEN arcade every ${num(ms)} ms:`);
-        emitCallbackBody(call.args[1]);
-        out.push('');
-    }
-    for (const call of updates) {
-        out.push('WHEN arcade updates:');
-        emitCallbackBody(call.args[0]);
-        out.push('');
     }
     for (const call of calls) {
         if(t.sceneStackProgram && (sceneRegistrationSpec(nameOf(call)) || nameOf(call)==='info.onCountdownEnd' || /^info(?:\.player[1-4])?\.onLifeZero$/.test(nameOf(call)||'')))continue;
