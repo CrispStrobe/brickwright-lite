@@ -66,7 +66,7 @@ try{
     },ARCADE_PALETTE);
     await waitValue('pixelMaskTouch',false);await settleFrames(page,5);
     const initial=await state(),initialPixels=await pixels();assert.equal(initial.moverX,60);assert.equal(initial.targetX,68);assert.equal(initial.passes,0);
-    assert.deepEqual(initialPixels,{mover:36,target:36,diagonal:18,antiDiagonal:18});
+    assert.deepEqual(initialPixels,{mover:36,target:144,diagonal:18,antiDiagonal:18});
     const passes=[];
     for(let cycle=0;cycle<2;cycle++){
         await page.getByTestId('bw-arcade-a').click();await waitValue('passes',cycle+1);

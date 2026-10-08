@@ -4,7 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-import {MULTI_PHYSICS_CONTROLLER_SOURCE,MULTI_MOVER_SOURCE,TRANSPARENT_PIXEL_SOURCE,WALL_PEER_MUTATION_SOURCE,RETAINED_SPRITE_QUERY_SOURCE} from './fixtures/arcade-multi-physics.mjs';
+import {multiPhysicsControllerSource,MULTI_MOVER_SOURCE,TRANSPARENT_PIXEL_SOURCE,WALL_PEER_MUTATION_SOURCE,RETAINED_SPRITE_QUERY_SOURCE} from './fixtures/arcade-multi-physics.mjs';
 
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name.replace(/^Game_/,''),variable.value]));
 
@@ -60,7 +60,7 @@ test('retained Sprite/Image aliases support explicit overlap queries across susp
 
 
 test('a fast overlap callback retains frame-end geometry and stops its mover across all paths',async()=>{
-    const source='game.onUpdate(function(){pause(20)})\n'+MULTI_PHYSICS_CONTROLLER_SOURCE+`
+    const source='game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource(2)+`
 mover.vx=500
 pause(300)
 let stoppedAndTouching=mover.overlapsWith(target) && mover.vx===0

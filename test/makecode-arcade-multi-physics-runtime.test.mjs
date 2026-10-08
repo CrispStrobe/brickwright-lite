@@ -158,12 +158,13 @@ let afterPopOpaque=parent.overlapsWith(child)`);
 
 
 test('queued overlap queries retain cadence-dependent frame-end geometry in original PXT and native physics',async t=>{
- const cases=[{ms:4,frames:4},{ms:8,frames:2},{ms:16,frames:1},{ms:33,frames:1},{ms:50,frames:1},{ms:100,frames:1}];
- const source=cases.map(({ms,frames},i)=>`game.pushScene()
+ const cadences=[{ms:4,frames:4},{ms:8,frames:2},{ms:16,frames:1},{ms:33,frames:1},{ms:50,frames:1},{ms:100,frames:1}];
+ const cases=[2,8].flatMap(width=>cadences.map(c=>({...c,width})));
+ const source=cases.map(({ms,frames,width},i)=>`game.pushScene()
 let mover${i}=sprites.create(img\`2 2
 2 2\`,SpriteKind.Player)
-let target${i}=sprites.create(img\`2 2
-2 2\`,SpriteKind.Enemy)
+let target${i}=sprites.create(img\`${Array(width).fill(2).join(" ")}
+${Array(width).fill(2).join(" ")}\`,SpriteKind.Enemy)
 mover${i}.setPosition(60,60)
 target${i}.setPosition(68,60)
 let seen${i}=false
@@ -180,8 +181,8 @@ let finalTouch${i}=mover${i}.overlapsWith(target${i})
 game.popScene()`).join('\n');
  const expected=await runPxtArcade(source);
  const observations=[];
- for(const [i,{ms,frames}] of cases.entries()){
-  const {runtime,a}=game(),first=actor(a,{x:60,y:60,width:2,height:2}),second=actor(a,{x:68,y:60,width:2,height:2,kind:'Enemy'});
+ for(const [i,{ms,frames,width}] of cases.entries()){
+  const {runtime,a}=game(),first=actor(a,{x:60,y:60,width:2,height:2}),second=actor(a,{x:68,y:60,width,height:2,kind:'Enemy'});
   a.registerOverlapHandler({KIND:'Player',OTHER_KIND:'Enemy',TOKEN:'handler',CAPTURES:''});
   let seen=false,touch=false;
   scripts(runtime,['arcade_whenRegisteredOverlap'],()=>{seen=true;touch=a.spriteOverlaps({A:first,B:second});set(a,first,'vx',0);});
@@ -194,9 +195,10 @@ game.popScene()`).join('\n');
   assert.equal(touch,expected['touch'+i],'callback query at '+ms+'ms');
   assert.equal(x,expected['x'+i],'frame-end x at '+ms+'ms');
   assert.equal(finalTouch,expected['finalTouch'+i],'final query at '+ms+'ms');
-  observations.push({ms,frames,x,seen,touch});
+  observations.push({ms,frames,width,x,seen,touch});
  }
  t.diagnostic(JSON.stringify({overlapCadences:observations}));
  assert.ok(observations.some(o=>o.touch),'a shorter frame can finish in contact');
  assert.ok(observations.some(o=>!o.touch),'a longer frame can finish after crossing');
+ assert.ok(observations.filter(o=>o.width===8).every(o=>o.seen),'the controller target admits the crossing at every tested cadence');
 });

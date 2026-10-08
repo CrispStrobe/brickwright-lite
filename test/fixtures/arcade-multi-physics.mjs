@@ -96,11 +96,12 @@ let wallPeerDone=stoppedPeer && firstX===31 && peerX===10 && firstVx===0 && peer
 
 // A launches a fast pass through a stationary target; B resets it. Up and Down
 // switch the sparse images between pixel overlap and disjoint pixel masks.
-export const MULTI_PHYSICS_CONTROLLER_SOURCE=`
+export const multiPhysicsControllerSource=(targetWidth=8)=>`
 scene.setBackgroundColor(1)
 let art=image.create(2,2)
 art.fill(5)
-let targetArt=image.create(2,2)
+// The controller defaults to a wide target for variable desktop frame rates.
+let targetArt=image.create(${targetWidth},2)
 targetArt.fill(9)
 let mover=sprites.create(art,SpriteKind.Player)
 let target=sprites.create(targetArt,SpriteKind.Food)
@@ -151,6 +152,8 @@ controller.down.onEvent(ControllerButtonEvent.Pressed,function(){
     pixelMaskTouch=sparseFirst.overlapsWith(sparseSecond)
 })
 `;
+
+export const MULTI_PHYSICS_CONTROLLER_SOURCE=multiPhysicsControllerSource();
 
 // Explicit overlap queries retain Sprite and live Image references across
 // scene transitions even when the queried sprite is outside the active world.
