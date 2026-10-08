@@ -27,3 +27,9 @@ test('player movement defaults, missing players and deferred sprite assignment p
  ext.movePlayerWithButtons({PLAYER:'missing',VX:90,VY:90});assert.equal(state.controlledSprites[3].length,1);
  ext.setPlayerSprite({PLAYER:player,ID:null});assert.equal(state.controlledSprites[3].length,0);
 });
+test('scene push/pop retains each scene bindings while sharing physical player input',()=>{
+ const {ext,state,a}=make();ext._controlSprite(4,'a',40,0);
+ ext.pushScene({});const fresh=ext._state();assert.strictEqual(fresh.controllerButtons,state.controllerButtons);
+ fresh.controllerButtons[4]={left:true};assert.equal(fresh.controlledSprites,undefined);
+ ext.popScene({});assert.strictEqual(ext._state(),state);ext._moveControlledSprites([a]);assert.equal(a.vx,-40);
+});
