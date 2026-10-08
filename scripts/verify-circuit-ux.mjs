@@ -553,6 +553,88 @@ try {
     } else {
         check('green flag control is discoverable for lifecycle testing', false, 'no green flag selector');
     }
+
+    // Fresh installed-app journey; no injected circuit/clock implementation.
+    // Lite's Sim button also issues a runToken, so observe reset synchronously
+    // instead of racing a Pause click against the newly running clock.
+    const scopePage = await browser.newPage({viewport: {width: 1440, height: 900}});
+    try {
+        await scopePage.addInitScript(() => {
+            localStorage.clear(); sessionStorage.clear();
+            localStorage.setItem('bw-starter-v1-complete', '1');
+        });
+        await scopePage.goto(`http://localhost:${port}/`, {waitUntil: 'networkidle', timeout: 60000});
+        await scopePage.getByRole('tab', {name: /Circuit/}).click();
+        const designer = scopePage.locator('.bw-circuit-designer:visible').last();
+        await designer.locator('[data-canvas]').waitFor({timeout: 60000});
+        const fixture = {parts: [
+            {id: 'scope-v', kind: 'vsource', params: {volts: 1}, x: 100, y: 100},
+            {id: 'scope-r', kind: 'resistor', params: {ohms: 1000}, x: 250, y: 100},
+            {id: 'scope-g', kind: 'gnd', params: {}, x: 100, y: 230}
+        ], nets: [
+            {id: 'signal', terminals: [{part: 'scope-v', terminal: 'pos'}, {part: 'scope-r', terminal: 'a'}]},
+            {id: 'ground', terminals: [{part: 'scope-v', terminal: 'neg'}, {part: 'scope-r', terminal: 'b'}, {part: 'scope-g', terminal: 'gnd'}]}
+        ]};
+        await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
+        const choosing = scopePage.waitForEvent('filechooser');
+        await designer.getByRole('button', {name: /^📂 Open$/}).click();
+        await (await choosing).setFiles({name: 'scope-reset.json', mimeType: 'application/json',
+            buffer: Buffer.from(JSON.stringify(fixture))});
+        await scopePage.waitForFunction(() => window.__board === window.__circuit?.board
+            && window.__board.parts.some(p => p.id === 'scope-v'));
+        await designer.getByRole('radio', {name: 'Sim mode', exact: true}).click();
+        await scopePage.waitForFunction(() => window.__board.getTime() > 0n);
+        if (!await designer.locator('[data-instruments-column]').count()) {
+            await designer.getByRole('button', {name: /Expand instruments panel/i}).click();
+        }
+        await designer.getByRole('button', {name: /Pause simulation/i}).press('Enter');
+        await designer.getByRole('button', {name: /Resume simulation/i}).waitFor();
+        const scope = designer.locator('[data-scope-panel]');
+        if (!await scope.count()) await designer.getByRole('button', {name: /Scope/i}).first().click();
+        await scope.waitFor();
+        await scope.getByTestId('bw-scope-record').selectOption('100000');
+        const signal = await scopePage.evaluate(() => window.__board.nets.find(n =>
+            n.terminals.some(t => t.part === 'scope-v' && t.terminal === 'pos')).id);
+        await scope.locator('select').last().selectOption(signal);
+        await scope.getByText('+ channel', {exact: false}).click();
+        await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+        await scopePage.waitForFunction(() => {
+            const b = window.__board, hs = b.getScopeChannels();
+            return hs.length === 1 && b.getScopeData(hs[0]).count === 5000;
+        });
+        await scopePage.evaluate(() => {
+            const b = window.__board, handle = b.getScopeChannels()[0];
+            const receipt = {resets: [], firstCapture: null, errors: []};
+            window.__bwScopeResetReceipt = receipt;
+            const observe = event => {
+                try {
+                    if (event.type === 'reset') {
+                        const d = b.getScopeData(handle);
+                        receipt.resets.push({zero: b.getTime() === 0n,
+                            retained: b.getScopeChannels().length === 1 && b.getScopeChannels()[0] === handle,
+                            empty: d.count === 0 && d.writeIndex === 0 && [...d.samples].every(Number.isNaN)});
+                    } else if (event.type === 'time' && receipt.resets.length && b.getTime() >= 50000000n) {
+                        const d = b.getScopeData(handle);
+                        receipt.firstCapture = {time: String(b.getTime()), count: d.count, start: String(d.startTNs),
+                            oneVolt: [...d.samples.slice(0, 10000)].every(v => v === 1)};
+                        b.offChange(observe);
+                    }
+                } catch (e) {receipt.errors.push(String(e)); b.offChange(observe);}
+            };
+            b.onChange(observe);
+        });
+        await designer.getByRole('radio', {name: 'Build mode', exact: true}).click();
+        await designer.getByRole('radio', {name: 'Sim mode', exact: true}).click();
+        await scopePage.waitForFunction(() => window.__bwScopeResetReceipt?.firstCapture
+            || window.__bwScopeResetReceipt?.errors.length);
+        const receipt = await scopePage.evaluate(() => window.__bwScopeResetReceipt);
+        check('installed Sim reset retains scope and captures all first 5000 one-volt envelopes',
+            receipt.errors.length === 0 && receipt.resets.length > 0
+            && receipt.resets.every(r => r.zero && r.retained && r.empty)
+            && receipt.firstCapture?.time === '50000000' && receipt.firstCapture.count === 5000
+            && receipt.firstCapture.start === '0' && receipt.firstCapture.oneVolt,
+            JSON.stringify(receipt));
+    } finally {await scopePage.close();}
 } finally {
     await browser.close();
     server.close();
