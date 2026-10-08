@@ -1164,6 +1164,9 @@ class ArcadeTranslator extends BaseTranslator {
             const binding=name.split('.')[0];
             if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
         }
+        if(isSpriteRegistration(name)){
+            for(const binding of ['sprites','SpriteKind'])if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
+        }
         const sceneSpec=(this.sceneStackProgram || isIndependentRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
@@ -2288,7 +2291,8 @@ const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval'].in
 const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '');
 const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
-const isIndependentRegistration = name => isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name);
+const isSpriteRegistration = name => ['sprites.onDestroyed','sprites.onOverlap'].includes(name);
+const isIndependentRegistration = name => isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
 const sceneRegistrationSpec = name => {
     const specs={
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
@@ -2765,7 +2769,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     }
     if (calls.some(call => nameOf(call)==='control.runInParallel' &&
         (call.args?.length !== 1 || call.args[0]?.type !== 'FunctionExpression'))) return null;
-    for (const call of calls) if (!t.sceneStackProgram && ['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap'].includes(nameOf(call)) &&
+    for (const call of calls) if (!t.sceneStackProgram && nameOf(call)==='sprites.onCreated' &&
         !call.args?.some(arg => arg.type === 'FunctionExpression')) return null;
 
     for (const st of ast.body) if (st.type === 'Declaration') for (const d of st.decls) {
@@ -3083,9 +3087,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type) ||
         plainDeclaration(st) ||
         ['If', 'For', 'While','Block'].includes(st.type) ||
-        (callOf(st) && ![
-            ...(t.sceneStackProgram?[]:['sprites.onDestroyed','sprites.onOverlap']),
-            'control.runInParallel'].includes(nameOf(callOf(st)))));
+        (callOf(st) && nameOf(callOf(st))!=='control.runInParallel'));
     {
         out.push('WHEN flag clicked:', '  hide');
         for (const st of setup) t.statement(st, 1, out);
@@ -3102,27 +3104,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         out.push('WHEN flag clicked:');
         emitCallbackBody(call.args[0]);
         out.push('');
-    }
-    for (const call of calls) {
-        if(isIndependentRegistration(nameOf(call)))continue;
-        if(t.sceneStackProgram && (sceneRegistrationSpec(nameOf(call)) || nameOf(call)==='info.onCountdownEnd' || /^info(?:\.player[1-4])?\.onLifeZero$/.test(nameOf(call)||'')))continue;
-        if (nameOf(call) === 'sprites.onDestroyed') {
-            const handler = call.args.find(arg => arg.type === 'FunctionExpression');
-            t.handleAliases = new Map(handler.params?.[0] ? [[handler.params[0], 'arcade event first']] : []);
-            out.push(`WHEN arcade kind "${kindOf(call.args[0])}" destroyed:`);
-            emitCallbackBody(handler);
-            t.handleAliases = new Map();
-            out.push('');
-        } else if (nameOf(call) === 'sprites.onOverlap') {
-            const handler = call.args.find(arg => arg.type === 'FunctionExpression');
-            t.handleAliases = new Map();
-            if (handler.params?.[0]) t.handleAliases.set(handler.params[0], 'arcade event first');
-            if (handler.params?.[1]) t.handleAliases.set(handler.params[1], 'arcade event second');
-            out.push(`WHEN arcade kinds "${kindOf(call.args[0])}" and "${kindOf(call.args[1])}" overlap:`);
-            emitCallbackBody(handler);
-            t.handleAliases = new Map();
-            out.push('');
-        }
     }
     for (const [call, token] of t.destroyedInstanceHandlers) {
         out.push(`WHEN arcade destruction handler "${token}" runs:`);

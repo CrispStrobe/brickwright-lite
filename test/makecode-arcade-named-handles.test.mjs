@@ -52,8 +52,9 @@ test('a pinned fire game keeps named handles and both event parameters', () => {
     assert.match(result.code, /WHEN arcade creation handler "__bwCreated1" runs:/);
     assert.match(result.code, /arcade register interval \(500\) as "__bwInterval1"/);
     assert.match(result.code, /WHEN arcade interval handler "__bwInterval1" runs:/);
-    assert.match(result.code, /WHEN arcade kinds "Player" and "FireSource" overlap:/);
-    assert.match(result.code, /arcade destroy arcade event second/);
+    assert.match(result.code, /arcade register overlap kind "Player" with kind "FireSource" as/);
+    assert.match(result.code, /arcade set local otherSprite to arcade event second/);
+    assert.match(result.code, /arcade destroy arcade local otherSprite/);
     assert.match(result.code, /arcade set position of \(arcade event first\) x \(pick random 0 to 160\) y \(pick random 0 to 120\)/);
     assert.equal(result.costumes.length, 2);
     assert.match(result.code, /arcade keep mySprite in screen \(compare value \(0\) op "<" with \(1\)\)/);
@@ -86,7 +87,7 @@ game.onUpdate(function () { frames += 1; lifeNow = info.life(); if (frames >= 12
     assert.deepEqual(translated.unsupported, []);
     const run = await runProgram(translated.code, {frames: 12, uploads: translated.costumes, storage: true});
     assert.deepEqual(run.errors, []);
-    assert.ok((run.calls.get('arcade_whenSpritesOverlap') || 0) >= 1);
+    assert.ok((run.calls.get('arcade_whenRegisteredOverlap') || 0) >= 1);
     assert.ok((run.calls.get('arcade_destroySprite') || 0) >= 1);
     const live = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {}).filter(s => s.id);
     assert.equal(live.length, 1);
