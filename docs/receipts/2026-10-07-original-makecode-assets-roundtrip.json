@@ -90,5 +90,30 @@
     "arbitrary real projects and sprite/costume sharing transport unqualified"
   ],
   "hostedFinalHead": "pending",
-  "boundary": "Finite synthetic duplicate-animation fixture through actual original Assets and Brickwright GUI. Current original editor version only; no hardware firmware, account or share publication."
+  "boundary": "Finite synthetic duplicate-animation fixture through actual original Assets and Brickwright GUI. Current original editor version only; no hardware firmware, account or share publication.",
+  "hostedRepair": {
+    "initialRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37681393149",
+    "failures": [
+      "background and rotation browser download assertions expected HEX",
+      "file-dialog acceptance test omitted mkcd/pxt",
+      "live external-editor harness lacked explicit opt-in registration"
+    ],
+    "affectedTests": 30,
+    "backgroundJourneys": 7,
+    "rotationPhases": 12,
+    "localBundle": "gui.b3d98153.js",
+    "mainIntegrationSource": "01a41ebf5f7f8f746bf0a6808b5f984717301d21",
+    "boundary": "Local affected Arcade surface rechecks use previously built product source86935c2. Refreshed main Circuit dependency changes require hosted final candidate build."
+  },
+  "parentAdoption": {
+    "pr": 710,
+    "reviewedHead": "814e72192f96fb5a875aac753907d4ab2af5275d",
+    "merge": "0441d5b6247e3b3c6a41fac68fba36f0c7387927",
+    "enabledSuccess": 9,
+    "conditionalSkipped": 4,
+    "reviewedTreeEqualsMerge": false,
+    "mergeTree": "e2a92194c4a7c6ea7ffd87af525174aae1b58c45",
+    "independentMergeTreeMatches": true,
+    "otherParent": "948e02fdc07cbd625d4a0bb82e8099ea1dfc9c25"
+  }
 }

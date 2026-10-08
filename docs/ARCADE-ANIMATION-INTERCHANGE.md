@@ -1,14 +1,17 @@
 # Native Arcade animation interchange
 
-Status: native gallery export and behavioural import implemented and locally
-tested against original PXT. Validated rich-source companion transport is
-implemented; persistent GUI resource reconstruction and original-editor
-qualification remain open. This extends U04 in the
-[GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding).
-The uniform-resource production-browser journey is locally qualified as recorded
-in the ledger. Original native animation asset editing and editable GUI resource recovery
-remain open. No locked corpus partial result is closed by these
-format or synthetic authoring tests alone.
+Status: native gallery export/import, validated rich-source companion transport,
+persistent hidden artwork libraries and uniform-animation authoring are
+implemented. The finite live-original-Assets editor journey now passes: native
+project import, unedited PNG save with exact rich source/UUIDs, actual asset
+edits, download and Brickwright return with visible edited playback. See the
+[latest original-editor boundary](#original-makecode-assets-editor-and-native-project-files)
+and [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding).
+Earlier sections preserve chronological qualification boundaries; later
+receipts supersede their open items only where explicitly tested. Unequal
+frame timing, action binding, sheets, custom palettes and corpus-wide closure
+remain open. No locked corpus partial result is closed by these synthetic
+fixtures alone.
 
 ## Reached format boundary
 
@@ -668,3 +671,22 @@ Protocol references: Microsoft PXT's
 [project serialization](https://github.com/microsoft/pxt/blob/master/pxtlib/package.ts)
 and [editor project import](https://github.com/microsoft/pxt/blob/master/webapp/src/app.tsx).
 See the [qualification receipt](receipts/2026-10-07-original-makecode-assets-roundtrip.json).
+
+
+The first PR711 hosted run exposed stale background/rotation download checks
+expecting `.hex`, an outdated file-dialog format list and missing explicit
+opt-in registration for the networked live-editor harness. These are corrected
+without changing product export behaviour. The affected unit/registration
+batch passes30/30; background authoring passes7 browser journeys, and rotation
+passes12 observed phases, including `.mkcd` file reimport. These local reruns use
+the previously qualified `gui.b3d98153.js` Arcade surface. Main's subsequently
+merged Circuit dependency changes require the hosted final-candidate build;
+they are not credited to that older local bundle.
+
+PR710 merged at `0441d5b6247e3b3c6a41fac68fba36f0c7387927` after all9
+enabled checks passed on `814e72192f96fb5a875aac753907d4ab2af5275d`.
+Four conditional jobs skipped. Main had advanced through PR707/PR712: the
+merge tree differs from the reviewed head and exactly matches the independently
+computed merge of that head and main `948e02fdc07cbd625d4a0bb82e8099ea1dfc9c25`.
+PR711 is retargeted to main and includes this integration. Its repaired final
+head still requires hosted qualification.

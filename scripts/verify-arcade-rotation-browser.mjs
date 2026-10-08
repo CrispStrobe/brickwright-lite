@@ -199,15 +199,15 @@ try {
     const downloaded = page.waitForEvent('download', {timeout: 30000});
     await page.getByTestId('bw-makecode-arcade-export').click();
     const download = await downloaded;
-    assert.match(download.suggestedFilename(), /\.hex$/);
-    const downloadedPath = path.join(path.dirname(out), 'arcade-rotation-export.hex');
+    assert.match(download.suggestedFilename(), /\.mkcd$/);
+    const downloadedPath = path.join(path.dirname(out), 'arcade-rotation-export.mkcd');
     await download.saveAs(downloadedPath);
     const bytes = await fs.readFile(downloadedPath);
     assert.ok(bytes.length > 100, 'actual exported project downloaded');
     if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
-        name: 'arcade-rotation-export.hex', mimeType: 'application/octet-stream', buffer: bytes});
-    await page.getByText(/Imported the Arcade game.*arcade-rotation-export\.hex/).first()
+        name: 'arcade-rotation-export.mkcd', mimeType: 'application/octet-stream', buffer: bytes});
+    await page.getByText(/Imported the Arcade game.*arcade-rotation-export\.mkcd/).first()
         .waitFor({state: 'visible', timeout: 30000});
     const reimportedCode = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
     assert.match(reimportedCode, /rotationDegrees/);

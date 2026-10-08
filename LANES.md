@@ -30,7 +30,11 @@ tests,18 existing browser journeys and4 live-original-editor journeys. Final
 live editor and Brickwright return have zero page errors; visible edited
 playback passes. Build has zero errors and4,360,502 initial bytes. See
 [the receipt](docs/receipts/2026-10-07-original-makecode-assets-roundtrip.json).
-Hosted final-head qualification remains pending. Corpus93 partial is unchanged.
+PR710 merged after all9 enabled checks passed; PR711 now targets refreshed
+main. Hosted repair covers stale HEX browser/file-dialog assertions and explicit
+opt-in live-editor registration:30 affected tests,7 background journeys and12
+rotation phases pass locally. Final candidate CI remains pending; the corpus
+still has93 partial inputs.
 
 ## Arcade resource picker follow-up — 2026-10-07
 

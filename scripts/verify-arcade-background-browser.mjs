@@ -263,8 +263,8 @@ try {
     if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
     const downloaded=page.waitForEvent('download');
     await page.getByTestId('bw-makecode-arcade-export').click();
-    const download=await downloaded;assert.match(download.suggestedFilename(),/\.hex$/);
-    const filename=path.join(path.dirname(out),'arcade-background-export.hex');await download.saveAs(filename);
+    const download=await downloaded;assert.match(download.suggestedFilename(),/\.mkcd$/);
+    const filename=path.join(path.dirname(out),'arcade-background-export.mkcd');await download.saveAs(filename);
     const embedded=await unpackMakeCodeSource(await fs.readFile(filename));assert.ok(embedded.files?.['main.ts']);
     await fs.writeFile(path.join(path.dirname(out),'arcade-background-export.ts'),embedded.files['main.ts']);
     const compiled=await compile('arcade',embedded.files);assert.equal(compiled.success,true,JSON.stringify(compiled.diagnostics));

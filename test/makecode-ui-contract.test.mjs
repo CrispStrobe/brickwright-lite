@@ -183,7 +183,7 @@ test('the extensions offered and the extensions handled are the same list', () =
     // IMPORT_ACCEPT is what the file dialog shows; isImportableArtefact is
     // what decides where a dropped file goes. A file offered but not
     // routed lands in the text path and reports "unknown file type".
-    assert.equal(IMPORT_ACCEPT, '.hex,.uf2,.elf,.png');
+    assert.equal(IMPORT_ACCEPT, '.hex,.uf2,.elf,.png,.mkcd,.pxt');
     const accept = readFileSync(
         resolve(here, '../overlay/scratch-gui/src/lib/bw-makecode/accept.js'), 'utf8');
     for (const ext of IMPORT_ACCEPT.split(',')) {
