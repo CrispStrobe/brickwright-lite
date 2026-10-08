@@ -447,7 +447,7 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'whenRegisteredLegacyWall', blockType: Scratch.BlockType.HAT, isEdgeActivated: false,
             text: 'when Arcade color wall handler [TOKEN] runs', arguments: str('TOKEN','colorwall') },
           { opcode: 'tileHitFrom', blockType: Scratch.BlockType.REPORTER,
-            text: 'Arcade sprite [ID] wall hit index [DIRECTION]', arguments: {...str('ID',''),...n('DIRECTION',2)} },
+            text: 'Arcade sprite [ID] wall hit index [DIRECTION]', arguments: {...str('ID',''),DIRECTION:{type:Scratch.ArgumentType.STRING,menu:'collisionDirections',defaultValue:'2'}} },
           { opcode: 'registerWallHandler', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade register wall kind [KIND] as [TOKEN] capturing [CAPTURES]',
             arguments: {...str('KIND', 'Player'), ...str('TOKEN', 'wall'), ...str('CAPTURES', '')} },
