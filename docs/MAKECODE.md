@@ -1092,3 +1092,12 @@ local contracts; it does not claim overall hosted integration is green. Next
 finish that gate cleanup alongside the remaining callback families. Exact-head
 CI and stacked integration remain pending.
 [Receipt](receipts/2026-10-08-arcade-info-registration.json).
+
+
+### Scene-owned forever closures — 2026-10-08
+
+Source `94882c6a57d9f32462ec2579efc56fe2d9e35e45` routes `forever`, `game.forever` and `basic.forever` through native registrations at their execution sites, independently of scene-stack calls. Nested calls preserve live captured locals and yielding order. Invalid callback arguments and shadowed API bindings stay explicit diagnostics. Existing scene-local runtime registries suspend new iterations while another scene is active; the pending-frame regression requires elapsed time to survive a callback pause.
+
+All61 affected checks pass after reruns,0 skips. Original and exported PXT agree with native/decompile/reimport/SB3 on finite trace `S12E13S14E15`. Production `gui.4e20cd56.js` passes native file import→Code→Blocks→Run→visible A→From blocks plus all four prior callback journeys,0 page/block/build errors. Initial payload remains4,360,790 bytes under the unchanged limit. Same184 import-only102/81/1,0 changed diagnostic rows. Initial failures remain privately archived.
+
+The native Blocks command is `arcade register forever as TOKEN capturing CAPTURES`, paired with `when arcade forever handler TOKEN runs`; Code decompilation retains the pair. Captures are shared cells of the enclosing function. Dedicated guidance for creating callback pairs and editing captures remains a GUI task. Sprite callback unification, common startup/scene/obstacle timing and the remaining hosted export/browser gates are still open. [Receipt](receipts/2026-10-08-arcade-scene-continuation.json).
