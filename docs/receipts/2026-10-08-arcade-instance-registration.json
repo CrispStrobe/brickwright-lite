@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-08",
+  "source": "a0500049b29809f2a2f69b41e47ed7eb9a78ccb0",
+  "producer": {
+    "repository": "CrispStrobe/sb3-creator",
+    "source": "02c4b37a15fe1325df696f8050637a108083953c",
+    "pullRequest": 71,
+    "dialectTests": {
+      "pass": 230,
+      "fail": 0,
+      "skip": 0
+    },
+    "registry": "up to date",
+    "embedCheck": "not completed: local esbuild dependency absent"
+  },
+  "scope": "Sprite.onDestroyed inline callbacks with live lexical captures",
+  "trace": "I12i13KXI14i15KY",
+  "comparisons": [
+    "original PXT simulator",
+    "native Scratch VM",
+    "Code decompile/reparse",
+    "exported PXT simulator",
+    "export/reimport",
+    "SB3 save/reload"
+  ],
+  "corpus": {
+    "inputs": 184,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "changedDiagnosticRows": 0,
+    "boundary": "import-only; no full-game equivalence claim"
+  },
+  "browser": {
+    "script": "scripts/verify-arcade-instance-registration-browser.mjs",
+    "status": "wired to hosted heavy shard; new production build and visible browser execution pending"
+  },
+  "remaining": [
+    "nested control.runInParallel call timing and captures",
+    "callback construction and capture guidance in GUI",
+    "scene transition and common startup timing",
+    "ranked corpus gaps and overall hosted integration"
+  ],
+  "tests": {
+    "arcadeDistinct": 23,
+    "browserGateInventory": 21,
+    "fail": 0,
+    "skip": 0,
+    "qualification": "after focused rerun; original failures retained privately"
+  }
+}
