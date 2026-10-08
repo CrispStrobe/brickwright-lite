@@ -632,3 +632,19 @@ remain named gaps. Namespace-function values, callable type aliases and
 callbacks that themselves accept callable arguments are outside this slice.
 This support does not provide missing extension packages or implement APIs
 inside a callback that already have their own named gaps.
+
+### Built-in namespace augmentation
+
+Arcade source can reopen built-in namespaces such as `sprites` and `game`
+with local exported helpers. Qualified calls and unqualified built-in members
+inside these declarations retain their original PXT bindings. Nested built-in
+namespaces can also be extended; source-private declarations stay private to
+their own declaration block. A generated catalog from the pinned official PXT
+device API metadata identifies exact exports. Recognizing a name does not
+implement its operation: unsupported APIs retain their operation diagnostics.
+Unknown members, conflicting built-in declarations, namespace object escapes
+and reads of source exports before initialization remain explicit errors.
+
+Code and Blocks expose the lowered procedures and ordinary Arcade operations.
+Native export emits equivalent flat procedures. Namespace-preserving editing,
+multi-file navigation and general callable values remain open GUI/runtime work.

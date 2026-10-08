@@ -943,3 +943,30 @@ Original-editor reopening of compiled firmware's embedded source is still
 unqualified; the earlier uncompressed HEX self-roundtrip cannot qualify it.
 The corpus remains90 translated /93 partial /1 malformed; no case is upgraded
 by this synthetic fixture alone.
+
+### Built-in namespace augmentation — 2026-10-08
+
+Source additions to `sprites`, `game` and nested built-in namespaces now retain
+exact official PXT exports, including unqualified references inside the source
+namespace. The implementation keeps library members separate from source
+private scopes and source initialization. Unknown members and collisions remain
+named diagnostics. The catalog identifies bindings; it is not evidence that all
+catalog operations are implemented.
+
+The complete differential fixture agrees with original PXT through Code→Blocks,
+native Arcade export→original PXT, reimport and SB3 reload. Production browser
+qualification imports the native file, converts to Blocks and uses controller B
+to change observed192→197, score7→9 and sprite x31→36. The resulting ordinary
+procedures are editable. Remaining GUI work: namespace-preserving source and
+multi-file navigation, callable authoring, reference-aware procedure renaming,
+and palette/resource features recorded above. This slice adds no graphics tools.
+
+Same184 import-only remains96 translated /87 partial /1 malformed. Ten recovered
+tutorial projects remain partial and original compilation remains unavailable
+for their named offline packages; all ten partial fragments step24 frames with
+zero block errors. Named diagnostics decrease63→53, without a complete-game
+qualification claim. Next conversion work includes dynamic sprite references,
+multiplayer operations, missing packages and callable values. Separately, the
+original-assets PR's exact-head light-browser retry fails waiting for uploaded
+background PNG dimensions; retain this merge blocker and its failed run rather
+than weakening the gate. See the [receipt](receipts/2026-10-08-arcade-namespace-augmentation.json).
