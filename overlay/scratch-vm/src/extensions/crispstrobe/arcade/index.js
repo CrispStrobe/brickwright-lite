@@ -586,6 +586,7 @@ module.exports = makeExt(`// Name: Arcade
         if (!this._runtime.bwArcadeDeviceState) this._runtime.bwArcadeDeviceState = {};
         const state = this._runtime.bwArcadeDeviceState;
         if (!state.buttons) state.buttons = {};
+        if (!state.controllerButtons) state.controllerButtons = {};
         if (!state.sprites) state.sprites = {};
         if (!Number.isFinite(state.nextSpriteId)) state.nextSpriteId = 0;
         if (!state.spriteTargets) state.spriteTargets = {};
@@ -593,7 +594,7 @@ module.exports = makeExt(`// Name: Arcade
         if (!Number.isFinite(state.score)) state.score = 0;
         this._ensureSceneEngine(state);return state;
       }
-      if (!this._fallbackState) this._fallbackState = {buttons: {}, sprites: {}, neopixels: Array(5).fill('#111827'), score: 0};
+      if (!this._fallbackState) this._fallbackState = {buttons: {}, controllerButtons: {}, sprites: {}, neopixels: Array(5).fill('#111827'), score: 0};
       this._ensureSceneEngine(this._fallbackState);return this._fallbackState;
     }
 
