@@ -6,6 +6,7 @@ import VM from 'scratch-vm';
 // Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
 const A11Y_L10N = {
     en: {
+        'a11y.player': 'Player',
         'a11y.neopixels': 'NeoPixels',
         'a11y.lightSensor': 'Light sensor',
         'a11y.tiltX': 'Tilt X',
@@ -14,6 +15,7 @@ const A11Y_L10N = {
         'runtime.physicsStepNoProgress': 'Physics could not advance with minimum step {minStep} and maximum step {maxStep}. Use positive step sizes and a maximum step at least as large as the minimum step.'
     },
     de: {
+        'a11y.player': 'Spieler',
         'a11y.neopixels': 'NeoPixel-LEDs',
         'a11y.lightSensor': 'Lichtsensor',
         'a11y.tiltX': 'Neigung X',
@@ -76,6 +78,8 @@ ControlButton.propTypes = {
 const ArcadeDevicePane = ({vm}) => {
     const canvasRef = React.useRef(null);
     const heldRef = React.useRef(new Set());
+    const playerRef = React.useRef(1);
+    const [player, setPlayer] = React.useState(1);
     const [held, setHeld] = React.useState({});
     const device = String(vm.runtime.bwDeviceId || vm.runtime.stc?.device || 'arcade').toLowerCase();
     const compact = device === 'pybadge-lc';
@@ -104,7 +108,14 @@ const ArcadeDevicePane = ({vm}) => {
         const buttons = {};
         Object.keys(BUTTONS).forEach(key => { buttons[key] = heldRef.current.has(key); });
         setHeld(buttons);
-        publishState({buttons});
+        if (playerRef.current === 1) publishState({buttons});
+        else {
+            const state = vm.runtime.bwArcadeDeviceState || (vm.runtime.bwArcadeDeviceState = {});
+            const controllers = state.controllerButtons || (state.controllerButtons = {});
+            Object.assign(controllers[playerRef.current] || (controllers[playerRef.current] = {}), buttons);
+        }
+        // Legacy keyboard blocks, dialog controls and button hats belong to player one.
+        if (playerRef.current !== 1) return;
         if (isDown && vm.runtime.bwArcadeDialogOpen) {
             vm.runtime.emit('ARCADE_BUTTON_DOWN', name);
             return;
@@ -112,6 +123,16 @@ const ArcadeDevicePane = ({vm}) => {
         vm.postIOData('keyboard', {key: BUTTONS[name].key, isDown});
         if (isDown && vm.runtime.startHats) vm.runtime.startHats('arcade_whenButton', {BUTTON: name});
     }, [publishState, vm]);
+
+    const selectPlayer = event => {
+        [...heldRef.current].forEach(name => setButton(name, false));
+        playerRef.current = Number(event.target.value);
+        setPlayer(playerRef.current);
+    };
+
+    React.useEffect(() => () => {
+        [...heldRef.current].forEach(name => setButton(name, false));
+    }, [setButton]);
 
     React.useEffect(() => {
         publishState({light, tiltX, tiltY});
@@ -140,7 +161,7 @@ const ArcadeDevicePane = ({vm}) => {
         frame = requestAnimationFrame(paint);
         return () => {
             cancelAnimationFrame(frame);
-            heldRef.current.forEach(name => vm.postIOData('keyboard', {key: BUTTONS[name].key, isDown: false}));
+
         };
     }, [vm]);
 
@@ -170,6 +191,11 @@ const ArcadeDevicePane = ({vm}) => {
             <div style={{maxWidth: 660, margin: '0 auto'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8}}>
                     <strong>{compact ? 'PyBadge LC' : device === 'microbit' ? 'micro:bit Arcade' : 'MakeCode Arcade · PyBadge'}</strong>
+                    <label>{at(browserLocale(), 'a11y.player')} <select
+                        aria-label={at(browserLocale(), 'a11y.player')} data-testid="bw-arcade-player"
+                        value={player} onChange={selectPlayer}>
+                        {[1, 2, 3, 4].map(number => <option key={number} value={number}>{number}</option>)}
+                    </select></label>
                     <small>160 × 120 game · 160 × 128 TFT</small>
                 </div>
                 <div style={{position: 'relative', borderRadius: 38, padding: '35px 42px 28px', background: 'linear-gradient(145deg,#5b21b6,#312e81)', border: '4px solid #8b5cf6', boxShadow: '0 14px 32px rgba(0,0,0,.5),inset 0 0 0 2px rgba(255,255,255,.13)'}}>

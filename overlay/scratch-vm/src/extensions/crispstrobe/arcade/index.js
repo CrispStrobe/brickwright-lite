@@ -192,6 +192,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'playerLookup',blockType:Scratch.BlockType.REPORTER,text:'Arcade player by [MODE] [VALUE]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'playerLookupModes',defaultValue:'number'},...n('VALUE',1)}},
           {opcode:'allPlayers',blockType:Scratch.BlockType.REPORTER,text:'Arcade all players'},
           {opcode:'playerSprite',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite of player [PLAYER]',arguments:str('PLAYER','')},
+          {opcode:'movePlayerWithButtons',blockType:Scratch.BlockType.COMMAND,text:'Arcade move player [PLAYER] with buttons vx [VX] vy [VY]',arguments:{...str('PLAYER',''),...n('VX',100),...n('VY',100)}},
           {opcode:'setPlayerSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade set sprite of player [PLAYER] to [ID]',arguments:{...str('PLAYER',''),...str('ID','')}},
           {opcode:'playerBySprite',blockType:Scratch.BlockType.REPORTER,text:'Arcade player of sprite [ID]',arguments:str('ID','')},
           {opcode:'playerProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade player [READ] property [PROPERTY] of [PLAYER]',arguments:{READ:{type:Scratch.ArgumentType.STRING,menu:'playerReadModes',defaultValue:'safe'},...n('PROPERTY',2),...str('PLAYER','')}},
@@ -616,7 +617,17 @@ module.exports = makeExt(`// Name: Arcade
     }
     allPlayers() {return Scratch.BWValues.arrayReference(this._runtime,this._players().map(player=>this._playerRef(player)));}
     playerSprite(args) {return Scratch.BWValues.encode(this._player(args.PLAYER)?.sprite);}
-    setPlayerSprite(args) {const player=this._player(args.PLAYER);if(player)player.sprite=Scratch.BWValues.decode(args.ID);}
+    setPlayerSprite(args) {
+      const player=this._player(args.PLAYER);if(!player)return;
+      if(player.movement)this._stopControllingSprite(player.index+1,player.sprite);
+      player.sprite=Scratch.BWValues.decode(args.ID);
+      if(player.movement)this._controlSprite(player.index+1,player.sprite,player.vx,player.vy);
+    }
+    movePlayerWithButtons(args) {
+      const player=this._player(args.PLAYER);if(!player)return;
+      player.movement=true;player.vx=Scratch.BWValues.decode(args.VX);player.vy=Scratch.BWValues.decode(args.VY);
+      this._controlSprite(player.index+1,player.sprite,player.vx,player.vy);
+    }
     playerBySprite(args) {const sprite=Scratch.BWValues.decode(args.ID);return this._playerRef(this._players().find(player=>player.sprite===sprite));}
     playerProperty(args) {
       const player=this._player(args.PLAYER),property=Number(Scratch.BWValues.decode(args.PROPERTY));
@@ -678,7 +689,7 @@ module.exports = makeExt(`// Name: Arcade
       this._changed();
     }
     _freshScene(previous) {
-      const state={overlapLocks:new Set(),buttons:previous.buttons,neopixels:previous.neopixels,light:previous.light,tiltX:previous.tiltX,tiltY:previous.tiltY,serial:previous.serial};
+      const state={overlapLocks:new Set(),buttons:previous.buttons,controllerButtons:previous.controllerButtons,neopixels:previous.neopixels,light:previous.light,tiltX:previous.tiltX,tiltY:previous.tiltY,serial:previous.serial};
       const bundle={state,_speech:new Map(),_background:null,_backgroundImage:null,_tilemapDrawable:null,_createdHandlers:[],_wallHandlers:[],_tileHandlers:[],
         _activeLegacyAnimations:new Set(),_imageAnimations:new Map(),_animationUpdateOrder:[],_updateHandlers:[],_intervalHandlers:[],_buttonHandlers:[],_destroyedHandlers:[],_overlapHandlers:[],_foreverHandlers:[],_countdownHandlers:[]};
       return bundle;
@@ -845,37 +856,50 @@ module.exports = makeExt(`// Name: Arcade
       const positive = axis === 'y' ? 'down' : 'right';
       return (Number(held(positive)) - Number(held(negative))) * (Number(args.STEP) || 0) / 30;
     }
-    controlSprite(args) {
-      const sprite = this._sprite(args.ID);
-      if (!sprite) return;
-      const previous = sprite.controller;
-      const vx = Number(args.VX) || 0, vy = Number(args.VY) || 0;
-      if (previous?.vx && !vx) sprite.vx = 0;
-      if (previous?.vy && !vy) sprite.vy = 0;
-      sprite.controller = {vx, vy, inputLastFrame: previous?.inputLastFrame || false};
+    controlSprite(args) {this._controlSprite(1,args.ID,args.VX,args.VY);}
+    _controlSprite(number,id,vx=100,vy=100) {
+      const sprite=this._sprite(id);if(!sprite)return;
+      const state=this._state();
+      const controllers=state.controlledSprites || (state.controlledSprites={});
+      const bindings=controllers[number] || (controllers[number]=[]);
+      let control=bindings.find(binding=>binding.sprite===sprite);
+      if(!control){control={inputLastFrame:false};Object.defineProperty(control,'sprite',{value:sprite});bindings.push(control);}
+      vx=Scratch.BWValues.decode(vx);vy=Scratch.BWValues.decode(vy);
+      vx=vx===undefined?100:Number(vx)||0;vy=vy===undefined?100:Number(vy)||0;
+      if(control.vx && !vx)sprite.vx=0;
+      if(control.vy && !vy)sprite.vy=0;
+      control.vx=vx;control.vy=vy;
+      // Retain the legacy controller-one inspection surface.
+      if(number===1)sprite.controller=control;
+    }
+    _stopControllingSprite(number,id) {
+      const sprite=this._sprite(id),controllers=this._state().controlledSprites;
+      if(!sprite || !controllers?.[number])return;
+      controllers[number]=controllers[number].filter(binding=>binding.sprite!==sprite);
+      if(number===1)delete sprite.controller;
+      // PXT detaches the binding without changing the sprite's velocity.
     }
     _moveControlledSprites(live) {
-      const buttons = this._state().buttons;
-      const keyboard = this._runtime?.ioDevices?.keyboard;
-      const held = name => Boolean(buttons[name] || keyboard?.getKeyIsDown?.(name + ' arrow'));
-      const x = (Number(held('right')) - Number(held('left'))) * 256;
-      const y = (Number(held('down')) - Number(held('up'))) * 256;
-      const square = x*x+y*y;
-      const scale = square > 65536 ? Math.sqrt(65536/square) : 1;
-      const normalizedX = Math.trunc(x*scale), normalizedY = Math.trunc(y*scale);
-      for (const sprite of live) {
-        const control = sprite.controller;
-        if (!control) continue;
-        if (control.inputLastFrame) {
-          if (control.vx) sprite.vx = 0;
-          if (control.vy) sprite.vy = 0;
+      const state=this._state(),keyboard=this._runtime?.ioDevices?.keyboard;
+      const liveSet=new Set(live);
+      for(const number of Object.keys(state.controlledSprites || {}).map(Number).sort((a,b)=>a-b)){
+        const buttons=number===1?state.buttons:(state.controllerButtons?.[number] || {});
+        const held=name=>Boolean(buttons[name] || (number===1 && keyboard?.getKeyIsDown?.(name+' arrow')));
+        const x=(Number(held('right'))-Number(held('left')))*256;
+        const y=(Number(held('down'))-Number(held('up')))*256;
+        const square=x*x+y*y,scale=square>65536?Math.sqrt(65536/square):1;
+        const normalizedX=Math.trunc(x*scale),normalizedY=Math.trunc(y*scale);
+        state.controlledSprites[number]=state.controlledSprites[number].filter(control=>liveSet.has(control.sprite));
+        for(const control of state.controlledSprites[number]){
+          const sprite=control.sprite;
+          if(control.inputLastFrame){if(control.vx)sprite.vx=0;if(control.vy)sprite.vy=0;}
+          if(x || y){
+            const both=control.vx && control.vy;
+            if(control.vx)sprite.vx=Math.trunc((both?normalizedX:x)*control.vx)/256;
+            if(control.vy)sprite.vy=Math.trunc((both?normalizedY:y)*control.vy)/256;
+            control.inputLastFrame=true;
+          }else control.inputLastFrame=false;
         }
-        if (x || y) {
-          const both = control.vx && control.vy;
-          if (control.vx) sprite.vx = Math.trunc((both ? normalizedX : x)*control.vx)/256;
-          if (control.vy) sprite.vy = Math.trunc((both ? normalizedY : y)*control.vy)/256;
-          control.inputLastFrame = true;
-        } else control.inputLastFrame = false;
       }
     }
     functionArgument(args) {

@@ -1198,6 +1198,7 @@ class ArcadeEmitter {
         case 'arcade_addAnimationFrame':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.addAnimationFrame(${v('IMAGE')})`);return;
         case 'arcade_attachAnimation':this.requiresAnimationPackage=true;push(`animation.attachAnimation(${v('ID')}, ${v('ANIMATION')})`);return;
         case 'arcade_setAnimationAction':this.requiresAnimationPackage=true;push(`animation.setAction(${v('ID')}, ${this.arrayValue(b,'ACTION')})`);return;
+        case 'arcade_movePlayerWithButtons': this.requiresMultiplayerPackage=true;push(`mp.moveWithButtons(${v('PLAYER')}, ${v('VX')}, ${v('VY')})`);return;
         case 'arcade_setPlayerSprite': this.requiresMultiplayerPackage=true;push(`mp.setPlayerSprite(${v('PLAYER')}, ${v('ID')})`);return;
         case 'arcade_setScenePhysicsEngine': push(`${v('SCENE')}.physicsEngine = ${v('ENGINE')}`);return;
         case 'arcade_setPhysicsEngineProperty': {
@@ -2080,7 +2081,7 @@ class ArcadeEmitter {
                 for (const input of block.opcode === 'arcade_blitImage' || block.opcode === 'arcade_imagesOverlap' ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
-                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty'].includes(block.opcode)){
+                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
                 }
                 if(block.opcode==='arcade_allPlayers'){const array=ref(block),item=Symbol('player collection element');graphPlayerValues.add(item);elements.push([array,item]);}

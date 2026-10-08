@@ -24,8 +24,8 @@ test('scene-local player identities, properties, sprite references and arrays ag
  await execute(arcadeToPseudocode(exported.ts));
  await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,180);check(run);
 });
-test('multiplayer movement, events and unsupported player members remain named gaps',()=>{
- for(const source of ['let p=mp.playerSelector(mp.PlayerNumber.One);mp.moveWithButtons(p,10,20)','mp.onButtonEvent(mp.MultiplayerButton.A,ControllerButtonEvent.Pressed,function(p){})','let p=mp.playerSelector(mp.PlayerNumber.One);let value=p.data'])assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
+test('multiplayer events and unsupported player members remain named gaps',()=>{
+ for(const source of ['mp.onButtonEvent(mp.MultiplayerButton.A,ControllerButtonEvent.Pressed,function(p){})','let p=mp.playerSelector(mp.PlayerNumber.One);let value=p.data'])assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
 });
 
 

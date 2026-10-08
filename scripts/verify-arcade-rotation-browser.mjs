@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
 import {MULTIPLAYER_PLAYERS_SOURCE} from '../test/fixtures/arcade-multiplayer-players.mjs';
 import {ARRAY_PICK_RANDOM_SOURCE} from '../test/fixtures/arcade-array-pick-random.mjs';
 import {NAMESPACE_AUGMENTATION_SOURCE} from '../test/fixtures/arcade-namespace-augmentation.mjs';
@@ -468,6 +469,45 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
         number: 3, index: 1, copiedArrayLength: 4, initialSpriteX: playerBefore, controllerSpriteX: playerBefore + 5,
         boundary: 'Controller B runs a callback using player sprite lookup; mp.moveWithButtons is not implemented by this journey'};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-multiplayer-players.png'});
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const movementProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_MOVEMENT_SOURCE,
+        'pxt.json': JSON.stringify({name: 'Multiplayer movement', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Multiplayer movement'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'multiplayer-movement.mkcd', mimeType: 'application/json', buffer: Buffer.from(movementProject)});
+    await page.getByText(/Imported the Arcade game.*multiplayer-movement/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    const playerSelect = page.getByTestId('bw-arcade-player');
+    const movementState = () => page.evaluate(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)
+        .map(sprite => ({x: sprite.x, vx: sprite.vx})));
+    await page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites).length === 3);
+    await playerSelect.selectOption('2');
+    const right = page.getByTestId('bw-arcade-right');
+    const holdRight = async () => {await right.hover();await page.mouse.down();};
+    const waitMoving = index => page.waitForFunction(index => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[index].vx === 60,index);
+    await holdRight();await waitMoving(1);
+    const separate = await movementState();assert.equal(separate[0].vx,0);assert.equal(separate[2].vx,0);
+    // Changing controller releases buttons held on the previous controller.
+    await playerSelect.selectOption('1');await page.mouse.up();
+    await page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[1].vx === 0);
+    await page.getByTestId('bw-arcade-b').click();
+    await page.waitForFunction(() => {
+        const state=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;
+        return state.controlledSprites[2][0].sprite === Object.values(state.sprites)[2];
+    });
+    await playerSelect.selectOption('2');await holdRight();await waitMoving(2);
+    const rebound = await movementState();assert.equal(rebound[0].vx,0);assert.equal(rebound[1].vx,0);
+    await page.mouse.up();
+    await page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[2].vx === 0);
+    report.multiplayerMovement = {nativeFileImport: true, codeToBlocks: true, selectedPlayer: 2,
+        independentSpeed: 60, otherPlayersStationary: true, releasedOnSelectionChange: true,
+        reboundToReplacement: true, releasedOnPointerUp: true};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-multiplayer-movement.png'});
+    await playerSelect.selectOption('1');
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),
