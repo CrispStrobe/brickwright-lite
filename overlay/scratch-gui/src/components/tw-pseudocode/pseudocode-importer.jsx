@@ -23,6 +23,8 @@ import {
 } from '../../lib/bw-matrix/capabilities.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
+import animationResourceMenuItems from 'scratch-vm/src/util/bw-animation-resource-menu.js';
+import {conversionFailure} from '../../lib/bw-conversion-error.js';
 import {getCostumeDocument, inspectArtwork, applyArtwork, syncAnimationResources} from '../../lib/bw-artwork-bundle.js';
 import {captureCodeArtwork, codeArtworkMatches, retainCodeArtwork,
     captureCodeArtworkRevision, codeArtworkRevisionMatches} from '../../lib/bw-code-artwork.js';
@@ -4734,9 +4736,10 @@ class PseudocodeImporter extends React.Component {
                     changed: classified.changed, unsupported: classified.unsupported}
             });
         } catch (e) {
-            this.setState({status: this.L.stError(e.message), conversionReport: {
+            const failure = conversionFailure(e);
+            this.setState({status: this.L.stError(failure.message), conversionReport: {
                 direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: false,
-                changed: [], unsupported: [e.message]
+                changed: [], unsupported: failure.issues
             }});
             if (strict) { this.setState({busy: false}); throw e; }
         }
@@ -4782,8 +4785,9 @@ class PseudocodeImporter extends React.Component {
                     unsupported: unsupportedDiagnostics}
             });
         } catch (e) {
-            this.setState({status: this.L.stError(e.message), conversionReport: {
-                direction: 'Blocks → Code', preserved: false, changed: [], unsupported: [e.message]
+            const failure = conversionFailure(e);
+            this.setState({status: this.L.stError(failure.message), conversionReport: {
+                direction: 'Blocks → Code', preserved: false, changed: [], unsupported: failure.issues
             }});
         }
         this.setState({busy: false});
@@ -5461,13 +5465,14 @@ class PseudocodeImporter extends React.Component {
                 )}
                 {this.state.lang === 'pseudocode' && this.currentDevice() === 'arcade' ? (() => {
                     const resources = [...(this.props.vm.runtime.bwArcadeAnimationResources?.values() || [])];
+                    const items = animationResourceMenuItems(this.props.vm.runtime.bwArcadeAnimationResources, this.props.vm.runtime);
                     const id = this.state.animationResourceId || resources[0]?.id || '';
                     return <div data-testid="bw-code-animation-resources" style={{display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0'}}>
                         <label>Animation{' '}
                             <select data-testid="bw-code-animation-picker" value={id}
                                 onChange={event => this.setState({animationResourceId: event.target.value})}>
                                 {!resources.length ? <option value="">{pickLocale(this.props.locale) === 'de' ? 'Zuerst in Pixel veröffentlichen' : 'Publish a timeline in Pixel first'}</option> : null}
-                                {resources.map(resource => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                                {items.map(item => <option key={item.value} value={item.value}>{item.text}</option>)}
                             </select>
                         </label>
                         <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}

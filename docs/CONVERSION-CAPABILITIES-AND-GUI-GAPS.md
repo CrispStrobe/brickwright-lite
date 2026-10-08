@@ -431,12 +431,17 @@ roundtrips pass in the39-test focused batch. All17 production browser journeys
 pass, including duplicated-library GUI/CLI original-PXT export and Code-file
 reimport/To Blocks/playback. See
 [native animation names](ARCADE-ANIMATION-INTERCHANGE.md#native-animation-names-and-authored-identity).
-The Blocks and Code resource pickers still need distinguishable labels when
-two authored resources have the same display name. Their UUID values remain
-distinct; resolving native export names does not close that authoring gap.
-The browser roundtrip also exposed `Error: undefined` for a string-valued VM
-validation rejection. Conversion diagnostics must retain and explain its
-validation path/message; that presentation fix remains required.
+The Blocks and Code resource pickers now share distinct owner/costume labels
+for duplicate names, adding a unique UUID suffix only when necessary. Their
+values remain full UUIDs; live owner renames do not alter authored source or
+bindings. Actual Code and Blocks selection of the copied UUID passes in the
+18-journey production browser batch. Serialized VM validation failures now
+retain every relevant SB3 path/message in the conversion status and unsupported
+list. The actual compile method is tested with a real VM rejection and leaves
+the prior project intact. Focused tests pass27/27; packaging/diagnostics pass11/11.
+See [picker and diagnostic qualification](ARCADE-ANIMATION-INTERCHANGE.md#duplicate-resource-pickers-and-conversion-validation-details).
+Hosted follow-up checks and original Assets editing/download/companion retention
+remain open; these synthetic journeys do not reclassify the93 partial cases.
 
 ### U05 — rotation/data/resources/callbacks
 

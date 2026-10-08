@@ -41,5 +41,8 @@
     "stopped hung diagnostic API request"
   ],
   "boundary": "Synthetic duplicate-library GUI/CLI export, exact rich-source recovery, original PXT compilation/execution and GUI native-file reimport/To Blocks/playback. Original Assets editing/download/companion retention, duplicate labels in authoring pickers and string-valued VM error presentation remain open. No corpus reclassification.",
-  "hostedFinalHead": "pending"
+  "hostedFinalHead": "24480d493dd89925461b488c1858f659a33739be",
+  "hostedEnabledChecksPassed": 11,
+  "merge": "9e869b97e7bfe8680dd43f8b51568edb5199b7dd",
+  "reviewedAndMergeTree": "8edd8f4cdc60e9dd835c3cedb42def306589f57d"
 }

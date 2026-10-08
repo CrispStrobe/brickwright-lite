@@ -18,6 +18,7 @@ module.exports = makeExt(`// Name: Arcade
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
   const imageEngine = (${require('./image').toString()})(speechPalette, ${require('./image-pxt').toString()});
+  const animationResourceMenuItems = (${require('../../../util/bw-animation-resource-menu').toString()});
   const {RotatedBoundingBox, rasterWindow: rotatedRasterWindow, rasterFootprint: rotatedRasterFootprint} = (${require('./rotation-pxt').toString()})();
 
   const spriteFlags = {AutoDestroy: 4, StayInScreen: 8, DestroyOnWall: 16, BounceOnWall: 32, Invisible: 128, RelativeToCamera: 512,
@@ -2170,8 +2171,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     getAnimationAssets() {
       const resources = this._runtime?.bwArcadeAnimationResources;
-      const items = resources instanceof Map ? [...resources].map(([id, resource]) =>
-        ({text: String(resource?.name || id), value: String(id)})) : [];
+      const items = animationResourceMenuItems(resources, this._runtime);
       return items.length ? items : [{text: 'No animation assets — create one in Pixel', value: 'none'}];
     }
     _animationAsset(value) {
