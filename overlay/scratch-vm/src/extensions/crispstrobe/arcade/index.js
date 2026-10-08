@@ -494,6 +494,10 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'spriteOverlaps', blockType: Scratch.BlockType.BOOLEAN,
             text: 'Arcade sprite [A] overlaps [B]?',
             arguments: { ...str('A', ''), ...str('B', '') } },
+          { opcode: 'setLegacyTilemap', blockType: Scratch.BlockType.COMMAND,
+            text: 'set Arcade color-coded map image [IMAGE] scale exponent [SCALE]', arguments: {...str('IMAGE',''), ...n('SCALE',4)} },
+          { opcode: 'setLegacyTile', blockType: Scratch.BlockType.COMMAND,
+            text: 'set Arcade color tile [INDEX] image [IMAGE] wall [WALL]', arguments: {...n('INDEX',1), ...str('IMAGE',''), ...n('WALL',0)} },
           { opcode: 'setTilemap', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade tilemap [DATA]', arguments: str('DATA', '') },
           { opcode: 'tileLocation', blockType: Scratch.BlockType.REPORTER,
@@ -1839,7 +1843,7 @@ module.exports = makeExt(`// Name: Arcade
       sprite._wallHitbox = fresh;return fresh;
     }
     _wallAt(map, column, row) {
-      map=this._state().tilemap;if(!map)return false;
+      map=this._state().tilemap;if(!map || (map.legacy && !map.mapImage))return false;
       return column < 0 || row < 0 || column >= map.columns || row >= map.rows || !!map.walls[row*map.columns+column];
     }
     _spriteOnWall(sprite, map) {
@@ -2430,7 +2434,7 @@ module.exports = makeExt(`// Name: Arcade
       // Object identity is intentional: aliases share pixels, equal literals do not.
       if (this._state().backgroundImage === image) this._renderBackgroundImage();
       const map = this._state().tilemap;
-      if (map && (map.images.includes(image) || map.views.includes(image))) this._renderTilemap();
+      if (map && (map.mapImage === image || map.images.includes(image) || map.views.includes(image))) this._renderTilemap();
       for (const sprite of Object.values(this._state().sprites)) {
         if (sprite.image === image) this._renderSpriteImage(sprite.id);
       }
@@ -2691,6 +2695,24 @@ module.exports = makeExt(`// Name: Arcade
       map.images.push(image);return map.images.length - 1;
     }
     _tileImage(map, index) {
+      if (map?.legacy) {
+        let definition=map.definitions[index];
+        if (!definition) {
+          const size=map.tileSize,pixels=new Uint8Array(size*size);pixels.fill(index);
+          const image={width:size,height:size,pixels};
+          definition=map.definitions[index]={image,wall:false};map.images[index]=image;
+        }
+        const image=definition.image,size=map.tileSize;
+        if (!definition.view || definition.view.width!==size) {
+          if (image.width===size && image.height===size) definition.view=image;
+          else {
+            const pixels=new Uint8Array(size*size);
+            for(let y=0;y<Math.min(size,image.height);y++)for(let x=0;x<Math.min(size,image.width);x++)pixels[y*size+x]=image.pixels[y*image.width+x];
+            definition.view={width:size,height:size,pixels};
+          }
+        }
+        return definition.view;
+      }
       const image = map?.images[index];
       if (!image) return null;
       if (image.width <= map.tileSize && image.height <= map.tileSize) return image;
@@ -2721,8 +2743,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     tileIsWall(args) {
       const map = this._state().tilemap, location = this._tileLocation(args.LOCATION);
-      if (!map || !location) return false;
+      if (!map || !location || (map.legacy && !map.mapImage)) return false;
       const offset = this._tileOffset(location,map);
+      if(map.legacy && map.mapImage && offset>=0 && !map.definitions[map.indices[offset]])return Scratch.BWValues.encode(undefined);
       return offset < 0 || Boolean(map.walls[offset]);
     }
     setTileAt(args) {
@@ -2757,6 +2780,34 @@ module.exports = makeExt(`// Name: Arcade
         }
       if (chosen) return this.placeOnTile({ID:args.ID,LOCATION:this.tileLocation(chosen)},util);
     }
+    _legacyMap() {
+      const state=this._state();
+      if(!state.tilemap?.legacy)state.tilemap={legacy:true,tileSize:16,columns:0,rows:0,indices:new Uint8Array(0),walls:new Uint8Array(0),images:[],views:[],definitions:[]};
+      state.tilemapInitialized=true;state.tilemapScale=state.tilemap.tileSize;
+      return state.tilemap;
+    }
+    _syncLegacyMap(map) {
+      if(!map?.legacy)return;
+      map.columns=map.mapImage?.width || 0;map.rows=map.mapImage?.height || 0;
+      map.indices=map.mapImage?.pixels || new Uint8Array(0);
+      if(map.walls.length!==map.indices.length)map.walls=new Uint8Array(map.indices.length);
+      for(let i=0;i<map.indices.length;i++)map.walls[i]=map.definitions[map.indices[i]]?.wall?1:0;
+    }
+    setLegacyTilemap(args) {
+      const value=Scratch.BWValues.decode(args.IMAGE),image=this._image(args.IMAGE);
+      const scale=Number(Scratch.BWValues.decode(args.SCALE));
+      if(![2,3,4,5].includes(scale) || (!image && value!==null && value!==undefined))return;
+      const map=this._legacyMap();map.mapImage=image || null;map.tileSize=1<<scale;
+      this._state().tilemapScale=map.tileSize;this._syncLegacyMap(map);
+      if (!this._background && this._runtime?.renderer) this.setBackgroundColor({COLOR:this.backgroundColor()});
+      this._renderTilemap();this._changed();
+    }
+    setLegacyTile(args) {
+      const map=this._legacyMap(),index=Number(Scratch.BWValues.decode(args.INDEX)),image=this._image(args.IMAGE);
+      if(!Number.isInteger(index) || index<0 || index>15 || !image)return;
+      map.definitions[index]={image,wall:!!Scratch.BWValues.decode(args.WALL)};map.images[index]=image;
+      this._syncLegacyMap(map);this._renderTilemap();this._changed();
+    }
     setTilemap(args) {
       const decoded = Scratch.BWValues.decode(args.DATA);
       if (decoded === null || decoded === '') {delete this._state().tilemap;this._clearTilemap();this._changed();return;}
@@ -2788,9 +2839,16 @@ module.exports = makeExt(`// Name: Arcade
       if (!this._background && this._runtime?.renderer) this.setBackgroundColor({COLOR:this.backgroundColor()});
       this._renderTilemap();this._changed();
     }
-    _renderTilemap() {
+    _renderTilemap(presentLegacy=false) {
       const map = this._state().tilemap;
       if (!map) {this._clearTilemap();return;}
+      this._syncLegacyMap(map);
+      // Legacy defaults allocate during drawing, after source setters/queries.
+      // Image mutation marks a redraw, without moving that allocation earlier.
+      if(map.legacy && !presentLegacy){map.needsRender=true;return;}
+      if(map.legacy && !map.needsRender)return;
+      if(map.legacy)map.needsRender=false;
+      if(map.legacy && !map.mapImage){this._clearTilemap();return;}
       // The screen view is separate from scene.backgroundImage(), which must
       // remain editable and observable without including the tile layer.
       const image = {width:160,height:120,pixels:new Uint8Array(160*120)};
@@ -2906,7 +2964,7 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
       const live = Object.values(state.sprites).filter(s => s.id);
-      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();yield* this._lifeZeroSteps();if(this._state()!==state)return;this._advanceSpeech(dt);this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;this._advanceSpeech(dt);this._startFrameHats();return;}
       this._moveControlledSprites(live);
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
@@ -2914,6 +2972,7 @@ module.exports = makeExt(`// Name: Arcade
       yield* this._sceneUpdates();if(this._state()!==state)return;
       this._advanceAnimations(dt);
       this._updateCamera();
+      if(state.tilemap?.legacy)this._renderTilemap(true);
       for(const sprite of Object.values(state.sprites)){
         const camera=this._camera(),relative=!!(sprite.flags & spriteFlags.RelativeToCamera),ox=relative?0:camera.drawOffsetX,oy=relative?0:camera.drawOffsetY;
         if (sprite.autoDestroy && (sprite.x + sprite.width / 2 < ox ||

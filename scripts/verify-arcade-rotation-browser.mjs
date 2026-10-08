@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {LEGACY_TILEMAP_SOURCE} from '../test/fixtures/arcade-legacy-tilemap.mjs';
 import {MULTIPLAYER_STATE_SOURCE} from '../test/fixtures/arcade-multiplayer-state.mjs';
 import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
@@ -556,6 +557,29 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
         sharedScore: 16, sharedLife: 8, childSceneScore: 41, restoredScore: 15, spriteX: 49.75};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-multiplayer-state.png'});
     await playerSelect.selectOption('1');
+    await stop.click();await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const legacyProject=makeCodeProjectFile({'main.ts':LEGACY_TILEMAP_SOURCE,
+        'pxt.json':JSON.stringify({name:'Legacy tilemap',dependencies:{device:'*','color-coded-tilemap':'*'},files:['main.ts']})},
+    {target:'arcade',name:'Legacy tilemap'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'legacy-tilemap.mkcd',mimeType:'application/json',buffer:Buffer.from(legacyProject)});
+    await page.getByText(/Imported the Arcade game.*legacy-tilemap/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({initialIndex:2,aliasIndex:1,replacementCenter:12,childUndefined:true,restoredWall:true,restoredIndex:2});
+    const legacyPixels=()=>page.evaluate(()=>{
+        const map=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.tilemap;
+        return {tileSize:map.tileSize,exact:map.image?.pixels[0],padded:map.image?.pixels[4]};
+    });
+    await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.tilemap?.image?.pixels[0]===7);
+    assert.deepEqual(await legacyPixels(),{tileSize:4,exact:7,padded:5});
+    await page.getByTestId('bw-arcade-a').click();
+    await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.tilemap?.image?.pixels[0]===8);
+    assert.deepEqual(await legacyPixels(),{tileSize:4,exact:8,padded:5});
+    const legacySprites=await movementState();assert.equal(legacySprites[0].x,3);
+    report.legacyTilemap={nativeFileImport:true,codeToBlocks:true,liveMapAlias:true,sceneRestoration:true,
+        tileSize:4,initialExactPixel:7,controllerExactPixel:8,paddedCachedPixel:5,spriteX:3};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-legacy-tilemap.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),

@@ -5,7 +5,7 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 const root=resolve(import.meta.dirname,'..');
 const bundle=JSON.parse(readFileSync(resolve(root,'packages/scratch-gui/static/makecode/arcade/target.json'),'utf8'));
-const apis={...bundle.apiInfo['libs/device'].apis.byQName,...bundle.apiInfo['libs/multiplayer'].apis.byQName};
+const apis={...bundle.apiInfo['libs/device'].apis.byQName,...bundle.apiInfo['libs/multiplayer'].apis.byQName,...bundle.apiInfo['libs/color-coded-tilemap'].apis.byQName};
 const containers=new Set(Object.keys(apis).filter(name=>[5,6].includes(apis[name].kind)));
 const members={};
 for(const name of [...containers].sort()) {
@@ -13,7 +13,7 @@ for(const name of [...containers].sort()) {
  members[name]=Object.keys(apis).filter(key=>key.startsWith(prefix)&&!key.slice(prefix.length).includes('.'))
   .sort().map(key=>[key.slice(prefix.length),containers.has(key)?1:0]);
 }
-const content=`// Generated from Microsoft PXT Arcade ${bundle.versions.target}, device and multiplayer API metadata (MIT).\n`+
+const content=`// Generated from Microsoft PXT Arcade ${bundle.versions.target}, device, multiplayer and color-coded tilemap API metadata (MIT).\n`+
  '// Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.\n'+
  '// Regenerate: node scripts/generate-arcade-namespace-members.mjs\n'+
  '// Names establish namespace binding only; translation still diagnoses unsupported APIs.\n'+

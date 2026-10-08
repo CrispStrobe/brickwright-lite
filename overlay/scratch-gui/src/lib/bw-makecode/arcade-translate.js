@@ -907,6 +907,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(node?.type==='LegacyJsonValue'){this.usesArrays=true;return `JSON text of value (${this.arrayElementValue(node.value)})`;}
         if(this.handleTemplates && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
         if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='TileScale') {
+            if(this.boundSourceGlobals?.has('TileScale') || this.sourceFunctions?.has('TileScale') || this.localVars?.has('TileScale') || this.currentParameters?.has('TileScale') || this.capturedBindings.has('TileScale')){this.unsupported.push('TileScale refers to a shadowed binding');return 'undefined value';}
+            const values={Four:2,Eight:3,Sixteen:4,ThirtyTwo:5};
+            if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
+            this.unsupported.push(`TileScale.${node.name} is not a declared tile scale`);return '4';
+        }
         if(this.handleTemplates && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
         if(this.handleTemplates && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
         if (this.handleTemplates && ['Null','Undefined'].includes(node?.type)) {
@@ -943,7 +949,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node?.type==='Member' && this.tileReferences?.has(node.object)) {
             const property=node.name==='col'?'column':node.name;
-            if(['column','row','x','y','left','right','top','bottom'].includes(property))return `arcade tile ${property} of (${this.expr(node.object)})`;
+            if(['column','row','x','y','left','right','top','bottom','tileSet'].includes(property))return `arcade tile ${property} of (${this.expr(node.object)})`;
             this.unsupported.push(`tiles.Location.${node.name} requires tile location property support`);return '0';
         }
         if(this.handleTemplates && node?.type==='Call') {
@@ -1186,6 +1192,16 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='addAnimationFrame' && this.animationReferences?.has(node.callee.object) && a.length===1){push(`arcade add animation frame (${this.expr(node.callee.object)}) image (${this.expr(a[0])})`);return;}
         if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='setInterval' && this.animationReferences?.has(node.callee.object) && a.length===1){push(`arcade set animation interval (${this.expr(node.callee.object)}) to (${this.expr(a[0])})`);return;}
+        if(this.handleTemplates && ['scene.setTileMap','scene.setTile'].includes(name) && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))) {push(this.note(`${name} refers to a shadowed scene binding`));return;}
+        if(this.handleTemplates && name==='scene.setTileMap') {
+            if(a.length<1 || a.length>2){push(this.note('scene.setTileMap requires an image and optional tile scale'));return;}
+            const scale=a[1]?this.expr(a[1]):'4';
+            push(`arcade set color-coded map image (${this.expr(a[0])}) scale (${scale})`);return;
+        }
+        if(this.handleTemplates && name==='scene.setTile') {
+            if(a.length<2 || a.length>3){push(this.note('scene.setTile requires an index, image and optional wall flag'));return;}
+            push(`arcade set color tile (${this.expr(a[0])}) image (${this.expr(a[1])}) wall (${a[2]?this.expr(a[2]):'false'})`);return;
+        }
         if(this.handleTemplates && ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel'].includes(name)) {
             const value=a[0];
             if(a.length===1 && value?.type==='Null'){push('arcade set tilemap data \"null\"');return;}
@@ -2571,7 +2587,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
         if (node.type === 'Assignment' && t.imageOf(node.right)) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' && t.imageReferences.has(node.callee.object)) return true;
-        if (node.type === 'Call' && ['image.create','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
+        if (node.type === 'Call' && ['image.create','scene.setTileMap','scene.setTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
             (['setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
@@ -2579,6 +2595,16 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         return Object.values(node).some(value => Array.isArray(value) ?
             value.some(usesRuntimeSpriteMethods) : usesRuntimeSpriteMethods(value));
     };
+    const mapCalls=new Set();
+    const collectMapCalls=node=>{
+        if(!node || typeof node!=='object')return;
+        if(node.type==='Call')mapCalls.add(t.path(node.callee));
+        for(const value of Object.values(node))if(Array.isArray(value))value.forEach(collectMapCalls);else collectMapCalls(value);
+    };
+    collectMapCalls(ast);
+    if(['scene.setTileMap','scene.setTile'].some(name=>mapCalls.has(name)) &&
+        ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel','tiles.getTilesByType','tiles.tileAtLocationEquals','tiles.setTileAt','tiles.setWallAt','tiles.placeOnRandomTile'].some(name=>mapCalls.has(name)))
+        t.unsupported.push('Mixing legacy color-coded maps with modern map replacement, image lookup or per-location mutation is not yet supported');
     const requiresSpriteRuntime = usesRuntimeSpriteMethods(ast);
     const callbackLocals = new Map();
     const createAssignments = [];

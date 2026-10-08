@@ -1218,6 +1218,8 @@ class ArcadeEmitter {
         case 'arcade_setAnimationInterval':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.setInterval(${this.arrayValue(b,'INTERVAL')})`);return;
         case 'arcade_runImageAnimation':push(`animation.runImageAnimation(${v('ID')}, ${this.arrayValue(b,'FRAMES')}, ${this.arrayValue(b,'INTERVAL')}, ${this.arrayValue(b,'LOOP')})`);return;
         case 'arcade_stopAnimation':push(`animation.stopAnimation(${this.arrayValue(b,'TYPE')}, ${v('ID')})`);return;
+        case 'arcade_setLegacyTilemap':this.requiresLegacyTilemapPackage=true;push(`scene.setTileMap(${v('IMAGE')}, ${v('SCALE')})`);return;
+        case 'arcade_setLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.setTile(${v('INDEX')}, ${v('IMAGE')}, ${this.condition(b,'WALL')})`);return;
         case 'arcade_setTilemap': {
             const raw=this.literalInput(b,'DATA');let data=null;
             if(raw==='null' || raw===''){push('tiles.setTilemap(null)');return;}
@@ -2805,7 +2807,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': ts,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
