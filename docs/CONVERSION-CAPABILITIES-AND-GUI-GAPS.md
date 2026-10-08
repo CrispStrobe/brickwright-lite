@@ -1411,3 +1411,39 @@ U03 painter/resource lifecycle and ranked artwork, palette/effect/music gaps
 remain open. No importer/corpus promotion is claimed: last184 import-only
 102 translated/81 partial/1 malformed, not rerun here.
 [Receipt](receipts/2026-10-08-arcade-frame-clock.json).
+
+### Unified frame callback registration — 2026-10-08
+
+`game.onUpdate` and `game.onUpdateInterval` now use scene-owned runtime
+registrations without requiring `game.pushScene()` elsewhere in the program.
+Registration occurs at the authored call site, including inside procedures.
+Repeated installation creates distinct captured cells; callbacks from one
+installation share live cells. Interval expressions are evaluated at registration.
+A yielding update completes before its next inline successor runs.
+
+Captured assignments now export their Arcade value type, preserving booleans
+instead of coercing them to Scratch numeric values. Shadowed `game` bindings,
+invalid arity and non-inline callbacks remain diagnosed.
+
+Qualification: 22 affected tests pass without failures/skips. Original and
+exported MakeCode simulators agree on order `IAaB`, sum25 and one completed
+installation. Native execution, decompilation, MakeCode reimport and SB3 reload
+retain those observations; repeat input produces `IAaBAaB`, sum54 and two
+installations. The registered100ms interval ignores a later assignment of1ms.
+Production `gui.13e19d9b.js` passes native file→Code→Blocks→flag→visible A repeat;
+no page/block/build errors. Initial JavaScript 4,360,790 bytes remains below the
+unchanged4,467,136 limit; boot checks pass.
+
+GUI handoff: existing registration, named callback, local/captured value and
+assignment blocks/pseudocode words support these programs. No new producer pin
+or opcode was needed. Dedicated callback authoring guidance and the remaining
+editor/map-painter/resource work still need their separate GUI qualification.
+
+The same184 immutable apps still report102 translated/81 partial/1 malformed,
+with no changed diagnostic rows. These are import-only results. Other callback
+families still depend on scene-stack selection for their native registration
+path; first scene-worker phase, push/pop, legacy authored hats and whole-loop
+pause/obstacle ordering remain open. This section supersedes the prior nested
+frame-registration gap; it does not establish full event-loop compatibility.
+Exact-head hosted CI and stacked integration remain pending.
+[Receipt](receipts/2026-10-08-arcade-update-registration.json).
