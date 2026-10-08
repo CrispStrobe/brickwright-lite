@@ -6,8 +6,12 @@ import {runProgram, stepFrames, projectOpcodes} from './helpers/bw-vm.mjs';
 test('MakeCode forever callback runs repeatedly in the Arcade VM', async () => {
     const translated = arcadeToPseudocode('forever(function () { info.changeScoreBy(1) })');
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /WHEN flag clicked:\n  FOREVER:\n    arcade change score by 1/);
-    const run = await runProgram(translated.code, {frames: 12});
+    assert.match(translated.code, /arcade register forever/);
+    assert.doesNotMatch(translated.code, /WHEN flag clicked:\n  FOREVER:/);
+    const run = await runProgram(translated.code, {frames: 0});
+    for(let i=0;i<20 && !(Number(run.vm.runtime.bwArcadeDeviceState?.score)>1);i++){
+        await new Promise(resolve=>setTimeout(resolve,5));await stepFrames(run.vm,1,20);
+    }
     assert.deepEqual(run.errors, []);
     // Arcade's on-screen score (the extension's), not a Scratch variable.
     assert.ok(Number(run.vm.runtime.bwArcadeDeviceState?.score) > 1);

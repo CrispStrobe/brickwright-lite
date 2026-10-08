@@ -195,7 +195,7 @@ export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false} = {}) {
     const creator = new SB3Creator();
     creator.parse(source);
     for (const upload of uploads) {
@@ -236,7 +236,8 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     await stepFrames(vm, frames);
     const after = variableSnapshot(vm);
     vm.quit();
-    clearStrayTimers();
+    // Fiber-driven extension fixtures keep timers until their explicit cleanup.
+    if (!retainExtensionTimers) clearStrayTimers();
     let variablesChanged = 0;
     for (const [name, value] of after) if (before.get(name) !== value) variablesChanged++;
     let extensionCalls = 0;

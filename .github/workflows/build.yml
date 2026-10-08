@@ -2064,6 +2064,10 @@ jobs:
         timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-info-registration-browser.mjs
+      - name: Browser gate — Arcade forever registration with live captures and yielding
+        timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-forever-registration-browser.mjs
       - name: Browser gate — Arcade animation frames through Code, Blocks and the controller
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}

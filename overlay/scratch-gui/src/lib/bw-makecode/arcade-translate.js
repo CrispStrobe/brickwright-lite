@@ -1160,6 +1160,10 @@ class ArcadeTranslator extends BaseTranslator {
         if(isFrameRegistration(name) && (this.boundSourceGlobals?.has('game') || this.sourceFunctions?.has('game') || this.localVars?.has('game') || this.currentParameters?.has('game') || this.capturedBindings.has('game'))){push(this.note(`${name} refers to a shadowed game binding`));return;}
         if(isButtonRegistration(name) && (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller'))){push(this.note(`${name} refers to a shadowed controller binding`));return;}
         if(isInfoRegistration(name) && (this.boundSourceGlobals?.has('info') || this.sourceFunctions?.has('info') || this.localVars?.has('info') || this.currentParameters?.has('info') || this.capturedBindings.has('info'))){push(this.note(`${name} refers to a shadowed info binding`));return;}
+        if(isForeverRegistration(name)){
+            const binding=name.split('.')[0];
+            if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
+        }
         const sceneSpec=(this.sceneStackProgram || isIndependentRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
@@ -2283,7 +2287,8 @@ const containsAst = (node,predicate) => node && typeof node==='object' &&
 const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval'].includes(name);
 const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '');
 const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
-const isIndependentRegistration = name => isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name);
+const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
+const isIndependentRegistration = name => isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name);
 const sceneRegistrationSpec = name => {
     const specs={
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
@@ -2740,7 +2745,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     const functions = ast.body.filter(st => st.type === 'FunctionDeclaration');
     const functionNames = new Set(functions.map(fn => fn.name));
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
-        ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever',
+        ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
         'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
         'pause', 'game.splash', 'game.showLongText', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
@@ -2758,7 +2763,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
             (name && /\.(destroy|say|sayText|setStayInScreen|setBounceOnWall|setFlag|setPosition|setVelocity|setImage)$/.test(name))) continue;
         if (!(requiresSpriteRuntime && callOf(st))) return null;
     }
-    if (calls.some(call => ['control.runInParallel','forever'].includes(nameOf(call)) &&
+    if (calls.some(call => nameOf(call)==='control.runInParallel' &&
         (call.args?.length !== 1 || call.args[0]?.type !== 'FunctionExpression'))) return null;
     for (const call of calls) if (!t.sceneStackProgram && ['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap'].includes(nameOf(call)) &&
         !call.args?.some(arg => arg.type === 'FunctionExpression')) return null;
@@ -3080,8 +3085,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         ['If', 'For', 'While','Block'].includes(st.type) ||
         (callOf(st) && ![
             ...(t.sceneStackProgram?[]:['sprites.onDestroyed','sprites.onOverlap']),
-            'control.runInParallel',
-            ...(t.sceneStackProgram?[]:['forever'])].includes(nameOf(callOf(st)))));
+            'control.runInParallel'].includes(nameOf(callOf(st)))));
     {
         out.push('WHEN flag clicked:', '  hide');
         for (const st of setup) t.statement(st, 1, out);
@@ -3099,12 +3103,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         emitCallbackBody(call.args[0]);
         out.push('');
     }
-    for (const call of calls.filter(call => !t.sceneStackProgram && nameOf(call) === 'forever')) {
-        out.push('WHEN flag clicked:', '  FOREVER:');
-        emitCallbackBody(call.args[0],2);out.push('');
-    }
     for (const call of calls) {
-        if(isButtonRegistration(nameOf(call)) || isInfoRegistration(nameOf(call)))continue;
+        if(isIndependentRegistration(nameOf(call)))continue;
         if(t.sceneStackProgram && (sceneRegistrationSpec(nameOf(call)) || nameOf(call)==='info.onCountdownEnd' || /^info(?:\.player[1-4])?\.onLifeZero$/.test(nameOf(call)||'')))continue;
         if (nameOf(call) === 'sprites.onDestroyed') {
             const handler = call.args.find(arg => arg.type === 'FunctionExpression');
