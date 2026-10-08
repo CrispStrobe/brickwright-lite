@@ -332,7 +332,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await flag.click();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
-        .flatMap(t => Object.values(t.variables)).some(v => v.name === 'freshValue' && v.value === 37));
+        .flatMap(t => Object.values(t.variables)).some(v => v.name === 'freshValue' && Number(v.value) === 37));
     report.codeArtworkOwnership = {implicitAppendedCostume: true, repeatExactCostumeBytes: true, freshPastedProgramLoadsWithoutStaleUploadWarnings: true};
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
