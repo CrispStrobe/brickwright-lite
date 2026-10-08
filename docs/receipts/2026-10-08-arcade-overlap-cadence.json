@@ -1,6 +1,6 @@
 {
   "date": "2026-10-08",
-  "testedSource": "d89812f1f6235a0eb1e33cf0ecf3b55fbafe3d68",
+  "testedSource": "babf100f4ff9ec93c64500f5dd86dd33fb2163a4",
   "base": "5f92f44174b5df0dda3b2f6af652aa88d07ce329",
   "scope": "Original-PXT/native overlap cadence qualification and controller browser assertions; no runtime/importer/pin changes.",
   "physicsControls": [
@@ -105,15 +105,22 @@
     "physicsRuntimeAndRoundtrip": {
       "passed": 13,
       "failed": 0,
-      "skipped": 0
+      "skipped": 0,
+      "qualification": "Eight runtime controls and four unchanged roundtrips passed in the full affected suite; the revised crossing roundtrip passed separately through original PXT, exported PXT, native Code, decompile, reimport and SB3 reload."
     },
     "originalComparison": "Complete pinned original simulator; explicit physicsEngine.move public API, callback fiber observes frame-end geometry. Native motion, event admission, callback query and final overlap matched twelve cases: six cadences with two target widths.",
     "intermediateFailure": [
       "First control incorrectly required an event at every cadence. Original and native both missed the narrow target at 50/100ms; failure retained.",
-      "Reference GUI with original narrow target timed out waiting for the crossing event; failure retained. Wider target is independently qualified in both engines at all six cadences."
+      "Reference GUI with original narrow target timed out waiting for the crossing event; failure retained. Wider target is independently qualified in both engines at all six cadences.",
+      "An additional narrow-target exported-PXT roundtrip timed out. Final roundtrip retains deterministic narrow controls separately and uses the qualified wide target, checking event delivery, stopped motion and consistent geometry instead of comparing geometry across independent frame rates."
     ],
     "browserChange": "Compare callback query with final geometry and sprite occlusion; retain native stop, event, reset, visible pixels, sparse-mask and From Blocks checks.",
-    "freshHostedGui": "pending"
+    "freshHostedGui": "pending",
+    "finalRoundtripInvariants": [
+      "one event recorded",
+      "mover stopped",
+      "callback overlap query agrees with final geometry"
+    ]
   },
   "limits": [
     "Finite fixtures only; neither implementation observed the 2px target at 50ms or 100ms. The 8px controller target was observed at all six tested cadences.",

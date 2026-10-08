@@ -1615,10 +1615,13 @@ pairs and captures. [Receipt](receipts/2026-10-08-arcade-hosted-integration.json
 ## Overlap callback frame cadence — 2026-10-08
 
 The original simulator and native runtime agree on twelve controls: six
-physics-frame sequences with each of two target widths. For the2-pixel target: Callback fibers run after motion, so the explicit overlap query can
+physics frame sequences with each of two target widths. Callback fibers run
+after motion, so the explicit overlap query can
 report contact or separation depending on where that frame ends. The browser
 journey must compare its callback with final geometry and visible occlusion,
 while retaining the stop, reset, event and sparse pixel-mask assertions.
+
+For the 2 pixel target:
 
 | Frame duration | Frames advanced | Final mover x | Event observed | Touching in callback |
 | --- | --- | --- | --- | --- |
@@ -1632,15 +1635,17 @@ while retaining the stop, reset, event and sparse pixel-mask assertions.
 These are finite original-PXT comparisons, not a claim that all crossings are
 detected: the last two sequences miss the pair in both implementations. The
 originally failing browser assumption required separation even on a short
-frame. The8-pixel controller target is observed at all six tested cadences;
-frame-end x and contact query still match the original. The narrow fixture
-remains available for the original differential roundtrip.
+frame. The 8 pixel controller target is observed at all six tested cadences;
+frame-end x and contact query still match the original. The narrow target
+remains in the deterministic controls. The full roundtrip uses the wider target
+and compares event delivery, stopped motion and consistent callback geometry
+rather than requiring identical geometry across independently timed runs.
 
-All13 surrounding physics checks pass without skips. The revised visible
+All 13 surrounding physics checks pass without skips. The revised visible
 Code→Blocks→Run→controller launch/reset twice→sparse masks→From Blocks journey
 passes with zero page/runtime errors in the existing `gui.3c9f1746.js` reference
 bundle. This is not a new production build: fresh exact-head hosted GUI checks
 remain required. No runtime scheduler, physics algorithm or importer behavior
 changes in this repair. The first incorrect cadence assertion and failed
-narrow-target GUI run remain preserved privately.
+narrow-target GUI and exported-PXT timeouts remain preserved privately.
 [Receipt](receipts/2026-10-08-arcade-overlap-cadence.json).
