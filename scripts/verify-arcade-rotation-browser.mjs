@@ -276,9 +276,11 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     // visible Code/Blocks controls and the real controller pane.
     await stop.click();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
-    const destruction = arcadeToPseudocode(DESTROY_KIND_CONTROLLER_SOURCE);
+    const destructionSource = DESTROY_KIND_CONTROLLER_SOURCE + '\nplayer.setImage(img`7 7 7\n7 7 7`)';
+    const destruction = arcadeToPseudocode(destructionSource);
     assert.deepEqual(destruction.unsupported, []);
-    const destructionProject = makeCodeProjectFile({'main.ts': DESTROY_KIND_CONTROLLER_SOURCE,
+    assert.ok(destruction.costumes.some(costume => costume.mode === 'add'), 'fixture includes implicit appended artwork');
+    const destructionProject = makeCodeProjectFile({'main.ts': destructionSource,
         'pxt.json': JSON.stringify({name: 'Destroy kind', dependencies: {device: '*'}, files: ['main.ts']})},
     {target: 'arcade', name: 'Destroy kind'});
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
@@ -313,17 +315,25 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
         .filter(t => t.isOriginal).map(t => ({name: t.getName(), costumes: t.sprite.costumes.map(c =>
             ({assetId: c.asset.assetId, bytes: Array.from(c.asset.data)}))})));
     const beforeRepeat = await snapshotArt();
-    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
-    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    assert.ok(beforeRepeat.some(target => target.costumes.length > 1), 'native import installed the appended costume');
+    const applyArtworkCode = async () => {
+        const priorStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+        await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
+        await page.waitForFunction(id => {
+            const stage = window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();
+            return stage && stage.id !== id;
+        }, priorStage);
+        await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    };
+    await applyArtworkCode();
     assert.deepEqual(await snapshotArt(), beforeRepeat, 'repeat conversion preserves exact imported costume bytes');
     await editor.fill('DEVICE ARCADE\nSPRITE Fresh:\nWHEN flag clicked:\n  set freshValue to 37');
-    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
-    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    await applyArtworkCode();
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await flag.click();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
         .flatMap(t => Object.values(t.variables)).some(v => v.name === 'freshValue' && v.value === 37));
-    report.codeArtworkOwnership = {repeatExactCostumeBytes: true, freshPastedProgramLoadsWithoutStaleUploadWarnings: true};
+    report.codeArtworkOwnership = {implicitAppendedCostume: true, repeatExactCostumeBytes: true, freshPastedProgramLoadsWithoutStaleUploadWarnings: true};
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),
