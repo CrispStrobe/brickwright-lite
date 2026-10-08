@@ -468,7 +468,7 @@ class ArcadeTranslator extends BaseTranslator {
                 // instead of failing at run time on "Array reference is null or expired".
                 if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
-                else out.push(`${pad}set ${this.varName(d.name)} to ${value}`);
+                else out.push(`${pad}set ${this.varName(d.name)} to (${value})`);
             }
             return;
         }
@@ -600,6 +600,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (owner && this.isArrayReference(owner)) {
             const ref=this.expr(owner),op=node.callee.name,a=node.args||[];
             if (['pop','shift','removeAt'].includes(op)) return `${op} from array reference (${ref}) index (${a[0]?this.expr(a[0]):0})`;
+            if (op==='_pickRandom' && !a.length) return `random item of array reference (${ref})`;
             if (op==='get') return `item (${this.expr(a[0])}) of array reference (${ref})`;
             // The pinned PXT Array_.removeElement reports 1 or 0 (measured); the
             // arrays block reports true or false, and true + 0 is 1.
@@ -2048,7 +2049,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(node.callee?.type==='Member' && node.callee.name==='isHittingTile' && node.args.length===1 && typeOf(node.callee.object,owner).has('sprite'))return new Set(['boolean']);
             if(node.callee?.type==='Member' && node.callee.name==='toString' && !node.args.length && typeOf(node.callee.object,owner).has('sprite'))return new Set(['string']);
             if (api === 'image.create' && node.args.length === 2 || api === 'scene.backgroundImage' && !node.args.length) return new Set(['image']);
-            if (node.callee?.type === 'Member' && ['pop','shift','removeAt','get'].includes(node.callee.name) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+            if (node.callee?.type === 'Member' && (['pop','shift','removeAt','get'].includes(node.callee.name) || node.callee.name==='_pickRandom' && !node.args.length) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
             if (api==='Math.pickRandom' && node.args.length===1) return new Set([...typeOf(node.args[0],owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
             if (node.callee?.type === 'Identifier' && functions.has(node.callee.name)) return functions.get(node.callee.name).returns || new Set();
             if (['sprites.create', 'sprites.createProjectile', 'sprites.createProjectileFromSide',
@@ -2145,7 +2146,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             const receiver=node.callee?.type==='Member' && cell(node.callee.object,owner),op=node.callee?.name;
             if(receiver && graph.has(receiver,'array')){
                 if(['push','unshift','insertAt','set'].includes(op))connect(graph.element(receiver),cell(node.args[['insertAt','set'].includes(op)?1:0],owner));
-                if(['pop','shift','removeAt','get'].includes(op))connect(value,graph.element(receiver));
+                if(['pop','shift','removeAt','get'].includes(op) || op==='_pickRandom' && !node.args.length)connect(value,graph.element(receiver));
             }
             if(pathOf(node.callee)==='Math.pickRandom' && node.args.length===1 && graph.has(cell(node.args[0],owner),'array'))connect(value,graph.element(cell(node.args[0],owner)));
             if(receiver && op==='clone' && !node.args.length && graph.has(receiver,'Image'))graph.add(value,'Image');

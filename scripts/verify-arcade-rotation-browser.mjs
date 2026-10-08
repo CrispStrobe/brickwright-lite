@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {ARRAY_PICK_RANDOM_SOURCE} from '../test/fixtures/arcade-array-pick-random.mjs';
 import {NAMESPACE_AUGMENTATION_SOURCE} from '../test/fixtures/arcade-namespace-augmentation.mjs';
 import {STATIC_CALLBACK_SOURCE} from '../test/fixtures/arcade-static-callback-helpers.mjs';
 import {TYPED_HELPER_SOURCE} from '../test/fixtures/arcade-typed-helper.mjs';
@@ -421,6 +422,26 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     report.namespaceAugmentation = {nativeFileImport: true, codeToBlocks: true,
         initialObserved: 192, initialScore: 7, controllerObserved: 197, controllerScore: 9, spriteX: 36};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-namespace-augmentation.png'});
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const randomProject = makeCodeProjectFile({'main.ts': ARRAY_PICK_RANDOM_SOURCE,
+        'pxt.json': JSON.stringify({name: 'Array random', dependencies: {device: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Array random'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'array-random.mkcd', mimeType: 'application/json', buffer: Buffer.from(randomProject)});
+    await page.getByText(/Imported the Arcade game.*array-random/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await waitMultifile({calls: 1, pixel: 5, observedX: 41, length: 2, membership: 40});
+    await page.getByTestId('bw-arcade-b').click();
+    await waitMultifile({observedX: 45});
+    await page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)
+        .some(sprite => sprite.id && sprite.x === 45));
+    report.arrayPickRandom = {nativeFileImport: true, codeToBlocks: true, calls: 1, pixel: 5,
+        nestedArrayLength: 2, membershipChecks: 40, initialSpriteX: 41, controllerSpriteX: 45};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-array-random.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),
