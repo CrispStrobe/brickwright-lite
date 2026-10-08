@@ -63,13 +63,14 @@ const samePalette = (left, right) => left.every((colour, index) =>
     String(colour).toLowerCase() === String(right[index]).toLowerCase());
 
 const REGISTERED_HAT_KINDS = {
+    arcade_whenRegisteredMultiplayerButton:'multiplayerButton',
     arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile',
     arcade_whenRegisteredUpdate:'update', arcade_whenRegisteredInterval:'interval', arcade_whenRegisteredButton:'button',
     arcade_whenRegisteredKindDestroyed:'destroyed', arcade_whenRegisteredOverlap:'overlap',
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
     arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
 };
-const REGISTERED_COMMANDS = new Set(['arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
+const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler',
     'arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
@@ -1063,6 +1064,10 @@ class ArcadeEmitter {
             return name;
         }
         case 'arcade_askForString': return `game.askForString(${v('QUESTION')})`;
+        case 'arcade_eventPlayer':
+            if(this.eventPlayerName)return this.eventPlayerName;
+            this.note('Arcade event player outside a multiplayer callback');return this.na();
+        case 'arcade_playerButtonPressed':this.requiresMultiplayerPackage=true;return `mp.isButtonPressed(${v('PLAYER')}, ${v('BUTTON')})`;
         case 'arcade_eventSprite': {
             const which = this.field(b, 'WHICH') === 'second' ? 1 : 0;
             if (this.eventHandles?.[which]) return this.eventHandles[which];
@@ -1422,6 +1427,7 @@ class ArcadeEmitter {
         case 'arcade_changeLife': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setLife'?'setLife':'changeLifeBy'}(${this.arrayValue(b,'VALUE')})`);return;}
         case 'arcade_pushScene': push('game.pushScene()');return;
         case 'arcade_popScene': push('game.popScene()');return;
+        case 'arcade_registerMultiplayerButtonHandler':
         case 'arcade_registerUpdateHandler':
         case 'arcade_registerIntervalHandler':
         case 'arcade_registerButtonHandler':
@@ -1432,13 +1438,13 @@ class ArcadeEmitter {
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
         case 'arcade_registerCountdownHandler': {
-            const kinds={arcade_registerUpdateHandler:'update',arcade_registerIntervalHandler:'interval',
+            const kinds={arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerIntervalHandler:'interval',
                 arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
-            const signatures={destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
+            const signatures={multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
             const body=`function (${signatures[kind]||''}) {\n${callback.script.join('\n')}\n}`;
             const apis={update:'game.onUpdate',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
@@ -1448,6 +1454,7 @@ class ArcadeEmitter {
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));
             if(kind==='overlap')args.push(this.kindExpr(b,'OTHER_KIND'));
+            if(kind==='multiplayerButton'){this.requiresMultiplayerPackage=true;api='mp.onButtonEvent';args.push(this.arrayValue(b,'BUTTON'),this.arrayValue(b,'EVENT'));}
             if(kind==='button'){
                 const button=this.literalInput(b,'BUTTON');
                 if(!['A','B','up','down','left','right'].includes(button)){push(`// ${this.note('Arcade button registration requires a fixed supported button')}`);return;}
@@ -1934,7 +1941,7 @@ class ArcadeEmitter {
         if (this.registeredCallbacks.has(token)) return this.registeredCallbacks.get(token);
         const entry = this.registeredCallbackBlocks.get(token);
         if (!entry || this.compilingRegisteredCallbacks.has(token)) return null;
-        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,currentLocalNames:this.currentLocalNames};
+        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames};
         this.compilingRegisteredCallbacks.add(token);
         this.target = entry.target;this.blocks = entry.target.blocks;
         let parameter = `${entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
@@ -1942,6 +1949,7 @@ class ArcadeEmitter {
         while (text.includes(parameter)) parameter += '_';
         let location=`__bwEventLocation_${ident(token)}`;while(text.includes(location))location+='_';
         let second=`__bwOtherSprite_${ident(token)}`;while(text.includes(second))second+='_';
+        this.eventPlayerName=entry.kind==='multiplayerButton'?parameter:null;
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
         this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();
@@ -2045,8 +2053,9 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileLocationProperty'){const id=Symbol('tile numeric property');numbers.add(id);return id;}
-                if(['arcade_playerLookup','arcade_playerBySprite'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
+                if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
                 if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
+                if(value.opcode==='arcade_playerButtonPressed'){const id=Symbol('player button pressed');booleans.add(id);return id;}
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
@@ -2081,7 +2090,8 @@ class ArcadeEmitter {
                 for (const input of block.opcode === 'arcade_blitImage' || block.opcode === 'arcade_imagesOverlap' ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
-                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons'].includes(block.opcode)){
+                if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
+                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
                 }
                 if(block.opcode==='arcade_allPlayers'){const array=ref(block),item=Symbol('player collection element');graphPlayerValues.add(item);elements.push([array,item]);}

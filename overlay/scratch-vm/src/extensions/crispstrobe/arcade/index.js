@@ -66,6 +66,7 @@ module.exports = makeExt(`// Name: Arcade
       if (runtime && runtime.on) {
         runtime.on('ARCADE_FRAME', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._advance(1 / 30); });
         runtime.on('ARCADE_BUTTON_DOWN', () => this._dialogs?.[0]?.dismiss());
+        runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
         runtime.on('KEY_STATE_CHANGED',(key,isDown)=>this._keyboardButtonEdge(key,isDown));
         const cancelCreations = () => {
           for (const pending of this._creationWaits) pending.resolve('');
@@ -169,6 +170,10 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'whenRegisteredUpdate',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade update handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerIntervalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register interval [INTERVAL] ms as [TOKEN] capturing [CAPTURES]',arguments:{...n('INTERVAL',1000),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredInterval',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade interval handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerMultiplayerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register multiplayer button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{...n('BUTTON',0),EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredMultiplayerButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade multiplayer button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'eventPlayer',blockType:Scratch.BlockType.REPORTER,text:'Arcade event player'},
+          {opcode:'playerButtonPressed',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] button [BUTTON] pressed?',arguments:{...str('PLAYER',''),...n('BUTTON',0)}},
           {opcode:'registerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{BUTTON:{type:Scratch.ArgumentType.STRING,menu:'buttons',defaultValue:'a'},EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerDestroyedHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register destroyed kind [KIND] as [TOKEN] capturing [CAPTURES]',arguments:{...str('KIND','Player'),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -713,9 +718,40 @@ module.exports = makeExt(`// Name: Arcade
     }
     registerButtonHandler(args,util) {
       const button=String(args.BUTTON).toLowerCase(),event=Number(args.EVENT);
-      const registration={...this._handlerRegistration(args,util),button,event};
-      const index=this._buttonHandlers.findIndex(h=>h.button===button && h.event===event);
+      const registration={...this._handlerRegistration(args,util),button,event,player:1};
+      const index=this._buttonHandlers.findIndex(h=>h.player===1 && h.button===button && h.event===event);
       if(index<0)this._buttonHandlers.push(registration);else this._buttonHandlers[index]=registration;
+    }
+    _multiplayerButton(value) {const raw=Scratch.BWValues.decode(value);return raw===null || raw===undefined?undefined:['a','b','up','right','down','left'][Number(raw)];}
+    registerMultiplayerButtonHandler(args,util) {
+      const button=this._multiplayerButton(args.BUTTON),event=Number(args.EVENT);if(!button)throw new TypeError('Invalid multiplayer button');
+      const state=this._state(),entries=state.mpButtonHandlers || (state.mpButtonHandlers=[]);
+      let entry=entries.find(h=>h.button===button && h.event===event);
+      const registration=this._handlerRegistration(args,util);
+      if(entry){entry.registration=registration;return;}
+      entry={button,event,registration};entries.push(entry);
+      for(const player of this._players()){
+        const wrapper={button,event,player:player.index+1,mp:entry,playerValue:this._playerRef(player)};
+        const index=this._buttonHandlers.findIndex(h=>h.player===wrapper.player && h.button===button && h.event===event);
+        if(index<0)this._buttonHandlers.push(wrapper);else this._buttonHandlers[index]=wrapper;
+      }
+    }
+    eventPlayer(args,util) {return util?.thread?.bwArcadeEvent?.player || Scratch.BWValues.encode(undefined);}
+    _heldButton(number,button) {
+      const state=this._state(),buttons=number===1?state.buttons:state.controllerButtons[number] || {};
+      const key={left:'left arrow',up:'up arrow',right:'right arrow',down:'down arrow',a:'space',b:'z',start:'enter',select:'m'}[button];
+      return Boolean(buttons[button] || (number===1 && this._runtime?.ioDevices?.keyboard?.getKeyIsDown?.(key)));
+    }
+    playerButtonPressed(args) {
+      const player=this._player(args.PLAYER);if(!player)return false;
+      const button=this._multiplayerButton(args.BUTTON);if(!button)throw new TypeError('Invalid multiplayer button');
+      return this._heldButton(player.index+1,button);
+    }
+    *_controllerButtonCallbacks(number,button,event,deferred=false) {
+      const handlers=this._buttonHandlers.filter(h=>h.player===number && h.button===button && h.event===event);
+      for(const handler of handlers){
+        yield* this._registeredCallbackSteps([handler.mp?handler.mp.registration:handler],handler.mp?'arcade_whenRegisteredMultiplayerButton':'arcade_whenRegisteredButton',handler.mp?{player:handler.playerValue}:{},undefined,deferred);
+      }
     }
     registerDestroyedHandler(args,util) {this._destroyedHandlers.push(this._handlerRegistration(args,util));}
     registerOverlapHandler(args,util) {this._overlapHandlers.push({...this._handlerRegistration(args,util),otherKind:String(args.OTHER_KIND)});}
@@ -771,6 +807,7 @@ module.exports = makeExt(`// Name: Arcade
     registerScenePopHandler(args,util) {this._scenePopHandlers.push(this._handlerRegistration(args,util));}
     whenRegisteredUpdate(args,util) {return this.whenRegisteredWall(args,util);}
     whenRegisteredInterval(args,util) {return this.whenRegisteredWall(args,util);}
+    whenRegisteredMultiplayerButton(args,util) {return this.whenRegisteredWall(args,util);}
     whenRegisteredButton(args,util) {return this.whenRegisteredWall(args,util);}
     whenRegisteredKindDestroyed(args,util) {return this.whenRegisteredWall(args,util);}
     whenRegisteredOverlap(args,util) {
@@ -804,25 +841,26 @@ module.exports = makeExt(`// Name: Arcade
     _keyboardButtonEdge(key,isDown) {
       const button={'space':'a','Z':'b','enter':'start','M':'select','left arrow':'left','up arrow':'up','right arrow':'right','down arrow':'down'}[String(key)];
       if(!button)return;
-      const current=this._buttonStates[button] || (this._buttonStates[button]={held:false,elapsed:0,count:0});
+      this._controllerButtonEdge(1,button,isDown);
+    }
+    _controllerButtonEdge(number,button,isDown) {
+      if(!Number.isInteger(number) || number<1 || number>4)return;
+      const key=number+':'+button,current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
       const held=!!isDown;if(current.held===held)return;
       current.held=held;current.elapsed=0;current.count=0;
       if(this._terrainStopped)return;
-      // Select the scene's registrations when the event arrives, then queue
-      // their fibers independently of a possibly paused physics/update frame.
-      const handlers=this._buttonHandlers.filter(h=>h.button===button && h.event===(held?2049:2048));
-      const pending=this._runTerrainGenerator(this._registeredCallbackSteps(handlers,'arcade_whenRegisteredButton',{},undefined,true));
+      const pending=this._runTerrainGenerator(this._controllerButtonCallbacks(number,button,held?2049:2048,true));
       pending?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message));
     }
     *_sceneButtons(dt) {
-      const state=this._state(),keyboard=this._runtime?.ioDevices?.keyboard;
-      for(const button of ['left','up','right','down','a','b','start','select']){
-        const held=!!(state.buttons[button] || keyboard?.getKeyIsDown?.(['left','up','right','down'].includes(button)?button+' arrow':button==='a'?'space':button==='b'?'z':button==='start'?'enter':button==='select'?'m':button));
-        const current=this._buttonStates[button] || (this._buttonStates[button]={held:false,elapsed:0,count:0});
+      const state=this._state();
+      for(let number=1;number<=4;number++)for(const button of ['left','up','right','down','a','b','start','select']){
+        const held=this._heldButton(number,button),key=number+':'+button;
+        const current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
         let event;
         if(held!==current.held){current.held=held;current.elapsed=0;current.count=0;event=held?2049:2048;}
-        else if(held){current.elapsed+=dt*1000;if(current.elapsed>=500){const count=Math.floor((current.elapsed-530)/30);if(count!==current.count){current.count=count;event=2054;}}}
-        if(event!==undefined)yield* this._registeredCallbackSteps(this._buttonHandlers.filter(h=>h.button===button && h.event===event),'arcade_whenRegisteredButton',{});
+        else if(held){current.elapsed+=(dt*1000)|0;if(current.elapsed>=500){const count=Math.floor((current.elapsed-530)/30);if(count!==current.count){current.count=count;event=2054;}}}
+        if(event!==undefined)yield* this._controllerButtonCallbacks(number,button,event);
         if(this._state()!==state)return;
       }
     }

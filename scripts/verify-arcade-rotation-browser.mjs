@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
 import {MULTIPLAYER_PLAYERS_SOURCE} from '../test/fixtures/arcade-multiplayer-players.mjs';
 import {ARRAY_PICK_RANDOM_SOURCE} from '../test/fixtures/arcade-array-pick-random.mjs';
@@ -507,6 +508,32 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
         independentSpeed: 60, otherPlayersStationary: true, releasedOnSelectionChange: true,
         reboundToReplacement: true, releasedOnPointerUp: true};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-multiplayer-movement.png'});
+    await playerSelect.selectOption('1');
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
+        'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Multiplayer buttons'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'multiplayer-buttons.mkcd', mimeType: 'application/json', buffer: Buffer.from(buttonsProject)});
+    await page.getByText(/Imported the Arcade game.*multiplayer-buttons/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();await waitMultifile({pressed: 0, released: 0, quick: 0});
+    await playerSelect.selectOption('2');
+    await page.getByTestId('bw-arcade-a').hover();await page.mouse.down();
+    await waitMultifile({pressed: 4, observed: 2, identity: 1, held: 1});
+    await page.mouse.up();await waitMultifile({released: 2});
+    await playerSelect.selectOption('1');await page.getByTestId('bw-arcade-a').click();
+    await waitMultifile({legacy: 1, pressed: 4, released: 3});
+    await playerSelect.selectOption('4');await page.getByTestId('bw-arcade-b').click();
+    await waitMultifile({quick: 44});
+    const buttonsSprites=await movementState();assert.equal(buttonsSprites[0].x,45);
+    report.multiplayerButtons = {nativeFileImport: true, codeToBlocks: true, playerTwoIdentity: true,
+        capturedWeight: 4, pressedQuery: true, playerOneOverride: true, releaseNumberSum: 3,
+        playerFourTapBothEdges: 44, spriteX: 45};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-multiplayer-buttons.png'});
     await playerSelect.selectOption('1');
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>

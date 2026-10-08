@@ -251,7 +251,7 @@ class ArcadeTranslator extends BaseTranslator {
                 this.spriteResultBindings.add(name);added = true;
             }
         } while (added);
-        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler)$/.test(this.path(value.callee)||''));
+        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.onButtonEvent|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
         this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile'].includes(record.kind)));
@@ -588,6 +588,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push(`${engineApi} requires ${arity} argument`);return 'undefined value';
         }
         if(engineApi==='mp.allPlayers' && !engineArgs.length)return 'arcade all players';
+        if(engineApi==='mp.isButtonPressed' && engineArgs.length===2)return `arcade player (${this.expr(engineArgs[0])}) button (${this.expr(engineArgs[1])}) pressed`;
         if(engineApi==='mp.getPlayerProperty' && engineArgs.length===2)return `arcade player safe property (${this.expr(engineArgs[1])}) of (${this.expr(engineArgs[0])})`;
         if(engineApi==='game.currentScene') {
             if(!engineArgs.length)return 'arcade current scene';
@@ -838,14 +839,15 @@ class ArcadeTranslator extends BaseTranslator {
     valueExpr (node) {
         const mpEnum = this.path(node);
         const mpConstants={'mp.PlayerNumber.One':1,'mp.PlayerNumber.Two':2,'mp.PlayerNumber.Three':3,'mp.PlayerNumber.Four':4,
-            'mp.PlayerProperty.Index':1,'mp.PlayerProperty.Number':2};
+            'mp.PlayerProperty.Index':1,'mp.PlayerProperty.Number':2,
+            'mp.MultiplayerButton.A':0,'mp.MultiplayerButton.B':1,'mp.MultiplayerButton.Up':2,'mp.MultiplayerButton.Right':3,'mp.MultiplayerButton.Down':4,'mp.MultiplayerButton.Left':5};
         if(Object.prototype.hasOwnProperty.call(mpConstants,mpEnum)) {
             if(this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp')) {
                 this.unsupported.push(`${mpEnum} refers to a shadowed mp binding`);return 'undefined value';
             }
             return String(mpConstants[mpEnum]);
         }
-        if(/^mp\.(PlayerNumber|PlayerProperty)\./.test(mpEnum||'')) {
+        if(/^mp\.(PlayerNumber|PlayerProperty|MultiplayerButton)\./.test(mpEnum||'')) {
             this.unsupported.push(`${mpEnum} is not a declared multiplayer enum member`);return 'undefined value';
         }
         if(node?.type==='Member' && this.playerReferences?.has(node.object)) {
@@ -1133,6 +1135,7 @@ class ArcadeTranslator extends BaseTranslator {
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
             case 'countdown':push(`arcade register countdown ${suffix}`);break;
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
+            case 'multiplayerButton':push(`arcade register multiplayer button (${this.expr(a[0])}) event (${this.expr(a[1])}) ${suffix}`);break;
             case 'button':push(`arcade register button "${/^controller\.(\w+)\./.exec(name)[1]}" event (${this.expr(a[0])}) ${suffix}`);break;
             case 'destroyed':push(`arcade register destroyed kind "${kindOf(a[0])}" ${suffix}`);break;
             case 'overlap':push(`arcade register overlap kind "${kindOf(a[0])}" with kind "${kindOf(a[1])}" ${suffix}`);break;
@@ -2026,7 +2029,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node.type === 'Declaration') for (const decl of node.decls) {const value=binding(owner,decl.name,true);if(decl.isArray)value.add('array');}
         if (node.type === 'Call') {
             const api = pathOf(node.callee);
-            const types = api==='sprites.onOverlap'?['sprite','sprite']:
+            const types = api==='mp.onButtonEvent'?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
                 ['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
                 ['sprites.onCreated','sprites.onDestroyed'].includes(api)?['sprite']:[];
             visit(node.callee, owner);
@@ -2072,6 +2075,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(api==='mp.getPlayerSprite')return new Set(['sprite']);
             if(api==='mp.allPlayers')return new Set(['array']);
             if(api==='mp.getPlayerProperty')return new Set(['number']);
+            if(api==='mp.isButtonPressed')return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
             if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
@@ -2227,6 +2231,7 @@ const sceneRegistrationSpec = name => {
         'info.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.player1.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.onCountdownEnd':{kind:'countdown',handlerIndex:0,arity:1,prefix:'__bwCountdown',maxParams:0},
+        'mp.onButtonEvent':{kind:'multiplayerButton',handlerIndex:2,arity:3,prefix:'__bwMPButton',maxParams:1},
         'game.onUpdate':{kind:'update',handlerIndex:0,arity:1,prefix:'__bwUpdate',maxParams:0},
         'game.onUpdateInterval':{kind:'interval',handlerIndex:1,arity:2,prefix:'__bwInterval',maxParams:0},
         'sprites.onDestroyed':{kind:'destroyed',handlerIndex:1,arity:2,prefix:'__bwKindDestroyed',maxParams:1,kinds:[0]},
@@ -2328,8 +2333,9 @@ const emitSceneRegistrations = (translator,out,localHandles=new Map(),callbackLo
         const spriteParams=kind==='destroyed'?handler.params.slice(0,1):kind==='overlap'?handler.params.slice(0,2):[];
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...spriteParams]);
         translator.handleAliases=new Map();
-        const label=kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
+        const label=kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
         out.push(`WHEN arcade ${label} handler "${token}" runs:`);
+        if(kind==='multiplayerButton' && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
         for(const [index,param] of spriteParams.entries())out.push(`  arcade set local ${translator.varName(param)} to arcade event ${index===0?'first':'second'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
