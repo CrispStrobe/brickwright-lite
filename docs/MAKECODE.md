@@ -886,3 +886,45 @@ shipped. Next qualify comparable clocks and shared callback/physics scheduling,
 then fix any demonstrated semantic defect. The map painter/color-index picker,
 mixed map semantics, artwork packages, palettes, effects and music also remain
 open. [Qualification receipt](receipts/2026-10-08-arcade-legacy-tile-collisions.json).
+
+### Completed callback scheduling — 2026-10-08
+
+The VM now reports `ARCADE_FRAME_END` after executing its threads. Arcade drains
+completed function, creation and terrain callback waits at that point. This
+lets the next inline handler resume before the following physics tick. Motion
+continues during a yielding handler; the change adds no scene ownership lock.
+No new dialect opcode or editor control is needed.
+
+The original PXT and native wall-clock regression both verify that movement
+continues during pause70, then the next legacy handler, modern wall handler and
+caller observe the preceding handler's final position. Disabling the new
+notification makes the regression fail: next-handler x8.61328125 versus previous
+handler x9.890625. Thirty unique regressions pass, covering legacy collisions,
+creation callbacks, yielding function results and scene registrations; the final
+fixture has a separate one-test rerun. No test skips. Production gui.cf6a1da8.js
+passes file import→Code→Blocks→green flag→visible A repeat with no page/block errors; boot
+checks pass. The first direct-Code browser driver omitted imported image assets;
+its failed runs are retained. The corrected driver imports the native project
+through the file chooser, carrying code and costumes together. Initial JavaScript is4,360,555 bytes under unchanged4,467,136.
+
+This closes the extra physics tick between completed callbacks. Absolute timing
+compatibility remains open. With normal wall-clock schedulers, the original
+fixture reproduced original x15/native12.4453125 in three trials before this
+change. Afterward, a simplified pause20 case ends at original15/native13.72265625,
+with no extra movement between the final callback observations. A pause0 case
+matches x15 but reads original obstacle-1/native2. Real long-pause positions vary
+with scheduling, so those probes are retained rather than treated as equality
+gates. The runtime still advances33ms per VM tick although the default VM
+interval is about16.7ms. PXT EventContext initializes its previous timestamp
+immediately before its first frame, producing a near-zero initial delta; startup
+phase and frame-polled waits also need qualification.
+
+Next: establish one controlled monotonic timeline for VM waits and Arcade scene
+frames, including initial zero delta, ordinary60Hz/compatibility30Hz operation,
+yielding frame callbacks, pause0/20/70 and push/pop/restart. Compare event traces
+and obstacle lifetimes against the pinned original scheduler before changing
+shared physics timing. Do not introduce timing freezes or close this lane from
+import counts. The last import-only corpus remains102 translated/81 partial/
+1 malformed; it was not rerun for this runtime-only change. U03 painter and
+resource lifecycle, ranked artwork/maps, palettes, effects and music remain open.
+[Receipt](receipts/2026-10-08-arcade-callback-scheduling.json).

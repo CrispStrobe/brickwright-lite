@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-08",
+  "buildSource": "787025531347938e382fad87d5af31ab40bca247",
+  "change": "Notify Arcade callback completion after Scratch thread execution, before the next physics tick",
+  "tests": {
+    "collisionAndLegacyRegressions": 9,
+    "sharedCreationFunctionSceneRegressions": 21,
+    "finalFixtureRerun": 1,
+    "uniqueRegressions": 30,
+    "failed": 0,
+    "skipped": 0,
+    "negativeControl": "Disabling frame-end notification fails on next-handler x8.61328125 versus preceding handler x9.890625"
+  },
+  "browser": {
+    "status": "passed",
+    "samples": [
+      {
+        "completed": 1,
+        "before": 15,
+        "after": 13.72265625,
+        "inB": 13.72265625,
+        "inC": 13.72265625,
+        "finalX": 13.72265625
+      },
+      {
+        "completed": 2,
+        "before": 15,
+        "after": 12.4453125,
+        "inB": 12.4453125,
+        "inC": 12.4453125,
+        "finalX": 12.4453125
+      }
+    ],
+    "errors": [],
+    "blockErrors": []
+  },
+  "build": {
+    "bundle": "gui.cf6a1da8.js",
+    "errors": 0,
+    "warnings": 2,
+    "initialBytes": 4360555,
+    "previousInitialBytes": 4360525,
+    "initialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "comparison": {
+    "original": "Original pinned PXT wall-clock execution",
+    "native": "Real Scratch VM with its wall-clock scheduler",
+    "asserted": [
+      "Motion continues during pause70",
+      "After yielding handler returns, next legacy handler sees the same position",
+      "Modern wall handler and caller see the same position",
+      "Production visible A repeats the sequence"
+    ],
+    "absolutePositionEquivalence": false
+  },
+  "retainedTimingProbes": {
+    "before": "Both wall-clock schedulers reproduce final x15 original versus12.4453125 native in3 trials",
+    "afterCompletion": "Simplified pause20 probe: original final x15/native13.72265625; no extra motion between after/inB/inC/finalX",
+    "pause0": "Position matches15 after completion fix; obstacle read still differs original-1/native2",
+    "longPause": "Original/native absolute positions differ and vary with real clocks; not a strict equality gate"
+  },
+  "corpus": {
+    "lastQualifiedImportOnly": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "rerun": false,
+    "reason": "Runtime scheduling only; importer unchanged; no new translated-source promotion claimed"
+  },
+  "remaining": [
+    "Fixed33ms physics delta versus default60Hz VM interval",
+    "PXT EventContext initial near-zero delta and first-frame phase",
+    "Shared real-clock waits versus Scratch frame-polled waits",
+    "Common-clock deterministic event/physics ordering qualification",
+    "U03 dedicated map painter/resource lifecycle; ranked artwork, palettes, effects/music",
+    "Exact-head hosted CI and stacked integration"
+  ],
+  "retainedBrowserFailures": [
+    "First direct-Code driver omitted imported image assets; no collision occurred",
+    "Second diagnostic run recorded before/after/inB/inC0 and finalX16, confirming absent wall",
+    "Final driver uses native file import to carry source and costumes together"
+  ],
+  "browserHarnessSource": "aef08e27f",
+  "publication": "Draft stack on Lite729; unmerged"
+}
