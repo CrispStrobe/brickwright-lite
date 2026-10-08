@@ -15,6 +15,19 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Discarded projectile results — 2026-10-08
+
+Codex continues the existing Arcade integration claim on
+`lane/arcade-discarded-projectiles-20261008`, stacked on PR711. Own the Lite
+Arcade importer's statement-form projectile creation, corresponding regression,
+native roundtrip and actual Code/Blocks/controller evidence, refreshed finite
+corpus ranking and GUI gap documentation. Runtime and shared compiler already
+implement assigned projectile creation; no compiler or engine pin change is
+planned. Preserve returned-handle semantics and callbacks when callers ignore
+the result, avoid generated-variable collisions, and keep unrelated missing
+art/packages named. Current clean184-input audit is complete at
+`3e12cb6fed4f4b69126715ec564c24afd640e8ba`; implementation has not started.
+
 ## Original MakeCode Assets roundtrip — 2026-10-07
 
 Codex continues the claimed Arcade integration lane on
