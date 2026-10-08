@@ -59,14 +59,15 @@ test('retained Sprite/Image aliases support explicit overlap queries across susp
 });
 
 
-test('a fast overlap callback retains frame-end geometry and stops its mover across all paths',async()=>{
-    const source='game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource(2)+`
+test('a fast crossing delivers one event, stops its mover and preserves callback geometry across all paths',async()=>{
+    const source='game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource()+`
 mover.vx=500
 pause(300)
-let stoppedAndTouching=mover.overlapsWith(target) && mover.vx===0
+let stopped=mover.vx===0
+let geometryConsistent=endFrameTouching===mover.overlapsWith(target)
 let crossingDone=passes===1`;
-    const expected=await verify(source,['fastOverlapSeen','endFrameTouching','passes','stoppedAndTouching','crossingDone'],'crossingDone');
-    assert.equal(expected.endFrameTouching,false);
-    assert.equal(expected.stoppedAndTouching,false);
+    const expected=await verify(source,['fastOverlapSeen','passes','stopped','geometryConsistent','crossingDone'],'crossingDone');
+    assert.equal(expected.stopped,true);
+    assert.equal(expected.geometryConsistent,true);
     assert.equal(expected.passes,1);
 });
