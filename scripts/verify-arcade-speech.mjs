@@ -319,7 +319,9 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         });
         const palette = vm.runtime.getBlocksXML().some(category => category.xml?.includes('arcade_spriteSay'));
         vm.runtime._primitives.arcade_setSpriteProperty({ID: hat.id, PROPERTY: 'x', VALUE: 140}, {});
-        for (let i = 0; i < 18; i++) vm.runtime._step();
+        // Advance 600ms after separating the sprites. Immediate calls with no
+        // delta measure wall time and cannot establish a 500ms expiry.
+        for (let i = 0; i < 18; i++) { vm.runtime._step(1000 / 30); await Promise.resolve(); }
         const corner = Array.from(data.slice(4 * (5 * capture.width + 5), 4 * (5 * capture.width + 5) + 3));
         return {speech, bubblePixels, corner, palette, renderState, afterExpiry: Object.keys(vm.runtime.bwArcadeDeviceState.speech).length};
     });

@@ -18,7 +18,7 @@ launch()`;
     assert.deepEqual(imported.unsupported, []);
     assert.match(imported.code, /arcade set local p to \(?arcade projectile template/);
     assert.match(imported.code, /kind "Projectile" vx/);
-    assert.match(imported.code, /arcade register destruction of arcade local p/);
+    assert.match(imported.code, /arcade register instance destruction of \(arcade local p\) as "__bwInstanceDestroyed1" capturing "p"/);
     const creator = new SB3Creator();
     creator.parse(imported.code);
     for (const costume of imported.costumes) creator.applyCustomSVG(costume.sprite, costume.svg);

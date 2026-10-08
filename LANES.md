@@ -15,6 +15,16 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Hosted Arcade integration repair — 2026-10-08
+
+Codex continues the existing integration claim on
+`lane/arcade-hosted-integration-20261008`, stacked on PR739. Own stale Arcade
+test contracts, CLI module reachability, and investigation of the hosted
+camera, pixel bounds, multi-physics and speech failures. Preserve original
+failed evidence and behavior assertions. Record the instance-destruction and
+parallel GUI passes independently from the failing overall build. No engine
+pin or unrelated lane adoption is planned.
+
 ## Discarded projectile results — 2026-10-08
 
 Codex continues the existing Arcade integration claim on

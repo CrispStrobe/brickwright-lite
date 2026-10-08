@@ -117,7 +117,7 @@ test('a real Arcade game becomes sprites, costumes and scripts', async () => {
         '__arcadeTemplate3', '__arcadeBackground1']);
     assert.equal(out.costumes.length, 4, 'three instance templates and the background retain artwork');
     assert.match(out.code, /arcade register button "up" event \(2049\)/);
-    assert.match(out.code, /WHEN arcade kinds "Enemy" and "Player" overlap:/);
+    assert.match(out.code, /arcade register overlap kind "Enemy" with kind "Player"/);
     assert.match(out.code, /change score by/);
     assert.match(out.code, /arcade create template "__arcadeTemplate2" kind "Enemy"/);
     assert.match(out.code, /arcade set vx of gegner to/);
@@ -201,7 +201,7 @@ test('the translation compiles into the sprites and blocks it names', {skip: can
     }
     for (const expected of [
         'event_whenflagclicked', 'arcade_registerButtonHandler', 'arcade_registerIntervalHandler',
-        'arcade_registerUpdateHandler', 'arcade_whenSpritesOverlap', 'arcade_createSprite',
+        'arcade_registerUpdateHandler', 'arcade_registerOverlapHandler', 'arcade_whenRegisteredOverlap', 'arcade_createSprite',
         'arcade_setSpriteProperty', 'arcade_setSpriteAutoDestroy',
         'arcade_setBackgroundImage', 'arcade_frameImage', 'arcade_spriteProperty',
         'arcade_changescore', 'operator_random'

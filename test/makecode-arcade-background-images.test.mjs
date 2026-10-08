@@ -2,19 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
-async function execute(source,frames){
+async function execute(source,frames,retainExtensionTimers=false){
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported.unsupported));
-    const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);run.imported=imported;return run;
+    const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true,retainExtensionTimers});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);run.imported=imported;return run;
 }
-async function roundtrip(source,verify,frames=10){
-    const run=await execute(source,frames);verify(run);
-    const code=await runProgram(run.creator.decompile(),{frames,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);assert.deepEqual(code.creator.warnings,[]);verify(code);
+async function roundtrip(source,verify,frames=10,retainExtensionTimers=false){
+    const check=async run=>{try{await verify(run);}finally{clearStrayTimers();}};
+    const run=await execute(source,frames,retainExtensionTimers);await check(run);
+    const code=await runProgram(run.creator.decompile(),{frames,uploads:run.imported.costumes,storage:true,retainExtensionTimers});assert.deepEqual(code.errors,[]);assert.deepEqual(code.creator.warnings,[]);await check(code);
     const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
-    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));verify(await execute(exported.ts,frames));
-    const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,frames);verify(run);return {run,exported};
+    const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify({diagnostics:built.diagnostics,ts:exported.ts}));await check(await execute(exported.ts,frames,retainExtensionTimers));
+    const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,frames);await check(run);return {run,exported};
 }
 
 test('background images share mutable resource identity with sprites and procedure results',async()=>{
@@ -59,8 +60,10 @@ test('forever callbacks spawn independent literal projectiles alongside backgrou
 scene.setBackgroundImage(surface)
 let hero=sprites.create(img\`1\`,SpriteKind.Player)
 let ticks=0
-forever(function(){ticks+=1;scene.backgroundImage().setPixel(0,0,7);let shot=sprites.createProjectileFromSprite(img\`2\`,hero,0,0);shot.destroy()})`,run=>{
+forever(function(){ticks+=1;scene.backgroundImage().setPixel(0,0,7);let shot=sprites.createProjectileFromSprite(img\`2\`,hero,0,0);shot.destroy()})`,async run=>{
+        const deadline=Date.now()+3000;
+        while(Number(vars(run).ticks)<2 && Date.now()<deadline){await new Promise(done=>setTimeout(done,25));await stepFrames(run.vm,2);}
         const state=run.vm.runtime.bwArcadeDeviceState;assert.equal(state.backgroundImage.pixels[0],7);assert.ok(Number(vars(run).ticks)>=2);assert.equal(Object.values(state.sprites).length,1);
         assert.ok(run.calls.get('arcade_spawnProjectile')>=2);
-    },25);
+    },25,true);
 });
