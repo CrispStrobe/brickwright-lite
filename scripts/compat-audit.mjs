@@ -96,7 +96,7 @@ function rankGaps (rows, elements) {
             b.occurrences - a.occurrences || a.family.localeCompare(b.family));
 }
 
-const supported = new Set(['.ts', '.hex', '.uf2', '.elf', '.sb3']);
+const supported = new Set(['.ts', '.hex', '.uf2', '.elf', '.sb3', '.mkcd', '.pxt']);
 const scratchBuiltins = new Set(['ev3', 'microbit', 'text2speech', 'videoSensing', 'wedo2',
     'music', 'pen', 'makeymakey']);
 const corePrefix = /^(motion|looks|sound|event|control|sensing|operator|data|procedures|argument)_/;

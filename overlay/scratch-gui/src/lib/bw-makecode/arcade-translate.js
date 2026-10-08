@@ -3189,6 +3189,8 @@ const translateOverlapOnly = (ast, assets) => {
 export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
     const source = map['main.ts'] || '';
+    const supplementalCodeDiagnostics = Object.keys(map).filter(filename => filename !== 'main.ts' && /\.ts$/.test(filename) && !/\.g\.ts$/.test(filename))
+        .map(filename => `Project code file ${JSON.stringify(filename)} is present but supplemental TypeScript translation is not implemented`);
 
     const assets = {};
     const tilemaps = {};
@@ -3260,7 +3262,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source)));
     const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
-        unsupported: [...new Set([...animationDiagnostics, ...result.unsupported])]});
+        unsupported: [...new Set([...animationDiagnostics, ...supplementalCodeDiagnostics, ...result.unsupported])]});
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
     const flattened = namespaceBindings.program ? ast : null;

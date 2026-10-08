@@ -111,3 +111,19 @@ hero.image.fill(5)
         assert.equal(row.qualification.originalCompile, 'not-requested');
     } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
+
+
+test('audit directory discovers native mkcd and pxt projects with their complete file maps', async () => {
+    const {makeCodeProjectFile} = await import('../overlay/scratch-gui/src/lib/bw-makecode/project-file.js');
+    const dir=fs.mkdtempSync(path.join(os.tmpdir(),'bw-native-audit-'));
+    try {
+        const files={'main.ts':'let value=17','pxt.json':JSON.stringify({name:'Native',dependencies:{device:'*'},files:['main.ts']})};
+        for(const ext of ['mkcd','pxt'])fs.writeFileSync(path.join(dir,'native.'+ext),makeCodeProjectFile(files,{target:'arcade'}));
+        const out=path.join(dir,'audit.json');
+        const result=spawnSync(process.execPath,[CLI,'--target','arcade','--out',out,dir],{cwd:ROOT,encoding:'utf8',timeout:60000});
+        assert.equal(result.status,0,result.stderr);
+        const report=JSON.parse(fs.readFileSync(out,'utf8'));
+        assert.equal(report.count,2);
+        for(const row of report.rows){assert.equal(row.target,'arcade');assert.equal(row.stage,'translated');assert.equal(row.sourceRecovered,true);}
+    } finally {fs.rmSync(dir,{recursive:true,force:true});}
+});

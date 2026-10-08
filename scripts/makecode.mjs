@@ -33,13 +33,14 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lib = rel => import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib', rel)).href);
 
 const USAGE = `usage:
+  node scripts/makecode.mjs tutorial-to-project <tutorial.md> --main <main.ts> [-o out.mkcd] [--target arcade|microbit]
   node scripts/makecode.mjs to-project <in.sb3|in.bw> [-o out.mkcd] [--target microbit|arcade]
   node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target microbit|arcade] [--board variant] [--source]
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target microbit|arcade]
   node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]`;
 
 function args (argv) {
-    const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null};
+    const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null, mainSource: null};
     for (let i = 1; i < argv.length; i++) {
         const a = argv[i];
         if (a === '-o') out.output = argv[++i];
@@ -47,6 +48,7 @@ function args (argv) {
         else if (a === '--board') out.board = argv[++i];
         else if (a === '--source') out.source = true;
         else if (a === '--bw') out.bw = argv[++i];
+        else if (a === '--main') out.mainSource = argv[++i];
         else if (!out.input) out.input = a;
         else throw Object.assign(new Error(`unexpected argument ${a}`), {usage: true});
     }
@@ -126,6 +128,17 @@ async function main () {
     } catch (e) {
         console.error(`${e.message}\n${USAGE}`);
         return 2;
+    }
+    if (a.cmd === 'tutorial-to-project') {
+        if (!a.mainSource) { console.error(`tutorial-to-project requires --main <main.ts>\n${USAGE}`); return 2; }
+        const {tutorialProjectFiles} = await lib('bw-makecode/tutorial-project.js');
+        const {makeCodeProjectFile} = await lib('bw-makecode/project-file.js');
+        const project = tutorialProjectFiles(fs.readFileSync(a.input, 'utf8'), fs.readFileSync(a.mainSource, 'utf8'), {name: base(a.input)});
+        const dest = a.output || `${base(a.input)}.${a.target}.mkcd`;
+        fs.writeFileSync(dest, makeCodeProjectFile(project.files, {name: base(a.input), target: a.target}));
+        console.log(`wrote ${dest} (${Object.keys(project.files).length} project files; package dependencies preserved, not fetched)`);
+        if (project.customFiles.length) console.error(`  note: supplemental tutorial code preserved: ${project.customFiles.join(', ')}`);
+        return 0;
     }
     if (a.cmd === 'to-ts') {
         const out = await toMakeCode(a.input, a.target);
