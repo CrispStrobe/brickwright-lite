@@ -1,0 +1,117 @@
+{
+  "date": "2026-10-08",
+  "buildSource": "d606023f2455a0e0a213da65a34d76a31ed91445",
+  "producer": "0de6ae91758353af89ce64b06717a4294cd6bb05",
+  "producerChanged": false,
+  "changes": [
+    "sprites.onOverlap and sprites.onDestroyed register at authored execution sites without scene-stack selection",
+    "Nested handlers retain shared captured locals, both event sprite arguments and sequential yielding destruction handlers",
+    "Invalid arguments and shadowed sprites/SpriteKind bindings stay diagnosed",
+    "Previously authored legacy hats remain available; imported callback assertions now verify explicit local/event mapping",
+    "Visible sprite controller/decompile journey added to hosted CI"
+  ],
+  "tests": {
+    "qualifiedDistinct": 57,
+    "failedAfterReruns": 0,
+    "skipped": 0,
+    "arcade": 43,
+    "gateInventory": 14,
+    "originalAndExportedPxtTrace": "O12D13:20d14B14X16O16D17:20d18B18X20",
+    "destroyedCallbacksAfterRepeat": 4,
+    "liveSpritesAfterRepeat": 1,
+    "roundtrips": [
+      "Native execution",
+      "Blocks decompile to Code",
+      "MakeCode export and reimport",
+      "SB3 reload"
+    ],
+    "temporalRegistration": "Original/native: destruction before registration and skipped conditional registration fire no callbacks; later destruction fires exactly once",
+    "retainedFailures": [
+      "Pre-change15-test baseline passed",
+      "Initial43-test run had4 stale event-alias assertions",
+      "Focused29-test run retained one generated-parameter-name assertion; final6-test destruction rerun passes"
+    ]
+  },
+  "build": {
+    "bundle": "gui.3c9f1746.js",
+    "errors": 0,
+    "warnings": 2,
+    "initialBytes": 4360790,
+    "initialLimit": 4467136,
+    "bootPayload": "passed",
+    "previousInitialBytes": 4360790
+  },
+  "browser": {
+    "status": "passed",
+    "samples": [
+      {
+        "hero": "arcade:1",
+        "trace": "O12D13:20d14B14X16",
+        "completed": 1,
+        "destroyed": 2
+      },
+      {
+        "hero": "arcade:1",
+        "trace": "O12D13:20d14B14X16O16D17:20d18B18X20",
+        "completed": 2,
+        "destroyed": 4
+      }
+    ],
+    "errors": [],
+    "blockErrors": [],
+    "flow": "Native file import \u2192 Code \u2192 Blocks \u2192 Run \u2192 visible A \u2192 From blocks",
+    "previousJourneysOnSameBundle": {
+      "callback-completion": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "update-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "button-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "info-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "forever-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      }
+    }
+  },
+  "corpus": {
+    "immutableInputs": 184,
+    "previous": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "current": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "changedDiagnosticRows": 1,
+    "diagnosticChange": "One existing generic sprites.destroy refusal now specifically reports unrendered effect/duration; no promotion",
+    "measurement": "Import diagnostics only; no complete-game equivalence claim"
+  },
+  "remaining": [
+    "Instance sprite destruction callback capture/lifecycle consistency and nested control.runInParallel execution sites",
+    "Initial scene phase, whole-loop pause and obstacle timing; common-clock differential qualification",
+    "Effect/duration rendering for destruction, plus ranked artwork/tilemap/source gaps",
+    "Untranslated-array/F5 export/value diagnostic/module-reachability hosted failures",
+    "Camera/pixel-bounds/multi-physics/speech browser integration failures",
+    "Dedicated tilemap painter and callback creation/capture guidance in the GUI",
+    "Fresh exact-head hosted checks and stacked integration"
+  ],
+  "publication": "Draft stacked on PR736; exact-head hosted checks required before merge"
+}
