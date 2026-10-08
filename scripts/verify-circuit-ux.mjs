@@ -625,6 +625,12 @@ try {
         });
         await designer.getByRole('radio', {name: 'Build mode', exact: true}).click();
         await designer.getByRole('radio', {name: 'Sim mode', exact: true}).click();
+        // Build/Sim preserves the learner's pause choice. Reset is synchronous;
+        // advance the new epoch through the actual single-step control, rather
+        // than assuming a mode change silently resumes a paused simulation.
+        await designer.getByRole('button', {name: /Resume simulation/i}).waitFor();
+        await scopePage.waitForFunction(() => window.__bwScopeResetReceipt?.resets.length > 0);
+        await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
         await scopePage.waitForFunction(() => window.__bwScopeResetReceipt?.firstCapture
             || window.__bwScopeResetReceipt?.errors.length);
         const receipt = await scopePage.evaluate(() => window.__bwScopeResetReceipt);

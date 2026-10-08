@@ -1081,6 +1081,33 @@ browser journey remain mandatory in one exact-head hosted Build before landing.
 The browser proof imports an owned passive fixture, uses real controls and
 observes Board events without changing its clock or simulation implementation.
 
+Forward repair envelope after Build37826679610: the full unit suite reported
+four failures (6410 tests,6385 pass,4 fail,21 skips). Pin-chain coverage also
+requires `static/roms/cpm-roms.provenance.json` (overlay and tracked mirror),
+overlay `static/roms/free-386-bios.provenance.json`,
+`static/dos/msdos200-base.provenance.json` (overlay and tracked mirror), and the controller entry in
+`overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json`.
+Each is updated only after pinned-source byte equality; historical receipts
+retain their original pins. The explicit checkout/assertion refs in
+`.github/workflows/i80386-freedos-circuits-direct-actual.yml` must follow this
+same package pair, without changing its label-only execution or claiming a new
+guest run. `test/native-prompt.test.mjs` needs lexical binding detection and
+positive/negative controls: the added DOS grading modules' locally defined or
+imported `prompt` predicates are not calls to the browser's global dialog.
+No package paths are waived and no remaining browser dialog may be hidden.
+Repaired prompt/bundle checks pass36/36; disabling lexical resolution or hiding
+every bare call independently makes the new control fail. Source binary hashes
+remain unchanged. The new `scripts/verify-circuit-ux.mjs` reset journey now uses
+the real Step control after Build/Sim, which preserves the existing pause choice.
+The separate existing green-flag first-write journey reports a real stalled
+clock and wrong pin level in this candidate. Diagnostic-only additions to
+`scripts/verify-green-flag-first-write.mjs` expose the visible simulation error
+and pause-control state; all its original assertions and time bounds remain.
+Build37826679610 is rejected (unit and browser failures); heavy browser installation
+also failed before its journeys ran. No unchanged rerun or landing is authorized
+by the corrected unit tests. A forward hosted qualification must diagnose the
+green-flag failure before this package pair can be adopted.
+
 Vercel docs-only validation inheritance — **DONE candidate 2026-10-04**, Codex
 bwcx `/root`, `/tmp/wt-bwcx-vercel-doc-inheritance-20261004`, branch
 `lane/vercel-doc-validation-20261004`; canonical claim `8732d8802` from exact

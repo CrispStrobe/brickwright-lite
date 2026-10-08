@@ -835,19 +835,33 @@ const promptCalls = (file, source) => {
     const calls = [];
     const visit = (code, where) => {
         if (!QUICK_PROMPT.test(code)) return;
-        let tokens;
+        let tokens, ast;
         try {
-            ({tokens} = babelParser.parse(code, {
+            ast = babelParser.parse(code, {
                 sourceType: 'unambiguous', plugins: ['jsx'], errorRecovery: true, tokens: true
-            }));
+            });
+            ({tokens} = ast);
         } catch (error) {
             calls.push({file, where, line: 0, callee: `UNPARSED: ${error.message.split('\n')[0]}`});
             return;
         }
+        // Imported/local predicates named prompt are not the global browser
+        // dialog. Resolve each call's own lexical scope, not the whole file:
+        // a sibling scope may still call the unbound browser global.
         const label = token => token && (token.type.label || token.type);
+        const hasBareCall = tokens.some((token, i) => label(token) === 'name' && token.value === 'prompt'
+            && label(tokens[i + 1]) === '(' && label(tokens[i - 1]) !== '.');
+        const boundCalls = new Set();
+        if (hasBareCall) babel.traverse(ast, {CallExpression (p) {
+            const callee = p.node.callee;
+            if (callee.type === 'Identifier' && callee.name === 'prompt' && p.scope.getBinding('prompt')) {
+                boundCalls.add(callee.start);
+            }
+        }});
         tokens.forEach((token, index) => {
             if (label(token) !== 'name' || token.value !== 'prompt' || label(tokens[index + 1]) !== '(') return;
             const dotted = label(tokens[index - 1]) === '.';
+            if (!dotted && boundCalls.has(token.start)) return;
             if (dotted && label(tokens[index - 2]) !== 'name' && label(tokens[index - 2]) !== 'this') {
                 calls.push({file, where, line: token.loc.start.line, callee: '<expression>.prompt'});
                 return;
@@ -868,6 +882,22 @@ const unitOf = file => {
     const rest = file.slice(GUI_MODULES.length + 1).split('/');
     return rest[0].startsWith('@') ? `${rest[0]}/${rest[1]}` : rest[0];
 };
+
+test('prompt census distinguishes lexical predicates without hiding global or member dialogs', () => {
+    const file = 'scope-control.mjs';
+    for (const code of [
+        'export const prompt = lines => lines.length; prompt([]);',
+        'import {prompt} from "./grade.mjs"; prompt([]);',
+        'function prompt(lines) { return lines.length; } prompt([]);',
+        'function f(prompt) { return prompt([]); }'
+    ]) assert.deepEqual(promptCalls(file, code), []);
+    const mixed = 'function f(prompt) { return prompt([]); } prompt("global"); window.prompt("member");';
+    assert.deepEqual(promptCalls(file, mixed).map(c => c.callee), ['prompt', 'window.prompt']);
+    assert.deepEqual(promptCalls(file, 'const prompt = x => x; window.prompt("still global");')
+        .map(c => c.callee), ['window.prompt']);
+    const bundled = `const makeExt = require('../adapter');\nmodule.exports = makeExt(${JSON.stringify('prompt("global");')});\n`;
+    assert.deepEqual(promptCalls(file, bundled).map(c => c.callee), ['prompt']);
+});
 
 // Every prompt() call allowed to remain, each with the reason it is not a defect. Counted
 // exactly: one more anywhere is a new site to convert, one fewer a ledger to shrink. No entry
