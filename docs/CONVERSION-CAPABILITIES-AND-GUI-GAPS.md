@@ -970,3 +970,15 @@ multiplayer operations, missing packages and callable values. Separately, the
 original-assets PR's exact-head light-browser retry fails waiting for uploaded
 background PNG dimensions; retain this merge blocker and its failed run rather
 than weakening the gate. See the [receipt](receipts/2026-10-08-arcade-namespace-augmentation.json).
+
+### Background authoring gate readiness — 2026-10-08
+
+The PNG import browser journey now observes decoded upload pixels before opening
+More. The asynchronous load commit closes old panels; waiting on dimensions in
+an old panel could time out. The local pre-change journey passed, so this is a
+source-supported readiness correction to a retained CI failure, not a locally
+reproduced product-decoder failure. All7 corrected phases pass, including native
+PNG import, editing, Code→Blocks, SB3 reopen and19,200 exact original-PXT pixels
+with0 differences/page errors. No product capability or graphics-editor feature
+was added. Hosted verification remains required to clear the older merge blocker.
+See the [receipt](receipts/2026-10-08-arcade-background-readiness.json).
