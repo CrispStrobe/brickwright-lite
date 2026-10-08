@@ -272,14 +272,19 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     report.discardedProjectiles = {nativeFileImport: true, allThreeApis: true, initial: initialCreation,
         controllerCreatesExactlyOnce: true, visibleCenterRgb: [120, 220, 82], sourceNameCollisionsCoveredByUnitRoundtrip: true};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-discarded-projectiles.png'});
-    // Author the lowered collection loop through visible Code/Blocks controls.
-    // This journey also runs against the prior bundle: no new runtime opcode
-    // is needed. Native source import/export is differential-tested separately.
+    // Import a new native project, then exercise the collection loop through
+    // visible Code/Blocks controls and the real controller pane.
     await stop.click();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     const destruction = arcadeToPseudocode(DESTROY_KIND_CONTROLLER_SOURCE);
     assert.deepEqual(destruction.unsupported, []);
-    await editor.fill(destruction.code);
+    const destructionProject = makeCodeProjectFile({'main.ts': DESTROY_KIND_CONTROLLER_SOURCE,
+        'pxt.json': JSON.stringify({name: 'Destroy kind', dependencies: {device: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Destroy kind'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'destroy-kind.mkcd', mimeType: 'application/json', buffer: Buffer.from(destructionProject)});
+    await page.getByText(/Imported the Arcade game.*destroy-kind/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
     const beforeDestructionStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
     await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
     await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id && window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id,
@@ -298,7 +303,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     await page.getByTestId('bw-arcade-b').click();await destructionState(1, 1);
     await page.getByTestId('bw-arcade-a').click();await destructionState(2, 1);
     await page.getByTestId('bw-arcade-b').click();await destructionState(1, 2);
-    report.destroyKind = {codeToBlocks: true, controllerCycles: 2, otherKindSurvives: true, callbacks: 2};
+    report.destroyKind = {nativeFileImport: true, codeToBlocks: true, controllerCycles: 2, otherKindSurvives: true, callbacks: 2};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-destroy-kind.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
