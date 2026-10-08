@@ -790,3 +790,25 @@ Arbitrary `player.data` objects and direct Player getState/setState method calls
 remain named gaps. Friendly state-key labels/management and per-player Info HUD
 rendering/layout need separate implementation and visual qualification. This
 slice qualifies state values and controller-driven sprite behavior.
+
+### Legacy color-coded maps
+
+`scene.setTileMap(image, scale?)` and `scene.setTile(index, image, wall?)` now
+use live image references and scene-owned tile definitions. The default scale
+is16 pixels and the default tile wall flag is false. Standard TileScale values
+and the numeric Location.tileSet property roundtrip through native Blocks and
+export with the bundled color-coded-tilemap dependency. Exact-size tile images
+remain live; cropped/padded tiles retain the original package's cached view.
+Replacing/clearing a map preserves definitions; scene push/pop restores them.
+
+```text
+arcade set color-coded map image (mapImage) scale (4)
+arcade set color tile (1) image (tileImage) wall (false)
+set colorIndex to (arcade tile tileSet of (location))
+```
+
+The tile-location property block now has a real dropdown, preserving its
+selected property through GUI loading. Legacy Tile objects/placement/lists,
+legacy collision callbacks, mixed legacy/modern mutations and the dedicated
+color-index map painter remain open. See the capability/GUI gap ledger and
+[qualification receipt](receipts/2026-10-08-arcade-legacy-tilemap.json).

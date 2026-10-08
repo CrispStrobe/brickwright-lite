@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-08",
+  "testedImplementation": "ab1022ee0b23adb9737bf6563913d5644cd7f6ad",
+  "finalGuiFixAndBuildSource": "a8827471971e70458d793490e9b5100be4c59911",
+  "producer": {
+    "repo": "CrispStrobe/sb3-creator",
+    "source": "952d7019c2880f9e99b4fae33d874987a18c3a85",
+    "pr": 68,
+    "wordsAdded": 2,
+    "selectorAdded": "tileSet",
+    "testsPassed": 1
+  },
+  "APIs": [
+    "scene.setTileMap",
+    "scene.setTile",
+    "tiles.Location.tileSet"
+  ],
+  "semantics": [
+    "live map-image alias and replacement detachment",
+    "scene-local retained definitions and null-map disable",
+    "four standard tile scales",
+    "exact-size live images and cropped/padded cached views",
+    "frame-time default color tile allocation",
+    "live definition walls feed opaque-hitbox collision",
+    "real Blocks dropdown fields for tile-location properties",
+    "native export declares color-coded-tilemap dependency"
+  ],
+  "tests": {
+    "regressionsAtImplementation": 71,
+    "affectedRegressionsAtFinalGuiFix": 8,
+    "canonicalSpikeArtifactAtAdoptedPin": 1,
+    "failed": 0,
+    "skipped": 0
+  },
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.d9e1420e.js",
+    "initialBytes": 4360511,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "legacyTilemap": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "liveMapAlias": true,
+      "sceneRestoration": true,
+      "tileSize": 4,
+      "initialExactPixel": 7,
+      "controllerExactPixel": 8,
+      "paddedCachedPixel": 5,
+      "spriteX": 3
+    },
+    "priorJourneys": "All preceding production journeys pass",
+    "pixelBoundary": "Tile-view runtime buffer observations; not full original/native screen equivalence"
+  },
+  "corpus": {
+    "original184ImportOnly": {
+      "translated": 98,
+      "partial": 85,
+      "malformed": 1
+    },
+    "previous": {
+      "translated": 96,
+      "partial": 87,
+      "malformed": 1
+    },
+    "promotedSources": 2,
+    "promotedQualification": "Original/exported PXT map dimensions, origin wall/index/pixel agree; each native fragment stepped24 frames with no block errors",
+    "warningsRetained": "One empty forever callback warning",
+    "tutorials": "Package availability and prior tutorial results not requalified by this slice",
+    "completeGameEquivalence": false
+  },
+  "retainedFailures": [
+    "Initial original oracle observer needed LegacyTilemap type narrowing",
+    "Empty forever warning is informative and retained",
+    "Export observer ran before parallel startup; now waits for actual map admission",
+    "First production browser exposed tile-location field/input mismatch",
+    "Numeric browser observer compared against Boolean expectations",
+    "First build invocation used the wrong working directory"
+  ],
+  "predecessorCi": {
+    "pr": 726,
+    "run": 37776096964,
+    "buildFailure": "Old hardcoded compiler pin in canonical SPIKE artifact test; updated and artifact assertions rerun locally",
+    "browserFailure": "APT dependency-install lock prevented Chromium installation; hosted integration still required"
+  },
+  "remaining": [
+    "legacy Tile objects, lookup/list/place methods and numeric random placement",
+    "legacy onHitTile and tileHitFrom",
+    "inherited data semantics when mixing modern and legacy maps",
+    "dynamic/invalid scales beyond standard enum values",
+    "dedicated map painter, definition palette, wall/scale controls and resource edit lifecycle",
+    "custom palettes and missing package artwork",
+    "full-game semantic and screen comparison"
+  ],
+  "publication": "Draft stacked PR; exact-head hosted qualification and integration pending"
+}

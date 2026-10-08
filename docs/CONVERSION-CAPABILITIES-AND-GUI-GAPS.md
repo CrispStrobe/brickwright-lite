@@ -798,7 +798,7 @@ control or proof remains an open native authoring gate.
 | Closure ID / pinned public APIs | Import and runtime status | Native Code and Blocks | Resource/editor and original export closure |
 | --- | --- | --- | --- |
 | N01 `Sprite` properties, `setScale`, `setScaleCore`, `data`; `sprites.create` | Supported subsets, rotation and reference data are implemented; arbitrary object-member operations refused | Existing property/scale words and menus. Prove typed reporter sockets, real dropdown edits, aliases and failed-input diagnostics | Select an Image/kind/reference through usable controls; edit art with shared identity; export typed data without losing arrays/Images/Sprites. Preserve the existing exact-pixel rotation proof. |
-| N02 `scene.setTileMap`, `scene.setTile`, `scene.getTilesByType`, `tiles.setTilemap` | Legacy calls and unavailable map assets remain named real-corpus gaps; native map/location/wall runtime exists | Existing raw map/location words are insufficient for map creation | U03 painter: tile palette, terrain and wall layers, tile scale, tile references and map dimensions; rename/delete/undo/save/reopen; export the correct legacy or modern map representation. |
+| N02 `scene.setTileMap`, `scene.setTile`, `scene.getTilesByType`, `tiles.setTilemap` | Legacy map-image/tile-definition APIs now use live scene state; legacy Tile objects/callbacks and unavailable map assets remain named gaps | Existing raw map/location words are insufficient for map creation | U03 painter: tile palette, terrain and wall layers, tile scale, tile references and map dimensions; rename/delete/undo/save/reopen; export the correct legacy or modern map representation. |
 | N03 `animation.runImageAnimation`, `animation.createAnimation`, `animation.runMovementAnimation` | Frame/action animations implemented; movement path engine explicitly missing despite the stop-animation movement menu | Existing frame/action/interval words. Add actual movement/path words and matching blocks when the engine exists | Bind existing Pixel timeline frames to native Image arrays/actions; keep frame durations. Add path editing/presets, stop-type behaviour and original export/playback; the existing movement menu does not establish support. |
 | N04 `Image.drawRect/drawCircle/fillCircle/fillTriangle`, `image.imageBlit` and screen drawing | Image pixels, fills, lines, flips, replacement and two blit forms exist; these do not cover every Image/screen operation | Extend the existing image operation family for each missing overload rather than hide it inside text/JSON | Validate clipping, transparency, source/destination aliasing and palette index; provide native shape choices and resource pickers. Export each shape through a valid public PXT call. |
 | N05 `game.onPaint/onShade`, `scene.createRenderable`, `scene.addBackgroundLayer`, `scene.cameraShake` | Paint and shake appear as named corpus gaps; camera follow/centering is implemented | No corresponding dedicated paint/shade/renderable/layer/shake words in the reviewed dialect | Editable draw callbacks, z/priority and layer images; scheduling relative to physics/HUD, camera and scenes; rendered pixels and original export. Do not reinterpret “zero smoke errors” as paint support. |
@@ -1166,3 +1166,67 @@ errors. Largest remaining baseline families include unreadable backgrounds,
 legacy/asset tilemaps, destruction effects and music. Track artwork recovery,
 rendering and editor support together when taking those lanes. See the
 [state receipt](receipts/2026-10-08-arcade-multiplayer-state.json).
+
+### Legacy color-coded tilemap foundations — 2026-10-08
+
+`scene.setTileMap(image, scale?)` and `scene.setTile(index, image, wall?)` now
+use live scene-owned map-image and tile-definition state. Defaults are16 pixels
+and a non-wall tile. Standard TileScale.Four/Eight/Sixteen/ThirtyTwo values are
+available as native numeric expressions. Location.tileSet reads the current
+numeric index through the existing location reporter.
+
+Map image aliases share edits; replacing the map detaches the old map image but
+retains definitions. A null map disables the layer without discarding definitions.
+Each scene owns its map and definitions. Exact-size tile images remain live;
+nonmatching images are cropped/padded into a cached square, matching the pinned
+color-coded package. Default color tiles allocate at the frame draw, preserving
+an unset obstacle result before allocation. Native wall collision uses the live
+indices and definition wall flags. Export declares color-coded-tilemap and emits
+the original APIs, retaining image references rather than fixed map snapshots.
+
+Two native commands are available in Blocks and pseudocode:
+
+```text
+arcade set color-coded map image (mapImage) scale (4)
+arcade set color tile (1) image (tileImage) wall (false)
+set colorIndex to (arcade tile tileSet of (location))
+```
+
+The generic image-reference words and existing image assets can supply these
+inputs. A dedicated color-index map painter, tile-definition palette, dimensions,
+scale/wall controls, named resources, undo/rename/delete/save/reopen and graphics
+editor roundtrip qualification remain U03 GUI work. Do not describe a raw image
+input as completion of that painter. Legacy Tile objects and their place/get/list
+methods, numeric random placement, onHitTile and tileHitFrom remain diagnostics.
+Mixing legacy maps with modern map replacement, image lookup or per-location
+mutation is conservatively diagnosed; it needs distinct inherited-map data and
+wall semantics before admission. Invalid/dynamic scale behavior beyond the four
+standard sizes is not qualified. Custom palette and missing package artwork
+remain separate gaps.
+
+Qualification:71 regressions, one producer roundtrip and the canonical SPIKE
+artifact test pass without skips. Eight affected regressions pass again after
+the Blocks dropdown declaration fix. The first production browser failure
+exposed that tile-location properties were declared as text inputs while native
+blocks stored dropdown fields; the final declaration supplies a real menu.
+The harness also compared numeric observations against Boolean expectations;
+its expected readings now use numeric1. Both failures are retained. Original PXT, Code/Blocks, native export and
+reimport, SB3, scene restoration, aliasing, tile-cache and wall-contact paths are
+covered. The same184 import-only corpus advances96/87/1→98/85/1. The two promoted
+sources compile/run in original PXT and exported PXT; map dimensions, origin
+index, wall and pixel agree and native fragments step24 frames without block
+errors. One intentionally empty forever callback retains its warning. These
+finite checks are not complete-game equivalence. Earlier tutorial package
+availability was not requalified by this slice.
+
+The producer is952d7019 ([PR68](https://github.com/CrispStrobe/sb3-creator/pull/68)).
+Namespace binding metadata now includes the pinned color-coded package (115
+namespace/enum lists); binding names do not claim implementation of all APIs.
+The preceding PR726 failed its stale compiler-pin assertion and browser setup;
+this slice reruns the unchanged SPIKE artifact assertions at the new exact pin.
+The hosted APT-lock/browser-install failure is retained and requires new hosted
+qualification. No green hosted integration claim follows from local tests.
+
+See [receipt](receipts/2026-10-08-arcade-legacy-tilemap.json).
+
+Production `gui.d9e1420e.js` passes native file→Code→Blocks→visible A-button input: exact-size tile pixel7→8, padded cached pixel5 and sprite x2→3. Tile-index and center dropdown properties survive GUI loading; scene restoration and map aliases are observed. All preceding journeys pass with0 page errors. Build errors0; initial4,360,511 bytes stays under unchanged4,467,136 limit; boot checks pass. Pixel readings here observe the runtime tile-view buffer, not a complete original-versus-native screen comparison.
