@@ -31,7 +31,7 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneStack = [];this._sceneFrames=new WeakMap();
       this._sceneBundles = new Set();
       this._scenePushHandlers = [];this._scenePopHandlers = [];
-      this._nextSpriteHandle = 0;this._globalElapsedMs = 0;
+      this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
       this._buttonStates = {};
       this._activeLegacyAnimations = new Set();
       this._updateHandlers = [];this._intervalHandlers = [];this._buttonHandlers = [];
@@ -95,7 +95,7 @@ module.exports = makeExt(`// Name: Arcade
             }
           }
           this._sceneBundles.clear();this._sceneStack=[];this._sceneFrames=new WeakMap();
-          this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._buttonStates={};
+          this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
           this._createdHandlers = [];
@@ -197,6 +197,10 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'playerLookup',blockType:Scratch.BlockType.REPORTER,text:'Arcade player by [MODE] [VALUE]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'playerLookupModes',defaultValue:'number'},...n('VALUE',1)}},
           {opcode:'allPlayers',blockType:Scratch.BlockType.REPORTER,text:'Arcade all players'},
           {opcode:'playerSprite',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite of player [PLAYER]',arguments:str('PLAYER','')},
+          {opcode:'createPlayerState',blockType:Scratch.BlockType.REPORTER,text:'Arcade create player state key'},
+          {opcode:'getPlayerState',blockType:Scratch.BlockType.REPORTER,text:'Arcade state [KEY] of player [PLAYER]',arguments:{...str('PLAYER',''),...n('KEY',0)}},
+          {opcode:'setPlayerState',blockType:Scratch.BlockType.COMMAND,text:'Arcade set state [KEY] of player [PLAYER] to [VALUE]',arguments:{...str('PLAYER',''),...n('KEY',0),...n('VALUE',0)}},
+          {opcode:'changePlayerState',blockType:Scratch.BlockType.COMMAND,text:'Arcade change state [KEY] of player [PLAYER] by [VALUE]',arguments:{...str('PLAYER',''),...n('KEY',0),...n('VALUE',1)}},
           {opcode:'movePlayerWithButtons',blockType:Scratch.BlockType.COMMAND,text:'Arcade move player [PLAYER] with buttons vx [VX] vy [VY]',arguments:{...str('PLAYER',''),...n('VX',100),...n('VY',100)}},
           {opcode:'setPlayerSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade set sprite of player [PLAYER] to [ID]',arguments:{...str('PLAYER',''),...str('ID','')}},
           {opcode:'playerBySprite',blockType:Scratch.BlockType.REPORTER,text:'Arcade player of sprite [ID]',arguments:str('ID','')},
@@ -633,6 +637,31 @@ module.exports = makeExt(`// Name: Arcade
       const player=this._player(args.PLAYER);if(!player)return;
       player.movement=true;player.vx=Scratch.BWValues.decode(args.VX);player.vy=Scratch.BWValues.decode(args.VY);
       this._controlSprite(player.index+1,player.sprite,player.vx,player.vy);
+    }
+    createPlayerState() {return this._nextMultiplayerState++;}
+    _playerStateNumber(value) {const raw=Scratch.BWValues.decode(value);return typeof raw==='string'?Number(raw):raw;}
+    _customPlayerState(player,key) {
+      const entries=player.states || (player.states=[]);
+      let entry=entries.find(value=>value.key===key);
+      if(!entry){entry={key,value:0};entries.push(entry);}return entry;
+    }
+    getPlayerState(args) {
+      const player=this._player(args.PLAYER);if(!player)return 0;
+      const key=this._playerStateNumber(args.KEY);
+      if(key===0)return this.getPlayerScore({PLAYER:player.index+1});
+      if(key===1)return this.getLife({PLAYER:player.index+1});
+      return Scratch.BWValues.encode(this._customPlayerState(player,key).value);
+    }
+    setPlayerState(args) {
+      const player=this._player(args.PLAYER);if(!player)return;
+      const key=this._playerStateNumber(args.KEY),value=this._playerStateNumber(args.VALUE);
+      if(key===0)this.setPlayerScore({PLAYER:player.index+1,VALUE:value});
+      if(key===1)this.setLife({PLAYER:player.index+1,VALUE:value});
+      this._customPlayerState(player,key).value=value;
+    }
+    changePlayerState(args) {
+      if(!this._player(args.PLAYER))return;
+      this.setPlayerState({...args,VALUE:Scratch.BWValues.decode(this.getPlayerState(args))+this._playerStateNumber(args.VALUE)});
     }
     playerBySprite(args) {const sprite=Scratch.BWValues.decode(args.ID);return this._playerRef(this._players().find(player=>player.sprite===sprite));}
     playerProperty(args) {

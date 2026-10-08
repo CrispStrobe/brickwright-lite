@@ -251,7 +251,7 @@ class ArcadeTranslator extends BaseTranslator {
                 this.spriteResultBindings.add(name);added = true;
             }
         } while (added);
-        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.onButtonEvent|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
+        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
         this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile'].includes(record.kind)));
@@ -579,6 +579,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(engineApi?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {
             this.unsupported.push(`${engineApi} refers to a shadowed mp binding`);return 'undefined value';
         }
+        if(engineApi==='MultiplayerState.create') {
+            if(this.boundSourceGlobals?.has('MultiplayerState') || this.sourceFunctions?.has('MultiplayerState') || this.localVars?.has('MultiplayerState') || this.currentParameters?.has('MultiplayerState') || this.capturedBindings.has('MultiplayerState')){this.unsupported.push('MultiplayerState.create refers to a shadowed binding');return 'undefined value';}
+            if(!engineArgs.length)return 'arcade create player state key';
+            this.unsupported.push('MultiplayerState.create requires no arguments');return 'undefined value';
+        }
+        if(engineApi==='mp.getPlayerState' && engineArgs.length===2)return `arcade state (${this.expr(engineArgs[1])}) of player (${this.expr(engineArgs[0])})`;
         const mpSpecs={'mp.playerSelector':['arcade player by number',1], 'mp.getPlayerByNumber':['arcade player by number',1],
             'mp.getPlayerByIndex':['arcade player by index',1], 'mp.getPlayerSprite':['arcade sprite of player',1],
             'mp.getPlayerBySprite':['arcade player of sprite',1]};
@@ -837,6 +843,10 @@ class ArcadeTranslator extends BaseTranslator {
      * though writing it is not.
      */
     valueExpr (node) {
+        if(['MultiplayerState.score','MultiplayerState.life'].includes(this.path(node))) {
+            if(this.boundSourceGlobals?.has('MultiplayerState') || this.sourceFunctions?.has('MultiplayerState') || this.localVars?.has('MultiplayerState') || this.currentParameters?.has('MultiplayerState') || this.capturedBindings.has('MultiplayerState')){this.unsupported.push('MultiplayerState constant refers to a shadowed binding');return 'undefined value';}
+            return this.path(node).endsWith('.score')?'0':'1';
+        }
         const mpEnum = this.path(node);
         const mpConstants={'mp.PlayerNumber.One':1,'mp.PlayerNumber.Two':2,'mp.PlayerNumber.Three':3,'mp.PlayerNumber.Four':4,
             'mp.PlayerProperty.Index':1,'mp.PlayerProperty.Number':2,
@@ -1060,6 +1070,7 @@ class ArcadeTranslator extends BaseTranslator {
         const name = this.path(node.callee);
         const a = node.args || [];
         if(name?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {push(this.note(`${name} refers to a shadowed mp binding`));return;}
+        if(['mp.setPlayerState','mp.changePlayerStateBy'].includes(name) && a.length===3){push(name==='mp.setPlayerState'?`arcade set state (${this.expr(a[1])}) of player (${this.expr(a[0])}) to (${this.expr(a[2])})`:`arcade change state (${this.expr(a[1])}) of player (${this.expr(a[0])}) by (${this.expr(a[2])})`);return;}
         if(name==='mp.moveWithButtons' && a.length>=1 && a.length<=3){push(`arcade move player (${this.expr(a[0])}) with buttons vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);return;}
         if(name==='mp.setPlayerSprite' && a.length===2){push(`arcade set sprite of player (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
         // Lite's own export's stop machinery, lifted back by liftExporterStops.
@@ -2074,6 +2085,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
             if(api==='mp.getPlayerSprite')return new Set(['sprite']);
             if(api==='mp.allPlayers')return new Set(['array']);
+            if(api==='mp.getPlayerState' || api==='MultiplayerState.create')return new Set(['number']);
             if(api==='mp.getPlayerProperty')return new Set(['number']);
             if(api==='mp.isButtonPressed')return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
@@ -2542,6 +2554,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
+        if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;

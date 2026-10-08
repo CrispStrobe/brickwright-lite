@@ -995,6 +995,8 @@ class ArcadeEmitter {
             if(!['index','number'].includes(mode)){this.note('Arcade player lookup mode must be index or number');return this.na();}
             return `mp.${mode==='index'?'getPlayerByIndex':'getPlayerByNumber'}(${v('VALUE')})`;
         }
+        case 'arcade_createPlayerState':this.requiresMultiplayerPackage=true;return 'MultiplayerState.create()';
+        case 'arcade_getPlayerState':this.requiresMultiplayerPackage=true;return `mp.getPlayerState(${v('PLAYER')}, ${v('KEY')})`;
         case 'arcade_allPlayers': this.requiresMultiplayerPackage=true;return 'mp.allPlayers()';
         case 'arcade_playerSprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerSprite(${v('PLAYER')})`;
         case 'arcade_playerBySprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerBySprite(${v('ID')})`;
@@ -1203,6 +1205,8 @@ class ArcadeEmitter {
         case 'arcade_addAnimationFrame':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.addAnimationFrame(${v('IMAGE')})`);return;
         case 'arcade_attachAnimation':this.requiresAnimationPackage=true;push(`animation.attachAnimation(${v('ID')}, ${v('ANIMATION')})`);return;
         case 'arcade_setAnimationAction':this.requiresAnimationPackage=true;push(`animation.setAction(${v('ID')}, ${this.arrayValue(b,'ACTION')})`);return;
+        case 'arcade_setPlayerState':this.requiresMultiplayerPackage=true;push(`mp.setPlayerState(${v('PLAYER')}, ${v('KEY')}, ${v('VALUE')})`);return;
+        case 'arcade_changePlayerState':this.requiresMultiplayerPackage=true;push(`mp.changePlayerStateBy(${v('PLAYER')}, ${v('KEY')}, ${v('VALUE')})`);return;
         case 'arcade_movePlayerWithButtons': this.requiresMultiplayerPackage=true;push(`mp.moveWithButtons(${v('PLAYER')}, ${v('VX')}, ${v('VY')})`);return;
         case 'arcade_setPlayerSprite': this.requiresMultiplayerPackage=true;push(`mp.setPlayerSprite(${v('PLAYER')}, ${v('ID')})`);return;
         case 'arcade_setScenePhysicsEngine': push(`${v('SCENE')}.physicsEngine = ${v('ENGINE')}`);return;
@@ -2056,6 +2060,7 @@ class ArcadeEmitter {
                 if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
                 if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
                 if(value.opcode==='arcade_playerButtonPressed'){const id=Symbol('player button pressed');booleans.add(id);return id;}
+                if(['arcade_createPlayerState','arcade_getPlayerState'].includes(value.opcode)){const id=Symbol('player state number');numbers.add(id);return id;}
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
@@ -2091,7 +2096,7 @@ class ArcadeEmitter {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
-                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed'].includes(block.opcode)){
+                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
                 }
                 if(block.opcode==='arcade_allPlayers'){const array=ref(block),item=Symbol('player collection element');graphPlayerValues.add(item);elements.push([array,item]);}
