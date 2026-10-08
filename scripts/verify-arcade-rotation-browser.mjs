@@ -305,6 +305,25 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     await page.getByTestId('bw-arcade-b').click();await destructionState(1, 2);
     report.destroyKind = {nativeFileImport: true, codeToBlocks: true, controllerCycles: 2, otherKindSurvives: true, callbacks: 2};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-destroy-kind.png'});
+    // Applied import artwork belongs to the live project. Pasting a fresh
+    // program must not replay uploads addressed to templates it no longer has.
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const snapshotArt = () => page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .filter(t => t.isOriginal).map(t => ({name: t.getName(), costumes: t.sprite.costumes.map(c =>
+            ({assetId: c.asset.assetId, bytes: Array.from(c.asset.data)}))})));
+    const beforeRepeat = await snapshotArt();
+    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    assert.deepEqual(await snapshotArt(), beforeRepeat, 'repeat conversion preserves exact imported costume bytes');
+    await editor.fill('DEVICE ARCADE\nSPRITE Fresh:\nWHEN flag clicked:\n  set freshValue to 37');
+    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .flatMap(t => Object.values(t.variables)).some(v => v.name === 'freshValue' && v.value === 37));
+    report.codeArtworkOwnership = {repeatExactCostumeBytes: true, freshPastedProgramLoadsWithoutStaleUploadWarnings: true};
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),

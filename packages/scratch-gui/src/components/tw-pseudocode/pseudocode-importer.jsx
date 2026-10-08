@@ -4556,6 +4556,8 @@ class PseudocodeImporter extends React.Component {
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         const pending = this._animationImport;
+        const uploads = this.state.uploads;
+        const appliedUploads = new Set();
         const stage = this.props.vm.runtime.getTargetForStage();
         const activeAtStart = this.activeCode();
         try {
@@ -4598,17 +4600,18 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             creator.parse(source);
+            const sourceDeclarations = JSON.parse(JSON.stringify(creator.project));
             const missing = [];
-            this.state.uploads.forEach(u => {
+            uploads.forEach(u => {
                 const name = (u.sprite || '').trim();
                 if (!name || !u.svg) return;
                 const ok = u.mode === 'add' ?
                     creator.addCustomSVGCostume(name, u.svg, u.filename.replace(/\.svg$/i, '')) :
                     creator.applyCustomSVG(name, u.svg);
                 if (!ok) missing.push(name);
+                else appliedUploads.add(u);
             });
             if (strict && (parseWarnings.length || creator.warnings.length)) throw new Error([...parseWarnings, ...creator.warnings].join(' · '));
-            const declarations = JSON.parse(JSON.stringify(creator.project));
             const context = codeArtworkMatches(this.props.vm, this._codeArtwork) ? this._codeArtwork : null;
             const blob = await creator.generateSB3();
             let projectBytes = await blob.arrayBuffer();
@@ -4617,7 +4620,7 @@ class PseudocodeImporter extends React.Component {
                 const module = await import('jszip');
                 const ZIP = module.default || module;
                 const zip = await ZIP.loadAsync(projectBytes);
-                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, uploads);
                 const revision = context && captureCodeArtworkRevision(this.props.vm, context);
                 if (pending) {
                     if (pending.stage !== stage) throw new Error('The loaded project changed since this animation import. Import it again.');
@@ -4633,15 +4636,16 @@ class PseudocodeImporter extends React.Component {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
-            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending ||
+            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending || this.state.uploads !== uploads ||
                 this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
             await this.props.vm.loadProject(projectBytes);
             this._animationImport = null;
             this._makeCodeRequest = null;
-            if (artwork) {
-                applyArtwork(artwork, this.props.vm);
-                this._codeArtwork = captureCodeArtwork(this.props.vm, declarations);
-            }
+            if (artwork) applyArtwork(artwork, this.props.vm);
+            // The loaded project owns applied uploads, including ordinary SVG
+            // imports with no animation bundle. Later conversions read its live
+            // artwork instead of replaying stale imports or append operations.
+            this._codeArtwork = captureCodeArtwork(this.props.vm, creator.project, sourceDeclarations);
             // Auto-select the first sprite with scripts so the Blocks palette
             // shows meaningful blocks, not "Stage selected — no motion blocks".
             const vm = this.props.vm;
@@ -4730,12 +4734,13 @@ class PseudocodeImporter extends React.Component {
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             const classified = classifyConversionWarnings(warns);
-            this.setState({
+            this.setState(state => ({
                 buffers: nb,
+                uploads: state.uploads.filter(upload => !appliedUploads.has(upload)),
                 status: warns.length ? this.L.stWarn(warns.slice(0, 4).join(' · ')) : this.L.stLoaded,
                 conversionReport: {direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: true,
                     changed: classified.changed, unsupported: classified.unsupported}
-            });
+            }));
         } catch (e) {
             const failure = conversionFailure(e);
             this.setState({status: this.L.stError(failure.message), conversionReport: {
