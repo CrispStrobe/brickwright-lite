@@ -713,8 +713,43 @@ and existing button hats still use player one. Each scene retains its own
 movement bindings while physical button state is shared across scene push/pop.
 Native export emits `mp.moveWithButtons` and the bundled multiplayer dependency.
 
-Multiplayer button/connection/score/life events, direct `controller.player2/3/4`
+Multiplayer connection/score/life events, direct `controller.player2/3/4`
 API conversion, analog pressure, custom player state/data, presence/indicator
 effects and multiplayer networking remain explicit work. The local player
 selector does not establish network connectivity. No new graphics tools were
 added in this slice.
+
+
+### Multiplayer button callbacks and queries
+
+`mp.onButtonEvent(button, event, function (player) { ... })` supports pressed,
+released and repeated callbacks with the actual scene-local `mp.Player`.
+`mp.isButtonPressed(player, button)` reads that player's current input.
+`mp.MultiplayerButton` supports A, B, Up, Right, Down and Left. Callback player
+references retain identity and support sprite lookup and properties.
+Native export emits the original APIs and the bundled multiplayer dependency.
+
+The Arcade palette exposes a multiplayer registration command, matching handler
+hat, event-player reporter and pressed query. Pseudocode uses the same operations:
+
+```text
+DEVICE arcade
+WHEN flag clicked:
+  arcade register multiplayer button (0) event (2049) as "pressed" capturing ""
+WHEN arcade multiplayer button handler "pressed" runs:
+  arcade set local player to arcade event player
+  arcade change score by (arcade player member property (2) of (arcade local player))
+```
+
+Button selectors0–5 mean A/B/Up/Right/Down/Left. Event selectors2049/2048/2054
+mean pressed/released/repeated. Registration and handler tokens must match.
+Choose the player in the controller pane; both edges of a short tap are queued.
+Repeated registrations replace the shared callback; direct player-one button
+registrations can override that player's slot. Scene push/pop restores each
+scene's registrations while physical held/repeat state stays shared.
+
+Friendly button enum pickers and a callback authoring form that creates the
+registration/handler pair remain GUI work. Custom repeat settings, direct
+controller-instance APIs, connection events, network state and presence effects
+remain separate gaps. Queued callback replacement races and long-running
+handler timing still need dedicated differential qualification.

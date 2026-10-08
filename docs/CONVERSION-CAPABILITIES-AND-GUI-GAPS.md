@@ -807,7 +807,7 @@ control or proof remains an open native authoring gate.
 | N08 `game.ask`, `askForNumber`, `askForString`, `setDialogFrame/Cursor/TextColor/Font` | Splash/long text and one-argument number/text prompts exist; prompt options and `game.ask` value forms remain gaps | Existing text/question words; digit/length limits and dialog appearance need native operands/blocks | Prompt interaction, cancellation/focus, blocking order and selected font/frame assets; export options exactly. Avoid declaring all dialogs absent or complete. |
 | N09 `info.onScore`, `highScore`, `changeCountdownBy`, `showScore/showLife/showCountdown`, HUD colours and life image | Score/life players1–4 and start/stop/countdown callbacks exist; broader Info surface is not covered by these words | Add missing predicates/reporters/events/HUD setters with player and value types; audit existing numeric player fields for valid range/feedback | Life icon and HUD colour editing, scene-local vs persistent scores, threshold callbacks and original export; persistent high score needs an explicit persistence contract. |
 | N10 `ArcadePhysicsEngine` and `scene.Scene` public members; frame priorities | Resource creation/replacement, three engine settings and selected scene callbacks exist; this is not the full engine/scheduler API | Native scene/engine references exist, but arbitrary public engine methods and event-context priorities need a declaration-by-declaration audit | Resource inspector/picker and callback navigation; validate add/remove/move/overlap/draw where public, cancellation and frame ordering against PXT before exposing unsupported controls. |
-| N11 `controller.player2/3/4`, button repeat configuration, `mp.*` | The local controller pane selects Player1–4 for independent movement; legacy keyboard/button events use player one. Network connectivity and per-player events remain unqualified | Player values, sprite association and `mp.moveWithButtons` have native Blocks/pseudocode/export support; a local Player1–4 pane selector routes movement independently. Direct controller instances, multiplayer events, analog pressure and repeat configuration remain open | Distinct player bindings and held-input release; keyboard/touch mappings; explicit local vs network session model, disconnect/reconnect and export dependency. Hardware sensors/vibration are separately unmeasured. |
+| N11 `controller.player2/3/4`, button repeat configuration, `mp.*` | The local controller pane selects Player1–4 for independent movement; legacy keyboard/button events use player one. Native mp button callbacks and queries now support all four local players; network connectivity remains unqualified | Player values, sprite association and `mp.moveWithButtons` have native Blocks/pseudocode/export support; a local Player1–4 pane selector routes movement independently. Direct controller instances, connection/score/life events, analog pressure and repeat configuration remain open | Distinct player bindings and held-input release; keyboard/touch mappings; explicit local vs network session model, disconnect/reconnect and export dependency. Hardware sensors/vibration are separately unmeasured. |
 | N12 `settings.read/writeNumber/String/Buffer/JSON`, `settings.list/remove/exists` | No native settings family in the reviewed dialect | Add typed persistence words/blocks and clear missing-storage diagnostics | Persistence inspector/reset, key lifecycle and limits. Preserve restart/save/reopen semantics and original target package dependencies; do not confuse SB3 project storage with game settings. |
 | N13 `assets.image/tile/tilemap/animation/song` and package exports | Literal/file imports carry separate assets; incomplete bare `.ts` snippets may omit them | Native resource references need discoverable asset-aware Code/Blocks routes | U02 transaction, then tile/animation/song authoring; names and aliases remain stable through palette edits, file/share import, save/reopen and original manifests. Code-only paste cannot silently create replacement artwork. |
 | N14 Standard language, arrays, functions, namespaces and enums | Value/reference/type/lazy-expression machinery exists; some constructs/packages remain named gaps | Existing Arrays/Code words need the same real Blocks-schema checks as Arcade words | Nested resource arrays, recursive/local/captured lifetimes, rename, default/optional arguments and evaluated-once expressions; retain the documented complex-index PXT/JavaScript difference as a measured boundary. |
@@ -1084,3 +1084,39 @@ projects remain partial and original compilation is unavailable for their
 missing offline packages. Partial fragments step without errors. The unchanged
 184-source import baseline remains96 translated /87 partial /1 malformed.
 See the [movement receipt](receipts/2026-10-08-arcade-multiplayer-movement.json).
+
+
+### Multiplayer button callbacks — 2026-10-08
+
+Implemented `mp.onButtonEvent`, `mp.isButtonPressed` and all six
+`mp.MultiplayerButton` constants. Callback arguments retain typed Player
+identity, property/sprite access and captured local cells. Scene-local callback
+slots preserve replacement and direct controller-one override behavior in the
+qualified fixtures. Four bidirectional dialect words and Blocks operations come
+from producer `638851ab1ab6845c0752a0cc96f053ef2c8745ef`
+([PR66](https://github.com/CrispStrobe/sb3-creator/pull/66)).
+
+Runtime inputs now queue player2–4 edges independently, including both edges of
+a tap shorter than a frame. Repeat state is independent per player/button;
+default500ms/30ms boundaries and integer millisecond frame updates follow the
+pinned controller source. Runtime scene push/pop checks retain player identity
+and callback ownership. Original PXT differential fixtures cover press/release,
+short player-four taps, captures, slot replacement, queries and sprite updates
+through Code→Blocks, native export/reimport and SB3 reopening. Repeat boundary
+checks are runtime tests against the pinned source, not a wall-clock timing
+comparison between simulators.
+
+GUI: player selection controls these callbacks. The palette exposes registration,
+handler hat, event-player reporter and pressed query; Code supports their native
+words. Registration and handler tokens still need manual matching. A friendly
+callback form and button enum labels0–5 remain authoring gaps. No graphics tools
+changed. Direct controller-instance APIs, connection/score/life events, player
+state/data, custom repeat settings, analog pressure, presence/network effects,
+queued callback replacement races and long-handler timing remain open or need
+separate qualification.
+
+The same184 importer remains96 translated /87 partial /1 malformed. Ten
+recovered tutorial projects remain partial with27 diagnostics and original
+packages unavailable; all10 partial fragments step without errors. This slice
+does not claim complete-game equivalence. See the
+[button receipt](receipts/2026-10-08-arcade-multiplayer-buttons.json).
