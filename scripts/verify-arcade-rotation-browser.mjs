@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {TYPED_HELPER_SOURCE} from '../test/fixtures/arcade-typed-helper.mjs';
 import {MULTIFILE_ARCADE_FILES} from '../test/fixtures/arcade-multifile-source.mjs';
 import {DESTROY_KIND_CONTROLLER_SOURCE} from '../test/fixtures/arcade-destroy-kind.mjs';
 import {DISCARDED_PROJECTILE_SOURCE} from '../test/fixtures/arcade-discarded-projectiles.mjs';
@@ -360,6 +361,24 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     report.multifileSource = {nativeFileImport: true, codeToBlocks: true, initial: initialMultifile,
         controllerValue: 43, controllerMovesSprite: true, unlistedSourceIgnored: true};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-multifile.png'});
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const typedProject = makeCodeProjectFile({'main.ts': TYPED_HELPER_SOURCE,
+        'pxt.json': JSON.stringify({name: 'Typed helper', dependencies: {device: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Typed helper'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'typed-helper.mkcd', mimeType: 'application/json', buffer: Buffer.from(typedProject)});
+    await page.getByText(/Imported the Arcade game.*typed-helper/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await waitMultifile({observed: 363, removed: 40, remaining: 3, controllerValue: 0, actorX: 0});
+    await page.getByTestId('bw-arcade-b').click();
+    await waitMultifile({controllerValue: 120, remaining: 2, actorX: 89.5});
+    report.typedHelper = {nativeFileImport: true, codeToBlocks: true, arrayAliasPreserved: true,
+        observed: 363, initialLength: 3, controllerShift: 120, remainingLength: 2, spriteX: 89.5};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-typed-helper.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),

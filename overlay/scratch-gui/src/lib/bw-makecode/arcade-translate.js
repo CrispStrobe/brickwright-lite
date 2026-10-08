@@ -1,3 +1,4 @@
+import {applyDeclaredValueType} from './declared-value-types.js';
 /**
  * MakeCode Arcade → a Scratch project.
  *
@@ -2094,7 +2095,20 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         return node;
     };
     const connect = (left,right) => {if(left && right)graph.merge(left,right);};
-    for (const fn of functions.values()) fn.resultCell = Symbol('procedure result');
+    for (const fn of functions.values()) {
+        fn.resultCell = Symbol('procedure result');
+        applyDeclaredValueType(graph, fn.resultCell, fn.node.returnType);
+    }
+    for (const {node, owner} of entries) {
+        if (['FunctionDeclaration', 'FunctionExpression'].includes(node.type)) {
+            for (const name of node.params || []) {
+                applyDeclaredValueType(graph, binding(owner, name), node.paramTypes?.[name]?.text);
+            }
+        }
+        if (node.type === 'Declaration') for (const decl of node.decls) {
+            applyDeclaredValueType(graph, binding(owner, decl.name), decl.typeName);
+        }
+    }
     for (const {node,owner} of entries) {
         const value=cell(node,owner);
         for (const type of typeOf(node,owner)) {
