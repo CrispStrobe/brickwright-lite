@@ -174,11 +174,16 @@ try {
         return stage.getCostumes()[stage.currentCostume]?.name.includes('arcade-background');
     });
     await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});
+    // Selecting the costume can precede Pixel's asynchronous PNG decode. Its
+    // load commit closes panels, so controls opened on the previous canvas can
+    // disappear before dimension checks. Observe this upload's distinct pixels
+    // before opening More, as for the preceding SVG upload. No decode result or
+    // dimension is replaced, and an actual load failure still times out.
+    await waitForCanvasCorners(expectedColours(BACKGROUND_CORNERS),'native PNG import');
     await panel('more');
     await page.waitForFunction(()=>document.querySelector('[data-testid="bw-pixel-w"]')?.value==='160'&&
         document.querySelector('[data-testid="bw-pixel-h"]')?.value==='120');
     assert.equal((await stageState()).format,'png','actual upload remains native PNG before Pixel save');
-    await waitForCanvasCorners(expectedColours(BACKGROUND_CORNERS),'native PNG import');
     assert.deepEqual(await canvasCorners(),expectedColours(BACKGROUND_CORNERS),'browser PNG decode and initial Pixel display preserve corners');
     report.journey.push('native160×120 PNG uploaded through visible Stage file chooser and decoded at full logical size');
     await panel('more'); // the newly decoded PNG resets editor panels after selection
