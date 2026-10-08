@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade overlap cadence qualification — 2026-10-08
+
+Codex continues the integration lane on `lane/arcade-overlap-cadence-20261008`,
+stacked on PR740. Own original-PXT versus native overlap frame-cadence controls,
+the multi-physics controller browser journey and corresponding evidence. Keep
+pixel geometry, asynchronous callback ordering and pair locks intact; establish
+original behavior before changing a browser expectation. No unrelated pins or
+lanes are adopted.
+
 ## Hosted Arcade integration repair — 2026-10-08
 
 Codex continues the existing integration claim on

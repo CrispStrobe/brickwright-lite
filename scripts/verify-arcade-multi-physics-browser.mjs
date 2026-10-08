@@ -8,13 +8,13 @@ import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {MULTI_PHYSICS_CONTROLLER_SOURCE} from '../test/fixtures/arcade-multi-physics.mjs';
-// Let the game run N Arcade frames (about 33 ms each): a wait on the VM's own
+// Let the game run N Arcade frames: a wait on the VM's own
 // clock, not a wall-clock sleep, so a slow runner cannot cut it short.
 const settleFrames=(page,n)=>page.evaluate(n=>new Promise((done,fail)=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const stop=setTimeout(()=>{rt.removeListener('ARCADE_FRAME',f);fail(new Error('no Arcade frames'));},10000);const f=()=>{if(++c>=n){clearTimeout(stop);rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
 
 const source=MULTI_PHYSICS_CONTROLLER_SOURCE;
 const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
-const build=path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
+const build=process.env.BW_GUI_BUILD?path.resolve(process.env.BW_GUI_BUILD):path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
 const server=createServer(async(req,res)=>{
     try{
         const url=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
@@ -51,7 +51,7 @@ try{
         const vm=window.__brickwrightStore.getState().scratchGui.vm;
         const v=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
         const world=vm.runtime.bwArcadeDeviceState;
-        return {moverX:world?.sprites[v.mover]?.x,moverVx:world?.sprites[v.mover]?.vx,targetX:world?.sprites[v.target]?.x,fastOverlapSeen:v.fastOverlapSeen,endFrameTouching:v.endFrameTouching,passes:v.passes,pixelMaskTouch:v.pixelMaskTouch,errors:window.__bwTerrainErrors||[]};
+        return {moverX:world?.sprites[v.mover]?.x,moverVx:world?.sprites[v.mover]?.vx,targetX:world?.sprites[v.target]?.x,fastOverlapSeen:v.fastOverlapSeen,endFrameTouching:v.endFrameTouching,finalOverlap:vm.runtime._primitives.arcade_spriteOverlaps({A:v.mover,B:v.target},{}),passes:v.passes,pixelMaskTouch:v.pixelMaskTouch,errors:window.__bwTerrainErrors||[]};
     });
     const waitValue=(name,value)=>page.waitForFunction(({name,value})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).some(v=>v.name.replace(/^Game_/,'')===name && v.value===value),{name,value},{timeout:30000});
     const pixels=()=>page.evaluate(palette=>{
@@ -70,7 +70,19 @@ try{
     const passes=[];
     for(let cycle=0;cycle<2;cycle++){
         await page.getByTestId('bw-arcade-a').click();await waitValue('passes',cycle+1);
-        const passed=await state(),passedPixels=await pixels();assert.equal(passed.fastOverlapSeen,true);assert.equal(passed.endFrameTouching,false);assert.equal(passed.moverVx,0);assert.ok(passed.moverX>passed.targetX+2);assert.deepEqual(passedPixels,initialPixels);
+        const passed=await state(),passedPixels=await pixels();
+        assert.equal(passed.fastOverlapSeen,true);assert.equal(passed.moverVx,0);
+        // Original PXT also finishes short frames in contact and longer ones
+        // after crossing. The callback must observe the final geometry, and
+        // the renderer must show the corresponding opaque sprite occlusion.
+        assert.equal(passed.endFrameTouching,passed.finalOverlap);
+        assert.ok(passed.moverX>initial.moverX,'the commanded mover advanced');
+        assert.equal(passedPixels.target,initialPixels.target);
+        assert.equal(passedPixels.diagonal,initialPixels.diagonal);
+        assert.equal(passedPixels.antiDiagonal,initialPixels.antiDiagonal);
+        assert.ok(passedPixels.mover>=0 && passedPixels.mover<=initialPixels.mover);
+        if(passed.finalOverlap)assert.ok(passedPixels.mover<initialPixels.mover,'contact occludes mover pixels');
+        else assert.equal(passedPixels.mover,initialPixels.mover,'separated sprites retain all pixels');
         await page.getByTestId('bw-arcade-b').click();await waitValue('fastOverlapSeen',false);const reset=await state();assert.equal(reset.moverX,60);assert.equal(reset.moverVx,0);assert.deepEqual(await pixels(),initialPixels);
         passes.push({passed,passedPixels,reset});
     }
