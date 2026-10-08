@@ -505,7 +505,7 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'tilesOfType', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade tile locations of image [IMAGE]', arguments: str('IMAGE', '') },
           { opcode: 'tileLocationProperty', blockType: Scratch.BlockType.REPORTER,
-            text: 'Arcade tile location [LOCATION] [PROPERTY]', arguments: {...str('LOCATION', ''), ...str('PROPERTY', 'column')} },
+            text: 'Arcade tile location [LOCATION] [PROPERTY]', arguments: {...str('LOCATION', ''), PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'tileLocationProperties',defaultValue:'column'}} },
           { opcode: 'tileAtLocation', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade tile image at [LOCATION]', arguments: str('LOCATION', '') },
           { opcode: 'tileIs', blockType: Scratch.BlockType.BOOLEAN,
@@ -571,6 +571,7 @@ module.exports = makeExt(`// Name: Arcade
           buttonEvents:{acceptReporters:true,items:[{text:'pressed',value:'2049'},{text:'released',value:'2048'},{text:'repeated',value:'2054'}]},
           axes: {acceptReporters: true, items: ['x', 'y']}
           ,dialogLayouts: {acceptReporters: false, items: ['Left', 'Right', 'Top', 'Bottom', 'Center', 'Full']}
+          ,tileLocationProperties: {acceptReporters:false,items:['column','row','x','y','left','right','top','bottom','tileSet']}
           ,physicsEngineProperties: {acceptReporters:false,items:['maxSpeed','minStep','maxStep']}
           ,scaleAnchors:{acceptReporters:true,items:[{text:'middle',value:'0'},{text:'top',value:'1'},{text:'left',value:'2'},{text:'right',value:'4'},{text:'bottom',value:'8'},{text:'top left',value:'3'},{text:'top right',value:'5'},{text:'bottom left',value:'10'},{text:'bottom right',value:'12'}]}
           ,spriteProperties: {acceptReporters: false, items: ['x', 'y', 'left', 'right', 'top', 'bottom',

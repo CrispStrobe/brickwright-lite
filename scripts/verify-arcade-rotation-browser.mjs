@@ -566,7 +566,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     await page.getByText(/Imported the Arcade game.*legacy-tilemap/).first().waitFor({state:'visible'});
     assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
     await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
-    await waitMultifile({initialIndex:2,aliasIndex:1,replacementCenter:12,childUndefined:true,restoredWall:true,restoredIndex:2});
+    await waitMultifile({initialIndex:2,aliasIndex:1,replacementCenter:12,childUndefined:1,restoredWall:1,restoredIndex:2});
     const legacyPixels=()=>page.evaluate(()=>{
         const map=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.tilemap;
         return {tileSize:map.tileSize,exact:map.image?.pixels[0],padded:map.image?.pixels[4]};
