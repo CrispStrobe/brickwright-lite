@@ -6,6 +6,36 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Latest finite Arcade checkpoint — 2026-10-08
+
+At `bffd43641903dc037010aac1dcfeb5c9830a469e`, the same184 pinned inputs
+measure **93 translated /90 partial /1 malformed** in the import-only pass.
+The clean pre-change source measured91/92/1; the earlier90/93/1 figures below
+are historical. Two apps lost their sole refusal after statement-form projectile
+creation was implemented. Both compile in original PXT and step without block
+errors. With original compilation enabled, the audit records86 translated,
+44 partial,53 original-compiler failures and1 malformed. Runtime smoke remains
+127 stepped /3 without green-flag threads /0 block errors over24 frames.
+Neither translation nor this smoke establishes complete gameplay equivalence.
+
+`createProjectile`, `createProjectileFromSide` and `createProjectileFromSprite`
+now execute even when source ignores their returned handle. Imported Blocks
+consume the existing creation reporter in a collision-safe generated variable;
+users can edit its ordinary native inputs. Callbacks and native sprite identity
+are retained. No new shared compiler/runtime opcode or root dependency pin is
+required. Existing Code/Blocks creation reporters remain the authoring route.
+The actual native-file importer, To Blocks, real controller B and visible
+projectile check pass, alongside the12 rotation phases. See the
+[receipt](receipts/2026-10-08-arcade-discarded-projectiles.json) and refreshed
+[case ranking](generated/ARCADE-COMPAT-AUDIT.md).
+
+Next: distinguish missing asset/package inputs from importer failures in the
+10 unreadable background cases; implement legacy tilemap calls as real native
+resource operations; then address boolean dialogs, paint callbacks and effects.
+Each family still needs its own Code/Blocks/resource-editor, runtime, original
+export and actual user-control journeys. Keep unequal animation timing, action
+binding, sheets and custom-palette qualification in the animation lane.
+
 ## Evidence rules
 
 **Present** means inspected source contains the capability. A named test below
