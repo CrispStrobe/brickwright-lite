@@ -1008,3 +1008,40 @@ pause/obstacle ordering remain open. This section supersedes the prior nested
 frame-registration gap; it does not establish full event-loop compatibility.
 Exact-head hosted CI and stacked integration remain pending.
 [Receipt](receipts/2026-10-08-arcade-update-registration.json).
+
+### Unified controller callback registration — 2026-10-08
+
+`controller.A/B/up/down/left/right.onEvent` now registers at its authored call
+site without requiring a scene-stack program. Nested procedures retain live
+captured cells; registering the same button/event replaces its earlier handler.
+Pressed, Released and Repeated retain their original event values, including
+dynamic event expressions passed through procedures. Released callbacks observe
+mutations made by the matching pressed callback. Invalid callbacks and shadowed
+controller/event namespace bindings remain diagnosed.
+
+Qualification:27 distinct affected tests pass after10 focused final reruns;
+no skips. The initial regression run had26 passes and one failure: a firework
+test sent A before execution reached registration. It now sends real keyboard
+input after setup and verifies no launch beforehand; the original failure is
+retained. Background, flags, controller bindings, scenes and frame callbacks
+remain covered. Original/exported PXT and native/decompile/reimport/SB3 agree
+on trace `P7R8P10R11`, two presses/releases, three installations and a held-right
+repeat. Native short taps deliver both edges with no intervening frame. Exact
+wall-clock repeat counts and whole-loop startup timing are not claimed.
+
+GUI: existing native button registration, event menu, named callback and
+local/captured-value blocks/pseudocode cover this path. Production `gui.0cc1f4bb.js`
+passes native file→Code→Blocks→flag→visible A/B/A, plus held-right repeat, with
+no page/block/build errors. Initial JavaScript 4,360,790 bytes is below the
+unchanged4,467,136 budget; boot checks pass. No new opcode/producer pin is needed.
+Dedicated callback authoring guidance and graphics/resource editor work remain
+separate GUI tasks.
+
+The same184 immutable apps remain102 translated/81 partial/1 malformed with
+zero changed diagnostic rows; this is an import-only measure. Forever,
+life/countdown and sprite overlap/destruction registration paths still need
+unification. Initial phase, push/pop, legacy authored hats and whole-loop
+pause/obstacle ordering remain open, as do U03 painter/resource lifecycle and
+ranked artwork/palette/effect/music gaps. Exact-head hosted CI and stacked
+integration remain pending.
+[Receipt](receipts/2026-10-08-arcade-button-registration.json).
