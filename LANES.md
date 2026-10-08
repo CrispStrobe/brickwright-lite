@@ -1613,3 +1613,7 @@ Virtual SPIKE runtime retirement (2026-10-01): historical firmware-runtime
 experiments and provenance records are preserved in the private audit repository.
 The public application now uses only the independent virtual hub backend for
 Scratch/native and supported LEGO Python imports. See docs/independent-spike/.
+
+## Arcade destroy-kind collection slice — 2026-10-08
+
+Root agent claims `lane/arcade-destroy-kind-20261008`, stacked on the ignored-projectile slice. Scope: importer lowering for one-argument `sprites.destroyAllSpritesOfKind`, differential snapshot/callback tests, and capability documentation. Existing collection and destruction Blocks/runtime are reused. Effects and duration remain explicit unsupported diagnostics pending their own implementation. No compiler or dependency adoption is planned.
