@@ -601,3 +601,17 @@ ambient declarations, assembly/Python sources and nondefault palette rendering
 retain named diagnostics. Generated resource factories use the asset readers. Audits discover `.mkcd` and `.pxt` files and report missing
 offline extension packages as unavailable compilation gates with their names.
 See the [pinned ten-project input receipt](receipts/2026-10-08-tutorial-project-inputs.json).
+
+
+### Declared Arcade helper resource types
+
+Local helper declarations can use supported PXT resource types (`Image`,
+`Sprite`, `tiles.Location`, `animation.Animation`, `scene.Scene` and
+`ArcadePhysicsEngine`) on parameters, variables and named function returns.
+Nested `T[]` and `Array<T>` retain array element resource types through aliases,
+indexing and procedure calls, even before any call-site image is available.
+Function and arrow callbacks retain parameter annotations. These constraints
+select native resource operations; they do not cast values or provide missing
+package artwork. Unknown type aliases, unions and callable types are not
+resolved by this type-constraint slice. See the capability ledger for runtime,
+GUI and original-export qualification boundaries.

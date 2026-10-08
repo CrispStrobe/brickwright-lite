@@ -86,6 +86,45 @@ and fresh pasted code executes without stale-template upload warnings. Existing
 rotation, projectile and destruction journeys still pass; page errors:0.
 See the [receipt](receipts/2026-10-08-code-artwork-ownership.json).
 
+### Declared helper resource types — 2026-10-08
+
+Source `1fa9a3f34` seeds the existing lexical value graph from supported PXT
+resource annotations on variables, parameters and named function returns.
+`Image`, `Sprite`, tile locations, animations, scenes and physics engines retain
+resource identity; primitive types and nested `T[]` / `Array<T>` constrain array
+elements. Function and arrow callbacks retain their parameter annotations.
+Unknown aliases, unions and callable annotations are not guessed or treated as
+runtime casts. Known array shape remains usable with unknown element types.
+
+This fixes the two array-reference failures exposed by supplemental tutorial
+code: `Image[]` helper parameters no longer force a fallback into fixed-target
+translation that discarded array values. All ten partial tutorial fragments now
+step24 frames without block errors;65 named diagnostic occurrences remain
+(previously73). All original tutorial compilation gates are still unavailable
+for named offline packages. The old failures remain in the preceding receipt.
+
+The unchanged184 inputs now measure **96 translated /87 partial /1 malformed**.
+Three snippets lose their sole named refusal: `arcade-7913e54dbadcc8d6.ts`
+(`lander.setImage`), `arcade-85a1c4bedb4c8217.ts` (`animatedSprite.setImage`),
+and `arcade-f5582962d2213ba0.ts` (typed sprite parameter movement). All three
+compile in original PXT and step24 frames without block errors. These are two
+snippets with uninitialized sprite bindings and one function-only snippet;
+this is translation/finite-smoke evidence, not a complete playable-game result.
+No refreshed full184 original-compile tally is claimed.
+
+44 resource/function/scope/roundtrip tests and35 parser/gate tests pass without
+skips. An owned complete fixture agrees with original PXT on array aliasing,
+iteration and removal through Blocks, native export/reimport and SB3 reload.
+The declared resource helper remains compilable even when it has no call-site
+resource samples. Production `gui.b14a3b9a.js` passes native import→Code→Blocks
+and real controller B: shared array removal yields120, remaining length2, and
+the typed helper creates/moves a sprite to x89.5. Prior journeys also pass;
+page errors0, build errors0, initial4,360,502 bytes within unchanged budget.
+Multi-file navigation, source-preserving namespaces, resource
+editor work, passed/stored callback values, package augmentation, multiplayer
+APIs and custom palette rendering remain open.
+See the [receipt](receipts/2026-10-08-arcade-typed-helper-references.json).
+
 ### Declared project source and namespace scopes — 2026-10-08
 
 Source `18abd6c75` imports local TypeScript declared in `pxt.json.files` plus
