@@ -1610,3 +1610,37 @@ repairs. The last original184 census remains102 translated /81 partial /
 seven tilemap-resource refusals, seven destruction effect/duration refusals,
 scene/startup timing, function-valued callbacks, and GUI guidance for callback
 pairs and captures. [Receipt](receipts/2026-10-08-arcade-hosted-integration.json).
+
+
+## Overlap callback frame cadence — 2026-10-08
+
+The original simulator and native runtime agree on twelve controls: six
+physics-frame sequences with each of two target widths. For the2-pixel target: Callback fibers run after motion, so the explicit overlap query can
+report contact or separation depending on where that frame ends. The browser
+journey must compare its callback with final geometry and visible occlusion,
+while retaining the stop, reset, event and sparse pixel-mask assertions.
+
+| Frame duration | Frames advanced | Final mover x | Event observed | Touching in callback |
+| --- | --- | --- | --- | --- |
+| 4 ms | 4 | 68 | yes | yes |
+| 8 ms | 2 | 68 | yes | yes |
+| 16 ms | 1 | 68 | yes | yes |
+| 33 ms | 1 | 76 | yes | no |
+| 50 ms | 1 | 85 | no | no |
+| 100 ms | 1 | 110 | no | no |
+
+These are finite original-PXT comparisons, not a claim that all crossings are
+detected: the last two sequences miss the pair in both implementations. The
+originally failing browser assumption required separation even on a short
+frame. The8-pixel controller target is observed at all six tested cadences;
+frame-end x and contact query still match the original. The narrow fixture
+remains available for the original differential roundtrip.
+
+All13 surrounding physics checks pass without skips. The revised visible
+Code→Blocks→Run→controller launch/reset twice→sparse masks→From Blocks journey
+passes with zero page/runtime errors in the existing `gui.3c9f1746.js` reference
+bundle. This is not a new production build: fresh exact-head hosted GUI checks
+remain required. No runtime scheduler, physics algorithm or importer behavior
+changes in this repair. The first incorrect cadence assertion and failed
+narrow-target GUI run remain preserved privately.
+[Receipt](receipts/2026-10-08-arcade-overlap-cadence.json).

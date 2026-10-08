@@ -1,0 +1,249 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "d89812f1f6235a0eb1e33cf0ecf3b55fbafe3d68",
+  "base": "5f92f44174b5df0dda3b2f6af652aa88d07ce329",
+  "scope": "Original-PXT/native overlap cadence qualification and controller browser assertions; no runtime/importer/pin changes.",
+  "physicsControls": [
+    {
+      "ms": 4,
+      "frames": 4,
+      "width": 2,
+      "x": 68,
+      "seen": true,
+      "touch": true
+    },
+    {
+      "ms": 8,
+      "frames": 2,
+      "width": 2,
+      "x": 68,
+      "seen": true,
+      "touch": true
+    },
+    {
+      "ms": 16,
+      "frames": 1,
+      "width": 2,
+      "x": 68,
+      "seen": true,
+      "touch": true
+    },
+    {
+      "ms": 33,
+      "frames": 1,
+      "width": 2,
+      "x": 76,
+      "seen": true,
+      "touch": false
+    },
+    {
+      "ms": 50,
+      "frames": 1,
+      "width": 2,
+      "x": 85,
+      "seen": false,
+      "touch": false
+    },
+    {
+      "ms": 100,
+      "frames": 1,
+      "width": 2,
+      "x": 110,
+      "seen": false,
+      "touch": false
+    },
+    {
+      "ms": 4,
+      "frames": 4,
+      "width": 8,
+      "x": 68,
+      "seen": true,
+      "touch": true
+    },
+    {
+      "ms": 8,
+      "frames": 2,
+      "width": 8,
+      "x": 68,
+      "seen": true,
+      "touch": true
+    },
+    {
+      "ms": 16,
+      "frames": 1,
+      "width": 8,
+      "x": 68,
+      "seen": true,
+      "touch": true
+    },
+    {
+      "ms": 33,
+      "frames": 1,
+      "width": 8,
+      "x": 76,
+      "seen": true,
+      "touch": false
+    },
+    {
+      "ms": 50,
+      "frames": 1,
+      "width": 8,
+      "x": 85,
+      "seen": true,
+      "touch": false
+    },
+    {
+      "ms": 100,
+      "frames": 1,
+      "width": 8,
+      "x": 110,
+      "seen": true,
+      "touch": false
+    }
+  ],
+  "checks": {
+    "physicsRuntimeAndRoundtrip": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    "originalComparison": "Complete pinned original simulator; explicit physicsEngine.move public API, callback fiber observes frame-end geometry. Native motion, event admission, callback query and final overlap matched twelve cases: six cadences with two target widths.",
+    "intermediateFailure": [
+      "First control incorrectly required an event at every cadence. Original and native both missed the narrow target at 50/100ms; failure retained.",
+      "Reference GUI with original narrow target timed out waiting for the crossing event; failure retained. Wider target is independently qualified in both engines at all six cadences."
+    ],
+    "browserChange": "Compare callback query with final geometry and sprite occlusion; retain native stop, event, reset, visible pixels, sparse-mask and From Blocks checks.",
+    "freshHostedGui": "pending"
+  },
+  "limits": [
+    "Finite fixtures only; neither implementation observed the 2px target at 50ms or 100ms. The 8px controller target was observed at all six tested cadences.",
+    "No blanket no-tunneling, scheduler equivalence or complete Arcade compatibility claim.",
+    "Original184 census not rerun; prior102 translated/81 partial/1 malformed remains unchanged."
+  ],
+  "referenceGui": {
+    "status": "PASS",
+    "buildSource": "d606023f2455a0e0a213da65a34d76a31ed91445",
+    "bundle": "gui.3c9f1746.js",
+    "sha256": "55d84625d43336d7a39bd893968863ce7c824ac91d3ded33f94ed7fe0afde558",
+    "qualification": "Existing reference production bundle; not a fresh build of testedSource. Current harness and authored fixture exercised visible Code/Blocks/green flag/controller/reset/pixel masks/From Blocks.",
+    "result": {
+      "generatedAt": "2026-10-08T22:13:08.933Z",
+      "authoring": "visible Code editor \u2192 To blocks \u2192 green flag \u2192 controller fast crossings/reset/pixel masks \u2192 From blocks",
+      "unsupported": [],
+      "initial": {
+        "moverX": 60,
+        "moverVx": 0,
+        "targetX": 68,
+        "fastOverlapSeen": false,
+        "endFrameTouching": false,
+        "finalOverlap": false,
+        "passes": 0,
+        "pixelMaskTouch": false,
+        "errors": []
+      },
+      "initialPixels": {
+        "mover": 36,
+        "target": 144,
+        "diagonal": 18,
+        "antiDiagonal": 18
+      },
+      "passes": [
+        {
+          "passed": {
+            "moverX": 76,
+            "moverVx": 0,
+            "targetX": 68,
+            "fastOverlapSeen": true,
+            "endFrameTouching": false,
+            "finalOverlap": false,
+            "passes": 1,
+            "pixelMaskTouch": false,
+            "errors": []
+          },
+          "passedPixels": {
+            "mover": 36,
+            "target": 144,
+            "diagonal": 18,
+            "antiDiagonal": 18
+          },
+          "reset": {
+            "moverX": 60,
+            "moverVx": 0,
+            "targetX": 68,
+            "fastOverlapSeen": false,
+            "endFrameTouching": false,
+            "finalOverlap": false,
+            "passes": 1,
+            "pixelMaskTouch": false,
+            "errors": []
+          }
+        },
+        {
+          "passed": {
+            "moverX": 76,
+            "moverVx": 0,
+            "targetX": 68,
+            "fastOverlapSeen": true,
+            "endFrameTouching": false,
+            "finalOverlap": false,
+            "passes": 2,
+            "pixelMaskTouch": false,
+            "errors": []
+          },
+          "passedPixels": {
+            "mover": 36,
+            "target": 144,
+            "diagonal": 18,
+            "antiDiagonal": 18
+          },
+          "reset": {
+            "moverX": 60,
+            "moverVx": 0,
+            "targetX": 68,
+            "fastOverlapSeen": false,
+            "endFrameTouching": false,
+            "finalOverlap": false,
+            "passes": 2,
+            "pixelMaskTouch": false,
+            "errors": []
+          }
+        }
+      ],
+      "touching": {
+        "moverX": 60,
+        "moverVx": 0,
+        "targetX": 68,
+        "fastOverlapSeen": false,
+        "endFrameTouching": false,
+        "finalOverlap": false,
+        "passes": 2,
+        "pixelMaskTouch": true,
+        "errors": []
+      },
+      "touchingPixels": {
+        "mover": 36,
+        "target": 144,
+        "diagonal": 9,
+        "antiDiagonal": 18
+      },
+      "disjoint": {
+        "moverX": 60,
+        "moverVx": 0,
+        "targetX": 68,
+        "fastOverlapSeen": false,
+        "endFrameTouching": false,
+        "finalOverlap": false,
+        "passes": 2,
+        "pixelMaskTouch": false,
+        "errors": []
+      },
+      "disjointPixels": {
+        "mover": 36,
+        "target": 144,
+        "diagonal": 18,
+        "antiDiagonal": 18
+      },
+      "errors": []
+    }
+  }
+}
