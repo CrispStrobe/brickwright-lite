@@ -57,7 +57,7 @@ module.exports = makeExt(`// Name: Arcade
       this._creationWaits = new Set();
       this._functionCalls = new Set();
       this._createdHandlers = [];
-      this._wallHandlers = [];
+      this._wallHandlers = [];this._legacyWallHandlers = [];
       this._tileHandlers = [];
       this._terrainWaits = new Set();
       this._terrainEpoch = 0;
@@ -99,7 +99,7 @@ module.exports = makeExt(`// Name: Arcade
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
           this._createdHandlers = [];
-          this._wallHandlers = [];this._tileHandlers = [];
+          this._wallHandlers = [];this._legacyWallHandlers = [];this._tileHandlers = [];
           for (const id of this._speech.keys()) this._clearSpeech(id);
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
@@ -441,6 +441,13 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'setSpriteCostume', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade sprite [ID] costume to [COSTUME]',
             arguments: { ...str('ID', ''), ...n('COSTUME', 0) } },
+          { opcode: 'registerLegacyWallHandler', blockType: Scratch.BlockType.COMMAND,
+            text: 'Arcade register color wall kind [KIND] index [INDEX] as [TOKEN] capturing [CAPTURES]',
+            arguments: {...str('KIND','Player'),...n('INDEX',1),...str('TOKEN','colorwall'),...str('CAPTURES','')} },
+          { opcode: 'whenRegisteredLegacyWall', blockType: Scratch.BlockType.HAT, isEdgeActivated: false,
+            text: 'when Arcade color wall handler [TOKEN] runs', arguments: str('TOKEN','colorwall') },
+          { opcode: 'tileHitFrom', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade sprite [ID] wall hit index [DIRECTION]', arguments: {...str('ID',''),...n('DIRECTION',2)} },
           { opcode: 'registerWallHandler', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade register wall kind [KIND] as [TOKEN] capturing [CAPTURES]',
             arguments: {...str('KIND', 'Player'), ...str('TOKEN', 'wall'), ...str('CAPTURES', '')} },
@@ -718,7 +725,7 @@ module.exports = makeExt(`// Name: Arcade
 
     _sceneBundle() {
       const bundle={state:this._state()};
-      for(const key of ['_speech','_background','_backgroundImage','_tilemapDrawable','_createdHandlers','_wallHandlers','_tileHandlers',
+      for(const key of ['_speech','_background','_backgroundImage','_tilemapDrawable','_createdHandlers','_wallHandlers','_legacyWallHandlers','_tileHandlers',
         '_activeLegacyAnimations','_imageAnimations','_animationUpdateOrder','_updateHandlers','_intervalHandlers','_buttonHandlers','_destroyedHandlers','_overlapHandlers','_foreverHandlers','_countdownHandlers'])bundle[key]=this[key];
       return bundle;
     }
@@ -743,7 +750,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     _freshScene(previous) {
       const state={overlapLocks:new Set(),buttons:previous.buttons,controllerButtons:previous.controllerButtons,neopixels:previous.neopixels,light:previous.light,tiltX:previous.tiltX,tiltY:previous.tiltY,serial:previous.serial};
-      const bundle={state,_speech:new Map(),_background:null,_backgroundImage:null,_tilemapDrawable:null,_createdHandlers:[],_wallHandlers:[],_tileHandlers:[],
+      const bundle={state,_speech:new Map(),_background:null,_backgroundImage:null,_tilemapDrawable:null,_createdHandlers:[],_wallHandlers:[],_legacyWallHandlers:[],_tileHandlers:[],
         _activeLegacyAnimations:new Set(),_imageAnimations:new Map(),_animationUpdateOrder:[],_updateHandlers:[],_intervalHandlers:[],_buttonHandlers:[],_destroyedHandlers:[],_overlapHandlers:[],_foreverHandlers:[],_countdownHandlers:[]};
       return bundle;
     }
@@ -1073,6 +1080,16 @@ module.exports = makeExt(`// Name: Arcade
       const captures = new Map(util?.thread?.bwArcadeCaptures || []), values = this._localParams(util);
       for (const key of String(args.CAPTURES || '').split(/\\s+/).filter(Boolean)) if (values) captures.set(key, {values, key});
       return {kind: String(args.KIND), token: String(args.TOKEN), captures};
+    }
+    registerLegacyWallHandler(args,util) {
+      const index=Number(Scratch.BWValues.decode(args.INDEX));
+      if(index<0 || index>15)return;
+      this._legacyWallHandlers.push({...this._terrainRegistration(args,util),index});
+    }
+    whenRegisteredLegacyWall(args,util) {return util?.thread?.bwArcadeEvent?.TOKEN===String(args.TOKEN);}
+    tileHitFrom(args) {
+      const sprite=this._spriteValues.get(String(args.ID));
+      return sprite?(sprite._wallObstacles?.[Number(Scratch.BWValues.decode(args.DIRECTION))]?.tileIndex ?? -1):0;
     }
     registerWallHandler(args, util) {this._wallHandlers.push(this._terrainRegistration(args, util));}
     registerTileHandler(args, util) {
@@ -1912,14 +1929,17 @@ module.exports = makeExt(`// Name: Arcade
           if(!this._wallAt(map,column,row)) continue;
           const current=this._state().tilemap;
           const index=!current || column<0 || row<0 || column>=current.columns || row>=current.rows?0:current.indices[row*current.columns+column];
-          if(seen.has(index)) continue;seen.add(index);contacts.push({column,row});
+          if(seen.has(index)) continue;seen.add(index);contacts.push({column,row,index});
         }
         if(!contacts.length) continue;
         sprite[storage]=(coordinate*size+(positive?-extent*256:size)-offset*256)|0;
         const direction=horizontal?(positive?2:0):(positive?3:1);
-        for(const {column,row} of contacts){
+        for(const {column,row,index} of contacts){
           if(blocked()) continue;
-          if(!sprite._wallObstacles) sprite._wallObstacles=[];sprite._wallObstacles[direction]={column,row};
+          if(!sprite._wallObstacles) sprite._wallObstacles=[];sprite._wallObstacles[direction]={column,row,tileIndex:index};
+          const legacyMatches=this._legacyWallHandlers.filter(h=>h.kind===sprite.kind && h.index===index);
+          yield* this._terrainCallbackSteps(legacyMatches,'arcade_whenRegisteredLegacyWall',sprite,column,row,util);
+          if(epoch!==this._terrainEpoch || this._state()!==owner)return;
           const matches=this._wallHandlers.filter(h=>h.kind===sprite.kind);
           yield* this._terrainCallbackSteps(matches,'arcade_whenRegisteredWall',sprite,column,row,util);
           if(epoch!==this._terrainEpoch || this._state()!==owner)return;

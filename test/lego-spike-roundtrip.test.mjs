@@ -252,11 +252,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // Reviewed producer merge tree matches c7b74f1b; all enabled checks passed.
     // SPIKE declarations, extension URL, motor fields, distance and decompile
     // assertions below are unchanged and rerun at this exact consumer pin.
-    // -> a8609c0f: Arcade player/state, legacy maps and Tile dialect adoption.
+    // -> 0de6ae91: Arcade player/state, legacy maps and Tile dialect adoption.
     // Re-run every canonical SPIKE artifact assertion below at this exact pin;
     // this is finite artifact qualification, not an emitter-wide equivalence claim.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'a8609c0f0fe0e2946b6640656d615ce237f2b98c');
+        '0de6ae91758353af89ce64b06717a4294cd6bb05');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

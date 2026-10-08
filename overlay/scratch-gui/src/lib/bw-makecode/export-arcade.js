@@ -63,6 +63,7 @@ const samePalette = (left, right) => left.every((colour, index) =>
     String(colour).toLowerCase() === String(right[index]).toLowerCase());
 
 const REGISTERED_HAT_KINDS = {
+    arcade_whenRegisteredLegacyWall:'legacyWall',
     arcade_whenRegisteredMultiplayerButton:'multiplayerButton',
     arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile',
     arcade_whenRegisteredUpdate:'update', arcade_whenRegisteredInterval:'interval', arcade_whenRegisteredButton:'button',
@@ -70,7 +71,7 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
     arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
 };
-const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
+const REGISTERED_COMMANDS = new Set(['arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler',
     'arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
@@ -1030,6 +1031,7 @@ class ArcadeEmitter {
         case 'arcade_legacyTileLocation':this.requiresLegacyTilemapPackage=true;return `scene.getTile(${v('COLUMN')}, ${v('ROW')})`;
         case 'arcade_legacyTilesOfType':this.requiresLegacyTilemapPackage=true;return `scene.getTilesByType(${v('INDEX')})`;
         case 'arcade_legacyTileProperty':this.requiresLegacyTilemapPackage=true;return `${v('TILE')}.${this.field(b,'PROPERTY')}`;
+        case 'arcade_tileHitFrom':this.requiresLegacyTilemapPackage=true;return `scene.tileHitFrom(${v('ID')}, ${v('DIRECTION')})`;
         case 'arcade_tileLocation': return `tiles.getTileLocation(${v('COLUMN')}, ${v('ROW')})`;
         case 'arcade_tilesOfType': return `tiles.getTilesByType(${v('IMAGE')})`;
         case 'arcade_tileLocationProperty': return `${v('LOCATION')}.${this.field(b,'PROPERTY')}`;
@@ -1476,6 +1478,13 @@ class ArcadeEmitter {
         }
         case 'arcade_centerCameraAt': push(`scene.centerCameraAt(${this.arrayValue(b,'X')}, ${this.arrayValue(b,'Y')})`);return;
         case 'arcade_cameraFollowSprite': push(`scene.cameraFollowSprite(${this.arrayValue(b,'ID')})`);return;
+        case 'arcade_registerLegacyWallHandler': {
+            this.requiresLegacyTilemapPackage=true;
+            const token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
+            if(!callback || callback.kind!=='legacyWall'){push(`// ${this.note('Color wall registration has no matching callback')}`);return;}
+            this.usedRegisteredCallbacks.add(token);
+            push(`scene.onHitTile(${this.kindExpr(b,'KIND')}, ${v('INDEX')}, function (${callback.parameter}: Sprite) {\n${callback.script.join('\n')}\n})`);return;
+        }
         case 'arcade_registerWallHandler':
         case 'arcade_registerTileHandler': {
             const token=this.literalInput(b,'TOKEN'),kind=b.opcode==='arcade_registerWallHandler'?'wall':'tile';
@@ -1963,7 +1972,7 @@ class ArcadeEmitter {
         let second=`__bwOtherSprite_${ident(token)}`;while(text.includes(second))second+='_';
         this.eventPlayerName=entry.kind==='multiplayerButton'?parameter:null;
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
-        this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
+        this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','legacyWall','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();
         const script = [];this.stmts(entry.block.next,1,script);
         const scope=`${entry.target.name}:script:${Object.keys(this.blocks).find(id=>this.blocks[id]===entry.block)}`;
@@ -2065,6 +2074,7 @@ class ArcadeEmitter {
                     const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
                 }
                 if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
                 if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
                 if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}

@@ -254,8 +254,8 @@ class ArcadeTranslator extends BaseTranslator {
         this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
-        this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile'].includes(record.kind)));
-        this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile'].includes(record.kind)));
+        this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
+        this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile','legacyWall'].includes(record.kind)));
         this.returnFunctions = new Map();
         const hasReturn = value => value && typeof value === 'object' &&
             (value.type === 'Return' || (!['FunctionDeclaration', 'FunctionExpression'].includes(value.type) &&
@@ -965,6 +965,9 @@ class ArcadeTranslator extends BaseTranslator {
                 if(api==='scene.getTilesByType' && args.length===1)return `arcade color tile array index (${this.expr(args[0])})`;
                 this.unsupported.push(`${api} has invalid arity`);return '0';
             }
+            if(api==='scene.tileHitFrom' && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))){this.unsupported.push('scene.tileHitFrom refers to a shadowed scene binding');return '0';}
+            if(api==='scene.tileHitFrom' && args.length===2)return `arcade sprite (${this.expr(args[0])}) wall hit index (${this.expr(args[1])})`;
+            if(node.callee?.type==='Member' && node.callee.name==='tileHitFrom' && this.spriteReferences?.has(node.callee.object) && args.length===1)return `arcade sprite (${this.expr(node.callee.object)}) wall hit index (${this.expr(args[0])})`;
             if(api==='tiles.getTileLocation' && args.length===2)return `arcade tile location column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
             if(api==='tiles.getTilesByType' && args.length===1){this.usesArrays=true;return `arcade tile array image (${this.expr(args[0])})`;}
             if(api==='tiles.tileAtLocationEquals' && args.length===2)return `arcade tile (${this.expr(args[0])}) equals image (${this.expr(args[1])})`;
@@ -1131,11 +1134,13 @@ class ArcadeTranslator extends BaseTranslator {
             else push(this.note('sprites.onCreated() needs a supported callback'));
             return;
         }
-        if(this.handleTemplates && ['scene.onHitWall','scene.onOverlapTile'].includes(name)) {
+        if(this.handleTemplates && name==='scene.onHitTile' && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))){push(this.note('scene.onHitTile refers to a shadowed scene binding'));return;}
+        if(this.handleTemplates && ['scene.onHitWall','scene.onOverlapTile','scene.onHitTile'].includes(name)) {
             const registration=this.terrainRegistrations.get(node);
             if(!registration){push(this.note(`${name} requires a fixed SpriteKind, exact arguments and an inline callback with at most two parameters`));return;}
             const captures=JSON.stringify([...registration.ownCaptures].join(' '));
-            if(registration.kind==='wall')push(`arcade register wall kind "${kindOf(a[0])}" as "${registration.token}" capturing ${captures}`);
+            if(registration.kind==='legacyWall')push(`arcade register color wall kind "${kindOf(a[0])}" index (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
+            else if(registration.kind==='wall')push(`arcade register wall kind "${kindOf(a[0])}" as "${registration.token}" capturing ${captures}`);
             else push(`arcade register tile kind "${kindOf(a[0])}" image (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
             return;
         }
@@ -2017,7 +2022,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
             });
             const event = pathOf(node.callee);
             const eventArgs = event === 'sprites.onOverlap' ? 2 :
-                ['sprites.onCreated', 'sprites.onDestroyed','scene.onHitWall','scene.onOverlapTile'].includes(event) ? 1 : 0;
+                ['sprites.onCreated', 'sprites.onDestroyed','scene.onHitTile','scene.onHitWall','scene.onOverlapTile'].includes(event) ? 1 : 0;
             for (const arg of node.args || []) {
                 if (arg?.type === 'FunctionExpression' && eventArgs) {
                     const eventScope = new Set([...scope, ...arg.params.slice(0, eventArgs)]);
@@ -2075,7 +2080,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node.type === 'Call') {
             const api = pathOf(node.callee);
             const types = api==='mp.onButtonEvent'?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
-                ['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
+                api==='scene.onHitTile'?['sprite']:['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
                 ['sprites.onCreated','sprites.onDestroyed'].includes(api)?['sprite']:[];
             visit(node.callee, owner);
             for (const arg of node.args || []) visit(arg, owner, types);
@@ -2293,6 +2298,7 @@ const sceneRegistrationSpec = name => {
 const discoverRuntimeRegistrations = (ast, translator) => {
     const specs={
         'sprites.onCreated':{kind:'creation',handlerIndex:1,arity:2,prefix:'__bwCreated'},
+        'scene.onHitTile':{kind:'legacyWall',handlerIndex:2,arity:3,prefix:'__bwColorWall',maxParams:1,kinds:[0]},
         'scene.onHitWall':{kind:'wall',handlerIndex:1,arity:2,prefix:'__bwWall'},
         'scene.onOverlapTile':{kind:'tile',handlerIndex:2,arity:3,prefix:'__bwTile'}
     };
@@ -2367,7 +2373,7 @@ const emitTerrainRegistrations = (translator,out,localHandles=new Map(),callback
         translator.currentParameters=new Set(handler.params);
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...(handler.params[0]?[handler.params[0]]:[])]);
         translator.handleAliases=new Map();
-        out.push(`WHEN arcade ${kind} handler "${token}" runs:`);
+        out.push(`WHEN arcade ${kind==='legacyWall'?'color wall':kind} handler "${token}" runs:`);
         for(const [index,param] of handler.params.entries())out.push(`  arcade set local ${translator.varName(param)} to ${index===0?'arcade event first':'arcade event location'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
@@ -2594,7 +2600,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
-        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
         const mixedValue=value=>['String','Boolean','Null','Undefined','Array'].includes(value?.type) || t.stringReferences.has(value) || t.booleanReferences.has(value) || t.arrayReferences.has(value) || t.imageReferences.has(value);
