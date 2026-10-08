@@ -1,3 +1,5 @@
+import {ARCADE_NAMESPACE_MEMBERS} from './arcade-namespace-members.js';
+
 /** Lower TypeScript namespace bindings without merging their lexical scopes.
  * Namespace objects are not general JavaScript objects: only statically named
  * members are lowered. Escapes, computed access and unresolved/private members
@@ -29,11 +31,31 @@ export const lowerNamespaceBindings = program => {
         occupied.add(name);return name;
     };
     const root = {parent: null, path: [], symbols: new Map()};
+    // External members are consulted only in source-augmented namespaces.
+    // Keep them separate from source exports: no initialization requirements,
+    // lexical scope merging, or permission to invent unknown library members.
+    const externalScopes = new Map();
+    const externalScope = path => {
+        const key = path.join('.');
+        if (!Object.prototype.hasOwnProperty.call(ARCADE_NAMESPACE_MEMBERS, key)) return null;
+        if (!externalScopes.has(key)) {
+            const scope = {path, symbols: new Map()};
+            externalScopes.set(key, scope);
+            for (const [name, container] of ARCADE_NAMESPACE_MEMBERS[key]) {
+                const memberPath = [...path, name];
+                scope.symbols.set(name, container ? {kind: 'namespace', exported: true,
+                    scope: externalScope(memberPath)} : {kind: 'external', exported: true, path: memberPath});
+            }
+        }
+        return externalScopes.get(key);
+    };
     const namespaceScopes = new WeakMap();
     const enumScopes = new WeakMap();
     const errors = [];
     const fail = message => { if (!errors.includes(message)) errors.push(message); };
     const declare = (scope, name, symbol) => {
+        const external = (scope.external || scope.shared?.external)?.symbols.get(name);
+        if (external && !(external.kind === 'namespace' && symbol.kind === 'namespace')) fail(`namespace binding ${[...scope.path, name].join('.')} conflicts with a built-in export`);
         if (scope.symbols.has(name)) fail(`namespace binding ${[...scope.path, name].join('.')} is declared more than once`);
         else {
             scope.symbols.set(name, symbol);
@@ -56,7 +78,7 @@ export const lowerNamespaceBindings = program => {
                     fail(`namespace ${[...scope.path, st.name].join('.')} mixes exported and private declarations`);
                 }
                 if (!symbol) {
-                    const shared = {parent: scope, path: [...scope.path, st.name], symbols: new Map(), privateNames: new Set()};
+                    const shared = {parent: scope, path: [...scope.path, st.name], symbols: new Map(), privateNames: new Set(), external: externalScope([...scope.path, st.name])};
                     symbol = {kind: 'namespace', scope: shared, exported: Boolean(st.exported)};
                     declare(scope, st.name, symbol);
                 } else if (!scope.symbols.has(st.name)) scope.symbols.set(st.name, symbol);
@@ -95,6 +117,8 @@ export const lowerNamespaceBindings = program => {
             if (current.symbols.has(name)) return current.symbols.get(name);
             if (current.shared?.symbols.has(name)) return current.shared.symbols.get(name);
             if (current.shared?.privateNames.has(name)) privateOwner = current.path;
+            const external = (current.external || current.shared?.external)?.symbols.get(name);
+            if (external && !privateOwner) return external;
         }
         if (privateOwner) {
             fail(`namespace binding ${[...privateOwner, name].join('.')} is private to another declaration`);
@@ -107,7 +131,7 @@ export const lowerNamespaceBindings = program => {
         if (node?.type !== 'Member') return null;
         const owner = access(node.object, scope, shadows);
         if (!owner || !['namespace', 'enum'].includes(owner.kind)) return null;
-        const member = owner.scope.symbols.get(node.name);
+        const member = owner.scope.symbols.get(node.name) || owner.scope.external?.symbols.get(node.name);
         if (!member) { fail(`namespace member ${[...owner.scope.path, node.name].join('.')} is ${owner.scope.privateNames?.has(node.name) ? 'private' : 'not declared'}`);return {kind: 'invalid'}; }
         if (!member.exported) { fail(`namespace member ${[...owner.scope.path, node.name].join('.')} is private`);return {kind: 'invalid'}; }
         return member;
@@ -202,6 +226,9 @@ export const lowerNamespaceBindings = program => {
         if (Array.isArray(node)) return node.map(value => rewrite(value, scope, shadows));
         if (['Identifier', 'Member'].includes(node.type)) {
             const symbol = access(node, scope, shadows);
+            if (symbol?.kind === 'external') return symbol.path.reduce((object, name) =>
+                object ? {type: 'Member', object, name} : {type: 'Identifier', name}, null);
+            if (symbol?.kind === 'invalid') return node;
             if (symbol?.kind === 'value') {
                 if (symbol.procedure && context !== 'callee') fail(`namespace procedure ${symbol.name} used as a runtime function value`);
                 return {type: 'Identifier', name: symbol.name};

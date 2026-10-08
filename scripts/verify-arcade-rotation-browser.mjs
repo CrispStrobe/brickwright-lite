@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {NAMESPACE_AUGMENTATION_SOURCE} from '../test/fixtures/arcade-namespace-augmentation.mjs';
 import {STATIC_CALLBACK_SOURCE} from '../test/fixtures/arcade-static-callback-helpers.mjs';
 import {TYPED_HELPER_SOURCE} from '../test/fixtures/arcade-typed-helper.mjs';
 import {MULTIFILE_ARCADE_FILES} from '../test/fixtures/arcade-multifile-source.mjs';
@@ -400,6 +401,26 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     report.staticCallbackHelpers = {nativeFileImport: true, codeToBlocks: true, trace: 123, total: 12,
         recursive: 20, chosen: 12, controllerResult: 50, spriteX: 27};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-callback-helpers.png'});
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const namespaceProject = makeCodeProjectFile({'main.ts': NAMESPACE_AUGMENTATION_SOURCE,
+        'pxt.json': JSON.stringify({name: 'Namespace augmentation', dependencies: {device: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Namespace augmentation'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'namespace-augmentation.mkcd', mimeType: 'application/json', buffer: Buffer.from(namespaceProject)});
+    await page.getByText(/Imported the Arcade game.*namespace-augmentation/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await waitMultifile({observed: 192, observedScore: 7});
+    await page.getByTestId('bw-arcade-b').click();
+    await waitMultifile({observed: 197, observedScore: 9});
+    await page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)
+        .some(sprite => sprite.id && sprite.x === 36));
+    report.namespaceAugmentation = {nativeFileImport: true, codeToBlocks: true,
+        initialObserved: 192, initialScore: 7, controllerObserved: 197, controllerScore: 9, spriteX: 36};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-namespace-augmentation.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),
