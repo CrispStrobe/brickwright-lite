@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {chromium} from 'playwright';
+import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {CALLBACK_COMPLETION_SOURCE} from '../test/fixtures/arcade-callback-completion.mjs';
 const imported=arcadeToPseudocode(CALLBACK_COMPLETION_SOURCE);assert.deepEqual(imported.unsupported,[]);
@@ -20,7 +21,10 @@ try{
  const editor=page.locator('[data-testid="bw-code-editor"] .cm-content');await editor.waitFor({state:'visible'});
  await page.getByTestId('bw-device-select').selectOption('arcade');
  await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwDeviceId==='arcade');
- await editor.fill(imported.code);await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
+ const project=makeCodeProjectFile({'main.ts':CALLBACK_COMPLETION_SOURCE,'pxt.json':JSON.stringify({name:'Callback completion',dependencies:{device:'*','color-coded-tilemap':'*'},files:['main.ts']})},{target:'arcade',name:'Callback completion'});
+ await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'callback-completion.mkcd',mimeType:'application/json',buffer:Buffer.from(project)});
+ await page.getByText(/Imported the Arcade game.*callback-completion/).first().waitFor({state:'visible'});
+ await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
  await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible',timeout:30000});
  await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await editor.waitFor({state:'hidden'});
@@ -30,8 +34,8 @@ try{
   if(completed===2)await page.getByTestId('bw-arcade-a').click();
   await page.waitForFunction(n=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).some(v=>v.name.replace(/^Game_/,'')==='completed' && v.value===n),completed,{timeout:30000});
   const values=await page.evaluate(()=>Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value])));
-  assert.ok(values.after<values.before,'motion continues during pause');for(const key of ['inB','inC','finalX'])assert.equal(values[key],values.after,key);
   report.samples.push({completed,before:values.before,after:values.after,inB:values.inB,inC:values.inC,finalX:values.finalX});
+  assert.ok(values.after<values.before,'motion continues during pause');for(const key of ['inB','inC','finalX'])assert.equal(values[key],values.after,key);
  }
  report.blockErrors=await page.evaluate(()=>window.__bwCallbackErrors);assert.deepEqual(report.blockErrors,[]);assert.deepEqual(report.errors,[]);
  await page.screenshot({path:out.replace(/\.json$/,'.png')});report.status='passed';
