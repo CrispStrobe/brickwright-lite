@@ -1010,3 +1010,45 @@ journey: one receiver evaluation, pixel5, shared nested-array length2,40
 membership checks, then B moves the selected sprite x41→45. Prior journeys pass
 with0 page errors. Build errors0; initial4,360,502 bytes remains within the
 unchanged4,467,136 limit.31 affected and38 regression/gate tests pass without skips.
+
+### Multiplayer player foundation — 2026-10-08
+
+New capability: scene-local four-player identities, selector/number/index lookup,
+copied player arrays, exact sprite association and reverse lookup, safe player
+property queries and direct index/number reads. Typed `mp.Player` annotations,
+forwarded procedure arguments/results and nested player arrays preserve their
+types. Native export emits the bundled multiplayer dependency. Six bidirectional
+producer dialect words and matching runtime/Blocks operations are adopted from
+sb3-creator source `da69beb1f894f63b259dfe728084dfe3327e7eb0` ([PR64](https://github.com/CrispStrobe/sb3-creator/pull/64)).
+
+Original PXT and BW agree through Code→Blocks, native export→original PXT,
+reimport and SB3 reload. Coverage includes missing/null sprite distinctions,
+first matching owner, array copies and alias identity, scene push/pop with old
+player references, invalid/fractional/null/NaN/infinite indexes, and player
+properties. References are isolated by runtime, kind and project generation.
+Safe property reads return0 for missing players; member reads retain an error.
+Initial stale-overlay, exporter-field and null-index failures remain preserved.
+
+GUI authoring: the Arcade palette exposes lookup, all players, sprite get/set,
+reverse lookup and property query blocks. Code supports equivalent pseudocode;
+no source-only surrogate call is needed. The property selector is currently
+numeric1(index)/2(number); friendlier enum labels remain a GUI improvement.
+Member-read export requires a fixed index/number selector, with an explicit
+unsupported diagnostic for a dynamic member selector. Safe queries allow a
+dynamic numeric property. No new graphics-editor tools were added.
+
+Still open: mp.moveWithButtons and correct controller rebinding; multiplayer
+button/connection/score/life events; player state/data; presence icons/indicators
+and network notifications. Sprite-association qualification does not cover
+those effects. The controller-pane journey uses a normal B callback that looks
+up player three's sprite; it is not controller-three input qualification.
+Same184 remains96/87/1. Recovered tutorial diagnostics51→31; all10 projects are
+still partial with original extension packages unavailable. All10 partial
+fragments step24 frames without errors; full-game equivalence is not measured.
+See the [receipt](receipts/2026-10-08-arcade-multiplayer-players.json).
+
+Final qualification: clean source `de2c15909`;106 affected/regression/gate tests
+and1 producer roundtrip pass without skips. Production `gui.db7109fe.js` imports
+the native project, converts Code→Blocks and uses B to retrieve player three
+and move its sprite x60.5→65.5. All prior journeys pass; page/build errors0.
+Initial4,360,511 bytes is9 bytes larger and below the unchanged4,467,136 limit.

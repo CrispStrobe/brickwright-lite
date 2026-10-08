@@ -663,3 +663,36 @@ For example, `let chosen = actors._pickRandom(); chosen.x = 41` uses a native
 sprite reference. In pseudocode the selection is
 `set chosen to (random item of array reference (actors))`, followed by
 `arcade set x of chosen to 41`.
+
+### Multiplayer player values
+
+Arcade supports `mp.playerSelector`, `mp.getPlayerByNumber`,
+`mp.getPlayerByIndex`, `mp.allPlayers`, `mp.setPlayerSprite`,
+`mp.getPlayerSprite`, `mp.getPlayerBySprite`, and `mp.getPlayerProperty`.
+`mp.PlayerNumber`/`mp.PlayerProperty` constants and typed Player `index`/`number`
+reads are supported. Each scene owns four stable player identities. Arrays from
+`mp.allPlayers()` are copies; their elements retain player identity. Sprite
+association retains exact Sprite references and distinguishes null from missing.
+Older scene player references remain usable after pushing or popping a scene.
+
+The Arcade extension exposes six corresponding Blocks operations. Pseudocode:
+
+```text
+set player to (arcade player by number (3))
+arcade set sprite of player (player) to (actor)
+set chosen to (arcade sprite of player (player))
+arcade set x of chosen to 70
+set number to (arcade player safe property (2) of (player))
+```
+
+Use `arcade all players`, `arcade player of sprite (actor)`, or lookup mode
+`index` for the other operations. Property selector1 is index;2 is number.
+Safe property queries return0 for a missing player; direct member reads retain
+an error on missing players. Native export writes typed `mp.Player` references
+and arrays and declares the bundled `multiplayer` dependency automatically.
+
+This foundation covers identity and sprite association. `mp.moveWithButtons`,
+multiplayer button/connection/score/life events, custom player state/data,
+controller rebinding and network presence/indicator effects remain explicit
+work. Independent player-controller input and multiplayer networking remain
+unqualified.
