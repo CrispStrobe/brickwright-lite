@@ -1641,6 +1641,32 @@ const kindOf = node => {
  * intrinsic semantics. Evaluating the operands preserves call argument order.
  */
 let legacyArrayHelperTemplates;
+// Arcade destroys the current kind collection, not a live query on each
+// iteration. Lower through the same snapshot-array and handle destruction
+// primitives exposed in Blocks. Newly created callback sprites survive.
+const lowerDestroyAllSprites = (program, source) => {
+    let suffix = 0;
+    const visit = node => {
+        if (Array.isArray(node)) return node.map(visit);
+        if (!node || typeof node !== 'object') return node;
+        for (const key of Object.keys(node)) node[key] = visit(node[key]);
+        const call = node.type === 'ExpressionStatement' && node.expr;
+        const callee = call?.type === 'Call' && call.callee;
+        const kind = call?.args?.[0];
+        if (callee?.type !== 'Member' || callee.object?.type !== 'Identifier' ||
+            callee.object.name !== 'sprites' || callee.name !== 'destroyAllSpritesOfKind' ||
+            call.args.length !== 1 || kind?.type !== 'Member' ||
+            kind.object?.type !== 'Identifier' || kind.object.name !== 'SpriteKind') return node;
+        do suffix++; while (source.includes(`__bwDestroyKindSprite${suffix}`));
+        const name = `__bwDestroyKindSprite${suffix}`;
+        return {type: 'ForOf', kind: 'let', name,
+            iterable: {type: 'Call', callee: {...callee, name: 'allOfKind'}, args: [kind]},
+            body: [{type: 'ExpressionStatement', expr: {type: 'Call',
+                callee: {type: 'Member', object: {type: 'Identifier', name}, name: 'destroy'}, args: []}}]};
+    };
+    return visit(program);
+};
+
 // `for (const x of list)` in MakeCode iterates a SNAPSHOT of the array value
 // by index. The parser gives every translator a ForOf node; this importer
 // lowers it to that index loop, so a reference array (sprites, rows) keeps
@@ -3231,8 +3257,8 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source)));
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source)));
     const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
         unsupported: [...new Set([...animationDiagnostics, ...result.unsupported])]});
     const namespaceBindings = lowerNamespaceBindings(parsed);

@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {DESTROY_KIND_CONTROLLER_SOURCE} from '../test/fixtures/arcade-destroy-kind.mjs';
 import {DISCARDED_PROJECTILE_SOURCE} from '../test/fixtures/arcade-discarded-projectiles.mjs';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {ROTATION_CONTROLLER_SOURCE, ROTATION_CONTROLLER_INITIAL_PIXELS} from '../test/fixtures/arcade-rotation-controller.mjs';
@@ -271,6 +272,34 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     report.discardedProjectiles = {nativeFileImport: true, allThreeApis: true, initial: initialCreation,
         controllerCreatesExactlyOnce: true, visibleCenterRgb: [120, 220, 82], sourceNameCollisionsCoveredByUnitRoundtrip: true};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-discarded-projectiles.png'});
+    // Author the lowered collection loop through visible Code/Blocks controls.
+    // This journey also runs against the prior bundle: no new runtime opcode
+    // is needed. Native source import/export is differential-tested separately.
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const destruction = arcadeToPseudocode(DESTROY_KIND_CONTROLLER_SOURCE);
+    assert.deepEqual(destruction.unsupported, []);
+    await editor.fill(destruction.code);
+    const beforeDestructionStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
+    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id && window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id,
+        beforeDestructionStage);
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    const destructionState = async (live, destroyed) => {
+        await page.waitForFunction(({live, destroyed}) => {
+            const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            return Object.values(runtime.bwArcadeDeviceState.sprites).filter(s => s.id).length === live &&
+                runtime.targets.flatMap(t => Object.values(t.variables)).some(v => v.name === 'destroyed' && v.value === destroyed);
+        }, {live, destroyed});
+    };
+    await destructionState(2, 0);
+    await page.getByTestId('bw-arcade-b').click();await destructionState(1, 1);
+    await page.getByTestId('bw-arcade-a').click();await destructionState(2, 1);
+    await page.getByTestId('bw-arcade-b').click();await destructionState(1, 2);
+    report.destroyKind = {codeToBlocks: true, controllerCycles: 2, otherKindSurvives: true, callbacks: 2};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-destroy-kind.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),
