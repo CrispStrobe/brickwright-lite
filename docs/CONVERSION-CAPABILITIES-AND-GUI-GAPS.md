@@ -1564,7 +1564,7 @@ Source `a0500049b29809f2a2f69b41e47ed7eb9a78ccb0` imports typed `Sprite.onDestro
 
 Original/exported PXT and native/decompile/reimport/SB3 agree on repeated-input trace `I12i13KXI14i15KY`. Producer dialect checks pass230/230. Browser gate inventory checks pass21/21. Same184 import-only102/81/1,0 changed diagnostic rows. Initial schema-sync and premature-observation test failures are preserved privately. All23 distinct affected Arcade checks pass after a focused rerun,0 skips.
 
-Code and Blocks now expose `arcade register instance destruction of ID as TOKEN capturing CAPTURES` and `when arcade instance destruction handler TOKEN runs`. The visible file→Code→Blocks→Run→controller A→From blocks test is wired to the hosted heavy shard. A fresh production bundle and visible GUI execution are pending; this source qualification does not substitute for those gates. Dedicated callback-pair/capture guidance remains open. Nested parallel call timing/captures are next, alongside scene/startup timing, corpus gaps and hosted integration failures. [Receipt](receipts/2026-10-08-arcade-instance-registration.json).
+Code and Blocks now expose `arcade register instance destruction of ID as TOKEN capturing CAPTURES` and `when arcade instance destruction handler TOKEN runs`. The visible file→Code→Blocks→Run→controller A→From blocks test is wired to the hosted heavy shard. Subsequent exact-head hosted GUI execution at `ec2747905274da4bc74dd94cc58321268e60b642` passed this journey; the overall hosted build and heavy browser job still failed other checks. See the hosted integration repair entry below. Dedicated callback-pair/capture guidance remains open. Nested parallel call timing/captures are next, alongside scene/startup timing, corpus gaps and hosted integration failures. [Receipt](receipts/2026-10-08-arcade-instance-registration.json).
 
 
 ### Parallel execution at call sites — 2026-10-08
@@ -1573,6 +1573,40 @@ Source `9697810a2529b1b6aaaa31e7dc9699d5dad828ee` imports `control.runInParallel
 
 All38 affected checks pass,0 skips:16 Arcade,1 canonical SPIKE artifact and21 browser gate inventory checks. Producer dialect232/232 passes. Original/exported PXT and native/decompile/reimport/SB3 agree on repeated-input trace `L12SP12Q13E13N13L14P14Q15E15N15`. Concurrent launches across scene push/pop agree on total26; native stop/restart cancels old queued work and launches one fresh fiber. The SPIKE gate now names the new producer pin and passes its unchanged artifact behavior assertions, resolving the observed parent build refusal.
 
-Code and Blocks expose `arcade run parallel as TOKEN capturing CAPTURES` and `when arcade parallel handler TOKEN runs`; export reconstructs `control.runInParallel(function () { … })`. The visible file→Code→Blocks→Run→A→From blocks test is wired to the hosted heavy shard. Eight GUI journeys are prepared, including instance destruction. The local cold production build was interrupted when shared-host swap was exhausted; no fresh bundle or visible GUI result is claimed. Exact-head hosted build and browser checks remain required. Callback-pair/capture guidance and function-valued callbacks remain GUI/conversion tasks.
+Code and Blocks expose `arcade run parallel as TOKEN capturing CAPTURES` and `when arcade parallel handler TOKEN runs`; export reconstructs `control.runInParallel(function () { … })`. The visible file→Code→Blocks→Run→A→From blocks test is wired to the hosted heavy shard. Eight GUI journeys are prepared, including instance destruction. The local cold production build was interrupted when shared-host swap was exhausted; no fresh bundle or visible GUI result is claimed. Subsequent hosted execution at `ec2747905274da4bc74dd94cc58321268e60b642` passed both new GUI journeys, while the overall build and heavy browser job failed other checks. Callback-pair/capture guidance and function-valued callbacks remain GUI/conversion tasks.
 
-Same184 import-only102/81/1,0 changed diagnostic rows. The largest next group is10 unreadable backgrounds: each references a named asset or external image namespace. Audit complete original project resources and dependencies before treating these as renderer gaps. Next groups include7 tilemap-resource refusals and7 destruction effect/duration refusals. Recover actual assets with provenance; do not substitute blank art or count unavailable inputs as implemented features. Scene/startup timing and overall hosted integration remain open. [Receipt](receipts/2026-10-08-arcade-parallel-registration.json).
+Same184 import-only102/81/1,0 changed diagnostic rows. The original slices still contain10 unreadable backgrounds. The earlier complete tutorial-project audit already recovered six gallery backgrounds on separately preserved full inputs; four still require external package image namespaces. Keep these input sets separate and continue the remaining package-resource work. Custom palettes also remain open. Next groups include7 tilemap-resource refusals and7 destruction effect/duration refusals. Recover actual assets with provenance; do not substitute blank art or count unavailable inputs as implemented features. Scene/startup timing and overall hosted integration remain open. [Receipt](receipts/2026-10-08-arcade-parallel-registration.json).
+
+
+## Hosted integration repair — 2026-10-08
+
+The parent source at `ec2747905274da4bc74dd94cc58321268e60b642` passed all eight
+callback GUI journeys, including instance destruction and parallel captures,
+using the hosted production build. This does not mean overall CI passed:
+[the exact run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37831089850)
+failed ten unit checks and four older heavy-browser checks.
+
+The follow-up repairs stale native-opcode, typed-array, overlap-registration,
+life-state and array-length expectations. The background forever roundtrip now
+retains extension timers, awaits each assertion and cleans up after each path.
+The tutorial CLI uses a literal module import recognized by the reachability
+gate. A populated typed sprite array must mutate a real native sprite.
+
+Camera From Blocks now waits for conversion completion and reads the entire
+CodeMirror document: the visible DOM can omit callback bodies below the large
+tilemap line. Bounce and speech-expiry browser checks supply explicit elapsed
+frame durations. Their fresh hosted GUI rerun remains required. The fast-crossing
+controller observation remains unresolved; the original PXT comparison at the
+controlled test cadence is recorded separately, without changing that browser
+assertion.
+
+Local qualification passed208 distinct checks with no skips, including original
+and exported PXT execution of the crossing fixture, native Code/SB3 roundtrips
+and a populated typed sprite array. The first contact-geometry assumption and
+an unpaced original-simulator timeout remain preserved in private evidence.
+No importer/runtime capability or corpus classification is added by these gate
+repairs. The last original184 census remains102 translated /81 partial /
+1 malformed. Remaining work includes external package assets, custom palettes,
+seven tilemap-resource refusals, seven destruction effect/duration refusals,
+scene/startup timing, function-valued callbacks, and GUI guidance for callback
+pairs and captures. [Receipt](receipts/2026-10-08-arcade-hosted-integration.json).
