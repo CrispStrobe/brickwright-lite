@@ -26,7 +26,7 @@
  *    object {bwUndefined: true} (String() -> 'undefined', valueOf() -> NaN).
  *    encode(undefined) -> UNDEFINED; decode(UNDEFINED) -> undefined.
  *  - Reference values: {bwReference: {kind, id, scope}} for kind in array,
- *    image, tile, animation, scene, physics-engine, player. reference(runtime, kind, id)
+ *    image, tile, legacy-tile, animation, scene, physics-engine, player. reference(runtime, kind, id)
  *    makes one; references with the same (scope, kind, id) are ONE object
  *    (interned, also after a JSON round trip through decode), so a reference
  *    stored in a variable or list item and read back is === to the original.
@@ -75,6 +75,7 @@ const makeValues = () => {
     "array",
     "image",
     "tile",
+    "legacy-tile",
     "animation",
     "scene",
     "physics-engine",

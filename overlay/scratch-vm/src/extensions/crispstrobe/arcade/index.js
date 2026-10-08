@@ -498,6 +498,18 @@ module.exports = makeExt(`// Name: Arcade
             text: 'set Arcade color-coded map image [IMAGE] scale exponent [SCALE]', arguments: {...str('IMAGE',''), ...n('SCALE',4)} },
           { opcode: 'setLegacyTile', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade color tile [INDEX] image [IMAGE] wall [WALL]', arguments: {...n('INDEX',1), ...str('IMAGE',''), ...n('WALL',0)} },
+          { opcode: 'legacyTileLocation', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade color tile column [COLUMN] row [ROW]', arguments: {...n('COLUMN',0),...n('ROW',0)} },
+          { opcode: 'legacyTilesOfType', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade color tiles of index [INDEX]', arguments: n('INDEX',1) },
+          { opcode: 'legacyTileProperty', blockType: Scratch.BlockType.REPORTER,
+            text: 'Arcade color tile [TILE] [PROPERTY]', arguments: {...str('TILE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'legacyTileProperties',defaultValue:'x'}} },
+          { opcode: 'setLegacyTileAt', blockType: Scratch.BlockType.COMMAND,
+            text: 'set Arcade color tile [TILE] index [INDEX]', arguments: {...str('TILE',''),...n('INDEX',1)} },
+          { opcode: 'placeOnLegacyTile', blockType: Scratch.BlockType.COMMAND,
+            text: 'on Arcade color tile [TILE] place sprite [ID]', arguments: {...str('TILE',''),...str('ID','')} },
+          { opcode: 'placeOnRandomLegacyTile', blockType: Scratch.BlockType.COMMAND,
+            text: 'place Arcade sprite [ID] on random color tile [INDEX]', arguments: {...str('ID',''),...n('INDEX',1)} },
           { opcode: 'setTilemap', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade tilemap [DATA]', arguments: str('DATA', '') },
           { opcode: 'tileLocation', blockType: Scratch.BlockType.REPORTER,
@@ -571,6 +583,7 @@ module.exports = makeExt(`// Name: Arcade
           buttonEvents:{acceptReporters:true,items:[{text:'pressed',value:'2049'},{text:'released',value:'2048'},{text:'repeated',value:'2054'}]},
           axes: {acceptReporters: true, items: ['x', 'y']}
           ,dialogLayouts: {acceptReporters: false, items: ['Left', 'Right', 'Top', 'Bottom', 'Center', 'Full']}
+          ,legacyTileProperties: {acceptReporters:false,items:['x','y','tileSet']}
           ,tileLocationProperties: {acceptReporters:false,items:['column','row','x','y','left','right','top','bottom','tileSet']}
           ,physicsEngineProperties: {acceptReporters:false,items:['maxSpeed','minStep','maxStep']}
           ,scaleAnchors:{acceptReporters:true,items:[{text:'middle',value:'0'},{text:'top',value:'1'},{text:'left',value:'2'},{text:'right',value:'4'},{text:'bottom',value:'8'},{text:'top left',value:'3'},{text:'top right',value:'5'},{text:'bottom left',value:'10'},{text:'bottom right',value:'12'}]}
@@ -2780,6 +2793,54 @@ module.exports = makeExt(`// Name: Arcade
           count++;
         }
       if (chosen) return this.placeOnTile({ID:args.ID,LOCATION:this.tileLocation(chosen)},util);
+    }
+    // Legacy Tile retains its creating map; modern Location resolves the
+    // current scene. Keep separate reference kinds even though both use cells.
+    _legacyTile(value) {
+      const id=Scratch.BWValues.referenceId(this._runtime,value,'legacy-tile');
+      return id===null?null:this._tileLocations.get(id);
+    }
+    legacyTileLocation(args) {
+      const map=this._legacyMap(),id='arcade-legacy-tile:'+(++this._nextTileLocationId);
+      this._tileLocations.set(id,{column:Number(Scratch.BWValues.decode(args.COLUMN)),row:Number(Scratch.BWValues.decode(args.ROW)),map});
+      return Scratch.BWValues.reference(this._runtime,'legacy-tile',id);
+    }
+    legacyTileProperty(args) {
+      const tile=this._legacyTile(args.TILE);if(!tile)return 0;
+      const scale=Math.log2(tile.map.tileSize);
+      switch(String(args.PROPERTY)) {
+      case 'x':return (tile.column<<scale)+(1<<(scale-1));
+      case 'y':return (tile.row<<scale)+(1<<(scale-1));
+      case 'tileSet':
+        if(!tile.map.mapImage)throw new TypeError('Cannot read a legacy Tile index while its map is disabled');
+        return imageEngine.getPixel(tile.map.mapImage,tile.column,tile.row);
+      default:return 0;
+      }
+    }
+    legacyTilesOfType(args) {
+      const map=this._legacyMap(),index=Number(Scratch.BWValues.decode(args.INDEX)),result=[];
+      this._syncLegacyMap(map);
+      if(map.mapImage && index>=0 && index<=15)for(let column=0;column<map.columns;column++)
+        for(let row=0;row<map.rows;row++)if(map.indices[row*map.columns+column]===index)
+          result.push(this.legacyTileLocation({COLUMN:column,ROW:row}));
+      return Scratch.BWValues.arrayReference(this._runtime,result);
+    }
+    setLegacyTileAt(args) {
+      const map=this._legacyMap(),tile=this._legacyTile(args.TILE),index=Number(Scratch.BWValues.decode(args.INDEX));
+      if(!tile || !map.mapImage || index<0 || index>15)return;
+      const scale=Math.log2(map.tileSize),column=this.legacyTileProperty({...args,PROPERTY:'x'})>>scale,
+        row=this.legacyTileProperty({...args,PROPERTY:'y'})>>scale;
+      imageEngine.draw(map.mapImage,'setPixel',column,row,index);this._refreshImage(map.mapImage);
+    }
+    placeOnLegacyTile(args,util) {
+      if(!this._legacyTile(args.TILE))return;
+      return this.setSpritePosition({ID:args.ID,X:this.legacyTileProperty({...args,PROPERTY:'x'}),Y:this.legacyTileProperty({...args,PROPERTY:'y'})},util);
+    }
+    placeOnRandomLegacyTile(args,util) {
+      // The original checks sprite/map before lookup (which can create a map).
+      if(!this._sprite(args.ID) || !this._state().tilemap)return;
+      const values=Scratch.BWValues.arrayValue(this._runtime,this.legacyTilesOfType(args));
+      if(values.length)return this.placeOnLegacyTile({ID:args.ID,TILE:values[Math.floor(Math.random()*values.length)]},util);
     }
     _legacyMap() {
       const state=this._state();

@@ -27,5 +27,5 @@ test('legacy map image aliases, definitions, scale and scenes agree with origina
  assert.equal(Object.values(state.sprites)[0].x,3);
 });
 test('legacy location methods, collision callbacks, invalid arity and shadowed namespaces remain diagnosed',()=>{
- for(const source of ['scene.setTileMap()','scene.setTile(1)','scene.setTile(1,img`1`,true,2)','scene.setTileMap(img`1`,TileScale.NoSuchScale)','let scene=1;scene.setTileMap(img`1`)','let TileScale=1;scene.setTileMap(img`1`,TileScale.Four)','scene.setTileMap(img`1`);tiles.setTilemap(null)','scene.getTile(0,0)','scene.getTilesByType(1)','scene.onHitTile(SpriteKind.Player,1,function(sprite:Sprite){})'])assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
+ for(const source of ['scene.setTileMap()','scene.setTile(1)','scene.setTile(1,img`1`,true,2)','scene.setTileMap(img`1`,TileScale.NoSuchScale)','let scene=1;scene.setTileMap(img`1`)','let TileScale=1;scene.setTileMap(img`1`,TileScale.Four)','scene.setTileMap(img`1`);tiles.setTilemap(null)','scene.getTile(0)','scene.getTilesByType()','scene.onHitTile(SpriteKind.Player,1,function(sprite:Sprite){})'])assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
 });

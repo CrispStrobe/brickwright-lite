@@ -15,7 +15,7 @@ export function applyDeclaredValueType(graph, key, annotation) {
         applyDeclaredValueType(graph, graph.element(key), text.slice(6, -1));
         return;
     }
-    const type = {'mp.Player': 'Player', Image: 'Image', Sprite: 'Sprite', 'tiles.Location': 'TileLocation',
+    const type = {'mp.Player': 'Player', Image: 'Image', Sprite: 'Sprite', 'tiles.Location': 'TileLocation', 'tiles.Tile':'LegacyTile',
         'animation.Animation': 'Animation', 'scene.Scene': 'Scene', ArcadePhysicsEngine: 'PhysicsEngine',
         number: 'number', string: 'string', boolean: 'boolean'}[text];
     if (type) graph.add(key, type);

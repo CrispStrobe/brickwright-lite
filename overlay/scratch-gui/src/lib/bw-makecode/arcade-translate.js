@@ -227,7 +227,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
         this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.spriteResultFunctions = references.spriteFunctions;
         this.spriteResultBindings = new Set();
@@ -464,7 +464,7 @@ class ArcadeTranslator extends BaseTranslator {
                 const gaps=this.unsupported.length;
                 let value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
                 // An array we could not translate (already named as a gap) stands in as an
-                // EMPTY array, so \`for (const t of scene.getTilesByType(4))\` runs no times
+                // EMPTY array, so \`for (const t of unknownArrayFactory())\` runs no times
                 // instead of failing at run time on "Array reference is null or expired".
                 if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
@@ -947,6 +947,10 @@ class ArcadeTranslator extends BaseTranslator {
             if(['image','action','interval'].includes(node.name))return `arcade animation ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`animation.Animation.${node.name} requires animation property support`);return '0';
         }
+        if(this.handleTemplates && node?.type==='Member' && this.legacyTileReferences?.has(node.object)) {
+            if(['x','y','tileSet'].includes(node.name))return `arcade color tile ${node.name} of (${this.expr(node.object)})`;
+            this.unsupported.push(`tiles.Tile.${node.name} is not a supported legacy Tile property`);return '0';
+        }
         if(this.handleTemplates && node?.type==='Member' && this.tileReferences?.has(node.object)) {
             const property=node.name==='col'?'column':node.name;
             if(['column','row','x','y','left','right','top','bottom','tileSet'].includes(property))return `arcade tile ${property} of (${this.expr(node.object)})`;
@@ -955,6 +959,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && node?.type==='Call') {
             const api=this.path(node.callee),args=node.args||[];
             if(node.callee?.type==='Member' && this.animationReferences?.has(node.callee.object) && args.length===0 && ['getImage','getAction','getInterval'].includes(node.callee.name))return `arcade animation ${node.callee.name.slice(3).toLowerCase()} of (${this.expr(node.callee.object)})`;
+            if(['scene.getTile','scene.getTilesByType'].includes(api)) {
+                if(this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene')){this.unsupported.push(`${api} refers to a shadowed scene binding`);return '0';}
+                if(api==='scene.getTile' && args.length===2)return `arcade color tile column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
+                if(api==='scene.getTilesByType' && args.length===1)return `arcade color tile array index (${this.expr(args[0])})`;
+                this.unsupported.push(`${api} has invalid arity`);return '0';
+            }
             if(api==='tiles.getTileLocation' && args.length===2)return `arcade tile location column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
             if(api==='tiles.getTilesByType' && args.length===1){this.usesArrays=true;return `arcade tile array image (${this.expr(args[0])})`;}
             if(api==='tiles.tileAtLocationEquals' && args.length===2)return `arcade tile (${this.expr(args[0])}) equals image (${this.expr(args[1])})`;
@@ -1192,7 +1202,15 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='addAnimationFrame' && this.animationReferences?.has(node.callee.object) && a.length===1){push(`arcade add animation frame (${this.expr(node.callee.object)}) image (${this.expr(a[0])})`);return;}
         if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='setInterval' && this.animationReferences?.has(node.callee.object) && a.length===1){push(`arcade set animation interval (${this.expr(node.callee.object)}) to (${this.expr(a[0])})`);return;}
-        if(this.handleTemplates && ['scene.setTileMap','scene.setTile'].includes(name) && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))) {push(this.note(`${name} refers to a shadowed scene binding`));return;}
+        if(this.handleTemplates && ['scene.setTileMap','scene.setTile','scene.setTileAt','scene.place','scene.placeOnRandomTile'].includes(name) && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))) {push(this.note(`${name} refers to a shadowed scene binding`));return;}
+        if(this.handleTemplates && ['scene.setTileAt','scene.place','scene.placeOnRandomTile'].includes(name)) {
+            if(a.length!==2){push(this.note(`${name} requires two arguments`));return;}
+            if(name==='scene.setTileAt')push(`arcade set color tile (${this.expr(a[0])}) index (${this.expr(a[1])})`);
+            else if(name==='scene.place')push(`arcade on color tile (${this.expr(a[0])}) place sprite (${this.expr(a[1])})`);
+            else push(`arcade place sprite (${this.expr(a[0])}) on random color tile (${this.expr(a[1])})`);
+            return;
+        }
+        if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='place' && this.legacyTileReferences?.has(node.callee.object) && a.length===1){push(`arcade on color tile (${this.expr(node.callee.object)}) place sprite (${this.expr(a[0])})`);return;}
         if(this.handleTemplates && name==='scene.setTileMap') {
             if(a.length<1 || a.length>2){push(this.note('scene.setTileMap requires an image and optional tile scale'));return;}
             const scale=a[1]?this.expr(a[1]):'4';
@@ -2027,7 +2045,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
 const inferImageReferences = (ast, pathOf, imageOf) => {
-    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -2088,7 +2106,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
         if(node?.type==='LegacyParsedValue')return new Set(['any']);
         if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
-        if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+        if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
         if (node?.type === 'Identifier') return binding(owner, node.name);
         if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
@@ -2116,12 +2134,14 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(api==='sprites.allOfKind')return new Set(['array','sprite-array']);
             if(api==='tiles.getTilesByType')return new Set(['array','tile-array']);
             if(api==='tiles.getTileLocation')return new Set(['tile']);
+            if(api==='scene.getTile')return new Set(['legacy-tile']);
+            if(api==='scene.getTilesByType')return new Set(['array','legacy-tile-array']);
             if(['tiles.tileAtLocationEquals','tiles.tileAtLocationIsWall'].includes(api))return new Set(['boolean']);
             if(node.callee?.type==='Member' && node.callee.name==='isHittingTile' && node.args.length===1 && typeOf(node.callee.object,owner).has('sprite'))return new Set(['boolean']);
             if(node.callee?.type==='Member' && node.callee.name==='toString' && !node.args.length && typeOf(node.callee.object,owner).has('sprite'))return new Set(['string']);
             if (api === 'image.create' && node.args.length === 2 || api === 'scene.backgroundImage' && !node.args.length) return new Set(['image']);
-            if (node.callee?.type === 'Member' && (['pop','shift','removeAt','get'].includes(node.callee.name) || node.callee.name==='_pickRandom' && !node.args.length) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
-            if (api==='Math.pickRandom' && node.args.length===1) return new Set([...typeOf(node.args[0],owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+            if (node.callee?.type === 'Member' && (['pop','shift','removeAt','get'].includes(node.callee.name) || node.callee.name==='_pickRandom' && !node.args.length) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+            if (api==='Math.pickRandom' && node.args.length===1) return new Set([...typeOf(node.args[0],owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
             if (node.callee?.type === 'Identifier' && functions.has(node.callee.name)) return functions.get(node.callee.name).returns || new Set();
             if (['sprites.create', 'sprites.createProjectile', 'sprites.createProjectileFromSide',
                 'sprites.createProjectileFromSprite'].includes(api)) return new Set(['sprite']);
@@ -2185,11 +2205,12 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     for (const {node,owner} of entries) {
         const value=cell(node,owner);
         for (const type of typeOf(node,owner)) {
-            const name={image:'Image',sprite:'Sprite',tile:'TileLocation',animation:'Animation',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
+            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
             if(name)graph.add(value,name);
         }
         if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
         if(node.type==='Call' && pathOf(node.callee)==='sprites.allOfKind'){graph.add(value,'array');graph.add(graph.element(value),'Sprite');}
+        if(node.type==='Call' && pathOf(node.callee)==='scene.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'LegacyTile');}
         if(node.type==='Call' && pathOf(node.callee)==='tiles.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'TileLocation');}
         if(node.type==='Array') for(const item of node.items)connect(graph.element(value),cell(item,owner));
         if(node.type==='Declaration')for(const decl of node.decls){
@@ -2236,13 +2257,14 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (graph.has(value,'Sprite')) sprites.add(node);
         if (graph.has(value,'Player')) players.add(node);
         if (graph.has(value,'TileLocation')) tiles.add(node);
+        if (graph.has(value,'LegacyTile')) legacyTiles.add(node);
         if (graph.has(value,'Animation')) animations.add(node);
         const types=typeOf(node,owner);
         if(types.has('scene') || graph.has(value,'Scene') && !['number','string','boolean','Image','Sprite','PhysicsEngine'].some(type=>graph.has(value,type)))scenes.add(node);
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {players, images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {players, images: references, tiles, legacyTiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -2587,7 +2609,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
         if (node.type === 'Assignment' && t.imageOf(node.right)) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' && t.imageReferences.has(node.callee.object)) return true;
-        if (node.type === 'Call' && ['image.create','scene.setTileMap','scene.setTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
+        if (node.type === 'Call' && ['image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
             (['setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
@@ -2602,7 +2624,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         for(const value of Object.values(node))if(Array.isArray(value))value.forEach(collectMapCalls);else collectMapCalls(value);
     };
     collectMapCalls(ast);
-    if(['scene.setTileMap','scene.setTile'].some(name=>mapCalls.has(name)) &&
+    if(['scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile'].some(name=>mapCalls.has(name)) &&
         ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel','tiles.getTilesByType','tiles.tileAtLocationEquals','tiles.setTileAt','tiles.setWallAt','tiles.placeOnRandomTile'].some(name=>mapCalls.has(name)))
         t.unsupported.push('Mixing legacy color-coded maps with modern map replacement, image lookup or per-location mutation is not yet supported');
     const requiresSpriteRuntime = usesRuntimeSpriteMethods(ast);
