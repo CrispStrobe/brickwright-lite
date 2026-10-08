@@ -2049,29 +2049,33 @@ jobs:
       # itself and drives the visible editor and controller. On the heavy shard:
       # light ran 21 of its 30 minutes on 2026-10-07, heavy 16.
       - name: Browser gate — Arcade callback completion and elapsed frame clock
-        timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-callback-completion-browser.mjs
       - name: Browser gate — Arcade nested frame registration and live captures
-        timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-update-registration-browser.mjs
       - name: Browser gate — Arcade controller registration, replacement and repeats
-        timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-button-registration-browser.mjs
       - name: Browser gate — Arcade life-zero and countdown registration with revival
-        timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-info-registration-browser.mjs
       - name: Browser gate — Arcade forever registration with live captures and yielding
-        timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-forever-registration-browser.mjs
       - name: Browser gate — Arcade sprite registrations, live captures and yielding destruction
-        timeout-minutes: 3  # PROVISIONAL — qualify five hosted green runs before deriving a budget
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-sprite-registration-browser.mjs
+      - name: Browser gate — Arcade instance destruction live captures and yielding order
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-instance-registration-browser.mjs
       - name: Browser gate — Arcade animation frames through Code, Blocks and the controller
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}

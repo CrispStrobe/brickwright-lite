@@ -63,6 +63,7 @@ const samePalette = (left, right) => left.every((colour, index) =>
     String(colour).toLowerCase() === String(right[index]).toLowerCase());
 
 const REGISTERED_HAT_KINDS = {
+    arcade_whenRegisteredInstanceDestroyed:'instanceDestroyed',
     arcade_whenRegisteredLegacyWall:'legacyWall',
     arcade_whenRegisteredMultiplayerButton:'multiplayerButton',
     arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile',
@@ -73,7 +74,7 @@ const REGISTERED_HAT_KINDS = {
 };
 const REGISTERED_COMMANDS = new Set(['arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler',
-    'arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
+    'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
 
 const KEY_BUTTON = {
@@ -1445,6 +1446,7 @@ class ArcadeEmitter {
         case 'arcade_registerUpdateHandler':
         case 'arcade_registerIntervalHandler':
         case 'arcade_registerButtonHandler':
+        case 'arcade_registerInstanceDestroyedHandler':
         case 'arcade_registerDestroyedHandler':
         case 'arcade_registerOverlapHandler':
         case 'arcade_registerScenePushHandler':
@@ -1453,7 +1455,7 @@ class ArcadeEmitter {
         case 'arcade_registerLifeZeroHandler':
         case 'arcade_registerCountdownHandler': {
             const kinds={arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerIntervalHandler:'interval',
-                arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
+                arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
@@ -1464,6 +1466,7 @@ class ArcadeEmitter {
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
                 lifeZero:'info.onLifeZero',countdown:'info.onCountdownEnd'};
             const args=[];let api=apis[kind];
+            if(kind==='instanceDestroyed')api=`${this.arrayValue(b,'ID')}.onDestroyed`;
             if(kind==='lifeZero'){const playerApi=this.infoPlayerApi(b);if(!playerApi)return;api=playerApi+'.onLifeZero';}
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));

@@ -177,6 +177,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'playerButtonPressed',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] button [BUTTON] pressed?',arguments:{...str('PLAYER',''),...n('BUTTON',0)}},
           {opcode:'registerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{BUTTON:{type:Scratch.ArgumentType.STRING,menu:'buttons',defaultValue:'a'},EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerInstanceDestroyedHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register instance destruction of [ID] as [TOKEN] capturing [CAPTURES]',arguments:{...str('ID',''),...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredInstanceDestroyed',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade instance destruction handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerDestroyedHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register destroyed kind [KIND] as [TOKEN] capturing [CAPTURES]',arguments:{...str('KIND','Player'),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredKindDestroyed',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade destroyed kind handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerOverlapHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register overlap kind [KIND] with [OTHER_KIND] as [TOKEN] capturing [CAPTURES]',arguments:{...str('KIND','Player'),...str('OTHER_KIND','Food'),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -1772,6 +1774,16 @@ module.exports = makeExt(`// Name: Arcade
       };
       return created && typeof created.then === 'function' ? created.then(finish) : finish(created);
     }
+    registerInstanceDestroyedHandler(args,util) {
+      const id=String(args.ID),state=this._state();
+      if(!state.sprites[id])return;
+      (state.spriteDestroyedHandlers ||= {})[id]=this._handlerRegistration(args,util);
+    }
+    whenRegisteredInstanceDestroyed(args,util) {return this.whenRegisteredWall(args,util);}
+    *_instanceDestroyedSteps(registration,kind,id,util) {
+      if(registration && typeof registration==='object')yield* this._registeredCallbackSteps([registration],'arcade_whenRegisteredInstanceDestroyed',{first:id},util);
+      yield* this._registeredCallbackSteps(this._destroyedHandlers.filter(h=>h.kind===kind),'arcade_whenRegisteredKindDestroyed',{first:id},util);
+    }
     registerSpriteDestroyed(args) {
       const id = String(args.ID);
       const state = this._state();
@@ -1797,10 +1809,10 @@ module.exports = makeExt(`// Name: Arcade
       delete state.sprites[id];
       const token = state.spriteDestroyedHandlers?.[id];
       if (state.spriteDestroyedHandlers) delete state.spriteDestroyedHandlers[id];
-      if (token) this._emitSpriteHat('arcade_whenRegisteredDestroyed', {TOKEN: token}, id, '', {...sprite});
+      if (typeof token==='string') this._emitSpriteHat('arcade_whenRegisteredDestroyed', {TOKEN: token}, id, '', {...sprite});
       this._emitSpriteHat('arcade_whenSpriteDestroyed', {KIND: sprite.kind}, id, '', {...sprite});
       this._changed();
-      return this._runTerrainGenerator(this._registeredCallbackSteps(this._destroyedHandlers.filter(h=>h.kind===sprite.kind),'arcade_whenRegisteredKindDestroyed',{first:id},util));
+      return this._runTerrainGenerator(this._instanceDestroyedSteps(token,sprite.kind,id,util));
     }
     setSpriteProperty(args, util) {
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);

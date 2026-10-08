@@ -1322,9 +1322,9 @@ class ArcadeTranslator extends BaseTranslator {
                 this.spriteSpeech(handle, node.callee.name, a, push);
             }
             else if (node.callee.name === 'onDestroyed') {
-                const token = this.destroyedInstanceHandlers.get(node);
-                if (token) push(`arcade register destruction of ${handle} as "${token}"`);
-                else push(this.note(`${name}() — callback registration needs a sprite handle`));
+                const registration = this.sceneRegistrations.get(node);
+                if (registration) push(`arcade register instance destruction of (${handle}) as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
+                else push(this.note('sprite.onDestroyed() requires one inline callback without parameters and a typed sprite reference'));
             }
             else if (node.callee.name === 'setKind') push(`arcade set kind of ${handle} to "${kindOf(a[0])}"`);
             else if (node.callee.name === 'setFlag' && this.path(a[0]) === 'SpriteFlag.AutoDestroy') {
@@ -2337,7 +2337,8 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             for (const param of node.params || []) bindings.set(param, {key:translator.varName(param),owner});
             for (const local of localNames(node.body)) bindings.set(local, {key:local,owner});
         }
-        const spec=node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
+        const instance=node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='onDestroyed' && translator.spriteReferences.has(node.callee.object);
+        const spec=instance?{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}:node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
         if (spec) {
             const handler=node.args?.[spec.handlerIndex];
             const kind=node.args?.[0];
@@ -2406,7 +2407,7 @@ const emitSceneRegistrations = (translator,out,localHandles=new Map(),callbackLo
         const spriteParams=kind==='destroyed'?handler.params.slice(0,1):kind==='overlap'?handler.params.slice(0,2):[];
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...spriteParams]);
         translator.handleAliases=new Map();
-        const label=kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
+        const label=kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
         out.push(`WHEN arcade ${label} handler "${token}" runs:`);
         if(kind==='multiplayerButton' && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
         for(const [index,param] of spriteParams.entries())out.push(`  arcade set local ${translator.varName(param)} to arcade event ${index===0?'first':'second'}`);
@@ -2819,30 +2820,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     } while (aliasesChanged);
     t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body})));
     const parameterHandles = inferProcedureHandleParameters(ast, functions, t.handleVars, node => t.path(node));
-    let nextDestroyedHandler = 0;
-    const scanDestroyedRegistrations = (node, outerLocals = new Set()) => {
-        if (!node || typeof node !== 'object') return;
-        if (['FunctionDeclaration','FunctionExpression'].includes(node.type)) {
-            outerLocals = new Set([...outerLocals, ...(node.params || []), ...declaredWithin(node.body)]);
-        }
-        if (node.type === 'Call' && node.callee?.type === 'Member' && node.callee.name === 'onDestroyed' && nameOf(node) !== 'sprites.onDestroyed') {
-            const handler = node.args?.[0];
-            if (node.args?.length === 1 && handler?.type === 'FunctionExpression' &&
-                (t.handleRef(node.callee.object) || t.spriteReferences.has(node.callee.object))) {
-                const localNames = new Set([...(handler.params || []), ...declaredWithin(handler.body)]);
-                const capturesOuter = value => value && typeof value === 'object' &&
-                    (value.type === 'Identifier' && outerLocals.has(value.name) && !localNames.has(value.name) ||
-                        Object.values(value).some(child=>Array.isArray(child)?child.some(capturesOuter):capturesOuter(child)));
-                if (handler.body.some(capturesOuter)) t.unsupported.push('sprite.onDestroyed() callback captures a function local');
-                t.destroyedInstanceHandlers.set(node, `__bwDestroyed${++nextDestroyedHandler}`);
-            }
-        }
-        for (const value of Object.values(node)) {
-            if (Array.isArray(value)) value.forEach(child=>scanDestroyedRegistrations(child,outerLocals));
-            else if (value && typeof value === 'object') scanDestroyedRegistrations(value,outerLocals);
-        }
-    };
-    scanDestroyedRegistrations(ast);
     t.handleTemplates = new Map();
     t.handleImageArrays = new Map();
     t.handleImageLiterals = new Map();
@@ -3102,11 +3079,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     };
     for (const call of calls.filter(call => nameOf(call) === 'control.runInParallel')) {
         out.push('WHEN flag clicked:');
-        emitCallbackBody(call.args[0]);
-        out.push('');
-    }
-    for (const [call, token] of t.destroyedInstanceHandlers) {
-        out.push(`WHEN arcade destruction handler "${token}" runs:`);
         emitCallbackBody(call.args[0]);
         out.push('');
     }
