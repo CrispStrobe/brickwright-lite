@@ -3189,8 +3189,17 @@ const translateOverlapOnly = (ast, assets) => {
 export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
     const source = map['main.ts'] || '';
-    const supplementalCodeDiagnostics = Object.keys(map).filter(filename => filename !== 'main.ts' && /\.ts$/.test(filename) && !/\.g\.ts$/.test(filename))
+    const projectInputDiagnostics = Object.keys(map).filter(filename => filename !== 'main.ts' && /\.ts$/.test(filename) && !/\.g\.ts$/.test(filename))
         .map(filename => `Project code file ${JSON.stringify(filename)} is present but supplemental TypeScript translation is not implemented`);
+    if (map['pxt.json']) {
+        try {
+            const palette = JSON.parse(map['pxt.json']).palette;
+            if (palette !== undefined && (!Array.isArray(palette) || palette.length !== ARCADE_PALETTE.length ||
+                palette.slice(1).some((color, index) => String(color).toLowerCase() !== ARCADE_PALETTE[index + 1].toLowerCase()))) {
+                projectInputDiagnostics.push('Project custom palette is preserved in source but native Arcade rendering still uses the default palette');
+            }
+        } catch (error) { projectInputDiagnostics.push(`Project pxt.json could not be read: ${error.message}`); }
+    }
 
     const assets = {};
     const tilemaps = {};
@@ -3262,7 +3271,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source)));
     const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
-        unsupported: [...new Set([...animationDiagnostics, ...supplementalCodeDiagnostics, ...result.unsupported])]});
+        unsupported: [...new Set([...animationDiagnostics, ...projectInputDiagnostics, ...result.unsupported])]});
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const ast = lowerLazyValues(namespaceBindings.program || parsed);
     const flattened = namespaceBindings.program ? ast : null;

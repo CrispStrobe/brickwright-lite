@@ -127,3 +127,21 @@ test('audit directory discovers native mkcd and pxt projects with their complete
         for(const row of report.rows){assert.equal(row.target,'arcade');assert.equal(row.stage,'translated');assert.equal(row.sourceRecovered,true);}
     } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+
+test('native-project audit reports missing offline extension inputs separately from original compiler errors',
+    {skip: hasRuntime('arcade') ? false : 'MakeCode runtime not synced (npm run sync:makecode) — pxt compiler absent'},async()=>{
+    const {makeCodeProjectFile}=await import('../overlay/scratch-gui/src/lib/bw-makecode/project-file.js');
+    const dir=fs.mkdtempSync(path.join(os.tmpdir(),'bw-extension-audit-'));
+    try{
+        const input=path.join(dir,'external.mkcd'),out=path.join(dir,'audit.json');
+        const dependency='github:example/absent-offline-package';
+        fs.writeFileSync(input,makeCodeProjectFile({'main.ts':'let value=17','pxt.json':JSON.stringify({name:'External',dependencies:{device:'*',external:dependency},files:['main.ts']})},{target:'arcade'}));
+        const result=spawnSync(process.execPath,[CLI,'--target','arcade','--compile','--out',out,input],{cwd:ROOT,encoding:'utf8',timeout:60000});
+        assert.equal(result.status,0,result.stderr);
+        const row=JSON.parse(fs.readFileSync(out,'utf8')).rows[0];
+        assert.equal(row.compile.status,'unavailable');assert.equal(row.compile.code,'NO_EXTENSION');
+        assert.ok(row.compile.extensions.some(extension=>extension.includes(dependency)));
+        assert.notEqual(row.stage,'pxt-compile-failed');
+    }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});

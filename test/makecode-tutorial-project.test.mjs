@@ -51,3 +51,14 @@ test('present supplemental Arcade code is named rather than silently ignored',()
     assert.ok(imported.unsupported.some(message=>message.includes('game.ts') && message.includes('not implemented')));
     assert.ok(!imported.unsupported.some(message=>message.includes('images.g.ts')));
 });
+
+
+test('custom palette rendering remains an explicit gap while project source retains its colors',async()=>{
+    const {ARCADE_PALETTE}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js');
+    const palette=['#000000',...ARCADE_PALETTE.slice(1)];
+    const files={'main.ts':'let x=1','pxt.json':JSON.stringify({palette})};
+    assert.deepEqual(arcadeToPseudocode(files).unsupported,[]);
+    palette[2]='#010203';files['pxt.json']=JSON.stringify({palette});
+    assert.ok(arcadeToPseudocode(files).unsupported.some(message=>message.includes('custom palette')));
+    assert.equal(JSON.parse(files['pxt.json']).palette[2],'#010203');
+});
