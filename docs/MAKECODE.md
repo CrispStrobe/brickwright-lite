@@ -1045,3 +1045,50 @@ pause/obstacle ordering remain open, as do U03 painter/resource lifecycle and
 ranked artwork/palette/effect/music gaps. Exact-head hosted CI and stacked
 integration remain pending.
 [Receipt](receipts/2026-10-08-arcade-button-registration.json).
+
+### Unified life-zero and countdown registration — 2026-10-08
+
+`info.onLifeZero`, player1–4 life-zero callbacks and `info.onCountdownEnd` now
+register at their authored call sites without a scene-stack selector. Repeated
+registration replaces the matching handler and retains live shared captures.
+Programs containing these callbacks use native player life/score state and its
+hasLife/hasScore queries. Assigning zero or negative life invokes the appropriate
+handler without an artificial positive-life prerequisite; revival rearms it.
+Countdown handlers can continue play and run again after a new countdown.
+
+Original and exported PXT agree with native/decompile/reimport/SB3 on trace
+`L9M10T10`, revived life2/player2 life3 and one callback of each kind. Visible A
+input and original PXT input agree on `L9M10T10L10M11T11` with two of each callback.
+Existing registration, callback, player-state and local/captured-value blocks
+and pseudocode words cover this path; no producer pin/opcode change is needed.
+Dedicated callback authoring guidance and graphics/resource editor work remain
+separate GUI tasks.
+
+Qualification:88 distinct affected tests pass after focused reruns, no skips:
+61 Arcade tests,14 gate-inventory checks and13 source-policy/legacy Tile checks.
+The broad suite's old fixed-target assumptions were replaced with native VM
+coordinate, neighbour-write, velocity, geometry, trigonometry and20-case compound
+operator observations. Timed-spawn checks now distinguish the immediate first
+spawn from the newest periodic spawn. Initial failures remain in private evidence.
+Four callback browser journeys are now wired into hosted CI; the inventory
+recognizes Node module preloads while still rejecting mere mentions/preload-only
+commands. A legacy Tile test now resolves shared value state through the audited
+VM source helper.
+
+Production `gui.b9f5aa3d.js` passes native file→Code→Blocks→flag→visible A revival and
+countdown repeat, plus all three preceding callback journeys on that bundle.
+No page/block/build errors; boot checks pass. Initial JavaScript 4,360,790 bytes
+is below the unchanged4,467,136 budget.
+
+The same184 immutable apps still report102 translated/81 partial/1 malformed,
+with zero changed diagnostic rows: an import-only measure. Forever and sprite
+overlap/destruction registration, first phase, push/pop and whole-loop pause/
+obstacle timing remain open. Legacy authored hats and variable-based info paths
+outside these callback-bearing/native scene programs remain separate boundaries.
+U03 painter/resource lifecycle and ranked artwork/palette/effect/music gaps are
+still tracked. The preceding controller head's hosted build had44 unit failures
+and heavy browser camera/pixel/physics/speech failures. This slice repairs some
+local contracts; it does not claim overall hosted integration is green. Next
+finish that gate cleanup alongside the remaining callback families. Exact-head
+CI and stacked integration remain pending.
+[Receipt](receipts/2026-10-08-arcade-info-registration.json).
