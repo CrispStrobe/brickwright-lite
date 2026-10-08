@@ -28,7 +28,7 @@ module.exports = makeExt(`// Name: Arcade
     constructor(runtime) {
       this._runtime = runtime;
       this._fallbackState = null;
-      this._sceneStack = [];this._sceneFrames=new WeakMap();
+      this._sceneStack = [];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
@@ -64,7 +64,7 @@ module.exports = makeExt(`// Name: Arcade
       this._terrainFrame = null;
       this._terrainStopped = false;
       if (runtime && runtime.on) {
-        runtime.on('ARCADE_FRAME', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._advance(1 / 30); });
+        runtime.on('ARCADE_FRAME', elapsedMs => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); });
         runtime.on('ARCADE_FRAME_END', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); });
         runtime.on('ARCADE_BUTTON_DOWN', () => this._dialogs?.[0]?.dismiss());
         runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
@@ -95,7 +95,7 @@ module.exports = makeExt(`// Name: Arcade
               runtime.renderer?.destroyDrawable(bundle[key].drawable,'background');runtime.renderer?.destroySkin(bundle[key].skin);
             }
           }
-          this._sceneBundles.clear();this._sceneStack=[];this._sceneFrames=new WeakMap();
+          this._sceneBundles.clear();this._sceneStack=[];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
           this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
@@ -3021,8 +3021,11 @@ module.exports = makeExt(`// Name: Arcade
     _advance(dt) {
       if(this._terrainStopped)return;
       const owner=this._state();
+      const elapsed=(this._pendingSceneSeconds.get(owner) || 0)+dt;
+      this._pendingSceneSeconds.set(owner,elapsed);
       const existing=this._sceneFrames.get(owner);if(existing)return existing;
-      const epoch=this._terrainEpoch,result=this._runTerrainGenerator(this._advanceFrameSteps(dt));
+      this._pendingSceneSeconds.delete(owner);
+      const epoch=this._terrainEpoch,result=this._runTerrainGenerator(this._advanceFrameSteps(elapsed));
       if(result?.then){
         const pending=result.catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message)).finally(()=>{if(this._sceneFrames.get(owner)===pending)this._sceneFrames.delete(owner);if(this._terrainFrame===pending && epoch===this._terrainEpoch)this._terrainFrame=null;});
         this._sceneFrames.set(owner,pending);if(this._state()===owner)this._terrainFrame=pending;return pending;

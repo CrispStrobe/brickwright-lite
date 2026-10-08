@@ -67,10 +67,10 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () { hero.image.set
     const ext = new (loadExtensionClass('arcade'))(); const paletteProbe = probeExtension(loadExtensionClass('arcade'));
     for (const opcode of ['spritePixel','setSpritePixel','drawSpriteImage']) assert.ok(paletteProbe.opcodes.has(opcode));
     assert.equal(ext.spritePixel({ID:'missing',X:0,Y:0}),0);
-    run.vm.postIOData('keyboard',{key:' ',isDown:true}); for(let i=0;i<4;i++)run.vm.runtime._step();
+    run.vm.postIOData('keyboard',{key:' ',isDown:true}); for(let i=0;i<4;i++)run.vm.runtime._step(1000 / 30);
     assert.equal(state.image.pixels[0],0); assert.equal(state.mask[0],0);
     const saved = await run.vm.saveProjectSb3(); await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
-    run.vm.greenFlag(); for(let i=0;i<10;i++)run.vm.runtime._step();
+    run.vm.greenFlag(); for(let i=0;i<10;i++)run.vm.runtime._step(1000 / 30);
     assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0].image.pixels[0],2);
     const recreated = new SB3Creator(); recreated.parse(run.creator.decompile()); assert.deepEqual(recreated.warnings,[]);
     const out = exported(run.creator); assert.deepEqual(out.unsupported,[]);

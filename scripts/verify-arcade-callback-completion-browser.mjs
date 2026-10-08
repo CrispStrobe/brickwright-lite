@@ -37,6 +37,21 @@ try{
   report.samples.push({completed,before:values.before,after:values.after,inB:values.inB,inC:values.inC,finalX:values.finalX});
   assert.ok(values.after<values.before,'motion continues during pause');for(const key of ['inB','inC','finalX'])assert.equal(values[key],values.after,key);
  }
+ await page.locator('[class*="stop-all_stop-all"]').first().click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+ const motionSource='let actor=sprites.create(img`5 5\n5 5`,SpriteKind.Player)\nactor.setPosition(40,60)\ncontroller.moveSprite(actor,30,0)';
+ const motionProject=makeCodeProjectFile({'main.ts':motionSource,'pxt.json':JSON.stringify({name:'Elapsed clock',dependencies:{device:'*'},files:['main.ts']})},{target:'arcade',name:'Elapsed clock'});
+ await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'elapsed-clock.mkcd',mimeType:'application/json',buffer:Buffer.from(motionProject)});
+ await page.getByText(/Imported the Arcade game.*elapsed-clock/).first().waitFor({state:'visible'});
+ await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
+ await page.getByRole('tab',{name:'Blocks',exact:true}).click();await page.locator('[class*="green-flag_green-flag"]').first().click();
+ await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites).some(s=>s.kind==='Player'));
+ const measure=()=>page.evaluate(()=>{const r=window.__brickwrightStore.getState().scratchGui.vm.runtime,s=Object.values(r.bwArcadeDeviceState.sprites).find(s=>s.kind==='Player');return {wall:r.currentMSecs,elapsed:r.bwArcadeDeviceState.elapsedMs,x:s.x};});
+ const right=page.getByTestId('bw-arcade-right');await right.hover();await page.mouse.down();const before=await measure();
+ await page.waitForFunction(start=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.elapsedMs-start>=500,before.elapsed);
+ const after=await measure();await page.mouse.up();
+ const elapsed=after.elapsed-before.elapsed,wall=after.wall-before.wall,dx=after.x-before.x;
+ report.frameClock={before,after,elapsed,wall,dx};assert.ok(Math.abs(elapsed-wall)<=50,'Arcade time tracks VM wall time');
+ assert.ok(Math.abs(dx-elapsed*.03)<2,'visible controller motion matches elapsed time with fixed-point rounding');
  report.blockErrors=await page.evaluate(()=>window.__bwCallbackErrors);assert.deepEqual(report.blockErrors,[]);assert.deepEqual(report.errors,[]);
  await page.screenshot({path:out.replace(/\.json$/,'.png')});report.status='passed';
 }catch(e){report.status='failed';report.failure=e.stack;throw e;}

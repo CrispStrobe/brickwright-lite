@@ -184,10 +184,13 @@ function variableSnapshot (vm) {
     return snapshot;
 }
 
-/** Advance controlled VM frames with the normal Promise continuation queue. */
-export async function stepFrames(vm, frames) {
+/** Advance explicit physics frames with the normal Promise continuation queue.
+ * This does not fast-forward wait timers; controlled-clock tests inject the
+ * runtime clock too, while ordinary fixtures retain their real wait clock.
+ */
+export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     for (let i = 0; i < frames; i++) {
-        vm.runtime._step();
+        vm.runtime._step(frameMs);
         await new Promise(resolve => setImmediate(resolve));
     }
 }

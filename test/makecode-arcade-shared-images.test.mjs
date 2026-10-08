@@ -39,7 +39,7 @@ third.image.setPixel(1,0,8)`;
     const rerun=await reexport(run); assert.equal(sprites(rerun)[0].image,sprites(rerun)[1].image);
     assert.deepEqual([...sprites(rerun)[1].image.pixels],[0,8]);
     const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
-    run.vm.greenFlag();for(let i=0;i<10;i++)run.vm.runtime._step();
+    run.vm.greenFlag();for(let i=0;i<10;i++)run.vm.runtime._step(1000 / 30);
     assert.equal(sprites(run)[0].image,sprites(run)[1].image);
 });
 
@@ -57,7 +57,7 @@ foe.image.setPixel(0,0,0)
 controller.A.onEvent(ControllerButtonEvent.Pressed,function(){hero.setImage(__bwFrames_test[((Math.round(1)%2)+2)%2])})`;
     const run=await execute(source);assert.equal(sprites(run)[0].image,sprites(run)[1].image);
     assert.deepEqual([...sprites(run)[0].image.pixels],[0,7]);assert.deepEqual([...sprites(run)[1].mask],[0,1]);
-    run.vm.postIOData('keyboard',{key:' ',isDown:true});for(let i=0;i<4;i++)run.vm.runtime._step();
+    run.vm.postIOData('keyboard',{key:' ',isDown:true});for(let i=0;i<4;i++)run.vm.runtime._step(1000 / 30);
     assert.deepEqual([...sprites(run)[0].image.pixels],[3,8]); assert.notEqual(sprites(run)[0].image,sprites(run)[1].image);
     const rerun=await reexport(run);assert.equal(sprites(rerun)[0].image,sprites(rerun)[1].image);
     assert.deepEqual([...sprites(rerun)[0].image.pixels],[0,7]);

@@ -17,7 +17,7 @@ test('life zero callback waits for life to be granted, then rearms after revival
     assert.deepEqual(run.errors, []);
     const variable = name => run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
         .find(value => value.name === name);
-    const step = () => { for (let i = 0; i < 10; i++) run.vm.runtime._step(); };
+    const step = () => { for (let i = 0; i < 10; i++) run.vm.runtime._step(1000 / 30); };
     assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score ?? 0), 0);
     variable('lives').value = 2;
     step();

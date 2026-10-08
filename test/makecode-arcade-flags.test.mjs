@@ -95,7 +95,7 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
     const run = await runProgram(result.code, {frames: 4, uploads: result.costumes, storage: true});
     for (let n = 0; n < 2; n++) {
         run.vm.postIOData('keyboard', {key: ' ', isDown: true});
-        for (let i = 0; i < 4; i++) run.vm.runtime._step();
+        for (let i = 0; i < 4; i++) run.vm.runtime._step(1000 / 30);
         run.vm.postIOData('keyboard', {key: ' ', isDown: false});
     }
     assert.deepEqual(run.creator.warnings, []); assert.deepEqual(run.errors, []);
@@ -116,7 +116,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     const run = await runProgram(result.code, {frames: 4, uploads: result.costumes, storage: true});
     for (const expected of [true, false, true]) {
         run.vm.postIOData('keyboard', {key: 'z', isDown: true});
-        for (let i = 0; i < 4; i++) run.vm.runtime._step();
+        for (let i = 0; i < 4; i++) run.vm.runtime._step(1000 / 30);
         run.vm.postIOData('keyboard', {key: 'z', isDown: false});
         assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0].invisible, expected);
     }
@@ -136,7 +136,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     const recreated = await runProgram(again.code, {frames: 4, uploads: again.costumes, storage: true});
     for (const expected of [true, false]) {
         recreated.vm.postIOData('keyboard', {key: 'z', isDown: true});
-        for (let i = 0; i < 4; i++) recreated.vm.runtime._step();
+        for (let i = 0; i < 4; i++) recreated.vm.runtime._step(1000 / 30);
         recreated.vm.postIOData('keyboard', {key: 'z', isDown: false});
         assert.equal(Object.values(recreated.vm.runtime.bwArcadeDeviceState.sprites)[0].invisible, expected);
     }

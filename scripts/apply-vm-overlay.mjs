@@ -33,15 +33,29 @@ let rt = readFileSync(runtimePath, 'utf8');
 // Extensions subscribe to this event; the project stores ordinary extension
 // blocks in .sb3 and the event only supplies their runtime clock.
 const arcadeFrameAnchor = '    _step () {\n';
-const arcadeFramePatched = '    _step () {\n        this.emit(\'ARCADE_FRAME\');\n';
+const arcadeFrameLegacy = arcadeFrameAnchor + "        this.emit('ARCADE_FRAME');\n";
+const arcadeFramePatched = `    _step (arcadeDeltaMs) {
+        this.updateCurrentMSecs();
+        const arcadeNow = this.currentMSecs;
+        const arcadeElapsed = Number.isFinite(arcadeDeltaMs) && arcadeDeltaMs >= 0 ? arcadeDeltaMs :
+            (this._arcadeFrameTime === undefined ? 0 : Math.max(0, arcadeNow - this._arcadeFrameTime));
+        this._arcadeFrameTime = arcadeNow;
+        this.emit('ARCADE_FRAME', arcadeElapsed);
+`;
 if (!rt.includes(arcadeFramePatched)) {
-    if (!rt.includes(arcadeFrameAnchor)) {
-        console.error('  ! runtime.js Arcade frame anchor not found — base VM version changed?');
-        process.exit(1);
-    }
-    rt = rt.replace(arcadeFrameAnchor, arcadeFramePatched);
+    const anchor = rt.includes(arcadeFrameLegacy) ? arcadeFrameLegacy : arcadeFrameAnchor;
+    if (!rt.includes(anchor)) throw new Error('runtime.js Arcade frame anchor not found');
+    rt = rt.replace(anchor, arcadeFramePatched);
     writeFileSync(runtimePath, rt);
-    console.log('  patched runtime.js (Arcade sprite frame)');
+    console.log('  patched runtime.js (elapsed Arcade frame clock)');
+}
+for (const anchor of ['        this.emit(Runtime.PROJECT_START);', '        this.currentStepTime = interval;']) {
+    const patched = '        this._arcadeFrameTime = undefined;\n' + anchor;
+    if (!rt.includes(patched)) {
+        if (!rt.includes(anchor)) throw new Error('runtime.js Arcade clock reset anchor not found');
+        rt = rt.replace(anchor, patched);
+        writeFileSync(runtimePath, rt);
+    }
 }
 // Resume Arcade callbacks completed by this tick before the next physics tick.
 // Resolving only at ARCADE_FRAME start adds an unintended frame of motion.
