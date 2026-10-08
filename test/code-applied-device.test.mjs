@@ -43,9 +43,13 @@ const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, load
         lib: async () => ({default: Creator}), genOpts: () => ({})};
     component.publishAppliedDevice = new Function('DEVICE_BY_ID', 'window', 'CustomEvent',
         `return function (stc) ${publishBody}`)(devices, window, Event);
+    // DOS_LANG / generateDosLangs: the fe and Tcl tabs, which compile() also
+    // regenerates; none here (stubs keep the sandbox to the names it gives).
     component.compile = new Function('TWO_WAY', 'classifyConversionWarnings', 'LANG_LABEL', 'window', 'codeArtworkMatches',
+        'DOS_LANG', 'generateDosLangs',
         `return async function ({strict = false, pseudocode = null} = {}) ${compileBody}`)(new Set(['pseudocode']),
-        () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window, codeArtworkMatches);
+        () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window, codeArtworkMatches,
+        {}, async () => ({}));
     Creator.RETARGET_POOLS = {calliopemini: {}};
     Creator.retargetPseudocode = (text, device) => ({ok: true, warnings: [],
         pseudocode: text.replace(/^DEVICE\s+\S+/im, `DEVICE ${device.toUpperCase()}`)});

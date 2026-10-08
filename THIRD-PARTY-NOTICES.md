@@ -1896,6 +1896,37 @@ newlib + libi86 runtime, and carries no GCC-runtime copyleft.
   Loaded at run time and driven by `runDosToolchain('tcl', …)` over the
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL`.
 
+## Jim Tcl (DOS-native Tcl) — BSD-2-Clause
+
+The code tab's Tcl tab runs **Jim Tcl**, a small but complete Tcl
+interpreter (lists, dicts, `expr` with 64-bit integers and doubles, string
+commands, `regexp`, `format`/`scan`, `upvar`/`uplevel`, `apply`, `try`), as a
+real 16-bit MS-DOS program on the 8086 DOS bench. Jim Tcl is (c) 2005
+Salvatore Sanfilippo, Clemens Hintze, Pat Thoyts, (c) 2008 Øyvind Harboe,
+Andrew Lunn, Duane Ellis, Uwe Klein, Steve Bennett, (c) 2009 Nico Coesel,
+Zachary T Welch, David Brownell and the Jim Tcl contributors, distributed
+under the **BSD 2-Clause licence**.
+
+It is built from jimtcl's own single-file amalgamation
+(`autosetup/jimsh0.c`) by `tools/jim-dos/` in this repository: `mkdos.py`
+applies and documents every change (16-bit integer fixes, a stack-bounded
+recursion check, a heap that cannot grow into the stack, a smaller data
+segment, the Tcl-coded library moved to a file read on first use), and
+`build.sh` compiles it with `ia16-elf-gcc` (tkchia's GCC port for 16-bit x86).
+That GCC port is GPL, but it is a **build-time tool only**: the shipped
+binary is BSD-2 Jim Tcl linked against the permissive newlib + libi86
+runtime, and carries no GCC-runtime copyleft.
+
+- **Upstream:** https://github.com/msteveb/jimtcl (commit
+  `5bac7c99ad65864c87da513e22e2f01703fa4e03`)
+- **Licence:** BSD-2-Clause — the full text ships as `static/roms/jim.LICENSE.txt`
+- **What ships:** `static/roms/jim.exe` — the built interpreter — and
+  `static/roms/jimlib.tcl` — Jim's Tcl-coded `stdlib.tcl`/`tclcompat.tcl`
+  commands, unchanged, one per section — with `jim.provenance.json` beside
+  them. Loaded at run time and driven by `runDosToolchain('jim', …)` over the
+  bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL` and
+  the library as `JIMLIB.TCL`.
+
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 
 The **fully-free 386** machine boots FreeDOS in the browser on redistributable

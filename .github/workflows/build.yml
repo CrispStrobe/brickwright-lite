@@ -1541,6 +1541,20 @@ jobs:
           name: basic-run-proof
           path: artifacts/basic-run/*
           if-no-files-found: error
+      # fe (Lisp) and Tcl tabs: pseudocode -> Tcl -> Run, Tcl -> fe -> Run, and
+      # hand-written Tcl -> blocks -> From blocks -> fe -> Run, on the real DOS
+      # bench. The Node suite (test/code-tab-fe-tcl*.test.mjs) proves the
+      # converters and interpreters; this proves the tab wires them.
+      - name: Browser gate — fe and Tcl tabs convert through blocks and run on DOS
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-code-tab-fe-tcl.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.playwright.outcome == 'success' && matrix.shard == 'light'
+        with:
+          name: code-tab-fe-tcl-proof
+          path: artifacts/code-tab-fe-tcl/*
+          if-no-files-found: error
 
       # The Node suite proves the same core can run these programs, but it
       # cannot prove the production bundle exposes the 8086 picker, loads the

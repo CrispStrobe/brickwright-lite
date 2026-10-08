@@ -54,6 +54,25 @@ export const DOS_TOOLCHAINS = Object.freeze({
         sourceName: 'PROG.TCL', outputName: null,
         run: false, verified: true
     },
+    // Jim Tcl (msteveb/jimtcl), BSD-2 — a complete small Tcl: lists, dicts,
+    // expr with 64-bit integers and doubles, strings, regexp, format/scan,
+    // upvar, apply, try. Built from jimtcl's amalgamation by tools/jim-dos
+    // (every 16-bit change is listed in mkdos.py) and shipped as
+    // static/roms/jim.exe. Same shape as partcl, plus a SUPPORT file: Jim's
+    // Tcl-coded library commands are read on first use from JIMLIB.TCL
+    // (static/roms/jimlib.tcl), so fetchToolchain must return it as
+    // support['JIMLIB.TCL']. One 64 KB data segment holds Jim's statics,
+    // heap and stack: deep recursion and very large lists fail with a Tcl
+    // error rather than crash. VERIFIED on the real bench.
+    'jim': {
+        id: 'jim', label: 'Tcl (Jim Tcl on DOS)', language: 'tcl', kind: 'dos-native',
+        source: 'jim-dos',                     // tools/jim-dos in this repo; BSD-2 interpreter
+        compiler: 'jim.exe', compilerFormat: 'exe',
+        variant: '80186',
+        sourceName: 'PROG.TCL', outputName: null,
+        support: ['JIMLIB.TCL'],
+        run: false, verified: true
+    },
     'gwbasic': {
         id: 'gwbasic', label: 'GW-BASIC (on DOS)', language: 'basic', kind: 'dos-native',
         source: 'gwbasic',                     // MIT GW-BASIC source (Microsoft, 2020) — needs a built GWBASIC.EXE
