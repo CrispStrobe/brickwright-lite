@@ -36,6 +36,7 @@ import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
 import {
@@ -3188,9 +3189,18 @@ const translateOverlapOnly = (ast, assets) => {
  */
 export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
-    const source = map['main.ts'] || '';
-    const projectInputDiagnostics = Object.keys(map).filter(filename => filename !== 'main.ts' && /\.ts$/.test(filename) && !/\.g\.ts$/.test(filename))
-        .map(filename => `Project code file ${JSON.stringify(filename)} is present but supplemental TypeScript translation is not implemented`);
+    const selectedSource = arcadeProjectSource(map);
+    const source = selectedSource.source;
+    const projectInputDiagnostics = [...selectedSource.diagnostics];
+    // Parse each boundary independently before the combined parse. This keeps
+    // syntax errors in one file from consuming the following file's tokens,
+    // while the combined parser allocates its generated temporary names once.
+    if (selectedSource.entries.length > 1) {
+        for (const entry of selectedSource.entries) {
+            try { parseMakeCodeTs(entry.source, {parameterDefaults: true}); }
+            catch (error) { throw new Error(`${entry.name}: ${error.message}`, {cause: error}); }
+        }
+    }
     if (map['pxt.json']) {
         try {
             const palette = JSON.parse(map['pxt.json']).palette;

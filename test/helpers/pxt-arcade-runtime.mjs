@@ -7,7 +7,7 @@ import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
 export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}} = {}) {
-    const files={'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})};
+    const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
     const root=path.join(STATIC,'arcade/sim');

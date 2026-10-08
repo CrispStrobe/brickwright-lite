@@ -46,9 +46,9 @@ test('CLI assembles an offline native project, and requires an explicit main',()
     }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test('present supplemental Arcade code is named rather than silently ignored',()=>{
+test('supplemental Arcade code without a declared source order remains named',()=>{
     const imported=arcadeToPseudocode({'main.ts':'let x=1','game.ts':'let extra=2','images.g.ts':'// generated resource factories'});
-    assert.ok(imported.unsupported.some(message=>message.includes('game.ts') && message.includes('not implemented')));
+    assert.ok(imported.unsupported.some(message=>message.includes('game.ts') && message.includes('source order')));
     assert.ok(!imported.unsupported.some(message=>message.includes('images.g.ts')));
 });
 

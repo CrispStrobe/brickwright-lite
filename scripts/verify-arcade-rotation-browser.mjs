@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {MULTIFILE_ARCADE_FILES} from '../test/fixtures/arcade-multifile-source.mjs';
 import {DESTROY_KIND_CONTROLLER_SOURCE} from '../test/fixtures/arcade-destroy-kind.mjs';
 import {DISCARDED_PROJECTILE_SOURCE} from '../test/fixtures/arcade-discarded-projectiles.mjs';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
@@ -334,6 +335,31 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
         .flatMap(t => Object.values(t.variables)).some(v => v.name === 'freshValue' && Number(v.value) === 37));
     report.codeArtworkOwnership = {implicitAppendedCostume: true, repeatExactCostumeBytes: true, freshPastedProgramLoadsWithoutStaleUploadWarnings: true};
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const multifileProject = makeCodeProjectFile(MULTIFILE_ARCADE_FILES, {target: 'arcade', name: 'Multi file'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'multifile.mkcd', mimeType: 'application/json', buffer: Buffer.from(multifileProject)});
+    await page.getByText(/Imported the Arcade game.*multifile/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    const waitMultifile = expected => page.waitForFunction(expected => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        const values = Object.fromEntries(runtime.targets.flatMap(t => Object.values(t.variables))
+            .map(v => [v.name.replace(/^Game_/, ''), Number(v.value)]));
+        return Object.entries(expected).every(([name, value]) => values[name] === value);
+    }, expected);
+    const initialMultifile = {observed: 1243, finalOrder: 1243, first: 6, second: 39, third: 8, actorX: 23, callbackValue: 0};
+    await waitMultifile(initialMultifile);
+    await page.getByTestId('bw-arcade-b').click();
+    await waitMultifile({callbackValue: 43});
+    await page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)
+        .some(sprite => sprite.id && sprite.x === 43));
+    report.multifileSource = {nativeFileImport: true, codeToBlocks: true, initial: initialMultifile,
+        controllerValue: 43, controllerMovesSprite: true, unlistedSourceIgnored: true};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-multifile.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),

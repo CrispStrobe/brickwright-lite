@@ -35,15 +35,35 @@ export const lowerNamespaceBindings = program => {
     const fail = message => { if (!errors.includes(message)) errors.push(message); };
     const declare = (scope, name, symbol) => {
         if (scope.symbols.has(name)) fail(`namespace binding ${[...scope.path, name].join('.')} is declared more than once`);
-        else scope.symbols.set(name, symbol);
+        else {
+            scope.symbols.set(name, symbol);
+            if (scope.shared) {
+                if (symbol.exported) declare(scope.shared, name, symbol);
+                else scope.shared.privateNames.add(name);
+            }
+        }
     };
     const prepare = (body, scope) => {
         for (const st of body) {
             if (st.type === 'Namespace' && st.name === 'SpriteKind' && scope === root) continue;
             if (st.type === 'Namespace') {
-                const child = {parent: scope, path: [...scope.path, st.name], symbols: new Map()};
-                const symbol = {kind: 'namespace', scope: child, exported: Boolean(st.exported)};
-                declare(scope, st.name, symbol);namespaceScopes.set(st, child);
+                let symbol = scope.symbols.get(st.name) || (st.exported && scope.shared?.symbols.get(st.name));
+                if (symbol && symbol.kind !== 'namespace') {
+                    fail(`namespace binding ${[...scope.path, st.name].join('.')} is declared more than once`);
+                    continue;
+                }
+                if (symbol && symbol.exported !== Boolean(st.exported)) {
+                    fail(`namespace ${[...scope.path, st.name].join('.')} mixes exported and private declarations`);
+                }
+                if (!symbol) {
+                    const shared = {parent: scope, path: [...scope.path, st.name], symbols: new Map(), privateNames: new Set()};
+                    symbol = {kind: 'namespace', scope: shared, exported: Boolean(st.exported)};
+                    declare(scope, st.name, symbol);
+                } else if (!scope.symbols.has(st.name)) scope.symbols.set(st.name, symbol);
+                // Reopened declarations share exported bindings only. A private
+                // name in another declaration is never admitted to this block.
+                const child = {parent: scope, path: [...scope.path, st.name], symbols: new Map(), shared: symbol.scope};
+                namespaceScopes.set(st, child);
                 prepare(st.body, child);
             } else if (st.type === 'Enum') {
                 const child = {parent: scope, path: [...scope.path, st.name], symbols: new Map()};
@@ -70,8 +90,15 @@ export const lowerNamespaceBindings = program => {
     checkNested(program);
     const lookup = (scope, name, shadows) => {
         if (shadows?.has(name)) return null;
+        let privateOwner;
         for (let current = scope; current; current = current.parent) {
             if (current.symbols.has(name)) return current.symbols.get(name);
+            if (current.shared?.symbols.has(name)) return current.shared.symbols.get(name);
+            if (current.shared?.privateNames.has(name)) privateOwner = current.path;
+        }
+        if (privateOwner) {
+            fail(`namespace binding ${[...privateOwner, name].join('.')} is private to another declaration`);
+            return {kind: 'invalid'};
         }
         return null;
     };
@@ -81,7 +108,7 @@ export const lowerNamespaceBindings = program => {
         const owner = access(node.object, scope, shadows);
         if (!owner || !['namespace', 'enum'].includes(owner.kind)) return null;
         const member = owner.scope.symbols.get(node.name);
-        if (!member) { fail(`namespace member ${[...owner.scope.path, node.name].join('.')} is not declared`);return {kind: 'invalid'}; }
+        if (!member) { fail(`namespace member ${[...owner.scope.path, node.name].join('.')} is ${owner.scope.privateNames?.has(node.name) ? 'private' : 'not declared'}`);return {kind: 'invalid'}; }
         if (!member.exported) { fail(`namespace member ${[...owner.scope.path, node.name].join('.')} is private`);return {kind: 'invalid'}; }
         return member;
     };

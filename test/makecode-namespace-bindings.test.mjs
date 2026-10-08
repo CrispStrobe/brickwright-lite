@@ -57,7 +57,8 @@ test('unsafe namespace uses and nonconstant enums keep explicit diagnostics', ()
         ['namespace A { export let value=1 } let x=A;',/runtime object/],
         ['namespace A { export let value=1 } let x=A["value"];',/runtime object/],
         ['namespace A { export function f(){return 1} } let x=A.f;',/runtime function value/],
-        ['namespace A { export let x=1 } namespace A { export let y=2 }',/declared more than once/],
+        ['namespace A { export let x=1 } namespace A { export let x=2 }',/declared more than once/],
+        ['namespace A { export namespace B {} namespace B {} }',/mixes exported and private/],
         ['enum E { Value=randint(1,3) } let x=E.Value;',/constant initializer/],
         ['function f(){ enum E { A } return E.A }',/local enum/]
     ]) {
@@ -73,4 +74,30 @@ test('ordinary sprite redeclarations bypass namespace-only declaration rules',()
     assert.equal(result.program,parsed,'programs without scoped declarations retain their existing AST');
     assert.deepEqual(result.unsupported,[]);
     assert.ok(!arcadeToPseudocode(source).unsupported.some(gap=>gap.includes('namespace binding')));
+});
+
+
+test('reopened namespace private names cannot leak, while outer bindings and local shadows remain visible', () => {
+    const bad = lower('namespace A { let hidden=1 } namespace A { export function read(){ return hidden; } } let x=A.read();');
+    assert.equal(bad.program,null);
+    assert.ok(bad.unsupported.some(reason=>reason.includes('private to another declaration')));
+    const good = lower(`let hidden=7;
+namespace A { let hidden=1; export function first(){return hidden} }
+namespace A { export function outer(){return hidden} export function local(hidden:number){return hidden} }
+let x=A.first()+A.outer()+A.local(3);`);
+    assert.deepEqual(good.unsupported,[]);
+    const functions=good.program.body.filter(st=>st.type==='FunctionDeclaration');
+    assert.equal(functions[0].body[0].value.name,'__bwNamespace_A_hidden');
+    assert.equal(functions[1].body[0].value.name,'hidden');
+    assert.equal(functions[2].body[0].value.name,'hidden');
+});
+
+test('reopened nested exported namespaces share exports but preserve declaration private scopes', () => {
+    const result=lower(`namespace A { export namespace B { let value=2; export function first(){return value} } }
+namespace A { export namespace B { let value=9; export function second(){return value+first()} } }
+let x=A.B.second();`);
+    assert.deepEqual(result.unsupported,[]);
+    const functions=result.program.body.filter(st=>st.type==='FunctionDeclaration');
+    assert.notEqual(functions[0].body[0].value.name,functions[1].body[0].value.left.name);
+    assert.equal(functions[1].body[0].value.right.callee.name,functions[0].name);
 });
