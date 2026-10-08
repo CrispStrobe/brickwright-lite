@@ -1149,6 +1149,19 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && name==='tiles.setWallAt' && a.length===2){push(`arcade set tile wall (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.placeOnTile' && a.length===2){push(`arcade place sprite (${this.expr(a[0])}) on tile (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.placeOnRandomTile' && a.length===2){push(`arcade place sprite (${this.expr(a[0])}) on random tile image (${this.expr(a[1])})`);return;}
+        if (this.projectileTemplates.has(node)) {
+            // Creation is a side effect even when the caller discards its handle.
+            // Scratch reporters need a consuming command to execute. Use a
+            // private target variable, with a name outside every source binding.
+            if (!this.discardedProjectileName) {
+                let suffix = 0, name;
+                do { name = `__bwDiscardedProjectile${++suffix}`; } while (this.taken.has(name));
+                this.taken.add(name);
+                this.discardedProjectileName = name;
+            }
+            push(`set ${this.discardedProjectileName} to ${this.callExpression(node)}`);
+            return;
+        }
         if (this.handleTemplates && name === 'sprites.create') {
             push(`set __arcadeCreated to ${this.callExpression(node)}`);
             return;
@@ -2394,6 +2407,9 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     const needsProjectileHandles = node => {
         if (!node || typeof node !== 'object') return false;
         if (node.type === 'Call' && ['sprites.onCreated', 'image.create'].includes(t.path(node.callee))) return true;
+        if (node.type === 'ExpressionStatement' && node.expr?.type === 'Call' &&
+            ['sprites.createProjectile', 'sprites.createProjectileFromSide',
+                'sprites.createProjectileFromSprite'].includes(t.path(node.expr.callee))) return true;
         if (node.type === 'Call' && ['sprites.createProjectile', 'sprites.createProjectileFromSide',
             'sprites.createProjectileFromSprite'].includes(t.path(node.callee)) &&
             ['Identifier', 'Call', 'Index'].includes(node.args?.[0]?.type)) return true;

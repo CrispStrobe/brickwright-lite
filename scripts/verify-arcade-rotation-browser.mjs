@@ -7,6 +7,8 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {DISCARDED_PROJECTILE_SOURCE} from '../test/fixtures/arcade-discarded-projectiles.mjs';
+import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {ROTATION_CONTROLLER_SOURCE, ROTATION_CONTROLLER_INITIAL_PIXELS} from '../test/fixtures/arcade-rotation-controller.mjs';
 
 const imported = arcadeToPseudocode(ROTATION_CONTROLLER_SOURCE);
@@ -222,6 +224,50 @@ try {
     assert.equal(reimportQuarter.hash, report.samples.find(s => s.label === 'quarter0').hash,
         'exported/reimported controller rotation preserves pixels');
     report.export = {filename: download.suggestedFilename(), bytes: bytes.length};
+    // Creation reporters used as statements must survive the actual native
+    // file importer and remain executable consumers in the Blocks workspace.
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const discardedSource = DISCARDED_PROJECTILE_SOURCE.replace('origin.setPosition(40,50)', 'origin.setPosition(80,60)') + `
+controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
+    sprites.createProjectileFromSprite(img\`7\`,origin,0,0)
+})`;
+    const project = makeCodeProjectFile({'main.ts': discardedSource, 'pxt.json': JSON.stringify({
+        name: 'Discarded projectiles', dependencies: {device: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Discarded projectiles'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'discarded-projectiles.mkcd', mimeType: 'application/json', buffer: Buffer.from(project)});
+    await page.getByText(/Imported the Arcade game.*discarded-projectiles/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    const oldStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
+    await page.waitForFunction(id => {
+        const stage = window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();
+        return stage && stage.id !== id;
+    }, oldStage);
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    const count = n => page.waitForFunction(expected => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .flatMap(t => Object.values(t.variables)).some(v => v.name === 'created' && v.value === expected), n);
+    await count(3);
+    const initialCreation = await page.evaluate(() => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        return {count: Object.values(runtime.bwArcadeDeviceState.sprites).filter(s => s.id).length,
+            consumers: runtime.targets.flatMap(t => Object.values(t.blocks._blocks)).filter(b => b.opcode === 'arcade_spawnProjectile').length};
+    });
+    assert.equal(initialCreation.count, 4);assert.equal(initialCreation.consumers, 4);
+    await page.getByTestId('bw-arcade-b').click();await count(4);
+    await page.waitForFunction(() => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        runtime.renderer.draw();const canvas = runtime.renderer.canvas, copy = document.createElement('canvas');
+        copy.width = canvas.width;copy.height = canvas.height;const ctx = copy.getContext('2d');ctx.drawImage(canvas, 0, 0);
+        const rgba = ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data;
+        return rgba[0] === 120 && rgba[1] === 220 && rgba[2] === 82;
+    });
+    report.discardedProjectiles = {nativeFileImport: true, allThreeApis: true, initial: initialCreation,
+        controllerCreatesExactlyOnce: true, visibleCenterRgb: [120, 220, 82], sourceNameCollisionsCoveredByUnitRoundtrip: true};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-discarded-projectiles.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),
