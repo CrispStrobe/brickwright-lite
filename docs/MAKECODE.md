@@ -928,3 +928,47 @@ import counts. The last import-only corpus remains102 translated/81 partial/
 1 malformed; it was not rerun for this runtime-only change. U03 painter and
 resource lifecycle, ranked artwork/maps, palettes, effects and music remain open.
 [Receipt](receipts/2026-10-08-arcade-callback-scheduling.json).
+
+### Elapsed Arcade frame clock — 2026-10-08
+
+Arcade now advances by elapsed VM millisecond time rather than a fixed33ms for
+every tick. This removes the clock-rate mismatch at the default60Hz VM cadence.
+The first VM tick seeds the baseline with0ms, and green flag/scheduler restart
+reset it. Backward timestamps produce0ms, then rebase. Explicit offline frame
+durations remain available; test helpers now state their deliberate33ms physics
+step instead of relying on the production clock. Ordinary helper frames do not
+fast-forward wait timers; controlled tests inject the VM clock as well.
+
+Elapsed time during a pending registered scene callback is carried into the
+next frame rather than discarded. Physics retains the original100ms per-move
+clamp. A registered child-scene callback waiting70ms remains pending at80ms,
+completes at100ms and reports scene elapsed120ms on the next frame. General
+nested registration without a scene-stack selector remains an explicit
+`game.onUpdate()` conversion gap; its reproducer is retained.
+
+Qualification:60 affected tests pass without failures/skips. Thirty, sixty
+and irregular ticks spanning1000ms match original PXT physics exactly:
+x109.3359375,108.59375 and109.80859375, respectively, from x80/vx30. These small
+differences between schedules are the original fixed-point rounding, not a
+reason to replace the oracle with idealized floating-point motion. The comparison
+uses the same explicit physics time schedule in each engine; it does not claim
+complete original event-loop equivalence. Existing prompt, image, flag, speech,
+collision and scene-registration behavior passes. An old prompt assertion was
+updated for the reporter parentheses already emitted by the unchanged importer;
+answer suspension and delivery remain checked.
+
+Production gui.0f84bfdb.js passes native file→Code→Blocks→flag→visible A callback
+repeat, plus a separate visible-right hold checking game time against VM wall
+time and sprite motion. No page/block/build errors; boot checks pass. Initial
+JavaScript4,360,790 bytes remains below unchanged4,467,136.
+
+Remaining: first scene-worker phase versus first VM tick, push/pop, legacy
+update hats versus sequential registered callbacks, nested registrations outside
+the scene-stack path, and original whole-loop pause0/20/70/obstacle ordering.
+The clock follows the VM's existing millisecond source; this does not certify
+all system-clock adjustments or background scheduler behavior. Next unify the
+registration paths and qualify these traces against the original scheduler.
+U03 painter/resource lifecycle and ranked artwork, palette/effect/music gaps
+remain open. No importer/corpus promotion is claimed: last184 import-only
+102 translated/81 partial/1 malformed, not rerun here.
+[Receipt](receipts/2026-10-08-arcade-frame-clock.json).
