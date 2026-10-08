@@ -1120,3 +1120,49 @@ recovered tutorial projects remain partial with27 diagnostics and original
 packages unavailable; all10 partial fragments step without errors. This slice
 does not claim complete-game equivalence. See the
 [button receipt](receipts/2026-10-08-arcade-multiplayer-buttons.json).
+
+
+### Numeric player state and runtime key allocation — 2026-10-08
+
+Implemented `mp.getPlayerState`, `mp.setPlayerState`,
+`mp.changePlayerStateBy`, `MultiplayerState.create` and built-in score/life keys.
+Custom numeric values retain fractions; built-in writes share the existing Info
+integer values. Key allocation is project-global, starts at2 after the built-in
+keys, survives scenes and resets with project/player identity. Custom state
+lookup retains strict equality, including NaN, null and undefined boundaries.
+Older Player custom state remains attached to that identity; its Info access
+uses the active scene, as observed in original PXT.
+
+Four native dialect/Blocks operations come from producer
+`107af3ba50dc41646d055306f9cbf3955b41911f`
+([PR67](https://github.com/CrispStrobe/sb3-creator/pull/67)). Source can extend
+`namespace MultiplayerState` with exported keys using qualified or unqualified
+create calls. The namespace binding catalog is now generated from the pinned
+device and multiplayer API metadata; it does not claim all catalogued APIs are
+implemented. Native export preserves runtime allocation and the multiplayer
+package dependency. Code/Blocks, original-PXT native export, reimport and SB3
+reopening cover these state semantics.
+
+GUI authoring: palette blocks create a key, read a player state and set/change
+it. Pseudocode uses identical operations. State-key variables are editable using
+the existing variable controls. Friendly score/life/custom-key labels, a named
+key manager, namespace-preserving source editing and original MakeCode Blocks
+decompilation still need qualification. Per-player Info HUD rendering/layout
+needs implementation and visual comparison; state values alone do not supply
+that display. No graphics-editor tools changed in this slice.
+
+Still open: arbitrary player.data objects and direct Player state methods,
+connection/score/life events, custom repeat settings, analog pressure and
+presence/network effects. A proper data implementation needs shared object
+identity, property reads/writes, aliasing, missing/falsy initialization, scene
+ownership and save/reopen semantics; serializing independent JSON snapshots
+would not establish those capabilities. Preserve the queued callback replacement
+and long-handler timing gaps from the preceding slice.
+
+The original184 import baseline remains96 translated /87 partial /1 malformed.
+Ten recovered tutorial projects remain partial with27 diagnostics; missing
+packages prevent original compilation, while partial fragments step without
+errors. Largest remaining baseline families include unreadable backgrounds,
+legacy/asset tilemaps, destruction effects and music. Track artwork recovery,
+rendering and editor support together when taking those lanes. See the
+[state receipt](receipts/2026-10-08-arcade-multiplayer-state.json).

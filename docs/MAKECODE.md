@@ -714,7 +714,7 @@ movement bindings while physical button state is shared across scene push/pop.
 Native export emits `mp.moveWithButtons` and the bundled multiplayer dependency.
 
 Multiplayer connection/score/life events, direct `controller.player2/3/4`
-API conversion, analog pressure, custom player state/data, presence/indicator
+API conversion, analog pressure, arbitrary player data, presence/indicator
 effects and multiplayer networking remain explicit work. The local player
 selector does not establish network connectivity. No new graphics tools were
 added in this slice.
@@ -753,3 +753,40 @@ registration/handler pair remain GUI work. Custom repeat settings, direct
 controller-instance APIs, connection events, network state and presence effects
 remain separate gaps. Queued callback replacement races and long-running
 handler timing still need dedicated differential qualification.
+
+
+### Numeric player state
+
+`mp.getPlayerState`, `mp.setPlayerState` and `mp.changePlayerStateBy` support
+per-player numeric state. `MultiplayerState.score` and `.life` use the same
+values as the Info APIs; their writes use PXT's integer conversion. Custom
+states preserve fractional values. Missing custom states and missing players
+read as0; missing-player writes do nothing.
+
+`MultiplayerState.create()` allocates a fresh key at runtime, globally across
+scenes. Built-in keys are0(score) and1(life), so custom keys start at2. Source
+can reopen `namespace MultiplayerState` with exported keys using qualified or
+unqualified `create()`. Export preserves runtime allocation and declares the
+bundled multiplayer dependency.
+
+The palette exposes key creation, state lookup, set and change blocks. Code:
+
+```text
+DEVICE arcade
+WHEN flag clicked:
+  set player to (arcade player by number (2))
+  set cooldown to (arcade create player state key)
+  arcade set state (cooldown) of player (player) to (7.5)
+  arcade change state (cooldown) of player (player) by (0.25)
+  set value to (arcade state (cooldown) of player (player))
+  arcade set state (0) of player (player) to (10)
+```
+
+Custom states belong to the Player identity. An older scene's Player retains
+its custom state; its score/life access uses the active scene's Info state,
+matching PXT. Key allocation resets when the project starts again.
+
+Arbitrary `player.data` objects and direct Player getState/setState method calls
+remain named gaps. Friendly state-key labels/management and per-player Info HUD
+rendering/layout need separate implementation and visual qualification. This
+slice qualifies state values and controller-driven sprite behavior.
