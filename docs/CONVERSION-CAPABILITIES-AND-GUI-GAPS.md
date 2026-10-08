@@ -29,6 +29,39 @@ projectile check pass, alongside the12 rotation phases. See the
 [receipt](receipts/2026-10-08-arcade-discarded-projectiles.json) and refreshed
 [case ranking](generated/ARCADE-COMPAT-AUDIT.md).
 
+### Bulk sprite destruction — 2026-10-08
+
+One-argument `sprites.destroyAllSpritesOfKind(SpriteKind.<member>)` imports
+as a fresh kind array and an ordinary native loop destroying each handle.
+Custom kinds, callbacks, surviving sprites created by callbacks, retained dead
+references, repeat destruction and empty collections are tested against the
+original pinned PXT simulator. Code/Blocks decompilation, native export and
+reimport, and SB3 save/restart preserve the tested results. The affected
+regression batch passes25 tests without skips.
+
+GUI authoring uses the existing sprite-kind array reporter, array iteration
+and sprite destruction commands. No new compiler/runtime opcode or graphics
+resource is required. The mandatory rotation browser gate now includes a
+native project import → Code → To Blocks → controller A/B destruction journey. Effects and
+duration arguments, and dynamic kind queries, remain named unsupported inputs;
+they are not discarded silently.
+
+A browser attempt also exposed stale imported-artwork references when a second
+project is pasted directly into Code after a native import. Pending GUI work:
+reconcile or reset pending imported artwork when source replaces its templates;
+keep the failing browser receipt and do not drop references silently. Native
+project replacement is the qualification route for this destruction slice.
+
+An import-only pass over the same184 inputs removes the bulk-destruction
+refusal in `arcade-a63932786084c167.ts` and `arcade-f7486e7e2dc7d78a.ts`.
+Both retain other refusals: totals remain93 translated /90 partial /1 malformed.
+The rebuilt production GUI passes the native-import/controller journey:
+two enemy creation/destruction cycles, two callbacks, and the surviving player.
+Build errors:0; initial bytes4,360,502 within the unchanged4,467,136 budget.
+See the [receipt](receipts/2026-10-08-arcade-destroy-kind.json).
+This slice does not rerun or supersede the original-compilation/runtime census
+above and does not establish whole-game equivalence.
+
 Next: distinguish missing asset/package inputs from importer failures in the
 10 unreadable background cases; implement legacy tilemap calls as real native
 resource operations; then address boolean dialogs, paint callbacks and effects.

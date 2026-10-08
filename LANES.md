@@ -1617,3 +1617,5 @@ Scratch/native and supported LEGO Python imports. See docs/independent-spike/.
 ## Arcade destroy-kind collection slice — 2026-10-08
 
 Root agent claims `lane/arcade-destroy-kind-20261008`, stacked on the ignored-projectile slice. Scope: importer lowering for one-argument `sprites.destroyAllSpritesOfKind`, differential snapshot/callback tests, and capability documentation. Existing collection and destruction Blocks/runtime are reused. Effects and duration remain explicit unsupported diagnostics pending their own implementation. No compiler or dependency adoption is planned.
+
+Destroy-kind slice result: source `2d6fff58b`, 25 regression tests pass with zero skips; rebuilt production GUI `gui.ba65a0dd.js` passes native import, Blocks and two controller destruction cycles. Same184 inputs remain93/90/1; two named bulk-destruction refusals retire without closing their other gaps. Receipt: [destroy-kind qualification](docs/receipts/2026-10-08-arcade-destroy-kind.json). Effects/duration and dynamic kinds remain explicit; stale artwork after manual source replacement is tracked in the GUI ledger.
