@@ -1270,3 +1270,58 @@ failures and exact-head hosted integration remain open. Original failures and
 private evidence are retained. Next: onHitTile/tileHitFrom, then corpus-ranked
 artwork/tilemap gaps; mixed map semantics, palette/effects/music and U03 remain
 explicit. [Receipt](receipts/2026-10-08-arcade-legacy-tile-values.json).
+
+### Legacy color-index wall callbacks — 2026-10-08
+
+`scene.onHitTile`, `scene.tileHitFrom` and `Sprite.tileHitFrom` now have native
+conversion, runtime and MakeCode export support. Three dialect words expose
+registration, callback hats and the hit-index reporter in Blocks and pseudocode:
+
+```text
+arcade register color wall kind "Player" index (2) as "wallCallback" capturing []
+WHEN arcade color wall handler "wallCallback" runs:
+    set hit to (arcade sprite (arcade event first) wall hit index (2))
+```
+
+The callback sprite is the normal Arcade event-sprite handle; the converter
+binds the authored callback parameter to it. The reporter's Blocks menu names
+left/top/right/bottom and accepts numeric reporters. Callback captures remain
+live. Registrations belong to their scene and restore after popScene. Matching
+legacy handlers are selected before they run; newly registered handlers wait
+for a later collision. Modern wall handlers are selected afterward and observe
+sprite-kind changes. Obstacle color indices are snapshots and survive map edits.
+Missing sprites report0; existing sprites without an obstacle report-1.
+
+Qualification covers22 affected/regression tests, a final2-test rerun after the
+menu change, and1 producer roundtrip, without skips. It covers original PXT,
+native decompile, MakeCode export/reimport and SB3. Production gui.6891b0d9.js
+passes file→Code→Blocks→visible A, including callback order ABCABC, captured
+count25, index2 after a map edit, parent/child scene isolation and kind-change
+order ABFABLF. Previous browser journeys and boot checks pass, with0 build/page
+errors and unchanged4,360,525 initial bytes.
+
+The same184 import-only baseline advances100/83/1→102 translated/81 partial/
+1 malformed. Two newly translated originals run through the visible controller:
+a wall collision resets the first player's position to50,50 and the second
+advances to level2. Original/exported PXT with an explicit observer/input-driving
+suffix agree on finite collision observables. Unchanged originals also step240
+native frames without block errors or creator warnings. These observations do
+not establish complete-game or full-screen equivalence.
+
+**Open timing gap:** when a callback moves with nonzero velocity during pause,
+the current original-wall-clock versus forced-native-frame probe reports final
+x15 versus11.16796875. Callback order and index snapshots match. A trial ownership
+lock matched x but changed obstacle clearing; it was removed. The passing
+fixture holds velocity at0 during its pause. No timing freeze or workaround is
+shipped. Next qualify comparable clocks and shared callback/physics scheduling,
+then fix any demonstrated semantic defect. The map painter/color-index picker,
+mixed map semantics, artwork packages, palettes, effects and music also remain
+open. [Qualification receipt](receipts/2026-10-08-arcade-legacy-tile-collisions.json).
+
+GUI handoff: registration, callback and hit-index blocks are available, and
+pseudocode uses the same native operations. U03 still needs map painting,
+color-index selection, tile definitions/walls/scale and resource lifecycle
+(rename/delete/undo/save/reopen). Do not close U03 from numeric input support.
+Timing qualification is a runtime gap, separate from those editor tasks.
+Producer [PR70](https://github.com/CrispStrobe/sb3-creator/pull/70) supplies the
+three dialect words; Lite adoption is stacked and awaits exact-head hosted CI.
