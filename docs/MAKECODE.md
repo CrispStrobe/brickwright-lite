@@ -648,3 +648,18 @@ and reads of source exports before initialization remain explicit errors.
 Code and Blocks expose the lowered procedures and ordinary Arcade operations.
 Native export emits equivalent flat procedures. Namespace-preserving editing,
 multi-file navigation and general callable values remain open GUI/runtime work.
+
+### Array random selection
+
+Arcade's `values._pickRandom()` imports as the existing Arrays & Vectors
+`random item of array reference (values)` reporter. The receiver is evaluated
+once. Image, sprite and nested-array selections keep reference identity and
+propagate their element types; an empty array produces the native missing value.
+Code and Blocks can author the same reporter. Native export uses equivalent
+`Math.pickRandom(values)` syntax. Non-array receivers and calls with arguments
+remain unsupported. No new runtime opcode or graphics-editor tool is needed.
+
+For example, `let chosen = actors._pickRandom(); chosen.x = 41` uses a native
+sprite reference. In pseudocode the selection is
+`set chosen to (random item of array reference (actors))`, followed by
+`arcade set x of chosen to 41`.

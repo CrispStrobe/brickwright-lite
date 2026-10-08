@@ -982,3 +982,31 @@ PNG import, editing, Code→Blocks, SB3 reopen and19,200 exact original-PXT pixe
 with0 differences/page errors. No product capability or graphics-editor feature
 was added. Hosted verification remains required to clear the older merge blocker.
 See the [receipt](receipts/2026-10-08-arcade-background-readiness.json).
+
+### Typed Array._pickRandom — 2026-10-08
+
+The PXT array method now lowers to the existing native reference-array random
+reporter, retaining the selected element's type and identity. Differential
+coverage includes single receiver evaluation, primitive values, Image mutation,
+Sprite movement, nested-array alias mutation, empty-array missing values and
+membership checks for multiple choices. Code→Blocks, native export→original
+PXT, reimport and SB3 reload pass. This qualifies selection semantics, not an
+identical random sequence or statistical distribution between simulators.
+Native global declarations now parenthesize their values consistently with
+assignments; this fixes an ambiguous image-pixel reporter declaration exposed
+by the new fixture. Initial failures are retained privately.
+
+The existing Arrays & Vectors reporter provides Blocks and pseudocode authoring;
+export writes equivalent Math.pickRandom syntax. No new graphics tools or
+callable authoring were added. Ten recovered tutorial projects remain partial
+and their original extension packages unavailable. Named diagnostics53→51;
+all10 partial fragments step without block errors. Same184 remains96/87/1.
+Dynamic sprite references from multiplayer calls still need the corresponding
+multiplayer API implementation and type propagation. See the
+[receipt](receipts/2026-10-08-arcade-array-pick-random.json).
+
+Production `gui.57b25cc9.js` also passes the native-file→Code→Blocks→controller
+journey: one receiver evaluation, pixel5, shared nested-array length2,40
+membership checks, then B moves the selected sprite x41→45. Prior journeys pass
+with0 page errors. Build errors0; initial4,360,502 bytes remains within the
+unchanged4,467,136 limit.31 affected and38 regression/gate tests pass without skips.
