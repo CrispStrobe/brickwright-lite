@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "522013dce58fadf9de6461375587be9d75c208ff",
+  "auditSourceDirty": false,
+  "producer": {
+    "repo": "CrispStrobe/sb3-creator",
+    "source": "0b621e2a2d4dd60d681821b30eed65ffb240a90a",
+    "pr": 65,
+    "wordsAdded": 1,
+    "testsPassed": 1
+  },
+  "implementation": {
+    "APIs": [
+      "mp.moveWithButtons"
+    ],
+    "controllerBindings": "Independent scene-local bindings for players1\u20134; shared physical input; controller-order updates for shared sprites",
+    "boundariesPreserved": [
+      "omitted/undefined speed defaults100",
+      "zero axes preserve program velocity",
+      "movement before sprite assignment",
+      "replacement detaches old and binds new",
+      "detachment retains old velocity",
+      "release clears previously driven axes",
+      "actual player-four scene push/pop"
+    ],
+    "gui": "Visible Player1\u20134 selector; previous held inputs released on selection change; legacy keyboard and button hats remain player-one inputs"
+  },
+  "tests": {
+    "affectedAndRegressionsIncludingBrowserGateContracts": 55,
+    "failed": 0,
+    "skipped": 0
+  },
+  "differentialRoutes": [
+    "original PXT runtime",
+    "Code to Blocks",
+    "native export to original PXT runtime",
+    "BW reimport",
+    "SB3 save/reload"
+  ],
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.461cd4e1.js",
+    "initialBytes": 4360511,
+    "previousInitialBytes": 4360511,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "multiplayerMovement": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "selectedPlayer": 2,
+      "independentSpeed": 60,
+      "otherPlayersStationary": true,
+      "releasedOnSelectionChange": true,
+      "reboundToReplacement": true,
+      "releasedOnPointerUp": true
+    },
+    "priorJourneys": "All previous production rotation/projectile/destruction/artwork/multifile/reference/callback/namespace/array/player journeys pass"
+  },
+  "corpus": {
+    "original184ImportOnly": {
+      "translated": 96,
+      "partial": 87,
+      "malformed": 1
+    },
+    "recoveredTutorials": {
+      "partial": 10,
+      "originalCompileUnavailable": 10,
+      "partialFragmentsSteppedWithoutErrors": 10,
+      "diagnosticOccurrencesBefore": 31,
+      "diagnosticOccurrencesAfter": 27
+    },
+    "qualificationBoundary": "Missing original packages prevent original game compilation; no complete-game equivalence claim"
+  },
+  "remaining": [
+    "direct controller.player2/3/4 API conversion",
+    "multiplayer button/connection/score/life events",
+    "player state/data",
+    "analog pressure and repeat configuration",
+    "presence indicators and networking",
+    "friendly player/property enum pickers and graphics/palette gaps"
+  ],
+  "publication": "Draft stacked PR; exact-head hosted CI and merge still required"
+}

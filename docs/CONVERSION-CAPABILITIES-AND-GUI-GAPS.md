@@ -807,7 +807,7 @@ control or proof remains an open native authoring gate.
 | N08 `game.ask`, `askForNumber`, `askForString`, `setDialogFrame/Cursor/TextColor/Font` | Splash/long text and one-argument number/text prompts exist; prompt options and `game.ask` value forms remain gaps | Existing text/question words; digit/length limits and dialog appearance need native operands/blocks | Prompt interaction, cancellation/focus, blocking order and selected font/frame assets; export options exactly. Avoid declaring all dialogs absent or complete. |
 | N09 `info.onScore`, `highScore`, `changeCountdownBy`, `showScore/showLife/showCountdown`, HUD colours and life image | Score/life players1–4 and start/stop/countdown callbacks exist; broader Info surface is not covered by these words | Add missing predicates/reporters/events/HUD setters with player and value types; audit existing numeric player fields for valid range/feedback | Life icon and HUD colour editing, scene-local vs persistent scores, threshold callbacks and original export; persistent high score needs an explicit persistence contract. |
 | N10 `ArcadePhysicsEngine` and `scene.Scene` public members; frame priorities | Resource creation/replacement, three engine settings and selected scene callbacks exist; this is not the full engine/scheduler API | Native scene/engine references exist, but arbitrary public engine methods and event-context priorities need a declaration-by-declaration audit | Resource inspector/picker and callback navigation; validate add/remove/move/overlap/draw where public, cancellation and frame ordering against PXT before exposing unsupported controls. |
-| N11 `controller.player2/3/4`, button repeat configuration, `mp.*` | Single controller widgets and selected button/event bindings exist; Info's player states do not establish multiplayer controller/network support | No native `mp.*` family in the reviewed dialect. Audit player-specific controller signatures and repeat defaults separately | Distinct player bindings and held-input release; keyboard/touch mappings; explicit local vs network session model, disconnect/reconnect and export dependency. Hardware sensors/vibration are separately unmeasured. |
+| N11 `controller.player2/3/4`, button repeat configuration, `mp.*` | Single controller widgets and selected button/event bindings exist; Info's player states do not establish multiplayer controller/network support | Player values, sprite association and `mp.moveWithButtons` have native Blocks/pseudocode/export support; a local Player1–4 pane selector routes movement independently. Direct controller instances, multiplayer events, analog pressure and repeat configuration remain open | Distinct player bindings and held-input release; keyboard/touch mappings; explicit local vs network session model, disconnect/reconnect and export dependency. Hardware sensors/vibration are separately unmeasured. |
 | N12 `settings.read/writeNumber/String/Buffer/JSON`, `settings.list/remove/exists` | No native settings family in the reviewed dialect | Add typed persistence words/blocks and clear missing-storage diagnostics | Persistence inspector/reset, key lifecycle and limits. Preserve restart/save/reopen semantics and original target package dependencies; do not confuse SB3 project storage with game settings. |
 | N13 `assets.image/tile/tilemap/animation/song` and package exports | Literal/file imports carry separate assets; incomplete bare `.ts` snippets may omit them | Native resource references need discoverable asset-aware Code/Blocks routes | U02 transaction, then tile/animation/song authoring; names and aliases remain stable through palette edits, file/share import, save/reopen and original manifests. Code-only paste cannot silently create replacement artwork. |
 | N14 Standard language, arrays, functions, namespaces and enums | Value/reference/type/lazy-expression machinery exists; some constructs/packages remain named gaps | Existing Arrays/Code words need the same real Blocks-schema checks as Arcade words | Nested resource arrays, recursive/local/captured lifetimes, rename, default/optional arguments and evaluated-once expressions; retain the documented complex-index PXT/JavaScript difference as a measured boundary. |
@@ -1037,7 +1037,8 @@ Member-read export requires a fixed index/number selector, with an explicit
 unsupported diagnostic for a dynamic member selector. Safe queries allow a
 dynamic numeric property. No new graphics-editor tools were added.
 
-Still open: mp.moveWithButtons and correct controller rebinding; multiplayer
+At the player-foundation checkpoint, movement and rebinding were still open;
+the following movement slice supplies those operations. Remaining: multiplayer
 button/connection/score/life events; player state/data; presence icons/indicators
 and network notifications. Sprite-association qualification does not cover
 those effects. The controller-pane journey uses a normal B callback that looks
@@ -1052,3 +1053,34 @@ and1 producer roundtrip pass without skips. Production `gui.db7109fe.js` imports
 the native project, converts Code→Blocks and uses B to retrieve player three
 and move its sprite x60.5→65.5. All prior journeys pass; page/build errors0.
 Initial4,360,511 bytes is9 bytes larger and below the unchanged4,467,136 limit.
+
+
+### Multiplayer movement and controller selection — 2026-10-08
+
+Implemented: `mp.moveWithButtons` with optional speed defaults, zero-axis
+preservation, deferred sprite assignment and rebinding. Controller bindings are
+scene-local and independent for players1–4. Multiple controllers can bind the
+same sprite; update order and release behavior retain the pinned PXT semantics.
+Detachment retains velocity, while release clears axes previously driven by
+that binding. Runtime coverage includes actual player-four scene push/pop.
+
+Authoring: the Arcade palette and bidirectional dialect expose
+`arcade move player (player) with buttons vx (60) vy (0)`. Code→Blocks, native
+export→original PXT, reimport and SB3 reopening are covered. Producer source
+`0b621e2a2d4dd60d681821b30eed65ffb240a90a` supplies the movement word
+([PR65](https://github.com/CrispStrobe/sb3-creator/pull/65)). The visible controller
+pane now selects Player1–4 and releases held buttons on selection change.
+Player-one keyboard/button behavior remains covered by regressions.
+
+Still open: direct fixed controller-instance APIs and per-player button events;
+connection/score/life events, state/data, analog pressure, repeat settings,
+presence indicators and networking. Friendly Player/property enum pickers,
+multifile source navigation, callable authoring and the graphics/palette gaps
+listed above still need their own qualification. The new selector represents
+local inputs; it does not claim connected remote controllers.
+
+Recovered tutorial diagnostics31→27, retiring four movement refusals. All10
+projects remain partial and original compilation is unavailable for their
+missing offline packages. Partial fragments step without errors. The unchanged
+184-source import baseline remains96 translated /87 partial /1 malformed.
+See the [movement receipt](receipts/2026-10-08-arcade-multiplayer-movement.json).

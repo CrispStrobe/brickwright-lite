@@ -691,8 +691,30 @@ Safe property queries return0 for a missing player; direct member reads retain
 an error on missing players. Native export writes typed `mp.Player` references
 and arrays and declares the bundled `multiplayer` dependency automatically.
 
-This foundation covers identity and sprite association. `mp.moveWithButtons`,
-multiplayer button/connection/score/life events, custom player state/data,
-controller rebinding and network presence/indicator effects remain explicit
-work. Independent player-controller input and multiplayer networking remain
-unqualified.
+### Multiplayer controller movement
+
+`mp.moveWithButtons(player, vx?, vy?)` controls the player's assigned sprite.
+Omitted or undefined speeds default to100; a zero speed leaves that axis under
+program control. Movement settings can be assigned before the sprite. Replacing
+the player's sprite detaches the old binding and binds the replacement. As in
+PXT, detaching alone retains the old sprite's velocity.
+
+The Arcade palette has a matching movement block. Equivalent pseudocode:
+
+```text
+set player to (arcade player by number (2))
+arcade set sprite of player (player) to (actor)
+arcade move player (player) with buttons vx (60) vy (0)
+```
+
+Choose Player1–4 in the controller pane. Directional inputs route independently;
+switching players releases the previous player's held buttons. Keyboard input
+and existing button hats still use player one. Each scene retains its own
+movement bindings while physical button state is shared across scene push/pop.
+Native export emits `mp.moveWithButtons` and the bundled multiplayer dependency.
+
+Multiplayer button/connection/score/life events, direct `controller.player2/3/4`
+API conversion, analog pressure, custom player state/data, presence/indicator
+effects and multiplayer networking remain explicit work. The local player
+selector does not establish network connectivity. No new graphics tools were
+added in this slice.
