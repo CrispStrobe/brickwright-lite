@@ -65,6 +65,7 @@ module.exports = makeExt(`// Name: Arcade
       this._terrainStopped = false;
       if (runtime && runtime.on) {
         runtime.on('ARCADE_FRAME', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._advance(1 / 30); });
+        runtime.on('ARCADE_FRAME_END', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); });
         runtime.on('ARCADE_BUTTON_DOWN', () => this._dialogs?.[0]?.dismiss());
         runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
         runtime.on('KEY_STATE_CHANGED',(key,isDown)=>this._keyboardButtonEdge(key,isDown));

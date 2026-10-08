@@ -43,6 +43,16 @@ if (!rt.includes(arcadeFramePatched)) {
     writeFileSync(runtimePath, rt);
     console.log('  patched runtime.js (Arcade sprite frame)');
 }
+// Resume Arcade callbacks completed by this tick before the next physics tick.
+// Resolving only at ARCADE_FRAME start adds an unintended frame of motion.
+const arcadeDoneAnchor = '        const doneThreads = this.sequencer.stepThreads();';
+const arcadeDonePatched = arcadeDoneAnchor + "\n        this.emit('ARCADE_FRAME_END');";
+if (!rt.includes(arcadeDonePatched)) {
+    if (!rt.includes(arcadeDoneAnchor)) throw new Error('runtime.js Arcade frame-end anchor not found');
+    rt = rt.replace(arcadeDoneAnchor, arcadeDonePatched);
+    writeFileSync(runtimePath, rt);
+    console.log('  patched runtime.js (Arcade callback completion)');
+}
 const anchor = '<category name="${name}" id="${';
 if (rt.includes(anchor)) {
     rt = rt.replace(anchor, '<category name="${xmlEscape(name)}" id="${');
