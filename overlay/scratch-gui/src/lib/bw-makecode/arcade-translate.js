@@ -1160,7 +1160,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(isFrameRegistration(name) && (this.boundSourceGlobals?.has('game') || this.sourceFunctions?.has('game') || this.localVars?.has('game') || this.currentParameters?.has('game') || this.capturedBindings.has('game'))){push(this.note(`${name} refers to a shadowed game binding`));return;}
         if(isButtonRegistration(name) && (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller'))){push(this.note(`${name} refers to a shadowed controller binding`));return;}
         if(isInfoRegistration(name) && (this.boundSourceGlobals?.has('info') || this.sourceFunctions?.has('info') || this.localVars?.has('info') || this.currentParameters?.has('info') || this.capturedBindings.has('info'))){push(this.note(`${name} refers to a shadowed info binding`));return;}
-        if(isForeverRegistration(name)){
+        if(isForeverRegistration(name) || isParallelLaunch(name)){
             const binding=name.split('.')[0];
             if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
         }
@@ -1170,11 +1170,12 @@ class ArcadeTranslator extends BaseTranslator {
         const sceneSpec=(this.sceneStackProgram || isIndependentRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
-            if(!registration){push(this.note(`${name} requires exact arguments, fixed sprite kinds and a supported inline callback; lifecycle oldScene access is not yet supported`));return;}
+            if(!registration){push(this.note(isParallelLaunch(name)?'control.runInParallel requires one inline callback without parameters':`${name} requires exact arguments, fixed sprite kinds and a supported inline callback; lifecycle oldScene access is not yet supported`));return;}
             const suffix=`as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`;
             switch(registration.kind) {
             case 'update':push(`arcade register update ${suffix}`);break;
             case 'forever':push(`arcade register forever ${suffix}`);break;
+            case 'parallel':push(`arcade run parallel ${suffix}`);break;
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
             case 'countdown':push(`arcade register countdown ${suffix}`);break;
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
@@ -2292,12 +2293,14 @@ const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onE
 const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
 const isSpriteRegistration = name => ['sprites.onDestroyed','sprites.onOverlap'].includes(name);
-const isIndependentRegistration = name => isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
+const isParallelLaunch = name => name==='control.runInParallel';
+const isIndependentRegistration = name => isParallelLaunch(name) || isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
 const sceneRegistrationSpec = name => {
     const specs={
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
         'game.addScenePopHandler':{kind:'scenePop',handlerIndex:0,arity:1,prefix:'__bwScenePop',maxParams:1},
         'forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
+        'control.runInParallel':{kind:'parallel',handlerIndex:0,arity:1,prefix:'__bwParallel',maxParams:0},
         'game.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
         'basic.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
         'info.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
@@ -2768,8 +2771,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
             (name && /\.(destroy|say|sayText|setStayInScreen|setBounceOnWall|setFlag|setPosition|setVelocity|setImage)$/.test(name))) continue;
         if (!(requiresSpriteRuntime && callOf(st))) return null;
     }
-    if (calls.some(call => nameOf(call)==='control.runInParallel' &&
-        (call.args?.length !== 1 || call.args[0]?.type !== 'FunctionExpression'))) return null;
     for (const call of calls) if (!t.sceneStackProgram && nameOf(call)==='sprites.onCreated' &&
         !call.args?.some(arg => arg.type === 'FunctionExpression')) return null;
 
@@ -3064,22 +3065,10 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type) ||
         plainDeclaration(st) ||
         ['If', 'For', 'While','Block'].includes(st.type) ||
-        (callOf(st) && nameOf(callOf(st))!=='control.runInParallel'));
+        callOf(st));
     {
         out.push('WHEN flag clicked:', '  hide');
         for (const st of setup) t.statement(st, 1, out);
-        out.push('');
-    }
-    const emitCallbackBody = (handler, indent = 1) => {
-        t.localVars = declaredWithin(handler.body);
-        t.localHandleVars = localHandles.get(callbackLocals.get(handler)) || new Set();
-        t.block(handler.body, indent, out);
-        t.localVars = null;
-        t.localHandleVars = new Set();
-    };
-    for (const call of calls.filter(call => nameOf(call) === 'control.runInParallel')) {
-        out.push('WHEN flag clicked:');
-        emitCallbackBody(call.args[0]);
         out.push('');
     }
     emitCreatedRegistrations(t, out, localHandles, callbackLocals);

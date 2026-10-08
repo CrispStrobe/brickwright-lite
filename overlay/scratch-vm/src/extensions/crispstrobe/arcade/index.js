@@ -151,6 +151,8 @@ module.exports = makeExt(`// Name: Arcade
         color2: '#D63878',
         color3: '#C42870',
         blocks: [
+          {opcode:'startParallelHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade run parallel as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenParallelHandler',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade parallel handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerForeverHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register forever as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredForever',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade forever handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerCountdownHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register countdown as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -812,6 +814,13 @@ module.exports = makeExt(`// Name: Arcade
     }
     registerDestroyedHandler(args,util) {this._destroyedHandlers.push(this._handlerRegistration(args,util));}
     registerOverlapHandler(args,util) {this._overlapHandlers.push({...this._handlerRegistration(args,util),otherKind:String(args.OTHER_KIND)});}
+    startParallelHandler(args,util) {
+      // Queue one independent fiber per call. The caller must not await it;
+      // captures retain the enclosing cells, including after that call returns.
+      const work=this._runTerrainGenerator(this._registeredCallbackSteps([this._handlerRegistration(args,util)],'arcade_whenParallelHandler',{},undefined,true));
+      work?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message));
+    }
+    whenParallelHandler(args,util) {return this.whenRegisteredWall(args,util);}
     registerForeverHandler(args,util) {
       this._foreverHandlers.push({...this._handlerRegistration(args,util),lock:false});
       if(this._foreverTimer===undefined){this._foreverTimer=setTimeout(()=>this._pumpForever(),0);this._foreverTimer?.unref?.();}

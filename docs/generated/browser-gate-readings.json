@@ -7310,6 +7310,12 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — Arcade parallel launches with nested live captures": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

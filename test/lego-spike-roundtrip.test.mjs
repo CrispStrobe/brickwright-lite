@@ -255,8 +255,10 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 0de6ae91: Arcade player/state, legacy maps and Tile dialect adoption.
     // Re-run every canonical SPIKE artifact assertion below at this exact pin;
     // this is finite artifact qualification, not an emitter-wide equivalence claim.
+    // -> 49903b5d: Arcade instance destruction and parallel capture words only.
+    // Re-run the unchanged canonical SPIKE artifact behavior at this pin.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '0de6ae91758353af89ce64b06717a4294cd6bb05');
+        '49903b5d38d967b64da34a3ca1dd1e228d06b98f');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
