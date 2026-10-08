@@ -808,7 +808,34 @@ set colorIndex to (arcade tile tileSet of (location))
 ```
 
 The tile-location property block now has a real dropdown, preserving its
-selected property through GUI loading. Legacy Tile objects/placement/lists,
-legacy collision callbacks, mixed legacy/modern mutations and the dedicated
+selected property through GUI loading. Legacy collision callbacks, mixed legacy/modern mutations and the dedicated
 color-index map painter remain open. See the capability/GUI gap ledger and
 [qualification receipt](receipts/2026-10-08-arcade-legacy-tilemap.json).
+
+### Legacy Tile values and placement
+
+`scene.getTile`, `scene.getTilesByType`, `scene.setTileAt`, `scene.place`,
+`scene.placeOnRandomTile` and `Tile.place` now have native Blocks, pseudocode,
+runtime and MakeCode export support. Legacy `tiles.Tile` values retain their
+creating map and expose x/y/tileSet. Their arrays and procedure arguments/results
+preserve identity and export as tiles.Tile/tiles.Tile[]. Modern tiles.Location
+values remain a distinct type. Reading tileSet on a disabled legacy map throws,
+matching the original simulator.
+
+```text
+set spot to (arcade color tile column (1) row (3))
+set spots to (arcade color tile array index (6))
+set center to (arcade color tile x of (spot))
+arcade set color tile (spot) index (4)
+arcade on color tile (spot) place sprite (actor)
+arcade place sprite (actor) on random color tile (6)
+```
+
+The property block has an x/y/tileSet dropdown. The map painter, color-index
+picker and map resource lifecycle remain separate GUI work; numeric index inputs
+support authoring now. The same184 import-only baseline is100 translated,
+83 partial and1 malformed. Two newly translated original examples execute in
+Brickwright and original/exported MakeCode with matching finite sprite
+observables. In the production GUI, the flower example responds to the visible
+right controller button. These checks do not establish complete-game equivalence.
+See the [qualification receipt](receipts/2026-10-08-arcade-legacy-tile-values.json).
