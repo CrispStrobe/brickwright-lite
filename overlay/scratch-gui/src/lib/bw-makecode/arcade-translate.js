@@ -37,6 +37,7 @@ import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
 import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
@@ -498,7 +499,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
         }
         if (st.type === 'For' && st.init?.type === 'Declaration' && this.localVars?.has(st.init.decls[0]?.name)) {
-            this.statementInner(st.init,indent,out);
+            this.statement(st.init,indent,out);
             out.push(`${'  '.repeat(indent)}REPEAT UNTIL not (${this.repeatedCondition(st.test)}):`);
             this.block(st.body,indent+1,out);
             if(st.update)this.expressionStatement(st.update,indent+1,out);
@@ -2487,7 +2488,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     t.claimNames(ast);
     const usesRuntimeSpriteMethods = node => {
         if (!node || typeof node !== 'object') return false;
-        if(node.optionalParams?.length || node.loweredLazyValues || node.type==='Undefined' || node.type==='Null' && !node.spritePlaceholder || t.hasLazyCondition(node))return true;
+        if(node.loweredStaticCallbacks || node.optionalParams?.length || node.loweredLazyValues || node.type==='Undefined' || node.type==='Null' && !node.spritePlaceholder || t.hasLazyCondition(node))return true;
         if(['LegacyParsedValue','LegacyJsonValue','NativeArrayAccess'].includes(node.type) || node.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !t.boundSourceGlobals.has(node.name))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
@@ -3297,7 +3298,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
         unsupported: [...new Set([...animationDiagnostics, ...projectInputDiagnostics, ...result.unsupported])]});
     const namespaceBindings = lowerNamespaceBindings(parsed);
-    const ast = lowerLazyValues(namespaceBindings.program || parsed);
+    const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed);
+    projectInputDiagnostics.push(...callbacks.unsupported);
+    const ast = lowerLazyValues(callbacks.program);
     const flattened = namespaceBindings.program ? ast : null;
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[node.name] : null;
     const nativeTilemaps = {};
