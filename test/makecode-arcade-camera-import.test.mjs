@@ -21,7 +21,7 @@ test('all six properties and stored or computed numeric selectors become native 
     const result=arcadeToPseudocode(members.map((name,index)=>`let edge${index}=scene.cameraProperty(CameraProperty.${name})`).join(';')+';let selector=CameraProperty.Bottom;let stored=scene.cameraProperty(selector);let unknown=scene.cameraProperty(99)');
     assert.deepEqual(result.unsupported,[]);
     for(let index=0;index<6;index++)assert.ok(result.code.includes(`arcade camera property (${index})`));
-    assert.match(result.code,/set selector to 5/);
+    assert.match(result.code,/set selector to \(?5\)?/);
     assert.match(result.code,/arcade camera property \(selector\)/);
     assert.match(result.code,/arcade camera property \(99\)/);
 });

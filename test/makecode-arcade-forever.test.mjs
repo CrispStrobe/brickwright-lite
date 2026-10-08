@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {runProgram} from './helpers/bw-vm.mjs';
+import {runProgram, stepFrames, projectOpcodes} from './helpers/bw-vm.mjs';
 
 test('MakeCode forever callback runs repeatedly in the Arcade VM', async () => {
     const translated = arcadeToPseudocode('forever(function () { info.changeScoreBy(1) })');
@@ -13,10 +13,22 @@ test('MakeCode forever callback runs repeatedly in the Arcade VM', async () => {
     assert.ok(Number(run.vm.runtime.bwArcadeDeviceState?.score) > 1);
 });
 
-test('MakeCode stop all sounds uses the existing sound block', () => {
+test('MakeCode stop all sounds dispatches the existing sound block from a registered controller callback', async () => {
     const translated = arcadeToPseudocode(`controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
         music.stopAllSounds()
     })`);
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /WHEN z key pressed:\n  stop all sounds/);
+    const run = await runProgram(translated.code, {frames: 3});
+    const opcodes = projectOpcodes(run.creator.project);
+    assert.ok(opcodes.has('arcade_registerButtonHandler'));
+    assert.ok(opcodes.has('sound_stopallsounds'));
+    let stopped = 0;
+    const original = run.vm.runtime._primitives.sound_stopallsounds;
+    run.vm.runtime._primitives.sound_stopallsounds = (...args) => { stopped++; return original(...args); };
+    assert.equal(stopped, 0);
+    run.vm.postIOData('keyboard', {key: 'z', isDown: true});
+    run.vm.postIOData('keyboard', {key: 'z', isDown: false});
+    await stepFrames(run.vm, 4, 20);
+    assert.equal(stopped, 1);
+    assert.deepEqual(run.errors, []);
 });

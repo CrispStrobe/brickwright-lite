@@ -80,7 +80,7 @@ const parse = code => {
 };
 const AS_VALUE = /is a (COMPARISON|CONDITION) used where a value is expected/;
 
-test('every truth-value form in every value slot imports as a value, on both paths', () => {
+test('every truth-value form in every value slot imports as a value across all callback shapes', () => {
     const bad = [];
     const paths = {handle: 0, fixed: 0};
     for (const [shape, wrap] of Object.entries(SHAPES)) {
@@ -95,9 +95,10 @@ test('every truth-value form in every value slot imports as a value, on both pat
         }
     }
     assert.deepEqual(bad, []);
-    // Both paths are measured (the fixed path is the update and fn shapes' plain cells).
+    // Sprite-bearing programs now use native handles for every callback shape.
+    // The separate sprite-free fixture below still checks the fixed value path.
     assert.equal(paths.handle + paths.fixed, 1080);
-    assert.ok(paths.handle > 0 && paths.fixed > 0, JSON.stringify(paths));
+    assert.equal(paths.handle, 1080, JSON.stringify(paths));
 });
 
 // Logs truth values passed through a function's argument (a value slot).

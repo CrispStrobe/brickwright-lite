@@ -28,7 +28,7 @@ let stored=actor.isHittingTile(direction)
 if(actor.isHittingTile(CollisionDirection.Bottom)){actor.vy=-50}`);
     assert.deepEqual(result.unsupported,[]);
     for(const direction of [0,1,2,3])assert.match(result.code,new RegExp(`arcade sprite \\(actor\\) hitting wall \\(${direction}\\)`));
-    assert.match(result.code,/set direction to 3/);
+    assert.match(result.code,/set direction to \(?3\)?/);
     assert.match(result.code,/arcade sprite \(actor\) hitting wall \(direction\)/);
     assert.match(result.code,/IF truthiness of value \(arcade sprite \(actor\) hitting wall \(3\)\) THEN:/);
 });
