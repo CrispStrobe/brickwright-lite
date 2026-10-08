@@ -36,6 +36,9 @@ try {
     });
     await page.goto(process.env.BW_BASE_URL || process.env.PROOF_URL || 'http://127.0.0.1:8620/',
         {waitUntil: 'domcontentloaded', timeout: 90000});
+    report.pageScripts = await page.locator('script[src]').evaluateAll(nodes => nodes.map(node => node.getAttribute('src')));
+    if (process.env.BW_EXPECT_GUI_BUNDLE) assert.ok(report.pageScripts.some(src => src.endsWith(process.env.BW_EXPECT_GUI_BUNDLE)),
+        'browser must load the qualified production GUI bundle');
     await page.waitForFunction(() => Boolean(window.__brickwrightStore?.getState()?.scratchGui?.vm),
         null, {timeout: 60000});
     await page.evaluate(() => {
@@ -230,7 +233,7 @@ try {
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     const discardedSource = DISCARDED_PROJECTILE_SOURCE.replace('origin.setPosition(40,50)', 'origin.setPosition(80,60)') + `
 controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
-    sprites.createProjectileFromSprite(img\`7\`,origin,0,0)
+    sprites.createProjectileFromSprite(img\`7 7 7\n7 7 7\`,origin,0,0)
 })`;
     const project = makeCodeProjectFile({'main.ts': discardedSource, 'pxt.json': JSON.stringify({
         name: 'Discarded projectiles', dependencies: {device: '*'}, files: ['main.ts']})},
