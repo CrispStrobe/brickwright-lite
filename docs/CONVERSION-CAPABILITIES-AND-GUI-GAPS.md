@@ -86,6 +86,50 @@ and fresh pasted code executes without stale-template upload warnings. Existing
 rotation, projectile and destruction journeys still pass; page errors:0.
 See the [receipt](receipts/2026-10-08-code-artwork-ownership.json).
 
+### Statically bound callback helpers — 2026-10-08
+
+Source `7c1a3859c` specializes higher-order helpers with callable parameter
+annotations and statically known inline callbacks or global named functions.
+This is general helper compilation: loops, conditionals, callback arguments and
+results, early returns, forwarding and recursion remain ordinary native
+procedures. Callback pauses retain their invocation frames. Global captures
+retain live global bindings. Recursive sites reuse specialization records;
+block/loop shadows are respected and ordinary arguments evaluate once in source
+order. Unused generic helper definitions need no executable callback value.
+
+The differential tests exposed and fixed an older numeric-loop bug: native
+procedure-local `for` initializers bypassed value translation, turning numeric
+counters into Scratch text and making addition concatenate. They now use the
+normal declaration translator. Preserve the first failed comparisons in the
+private archive; the corrected tests agree with original PXT.
+
+30 affected callback/function/resource/namespace/roundtrip tests plus14 gate
+checks pass without skips. The owned complete fixture covers repeated callback
+calls, multiple callbacks, named functions, forwarding, recursion, yields,
+returns, alias-free global capture and source-order argument evaluation. Blocks,
+native export into original PXT, reimport and SB3 save/reload agree.
+
+Three recovered tutorial projects lose `handler()` refusals; one now exposes
+separate multiplayer, countdown and sound API gaps inside its callback bodies.
+All ten recovered projects remain partial and original compilation unavailable
+for named offline packages. All partial fragments step24 frames without block
+errors;63 diagnostic occurrences remain (previously65). The same184 standalone
+inputs remain **96 translated /87 partial /1 malformed**. No full-game claim.
+
+GUI authoring uses ordinary native DEFINE/call/return blocks and their Code
+words after specialization. The original higher-order helper abstraction is
+not reconstructed in the editor. Stored/dynamic callable values, caller-local
+closure captures, callbacks themselves accepting callable arguments, callable
+type aliases and namespace-function values still require implementation.
+Callback parameter escape and local shadowing receive explicit diagnostics.
+Future GUI work must include callable value blocks, closure authoring and
+reference-aware procedure rename qualification. Multi-file source navigation,
+namespace preservation, multiplayer, custom palettes and resource editors
+remain open. Production `gui.2f8fb86b.js` passes native file→Code→Blocks→real
+controller B: initial trace123/total12/recursive20/chosen12, then callback
+result50 and sprite x27. All prior journeys pass with zero page errors. Build
+errors0, initial4,360,502 bytes within unchanged4,467,136 budget. See the [receipt](receipts/2026-10-08-arcade-static-callback-helpers.json).
+
 ### Declared helper resource types — 2026-10-08
 
 Source `1fa9a3f34` seeds the existing lexical value graph from supported PXT

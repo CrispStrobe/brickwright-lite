@@ -615,3 +615,20 @@ select native resource operations; they do not cast values or provide missing
 package artwork. Unknown type aliases, unions and callable types are not
 resolved by this type-constraint slice. See the capability ledger for runtime,
 GUI and original-export qualification boundaries.
+
+
+### Synchronous callback helpers
+
+Arcade imports can specialize helper parameters declared with function types,
+for example `handler: (value: number) => number`, when the argument is an inline
+function/arrow or a known global function. The full helper body becomes native
+procedures, preserving loops, conditions, arguments, returns, forwarding,
+recursion and pauses. Callbacks may read and mutate globals. Code and Blocks
+expose the resulting ordinary procedures; exporting writes equivalent Arcade
+procedures, without restoring the original higher-order source abstraction.
+
+Stored/dynamic callable values and callbacks capturing a caller's local cells
+remain named gaps. Namespace-function values, callable type aliases and
+callbacks that themselves accept callable arguments are outside this slice.
+This support does not provide missing extension packages or implement APIs
+inside a callback that already have their own named gaps.
