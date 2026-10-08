@@ -592,8 +592,12 @@ files, and `package` declarations, including bare bundled package names. It
 replaces the template `main.ts` with the explicitly selected source, rejects
 conflicting or missing files, and performs no package download or code execution.
 The native project is suitable as an input to the existing MakeCode file route;
-assembly itself is not a compatibility claim. Arcade imports now explicitly
-name supplemental TypeScript files and nondefault palette rendering that are
-not implemented. Audits discover `.mkcd` and `.pxt` files and report missing
+assembly itself is not a compatibility claim. Arcade imports translate local
+TypeScript declared in `pxt.json.files` and root `testFiles`, in original PXT
+order: supplemental files, then `main.ts`, then `_onCodeStop.ts`. Reopened
+namespaces share exports while retaining private declaration scopes. Unlisted
+files do not execute. Missing files, conditional package-dependent files,
+ambient declarations, assembly/Python sources and nondefault palette rendering
+retain named diagnostics. Generated resource factories use the asset readers. Audits discover `.mkcd` and `.pxt` files and report missing
 offline extension packages as unavailable compilation gates with their names.
 See the [pinned ten-project input receipt](receipts/2026-10-08-tutorial-project-inputs.json).

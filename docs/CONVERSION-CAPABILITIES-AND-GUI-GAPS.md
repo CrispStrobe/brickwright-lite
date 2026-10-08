@@ -86,6 +86,40 @@ and fresh pasted code executes without stale-template upload warnings. Existing
 rotation, projectile and destruction journeys still pass; page errors:0.
 See the [receipt](receipts/2026-10-08-code-artwork-ownership.json).
 
+### Declared project source and namespace scopes — 2026-10-08
+
+Source `18abd6c75` imports local TypeScript declared in `pxt.json.files` plus
+root `testFiles`; original PXT moves `main.ts` last, then `_onCodeStop.ts` last.
+Unlisted code stays excluded. Independent file parsing names malformed files;
+combined parsing allocates temporaries once. Reopened namespaces share exported
+bindings while retaining each declaration's private variables, including nested
+exported namespaces. Illegal private access, mixed export visibility and reads
+before initialization remain named diagnostics.
+
+The complete pinned PXT runtime and native BW runtime agree on file order1243,
+private counter results6/39/8 and sprite creation. Code→Blocks, native Arcade
+export into original PXT, reimport, and SB3 save/reload pass.15 affected tests,
+5 existing namespace/file regressions and14 gate tests pass without skips.
+Conditional files requiring a package graph, ambient declarations, assembly and
+Python are still explicit boundaries. Code/Blocks can edit the lowered program;
+there is no multi-file source navigator or namespace-preserving source editor.
+Production GUI `gui.01abe779.js` passes native project file→Code→Blocks→real
+controller B: initial order1243 and counters6/39/8, then callback43 moves the
+sprite to x43. Prior rotation, projectile, destruction and artwork journeys
+also pass, with zero page errors. Build errors0, initial4,360,502 bytes within
+the unchanged4,467,136 budget. Graphics authoring is unchanged by this slice.
+
+The same184 inputs still measure93 translated /90 partial /1 malformed.
+All ten recovered tutorial projects remain partial and their original compilers
+remain unavailable for named offline packages. Supplemental code diagnostics
+retire, exposing73 diagnostic occurrences versus42 before loading these helpers.
+Eight partial fragments step24 frames; two now raise array-reference block
+errors in previously omitted helper code. Preserve these failures. Next work:
+array-valued helper arguments/initializers, callbacks stored or passed as values,
+package namespace augmentation, multiplayer APIs and dynamic sprite references.
+Do not infer a full-game pass from the independent differential fixture.
+See the [receipt](receipts/2026-10-08-arcade-multifile-source.json).
+
 ### Tutorial background input audit — 2026-10-08
 
 The ten generic unreadable-background cases in the old184-source report are
@@ -102,8 +136,8 @@ partial translated fragment steps24 frames with zero block errors; this does
 not qualify original gameplay. The original184 input importer totals remain
 93 translated /90 partial /1 malformed.15 affected tests and14 gate checks pass.
 
-Next implementation lanes: translate supplemental project source files in the
-original compiler's ordering, implement native custom-palette rendering across
+The supplemental-source implementation below supersedes that input-only gap.
+Next implementation lanes: implement native custom-palette rendering across
 Code/Blocks/Pixel/export, and review/pin required extension packages before
 offline compiler adoption. Do not remove package dependencies to obtain a pass.
 The CLI preserves them; the audit now records typed `NO_EXTENSION` errors as
@@ -111,8 +145,8 @@ unavailable with exact dependency names. See the
 [receipt](receipts/2026-10-08-tutorial-project-inputs.json) and
 [CLI instructions](MAKECODE.md#recover-complete-tutorial-inputs-offline).
 
-Next: recover/pin the identified package inputs, implement supplemental
-project source and palette rendering, and implement legacy tilemap calls as
+Next: recover/pin the identified package inputs, implement palette rendering
+and the newly exposed helper-code gaps below, and implement legacy tilemap calls as
 real native resource operations; then address boolean dialogs, paint callbacks and effects.
 Each family still needs its own Code/Blocks/resource-editor, runtime, original
 export and actual user-control journeys. Keep unequal animation timing, action
