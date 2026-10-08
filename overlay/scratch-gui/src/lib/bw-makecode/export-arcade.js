@@ -989,6 +989,20 @@ class ArcadeEmitter {
         case 'arcade_hasLife': {const api=this.infoPlayerApi(b);return api?`${api}.hasLife()`:this.na();}
         case 'arcade_hasPlayerScore': {const api=this.infoPlayerApi(b);return api?`${api}.hasScore()`:this.na();}
         case 'arcade_getLife': {const api=this.infoPlayerApi(b);return api?`${api}.life()`:this.na();}
+        case 'arcade_playerLookup': {
+            this.requiresMultiplayerPackage=true;const mode=this.field(b,'MODE');
+            if(!['index','number'].includes(mode)){this.note('Arcade player lookup mode must be index or number');return this.na();}
+            return `mp.${mode==='index'?'getPlayerByIndex':'getPlayerByNumber'}(${v('VALUE')})`;
+        }
+        case 'arcade_allPlayers': this.requiresMultiplayerPackage=true;return 'mp.allPlayers()';
+        case 'arcade_playerSprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerSprite(${v('PLAYER')})`;
+        case 'arcade_playerBySprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerBySprite(${v('ID')})`;
+        case 'arcade_playerProperty': {
+            this.requiresMultiplayerPackage=true;const read=this.field(b,'READ'),property=this.literalNumber(b,'PROPERTY');
+            if(read==='safe')return `mp.getPlayerProperty(${v('PLAYER')}, ${v('PROPERTY')})`;
+            if(read==='member' && [1,2].includes(property))return `(${v('PLAYER')}).${property===1?'index':'number'}`;
+            this.note('Arcade player member reads require fixed index/number properties; safe reads permit dynamic selectors');return this.na();
+        }
         case 'arcade_currentScene': return 'game.currentScene()';
         case 'arcade_scenePhysicsEngine': return `(${v('SCENE')}.physicsEngine as ArcadePhysicsEngine)`;
         case 'arcade_createPhysicsEngine': return `new ArcadePhysicsEngine(${this.arrayValue(b,'MAX_SPEED')}, ${this.arrayValue(b,'MIN_STEP')}, ${this.arrayValue(b,'MAX_STEP')})`;
@@ -1184,6 +1198,7 @@ class ArcadeEmitter {
         case 'arcade_addAnimationFrame':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.addAnimationFrame(${v('IMAGE')})`);return;
         case 'arcade_attachAnimation':this.requiresAnimationPackage=true;push(`animation.attachAnimation(${v('ID')}, ${v('ANIMATION')})`);return;
         case 'arcade_setAnimationAction':this.requiresAnimationPackage=true;push(`animation.setAction(${v('ID')}, ${this.arrayValue(b,'ACTION')})`);return;
+        case 'arcade_setPlayerSprite': this.requiresMultiplayerPackage=true;push(`mp.setPlayerSprite(${v('PLAYER')}, ${v('ID')})`);return;
         case 'arcade_setScenePhysicsEngine': push(`${v('SCENE')}.physicsEngine = ${v('ENGINE')}`);return;
         case 'arcade_setPhysicsEngineProperty': {
             const property=b.fields?.PROPERTY?.[0];
@@ -1904,7 +1919,7 @@ class ArcadeEmitter {
 
     localDeclaration (name, key) {
         const type=this.localValueTypes.get(key)?.get(name) || 'any';
-        const initial=type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='animation.Animation' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='animation.Animation' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -1940,7 +1955,7 @@ class ArcadeEmitter {
     /** Infer Image argument annotations from native image operations and
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
-        const graphAnimationValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
+        const graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
@@ -2029,6 +2044,9 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileLocationProperty'){const id=Symbol('tile numeric property');numbers.add(id);return id;}
+                if(['arcade_playerLookup','arcade_playerBySprite'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
+                if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
+                if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
                 if(value.opcode==='arcade_physicsEngineProperty'){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
@@ -2044,7 +2062,7 @@ class ArcadeEmitter {
                     const id=`${key}:array-value:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
                     if(value.opcode==='arrays_createReference')arrays.add(id);return id;
                 }
-                if (['arcade_spawnSprite','arcade_spawnProjectile','arcade_spawnImageSprite','arcade_spawnImageProjectile','arcade_eventSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(value.opcode)) {
+                if (['arcade_playerSprite','arcade_spawnSprite','arcade_spawnProjectile','arcade_spawnImageSprite','arcade_spawnImageProjectile','arcade_eventSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(value.opcode)) {
                     const id = `${key}:sprite:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     sprites.add(id);return id;
                 }
@@ -2062,6 +2080,10 @@ class ArcadeEmitter {
                 for (const input of block.opcode === 'arcade_blitImage' || block.opcode === 'arcade_imagesOverlap' ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
+                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty'].includes(block.opcode)){
+                    const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
+                }
+                if(block.opcode==='arcade_allPlayers'){const array=ref(block),item=Symbol('player collection element');graphPlayerValues.add(item);elements.push([array,item]);}
                 if(block.inputs?.SCENE){const value=ref(inputBlock(blocks,block,'SCENE'));if(value)graphSceneValues.add(value);}
                 if(block.inputs?.ENGINE){const value=ref(inputBlock(blocks,block,'ENGINE'));if(value)graphPhysicsEngineValues.add(value);}
                 if(block.inputs?.ANIMATION){const animation=ref(inputBlock(blocks,block,'ANIMATION'));if(animation)graphAnimationValues.add(animation);}
@@ -2124,7 +2146,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
@@ -2154,12 +2176,12 @@ class ArcadeEmitter {
         // to its elements (which would incorrectly change the argument type).
         for(const [array,value] of lookupTypes)if(array && value){
             const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','Animation','Scene','PhysicsEngine','array','number','string','boolean'].includes(type));
+            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','Animation','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
             if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
         }
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -2168,7 +2190,7 @@ class ArcadeEmitter {
         const arrayType=value=>graph.arrayType(value);
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['string','tiles.Location','animation.Animation','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['mp.Player','string','tiles.Location','animation.Animation','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -2575,7 +2597,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
@@ -2767,7 +2789,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': ts,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresAnimationPackage ? {animation: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`

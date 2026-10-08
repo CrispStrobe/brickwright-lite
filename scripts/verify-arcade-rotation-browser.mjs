@@ -7,6 +7,7 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {MULTIPLAYER_PLAYERS_SOURCE} from '../test/fixtures/arcade-multiplayer-players.mjs';
 import {ARRAY_PICK_RANDOM_SOURCE} from '../test/fixtures/arcade-array-pick-random.mjs';
 import {NAMESPACE_AUGMENTATION_SOURCE} from '../test/fixtures/arcade-namespace-augmentation.mjs';
 import {STATIC_CALLBACK_SOURCE} from '../test/fixtures/arcade-static-callback-helpers.mjs';
@@ -442,6 +443,31 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     report.arrayPickRandom = {nativeFileImport: true, codeToBlocks: true, calls: 1, pixel: 5,
         nestedArrayLength: 2, membershipChecks: 40, initialSpriteX: 41, controllerSpriteX: 45};
     await page.screenshot({path: out.replace(/\.json$/, '') + '-array-random.png'});
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const multiplayerProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_PLAYERS_SOURCE,
+        'pxt.json': JSON.stringify({name: 'Multiplayer players', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Multiplayer players'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'multiplayer-players.mkcd', mimeType: 'application/json', buffer: Buffer.from(multiplayerProject)});
+    await page.getByText(/Imported the Arcade game.*multiplayer-players/).first().waitFor({state: 'visible'});
+    assert.doesNotMatch(await editor.evaluate(element => element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await waitMultifile({count: 4, number: 3, index: 1, fourth: 4, copied: 4, restored: 1});
+    const playerBefore = await page.evaluate(() => {
+        const vars=window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables));
+        return vars.find(v=>v.name.replace(/^Game_/,'')==='observedX').value;
+    });
+    await page.getByTestId('bw-arcade-b').click();
+    await waitMultifile({observedX: playerBefore + 5});
+    await page.waitForFunction(x => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)
+        .some(sprite => sprite.id && sprite.x === x), playerBefore + 5);
+    report.multiplayerPlayers = {nativeFileImport: true, codeToBlocks: true, count: 4,
+        number: 3, index: 1, copiedArrayLength: 4, initialSpriteX: playerBefore, controllerSpriteX: playerBefore + 5,
+        boundary: 'Controller B runs a callback using player sprite lookup; mp.moveWithButtons is not implemented by this journey'};
+    await page.screenshot({path: out.replace(/\.json$/, '') + '-multiplayer-players.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),

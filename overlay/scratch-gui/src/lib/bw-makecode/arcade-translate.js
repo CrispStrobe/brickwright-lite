@@ -227,7 +227,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
         this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.spriteResultFunctions = references.spriteFunctions;
         this.spriteResultBindings = new Set();
@@ -576,6 +576,19 @@ class ArcadeTranslator extends BaseTranslator {
 
     callExpression (node) {
         const engineApi=this.path(node.callee),engineArgs=node.args||[];
+        if(engineApi?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {
+            this.unsupported.push(`${engineApi} refers to a shadowed mp binding`);return 'undefined value';
+        }
+        const mpSpecs={'mp.playerSelector':['arcade player by number',1], 'mp.getPlayerByNumber':['arcade player by number',1],
+            'mp.getPlayerByIndex':['arcade player by index',1], 'mp.getPlayerSprite':['arcade sprite of player',1],
+            'mp.getPlayerBySprite':['arcade player of sprite',1]};
+        if(mpSpecs[engineApi]) {
+            const [word,arity]=mpSpecs[engineApi];
+            if(engineArgs.length===arity)return `${word} (${this.expr(engineArgs[0])})`;
+            this.unsupported.push(`${engineApi} requires ${arity} argument`);return 'undefined value';
+        }
+        if(engineApi==='mp.allPlayers' && !engineArgs.length)return 'arcade all players';
+        if(engineApi==='mp.getPlayerProperty' && engineArgs.length===2)return `arcade player safe property (${this.expr(engineArgs[1])}) of (${this.expr(engineArgs[0])})`;
         if(engineApi==='game.currentScene') {
             if(!engineArgs.length)return 'arcade current scene';
             this.unsupported.push('game.currentScene requires zero arguments');return 'undefined value';
@@ -823,6 +836,22 @@ class ArcadeTranslator extends BaseTranslator {
      * though writing it is not.
      */
     valueExpr (node) {
+        const mpEnum = this.path(node);
+        const mpConstants={'mp.PlayerNumber.One':1,'mp.PlayerNumber.Two':2,'mp.PlayerNumber.Three':3,'mp.PlayerNumber.Four':4,
+            'mp.PlayerProperty.Index':1,'mp.PlayerProperty.Number':2};
+        if(Object.prototype.hasOwnProperty.call(mpConstants,mpEnum)) {
+            if(this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp')) {
+                this.unsupported.push(`${mpEnum} refers to a shadowed mp binding`);return 'undefined value';
+            }
+            return String(mpConstants[mpEnum]);
+        }
+        if(/^mp\.(PlayerNumber|PlayerProperty)\./.test(mpEnum||'')) {
+            this.unsupported.push(`${mpEnum} is not a declared multiplayer enum member`);return 'undefined value';
+        }
+        if(node?.type==='Member' && this.playerReferences?.has(node.object)) {
+            if(['index','number'].includes(node.name))return `arcade player member property (${node.name==='index'?1:2}) of (${this.expr(node.object)})`;
+            this.unsupported.push(`mp.Player.${node.name} requires native player member support`);return 'undefined value';
+        }
         if(node?.type==='Member' && this.sceneReferences?.has(node.object)) {
             if(node.name==='physicsEngine')return `arcade physics engine of scene (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade Scene.${node.name} requires native Scene member support`);return 'undefined value';
@@ -877,6 +906,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node?.type==='Binary' && ['+','-','*','/','%'].includes(node.op)) {
             if([node.left,node.right].some(value=>this.spriteReferences?.has(value)))this.unsupported.push('sprite arithmetic conversion requires ToPrimitive support');
+            if([node.left,node.right].some(value=>this.playerReferences?.has(value)))this.unsupported.push('player arithmetic conversion requires ToPrimitive support');
             this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
         // `!x` as a value. The value words have no unary `!` (BWValues.unary
@@ -1027,6 +1057,8 @@ class ArcadeTranslator extends BaseTranslator {
         const push = line => out.push(pad + line);
         const name = this.path(node.callee);
         const a = node.args || [];
+        if(name?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {push(this.note(`${name} refers to a shadowed mp binding`));return;}
+        if(name==='mp.setPlayerSprite' && a.length===2){push(`arcade set sprite of player (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
         // Lite's own export's stop machinery, lifted back by liftExporterStops.
         if (name === '__bwStopAll') { push('stop all'); return; }
         if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
@@ -1474,6 +1506,7 @@ class ArcadeTranslator extends BaseTranslator {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
         const dataTarget=expr.type==='Assignment'?expr.left:expr.type==='Update'?expr.argument:null;
+        if(dataTarget?.type==='Member' && this.playerReferences?.has(dataTarget.object)){push(this.note(`mp.Player.${dataTarget.name} assignment requires native player member support`));return;}
         if(dataTarget?.type==='Member' && this.dataReferences?.has(dataTarget.object) && !this.spriteReferences?.has(dataTarget.object)) {
             push(this.note(`Sprite.data.${dataTarget.name} assignment requires arbitrary object member support`));return;
         }
@@ -1963,7 +1996,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
 const inferImageReferences = (ast, pathOf, imageOf) => {
-    const references = new WeakSet(), tiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -2026,6 +2059,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
         if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
         if (node?.type === 'Identifier') return binding(owner, node.name);
+        if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
         if(node?.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
@@ -2033,6 +2067,10 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node?.type === 'Member' && ['action','interval'].includes(node.name) && typeOf(node.object,owner).has('animation')) return new Set(['number']);
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
+            if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
+            if(api==='mp.getPlayerSprite')return new Set(['sprite']);
+            if(api==='mp.allPlayers')return new Set(['array']);
+            if(api==='mp.getPlayerProperty')return new Set(['number']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
             if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
@@ -2114,9 +2152,10 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     for (const {node,owner} of entries) {
         const value=cell(node,owner);
         for (const type of typeOf(node,owner)) {
-            const name={image:'Image',sprite:'Sprite',tile:'TileLocation',animation:'Animation',scene:'Scene','physics-engine':'PhysicsEngine',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
+            const name={image:'Image',sprite:'Sprite',tile:'TileLocation',animation:'Animation',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
             if(name)graph.add(value,name);
         }
+        if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
         if(node.type==='Call' && pathOf(node.callee)==='sprites.allOfKind'){graph.add(value,'array');graph.add(graph.element(value),'Sprite');}
         if(node.type==='Call' && pathOf(node.callee)==='tiles.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'TileLocation');}
         if(node.type==='Array') for(const item of node.items)connect(graph.element(value),cell(item,owner));
@@ -2162,6 +2201,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node.type==='Number' || graph.has(value,'number') && !['array','Image','Sprite','string','boolean'].some(type=>graph.has(value,type))) numbers.add(node);
         if (graph.has(value,'Image')) references.add(node);
         if (graph.has(value,'Sprite')) sprites.add(node);
+        if (graph.has(value,'Player')) players.add(node);
         if (graph.has(value,'TileLocation')) tiles.add(node);
         if (graph.has(value,'Animation')) animations.add(node);
         const types=typeOf(node,owner);
@@ -2169,7 +2209,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {players, images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -2495,6 +2535,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
+        if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;

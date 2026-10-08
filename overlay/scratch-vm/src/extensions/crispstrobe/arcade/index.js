@@ -40,6 +40,7 @@ module.exports = makeExt(`// Name: Arcade
       this._imageSkins = new Map();
       this._images = new Map();
       this._spriteValues = new Map();
+      this._playerValues = new Map();this._nextPlayerValue=0;
       this._sceneValues=new Map();this._physicsEngines=new Map();this._nextSceneValue=0;this._nextPhysicsEngine=0;
       this._kindInsertion = 0;
       this._animations = new Map();
@@ -103,6 +104,7 @@ module.exports = makeExt(`// Name: Arcade
           for (const id of this._imageSkins.keys()) this._clearImage(id);
           this._images.clear();
           this._spriteValues.clear();
+          this._playerValues.clear();this._nextPlayerValue=0;
           this._sceneValues.clear();this._physicsEngines.clear();this._nextSceneValue=0;this._nextPhysicsEngine=0;
           this._kindInsertion = 0;
           this._animations.clear();
@@ -187,6 +189,12 @@ module.exports = makeExt(`// Name: Arcade
             text: 'Arcade controller [AXIS] step [STEP]',
             arguments: { AXIS: {type: Scratch.ArgumentType.STRING, menu: 'axes', defaultValue: 'x'},
               ...n('STEP', 100) } },
+          {opcode:'playerLookup',blockType:Scratch.BlockType.REPORTER,text:'Arcade player by [MODE] [VALUE]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'playerLookupModes',defaultValue:'number'},...n('VALUE',1)}},
+          {opcode:'allPlayers',blockType:Scratch.BlockType.REPORTER,text:'Arcade all players'},
+          {opcode:'playerSprite',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite of player [PLAYER]',arguments:str('PLAYER','')},
+          {opcode:'setPlayerSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade set sprite of player [PLAYER] to [ID]',arguments:{...str('PLAYER',''),...str('ID','')}},
+          {opcode:'playerBySprite',blockType:Scratch.BlockType.REPORTER,text:'Arcade player of sprite [ID]',arguments:str('ID','')},
+          {opcode:'playerProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade player [READ] property [PROPERTY] of [PLAYER]',arguments:{READ:{type:Scratch.ArgumentType.STRING,menu:'playerReadModes',defaultValue:'safe'},...n('PROPERTY',2),...str('PLAYER','')}},
           { opcode: 'controlSprite', blockType: Scratch.BlockType.COMMAND,
             text: 'move Arcade sprite [ID] with buttons vx [VX] vy [VY]',
             arguments: {...str('ID', ''), ...n('VX', 100), ...n('VY', 100)} },
@@ -557,6 +565,8 @@ module.exports = makeExt(`// Name: Arcade
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
+          ,playerReadModes: {acceptReporters:false,items:['safe','member']}
+          ,playerLookupModes: {acceptReporters:false,items:['number','index']}
           ,animationAssets: {acceptReporters: true, items: 'getAnimationAssets'}
           ,animationProperties: {acceptReporters: false, items: ['image', 'action', 'interval']}
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
@@ -584,6 +594,34 @@ module.exports = makeExt(`// Name: Arcade
       }
       if (!this._fallbackState) this._fallbackState = {buttons: {}, sprites: {}, neopixels: Array(5).fill('#111827'), score: 0};
       this._ensureSceneEngine(this._fallbackState);return this._fallbackState;
+    }
+
+    _players() {
+      const state=this._state();
+      if(!state._mpPlayers)state._mpPlayers=Array.from({length:4},(_,index)=>{
+        const player={id:'arcade-player:'+(++this._nextPlayerValue),index,sprite:undefined};
+        this._playerValues.set(player.id,player);return player;
+      });
+      return state._mpPlayers;
+    }
+    _player(value) {return this._playerValues.get(Scratch.BWValues.referenceId(this._runtime,value,'player'));}
+    _playerRef(player) {return player?Scratch.BWValues.reference(this._runtime,'player',player.id):Scratch.BWValues.encode(undefined);}
+    playerLookup(args) {
+      const raw=Scratch.BWValues.decode(args.VALUE);
+      const key=String(args.MODE)==='number'?Number(raw)-1:raw;
+      // PXT indexes the player array directly. A null index is not index zero;
+      // canonical numeric strings name array slots, other property names do not.
+      const index=typeof key==='string' && String(Number(key))===key?Number(key):key;
+      return this._playerRef(Number.isInteger(index)&&index>=0&&index<4?this._players()[index]:undefined);
+    }
+    allPlayers() {return Scratch.BWValues.arrayReference(this._runtime,this._players().map(player=>this._playerRef(player)));}
+    playerSprite(args) {return Scratch.BWValues.encode(this._player(args.PLAYER)?.sprite);}
+    setPlayerSprite(args) {const player=this._player(args.PLAYER);if(player)player.sprite=Scratch.BWValues.decode(args.ID);}
+    playerBySprite(args) {const sprite=Scratch.BWValues.decode(args.ID);return this._playerRef(this._players().find(player=>player.sprite===sprite));}
+    playerProperty(args) {
+      const player=this._player(args.PLAYER),property=Number(Scratch.BWValues.decode(args.PROPERTY));
+      if(String(args.READ)==='member' && !player)throw new TypeError('Cannot read property of missing mp.Player');
+      return player?(property===1?player.index:property===2?player.index+1:0):0;
     }
 
     _newPhysicsEngine(maxSpeed=500,minStep=2,maxStep=4) {
