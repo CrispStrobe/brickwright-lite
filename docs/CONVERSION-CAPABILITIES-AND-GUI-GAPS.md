@@ -1531,3 +1531,10 @@ local contracts; it does not claim overall hosted integration is green. Next
 finish that gate cleanup alongside the remaining callback families. Exact-head
 CI and stacked integration remain pending.
 [Receipt](receipts/2026-10-08-arcade-info-registration.json).
+
+
+### Hosted integration contract repair — 2026-10-08
+
+Test source `7aef65c5f12761a946eb7c11e672aa292351538b` qualifies54 distinct checks after focused reruns, with0 skips. The Code test harness supplies the actual artwork capture helper and tests deferred load/refresh and explicit failures. Native button tests observe long-text display/dismissal and sound-stop dispatch after registration. Controlled interval tests check immediate startup calls,100/200ms boundaries and captured dynamic periods; exported intervals compile in PXT. All1,080 truth-value cells still parse, with separate native/fixed value execution probes retained. Camera/terrain selectors and costume wiring contracts accept the current representation.
+
+This is test-only work: no new production build or corpus pass was run, and the last import-only102/81/1 is unchanged. Original and intermediate failures remain in private evidence. Scene push/pop callbacks, untranslated arrays, F5 export/value diagnostics, module reachability and camera/pixel/physics/speech browser gates remain open pending fresh checks. No full compatibility or overall CI success is claimed. [Receipt](receipts/2026-10-08-arcade-ci-repair.json).
