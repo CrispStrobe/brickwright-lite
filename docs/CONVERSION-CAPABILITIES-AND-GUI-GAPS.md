@@ -62,6 +62,30 @@ See the [receipt](receipts/2026-10-08-arcade-destroy-kind.json).
 This slice does not rerun or supersede the original-compilation/runtime census
 above and does not establish whole-game equivalence.
 
+### Code artwork ownership — 2026-10-08
+
+Qualified candidate for the stale-import GUI gap above: after a successful Code →
+Blocks conversion, the live project owns applied SVG uploads. Repeat conversions
+read its current artwork through the same declaration slots; old replacement
+or append uploads are not replayed. Appended costumes without explicit
+`COSTUME` declarations become owned attachments while the authored slots match.
+A new append preserves existing attachments before the new costume; From Blocks
+turns them into ordinary explicit declarations. A fresh target does not inherit
+another target's attachments. Unassigned and failed uploads remain available.
+Changes to pending uploads during preparation reject the outdated conversion.
+
+The36-test affected artwork/gate batch passes, including live edits to appended
+assets, repeated conversion, append ordering and exact native PNG/SVG/document
+retention. The production build reports zero errors and4,360,502 initial bytes,
+within the unchanged4,467,136 budget. This GUI slice changes no conversion
+capability classification and does not rerun the corpus audit.
+
+The production browser now passes native import → Code → To Blocks → repeat
+conversion with exact costume bytes, including an implicitly appended costume,
+and fresh pasted code executes without stale-template upload warnings. Existing
+rotation, projectile and destruction journeys still pass; page errors:0.
+See the [receipt](receipts/2026-10-08-code-artwork-ownership.json).
+
 Next: distinguish missing asset/package inputs from importer failures in the
 10 unreadable background cases; implement legacy tilemap calls as real native
 resource operations; then address boolean dialogs, paint callbacks and effects.
