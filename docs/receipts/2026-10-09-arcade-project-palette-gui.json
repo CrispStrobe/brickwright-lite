@@ -96,5 +96,9 @@
     "Effects/dialog behavior outside existing qualified controls",
     "Stacked draft integration"
   ],
-  "publication": "Own-repository stacked draft; not merged"
+  "publication": "Own-repository stacked draft; not merged",
+  "interpretationCorrection": {
+    "receipt": "2026-10-09-arcade-template-palette.json",
+    "detail": "The simple-template handle/image export failure came from the headless callback using pre-load asset IDs after VM loading. It is not evidence of a product exporter resizing defect. Original failed evidence is preserved."
+  }
 }

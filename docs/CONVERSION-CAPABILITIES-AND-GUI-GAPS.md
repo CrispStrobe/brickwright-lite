@@ -1799,3 +1799,36 @@ Buffer-building and palette-extension APIs; effects/dialog behavior outside
 existing controls. The original 184-input census remains the previous measured
 102 translated, 81 partial, 1 malformed; this GUI change does not establish a
 new census or zero remaining gaps.
+
+
+### Indexed template clone palette lifecycle — 2026-10-09
+
+Global palette changes now load readable indexed artwork for existing Arcade
+template clones and recolor them without changing source costumes, geometry or
+indices. Clones created after a startup palette immediately render in its colors.
+Costume changes retain that palette; repeated updates reuse skins and destruction
+and restart dispose them. Unreadable vector art remains unmodified. Runtime-only
+palette sources use the Arcade runtime; the rendering diagnostic now recognizes
+its `arcade create template` command.
+
+The prior simple-template export failure was a headless evidence error: a
+callback looked up original creator assets by changed VM asset IDs, triggering
+placeholder artwork and its size diagnostic. Export with the current VM costume
+asset bytes has no unsupported entries. This corrects that interpretation while
+preserving the original failure. Genuinely authored template/image size mismatch
+still remains diagnostic. Template palette adoption was independently missing
+and is implemented here; ordinary Scratch artwork retains its artwork colors.
+
+At source `cdb3a75d7777bf96f514e9ba6b407618aa6ff938`, 52 affected checks
+pass with no failures/skips. Controls include real renderer skin attachment and
+cleanup, Code/SB3 roundtrips and original/exported PXT screen/palette equality.
+Fresh import-only remeasurement of all 184 hash-verified original inputs remains
+102 translated / 81 partial / 1 malformed, with zero changed diagnostic rows.
+The richer full audit adds existing Code-to-Blocks empty-body warnings on four
+rows; it is a different qualification boundary, not a new translator regression.
+
+Visible controller checks for recoloring an existing clone and creating another
+under the active palette are added to the production browser gate. Fresh hosted
+execution is pending; prior reference bundle results cannot qualify this source.
+Broader Buffer/palette-extension/effect/dialog support and the original partials
+remain open. See [the receipt](receipts/2026-10-09-arcade-template-palette.json).
