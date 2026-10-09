@@ -6,6 +6,32 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Question readiness and visible browser navigation — 2026-10-09
+
+Source `7c05309b9` fixes the production question guard defect found in PR748.
+At500 ms the runtime re-emitted the same mutated dialog object. The pure stage
+container compared the object identity and skipped rendering, leaving Yes/No
+disabled. Each dialog notification now publishes a fresh snapshot; callbacks
+still close over the authoritative queue. The new regression fails before the
+fix and verifies changed identity, retained prior elapsed state and correct
+settlement through the old dismissal callback afterward.
+
+The hosted callback/sprite gates also exposed a normal absent-stage interval
+while replacing projects. Their waits now require a present replacement stage
+before reading its ID; callback trace and completion assertions are retained.
+The palette graphics journey opens the right pane and returns visibly to Blocks
+before clicking Run, preserving the persisted startup-block assertion.
+
+23 affected checks pass, including original PXT question comparisons,
+Code/Blocks/export/SB3, production/development extension bundles, four-controller
+bindings and palette authoring. The three changed browser scripts pass syntax
+checks. PR748's actual production build succeeded; both browser jobs failed on
+the issues above, and their raw logs remain archived. **Fresh full-app browser
+results are pending.** No merge or GUI closure is inferred from local tests.
+Import-only census remains the preceding measured **105 translated /78 partial /
+1 malformed**; this follow-up does not change the importer or producer.
+See the [receipt](receipts/2026-10-09-arcade-dialog-readiness.json).
+
 ## Direct controller sprite bindings — 2026-10-09
 
 Source `173e4a645` and producer `e3d0e890` add
