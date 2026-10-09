@@ -2037,3 +2037,10 @@ SpriteSayRenderer and font data, with a native write-mask bridge. The mask
 preserves explicit colour-zero writes and owner-local draw ordering; original
 PXT source stays unchanged for full pixel comparisons. Legacy speech's separate
 bubble sprite remains an integration gap in this frame pipeline.
+
+### Speech clock across scenes
+
+Speech creation, raster animation and expiry use the existing global simulated
+clock, following original PXT control.millis/game.runtime speech semantics.
+Scene-local frame and physics clocks remain separate. Original PXT speech
+sources and simulator remain unchanged for suspended-scene comparisons.

@@ -1531,7 +1531,7 @@ module.exports = makeExt(`// Name: Arcade
         duration < 0 && previous.end === null) return;
       this._clearSpeech(id);
       if (!text) { this._changed(); return; }
-      const now = state.elapsedMs || 0;
+      const now = this._globalElapsedMs;
       const entry = {target, text, legacy, foreground, background, animated: Scratch.Cast.toBoolean(args.ANIMATED),
         end: Number.isFinite(duration) && duration >= 0 ? now + duration : null};
       entry.renderer = speechEngine.create(text, Number.isFinite(duration) ? duration : -1,
@@ -1656,7 +1656,7 @@ module.exports = makeExt(`// Name: Arcade
     _renderSpeech(id, entry, owner, dt) {
       const camera=this._camera(),relative=!!(owner.flags & spriteFlags.RelativeToCamera);
       const view={...owner,x:owner.x-(relative?0:camera.drawOffsetX),y:owner.y-(relative?0:camera.drawOffsetY)};
-      entry.raster=speechEngine.renderRaster(entry.renderer,view,this._state().elapsedMs || 0,dt);
+      entry.raster=speechEngine.renderRaster(entry.renderer,view,this._globalElapsedMs,dt);
       const pixels=entry.raster.pixels;
       const renderer = this._runtime?.renderer;
       if (!renderer) return;
@@ -1683,7 +1683,9 @@ module.exports = makeExt(`// Name: Arcade
       }
     }
     _advanceSpeech(dt) {
-      const now = this._state().elapsedMs || 0;
+      // PXT speech deadlines and animation time use control.millis/game.runtime,
+      // which continue while the owning scene is suspended.
+      const now = this._globalElapsedMs;
       for (const [id, entry] of this._speech) {
         const owner = this._speechOwner(id, entry.target);
         if (!owner || entry.end !== null && now + 1e-6 >= entry.end) this._clearSpeech(id);
