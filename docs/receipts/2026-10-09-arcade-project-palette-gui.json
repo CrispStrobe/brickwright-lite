@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "304f9616b6e742107bda4dcd9073e64fa7355c22",
+  "base": "8256f7bee52c5bc13a28e951a470154f767a802c",
+  "producerPin": "de2ac6ce2e93f7193ff7b1a04bc941c5e1a76d45",
+  "implemented": [
+    "Sixteen-color project palette picker, presets, reset and artwork-color copying",
+    "Explicit apply writes a normal startup block and changes the live Arcade palette without running the project",
+    "Canvas and brush swatches preview project colors without changing artwork indices or palette",
+    "Artwork saves, PNG and spritesheet exports retain artwork palette; closing preview restores artwork colors",
+    "Existing literal updates preserve later commands; expression/conflict/stale/load failure paths reject authored-code replacement",
+    "Tracked graphics editor mirror repaired",
+    "Controller fixture waits for authored setup completion; sprite count and pixel assertions retained",
+    "Playwright apt installation separated from retried browser downloads with root-owned process-group timeout"
+  ],
+  "local": {
+    "passed": 80,
+    "failed": 0,
+    "skipped": 0,
+    "log": "project-palette-gui-final-source.log",
+    "files": [
+      "test/arcade-project-palette-authoring.test.mjs",
+      "test/makecode-project-palette.test.mjs",
+      "test/makecode-indexed-palette.test.mjs",
+      "test/pixel-layers.test.mjs",
+      "test/pixel-animation-publication.test.mjs",
+      "test/pixel-arcade-background.test.mjs",
+      "test/browser-gate-timeouts.test.mjs",
+      "test/browser-gate-budgets.test.mjs",
+      "test/browser-gate-shards.test.mjs",
+      "test/overlay-packages-pairs.test.mjs"
+    ],
+    "authoringIntegration": [
+      "Real VM Blocks mutations and SB3 restart",
+      "GUI-created palette Code decompile/reimport",
+      "Exported authored VM project compiles/runs in original PXT and retains all sixteen palette colors",
+      "Later palette runtime command wins without being rewritten",
+      "Invalid/stale/conflicting/dynamic/extension failure atomic rejection"
+    ],
+    "workflow": "Playwright setup shell syntax passes; no local apt installation"
+  },
+  "browser": {
+    "freshIsolatedComponent": {
+      "locales": [
+        "en",
+        "de"
+      ],
+      "controls": 16,
+      "errors": 0,
+      "checks": [
+        "Preview does not mutate project",
+        "Apply persists real Scratch Blocks",
+        "Concurrent Blocks edit rejected",
+        "Button text fits"
+      ],
+      "boundary": "Fresh React component and real Scratch Blocks; live primitive recorded, separate real-VM tests establish runtime persistence"
+    },
+    "referenceController": {
+      "status": "passed",
+      "samples": 12,
+      "bundle": "gui.3c9f1746.js",
+      "bundleSource": "d606023f2455a0e0a213da65a34d76a31ed91445",
+      "bundleSha256": "55d84625d43336d7a39bd893968863ce7c824ac91d3ded33f94ed7fe0afde558",
+      "boundary": "Existing controller APIs only; not fresh palette GUI qualification"
+    },
+    "freshIntegratedPalette": "Pending hosted production graphics gate; visible controls, startup block and restart assertions added"
+  },
+  "inheritedHostedFailures": {
+    "head": "8256f7bee52c5bc13a28e951a470154f767a802c",
+    "buildRun": "37892561785",
+    "focusedRun": "37892561770",
+    "buildAndFocused": "Tracked overlay/packages pixel-editor mirror mismatch",
+    "light": "Projectile creation count observed before authored setup completed; expected live count four remains unchanged",
+    "heavy": "Browser dependency installation timeout and remaining apt child lock; app was not reached",
+    "preserved": true
+  },
+  "preservedLocalFindings": [
+    "Default palette import deliberately omits redundant startup command; test fixture corrected",
+    "Stale test initially wrote the same value; corrected to a distinct concurrent edit",
+    "Isolated harness syntax and document charset corrected; failed logs retained",
+    "Fixed Scratch import export retains handle/image-size diagnostic; native Arcade image game used for native palette export qualification",
+    "Code reimport test initially reconstructed uploads from wrong asset mapping; corrected to original imported artwork"
+  ],
+  "corpus": {
+    "lastMeasuredOriginalInputs": 184,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "remeasuredThisGuiSlice": false,
+    "zeroGapClaim": false
+  },
+  "remaining": [
+    "Fresh integrated palette GUI and all enabled exact-head hosted checks",
+    "Fixed Scratch costume rendering/export interoperability",
+    "Additional Buffer-building and palette-extension operations",
+    "Effects/dialog behavior outside existing qualified controls",
+    "Stacked draft integration"
+  ],
+  "publication": "Own-repository stacked draft; not merged"
+}

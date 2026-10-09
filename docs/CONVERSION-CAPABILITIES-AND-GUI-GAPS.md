@@ -1747,7 +1747,7 @@ restart, peer isolation and atomic rejection. Code decompile/reimport and saved
 SB3 preserve palette state. The vocabulary has 190 canonical forms; producer
 dialect and unchanged consumer SPIKE artifact checks are separate gates.
 
-Remaining GUI work: a project-wide palette picker and preview, graphics-editor
+At that checkpoint, remaining GUI work included a project-wide palette picker and preview, graphics-editor
 project palette mode, and clear distinction between asset colors and the global
 palette command. Editing a per-artwork palette does not change an existing
 project-wide command. Hex Code/Blocks authoring exists, but friendly palette
@@ -1764,3 +1764,38 @@ Fresh import-only remeasurement of the same 184 hash-verified original inputs
 remains 102 translated, 81 partial and 1 malformed, with no changed diagnostic
 rows. This count does not establish runtime or full roundtrip compatibility.
 [Receipt](receipts/2026-10-09-arcade-project-palette.json).
+
+
+### Project palette graphics authoring — 2026-10-09
+
+The graphics palette panel now has sixteen project color controls, presets,
+artwork-color copying, reset, a preview and explicit Apply. Index zero controls
+opaque Arcade screen background; artwork index zero remains transparent.
+Project preview recolors the canvas and brush swatches without changing image
+indices or the artwork palette. Closing the panel restores artwork colors.
+Artwork saving, PNG and spritesheet export retain the artwork palette.
+
+Apply persists a normal `arcade_setPalette` startup block and updates the live
+Arcade palette without starting the game. Existing constant startup commands
+are updated in place. Later commands are preserved and identified in the panel.
+Multiple startup palettes, expressions, stale project edits and failed extension
+loads reject rather than replacing authored code. Code decompile, saved SB3,
+Arcade export and original PXT execution are qualified separately from layout.
+Scratch costumes retain their artwork colors; fixed Scratch rendering/export
+limitations remain diagnostic and are not repaired by this picker.
+
+A fresh isolated React-component browser check covers EN/DE controls, preview,
+saved real Blocks, concurrent-edit rejection and button text fitting. It uses
+recorded live primitive calls; it is not full application/runtime evidence.
+The existing controller journey passes in the prior qualified reference bundle.
+The production graphics browser gate now exercises palette controls and restart,
+but its fresh hosted result remains required. Inherited hosted build/focused
+mirror failures, controller setup race and browser dependency-install failure
+are preserved. See [the source and qualification receipt](receipts/2026-10-09-arcade-project-palette-gui.json).
+
+Remaining: fresh full-app palette/controller/graphics and exact-head hosted
+qualification; fixed Scratch rendering/export interoperability; additional
+Buffer-building and palette-extension APIs; effects/dialog behavior outside
+existing controls. The original 184-input census remains the previous measured
+102 translated, 81 partial, 1 malformed; this GUI change does not establish a
+new census or zero remaining gaps.

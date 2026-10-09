@@ -1815,3 +1815,5 @@ Global palette source `7f40190489bd5ef8c974f7399666dc46c7a3e5d5` qualifies 62 af
 ### Project palette graphics controls — 2026-10-09
 
 Root owns `lane/arcade-project-palette-gui-20261009`, stacked on global palettes. Scope: startup palette picker, separate project/asset previews in the graphics editor, normal saved Blocks/Code/export persistence, conflicts and timed palette overrides. Repair the inherited tracked pixel-editor mirror and authored projectile completion barrier. Preserve hosted failures; fresh integrated GUI and all enabled exact-head checks remain required.
+
+Project palette GUI source `304f9616b6e742107bda4dcd9073e64fa7355c22` has real-VM authoring/Code/SB3/original-PXT export controls and fresh isolated EN/DE component proof. The prior reference controller journey passes twelve samples with unchanged sprite counts and pixel assertions. Fresh production graphics authoring/restart assertions are added to the existing hosted gate; that result and every enabled exact-head check remain required. Fixed Scratch rendering/export and broader palette APIs remain open. [Receipt](docs/receipts/2026-10-09-arcade-project-palette-gui.json).
