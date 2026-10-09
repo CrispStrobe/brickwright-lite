@@ -49,6 +49,25 @@ try {
     await openEditor();
     await primary(2);
     await secondary(7);
+    // Project palette authoring uses the same shipped graphics editor. VM reads
+    // observe the result; all mutations below go through visible controls.
+    const originalSwatch = await page.getByTestId('bw-pixel-colour-1').evaluate(node => getComputedStyle(node).backgroundColor);
+    await page.getByTestId('bw-pixel-palette-toggle').click();
+    await page.getByTestId('bw-project-palette-color-1').fill('#123456');
+    await page.getByTestId('bw-project-palette-use-preview').check();
+    assert.equal(await page.getByTestId('bw-pixel-colour-1').evaluate(node => getComputedStyle(node).backgroundColor), 'rgb(18, 52, 86)');
+    await page.getByTestId('bw-project-palette-apply').click();
+    await page.getByTestId('bw-project-palette').getByRole('status').waitFor();
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.palette[1] === '#123456');
+    const commands = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .filter(target => target.isOriginal).flatMap(target => Object.values(target.blocks._blocks))
+        .filter(block => block.opcode === 'arcade_setPalette').length);
+    assert.equal(commands, 1, 'graphics controls persist a normal startup palette block');
+    await page.getByTestId('bw-pixel-palette-toggle').click();
+    assert.equal(await page.getByTestId('bw-pixel-colour-1').evaluate(node => getComputedStyle(node).backgroundColor), originalSwatch,
+        'closing the project preview restores artwork colors');
+    await page.locator('[class*="green-flag_green-flag"]').first().click();
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.palette[1] === '#123456');
     assert.deepEqual(errors, []);
     console.log('pixel colour slots: touch changes, reload, swap and invalid-value fallback passed');
 } finally {

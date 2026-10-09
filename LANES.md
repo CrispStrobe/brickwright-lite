@@ -1810,3 +1810,8 @@ Root owns `lane/arcade-project-palette-20261009`, stacked on indexed artwork sup
 
 
 Global palette source `7f40190489bd5ef8c974f7399666dc46c7a3e5d5` qualifies 62 affected checks at that immutable source, no skips, and 233 producer dialect checks at `de2ac6ce` (producer draft PR73). Original/exported PXT screen colors and native image indices agree; Code/Blocks/SB3, rendered layers and scene/restart controls pass. Fresh184 hash-verified import-only census remains102/81/1, zero changed diagnostic rows. Project picker, graphics project-palette mode, additional Buffer/palette APIs and fresh production/browser/exact-head hosted checks remain open. [Receipt](docs/receipts/2026-10-09-arcade-project-palette.json).
+
+
+### Project palette graphics controls — 2026-10-09
+
+Root owns `lane/arcade-project-palette-gui-20261009`, stacked on global palettes. Scope: startup palette picker, separate project/asset previews in the graphics editor, normal saved Blocks/Code/export persistence, conflicts and timed palette overrides. Repair the inherited tracked pixel-editor mirror and authored projectile completion barrier. Preserve hosted failures; fresh integrated GUI and all enabled exact-head checks remain required.

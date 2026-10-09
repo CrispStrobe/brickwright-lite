@@ -247,7 +247,8 @@ try {
     const discardedSource = DISCARDED_PROJECTILE_SOURCE.replace('origin.setPosition(40,50)', 'origin.setPosition(80,60)') + `
 controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     sprites.createProjectileFromSprite(img\`7 7 7\n7 7 7\`,origin,0,0)
-})`;
+})
+let discardedReady=true`;
     const project = makeCodeProjectFile({'main.ts': discardedSource, 'pxt.json': JSON.stringify({
         name: 'Discarded projectiles', dependencies: {device: '*'}, files: ['main.ts']})},
     {target: 'arcade', name: 'Discarded projectiles'});
@@ -267,6 +268,12 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function() {
     const count = n => page.waitForFunction(expected => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
         .flatMap(t => Object.values(t.variables)).some(v => v.name === 'created' && v.value === expected), n);
     await count(3);
+    // Creation callbacks run before the suspended caller continues. Observe the
+    // authored setup completion after its B handler registration, then count
+    // live sprites and consumers; the callback counter alone is not that barrier.
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .flatMap(target => Object.values(target.variables)).some(variable =>
+            variable.name.replace(/^(?:Game_)+/, '') === 'discardedReady' && variable.value === true));
     const initialCreation = await page.evaluate(() => {
         const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
         return {count: Object.values(runtime.bwArcadeDeviceState.sprites).filter(s => s.id).length,

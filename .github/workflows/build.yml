@@ -1043,9 +1043,12 @@ jobs:
           # timeout a stalled download froze the whole deploy for ~90 min. Bound
           # each attempt and retry so it fails fast and recovers.
           npm install --no-save playwright
+          # Install apt dependencies once under a root-owned timeout group. A
+          # timed-out sudo child otherwise retains the dpkg lock across retries.
+          sudo env "PATH=$PATH" timeout --kill-after=15s 300 npx playwright install-deps chromium
           ok=0
           for i in 1 2 3; do
-            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
+            if timeout --kill-after=15s 300 npx playwright install chromium; then ok=1; break; fi
             echo "playwright chromium install attempt $i failed/timed out; retrying"
             sleep 5
           done
