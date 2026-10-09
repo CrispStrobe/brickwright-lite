@@ -87,5 +87,24 @@
     "expectedSolidFollowerX": 15,
     "ghostTargetX": 16,
     "boundary": "Finite tile-wall snapping fixture; no complete recovered-game modal timing claim"
+  },
+  "producerEvidenceCorrection": {
+    "pullRequest": "https://github.com/CrispStrobe/sb3-creator/pull/79",
+    "testedHead": "4df2b00fd18838ca709cbbe680efa5ddfc147844",
+    "run": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37944827934",
+    "enabledChecks": "SUCCESS",
+    "disabledPublishing": "SKIPPED",
+    "mergedAt": "2026-10-09T14:58:09Z",
+    "mergeCommit": "4757ab8ac0cd0877a7f1cf6b27bd5c2db33e445b",
+    "reviewedAndMergeTree": "7ab491f920b83d6297c19331b3cf6abbb8599075",
+    "baseBranch": "feat/arcade-camera-shake-20261009",
+    "boundary": "Model provenance correction merged into feature parent only; sprite-follow PR80 hosted checks remain pending."
+  },
+  "hostedFollowStatus": {
+    "head": "874616967ab2cf701baa43042aaaeeb3ed019eb5",
+    "requiredChecks": "PENDING",
+    "cancelledRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37947436224",
+    "cancelledConclusion": "cancelled",
+    "boundary": "No failed step log exists for the cancelled run; retain its actual conclusion."
   }
 }

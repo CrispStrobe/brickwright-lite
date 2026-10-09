@@ -39,8 +39,12 @@ stamp gates before adopting the corrected producer. Preserve the original CI
 failure. Full producer CI remains required; no new Arcade capability is claimed.
 Checkpoint producer `4df2b00f` /Lite `ffeb88c80`:31 remeasured stamps, ten
 quantity/provenance checks, stamp freshness and six Lite pin/dialect checks pass.
-Claim census1313 checked /1548 declined /0 disagreements. Full hosted CI pending;
-Arcade corpus stays108/75/1.
+Claim census1313 checked /1548 declined /0 disagreements. Full hosted producer
+CI37944827934 passed every enabled check at `4df2b00f`; publishing was disabled
+for this feature branch. PR79 merged into its camera-shake feature parent at
+`4757ab8a`; the merge and reviewed trees both equal
+`7ab491f920b83d6297c19331b3cf6abbb8599075`. This is not a main merge.
+Arcade corpus at this checkpoint stays108/75/1.
 
 ## Arcade literal array values — 2026-10-09
 
