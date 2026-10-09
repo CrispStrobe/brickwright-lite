@@ -26,6 +26,13 @@ palette component check is now wired into the existing graphics browser gate.
 Fresh full production question/controller execution remains pending hosted CI.
 Native dialog pixels and full scheduler equivalence remain unqualified.
 
+Both sole-gap corpus apps also reach their original life-zero question and
+resume after Yes, restoring life to3 and5. The smaller input has zero block
+errors in this finite headless probe. The larger reports five unreadable frame
+artwork errors in a harness with storage but no renderer; qualify its artwork
+with a real renderer before assigning a product defect. Neither probe establishes
+full game compatibility.
+
 The unchanged184 hash-verified corpus measures **104 translated /79 partial /
 1 malformed** at the import-only boundary, from102/81/1. Four diagnostic rows
 change; two lose their sole gap. This count does not establish full runtime

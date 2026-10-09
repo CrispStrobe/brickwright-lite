@@ -94,5 +94,22 @@
     "Exact native dialog pixels, wrapping and full event-context scheduler equivalence",
     "Existing askForNumber digit-limit and optional prompt semantics",
     "Stacked integration; no merge"
-  ]
+  ],
+  "realInputProbe": {
+    "originalInputs": 2,
+    "boundary": "Headless native VM with storage; no renderer or audio engine. Set real player life to zero and answer the original life-zero question through its native input path.",
+    "questionsAnswered": 2,
+    "restoredLife": [
+      3,
+      5
+    ],
+    "blockErrors": [
+      5,
+      0
+    ],
+    "largerInputErrors": "Arcade cannot read this frame image artwork.",
+    "fullGameQualified": false,
+    "remaining": "Qualify the larger original app artwork with an actual renderer before classifying the failure as a product gap.",
+    "log": "arcade-boolean-question-real-inputs-observed.log"
+  }
 }
