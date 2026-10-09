@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade literal array values — 2026-10-09
+
+Codex owns `lane/arcade-array-values-20261009`, stacked on PR756.
+Use the existing reference-array runtime for literal array values, including
+function arguments and returns. Verify scalar aliases, mutation, typed empty
+arrays, original PXT execution, Code/Blocks/SB3 and MakeCode interchange.
+Remeasure all unchanged corpus inputs and keep malformed/unsupported cases.
+No new producer vocabulary or dependency adoption is planned for this lane.
+
 ## Arcade camera shake — 2026-10-09
 
 Codex owns `lane/arcade-camera-shake-20261009`, stacked on PR754, and
