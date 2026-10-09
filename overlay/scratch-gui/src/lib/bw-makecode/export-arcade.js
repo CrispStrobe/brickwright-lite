@@ -1495,6 +1495,7 @@ class ArcadeEmitter {
             }
             this.usedRegisteredCallbacks.add(token);push(`${api}(${[...args,body].join(', ')})`);return;
         }
+        case 'arcade_cameraShake': push(`scene.cameraShake(${this.arrayValue(b,'AMPLITUDE')}, ${this.arrayValue(b,'DURATION')})`);return;
         case 'arcade_centerCameraAt': push(`scene.centerCameraAt(${this.arrayValue(b,'X')}, ${this.arrayValue(b,'Y')})`);return;
         case 'arcade_cameraFollowSprite': push(`scene.cameraFollowSprite(${this.arrayValue(b,'ID')})`);return;
         case 'arcade_registerLegacyWallHandler': {

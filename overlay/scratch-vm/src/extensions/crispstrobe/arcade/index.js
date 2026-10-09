@@ -484,6 +484,8 @@ module.exports = makeExt(`// Name: Arcade
             text: 'Arcade event location' },
           { opcode: 'centerCameraAt', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade center camera x [X] y [Y]', arguments: {...n('X', 80), ...n('Y', 60)} },
+          { opcode: 'cameraShake', blockType: Scratch.BlockType.COMMAND,
+            text: 'Arcade shake camera by [AMPLITUDE] pixels for [DURATION] ms', arguments: {...n('AMPLITUDE', 4), ...n('DURATION', 500)} },
           { opcode: 'cameraFollowSprite', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade camera follow sprite [ID]', arguments: str('ID', '') },
           { opcode: 'cameraProperty', blockType: Scratch.BlockType.REPORTER,
@@ -1360,6 +1362,17 @@ module.exports = makeExt(`// Name: Arcade
       camera.offsetY=this._cameraOffset('y',Number(Scratch.BWValues.decode(args.Y))-60);
       this._changed();
     }
+    cameraShake(args) {
+      const camera=this._camera();
+      const strength=Scratch.BWValues.decode(args.AMPLITUDE),length=Scratch.BWValues.decode(args.DURATION);
+      const amplitude=Number(strength===undefined?4:strength);
+      const duration=Number(length===undefined?500:length);
+      if(amplitude<=0 || duration<=0)camera.shakeStartTime=undefined;
+      else {
+        camera.shakeStartTime=this._globalElapsedMs;
+        camera.shakeAmplitude=amplitude;camera.shakeDuration=duration;
+      }
+    }
     cameraFollowSprite(args) {
       const value=Scratch.BWValues.decode(args.ID),camera=this._camera();
       if(value==null || value==='')camera.followId=null;
@@ -1379,8 +1392,20 @@ module.exports = makeExt(`// Name: Arcade
         // The pinned PXT camera uses width here as well, even on non-square art.
         camera.offsetY=this._cameraOffset('y',sprite._fy/256+(sprite.width>>1)-60);
       }
-      const changed=camera.drawOffsetX!==camera.offsetX || camera.drawOffsetY!==camera.offsetY;
-      camera.drawOffsetX=camera.offsetX;camera.drawOffsetY=camera.offsetY;
+      let x=camera.offsetX,y=camera.offsetY;
+      // PXT camera.ts: replace an active shake, damp its final quarter, and
+      // apply integer jitter to draw offsets only (not logical camera bounds).
+      if(camera.shakeStartTime!==undefined){
+        const elapsed=this._globalElapsedMs-camera.shakeStartTime;
+        if(elapsed>=camera.shakeDuration)camera.shakeStartTime=undefined;
+        else {
+          const progress=elapsed/camera.shakeDuration;
+          const amplitude=camera.shakeAmplitude*(progress>=.75?Math.max(0,1-progress):1);
+          x+=(Math.random()*amplitude)>>0;y+=(Math.random()*amplitude)>>0;
+        }
+      }
+      const changed=camera.drawOffsetX!==x || camera.drawOffsetY!==y;
+      camera.drawOffsetX=x;camera.drawOffsetY=y;
       if(changed){
         this._renderTilemap();
         for(const id of Object.keys(this._state().sprites))this._positionSprite(id);

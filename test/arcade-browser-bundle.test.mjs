@@ -43,6 +43,12 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         assert.ok(Object.is(extension.truncateNumber({NUM:-0.5}),-0));
         assert.ok(Number.isNaN(extension.truncateNumber({NUM:NaN})));
         assert.equal(extension.truncateNumber({NUM:Infinity}),Infinity);
+        assert.ok(blocks.some(b=>b.opcode==='cameraShake'));
+        extension.cameraShake({AMPLITUDE:8,DURATION:100});
+        assert.equal(extension._camera().shakeAmplitude,8);
+        extension._advance(.11);
+        assert.equal(extension._camera().shakeStartTime,undefined);
+        assert.equal(extension._camera().drawOffsetX,0);
         const svg='<svg width="8" height="4" viewBox="0 0 8 4" shape-rendering="crispEdges" data-bw-pixel-scale="4" data-bw-palette="'+
             ['#123456','#123456',...Array(13).fill('#000000')].join(',')+'">'+
             '<rect x="0" y="0" width="4" height="4" fill="#123456" data-bw-color-index="1"/>'+

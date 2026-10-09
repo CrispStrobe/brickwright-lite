@@ -12,6 +12,7 @@ import {LEGACY_TILE_VALUES_SOURCE} from '../test/fixtures/arcade-legacy-tile-val
 import {LEGACY_TILEMAP_SOURCE} from '../test/fixtures/arcade-legacy-tilemap.mjs';
 import {MULTIPLAYER_STATE_SOURCE} from '../test/fixtures/arcade-multiplayer-state.mjs';
 import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
+import {CAMERA_SHAKE_SOURCE} from '../test/fixtures/arcade-camera-shake.mjs';
 import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
 import {DIRECT_CONTROLLERS_SOURCE} from '../test/fixtures/arcade-direct-controllers.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
@@ -570,6 +571,34 @@ let discardedReady=true`;
     report.numberTruncation={nativeFileImport:true,codeToBlocks:true,buttonTrigger:true,negativeResult:-3,
         argumentCalls:2,spriteX:35,spriteY:40};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-number-truncation.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const shakeProject=makeCodeProjectFile({'main.ts':CAMERA_SHAKE_SOURCE,
+        'pxt.json':JSON.stringify({name:'Camera shake',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Camera shake'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'camera-shake.mkcd',mimeType:'application/json',buffer:Buffer.from(shakeProject)});
+    await page.getByText(/Imported the Arcade game.*camera-shake/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({shakeReady:true,shakes:0,cameraX:80,cameraY:60});
+    await page.getByTestId('bw-arcade-a').click();await waitMultifile({shakes:1});
+    await page.waitForFunction(()=>{
+        const camera=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.camera;
+        return camera.shakeStartTime!==undefined && (camera.drawOffsetX!==camera.offsetX || camera.drawOffsetY!==camera.offsetY);
+    });
+    const shaken=await page.evaluate(()=>{
+        const state=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;
+        return {camera:{...state.camera},sprites:Object.values(state.sprites).map(sprite=>({x:sprite.x,y:sprite.y}))};
+    });
+    assert.equal(shaken.camera.offsetX,0);assert.equal(shaken.camera.offsetY,0);
+    assert.deepEqual(shaken.sprites,[{x:60,y:60},{x:10,y:10}]);
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-camera-shake.png'});
+    await page.waitForFunction(()=>{
+        const camera=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.camera;
+        return camera.shakeStartTime===undefined && camera.drawOffsetX===0 && camera.drawOffsetY===0;
+    });
+    report.cameraShake={nativeFileImport:true,codeToBlocks:true,buttonTrigger:true,
+        drawOffsetChanged:true,logicalCameraStable:true,worldCoordinatesStable:true,expiredToBase:true};
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},
