@@ -6,6 +6,36 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Original Arcade numeric sign — 2026-10-09
+
+Source `f6efa058b` adopts producer `5a6782d9` and adds a native reporter:
+
+```text
+arcade sign of (value)
+```
+
+The Blocks palette exposes **Arcade sign of** with a numeric reporter input.
+MakeCode `Math.sign(value)` imports and exports directly, evaluating the operand
+once. This follows the bundled original PXT helper: zero, including negative
+zero, yields positive zero; positive numbers yield1; all other numbers, including
+NaN and negative infinity, yield-1. This differs from JavaScript `Math.sign`.
+The initial mismatch was preserved and the runtime was corrected against the
+actual PXT source and simulator.
+
+Sixteen affected native/dialect/pin/truncation/bundle checks and326 producer
+checks pass without skips. Code/Blocks decompile, saved SB3 restart, executed
+original MakeCode export and reimport retain values and one evaluation.
+A controller fixture uses the reporter to move a sprite x80→76. The shipped
+native-file→Code→Blocks→controller browser journey is prepared and pending.
+Wrong arity and shadowed Math bindings retain named refusals.
+
+All184 original corpus hashes remain unchanged. The racing fragment's
+`Math.sign() as a value` diagnostic is removed; ten other diagnostics remain
+because its art, screen drawing and legacy callbacks need separate work.
+Counts stay109 translated /74 partial /1 malformed. The shared vocabulary now
+contains198 canonical forms and203 forms including aliases. This adds no audio,
+particle, screen-drawing or historical instance-overlap support.
+
 ## Sprite property and layer qualification — 2026-10-09
 
 At `261f82e4c`, seven affected tests pass without skips. Independent imports
