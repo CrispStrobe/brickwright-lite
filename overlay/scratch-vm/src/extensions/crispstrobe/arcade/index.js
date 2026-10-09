@@ -2696,6 +2696,11 @@ module.exports = makeExt(`// Name: Arcade
       // reporters remain unavailable until all renderable layers are covered.
       const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
       const layers=[],missingSpriteImages=[];
+      const tilemap=state.tilemap;
+      if(tilemap && (!tilemap.legacy || tilemap.mapImage)) {
+        const renderable=this._ensureTilemapRenderable(tilemap.legacy?'legacy':'modern');
+        layers.push({image:this._tilemapRaster(tilemap),x:0,y:0,z:renderable.z,id:renderable.pxtId});
+      }
       for(const sprite of Object.values(state.sprites)) {
         if(sprite.invisible || sprite._destroyed)continue;
         const source=sprite.image || this._imageForSprite(sprite.id,{quiet:true});
@@ -2706,8 +2711,8 @@ module.exports = makeExt(`// Name: Arcade
           z:sprite.z,id:sprite.pxtId});
       }
       imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,layers);
-      frame.coverage=['background','sprites'];
-      frame.remaining=['tilemap','renderables','hud','speech','effects'];
+      frame.coverage=['background','tilemap','sprites'];
+      frame.remaining=['renderables','hud','speech','effects'];
       frame.missingSpriteImages=missingSpriteImages;
       frame.sequence=(frame.sequence || 0)+1;
       return frame;
@@ -3082,9 +3087,16 @@ module.exports = makeExt(`// Name: Arcade
       const values=Scratch.BWValues.arrayValue(this._runtime,this.legacyTilesOfType(args));
       if(values.length)return this.placeOnLegacyTile({ID:args.ID,TILE:values[Math.floor(Math.random()*values.length)]},util);
     }
+    _ensureTilemapRenderable(kind) {
+      const state=this._state();
+      if(!state.tilemapRenderable || state.tilemapRenderable.kind!==kind)
+        state.tilemapRenderable={kind,z:-1,pxtId:state.nextSpriteId++};
+      return state.tilemapRenderable;
+    }
     _legacyMap() {
       const state=this._state();
       if(!state.tilemap?.legacy)state.tilemap={legacy:true,tileSize:16,columns:0,rows:0,indices:new Uint8Array(0),walls:new Uint8Array(0),images:[],views:[],definitions:[]};
+      this._ensureTilemapRenderable('legacy');
       state.tilemapInitialized=true;state.tilemapScale=state.tilemap.tileSize;
       return state.tilemap;
     }
@@ -3112,11 +3124,11 @@ module.exports = makeExt(`// Name: Arcade
     }
     setTilemap(args) {
       const decoded = Scratch.BWValues.decode(args.DATA);
-      if (decoded === null || decoded === '') {delete this._state().tilemap;this._clearTilemap();this._changed();return;}
+      if (decoded === null || decoded === '') {this._ensureTilemapRenderable('modern');delete this._state().tilemap;this._clearTilemap();this._changed();return;}
       let data;
       try {
         data = JSON.parse(String(decoded));
-        if (data === null) {delete this._state().tilemap;this._clearTilemap();this._changed();return;}
+        if (data === null) {this._ensureTilemapRenderable('modern');delete this._state().tilemap;this._clearTilemap();this._changed();return;}
         if (!Number.isInteger(data.columns) || !Number.isInteger(data.rows) || data.columns < 0 || data.rows < 0 ||
           data.columns > 65535 || data.rows > 65535 || ![4,8,16,32].includes(data.tileSize) ||
           !Array.isArray(data.indices) || data.indices.length !== data.columns*data.rows ||
@@ -3135,11 +3147,31 @@ module.exports = makeExt(`// Name: Arcade
       } catch (error) {
         this._runtime?.emit?.('BLOCKS_ERROR',{message:error.message,extensionId:'arcade',opcode:'setTilemap'});return;
       }
+      this._ensureTilemapRenderable('modern');
       this._state().tilemap = data;
       this._state().tilemapInitialized = true;
       this._state().tilemapScale = data.tileSize;
       if (!this._background && this._runtime?.renderer) this.setBackgroundColor({COLOR:this.backgroundColor()});
       this._renderTilemap();this._changed();
+    }
+    _tilemapRaster(map) {
+      this._syncLegacyMap(map);
+      const image={width:160,height:120,pixels:new Uint8Array(160*120)};
+      if(map.legacy && !map.mapImage)return image;
+      const camera=this._camera(),size=map.tileSize,scale=Math.log2(size);
+      const offsetX=camera.drawOffsetX & (size-1),offsetY=camera.drawOffsetY & (size-1);
+      const firstX=Math.max(0,camera.drawOffsetX>>scale),firstY=Math.max(0,camera.drawOffsetY>>scale);
+      const lastX=Math.min(map.columns,((camera.drawOffsetX+160)>>scale)+1);
+      const lastY=Math.min(map.rows,((camera.drawOffsetY+120)>>scale)+1);
+      // PXT draws inclusive bounds, using tile zero outside the map. Iterate
+      // tiles rather than RGB pixels, preserving cached padded legacy images.
+      for(let column=firstX;column<=lastX;column++)for(let row=firstY;row<=lastY;row++) {
+        const index=column<0 || row<0 || column>=map.columns || row>=map.rows?0:map.indices[row*map.columns+column];
+        const tile=this._tileImage(map,index);
+        if(tile?.width && tile?.height)imageEngine.blit(image,tile,'drawTransparentImage',
+          ((column-firstX)<<scale)-offsetX,((row-firstY)<<scale)-offsetY);
+      }
+      return image;
     }
     _renderTilemap(presentLegacy=false) {
       const map = this._state().tilemap;
@@ -3153,18 +3185,7 @@ module.exports = makeExt(`// Name: Arcade
       if(map.legacy && !map.mapImage){this._clearTilemap();return;}
       // The screen view is separate from scene.backgroundImage(), which must
       // remain editable and observable without including the tile layer.
-      const image = {width:160,height:120,pixels:new Uint8Array(160*120)};
-      const camera=this._camera(),size=map.tileSize;
-      const offsetX=camera.drawOffsetX & (size-1),offsetY=camera.drawOffsetY & (size-1);
-      const firstX=Math.max(0,Math.floor(camera.drawOffsetX/size)),firstY=Math.max(0,Math.floor(camera.drawOffsetY/size));
-      const lastX=Math.min(map.columns,Math.floor((camera.drawOffsetX+160)/size)+1),lastY=Math.min(map.rows,Math.floor((camera.drawOffsetY+120)/size)+1);
-      for (let y = 0; y < 120; y++) for (let x = 0; x < 160; x++) {
-        const column=firstX+Math.floor((x+offsetX)/size),row=firstY+Math.floor((y+offsetY)/size);
-        if(column>lastX || row>lastY)continue;
-        const index=column>=map.columns || row>=map.rows?0:map.indices[row*map.columns+column];
-        const tile=this._tileImage(map,index),tx=(x+offsetX)%size,ty=(y+offsetY)%size;
-        if (tile && tx < tile.width && ty < tile.height) image.pixels[y*160+x] = tile.pixels[ty*tile.width+tx];
-      }
+      const image=this._tilemapRaster(map);
       map.image = image;
       const renderer = this._runtime?.renderer;
       if (!renderer) return;

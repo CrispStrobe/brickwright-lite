@@ -807,9 +807,13 @@ let discardedReady=true`;
     await page.getByTestId('bw-arcade-a').click();
     await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.tilemap?.image?.pixels[0]===8);
     assert.deepEqual(await legacyPixels(),{tileSize:4,exact:8,padded:5});
+    await page.waitForFunction(()=>{
+        const frame=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sceneFrame;
+        return frame?.pixels[0]===8 && frame.coverage.includes('tilemap') && !frame.remaining.includes('tilemap');
+    });
     const legacySprites=await movementState();assert.equal(legacySprites[0].x,3);
     report.legacyTilemap={nativeFileImport:true,codeToBlocks:true,liveMapAlias:true,sceneRestoration:true,
-        tileSize:4,initialExactPixel:7,controllerExactPixel:8,paddedCachedPixel:5,spriteX:3};
+        tileSize:4,initialExactPixel:7,controllerExactPixel:8,indexedFramePixel:8,paddedCachedPixel:5,spriteX:3};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-legacy-tilemap.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const legacyValuesProject=makeCodeProjectFile({'main.ts':LEGACY_TILE_VALUES_SOURCE,

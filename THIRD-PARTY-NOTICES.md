@@ -2021,3 +2021,11 @@ using the already credited original PXT image raster operations. Original
 source remains unchanged for full indexed pixel-plane comparisons. The initial
 compositor covers background and sprites; tilemaps, callback renderables, HUD,
 speech and effects remain separate integration work.
+
+### Arcade indexed tile composition
+
+The tile raster iteration and tile renderable identity follow Microsoft PXT
+TileMap.draw and LegacyTilemap.draw: inclusive tile bounds, original camera
+bit shifts, transparent blits and z/creation-ID order. These semantics adapt
+the credited MIT PXT implementation; original source remains unchanged for
+full indexed-frame comparisons.
