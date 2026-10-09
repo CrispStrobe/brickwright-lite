@@ -104,7 +104,14 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
         const ordered = layers.slice().sort((a, b) => a.z - b.z || a.id - b.id);
         for (const layer of ordered) {
             if (!layer.image?.width || !layer.image?.height) continue;
-            blit(destination, layer.image, 'drawTransparentImage', layer.x, layer.y);
+            if (layer.writes) {
+                const x=Number(layer.x)|0,y=Number(layer.y)|0,source=layer.image;
+                for(let row=Math.max(0,-y);row<Math.min(source.height,destination.height-y);row++)
+                    for(let col=Math.max(0,-x);col<Math.min(source.width,destination.width-x);col++) {
+                        const offset=row*source.width+col;
+                        if(layer.writes[offset])destination.pixels[(row+y)*destination.width+col+x]=source.pixels[offset];
+                    }
+            } else blit(destination, layer.image, 'drawTransparentImage', layer.x, layer.y);
         }
         return destination;
     };

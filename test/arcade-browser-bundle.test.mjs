@@ -42,7 +42,7 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         const sceneRaster=extension._inst._composeSceneFrame();
         assert.equal(sceneRaster.pixels.length,160*120);
         assert.equal(sceneRaster.pixels[0],7);
-        assert.deepEqual(Array.from(sceneRaster.coverage),['background','tilemap','sprites']);
+        assert.deepEqual(Array.from(sceneRaster.coverage),['background','tilemap','sprites','modernSpeech']);
         assert.ok(blocks.some(b=>b.opcode==='copyImageFrom'));
         const copiedImage=extension.createImage({WIDTH:3,HEIGHT:1});
         const copiedSource=extension.createImage({WIDTH:3,HEIGHT:1});

@@ -25,6 +25,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         setPixel(x, y, color) {
             x |= 0; y |= 0;
             if (x >= 0 && x < this.width && y >= 0 && y < this.height) this.pixels[y * this.width + x] = color & 15;
+            if (this.writes && x >= 0 && x < this.width && y >= 0 && y < this.height) this.writes[y * this.width + x] = 1;
         }
         fill(color) { this.pixels.fill(color & 15); }
         fillRect(x, y, width, height, color) {
@@ -32,6 +33,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             for (let row = Math.max(0, y); row < Math.min(this.height, y + height); row++) {
                 for (let col = Math.max(0, x); col < Math.min(this.width, x + width); col++) {
                     this.pixels[row * this.width + col] = color & 15;
+                    if (this.writes) this.writes[row * this.width + col] = 1;
                 }
             }
         }
@@ -79,6 +81,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         getFontForText: text => /[\u2001-\uffff]/.test(text) ? decoded.font12 : decoded.font8
     };
     const screen = new PixelImage(160, 120);
+    screen.writes = new Uint8Array(160 * 120);
     const game = {
         runtime: () => now,
         currentScene: () => ({camera, eventContext: {deltaTimeMillis: deltaTime * 1000}}),
@@ -102,6 +105,20 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             owner.left > 160 || owner.top > 120;
         return owner;
     }
+    function renderRaster(renderer, sprite, time, dt) {
+        now = time; deltaTime = dt;
+        screen.fill(0);
+        screen.writes.fill(0);
+        const owner = renderer._bwOwner;
+        Object.assign(owner, ownerFor(sprite));
+        renderer.update(dt, camera, owner);
+        renderer.draw(screen, camera, owner);
+        const bubble = renderer.sayBubbleSprite;
+        if (bubble && !bubble.destroyed) {
+            screen.drawTransparentImage(bubble.image, Math.floor(bubble.left), Math.floor(bubble.top));
+        }
+        return {width:160,height:120,pixels:screen.pixels.slice(),writes:screen.writes.slice()};
+    }
     return {
         create(text, duration, animated, foreground, background, legacy, sprite, time) {
             now = time;
@@ -112,18 +129,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             renderer._bwOwner = owner;
             return renderer;
         },
-        render(renderer, sprite, time, dt) {
-            now = time; deltaTime = dt;
-            screen.fill(0);
-            const owner = renderer._bwOwner;
-            Object.assign(owner, ownerFor(sprite));
-            renderer.update(dt, camera, owner);
-            renderer.draw(screen, camera, owner);
-            const bubble = renderer.sayBubbleSprite;
-            if (bubble && !bubble.destroyed) {
-                screen.drawTransparentImage(bubble.image, Math.floor(bubble.left), Math.floor(bubble.top));
-            }
-            return screen.pixels.slice();
-        }
+        renderRaster,
+        render: (renderer, sprite, time, dt) => renderRaster(renderer, sprite, time, dt).pixels
     };
 };

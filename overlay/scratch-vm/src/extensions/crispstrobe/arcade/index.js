@@ -1656,7 +1656,8 @@ module.exports = makeExt(`// Name: Arcade
     _renderSpeech(id, entry, owner, dt) {
       const camera=this._camera(),relative=!!(owner.flags & spriteFlags.RelativeToCamera);
       const view={...owner,x:owner.x-(relative?0:camera.drawOffsetX),y:owner.y-(relative?0:camera.drawOffsetY)};
-      const pixels = speechEngine.render(entry.renderer, view, this._state().elapsedMs || 0, dt);
+      entry.raster=speechEngine.renderRaster(entry.renderer,view,this._state().elapsedMs || 0,dt);
+      const pixels=entry.raster.pixels;
       const renderer = this._runtime?.renderer;
       if (!renderer) return;
       const paths = Array.from({length: 16}, () => []);
@@ -2705,14 +2706,17 @@ module.exports = makeExt(`// Name: Arcade
         if(sprite.invisible || sprite._destroyed)continue;
         const source=sprite.image || this._imageForSprite(sprite.id,{quiet:true});
         if(!source){missingSpriteImages.push(sprite.id);continue;}
+        const speech=this._speech.get(sprite.id);
+        if(speech && !speech.legacy && speech.raster)
+          layers.push({image:speech.raster,writes:speech.raster.writes,x:0,y:0,z:sprite.z,id:sprite.pxtId});
         const window=this._spriteRasterWindow(sprite),view=this._spriteViewPosition(sprite);
         layers.push({image:this._scaledSpriteImage(sprite,window),
           x:view.x-sprite.width/2+window.x,y:view.y-sprite.height/2+window.y,
           z:sprite.z,id:sprite.pxtId});
       }
       imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,layers);
-      frame.coverage=['background','tilemap','sprites'];
-      frame.remaining=['renderables','hud','speech','effects'];
+      frame.coverage=['background','tilemap','sprites','modernSpeech'];
+      frame.remaining=['renderables','hud','legacySpeech','effects'];
       frame.missingSpriteImages=missingSpriteImages;
       frame.sequence=(frame.sequence || 0)+1;
       return frame;

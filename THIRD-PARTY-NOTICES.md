@@ -2029,3 +2029,11 @@ TileMap.draw and LegacyTilemap.draw: inclusive tile bounds, original camera
 bit shifts, transparent blits and z/creation-ID order. These semantics adapt
 the credited MIT PXT implementation; original source remains unchanged for
 full indexed-frame comparisons.
+
+### Indexed modern speech composition
+
+Modern speech composition reuses the retained original Microsoft PXT
+SpriteSayRenderer and font data, with a native write-mask bridge. The mask
+preserves explicit colour-zero writes and owner-local draw ordering; original
+PXT source stays unchanged for full pixel comparisons. Legacy speech's separate
+bubble sprite remains an integration gap in this frame pipeline.
