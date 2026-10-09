@@ -24,6 +24,10 @@ provenance stamps. Re-derive stamps against exact pinned engine/model sources,
 keep numerical tolerances/claims unchanged, and run the actual quantity and
 stamp gates before adopting the corrected producer. Preserve the original CI
 failure. Full producer CI remains required; no new Arcade capability is claimed.
+Checkpoint producer `4df2b00f` /Lite `ffeb88c80`:31 remeasured stamps, ten
+quantity/provenance checks, stamp freshness and six Lite pin/dialect checks pass.
+Claim census1313 checked /1548 declined /0 disagreements. Full hosted CI pending;
+Arcade corpus stays108/75/1.
 
 ## Arcade literal array values — 2026-10-09
 

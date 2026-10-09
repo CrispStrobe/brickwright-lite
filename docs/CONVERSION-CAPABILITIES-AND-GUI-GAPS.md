@@ -6,6 +6,30 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Producer model provenance gate — 2026-10-09
+
+The full camera-shake producer run passed its quantity comparison suite but
+failed stale `EXPECTED.md` model stamps in
+[run37942017622](https://github.com/CrispStrobe/sb3-creator/actions/runs/37942017622/job/113858532220).
+Producer `4df2b00f` regenerates31 stamps through the existing solver/claim tools
+against exact `bw-board@a112631` and `bw-circuit-ui@557c471` sources. The diff
+changes only the recorded model revision; numerical values, tolerances and
+coverage counts remain unchanged. No compiler/runtime source changes.
+
+Ten quantity/provenance checks and the stamp-freshness check pass. The actual
+claim census compares1313 of2861 claims with zero disagreement and declines1548
+with stated reasons; this is45.9% numerical coverage, not full circuit
+qualification. Lite adoption `ffeb88c80` passes six pin/dialect checks. Its
+Arcade importer/runtime bytes and the108/75/1 census are unchanged.
+
+A fresh full producer run and all enabled exact-head consumer checks remain
+required before merge. The raw initial failure, exact-source local measurement
+logs, claim decline reasons and generated patch are preserved privately. See the
+[receipt](receipts/2026-10-09-arcade-producer-model-evidence.json).
+Next runtime candidate is native sprite following, including its acceleration,
+velocity/timing, replacement/cancellation and editor/export authoring; effects
+and audio remain separate unimplemented lanes.
+
 ## Literal array values in native programs — 2026-10-09
 
 Source `38cf4623d` selects the existing native reference-array runtime whenever
