@@ -1658,6 +1658,13 @@ committed file differs from the pinned bundle:
   pxt-common-packages' ThirdPartyNotice records for that version. "Source" is a
   trademark of Adobe in the United States and/or other countries.
 
+Sprite following in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`
+manually adapts the `follow`/`unfollow` steering and lifecycle logic from
+`pxt-common-packages`' bundled `game/sprite.ts` (MIT, Copyright (c) Microsoft
+Corporation). Tests execute the original method against controlled times and
+compare collision-aware snapping with the original Arcade simulator. The
+existing MIT notice below covers this adapted runtime code as well.
+
 Full texts: `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt` (both MIT
 sources) and `overlay/scratch-gui/static/licenses/pxt-speech-font12.OFL.txt`, shipped
 with the app and reachable from the About dialog offline.
