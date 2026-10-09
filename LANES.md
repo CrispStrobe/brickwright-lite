@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade indexed frame compositor — 2026-10-09
+
+Codex owns `lane/arcade-indexed-frame-20261009`, stacked on PR764. Implement
+an internal indexed compositor for background and qualified sprite rasters,
+with clipping, transparency, z/id ordering, camera and scaling. Compare full
+pixel planes with original PXT. Preserve existing presentation and do not expose
+screen snapshots until tile/renderable/HUD/speech/effect completeness passes.
+Keep all screen and paint/shade import diagnostics. No producer change planned.
+
 ## Arcade image copying and screen frame contract — 2026-10-09
 
 Codex owns `lane/arcade-image-copyfrom-20261009`, stacked on PR763, and producer
