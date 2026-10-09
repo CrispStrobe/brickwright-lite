@@ -6,6 +6,43 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Mutable image scrolling — 2026-10-09
+
+Implementation `d490487dea0308a05aea1fe209ee55883401317d` adopts producer
+`bacacdbed51fa5fa98fbca77550dbc71041f24f9`. Dedicated `arcade_scrollImage`
+Blocks inputs expose the image and signed x/y offsets. Pseudocode is
+`arcade scroll image art x 1 y -1`; MakeCode exports `art.scroll(1, -1)`.
+Typed image aliases and sprite image properties, including typed procedure
+parameters, import through the same native operation. Images remain editable
+through existing graphics assets; this operation mutates their runtime pixels.
+
+The native image engine preserves dimensions, palette and pixel-buffer identity,
+uses signed 32-bit offsets, clips shifted pixels and clears uncovered pixels.
+Shared sprite images refresh through the existing renderer and scene ownership.
+Original Microsoft PXT semantics are credited in THIRD-PARTY-NOTICES.md.
+
+Final five scrolling checks pass without skips, including 198 pixel/coercion
+comparisons against unchanged original PXT routines, argument evaluation once
+and in order, alias/clone behaviour, original/exported execution, Code/Blocks,
+saved SB3 restart, inactive scenes, refusal diagnostics and actual controller
+key steering. The earlier 19-check batch passed four initial scrolling checks
+and 15 mutation, fresh development/production bundle, dialect and pin regression
+checks. Producer dialect/Boolean checks pass327 without skips. The full native
+file/controller-pane browser journey, including rendered yellow pixel checks,
+is prepared but has not yet passed hosted execution.
+
+All184 corpus input hashes remain unchanged:109 translated,74 partial and one
+malformed input, with zero changed diagnostic rows. The racing fragment
+`arcade-318e958c14146483.ts` first calls unsupported `screen.clone()`, preventing
+typed recovery of its road image. Screen snapshots, render-phase drawing and
+legacy callbacks remain explicit dependencies; no partial diagnostic is hidden.
+
+Retained failed harness attempts cover original internal-function registration,
+missing project storage and an incorrect keyboard mapping for controller B.
+Corrections load real assets and use the actual B key; they do not substitute
+product implementations. Full enabled hosted checks remain required before
+merge. See the [qualification receipt](receipts/2026-10-09-arcade-image-scroll.json).
+
 ## Native info consumers and typed browser observations — 2026-10-09
 
 At `616937a47`,44 affected truth-value, native overlap and real imported-game
