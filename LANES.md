@@ -15,6 +15,16 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade camera shake — 2026-10-09
+
+Codex owns `lane/arcade-camera-shake-20261009`, stacked on PR754, and
+producer `feat/arcade-camera-shake-20261009`, stacked on PR77.
+Implement the PXT camera shake lifecycle, damping and draw offsets through the
+native camera, with authorable Blocks/Code and MakeCode interchange. Compare
+original PXT at controlled times/random inputs; keep logical camera/world
+coordinates and camera-relative HUD stable. Preserve unsupported diagnostics
+and remeasure unchanged corpus inputs. Hosted GUI qualification remains a gate.
+
 ## Arcade device frame lifecycle — 2026-10-09
 
 Codex owns `lane/arcade-pane-frame-lifecycle-20261009`, stacked on PR752.
