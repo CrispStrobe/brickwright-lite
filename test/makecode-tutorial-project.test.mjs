@@ -53,12 +53,16 @@ test('supplemental Arcade code without a declared source order remains named',()
 });
 
 
-test('custom palette rendering remains an explicit gap while project source retains its colors',async()=>{
+test('custom project palette emits a native startup command and malformed palettes remain explicit',async()=>{
     const {ARCADE_PALETTE}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js');
     const palette=['#000000',...ARCADE_PALETTE.slice(1)];
     const files={'main.ts':'let x=1','pxt.json':JSON.stringify({palette})};
     assert.deepEqual(arcadeToPseudocode(files).unsupported,[]);
     palette[2]='#010203';files['pxt.json']=JSON.stringify({palette});
-    assert.ok(arcadeToPseudocode(files).unsupported.some(message=>message.includes('custom palette')));
+    assert.deepEqual(arcadeToPseudocode(files).unsupported,[]);
+    assert.match(arcadeToPseudocode(files).code,/arcade set palette hex/);
+    files['pxt.json']=JSON.stringify({palette:palette.slice(1)});
+    assert.ok(arcadeToPseudocode(files).unsupported.some(message=>message.includes('Invalid project palette')));
+    files['pxt.json']=JSON.stringify({palette});
     assert.equal(JSON.parse(files['pxt.json']).palette[2],'#010203');
 });

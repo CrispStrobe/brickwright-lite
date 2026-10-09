@@ -28,6 +28,8 @@ module.exports = makeExt(`// Name: Arcade
     constructor(runtime) {
       this._runtime = runtime;
       this._fallbackState = null;
+      // Palette is display state shared by every scene, never an image mutation.
+      this._projectPalette = null;
       this._sceneStack = [];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._scenePushHandlers = [];this._scenePopHandlers = [];
@@ -84,6 +86,7 @@ module.exports = makeExt(`// Name: Arcade
         const reset = () => {
           cancelCreations();
           this._terrainStopped = false;
+          this._projectPalette = null;
           for(const bundle of this._sceneBundles){
             for(const target of Object.values(bundle.state.spriteTargets || {})) runtime.disposeTarget?.(target);
             for(const entry of bundle._speech.values()){
@@ -168,6 +171,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'registerLifeZeroHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register life zero player [PLAYER] as [TOKEN] capturing [CAPTURES]',arguments:{...n('PLAYER',1),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredLifeZero',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade life zero handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'pushScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade push scene'},
+          {opcode:'setPalette',blockType:Scratch.BlockType.COMMAND,text:'Arcade set palette hex [DATA]',arguments:str('DATA','000000ffffffff2121ff93c4ff8135fff609249ca378dc52003fad87f2ff8e2ec4a4839f5c406ce5cdc491463d000000')},
           {opcode:'popScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade pop scene'},
           {opcode:'registerUpdateHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register update as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredUpdate',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade update handler [TOKEN] runs',arguments:str('TOKEN','handler')},
@@ -631,9 +635,11 @@ module.exports = makeExt(`// Name: Arcade
         if (!state.spriteTargets) state.spriteTargets = {};
         if (!Array.isArray(state.neopixels)) state.neopixels = Array(5).fill('#111827');
         if (!Number.isFinite(state.score)) state.score = 0;
+        state.palette=this._paletteColors().slice();
         this._ensureSceneEngine(state);return state;
       }
       if (!this._fallbackState) this._fallbackState = {buttons: {}, controllerButtons: {}, sprites: {}, neopixels: Array(5).fill('#111827'), score: 0};
+      this._fallbackState.palette=this._paletteColors().slice();
       this._ensureSceneEngine(this._fallbackState);return this._fallbackState;
     }
 
@@ -750,7 +756,7 @@ module.exports = makeExt(`// Name: Arcade
       this._terrainFrame=this._sceneFrames.get(bundle.state) || null;
       this._sceneVisible(bundle,true);
       for(const sprite of Object.values(bundle.state.sprites || {})){if(sprite.image)this._renderSpriteImage(sprite.id);this._positionSprite(sprite.id);}
-      this._renderTilemap();this._renderBackgroundImage();
+      this._renderPalette();
       this._changed();
     }
     _freshScene(previous) {
@@ -1395,6 +1401,25 @@ module.exports = makeExt(`// Name: Arcade
       this._renderSpeech(id, entry, owner, 0);
       this._changed();
     }
+    _paletteColors() { return this._projectPalette || speechPalette; }
+    _imagePalette(image) { return this._projectPalette ? [null,...this._projectPalette.slice(1)] : image?.palette; }
+    setPalette(args) {
+      const hex = String(Scratch.BWValues.decode(args.DATA)).replace(/\\s/g,'');
+      if (!/^[0-9a-f]{96}$/i.test(hex)) throw new RangeError('Arcade palette requires exactly 16 RGB colors (48 bytes)');
+      this._projectPalette = hex.match(/.{6}/g).map(color => '#'+color.toLowerCase());
+      this._renderPalette();
+    }
+    _renderPalette() {
+      const state=this._state();
+      if(this._background || this._projectPalette)this.setBackgroundColor({COLOR:this.backgroundColor()});
+      this._renderBackgroundImage();
+      const presentLegacy=!!(state.tilemap?.legacy && state.tilemap.image);
+      if(presentLegacy)state.tilemap.needsRender=true;
+      this._renderTilemap(presentLegacy);
+      for(const sprite of Object.values(state.sprites))if(sprite.image)this._renderSpriteImage(sprite.id);
+      for(const [id,entry] of this._speech){const owner=state.sprites[id];if(owner)this._renderSpeech(id,entry,owner,0);}
+      this._changed();
+    }
     backgroundColor() { return this._state().backgroundColor || 0; }
     setBackgroundColor(args) {
       const color = Number(args.COLOR) || 0;
@@ -1402,7 +1427,7 @@ module.exports = makeExt(`// Name: Arcade
       const renderer = this._runtime?.renderer;
       if (renderer) {
         // Extend the solid fill beyond stage edges to avoid filtered SVG edge seams.
-        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="482" height="362"><rect width="482" height="362" fill="' + speechPalette[(color | 0) & 15] + '"/></svg>';
+        const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="482" height="362"><rect width="482" height="362" fill="' + this._paletteColors()[(color | 0) & 15] + '"/></svg>';
         if (!this._background) {
           const skin = renderer.createSVGSkin(svg, [241, 181]);
           const drawable = renderer.createDrawable('background');
@@ -1444,7 +1469,7 @@ module.exports = makeExt(`// Name: Arcade
         }
         this._runtime.requestRedraw?.();return;
       }
-      const svg = imageEngine.svg(image.width && image.height ? image : {width:1,height:1,pixels:new Uint8Array(1)});
+      const svg = imageEngine.svg(image.width && image.height ? image : {width:1,height:1,pixels:new Uint8Array(1)},this._imagePalette(image));
       const center = [image.width*2,image.height*2];
       if (!this._backgroundImage) {
         const skin = renderer.createSVGSkin(svg,center), drawable = renderer.createDrawable('background');
@@ -1500,7 +1525,7 @@ module.exports = makeExt(`// Name: Arcade
         if (color) paths[color].push('M' + start + ' ' + y + 'h' + (x - start) + 'v1h-' + (x - start) + 'z');
       }
       const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" shape-rendering="crispEdges">' +
-        paths.map((path, color) => path.length ? '<path fill="' + speechPalette[color] + '" d="' + path.join('') + '"/>' : '').join('') + '</svg>';
+        paths.map((path, color) => path.length ? '<path fill="' + this._paletteColors()[color] + '" d="' + path.join('') + '"/>' : '').join('') + '</svg>';
       if (entry.skinId === undefined) {
         entry.skinId = renderer.createSVGSkin(svg, [80, 60]);
         entry.drawableId = renderer.createDrawable('sprite');
@@ -2608,7 +2633,7 @@ module.exports = makeExt(`// Name: Arcade
         window=window || this._spriteRasterWindow(sprite);
         const rendered=this._scaledSpriteImage(sprite,window);
         const svg = imageEngine.svg(rendered.width && rendered.height ? rendered :
-          {width: 1, height: 1, pixels: new Uint8Array(1)}, sprite.image.palette);
+          {width: 1, height: 1, pixels: new Uint8Array(1)}, this._imagePalette(sprite.image));
         const center = [window.width * 2, window.height * 2];
         let entry = this._imageSkins.get(sprite.id);
         if (!entry) {
@@ -2970,7 +2995,7 @@ module.exports = makeExt(`// Name: Arcade
       map.image = image;
       const renderer = this._runtime?.renderer;
       if (!renderer) return;
-      const svg = imageEngine.svg(image);
+      const svg = imageEngine.svg(image,this._imagePalette(image));
       if (!this._tilemapDrawable) {
         const skin = renderer.createSVGSkin(svg,[320,240]), drawable = renderer.createDrawable('background');
         renderer.updateDrawableSkinId(drawable,skin);renderer.updateDrawableScale(drawable,[75,75]);

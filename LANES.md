@@ -1802,3 +1802,8 @@ Root owns `lane/arcade-palette-indices-20261009`, stacked on reset qualification
 
 
 Indexed palette slice reached at source `05daecc59716e66c6c892fea8f450f5769c04bc2`: 54 affected local checks pass, no skips. Native template mutation, actual graphics load and saved-SB3/original-compiler export retain custom indices; duplicate RGB colors and opaque black are covered. No new vocabulary/pin or corpus promotion. Project-wide palette runtime/import/Code/Blocks/GUI work and fresh browser/exact-head hosted qualification remain open. [Receipt](docs/receipts/2026-10-09-arcade-palette-indices.json).
+
+
+### Project-wide palette lane — 2026-10-09
+
+Root owns `lane/arcade-project-palette-20261009`, stacked on indexed artwork support. Producer branch `feat/arcade-project-palette-20261009`. Scope: global indexed palette state, background/sprite/tile/speech rerendering, scene/restart lifecycle, Code/Blocks hex command, MakeCode static palette/import and faithful runtime export. Qualify original PXT, native rendering and SB3/decompile roundtrips. Retain unsupported malformed inputs and any unqualified legacy paths. Fresh production/browser and exact-head hosted checks remain required; no census promotion without remeasurement.

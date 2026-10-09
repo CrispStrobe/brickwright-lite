@@ -168,6 +168,8 @@ class ArcadeEmitter {
         this.usedDestroyedCallbacks = new Set();
         this.currentLocalNames = null;
         this.emittedSprites = new Set();    // the targets that became an Arcade sprite
+        this.hasProjectPalette = this.project.targets.some(target =>
+            Object.values(target.blocks || {}).some(block => block.opcode === 'arcade_setPalette'));
         this.analyse();
         const palettes = this.project.targets.map(target => {
             const costume = target.costumes[target.currentCostume || 0];
@@ -1370,6 +1372,7 @@ class ArcadeEmitter {
         case 'looks_sayforsecs': if (me) push(`${me}.sayText(${v('MESSAGE', '""')}, ${v('SECS')} * 1000, true)`); return;
         case 'looks_say': if (me) push(`${me}.sayText(${v('MESSAGE', '""')})`); return;
         case 'arcade_setBackgroundImage': push(`scene.setBackgroundImage(${this.literalInput(b,'IMAGE') === '' ? 'null' : v('IMAGE')})`); return;
+        case 'arcade_setPalette': push(`image.setPalette(Buffer.fromHex(${v('DATA', '""')}))`); return;
         case 'arcade_setBackgroundColor': push(`scene.setBackgroundColor(${v('COLOR')})`); return;
         case 'arcade_controlSprite': push(`controller.moveSprite(${v('ID')}, ${v('VX')}, ${v('VY')})`); return;
         case 'arcade_destroySprite': push(`${v('ID')}.destroy()`); return;
@@ -2260,7 +2263,7 @@ class ArcadeEmitter {
             const px = svgToPixels(svg, sourcePalette);
             if (px) {
                 const indexedPalette = px.palette || sourcePalette;
-                if (samePalette(indexedPalette, this.palette)) return px;
+                if (this.hasProjectPalette || samePalette(indexedPalette, this.palette)) return px;
                 this.warnings.push(`${target.name}: costume palette mapped to the Arcade project palette`);
                 return remapPalette(px, indexedPalette, this.palette);
             }

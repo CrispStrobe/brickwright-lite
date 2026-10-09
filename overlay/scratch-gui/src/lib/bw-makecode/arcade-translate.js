@@ -50,6 +50,7 @@ import {
     imageToSvg,
     ARCADE_PALETTE
 } from './arcade-assets.js';
+import {svgToPixels} from './pixel-image.js';
 import {parseAnimationJres} from './arcade-animation-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
 import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from './animation-companion.js';
@@ -1197,6 +1198,18 @@ class ArcadeTranslator extends BaseTranslator {
             const sprite=a[0],handle=this.handleRef(sprite);
             if(!handle && sprite.type!=='Null' && !this.nullReferences?.has(sprite)){push(this.note('scene.cameraFollowSprite requires a typed sprite reference or null'));return;}
             push(`arcade camera follow sprite (${handle || this.expr(sprite)})`);return;
+        }
+        if (name === 'image.setPalette' && a.length === 1) {
+            const buffer=a[0];
+            if(buffer.type==='Template' && buffer.tag==='hex') {
+                const hex=buffer.value.replace(/\s/g,'');
+                if(!/^[0-9a-f]{96}$/i.test(hex)){push(this.note('image.setPalette requires exactly 48 RGB bytes'));return;}
+                push(`arcade set palette hex "${hex.toLowerCase()}"`);return;
+            }
+            if(buffer.type==='Call' && this.path(buffer.callee)==='Buffer.fromHex' && buffer.args.length===1) {
+                push(`arcade set palette hex (${this.expr(buffer.args[0])})`);return;
+            }
+            push(this.note('image.setPalette requires a hex literal or Buffer.fromHex expression'));return;
         }
         if (name === 'scene.setBackgroundColor' && a.length === 1) {
             push(`arcade set background color to ${this.expr(a[0])}`);
@@ -2569,7 +2582,7 @@ const translateCreationEvents = (ast, assets) => {
 
 /** Handle-valued globals plus onCreated/onOverlap callbacks. Kept separate
  * from the fixed-target path until its other sprite APIs can use handles. */
-const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
+const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false) => {
     const t = new ArcadeTranslator(assets, tilemaps);
     const needsProjectileHandles = node => {
         if (!node || typeof node !== 'object') return false;
@@ -2637,7 +2650,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
         if (node.type === 'Assignment' && t.imageOf(node.right)) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' && t.imageReferences.has(node.callee.object)) return true;
-        if (node.type === 'Call' && ['image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
+        if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
             (['setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
@@ -2655,7 +2668,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     if(['scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile'].some(name=>mapCalls.has(name)) &&
         ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel','tiles.getTilesByType','tiles.tileAtLocationEquals','tiles.setTileAt','tiles.setWallAt','tiles.placeOnRandomTile'].some(name=>mapCalls.has(name)))
         t.unsupported.push('Mixing legacy color-coded maps with modern map replacement, image lookup or per-location mutation is not yet supported');
-    const requiresSpriteRuntime = usesRuntimeSpriteMethods(ast);
+    const requiresSpriteRuntime = forceSpriteRuntime || usesRuntimeSpriteMethods(ast);
     const callbackLocals = new Map();
     const createAssignments = [];
     const localCreateAssignments = [];
@@ -2756,7 +2769,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
         'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
-        'pause', 'game.splash', 'game.showLongText', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
+        'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;
         if (st.type === 'FunctionDeclaration') continue;
@@ -3218,12 +3231,21 @@ export function arcadeToPseudocode (files, opts = {}) {
             catch (error) { throw new Error(`${entry.name}: ${error.message}`, {cause: error}); }
         }
     }
+    let projectPalette = ARCADE_PALETTE;
+    let projectPaletteHex = null;
     if (map['pxt.json']) {
         try {
             const palette = JSON.parse(map['pxt.json']).palette;
-            if (palette !== undefined && (!Array.isArray(palette) || palette.length !== ARCADE_PALETTE.length ||
-                palette.slice(1).some((color, index) => String(color).toLowerCase() !== ARCADE_PALETTE[index + 1].toLowerCase()))) {
-                projectInputDiagnostics.push('Project custom palette is preserved in source but native Arcade rendering still uses the default palette');
+            if (palette !== undefined) {
+                if (!Array.isArray(palette) || palette.length !== 16 ||
+                    !palette.every(color => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color))) {
+                    projectInputDiagnostics.push('Invalid project palette: expected 16 RGB colors');
+                } else {
+                    projectPalette = [null, ...palette.slice(1).map(color => color.toLowerCase())];
+                    if (palette.some((color, index) => color.toLowerCase() !== (ARCADE_PALETTE[index] || '#000000'))) {
+                        projectPaletteHex = palette.map(color => color.slice(1).toLowerCase()).join('');
+                    }
+                }
             }
         } catch (error) { projectInputDiagnostics.push(`Project pxt.json could not be read: ${error.message}`); }
     }
@@ -3257,11 +3279,6 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
-    let projectPalette = ARCADE_PALETTE;
-    if (nativeAnimations.length || map[ANIMATION_COMPANION_PATH] !== undefined) {
-        const config = JSON.parse(map['pxt.json'] || '{}');
-        if (config.palette !== undefined) projectPalette = [null, ...config.palette.slice(1)];
-    }
     // Recover rich source only when it matches native pixels. Resource import
     // optionally binds fresh factories to an explicitly installed artwork library.
     const recovered = duplicateAnimationId && map[ANIMATION_COMPANION_PATH] === undefined ? {resources: [], warnings: []} :
@@ -3297,8 +3314,43 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
     const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source)));
-    const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
-        unsupported: [...new Set([...animationDiagnostics, ...projectInputDiagnostics, ...result.unsupported])]});
+    const containsPaletteCall = node => {
+        if(!node || typeof node!=='object')return false;
+        if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
+            node.callee.object?.type==='Identifier' && node.callee.object.name==='image')return true;
+        return Object.values(node).some(value=>Array.isArray(value)?value.some(containsPaletteCall):containsPaletteCall(value));
+    };
+    const runtimePaletteRequested=containsPaletteCall(parsed);
+    const withAnimationDiagnostics = result => {
+        let code = result.code;
+        let costumes = result.costumes;
+        if (projectPaletteHex) {
+            const command = `  arcade set palette hex "${projectPaletteHex}"`;
+            code = /^WHEN flag clicked:$/m.test(code) ?
+                code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n${command}`) :
+                `${code.trimEnd()}\nWHEN flag clicked:\n${command}\n`;
+            costumes = (costumes || []).map(costume => {
+                const pixels = /shape-rendering="crispEdges"/.test(costume.svg || '') && svgToPixels(costume.svg);
+                const svg = pixels ? imageToSvg(pixels, {scale:pixels.scale,palette:projectPalette}) :
+                    String(costume.svg || '').replace(/fill="(#[0-9a-f]{6})"/gi, (fill,color) => {
+                        const index=ARCADE_PALETTE.findIndex(entry=>entry?.toLowerCase()===color.toLowerCase());
+                        return index>0 ? `fill="${projectPalette[index]}"` : fill;
+                    });
+                return {...costume,svg};
+            });
+        }
+        const paletteDiagnostics=[];
+        const nativeImages=/arcade (?:create (?:sprite|image)|spawn (?:template|image)|frame image|projectile image)/.test(code);
+        if(runtimePaletteRequested && (costumes || []).length && !nativeImages) {
+            paletteDiagnostics.push('Runtime palette changes require native Arcade image rendering; fixed Scratch costume rendering is not supported');
+        }
+        if(projectPaletteHex && projectPaletteHex.slice(0,6)!=='000000' &&
+            (result.costumes || []).some(costume=>costume.sprite==='background' && !/shape-rendering="crispEdges"/.test(costume.svg || ''))) {
+            paletteDiagnostics.push('Project palette index zero on a fixed Scratch background requires native Arcade background rendering');
+        }
+        return {...result,code,costumes,animationResources,warnings:recovered.warnings,
+            unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
+    };
     const namespaceBindings = lowerNamespaceBindings(parsed);
     const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed);
     projectInputDiagnostics.push(...callbacks.unsupported);
@@ -3307,7 +3359,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[node.name] : null;
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
-    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps);
+    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
     const creationEvents = flattened && translateCreationEvents(flattened, assets);
     if (creationEvents) return withAnimationDiagnostics(creationEvents);
@@ -3813,7 +3865,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
 
         if (name === 'scene.setBackgroundImage') continue;    // handled in pass 1
-        if (name === 'scene.setBackgroundColor') {
+        if (name === 'scene.setBackgroundColor' || name === 'image.setPalette') {
             t.statement(st, 1, setup);
             continue;
         }

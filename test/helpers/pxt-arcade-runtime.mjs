@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false} = {}) {
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
@@ -48,11 +48,13 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             const state=await page.evaluate(()=>{const r=window.__bwPxtRuntime;return {dead:r?.dead,running:r?.running,globals:Object.fromEntries(Object.entries(r?.globals || {}).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v))) };});
             throw new Error('Original Arcade simulator did not complete: '+JSON.stringify({errors,messages,state}),{cause:error});
         }
-        const values=await page.evaluate(()=>{
+        const values=await page.evaluate(inspectDisplay=>{
             const runtime=window.__bwPxtRuntime;
             const result=Object.fromEntries(Object.entries(runtime.globals).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v)).map(([k,v])=>[k.replace(/___\d+$/,''),v]));
+            if(inspectDisplay)result.$display={palette:Array.from(runtime.board.screenState.palette),
+                screen:Array.from(runtime.board.screenState.screen)};
             runtime.kill();runtime.board.kill();return result;
-        });
+        },inspectDisplay);
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}

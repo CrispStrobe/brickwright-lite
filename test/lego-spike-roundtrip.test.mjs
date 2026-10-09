@@ -257,8 +257,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // this is finite artifact qualification, not an emitter-wide equivalence claim.
     // -> 49903b5d: Arcade instance destruction and parallel capture words only.
     // Re-run the unchanged canonical SPIKE artifact behavior at this pin.
+    // -> de2ac6ce: one reversible Arcade palette hex command; SPIKE words unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '49903b5d38d967b64da34a3ca1dd1e228d06b98f');
+        'de2ac6ce2e93f7193ff7b1a04bc941c5e1a76d45');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
