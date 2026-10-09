@@ -50,13 +50,15 @@ const esmToCjs = source => source
 // extension CLASS (the scratch-vm ExtensionManager instantiates it with `new Cls(runtime)`).
 // TurboWarp modules self-register via Scratch.extensions.register; Xcratch modules export
 // { blockClass, entry }. Both converge on an object with getInfo() + opcode methods.
-module.exports = function makeCrispExtension (source) {
+module.exports = function makeCrispExtension (source, dependencies = null) {
     return class CrispStrobeExtension {
         constructor (runtime) {
             this.runtime = runtime;
             let captured = null;
             const Scratch = {
                 BlockType, ArgumentType, TargetType, Cast, BWValues,
+                // Trusted built-in modules retain their real dependency closures.
+                BWExtensionDependencies: dependencies,
                 translate: Object.assign(m => (m && typeof m === 'object' ? (m.default || '') : m), { setup: () => {} }),
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
                 vm: runtime && runtime.emit ? { runtime } : {}, runtime

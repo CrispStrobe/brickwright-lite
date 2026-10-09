@@ -12,14 +12,14 @@ module.exports = makeExt(`// Name: Arcade
 (function (Scratch) {
   "use strict";
 
-  const speechEngine = (${require('./speech').toString()})(${require('./speech-pxt').toString()},
-    ${JSON.stringify(require('./speech-fonts.json'))});
+  const dependencies = Scratch.BWExtensionDependencies;
+  const speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts);
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
-  const imageEngine = (${require('./image').toString()})(speechPalette, ${require('./image-pxt').toString()});
-  const animationResourceMenuItems = (${require('../../../util/bw-animation-resource-menu').toString()});
-  const {RotatedBoundingBox, rasterWindow: rotatedRasterWindow, rasterFootprint: rotatedRasterFootprint} = (${require('./rotation-pxt').toString()})();
+  const imageEngine = dependencies.createImageEngine(speechPalette, dependencies.initializeImage);
+  const animationResourceMenuItems = dependencies.animationResourceMenuItems;
+  const {RotatedBoundingBox, rasterWindow: rotatedRasterWindow, rasterFootprint: rotatedRasterFootprint} = dependencies.initializeRotation();
 
   const spriteFlags = {AutoDestroy: 4, StayInScreen: 8, DestroyOnWall: 16, BounceOnWall: 32, Invisible: 128, RelativeToCamera: 512,
     GhostThroughTiles: 1024, GhostThroughWalls: 2048, GhostThroughSprites: 4096, Ghost: 7168};
@@ -3186,4 +3186,12 @@ module.exports = makeExt(`// Name: Arcade
 
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
-`);
+`, {
+  createSpeechEngine: require('./speech'),
+  initializeSpeech: require('./speech-pxt'),
+  fonts: require('./speech-fonts.json'),
+  createImageEngine: require('./image'),
+  initializeImage: require('./image-pxt'),
+  animationResourceMenuItems: require('../../../util/bw-animation-resource-menu'),
+  initializeRotation: require('./rotation-pxt')
+});

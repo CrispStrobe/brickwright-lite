@@ -1,5 +1,5 @@
 // Pixel-image and clock bridge for PXT's speech renderers. This function is
-// injected into the bundled extension along with the generated PXT classes.
+// passed to the extension adapter with the generated PXT classes.
 module.exports = function createSpeechEngine(initialize, fonts) {
     let now = 0;
     let deltaTime = 0;
@@ -13,8 +13,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         for (let offset = 0; offset + stride <= data.length; offset += stride) {
             glyphs.set(data[offset] | data[offset + 1] << 8, data.slice(offset + 2, offset + stride));
         }
-        // This factory crosses the adapter boundary through Function.toString().
-        // Object spread makes Babel hoist a helper outside that serialized body.
+        // The adapter retains this factory and its compiled dependency closure.
         decoded[key] = Object.assign({}, font, {glyphs});
     }
     class PixelImage {

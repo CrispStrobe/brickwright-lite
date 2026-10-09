@@ -1841,3 +1841,12 @@ original PXT comparison and unchanged original-corpus remeasurement. Preserve
 rendering and fresh production execution remain separate qualification gates.
 
 Question source `09f2422103afc92a6e0275b1fa0d78209c7f1bb1` qualifies 49 affected checks,234 producer dialect checks and fresh EN/DE component browser checks. Both original PXT answers, Code and saved SB3 pass. The184 hash-verified import-only inputs now measure104/79/1; two sole-gap inputs close. Production browser execution and bundled decoder failures remain open; no merge. [Receipt](docs/receipts/2026-10-09-arcade-boolean-question.json).
+
+### Arcade bundled factory qualification — 2026-10-09
+
+Root owns `lane/arcade-bundle-factories-20261009`, stacked on PR747.
+Scope: reproduce hosted image-decoder failure under actual GUI Babel and
+production minification; preserve dependency closures across the extension
+adapter, qualify indexed SVG reads and engine operations, and repair affected
+browser report/setup barriers. Preserve parent failures and fresh production
+qualification boundaries. No corpus input or consumer pin changes.

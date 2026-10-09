@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import {chromium} from 'playwright';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {SPRITE_REGISTRATION_SOURCE} from '../test/fixtures/arcade-sprite-registration.mjs';
 const imported=arcadeToPseudocode(SPRITE_REGISTRATION_SOURCE);assert.deepEqual(imported.unsupported,[]);
 const out=process.env.BW_SPRITE_REGISTRATION_REPORT || 'test-results/arcade-sprite-registration-browser.json';
+await fs.mkdir(path.dirname(out),{recursive:true});
 const browser=await chromium.launch();const report={errors:[],samples:[]};let page;
 try{
  page=await browser.newPage({viewport:{width:1600,height:1000}});
@@ -24,7 +26,9 @@ try{
  const project=makeCodeProjectFile({'main.ts':SPRITE_REGISTRATION_SOURCE,'pxt.json':JSON.stringify({name:'Sprite registration',dependencies:{device:'*','color-coded-tilemap':'*'},files:['main.ts']})},{target:'arcade',name:'Sprite registration'});
  await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'sprite-registration.mkcd',mimeType:'application/json',buffer:Buffer.from(project)});
  await page.getByText(/Imported the Arcade game.*sprite-registration/).first().waitFor({state:'visible'});
+ const priorStage1=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
  await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
+ await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id!==id,priorStage1);
  await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible',timeout:30000});
  await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await editor.waitFor({state:'hidden'});

@@ -35,8 +35,22 @@ const entry = join(root, 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/i
 const require = createRequire(entry);
 const guiRequire = createRequire(join(root, 'packages/scratch-gui/package.json'));
 const module = {exports: {}};
+// Manual source mode executes original CommonJS module bodies in the browser.
+// It never stringifies compiled functions: Babel helpers must retain closures.
+const dependencyBodies = {}, dependencyValues = {}, requiredModules = new Map();
 if (sourceMode) runInNewContext(readFileSync(entry, 'utf8'), {module,
-    require: spec => spec === '../adapter' ? source => source : require(spec)});
+    require: spec => {
+        if (spec === '../adapter') return (source, dependencies) => {
+            for (const [key, value] of Object.entries(dependencies || {})) {
+                if (typeof value === 'function') dependencyBodies[key] = requiredModules.get(value);
+                else dependencyValues[key] = value;
+            }
+            return source;
+        };
+        const value = require(spec);
+        if (typeof value === 'function') requiredModules.set(value, readFileSync(require.resolve(spec), 'utf8'));
+        return value;
+    }});
 const types = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css',
     '.wasm': 'application/wasm', '.json': 'application/json', '.svg': 'image/svg+xml'};
 const server = createServer(async (req, res) => {
@@ -218,11 +232,20 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
     await page.goto(`http://127.0.0.1:${server.address().port}/`, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.waitForFunction(() => !!window.__brickwrightStore?.getState()?.scratchGui?.vm,
         null, {timeout: 60000});
-    await page.evaluate(async ({bytes, source, argumentType, blockType, castBoolean}) => {
+    await page.evaluate(async ({bytes, source, argumentType, blockType, castBoolean, dependencyBodies, dependencyValues, valueBody}) => {
         const vm = window.__brickwrightStore.getState().scratchGui.vm;
         if (source) {
             let instance;
+            const loadBody = body => {
+                if (!body) throw new Error('Missing original diagnostic dependency body');
+                const module = {exports:{}};
+                new Function('module', 'exports', body)(module, module.exports);
+                return module.exports;
+            };
+            const dependencies = {...dependencyValues};
+            for (const [key, body] of Object.entries(dependencyBodies)) dependencies[key] = loadBody(body);
             const Scratch = {vm, ArgumentType: argumentType, BlockType: blockType,
+                BWExtensionDependencies: dependencies, BWValues:loadBody(valueBody),
                 Cast: new Function('return ({' + castBoolean + '})')(),
                 extensions: {register: extension => { instance = extension; }}};
             new Function('Scratch', source)(Scratch);
@@ -235,7 +258,8 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         vm.start(); vm.greenFlag();
         localStorage.setItem('bw-debug-dock', 'arcade');
         window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'arcade'}}));
-    }, {bytes, source: sourceMode ? module.exports : null,
+    }, {bytes, source: sourceMode ? module.exports : null, dependencyBodies, dependencyValues,
+        valueBody:sourceMode ? readFileSync(join(root,'overlay/scratch-vm/src/util/bw-values.js'),'utf8') : null,
         argumentType: guiRequire('./node_modules/scratch-vm/src/extension-support/argument-type'),
         blockType: guiRequire('./node_modules/scratch-vm/src/extension-support/block-type'),
         castBoolean: guiRequire('./node_modules/scratch-vm/src/util/cast').toBoolean.toString()});

@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import {chromium} from 'playwright';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {CALLBACK_COMPLETION_SOURCE} from '../test/fixtures/arcade-callback-completion.mjs';
 const imported=arcadeToPseudocode(CALLBACK_COMPLETION_SOURCE);assert.deepEqual(imported.unsupported,[]);
 const out=process.env.BW_CALLBACK_REPORT || 'test-results/arcade-callback-completion-browser.json';
+await fs.mkdir(path.dirname(out),{recursive:true});
 const browser=await chromium.launch();const report={errors:[],samples:[]};let page;
 try{
  page=await browser.newPage({viewport:{width:1600,height:1000}});
@@ -24,7 +26,9 @@ try{
  const project=makeCodeProjectFile({'main.ts':CALLBACK_COMPLETION_SOURCE,'pxt.json':JSON.stringify({name:'Callback completion',dependencies:{device:'*','color-coded-tilemap':'*'},files:['main.ts']})},{target:'arcade',name:'Callback completion'});
  await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'callback-completion.mkcd',mimeType:'application/json',buffer:Buffer.from(project)});
  await page.getByText(/Imported the Arcade game.*callback-completion/).first().waitFor({state:'visible'});
+ const priorStage1=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
  await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
+ await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id!==id,priorStage1);
  await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible',timeout:30000});
  await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await editor.waitFor({state:'hidden'});
@@ -42,7 +46,9 @@ try{
  const motionProject=makeCodeProjectFile({'main.ts':motionSource,'pxt.json':JSON.stringify({name:'Elapsed clock',dependencies:{device:'*'},files:['main.ts']})},{target:'arcade',name:'Elapsed clock'});
  await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'elapsed-clock.mkcd',mimeType:'application/json',buffer:Buffer.from(motionProject)});
  await page.getByText(/Imported the Arcade game.*elapsed-clock/).first().waitFor({state:'visible'});
- await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
+ const priorStage2=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+ await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
+ await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id!==id,priorStage2);await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await page.locator('[class*="green-flag_green-flag"]').first().click();
  await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites).some(s=>s.kind==='Player'));
  const measure=()=>page.evaluate(()=>{const r=window.__brickwrightStore.getState().scratchGui.vm.runtime,s=Object.values(r.bwArcadeDeviceState.sprites).find(s=>s.kind==='Player');return {wall:r.currentMSecs,elapsed:r.bwArcadeDeviceState.elapsedMs,x:s.x};});
