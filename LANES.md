@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade device frame lifecycle — 2026-10-09
+
+Codex owns `lane/arcade-pane-frame-lifecycle-20261009`, stacked on PR752.
+Repair zero-size stage canvas transitions without suppressing browser errors;
+clear the device display while the source is unavailable and resume drawing
+when its backing dimensions return. Preserve controller and dialog assertions.
+Use visible panel navigation for narrow-screen graphics editing and stage Run.
+Producer checkout correction is isolated on `fix/arcade-producer-checkout-20261009`.
+
 ## Arcade number truncation — 2026-10-09
 
 Codex owns `lane/arcade-truncate-number-20261009`, stacked on PR750, and
