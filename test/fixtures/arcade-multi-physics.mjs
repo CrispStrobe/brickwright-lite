@@ -107,6 +107,8 @@ let mover=sprites.create(art,SpriteKind.Player)
 let target=sprites.create(targetArt,SpriteKind.Food)
 mover.setPosition(60,40)
 target.setPosition(68,40)
+let crossingArmed=false
+let resets=0
 let fastOverlapSeen=false
 let endFrameTouching=false
 let passes=0
@@ -122,7 +124,8 @@ sparseFirst.setPosition(110,80)
 sparseSecond.setPosition(110,80)
 let pixelMaskTouch=sparseFirst.overlapsWith(sparseSecond)
 sprites.onOverlap(SpriteKind.Player,SpriteKind.Food,function(first,second){
-    if(!fastOverlapSeen){
+    if(crossingArmed && !fastOverlapSeen){
+        crossingArmed=false
         first.vx=0
         fastOverlapSeen=true
         endFrameTouching=first.overlapsWith(second)
@@ -130,18 +133,22 @@ sprites.onOverlap(SpriteKind.Player,SpriteKind.Food,function(first,second){
     }
 })
 controller.A.onEvent(ControllerButtonEvent.Pressed,function(){
+    crossingArmed=false
     mover.vx=0
     mover.setPosition(60,40)
     target.setPosition(68,40)
     fastOverlapSeen=false
     endFrameTouching=false
+    crossingArmed=true
     mover.vx=500
 })
 controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
+    crossingArmed=false
     mover.vx=0
     mover.setPosition(60,40)
     fastOverlapSeen=false
     endFrameTouching=false
+    resets++
 })
 controller.up.onEvent(ControllerButtonEvent.Pressed,function(){
     sparseSecond.x=sparseFirst.x-3

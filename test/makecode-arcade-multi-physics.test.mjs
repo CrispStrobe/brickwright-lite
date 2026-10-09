@@ -61,6 +61,7 @@ test('retained Sprite/Image aliases support explicit overlap queries across susp
 
 test('a fast crossing delivers one event, stops its mover and preserves callback geometry across all paths',async()=>{
     const source='game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource()+`
+crossingArmed=true
 mover.vx=500
 pause(300)
 let stopped=mover.vx===0

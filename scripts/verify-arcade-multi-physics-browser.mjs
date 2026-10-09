@@ -51,9 +51,15 @@ try{
         const vm=window.__brickwrightStore.getState().scratchGui.vm;
         const v=Object.fromEntries(vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
         const world=vm.runtime.bwArcadeDeviceState;
-        return {moverX:world?.sprites[v.mover]?.x,moverVx:world?.sprites[v.mover]?.vx,targetX:world?.sprites[v.target]?.x,fastOverlapSeen:v.fastOverlapSeen,endFrameTouching:v.endFrameTouching,finalOverlap:vm.runtime._primitives.arcade_spriteOverlaps({A:v.mover,B:v.target},{}),passes:v.passes,pixelMaskTouch:v.pixelMaskTouch,errors:window.__bwTerrainErrors||[]};
+        return {moverX:world?.sprites[v.mover]?.x,moverVx:world?.sprites[v.mover]?.vx,targetX:world?.sprites[v.target]?.x,fastOverlapSeen:v.fastOverlapSeen,endFrameTouching:v.endFrameTouching,finalOverlap:vm.runtime._primitives.arcade_spriteOverlaps({A:v.mover,B:v.target},{}),passes:v.passes,crossingArmed:v.crossingArmed,resets:v.resets,pixelMaskTouch:v.pixelMaskTouch,errors:window.__bwTerrainErrors||[]};
     });
-    const waitValue=(name,value)=>page.waitForFunction(({name,value})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).some(v=>v.name.replace(/^Game_/,'')===name && v.value===value),{name,value},{timeout:30000});
+    const waitValue=async(name,value)=>{
+        try{
+            await page.waitForFunction(({name,value})=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).some(v=>v.name.replace(/^Game_/,'')===name && v.value===value),{name,value},{timeout:30000});
+        }catch(error){
+            throw new Error('Arcade controller wait failed: '+JSON.stringify({expected:{name,value},observed:await state()}),{cause:error});
+        }
+    };
     const pixels=()=>page.evaluate(palette=>{
         const renderer=window.__brickwrightStore.getState().scratchGui.vm.runtime.renderer;renderer.draw();
         const canvas=renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
@@ -83,7 +89,7 @@ try{
         assert.ok(passedPixels.mover>=0 && passedPixels.mover<=initialPixels.mover);
         if(passed.finalOverlap)assert.ok(passedPixels.mover<initialPixels.mover,'contact occludes mover pixels');
         else assert.equal(passedPixels.mover,initialPixels.mover,'separated sprites retain all pixels');
-        await page.getByTestId('bw-arcade-b').click();await waitValue('fastOverlapSeen',false);const reset=await state();assert.equal(reset.moverX,60);assert.equal(reset.moverVx,0);assert.deepEqual(await pixels(),initialPixels);
+        await page.getByTestId('bw-arcade-b').click();await waitValue('resets',cycle+1);await settleFrames(page,3);const reset=await state();assert.equal(reset.fastOverlapSeen,false);assert.equal(reset.crossingArmed,false);assert.equal(reset.passes,cycle+1);assert.equal(reset.moverX,60);assert.equal(reset.moverVx,0);assert.deepEqual(await pixels(),initialPixels);
         passes.push({passed,passedPixels,reset});
     }
     await page.getByTestId('bw-arcade-up').click();await waitValue('pixelMaskTouch',true);const touching=await state(),touchingPixels=await pixels();assert.equal(touchingPixels.diagonal,9);assert.equal(touchingPixels.antiDiagonal,18);

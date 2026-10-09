@@ -202,3 +202,40 @@ game.popScene()`).join('\n');
  assert.ok(observations.some(o=>!o.touch),'a longer frame can finish after crossing');
  assert.ok(observations.filter(o=>o.width===8).every(o=>o.seen),'the controller target admits the crossing at every tested cadence');
 });
+
+
+test('queued overlap callbacks survive a position reset in original PXT; an authored arm guard suppresses the stale effect',async()=>{
+ const source=[false,true].map((guarded,i)=>`game.pushScene()
+let mover${i}=sprites.create(img\`2 2
+2 2\`,SpriteKind.Player)
+let target${i}=sprites.create(img\`2 2 2 2 2 2 2 2
+2 2 2 2 2 2 2 2\`,SpriteKind.Enemy)
+mover${i}.setPosition(60,60)
+target${i}.setPosition(68,60)
+let armed${i}=true
+let hits${i}=0
+sprites.onOverlap(SpriteKind.Player,SpriteKind.Enemy,function(){${guarded?'if(armed'+i+')':''}{hits${i}++}})
+mover${i}.vx=500
+game.currentScene().physicsEngine.move(.016)
+armed${i}=false
+mover${i}.vx=0
+mover${i}.setPosition(60,60)
+pause(20)
+let finalX${i}=mover${i}.x
+game.popScene()`).join('\n');
+ const expected=await runPxtArcade(source);
+ assert.equal(expected.hits0,1,'original queued callback can arrive after reset');
+ assert.equal(expected.hits1,0,'original authored guard rejects its stale effect');
+ for(const [i,guarded] of [false,true].entries()){
+  const {runtime,a}=game(),first=actor(a,{x:60,y:60,width:2,height:2}),second=actor(a,{x:68,y:60,width:8,height:2,kind:'Enemy'});
+  let armed=true,hits=0;
+  a.registerOverlapHandler({KIND:'Player',OTHER_KIND:'Enemy',TOKEN:'handler',CAPTURES:''});
+  scripts(runtime,['arcade_whenRegisteredOverlap'],()=>{if(!guarded || armed)hits++;});
+  set(a,first,'vx',500);a._advance(.016);
+  assert.equal(runtime.threads.length,1);
+  armed=false;set(a,first,'vx',0);a.setSpritePosition({ID:first,X:60,Y:60});
+  runtime.sequencer.stepThread(runtime.threads[0]);
+  assert.equal(hits,expected['hits'+i]);assert.equal(get(a,first,'x'),expected['finalX'+i]);
+  assert.equal(a.spriteOverlaps({A:first,B:second}),false);
+ }
+});

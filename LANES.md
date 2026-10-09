@@ -15,6 +15,13 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade reset qualification — 2026-10-09
+
+Codex continues on `lane/arcade-reset-qualification-20261009`, stacked on PR741.
+Own the hosted camera gate audit and multi-physics authored fixture reset race,
+including original/native callback lifecycle controls and visible controller
+qualification. Preserve every hosted failure. No pins or unrelated lanes change.
+
 ## Arcade overlap cadence qualification — 2026-10-08
 
 Codex continues the integration lane on `lane/arcade-overlap-cadence-20261008`,
