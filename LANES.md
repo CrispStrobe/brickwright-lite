@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade speech across scene suspension — 2026-10-09
+
+Codex owns `lane/arcade-speech-global-clock-20261009`, stacked on PR767.
+Use the existing global simulated clock for speech creation, rendering and
+expiry; original control.millis/game.runtime continues across scene pushes.
+Compare long suspended parent expiry and later child creation against original
+PXT. Preserve scene-local physics/update clocks and the explicit legacy bubble
+identity gap; no modal/wall-clock or completed screen API claim.
+
 ## Arcade indexed modern speech — 2026-10-09
 
 Codex owns `lane/arcade-frame-modern-speech-20261009`, stacked on PR766.
