@@ -193,9 +193,9 @@ class Stage extends React.Component {
     arcadeDialogListener (dialog) {
         this.setState({arcadeDialog: dialog});
     }
-    handleArcadeDialogDismiss () {
+    handleArcadeDialogDismiss (answer) {
         const dialog = this.state.arcadeDialog;
-        if (dialog && dialog.dismiss) dialog.dismiss();
+        if (dialog && dialog.dismiss) dialog.dismiss(answer);
     }
     handleQuestionAnswered (answer) {
         this.setState({question: null}, () => {

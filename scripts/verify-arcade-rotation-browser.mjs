@@ -666,6 +666,28 @@ let paletteReady=true`;
     report.templatePalette = {nativeFileImport:true,controllerRecolorsExisting:true,controllerCreatesUnderActivePalette:true,
         liveSprites:2,visibleCenterRgb:[18,52,86],freshHostedQualificationRequired:true};
     await page.screenshot({path:out.replace(/\.json$/, '')+'-template-palette.png'});
+    // The actual dialog UI suspends the authored caller and returns a boolean.
+    await stop.click();await page.getByRole('tab', {name:'Code',exact:true}).click();
+    const questionSource = 'let chosen=game.ask("Play?","Choose yes or no")\nlet branch=0\nif(chosen){branch=1}else{branch=2}\nlet questionReady=true';
+    assert.deepEqual(arcadeToPseudocode(questionSource).unsupported, []);
+    const questionProject = makeCodeProjectFile({'main.ts':questionSource,'pxt.json':JSON.stringify({name:'Boolean question',dependencies:{device:'*'},files:['main.ts']})},
+        {target:'arcade',name:'Boolean question'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'boolean-question.mkcd',mimeType:'application/json',buffer:Buffer.from(questionProject)});
+    await page.getByText(/Imported the Arcade game.*boolean-question/).first().waitFor({state:'visible'});
+    const oldQuestionStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
+    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id, oldQuestionStage);
+    await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
+    await page.getByRole('tab',{name:'Blocks',exact:true}).click();
+    for (const [choice,branch] of [['yes',1],['no',2]]) {
+        await flag.click();const button = page.getByTestId(`bw-arcade-question-${choice}`);await button.waitFor({state:'visible'});
+        await button.click();
+        await page.waitForFunction(expected => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+            .flatMap(target => Object.values(target.variables)).some(variable => variable.name.replace(/^(?:Game_)+/,'')==='branch' && variable.value===expected), branch);
+        assert.equal(await page.locator('[data-testid="bw-arcade-question-yes"]').count(), 0);
+        await stop.click();
+    }
+    report.booleanQuestion = {nativeFileImport:true,visibleYesNo:true,yesBranch:1,noBranch:2,restart:true};
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),

@@ -119,6 +119,10 @@ const ArcadeDevicePane = ({vm}) => {
             vm.runtime.emit('ARCADE_PLAYER_BUTTON_EDGE', playerRef.current, name, isDown);
             return;
         }
+        if (vm.runtime.bwArcadeDialogOpen && vm.runtime.bwArcadeDialogType === 'ask') {
+            vm.runtime.emit('ARCADE_DIALOG_BUTTON_EDGE', name, isDown);
+            return;
+        }
         if (isDown && vm.runtime.bwArcadeDialogOpen) {
             vm.runtime.emit('ARCADE_BUTTON_DOWN', name);
             return;

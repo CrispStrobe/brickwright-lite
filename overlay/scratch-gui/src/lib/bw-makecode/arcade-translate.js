@@ -702,6 +702,9 @@ class ArcadeTranslator extends BaseTranslator {
         // `score`, which the export could not tell from a user's, so the HUD was lost.)
         case 'info.score': return 'arcade score';
         case 'info.life': return 'lives';
+        case 'game.ask':
+            if(a.length>=1 && a.length<=2)return `arcade ask yes ${this.expr(a[0])} subtitle ${a[1]?this.expr(a[1]):'""'}`;
+            this.unsupported.push('game.ask() requires a title and optional subtitle');return '0';
         case 'game.askForNumber':
             if (a.length === 1) return `arcade ask number ${this.expr(a[0])}`;
             this.unsupported.push('game.askForNumber() with digit limit or other options');
@@ -1268,6 +1271,11 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && name==='tiles.setWallAt' && a.length===2){push(`arcade set tile wall (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.placeOnTile' && a.length===2){push(`arcade place sprite (${this.expr(a[0])}) on tile (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.placeOnRandomTile' && a.length===2){push(`arcade place sprite (${this.expr(a[0])}) on random tile image (${this.expr(a[1])})`);return;}
+        if(name==='game.ask') {
+            if(!this.discardedQuestionName){let n=0,name;do{name=`__bwDiscardedQuestion${++n}`;}while(this.taken.has(name));
+                this.taken.add(name);this.discardedQuestionName=name;}
+            push(`set ${this.discardedQuestionName} to ${this.callExpression(node)}`);return;
+        }
         if (this.projectileTemplates.has(node)) {
             // Creation is a side effect even when the caller discards its handle.
             // Scratch reporters need a consuming command to execute. Use a
@@ -2155,7 +2163,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(api==='mp.allPlayers')return new Set(['array']);
             if(api==='mp.getPlayerState' || api==='MultiplayerState.create')return new Set(['number']);
             if(api==='mp.getPlayerProperty')return new Set(['number']);
-            if(api==='mp.isButtonPressed')return new Set(['boolean']);
+            if(api==='mp.isButtonPressed' || api==='game.ask')return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
             if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
@@ -2636,7 +2644,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
-        if(node.type==='Call' && isIndependentRegistration(t.path(node.callee)))return true;
+        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || t.path(node.callee)==='game.ask'))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;

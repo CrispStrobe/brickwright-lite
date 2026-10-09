@@ -66,14 +66,17 @@ module.exports = makeExt(`// Name: Arcade
       this._terrainFrame = null;
       this._terrainStopped = false;
       if (runtime && runtime.on) {
-        runtime.on('ARCADE_FRAME', elapsedMs => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); });
+        runtime.on('ARCADE_FRAME', elapsedMs => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._pumpQuestion(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs : 1000 / 30); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); });
         runtime.on('ARCADE_FRAME_END', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); });
-        runtime.on('ARCADE_BUTTON_DOWN', () => this._dialogs?.[0]?.dismiss());
+        runtime.on('ARCADE_BUTTON_DOWN', button => { if(this._dialogs?.[0]?.type!=='ask')this._dialogs?.[0]?.dismiss(); });
+        runtime.on('ARCADE_DIALOG_BUTTON_EDGE',(button,held)=>this._questionButtonEdge(button,held));
         runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
         runtime.on('KEY_STATE_CHANGED',(key,isDown)=>this._keyboardButtonEdge(key,isDown));
         const cancelCreations = () => {
           for (const pending of this._creationWaits) pending.resolve('');
           this._creationWaits.clear();
+          for(const dialog of this._dialogs || [])dialog.resolve(dialog.type==='ask' ? false : undefined);
+          this._dialogs=[];this._showNextDialog();
           for (const call of this._functionCalls) {runtime.sequencer?.retireThread(call.thread);call.resolve(0);}
           this._functionCalls.clear();
           this._terrainEpoch++;this._terrainFrame = null;this._terrainStopped = true;
@@ -127,6 +130,7 @@ module.exports = makeExt(`// Name: Arcade
           for (const dialog of this._dialogs || []) dialog.resolve();
           this._dialogs = [];
           runtime.bwArcadeDialogOpen = false;
+          runtime.bwArcadeDialogType = null;
           runtime.emit('ARCADE_DIALOG', null);
           this._changed();
         };
@@ -234,6 +238,8 @@ module.exports = makeExt(`// Name: Arcade
             text: 'set Arcade captured [NAME] to [VALUE]', arguments: {...str('NAME', 'value'), ...str('VALUE', '0')} },
           { opcode: 'getLocal', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade local [NAME]', arguments: str('NAME', 'value') },
+          { opcode: 'ask', blockType: Scratch.BlockType.BOOLEAN,
+            text: 'ask Arcade yes/no [TITLE] subtitle [SUBTITLE]', arguments: {...str('TITLE','Continue?'),...str('SUBTITLE','')} },
           { opcode: 'askForNumber', blockType: Scratch.BlockType.REPORTER,
             text: 'ask Arcade number [QUESTION]', arguments: str('QUESTION', 'Number?') },
           { opcode: 'askForString', blockType: Scratch.BlockType.REPORTER,
@@ -920,6 +926,7 @@ module.exports = makeExt(`// Name: Arcade
       const key=number+':'+button,current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
       const held=!!isDown;if(current.held===held)return;
       current.held=held;current.elapsed=0;current.count=0;
+      if(this._dialogs?.[0]?.type==='ask'){if(number===1)this._questionButtonEdge(button,held);return;}
       if(this._terrainStopped)return;
       const pending=this._runTerrainGenerator(this._controllerButtonCallbacks(number,button,held?2049:2048,true));
       pending?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message));
@@ -1206,6 +1213,28 @@ module.exports = makeExt(`// Name: Arcade
         return Number.isFinite(value) ? value : 0;
       });
     }
+    // PXT game.ask waits 500 ms, then requires release before A/B confirmation.
+    // Behaviour reference: microsoft/pxt-common-packages libs/game/ask.ts (MIT).
+    ask(args) {
+      return this._queueDialog({type:'ask',title:String(Scratch.BWValues.decode(args.TITLE)),
+        subtitle:String(Scratch.BWValues.decode(args.SUBTITLE)),elapsed:0,
+        held:{a:this._heldButton(1,'a'),b:this._heldButton(1,'b')},armed:{a:false,b:false}});
+    }
+    _questionButtonEdge(button,held) {
+      const dialog=this._dialogs?.[0];
+      if(dialog?.type!=='ask' || !['a','b'].includes(button))return;
+      dialog.held[button]=!!held;
+      if(dialog.elapsed>=500 && !held)dialog.armed[button]=true;
+    }
+    _pumpQuestion(milliseconds) {
+      const dialog=this._dialogs?.[0];if(dialog?.type!=='ask')return;
+      const wasReady=dialog.elapsed>=500;
+      dialog.elapsed+=milliseconds;if(dialog.elapsed<500)return;
+      if(!wasReady)this._showNextDialog();
+      for(const button of ['a','b'])if(!dialog.held[button])dialog.armed[button]=true;
+      if(dialog.armed.a && dialog.held.a)dialog.dismiss(true);
+      else if(dialog.armed.b && dialog.held.b)dialog.dismiss(false);
+    }
     splash(args) {
       return this._queueDialog({type: 'splash', title: String(args.TITLE), subtitle: String(args.SUBTITLE)});
     }
@@ -1218,10 +1247,11 @@ module.exports = makeExt(`// Name: Arcade
       return new Promise(resolve => {
         if (!this._dialogs) this._dialogs = [];
         const dialog = {...fields, resolve};
-        dialog.dismiss = () => {
+        dialog.dismiss = answer => {
+          if(dialog.type==='ask' && (typeof answer!=='boolean' || dialog.elapsed<500))return;
           if (this._dialogs[0] !== dialog) return;
           this._dialogs.shift();
-          resolve();
+          resolve(dialog.type==='ask' ? answer : undefined);
           this._showNextDialog();
         };
         this._dialogs.push(dialog);
@@ -1230,7 +1260,13 @@ module.exports = makeExt(`// Name: Arcade
     }
     _showNextDialog() {
       if (this._runtime) {
-        this._runtime.bwArcadeDialogOpen = Boolean(this._dialogs?.[0]);
+        const dialog=this._dialogs?.[0];
+        if(dialog?.type==='ask' && !dialog.started){
+          dialog.started=true;
+          for(const button of ['a','b'])dialog.held[button]=this._heldButton(1,button);
+        }
+        this._runtime.bwArcadeDialogOpen = Boolean(dialog);
+        this._runtime.bwArcadeDialogType = this._dialogs?.[0]?.type || null;
         this._runtime.emit('ARCADE_DIALOG', this._dialogs?.[0] || null);
       }
     }
@@ -3066,7 +3102,7 @@ module.exports = makeExt(`// Name: Arcade
       this._runtime.startHats('arcade_whenUpdate');
     }
     _advance(dt) {
-      if(this._terrainStopped)return;
+      if(this._terrainStopped || this._dialogs?.[0]?.type==='ask')return;
       const owner=this._state();
       const elapsed=(this._pendingSceneSeconds.get(owner) || 0)+dt;
       this._pendingSceneSeconds.set(owner,elapsed);

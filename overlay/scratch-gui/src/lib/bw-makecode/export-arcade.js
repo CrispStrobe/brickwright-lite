@@ -1046,6 +1046,7 @@ class ArcadeEmitter {
         case 'arcade_tileIsWall': return `tiles.tileAtLocationIsWall(${v('LOCATION')})`;
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
+        case 'arcade_ask': return `game.ask(${this.arrayValue(b,'TITLE')}, ${this.arrayValue(b,'SUBTITLE')})`;
         case 'arcade_askForNumber': return `game.askForNumber(${v('QUESTION')})`;
         case 'arcade_controllerStep': {
             const literal=this.literal(b,'AXIS') ?? (this.field(b,'AXIS') || null);
@@ -2090,7 +2091,7 @@ class ArcadeEmitter {
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
                 if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
                 if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
-                if(value.opcode==='arcade_playerButtonPressed'){const id=Symbol('player button pressed');booleans.add(id);return id;}
+                if(['arcade_playerButtonPressed','arcade_ask'].includes(value.opcode)){const id=Symbol('player button pressed');booleans.add(id);return id;}
                 if(['arcade_createPlayerState','arcade_getPlayerState'].includes(value.opcode)){const id=Symbol('player state number');numbers.add(id);return id;}
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}

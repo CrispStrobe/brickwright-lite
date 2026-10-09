@@ -15,6 +15,7 @@ const entry=path.join(out,'entry.jsx');
 await fs.writeFile(entry,`
 import React from 'react';import ReactDOM from 'react-dom';
 import Blocks from ${JSON.stringify(path.join(root,'packages/scratch-gui/node_modules/scratch-vm/src/engine/blocks.js'))};
+import ArcadeDialog from ${JSON.stringify(path.join(root,'packages/scratch-gui/src/components/stage/arcade-dialog.jsx'))};
 import Editor from ${JSON.stringify(path.join(root,'overlay/scratch-gui/src/components/tw-pseudocode/project-palette-editor.jsx'))};
 import {DEFAULT_PROJECT_PALETTE,inspectProjectPalette} from ${JSON.stringify(path.join(root,'overlay/scratch-gui/src/lib/arcade-project-palette.js'))};
 const runtime={targets:[],emitProjectChanged(){},emit(){},requestBlocksUpdate(){},_primitives:{arcade_setPalette({DATA}){window.livePalette=DATA;}}};
@@ -23,18 +24,20 @@ runtime.targets=[target];runtime.getTargetForStage=()=>target;
 const vm={runtime,editingTarget:target,emitWorkspaceUpdate(){}};
 window.inspect=()=>inspectProjectPalette(vm);window.blocks=target.blocks;
 class Harness extends React.Component {state={preview:null};render(){return <Editor vm={vm} locale={new URLSearchParams(location.search).get('locale')||'en'} image={{width:2,height:1,pixels:[1,2]}} artworkPalette={[null,...DEFAULT_PROJECT_PALETTE.slice(1)]} previewing={Boolean(this.state.preview)} onPreview={preview=>{window.preview=preview;this.setState({preview});}}/>;}}
+window.showQuestion=elapsed=>ReactDOM.render(<ArcadeDialog dialog={{type:'ask',title:'Continue?',subtitle:'Choose A/B',elapsed}} onDismiss={answer=>{window.answer=answer;}}/>,document.getElementById('question'));
 ReactDOM.render(<Harness/>,document.getElementById('root'));
 `);
 await new Promise((resolve,reject)=>webpack({mode:'development',devtool:false,entry,output:{path:out,filename:'bundle.js'},
  resolve:{modules:[path.join(root,'packages/scratch-gui/node_modules'),'node_modules'],fallback:{util:false}},
- module:{rules:[{test:/\.jsx$/,use:{loader:require.resolve('babel-loader'),options:{babelrc:false,configFile:false,presets:[require.resolve('@babel/preset-react')]}}}]}
+ module:{rules:[{test:/\.jsx$/,use:{loader:require.resolve('babel-loader'),options:{babelrc:false,configFile:false,presets:[require.resolve('@babel/preset-react')]}}},{test:/\.css$/,use:[require.resolve('style-loader'),{loader:require.resolve('css-loader'),options:{modules:{exportLocalsConvention:'camelCase'}}}]}]}
 }).run((error,stats)=>error?reject(error):stats.hasErrors()?reject(new Error(stats.toString({all:false,errors:true}))):resolve()));
 const server=createServer(async(req,res)=>{if(req.url.startsWith('/bundle.js'))res.end(await fs.readFile(path.join(out,'bundle.js')));
- else{res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<meta charset="utf-8"><style>body{font-family:Arial,sans-serif}</style><div id="root" style="width:300px"></div><script src="/bundle.js"></script>');}});
+ else{res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<meta charset="utf-8"><style>body{font-family:Arial,sans-serif}</style><div id="root" style="width:300px"></div><div id="question"></div><script src="/bundle.js"></script>');}});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await chromium.launch();const page=await browser.newPage({viewport:{width:420,height:900}});
-const report={boundary:'fresh React component + real Scratch Blocks; live palette primitive recorded, full app qualification remains separate',locales:[],errors:[]};
+const report={boundary:'fresh palette component + real Scratch Blocks and fresh stage dialog component/CSS; live palette primitive recorded, full app qualification remains separate',locales:[],errors:[]};
 page.on('pageerror',error=>report.errors.push(error.message));
+await page.addInitScript(()=>Object.defineProperty(navigator,'language',{get:()=>new URLSearchParams(location.search).get('locale')||'en'}));
 try{for(const locale of ['en','de']){
  await page.goto(`http://127.0.0.1:${server.address().port}/?locale=${locale}`);
  assert.equal(await page.locator('input[type=color]').count(),16);
@@ -55,7 +58,19 @@ try{for(const locale of ['en','de']){
  const overflow=await page.locator('[data-testid="bw-project-palette"] button').evaluateAll(nodes=>nodes.filter(node=>node.scrollWidth>node.clientWidth+1).map(node=>node.textContent));
  assert.deepEqual(overflow,[],`${locale} button text fits`);
  await page.screenshot({path:path.join(out,`${locale}.png`),fullPage:true});
- report.locales.push({locale,colors:16,previewDoesNotMutate:true,persisted:true,staleProtected:true,overflow});
+ await page.evaluate(()=>window.showQuestion(0));
+ const yes=page.getByTestId('bw-arcade-question-yes'),no=page.getByTestId('bw-arcade-question-no');
+ assert.equal(await yes.isDisabled(),true);assert.equal(await no.isDisabled(),true);
+ await page.evaluate(()=>window.showQuestion(500));
+ assert.equal(await yes.isDisabled(),false);
+ assert.equal(await page.evaluate(()=>document.activeElement.dataset.testid),'bw-arcade-question-yes');
+ assert.equal(await yes.textContent(),locale==='de'?'Ja (A)':'Yes (A)');
+ assert.equal(await no.textContent(),locale==='de'?'Nein (B)':'No (B)');
+ await no.click();assert.equal(await page.evaluate(()=>window.answer),false);
+ await yes.click();assert.equal(await page.evaluate(()=>window.answer),true);
+ await page.keyboard.press('z');assert.equal(await page.evaluate(()=>window.answer),false);
+ await page.screenshot({path:path.join(out,`question-${locale}.png`),fullPage:true});
+ report.locales.push({locale,question:{guarded:true,yes:true,no:true,focus:true},colors:16,previewDoesNotMutate:true,persisted:true,staleProtected:true,overflow});
 }assert.deepEqual(report.errors,[]);
 }finally{await fs.writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));await browser.close();await new Promise(resolve=>server.close(resolve));}
 console.log(JSON.stringify(report));

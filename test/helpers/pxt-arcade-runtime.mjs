@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null} = {}) {
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
@@ -33,6 +33,20 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             await runtime.board.initAsync(msg);
             runtime.run(()=>{window.__bwPxtDone=true;});
         },built.outfiles['binary.js']);
+        if(buttonActions){
+            if(buttonActions.afterGlobals)await page.waitForFunction(expected=>{
+                const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
+                return Object.entries(expected).every(([key,value])=>values[key]===value);
+            },buttonActions.afterGlobals,{timeout:20000});
+            for(const action of buttonActions.steps){
+                if(action.delay)await page.waitForTimeout(action.delay);
+                if(action.button!==undefined)await page.evaluate(({button,held})=>{
+                    const board=window.__bwPxtRuntime.board;
+                    if(typeof board.setButton!=='function')throw new Error('Original PXT board button input unavailable');
+                    board.setButton(button,held);
+                },action);
+            }
+        }
         try {
             await page.waitForFunction(()=>window.__bwPxtDone,null,{timeout:20000});
             // Exported Scratch hats can continue in real PXT fibers after main
