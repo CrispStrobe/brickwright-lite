@@ -10,6 +10,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {cameraMap} from './fixtures/arcade-camera.mjs';
 const Arcade=loadExtensionClass('arcade');
 function actors(){
  const runtime=new EventEmitter(),ext=new Arcade(runtime),image=ext.createImage({WIDTH:2,HEIGHT:2});
@@ -109,4 +110,29 @@ test('following owns its scene and steers after controller input before physics'
  ext._inst._globalElapsedMs+=100;ext._moveFollowingSprites();
  assert.equal(parent.followingSprites.length,1);
  ext.unfollowSprite({ID:ids[0]});assert.equal(self.vx,0);assert.equal(self.vy,0);
+});
+
+test('near-target snapping uses original collision-aware x/y setters rather than teleporting through walls',async()=>{
+ const original=await runPxtArcade(`${cameraMap()}
+ tiles.setWallAt(tiles.getTileLocation(2,1),true)
+ let goal=sprites.create(image.create(2,2),SpriteKind.Enemy)
+ goal.image.fill(2)
+ goal.setFlag(SpriteFlag.GhostThroughWalls,true)
+ goal.setPosition(16,12)
+ let follower=sprites.create(image.create(2,2),SpriteKind.Player)
+ follower.image.fill(2)
+ follower.setPosition(14.5,12)
+ follower.follow(goal,100)
+ pause(80)
+ let snapX=follower.x
+ let snapY=follower.y
+ let snapVX=follower.vx`);
+ const {ext,ids,sprites}=actors();const [self,goal]=sprites;
+ self.image.pixels.fill(2);goal.image.pixels.fill(2);
+ ext.setTilemap({DATA:JSON.stringify({columns:4,rows:4,tileSize:8,indices:Array(16).fill(0),walls:Array.from({length:16},(_,i)=>i===6?1:0),images:[{width:1,height:1,pixels:[0]}]})});
+ ext.setSpriteFlag({ID:ids[1],FLAG:'GhostThroughWalls',ON:true});
+ ext.setSpritePosition({ID:ids[1],X:16,Y:12});ext.setSpritePosition({ID:ids[0],X:14.5,Y:12});
+ ext.followSprite({ID:ids[0],TARGET:ids[1],SPEED:100,TURN:400});ext._advance(.03);
+ assert.equal(self.x,original.snapX);assert.equal(self.y,original.snapY);assert.equal(self.vx,original.snapVX);
+ assert.equal(self.x,15,'solid follower remains outside the wall containing its ghost target');
 });

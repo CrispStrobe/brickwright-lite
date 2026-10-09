@@ -1043,20 +1043,31 @@ module.exports = makeExt(`// Name: Arcade
       this._changed();
     }
     unfollowSprite(args) {this.followSprite({ID:args.ID,TARGET:Scratch.BWValues.encode(null),SPEED:0,TURN:400});}
-    _moveFollowingSprites() {
-      const state=this._state();if(!state.followingSprites)return;
-      const dt=(this._globalElapsedMs-state.followLastTime)/1000;
+    _moveFollowingSprites() {return this._runTerrainGenerator(this._moveFollowingSpriteSteps());}
+    *_moveFollowingSpriteSteps() {
+      const state=this._state(),epoch=this._terrainEpoch,now=this._globalElapsedMs;
+      if(!state.followingSprites)return;
+      const dt=(now-state.followLastTime)/1000;
       for(const {self,target,rate,turnRate} of state.followingSprites){
         if(self._destroyed || target._destroyed){self.vx=0;self.vy=0;continue;}
         const dx=target.x-self.x,dy=target.y-self.y;
-        if(Math.abs(dx)<2 && Math.abs(dy)<2){self.x=target.x;self.y=target.y;self.vx=0;self.vy=0;continue;}
+        if(Math.abs(dx)<2 && Math.abs(dy)<2){
+          // Sprite.x/y setters in PXT use physics.moveSprite, in this order.
+          const x=((target.x-self.width/2)*256)|0;
+          yield* this._moveSpriteExplicitSteps(self,(x-self._fx)|0,0);
+          if(epoch!==this._terrainEpoch || this._state()!==state)return;
+          const y=((target.y-self.height/2)*256)|0;
+          yield* this._moveSpriteExplicitSteps(self,0,(y-self._fy)|0);
+          if(epoch!==this._terrainEpoch || this._state()!==state)return;
+          self.vx=0;self.vy=0;continue;
+        }
         const limit=dt*turnRate*(rate/50),angle=Math.atan2(dy,dx);
         // PXT sprite.ts: independently clamp each velocity delta; retain the
         // fixed-point setters and controller-before-follow-before-physics order.
         self.vx+=Math.min(limit,Math.max(-limit,Math.cos(angle)*rate-self.vx));
         self.vy+=Math.min(limit,Math.max(-limit,Math.sin(angle)*rate-self.vy));
       }
-      state.followLastTime=this._globalElapsedMs;
+      state.followLastTime=now;
       state.followingSprites=state.followingSprites.filter(({self,target})=>!self._destroyed && !target._destroyed);
     }
     _moveControlledSprites(live) {
@@ -3220,7 +3231,8 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
       const live = Object.values(state.sprites).filter(s => s.id);
-      this._moveControlledSprites(live);this._moveFollowingSprites();
+      this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
+      if(epoch!==this._terrainEpoch || this._state()!==state)return;
       if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;this._advanceSpeech(dt);this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
