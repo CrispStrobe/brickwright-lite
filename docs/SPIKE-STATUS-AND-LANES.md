@@ -390,3 +390,18 @@ bounds remain mandatory. Both modes verify default device restoration on close.
 Missing capabilities fail the proof. These are **prepared scenarios, not actual
 execution evidence**; the test host is also separate from installed Tauri WebView
 and ACL qualification. No package or guest pins are adopted by these scripts.
+
+### First hosted execution checkpoint (2026-10-09)
+
+At source `24b12b154dc3d901e622c701cd9c957ad5e6e53f`, the source-built firmware
+resource/TI/marker gates, Runtime build, package staging, production Rust proof
+controls and GUI build passed. The rendered-pane, actual reader/compiler and
+browser-proof control suites passed all 35 tests with no skips.
+
+The first real-guest browser attempt failed during native session startup with
+`Renode debugger unavailable`, before any live frame or E/F program execution.
+The Python scenario did not run after that failure. Bounded private startup
+diagnostics are the next step; the original failed evidence remains preserved
+privately. This checkpoint does not qualify either E/F execution scenario,
+installed Tauri behavior or a distributed package. The acceptance requirements
+above remain open.
