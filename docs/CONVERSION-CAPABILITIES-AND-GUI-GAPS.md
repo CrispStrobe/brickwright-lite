@@ -1678,3 +1678,33 @@ the existing reference production bundle with zero page/runtime errors. Fresh
 exact-head hosted checks remain required. Original failed logs are retained
 privately. No runtime/converter capability or corpus count changes in this
 batch. [Receipt](receipts/2026-10-09-arcade-reset-qualification.json).
+
+
+## Indexed custom artwork palettes — 2026-10-09
+
+Custom indexed SVG now preserves its 15 opaque RGB entries and each run's
+color index. Readers validate the palette, index/fill agreement and declared
+grid. Duplicate RGB colors retain distinct indices, including opaque black
+versus transparent index zero. Default artwork retains its historical bytes.
+The graphics editor's actual load method adopts an embedded palette without
+raster conversion. Native template decoding carries that palette into mutable
+images and renderer output. Export discovers the palette from sprite or Stage
+artwork, writes it to `pxt.json`, and remaps other palettes explicitly. Saved
+SB3 artwork survives export into a project accepted by the original Arcade
+compiler. All 54 affected local checks pass, with no skips.
+
+This is artwork palette support. Project-wide startup/import and dynamic palette
+changes still need background, tilemap, speech and scene-layer runtime wiring.
+The importer custom-palette diagnostic remains. Code/Blocks palette authoring
+and a project-wide GUI selector remain open; per-artwork palette editing exists.
+There is no fresh production build or visible browser qualification for this
+slice. Preserve those gates before integration. No fresh corpus census ran;
+the last original 184 import-only result remains 102 translated, 81 partial and
+1 malformed. Producer vocabulary and pin remain unchanged.
+
+Next sequence: implement project-wide palette state and rerendering without
+changing indices; connect static `pxt.json` import and faithful export; add
+Code/Blocks authoring and GUI controls; compare original/exported PXT colors
+against native output; then qualify a fresh controller/graphics browser journey
+and remeasure the unchanged corpus.
+[Receipt](receipts/2026-10-09-arcade-palette-indices.json).
