@@ -261,8 +261,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 56f6307e (2026-10-09): boolean Arcade question reporter; SPIKE words unchanged.
     // -> e3d0e890 (2026-10-09): direct controller 1–4 movement/stopping; SPIKE words unchanged.
     // -> 0f401fc9 (2026-10-09): native Arcade truncation reporter; SPIKE words unchanged.
+    // -> 887045e0 (2026-10-09): Boolean census correction and sibling fixture adoption; runtime words unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '0f401fc92da3ee107ed5f4bbfb5dd96d4caf545f');
+        '887045e06a028153f889a48cc467945c355ce328');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
