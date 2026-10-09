@@ -6,6 +6,38 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Legacy speech camera coordinates — 2026-10-09
+
+Implementation b89ab32796ef0bd41a4aea3e0267849231a05e10 preserves native world coordinates and the
+camera's logical and draw offsets for the retained original legacy renderer.
+The owner bridge maps RelativeToCamera and destroyed flags rather than erasing
+all flags. Bubble drawing subtracts draw offsets only for world sprites;
+original viewport clipping and below-owner placement remain unchanged.
+
+Nine new checks pass: eight complete original19200-pixel bubble planes
+(153600 native/original pixel comparisons), original bubble x/y/z values and
+camera-flag changes, plus editable Code/Blocks/MakeCode export/reimport with
+original exported-frame equivalence. Cases cover centre, both horizontal edges,
+top-edge placement, offscreen owners, camera-relative owners and a live flag
+change. Existing speech, suspended-scene clock, modern frame and both fresh
+extension bundles are covered by the qualification batch:41 passed,0 failed,
+0 skipped (nine new checks and32 regressions).
+
+Original execution corrected the earlier legacy integration assumption:
+`sprites.allOfKind(-1)` returns an empty array. A negative-kind creation callback
+receives the bubble, so native integration must preserve that callback without
+admitting the bubble into the negative-kind collection. The initial harness
+incorrectly indexed that empty array; its original failure is retained privately.
+
+This is bridge qualification, not native legacy sprite ownership. Native IDs,
+yielding creation/destruction callbacks, z/id frame composition and complete GUI
+presentation remain open. LegacySpeech remains in the frame's remaining list.
+No importer, authoring vocabulary or producer pin changed; the latest measured
+corpus remains109 translated /74 partial /1 malformed, without reranking.
+See the [receipt](receipts/2026-10-09-arcade-legacy-speech-camera.json) and corrected
+[legacy integration contract](ARCADE-SCREEN-RENDER-CONTRACT.md#legacy-bubble-integration).
+Full shipped GUI and all enabled hosted checks remain required before merge.
+
 ## Speech deadlines across suspended scenes — 2026-10-09
 
 Implementation `e85bc17e9f42d66987c0b71ecb172b655217f4de` changes speech creation,
