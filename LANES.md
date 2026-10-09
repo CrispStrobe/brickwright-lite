@@ -1111,6 +1111,23 @@ also failed before its journeys ran. No unchanged rerun or landing is authorized
 by the corrected unit tests. A forward hosted qualification must diagnose the
 green-flag failure before this package pair can be adopted.
 
+2026-10-09 forward adoption — CLAIM, Codex bwcx, branch
+`lane/scope-reset-stiff-adoption-20261009`. Reconciled current main
+`287b91c43` into the held candidate without changing other owners' SPIKE work.
+The upstream winding repair is now landed at
+`09c0f027eb906310f0f09dc524d6fdf17058439b`; CI37918681671 passes8456 tests,
+zero failures,302 unchanged skips, and Harris37918681729 succeeds.
+Advance only the Board pin to that exact head; retain CUI5f336b244 and all
+other pins. Envelope: existing package manifests/locks, generated notices,
+census/mirrors, matrix/report, byte-unchanged ROM/controller provenance,
+the existing direct-actual workflow's exact checkout/assertion references,
+existing package-adoption pin assertions, and this ledger. Add an installed
+motor startup/off/restart proof to scope-reset-package-adoption.test.mjs.
+Retain all actual browser assertions and require the previously failing
+green-flag journey plus scope-reset journey to pass in the hosted Build.
+No engine/UI source copy, model adjustment, SPIKE/Arcade change, other pin,
+new guest run or deployment claim. Existing rejected receipts remain rejected.
+
 Vercel docs-only validation inheritance — **DONE candidate 2026-10-04**, Codex
 bwcx `/root`, `/tmp/wt-bwcx-vercel-doc-inheritance-20261004`, branch
 `lane/vercel-doc-validation-20261004`; canonical claim `8732d8802` from exact
