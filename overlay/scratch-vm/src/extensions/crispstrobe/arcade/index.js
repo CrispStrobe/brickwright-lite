@@ -2690,6 +2690,28 @@ module.exports = makeExt(`// Name: Arcade
         this._refreshImage(image);
       }
     }
+    _composeSceneFrame() {
+      const state=this._state();
+      // This internal scene raster is not the global PXT screen. Snapshot
+      // reporters remain unavailable until all renderable layers are covered.
+      const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
+      const layers=[],missingSpriteImages=[];
+      for(const sprite of Object.values(state.sprites)) {
+        if(sprite.invisible || sprite._destroyed)continue;
+        const source=sprite.image || this._imageForSprite(sprite.id,{quiet:true});
+        if(!source){missingSpriteImages.push(sprite.id);continue;}
+        const window=this._spriteRasterWindow(sprite),view=this._spriteViewPosition(sprite);
+        layers.push({image:this._scaledSpriteImage(sprite,window),
+          x:view.x-sprite.width/2+window.x,y:view.y-sprite.height/2+window.y,
+          z:sprite.z,id:sprite.pxtId});
+      }
+      imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,layers);
+      frame.coverage=['background','sprites'];
+      frame.remaining=['tilemap','renderables','hud','speech','effects'];
+      frame.missingSpriteImages=missingSpriteImages;
+      frame.sequence=(frame.sequence || 0)+1;
+      return frame;
+    }
     _scalePixelTarget(target) {
       target.setSize?.(75);
       // Scratch enforces a five-display-pixel minimum; Arcade allows 1x1
@@ -3249,7 +3271,7 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;this._advanceSpeech(dt);this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;this._advanceSpeech(dt);this._composeSceneFrame();this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
@@ -3272,6 +3294,7 @@ module.exports = makeExt(`// Name: Arcade
       }
       yield* this._lifeZeroSteps();if(this._state()!==state)return;
       this._advanceSpeech(dt);
+      this._composeSceneFrame();
       this._changed();
       this._startFrameHats();
     }

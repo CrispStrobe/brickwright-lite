@@ -95,6 +95,19 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
             pixels.set(before.subarray(start, start + endX - startX), y * width + startX);
         }
     };
+    // Indexed scene composition, independent of RGB presentation. Callers
+    // supply raster layers in Arcade coordinates and original z/id identity.
+    const composeFrame = (destination, backgroundColor, backgroundImage, layers) => {
+        destination.pixels.fill(Number(backgroundColor) & 15);
+        if (backgroundImage?.width && backgroundImage?.height)
+            blit(destination, backgroundImage, 'drawTransparentImage', 0, 0);
+        const ordered = layers.slice().sort((a, b) => a.z - b.z || a.id - b.id);
+        for (const layer of ordered) {
+            if (!layer.image?.width || !layer.image?.height) continue;
+            blit(destination, layer.image, 'drawTransparentImage', layer.x, layer.y);
+        }
+        return destination;
+    };
     const svg = (image, paletteOverride = image.palette || palette) => {
         const {width, height, pixels} = image;
         const customPalette = paletteOverride !== palette && paletteOverride.some((color, index) =>
@@ -125,6 +138,6 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     const overlapsTwoScaledRotated = (image, x, y, imageSx, imageSy, imageAngle, source, sx, sy, angle) =>
         operations.checkOverlapsTwoScaledRotatedImages(adapter(image), adapter(source),
             collection([x | 0, y | 0, imageSx, imageSy, imageAngle, sx, sy, angle]));
-    return {decode, mutate, scroll, copyFrom, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
+    return {decode, mutate, scroll, copyFrom, composeFrame, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
         drawScaledRotated, overlapsScaledRotated, overlapsTwoScaledRotated};
 };

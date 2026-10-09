@@ -732,7 +732,15 @@ let discardedReady=true`;
         const rgba=context.getImageData(Math.floor((x+.5)*canvas.width/160),Math.floor((y+.5)*canvas.height/120),1,1).data;
         return rgba[0]===120 && rgba[1]===220 && rgba[2]===82;
     });
-    report.imageCopy={nativeFileImport:true,codeToBlocks:true,controllerCopy:true,mismatchNoOp:true,
+    await page.waitForFunction(()=>{
+        const state=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;
+        const actor=Object.values(state.sprites)[0],frame=state.sceneFrame;
+        if(!actor || !frame)return false;
+        const left=Math.floor(actor.x-actor.width/2),top=Math.floor(actor.y-actor.height/2);
+        return frame.pixels[top*160+left]===0 && frame.pixels[top*160+left+1]===7 &&
+            frame.coverage.includes('sprites') && frame.remaining.includes('hud');
+    });
+    report.imageCopy={nativeFileImport:true,codeToBlocks:true,controllerCopy:true,mismatchNoOp:true,indexedSceneFrame:true,
         copiedPixels:[0,7,0,7,0,7],renderedPixelRgb:[120,220,82]};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-image-copyfrom.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();

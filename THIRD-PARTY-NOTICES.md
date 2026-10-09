@@ -2012,3 +2012,12 @@ same image dimensions, transparent pixel copying and preserved destination pixel
 buffer. The native implementation adapts these semantics for Brickwright's
 4-bit indexed images under the Microsoft PXT MIT notice above. Original PXT
 simulator source remains unchanged for comparisons.
+
+### Arcade indexed scene composition
+
+The internal compositor follows the Microsoft PXT Scene.render and
+Background.draw ordering for background colour/image and Sprite pixel drawing,
+using the already credited original PXT image raster operations. Original
+source remains unchanged for full indexed pixel-plane comparisons. The initial
+compositor covers background and sprites; tilemaps, callback renderables, HUD,
+speech and effects remain separate integration work.

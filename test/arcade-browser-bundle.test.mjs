@@ -38,6 +38,11 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         assert.ok(blocks.some(b=>b.opcode==='frameImage'));
         assert.equal(extension.spritePixel({ID:'missing',X:0,Y:0}),0);
         assert.equal(extension.backgroundColor(),0);
+        extension.setBackgroundColor({COLOR:7});
+        const sceneRaster=extension._inst._composeSceneFrame();
+        assert.equal(sceneRaster.pixels.length,160*120);
+        assert.equal(sceneRaster.pixels[0],7);
+        assert.deepEqual(Array.from(sceneRaster.coverage),['background','sprites']);
         assert.ok(blocks.some(b=>b.opcode==='copyImageFrom'));
         const copiedImage=extension.createImage({WIDTH:3,HEIGHT:1});
         const copiedSource=extension.createImage({WIDTH:3,HEIGHT:1});
