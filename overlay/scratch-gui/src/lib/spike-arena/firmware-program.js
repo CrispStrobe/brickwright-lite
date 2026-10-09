@@ -4,7 +4,7 @@
 import {validateTopology} from '../spike-nuttx/motor-topology.js';
 export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
     validateTopology(topology);
-    const six = topology === 'six-motors';
+    const six = topology === 'six-motors', dual = topology === 'dual-ultrasonic';
     const targets = vm?.runtime?.targets || [];
     const scripts = targets.filter(t => t.isOriginal !== false).flatMap(target =>
         (target.blocks?.getScripts() || []).map(id => ({target, id})));
@@ -49,6 +49,7 @@ export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
     const predicate = block => {
         if (six) throw new Error('Six-motor topology has no arena sensors');
         if (block?.opcode === 'spikeprime_isForceSensorPressed') {
+            if (dual) throw new Error('Dual ultrasonic topology has no force sensor');
             if (literal(block, 'PORT') !== 'E') throw new Error('Firmware force sensor is E');
             return [3, 1];
         }
@@ -56,11 +57,15 @@ export function compileFirmwareProgram (vm, {topology = 'default'} = {}) {
         const reporter = input(block, 'OPERAND1');
         let kind, max, scale = 1;
         if (reporter?.opcode === 'spikeprime_getDistance' || reporter?.opcode === 'spikeprime_getDistanceIn') {
-            if (literal(reporter, 'PORT') !== 'D') throw new Error('Firmware distance sensor is D');
+            const port = literal(reporter, 'PORT');
+            if (dual ? !['E', 'F'].includes(port) : port !== 'D') {
+                throw new Error(dual ? 'Dual ultrasonic distance ports are E and F' : 'Firmware distance sensor is D');
+            }
             const unit = reporter.opcode === 'spikeprime_getDistance' ? 'cm' : literal(reporter, 'UNIT');
             scale = {mm: 1, cm: 10, in: 25.4}[unit];
             if (!scale || block.opcode === 'operator_equals') fail(block);
-            kind = block.opcode === 'operator_lt' ? 1 : 2; max = 65535 / scale;
+            kind = (dual ? 0x100 + ((port.charCodeAt(0) - 65) << 3) : 0) +
+                (block.opcode === 'operator_lt' ? 1 : 2); max = 65535 / scale;
         } else if (reporter?.opcode === 'spikeprime_getReflection') {
             if (literal(reporter, 'PORT') !== 'C' || block.opcode === 'operator_equals') fail(block);
             kind = block.opcode === 'operator_lt' ? 5 : 6; max = 100;

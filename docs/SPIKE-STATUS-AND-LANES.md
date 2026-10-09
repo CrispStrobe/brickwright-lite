@@ -310,3 +310,189 @@ and shared arena, gated native/Python callers, and actual installed Code/Blocks
 qualification. Default D-distance/E-force and six-motor configurations retain
 their existing contracts; package metadata alone does not qualify those next
 steps or arbitrary A–F addressed reads.
+
+
+## Dual ultrasonic sandbox integration candidate (2026-10-09)
+
+The own-firmware live addressed API is now merged in
+[Runtime PR56](https://github.com/CrispStrobe/renode-spike-prime/pull/56).
+[Firmware PR53](https://github.com/CrispStrobe/brickwright-spike-prime-fw/pull/53)
+qualified the actual Runtime snapshot on both protected firmware profiles in
+[matrix37934995031](https://github.com/CrispStrobe/brickwright-spike-prime-fw/actions/runs/37934995031):
+the bound live marker advertised the API, legacy configuration omitted it and
+foreign metadata was refused. This is own-firmware simulation evidence.
+
+This candidate adds **Ultrasonic E/F (NuttX sandbox)** to the arena's Firmware
+devices chooser. Open the free sandbox and select Full NuttX (desktop), then
+choose that profile. It keeps driving motors A/B and color sensor C, detaches
+D and replaces E/F with distance sensors. The existing default layout keeps D
+distance and E force. Six motors remains a separate profile. The E/F geometry
+uses forward-facing probes at x=9 cm and y=-3/+3 cm; these are arena choices,
+not physical sensor calibration.
+
+Scratch literal distance comparisons/waits on E/F compile to addressed
+selectors 0x121/0x122 and 0x129/0x12a. Supported mm/cm/in thresholds round to
+integer millimeters in 0..65535. Color/reflection on C remains supported;
+legacy D distance, E force and C..F motor commands are refused for this
+profile. Programs retain the existing bounded sequential guest instruction
+contract; this change does not add parallel scripts or arbitrary Python APIs.
+
+The native launcher admits only a verified own full NuttX package with an
+image-bound addressed marker declaration and bounded program mailbox. Before
+upload, the arena session also requires the actual live addressed capability
+and exactly A/B motors, C color, D detached and E/F distance. It checks this
+contract on subsequent frames, replacement upload, retained restart and storage
+operations. Native and Python-source upload share the same hub and arena;
+closing the profile restores default devices. Unsupported packages fail closed.
+
+Reproduce source controls with Node22:
+
+```sh
+node --test test/spike-dual-ultrasonic-topology.test.mjs test/spike-six-motor-topology.test.mjs test/spike-code-run-feedback.test.mjs test/spike-renode-arena-session.test.mjs test/spike-nuttx-upload-protocol.test.mjs test/spike-nuttx-storage-exchange.test.mjs
+node --test test/spike-arena-pane-units.test.mjs test/spike-firmware-program.test.mjs
+cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib
+```
+
+The rendered-pane/compiler suites require the repository's normal locked GUI
+dependencies. Focused source controls cover selector bounds, units, wrong
+firmware/type/attachment/capability, native and Python rejection before packets,
+replacement/restart, cancellation, distinct world-derived E/F ranges and default
+restoration. Three changed actual gate implementations are detected by the
+negative admission assertions. Rust controls check preboot attachment order,
+closed metadata, address bounds and image identity. These source controls are
+not installed-package qualification.
+
+**Pending acceptance:** exact-head hosted web/native checks, consumer package
+adoption of the qualified firmware and Runtime, and actual installed GUI runs
+of Scratch and Code-tab E/F programs through the real guest. No package pin is
+changed in this candidate. Existing installed packages can lack the required
+capability and will refuse this profile; browser-only simulation does not launch
+NuttX. Do not claim shipped availability or complete equivalence from this
+source integration.
+
+
+### Prepared real-guest E/F browser modes
+
+The existing managed arena proof now accepts `BW_SPIKE_PROOF_MODE=nuttx-dual-source`
+and `nuttx-dual-python`. The first waits for the actual GUI reader to install
+both intended E/F reporters and wait predicates, then requires their addressed
+selectors, real guest completion, A/B encoder movement and shared arena motion.
+The second waits for the intended idle Scratch program, then replaces it through
+the actual Code editor with bounded embedded Python reads. E/F must return distinct
+millimeters matching the unchanged authored arena geometry. The retained GUI
+session object, native start count, image, connection generation and advancing
+sequence/clock must establish replacement in the same live guest.
+
+Run each mode separately with the compiled production Rust proof driver, emitted
+GUI and a verified full NuttX package using the qualified addressed Runtime.
+The existing private evidence destination requirement and owned process/time
+bounds remain mandatory. Both modes verify default device restoration on close.
+Missing capabilities fail the proof. These are **prepared scenarios, not actual
+execution evidence**; the test host is also separate from installed Tauri WebView
+and ACL qualification. No package or guest pins are adopted by these scripts.
+
+### First hosted execution checkpoint (2026-10-09)
+
+At source `24b12b154dc3d901e622c701cd9c957ad5e6e53f`, the source-built firmware
+resource/TI/marker gates, Runtime build, package staging, production Rust proof
+controls and GUI build passed. The rendered-pane, actual reader/compiler and
+browser-proof control suites passed all 35 tests with no skips.
+
+The first real-guest browser attempt failed during native session startup with
+`Renode debugger unavailable`, before any live frame or E/F program execution.
+The Python scenario did not run after that failure. Bounded private startup
+diagnostics are the next step; the original failed evidence remains preserved
+privately. This checkpoint does not qualify either E/F execution scenario,
+installed Tauri behavior or a distributed package. The acceptance requirements
+above remain open.
+
+The subsequent private monitor diagnostic identified a package/runtime mismatch:
+the package included dynamic model definitions already compiled into the
+qualified source Runtime, so loading stopped on a duplicate `ILpf2Device` type.
+The package producer now accepts an explicit `--compiled-models` option for a
+source-built Runtime containing the matched Infrastructure models. It uses the
+Runtime's compiled-platform staging interface, omits dynamic model loading and
+retains the source bundle/notices in the verified support manifest for provenance.
+The default source-loading profile is unchanged. Match the executable/build and
+Infrastructure revisions explicitly; this option is not automatic discovery or
+proof of their compatibility. Actual guest and installed acceptance remains open.
+
+```sh
+node --test test/spike-package-model-loading.test.mjs
+node scripts/prepare-spike-nuttx-package.mjs FIRMWARE_REPO RENODE_REPO INFRASTRUCTURE_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY --compiled-models
+```
+
+The compiled-model package subsequently started successfully and published the
+required live addressed capability with A/B motors, C color, E/F distance and D
+detached. The first frame exposed a wire-format mismatch in the candidate:
+detached native ports use `kind: null`, whereas the candidate validator expected
+`"none"`. The validator and proof fixtures now require the canonical null kind
+and `attached: false`; an attached D port or string `"none"` is still refused.
+The GUI hub's internal `none` configuration remains a separate representation.
+This startup observation does not yet qualify upload, motion or Python execution.
+
+The prior public CI failure also showed a stale tracked VM capability mirror,
+now synchronized, and a browser prerequisite skipped after the independent
+SPIKE gate failed. Browser-backed unit tests still ran and reported a missing
+Chromium executable. The existing pre-unit browser installer now has an explicit
+independent-check condition and uses the installed Playwright package without
+fetching a replacement package. Seven workflow checks pass locally; hosted
+checks still need to establish the complete candidate result. Unit assertions
+and downstream browser gates remain unchanged.
+
+
+The next own-source guest run at Lite `bffdbf52e95659b2e40d3a934a0922c6900eacd7`
+completed the Scratch E/F waits, stopped both drive motors and restored the
+original sensor profile through the GUI. The observed A/B positions were
+−2.380118°/+2.380118°; the rover moved 0.116315 cm. A separate read-only
+standard-library artifact audit verified addressed selectors, image identity,
+completion, stopped demands and shared telemetry. This is a bounded Scratch
+browser/test-transport result, not installed desktop acceptance.
+
+Python reached the live guest but raised `OSError: 74` at the exact expected-range
+assertion. Its first fixture accepted any nonnegative sample rather than waiting
+for the expected pair. The revised fixture waits within the existing 100×20 ms
+bound, prints its actual readings and retains the same final equality assertion.
+The test transport now maintains separate client leases and supports the actual
+GUI client's 512-request bookkeeping renewal. Queued requests refuse an exited
+driver, and failed results retain the exception. Three synthetic controls pass,
+including real GUI capability clients across renewal; two source mutants are
+detected. The corrected Python guest run and installed desktop acceptance remain
+pending. The original failed receipts are preserved privately.
+
+```sh
+node --test test/spike-proof-transport.test.mjs
+```
+
+
+A subsequent API review found that this fixture used `b.wait(20)` although the
+pinned firmware exports `b.sleep_ms(20)`. The fixture now uses that embedded API,
+and its synthetic module exposes only `sleep_ms`, so the old call fails the
+control. This changes test preparation only; it does not add a firmware API or
+establish Python guest success. Preserve the earlier run's result.
+
+
+The corrected own-source guest qualification passed at Lite
+`b2bc7a5affa9f9861fc904616222347d120350f5`, using the firmware, Runtime and
+Infrastructure pins above. Scratch completed both addressed waits, moved the
+shared rover 0.116315 cm and stopped A/B at −2.380118°/+2.380118°. Code-tab Python
+observed E=61 mm and F=1410 mm, matched those actual arena readings and completed
+on the same live guest session with advancing sequence and time. A frozen,
+read-only Python standard-library artifact auditor passed for both modes,
+checking image identity, selectors, completion, shared motor telemetry and
+session continuity. Exact original successes and earlier failures remain private.
+This qualifies the finite browser/test-transport scenarios; installed Tauri,
+portable Runtime distribution and selected-component notices remain open.
+
+Public full CI then found two test-audit mismatches. The broker source audit now
+requires the supported SixMotors/DualUltrasonic match arm and detects removal of
+either profile. The synthetic Python fixture explicitly documents its required
+host CPython interpreter; absence remains a failure, and that fixture does not
+qualify the embedded interpreter. No audit baseline was raised. Seventeen focused
+controls pass without skips; the repaired public head still requires every enabled
+hosted check. Product and guest fixture source remain unchanged from the qualified
+head above.
+
+```sh
+node --test test/tauri-broker-topology.test.mjs test/spike-proof-transport.test.mjs test/gate-shapes.test.mjs
+```

@@ -32,3 +32,19 @@ describe a modeled simulation and do not establish physical hardware equivalence
 Private receipts explicitly identify the injected browser test transport and
 contain actual transport replies, frames, checks, and a screenshot. Installed
 WebView ACL qualification is a separate native desktop test.
+
+
+`nuttx-dual-source` selects the NuttX-only E/F ultrasonic sandbox profile and
+loads actual pseudocode through the GUI reader and Scratch compiler. The guest
+must complete two addressed distance waits, move A/B and stop; observed encoders
+must reach the shared hub and arena. `nuttx-dual-python` establishes a verified
+idle session, enters authored Python in the real Code editor and reads E/F from
+that guest. Returned millimeters must match the distinct ranges calculated from
+the unchanged authored arena geometry. The test does not replace sensor inputs
+or guest implementations. Both modes close through the GUI selector and require
+restored C-color/D-distance/E-force devices with F detached.
+
+These modes require a full NuttX package with the image-bound addressed sensor
+capability and matching qualified Runtime. Run each separately under the existing
+owned-process bounds. Their existence is preparation, not an executed receipt or
+installed WebView qualification. Missing package capabilities must fail closed.
