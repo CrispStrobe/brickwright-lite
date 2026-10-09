@@ -1850,3 +1850,5 @@ production minification; preserve dependency closures across the extension
 adapter, qualify indexed SVG reads and engine operations, and repair affected
 browser report/setup barriers. Preserve parent failures and fresh production
 qualification boundaries. No corpus input or consumer pin changes.
+
+Compiled factory source `e4aa00d77ca2ae3af3551d980953566a581ce423` reproduces and fixes the Babel-created helper loss with explicit module dependencies.67 affected checks pass, zero skips; production-minified indexed reads, generated engines and legacy/shared-value controls pass. Source-injected speech/controller proof in the older reference GUI passes; full fresh production remains pending. Fresh184 hash-verified import-only census stays104/79/1, zero changed diagnostics. [Receipt](docs/receipts/2026-10-09-arcade-bundle-factories.json).

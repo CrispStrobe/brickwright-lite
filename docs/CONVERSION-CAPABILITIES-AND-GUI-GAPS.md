@@ -6,6 +6,42 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Compiled Arcade engine dependencies — 2026-10-09
+
+Source `e4aa00d77` fixes the hosted image decoder `ReferenceError: e is not
+defined`. The real GUI Babel rules reproduced it in both development and
+production bundles: serializing a compiled function copied its body without
+compiler-created helpers outside it. Native image, speech, generated PXT,
+rotation and menu modules now cross the adapter as actual dependencies with
+their compiled closures intact. Dependency injection is explicit; legacy
+extensions retain their Scratch shim and shared VM value identity.
+
+67 affected checks pass with zero failures/skips. The bundle gate now reads
+actual custom palette metadata, keeps duplicate RGB indices distinct, rejects
+contradictory indices, and executes image drawing, rotation, speech and resource
+menus after production minification. It refuses stale installed engine sources.
+Original PXT differential controls and adapter/value identity checks also pass.
+Callback and sprite browser gates now create report directories and wait for
+newly loaded project targets.
+
+The current source extension passes a real renderer/controller speech probe in
+the older `9e6630b` reference GUI:2223 visible speech pixels, player movement,
+palette colors and bubble expiry. This diagnostic loads original module bodies
+and has an independent value heap; it does not qualify a fresh integrated GUI
+or shared arrays across extensions. Fresh production browser jobs remain required.
+
+The unchanged184 hash-verified import-only inputs remain **104 translated /
+79 partial /1 malformed**, with zero changed diagnostic rows. Keep the
+original-app renderer caveat below. See the
+[receipt](receipts/2026-10-09-arcade-bundle-factories.json).
+
+Next: run the fresh integrated image-bounds, speech, callback, sprite, tile,
+palette and question browser journeys; diagnose remaining timeouts against
+that built artifact. Merge only after all enabled checks pass at the reviewed
+head, then resume effects/paint/source-asset/music gaps. The compiler defect
+is reproduced and fixed locally; the parent browser failures remain evidence
+until the new hosted journeys succeed.
+
 ## Boolean questions and fresh component GUI checkpoint — 2026-10-09
 
 Tested source `09f242210` adds `game.ask(title, subtitle)` as an asynchronous
@@ -46,9 +82,9 @@ callback, sprite-registration and tile-data failures. The callback gate also
 failed to write its report because its output directory was absent. Preserve
 these failures and qualify the built artifact before merging the stack. Source
 unit checks cannot establish that serialized factories survive bundling and
-minification. First isolate the decoder failure using the exact built artifact;
-then implement a dependency-safe factory integration if closure loss is confirmed.
-Repair report creation and wait for actual authored setup in failing journeys.
+minification. The compiled closure failure and report creation are addressed in the newer
+checkpoint above. Fresh integrated browser reruns must still qualify the change
+and reveal any independent authored-setup or runtime defects.
 
 After bundle qualification, continue the corpus diagnostic groups: unreadable
 background image sources (10 rows), unreadable tilemap sources (7), destruction
