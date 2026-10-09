@@ -1,6 +1,9 @@
 # Arcade screen and render callbacks: implementation contract
 
-Status: proposed work; no screen snapshot or paint/shade support claim.
+Status: initial S01 background/sprite foundation implemented at `3f6ad084c`.
+Five original PXT full pixel planes and19 affected checks pass. Tilemaps,
+renderables, HUD, speech and effects are still missing from this raster.
+No screen snapshot or paint/shade support claim.
 Prerequisite implementation: native Image.scroll and Image.copyFrom, with
 original-PXT pixel comparisons and dedicated editable Blocks/Code words.
 
@@ -56,7 +59,9 @@ profile if imported. Do not silently claim both scheduling models.
 
 ## Ordered closure plan
 
-- S01: indexed frame compositor for existing supported scene content; do not
+- S01: background/sprite foundation implemented and compared against five
+  original19200-pixel planes. Finish tilemaps and all supported scene content;
+  do not
   expose snapshots until it passes original pixel comparisons.
 - S02: screen Image handle and cloning, including image mutation/copying.
 - S03: renderable identity, sorted callback execution and paint/shade events.

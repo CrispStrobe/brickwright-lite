@@ -6,6 +6,40 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Indexed scene frame foundation — 2026-10-09
+
+Implementation `3f6ad084c84e64bfce0820ea23cd280143301322` adds an internal indexed
+scene compositor after native frame updates. It fills the background colour,
+blits the transparent background image and draws qualified sprite rasters sorted
+by z and original creation ID. Existing camera-relative positioning, viewport
+clipping and scale/rotation raster helpers feed it. The scene raster keeps its
+image and pixel-buffer identity across updates, and suspends/restores with scenes.
+Missing sprite artwork is explicitly recorded. Original PXT ordering is credited.
+
+19 affected checks pass without skips: five complete original-PXT19200-pixel
+planes (96000 compared pixels), indexed clipping/duplicate-colour identity,
+scene lifecycle and refusal checks, both fresh extension bundles and ten
+scroll/copy roundtrip/controller regression checks. Original comparisons cover
+odd dimensions, clipping, equal and reversed z, fractional scaling, invisibility,
+camera offsets and RelativeToCamera. The renderer/controller journey now checks
+the internal indexed pixel and its explicit coverage marker; full hosted GUI
+execution remains pending.
+
+Coverage is explicitly `background` and `sprites`; remaining layers are
+`tilemap`, `renderables`, `hud`, `speech` and `effects`. This is the first part of
+S01, not completion of the [screen contract](ARCADE-SCREEN-RENDER-CONTRACT.md).
+No public screen reporter or paint/shade conversion was introduced, and existing
+screen diagnostics remain. There is no new authoring vocabulary or graphics GUI
+capability in this foundation. Existing stage presentation remains in use until
+complete frame presentation is qualified.
+
+Importer and producer pin are unchanged from the copying checkpoint. The latest
+measured corpus remains109 translated /74 partial /1 malformed across184 unchanged
+hashes; it was not reclassified for this runtime-only slice. Retained harness
+failures were an invalid extension lookup and a duplicate bundle-test variable;
+actual opcode dispatch and a distinct variable resolve them. See the
+[receipt](receipts/2026-10-09-arcade-indexed-frame.json).
+
 ## In-place image copying and screen prerequisites — 2026-10-09
 
 Implementation `9523aa4c62922158a5e96f7fb8ff5ce8e025d9cb` adopts producer
