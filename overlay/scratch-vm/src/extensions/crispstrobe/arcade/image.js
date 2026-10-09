@@ -74,6 +74,13 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     };
     // Shift mutable pixels with the same signed32 offsets and zero-filled
     // clipping as the original PXT ImageMethods.scroll. Keep buffer identity.
+    const copyFrom = (image, source) => {
+        // Arcade mutable images use 4-bit indexed pixels. PXT refuses a
+        // dimension mismatch, and copies zero pixels without replacing data.
+        if (image.width !== source.width || image.height !== source.height) return false;
+        image.pixels.set(source.pixels);
+        return true;
+    };
     const scroll = (image, dx, dy) => {
         dx = Number(dx) | 0; dy = Number(dy) | 0;
         if (!dx && !dy) return;
@@ -118,6 +125,6 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     const overlapsTwoScaledRotated = (image, x, y, imageSx, imageSy, imageAngle, source, sx, sy, angle) =>
         operations.checkOverlapsTwoScaledRotatedImages(adapter(image), adapter(source),
             collection([x | 0, y | 0, imageSx, imageSy, imageAngle, sx, sy, angle]));
-    return {decode, mutate, scroll, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
+    return {decode, mutate, scroll, copyFrom, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
         drawScaledRotated, overlapsScaledRotated, overlapsTwoScaledRotated};
 };

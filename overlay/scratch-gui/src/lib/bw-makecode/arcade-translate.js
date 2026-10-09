@@ -1326,11 +1326,16 @@ class ArcadeTranslator extends BaseTranslator {
             if (a.length !== 3 || !source) { push(this.note(`${name}() needs an image source and x/y offsets`));return; }
             push(`arcade blit image ${node.callee.name} (${resource}) source (${source}) x (${this.expr(a[1])}) y (${this.expr(a[2])})`);return;
         }
+        if(resource && node.callee.name==='copyFrom') {
+            const source=this.imageRef(a[0]);
+            if(a.length!==1 || !source){push(this.note(`${name}() requires one image source`));return;}
+            push(`arcade copy pixels into image (${resource}) from (${source})`);return;
+        }
         if(resource && node.callee.name==='scroll') {
             if(a.length!==2){push(this.note(`${name}() requires two scrolling offsets`));return;}
             push(`arcade scroll image (${resource}) x (${this.expr(a[0])}) y (${this.expr(a[1])})`);return;
         }
-        if (resource && !imageHandle && ['scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'fillRect', 'drawLine'].includes(node.callee.name)) {
+        if (resource && !imageHandle && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'fillRect', 'drawLine'].includes(node.callee.name)) {
             const operation = node.callee.name;
             const expected = {fill:1, replace:2, flipX:0, flipY:0, setPixel:3, fillRect:5, drawLine:5}[operation];
             if (a.length !== expected) { push(this.note(`${name}() requires ${expected} arguments`)); return; }
@@ -1339,7 +1344,7 @@ class ArcadeTranslator extends BaseTranslator {
             else push(`arcade mutate image ${operation} (${resource}) color ${a[0] ? this.expr(a[0]) : 0} replacement ${a[1] ? this.expr(a[1]) : 0}`);
             return;
         }
-        if (imageHandle && ['scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
+        if (imageHandle && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
             const operation = node.callee.name;
             if (operation === 'setPixel' && a.length === 3) {
                 push(`arcade set pixel of ${imageHandle} x ${this.expr(a[0])} y ${this.expr(a[1])} color ${this.expr(a[2])}`);
@@ -2044,7 +2049,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
             if (!node || typeof node !== 'object' || node.type === 'FunctionExpression') return;
             const owner = node.type === 'Call' && node.callee?.object;
             if (owner?.type === 'Member' && owner.name === 'image' && owner.object?.type === 'Identifier' &&
-                fn.params.includes(owner.object.name) && ['scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
+                fn.params.includes(owner.object.name) && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
                 handles.get(fn.name).add(owner.object.name);
             }
             for (const value of Object.values(node)) {
@@ -2706,7 +2711,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
             (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
-                    ['scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
+                    ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
         return Object.values(node).some(value => Array.isArray(value) ?
             value.some(usesRuntimeSpriteMethods) : usesRuntimeSpriteMethods(value));
     };

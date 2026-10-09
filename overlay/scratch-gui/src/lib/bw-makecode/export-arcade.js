@@ -1544,6 +1544,7 @@ class ArcadeEmitter {
             }
             return;
         }
+        case 'arcade_copyImageFrom': push(`${v('IMAGE')}.copyFrom(${v('SOURCE')})`);return;
         case 'arcade_scrollImage': push(`${v('IMAGE')}.scroll(${v('X')}, ${v('Y')})`);return;
         case 'arcade_mutateImage': {
             const op=this.field(b,'OP'); if(!['fill','replace','flipX','flipY'].includes(op)){this.note(`Unsupported Arcade image operation ${op}`);return;}
@@ -2137,7 +2138,7 @@ class ArcadeEmitter {
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
                 seen.add(id);const block = blocks[id];
-                for (const input of block.opcode === 'arcade_blitImage' || block.opcode === 'arcade_imagesOverlap' ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
+                for (const input of ['arcade_blitImage','arcade_imagesOverlap','arcade_copyImageFrom'].includes(block.opcode) ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}

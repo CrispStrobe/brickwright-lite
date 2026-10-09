@@ -2004,3 +2004,11 @@ zero-filled pixel semantics of Microsoft PXT ImageMethods.scroll, retained
 under the existing pxt-common-packages MIT notice. The implementation uses
 row copies over native mutable buffers; comparisons execute the original
 simulator RefImage, clone, transparent drawing and scrolling methods unchanged.
+
+### Arcade in-place image copying
+
+The native Image.copyFrom operation follows Microsoft PXT ImageMethods.copyFrom:
+same image dimensions, transparent pixel copying and preserved destination pixel
+buffer. The native implementation adapts these semantics for Brickwright's
+4-bit indexed images under the Microsoft PXT MIT notice above. Original PXT
+simulator source remains unchanged for comparisons.

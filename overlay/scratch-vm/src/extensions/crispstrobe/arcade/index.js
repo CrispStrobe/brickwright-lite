@@ -434,6 +434,7 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'imageProperty', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade image [IMAGE] [PROPERTY]', arguments: {...str('IMAGE', ''),
               PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'imageProperties', defaultValue: 'width'}} },
+          {opcode:'copyImageFrom',blockType:Scratch.BlockType.COMMAND,text:'copy pixels into Arcade image [IMAGE] from [SOURCE]',arguments:{...str('IMAGE',''),...str('SOURCE','')}},
           {opcode:'scrollImage',blockType:Scratch.BlockType.COMMAND,text:'scroll Arcade image [IMAGE] x [X] y [Y]',arguments:{...str('IMAGE',''),...n('X',0),...n('Y',1)}},
           { opcode: 'mutateImage', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade image [IMAGE] [OP] color [COLOR] replacement [TO]',
@@ -2414,6 +2415,10 @@ module.exports = makeExt(`// Name: Arcade
     imageProperty(args) {
       const image = this._image(args.IMAGE);
       return image && ['width', 'height'].includes(String(args.PROPERTY)) ? image[args.PROPERTY] : 0;
+    }
+    copyImageFrom(args) {
+      const image=this._image(args.IMAGE),source=this._image(args.SOURCE);
+      if(image && source && imageEngine.copyFrom(image,source))this._refreshImage(image);
     }
     scrollImage(args) {
       const image=this._image(args.IMAGE);

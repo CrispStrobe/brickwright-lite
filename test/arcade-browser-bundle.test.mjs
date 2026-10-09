@@ -38,6 +38,14 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         assert.ok(blocks.some(b=>b.opcode==='frameImage'));
         assert.equal(extension.spritePixel({ID:'missing',X:0,Y:0}),0);
         assert.equal(extension.backgroundColor(),0);
+        assert.ok(blocks.some(b=>b.opcode==='copyImageFrom'));
+        const copiedImage=extension.createImage({WIDTH:3,HEIGHT:1});
+        const copiedSource=extension.createImage({WIDTH:3,HEIGHT:1});
+        extension.setImagePixel({IMAGE:copiedImage,X:1,Y:0,COLOR:7});
+        extension.setImagePixel({IMAGE:copiedSource,X:0,Y:0,COLOR:2});
+        extension.copyImageFrom({IMAGE:copiedImage,SOURCE:copiedSource});
+        assert.equal(extension.imagePixel({IMAGE:copiedImage,X:0,Y:0}),2);
+        assert.equal(extension.imagePixel({IMAGE:copiedImage,X:1,Y:0}),0);
         assert.ok(blocks.some(b=>b.opcode==='scrollImage'));
         const scrollImage=extension.createImage({WIDTH:3,HEIGHT:1});
         extension.setImagePixel({IMAGE:scrollImage,X:0,Y:0,COLOR:5});

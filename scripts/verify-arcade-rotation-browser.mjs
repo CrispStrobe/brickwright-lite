@@ -18,6 +18,7 @@ import {LITERAL_ARRAY_VALUES_SOURCE} from '../test/fixtures/arcade-literal-array
 import {CAMERA_SHAKE_SOURCE} from '../test/fixtures/arcade-camera-shake.mjs';
 import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
 import {SIGN_NUMBER_SOURCE} from '../test/fixtures/arcade-sign-number.mjs';
+import {IMAGE_COPY_SOURCE} from '../test/fixtures/arcade-image-copyfrom.mjs';
 import {IMAGE_SCROLL_SOURCE} from '../test/fixtures/arcade-image-scroll.mjs';
 import {DIRECT_CONTROLLERS_SOURCE} from '../test/fixtures/arcade-direct-controllers.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
@@ -710,6 +711,30 @@ let discardedReady=true`;
     report.imageScroll={nativeFileImport:true,codeToBlocks:true,controllerHorizontal:true,controllerVertical:true,
         clippedPixels:[0,0,5,0,0,0,0,0,0],renderedRemainingPixelRgb:[255,246,9]};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-image-scroll.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const copyProject=makeCodeProjectFile({'main.ts':IMAGE_COPY_SOURCE,
+        'pxt.json':JSON.stringify({name:'Image copying',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Image copying'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'image-copyfrom.mkcd',mimeType:'application/json',buffer:Buffer.from(copyProject)});
+    await page.getByText(/Imported the Arcade game.*image-copyfrom/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({copyReady:true,copyPhase:0});await waitScrollPixels([2,2,2,2,2,2]);
+    await page.getByTestId('bw-arcade-a').click();await waitMultifile({copyPhase:1});await waitScrollPixels([0,7,0,7,0,7]);
+    await page.getByTestId('bw-arcade-b').click();await waitMultifile({copyPhase:2});await waitScrollPixels([0,7,0,7,0,7]);
+    await page.waitForFunction(()=>{
+        const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        const actor=Object.values(runtime.bwArcadeDeviceState.sprites)[0];runtime.renderer.draw();
+        const canvas=runtime.renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
+        const context=copy.getContext('2d');context.drawImage(canvas,0,0);
+        const x=Math.floor(actor.x-actor.width/2)+1,y=Math.floor(actor.y-actor.height/2);
+        const rgba=context.getImageData(Math.floor((x+.5)*canvas.width/160),Math.floor((y+.5)*canvas.height/120),1,1).data;
+        return rgba[0]===120 && rgba[1]===220 && rgba[2]===82;
+    });
+    report.imageCopy={nativeFileImport:true,codeToBlocks:true,controllerCopy:true,mismatchNoOp:true,
+        copiedPixels:[0,7,0,7,0,7],renderedPixelRgb:[120,220,82]};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-image-copyfrom.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},
