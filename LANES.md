@@ -15,6 +15,16 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade producer model evidence — 2026-10-09
+
+Codex owns `lane/arcade-producer-model-evidence-20261009`, stacked on PR757,
+and producer `fix/arcade-producer-model-evidence-20261009`, stacked on PR78.
+The full producer run passed measured quantities but rejected stale model
+provenance stamps. Re-derive stamps against exact pinned engine/model sources,
+keep numerical tolerances/claims unchanged, and run the actual quantity and
+stamp gates before adopting the corrected producer. Preserve the original CI
+failure. Full producer CI remains required; no new Arcade capability is claimed.
+
 ## Arcade literal array values — 2026-10-09
 
 Codex owns `lane/arcade-array-values-20261009`, stacked on PR756.
