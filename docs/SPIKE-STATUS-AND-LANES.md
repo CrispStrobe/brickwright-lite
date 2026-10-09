@@ -369,3 +369,24 @@ changed in this candidate. Existing installed packages can lack the required
 capability and will refuse this profile; browser-only simulation does not launch
 NuttX. Do not claim shipped availability or complete equivalence from this
 source integration.
+
+
+### Prepared real-guest E/F browser modes
+
+The existing managed arena proof now accepts `BW_SPIKE_PROOF_MODE=nuttx-dual-source`
+and `nuttx-dual-python`. The first waits for the actual GUI reader to install
+both intended E/F reporters and wait predicates, then requires their addressed
+selectors, real guest completion, A/B encoder movement and shared arena motion.
+The second waits for the intended idle Scratch program, then replaces it through
+the actual Code editor with bounded embedded Python reads. E/F must return distinct
+millimeters matching the unchanged authored arena geometry. The retained GUI
+session object, native start count, image, connection generation and advancing
+sequence/clock must establish replacement in the same live guest.
+
+Run each mode separately with the compiled production Rust proof driver, emitted
+GUI and a verified full NuttX package using the qualified addressed Runtime.
+The existing private evidence destination requirement and owned process/time
+bounds remain mandatory. Both modes verify default device restoration on close.
+Missing capabilities fail the proof. These are **prepared scenarios, not actual
+execution evidence**; the test host is also separate from installed Tauri WebView
+and ACL qualification. No package or guest pins are adopted by these scripts.

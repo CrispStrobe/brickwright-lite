@@ -162,3 +162,20 @@ test('actual pane methods build the dual arena, refuse lessons/MicroPython and r
     assert.equal(hubState.data.sensors[5],null);assert.equal(hubState.data.sensors[3].kind,'distance');
     assert.equal(hubState.data.sensors[4].kind,'force');
 });
+
+test('prepared real-guest proof requires distinct bounded ranges and matches actual shared encoders',async()=>{
+    const {dualUltrasonicPython,requireDualSharedObservation,dualUltrasonicSource}=await import('../scripts/lib/spike-nuttx-browser-proof.mjs');
+    assert.match(dualUltrasonicSource,/spike distance E in mm > 0/);
+    assert.match(dualUltrasonicSource,/spike distance F in mm > 0/);
+    const source=dualUltrasonicPython(70,1410);
+    assert.match(source,/b\.sensor\(1,b\.E\)/);assert.match(source,/b\.sensor\(2,b\.F\)/);
+    assert.match(source,/range\(100\)/);assert.match(source,/raise OSError\(74\)/);
+    for(const values of [[-1,20],[20,20],[2001,20],[1.5,20]]) assert.throws(()=>dualUltrasonicPython(...values));
+    const f=frame(),observed={frame:f,motors:[{position:0,degPerSec:0},{position:0,degPerSec:0}],classicPorts:[[48,[0,0]],[48,[0,0]]]};
+    requireDualSharedObservation(observed);
+    for(const mutate of [o=>{o.frame.target.capabilities=[];},o=>{o.frame.ports[4].kind='force';},
+        o=>{o.frame.ports[5].attached=false;},o=>{o.frame.motors[1].port='A';},
+        o=>{o.motors[1].position=1;},o=>{o.classicPorts[1][1][1]=1;}]) {
+        const bad=structuredClone(observed);mutate(bad);assert.throws(()=>requireDualSharedObservation(bad));
+    }
+});

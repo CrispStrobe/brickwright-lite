@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 // Authored inputs and observation checks; never a firmware or telemetry oracle.
-export const proofModes = ['guest', 'nuttx-source', 'nuttx-python'];
+export const proofModes = ['guest', 'nuttx-source', 'nuttx-python', 'nuttx-dual-source', 'nuttx-dual-python'];
 export const proofOperations = ['session.start', 'session.close', 'run', 'pause', 'state.read',
     'arena.inputs.write', 'arena.program.load', 'program.packet', 'program.storage.submit'];
 export const sixMotorSource = 'DEVICE SPIKE\nWHEN flag clicked:\n' + [...'ABCDEF']
@@ -38,6 +38,40 @@ export function requireSharedMotors ({frame, motors, classicPorts}) {
         if (motors[index]?.position !== positions[index] || motors[index]?.degPerSec !== raw.speedDps ||
             classicPorts[index]?.[1]?.[1] !== Math.round(positions[index])) {
             throw new Error('Firmware observation did not reach the shared virtual hub');
+        }
+    }
+}
+
+export const dualUltrasonicSource = 'DEVICE SPIKE\nWHEN flag clicked:\n' +
+    '  wait until spike distance E in mm > 0\n  wait until spike distance F in mm > 0\n' +
+    '  start tank 20 20\n  wait 0.05 seconds\n  stop movement\n';
+// Expected distances are calculated from the unchanged authored arena geometry,
+// never substituted into a guest sensor input or observation.
+export function dualUltrasonicPython (e, f) {
+    if (![e, f].every(n => Number.isInteger(n) && n >= 0 && n <= 2000) || e === f) {
+        throw new Error('Dual fixture requires distinct bounded arena ranges');
+    }
+    return 'import brickwright as b\n' +
+        'e=-1\nf=-1\nfor i in range(100):\n' +
+        ' try:\n  e=b.sensor(1,b.E)\n  f=b.sensor(2,b.F)\n except OSError:\n  b.wait(20)\n  continue\n' +
+        ' if e>=0 and f>=0: break\n b.wait(20)\n' +
+        `if e!=${e} or f!=${f}: raise OSError(74)\n` +
+        'print("BROWSER DUAL ARM",e,f)\n';
+}
+export function requireDualSharedObservation ({frame, motors, classicPorts}) {
+    const kinds = {A: 'motor', B: 'motor', C: 'color', D: 'none', E: 'distance', F: 'distance'};
+    if (frame?.target?.firmware !== 'brickwright-nuttx' || frame.target.transport !== 'none' ||
+        !frame.target.capabilities?.includes('nuttx-addressed-distance/v1') || frame.ports?.length !== 6 ||
+        frame.motors?.length !== 2 || !Object.entries(kinds).every(([id,kind]) =>
+            frame.ports.filter(p => p.id === id && p.kind === kind && p.attached === (kind !== 'none')).length === 1)) {
+        throw new Error('Missing live dual ultrasonic observation');
+    }
+    for (const [index, port] of [...'AB'].entries()) {
+        const matches=frame.motors.filter(m => m.port === port);
+        if (matches.length !== 1 || !Number.isFinite(matches[0].position) || !Number.isFinite(matches[0].speedDps) ||
+            motors?.[index]?.position !== matches[0].position || motors[index].degPerSec !== matches[0].speedDps ||
+            classicPorts?.[index]?.[1]?.[1] !== Math.round(matches[0].position)) {
+            throw new Error('Dual firmware encoder did not reach the shared hub');
         }
     }
 }

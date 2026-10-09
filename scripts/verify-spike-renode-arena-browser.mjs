@@ -11,7 +11,7 @@ import {resolve, sep, extname} from 'node:path';
 import assert from 'node:assert/strict';
 import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 import {proofModes, proofOperations, sixMotorSource, replacementSource, sixMotorPython,
-    sixPositions, requireSixMoved, requireSharedMotors} from './lib/spike-nuttx-browser-proof.mjs';
+    sixPositions, requireSixMoved, requireSharedMotors, dualUltrasonicSource, dualUltrasonicPython, requireDualSharedObservation} from './lib/spike-nuttx-browser-proof.mjs';
 const mode = process.env.BW_SPIKE_PROOF_MODE || 'guest';
 if (!proofModes.includes(mode)) throw new Error('Unknown BW_SPIKE_PROOF_MODE');
 const executable = process.env.BW_RENODE_ARENA_PROOF_DRIVER;
@@ -25,10 +25,11 @@ driver.stderr.on('data', chunk => {stderr = (stderr + chunk).slice(-16384);});
 const lines = createInterface({input: driver.stdout});
 lines.on('line', line => {const waiter = pending; pending = null; waiter?.resolve(JSON.parse(line));});
 driver.on('exit', () => {pending?.reject(new Error('Managed guest proof driver exited')); pending = null;});
-let queue = Promise.resolve();
+let queue = Promise.resolve(), sessionStarts = 0;
 const operations = new Set(proofOperations);
 const request = value => {
     const result = queue.then(() => new Promise((resolveRequest, reject) => {
+        if (value.operation === 'session.start') sessionStarts++;
         pending = {resolve: resolveRequest, reject}; driver.stdin.write(`${JSON.stringify(value)}\n`);
     }));
     queue = result.catch(() => {}); return result;
@@ -87,6 +88,81 @@ async function closeFirmware () {
     await page.waitForFunction(() => !window.__bwSpikeArena._pane.firmwareSession &&
         window.__bwSpikeArena._pane.hubState.clockOwner !== 'renode');
     check('GUI close releases the owned NuttX session and firmware clock');
+}
+async function runDualProof () {
+    const previousStarts=sessionStarts;
+    await page.evaluate(async () => {
+        const pane=window.__bwSpikeArena._pane;
+        await pane.setSandbox({...pane.world, start: {x:30,y:40,heading:0},
+            walls:[{shape:{type:'rect',x:46,y:35,w:2,h:2}}],objects:[]});
+    });
+    await page.getByTestId('bw-spike-arena-execution').selectOption('nuttx');
+    await page.getByTestId('bw-spike-nuttx-topology').selectOption('dual-ultrasonic');
+    if (mode === 'nuttx-dual-python') {
+        // Start with a real reader/compiler program to establish the selected
+        // geometry and verified live session; replacement then uses Code Python.
+        await loadSource(replacementSource,0);
+        await page.waitForFunction(() => {
+            const vm=window.__bwSpikeArena._pane.vm;
+            return vm.runtime.targets.some(target => Object.values(target.blocks._blocks).some(block => {
+                if (block.opcode !== 'control_wait') return false;
+                const input=target.blocks._blocks[block.inputs?.DURATION?.block];
+                return Object.values(input?.fields || {}).some(field => Number(field.value ?? field[0]) === 0.02);
+            }));
+        },null,{timeout:30000});
+        await page.getByTestId('bw-spike-arena-start').click();
+        await waitFirmwareReady();await waitFirmware(3);
+        const initial=await readFirmware();requireDualSharedObservation(initial);
+        assert.equal(sessionStarts,previousStarts+1);
+        const retained=await page.evaluateHandle(() => window.__bwSpikeArena._pane.firmwareSession);
+        const ranges=await page.evaluate(() => {
+            const p=window.__bwSpikeArena._pane, s=p.bridge.sim.readSensors();
+            return {e:Math.round(s.E.distance),f:Math.round(s.F.distance)};
+        });
+        assert.notEqual(ranges.e,ranges.f);
+        await page.getByTestId('bw-lang-row').getByRole('button',{name:'🐍 Py',exact:true}).click();
+        await page.getByTestId('bw-code-editor').locator('.cm-content[contenteditable=true], textarea').first()
+            .fill(dualUltrasonicPython(ranges.e,ranges.f));
+        await page.getByTestId('bw-spike-nuttx-python-run').click();
+        await page.getByTestId('bw-spike3-console').filter({hasText:`BROWSER DUAL ARM ${ranges.e} ${ranges.f}`}).waitFor({timeout:30000});
+        await waitFirmware(3);
+        const completed=await readFirmware();requireDualSharedObservation(completed);
+        assert.equal(completed.frame.target.imageSha256,initial.frame.target.imageSha256);
+        assert.equal(completed.frame.lifecycle.connectionGeneration,initial.frame.lifecycle.connectionGeneration);
+        assert.ok(completed.frame.seq>initial.frame.seq && completed.frame.clockNs>initial.frame.clockNs);
+        assert.equal(sessionStarts,previousStarts+1,'replacement must not start another native guest');
+        assert.equal(await page.evaluate(session => window.__bwSpikeArena._pane.firmwareSession===session,retained),true);
+        await retained.dispose();
+        check('Code-tab Python reads distinct actual E/F millimeters matching the arena on the same live ARM session');
+        await writeFile(`${evidence}/frames.json`,JSON.stringify({initial,ranges,completed},null,2));
+    } else {
+        await loadSource(dualUltrasonicSource,0);
+        await page.waitForFunction(() => {
+            const blocks=window.__bwSpikeArena._pane.vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks));
+            const reporters=blocks.filter(b=>b.opcode==='spikeprime_getDistanceIn');
+            return blocks.filter(b=>b.opcode==='control_wait_until').length===2 && reporters.length===2 &&
+                ['E','F'].every(port=>reporters.filter(b=>(b.fields.PORT?.value ?? b.fields.PORT?.[0])===port).length===1);
+        },null,{timeout:30000});
+        const before=await page.evaluate(() => ({...window.__bwSpikeArena._pane.bridge.sim.pose}));
+        await page.getByTestId('bw-spike-arena-start').click();
+        await waitFirmwareReady();await waitFirmware(3);
+        const completed=await readFirmware();requireDualSharedObservation(completed);
+        assert.ok(completed.pose.x>before.x+0.1,'real guest A/B encoders must move the arena');
+        assert.ok(completed.motors[0].position < -1 && completed.motors[1].position > 1);
+        assert.ok(completed.frame.motors.every(m=>m.demandDirection===0));
+        const rows=await page.evaluate(() => window.__bwSpikeArena._pane.firmwareSession.program.instructions);
+        assert.deepEqual(rows.filter(row=>row[0]===3).map(row=>row[1]),[0x122,0x12a]);
+        check('Scratch E/F addressed waits complete in the real guest before moving and stopping the shared rover');
+        await writeFile(`${evidence}/frames.json`,JSON.stringify({before,completed,rows},null,2));
+    }
+    await closeFirmware();
+    const restored=await page.evaluate(() => {
+        const p=window.__bwSpikeArena._pane;
+        return {ports:p.bridge.robot.sensors.map(s=>[s.port,s.kind]),f:p.hubState.data.sensors[5],owner:p.hubState.clockOwner};
+    });
+    assert.deepEqual(restored.ports,[['C','color'],['D','distance'],['E','force']]);
+    assert.equal(restored.f,null);assert.notEqual(restored.owner,'renode');
+    check('Closing E/F firmware restores D distance/E force and releases the shared clock');
 }
 async function runNuttxProof () {
     await page.getByTestId('bw-spike-arena-execution').selectOption('nuttx');
@@ -198,7 +274,8 @@ try {
         await pane.setSandbox({...pane.world, walls: [{shape: {type: 'rect', x: 70, y: 40, w: 4, h: 70}}]});
     }, proofOperations);
     if (mode !== 'guest') {
-        await runNuttxProof();
+        if (mode.startsWith('nuttx-dual-')) await runDualProof();
+        else await runNuttxProof();
         assert.deepEqual(errors, []);
         await page.screenshot({path: `${evidence}/arena.png`});
     } else {

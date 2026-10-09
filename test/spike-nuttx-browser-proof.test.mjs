@@ -6,9 +6,9 @@ import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {compileFirmwareProgram} from '../overlay/scratch-gui/src/lib/spike-arena/firmware-program.js';
 import {encodePython, encodeInstructions} from '../overlay/scratch-gui/src/lib/spike-nuttx/upload-protocol.js';
 import {proofModes, proofOperations, sixMotorSource, replacementSource, sixMotorPython,
-    sixPositions, requireSixMoved, requireSharedMotors} from '../scripts/lib/spike-nuttx-browser-proof.mjs';
+    sixPositions, requireSixMoved, requireSharedMotors, dualUltrasonicSource, dualUltrasonicPython, requireDualSharedObservation} from '../scripts/lib/spike-nuttx-browser-proof.mjs';
 
-function compile (source) {
+function compile (source, topology = 'six-motors') {
     const creator = new SB3Creator(); creator.parse(source);
     assert.deepEqual(creator.warnings, []);
     const targets = creator.project.targets.map(target => {
@@ -24,7 +24,7 @@ function compile (source) {
         }
         return {isOriginal: true, blocks: {_blocks: blocks, getScripts: () => Object.keys(blocks).filter(id => blocks[id].topLevel)}};
     });
-    return compileFirmwareProgram({runtime: {targets}}, {topology: 'six-motors'});
+    return compileFirmwareProgram({runtime: {targets}}, {topology});
 }
 test('browser inputs pass the real reader and firmware compiler for every A–F port', () => {
     const program = compile(sixMotorSource);
@@ -51,7 +51,7 @@ test('observation checks reject missing/wrong/duplicate ports and an unmoved F m
     }
 });
 test('proof modes preserve guest and expose only closed semantic operations', () => {
-    assert.deepEqual(proofModes, ['guest', 'nuttx-source', 'nuttx-python']);
+    assert.deepEqual(proofModes, ['guest', 'nuttx-source', 'nuttx-python', 'nuttx-dual-source', 'nuttx-dual-python']);
     assert.ok(proofOperations.includes('program.packet'));
     assert.ok(proofOperations.includes('program.storage.submit'));
     assert.ok(!proofOperations.some(operation => /memory|monitor|register|breakpoint|exec/.test(operation)));
@@ -66,4 +66,27 @@ test('shared hub checks detect stale C–F telemetry or rounded legacy encoder m
     assert.throws(() => requireSharedMotors(result), /shared virtual hub/);
     result.motors[5].position = 1.2;result.classicPorts[2][1][1] = 2;
     assert.throws(() => requireSharedMotors(result), /shared virtual hub/);
+});
+
+test('dual browser source passes the actual reader/compiler and keeps E/F addressed directions',()=>{
+    const program=compile(dualUltrasonicSource,'dual-ultrasonic');
+    assert.deepEqual(program.instructions.filter(row=>row[0]===3),[[3,0x122,0,0],[3,0x12a,0,0]]);
+    assert.ok(encodeInstructions(program,{topology:'dual-ultrasonic'}).length>32);
+    assert.throws(()=>compile(dualUltrasonicSource,'default'),/ports are E and F|sensor is D/);
+    const source=dualUltrasonicPython(70,1410);assert.ok(encodePython(source).length<4096);
+    assert.match(source,/b\.sensor\(1,b\.E\)/);assert.match(source,/b\.sensor\(2,b\.F\)/);
+    for(const values of [[-1,20],[20,20],[2001,20],[1.5,20]]) assert.throws(()=>dualUltrasonicPython(...values));
+});
+test('dual proof observations reject swapped/missing sensors and stale or duplicate A/B encoders',()=>{
+    const kinds={A:'motor',B:'motor',C:'color',D:'none',E:'distance',F:'distance'};
+    const observed=()=>({frame:{target:{firmware:'brickwright-nuttx',transport:'none',capabilities:['nuttx-addressed-distance/v1']},
+        ports:Object.entries(kinds).map(([id,kind])=>({id,kind,attached:kind!=='none'})),
+        motors:[{port:'A',position:-10,speedDps:0},{port:'B',position:10,speedDps:0}]},
+        motors:[{position:-10,degPerSec:0},{position:10,degPerSec:0}],classicPorts:[[48,[0,-10]],[48,[0,10]]]});
+    requireDualSharedObservation(observed());
+    for(const mutate of [o=>{o.frame.target.capabilities=[];},o=>{o.frame.ports[4].kind='force';},
+        o=>{o.frame.ports[5].attached=false;},o=>{o.frame.motors[1].port='A';},
+        o=>{o.motors[1].position=0;},o=>{o.classicPorts[1][1][1]=0;}]) {
+        const o=observed();mutate(o);assert.throws(()=>requireDualSharedObservation(o));
+    }
 });
