@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "f1230bd8e6dd83e6808f375b391d0052cb325f20",
+  "producerPin": "e41906fe20198853690bcb532ad0f43e7856dd04",
+  "implemented": [
+    "Native follow/unfollow Blocks and pseudocode commands",
+    "MakeCode import/export with optional100 speed /400 turn-rate defaults",
+    "Follow after controllers before physics, original elapsed timing, Fx8 velocity storage",
+    "Momentum/snapping/replacement/cancellation/destruction/scene ownership"
+  ],
+  "local": {
+    "followSceneInterchange": {
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0
+    },
+    "freshBundlePinDialect": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "producerDialectBoolean": {
+      "passed": 325,
+      "failed": 0,
+      "skipped": 0,
+      "eslint": "PASS"
+    }
+  },
+  "corpus": {
+    "before": {
+      "translated": 108,
+      "partial": 75,
+      "malformed": 1
+    },
+    "after": {
+      "translated": 109,
+      "partial": 74,
+      "malformed": 1
+    },
+    "changedRows": [
+      {
+        "file": "arcade-e0e62faf01b3a6c3.ts",
+        "before": [
+          "enemySprite.follow() \u2014 unsupported Arcade handle method"
+        ],
+        "after": []
+      }
+    ],
+    "unchangedOriginalInputHashes": 184
+  },
+  "realApp": {
+    "file": "arcade-e0e62faf01b3a6c3.ts",
+    "sha256": "e12e4650dff8bb2424d9287b0d4818b66a4d6973c68ce5278b77dc57cf7695ae",
+    "importDiagnostics": [],
+    "runtimeErrors": [],
+    "liveSprites": 4,
+    "followBindings": 1,
+    "target": {
+      "x": 40,
+      "y": 30
+    },
+    "follower": {
+      "x": 111.08203125,
+      "y": 83.16796875,
+      "vx": -20.015625,
+      "vy": -14.97265625
+    },
+    "foodMoves": true,
+    "exportCompiled": true,
+    "reimportDiagnostics": [],
+    "boundary": "Unchanged tutorial, headless native VM steering/physics and original export compilation; no rendered full-app or dialog timing qualification."
+  },
+  "failureRetention": [
+    "initial harness syntax error",
+    "export harness initially omitted actual costume asset resolver",
+    "bundle harness initially called nonexistent velocity shortcut; corrected to existing property primitives"
+  ],
+  "pending": [
+    "fresh shipped native-file/controller-pane browser journey",
+    "full producer hosted suite",
+    "complete rendered recovered game and modal/wall-time timing qualification"
+  ]
+}

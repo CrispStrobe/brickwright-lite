@@ -6,6 +6,43 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native sprite following — 2026-10-09
+
+Source `f1230bd8e` implements follow/unfollow as native Blocks commands and Code:
+
+```text
+arcade sprite enemy follow hero speed 25 turn rate 400
+arcade sprite enemy stop following
+```
+
+MakeCode `sprite.follow(target, speed?, turnRate?)` imports with100/400 defaults;
+`unfollow()` imports and exports directly. Operand evaluation remains once and
+in source order. Follow steering runs after controller input and before physics,
+using original elapsed-frame timing and Fx8 velocity setters. It retains
+momentum, snaps within two pixels on both axes, replaces bindings, stops on
+null/zero speed, cleans up destroyed targets and belongs to the active scene.
+Self-follow preserves a previous binding; cancellation with no binding retains
+velocity. These cases are compared with the actual original PXT follow method.
+
+Twelve original-follow/scene/interchange checks and eight fresh development /
+production bundle/pin/dialect checks pass. Code/Blocks/decompile, saved SB3 and
+executed original MakeCode export/reimport remain editable. Producer `e41906fe`
+passes325 dialect/Boolean checks; the inventory has197 canonical forms /202
+including aliases. Runtime helper tests do not replace original physics/renderer
+qualification; their shared Fx8 boundaries are explicitly recorded in the test.
+
+All184 original input hashes are unchanged. Import-only counts improve
+**108/75/1 →109 translated /74 partial /1 malformed**, with one changed refusal
+row. The unchanged recovered tutorial has four native sprites: the enemy follows
+the hero and independently moving food continues moving. Export compiles in
+original PXT and reimports without diagnostics. This is headless steering,
+not complete rendered gameplay or modal-dialog timing evidence.
+
+The prepared shipped native-file/Code-to-Blocks journey uses A to move the
+follow target and B to stop the enemy, checking movement and zero velocity.
+Its fresh full-app result and full producer CI remain required before merge.
+See the [receipt](receipts/2026-10-09-arcade-sprite-follow.json).
+
 ## Producer model provenance gate — 2026-10-09
 
 The full camera-shake producer run passed its quantity comparison suite but

@@ -23,6 +23,10 @@ steering before physics, frame timing, momentum, snapping, replacement,
 cancellation, destruction and scene ownership. Expose follow/unfollow in Blocks,
 Code and MakeCode interchange. Verify exact original source and unchanged
 corpus inputs; full shipped controller/browser checks remain required.
+Checkpoint `f1230bd8e` /producer `e41906fe`:12 follow/scene/interchange and
+8 fresh bundle/pin/dialect checks pass; producer325 pass. Corpus109/74/1 across
+184 unchanged inputs. Original source steering and recovered tutorial movement
+pass locally; full shipped browser/producer hosted checks remain pending.
 
 ## Arcade producer model evidence — 2026-10-09
 
