@@ -6,6 +6,28 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Sprite property and layer qualification — 2026-10-09
+
+At `261f82e4c`, seven affected tests pass without skips. Independent imports
+using typed sprite `z`, `lifespan`, `ax` and `ay` match actual original PXT
+values. Layer assignments retain one operand evaluation and negative layers
+through Code/Blocks, saved SB3, live-VM project export, executed original PXT
+export and MakeCode reimport. Five existing native renderer checks cover layer
+ordering alongside image ownership, scenes, palette bounds and template skins.
+Baseline qualification showed these programs already used native properties;
+the proposed extra routing condition was removed. This slice adds verification,
+not a new conversion capability. Original184 corpus hashes and109/74/1 counts
+remain unchanged, with no changed diagnostic rows.
+
+The shipped browser journey now imports an authored overlapping-sprite game
+through the native file chooser, enters Blocks, and uses controller A/B to move
+a red sprite behind and in front of a yellow sprite. It checks actual rendered
+centre pixels at each phase. This new journey remains pending hosted execution.
+Initial test export failures are retained: the harness first passed serialized
+JSON where a project object was required, then supplied raw asset bytes where
+the exporter requires decoded SVG text. Final qualification exports the actual
+live VM object and actual decoded SVG assets. No product diagnostics were hidden.
+
 ## Native sprite following — 2026-10-09
 
 Source `3c4493c1e` (initial implementation `f1230bd8e`) implements follow/unfollow as native Blocks commands and Code:
