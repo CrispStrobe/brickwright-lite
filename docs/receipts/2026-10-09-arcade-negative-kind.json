@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "183f5376da8dd1c137d58771a156036072143f5a",
+  "base": "5eb004dbcf0954c650988cc82fa4bb32eb78d8c8",
+  "implemented": [
+    "Fixed finite negative numeric sprite kind import, registration, kind changes and export",
+    "Negative kinds return empty sprite arrays/count zero while retaining scene/physics and lifecycle callback identity",
+    "Destroy-all negative kind uses the empty collection snapshot",
+    "Negative-kind overlap and function-local projectile interchange use existing native APIs"
+  ],
+  "local": {
+    "distinctPassed": 38,
+    "failed": 0,
+    "skipped": 0,
+    "newChecks": 9,
+    "regressionChecks": 29,
+    "batches": [
+      {
+        "log": "arcade-negative-kind-qualified.log",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "composition": "Nine new checks plus23 regressions; pixel assertions were subsequently added to three of the new checks."
+      },
+      {
+        "log": "arcade-negative-kind-final.log",
+        "passed": 15,
+        "failed": 0,
+        "skipped": 0,
+        "composition": "Nine repeated/strengthened new checks plus six destruction regressions."
+      }
+    ],
+    "originalKindLiterals": [
+      -1,
+      -7,
+      -1.5
+    ],
+    "originalSpritePlanes": 3,
+    "pixelsPerPlane": 19200,
+    "nativeOriginalComparedPixels": 57600,
+    "originalExportPlaneComparisons": 3,
+    "boundary": "Original PXT Chromium creation/destruction/overlap/projectile execution and full indexed frames, editable Code/Blocks, original executed MakeCode exports and reimport, saved-SB3 replay, scene/physics membership and both fresh extension bundles. No full shipped GUI or native legacy bubble allocation claim."
+  },
+  "producer": {
+    "changed": false,
+    "vocabularyChanged": false
+  },
+  "remaining": [
+    "Native legacy bubble allocation, IDs and yielding constructor continuation",
+    "Legacy bubble destruction/replacement/expiry and z/id compositor integration",
+    "Runtime kind expressions and Sprite.kind() numeric reporter identity",
+    "Full shipped GUI and all enabled exact-head hosted checks"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1,
+    "boundary": "Importer capability extended for fixed negative kinds; unchanged corpus was not reranked."
+  }
+}

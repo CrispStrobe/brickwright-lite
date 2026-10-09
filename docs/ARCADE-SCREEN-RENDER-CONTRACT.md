@@ -92,6 +92,12 @@ creation order. PXT deliberately excludes negative kinds from kind collections:
 can observe the bubble. Clearing, replacing or expiring speech
 and owner destruction must destroy the bubble through native sprite ownership.
 
+Fixed negative-kind import/export, empty kind queries and existing native
+callback completion are now qualified independently (see the
+[negative-kind receipt](receipts/2026-10-09-arcade-negative-kind.json)). This does
+not allocate a native legacy bubble. Numeric Sprite.kind() reporters and runtime
+kind expressions remain separate identity work.
+
 The existing bridge uses a lightweight BubbleSprite. Do not claim its pixel
 image or a newly invented draw-list ID is the required native integration.
 

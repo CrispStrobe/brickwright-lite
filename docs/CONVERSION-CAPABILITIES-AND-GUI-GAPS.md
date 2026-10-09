@@ -6,6 +6,42 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Fixed negative sprite kinds — 2026-10-09
+
+Implementation 183f5376da8dd1c137d58771a156036072143f5a preserves fixed negative numeric kinds in native
+creation, kind changes, registrations, collection queries and MakeCode export.
+Negative kinds retain scene/physics/callback ownership; allOfKind and count
+queries return empty/zero. Destroy-all uses that empty snapshot and leaves the
+sprite alive. Named-kind membership updates when setKind moves a sprite into
+or out of a negative kind. Negative-kind overlap callbacks remain enabled.
+
+Original PXT execution and original exported programs cover -1, -7 and -1.5,
+yielding creation/destruction handlers, independent mutable closure captures,
+function-local projectiles and overlap destruction. Three complete original
+19200-pixel planes (57600 native/original pixel comparisons) verify that these
+sprites still draw; exported original frames are identical. Code decompilation,
+Blocks project creation, MakeCode reimport and saved-SB3 replay preserve the
+lifecycle observations. Existing named-kind and fresh development/production
+extension-bundle checks pass.38 distinct checks pass without failures or skips
+(32-check shared batch;15-check final batch repeats nine strengthened new checks
+and adds six destruction regressions). See the
+[receipt](receipts/2026-10-09-arcade-negative-kind.json) for exact batch counts.
+
+### Authoring and remaining interfaces
+
+Existing Arcade Blocks use editable text inputs for KIND. Enter `-1` (or another
+fixed negative number) in create, kind-change and callback blocks. Pseudocode
+uses the same text identity: `arcade set kind of actor to "-1"` and
+`arcade count kind "-1"`. No new producer vocabulary or pin is required.
+MakeCode exports numeric `-1`, rather than an invented SpriteKind member.
+
+This closes the negative-kind prerequisite for legacy bubble callbacks. Native
+bubble allocation, IDs, yielding constructor continuation, lifecycle and legacy
+frame composition remain open. Sprite.kind() numeric reporters and runtime kind
+expressions also remain gaps; dynamic and unsupported positive numeric creation
+kinds retain diagnostics. No full shipped GUI claim or corpus reranking:
+the latest measurement remains109 translated /74 partial /1 malformed.
+
 ## Legacy speech camera coordinates — 2026-10-09
 
 Implementation b89ab32796ef0bd41a4aea3e0267849231a05e10 preserves native world coordinates and the
