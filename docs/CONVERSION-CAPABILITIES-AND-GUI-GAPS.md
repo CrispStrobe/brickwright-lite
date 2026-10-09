@@ -6,6 +6,31 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Device display lifecycle and hosted qualification — 2026-10-09
+
+PR752 source `c68661e2c` passed the full build and heavyweight browser shard in
+[run37918731553](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37918731553).
+Its light shard observed all four direct controllers with independent input,
+pointer release and retained velocity after detachment. The native truncation
+journey observed two argument evaluations and sprite coordinates35/40.
+The full light gate **failed**: a zero-size renderer canvas crashed the Arcade
+device display during the question journey; the narrow graphics journey also
+hit an overlapping panel toggle. These observations do not qualify the full
+question flow or all Arcade apps.
+
+Source `c0c707f7f` clears the device screen while the stage backing canvas has
+zero width/height or is detached, then resumes drawing restored frames. A real
+Chromium canvas check verifies unavailable and restored pixels without hiding
+errors; five affected contract/pin checks pass. The graphics journey uses the
+visible panel toggle to make room for touch editing and reopen the stage for Run.
+Full shipped layout and question/controller qualification remain hosted gates.
+
+Producer `8afc288e` fixes the hosted checkout that still selected the old circuit
+model despite the adopted fixture. Two existing checkout integrity checks pass;
+all sibling-dependent hosted gates remain required. Lite adopts that revision;
+Arcade dialect/runtime definitions and the106/77/1 import-only census are unchanged.
+See the [receipt](receipts/2026-10-09-arcade-device-frame-lifecycle.json).
+
 ## Native number truncation — 2026-10-09
 
 Implementation `6f312b838` adds a native reporter and Code word:
