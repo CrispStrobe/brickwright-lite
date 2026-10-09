@@ -72,6 +72,22 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
         } else return false;
         return true;
     };
+    // Shift mutable pixels with the same signed32 offsets and zero-filled
+    // clipping as the original PXT ImageMethods.scroll. Keep buffer identity.
+    const scroll = (image, dx, dy) => {
+        dx = Number(dx) | 0; dy = Number(dy) | 0;
+        if (!dx && !dy) return;
+        const {width, height, pixels} = image;
+        const before = pixels.slice();
+        pixels.fill(0);
+        const startX = Math.max(0, dx), endX = Math.min(width, width + dx);
+        const startY = Math.max(0, dy), endY = Math.min(height, height + dy);
+        if (startX >= endX || startY >= endY) return;
+        for (let y = startY; y < endY; y++) {
+            const start = (y - dy) * width + startX - dx;
+            pixels.set(before.subarray(start, start + endX - startX), y * width + startX);
+        }
+    };
     const svg = (image, paletteOverride = image.palette || palette) => {
         const {width, height, pixels} = image;
         const customPalette = paletteOverride !== palette && paletteOverride.some((color, index) =>
@@ -102,6 +118,6 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     const overlapsTwoScaledRotated = (image, x, y, imageSx, imageSy, imageAngle, source, sx, sy, angle) =>
         operations.checkOverlapsTwoScaledRotatedImages(adapter(image), adapter(source),
             collection([x | 0, y | 0, imageSx, imageSy, imageAngle, sx, sy, angle]));
-    return {decode, mutate, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
+    return {decode, mutate, scroll, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
         drawScaledRotated, overlapsScaledRotated, overlapsTwoScaledRotated};
 };

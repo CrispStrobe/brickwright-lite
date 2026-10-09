@@ -18,6 +18,7 @@ import {LITERAL_ARRAY_VALUES_SOURCE} from '../test/fixtures/arcade-literal-array
 import {CAMERA_SHAKE_SOURCE} from '../test/fixtures/arcade-camera-shake.mjs';
 import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
 import {SIGN_NUMBER_SOURCE} from '../test/fixtures/arcade-sign-number.mjs';
+import {IMAGE_SCROLL_SOURCE} from '../test/fixtures/arcade-image-scroll.mjs';
 import {DIRECT_CONTROLLERS_SOURCE} from '../test/fixtures/arcade-direct-controllers.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
 import {MULTIPLAYER_PLAYERS_SOURCE} from '../test/fixtures/arcade-multiplayer-players.mjs';
@@ -679,6 +680,36 @@ let discardedReady=true`;
     await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[0].x===76);
     report.numericSign={nativeFileImport:true,codeToBlocks:true,sample:-1,argumentCalls:2,controllerSpriteX:76};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-numeric-sign.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const scrollProject=makeCodeProjectFile({'main.ts':IMAGE_SCROLL_SOURCE,
+        'pxt.json':JSON.stringify({name:'Image scrolling',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Image scrolling'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'image-scroll.mkcd',mimeType:'application/json',buffer:Buffer.from(scrollProject)});
+    await page.getByText(/Imported the Arcade game.*image-scroll/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({scrollReady:true,scrollPhase:0,initialPixel:2});
+    const waitScrollPixels=pixels=>page.waitForFunction(expected=>{
+        const state=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;
+        const actual=Object.values(state.sprites)[0]?.image?.pixels;
+        return actual && expected.every((pixel,index)=>actual[index]===pixel);
+    },pixels);
+    await waitScrollPixels([2,0,0,0,5,0,0,0,7]);
+    await page.getByTestId('bw-arcade-a').click();await waitMultifile({scrollPhase:1});await waitScrollPixels([0,2,0,0,0,5,0,0,0]);
+    await page.getByTestId('bw-arcade-b').click();await waitMultifile({scrollPhase:2});await waitScrollPixels([0,0,5,0,0,0,0,0,0]);
+    await page.waitForFunction(()=>{
+        const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        const actor=Object.values(runtime.bwArcadeDeviceState.sprites)[0];runtime.renderer.draw();
+        const canvas=runtime.renderer.canvas,copy=document.createElement('canvas');copy.width=canvas.width;copy.height=canvas.height;
+        const context=copy.getContext('2d');context.drawImage(canvas,0,0);
+        const x=Math.floor(actor.x-actor.width/2)+2,y=Math.floor(actor.y-actor.height/2);
+        const rgba=context.getImageData(Math.floor((x+.5)*canvas.width/160),Math.floor((y+.5)*canvas.height/120),1,1).data;
+        return rgba[0]===255 && rgba[1]===246 && rgba[2]===9;
+    });
+    report.imageScroll={nativeFileImport:true,codeToBlocks:true,controllerHorizontal:true,controllerVertical:true,
+        clippedPixels:[0,0,5,0,0,0,0,0,0],renderedRemainingPixelRgb:[255,246,9]};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-image-scroll.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},

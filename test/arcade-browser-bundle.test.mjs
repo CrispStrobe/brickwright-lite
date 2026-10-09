@@ -38,6 +38,12 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         assert.ok(blocks.some(b=>b.opcode==='frameImage'));
         assert.equal(extension.spritePixel({ID:'missing',X:0,Y:0}),0);
         assert.equal(extension.backgroundColor(),0);
+        assert.ok(blocks.some(b=>b.opcode==='scrollImage'));
+        const scrollImage=extension.createImage({WIDTH:3,HEIGHT:1});
+        extension.setImagePixel({IMAGE:scrollImage,X:0,Y:0,COLOR:5});
+        extension.scrollImage({IMAGE:scrollImage,X:1,Y:0});
+        assert.equal(extension.imagePixel({IMAGE:scrollImage,X:1,Y:0}),5);
+        assert.equal(extension.imagePixel({IMAGE:scrollImage,X:0,Y:0}),0);
         assert.ok(blocks.some(b=>b.opcode==='signNumber'));
         assert.equal(extension.signNumber({NUM:-3.75}),-1);
         assert.ok(Object.is(extension.signNumber({NUM:-0}),0));

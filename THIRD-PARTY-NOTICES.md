@@ -1996,3 +1996,11 @@ not relicense any retained component.
 The native numeric sign reporter adapts `Math.sign` from the bundled MIT-licensed
 Microsoft PXT `base/pxt-helpers.ts`. The retained PXT notices cover this adaptation.
 Original source and simulator comparisons verify its positive-zero and NaN rules.
+
+### Arcade image scrolling
+
+Native mutable image scrolling adapts the signed32 offsets, clipping and
+zero-filled pixel semantics of Microsoft PXT ImageMethods.scroll, retained
+under the existing pxt-common-packages MIT notice. The implementation uses
+row copies over native mutable buffers; comparisons execute the original
+simulator RefImage, clone, transparent drawing and scrolling methods unchanged.

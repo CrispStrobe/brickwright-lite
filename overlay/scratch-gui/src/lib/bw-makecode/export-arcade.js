@@ -1544,6 +1544,7 @@ class ArcadeEmitter {
             }
             return;
         }
+        case 'arcade_scrollImage': push(`${v('IMAGE')}.scroll(${v('X')}, ${v('Y')})`);return;
         case 'arcade_mutateImage': {
             const op=this.field(b,'OP'); if(!['fill','replace','flipX','flipY'].includes(op)){this.note(`Unsupported Arcade image operation ${op}`);return;}
             const args=op==='fill'?v('COLOR'):op==='replace'?`${v('COLOR')}, ${v('TO')}`:'';
