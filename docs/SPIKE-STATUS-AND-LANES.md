@@ -430,3 +430,12 @@ detached native ports use `kind: null`, whereas the candidate validator expected
 and `attached: false`; an attached D port or string `"none"` is still refused.
 The GUI hub's internal `none` configuration remains a separate representation.
 This startup observation does not yet qualify upload, motion or Python execution.
+
+The prior public CI failure also showed a stale tracked VM capability mirror,
+now synchronized, and a browser prerequisite skipped after the independent
+SPIKE gate failed. Browser-backed unit tests still ran and reported a missing
+Chromium executable. The existing pre-unit browser installer now has an explicit
+independent-check condition and uses the installed Playwright package without
+fetching a replacement package. Seven workflow checks pass locally; hosted
+checks still need to establish the complete candidate result. Unit assertions
+and downstream browser gates remain unchanged.
