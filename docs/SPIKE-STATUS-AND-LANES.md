@@ -463,3 +463,10 @@ pending. The original failed receipts are preserved privately.
 ```sh
 node --test test/spike-proof-transport.test.mjs
 ```
+
+
+A subsequent API review found that this fixture used `b.wait(20)` although the
+pinned firmware exports `b.sleep_ms(20)`. The fixture now uses that embedded API,
+and its synthetic module exposes only `sleep_ms`, so the old call fails the
+control. This changes test preparation only; it does not add a firmware API or
+establish Python guest success. Preserve the earlier run's result.

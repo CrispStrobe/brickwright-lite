@@ -49,7 +49,7 @@ test('generated Python waits for the expected delayed sensor pair and still refu
 b=types.ModuleType('brickwright')
 b.E=4; b.F=5
 waits=[]
-b.wait=lambda n: waits.append(n)
+b.sleep_ms=lambda n: waits.append(n)
 b.sensor=lambda kind,port: (61 if port==4 else 1410) if waits else 1000
 sys.modules['brickwright']=b
 exec(${JSON.stringify(source)})

@@ -53,8 +53,8 @@ export function dualUltrasonicPython (e, f) {
     }
     return 'import brickwright as b\n' +
         'e=-1\nf=-1\nfor i in range(100):\n' +
-        ' try:\n  e=b.sensor(1,b.E)\n  f=b.sensor(2,b.F)\n except OSError:\n  b.wait(20)\n  continue\n' +
-        ` if e==${e} and f==${f}: break\n b.wait(20)\n` +
+        ' try:\n  e=b.sensor(1,b.E)\n  f=b.sensor(2,b.F)\n except OSError:\n  b.sleep_ms(20)\n  continue\n' +
+        ` if e==${e} and f==${f}: break\n b.sleep_ms(20)\n` +
         'print("BROWSER DUAL OBSERVED",e,f)\n' +
         `if e!=${e} or f!=${f}: raise OSError(74)\n` +
         'print("BROWSER DUAL ARM",e,f)\n';
