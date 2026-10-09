@@ -687,11 +687,11 @@ class ArcadeTranslator extends BaseTranslator {
             return `arcade create template "${template.name}" kind "${template.kind}" ` +
                 `width ${template.width} height ${template.height}`;
         }
-        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
             if(a.length){this.unsupported.push(`${name} requires no arguments`);return 'undefined value';}
             return `arcade life player (${playerOf(name)})`;
         }
-        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.(hasLife|score|hasScore)$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.(hasLife|score|hasScore)$/.test(name||'')) {
             if(a.length){this.unsupported.push(`${name} requires no arguments`);return 'undefined value';}
             const method=name.split('.').pop(),property=method==='hasLife'?'has life':method==='hasScore'?'has score':'score';
             return `arcade player (${playerOf(name)}) ${property}`;
@@ -1168,11 +1168,11 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
             push(name==='game.pushScene'?'arcade push scene':'arcade pop scene');return;
         }
-        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one life value`));return;}
             push(name.endsWith('.setLife')?`arcade set life player (${playerOf(name)}) to (${this.expr(a[0])})`:`arcade change life player (${playerOf(name)}) by (${this.expr(a[0])})`);return;
         }
-        if(this.handleTemplates && this.nativeInfoProgram && /^info(?:\.player[1-4])?\.(setScore|changeScoreBy)$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.(setScore|changeScoreBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one score value`));return;}
             push(name.endsWith('.setScore')?`arcade set score player (${playerOf(name)}) to (${this.expr(a[0])})`:`arcade change score player (${playerOf(name)}) by (${this.expr(a[0])})`);return;
         }

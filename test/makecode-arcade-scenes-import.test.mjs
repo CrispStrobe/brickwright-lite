@@ -166,3 +166,12 @@ test('presence and first-read defaults are distinct in the pinned original HUD s
     assert.match(source,/life\(\): number\s*\{[\s\S]*?if \(state\.life === undefined\) \{\s*state\.life = 3;[\s\S]*?return state\.life \|\| 0/);
     assert.match(source,/raiseLifeZero\(gameOver: boolean\)\s*\{[\s\S]*?state\.life = null;[\s\S]*?state\.lifeZeroHandler\(\)/);
 });
+
+test('native camera and sprite callbacks use native life/score without requiring a scene stack',()=>{
+    const result=arcadeToPseudocode('scene.cameraShake(4,500);info.changeLifeBy(-1);let remaining=info.life();info.setScore(7);let total=info.score();let active=info.hasLife()');
+    assert.deepEqual(result.unsupported,[]);
+    assert.match(result.code,/arcade change life player \(1\) by/);
+    assert.match(result.code,/arcade life player \(1\)/);
+    assert.match(result.code,/arcade set score player \(1\) to \(7\)/);
+    assert.doesNotMatch(result.code,/change lives|set lives/);
+});
