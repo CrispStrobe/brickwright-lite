@@ -5,7 +5,7 @@ import path from 'node:path';
 import {loadCircuitModel} from '../scripts/lib/polarity-oracle.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
-const boardPin = 'ac7595b609daa75717c696830982f59940c97e8b';
+const boardPin = '09c0f027eb906310f0f09dc524d6fdf17058439b';
 const cuiPin = '5f336b24447351ce80742c0e71078cdd23e7912b';
 async function bench(sine = false) {
     const {Circuit} = await loadCircuitModel(root);
@@ -20,7 +20,7 @@ async function bench(sine = false) {
         {from: {part: 'V', terminal: 'neg'}, to: {part: 'G', terminal: 'gnd'}},
         {from: {part: 'R', terminal: 'b'}, to: {part: 'G', terminal: 'gnd'}}
     ]});
-    assert.equal(circuit.netlistError, null);
+    assert.ok(!circuit.netlistError, circuit.netlistError || 'motor netlist loads');
     circuit.setPower(true);
     const board = circuit.board;
     const signal = board.nets.find(n => n.terminals.some(t => t.part === 'V' && t.terminal === 'pos')).id;
@@ -73,4 +73,32 @@ test('installed Sim reset preserves genuine finite-analysis refusal', async () =
     const other = fresh.board.addScopeChannel({type: 'voltage', netId: fresh.signal});
     fresh.board.advanceTo(10000n);
     assert.equal(fresh.board.getScopeData(other).count, 1, 'fresh valid acquisition positive control');
+});
+
+test('installed motor fixture completes startup, off and restart with the public interactive policy', async () => {
+    const {Circuit} = await loadCircuitModel(root);
+    const fixture = JSON.parse(readFileSync(path.join(root,
+        'overlay/scratch-gui/examples/54-motor-driver/circuit.stc12c5a60s2.json')));
+    const circuit = Circuit.fromJSON(fixture);
+    assert.equal(circuit.netlistError, null);
+    circuit.setPower(true);
+    const board = circuit.board;
+    const {armBoardForRun} = await import(path.join(root, 'node_modules/bw-circuit-ui/src/model/simulation.js'));
+    armBoardForRun({board, parts: circuit.parts, wires: circuit.wires,
+        setPin: (...args) => board.setPin(...args)});
+    board.setPin('P1.0', 'pushpull', false);
+    assert.equal(board.transientAnalysisStatus().profile.id, 'interactive-v2');
+    for (const [end, on] of [[1000000n, true], [2000000n, false],
+        [3000000n, true], [10000000n, true]]) {
+        board.setPin('P1.4', 'quasi', on);
+        let receipt;
+        for (let calls = 0; calls < 100; calls++) {
+            receipt = board.advanceToLive(end, {maxSteps: 16});
+            if (receipt.completed) break;
+        }
+        assert.equal(receipt.completed, true, `motor reaches ${end} ns`);
+        assert.equal(board.getTime(), end);
+        assert.equal(board.transientAnalysisStatus().accuracyMet, true);
+        assert.equal(board.transientAnalysisStatus().failure, null);
+    }
 });
