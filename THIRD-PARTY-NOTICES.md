@@ -1990,3 +1990,9 @@ program readers retain their BSD-3-Clause/MPL-2.0 licences and source
 availability obligations. The virtual simulator ships without an external firmware runtime. Evidence for retained component
 licences is recorded in the private SPIKE audit archive; this addition does
 not relicense any retained component.
+
+### Arcade numeric sign
+
+The native numeric sign reporter adapts `Math.sign` from the bundled MIT-licensed
+Microsoft PXT `base/pxt-helpers.ts`. The retained PXT notices cover this adaptation.
+Original source and simulator comparisons verify its positive-zero and NaN rules.

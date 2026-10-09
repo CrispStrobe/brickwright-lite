@@ -588,6 +588,7 @@ module.exports = makeExt(`// Name: Arcade
             arguments: { WHICH: {type: Scratch.ArgumentType.STRING, menu: 'eventSprites', defaultValue: 'first'} } },
 
           {opcode:'truncateNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade truncate [NUM] toward zero',arguments:n('NUM',0)},
+          {opcode:'signNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade sign of [NUM]',arguments:n('NUM',0)},
 
           // ── Game flow ────────────────────────────────────────────
           '---',
@@ -989,6 +990,11 @@ module.exports = makeExt(`// Name: Arcade
       return (Number(held(positive)) - Number(held(negative))) * (Number(args.STEP) || 0) / 30;
     }
     truncateNumber(args) {return Math.trunc(Number(Scratch.BWValues.decode(args.NUM)));}
+    signNumber(args) {
+      const value=Number(Scratch.BWValues.decode(args.NUM));
+      // PXT Math.sign deliberately returns +0 for -0 and -1 for NaN.
+      return value===0 ? 0 : value>0 ? 1 : -1;
+    }
     controlSprite(args) {this._controlSprite(1,args.ID,args.VX,args.VY);}
     _controllerNumber(value) {
       const number=Number(value);

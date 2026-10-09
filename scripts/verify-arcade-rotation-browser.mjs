@@ -17,6 +17,7 @@ import {SPRITE_LAYER_ROUTING_SOURCE} from '../test/fixtures/arcade-sprite-layer-
 import {LITERAL_ARRAY_VALUES_SOURCE} from '../test/fixtures/arcade-literal-array-values.mjs';
 import {CAMERA_SHAKE_SOURCE} from '../test/fixtures/arcade-camera-shake.mjs';
 import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
+import {SIGN_NUMBER_SOURCE} from '../test/fixtures/arcade-sign-number.mjs';
 import {DIRECT_CONTROLLERS_SOURCE} from '../test/fixtures/arcade-direct-controllers.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
 import {MULTIPLAYER_PLAYERS_SOURCE} from '../test/fixtures/arcade-multiplayer-players.mjs';
@@ -664,6 +665,20 @@ let discardedReady=true`;
     report.spriteLayers={nativeFileImport:true,codeToBlocks:true,initialRedInFront:true,
         controllerMovesRedBehindYellow:true,controllerRestoresRedInFront:true};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-sprite-layers.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const signProject=makeCodeProjectFile({'main.ts':SIGN_NUMBER_SOURCE,
+        'pxt.json':JSON.stringify({name:'Numeric sign',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Numeric sign'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'numeric-sign.mkcd',mimeType:'application/json',buffer:Buffer.from(signProject)});
+    await page.getByText(/Imported the Arcade game.*numeric-sign/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({signReady:true,calls:1,sample:-1});
+    await page.getByTestId('bw-arcade-a').click();await waitMultifile({calls:2,sample:-1});
+    await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[0].x===76);
+    report.numericSign={nativeFileImport:true,codeToBlocks:true,sample:-1,argumentCalls:2,controllerSpriteX:76};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-numeric-sign.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},

@@ -38,6 +38,11 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         assert.ok(blocks.some(b=>b.opcode==='frameImage'));
         assert.equal(extension.spritePixel({ID:'missing',X:0,Y:0}),0);
         assert.equal(extension.backgroundColor(),0);
+        assert.ok(blocks.some(b=>b.opcode==='signNumber'));
+        assert.equal(extension.signNumber({NUM:-3.75}),-1);
+        assert.ok(Object.is(extension.signNumber({NUM:-0}),0));
+        assert.equal(extension.signNumber({NUM:NaN}),-1);
+        assert.equal(extension.signNumber({NUM:Infinity}),1);
         assert.ok(blocks.some(b=>b.opcode==='truncateNumber'));
         assert.equal(extension.truncateNumber({NUM:-3.75}),-3);
         assert.ok(Object.is(extension.truncateNumber({NUM:-0.5}),-0));

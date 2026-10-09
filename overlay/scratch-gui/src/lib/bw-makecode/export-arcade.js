@@ -734,7 +734,7 @@ class ArcadeEmitter {
         const input = b.inputs && b.inputs[name];
         if (!input) return fallback;
         const slot = input[1];
-        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
+        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 12 || type === 13) {
@@ -1025,6 +1025,7 @@ class ArcadeEmitter {
         case 'arcade_backgroundImage': return 'scene.backgroundImage()';
         case 'arcade_backgroundColor': return 'scene.backgroundColor()';
         case 'arcade_truncateNumber': return `Math.trunc(${v('NUM')})`;
+        case 'arcade_signNumber': return `Math.sign(${v('NUM')})`;
         case 'arcade_createAnimation': this.requiresAnimationPackage=true;return `animation.createAnimation(${this.arrayValue(b,'ACTION')}, ${this.arrayValue(b,'INTERVAL')})`;
         case 'arcade_animationProperty': {
             this.requiresAnimationPackage=true;
