@@ -6,6 +6,44 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Indexed modern speech and zero-colour writes — 2026-10-09
+
+Implementation `c84f811cb7c0ae2e23fcc773366bb266497939b4` reuses the original
+speech/font engines to compose modern sayText immediately before its owning
+sprite at the same z/id draw position. An explicit write mask distinguishes
+untouched pixels from colour-zero writes, preserving zero-colour speech boxes
+against coloured backgrounds. Speech raster generation remains independent of
+RGB presentation and reuses existing scene, replacement and expiry ownership.
+
+12 new checks pass:11 complete original19200-pixel planes (211200 comparisons)
+and masked zero-write/clipping checks. Cases cover requested colours, zero box
+colour, multiline/Unicode text, equal-z later occlusion, lower-z occlusion,
+invisible owners, replacement, clearing, single-scene expiry and immediate
+parent scene restoration. 34 speech/authoring/frame/tile regression checks pass;
+initial bundle checks rejected a stale installed speech.js after formatting.
+The actual overlay was refreshed and both fresh development/production bundle
+checks pass. Raw freshness failure remains retained; the freshness gate was not
+weakened.
+
+Frame coverage is background, tilemap, sprites and modernSpeech. Legacy say
+creates a separate PXT sprite, requiring native bubble identity, ordering and
+lifecycle before that layer can be qualified. Render callbacks, HUD and effects
+also remain open. Long suspended-scene speech expiry and clock-aligned animated
+full-frame comparisons still need qualification. No public screen snapshots or
+paint/shade conversion were introduced.
+
+Existing sayText Blocks/pseudocode and graphics assets feed this raster; no new
+vocabulary or graphics-editor feature was added. The current separate SVG
+speech presentation skips zero pixels and has different draw placement; adopting
+the completed frame pipeline must close those GUI zero-box/ordering gaps and
+pass actual controller-pane/rendered-pixel checks. Do not credit this internal
+raster with that GUI closure.
+
+Importer/producer are unchanged. Latest measured corpus remains109 translated
+/74 partial /1 malformed without reranking this runtime-only slice. See the
+[receipt](receipts/2026-10-09-arcade-indexed-modern-speech.json) and
+[screen implementation contract](ARCADE-SCREEN-RENDER-CONTRACT.md).
+
 ## Indexed tile layers and renderable identity — 2026-10-09
 
 Implementation `79ee6b89fc0814f9ddca4c3e53cf7b6a1e4cfd15` adds modern and legacy

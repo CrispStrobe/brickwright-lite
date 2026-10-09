@@ -3,7 +3,10 @@
 Status: S01 background, sprite and modern/legacy tile composition implemented.
 Tile source `79ee6b89f`:13 original full pixel planes and19 affected regression
 checks pass; renderable creation IDs and z=-1 ties match original PXT.
-Callback renderables, HUD, speech and effects remain missing from the raster.
+Modern speech at `c84f811cb` matches11 original full pixel planes, including
+explicit colour-zero writes and owner-local draw ordering. Callback renderables,
+HUD, legacy speech and effects remain missing. Timed speech across long suspended
+scenes and clock-aligned animated full frames still require qualification.
 No screen snapshot or paint/shade support claim.
 Prerequisite implementation: native Image.scroll and Image.copyFrom, with
 original-PXT pixel comparisons and dedicated editable Blocks/Code words.
@@ -65,7 +68,11 @@ profile if imported. Do not silently claim both scheduling models.
   qualify unified presentation before exposing global screen snapshots.
 - S02: screen Image handle and cloning, including image mutation/copying.
 - S03: renderable identity, sorted callback execution and paint/shade events.
-- S04: text/HUD/speech/effects composition and remaining screen Image methods.
+- S04: modern sayText composition is implemented with masked zero-colour writes.
+  Complete native legacy bubble identity/lifecycle, HUD, effects and remaining
+  screen Image methods. Qualify long scene suspensions and animated text clocks.
+  Existing SVG speech skips zero-colour pixels and uses separate placement;
+  unified frame presentation must close those GUI gaps.
 - S05: recover the unchanged racing and painting corpus sources, run controller
   journeys, roundtrip Code/Blocks/MakeCode/SB3 and remeasure all184 input hashes.
 
