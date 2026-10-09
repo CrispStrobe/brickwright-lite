@@ -1416,7 +1416,7 @@ module.exports = makeExt(`// Name: Arcade
       const presentLegacy=!!(state.tilemap?.legacy && state.tilemap.image);
       if(presentLegacy)state.tilemap.needsRender=true;
       this._renderTilemap(presentLegacy);
-      for(const sprite of Object.values(state.sprites))if(sprite.image)this._renderSpriteImage(sprite.id);
+      for(const sprite of Object.values(state.sprites))this._renderSpriteImageIfPresent(sprite);
       for(const [id,entry] of this._speech){const owner=state.sprites[id];if(owner)this._renderSpeech(id,entry,owner,0);}
       this._changed();
     }
@@ -1781,6 +1781,7 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
       if (args.IMAGE) this.setSpriteImage({ID: id, IMAGE: args.IMAGE});
+      else if (this._projectPalette) this._renderSpriteImageIfPresent(sprite);
       if (state.tilemap) sprite._wallClipping = this._spriteOnWall(sprite,state.tilemap);
       this._changed();
       return id;

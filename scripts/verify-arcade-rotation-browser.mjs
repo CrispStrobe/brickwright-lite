@@ -623,6 +623,49 @@ let discardedReady=true`;
         count:collisionValues.count,hitIndex:collisionValues.hitDuring,afterMapEdit:collisionValues.hitAfterEdit,
         parentSceneHits:collisionValues.parentSceneHits,kindMutationOrder:collisionValues.secondFilter};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-legacy-tile-collisions.png'});
+    // Palette changes must reach existing and newly created indexed template
+    // clones through authored code and the actual controller pane.
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const templatePaletteHex = '000000123456' + ARCADE_PALETTE.slice(2).map(color => color.slice(1)).join('');
+    const templatePaletteSource = `let hero=sprites.create(img\`1 1 1\n1 1 1\n1 1 1\`,SpriteKind.Player)
+controller.A.onEvent(ControllerButtonEvent.Pressed,function(){image.setPalette(hex\`${templatePaletteHex}\`)})
+controller.B.onEvent(ControllerButtonEvent.Pressed,function(){sprites.create(img\`1 1 1\n1 1 1\n1 1 1\`,SpriteKind.Player)})
+let paletteReady=true`;
+    const templatePaletteImport = arcadeToPseudocode(templatePaletteSource);
+    assert.deepEqual(templatePaletteImport.unsupported, []);
+    const templatePaletteProject = makeCodeProjectFile({'main.ts': templatePaletteSource,
+        'pxt.json': JSON.stringify({name: 'Template palette', dependencies: {device: '*'}, files: ['main.ts']})},
+    {target: 'arcade', name: 'Template palette'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'template-palette.mkcd', mimeType: 'application/json', buffer: Buffer.from(templatePaletteProject)});
+    await page.getByText(/Imported the Arcade game.*template-palette/).first().waitFor({state: 'visible'});
+    const oldPaletteStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
+    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id, oldPaletteStage);
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .flatMap(target => Object.values(target.variables)).some(variable => variable.name.replace(/^(?:Game_)+/, '') === 'paletteReady' && variable.value === true));
+    await page.getByTestId('bw-arcade-a').click();
+    await page.waitForFunction(() => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        runtime.renderer.draw();const canvas = runtime.renderer.canvas, copy = document.createElement('canvas');
+        copy.width = canvas.width;copy.height = canvas.height;const ctx = copy.getContext('2d');ctx.drawImage(canvas, 0, 0);
+        const rgba = ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data;
+        return rgba[0] === 18 && rgba[1] === 52 && rgba[2] === 86;
+    });
+    await page.getByTestId('bw-arcade-b').click();
+    await page.waitForFunction(() => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        const sprites = Object.values(runtime.bwArcadeDeviceState.sprites);
+        return sprites.length === 2 && sprites.every(sprite => sprite.image?.pixels.length === 9 &&
+            Array.from(sprite.image.pixels).every(color => color === 1));
+    });
+    report.templatePalette = {nativeFileImport:true,controllerRecolorsExisting:true,controllerCreatesUnderActivePalette:true,
+        liveSprites:2,visibleCenterRgb:[18,52,86],freshHostedQualificationRequired:true};
+    await page.screenshot({path:out.replace(/\.json$/, '')+'-template-palette.png'});
     assert.deepEqual(report.errors, []);
     assert.deepEqual(report.consoleErrors.filter(message =>
         /Workspace Update Error|Extension ["']arcade["'] did not load|Built-in extension arcade failed/.test(message)),

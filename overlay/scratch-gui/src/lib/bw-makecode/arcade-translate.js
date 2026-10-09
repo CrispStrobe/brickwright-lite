@@ -3344,7 +3344,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             });
         }
         const paletteDiagnostics=[];
-        const nativeImages=/arcade (?:create (?:sprite|image)|spawn (?:template|image)|frame image|projectile image)/.test(code);
+        const nativeImages=/arcade (?:create (?:sprite|image|template)|spawn (?:template|image)|frame image|projectile image)/.test(code);
         if(runtimePaletteRequested && (costumes || []).length && !nativeImages) {
             paletteDiagnostics.push('Runtime palette changes require native Arcade image rendering; fixed Scratch costume rendering is not supported');
         }
@@ -3363,7 +3363,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[node.name] : null;
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
-    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex);
+    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
     const creationEvents = flattened && translateCreationEvents(flattened, assets);
     if (creationEvents) return withAnimationDiagnostics(creationEvents);
