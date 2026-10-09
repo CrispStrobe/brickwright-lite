@@ -74,8 +74,8 @@ test('queued questions sample current held input and each starts its own guard',
 
 test('keyboard/controller input belongs to the question while scene updates are paused',async()=>{
  const {runtime,arcade}=fixture();let callbacks=0,updates=0;
- arcade._controllerButtonCallbacks=function*(){callbacks++;};
- arcade._advanceFrameSteps=function*(){updates++;};
+ arcade._inst._controllerButtonCallbacks=function*(){callbacks++;};
+ arcade._inst._advanceFrameSteps=function*(){updates++;};
  const reply=arcade.ask({TITLE:'Continue?',SUBTITLE:''});
  runtime.emit('ARCADE_FRAME',500);assert.equal(updates,0);
  runtime.emit('ARCADE_PLAYER_BUTTON_EDGE',2,'a',true);runtime.emit('ARCADE_FRAME',30);
