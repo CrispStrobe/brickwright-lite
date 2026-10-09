@@ -6,6 +6,32 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native info consumers and typed browser observations — 2026-10-09
+
+At `616937a47`,44 affected truth-value, native overlap and real imported-game
+checks pass without skips. The native info API owns life/score state; consumers
+now assert its actual reporter words, opcodes and player-state values instead
+of requiring synthetic `lives` variables. The original-PXT overlap oracle still
+requires life20 after exactly one destruction event, and truth-log comparisons
+still require identical original/imported/exported behaviour.
+
+Hosted browser run37954363495 stopped at the literal-array readiness check.
+Its unmodified artifact records calls0, order0, empty result, arraysReady=true,
+no block errors and no diagnostics. The observer converted every value with
+`Number`, making the Boolean expectation impossible. The repair preserves the
+actual value type and repeated Game prefixes. This unblocks typed observations
+for the prepared arrays, camera, follow, layers and numeric-sign journeys;
+full hosted execution remains required before claiming those journeys pass.
+
+The original build failures are retained: six outdated native-info assertions
+and a pin-policy failure from a non-pin merge SHA in a receipt. Merge history
+now lives in narrative documentation; tested pin identities remain in the
+receipt. The full pin walk refuses this sparse checkout because tracked paths
+are absent, so it remains a required hosted check. No gate was weakened, no
+product runtime semantics changed, and no corpus count reduction is claimed.
+Producer PR81 full CI37955703631 passes every enabled exact-head check; its
+publishing step is disabled on the feature branch. Lite full checks are pending.
+
 ## Producer model evidence merge history — 2026-10-09
 
 The verified model-evidence correction in producer PR79 merged into its feature

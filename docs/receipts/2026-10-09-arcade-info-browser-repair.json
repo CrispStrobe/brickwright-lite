@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "616937a47fa70244532fc53d4fbf9af6c6251d8b",
+  "local": {
+    "affectedChecks": 44,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browserRepair": {
+    "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37954363495",
+    "artifact": "https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11631275852",
+    "originalVariables": {
+      "calls": 0,
+      "order": 0,
+      "result": "",
+      "arraysReady": true
+    },
+    "blockErrors": [],
+    "diagnostics": [],
+    "originalFailure": "Observer converted Boolean true to numeric1 before comparing with Boolean true",
+    "repair": "Preserve actual value types and normalize repeated Game prefixes"
+  },
+  "originalHostedBuildFailure": {
+    "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37955683341",
+    "failures": [
+      "six stale native-info representation assertions",
+      "non-pin merge-history identity in a pin-only receipt"
+    ]
+  },
+  "producerHosted": {
+    "testedPin": "5a6782d9c43805fbbc7f8b51bf2fab55e446efea",
+    "run": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37955703631",
+    "enabledChecks": "SUCCESS",
+    "disabledPublishing": "SKIPPED"
+  },
+  "pending": [
+    "Fresh shipped controller/browser journey",
+    "Full exact-head hosted checks",
+    "Full pin walk unavailable in sparse local checkout"
+  ],
+  "scope": "Qualification and observation repair; runtime and importer semantics unchanged; no new corpus count claim"
+}
