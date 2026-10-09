@@ -14,7 +14,13 @@ try {
         localStorage.setItem('bw-starter-v1-complete', '1');
         localStorage.setItem('bw-right-pane-hidden', '0');
     });
+    const setStageVisible = async visible => {
+        const toggle = page.locator('[data-right-pane-toggle]');
+        if ((await toggle.getAttribute('aria-pressed')) !== String(visible)) await toggle.click();
+        assert.equal(await toggle.getAttribute('aria-pressed'), String(visible));
+    };
     const openEditor = async () => {
+        await setStageVisible(false);
         await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
         await page.getByTestId('bw-pixel-toggle').click();
         await page.getByTestId('bw-pixel-canvas').waitFor();
@@ -70,6 +76,7 @@ try {
     assert.equal(await page.getByTestId('bw-pixel-colour-1').evaluate(node => getComputedStyle(node).backgroundColor), originalSwatch,
         'closing the project preview restores artwork colors');
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await setStageVisible(true);
     await page.locator('[class*="green-flag_green-flag"]').first().click();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.palette[1] === '#123456');
     assert.deepEqual(errors, []);

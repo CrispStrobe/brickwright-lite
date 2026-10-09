@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import React from 'react';
+import {paintArcadeDeviceFrame} from '../../lib/bw-arcade-device-frame.js';
 import VM from 'scratch-vm';
 
 // Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
@@ -156,13 +157,7 @@ const ArcadeDevicePane = ({vm}) => {
         const paint = () => {
             const destination = canvasRef.current;
             const source = vm.runtime.renderer && vm.runtime.renderer.canvas;
-            if (destination && source) {
-                const context = destination.getContext('2d');
-                context.imageSmoothingEnabled = false;
-                context.fillStyle = '#020617';
-                context.fillRect(0, 0, 160, 128);
-                context.drawImage(source, 0, 0, source.width, source.height, 0, 4, 160, 120);
-            }
+            paintArcadeDeviceFrame(destination, source);
             frame = requestAnimationFrame(paint);
         };
         frame = requestAnimationFrame(paint);

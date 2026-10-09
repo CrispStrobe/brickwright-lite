@@ -264,7 +264,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 887045e0 (2026-10-09): Boolean census correction and sibling fixture adoption; runtime words unchanged.
     // -> ef312b0a (2026-10-09): correct multiplayer Boolean census identity; runtime words unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'ef312b0a61101140591c30c9feee452eae12fa39');
+        '8afc288e68cc411f642ad6b4b2d9863c5d856ca7');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

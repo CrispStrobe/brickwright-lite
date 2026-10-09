@@ -1439,6 +1439,7 @@ jobs:
         run: |
           PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-colour-slots.mjs
           node scripts/verify-project-palette-editor.mjs
+          node scripts/verify-arcade-device-frame.mjs
       - name: Browser gate — circuit UX
         timeout-minutes: 3  # derived: p95 21 s × 3 → 3 min over 20 green runs to 36823340082; max 22 s in run 34050397009 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
