@@ -12,6 +12,7 @@ import {LEGACY_TILE_VALUES_SOURCE} from '../test/fixtures/arcade-legacy-tile-val
 import {LEGACY_TILEMAP_SOURCE} from '../test/fixtures/arcade-legacy-tilemap.mjs';
 import {MULTIPLAYER_STATE_SOURCE} from '../test/fixtures/arcade-multiplayer-state.mjs';
 import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
+import {DIRECT_CONTROLLERS_SOURCE} from '../test/fixtures/arcade-direct-controllers.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
 import {MULTIPLAYER_PLAYERS_SOURCE} from '../test/fixtures/arcade-multiplayer-players.mjs';
 import {ARRAY_PICK_RANDOM_SOURCE} from '../test/fixtures/arcade-array-pick-random.mjs';
@@ -522,6 +523,37 @@ let discardedReady=true`;
     await playerSelect.selectOption('1');
     await stop.click();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const directProject = makeCodeProjectFile({'main.ts': DIRECT_CONTROLLERS_SOURCE,
+        'pxt.json': JSON.stringify({name:'Direct controllers',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Direct controllers'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'direct-controllers.mkcd',mimeType:'application/json',buffer:Buffer.from(directProject)});
+    await page.getByText(/Imported the Arcade game.*direct-controllers/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();
+    await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites).length===4);
+    const directSpeeds=[30,100,60,80];
+    for(let index=0;index<4;index++){
+        await playerSelect.selectOption(String(index+1));await holdRight();
+        await page.waitForFunction(({index,speed})=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[index].vx===speed,{index,speed:directSpeeds[index]});
+        const moving=await movementState();
+        for(let other=0;other<4;other++)if(other!==index)assert.equal(moving[other].vx,0);
+        await page.mouse.up();
+        await page.waitForFunction(index=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[index].vx===0,index);
+    }
+    await playerSelect.selectOption('2');await holdRight();
+    await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[1].vx===100);
+    // A physical player-one keyboard button detaches player two while it moves.
+    await page.keyboard.down('z');
+    await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.controlledSprites[2].length===0);
+    await page.keyboard.up('z');
+    await page.mouse.up();await playerSelect.selectOption('1');
+    assert.equal((await movementState())[1].vx,100);
+    report.directControllers={nativeFileImport:true,codeToBlocks:true,controllers:[1,2,3,4],speeds:directSpeeds,
+        inputIsolation:true,releasedOnPointerUp:true,stopRetainsVelocity:true};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-direct-controllers.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},
     {target: 'arcade', name: 'Multiplayer buttons'});

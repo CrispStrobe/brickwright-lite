@@ -56,6 +56,13 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         extension.setSpriteProperty({ID:hero,PROPERTY:'rotationDegrees',VALUE:90});
         assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'width'}),1);
         assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'height'}),2);
+        extension.controlSpriteByController({CONTROLLER:'4',ID:hero,VX:80,VY:0});
+        rt.bwArcadeDeviceState.controllerButtons={4:{right:true}};
+        const controlled=rt.bwArcadeDeviceState.sprites[hero];
+        extension._inst._moveControlledSprites([controlled]);assert.equal(controlled.vx,80);
+        extension.stopControllingSprite({CONTROLLER:'4',ID:hero});
+        rt.bwArcadeDeviceState.controllerButtons[4]={};
+        extension._inst._moveControlledSprites([controlled]);assert.equal(controlled.vx,80,'bundled stop retains velocity');
         extension.spriteSay({ID:hero,TEXT:'A',DURATION:100,ANIMATED:false,FOREGROUND:2,BACKGROUND:9,MODE:'text'});
         assert.equal(extension._inst._speech.get(hero).text,'A','generated PXT speech renders through the bundled bridge');
         rt.bwArcadeAnimationResources=new Map([['first',{name:'Run',source:{targetName:'art'}}],['second',{name:'Run',source:{targetName:'art'}}]]);

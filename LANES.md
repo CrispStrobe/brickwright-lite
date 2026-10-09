@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Direct Arcade controller bindings — 2026-10-09
+
+Codex owns `lane/arcade-direct-controllers-20261009`, stacked on PR748, and
+sb3-creator `feat/arcade-direct-controllers-20261009`, stacked on PR74.
+Scope: fixed controllers 1–4 move/stop sprite bindings, native dropdown blocks,
+pseudocode, import/export and existing controller-pane qualification. Keep
+multiplayer player state independent; preserve original PXT movement semantics
+and explicit diagnostics. Other lanes and shared worktrees stay separately owned.
+
 ## Arcade reset qualification — 2026-10-09
 
 Codex continues on `lane/arcade-reset-qualification-20261009`, stacked on PR741.

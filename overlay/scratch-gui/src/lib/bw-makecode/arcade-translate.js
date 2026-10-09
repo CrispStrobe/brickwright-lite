@@ -1125,9 +1125,18 @@ class ArcadeTranslator extends BaseTranslator {
             else push(this.note('scene.setBackgroundImage() with art we could not read'));
             return;
         }
-        if (name === 'controller.moveSprite' && this.handleRef(a[0])) {
-            if (a.length > 3) {push(this.note('controller.moveSprite() accepts a sprite and two speeds'));return;}
-            push(`arcade control sprite (${this.handleRef(a[0])}) vx (${a[1] ? this.expr(a[1]) : 100}) vy (${a[2] ? this.expr(a[2]) : 100})`);
+        const directController = /^controller(?:\.player([1-4]))?\.(moveSprite|stopControllingSprite)$/.exec(name || '');
+        if (directController && (directController[1] || directController[2]==='moveSprite')) {
+            if (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller')) {
+                push(this.note(`${name} refers to a shadowed controller binding`));return;
+            }
+            const stopping=directController[2]==='stopControllingSprite';
+            if (!a.length || a.length>(stopping?1:3)) {push(this.note(`${name}() requires a sprite${stopping?'':' and at most two speeds'}`));return;}
+            const sprite=this.handleRef(a[0]) || (a[0]?.type==='Null'?'null':null);
+            if (!sprite) {push(this.note(`${name}() requires a supported sprite handle`));return;}
+            if (stopping) push(`arcade controller ${directController[1] || 1} stop controlling sprite (${sprite})`);
+            else if (directController[1]) push(`arcade controller ${directController[1]} move sprite (${sprite}) vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);
+            else push(`arcade control sprite (${sprite}) vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);
             return;
         }
         if (name === 'sprites.onCreated') {
@@ -2646,6 +2655,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || t.path(node.callee)==='game.ask'))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
+        if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;

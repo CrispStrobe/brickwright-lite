@@ -221,6 +221,13 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'controlSprite', blockType: Scratch.BlockType.COMMAND,
             text: 'move Arcade sprite [ID] with buttons vx [VX] vy [VY]',
             arguments: {...str('ID', ''), ...n('VX', 100), ...n('VY', 100)} },
+          { opcode: 'controlSpriteByController', blockType: Scratch.BlockType.COMMAND,
+            text: 'Arcade controller [CONTROLLER] move sprite [ID] vx [VX] vy [VY]',
+            arguments: {CONTROLLER: {type: Scratch.ArgumentType.STRING, menu: 'controllerNumbers', defaultValue: '1'},
+              ...str('ID', ''), ...n('VX', 100), ...n('VY', 100)} },
+          { opcode: 'stopControllingSprite', blockType: Scratch.BlockType.COMMAND,
+            text: 'Arcade controller [CONTROLLER] stop controlling sprite [ID]',
+            arguments: {CONTROLLER: {type: Scratch.ArgumentType.STRING, menu: 'controllerNumbers', defaultValue: '1'}, ...str('ID', '')} },
           { opcode: 'functionArgument', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade function argument [VALUE] followed by [REST]', arguments: {...str('VALUE', '0'), ...str('REST', '[]')} },
           { opcode: 'callFunction', blockType: Scratch.BlockType.REPORTER,
@@ -615,6 +622,7 @@ module.exports = makeExt(`// Name: Arcade
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
+          ,controllerNumbers: {acceptReporters:false,items:['1','2','3','4']}
           ,playerReadModes: {acceptReporters:false,items:['safe','member']}
           ,playerLookupModes: {acceptReporters:false,items:['number','index']}
           ,animationAssets: {acceptReporters: true, items: 'getAnimationAssets'}
@@ -975,6 +983,13 @@ module.exports = makeExt(`// Name: Arcade
       return (Number(held(positive)) - Number(held(negative))) * (Number(args.STEP) || 0) / 30;
     }
     controlSprite(args) {this._controlSprite(1,args.ID,args.VX,args.VY);}
+    _controllerNumber(value) {
+      const number=Number(value);
+      if(!Number.isInteger(number) || number<1 || number>4)throw new Error('Arcade controller must be 1, 2, 3 or 4');
+      return number;
+    }
+    controlSpriteByController(args) {this._controlSprite(this._controllerNumber(args.CONTROLLER),args.ID,args.VX,args.VY);}
+    stopControllingSprite(args) {this._stopControllingSprite(this._controllerNumber(args.CONTROLLER),args.ID);}
     _controlSprite(number,id,vx=100,vy=100) {
       const sprite=this._sprite(id);if(!sprite)return;
       const state=this._state();

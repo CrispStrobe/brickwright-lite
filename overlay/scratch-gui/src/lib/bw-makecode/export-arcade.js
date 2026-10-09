@@ -1376,6 +1376,13 @@ class ArcadeEmitter {
         case 'arcade_setPalette': push(`image.setPalette(Buffer.fromHex(${v('DATA', '""')}))`); return;
         case 'arcade_setBackgroundColor': push(`scene.setBackgroundColor(${v('COLOR')})`); return;
         case 'arcade_controlSprite': push(`controller.moveSprite(${v('ID')}, ${v('VX')}, ${v('VY')})`); return;
+        case 'arcade_controlSpriteByController':
+        case 'arcade_stopControllingSprite': {
+            const number=b.fields?.CONTROLLER?.[0];
+            if (!['1','2','3','4'].includes(String(number))) {push(`// ${this.note('Arcade controller must be 1, 2, 3 or 4')}`);return;}
+            const receiver=`controller.player${number}`;
+            push(b.opcode==='arcade_stopControllingSprite'?`${receiver}.stopControllingSprite(${v('ID')})`:`${receiver}.moveSprite(${v('ID')}, ${v('VX')}, ${v('VY')})`);return;
+        }
         case 'arcade_destroySprite': push(`${v('ID')}.destroy()`); return;
         case 'arcade_spriteSay': {
             const self = this.literalInput(b, 'ID') === 'self';
