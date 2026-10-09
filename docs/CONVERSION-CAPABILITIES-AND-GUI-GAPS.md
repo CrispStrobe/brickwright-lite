@@ -1708,3 +1708,59 @@ Code/Blocks authoring and GUI controls; compare original/exported PXT colors
 against native output; then qualify a fresh controller/graphics browser journey
 and remeasure the unchanged corpus.
 [Receipt](receipts/2026-10-09-arcade-palette-indices.json).
+
+
+## Global Arcade palette state — 2026-10-09
+
+Project palette state now recolors native solid backgrounds (including index
+zero), mutable background images, sprites, tilemaps and speech without changing
+pixel indices or collision masks. It persists globally across scene push/pop,
+refreshes restored layers, survives Stop and resets on project restart. Runtime
+instances keep independent palettes. Invalid updates reject before changing
+state or renderer resources.
+
+Code and Blocks share the new `arcade_setPalette` command:
+
+```text
+DEVICE ARCADE
+WHEN flag clicked:
+  arcade set palette hex "000000ffffffff2121ff93c4ff8135fff609249ca378dc52003fad87f2ff8e2ec4a4839f5c406ce5cdc491463d000000"
+```
+
+The input is exactly 96 hexadecimal digits (16 RGB entries). Text expressions
+are allowed. Text whitespace is rejected, matching MakeCode's `Buffer.fromHex`;
+formatted MakeCode `hex` literals are normalized when imported. Static
+`pxt.json` palettes become a startup command, and imported indexed costumes
+carry their initial palette for graphics editing. Palette-aware programs use
+native rendering. Runtime `image.setPalette` accepts imported hex literals and
+`Buffer.fromHex` expressions; export preserves authored call timing through
+`image.setPalette(Buffer.fromHex(...))`. Indexed art retains its indices under
+that global command instead of being remapped to asset colors. Malformed
+palettes, unsupported Buffer construction and exceptional fixed Scratch
+rendering paths retain named diagnostics.
+
+Original/exported PXT comparisons cover duplicate RGB entries, mutable image
+indices, final palette and complete screen colors, text expressions, skipped
+branches and palette persistence after a child scene changes it. Native renderer
+controls cover background/image/sprite/tile/speech layers, restored scene layers,
+restart, peer isolation and atomic rejection. Code decompile/reimport and saved
+SB3 preserve palette state. The vocabulary has 190 canonical forms; producer
+dialect and unchanged consumer SPIKE artifact checks are separate gates.
+
+Remaining GUI work: a project-wide palette picker and preview, graphics-editor
+project palette mode, and clear distinction between asset colors and the global
+palette command. Editing a per-artwork palette does not change an existing
+project-wide command. Hex Code/Blocks authoring exists, but friendly palette
+authoring and a fresh production/controller/graphics browser journey remain
+unqualified. Additional Buffer-building APIs and palette-extension operations
+remain open; this slice does not establish palette behavior for unsupported
+effects or dialogs. Hosted exact-head checks remain required before integration.
+
+At source `7f40190489bd5ef8c974f7399666dc46c7a3e5d5`, 62 affected checks pass
+with zero failures/skips. Producer dialect qualification passes 233 checks
+without skips at `de2ac6ce`.
+
+Fresh import-only remeasurement of the same 184 hash-verified original inputs
+remains 102 translated, 81 partial and 1 malformed, with no changed diagnostic
+rows. This count does not establish runtime or full roundtrip compatibility.
+[Receipt](receipts/2026-10-09-arcade-project-palette.json).
