@@ -310,3 +310,62 @@ and shared arena, gated native/Python callers, and actual installed Code/Blocks
 qualification. Default D-distance/E-force and six-motor configurations retain
 their existing contracts; package metadata alone does not qualify those next
 steps or arbitrary A–F addressed reads.
+
+
+## Dual ultrasonic sandbox integration candidate (2026-10-09)
+
+The own-firmware live addressed API is now merged in
+[Runtime PR56](https://github.com/CrispStrobe/renode-spike-prime/pull/56).
+[Firmware PR53](https://github.com/CrispStrobe/brickwright-spike-prime-fw/pull/53)
+qualified the actual Runtime snapshot on both protected firmware profiles in
+[matrix37934995031](https://github.com/CrispStrobe/brickwright-spike-prime-fw/actions/runs/37934995031):
+the bound live marker advertised the API, legacy configuration omitted it and
+foreign metadata was refused. This is own-firmware simulation evidence.
+
+This candidate adds **Ultrasonic E/F (NuttX sandbox)** to the arena's Firmware
+devices chooser. Open the free sandbox and select Full NuttX (desktop), then
+choose that profile. It keeps driving motors A/B and color sensor C, detaches
+D and replaces E/F with distance sensors. The existing default layout keeps D
+distance and E force. Six motors remains a separate profile. The E/F geometry
+uses forward-facing probes at x=9 cm and y=-3/+3 cm; these are arena choices,
+not physical sensor calibration.
+
+Scratch literal distance comparisons/waits on E/F compile to addressed
+selectors 0x121/0x122 and 0x129/0x12a. Supported mm/cm/in thresholds round to
+integer millimeters in 0..65535. Color/reflection on C remains supported;
+legacy D distance, E force and C..F motor commands are refused for this
+profile. Programs retain the existing bounded sequential guest instruction
+contract; this change does not add parallel scripts or arbitrary Python APIs.
+
+The native launcher admits only a verified own full NuttX package with an
+image-bound addressed marker declaration and bounded program mailbox. Before
+upload, the arena session also requires the actual live addressed capability
+and exactly A/B motors, C color, D detached and E/F distance. It checks this
+contract on subsequent frames, replacement upload, retained restart and storage
+operations. Native and Python-source upload share the same hub and arena;
+closing the profile restores default devices. Unsupported packages fail closed.
+
+Reproduce source controls with Node22:
+
+```sh
+node --test test/spike-dual-ultrasonic-topology.test.mjs test/spike-six-motor-topology.test.mjs test/spike-code-run-feedback.test.mjs test/spike-renode-arena-session.test.mjs test/spike-nuttx-upload-protocol.test.mjs test/spike-nuttx-storage-exchange.test.mjs
+node --test test/spike-arena-pane-units.test.mjs test/spike-firmware-program.test.mjs
+cargo test --manifest-path apps/tauri/src-tauri/Cargo.toml --lib
+```
+
+The rendered-pane/compiler suites require the repository's normal locked GUI
+dependencies. Focused source controls cover selector bounds, units, wrong
+firmware/type/attachment/capability, native and Python rejection before packets,
+replacement/restart, cancellation, distinct world-derived E/F ranges and default
+restoration. Three changed actual gate implementations are detected by the
+negative admission assertions. Rust controls check preboot attachment order,
+closed metadata, address bounds and image identity. These source controls are
+not installed-package qualification.
+
+**Pending acceptance:** exact-head hosted web/native checks, consumer package
+adoption of the qualified firmware and Runtime, and actual installed GUI runs
+of Scratch and Code-tab E/F programs through the real guest. No package pin is
+changed in this candidate. Existing installed packages can lack the required
+capability and will refuse this profile; browser-only simulation does not launch
+NuttX. Do not claim shipped availability or complete equivalence from this
+source integration.
