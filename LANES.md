@@ -15,6 +15,14 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade sprite layer routing — 2026-10-09
+
+Codex owns `lane/arcade-sprite-layer-routing-20261009`, stacked on PR759.
+Select the native sprite runtime for typed sprite z/lifespan/acceleration
+properties that the legacy Stage route cannot represent. Verify original PXT
+property values, layering pixels, editable Code/Blocks/SB3 and exported execution.
+Preserve unknown object diagnostics and unchanged corpus inputs.
+
 ## Arcade sprite following — 2026-10-09
 
 Codex owns `lane/arcade-sprite-follow-20261009`, stacked on PR758, and producer
