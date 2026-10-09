@@ -15,6 +15,16 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade dialog / browser readiness — 2026-10-09
+
+Codex owns `lane/arcade-dialog-browser-readiness-20261009`, stacked on PR749.
+Fix the actual question guard publication defect observed in PR748: publish
+new dialog identity at readiness so the pure stage container enables Yes/No.
+Qualify the regression against a preserved failing baseline. Repair stage
+reload waits to tolerate the real absent-stage interval, and navigate visibly
+back from graphics authoring before running the palette startup block. Keep
+semantic assertions and original hosted failures; no unrelated pins change.
+
 ## Direct Arcade controller bindings — 2026-10-09
 
 Codex owns `lane/arcade-direct-controllers-20261009`, stacked on PR748, and

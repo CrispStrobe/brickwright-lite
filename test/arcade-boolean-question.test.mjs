@@ -84,3 +84,15 @@ test('keyboard/controller input belongs to the question while scene updates are 
  assert.equal(await reply,false);assert.equal(callbacks,0);assert.equal(updates,1);
  runtime.emit('KEY_STATE_CHANGED','Z',false);assert.equal(callbacks,1,'normal handlers resume after the modal');
 });
+
+test('dialog readiness publishes a new snapshot so pure UI consumers can enable choices',async()=>{
+ const {runtime,arcade}=fixture(),shown=[];runtime.on('ARCADE_DIALOG',dialog=>shown.push(dialog));
+ const answer=arcade.ask({TITLE:'Continue?',SUBTITLE:''});
+ const initial=shown[0];assert.equal(initial.elapsed,0);
+ runtime.emit('ARCADE_FRAME',500);const ready=shown.at(-1);
+ assert.notStrictEqual(ready,initial,'a pure stage container must observe new dialog identity');
+ assert.equal(initial.elapsed,0,'prior UI snapshots retain their displayed guard state');
+ assert.equal(ready.elapsed,500);
+ initial.dismiss(true);assert.equal(await answer,true,'callbacks retain the live queue authority');
+ assert.equal(shown.at(-1),null);
+});

@@ -28,7 +28,7 @@ try{
  await page.getByText(/Imported the Arcade game.*callback-completion/).first().waitFor({state:'visible'});
  const priorStage1=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
  await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
- await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id!==id,priorStage1);
+ await page.waitForFunction(id=>{const stage=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();return Boolean(stage && stage.id!==id);},priorStage1);
  await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible',timeout:30000});
  await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await editor.waitFor({state:'hidden'});
@@ -48,7 +48,7 @@ try{
  await page.getByText(/Imported the Arcade game.*elapsed-clock/).first().waitFor({state:'visible'});
  const priorStage2=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
  await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
- await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id!==id,priorStage2);await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
+ await page.waitForFunction(id=>{const stage=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();return Boolean(stage && stage.id!==id);},priorStage2);await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await page.locator('[class*="green-flag_green-flag"]').first().click();
  await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites).some(s=>s.kind==='Player'));
  const measure=()=>page.evaluate(()=>{const r=window.__brickwrightStore.getState().scratchGui.vm.runtime,s=Object.values(r.bwArcadeDeviceState.sprites).find(s=>s.kind==='Player');return {wall:r.currentMSecs,elapsed:r.bwArcadeDeviceState.elapsedMs,x:s.x};});

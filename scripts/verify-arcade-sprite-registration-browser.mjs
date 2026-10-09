@@ -28,7 +28,7 @@ try{
  await page.getByText(/Imported the Arcade game.*sprite-registration/).first().waitFor({state:'visible'});
  const priorStage1=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
  await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
- await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id!==id,priorStage1);
+ await page.waitForFunction(id=>{const stage=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();return Boolean(stage && stage.id!==id);},priorStage1);
  await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible',timeout:30000});
  await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.extensionManager.isExtensionLoaded('arcade'));
  await page.getByRole('tab',{name:'Blocks',exact:true}).click();await editor.waitFor({state:'hidden'});

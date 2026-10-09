@@ -1282,7 +1282,9 @@ module.exports = makeExt(`// Name: Arcade
         }
         this._runtime.bwArcadeDialogOpen = Boolean(dialog);
         this._runtime.bwArcadeDialogType = this._dialogs?.[0]?.type || null;
-        this._runtime.emit('ARCADE_DIALOG', this._dialogs?.[0] || null);
+        // UI containers compare dialog identity. Publish a snapshot when the
+        // guard changes; dismissal still closes over the authoritative queue.
+        this._runtime.emit('ARCADE_DIALOG', dialog ? {...dialog} : null);
       }
     }
     lightLevel() { return Number(this._state().light) || 0; }
