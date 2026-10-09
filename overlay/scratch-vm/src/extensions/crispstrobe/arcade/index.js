@@ -1404,7 +1404,7 @@ module.exports = makeExt(`// Name: Arcade
     _paletteColors() { return this._projectPalette || speechPalette; }
     _imagePalette(image) { return this._projectPalette ? [null,...this._projectPalette.slice(1)] : image?.palette; }
     setPalette(args) {
-      const hex = String(Scratch.BWValues.decode(args.DATA)).replace(/\\s/g,'');
+      const hex = String(Scratch.BWValues.decode(args.DATA));
       if (!/^[0-9a-f]{96}$/i.test(hex)) throw new RangeError('Arcade palette requires exactly 16 RGB colors (48 bytes)');
       this._projectPalette = hex.match(/.{6}/g).map(color => '#'+color.toLowerCase());
       this._renderPalette();

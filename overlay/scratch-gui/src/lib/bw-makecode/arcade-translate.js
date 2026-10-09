@@ -1207,7 +1207,11 @@ class ArcadeTranslator extends BaseTranslator {
                 push(`arcade set palette hex "${hex.toLowerCase()}"`);return;
             }
             if(buffer.type==='Call' && this.path(buffer.callee)==='Buffer.fromHex' && buffer.args.length===1) {
-                push(`arcade set palette hex (${this.expr(buffer.args[0])})`);return;
+                const data=buffer.args[0];
+                if(data.type==='String' && !/^[0-9a-f]{96}$/i.test(data.value)) {
+                    push(this.note('image.setPalette Buffer.fromHex requires exactly 96 hex digits without whitespace'));return;
+                }
+                push(`arcade set palette hex (${this.expr(data)})`);return;
             }
             push(this.note('image.setPalette requires a hex literal or Buffer.fromHex expression'));return;
         }

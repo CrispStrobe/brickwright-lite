@@ -33,7 +33,7 @@ test('global palette recolors solid background, mutable image, sprite, tilemap a
  a.setTilemap({DATA:JSON.stringify({columns:1,rows:1,tileSize:4,indices:[0],walls:[0],images:[{width:2,height:1,pixels:[1,2]}]})});
  a.spriteSay({ID:g.id,TEXT:'A',DURATION:-1,ANIMATED:false,FOREGROUND:15,BACKGROUND:1,MODE:'text'});
  const before=a._image(g.image).pixels.slice(), spriteEntry=a._inst._imageSkins.get(g.id), backgroundEntry=a._inst._background;
- a.setPalette({DATA:' '+hex.match(/.{6}/g).join(' ')+' '});
+ a.setPalette({DATA:hex.toUpperCase()});
  assert.deepEqual(a._state().palette,colors);
  assert.deepEqual(a._image(g.image).pixels,before);
  assert.match(g.skins.get(backgroundEntry.skin),/#102030/,'background index zero is an opaque project color');
@@ -60,7 +60,7 @@ test('palette persists globally across scenes, refreshes restored layers and res
 
 test('invalid palette updates reject atomically without altering palette, images or renderer resources',()=>{
  const g=fixture(),a=g.arcade;a.setPalette({DATA:hex});const before=[...g.skins.entries()];
- for(const data of ['',hex.slice(6),hex+'000000','g'+hex.slice(1),'#'+hex]){
+ for(const data of ['',hex.slice(6),hex+'000000','g'+hex.slice(1),'#'+hex,' '+hex,hex.match(/.{6}/g).join(' ')]){
   assert.throws(()=>a.setPalette({DATA:data}),/exactly 16 RGB colors/);
   assert.deepEqual(a._state().palette,colors);assert.deepEqual([...g.skins.entries()],before);
  }
@@ -112,6 +112,7 @@ test('runtime palette changes export through the original API and retain pixel i
 test('malformed static project palettes and unsupported runtime buffers remain named diagnostics',()=>{
  for(const palette of [colors.slice(1),colors.concat('#000000'),colors.map((color,index)=>index===2?'red':color)])assert.ok(arcadeToPseudocode({...project(source),'pxt.json':JSON.stringify({palette})}).unsupported.some(message=>message.includes('Invalid project palette')));
  assert.ok(arcadeToPseudocode(source+'\nimage.setPalette(hex`000000`)').unsupported.some(message=>message.includes('48 RGB bytes')));
+ assert.ok(arcadeToPseudocode(source+'\nimage.setPalette(Buffer.fromHex(" '+hex+'"))').unsupported.some(message=>message.includes('without whitespace')));
  assert.ok(arcadeToPseudocode(source+'\nimage.setPalette(control.createBuffer(48))').unsupported.some(message=>message.includes('image.setPalette')));
 });
 
