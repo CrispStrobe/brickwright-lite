@@ -26,7 +26,10 @@ corpus inputs; full shipped controller/browser checks remain required.
 Checkpoint `3c4493c1e` /producer `e41906fe`:13 follow/scene/interchange and
 8 fresh bundle/pin/dialect checks pass; producer325 pass. Corpus109/74/1 across
 184 unchanged inputs. Original source steering and recovered tutorial movement
-pass locally; full shipped browser/producer hosted checks remain pending.
+pass locally. Producer CI37946563913 passes every enabled exact-head check.
+Lite gallery CI found31 stale vendored provenance stamps; synchronized them
+from the unchanged producer pin, with every other byte unchanged and the
+whole gallery freshness check passing. Full shipped browser checks remain pending.
 
 ## Arcade producer model evidence — 2026-10-09
 

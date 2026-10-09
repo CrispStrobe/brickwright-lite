@@ -78,7 +78,6 @@
   ],
   "pending": [
     "fresh shipped native-file/controller-pane browser journey",
-    "full producer hosted suite",
     "complete rendered recovered game and modal/wall-time timing qualification"
   ],
   "implementationSource": "f1230bd8e6dd83e6808f375b391d0052cb325f20",
@@ -106,5 +105,20 @@
     "cancelledRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37947436224",
     "cancelledConclusion": "cancelled",
     "boundary": "No failed step log exists for the cancelled run; retain its actual conclusion."
+  },
+  "gallerySync": {
+    "producerPinUnchanged": "e41906fe20198853690bcb532ad0f43e7856dd04",
+    "changedFiles": 31,
+    "scope": "EXPECTED.md provenance stamps only; every other byte unchanged",
+    "localCheck": "PASS: all3750 files across337 directories match the pinned producer",
+    "originalFailedRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37948286207",
+    "originalFailure": "31 stale vendored EXPECTED.md copies",
+    "failureLogRetained": true
+  },
+  "producerFollowHosted": {
+    "testedHead": "e41906fe20198853690bcb532ad0f43e7856dd04",
+    "run": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37946563913",
+    "enabledChecks": "SUCCESS",
+    "disabledPublishing": "SKIPPED"
   }
 }
