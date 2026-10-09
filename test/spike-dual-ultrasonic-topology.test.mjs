@@ -17,7 +17,7 @@ const frame=(seq=1)=>({schemaVersion:1,type:'snapshot',seq,clockNs:seq*1000000,
     target:{board:'spike-prime',firmware:'brickwright-nuttx',transport:'none',imageSha256:'a'.repeat(64),
         capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1','nuttx-program/v1','nuttx-addressed-distance/v1','nuttx-program-storage/v1']},
     lifecycle:{phase:'ready',generation:1,connectionGeneration:1,nuttxProgram:{state:1}},
-    ports:Object.entries({A:'motor',B:'motor',C:'color',D:'none',E:'distance',F:'distance'}).map(([id,kind])=>({id,kind,attached:kind!=='none'})),
+    ports:Object.entries({A:'motor',B:'motor',C:'color',D:null,E:'distance',F:'distance'}).map(([id,kind])=>({id,kind,attached:kind!==null})),
     motors:[...'AB'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))});
 const bridge=()=>{const hubState=new Hub();hubState.setPort('D','none');return new ArenaHubBridge({hubState,world:sandboxWorld(),robot:dualUltrasonicRobot()});};
 function comparison(port,opcode='operator_lt',unit='cm',threshold='12.3') {
@@ -60,7 +60,7 @@ test('closed desktop DTO accepts only own NuttX dual profile and no paths or mon
 });
 const badFrames=[f=>{f.target.capabilities=f.target.capabilities.filter(c=>c!=='nuttx-addressed-distance/v1');},
     f=>{f.target.firmware='micropython-prime';},f=>{f.target.transport='ble';},f=>{f.ports[4].kind='force';},
-    f=>{f.ports[5].attached=false;},f=>{f.ports[3]={id:'D',kind:'distance',attached:true};},
+    f=>{f.ports[5].attached=false;},f=>{f.ports[3]={id:'D',kind:'distance',attached:true};},f=>{f.ports[3].kind='none';},
     f=>f.ports.push(f.ports[5]),f=>{f.motors[1].port='A';},f=>{f.ports[5].id='E';}];
 test('wrong first frames close the acquired session before inputs, run or native/Python upload',async()=>{
     requireDualUltrasonicFrame(frame());
@@ -125,7 +125,7 @@ test('a pending first read can be cancelled without any upload or shared clock t
 test('capability and attachment gate mutation controls detect broken admission',async()=>{
     const source=readFileSync(new URL('../overlay/scratch-gui/src/lib/spike-nuttx/motor-topology.js',import.meta.url),'utf8');
     const controls=[source.replace("'nuttx-addressed-distance/v1'","'state-sample/v1'"),
-        source.replace("p.kind === kind &&",''),source.replace("p.attached === (kind !== 'none')",'true')];
+        source.replace("p.kind === kind &&",''),source.replace("p.attached === (kind !== null)",'true')];
     for(const [i,mutant] of controls.entries()) {
         assert.notEqual(mutant,source);const module=await import(`data:text/javascript;base64,${Buffer.from(mutant).toString('base64')}`);
         const f=frame();[badFrames[0],badFrames[3],badFrames[4]][i](f);

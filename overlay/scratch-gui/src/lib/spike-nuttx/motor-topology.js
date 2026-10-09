@@ -31,11 +31,11 @@ export function dualUltrasonicRobot () {
         {kind: 'distance', port: 'F', x: 9, y: 3, heading: 0}]};
 }
 export function requireDualUltrasonicFrame (frame) {
-    const kinds = {A: 'motor', B: 'motor', C: 'color', D: 'none', E: 'distance', F: 'distance'};
+    const kinds = {A: 'motor', B: 'motor', C: 'color', D: null, E: 'distance', F: 'distance'};
     if (frame?.target?.firmware !== 'brickwright-nuttx' || frame.target.transport !== 'none' ||
         !['nuttx-program/v1', 'nuttx-addressed-distance/v1'].every(cap => frame.target.capabilities?.includes(cap)) ||
         frame.ports?.length !== 6 || !Object.entries(kinds).every(([id, kind]) =>
-            frame.ports.filter(p => p.id === id && p.kind === kind && p.attached === (kind !== 'none')).length === 1) ||
+            frame.ports.filter(p => p.id === id && p.kind === kind && p.attached === (kind !== null)).length === 1) ||
         frame.motors?.length !== 2 || ![...'AB'].every(port => frame.motors.filter(m => m.port === port).length === 1)) {
         throw new Error('Dual ultrasonic requires live addressed NuttX and exact A/B motors, C color, E/F distance, D detached');
     }

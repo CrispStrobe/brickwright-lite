@@ -59,11 +59,11 @@ export function dualUltrasonicPython (e, f) {
         'print("BROWSER DUAL ARM",e,f)\n';
 }
 export function requireDualSharedObservation ({frame, motors, classicPorts}) {
-    const kinds = {A: 'motor', B: 'motor', C: 'color', D: 'none', E: 'distance', F: 'distance'};
+    const kinds = {A: 'motor', B: 'motor', C: 'color', D: null, E: 'distance', F: 'distance'};
     if (frame?.target?.firmware !== 'brickwright-nuttx' || frame.target.transport !== 'none' ||
         !frame.target.capabilities?.includes('nuttx-addressed-distance/v1') || frame.ports?.length !== 6 ||
         frame.motors?.length !== 2 || !Object.entries(kinds).every(([id,kind]) =>
-            frame.ports.filter(p => p.id === id && p.kind === kind && p.attached === (kind !== 'none')).length === 1)) {
+            frame.ports.filter(p => p.id === id && p.kind === kind && p.attached === (kind !== null)).length === 1)) {
         throw new Error('Missing live dual ultrasonic observation');
     }
     for (const [index, port] of [...'AB'].entries()) {

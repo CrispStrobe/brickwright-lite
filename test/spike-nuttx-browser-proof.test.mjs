@@ -78,9 +78,9 @@ test('dual browser source passes the actual reader/compiler and keeps E/F addres
     for(const values of [[-1,20],[20,20],[2001,20],[1.5,20]]) assert.throws(()=>dualUltrasonicPython(...values));
 });
 test('dual proof observations reject swapped/missing sensors and stale or duplicate A/B encoders',()=>{
-    const kinds={A:'motor',B:'motor',C:'color',D:'none',E:'distance',F:'distance'};
+    const kinds={A:'motor',B:'motor',C:'color',D:null,E:'distance',F:'distance'};
     const observed=()=>({frame:{target:{firmware:'brickwright-nuttx',transport:'none',capabilities:['nuttx-addressed-distance/v1']},
-        ports:Object.entries(kinds).map(([id,kind])=>({id,kind,attached:kind!=='none'})),
+        ports:Object.entries(kinds).map(([id,kind])=>({id,kind,attached:kind!==null})),
         motors:[{port:'A',position:-10,speedDps:0},{port:'B',position:10,speedDps:0}]},
         motors:[{position:-10,degPerSec:0},{position:10,degPerSec:0}],classicPorts:[[48,[0,-10]],[48,[0,10]]]});
     requireDualSharedObservation(observed());

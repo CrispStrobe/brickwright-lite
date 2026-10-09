@@ -421,3 +421,12 @@ proof of their compatibility. Actual guest and installed acceptance remains open
 node --test test/spike-package-model-loading.test.mjs
 node scripts/prepare-spike-nuttx-package.mjs FIRMWARE_REPO RENODE_REPO INFRASTRUCTURE_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY --compiled-models
 ```
+
+The compiled-model package subsequently started successfully and published the
+required live addressed capability with A/B motors, C color, E/F distance and D
+detached. The first frame exposed a wire-format mismatch in the candidate:
+detached native ports use `kind: null`, whereas the candidate validator expected
+`"none"`. The validator and proof fixtures now require the canonical null kind
+and `attached: false`; an attached D port or string `"none"` is still refused.
+The GUI hub's internal `none` configuration remains a separate representation.
+This startup observation does not yet qualify upload, motion or Python execution.
