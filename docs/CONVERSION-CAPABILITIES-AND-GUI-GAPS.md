@@ -1649,3 +1649,32 @@ remain required. No runtime scheduler, physics algorithm or importer behavior
 changes in this repair. The first incorrect cadence assertion and failed
 narrow-target GUI and exported-PXT timeouts remain preserved privately.
 [Receipt](receipts/2026-10-08-arcade-overlap-cadence.json).
+
+
+## Controller reset lifecycle — 2026-10-09
+
+[PR740's hosted heavy browser job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37851310198/job/113580725332)
+passed, including the repaired camera, image-bounds and speech checks. The
+[PR741 build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37852453546/job/113568513617)
+recorded 6,474 passed unit checks, one camera gate-audit failure and 21 skips.
+Its heavy browser job separately timed out waiting for the controller reset.
+Neither parent has overall green CI.
+
+A deterministic original-PXT control shows that an overlap callback already
+queued before a position reset still runs afterward. An authored arm guard
+suppresses its late effect: one unguarded effect versus zero guarded effects,
+with the native runtime matching both. This confirms the mechanism that could
+explain the hosted timeout; it does not recover that failed run's exact timing.
+The authored controller fixture now disarms on completion/reset and counts
+resets. The visible journey waits for that counter and checks that the cleared
+flag, disarmed state, stopped position, unchanged pass count and pixels remain
+correct after three actual frames.
+
+The camera audit keeps its baseline and all behavior assertions: the explanatory
+comment now precedes the completion wait, keeping its whole-document assertion
+adjacent. Local qualification passes 25 distinct checks without skips. The
+revised visible controller/Code/Blocks/pixel-mask/decompile journey passes in
+the existing reference production bundle with zero page/runtime errors. Fresh
+exact-head hosted checks remain required. Original failed logs are retained
+privately. No runtime/converter capability or corpus count changes in this
+batch. [Receipt](receipts/2026-10-09-arcade-reset-qualification.json).
