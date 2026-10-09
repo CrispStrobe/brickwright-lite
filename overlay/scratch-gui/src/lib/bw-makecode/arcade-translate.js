@@ -1362,6 +1362,18 @@ class ArcadeTranslator extends BaseTranslator {
                 if(a.length<1 || a.length>2)push(this.note(`sprite.${node.callee.name}() requires one scale and optional anchor`));
                 else push(`arcade ${node.callee.name==='setScale'?'set':'change'} scale of (${handle}) ${node.callee.name==='setScale'?'to':'by'} (${this.expr(a[0])}) anchor (${a[1]?this.expr(a[1]):'0'})`);
             }
+            else if (node.callee.name === 'follow') {
+                if(a.length<1 || a.length>3){push(this.note('sprite.follow() requires a target and optional speed/turn rate'));return;}
+                const target=a[0],reference=this.handleRef(target);
+                if(!reference && !['Null','Undefined'].includes(target.type) && !this.nullReferences?.has(target)){
+                    push(this.note('sprite.follow() requires a typed sprite target or null'));return;
+                }
+                push(`arcade sprite (${handle}) follow (${reference || this.expr(target)}) speed (${a[1]?this.expr(a[1]):100}) turn rate (${a[2]?this.expr(a[2]):400})`);
+            }
+            else if (node.callee.name === 'unfollow') {
+                if(a.length)push(this.note('sprite.unfollow() takes no arguments'));
+                else push(`arcade sprite (${handle}) stop following`);
+            }
             else if (node.callee.name === 'destroy') push(`arcade destroy ${handle}`);
             else if (node.callee.name === 'say' || node.callee.name === 'sayText') {
                 this.spriteSpeech(handle, node.callee.name, a, push);
@@ -2687,7 +2699,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Call' && node.callee?.type === 'Member' && t.imageReferences.has(node.callee.object)) return true;
         if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
-            (['setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
+            (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
                     ['fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
         return Object.values(node).some(value => Array.isArray(value) ?

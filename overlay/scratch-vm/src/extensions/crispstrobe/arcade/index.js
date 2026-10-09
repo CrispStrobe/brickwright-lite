@@ -158,6 +158,8 @@ module.exports = makeExt(`// Name: Arcade
         color2: '#D63878',
         color3: '#C42870',
         blocks: [
+          {opcode:'followSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade sprite [ID] follow [TARGET] speed [SPEED] turn rate [TURN]',arguments:{...str('ID',''),...str('TARGET',''),...n('SPEED',100),...n('TURN',400)}},
+          {opcode:'unfollowSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade sprite [ID] stop following',arguments:str('ID','')},
           {opcode:'startParallelHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade run parallel as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenParallelHandler',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade parallel handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerForeverHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register forever as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -1016,6 +1018,46 @@ module.exports = makeExt(`// Name: Arcade
       controllers[number]=controllers[number].filter(binding=>binding.sprite!==sprite);
       if(number===1)delete sprite.controller;
       // PXT detaches the binding without changing the sprite's velocity.
+    }
+    followSprite(args) {
+      const self=this._spriteValues.get(String(Scratch.BWValues.decode(args.ID)));
+      const targetValue=Scratch.BWValues.decode(args.TARGET);
+      const target=targetValue==null || targetValue===''?null:this._spriteValues.get(String(targetValue));
+      if(!self || !target && targetValue!=null && targetValue!==''){
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade following requires sprite references from this project.');return;
+      }
+      if(self===target)return;
+      const state=this._state();
+      if(!state.followingSprites){state.followingSprites=[];state.followLastTime=this._globalElapsedMs;}
+      const speed=Scratch.BWValues.decode(args.SPEED),turn=Scratch.BWValues.decode(args.TURN);
+      const rate=Number(speed===undefined?100:speed),turnRate=Number(turn===undefined?400:turn);
+      const binding=state.followingSprites.find(entry=>entry.self===self);
+      if(!target || !rate){
+        if(binding){state.followingSprites=state.followingSprites.filter(entry=>entry!==binding);self.vx=0;self.vy=0;}
+      }else if(binding){binding.target=target;binding.rate=rate;binding.turnRate=turnRate;}
+      else {
+        const entry={rate,turnRate};
+        Object.defineProperties(entry,{self:{value:self},target:{value:target,writable:true}});
+        state.followingSprites.push(entry);
+      }
+      this._changed();
+    }
+    unfollowSprite(args) {this.followSprite({ID:args.ID,TARGET:Scratch.BWValues.encode(null),SPEED:0,TURN:400});}
+    _moveFollowingSprites() {
+      const state=this._state();if(!state.followingSprites)return;
+      const dt=(this._globalElapsedMs-state.followLastTime)/1000;
+      for(const {self,target,rate,turnRate} of state.followingSprites){
+        if(self._destroyed || target._destroyed){self.vx=0;self.vy=0;continue;}
+        const dx=target.x-self.x,dy=target.y-self.y;
+        if(Math.abs(dx)<2 && Math.abs(dy)<2){self.x=target.x;self.y=target.y;self.vx=0;self.vy=0;continue;}
+        const limit=dt*turnRate*(rate/50),angle=Math.atan2(dy,dx);
+        // PXT sprite.ts: independently clamp each velocity delta; retain the
+        // fixed-point setters and controller-before-follow-before-physics order.
+        self.vx+=Math.min(limit,Math.max(-limit,Math.cos(angle)*rate-self.vx));
+        self.vy+=Math.min(limit,Math.max(-limit,Math.sin(angle)*rate-self.vy));
+      }
+      state.followLastTime=this._globalElapsedMs;
+      state.followingSprites=state.followingSprites.filter(({self,target})=>!self._destroyed && !target._destroyed);
     }
     _moveControlledSprites(live) {
       const state=this._state(),keyboard=this._runtime?.ioDevices?.keyboard;
@@ -3178,8 +3220,8 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
       const live = Object.values(state.sprites).filter(s => s.id);
+      this._moveControlledSprites(live);this._moveFollowingSprites();
       if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;this._advanceSpeech(dt);this._startFrameHats();return;}
-      this._moveControlledSprites(live);
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);

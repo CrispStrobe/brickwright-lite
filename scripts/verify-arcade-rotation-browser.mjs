@@ -12,6 +12,7 @@ import {LEGACY_TILE_VALUES_SOURCE} from '../test/fixtures/arcade-legacy-tile-val
 import {LEGACY_TILEMAP_SOURCE} from '../test/fixtures/arcade-legacy-tilemap.mjs';
 import {MULTIPLAYER_STATE_SOURCE} from '../test/fixtures/arcade-multiplayer-state.mjs';
 import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
+import {SPRITE_FOLLOW_SOURCE} from '../test/fixtures/arcade-sprite-follow.mjs';
 import {LITERAL_ARRAY_VALUES_SOURCE} from '../test/fixtures/arcade-literal-array-values.mjs';
 import {CAMERA_SHAKE_SOURCE} from '../test/fixtures/arcade-camera-shake.mjs';
 import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
@@ -614,6 +615,31 @@ let discardedReady=true`;
     });
     report.cameraShake={nativeFileImport:true,codeToBlocks:true,buttonTrigger:true,
         drawOffsetChanged:true,logicalCameraStable:true,worldCoordinatesStable:true,expiredToBase:true};
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const followProject=makeCodeProjectFile({'main.ts':SPRITE_FOLLOW_SOURCE,
+        'pxt.json':JSON.stringify({name:'Sprite following',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Sprite following'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'sprite-following.mkcd',mimeType:'application/json',buffer:Buffer.from(followProject)});
+    await page.getByText(/Imported the Arcade game.*sprite-following/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({followReady:true,stopped:false});
+    await page.waitForFunction(()=>{
+        const sprites=Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites);
+        return sprites[1].x>40 && sprites[1].y>30 && sprites[1].vx>0;
+    });
+    await page.getByTestId('bw-arcade-a').click();
+    await page.waitForFunction(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[0].y===30);
+    await page.getByTestId('bw-arcade-b').click();await waitMultifile({stopped:true});
+    const followState=await page.evaluate(()=>{
+        const state=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;
+        const enemy=Object.values(state.sprites)[1];return {vx:enemy.vx,vy:enemy.vy,bindings:state.followingSprites.length};
+    });
+    assert.deepEqual(followState,{vx:0,vy:0,bindings:0});
+    report.spriteFollowing={nativeFileImport:true,codeToBlocks:true,momentumMovement:true,
+        targetMovedByController:true,stoppedByController:true,stoppedVelocity:followState};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-sprite-following.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},

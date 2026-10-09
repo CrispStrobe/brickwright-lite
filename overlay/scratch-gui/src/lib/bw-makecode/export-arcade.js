@@ -1645,6 +1645,8 @@ class ArcadeEmitter {
         case 'arcade_setSpriteScaleCore': push(`${v('ID')}.setScaleCore(${this.arrayValue(b,'SX')}, ${this.arrayValue(b,'SY')}, ${v('ANCHOR')}, ${this.spriteFlagCondition(b,'PROPORTIONAL')})`);return;
         case 'arcade_setSpriteScale': push(`${v('ID')}.setScale(${v('VALUE')}, ${v('ANCHOR')})`);return;
         case 'arcade_changeSpriteScale': push(`${v('ID')}.changeScale(${v('VALUE')}, ${v('ANCHOR')})`);return;
+        case 'arcade_followSprite': push(`${v('ID')}.follow(${v('TARGET')}, ${v('SPEED')}, ${v('TURN')})`);return;
+        case 'arcade_unfollowSprite': push(`${v('ID')}.unfollow()`);return;
         case 'arcade_setSpritePosition': push(`${v('ID')}.setPosition(${v('X')}, ${v('Y')})`); return;
         case 'arcade_setSpriteProperty': {
             const property = this.field(b, 'PROPERTY');

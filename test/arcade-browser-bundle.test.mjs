@@ -74,6 +74,16 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         extension.stopControllingSprite({CONTROLLER:'4',ID:hero});
         rt.bwArcadeDeviceState.controllerButtons[4]={};
         extension._inst._moveControlledSprites([controlled]);assert.equal(controlled.vx,80,'bundled stop retains velocity');
+        assert.ok(blocks.some(block=>block.opcode==='followSprite'));
+        assert.ok(blocks.some(block=>block.opcode==='unfollowSprite'));
+        const goal=extension.createImageSprite({IMAGE:frame,TEMPLATE:'',KIND:'Enemy'});
+        extension.setSpritePosition({ID:hero,X:40,Y:30});extension.setSpritePosition({ID:goal,X:120,Y:30});
+        extension.setSpriteProperty({ID:hero,PROPERTY:'vx',VALUE:0});
+        extension.setSpriteProperty({ID:hero,PROPERTY:'vy',VALUE:0});
+        extension.followSprite({ID:hero,TARGET:goal,SPEED:25,TURN:400});
+        extension._inst._globalElapsedMs+=10;extension._moveFollowingSprites();
+        assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'vx'}),2);
+        extension.unfollowSprite({ID:hero});assert.equal(extension.spriteProperty({ID:hero,PROPERTY:'vx'}),0);
         extension.spriteSay({ID:hero,TEXT:'A',DURATION:100,ANIMATED:false,FOREGROUND:2,BACKGROUND:9,MODE:'text'});
         assert.equal(extension._inst._speech.get(hero).text,'A','generated PXT speech renders through the bundled bridge');
         rt.bwArcadeAnimationResources=new Map([['first',{name:'Run',source:{targetName:'art'}}],['second',{name:'Run',source:{targetName:'art'}}]]);
