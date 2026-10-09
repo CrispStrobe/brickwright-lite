@@ -15,6 +15,14 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade legacy speech camera bridge — 2026-10-09
+
+Codex owns `lane/arcade-legacy-speech-camera-20261009`, stacked on PR768.
+Preserve world coordinates, original camera offsets and RelativeToCamera in
+legacy speech. Compare original indexed frames at viewport edges, offscreen
+owners and camera flag changes. Keep native bubble identity, callbacks, frame
+composition and GUI presentation gaps explicit; no corpus reranking.
+
 ## Arcade speech across scene suspension — 2026-10-09
 
 Codex owns `lane/arcade-speech-global-clock-20261009`, stacked on PR767.

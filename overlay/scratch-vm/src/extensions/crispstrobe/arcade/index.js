@@ -1535,7 +1535,7 @@ module.exports = makeExt(`// Name: Arcade
       const entry = {target, text, legacy, foreground, background, animated: Scratch.Cast.toBoolean(args.ANIMATED),
         end: Number.isFinite(duration) && duration >= 0 ? now + duration : null};
       entry.renderer = speechEngine.create(text, Number.isFinite(duration) ? duration : -1,
-        entry.animated, foreground, background, legacy, owner, now);
+        entry.animated, foreground, background, legacy, owner, now, legacy ? this._camera() : undefined);
       this._speech.set(id, entry);
       if (!state.speech) state.speech = {};
       state.speech[id] = {text, duration, animated: entry.animated, foreground, background,
@@ -1656,7 +1656,8 @@ module.exports = makeExt(`// Name: Arcade
     _renderSpeech(id, entry, owner, dt) {
       const camera=this._camera(),relative=!!(owner.flags & spriteFlags.RelativeToCamera);
       const view={...owner,x:owner.x-(relative?0:camera.drawOffsetX),y:owner.y-(relative?0:camera.drawOffsetY)};
-      entry.raster=speechEngine.renderRaster(entry.renderer,view,this._globalElapsedMs,dt);
+      entry.raster=speechEngine.renderRaster(entry.renderer,entry.legacy ? owner : view,
+        this._globalElapsedMs,dt,entry.legacy ? camera : undefined);
       const pixels=entry.raster.pixels;
       const renderer = this._runtime?.renderer;
       if (!renderer) return;

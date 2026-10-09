@@ -87,7 +87,9 @@ Original LegacySpriteSayRenderer creates an ordinary sprite of kind=-1 in its
 constructor, sets Ghost and RelativeToCamera, then updates its initial image and
 position. Subsequent updates set z=owner.z+1. Owner invisibility does not make
 that independent sprite invisible. Its identity participates in the scene's
-creation order and kind collections. Clearing, replacing or expiring speech
+creation order. PXT deliberately excludes negative kinds from kind collections:
+`sprites.allOfKind(-1)` returns an empty array, while `sprites.onCreated(-1, ...)`
+can observe the bubble. Clearing, replacing or expiring speech
 and owner destruction must destroy the bubble through native sprite ownership.
 
 The existing bridge uses a lightweight BubbleSprite. Do not claim its pixel
@@ -98,7 +100,8 @@ Required implementation and checks:
 - Use native sprite/image handles, scene membership and original ID allocation.
   Compare bubble IDs, owner IDs and creation-order ties with original PXT.
 - Preserve kind=-1 and Ghost/RelativeToCamera semantics; qualify
-  sprites.allOfKind(-1), original creation/destruction callbacks and captures.
+  the empty result of sprites.allOfKind(-1), original negative-kind
+  creation/destruction callbacks and captures.
   Creation handlers can yield; keep the existing native callback completion
   contract rather than dropping those callbacks in a synchronous image factory.
 - Preserve original bubble image sizing, transparent corners, cached fonts,

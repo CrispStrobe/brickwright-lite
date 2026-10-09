@@ -4,6 +4,11 @@ module.exports = function createSpeechEngine(initialize, fonts) {
     let now = 0;
     let deltaTime = 0;
     const camera = {offsetX: 0, offsetY: 0, drawOffsetX: 0, drawOffsetY: 0};
+    function setCamera(value) {
+        for (const key of ['offsetX', 'offsetY', 'drawOffsetX', 'drawOffsetY']) {
+            camera[key] = value ? Number(value[key]) || 0 : 0;
+        }
+    }
     const decoded = {};
     for (const key of ['font8', 'font12']) {
         const font = fonts[key];
@@ -93,7 +98,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
     pxt.Flag = {Destroyed: 1, RelativeToCamera: 2};
     pxt.create = img => new BubbleSprite(img);
     function ownerFor(sprite) {
-        const owner = Object.assign({}, sprite, {flags: 0});
+        const owner = Object.assign({}, sprite, {flags: (sprite.flags & 512 ? 2 : 0) | (sprite._destroyed ? 1 : 0)});
         owner.left = owner.x - owner.width / 2;
         owner.top = owner.y - owner.height / 2;
         owner._hitbox = {oy: 0};
@@ -101,11 +106,16 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             const first = sprite.mask.findIndex(pixel => pixel !== 0);
             if (first >= 0) owner._hitbox.oy = Math.floor(first / sprite.width);
         }
-        owner.isOutOfScreen = () => owner.left + owner.width < 0 || owner.top + owner.height < 0 ||
-            owner.left > 160 || owner.top > 120;
+        owner.isOutOfScreen = view => {
+            const ox = owner.flags & 2 ? 0 : view.drawOffsetX;
+            const oy = owner.flags & 2 ? 0 : view.drawOffsetY;
+            return owner.left + owner.width - ox < 0 || owner.top + owner.height - oy < 0 ||
+                owner.left - ox > 160 || owner.top - oy > 120;
+        };
         return owner;
     }
-    function renderRaster(renderer, sprite, time, dt) {
+    function renderRaster(renderer, sprite, time, dt, viewCamera) {
+        setCamera(viewCamera);
         now = time; deltaTime = dt;
         screen.fill(0);
         screen.writes.fill(0);
@@ -115,12 +125,15 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         renderer.draw(screen, camera, owner);
         const bubble = renderer.sayBubbleSprite;
         if (bubble && !bubble.destroyed) {
-            screen.drawTransparentImage(bubble.image, Math.floor(bubble.left), Math.floor(bubble.top));
+            const ox = bubble.flags & 2 ? 0 : camera.drawOffsetX;
+            const oy = bubble.flags & 2 ? 0 : camera.drawOffsetY;
+            screen.drawTransparentImage(bubble.image, Math.floor(bubble.left - ox), Math.floor(bubble.top - oy));
         }
         return {width:160,height:120,pixels:screen.pixels.slice(),writes:screen.writes.slice()};
     }
     return {
-        create(text, duration, animated, foreground, background, legacy, sprite, time) {
+        create(text, duration, animated, foreground, background, legacy, sprite, time, viewCamera) {
+            setCamera(viewCamera);
             now = time;
             const owner = ownerFor(sprite);
             const renderer = legacy ? new pxt.LegacySpriteSayRenderer(text, duration < 0 ? undefined : duration,
@@ -130,6 +143,6 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             return renderer;
         },
         renderRaster,
-        render: (renderer, sprite, time, dt) => renderRaster(renderer, sprite, time, dt).pixels
+        render: (renderer, sprite, time, dt, viewCamera) => renderRaster(renderer, sprite, time, dt, viewCamera).pixels
     };
 };

@@ -2044,3 +2044,11 @@ Speech creation, raster animation and expiry use the existing global simulated
 clock, following original PXT control.millis/game.runtime speech semantics.
 Scene-local frame and physics clocks remain separate. Original PXT speech
 sources and simulator remain unchanged for suspended-scene comparisons.
+
+### Legacy speech camera bridge
+
+The speech adapter follows the credited Microsoft PXT MIT Sprite.isOutOfScreen
+and legacy speech camera/flag semantics. Native world coordinates and camera
+draw offsets are passed through to the retained original renderer; generated
+PXT sources and font data are unchanged. This does not integrate native bubble
+identity, yielding callbacks or complete frame presentation.
