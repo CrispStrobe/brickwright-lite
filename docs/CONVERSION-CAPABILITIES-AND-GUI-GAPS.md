@@ -6,6 +6,52 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native legacy speech bubbles — 2026-10-09
+
+Implementation `d51cf93c7bcfd0bc62b9c9035d686651208939d8` replaces runtime lightweight bubbles with
+ordinary native image/sprite allocation and scene IDs. Negative-kind creation
+callbacks see the blank original image before Ghost/camera flags and glyph
+updates; callbacks may pause and create additional sprites. A credited PXT
+constructor adaptation resumes after those handlers, preserving captured
+geometry/timing and updated owner position. The facade delegates image buffers,
+coordinates, flags and destruction to the native sprite; shared image aliases
+remain writable. Original generated PXT code and font data are unchanged.
+
+47 checks pass without skips:18 new checks with18 complete original19200-pixel
+planes (345600 native/original comparisons), plus29 camera, clock, speech,
+authoring and fresh development/production bundle regressions. Original IDs,
+x/y/z/dimensions/flags and callback observations match. Cases include z/id ties,
+invisible owners, duplicate persistent say, replacement, empty/null/undefined
+clear, expiry, yielding creation/destruction, mutable creation image aliases,
+scene restoration and long suspended-scene expiry. Code/Blocks, saved-SB3
+replay, MakeCode export/reimport and executed original export frames also pass.
+
+Original owner destruction leaves the independent legacy bubble alive, even
+with an elapsed speech deadline. The implementation now preserves that observed
+behaviour; the earlier acceptance-contract assumption of bubble cleanup was
+incorrect. Reset discards old native ownership without invoking old project
+callbacks. Promise continuations restore their caller's shared BlockUtility;
+a destruction-handler pause had exposed stale caller context before the fix.
+Encoded undefined duration also exposed duplicate recreation; decoding at the
+runtime boundary fixes it and supports null/undefined text clearing. Initial
+namespace, duplicate and caller-context failures remain retained privately.
+
+### GUI and remaining qualification
+
+Existing legacy speech Blocks and pseudocode feed these native sprites; no new
+producer vocabulary or pin is needed. Native image presentation replaces the
+separate full-screen legacy SVG, and the ordinary native compositor includes
+the real bubble at its z/id. Full shipped GUI/controller pixels remain pending.
+The frame coverage marker still lists legacySpeech as remaining until native
+scroll/clock, complex callback reentry/scene-change and GUI qualification pass.
+HUD, effects, render callbacks and global screen snapshots remain open.
+
+Importer and corpus inputs were unchanged by this slice. The latest measured
+corpus remains109 translated /74 partial /1 malformed, without reranking.
+See the [receipt](receipts/2026-10-09-arcade-native-legacy-bubble.json) and revised
+[acceptance contract](ARCADE-SCREEN-RENDER-CONTRACT.md#legacy-bubble-integration).
+All enabled exact-head hosted checks remain required before merge.
+
 ## Fixed negative sprite kinds — 2026-10-09
 
 Implementation 183f5376da8dd1c137d58771a156036072143f5a preserves fixed negative numeric kinds in native

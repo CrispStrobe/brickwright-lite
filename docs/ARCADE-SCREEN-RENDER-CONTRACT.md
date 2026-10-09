@@ -90,7 +90,10 @@ that independent sprite invisible. Its identity participates in the scene's
 creation order. PXT deliberately excludes negative kinds from kind collections:
 `sprites.allOfKind(-1)` returns an empty array, while `sprites.onCreated(-1, ...)`
 can observe the bubble. Clearing, replacing or expiring speech
-and owner destruction must destroy the bubble through native sprite ownership.
+must destroy the bubble through native sprite ownership while the owner remains
+active. Original PXT execution shows owner destruction instead leaves the
+independent bubble alive, with no further owner text updates or expiry. Preserve
+that observed behaviour rather than the earlier assumed owner cleanup.
 
 Fixed negative-kind import/export, empty kind queries and existing native
 callback completion are now qualified independently (see the
@@ -98,8 +101,19 @@ callback completion are now qualified independently (see the
 not allocate a native legacy bubble. Numeric Sprite.kind() reporters and runtime
 kind expressions remain separate identity work.
 
-The existing bridge uses a lightweight BubbleSprite. Do not claim its pixel
-image or a newly invented draw-list ID is the required native integration.
+The runtime now allocates native image/sprite handles and runs the ordinary
+creation callbacks through a resumable factory adapted from PXT. Isolated font
+checks retain a lightweight BubbleSprite fallback; it is not runtime ownership.
+See the [native bubble receipt](receipts/2026-10-09-arcade-native-legacy-bubble.json).
+
+47 checks qualify the current slice, including18 full original frames, actual
+IDs, blank-image callback pauses, image aliases, destruction pauses,
+clear/replacement/expiry and scene restoration. Callback continuation restores
+the caller's shared BlockUtility before subsequent creation. Null/undefined text
+clears speech; decoded undefined duration preserves duplicate persistent speech.
+Native sprites compose the bubbles through their existing z/id draw path.
+Legacy coverage remains gated pending native scrolling/clock comparisons,
+complex callback reentry/scene changes and actual shipped GUI qualification.
 
 Required implementation and checks:
 
@@ -113,7 +127,9 @@ Required implementation and checks:
 - Preserve original bubble image sizing, transparent corners, cached fonts,
   scrolling, owner-relative placement and mutable pixel/image queries.
 - Destroy or replace native bubbles with original callback/lifecycle ordering.
-  Qualify duplicate persistent say, new text, clear, expiry and destroyed owners.
+  Duplicate persistent say, new text, null/undefined clear, expiry and ordinary
+  yielding callbacks now pass. Preserve the observed independent bubble after
+  owner destruction; qualify complex callback reentry and scene-changing handlers.
 - Suspend scene-owned bubbles and restore them with the owner. Expiry uses the
   qualified global speech clock; animation and scene transition ordering still
   need original execution comparisons.
