@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "79ee6b89fc0814f9ddca4c3e53cf7b6a1e4cfd15",
+  "base": "65f69a22a892e4707c14d6ff73b67dac49906e8f",
+  "implemented": [
+    "Modern/legacy tiles in indexed z/id-sorted scene composition",
+    "Tile renderable creation identity retained on map replacement/clear and scene restoration",
+    "Shared renderer/compositor tile raster with original inclusive bounds/camera shifts/transparent blits",
+    "Original legacy padded-cache and live map aliases retained"
+  ],
+  "local": {
+    "tileChecks": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0,
+      "log": "arcade-frame-tiles-qualified.log",
+      "originalPxtPlanes": 13,
+      "pixelsPerPlane": 19200,
+      "comparedPixels": 249600,
+      "originalRenderableAndSpriteIds": true
+    },
+    "regressions": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "log": "arcade-frame-tiles-regressions.log"
+    },
+    "boundary": "Original PXT Chromium pixel/ID comparisons, native VM frames, both fresh extension bundles and frame/camera/legacy/tile-data regressions. Full shipped GUI journey pending."
+  },
+  "coverage": [
+    "background",
+    "tilemap",
+    "sprites"
+  ],
+  "remainingLayers": [
+    "renderables",
+    "hud",
+    "speech",
+    "effects"
+  ],
+  "retainedFailures": [
+    "Initial modern fixtures incorrectly required no import diagnostic; exact existing terrain qualification refusal retained, separate from drawing checks"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "importerUnchanged": true,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1,
+    "latestHashVerifiedInputs": 184
+  },
+  "remaining": [
+    "Render callback ordering and identity",
+    "HUD/speech/effects composition",
+    "Unified frame presentation and global screen snapshots",
+    "Full shipped controller-pane indexed tile check and all enabled hosted checks before merge",
+    "Existing terrain qualification diagnostic remains unchanged"
+  ]
+}

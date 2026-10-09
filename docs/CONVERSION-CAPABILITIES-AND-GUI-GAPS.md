@@ -6,6 +6,42 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Indexed tile layers and renderable identity — 2026-10-09
+
+Implementation `79ee6b89fc0814f9ddca4c3e53cf7b6a1e4cfd15` adds modern and legacy
+tile rasters to the internal scene frame. Tile renderables allocate from the
+scene's original creation-ID sequence, at z=-1; replacing or clearing map data
+retains identity. Scene restoration retains the parent's renderable identity.
+Tiles and sprites now compose in one sorted z/id list, including ties created
+in either order and sprites below the tile layer.
+
+The renderer and indexed compositor share tile raster generation: original
+inclusive bounds, camera bit shifts and transparent tile blits. Cached padded
+legacy artwork and live map aliases retain their existing original semantics.
+Original PXT tile drawing and identity are credited in THIRD-PARTY-NOTICES.md.
+
+13 new checks pass, comparing13 complete original19200-pixel planes (249600
+pixels) and original tile/sprite IDs. Cases include both modern/legacy creation
+orders, z below/above tiles, modern camera offset and padded art, replacement,
+clear, parent scene restoration, live map mutation and cached legacy tile art.
+19 affected frame/bundle/camera/legacy/tile-data regression checks also pass,
+all without skips. The controller-pane legacy tile journey now checks the
+indexed frame pixel; full hosted GUI execution remains pending.
+
+Frame coverage is now background, tilemap and sprites. Callback renderables,
+HUD, speech and effects remain explicit missing layers. Screen snapshots and
+paint/shade conversion remain unavailable. This adds no new authoring vocabulary
+or graphics UI; existing tile authoring feeds the internal raster. Existing stage
+presentation still needs adoption of the completed frame pipeline.
+
+The importer is unchanged. Modern-map tests retain the exact existing terrain
+qualification diagnostic; drawing qualification does not close that broader
+terrain boundary. The initial harness wrongly expected no diagnostic and its
+raw failure is retained. Latest measured corpus remains109 translated /74 partial
+/1 malformed, without reranking unchanged importer inputs. See the
+[receipt](receipts/2026-10-09-arcade-indexed-tiles.json) and
+[remaining screen contract](ARCADE-SCREEN-RENDER-CONTRACT.md).
+
 ## Indexed scene frame foundation — 2026-10-09
 
 Implementation `3f6ad084c84e64bfce0820ea23cd280143301322` adds an internal indexed

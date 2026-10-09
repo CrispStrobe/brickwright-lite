@@ -1,8 +1,9 @@
 # Arcade screen and render callbacks: implementation contract
 
-Status: initial S01 background/sprite foundation implemented at `3f6ad084c`.
-Five original PXT full pixel planes and19 affected checks pass. Tilemaps,
-renderables, HUD, speech and effects are still missing from this raster.
+Status: S01 background, sprite and modern/legacy tile composition implemented.
+Tile source `79ee6b89f`:13 original full pixel planes and19 affected regression
+checks pass; renderable creation IDs and z=-1 ties match original PXT.
+Callback renderables, HUD, speech and effects remain missing from the raster.
 No screen snapshot or paint/shade support claim.
 Prerequisite implementation: native Image.scroll and Image.copyFrom, with
 original-PXT pixel comparisons and dedicated editable Blocks/Code words.
@@ -59,10 +60,9 @@ profile if imported. Do not silently claim both scheduling models.
 
 ## Ordered closure plan
 
-- S01: background/sprite foundation implemented and compared against five
-  original19200-pixel planes. Finish tilemaps and all supported scene content;
-  do not
-  expose snapshots until it passes original pixel comparisons.
+- S01: background/sprite foundation and modern/legacy tile composition qualify
+  against original indexed frames. Complete all supported scene content and
+  qualify unified presentation before exposing global screen snapshots.
 - S02: screen Image handle and cloning, including image mutation/copying.
 - S03: renderable identity, sorted callback execution and paint/shade events.
 - S04: text/HUD/speech/effects composition and remaining screen Image methods.
