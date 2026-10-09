@@ -15,6 +15,14 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade indexed tile layers — 2026-10-09
+
+Codex owns `lane/arcade-frame-tiles-20261009`, stacked on PR765. Add modern
+and legacy tile rasters to the internal indexed frame, track tile renderable
+creation identity and compare original full pixel planes at z=-1 ties, map
+replacement/clear, camera offsets and cached legacy art. Keep screen and render
+callback diagnostics until the remaining layers are complete. No producer change.
+
 ## Arcade indexed frame compositor — 2026-10-09
 
 Codex owns `lane/arcade-indexed-frame-20261009`, stacked on PR764. Implement
