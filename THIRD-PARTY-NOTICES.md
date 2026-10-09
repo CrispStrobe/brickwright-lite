@@ -2060,3 +2060,14 @@ Microsoft PXT sprites.allOfKind and Sprite.setKind semantics: negative numeric
 kinds retain their sprite/callback identity but do not join kind collections.
 The existing scene, physics and callback implementations remain in use; original
 PXT simulator/source comparisons exercise the behaviour without changing them.
+
+### Native legacy speech constructor continuation
+
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech-native-legacy.js`
+adapts the credited Microsoft PXT Arcade4.2.1 game/spritesay.ts legacy renderer
+(MIT, Copyright Microsoft Corporation). The constructor is a resumable factory
+so native creation callbacks can pause before flags and text are installed.
+Original geometry, glyph drawing and scrolling logic are retained with a native
+sprite/image facade. The original generated speech-pxt.js and credited fonts
+remain unchanged for comparisons. This is attributed PXT adaptation and
+integration, not a clean-room implementation.

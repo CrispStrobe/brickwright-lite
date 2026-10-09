@@ -13,7 +13,6 @@ module.exports = makeExt(`// Name: Arcade
   "use strict";
 
   const dependencies = Scratch.BWExtensionDependencies;
-  const speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts);
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -27,6 +26,8 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
+        dependencies.initializeNativeLegacy);
       this._fallbackState = null;
       // Palette is display state shared by every scene, never an image mutation.
       this._projectPalette = null;
@@ -93,7 +94,9 @@ module.exports = makeExt(`// Name: Arcade
           for(const bundle of this._sceneBundles){
             for(const target of Object.values(bundle.state.spriteTargets || {})) runtime.disposeTarget?.(target);
             for(const entry of bundle._speech.values()){
-              entry.renderer.destroy();
+              // Reset discards native scene ownership; it must not invoke old
+              // project callbacks while rebuilding the sprite registries.
+              if(!entry.nativeBubbleId)entry.renderer.destroy();
               if(entry.drawableId!==undefined)runtime.renderer?.destroyDrawable(entry.drawableId,'sprite');
               if(entry.skinId!==undefined)runtime.renderer?.destroySkin(entry.skinId);
             }
@@ -107,7 +110,7 @@ module.exports = makeExt(`// Name: Arcade
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
           this._createdHandlers = [];
           this._wallHandlers = [];this._legacyWallHandlers = [];this._tileHandlers = [];
-          for (const id of this._speech.keys()) this._clearSpeech(id);
+          for (const id of this._speech.keys()) this._clearSpeech(id, undefined, true);
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
           this._images.clear();
@@ -1518,8 +1521,9 @@ module.exports = makeExt(`// Name: Arcade
       const target = self ? util?.target : state.spriteTargets[id];
       const owner = this._speechOwner(id, target);
       if (!owner) return;
-      const text = args.TEXT == null ? '' : String(args.TEXT);
-      const duration = Number(args.DURATION);
+      const rawText = Scratch.BWValues.decode(args.TEXT), rawDuration = Scratch.BWValues.decode(args.DURATION);
+      const text = rawText == null ? '' : String(rawText);
+      const duration = Number(rawDuration);
       const legacy = String(args.MODE) === 'legacy';
       const foreground = (Number(args.FOREGROUND) || 0) & 15;
       const background = (Number(args.BACKGROUND) || 0) & 15;
@@ -1528,20 +1532,68 @@ module.exports = makeExt(`// Name: Arcade
       // when an overlap callback repeats the same message every frame.
       if (text && legacy && previous?.legacy && previous.text === text &&
         previous.foreground === foreground && previous.background === background &&
-        duration < 0 && previous.end === null) return;
-      this._clearSpeech(id);
-      if (!text) { this._changed(); return; }
-      const now = this._globalElapsedMs;
+        (rawDuration === undefined || Number.isFinite(duration) && duration < 0) && previous.end === null) return;
+      const now = this._globalElapsedMs, speech = this._speech, epoch=this._terrainEpoch, caller=util?.thread;
       const entry = {target, text, legacy, foreground, background, animated: Scratch.Cast.toBoolean(args.ANIMATED),
-        end: Number.isFinite(duration) && duration >= 0 ? now + duration : null};
-      entry.renderer = speechEngine.create(text, Number.isFinite(duration) ? duration : -1,
-        entry.animated, foreground, background, legacy, owner, now, legacy ? this._camera() : undefined);
-      this._speech.set(id, entry);
-      if (!state.speech) state.speech = {};
-      state.speech[id] = {text, duration, animated: entry.animated, foreground, background,
-        mode: legacy ? 'legacy' : 'text', end: entry.end};
-      this._renderSpeech(id, entry, owner, 0);
-      this._changed();
+        end: Number.isFinite(duration) && duration >= 0 ? now + duration : null, util};
+      const finish = renderer => this._withSpeechCaller(util,caller,()=>{
+        if(!renderer || epoch!==this._terrainEpoch)return;
+        entry.renderer = renderer;
+        speech.set(id, entry);
+        if (!state.speech) state.speech = {};
+        state.speech[id] = {text, duration, animated: entry.animated, foreground, background,
+          mode: legacy ? 'legacy' : 'text', end: entry.end};
+        this._renderSpeech(id, entry, owner, 0);
+        this._changed();
+      });
+      const create = () => this._withSpeechCaller(util,caller,()=>{
+        if(epoch!==this._terrainEpoch)return;
+        if (!text) {this._changed();return;}
+        if (!legacy) return finish(this._speechEngine.create(text, Number.isFinite(duration) ? duration : -1,
+          entry.animated, foreground, background, false, owner, this._globalElapsedMs));
+        const work = this._speechEngine.createNative(text,
+          Number.isFinite(duration) ? duration : -1, foreground, background, owner,
+          {time:()=>this._globalElapsedMs,camera:()=>this._camera()},
+          image=>this._createSpeechBubble(image, entry, util));
+        return work && typeof work.then === 'function' ? work.then(finish) : finish(work);
+      });
+      const cleared = this._clearSpeech(id, util);
+      return cleared && typeof cleared.then === 'function' ? cleared.then(create) : create();
+    }
+    _withSpeechCaller(util, caller, action) {
+      if(!util || !caller)return action();
+      // BlockUtility is reused by the sequencer. Promise continuations must
+      // restore the originating fiber before nested creation callbacks run.
+      const previousThread=util.thread,previousSequencer=util.sequencer;
+      util.thread=caller;util.sequencer=this._runtime?.sequencer || previousSequencer;
+      try{return action();}
+      finally{util.thread=previousThread;util.sequencer=previousSequencer;}
+    }
+    _createSpeechBubble(image, entry, util) {
+      const width=image.width,height=image.height;
+      const id=this._createSprite({KIND:'-1',WIDTH:width,HEIGHT:height,
+        X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2,IMAGE:this._imageHandle(image)});
+      const sprite=this._spriteValues.get(id),ext=this;
+      entry.nativeBubbleId=id;
+      // This facade delegates to the ordinary native sprite and image. It does
+      // not allocate an extra ID or own an independent pixel buffer.
+      const bubble={
+        get image(){return ext._speechEngine.pixelImage(sprite.image);},
+        get width(){return sprite.width;},get height(){return sprite.height;},
+        get x(){return sprite.x;},set x(value){sprite.x=value;},
+        get y(){return sprite.y;},set y(value){sprite.y=value;},
+        get z(){return sprite.z;},set z(value){sprite.z=value;},
+        get left(){return sprite._fx/256;},set left(value){sprite.x=value+sprite.width/2;},
+        get right(){return sprite._fx/256+sprite.width;},set right(value){sprite.x=value-sprite.width/2;},
+        get top(){return sprite._fy/256;},
+        get flags(){return (sprite._destroyed?1:0)|(sprite.flags&spriteFlags.RelativeToCamera?2:0)|(sprite.flags&spriteFlags.Ghost?4:0);},
+        get destroyed(){return !!sprite._destroyed;},
+        setImage(value){ext.setSpriteImage({ID:id,IMAGE:ext._imageHandle(value)});},
+        setFlag(flag,on){ext.setSpriteFlag({ID:id,FLAG:flag===4?'Ghost':'RelativeToCamera',ON:on});},
+        destroy(){return ext.destroySprite({ID:id},entry.util);}
+      };
+      const created=this._finishSpriteCreation(id,util);
+      return created && typeof created.then==='function' ? created.then(value=>value ? bubble : null) : created ? bubble : null;
     }
     _paletteColors() { return this._projectPalette || speechPalette; }
     _imagePalette(image) { return this._projectPalette ? [null,...this._projectPalette.slice(1)] : image?.palette; }
@@ -1643,21 +1695,28 @@ module.exports = makeExt(`// Name: Arcade
       renderer?.destroySkin(this._background.skin);
       this._background = null;
     }
-    _clearSpeech(id) {
+    _clearSpeech(id, util, discard = false) {
       const entry = this._speech.get(id);
       if (!entry) return;
-      entry.renderer.destroy();
+      entry.util=util;
+      const work=discard ? undefined : entry.renderer.destroy();
       const renderer = this._runtime?.renderer;
       if (entry.drawableId !== undefined) renderer?.destroyDrawable(entry.drawableId, 'sprite');
       if (entry.skinId !== undefined) renderer?.destroySkin(entry.skinId);
       this._speech.delete(id);
       if (this._state().speech) delete this._state().speech[id];
+      return work;
     }
     _renderSpeech(id, entry, owner, dt) {
       const camera=this._camera(),relative=!!(owner.flags & spriteFlags.RelativeToCamera);
       const view={...owner,x:owner.x-(relative?0:camera.drawOffsetX),y:owner.y-(relative?0:camera.drawOffsetY)};
-      entry.raster=speechEngine.renderRaster(entry.renderer,entry.legacy ? owner : view,
+      entry.raster=this._speechEngine.renderRaster(entry.renderer,entry.legacy ? owner : view,
         this._globalElapsedMs,dt,entry.legacy ? camera : undefined);
+      if(entry.nativeBubbleId) {
+        const bubble=this._spriteValues.get(entry.nativeBubbleId);
+        if(bubble && !bubble._destroyed){this._refreshImage(bubble.image);this._positionSprite(bubble.id);}
+        return;
+      }
       const pixels=entry.raster.pixels;
       const renderer = this._runtime?.renderer;
       if (!renderer) return;
@@ -1683,13 +1742,16 @@ module.exports = makeExt(`// Name: Arcade
         renderer.setDrawableOrder(entry.drawableId, renderer.getDrawableOrder(entry.target.drawableID) + 1, 'sprite');
       }
     }
-    _advanceSpeech(dt) {
+    *_advanceSpeechSteps(dt) {
       // PXT speech deadlines and animation time use control.millis/game.runtime,
       // which continue while the owning scene is suspended.
-      const now = this._globalElapsedMs;
+      const now = this._globalElapsedMs, state = this._state();
       for (const [id, entry] of this._speech) {
         const owner = this._speechOwner(id, entry.target);
-        if (!owner || entry.end !== null && now + 1e-6 >= entry.end) this._clearSpeech(id);
+        if (!owner || entry.end !== null && now + 1e-6 >= entry.end) {
+          const work=this._clearSpeech(id);if(work && typeof work.then==='function')yield work;
+          if(this._state()!==state)return;
+        }
         else this._renderSpeech(id, entry, owner, dt);
       }
     }
@@ -1979,7 +2041,11 @@ module.exports = makeExt(`// Name: Arcade
       if (!sprite || sprite._destroyed) return;
       sprite._destroyed=true;
       const members=state.physicsEngine.members,index=members.indexOf(sprite);if(index>=0)members.splice(index,1);
-      this._clearSpeech(id);
+      if(this._speech.get(id)?.nativeBubbleId) {
+        // Original PXT removes the owner without destroying its independent
+        // legacy bubble. It stops receiving owner speech updates and expiry.
+        this._speech.delete(id);if(state.speech)delete state.speech[id];
+      }else this._clearSpeech(id,util);
       this._clearImage(id);
       const target = state.spriteTargets[id];
       if (target && this._runtime && this._runtime.disposeTarget) {
@@ -3302,7 +3368,7 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;this._advanceSpeech(dt);this._composeSceneFrame();this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;this._composeSceneFrame();this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
@@ -3324,7 +3390,8 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
       yield* this._lifeZeroSteps();if(this._state()!==state)return;
-      this._advanceSpeech(dt);
+      yield* this._advanceSpeechSteps(dt);
+      if(this._state()!==state)return;
       this._composeSceneFrame();
       this._changed();
       this._startFrameHats();
@@ -3358,6 +3425,7 @@ module.exports = makeExt(`// Name: Arcade
 `, {
   createSpeechEngine: require('./speech'),
   initializeSpeech: require('./speech-pxt'),
+  initializeNativeLegacy: require('./speech-native-legacy'),
   fonts: require('./speech-fonts.json'),
   createImageEngine: require('./image'),
   initializeImage: require('./image-pxt'),

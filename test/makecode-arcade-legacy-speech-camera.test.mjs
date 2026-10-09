@@ -52,9 +52,11 @@ for(const c of cases)test('legacy bridge matches complete original PXT bubble fr
  assert.deepEqual([...entry.raster.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
  assert.deepEqual([bubble.x,bubble.y,bubble.z],[original.bx,original.by,original.bz]);
  assert.equal(!!(bubble.flags&2),!!(owner.flags&512));
- // This bridge qualification does not grant native identity or frame coverage.
+ // Native allocation is integrated; complete frame coverage remains separately gated.
  assert.ok(ext._state().sceneFrame.remaining.includes('legacySpeech'));
- assert.equal(Object.values(ext._state().sprites).length,1);
+ assert.equal(Object.values(ext._state().sprites).length,2);
+ const native=ext._state().sprites[entry.nativeBubbleId];
+ assert.equal(native.kind,'-1');assert.equal(native.pxtId,1);
 });
 test('legacy camera speech remains editable and executes after Code/Blocks/MakeCode roundtrip',async()=>{
  const imported=arcadeToPseudocode(sourceFor(cases[0]));assert.deepEqual(imported.unsupported,[]);

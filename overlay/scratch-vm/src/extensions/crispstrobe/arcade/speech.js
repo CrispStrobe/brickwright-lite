@@ -1,6 +1,6 @@
 // Pixel-image and clock bridge for PXT's speech renderers. This function is
 // passed to the extension adapter with the generated PXT classes.
-module.exports = function createSpeechEngine(initialize, fonts) {
+module.exports = function createSpeechEngine(initialize, fonts, initializeNativeLegacy) {
     let now = 0;
     let deltaTime = 0;
     const camera = {offsetX: 0, offsetY: 0, drawOffsetX: 0, drawOffsetY: 0};
@@ -131,7 +131,36 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         }
         return {width:160,height:120,pixels:screen.pixels.slice(),writes:screen.writes.slice()};
     }
+    const imageViews = new WeakMap();
+    function pixelImage(source) {
+        if (source instanceof PixelImage) return source;
+        let view = imageViews.get(source);
+        if (!view) {view = new PixelImage(source.width, source.height); imageViews.set(source, view);}
+        view.width = source.width; view.height = source.height; view.pixels = source.pixels;
+        return view;
+    }
     return {
+        pixelImage,
+        createNative(text, duration, foreground, background, sprite, context, allocate) {
+            now = context.time(); setCamera(context.camera()); deltaTime = 0;
+            const owner = ownerFor(sprite);
+            const resume = bubble => {
+                now = context.time(); setCamera(context.camera());
+                Object.assign(owner, ownerFor(sprite));
+                return bubble;
+            };
+            const create = initializeNativeLegacy(pxt, image, game, screen, inspect, value => value | 0,
+                (img, kind) => {
+                    const bubble = allocate(img, kind);
+                    return bubble && typeof bubble.then === 'function' ? bubble.then(resume) : resume(bubble);
+                });
+            const finish = renderer => {
+                if(renderer)renderer._bwOwner = owner;
+                return renderer;
+            };
+            const renderer = create(text, duration < 0 ? undefined : duration, owner, foreground, background);
+            return renderer && typeof renderer.then === 'function' ? renderer.then(finish) : finish(renderer);
+        },
         create(text, duration, animated, foreground, background, legacy, sprite, time, viewCamera) {
             setCamera(viewCamera);
             now = time;

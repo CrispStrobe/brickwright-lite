@@ -15,6 +15,18 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Native legacy speech bubble ownership — 2026-10-09
+
+Codex owns `lane/arcade-native-legacy-bubble-20261009`, stacked on PR770.
+Allocate native image/sprite handles and IDs, preserve blank-image callback
+ordering including pauses, Ghost/camera flags and original text updates.
+Adapt the credited PXT constructor into a resumable continuation; retain the
+original generated source for comparisons. Qualify replacement/clear/expiry,
+scene suspension and owner destruction against original execution. Original
+PXT owner destruction leaves the independent bubble alive; correct the earlier
+handoff assumption. Full GUI, complex callback reentry and screen completion
+remain separate gates until exercised.
+
 ## Arcade negative sprite kinds — 2026-10-09
 
 Codex owns `lane/arcade-negative-kind-20261009`, stacked on PR769. Preserve
