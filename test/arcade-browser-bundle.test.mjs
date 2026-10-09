@@ -38,6 +38,11 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         assert.ok(blocks.some(b=>b.opcode==='frameImage'));
         assert.equal(extension.spritePixel({ID:'missing',X:0,Y:0}),0);
         assert.equal(extension.backgroundColor(),0);
+        assert.ok(blocks.some(b=>b.opcode==='truncateNumber'));
+        assert.equal(extension.truncateNumber({NUM:-3.75}),-3);
+        assert.ok(Object.is(extension.truncateNumber({NUM:-0.5}),-0));
+        assert.ok(Number.isNaN(extension.truncateNumber({NUM:NaN})));
+        assert.equal(extension.truncateNumber({NUM:Infinity}),Infinity);
         const svg='<svg width="8" height="4" viewBox="0 0 8 4" shape-rendering="crispEdges" data-bw-pixel-scale="4" data-bw-palette="'+
             ['#123456','#123456',...Array(13).fill('#000000')].join(',')+'">'+
             '<rect x="0" y="0" width="4" height="4" fill="#123456" data-bw-color-index="1"/>'+

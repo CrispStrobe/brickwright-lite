@@ -12,6 +12,7 @@ import {LEGACY_TILE_VALUES_SOURCE} from '../test/fixtures/arcade-legacy-tile-val
 import {LEGACY_TILEMAP_SOURCE} from '../test/fixtures/arcade-legacy-tilemap.mjs';
 import {MULTIPLAYER_STATE_SOURCE} from '../test/fixtures/arcade-multiplayer-state.mjs';
 import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
+import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
 import {DIRECT_CONTROLLERS_SOURCE} from '../test/fixtures/arcade-direct-controllers.mjs';
 import {MULTIPLAYER_MOVEMENT_SOURCE} from '../test/fixtures/arcade-multiplayer-movement.mjs';
 import {MULTIPLAYER_PLAYERS_SOURCE} from '../test/fixtures/arcade-multiplayer-players.mjs';
@@ -553,6 +554,22 @@ let discardedReady=true`;
     report.directControllers={nativeFileImport:true,codeToBlocks:true,controllers:[1,2,3,4],speeds:directSpeeds,
         inputIsolation:true,releasedOnPointerUp:true,stopRetainsVelocity:true};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-direct-controllers.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const truncationProject=makeCodeProjectFile({'main.ts':TRUNCATE_NUMBER_SOURCE,
+        'pxt.json':JSON.stringify({name:'Number truncation',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Number truncation'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'number-truncation.mkcd',mimeType:'application/json',buffer:Buffer.from(truncationProject)});
+    await page.getByText(/Imported the Arcade game.*number-truncation/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({calls:1,sample:-3});
+    await page.getByTestId('bw-arcade-a').click();await waitMultifile({calls:2,sample:-3});
+    const truncatedSprite=await page.evaluate(()=>Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)[0]);
+    assert.equal(truncatedSprite.x,35);assert.equal(truncatedSprite.y,40);
+    report.numberTruncation={nativeFileImport:true,codeToBlocks:true,buttonTrigger:true,negativeResult:-3,
+        argumentCalls:2,spriteX:35,spriteY:40};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-number-truncation.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},

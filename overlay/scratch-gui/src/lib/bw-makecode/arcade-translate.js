@@ -724,6 +724,12 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push('scene.cameraProperty requires one property selector and native camera support');return 'undefined value';
         case 'scene.screenWidth': return String(HALF_WIDTH * 2);
         case 'scene.screenHeight': return String(HALF_HEIGHT * 2);
+        case 'Math.trunc':
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push('Math.trunc refers to a shadowed Math binding');return 'undefined value';
+            }
+            if(a.length!==1){this.unsupported.push('Math.trunc() requires exactly one number');return 'undefined value';}
+            return `arcade truncate (${this.expr(a[0])})`;
         case 'randint': return `pick random ${this.mathOperand(a[0])} to ${this.mathOperand(a[1])}`;
         case 'game.runtime': return 'timer * 1000';
         case 'controller.dx': return `arcade controller x step ${this.expr(a[0] || {type: 'Number', value: 100})}`;
@@ -2666,7 +2672,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
-        if(node.type==='Call' && ['Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
+        if(node.type==='Call' && ['Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && t.arrayReferences.has(node.callee.object))return true;
         if (node.type === 'Declaration' && node.decls.some(d => t.imageOf(d.init))) return true;
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;

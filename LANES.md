@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade number truncation — 2026-10-09
+
+Codex owns `lane/arcade-truncate-number-20261009`, stacked on PR750, and
+sb3-creator `feat/arcade-truncate-number-20261009`, stacked on PR75.
+Implement Math.trunc as a native authorable reporter in Blocks/pseudocode and
+MakeCode import/export. Qualify original PXT numbers, signed zero/non-finite
+values, argument evaluation and saved-project roundtrips. Remeasure unchanged
+inputs and preserve diagnostics; full browser qualification remains required.
+
 ## Arcade dialog / browser readiness — 2026-10-09
 
 Codex owns `lane/arcade-dialog-browser-readiness-20261009`, stacked on PR749.
