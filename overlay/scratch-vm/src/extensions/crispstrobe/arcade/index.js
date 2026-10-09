@@ -3212,14 +3212,17 @@ module.exports = makeExt(`// Name: Arcade
         this._tilemapDrawable = null;
       }
     }
-    spritesOfKind(args) {
-      const sprites = Object.values(this._state().sprites).filter(s => !s._destroyed && s.kind === String(args.KIND))
+    _spritesOfKind(kind) {
+      // PXT allOfKind explicitly excludes negative kinds. Those sprites stay
+      // in scene/physics ownership and continue to receive lifecycle callbacks.
+      if(Number(kind)<0)return [];
+      return Object.values(this._state().sprites).filter(s => !s._destroyed && s.kind === String(kind))
         .sort((a, b) => a._kindInsertion - b._kindInsertion);
-      return Scratch.BWValues.arrayReference(this._runtime, sprites.map(s => s.id));
     }
-    spriteCount(args) {
-      return Object.values(this._state().sprites).filter(s => !s._destroyed && s.kind === String(args.KIND)).length;
+    spritesOfKind(args) {
+      return Scratch.BWValues.arrayReference(this._runtime, this._spritesOfKind(args.KIND).map(s => s.id));
     }
+    spriteCount(args) { return this._spritesOfKind(args.KIND).length; }
     whenSpriteCreated(args, util) {
       const event = this._currentEvent || (util && util.thread && util.thread.bwArcadeEvent);
       return Boolean(event && String(event.KIND) === String(args.KIND));

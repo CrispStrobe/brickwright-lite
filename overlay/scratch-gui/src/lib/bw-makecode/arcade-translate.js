@@ -988,10 +988,10 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type==='Call' && this.handleTemplates && this.path(node.callee)==='sprites.allOfKind') {
             this.usesArrays=true;
             const kind=node.args?.[0];
-            if(node.args.length!==1 || kind?.type!=='Member' || this.path(kind.object)!=='SpriteKind') {
-                this.unsupported.push('sprites.allOfKind requires a supported SpriteKind member');return '0';
+            if(node.args.length!==1 || !fixedKind(kind)) {
+                this.unsupported.push('sprites.allOfKind requires a supported SpriteKind member or fixed negative numeric kind');return '0';
             }
-            return `arcade sprite array kind ${JSON.stringify(kind.name)}`;
+            return `arcade sprite array kind ${JSON.stringify(kindOf(kind))}`;
         }
         if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
@@ -1147,7 +1147,7 @@ class ArcadeTranslator extends BaseTranslator {
             return;
         }
         if (name === 'sprites.onCreated') {
-            if (a[0]?.type !== 'Member' || this.path(a[0].object) !== 'SpriteKind') {
+            if (!fixedKind(a[0])) {
                 push(this.note('sprites.onCreated() runtime kind expressions need support'));return;
             }
             const registration = this.createdRegistrations.get(node);
@@ -1798,8 +1798,21 @@ class ArcadeTranslator extends BaseTranslator {
     }
 }
 
-/** `SpriteKind.Player` → "Player"; a user kind resolves the same way. */
+// PXT negative kinds retain their numeric identity for callbacks, but do not
+// join spritesByKind. Only fixed literals are admitted here; runtime kind
+// expressions and unsupported positive numeric identities remain diagnosed.
+const negativeKind = node => {
+    const value = node?.type === 'Number' ? Number(node.value) :
+        node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number' ?
+            -Number(node.argument.value) : NaN;
+    return Number.isFinite(value) && value < 0 ? value : null;
+};
+const fixedKind = node => negativeKind(node) !== null ||
+    node?.type === 'Member' && node.object?.type === 'Identifier' && node.object.name === 'SpriteKind';
+
+/** SpriteKind member or fixed negative numeric kind → native kind identity. */
 const kindOf = node => {
+    if (negativeKind(node) !== null) return String(negativeKind(node));
     if (node && node.type === 'Member') return node.name;
     if (node && node.type === 'Identifier') return node.name;
     return 'Player';
@@ -1824,8 +1837,7 @@ const lowerDestroyAllSprites = (program, source) => {
         const kind = call?.args?.[0];
         if (callee?.type !== 'Member' || callee.object?.type !== 'Identifier' ||
             callee.object.name !== 'sprites' || callee.name !== 'destroyAllSpritesOfKind' ||
-            call.args.length !== 1 || kind?.type !== 'Member' ||
-            kind.object?.type !== 'Identifier' || kind.object.name !== 'SpriteKind') return node;
+            call.args.length !== 1 || !fixedKind(kind)) return node;
         do suffix++; while (source.includes(`__bwDestroyKindSprite${suffix}`));
         const name = `__bwDestroyKindSprite${suffix}`;
         return {type: 'ForOf', kind: 'let', name,
@@ -2413,10 +2425,10 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             const kind=node.args?.[0];
             const nativeScene=spec.maxParams!==undefined;
             const validScene=nativeScene && handler?.params?.length<=spec.maxParams &&
-                (spec.kinds||[]).every(index=>node.args[index]?.type==='Member' && translator.path(node.args[index].object)==='SpriteKind') &&
+                (spec.kinds||[]).every(index=>fixedKind(node.args[index])) &&
                 (!['scenePush','scenePop'].includes(spec.kind) || !handler.params.length || !containsAst(handler.body,value=>value.type==='Identifier' && value.name===handler.params[0]));
             if (handler?.type==='FunctionExpression' && node.args.length===spec.arity &&
-                (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && kind?.type==='Member' && translator.path(kind.object)==='SpriteKind')) {
+                (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && fixedKind(kind))) {
                 const captures = new Map(bindings);
                 for (const name of [...(handler.params || []), ...localNames(handler.body)]) captures.delete(name);
                 const index=(counts.get(spec.kind)||0)+1;counts.set(spec.kind,index);
@@ -2954,7 +2966,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (!image) return null;
         const kindArgument = projectile ? api === 'sprites.createProjectile' ? call.args[3] : null : call.args[1];
         let kind = projectile ? 'Projectile' : 'Player';
-        if (kindArgument?.type === 'Number') {
+        if (negativeKind(kindArgument) !== null) kind = kindOf(kindArgument);
+        else if (kindArgument?.type === 'Number') {
             const builtinKind = ['Player','Projectile','Food','Enemy'][Number(kindArgument.value)];
             if (builtinKind) kind = builtinKind;
             else t.unsupported.push(`${api}() numeric sprite kind ${kindArgument.value} needs kind identity support`);
@@ -3640,7 +3653,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
         const name = `__arcadeProjectileTemplate${t.projectileTemplates.size + 1}`;
         const kindArg = api === 'sprites.createProjectile' ? call.args[3] : null;
-        if (kindArg?.type === 'Number' && ![0, 1].includes(Number(kindArg.value))) {
+        if (kindArg?.type === 'Number' && negativeKind(kindArg) === null && ![0, 1].includes(Number(kindArg.value))) {
             t.unsupported.push(`${api}() numeric kind ${kindArg.value} in ${scope}`);
         }
         const kind = api === 'sprites.createProjectileFromSide' || !kindArg ||

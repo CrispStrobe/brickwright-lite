@@ -717,6 +717,8 @@ class ArcadeEmitter {
 
     kindExpr (b, name) {
         const kind = this.literalInput(b, name);
+        // Negative PXT kinds are uncollected numeric identities, not custom names.
+        if (kind !== null && Number.isFinite(Number(kind)) && Number(kind) < 0) return String(Number(kind));
         if (!kind || !/^[A-Za-z_]\w*$/.test(kind)) {
             this.note(`Arcade kind in ${name} must be a fixed name`);
             return 'SpriteKind.Player';

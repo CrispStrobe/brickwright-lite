@@ -2052,3 +2052,11 @@ and legacy speech camera/flag semantics. Native world coordinates and camera
 draw offsets are passed through to the retained original renderer; generated
 PXT sources and font data are unchanged. This does not integrate native bubble
 identity, yielding callbacks or complete frame presentation.
+
+### Negative sprite kind membership
+
+The native kind collection queries and interchange follow the credited MIT
+Microsoft PXT sprites.allOfKind and Sprite.setKind semantics: negative numeric
+kinds retain their sprite/callback identity but do not join kind collections.
+The existing scene, physics and callback implementations remain in use; original
+PXT simulator/source comparisons exercise the behaviour without changing them.

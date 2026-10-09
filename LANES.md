@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade negative sprite kinds — 2026-10-09
+
+Codex owns `lane/arcade-negative-kind-20261009`, stacked on PR769. Preserve
+fixed negative numeric kinds across creation, callbacks, kind changes, queries,
+Code/Blocks and MakeCode/SB3 interchange. PXT negative kinds retain sprite and
+callback identity but are excluded from kind collections. Keep dynamic and
+unsupported positive numeric kind diagnostics. This is a prerequisite for
+native legacy bubble ownership; native bubble allocation is still separate.
+
 ## Arcade legacy speech camera bridge — 2026-10-09
 
 Codex owns `lane/arcade-legacy-speech-camera-20261009`, stacked on PR768.
