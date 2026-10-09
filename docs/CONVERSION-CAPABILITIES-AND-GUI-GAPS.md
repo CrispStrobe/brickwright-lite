@@ -6,6 +6,50 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Boolean questions and fresh component GUI checkpoint — 2026-10-09
+
+Tested source `09f242210` adds `game.ask(title, subtitle)` as an asynchronous
+boolean in runtime, normal Blocks, Code and original Arcade export. The Code
+word is `arcade ask yes "Play?" subtitle "Choose A/B"`. The native block has a
+boolean shape. Ordinary assignments, branches and discarded calls retain their
+execution order; callers wait for an answer. Each question waits 500 ms and
+requires release before A/B confirmation, following the
+[original PXT implementation](https://github.com/microsoft/pxt-common-packages/blob/master/libs/game/ask.ts).
+Controller callbacks and scene updates pause while the question is active.
+Queues, Stop/restart and stale callbacks are covered by runtime checks.
+
+49 affected checks pass with zero failures/skips; the producer passes234 dialect
+checks. Both original PXT answers match exported programs; Code and saved SB3
+reexecution pass. Fresh EN/DE React dialog/CSS browser checks cover disabled
+controls, focus, labels and both choices without page errors. The real Blocks
+palette component check is now wired into the existing graphics browser gate.
+Fresh full production question/controller execution remains pending hosted CI.
+Native dialog pixels and full scheduler equivalence remain unqualified.
+
+The unchanged184 hash-verified corpus measures **104 translated /79 partial /
+1 malformed** at the import-only boundary, from102/81/1. Four diagnostic rows
+change; two lose their sole gap. This count does not establish full runtime
+compatibility. See the [receipt](receipts/2026-10-09-arcade-boolean-question.json).
+
+### Immediate remaining GUI and bundle work
+
+The parent hosted heavy-browser job observed a bundled image decoder
+`ReferenceError: e is not defined` in image bounds and speech checks, plus
+callback, sprite-registration and tile-data failures. The callback gate also
+failed to write its report because its output directory was absent. Preserve
+these failures and qualify the built artifact before merging the stack. Source
+unit checks cannot establish that serialized factories survive bundling and
+minification. First isolate the decoder failure using the exact built artifact;
+then implement a dependency-safe factory integration if closure loss is confirmed.
+Repair report creation and wait for actual authored setup in failing journeys.
+
+After bundle qualification, continue the corpus diagnostic groups: unreadable
+background image sources (10 rows), unreadable tilemap sources (7), destruction
+effect/duration rendering (7), music play/sound semantics (5/4), star-field screen
+effects (4), and paint callbacks (3). These are diagnostic counts, with overlap;
+existing background and tilemap APIs already have support for readable inputs.
+Keep number-prompt optional arguments and exact dialog layout as separate gaps.
+
 ## Latest finite Arcade checkpoint — 2026-10-08
 
 At `bffd43641903dc037010aac1dcfeb5c9830a469e`, the same184 pinned inputs
