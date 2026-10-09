@@ -6,6 +6,37 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Literal array values in native programs — 2026-10-09
+
+Source `38cf4623d` selects the existing native reference-array runtime whenever
+an Arcade array literal occurs. Literal function arguments and return values
+retain identity and element evaluation, including unused arguments and empty
+arrays. This closes a routing omission; no new array opcode or producer pin is
+needed. Blocks and Code use the existing `new array reference from` and
+`array value … rest …` reporters and native function calls.
+
+Twenty-five array checks plus the new native-controller fixture pass: scalar
+strings/numbers, argument evaluation order, fresh returned arrays, mutated
+aliases, image/sprite references, coercion, Code/Blocks/decompile, saved SB3,
+export/reimport and original executed PXT. The preserved baseline includes two
+real array-refusal regressions and one initial oracle harness error (PXT removed
+an unused constant global); the corrected oracle compares a computed value.
+
+All184 original input hashes are unchanged. Import-only counts improve
+**107/76/1 →108 translated /75 partial /1 malformed**, with one changed refusal
+row. The recovered tutorial's helper body is empty in its original source;
+executed original/export, reimport and Code/SB3 restart verify its argument
+handling, not a playable game. A fresh native-file/controller-pane browser
+journey is prepared; full shipped qualification remains required.
+See the [receipt](receipts/2026-10-09-arcade-literal-array-values.json).
+
+The preceding display-repair source `c7c1ae4aa` now passes the full build and
+both browser shards in [run37939577542](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37939577542),
+including the previous canvas/question and narrow graphics gate failures.
+The focused gate was still running at this checkpoint; nothing is merged on
+that partial check set. Camera-shake and array-feature branches need their own
+fresh hosted qualification.
+
 ## Native camera shake and Info routing — 2026-10-09
 
 Camera shake is an authorable native command in Blocks and Code:
