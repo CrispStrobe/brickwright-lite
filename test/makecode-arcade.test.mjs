@@ -118,7 +118,7 @@ test('a real Arcade game becomes sprites, costumes and scripts', async () => {
     assert.equal(out.costumes.length, 4, 'three instance templates and the background retain artwork');
     assert.match(out.code, /arcade register button "up" event \(2049\)/);
     assert.match(out.code, /arcade register overlap kind "Enemy" with kind "Player"/);
-    assert.match(out.code, /change score by/);
+    assert.match(out.code, /arcade change score player \(1\) by/);
     assert.match(out.code, /arcade create template "__arcadeTemplate2" kind "Enemy"/);
     assert.match(out.code, /arcade set vx of gegner to/);
     assert.match(out.code, /arcade set background image/);
@@ -204,7 +204,7 @@ test('the translation compiles into the sprites and blocks it names', {skip: can
         'arcade_registerUpdateHandler', 'arcade_registerOverlapHandler', 'arcade_whenRegisteredOverlap', 'arcade_createSprite',
         'arcade_setSpriteProperty', 'arcade_setSpriteAutoDestroy',
         'arcade_setBackgroundImage', 'arcade_frameImage', 'arcade_spriteProperty',
-        'arcade_changescore', 'operator_random'
+        'arcade_changePlayerScore', 'operator_random'
     ]) {
         assert.ok(ops.has(expected), `${expected} is missing — a mapping compiled to silence`);
     }
@@ -311,7 +311,7 @@ test('sprite dimensions and edges use the decoded image geometry', () => {
     for(const property of ['left','right','top','bottom','width','height'])
         assert.match(code,new RegExp(`arcade property ${property} of hero`));
     assert.match(code,/arcade set local __bwValue/);
-    assert.match(code,/arcade change score by 1/);
+    assert.match(code,/arcade change score player \(1\) by \(1\)/);
     assert.doesNotMatch(code,/\) and \(|\) or \(/,'logical guards must use lazy branches');
     assert.deepEqual(unsupported, []);
 });
@@ -364,7 +364,7 @@ test('the per-player info API writes the same score the plain one does', () => {
     // MakeCode's plain `info.setScore()` IS player one, so player one must
     // share that score — a game that mixes both forms (the pong does) would
     // otherwise keep two scores that drift apart. Scores are the Arcade
-    // extension's own (player one is its plain score); lives stay variables.
+    // extension's own (player one is its plain score); lives use native player state.
     const {code, unsupported} = arcadeToPseudocode(`
         let hero = sprites.create(img\`1\`, SpriteKind.Player)
         info.setScore(0)
@@ -376,12 +376,12 @@ test('the per-player info API writes the same score the plain one does', () => {
         })
     `);
     assert.deepEqual(unsupported, []);
-    assert.match(code, /arcade set score to 0/);
+    assert.match(code, /arcade set score player \(1\) to \(0\)/);
     assert.match(code, /arcade change score player \(1\) by \(1\)/, 'player one, which the extension shares with the plain score');
     assert.match(code, /arcade set score player \(2\) to \(5\)/);
-    assert.match(code, /arcade change score by 1/);
-    assert.match(code, /compare value \(lives2\) op ">" with \(0\)/);
-    assert.match(code, /compare value \(lives\) op ">" with \(0\)/);
+    assert.match(code, /arcade change score player \(1\) by \(1\)/);
+    assert.match(code, /arcade player \(2\) has life/);
+    assert.match(code, /arcade player \(1\) has life/);
 });
 
 // Native life-zero registration preserves the original assigned-zero behavior;

@@ -6,6 +6,14 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Producer model evidence merge history — 2026-10-09
+
+The verified model-evidence correction in producer PR79 merged into its feature
+parent at `4757ab8ac0cd0877a7f1cf6b27bd5c2db33e445b`, with the reviewed and merge trees equal.
+This is merge-history evidence, rather than a consumer pin adoption. The dated
+sprite-follow receipt retains its tested producer pins; the complete merge
+identity belongs here in the narrative record.
+
 ## Original Arcade numeric sign — 2026-10-09
 
 Source `f6efa058b` adopts producer `5a6782d9` and adds a native reporter:

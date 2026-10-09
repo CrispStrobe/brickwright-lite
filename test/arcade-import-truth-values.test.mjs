@@ -147,7 +147,7 @@ test('handle path: the import logs what MakeCode logs, and so does its export', 
     const {imported, creator, lite} = await importAndRun(HANDLE);
     assert.match(imported.code, /arcade create template/, 'the handle path');
     assert.match(imported.code, /IF key left arrow pressed\? THEN:\n\s+set _mc\d+ to \(compare value \(0\) op "<" with \(1\)\)/);
-    assert.match(imported.code, /compare value \(lives2\) op ">" with \(0\)/);
+    assert.match(imported.code, /arcade player \(2\) has life/);
     const original = await pxtLog(HANDLE);
     assert.equal(original, 'truetruetruefalsefalsefalsetruetruefalsetrue');
     assert.equal(lite.replace(/\n/g, ''), original);

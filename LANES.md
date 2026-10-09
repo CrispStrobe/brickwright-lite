@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade info/browser qualification repair — 2026-10-09
+
+Codex owns `lane/arcade-info-browser-qualification-20261009`, stacked on PR761.
+Repair hosted typed-state observations and stale life/score representation
+assertions against the native info API; preserve original PXT behaviour checks.
+Move merge-history identity to narrative docs rather than pin-only receipt
+fields. Retain all original hosted failures; full hosted browser checks remain
+required. No runtime semantic or corpus classification changes are claimed.
+
 ## Arcade numeric sign — 2026-10-09
 
 Codex owns `lane/arcade-sign-number-20261009`, stacked on PR760, and producer

@@ -373,7 +373,7 @@ let discardedReady=true`;
     const waitMultifile = expected => page.waitForFunction(expected => {
         const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
         const values = Object.fromEntries(runtime.targets.flatMap(t => Object.values(t.variables))
-            .map(v => [v.name.replace(/^Game_/, ''), Number(v.value)]));
+            .map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
         return Object.entries(expected).every(([name, value]) => values[name] === value);
     }, expected);
     const initialMultifile = {observed: 1243, finalOrder: 1243, first: 6, second: 39, third: 8, actorX: 23, callbackValue: 0};

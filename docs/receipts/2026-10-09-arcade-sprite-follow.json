@@ -94,10 +94,10 @@
     "enabledChecks": "SUCCESS",
     "disabledPublishing": "SKIPPED",
     "mergedAt": "2026-10-09T14:58:09Z",
-    "mergeCommit": "4757ab8ac0cd0877a7f1cf6b27bd5c2db33e445b",
     "reviewedAndMergeTree": "7ab491f920b83d6297c19331b3cf6abbb8599075",
     "baseBranch": "feat/arcade-camera-shake-20261009",
-    "boundary": "Model provenance correction merged into feature parent only; sprite-follow PR80 hosted checks remain pending."
+    "boundary": "Model provenance correction merged into feature parent only; sprite-follow PR80 hosted checks remain pending.",
+    "mergeHistory": "Recorded in the narrative capability ledger; this receipt records tested producer pins."
   },
   "hostedFollowStatus": {
     "head": "874616967ab2cf701baa43042aaaeeb3ed019eb5",
