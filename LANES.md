@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade sprite following — 2026-10-09
+
+Codex owns `lane/arcade-sprite-follow-20261009`, stacked on PR758, and producer
+`feat/arcade-sprite-follow-20261009`, stacked on PR79. Implement original PXT
+steering before physics, frame timing, momentum, snapping, replacement,
+cancellation, destruction and scene ownership. Expose follow/unfollow in Blocks,
+Code and MakeCode interchange. Verify exact original source and unchanged
+corpus inputs; full shipped controller/browser checks remain required.
+
 ## Arcade producer model evidence — 2026-10-09
 
 Codex owns `lane/arcade-producer-model-evidence-20261009`, stacked on PR757,
