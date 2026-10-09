@@ -24,6 +24,13 @@ pseudocode, import/export and existing controller-pane qualification. Keep
 multiplayer player state independent; preserve original PXT movement semantics
 and explicit diagnostics. Other lanes and shared worktrees stay separately owned.
 
+Checkpoint source `173e4a645`, producer `e3d0e890`: 21 Lite /236 producer checks
+pass, including original PXT and development/production bundles. Import-only
+census 105 translated /78 partial /1 malformed across184 unchanged inputs.
+Fresh four-controller browser journey is prepared, pending hosted results.
+Parent PR748 rotation/pixel-color failures remain open until raw logs are read.
+See `docs/receipts/2026-10-09-arcade-direct-controllers.json`.
+
 ## Arcade reset qualification — 2026-10-09
 
 Codex continues on `lane/arcade-reset-qualification-20261009`, stacked on PR741.
