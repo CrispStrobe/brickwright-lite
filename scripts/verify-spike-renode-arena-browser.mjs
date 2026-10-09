@@ -11,7 +11,7 @@ import {resolve, sep, extname} from 'node:path';
 import assert from 'node:assert/strict';
 import {privateSpikeEvidenceDirectory} from './lib/private-spike-evidence.mjs';
 import {proofModes, proofOperations, sixMotorSource, replacementSource, sixMotorPython,
-    sixPositions, requireSixMoved, requireSharedMotors, dualUltrasonicSource, dualUltrasonicPython, requireDualSharedObservation} from './lib/spike-nuttx-browser-proof.mjs';
+    sixPositions, requireSixMoved, requireSharedMotors, dualUltrasonicSource, dualUltrasonicPython, requireDualSharedObservation, installProofTransport} from './lib/spike-nuttx-browser-proof.mjs';
 const mode = process.env.BW_SPIKE_PROOF_MODE || 'guest';
 if (!proofModes.includes(mode)) throw new Error('Unknown BW_SPIKE_PROOF_MODE');
 const executable = process.env.BW_RENODE_ARENA_PROOF_DRIVER;
@@ -20,15 +20,16 @@ const evidence = resolve(privateSpikeEvidenceDirectory(), mode === 'guest' ? 're
 await mkdir(evidence, {recursive: true, mode: 0o700});
 const build = resolve(process.env.BW_SPIKE_BUILD_ROOT || 'packages/scratch-gui/build');
 const driver = spawn(executable, [], {stdio: ['pipe', 'pipe', 'pipe']});
-let pending, stderr = '';
+let pending, driverExited = false, failure = null, stderr = '';
 driver.stderr.on('data', chunk => {stderr = (stderr + chunk).slice(-16384);});
 const lines = createInterface({input: driver.stdout});
 lines.on('line', line => {const waiter = pending; pending = null; waiter?.resolve(JSON.parse(line));});
-driver.on('exit', () => {pending?.reject(new Error('Managed guest proof driver exited')); pending = null;});
+driver.on('exit', () => {driverExited = true; pending?.reject(new Error('Managed guest proof driver exited')); pending = null;});
 let queue = Promise.resolve(), sessionStarts = 0;
 const operations = new Set(proofOperations);
 const request = value => {
     const result = queue.then(() => new Promise((resolveRequest, reject) => {
+        if (driverExited) {reject(new Error('Managed guest proof driver exited')); return;}
         if (value.operation === 'session.start') sessionStarts++;
         pending = {resolve: resolveRequest, reject}; driver.stdin.write(`${JSON.stringify(value)}\n`);
     }));
@@ -254,25 +255,11 @@ try {
     await page.getByTestId('bw-open-spike-arena').click();
     await page.waitForFunction(() => window.__bwSpikeArena?.bridge);
     await page.getByTestId('bw-spike-arena-sandbox').click();
-    await page.evaluate(async operations => {
+    await page.evaluate(installProofTransport, proofOperations);
+    await page.evaluate(async () => {
         const pane = window.__bwSpikeArena._pane;
-        let requestId = 0;
-        window.__TAURI_INTERNALS__ = {invoke: async (command, params) => {
-            if (command === 'native_broker_open') {requestId = 0; return 'arena-test-transport';}
-            if (command !== 'native_broker_request' || params.session !== 'arena-test-transport' || params.requestId !== requestId++) {
-                throw new Error('Unexpected test broker request');
-            }
-            const payload = JSON.parse(params.payload);
-            const prefix = 'renode.spike.';
-            if (payload.kind !== 'capability' || !payload.operation.startsWith(prefix) || !operations.includes(payload.operation.slice(prefix.length))) {
-                throw new Error('Unsupported test broker operation');
-            }
-            const response = await fetch('/__arena_proof', {method: 'POST', body: JSON.stringify({operation: payload.operation.slice(prefix.length), args: payload.args})});
-            const reply = await response.json(); if (reply.error) throw new Error(reply.error);
-            return JSON.stringify({kind: 'capability', result: typeof reply.result === 'string' ? reply.result : JSON.stringify(reply.result)});
-        }};
         await pane.setSandbox({...pane.world, walls: [{shape: {type: 'rect', x: 70, y: 40, w: 4, h: 70}}]});
-    }, proofOperations);
+    });
     if (mode !== 'guest') {
         if (mode.startsWith('nuttx-dual-')) await runDualProof();
         else await runNuttxProof();
@@ -314,7 +301,7 @@ try {
     await page.screenshot({path: `${evidence}/arena.png`});
     }
 } catch (error) {
-    process.exitCode = 1; console.error(error);
+    process.exitCode = 1; failure = String(error?.stack || error); console.error(error);
     if (page) console.error((await page.locator('body').first().innerText().catch(() => '')).slice(-2500));
 } finally {
     await request({operation: 'session.close', args: {}}).catch(() => {});
@@ -323,5 +310,5 @@ try {
     await new Promise(done => server.close(done));
     await writeFile(`${evidence}/result.json`, JSON.stringify({success: !process.exitCode, mode,
         boundary: 'browser test transport; production Rust policy and managed debugger; no Tauri WebView ACL claim',
-        checks, errors, stderr}, null, 2));
+        checks, errors, failure, stderr}, null, 2));
 }

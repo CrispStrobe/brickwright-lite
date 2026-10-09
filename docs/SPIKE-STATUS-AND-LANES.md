@@ -439,3 +439,27 @@ independent-check condition and uses the installed Playwright package without
 fetching a replacement package. Seven workflow checks pass locally; hosted
 checks still need to establish the complete candidate result. Unit assertions
 and downstream browser gates remain unchanged.
+
+
+The next own-source guest run at Lite `bffdbf52e95659b2e40d3a934a0922c6900eacd7`
+completed the Scratch E/F waits, stopped both drive motors and restored the
+original sensor profile through the GUI. The observed A/B positions were
+−2.380118°/+2.380118°; the rover moved 0.116315 cm. A separate read-only
+standard-library artifact audit verified addressed selectors, image identity,
+completion, stopped demands and shared telemetry. This is a bounded Scratch
+browser/test-transport result, not installed desktop acceptance.
+
+Python reached the live guest but raised `OSError: 74` at the exact expected-range
+assertion. Its first fixture accepted any nonnegative sample rather than waiting
+for the expected pair. The revised fixture waits within the existing 100×20 ms
+bound, prints its actual readings and retains the same final equality assertion.
+The test transport now maintains separate client leases and supports the actual
+GUI client's 512-request bookkeeping renewal. Queued requests refuse an exited
+driver, and failed results retain the exception. Three synthetic controls pass,
+including real GUI capability clients across renewal; two source mutants are
+detected. The corrected Python guest run and installed desktop acceptance remain
+pending. The original failed receipts are preserved privately.
+
+```sh
+node --test test/spike-proof-transport.test.mjs
+```

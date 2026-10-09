@@ -54,7 +54,8 @@ export function dualUltrasonicPython (e, f) {
     return 'import brickwright as b\n' +
         'e=-1\nf=-1\nfor i in range(100):\n' +
         ' try:\n  e=b.sensor(1,b.E)\n  f=b.sensor(2,b.F)\n except OSError:\n  b.wait(20)\n  continue\n' +
-        ' if e>=0 and f>=0: break\n b.wait(20)\n' +
+        ` if e==${e} and f==${f}: break\n b.wait(20)\n` +
+        'print("BROWSER DUAL OBSERVED",e,f)\n' +
         `if e!=${e} or f!=${f}: raise OSError(74)\n` +
         'print("BROWSER DUAL ARM",e,f)\n';
 }
@@ -74,4 +75,40 @@ export function requireDualSharedObservation ({frame, motors, classicPorts}) {
             throw new Error('Dual firmware encoder did not reach the shared hub');
         }
     }
+}
+
+// Injected test transport only. Each GUI client owns a separate request sequence.
+// This function is passed directly to page.evaluate; keep it self-contained.
+export function installProofTransport (operations) {
+    const sessions = new Map();
+    let nextSession = 0;
+    window.__TAURI_INTERNALS__ = {invoke: async (command, params) => {
+        if (command === 'native_broker_open') {
+            if (nextSession >= 64) throw new Error('Test broker session bound exceeded');
+            const id = `arena-test-transport-${++nextSession}`;
+            sessions.set(id, 0);
+            return id;
+        }
+        if (command === 'native_broker_main_teardown' && params && sessions.has(params.session)) {
+            sessions.delete(params.session);
+            return null;
+        }
+        if (command !== 'native_broker_request' || !params || !sessions.has(params.session) ||
+            !Number.isSafeInteger(params.requestId) || params.requestId >= 512 || params.requestId !== sessions.get(params.session)) {
+            throw new Error('Unexpected test broker request');
+        }
+        const payload = JSON.parse(params.payload);
+        const prefix = 'renode.spike.';
+        if (payload.kind !== 'capability' || typeof payload.operation !== 'string' ||
+            !payload.operation.startsWith(prefix) || !operations.includes(payload.operation.slice(prefix.length))) {
+            throw new Error('Unsupported test broker operation');
+        }
+        sessions.set(params.session, params.requestId + 1);
+        const response = await fetch('/__arena_proof', {method: 'POST', body: JSON.stringify({
+            operation: payload.operation.slice(prefix.length), args: payload.args
+        })});
+        const reply = await response.json();
+        if (reply.error) throw new Error(reply.error);
+        return JSON.stringify({kind: 'capability', result: typeof reply.result === 'string' ? reply.result : JSON.stringify(reply.result)});
+    }};
 }
