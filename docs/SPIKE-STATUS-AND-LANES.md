@@ -273,3 +273,40 @@ documentation-only work needs documentation/source-policy checks. LabWired has
 no qualified SPIKE peripheral/firmware integration and is not a substitute for
 these Renode gates. Physical USB/BLE, radio security, electrical calibration and
 hardware release remain outside the demonstrated simulation scope.
+
+
+## Addressed-reader package discovery candidate — 2026-10-09
+
+Package preparation now recognizes the optional
+`g_bw_program_addressed_sensor_abi` version1 constant in the own userspace ELF.
+It validates a global four-byte OBJECT in an allocated nonwritable section,
+exact section/load file mapping, flash bounds and absence of virtual or physical
+load aliases. NuttX merged-text/RWE layouts remain accepted through section
+metadata. Unsupported or malformed present markers fail packaging; absent
+markers retain legacy package behavior.
+
+The optional `addressedSensorCapability` configuration object contains `abi`,
+`address` and `userspaceSha256`. Packaging writes the captured kernel/userspace
+buffers used for vector/feature discovery, preventing a changed source file
+from replacing the qualified bytes during a later copy. Existing configuration,
+manifest and pin hashes bind the staged metadata and image. This is package
+metadata preparation; the current state adapter does not advertise a live
+addressed capability from it.
+
+Eight focused new/legacy tests pass, including three source mutations that must
+fail their intended version, section-write and physical-alias assertions. The
+first mutation runner inherited Node's child-test context and falsely returned
+zero; the corrected isolated runner removes that context and requires a named
+assertion failure. Hosted consumer qualification remains required.
+
+Firmware [PR52](https://github.com/CrispStrobe/brickwright-spike-prime-fw/pull/52)
+source `6648a21548dcc3c40e000cd13374d113f7d85d3c` passed
+[CI37916873278](https://github.com/CrispStrobe/brickwright-spike-prime-fw/actions/runs/37916873278);
+its [clean ARM matrix37916873239](https://github.com/CrispStrobe/brickwright-spike-prime-fw/actions/runs/37916873239)
+is still pending at this checkpoint. No firmware, Runtime or Infrastructure
+package pin is adopted by this slice. Next require exact image-bound live
+marker detection, a declared E/F ultrasonic topology through the state adapter
+and shared arena, gated native/Python callers, and actual installed Code/Blocks
+qualification. Default D-distance/E-force and six-motor configurations retain
+their existing contracts; package metadata alone does not qualify those next
+steps or arbitrary A–F addressed reads.
