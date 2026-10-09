@@ -6,6 +6,42 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native camera shake and Info routing — 2026-10-09
+
+Camera shake is an authorable native command in Blocks and Code:
+
+```text
+arcade shake camera by 4 pixels for 500 ms
+```
+
+`scene.cameraShake` imports with original4-pixel/500-ms defaults and exports
+back to MakeCode. Source `9fcc3b1a9` implements replacement, cancellation,
+final-quarter damping and integer draw offsets. Controlled time/randomness
+comparisons execute the original bundled PXT camera class. World coordinates,
+logical camera properties and camera-relative HUD remain unchanged; actual
+world drawable positions move and return after expiry. Development/production
+GUI-rule extension bundles both pass. Code/Blocks, saved SB3 and original
+executed MakeCode export pass. Producer `88aa7123` passes323 dialect/Boolean
+checks and exposes195 canonical forms /200 including aliases.
+
+The real recovered callback exposed a separate Info routing defect: native
+sprite imports could still decrement a Scratch variable initially zero.
+Source `a2a096f78` routes native imports through the existing scene-local
+life/score commands and reporters. Twenty-one camera/scene checks and ten
+Info/life-zero/scene/pin checks pass. The recovered overlap callback, with two
+actors supplied through native authoring primitives, destroys the enemy,
+reduces life3→2, shakes for500ms and expires. Export compiles in original PXT
+and reimports without diagnostics. This is headless callback evidence, not a
+complete rendered game.
+
+All184 original input hashes are unchanged. Import-only counts improve
+**106/77/1 →107 translated /76 partial /1 malformed**, with one changed refusal
+row (`scene.cameraShake`). A shipped native-file/controller-pane browser
+journey is prepared; its fresh hosted result remains required. Real wall-time
+behavior across suspended tabs/modal pauses is not qualified by the controlled
+active-frame clock tests. Other effects, screen painting and external packages
+remain named gaps. See the [receipt](receipts/2026-10-09-arcade-camera-shake.json).
+
 ## Device display lifecycle and hosted qualification — 2026-10-09
 
 PR752 source `c68661e2c` passed the full build and heavyweight browser shard in
