@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade image scrolling — 2026-10-09
+
+Codex owns `lane/arcade-image-scroll-20261009`, stacked on PR762, and producer
+`feat/arcade-image-scroll-20261009`, stacked on PR81. Implement native mutable
+Image.scroll with dedicated x/y Blocks inputs, pseudocode and MakeCode
+interchange. Compare original PXT pixels, coercion/clipping, aliases and scenes;
+retain original input hashes and partial diagnostics. Full shipped browser
+checks remain required.
+
 ## Arcade info/browser qualification repair — 2026-10-09
 
 Codex owns `lane/arcade-info-browser-qualification-20261009`, stacked on PR761.
