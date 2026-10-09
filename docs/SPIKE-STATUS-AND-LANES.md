@@ -470,3 +470,29 @@ pinned firmware exports `b.sleep_ms(20)`. The fixture now uses that embedded API
 and its synthetic module exposes only `sleep_ms`, so the old call fails the
 control. This changes test preparation only; it does not add a firmware API or
 establish Python guest success. Preserve the earlier run's result.
+
+
+The corrected own-source guest qualification passed at Lite
+`b2bc7a5affa9f9861fc904616222347d120350f5`, using the firmware, Runtime and
+Infrastructure pins above. Scratch completed both addressed waits, moved the
+shared rover 0.116315 cm and stopped A/B at −2.380118°/+2.380118°. Code-tab Python
+observed E=61 mm and F=1410 mm, matched those actual arena readings and completed
+on the same live guest session with advancing sequence and time. A frozen,
+read-only Python standard-library artifact auditor passed for both modes,
+checking image identity, selectors, completion, shared motor telemetry and
+session continuity. Exact original successes and earlier failures remain private.
+This qualifies the finite browser/test-transport scenarios; installed Tauri,
+portable Runtime distribution and selected-component notices remain open.
+
+Public full CI then found two test-audit mismatches. The broker source audit now
+requires the supported SixMotors/DualUltrasonic match arm and detects removal of
+either profile. The synthetic Python fixture explicitly documents its required
+host CPython interpreter; absence remains a failure, and that fixture does not
+qualify the embedded interpreter. No audit baseline was raised. Seventeen focused
+controls pass without skips; the repaired public head still requires every enabled
+hosted check. Product and guest fixture source remain unchanged from the qualified
+head above.
+
+```sh
+node --test test/tauri-broker-topology.test.mjs test/spike-proof-transport.test.mjs test/gate-shapes.test.mjs
+```

@@ -55,8 +55,13 @@ sys.modules['brickwright']=b
 exec(${JSON.stringify(source)})
 assert waits == [20]
 `;
+    // Host CPython executes only this synthetic user-program fixture, not firmware or packaged Runtime.
+    // Missing Python fails this control; real guest qualification checks the embedded module separately.
+    // gate-shapes-allow
     const ok=spawnSync('python3',['-c',control],{encoding:'utf8'});
     assert.equal(ok.status,0,ok.stderr);assert.match(ok.stdout,/BROWSER DUAL ARM 61 1410/);
+    // Same explicit host-only fixture prerequisite; this negative run must report OSError 74.
+    // gate-shapes-allow
     const bad=spawnSync('python3',['-c',control.replace('if waits else 1000','if False else 1000')],{encoding:'utf8'});
     assert.notEqual(bad.status,0);assert.match(bad.stderr,/OSError: 74/);
 });

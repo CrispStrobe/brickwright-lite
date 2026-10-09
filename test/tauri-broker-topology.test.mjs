@@ -106,8 +106,8 @@ const audit = ({handler, broker, adapter, capability, transport, capabilities, r
         'default SPIKE start must delegate to the managed debugger');
     assert.match(spikeStart, /\(SpikeTopology::Default, backend\) => debugger\.start_spike_backend\(supervisor, backend\)/,
         'explicit default backend must delegate to the managed debugger');
-    assert.match(spikeStart, /\(SpikeTopology::SixMotors, backend\) => debugger\.start_spike_profile\(supervisor, backend, topology\)/,
-        'six-motor SPIKE start must delegate to the managed debugger');
+    assert.match(spikeStart, /\(SpikeTopology::SixMotors \| SpikeTopology::DualUltrasonic, backend\) => debugger\.start_spike_profile\(supervisor, backend, topology\)/,
+        'six-motor and dual-ultrasonic SPIKE starts must delegate to the managed debugger');
     assert.match(capability, /Operation::RenodeSpikeClose[\s\S]{0,150}debugger\.close\(supervisor\)/,
         'SPIKE close must delegate to the managed debugger');
     assert.doesNotMatch(capability, /std::process|Command::new|fs::(read|write)|reqwest|TcpStream/,
@@ -205,6 +205,12 @@ test('the native broker topology binds every caller and grants transport only on
 
 test('topology contract rejects independently weakened boundaries', () => {
     const mutations = [
+        ...['SixMotors', 'DualUltrasonic'].map(omitted => input => {
+            const retained = omitted === 'SixMotors' ? 'DualUltrasonic' : 'SixMotors';
+            const branch = '(SpikeTopology::SixMotors | SpikeTopology::DualUltrasonic, backend)';
+            assert.ok(input.capability.includes(branch), 'profile mutation must change the live branch');
+            input.capability = input.capability.replace(branch, `(SpikeTopology::${retained}, backend)`);
+        }),
         ...['start(supervisor)', 'start_spike_backend(supervisor, backend)',
             'start_spike_profile(supervisor, backend, topology)'].map(call => input => {
             input.capability = input.capability.replace(`debugger.${call}`, 'Ok("ready")');
