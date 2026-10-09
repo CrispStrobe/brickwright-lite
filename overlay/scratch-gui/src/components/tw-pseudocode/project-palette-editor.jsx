@@ -5,14 +5,14 @@ import {inspectProjectPalette,applyProjectPalette,DEFAULT_PROJECT_PALETTE} from 
 import {imageToSvg} from '../../lib/bw-makecode/arcade-assets.js';
 import {PALETTE_PRESETS} from '../../lib/bw-makecode/palette-presets.js';
 const t=makeT({en:{
-    title:'Project palette',hint:'Startup colors for the whole game. Pixel indices stay the same.',
+    title:'Project palette',hint:'Arcade startup colors. Pixel indices stay the same. Scratch costumes use their artwork colors.',
     artwork:'Use artwork colors',background:'Screen background',preview:'Preview project colors',
     apply:'Apply to project',reload:'Reload project palette',reset:'Reset colors',preset:'Palette preset',custom:'Custom',
     later:'Later Code or Blocks can change these colors while the game runs.',
     blocked:'The startup palette uses an expression or multiple commands. Edit it in Code or Blocks.',
     saved:'Project palette saved to Blocks.',error:'Could not apply the project palette: {message}'
 },de:{
-    title:'Projektpalette',hint:'Startfarben für das gesamte Spiel. Die Pixelindizes bleiben erhalten.',
+    title:'Projektpalette',hint:'Arcade-Startfarben. Die Pixelindizes bleiben erhalten. Scratch-Kostüme verwenden ihre Grafikfarben.',
     artwork:'Grafikfarben übernehmen',background:'Bildschirmhintergrund',preview:'Projektfarben anzeigen',
     apply:'Auf Projekt anwenden',reload:'Projektpalette neu laden',reset:'Farben zurücksetzen',preset:'Palettenvorlage',custom:'Eigene Farben',
     later:'Code oder Blöcke können diese Farben während des Spiels ändern.',

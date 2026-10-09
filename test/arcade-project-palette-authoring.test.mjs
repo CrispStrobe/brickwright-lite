@@ -1,14 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {inspectProjectPalette,applyProjectPalette,DEFAULT_PROJECT_PALETTE,paletteHex} from '../overlay/scratch-gui/src/lib/arcade-project-palette.js';
 const colors=[...DEFAULT_PROJECT_PALETTE];colors[0]='#102030';colors[1]='#123456';colors[2]='#123456';
 async function fixture(palette){
- const files={'main.ts':'let hero=sprites.create(img`1 2`,SpriteKind.Player)\nlet ready=true',
+ const files={'main.ts':'let art=img`1 2`\nlet hero=sprites.create(art,SpriteKind.Player)\nlet first=art.getPixel(0,0)\nlet ready=true',
  'pxt.json':JSON.stringify({name:'palette-editor',dependencies:{device:'*'},files:['main.ts'],...(palette?{palette}:{})})};
  const imported=arcadeToPseudocode(files);assert.deepEqual(imported.unsupported,[]);
- return runProgram(imported.code,{frames:12,storage:true,uploads:imported.costumes});
+ const run=await runProgram(imported.code,{frames:12,storage:true,uploads:imported.costumes});run.uploads=imported.costumes;return run;
 }
 const snapshot=vm=>JSON.stringify(vm.runtime.targets.map(t=>t.blocks._blocks));
 test('palette authoring prepends real startup blocks and survives SB3 save/load and restart',async()=>{
@@ -16,6 +18,15 @@ test('palette authoring prepends real startup blocks and survives SB3 save/load 
   const before=inspectProjectPalette(run.vm);assert.equal(before.kind,'default');
   const after=await applyProjectPalette(run.vm,colors,before.signature);assert.equal(after.kind,'constant');
   assert.deepEqual(after.colors,colors);assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.palette,colors);
+  const authored=JSON.parse(run.vm.toJSON());
+  const code=run.creator.decompile(authored);assert.match(code,/arcade set palette hex/);
+  const again=await runProgram(code,{frames:12,storage:true,uploads:run.uploads});
+  assert.deepEqual(again.errors,[]);assert.deepEqual(again.vm.runtime.bwArcadeDeviceState.palette,colors);
+  const exported=projectToArcade(authored,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
+  assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/image\.setPalette\(Buffer\.fromHex\(/);
+  const original=await runPxtArcade(exported.files,{inspectDisplay:true});
+  const unpack=value=>'#'+[value&255,(value>>>8)&255,(value>>>16)&255].map(byte=>byte.toString(16).padStart(2,'0')).join('');
+  assert.deepEqual(original.$display.palette.map(unpack),colors);
   const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
   assert.deepEqual(inspectProjectPalette(run.vm).colors,colors);
   run.vm.greenFlag();await stepFrames(run.vm,12);assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.palette,colors);
