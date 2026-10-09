@@ -130,6 +130,14 @@ export function svgToPixels (svg, palette = ARCADE_PALETTE) {
         const m = new RegExp(`\\b${name}="([^"]*)"`, 'i').exec(s);
         return m ? m[1] : null;
     };
+    // Embedded palette indices describe the source artwork, even when a caller
+    // supplies another project palette. Export remaps only after exact decoding.
+    const declaredPalette = attr(root[1], 'data-bw-palette');
+    if (declaredPalette !== null) {
+        const colors = declaredPalette.split(',');
+        if (colors.length !== 15 || !colors.every(color => /^#[0-9a-f]{6}$/i.test(color))) return null;
+        palette = [null, ...colors.map(color => color.toLowerCase())];
+    }
     const rects = [...text.matchAll(/<rect\b([^>]*)\/?>/gi)].map(m => m[1]);
     // Our form has nothing but rects inside the root (and possibly nothing, for
     // an all-transparent image). Anything else — paths, groups with transforms,
@@ -158,16 +166,23 @@ export function svgToPixels (svg, palette = ARCADE_PALETTE) {
     const pixels = new Uint8Array(width * height);
     for (let i = 0; i < rects.length; i++) {
         const fill = (attr(rects[i], 'fill') || '').toLowerCase();
-        const index = lookup.get(fill);
+        const declaredIndex = attr(rects[i], 'data-bw-color-index');
+        let index = lookup.get(fill);
+        if (declaredIndex !== null) {
+            if (!/^(?:[1-9]|1[0-5])$/.test(declaredIndex)) return null;
+            index = Number(declaredIndex);
+            if (!palette[index] || palette[index].toLowerCase() !== fill) return null;
+        } else if (declaredPalette !== null) return null;
         if (index === undefined) return null;          // a colour not in the palette: not ours
         const [x, y, rw, rh] = nums[i].map(v => v / scale);
+        if (declaredPalette !== null && (x + rw > width || y + rh > height)) return null;
         for (let yy = y; yy < y + rh; yy++) {
             for (let xx = x; xx < x + rw; xx++) {
                 if (xx < width && yy < height) pixels[(yy * width) + xx] = index;
             }
         }
     }
-    return {width, height, pixels, scale};
+    return {width, height, pixels, scale, ...(declaredPalette !== null ? {palette} : {})};
 }
 
 /**

@@ -333,7 +333,7 @@ class PixelArtEditor extends React.Component {
         let layers = null;
         let scale = size ? this.state.scale : 4;
         const document = getCostumeDocument(costume);
-        const palette = document?.palette || [...ARCADE_PALETTE];
+        let palette = document?.palette || [...ARCADE_PALETTE];
         const first = document?.layers?.[0];
         if (!size && first?.type === 'pixel' && first.content.kind === 'pixels') {
             const {width, height} = first.content.value;
@@ -350,6 +350,7 @@ class PixelArtEditor extends React.Component {
             if (px && editablePixelSize(px.width, px.height) && Number.isInteger(px.scale) && px.scale >= 1 && px.scale <= 64) {
                 image = {width: px.width, height: px.height, pixels: px.pixels};
                 scale = px.scale;
+                if (px.palette) palette = px.palette;
             }
         }
         let converted = false;

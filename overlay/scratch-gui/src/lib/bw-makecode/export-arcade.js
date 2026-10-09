@@ -169,10 +169,12 @@ class ArcadeEmitter {
         this.currentLocalNames = null;
         this.emittedSprites = new Set();    // the targets that became an Arcade sprite
         this.analyse();
-        const palettes = this.sprites.map(target => {
+        const palettes = this.project.targets.map(target => {
             const costume = target.costumes[target.currentCostume || 0];
             const palette = costume && opts.costumePalette?.(target, costume);
-            return isPalette(palette) ? palette : ARCADE_PALETTE;
+            const svg = costume && opts.costumeSvg?.(target, costume);
+            const indexed = svg && svgToPixels(svg, isPalette(palette) ? palette : ARCADE_PALETTE);
+            return indexed?.palette || (isPalette(palette) ? palette : ARCADE_PALETTE);
         });
         palettes.push(...(opts.animationDocuments || []).map(document => document.palette).filter(isPalette));
         this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
@@ -2257,9 +2259,10 @@ class ArcadeEmitter {
         if (svg) {
             const px = svgToPixels(svg, sourcePalette);
             if (px) {
-                if (samePalette(sourcePalette, this.palette)) return px;
+                const indexedPalette = px.palette || sourcePalette;
+                if (samePalette(indexedPalette, this.palette)) return px;
                 this.warnings.push(`${target.name}: costume palette mapped to the Arcade project palette`);
-                return remapPalette(px, sourcePalette, this.palette);
+                return remapPalette(px, indexedPalette, this.palette);
             }
         }
         const raster = costume && this.opts.costumeRgba ? this.opts.costumeRgba(target, costume) : null;

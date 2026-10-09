@@ -26,14 +26,34 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
         if (body.replace(/<rect\b[^>]*\/\s*>/gi, '').trim()) return null;
         const pixels = new Uint8Array(size.width * size.height);
         const attr = (tag, name) => new RegExp('\\b' + name + '="([^"]*)"', 'i').exec(tag)?.[1];
+        const declaredPalette = attr(root[0], 'data-bw-palette');
+        let sourcePalette = palette;
+        if (declaredPalette !== undefined) {
+            const colors = declaredPalette.split(',');
+            if (colors.length !== 15 || !colors.every(color => /^#[0-9a-f]{6}$/i.test(color))) return null;
+            sourcePalette = [null, ...colors.map(color => color.toLowerCase())];
+        }
+        const declaredScale = attr(root[0], 'data-bw-pixel-scale');
+        if (declaredScale !== undefined && (!/^\d+$/.test(declaredScale) || Number(declaredScale) < 1)) return null;
+        const scale = declaredScale === undefined ? 4 : Number(declaredScale);
+        const rootWidth = Number(attr(root[0], 'width')), rootHeight = Number(attr(root[0], 'height'));
+        if (rootWidth !== size.width * scale || rootHeight !== size.height * scale) return null;
         for (const rect of body.matchAll(/<rect\b([^>]*)\/\s*>/gi)) {
-            const [x, y, w, h] = ['x', 'y', 'width', 'height'].map(k => Number(attr(rect[1], k)) / 4);
-            const color = palette.findIndex((c, i) => i > 0 && c === (attr(rect[1], 'fill') || '').toLowerCase());
+            const [x, y, w, h] = ['x', 'y', 'width', 'height'].map(k => Number(attr(rect[1], k)) / scale);
+            const fill = (attr(rect[1], 'fill') || '').toLowerCase();
+            const declaredIndex = attr(rect[1], 'data-bw-color-index');
+            let color = sourcePalette.findIndex((c, i) => i > 0 && c?.toLowerCase() === fill);
+            if (declaredIndex !== undefined) {
+                if (!/^(?:[1-9]|1[0-5])$/.test(declaredIndex)) return null;
+                color = Number(declaredIndex);
+                if (!sourcePalette[color] || sourcePalette[color].toLowerCase() !== fill) return null;
+            } else if (declaredPalette !== undefined) return null;
             if (color < 0 || ![x, y, w, h].every(Number.isInteger) || x < 0 || y < 0 || w < 0 || h < 0 ||
                 x + w > size.width || y + h > size.height) return null;
             for (let row = y; row < y + h; row++) pixels.fill(color, row * size.width + x, row * size.width + x + w);
         }
-        return {width: size.width, height: size.height, pixels};
+        return {width: size.width, height: size.height, pixels,
+            ...(declaredPalette !== undefined ? {palette: sourcePalette} : {})};
     };
     const mutate = (image, operation, color, replacement) => {
         const {width, height, pixels} = image;
@@ -54,15 +74,23 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     };
     const svg = (image, paletteOverride = image.palette || palette) => {
         const {width, height, pixels} = image;
+        const customPalette = paletteOverride !== palette && paletteOverride.some((color, index) =>
+            index > 0 && color?.toLowerCase() !== palette[index]?.toLowerCase());
+        if (customPalette && (paletteOverride.length !== 16 || paletteOverride[0] !== null ||
+            !paletteOverride.slice(1).every(color => /^#[0-9a-f]{6}$/i.test(color)))) {
+            throw new Error('Invalid Arcade image palette');
+        }
         const rects = [];
         for (let y = 0; y < height; y++) for (let x = 0; x < width;) {
             const color = pixels[y * width + x]; const start = x++;
             while (x < width && pixels[y * width + x] === color) x++;
             if (color) rects.push('<rect x="' + start * 4 + '" y="' + y * 4 + '" width="' + (x - start) * 4 +
-                '" height="4" fill="' + paletteOverride[color] + '"/>');
+                '" height="4" fill="' + paletteOverride[color] + '"' +
+                (customPalette ? ' data-bw-color-index="' + color + '"' : '') + '/>');
         }
         return '<svg xmlns="http://www.w3.org/2000/svg" width="' + width * 4 + '" height="' + height * 4 +
-            '" viewBox="0 0 ' + width * 4 + ' ' + height * 4 + '" shape-rendering="crispEdges">' + rects.join('') + '</svg>';
+            '" viewBox="0 0 ' + width * 4 + ' ' + height * 4 + '" shape-rendering="crispEdges"' + (customPalette ? ' data-bw-pixel-scale="4" data-bw-palette="' +
+                paletteOverride.slice(1).map(color => color.toLowerCase()).join(',') + '"' : '') + '>' + rects.join('') + '</svg>';
     };
     // Scaled and rotated sprites (task F4): the pinned simulator's own routines.
     // Its args are a RefCollection; getAt is all of it these use.
