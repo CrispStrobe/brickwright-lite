@@ -5,8 +5,9 @@ Tile source `79ee6b89f`:13 original full pixel planes and19 affected regression
 checks pass; renderable creation IDs and z=-1 ties match original PXT.
 Modern speech at `c84f811cb` matches11 original full pixel planes, including
 explicit colour-zero writes and owner-local draw ordering. Callback renderables,
-HUD, legacy speech and effects remain missing. Timed speech across long suspended
-scenes and clock-aligned animated full frames still require qualification.
+HUD, legacy speech and effects remain missing. Timed speech across long suspended scenes qualifies at `e85bc17e9` against
+original PXT; parent scene frame clocks remain suspended. Clock-aligned animated
+full frames and modal/wall-time alignment still require qualification.
 No screen snapshot or paint/shade support claim.
 Prerequisite implementation: native Image.scroll and Image.copyFrom, with
 original-PXT pixel comparisons and dedicated editable Blocks/Code words.
@@ -70,7 +71,7 @@ profile if imported. Do not silently claim both scheduling models.
 - S03: renderable identity, sorted callback execution and paint/shade events.
 - S04: modern sayText composition is implemented with masked zero-colour writes.
   Complete native legacy bubble identity/lifecycle, HUD, effects and remaining
-  screen Image methods. Qualify long scene suspensions and animated text clocks.
+  screen Image methods. Long suspended-scene deadlines now pass; qualify animated text and modal clocks.
   Existing SVG speech skips zero-colour pixels and uses separate placement;
   unified frame presentation must close those GUI gaps.
 - S05: recover the unchanged racing and painting corpus sources, run controller
@@ -79,3 +80,36 @@ profile if imported. Do not silently claim both scheduling models.
 Each slice needs runtime and authoring evidence. Import-only classification is
 separate from runnable game compatibility. This contract is not implementation
 or qualification evidence; the74 partial imports remain open.
+
+## Legacy bubble integration
+
+Original LegacySpriteSayRenderer creates an ordinary sprite of kind=-1 in its
+constructor, sets Ghost and RelativeToCamera, then updates its initial image and
+position. Subsequent updates set z=owner.z+1. Owner invisibility does not make
+that independent sprite invisible. Its identity participates in the scene's
+creation order and kind collections. Clearing, replacing or expiring speech
+and owner destruction must destroy the bubble through native sprite ownership.
+
+The existing bridge uses a lightweight BubbleSprite. Do not claim its pixel
+image or a newly invented draw-list ID is the required native integration.
+
+Required implementation and checks:
+
+- Use native sprite/image handles, scene membership and original ID allocation.
+  Compare bubble IDs, owner IDs and creation-order ties with original PXT.
+- Preserve kind=-1 and Ghost/RelativeToCamera semantics; qualify
+  sprites.allOfKind(-1), original creation/destruction callbacks and captures.
+  Creation handlers can yield; keep the existing native callback completion
+  contract rather than dropping those callbacks in a synchronous image factory.
+- Preserve original bubble image sizing, transparent corners, cached fonts,
+  scrolling, owner-relative placement and mutable pixel/image queries.
+- Destroy or replace native bubbles with original callback/lifecycle ordering.
+  Qualify duplicate persistent say, new text, clear, expiry and destroyed owners.
+- Suspend scene-owned bubbles and restore them with the owner. Expiry uses the
+  qualified global speech clock; animation and scene transition ordering still
+  need original execution comparisons.
+- Compare complete indexed frames for bubble z/id ties, invisible owners,
+  camera-relative placement and image clipping. Re-run existing speech,
+  physics, kind-collection, Code/Blocks/SB3 and executed MakeCode exports.
+- Adopt legacy speech in the frame coverage marker only after those interfaces
+  pass. Complete frame presentation still needs real GUI/controller pixel checks.

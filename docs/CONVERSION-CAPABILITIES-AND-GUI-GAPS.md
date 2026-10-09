@@ -6,6 +6,36 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Speech deadlines across suspended scenes — 2026-10-09
+
+Implementation `e85bc17e9f42d66987c0b71ecb172b655217f4de` changes speech creation,
+raster animation time and expiry from the owning scene's elapsed time to the
+existing global simulated clock. This follows original PXT control.millis and
+game.runtime, which continue across scene pushes while the parent frame clock
+is suspended. Scene-local physics and update clocks retain their own ownership.
+
+32 affected checks pass without skips, including four new clock checks and
+28 speech/authoring/indexed-frame/fresh-bundle regressions. Three new complete
+original19200-pixel comparisons (57600 pixels) verify modern and legacy parent
+expiry after a long child pause, and retained modern speech after a short pause.
+Native controls also verify that a later-created child receives deadline1500
+at global time1000 despite local time0, then expires while it is suspended.
+The parent frame clock is explicitly checked to remain suspended.
+
+This closes the long suspended-scene deadline gap recorded in the modern speech
+checkpoint. Legacy expiry comparison occurs after its bubble has expired; it
+is not active legacy-bubble frame support. Animated full-frame clock alignment,
+modal/wall-time alignment, native legacy bubble identity/collections/callbacks,
+HUD/effects/render callbacks and unified GUI presentation remain open.
+
+No authoring vocabulary or importer changed. Existing speech Blocks/pseudocode,
+Code/export tests and project ownership are exercised by the regression batch.
+The latest measured corpus remains109 translated /74 partial /1 malformed;
+no new classification measurement is claimed. See the
+[receipt](receipts/2026-10-09-arcade-speech-global-clock.json) and the concrete
+[legacy bubble acceptance contract](ARCADE-SCREEN-RENDER-CONTRACT.md#legacy-bubble-integration).
+Full shipped GUI and all enabled hosted checks remain required before merge.
+
 ## Indexed modern speech and zero-colour writes — 2026-10-09
 
 Implementation `c84f811cb7c0ae2e23fcc773366bb266497939b4` reuses the original
