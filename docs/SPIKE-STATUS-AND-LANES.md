@@ -405,3 +405,19 @@ diagnostics are the next step; the original failed evidence remains preserved
 privately. This checkpoint does not qualify either E/F execution scenario,
 installed Tauri behavior or a distributed package. The acceptance requirements
 above remain open.
+
+The subsequent private monitor diagnostic identified a package/runtime mismatch:
+the package included dynamic model definitions already compiled into the
+qualified source Runtime, so loading stopped on a duplicate `ILpf2Device` type.
+The package producer now accepts an explicit `--compiled-models` option for a
+source-built Runtime containing the matched Infrastructure models. It uses the
+Runtime's compiled-platform staging interface, omits dynamic model loading and
+retains the source bundle/notices in the verified support manifest for provenance.
+The default source-loading profile is unchanged. Match the executable/build and
+Infrastructure revisions explicitly; this option is not automatic discovery or
+proof of their compatibility. Actual guest and installed acceptance remains open.
+
+```sh
+node --test test/spike-package-model-loading.test.mjs
+node scripts/prepare-spike-nuttx-package.mjs FIRMWARE_REPO RENODE_REPO INFRASTRUCTURE_REPO RENODE_EXECUTABLE NEW_OUTPUT_DIRECTORY --compiled-models
+```
