@@ -6,6 +6,36 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## In-place image copying and screen prerequisites — 2026-10-09
+
+Implementation `9523aa4c62922158a5e96f7fb8ff5ce8e025d9cb` adopts producer
+`eca752b7011656b9e73917bc6f816ffed24ad4b9`. Native `arcade_copyImageFrom` has dedicated
+source and destination Blocks inputs. Pseudocode is
+`arcade copy pixels into image art from sourceArt`; MakeCode exports
+`art.copyFrom(sourceArt)`. The operation copies transparent pixels, preserves
+aliases, pixel-buffer identity and destination palette, and leaves mismatched
+image dimensions unchanged. Typed sprite/image procedure arguments are supported.
+
+Five final copying checks pass without skips, including16 dimension/self-copy
+comparisons with original PXT, source evaluation once, alias/clone independence,
+Code/Blocks/MakeCode export/reimport, saved SB3 restart, inactive scenes and real
+controller keys. The earlier24-check batch passed four initial copying checks
+and20 unchanged scroll/mutation/bundle/dialect/pin checks. Producer328 checks
+pass. Full rendered native-file/controller-pane pixel checks are prepared and
+pending hosted execution; no fresh full browser success is claimed.
+
+All184 corpus hashes remain unchanged at109 translated /74 partial /1 malformed,
+with zero changed diagnostics. Initial integration failed before the producer
+vocabulary was synchronized; raw failure is retained, and parser synchronization
+resolved it without weakening refusals.
+
+Screen cloning and drawing require an authoritative indexed frame image and
+original z/id callback ordering, including arbitrary sprite z. The
+[screen implementation contract](ARCADE-SCREEN-RENDER-CONTRACT.md) records runtime,
+Blocks, pseudocode, graphics and controller acceptance criteria and five ordered
+slices. It is proposed work, not a screen API implementation claim. See the
+[copying receipt](receipts/2026-10-09-arcade-image-copyfrom.json).
+
 ## Mutable image scrolling — 2026-10-09
 
 Implementation `d490487dea0308a05aea1fe209ee55883401317d` adopts producer
