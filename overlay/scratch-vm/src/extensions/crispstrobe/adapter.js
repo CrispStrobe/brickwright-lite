@@ -57,12 +57,12 @@ module.exports = function makeCrispExtension (source, dependencies = null) {
             let captured = null;
             const Scratch = {
                 BlockType, ArgumentType, TargetType, Cast, BWValues,
-                // Trusted built-in modules retain their real dependency closures.
-                BWExtensionDependencies: dependencies,
                 translate: Object.assign(m => (m && typeof m === 'object' ? (m.default || '') : m), { setup: () => {} }),
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
                 vm: runtime && runtime.emit ? { runtime } : {}, runtime
             };
+            // Trusted built-ins opt into modules with their compiled closures intact.
+            if (dependencies !== null) Scratch.BWExtensionDependencies = dependencies;
             // Yes/no questions an extension can wait for (task E7). In the desktop/iOS app
             // `window.confirm` returns a Promise (tauri-plugin-dialog), always truthy, so the
             // CrispStrobe extensions ask through `Scratch.BWConfirm(message) -> Promise<boolean>`
