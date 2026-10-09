@@ -12,6 +12,7 @@ import {LEGACY_TILE_VALUES_SOURCE} from '../test/fixtures/arcade-legacy-tile-val
 import {LEGACY_TILEMAP_SOURCE} from '../test/fixtures/arcade-legacy-tilemap.mjs';
 import {MULTIPLAYER_STATE_SOURCE} from '../test/fixtures/arcade-multiplayer-state.mjs';
 import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
+import {LITERAL_ARRAY_VALUES_SOURCE} from '../test/fixtures/arcade-literal-array-values.mjs';
 import {CAMERA_SHAKE_SOURCE} from '../test/fixtures/arcade-camera-shake.mjs';
 import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
 import {DIRECT_CONTROLLERS_SOURCE} from '../test/fixtures/arcade-direct-controllers.mjs';
@@ -571,6 +572,20 @@ let discardedReady=true`;
     report.numberTruncation={nativeFileImport:true,codeToBlocks:true,buttonTrigger:true,negativeResult:-3,
         argumentCalls:2,spriteX:35,spriteY:40};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-number-truncation.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const arrayProject=makeCodeProjectFile({'main.ts':LITERAL_ARRAY_VALUES_SOURCE,
+        'pxt.json':JSON.stringify({name:'Literal array values',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Literal array values'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'literal-array-values.mkcd',mimeType:'application/json',buffer:Buffer.from(arrayProject)});
+    await page.getByText(/Imported the Arcade game.*literal-array-values/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({arraysReady:true,calls:0,order:0,result:''});
+    await page.getByTestId('bw-arcade-a').click();await waitMultifile({calls:2,order:12,result:'Hi!there'});
+    report.literalArrayValues={nativeFileImport:true,codeToBlocks:true,buttonTrigger:true,
+        argumentCalls:2,evaluationOrder:12,result:'Hi!there'};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-literal-array-values.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const shakeProject=makeCodeProjectFile({'main.ts':CAMERA_SHAKE_SOURCE,
         'pxt.json':JSON.stringify({name:'Camera shake',dependencies:{device:'*'},files:['main.ts']})},

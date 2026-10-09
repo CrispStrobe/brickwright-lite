@@ -2672,7 +2672,10 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
         const mixedValue=value=>['String','Boolean','Null','Undefined','Array'].includes(value?.type) || t.stringReferences.has(value) || t.booleanReferences.has(value) || t.arrayReferences.has(value) || t.imageReferences.has(value);
         if(node.type==='Binary' && (node.op==='%' || ['+','-','*','/','==','!=','===','!==','<','>','<=','>='].includes(node.op) && (mixedValue(node.left) || mixedValue(node.right))) || node.type==='Unary' && ['+','-'].includes(node.op) && mixedValue(node.argument))return true;
-        if(node.type==='Array' && node.items.some(item=>item?.type==='Array' || t.arrayReferences.has(item)))return true;
+        // Array literals are values with reference identity, including unused
+        // function arguments/returns. Always select the existing native array
+        // route so their elements are evaluated and their aliases are retained.
+        if(node.type==='Array')return true;
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
