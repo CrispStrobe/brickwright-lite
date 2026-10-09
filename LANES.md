@@ -15,6 +15,15 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade indexed modern speech — 2026-10-09
+
+Codex owns `lane/arcade-frame-modern-speech-20261009`, stacked on PR766.
+Compose original modern sayText at the owner draw position, before its sprite,
+with explicit write masks so colour-zero boxes overwrite pixels. Reuse original
+speech/font engines and compare complete original PXT frames. Legacy say creates
+a separate sprite and remains a gap until its native identity is integrated.
+No new vocabulary; preserve screen/callback diagnostics and pending GUI gates.
+
 ## Arcade indexed tile layers — 2026-10-09
 
 Codex owns `lane/arcade-frame-tiles-20261009`, stacked on PR765. Add modern
