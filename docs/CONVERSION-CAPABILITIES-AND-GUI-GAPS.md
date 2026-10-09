@@ -6,6 +6,45 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native number truncation — 2026-10-09
+
+Implementation `6f312b838` adds a native reporter and Code word:
+
+```text
+set whole to arcade truncate (-3.75)
+```
+
+Blocks expose **Arcade truncate [number] toward zero**. MakeCode import/export
+uses `Math.trunc`; it preserves negative fractions, signed zero, NaN/infinities
+and numbers larger than32 bits. Original PXT comparisons verify the operation
+and one-time argument evaluation. Code/Blocks/decompile, export/reimport and
+saved SB3 restart pass. Actual GUI-rule development and production extension
+bundles retain these numeric results. The existing hosted controller journey
+now includes truncating fractional sprite coordinates through a real A button.
+**Fresh full-app browser result remains pending.**
+
+20 affected Lite checks pass at the implementation source and again at adoption
+`3c58a272b`; seven final pin/word/SPIKE/mirror checks pass at `fbc9c5265`.
+Runtime and importer bytes are unchanged after the implementation qualification.
+Producer `ef312b0a` passes322 combined dialect/Boolean value-position checks.
+The producer's previous hosted suite exposed the stale Boolean count for the
+multiplayer pressed-query predicate and an aged circuit-model fixture. The
+census assertion is corrected, and the fixture adopts Lite's existing model
+revision `557c471`; its full hosted sibling-dependent corpus remains required.
+No circuit quantity expectations or freshness bounds are relaxed.
+
+All184 corpus input hashes remain unchanged. Import-only counts move
+**105/78/1 →106 translated /77 partial /1 malformed**, with one changed refusal
+row (`Math.trunc`). The newly translated Sprite Walker starts in the headless
+VM and its real source button callback reports `X=-3 Y=40` after an explicit
+native fractional-position setup. Export compiles in original PXT and reimports
+without diagnostics. Missing renderer/audio messages remain in private evidence;
+this does not qualify rendered gameplay or all translated apps.
+
+See the [receipt](receipts/2026-10-09-arcade-truncate-number.json). Arbitrary
+external packages, remaining partial imports and fresh GUI qualification stay
+open in the capability matrix below.
+
 ## Question readiness and visible browser navigation — 2026-10-09
 
 Source `7c05309b9` fixes the production question guard defect found in PR748.
@@ -439,7 +478,7 @@ verification scripts under `scripts/`. These pointers do not claim fresh passes.
 
 | ID / capability | Blocks and Code | Graphics / runtime / export | Existing evidence; remaining GUI work |
 | --- | --- | --- | --- |
-| C01 Values and arrays | Present: Boolean/value operators, undefined/null, legacy named and shared reference arrays | Identity and typed array export present | `-reference-arrays`, `-named-arrays`, `-array-coercion`, `-value-arithmetic`, `bw-sb3-values`. Author nested Sprite/Image arrays, mutate, switch editors and reopen; distinguish preserved values from dead run-bound references. |
+| C01 Values and arrays | Present: Boolean/value operators, undefined/null, native number truncation, legacy named and shared reference arrays | Identity and typed array export present | `-reference-arrays`, `-named-arrays`, `-array-coercion`, `-value-arithmetic`, `bw-sb3-values`. Author nested Sprite/Image arrays, mutate, switch editors and reopen; distinguish preserved values from dead run-bound references. |
 | C02 Sprites/projectiles | Present: handles, kinds, creation/destruction, source projectiles, aliases/collections/procedures | Image templates and native execution/export present | `-sprite-collections`, `-projectile-source`, `-local-projectiles`, `-created-order`, `-destroyed`. Need approachable image/kind/reference selection and authored lifecycle browser proof. |
 | C03 Properties/flags/scaling | Present: property/flag blocks, axes/anchors/proportional inputs | Fixed-point geometry, viewport crop and export present | `-sprite-fixed-point`, `-flags`, `-scaling`, `-viewport-scaling-runtime`, `-viewport-scaling-renderer`. Prove actual menu use, fractional/zero/nonuniform scale, camera movement and save/export/reimport. |
 | C04 Rotation/sprite data | Integration: rotation/rotationDegrees/data property words, blocks and qualified upstream dialect adoption | Rotated geometry/raster, viewport-bounded scaled rendering and reference-preserving data import/export | Focused `-rotation`, `-rotation-viewport`, `-data-types` tests pass, including original PXT, VM, export/reimport and SB3 restart. Production Code→Blocks/controller/export/file-reimport passes 12 observed states; initial stage matches all 19,200 original PXT palette pixels. Huge rotated collision performance remains unqualified. Artwork quarter turns are a separate editor feature. |
