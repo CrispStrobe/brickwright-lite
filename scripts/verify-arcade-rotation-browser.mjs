@@ -13,6 +13,7 @@ import {LEGACY_TILEMAP_SOURCE} from '../test/fixtures/arcade-legacy-tilemap.mjs'
 import {MULTIPLAYER_STATE_SOURCE} from '../test/fixtures/arcade-multiplayer-state.mjs';
 import {MULTIPLAYER_BUTTONS_SOURCE} from '../test/fixtures/arcade-multiplayer-buttons.mjs';
 import {SPRITE_FOLLOW_SOURCE} from '../test/fixtures/arcade-sprite-follow.mjs';
+import {SPRITE_LAYER_ROUTING_SOURCE} from '../test/fixtures/arcade-sprite-layer-routing.mjs';
 import {LITERAL_ARRAY_VALUES_SOURCE} from '../test/fixtures/arcade-literal-array-values.mjs';
 import {CAMERA_SHAKE_SOURCE} from '../test/fixtures/arcade-camera-shake.mjs';
 import {TRUNCATE_NUMBER_SOURCE} from '../test/fixtures/arcade-truncate-number.mjs';
@@ -640,6 +641,29 @@ let discardedReady=true`;
     report.spriteFollowing={nativeFileImport:true,codeToBlocks:true,momentumMovement:true,
         targetMovedByController:true,stoppedByController:true,stoppedVelocity:followState};
     await page.screenshot({path:out.replace(/\.json$/,'')+'-sprite-following.png'});
+    await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
+    const layerProject=makeCodeProjectFile({'main.ts':SPRITE_LAYER_ROUTING_SOURCE,
+        'pxt.json':JSON.stringify({name:'Sprite layers',dependencies:{device:'*'},files:['main.ts']})},
+    {target:'arcade',name:'Sprite layers'});
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name:'sprite-layers.mkcd',mimeType:'application/json',buffer:Buffer.from(layerProject)});
+    await page.getByText(/Imported the Arcade game.*sprite-layers/).first().waitFor({state:'visible'});
+    assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
+    await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
+    await waitMultifile({layerReady:true,layerPhase:0});
+    const waitLayerPixel=rgb=>page.waitForFunction(expected=>{
+        const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        runtime.renderer.draw();const canvas=runtime.renderer.canvas,copy=document.createElement('canvas');
+        copy.width=canvas.width;copy.height=canvas.height;const context=copy.getContext('2d');context.drawImage(canvas,0,0);
+        const pixel=context.getImageData(Math.floor(canvas.width/2),Math.floor(canvas.height/2),1,1).data;
+        return expected.every((channel,index)=>pixel[index]===channel);
+    },rgb);
+    await waitLayerPixel([255,33,33]);
+    await page.getByTestId('bw-arcade-a').click();await waitMultifile({layerPhase:1});await waitLayerPixel([255,246,9]);
+    await page.getByTestId('bw-arcade-b').click();await waitMultifile({layerPhase:2});await waitLayerPixel([255,33,33]);
+    report.spriteLayers={nativeFileImport:true,codeToBlocks:true,initialRedInFront:true,
+        controllerMovesRedBehindYellow:true,controllerRestoresRedInFront:true};
+    await page.screenshot({path:out.replace(/\.json$/,'')+'-sprite-layers.png'});
     await stop.click();await page.getByRole('tab',{name:'Code',exact:true}).click();
     const buttonsProject = makeCodeProjectFile({'main.ts': MULTIPLAYER_BUTTONS_SOURCE,
         'pxt.json': JSON.stringify({name: 'Multiplayer buttons', dependencies: {device: '*', multiplayer: '*'}, files: ['main.ts']})},
