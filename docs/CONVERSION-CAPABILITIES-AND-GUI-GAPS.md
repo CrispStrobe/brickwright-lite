@@ -8,7 +8,7 @@ not a second active owner. SPIKE G01, CPU and hardware ownership remain separate
 
 ## Native sprite following — 2026-10-09
 
-Source `f1230bd8e` implements follow/unfollow as native Blocks commands and Code:
+Source `3c4493c1e` (initial implementation `f1230bd8e`) implements follow/unfollow as native Blocks commands and Code:
 
 ```text
 arcade sprite enemy follow hero speed 25 turn rate 400
@@ -22,9 +22,11 @@ using original elapsed-frame timing and Fx8 velocity setters. It retains
 momentum, snaps within two pixels on both axes, replaces bindings, stops on
 null/zero speed, cleans up destroyed targets and belongs to the active scene.
 Self-follow preserves a previous binding; cancellation with no binding retains
-velocity. These cases are compared with the actual original PXT follow method.
+velocity. Snapping uses collision-aware x/y movement in original setter order,
+including cooperative wall callbacks. An original-PXT wall regression keeps a
+solid follower outside the wall that contains its ghost target. These cases are compared with the actual original PXT follow method.
 
-Twelve original-follow/scene/interchange checks and eight fresh development /
+Thirteen original-follow/scene/interchange checks and eight fresh development /
 production bundle/pin/dialect checks pass. Code/Blocks/decompile, saved SB3 and
 executed original MakeCode export/reimport remain editable. Producer `e41906fe`
 passes325 dialect/Boolean checks; the inventory has197 canonical forms /202

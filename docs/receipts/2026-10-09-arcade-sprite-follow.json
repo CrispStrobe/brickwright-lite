@@ -1,16 +1,17 @@
 {
   "date": "2026-10-09",
-  "testedSource": "f1230bd8e6dd83e6808f375b391d0052cb325f20",
+  "testedSource": "3c4493c1eb8f68343234e86141ebd9c9e8a277f8",
   "producerPin": "e41906fe20198853690bcb532ad0f43e7856dd04",
   "implemented": [
     "Native follow/unfollow Blocks and pseudocode commands",
     "MakeCode import/export with optional100 speed /400 turn-rate defaults",
     "Follow after controllers before physics, original elapsed timing, Fx8 velocity storage",
-    "Momentum/snapping/replacement/cancellation/destruction/scene ownership"
+    "Momentum/snapping/replacement/cancellation/destruction/scene ownership",
+    "Collision-aware near-target snap using original x/y setter order and cooperative terrain callbacks"
   ],
   "local": {
     "followSceneInterchange": {
-      "passed": 12,
+      "passed": 13,
       "failed": 0,
       "skipped": 0
     },
@@ -79,5 +80,12 @@
     "fresh shipped native-file/controller-pane browser journey",
     "full producer hosted suite",
     "complete rendered recovered game and modal/wall-time timing qualification"
-  ]
+  ],
+  "implementationSource": "f1230bd8e6dd83e6808f375b391d0052cb325f20",
+  "wallSnap": {
+    "originalPxtCompared": true,
+    "expectedSolidFollowerX": 15,
+    "ghostTargetX": 16,
+    "boundary": "Finite tile-wall snapping fixture; no complete recovered-game modal timing claim"
+  }
 }
