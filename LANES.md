@@ -44,6 +44,12 @@ with a capacitor, and observe real advanceToLive receipts. The100kHz sample
 grid must bound each16-step callback to160us and produce partial continuation.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
+## Arcade core values — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-core-values-20261010` (stacked on the
+music lane): PXT's own `parseInt` (generated from `base/pxt-helpers.ts`) and
+`game.eventContext().deltaTime`. Producer sb3-creator PR87 adds three words.
+
 ## Arcade music — 2026-10-10
 
 Continues the Arcade lane on `lane/arcade-music-20261010` (stacked on the screen

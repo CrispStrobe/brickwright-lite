@@ -6,6 +6,20 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## PXT parseInt and frame delta time — 2026-10-10
+
+- `parseInt(text, radix?)` runs PXT's own implementation from the pinned
+  `base/pxt-helpers.ts` (`scripts/generate-arcade-helpers.mjs` → `helpers-pxt.js`),
+  which differs from JavaScript's. Values for plain, hexadecimal with whitespace
+  and sign, partial, binary, invalid-radix and non-numeric text equal the
+  original runtime's.
+- `game.eventContext().deltaTime` (and `control.eventContext()`) reads the native
+  frame time in seconds.
+- Three words (sb3-creator `fa1bbec9`, 234 ops); export writes a literal text
+  argument as a string so the original compiles it.
+
+Corpus (translation-only): 129 fully translated. `isNaN` is not yet imported.
+
 ## Native Arcade music — 2026-10-10
 
 PXT's own mixer code now plays Arcade music:
