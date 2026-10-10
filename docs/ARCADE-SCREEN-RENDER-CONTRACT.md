@@ -5,7 +5,8 @@ Tile source `79ee6b89f`:13 original full pixel planes and19 affected regression
 checks pass; renderable creation IDs and z=-1 ties match original PXT.
 Modern speech at `c84f811cb` matches11 original full pixel planes, including
 explicit colour-zero writes and owner-local draw ordering. Callback renderables,
-HUD, legacy speech and effects remain missing. Timed speech across long suspended scenes qualifies at `e85bc17e9` against
+HUD and effects remain missing. Legacy speech uses native sprite composition,
+with broader coverage still gated. Timed speech across long suspended scenes qualifies at `e85bc17e9` against
 original PXT; parent scene frame clocks remain suspended. Clock-aligned animated
 full frames and modal/wall-time alignment still require qualification.
 No screen snapshot or paint/shade support claim.
@@ -121,8 +122,12 @@ clear/replacement/expiry and scene restoration. Callback continuation restores
 the caller's shared BlockUtility before subsequent creation. Null/undefined text
 clears speech; decoded undefined duration preserves duplicate persistent speech.
 Native sprites compose the bubbles through their existing z/id draw path.
-Legacy coverage remains gated pending native scrolling/clock comparisons,
-complex callback reentry/scene changes and actual shipped GUI qualification.
+Legacy scroll source `7b158d559` now matches every observed image and41
+completed planes across three clock-replayed originals. Initial constructor
+holds use the current scene delta, including creation during update callbacks.
+Legacy coverage remains gated pending scrolling through suspension/modal or
+yielding construction, complex callback reentry/scene changes and actual
+shipped GUI qualification.
 
 Required implementation and checks:
 

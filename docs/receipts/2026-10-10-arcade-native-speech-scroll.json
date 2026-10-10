@@ -1,0 +1,81 @@
+{
+  "date": "2026-10-10",
+  "testedSource": "7b158d559d92041a3d6893c29b2851dc6e5b8747",
+  "base": "25ae4f5d5e03caef043acb45d3e2456f7b968e19",
+  "implemented": [
+    "Store owning scene current frame delta before callbacks",
+    "Pass current scene delta into legacy constructor and refresh it after optional creation callback continuation"
+  ],
+  "local": {
+    "distinctPassed": 45,
+    "failed": 0,
+    "skipped": 0,
+    "regressionChecks": 42,
+    "newChecks": 3,
+    "sharedBatchPassed": 44,
+    "finalBatchPassed": 3,
+    "repeatedAndStrengthenedChecks": 2,
+    "fullOriginalPlanes": 41,
+    "fullPlaneComparedPixels": 787200,
+    "observedBubbleImages": 915,
+    "observedBubbleComparedPixels": 1303328,
+    "traces": [
+      {
+        "name": "persistent-loop",
+        "frames": 386,
+        "bubbleImages": 384,
+        "bubblePixels": 479232,
+        "fullPlanes": 17
+      },
+      {
+        "name": "duration-adjusts-scrolling-speed",
+        "frames": 145,
+        "bubbleImages": 143,
+        "bubblePixels": 178464,
+        "fullPlanes": 7
+      },
+      {
+        "name": "international-font-loop",
+        "frames": 390,
+        "bubbleImages": 388,
+        "bubblePixels": 645632,
+        "fullPlanes": 17
+      }
+    ],
+    "logs": [
+      "arcade-native-speech-scroll-qualified.log",
+      "arcade-native-speech-scroll-final.log"
+    ],
+    "boundary": "Actual original Chromium PXT frame deltas replayed through native VM ARCADE_FRAME events, every observed bubble image and sampled completed stage planes. Persistent loops, timed speed and font8/font12. Existing camera, ownership, global scene clock, Code/SB3/MakeCode and fresh extension bundle regressions. No full shipped GUI, modal clock or complex scene-changing constructor claim."
+  },
+  "preservedFailures": [
+    {
+      "log": "arcade-native-speech-scroll-clock.log",
+      "passed": 0,
+      "failed": 2,
+      "cause": "Update-callback constructor zeroed current delta, delaying initial hold/scroll by a frame."
+    },
+    {
+      "logs": [
+        "arcade-native-speech-scroll-delayed.log",
+        "arcade-native-speech-scroll-delayed-observer.log"
+      ],
+      "cause": "Oracle harness variable images collided with PXT namespace; renamed bubbleFrames."
+    }
+  ],
+  "remaining": [
+    "Complex callback reentry and scene-changing constructor/destruction handlers",
+    "Scrolling through suspension/modal changes and yielding construction",
+    "Broader live-image hitbox cache timing",
+    "Full shipped GUI/controller qualification",
+    "HUD/effects/renderables and completed global screen API",
+    "All enabled exact-head hosted checks"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1
+  },
+  "producerChanged": false
+}

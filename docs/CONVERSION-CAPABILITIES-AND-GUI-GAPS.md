@@ -6,6 +6,39 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native legacy scrolling frame clock — 2026-10-10
+
+Source `7b158d559d92041a3d6893c29b2851dc6e5b8747` passes45 distinct checks:
+42 regressions and three scrolling checks, zero failures/skips. The shared
+batch passed44; the final batch passed3, repeating and strengthening two cases
+and adding the international font. Original PXT executed each authored fixture
+in Chromium; record every scene frame delta at diagnostic priority150 after
+rendering and replay it through actual native VM ARCADE_FRAME events.
+
+The initial half-second comparison passed, but delayed update-callback creation
+and every-frame image comparison exposed two failures. Native construction
+zeroed the delta used by the initial hold. Preserve the owning scene's current
+frame delta before callbacks, pass it into construction and refresh it after
+creation callback continuation. Keep the credited PXT scroll/hold algorithm;
+no hardcoded scrolling compensation or conversion vocabulary changes.
+
+The final three traces replay921 frames, comparing915 native/original bubble
+images (1303328 indexed pixels) and41 complete stage planes (787200 pixels).
+Persistent Latin and international text reach scrolling and return to their
+initial image; timed text uses original duration-dependent speed. The replay
+covers both8x8/12x12 font families as selected by PXT's retained fonts (Latin
+character width6 in the small font). Camera, native callback/ownership, global
+scene-clock, hitbox authoring and fresh development/production extension bundle
+regressions pass. Original failed image assertions and harness namespace
+collisions are retained privately alongside final original traces.
+
+Existing legacy say, game update callbacks, Code and Blocks words are reused.
+Full shipped GUI/controller qualification, scrolling through suspension/modal
+changes, yielding/scene-changing construction, broader hitbox cache timing and
+complex callback reentry remain open. Legacy coverage stays gated. No producer
+change or corpus reranking:109 translated /74 partial /1 malformed remains the
+latest measured importer corpus.
+
 ## Native legacy speech hitbox placement — 2026-10-10
 
 Implementation `f6b48a499dce678c91cef052fcde424c90a6413a` passes38 checks:
