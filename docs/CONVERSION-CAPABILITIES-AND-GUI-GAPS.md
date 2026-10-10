@@ -6,6 +6,29 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Arcade extensions: seven segment displays — 2026-10-10
+
+The first MakeCode extension now converts: `sevenseg` (seven segment digits and
+counters), which the pinned Arcade target bundles.
+
+- `scripts/generate-arcade-sevenseg.mjs` transpiles the pinned `sevenseg.ts`
+  unchanged into `sevenseg-pxt.js`. Its `SevenSegDigit` and `DigitCounter` classes
+  draw with the native image engine onto real native sprites (the host supplies
+  `image.create`, `sprites.create` and buffer literals), so digits collide, layer
+  and render like any sprite.
+- Nine words (sb3-creator `96a6da7a`, 250 ops): create a digit or counter, set the
+  character, color, radix and scale, add a digit, and read or write `x`, `y`,
+  `value`, `count` (plus `width`, `height`). Digits and counters are references of
+  a new value kind; the translator tracks them through its type graph, and the
+  exporter declares them as `SevenSegDigit` / `DigitCounter` and adds the
+  `sevenseg` dependency.
+
+Evidence: an authored program using every word draws the same full screen raster
+as the original and reports the same values (including an ignored out-of-range
+count); it round-trips through Code and Blocks, SB3 and an original export that
+runs in PXT. A wrong default style fails the raster comparison. The corpus program
+using sevenseg now translates without a gap (137 of 184 inputs).
+
 ## Arcade core translator gaps — 2026-10-10
 
 Gaps closed without any third-party extension:

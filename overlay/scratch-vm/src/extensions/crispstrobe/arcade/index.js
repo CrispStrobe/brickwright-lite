@@ -117,6 +117,7 @@ module.exports = makeExt(`// Name: Arcade
           this._clearParticleOverlays();this._particleScenes=new WeakMap();this._particleAnchors=new WeakMap();
           this._renderables=new WeakMap();this._screen=null;
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
+          this._sevensegIds=new Map();this._sevensegValues=new Map();
           this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
@@ -205,6 +206,12 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
+          {opcode:'sevensegSetCharacter',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] character [CHARACTER]',arguments:{...str('DISPLAY',''),CHARACTER:{type:Scratch.ArgumentType.STRING,menu:'segmentCharacters',defaultValue:'ZERO'}}},
+          {opcode:'sevensegSetColor',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] color [COLOR]',arguments:{...str('DISPLAY',''),...n('COLOR',2)}},
+          {opcode:'sevensegSetRadix',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] radix [RADIX]',arguments:{...str('DISPLAY',''),RADIX:{type:Scratch.ArgumentType.STRING,menu:'digitRadixes',defaultValue:'Decimal'}}},
+          {opcode:'sevensegSetScale',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] scale [SCALE]',arguments:{...str('DISPLAY',''),SCALE:{type:Scratch.ArgumentType.STRING,menu:'segmentScales',defaultValue:'Full'}}},
+          {opcode:'sevensegSetProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] property [PROPERTY] to [VALUE]',arguments:{...str('DISPLAY',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'sevensegWritable',defaultValue:'value'},...n('VALUE',0)}},
+          {opcode:'sevensegAddDigit',blockType:Scratch.BlockType.COMMAND,text:'Arcade add seven segment digit to [DISPLAY]',arguments:str('DISPLAY','')},
           {opcode:'playMusic',blockType:Scratch.BlockType.COMMAND,text:'Arcade play music [PLAYABLE] mode [MODE]',arguments:{...str('PLAYABLE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'playbackModes',defaultValue:'UntilDone'}}},
           {opcode:'playMelody',blockType:Scratch.BlockType.COMMAND,text:'Arcade play melody [MELODY] mode [MODE]',arguments:{...str('MELODY',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'melodyModes',defaultValue:'play'}}},
           {opcode:'playSoundEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound effect [EFFECT] mode [MODE]',arguments:{...str('EFFECT',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'soundPlayModes',defaultValue:'UntilDone'}}},
@@ -216,6 +223,9 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade set tempo to [TEMPO] bpm',arguments:n('TEMPO',120)},
           {opcode:'changeTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade change tempo by [TEMPO] bpm',arguments:n('TEMPO',20)},
           {opcode:'stopAllSounds',blockType:Scratch.BlockType.COMMAND,text:'Arcade stop all sounds'},
+          {opcode:'sevensegDigit',blockType:Scratch.BlockType.REPORTER,text:'Arcade seven segment digit style [STYLE] value [VALUE]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'segmentStyles',defaultValue:'Thick'},...n('VALUE',0)}},
+          {opcode:'sevensegCounter',blockType:Scratch.BlockType.REPORTER,text:'Arcade seven segment counter style [STYLE] scale [SCALE] digits [DIGITS]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'segmentStyles',defaultValue:'Thick'},SCALE:{type:Scratch.ArgumentType.STRING,menu:'segmentScales',defaultValue:'Full'},...n('DIGITS',1)}},
+          {opcode:'sevensegProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade seven segment [DISPLAY] property [PROPERTY]',arguments:{...str('DISPLAY',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'sevensegReadable',defaultValue:'value'}}},
           {opcode:'melodyPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade melody playable [MELODY]',arguments:str('MELODY','')},
           {opcode:'stringPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade string playable [MELODY] at [TEMPO] bpm',arguments:{...str('MELODY','C D E F'),...n('TEMPO',120)}},
           {opcode:'tonePlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade tone playable [FREQUENCY] Hz for [DURATION] ms',arguments:{...n('FREQUENCY',262),...n('DURATION',500)}},
@@ -689,6 +699,13 @@ module.exports = makeExt(`// Name: Arcade
           ,backgroundEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,legacyGameOverEffects: {acceptReporters: false, items: ['unset', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,imageEffects: {acceptReporters: false, items: ['dissolve', 'melt', 'slash', 'splatter']}
+          ,segmentStyles: {acceptReporters: false, items: ['Blank', 'Thin', 'Narrow', 'Medium', 'Thick']}
+          ,segmentScales: {acceptReporters: false, items: ['Full', 'Half']}
+          ,digitRadixes: {acceptReporters: false, items: ['Decimal', 'Hex', 'Octal', 'Alpha']}
+          ,segmentCharacters: {acceptReporters: false, items: ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE',
+            'A', 'B', 'C', 'D', 'E', 'F', 'H', 'J', 'L', 'o', 'P', 'r', 'U', 'Y', 'Hyphen', 'Degree']}
+          ,sevensegWritable: {acceptReporters: false, items: ['x', 'y', 'value', 'count']}
+          ,sevensegReadable: {acceptReporters: false, items: ['x', 'y', 'width', 'height', 'value', 'count']}
           ,scoringTypes: {acceptReporters: false, items: ['HighScore', 'LowScore', 'None']}
           ,playbackModes: {acceptReporters: false, items: ['UntilDone', 'InBackground', 'LoopingInBackground']}
           ,melodyModes: {acceptReporters: false, items: ['play', 'playUntilDone', 'loop']}
@@ -3237,6 +3254,104 @@ module.exports = makeExt(`// Name: Arcade
       if(this._runtime)this._runtime.bwArcadeMusicLog=this._musicHost.log;
       return this._musicHost;
     }
+    // The seven segment extension runs its original classes (sevenseg-pxt.js).
+    // The host gives them images drawn with the native image engine and real
+    // native sprites; images a call drew are re-rendered once it returns.
+    _sevenseg() {
+      if (this._sevensegModule) return this._sevensegModule;
+      const ext=this,drawn=new Set();
+      class SevensegImage {
+        constructor(raw){this.raw=raw;}
+        get width(){return this.raw.width;}
+        get height(){return this.raw.height;}
+        fill(c){imageEngine.mutate(this.raw,'fill',c,0);drawn.add(this.raw);}
+        fillRect(x,y,w,h,c){imageEngine.draw(this.raw,'fillRect',x,y,w,h,c);drawn.add(this.raw);}
+      }
+      const spriteOf=id=>({
+        get x(){return ext.spriteProperty({ID:id,PROPERTY:'x'});},set x(v){ext.setSpriteProperty({ID:id,PROPERTY:'x',VALUE:v});},
+        get y(){return ext.spriteProperty({ID:id,PROPERTY:'y'});},set y(v){ext.setSpriteProperty({ID:id,PROPERTY:'y',VALUE:v});},
+        get width(){return ext.spriteProperty({ID:id,PROPERTY:'width'});},
+        get height(){return ext.spriteProperty({ID:id,PROPERTY:'height'});},
+        setImage(image){const sprite=ext._sprite(id);if(sprite && image?.raw)ext._assignSpriteRaster(sprite,image.raw);}
+      });
+      // PXT Buffer literals; sevenseg reads them as signed bytes.
+      const hex=strings=>{
+        const text=String(strings.raw?strings.raw[0]:strings[0]).replace(/\s/g,''),bytes=new Int8Array(text.length>>1);
+        for(let i=0;i<bytes.length;i++)bytes[i]=parseInt(text.slice(2*i,2*i+2),16);
+        return {length:bytes.length,getNumber:(format,offset)=>format==='Int8LE' && offset>=0 && offset<bytes.length ? bytes[offset] : 0};
+      };
+      const module=dependencies.initializeSevenseg({hex,NumberFormat:{Int8LE:'Int8LE'},
+        image:{create:(width,height)=>new SevensegImage({width,height,pixels:new Uint8Array(width*height)})},
+        sprites:{create:(image,kind)=>{
+          const width=image.width,height=image.height;
+          const id=ext._createSprite({KIND:String(kind),TEMPLATE:'',WIDTH:width,HEIGHT:height,X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2});
+          ext._assignSpriteRaster(ext._state().sprites[id],image.raw);
+          ext._emitSpriteHat('arcade_whenSpriteCreated',{KIND:String(kind)},id,'');
+          return spriteOf(id);
+        }}});
+      this._sevensegModule={...module,flush(){for(const raw of drawn)ext._refreshImage(raw);drawn.clear();}};
+      return this._sevensegModule;
+    }
+    _sevensegHandle(display) {
+      if(!display)return '';
+      if(!this._sevensegIds)this._sevensegIds=new Map(),this._sevensegValues=new Map();
+      if(!this._sevensegIds.has(display)){const id='arcade-sevenseg:'+(this._sevensegIds.size+1);this._sevensegIds.set(display,id);this._sevensegValues.set(id,display);}
+      return Scratch.BWValues.reference(this._runtime,'sevenseg',this._sevensegIds.get(display));
+    }
+    // A digit or counter (or either), or an explicit error.
+    _sevensegValue(value,kinds) {
+      const id=Scratch.BWValues.referenceId(this._runtime,value,'sevenseg'),display=id===null?null:this._sevensegValues?.get(id);
+      const module=this._sevenseg();
+      if(display && kinds.some(kind=>display instanceof module[kind]))return display;
+      this._runtime?.emit?.('BLOCKS_ERROR','Arcade expected a seven segment '+(kinds.length>1?'display':kinds[0]==='DigitCounter'?'counter':'digit')+'.');
+      return null;
+    }
+    _sevensegCall(value,kinds,call) {
+      const display=this._sevensegValue(value,kinds);
+      if(!display)return undefined;
+      try {return call(display);} finally {this._sevenseg().flush();}
+    }
+    sevensegDigit(args) {
+      const module=this._sevenseg(),style=this._sevensegEnum(module.SegmentStyle,args.STYLE);
+      if(style===null)return '';
+      try {return this._sevensegHandle(module.sevenseg.createDigit(style,Scratch.Cast.toNumber(args.VALUE)));} finally {module.flush();}
+    }
+    sevensegCounter(args) {
+      const module=this._sevenseg(),style=this._sevensegEnum(module.SegmentStyle,args.STYLE),scale=this._sevensegEnum(module.SegmentScale,args.SCALE);
+      if(style===null || scale===null)return '';
+      try {return this._sevensegHandle(module.sevenseg.createCounter(style,scale,Scratch.Cast.toNumber(args.DIGITS)));} finally {module.flush();}
+    }
+    _sevensegEnum(enumeration,name) {
+      const key=String(name);
+      if(Object.prototype.hasOwnProperty.call(enumeration,key) && typeof enumeration[key]==='number')return enumeration[key];
+      this._runtime?.emit?.('BLOCKS_ERROR',\`Arcade has no seven segment option "\${key}".\`);
+      return null;
+    }
+    sevensegSetCharacter(args) {
+      const character=this._sevensegEnum(this._sevenseg().SegmentCharacter,args.CHARACTER);
+      if(character!==null)this._sevensegCall(args.DISPLAY,['SevenSegDigit'],digit=>digit.setDigitAlpha(character));
+    }
+    sevensegSetColor(args) {this._sevensegCall(args.DISPLAY,['SevenSegDigit','DigitCounter'],display=>display.setDigitColor(Scratch.Cast.toNumber(args.COLOR)));}
+    sevensegSetRadix(args) {
+      const radix=this._sevensegEnum(this._sevenseg().DigitRadix,args.RADIX);
+      if(radix!==null)this._sevensegCall(args.DISPLAY,['SevenSegDigit'],digit=>digit.setRadix(radix));
+    }
+    sevensegSetScale(args) {
+      const scale=this._sevensegEnum(this._sevenseg().SegmentScale,args.SCALE);
+      if(scale!==null)this._sevensegCall(args.DISPLAY,['SevenSegDigit'],digit=>digit.setScale(scale));
+    }
+    sevensegAddDigit(args) {this._sevensegCall(args.DISPLAY,['DigitCounter'],counter=>counter.addDigit());}
+    sevensegSetProperty(args) {
+      const property=String(args.PROPERTY),kinds={x:['SevenSegDigit','DigitCounter'],y:['SevenSegDigit','DigitCounter'],value:['SevenSegDigit'],count:['DigitCounter']}[property];
+      if(!kinds){this._runtime?.emit?.('BLOCKS_ERROR',\`Arcade seven segment displays have no settable "\${property}".\`);return;}
+      this._sevensegCall(args.DISPLAY,kinds,display=>{display[property]=Scratch.Cast.toNumber(args.VALUE);});
+    }
+    sevensegProperty(args) {
+      const property=String(args.PROPERTY),kinds={x:['SevenSegDigit','DigitCounter'],y:['SevenSegDigit','DigitCounter'],width:['SevenSegDigit'],height:['SevenSegDigit'],value:['SevenSegDigit'],count:['DigitCounter']}[property];
+      if(!kinds){this._runtime?.emit?.('BLOCKS_ERROR',\`Arcade seven segment displays have no "\${property}".\`);return 0;}
+      const value=this._sevensegCall(args.DISPLAY,kinds,display=>display[property]);
+      return value===undefined?0:value;
+    }
     _musicHandle(value) {
       if(!value)return '';
       if(!this._musicIds)this._musicIds=new Map(),this._musicValues=new Map();
@@ -4048,6 +4163,7 @@ module.exports = makeExt(`// Name: Arcade
   animationResourceMenuItems: require('../../../util/bw-animation-resource-menu'),
   initializeRotation: require('./rotation-pxt'),
   initializeParticles: require('./particles-pxt'),
+  initializeSevenseg: require('./sevenseg-pxt'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   initializeMusic: require('./music-pxt'),

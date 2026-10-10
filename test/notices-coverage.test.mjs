@@ -129,8 +129,9 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt',
     },
     {
-        // ... and pxt-arcade's built-in image table (device/*.jres), generated
-        // from the same pinned bundle (scripts/generate-arcade-builtin-images.mjs).
+        // ... and pxt-arcade's built-in image table (device/*.jres) and its
+        // seven segment extension (sevenseg.ts), generated from the same pinned
+        // bundle (scripts/generate-arcade-{builtin-images,sevenseg}.mjs).
         name: 'pxt-arcade',
         licence: 'MIT',
         holder: 'Microsoft Corporation',
