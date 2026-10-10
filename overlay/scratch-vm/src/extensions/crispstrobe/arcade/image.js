@@ -97,22 +97,22 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     };
     // Indexed scene composition, independent of RGB presentation. Callers
     // supply raster layers in Arcade coordinates and original z/id identity.
+    const drawLayer = (destination, layer) => {
+        if (!layer.image?.width || !layer.image?.height) return;
+        if (layer.writes) {
+            const x=Number(layer.x)|0,y=Number(layer.y)|0,source=layer.image;
+            for(let row=Math.max(0,-y);row<Math.min(source.height,destination.height-y);row++)
+                for(let col=Math.max(0,-x);col<Math.min(source.width,destination.width-x);col++) {
+                    const offset=row*source.width+col;
+                    if(layer.writes[offset])destination.pixels[(row+y)*destination.width+col+x]=source.pixels[offset];
+                }
+        } else blit(destination, layer.image, 'drawTransparentImage', layer.x, layer.y);
+    };
     const composeFrame = (destination, backgroundColor, backgroundImage, layers) => {
         destination.pixels.fill(Number(backgroundColor) & 15);
         if (backgroundImage?.width && backgroundImage?.height)
             blit(destination, backgroundImage, 'drawTransparentImage', 0, 0);
-        const ordered = layers.slice().sort((a, b) => a.z - b.z || a.id - b.id);
-        for (const layer of ordered) {
-            if (!layer.image?.width || !layer.image?.height) continue;
-            if (layer.writes) {
-                const x=Number(layer.x)|0,y=Number(layer.y)|0,source=layer.image;
-                for(let row=Math.max(0,-y);row<Math.min(source.height,destination.height-y);row++)
-                    for(let col=Math.max(0,-x);col<Math.min(source.width,destination.width-x);col++) {
-                        const offset=row*source.width+col;
-                        if(layer.writes[offset])destination.pixels[(row+y)*destination.width+col+x]=source.pixels[offset];
-                    }
-            } else blit(destination, layer.image, 'drawTransparentImage', layer.x, layer.y);
-        }
+        for (const layer of layers.slice().sort((a, b) => a.z - b.z || a.id - b.id)) drawLayer(destination, layer);
         return destination;
     };
     const svg = (image, paletteOverride = image.palette || palette) => {
@@ -145,6 +145,6 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     const overlapsTwoScaledRotated = (image, x, y, imageSx, imageSy, imageAngle, source, sx, sy, angle) =>
         operations.checkOverlapsTwoScaledRotatedImages(adapter(image), adapter(source),
             collection([x | 0, y | 0, imageSx, imageSy, imageAngle, sx, sy, angle]));
-    return {decode, mutate, scroll, copyFrom, composeFrame, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
+    return {decode, mutate, scroll, copyFrom, composeFrame, drawLayer, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
         drawScaledRotated, overlapsScaledRotated, overlapsTwoScaledRotated};
 };

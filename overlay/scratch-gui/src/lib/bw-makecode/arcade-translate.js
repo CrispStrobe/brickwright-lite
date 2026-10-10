@@ -285,6 +285,9 @@ class ArcadeTranslator extends BaseTranslator {
             return background.fresh ? `arcade copy image (${resource})` : resource;
         }
         if (node?.type === 'Call' && this.path(node.callee) === 'scene.backgroundImage' && !node.args?.length) return 'arcade background image';
+        // PXT's global screen image, unless the program binds its own \`screen\`.
+        if (node?.type === 'Identifier' && node.name === 'screen' && !(this.boundSourceGlobals?.has('screen') || this.sourceFunctions?.has('screen') ||
+            this.localVars?.has('screen') || this.currentParameters?.has('screen') || this.capturedBindings?.has('screen'))) return 'arcade screen image';
         if (node?.type === 'Call' && this.path(node.callee) === 'image.create' && node.args?.length === 2) {
             return `arcade new image width (${this.expr(node.args[0])}) height (${this.expr(node.args[1])})`;
         }
@@ -1021,7 +1024,8 @@ class ArcadeTranslator extends BaseTranslator {
             return this.handleAliases.get(node.name);
         }
         const image = node?.type === 'Member' && this.imageRef(node.object);
-        if (image && ['width', 'height'].includes(node.name)) return `arcade image ${node.name} of (${image})`;
+        // PXT's screen is always 160x120: its size folds to constants below.
+        if (image && image !== 'arcade screen image' && ['width', 'height'].includes(node.name)) return `arcade image ${node.name} of (${image})`;
         const handle = node?.type === 'Member' && this.handleRef(node.object);
         if (handle) {
             if (['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
@@ -1198,6 +1202,8 @@ class ArcadeTranslator extends BaseTranslator {
             const suffix=`as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`;
             switch(registration.kind) {
             case 'update':push(`arcade register update ${suffix}`);break;
+            case 'paint':push(`arcade register paint ${suffix}`);break;
+            case 'shade':push(`arcade register shade ${suffix}`);break;
             case 'forever':push(`arcade register forever ${suffix}`);break;
             case 'parallel':push(`arcade run parallel ${suffix}`);break;
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
@@ -1344,6 +1350,14 @@ class ArcadeTranslator extends BaseTranslator {
             const source = this.imageRef(a[0]);
             if (a.length !== 3 || !source) { push(this.note(`${name}() needs an image source and x/y offsets`));return; }
             push(`arcade blit image ${node.callee.name} (${resource}) source (${source}) x (${this.expr(a[1])}) y (${this.expr(a[2])})`);return;
+        }
+        if(resource && node.callee.name==='print') {
+            // Image.print(text, x, y, color?, font?): an omitted font is chosen by
+            // image.getFontForText, an omitted color is 1.
+            const fonts={'image.font5':'small','image.font8':'normal','image.font12':'large'};
+            const font=a.length>4 ? fonts[this.path(a[4])] : 'auto';
+            if(a.length<3 || a.length>5 || !font){push(this.note(`${name}() requires text, x and y, an optional color and image.font5/font8/font12`));return;}
+            push(`arcade print (${this.expr(a[0])}) on image (${resource}) x (${this.expr(a[1])}) y (${this.expr(a[2])}) color (${a.length>3?this.expr(a[3]):0}) font ${font}`);return;
         }
         if(resource && node.callee.name==='copyFrom') {
             const source=this.imageRef(a[0]);
@@ -2221,8 +2235,13 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         }
     };
     visit(ast, global);
+    // The global \`screen\` image, unless any binding of that name exists.
+    const screenDeclared=entries.some(({node})=>node.type==='Declaration' && node.decls?.some(decl=>decl.name==='screen') ||
+        ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params||[]).includes('screen') ||
+        node.type==='FunctionDeclaration' && node.name==='screen');
+    const isScreen=node=>node?.type==='Identifier' && node.name==='screen' && !screenDeclared;
     const typeOf = (node, owner) => {
-        if (imageOf(node)) return new Set(['image']);
+        if (imageOf(node) || isScreen(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
         if(node?.type==='Null')return new Set(['null']);
         if(node?.type==='Member' && node.object?.name==='CameraProperty' && Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return new Set(['number']);
@@ -2315,6 +2334,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     // retain their element types without unrolling recursive array types.
     const graph = new ValueTypeGraph();
     const cell = (node, owner) => {
+        if(isScreen(node)){const value=binding(owner,node.name);graph.add(value,'Image');return value;}
         if(node?.type === 'Identifier')return binding(owner,node.name);
         if(node?.type === 'Member' && node.name === 'data') {
             const value=graph.property(cell(node.object,owner),'data');graph.add(value,'SpriteData');return value;
@@ -2405,7 +2425,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
 
 const containsAst = (node,predicate) => node && typeof node==='object' &&
     (predicate(node) || Object.values(node).some(value=>Array.isArray(value)?value.some(child=>containsAst(child,predicate)):containsAst(value,predicate)));
-const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval'].includes(name);
+const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval','game.onPaint','game.onShade'].includes(name);
 const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '');
 const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
@@ -2425,6 +2445,8 @@ const sceneRegistrationSpec = name => {
         'info.onCountdownEnd':{kind:'countdown',handlerIndex:0,arity:1,prefix:'__bwCountdown',maxParams:0},
         'mp.onButtonEvent':{kind:'multiplayerButton',handlerIndex:2,arity:3,prefix:'__bwMPButton',maxParams:1},
         'game.onUpdate':{kind:'update',handlerIndex:0,arity:1,prefix:'__bwUpdate',maxParams:0},
+        'game.onPaint':{kind:'paint',handlerIndex:0,arity:1,prefix:'__bwPaint',maxParams:0},
+        'game.onShade':{kind:'shade',handlerIndex:0,arity:1,prefix:'__bwShade',maxParams:0},
         'game.onUpdateInterval':{kind:'interval',handlerIndex:1,arity:2,prefix:'__bwInterval',maxParams:0},
         'sprites.onDestroyed':{kind:'destroyed',handlerIndex:1,arity:2,prefix:'__bwKindDestroyed',maxParams:1,kinds:[0]},
         'sprites.onOverlap':{kind:'overlap',handlerIndex:2,arity:3,prefix:'__bwOverlap',maxParams:2,kinds:[0,1]}

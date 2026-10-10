@@ -34,6 +34,7 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneStack = [];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
+      this._renderables=new WeakMap();this._screen=null;
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
       this._buttonStates = {};
@@ -113,6 +114,7 @@ module.exports = makeExt(`// Name: Arcade
           this._wallHandlers = [];this._legacyWallHandlers = [];this._tileHandlers = [];
           for (const id of this._speech.keys()) this._clearSpeech(id, undefined, true);
           this._clearParticleOverlays();this._particleScenes=new WeakMap();this._particleAnchors=new WeakMap();
+          this._renderables=new WeakMap();this._screen=null;
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
           this._images.clear();
@@ -186,6 +188,13 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'popScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade pop scene'},
           {opcode:'registerUpdateHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register update as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredUpdate',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade update handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerPaintHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register paint as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredPaint',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade paint handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerShadeHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register shade as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
+          {opcode:'printImageText',blockType:Scratch.BlockType.COMMAND,text:'Arcade print [TEXT] on image [IMAGE] x [X] y [Y] color [COLOR] font [FONT]',
+            arguments:{...str('TEXT','Hello'),...str('IMAGE',''),...n('X',0),...n('Y',0),...n('COLOR',1),FONT:{type:Scratch.ArgumentType.STRING,menu:'imageFonts',defaultValue:'auto'}}},
           {opcode:'registerIntervalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register interval [INTERVAL] ms as [TOKEN] capturing [CAPTURES]',arguments:{...n('INTERVAL',1000),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredInterval',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade interval handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerMultiplayerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register multiplayer button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{...n('BUTTON',0),EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -641,6 +650,7 @@ module.exports = makeExt(`// Name: Arcade
           axes: {acceptReporters: true, items: ['x', 'y']}
           ,particleEffects: {acceptReporters: false, items: ['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo',
             'ashes', 'disintegrate', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']}
+          ,imageFonts: {acceptReporters: false, items: ['auto', 'normal', 'small', 'large']}
           ,screenEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']}
           ,dialogLayouts: {acceptReporters: false, items: ['Left', 'Right', 'Top', 'Bottom', 'Center', 'Full']}
           ,legacyTileProperties: {acceptReporters:false,items:['x','y','tileSet']}
@@ -2793,11 +2803,10 @@ module.exports = makeExt(`// Name: Arcade
         this._refreshImage(image);
       }
     }
-    _composeSceneFrame() {
+    _sceneLayers() {
       const state=this._state();
       // This internal scene raster is not the global PXT screen. Snapshot
       // reporters remain unavailable until all renderable layers are covered.
-      const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
       const layers=[],missingSpriteImages=[];
       const tilemap=state.tilemap;
       if(tilemap && (!tilemap.legacy || tilemap.mapImage)) {
@@ -2816,7 +2825,13 @@ module.exports = makeExt(`// Name: Arcade
           x:view.x-sprite.width/2+window.x,y:view.y-sprite.height/2+window.y,
           z:sprite.z,id:sprite.pxtId});
       }
-      layers.push(...this._drawParticleSources());
+      return {layers,missingSpriteImages};
+    }
+    _composeSceneFrame() {
+      const state=this._state(),{layers,missingSpriteImages}=this._sceneLayers();
+      const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
+      const particles=this._drawParticleSources();layers.push(...particles);
+      this._renderOverlayLayers(particles);
       imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,layers);
       frame.coverage=['background','tilemap','sprites','modernSpeech','particles'];
       frame.remaining=['renderables','hud','legacySpeech','effects'];
@@ -2975,10 +2990,19 @@ module.exports = makeExt(`// Name: Arcade
         }
         screen.layer=null;
       }
-      this._renderParticleOverlays(layers);
       return layers;
     }
-    _renderParticleOverlays(layers) {
+    _layerSvg(layer) {
+      const paths=Array.from({length:16},()=>[]),palette=this._paletteColors();
+      for(let y=0;y<120;y++)for(let x=0;x<160;){
+        const i=y*160+x,color=layer.writes[i]?layer.image.pixels[i]:-1,start=x++;
+        while(x<160 && (layer.writes[y*160+x]?layer.image.pixels[y*160+x]:-1)===color)x++;
+        if(color>=0)paths[color].push('M'+start+' '+y+'h'+(x-start)+'v1h-'+(x-start)+'z');
+      }
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" shape-rendering="crispEdges">'+
+        paths.map((path,color)=>path.length?'<path fill="'+(color?palette[color]:'#000000')+'" d="'+path.join('')+'"/>':'').join('')+'</svg>';
+    }
+    _renderOverlayLayers(layers) {
       const renderer=this._runtime?.renderer;
       if(!renderer)return;
       const live=new Set(layers.map(layer=>layer.source));
@@ -2987,14 +3011,7 @@ module.exports = makeExt(`// Name: Arcade
       }
       let created=false;
       for(const layer of layers){
-        const paths=Array.from({length:16},()=>[]);
-        for(let y=0;y<120;y++)for(let x=0;x<160;){
-          const i=y*160+x,color=layer.writes[i]?layer.image.pixels[i]:-1,start=x++;
-          while(x<160 && (layer.writes[y*160+x]?layer.image.pixels[y*160+x]:-1)===color)x++;
-          if(color>=0)paths[color].push('M'+start+' '+y+'h'+(x-start)+'v1h-'+(x-start)+'z');
-        }
-        const svg='<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" shape-rendering="crispEdges">'+
-          paths.map((path,color)=>path.length?'<path fill="'+this._paletteColors()[color]+'" d="'+path.join('')+'"/>':'').join('')+'</svg>';
+        const svg=this._layerSvg(layer);
         let entry=this._particleOverlays.get(layer.source);
         if(!entry){
           entry={skinId:renderer.createSVGSkin(svg,[80,60]),drawableId:renderer.createDrawable('sprite'),svg};
@@ -3010,6 +3027,95 @@ module.exports = makeExt(`// Name: Arcade
       const renderer=this._runtime?.renderer;
       for(const entry of this._particleOverlays.values()){renderer?.destroyDrawable(entry.drawableId,'sprite');renderer?.destroySkin(entry.skinId);}
       this._particleOverlays.clear();
+    }
+    // PXT's global screen image. Only the scene's UPDATE_SCREEN frame handler
+    // presents it, right after each render, so direct drawing outside paint
+    // and shade renderables is never displayed (the original stays black).
+    _screenRaw() {
+      if(!this._screen)this._screen={width:160,height:120,pixels:new Uint8Array(160*120)};
+      return this._screen;
+    }
+    screenImage() {return this._imageHandle(this._screenRaw());}
+    _pxtText() {
+      if(this._textModule)return this._textModule;
+      class PxtBuffer extends Uint8Array {
+        getNumber(format,offset){return format==='UInt16LE'?(this[offset] | this[offset+1]<<8):this[offset];}
+        // PXT Buffer.slice(offset, length)
+        slice(offset=0,length){const end=length===undefined?this.length:Math.min(this.length,offset+length);const out=new PxtBuffer(Math.max(0,end-offset));out.set(this.subarray(offset,end));return out;}
+        write(offset,source){this.set(source.subarray(0,Math.max(0,Math.min(source.length,this.length-offset))),offset);}
+      }
+      const fromBytes=bytes=>{const out=new PxtBuffer(bytes.length);out.set(bytes);return out;};
+      this._textModule=dependencies.initializeText({
+        control:{createBuffer:size=>new PxtBuffer(size)},
+        NumberFormat:{UInt8LE:'UInt8LE',UInt16LE:'UInt16LE'},
+        hex:strings=>{const text=String(strings.raw?strings.raw[0]:strings[0]).replace(/\\s/g,'');return fromBytes(text.match(/../g)?.map(byte=>parseInt(byte,16)) || []);},
+        base64:data=>fromBytes(Uint8Array.from(atob(data),c=>c.charCodeAt(0)))
+      });
+      return this._textModule;
+    }
+    printImageText(args) {
+      const image=this._image(args.IMAGE);
+      if(!image)return;
+      const text=this._pxtText(),name=String(args.FONT),font={small:text.image.font5,normal:text.image.font8,large:text.image.font12,auto:undefined}[name];
+      if(font===undefined && name!=='auto'){this._runtime?.emit?.('BLOCKS_ERROR',\`Arcade has no font named "\${String(args.FONT)}".\`);return;}
+      // The simulator image helpers address a buffer through this shape.
+      const target={_width:image.width,_height:image.height,data:image.pixels,makeWritable(){},color:c=>Number(c)&15};
+      const wrapper={width:image.width,height:image.height,
+        drawIcon:(icon,x,y,color)=>text.drawIcon(target,{data:icon},x,y,color),
+        fillRect:(x,y,w,h,color)=>imageEngine.draw(image,'fillRect',x,y,w,h,color)};
+      text.helpers.imagePrint(wrapper,String(Scratch.BWValues.decode(args.TEXT) ?? ''),Number(args.X) || 0,Number(args.Y) || 0,Number(args.COLOR) || 0,font);
+      this._refreshImage(image);
+    }
+    _renderablesOf(state=this._state()) {
+      let list=this._renderables.get(state);
+      if(!list){list=[];this._renderables.set(state,list);}
+      return list;
+    }
+    _registerRenderable(args,util,z) {
+      // scene.createRenderable: a scene sprite with its own id, drawn with the
+      // sprites by z then id. game.onPaint is ON_PAINT_Z -20, onShade ON_SHADE_Z 80.
+      const state=this._state();
+      this._renderablesOf(state).push({...this._handlerRegistration(args,util),z,id:state.nextSpriteId++});
+    }
+    registerPaintHandler(args,util) {this._registerRenderable(args,util,-20);}
+    registerShadeHandler(args,util) {this._registerRenderable(args,util,80);}
+    whenRegisteredPaint(args,util) {return this.whenRegisteredWall(args,util);}
+    whenRegisteredShade(args,util) {return this.whenRegisteredWall(args,util);}
+    // scene.render with renderables: background, then sprites and renderables
+    // by z then id into the screen; each renderable's changes become a layer.
+    *_composeSceneSteps() {
+      const state=this._state(),renderables=this._renderables.get(state);
+      if(!renderables?.length){
+        const frame=this._composeSceneFrame();
+        // PXT renders every frame into the screen image itself, so afterwards
+        // the screen holds the composed frame and earlier writes are gone.
+        if(this._screen && frame?.pixels)this._screen.pixels.set(frame.pixels);
+        return frame;
+      }
+      const {layers,missingSpriteImages}=this._sceneLayers();
+      layers.push(...this._drawParticleSources());
+      const screen=this._screenRaw();
+      imageEngine.composeFrame(screen,state.backgroundColor,state.backgroundImage,[]);
+      const items=[...layers,...renderables.map(renderable=>({renderable,z:renderable.z,id:renderable.id}))]
+        .sort((a,b)=>a.z-b.z || a.id-b.id);
+      const drawn=[];
+      for(const item of items){
+        if(!item.renderable){imageEngine.drawLayer(screen,item);continue;}
+        const before=screen.pixels.slice();
+        yield* this._registeredCallbackSteps([item.renderable],item.renderable.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
+        if(this._state()!==state)return;
+        const writes=new Uint8Array(screen.pixels.length);
+        for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
+        drawn.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:item.z,id:item.id,source:item.renderable});
+      }
+      const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
+      frame.pixels.set(screen.pixels);
+      frame.coverage=['background','tilemap','sprites','modernSpeech','particles','renderables'];
+      frame.remaining=['hud','legacySpeech','effects'];
+      frame.missingSpriteImages=missingSpriteImages;
+      frame.sequence=(frame.sequence || 0)+1;
+      this._renderOverlayLayers([...layers.filter(layer=>layer.source),...drawn]);
+      return frame;
     }
     _scalePixelTarget(target) {
       target.setSize?.(75);
@@ -3593,7 +3699,7 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;this._composeSceneFrame();this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
@@ -3617,7 +3723,7 @@ module.exports = makeExt(`// Name: Arcade
       yield* this._lifeZeroSteps();if(this._state()!==state)return;
       yield* this._advanceSpeechSteps(dt);
       if(this._state()!==state)return;
-      this._composeSceneFrame();
+      yield* this._composeSceneSteps();
       this._changed();
       this._startFrameHats();
     }
@@ -3656,5 +3762,6 @@ module.exports = makeExt(`// Name: Arcade
   initializeImage: require('./image-pxt'),
   animationResourceMenuItems: require('../../../util/bw-animation-resource-menu'),
   initializeRotation: require('./rotation-pxt'),
-  initializeParticles: require('./particles-pxt')
+  initializeParticles: require('./particles-pxt'),
+  initializeText: require('./text-pxt')
 });

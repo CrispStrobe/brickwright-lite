@@ -44,6 +44,13 @@ with a capacitor, and observe real advanceToLive receipts. The100kHz sample
 grid must bound each16-step callback to160us and produce partial continuation.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
+## Arcade screen painting — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-screen-paint-20261010` (stacked on the
+particle lane). Gap family 2: `game.onPaint`/`onShade`, `Image.print` with PXT's
+fonts, and screen reads. Producer sb3-creator PR85 adds six words. Tested source
+`f4d0dd71`. Next in this lane: Arcade music.
+
 ## Arcade particle effects — 2026-10-10
 
 Continues the documented Arcade lane on `lane/arcade-gap-closure-20261010` (from
