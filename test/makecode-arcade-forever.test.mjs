@@ -17,7 +17,7 @@ test('MakeCode forever callback runs repeatedly in the Arcade VM', async () => {
     assert.ok(Number(run.vm.runtime.bwArcadeDeviceState?.score) > 1);
 });
 
-test('MakeCode stop all sounds dispatches the existing sound block from a registered controller callback', async () => {
+test('MakeCode stop all sounds stops Arcade music from a registered controller callback', async () => {
     const translated = arcadeToPseudocode(`controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
         music.stopAllSounds()
     })`);
@@ -25,10 +25,11 @@ test('MakeCode stop all sounds dispatches the existing sound block from a regist
     const run = await runProgram(translated.code, {frames: 3});
     const opcodes = projectOpcodes(run.creator.project);
     assert.ok(opcodes.has('arcade_registerButtonHandler'));
-    assert.ok(opcodes.has('sound_stopallsounds'));
+    // PXT's music.stopAllSounds stops the mixer, not Scratch sounds.
+    assert.ok(opcodes.has('arcade_stopAllSounds'));
     let stopped = 0;
-    const original = run.vm.runtime._primitives.sound_stopallsounds;
-    run.vm.runtime._primitives.sound_stopallsounds = (...args) => { stopped++; return original(...args); };
+    const original = run.vm.runtime._primitives.arcade_stopAllSounds;
+    run.vm.runtime._primitives.arcade_stopAllSounds = (...args) => { stopped++; return original(...args); };
     assert.equal(stopped, 0);
     run.vm.postIOData('keyboard', {key: 'z', isDown: true});
     run.vm.postIOData('keyboard', {key: 'z', isDown: false});
