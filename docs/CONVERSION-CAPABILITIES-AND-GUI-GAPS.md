@@ -6,6 +6,16 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Fresh-agent entry and refreshed hosted state — 2026-10-10
+
+Read [the complete methodology and handoff](ARCADE-AGENT-HANDOFF.md) for source
+ownership, original-frame replay, commands, evidence boundaries and next lanes.
+Observed PR773 head86a6335: build/corpus/heavy browser passed; light browser
+failed initial layer red-centre pixel at waitLayerPixel, not the earlier numeric
+Boolean assertion. Original report has layerReady true/phase0 and no reported
+page/block/diagnostic errors. Root cause remains unestablished. Fix that real
+browser gate before advancing a full-GUI claim or merging the stack.
+
 ## Native legacy scrolling frame clock — 2026-10-10
 
 Source `7b158d559d92041a3d6893c29b2851dc6e5b8747` passes45 distinct checks:
