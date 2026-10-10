@@ -217,6 +217,9 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'namedMelody',blockType:Scratch.BlockType.REPORTER,text:'Arcade melody [NAME]',arguments:{NAME:{type:Scratch.ArgumentType.STRING,menu:'melodies',defaultValue:'baDing'}}},
           {opcode:'soundMelody',blockType:Scratch.BlockType.REPORTER,text:'Arcade sound [SOUND]',arguments:{SOUND:{type:Scratch.ArgumentType.STRING,menu:'sounds',defaultValue:'BaDing'}}},
           {opcode:'beat',blockType:Scratch.BlockType.REPORTER,text:'Arcade beat [FRACTION]',arguments:{FRACTION:{type:Scratch.ArgumentType.STRING,menu:'beats',defaultValue:'Whole'}}},
+          {opcode:'parseIntegerRadix',blockType:Scratch.BlockType.REPORTER,text:'Arcade parse integer [TEXT] radix [RADIX]',arguments:{...str('TEXT','ff'),...n('RADIX',16)}},
+          {opcode:'parseInteger',blockType:Scratch.BlockType.REPORTER,text:'Arcade parse integer [TEXT]',arguments:str('TEXT','123')},
+          {opcode:'frameDeltaTime',blockType:Scratch.BlockType.REPORTER,text:'Arcade frame delta time'},
           {opcode:'musicVolume',blockType:Scratch.BlockType.REPORTER,text:'Arcade music volume'},
           {opcode:'musicTempo',blockType:Scratch.BlockType.REPORTER,text:'Arcade music tempo'},
           {opcode:'registerIntervalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register interval [INTERVAL] ms as [TOKEN] capturing [CAPTURES]',arguments:{...n('INTERVAL',1000),...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -3155,6 +3158,11 @@ module.exports = makeExt(`// Name: Arcade
       const pxt=this._music().pxt,fraction=this._musicMenu(pxt.BeatFraction,String(args.FRACTION));
       return fraction===null?0:pxt.music.beat(fraction);
     }
+    // PXT's own parseInt (helpers-pxt.js); its text argument is a string.
+    parseInteger(args) {return dependencies.helpers.parseInt(String(Scratch.BWValues.decode(args.TEXT) ?? ''));}
+    parseIntegerRadix(args) {return dependencies.helpers.parseInt(String(Scratch.BWValues.decode(args.TEXT) ?? ''),Scratch.Cast.toNumber(args.RADIX));}
+    // control.eventContext().deltaTime: seconds since the previous frame.
+    frameDeltaTime() {return this._state().frameDeltaTime || 0;}
     musicVolume() {return this._music().pxt.music.volume();}
     musicTempo() {return this._music().pxt.music.tempo();}
     _pxtText() {
@@ -3886,5 +3894,6 @@ module.exports = makeExt(`// Name: Arcade
   initializeParticles: require('./particles-pxt'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
-  initializeMusic: require('./music-pxt')
+  initializeMusic: require('./music-pxt'),
+  helpers: require('./helpers-pxt')
 });
