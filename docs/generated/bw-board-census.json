@@ -2,8 +2,8 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "09c0f027eb906310f0f09dc524d6fdf17058439b",
-    "read": "2026-10-09"
+    "sha": "74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42",
+    "read": "2026-10-10"
   },
   "rows": [
     {
@@ -235,7 +235,9 @@
         "test/pwm-duty-ngspice.test.mjs",
         "test/scope-fractional-time.test.mjs",
         "test/meter-waveform-integration.test.mjs",
-        "test/inductor-meter-integral.test.mjs"
+        "test/inductor-meter-integral.test.mjs",
+        "test/winding-turnoff-oracle.test.mjs",
+        "test/rlc-instrument-oracle.test.mjs"
       ],
       "what": "The reference NUMERIC circuit simulator. lcapy is symbolic and exact but cannot model a junction; ngspice models devices, so the two are complementary rather than redundant -- where both agree and we do not, it is us, and where THEY disagree the circuit is ill-posed and belongs in neither corpus. Note that the ngspice GOLDENS under test/golden/ are pre-recorded and need no binary; this row is for the gates that invoke ngspice LIVE."
     },

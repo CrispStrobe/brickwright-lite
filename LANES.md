@@ -60,7 +60,7 @@ integration session (merged: #786, #787, #788):
 
 ## Reactive live-clock package adoption — 2026-10-10
 
-CLAIM — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
+DONE candidate — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
 exact base `9ac32a75562577c945baff383fbfb5dcddd02804`. Adopt bw-board
 `74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42` only; keep CUI, sb3 and flasher pins
 unchanged. Upstream CI37985452352 and Harris37985452331 are exact-head green;
@@ -95,6 +95,20 @@ No engine, profile, accuracy, timeout or existing waveform assertion change.
 Continue on `lane/reactive-live-package-replay-20261011`, retaining main's
 newer sb3 pin. The prior branch/run stays rejected, not rerun unchanged.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
+Canonical claims c686fd704 and8ebaded2d preceded their edits. Both locks change
+only the board spec/resolution/integrity; other dependency pins stay unchanged.
+All seven generator checks pass: notices,8086 report,matrix,part profiles,
+reader coverage,census and hosted targets (against its retained exact source).
+Package derivation checks pass6/6. Census/matrix/notices checks pass11/11;
+the sparse-checkout whole-tree pin judge correctly refuses missing files,
+so its full-tree result is pending hosted qualification, not locally green.
+The installed-controller regression passes with explicitly selected qualified
+source and rejects the unchanged older installation with a real transient
+failure; neither invocation is claimed as new installed-package qualification.
+Hosted Build must install the new locks, run full pin/provenance/mirror gates,
+then exercise the actual browser receipt bound and unchanged scope/motor
+journeys. No new package, browser, landing or deployment success is claimed
+before those checks. Candidate identity is the commit containing this row.
 
 ## Arcade sprite extensions (darts, corgio) — 2026-10-10
 
