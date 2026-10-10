@@ -868,7 +868,7 @@ let paletteReady=true`;
     await page.getByText(/Imported the Arcade game.*template-palette/).first().waitFor({state: 'visible'});
     const oldPaletteStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
     await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
-    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id, oldPaletteStage);
+    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id && window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id, oldPaletteStage);
     await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await flag.click();
@@ -902,7 +902,7 @@ let paletteReady=true`;
     await page.getByText(/Imported the Arcade game.*boolean-question/).first().waitFor({state:'visible'});
     const oldQuestionStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
     await page.getByRole('button',{name:'⇦ To blocks',exact:true}).click();
-    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id, oldQuestionStage);
+    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id && window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id, oldQuestionStage);
     await page.getByText('Blocks loaded.',{exact:true}).waitFor({state:'visible'});
     await page.getByRole('tab',{name:'Blocks',exact:true}).click();
     for (const [choice,branch] of [['yes',1],['no',2]]) {

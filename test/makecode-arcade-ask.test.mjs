@@ -24,9 +24,10 @@ test('a pinned Arcade prompt waits for the answer before using it', async () => 
     assert.equal(getName(), 'Ada');
 });
 
-test('unsupported conversion around a nested prompt stays visible', () => {
+test('parseInt around a nested prompt converts the answer with PXT parseInt', () => {
     const translated = arcadeToPseudocode('let valid = parseInt(game.askForString("Number?"))');
-    assert.ok(translated.unsupported.some(gap => gap.includes('parseInt')));
+    assert.deepEqual(translated.unsupported, []);
+    assert.match(translated.code, /arcade parse integer \(arcade ask text "Number\?"\)/);
 });
 
 test('Arcade text prompt options stay visible until their semantics are implemented', () => {
