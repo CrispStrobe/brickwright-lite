@@ -17,8 +17,8 @@ photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
 ## Code-tab optional languages, Arcade scoreboard, on-demand MakeCode extensions — 2026-10-10
 
-CLAIM — Claude (opus), owner request, three sequential lanes from the Arcade
-integration session:
+DONE — Claude (opus), owner request, three sequential lanes from the Arcade
+integration session (merged: #786, #787, #788):
 1. `lane/code-tab-optional-languages-20261010`: the fe and Tcl code-tab languages
    move behind a "+" control in the language row (shown once chosen or when their
    buffer has text). Envelope: pseudocode-importer.jsx (overlay + tracked twin),
