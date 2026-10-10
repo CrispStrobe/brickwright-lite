@@ -34,6 +34,10 @@ test('an update handler registered during an update runs in the same frame, as i
     try {
         assert.deepEqual(run.errors, []);
         const actual = String(values(run).log);
-        assert.equal(actual.slice(0, original.log.length), original.log);
+        // The original keeps running after done for a varying number of frames
+        // before it is sampled; compare the common prefix, through frame 6.
+        const shared = Math.min(actual.length, original.log.length);
+        assert.ok(shared >= original.log.indexOf('f6;') + 3, `both runs reach frame 6: ${actual}`);
+        assert.equal(actual.slice(0, shared), original.log.slice(0, shared));
     } finally { clearStrayTimers(); }
 });
