@@ -15,6 +15,30 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Reactive live-clock package adoption — 2026-10-10
+
+CLAIM — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
+exact base `9ac32a75562577c945baff383fbfb5dcddd02804`. Adopt bw-board
+`74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42` only; keep CUI, sb3 and flasher pins
+unchanged. Upstream CI37985452352 and Harris37985452331 are exact-head green;
+the source range from the old pin changes only14 lines in board.js live span
+selection. No copied engine source, solver policy change or SPIKE source work.
+
+Envelope: this ledger; vendor-pins.json; root and scratch-gui package manifests
+and lockfiles; pin-derived I8086 report, language matrix, board census and its
+two census-snapshot mirrors; paired bw-packages.sources.json notices; ROM/DOS
+provenance records only (binary bytes unchanged); bundled-upstream-pins.json;
+board-pin assertions in existing ADP7118/CLI-KCL/LM324/LM741/LT1001/LT1763/scope
+adoption tests; scope-reset-package-adoption.test.mjs continuation evidence;
+new test/reactive-live-package-adoption.test.mjs; the existing FreeDOS-circuits
+workflow's three exact board-pin references only; existing browser proof for
+motor/scope continuation if stronger assertions are required. Regenerate with
+the established scripts, run every-generator checks and pin/mirror/provenance
+gates, qualify the installed package and actual browser via hosted Build.
+Local old dependencies are not adoption evidence. No waveform expectation,
+failure-latch, tolerance, runtime/GUI, compiler, firmware or browser timeout
+change. Deployment follows qualified landing; no deployment claim in advance.
+
 ## Arcade resource picker follow-up — 2026-10-07
 
 The existing Arcade compatibility lane remains owned by Codex. PR704 merged
