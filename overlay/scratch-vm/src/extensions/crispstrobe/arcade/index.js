@@ -1553,7 +1553,7 @@ module.exports = makeExt(`// Name: Arcade
           entry.animated, foreground, background, false, owner, this._globalElapsedMs));
         const work = this._speechEngine.createNative(text,
           Number.isFinite(duration) ? duration : -1, foreground, background, owner,
-          {time:()=>this._globalElapsedMs,camera:()=>this._camera()},
+          {time:()=>this._globalElapsedMs,camera:()=>this._camera(),hitbox:()=>this._wallHitbox(owner)},
           image=>this._createSpeechBubble(image, entry, util));
         return work && typeof work.then === 'function' ? work.then(finish) : finish(work);
       });

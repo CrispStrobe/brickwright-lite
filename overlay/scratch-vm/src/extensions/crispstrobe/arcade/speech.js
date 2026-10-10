@@ -144,6 +144,10 @@ module.exports = function createSpeechEngine(initialize, fonts, initializeNative
         createNative(text, duration, foreground, background, sprite, context, allocate) {
             now = context.time(); setCamera(context.camera()); deltaTime = 0;
             const owner = ownerFor(sprite);
+            // Native hitbox offsets are already floored pixels. Capture the
+            // PXT scaled/rotated box before creation handlers can change it.
+            const hitbox = context.hitbox && context.hitbox();
+            if (hitbox) owner._hitbox = {oy: hitbox.top};
             const resume = bubble => {
                 now = context.time(); setCamera(context.camera());
                 Object.assign(owner, ownerFor(sprite));
