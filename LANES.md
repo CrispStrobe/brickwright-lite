@@ -15,6 +15,35 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Reactive live-clock package adoption — 2026-10-10
+
+CLAIM — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
+exact base `9ac32a75562577c945baff383fbfb5dcddd02804`. Adopt bw-board
+`74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42` only; keep CUI, sb3 and flasher pins
+unchanged. Upstream CI37985452352 and Harris37985452331 are exact-head green;
+the source range from the old pin changes only14 lines in board.js live span
+selection. No copied engine source, solver policy change or SPIKE source work.
+
+Envelope: this ledger; vendor-pins.json; root and scratch-gui package manifests
+and lockfiles; pin-derived I8086 report, language matrix, board census and its
+two census-snapshot mirrors; paired bw-packages.sources.json notices; ROM/DOS
+provenance records only (binary bytes unchanged); bundled-upstream-pins.json;
+board-pin assertions in existing ADP7118/CLI-KCL/LM324/LM741/LT1001/LT1763/scope
+adoption tests; scope-reset-package-adoption.test.mjs continuation evidence;
+new test/reactive-live-package-adoption.test.mjs; the existing FreeDOS-circuits
+workflow's three exact board-pin references only; existing browser proof for
+motor/scope continuation if stronger assertions are required. Regenerate with
+the established scripts, run every-generator checks and pin/mirror/provenance
+gates, qualify the installed package and actual browser via hosted Build.
+Local old dependencies are not adoption evidence. No waveform expectation,
+failure-latch, tolerance, runtime/GUI, compiler, firmware or browser timeout
+change. Deployment follows qualified landing; no deployment claim in advance.
+Selected browser evidence path: scripts/verify-circuit-ux.mjs only. Keep its
+strict5000 one-volt/reset assertions; explicitly load the ideal one-volt source
+with a capacitor, and observe real advanceToLive receipts. The100kHz sample
+grid must bound each16-step callback to160us and produce partial continuation.
+This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
+
 ## Fresh-agent Arcade handoff — 2026-10-10
 
 Codex owns documentation-only `docs/arcade-agent-handoff-20261010`, stacked on
@@ -920,8 +949,16 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 ## CLAIMS — work in progress
 
 
+
 | Arcade compatibility integration and GUI gap closure | Codex, 2026-10-07; isolated branch `lane/arcade-integration-20261007` | Base `fffe90bcb35c9ea0085a9d04331728291c0e41db`; integrate paused `claude/charming-hamilton-jfhfle` at `9fba4739d3549780e01cd9dc111b73fc9d826f54`; adopt qualified sb3-creator parser/dialect changes; Arcade/MakeCode importer, exporter, runtime, associated tests and audit scripts, generated compatibility reports, conversion-to-GUI capability ledger and affected editor controls, explicit vendor pin/mirror surfaces; `.github/workflows/build.yml` and browser gate registration/budget/census tests for PR700 repair; native Arcade/arrays block schemas and asset-aware pseudocode/Blocks/Pixel editor handoff, followed by tilemap/animation authoring in the existing editors. Base refreshed to `3f3b135e9` before continued work. Excludes SPIKE G01 and other hardware/CPU lanes. | **CLAIMED / RESUMED 2026-10-07.** PR700 merged at `21a1fd94a` after all12 enabled exact-head checks passed at `047994c8b`. Its source paths match the tested head; the merge also includes five intervening unrelated documentation/receipt files from main, so the complete trees differ. Stacked [PR703](https://github.com/CrispStrobe/brickwright-lite/pull/703) adds full-screen Pixel backgrounds, logical PNG sizing, versioned source preservation and Stage export composition; seven local browser journeys match all19,200 actual Brickwright/original-PXT pixels. A hosted old-canvas readiness failure is preserved and script-only repairs are pushed at `718e5b29c`; the corrected local seven-journey gate passes. PR703 subsequently passed all7 enabled checks at `c1c40479a` and merged at `15fd1f3b0`; merge source paths match the tested head, with five intervening main documentation/receipt files. Uniform animation resources are pushed in [draft PR704](https://github.com/CrispStrobe/brickwright-lite/pull/704) on `lane/arcade-animation-resources-20261007` (qualified production source `abce50921`): publication/SB3 browser evidence and actual-VM Undo/loading tests pass. Shared compiler PR62 passed its enabled hosted checks, merged at `33ce738` with the reviewed tree unchanged, and is officially adopted in the candidate. Native animation JRES codec tests8/8, visual highlight lifecycle tests2/2, explicit shared-provider identity4/4 without skips, and actual native Blocks resource pickers are qualified. The full production Code/Blocks/controller/export/reimport browser journey passes six journeys at source `897002047`, including exact19,200 original-PXT pixels and zero page errors. It exposed and repaired missing template-free drawables and template animation blank flashes. Native renderer/resource/scaling/scene tests24/24 and affected final retention tests10/10 pass. The full animation gate passed hosted browser qualification on the earlier candidate; build failures exposed saved-zero scalar inference and unused-code/wait-policy issues. Scalar inference now preserves initial zero while allowing later Boolean/string values; observable flyout readiness replaces fixed sleeps. Native gallery export and behavioural import are implemented at `8bca7037c`, with actual original emitter/compiler/simulator alias and exact-pixel checks. The affected export/census rerun passes119 tests; its two remaining stale integrated-copy failures are resolved by synchronization, and the final focused export/import/overlay batch passes21/21 without skips. The current explicit production build passes; the full six-journey browser gate also verifies downloaded native gallery files, exact3×2 frame order/timing and19,200 original-PXT pixels. Browser contract tests25/25 pass. Hosted exact-head checks remain required; U04 and the93 partial corpus results stay open. Validated rich animation companions and current-bundle CLI export are implemented at `55da1b20e`. File/project API recovery retains exact UUID/layers after native projection validation; GUI library installation and fresh-copy live binding remain open. Focused companion/project/overlay policy tests17/17 pass with no skips. Production build and seven browser journeys pass, including exact downloaded companion recovery and preservation of VM/Code/resources on malformed file import; all seven CLI tests pass. Old hosted run37615622567 exposed a stale unclaimed-animation assertion, eager native-codec bytes and an SVG controls readiness race. Exact diagnostics, deferred module loading and decoded-pixel readiness repair these boundaries. At product source `9f6ace3da`, both production builds pass; profiling initial JS4,466,111 meets the unchanged4,467,136 limit and native parser/codec/companion modules are noninitial. Final animation and background gates each pass seven journeys; translation/companion tests140/140 and post-split native/project/overlay16/16 pass. Fresh final-head hosted qualification remains required. The next GUI prerequisite extends Pixel publication to one frame and1–65,535ms with document5/bundle6, legacy validation and opaque future-source preservation. Focused tests50/50 include original-PXT endpoint compilation/execution and exact companion/native recovery; policy and authoring31/31 pass. Runtime endpoint tests6/6, CLI/project3/3 and artwork/import/wait17/17 pass. At product source `f945e7feb`, profiling production passes the unchanged ownership gate at4,466,357 initial bytes; nine actual browser journeys include endpoint Code-to-Blocks/visible playback and19,200 matching original-PXT pixels, with zero page errors. Two stale-served-build failures and two stopped preparation builds are preserved. Final-head hosted qualification remains required. Fresh-copy runtime/Code/Blocks lookup is now implemented at product source `fbac95e16b`: qualified producer PR63 merge `983aa61f` adopted through official sync, provider identity4/4, consumer29/29, literal/computed original-PXT conversion permutations and missing-ID/name-collision execution pass. Profiling production retains4,466,357 initial bytes and passes ten full browser journeys, fresh mutation isolation and19,200 matching original-PXT pixels with zero page errors. Final-head hosted checks remain required. Explicit hidden library-role persistence/Code retention is qualified at `6f29dc3e3`: bundle7 and prior-reader opaque preservation, actual VM/project ownership checks46/46, profiling startup4,467,115 ≤4,467,136, thirteen full browser journeys including Pixel edit/save/reopen/Code retention, and actual GUI/CLI edited-resource export executing in original PXT. The first budget failure and Frames-panel harness failure remain preserved. SPIKE exact-pin fixture was reviewed/rerun at983aa61f; earlier hosted stale-pin failure remains retained. Automatic native carrier installation, fresh factory-to-library binding and library editor affordances remain open. Tilemap authoring, variable timing and action binding are subsequent slices. The owner renewed all MakeCode authoring closure work across pseudocode, Blocks and graphics; require visible authoring, persistence, conversion and original-runtime evidence per feature. Owner explicitly paused the prior agent and transferred the remaining F1–F11/browser/GUI compatibility work to this lane. Preserve its history and failures; qualify upstream dialect before adoption; refresh corpus measurements and close feature families with runtime, roundtrip and GUI proof. Parallel reviewers own disjoint files/tasks under this lane.  Automatic native import at `7a4101798` installs validated used/unused animations into hidden libraries with fresh UUID reporter bindings; regression51/51, transaction/CLI original-PXT semantics4/4 and policy6/6 pass. All14 production browser journeys pass, including automatic import/Pixel edit/save/reopen/Code/Blocks/controller playback; initial4,467,115 bytes remains under unchanged4,467,136. Library navigation/script/visibility safeguards and original Assets editing/download remain open.  At product source `0a187a8c6`, explicit library navigation, disabled gameplay controls, Blocks/Sounds notices and queued-edit/Show guards are implemented. Selection-safe duplicate renews UUIDs and delete/Undo restores source/identity. Production initial JS4,357,538 meets the unchanged4,467,136 limit with a deferred sprite pane. All16 actual browser journeys pass with zero page errors and19,200 matching original-PXT pixels, including rename/duplicate/delete/Restore Sprite/save/reopen/playback. Regression83pass/1namedskip, adopted contracts27pass/1unrelatedskip, audit/shard/timeout/pinning52/52 and final mirror/handoff22/22. First budget/Blockly/selector failures are preserved. Direct-job CI audit reads preserve fail-closed identity and completion checks. Hosted final-head qualification, original Assets editor, costume/sprite-file source transport and duplicate native-name export remain open; corpus93 partial unchanged.  At product source `6f78b0151`, native animation name allocation handles duplicates, punctuation, whitespace and alias/suffix collisions without changing authored names or UUIDs. Companion2 preserves that projection and reads legacy1. Import gives identical rendered resources distinct Scratch carrier costumes. Focused39/39, codec/library/handoff40/40, audit/shard/timeout/pinning53/53 and final mirror1/1 pass without skips. Production startup4,357,538 meets the unchanged4,467,136 limit; all17 actual browser journeys pass, including duplicate-library GUI/CLI original-PXT export and native-file reimport/To Blocks/playback with zero page errors and19,200 matching original pixels. Failed fixtures, menu/chooser attempts, actual Scratch duplicate-costume rejection and predecessor hosted audit failure are preserved privately. API polls now use unique read keys after observed60-second cache headers, with strict completion and identity checks unchanged. Hosted final-head qualification, original Assets editing/retention, duplicate picker labels and VM validation error presentation remain open;93 corpus partial unchanged. |
 
+
+
+| SPIKE qualification: cold unit-test browser prerequisite | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | Base `f36341cca8f9128b5aa391deed7849883d83d24b`; `.github/workflows/build.yml` build job only: install the lock-resolved Chromium browser before browser-backed unit tests. | **CLAIMED.** Repair the observed missing `chromium_headless_shell` prerequisite in SPIKE PR755 qualification. Preserve unit assertions, independent downstream checks and existing browser gate registration/budget/census owned by the Arcade lane; its PR700 workflow repair is already merged. No Arcade source, dependency pin, guest profile or browser-job changes. |
+| SPIKE dual ultrasonic E/F topology and callers | Codex SPIKE integration, 2026-10-09; isolated branch/worktree `lane/spike-dual-ultrasonic-topology-20261009` | Exact base `287b91c43dbb34b59e425c5a6cd4ff24ac67d7e2`; overlay/packages mirrors of scratch-gui lib/spike-nuttx/{motor-topology,upload-protocol}.js, lib/spike-arena/{firmware-program,renode-arena-session}.js, components/tw-pseudocode/spike-arena-pane.jsx; scratch-vm extension-support/capability-broker.js; apps/tauri/src-tauri/src/{arena_inputs,native_capability,renode_supervisor}.rs; focused dual-topology/compiler/protocol/GUI tests, existing Rust proof registration; scripts/verify-spike-renode-arena-browser.mjs, scripts/lib/spike-nuttx-browser-proof.mjs, test/spike-nuttx-browser-proof.test.mjs and tools/renode-arena-proof/README.md for bounded real-guest E/F preparation; scripts/prepare-spike-nuttx-package.mjs, scripts/lib/spike-package-model-loading.mjs and test/spike-package-model-loading.test.mjs for explicit compiled-model Runtime packaging after observed duplicate-type startup failure; docs/SPIKE-STATUS-AND-LANES.md and this row only. | **CLAIMED.** Add an explicit sandbox-only own-NuttX E/F ultrasonic profile with A/B motors and retained C color sensor; D detached. Require image-bound live addressed API and exact first-frame port/type observations before any native/Python upload. Preserve default D-distance/E-force and six-motor contracts. No stock image, physical firmware, device-model change or package-pin adoption. Actual installed consumer qualification remains mandatory before release claims. |
+| SPIKE PR755 qualification test repair | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | `test/tauri-broker-topology.test.mjs`, `test/spike-proof-transport.test.mjs`, this row and bounded qualification status in docs/SPIKE-STATUS-AND-LANES.md only. | **CLAIMED.** Update the exact broker source audit for the supported SixMotors/DualUltrasonic match arm and retain rejection mutations for both; document the host CPython synthetic fixture prerequisite without raising audit baselines. Preserve live guest assertions, firmware pins, ACL checks and actual installed acceptance. |
+
+| SPIKE addressed-reader package discovery | Codex SPIKE integration, 2026-10-09; isolated branch/worktree `lane/spike-addressed-capability-package-20261009` | Exact base `59dddb13ed53d941141c2476bec312047032e660`; `scripts/lib/spike-addressed-sensor-marker.mjs`, `scripts/prepare-spike-nuttx-package.mjs`, `test/spike-addressed-sensor-marker.test.mjs`, affected package contract tests, `docs/SPIKE-STATUS-AND-LANES.md` and this row only. | **DONE candidate 2026-10-09 for package metadata only.** Eight focused new/legacy controls pass, including three assertion-detected source mutants; hosted consumer qualification pending. Discover optional version1 from the exact own ELF and bind address/version to its SHA256; old images keep their legacy package behavior. Require allocated nonwritable OBJECT metadata, exact file/load mapping and virtual/physical overlap refusal. Firmware PR52 qualification remains pending; this preparation does not adopt firmware/model pins or advertise GUI/compiler E/F support. Runtime live capability and declared E/F topology are subsequent qualified lanes. |
 
 | SPIKE G01: adopt qualified firmware in the desktop package | Codex SPIKE integration, 2026-10-07; branch `lane/spike-desktop-adoption-20261007` | Base `6351f8ee42ecd39719c27f80af2ff4e816791f23`; `scripts/build-spike-linux-desktop.mjs`, `scripts/prepare-spike-nuttx-package.mjs`, `scripts/lib/spike-resource-profile.mjs`, associated package/storage/session/Code-feedback tests and `tools/renode-arena-proof/src/main.rs` production-module declarations needed to compile the closed native test transport; `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js` and `components/tw-pseudocode/spike-arena-pane.jsx` with their tracked package mirrors for retained-program restart; `docs/SPIKE-LINUX-DESKTOP.md`, `docs/SPIKE-STATUS-AND-LANES.md`, and this row. Owns package-input provenance and actual Code-tab adoption qualification; no browser actuator/gallery pin changes. | **DONE 2026-10-07 for the bounded desktop candidate.** [PR695](https://github.com/CrispStrobe/brickwright-lite/pull/695) merged `0faacb84211a5d6df8b4d3ed8ed9127c14b76fc5`; reviewed source `2b36862fb39f34a990eb296c734e9e800ed884c8`, seven enabled [checks passed](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37579912369). Actual extracted GUI covered native Code/pseudocode-to-blocks and Python, A–F motion, completion, restart, repeated Stop, startup Stop, faults, Save/Load and fresh-process recovery. 81 JS tests, 129 Rust tests/10 ignored, three mutations, clean firmware input/resource gates, default guest and comprehensive six-motor guest passed; earlier wall-bound failures remain private. Merge tree matched the reviewed plan. [Boundaries and remaining G03/G05 work](docs/SPIKE-STATUS-AND-LANES.md#2026-10-07-desktop-adoption-candidate): private installer, 120-second desktop bound, empty Pseudocode conversion issue and open distribution review; no physical/reference-boot claim. |
 | DONE — Arcade browser checks: port the WIP's Arcade Playwright and corpus verifiers to main's GUI and wire them into CI (task F3 of docs/OPEN-TASKS-2026-09-29.md, browser half) | Compatibility agent; branch `claude/charming-hamilton-jfhfle` | base `58f17c88f`; paths `scripts/verify-arcade-*.mjs` (22 new), `package.json` scripts, `.github/workflows/build.yml` (heavy shard), `docs/generated/browser-gate-readings.json`, `test/gate-coverage.test.mjs` (`KNOWN_UNWIRED`: the 7 corpus checks), `test/arcade-browser-bundle.test.mjs`, `overlay/scratch-gui/src/components/stage/` (new, owned), `overlay/scratch-gui/src/containers/stage.jsx`, `tw-pseudocode/{arcade-device-pane,pseudocode-importer}.jsx` + packages twins; the F3 row | **DONE 2026-10-07.** 15 checks wired, 7 corpus checks listed with their reason, `verify-makecode-controls` superseded. Closed four GUI gaps on main (Arcade dialogs never shown, physics diagnostic and serial never shown, button map replaced on press, Blocks → Code "✓ OK" with retained diagnostics). Details in the F3 row. |
@@ -1447,6 +1484,92 @@ the old red is not a landing or deployment receipt.
 | C: a doc's name printed as markdown is not a read, and the trigger list may not vouch for itself | lego-b9 (VPS Claude session, worktree `wt/lego-b9-t9`, branch `lane/doc-triggers-output-only`) | 2026-09-07 | **CLAIMED** (lego-ac's ask, option C of docs/CI-QUEUE-2026-09-07-MAIN.md). Two instances held docs/LANGUAGE-DEVICE-MATRIX-PLAN.md in build.yml's re-include list: `scripts/gen-reader-coverage.mjs:171` and `scripts/gen-language-device-matrix.mjs:97`, each printing the plan's name between escaped backticks inside a template literal — a report's provenance line, not a read. Five main runs on 2026-09-07 (127 runner-min) verified plan-only edits for it. While measuring, a second thing: the census scans `.github/`, so build.yml's own `- 'docs/X.md'` entries counted as mentions and the test's STALE direction could never fire (fired live: re-including a doc nothing names stayed 5/5 green) — two docs whose readers had left (`DEBUGGER-NEXT-ROADMAP.md`, `FULL-DEBUGGER-ARCHITECTURE.md`) were still re-included; GATES thirtieth species. `scripts/lib/doc-triggers.mjs`: a workflow's trigger entry is not a mention; a name between escaped backticks is stripped before the match and listed by `outputOnlyMentions` (reported in the test's diagnostic, not counted). Mutations in a throwaway tree (printed-only line, read line, both on one line, a trigger entry vs a `run:` that reads) and on the real list (an unmentioned doc, chosen at run time, re-included → stale by name); fired live: a code line naming the plan → missing by name. Re-includes 18 → 15; a plan-only or LANES-only push now starts no run. |
 
 ## DONE — recently, so nobody redoes it
+
+Scope-reset and cooperative circuit-clock package adoption — **DONE candidate
+2026-10-08**, Codex bwcx, branch `lane/scope-reset-adoption-20261008`; canonical
+claim `59dddb13ed53d941141c2476bec312047032e660` from exact main
+`0441d5b6247e3b3c6a41fac68fba36f0c7387927`. Adopt bw-board
+`ac7595b609daa75717c696830982f59940c97e8b` and bw-circuit-ui
+`5f336b24447351ce80742c0e71078cdd23e7912b` only; sb3/flasher unchanged.
+Upstream Board CI37805382935/Harris37805382883 and CUI CI37816453619
+passed, including the real scope-reset browser scenario. This descendant
+range also includes cooperative live clocks, finite-analysis refusal and
+wrapped-envelope labels; it is not a reset-only source patch. Root/GUI
+manifests and locks, notices, census/mirrored module, matrix, 8086 report and
+overlay ROM provenance were regenerated. All eight ROM binaries and BIOS
+source bytes remain unchanged; these ROM provenance files have no tracked
+packages mirror. GUI lock also reconciles the already-selected Board's pinned
+avr8js dependency. No engine/UI source copy, model tuning, other pin, workflow,
+Arcade/SPIKE change or deployment claim.
+
+Installed-package affected checks pass29/29, including CLI independent waveform,
+current/KCL and refusal controls, retained scope identity, an empty reset ring,
+all5000 first50ms envelopes, and failure-latch preservation. Package/provenance
+checks pass26 with one history-dependent skip; the affected census/BIOS history
+checks subsequently ran with the actual pinned checkout. Generator checks:
+Rust notices, 8086 report, matrix, part profiles, reader coverage, hosted targets
+against its own recorded stc snapshot, Board census, and package notices pass;
+unchanged generated outputs were not rewritten. Global pin-history check remains
+for the full hosted checkout: local sparse-checkout missing-file refusals are
+not passes. Installed payload identity and the new actual Build/Sim restart
+browser journey remain mandatory in one exact-head hosted Build before landing.
+The browser proof imports an owned passive fixture, uses real controls and
+observes Board events without changing its clock or simulation implementation.
+
+Forward repair envelope after Build37826679610: the full unit suite reported
+four failures (6410 tests,6385 pass,4 fail,21 skips). Pin-chain coverage also
+requires `static/roms/cpm-roms.provenance.json` (overlay and tracked mirror),
+overlay `static/roms/free-386-bios.provenance.json`,
+`static/dos/msdos200-base.provenance.json` (overlay and tracked mirror), and the controller entry in
+`overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json`.
+Each is updated only after pinned-source byte equality; historical receipts
+retain their original pins. The explicit checkout/assertion refs in
+`.github/workflows/i80386-freedos-circuits-direct-actual.yml` must follow this
+same package pair, without changing its label-only execution or claiming a new
+guest run. `test/native-prompt.test.mjs` needs lexical binding detection and
+positive/negative controls: the added DOS grading modules' locally defined or
+imported `prompt` predicates are not calls to the browser's global dialog.
+No package paths are waived and no remaining browser dialog may be hidden.
+Repaired prompt/bundle checks pass36/36; disabling lexical resolution or hiding
+every bare call independently makes the new control fail. Source binary hashes
+remain unchanged. The new `scripts/verify-circuit-ux.mjs` reset journey now uses
+the real Step control after Build/Sim, which preserves the existing pause choice.
+The separate existing green-flag first-write journey reports a real stalled
+clock and wrong pin level in this candidate. Diagnostic-only additions to
+`scripts/verify-green-flag-first-write.mjs` expose the visible simulation error
+and pause-control state; all its original assertions and time bounds remain.
+Build37826679610 is rejected (unit and browser failures); heavy browser installation
+also failed before its journeys ran. No unchanged rerun or landing is authorized
+by the corrected unit tests. A forward hosted qualification must diagnose the
+green-flag failure before this package pair can be adopted.
+
+2026-10-09 forward adoption — DONE candidate, Codex bwcx, branch
+`lane/scope-reset-stiff-adoption-20261009`. Reconciled current main
+`287b91c43` into the held candidate without changing other owners' SPIKE work.
+The upstream winding repair is now landed at
+`09c0f027eb906310f0f09dc524d6fdf17058439b`; CI37918681671 passes8456 tests,
+zero failures,302 unchanged skips, and Harris37918681729 succeeds.
+Advance only the Board pin to that exact head; retain CUI5f336b244 and all
+other pins. Envelope: existing package manifests/locks, generated notices,
+census/mirrors, matrix/report, byte-unchanged ROM/controller provenance,
+the existing direct-actual workflow's exact checkout/assertion references,
+existing package-adoption pin assertions, and this ledger. Add an installed
+motor startup/off/restart proof to scope-reset-package-adoption.test.mjs.
+Retain all actual browser assertions and require the previously failing
+green-flag journey plus scope-reset journey to pass in the hosted Build.
+No engine/UI source copy, model adjustment, SPIKE/Arcade change, other pin,
+new guest run or deployment claim. Existing rejected receipts remain rejected.
+Both locks were regenerated by npm in lock-only mode; each changes only its
+Board specification, resolved SHA and generated integrity. The source range
+has no ROM/controller changes, so provenance advances without binary changes.
+Local verification: pin metadata and9 package-identity/negative controls pass;
+census8/8 includes exact pinned-source freshness; native-prompt24/24 passes.
+Rust notices, 8086 report, matrix, part profiles, reader coverage, Board census
+and package-notices checks pass. Hosted-targets requires its recorded compiler
+checkout and was not verified in this worktree. Existing installed packages
+remain untouched and are not evidence for the new pin. The final hosted Build
+must install and verify the new exact payload, run the new motor test, and pass
+both real scope-reset and green-flag browser journeys before landing.
 
 Vercel docs-only validation inheritance — **DONE candidate 2026-10-04**, Codex
 bwcx `/root`, `/tmp/wt-bwcx-vercel-doc-inheritance-20261004`, branch

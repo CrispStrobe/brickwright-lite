@@ -247,6 +247,11 @@ try {
                     stillWaiting: vm.runtime._stc12Pins.led === 0,
                     mode: ps ? ps.mode : null, high: ps ? ps.driveHigh : null,
                     led: shown.ledBrightness(led), boardNs: String(shown.timeNs),
+                    simulationAlerts: [...document.querySelectorAll('.bw-circuit-designer [role="alert"]')]
+                        .map(el => el.textContent),
+                    pauseControl: [...document.querySelectorAll('.bw-circuit-designer button[title]')]
+                        .filter(el => /Pause simulation|Resume simulation/.test(el.title))
+                        .map(el => ({title: el.title, disabled: el.disabled})),
                     simMode: (document.querySelector('[data-sim-mode]') || {dataset: {}}).dataset.simMode
                 };
             }, {pin: PIN, led: LED});
@@ -265,7 +270,8 @@ try {
         if (!check(`${label}: the program wrote its first level (turn on led)`, r.wrote !== null)) return false;
         const detail = `start ${r.startNs} ns, write at ${r.wrote} ns, now ${reading.boardNs} ns after ${reading.wallMs} ms; `
             + `shown ${reading.shown}, written ${reading.written}, runner ${reading.runnerPhase}/${reading.runnerBoard}; `
-            + `${PIN} ${reading.mode}/${reading.high}; LED ${reading.led.toFixed(3)}; designer ${reading.simMode}`;
+            + `${PIN} ${reading.mode}/${reading.high}; LED ${reading.led.toFixed(3)}; designer ${reading.simMode}; `
+            + `simulation alerts ${JSON.stringify(reading.simulationAlerts)}; pause control ${JSON.stringify(reading.pauseControl)}`;
         check(`${label}: the board on screen is the board the VM's blocks write, at every frame (${reading.frames} frames)`,
             reading.shownIsWritten && reading.swaps.length === 0 && reading.frames > 0,
             `${detail}; swaps ${JSON.stringify(reading.swaps)}`);
