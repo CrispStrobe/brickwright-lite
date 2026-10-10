@@ -89,7 +89,8 @@ try{
     await page.getByRole('button',{name:'From blocks ⇨',exact:true}).click();
     // CodeMirror renders only the visible viewport. The large tilemap line can
     // leave callback bodies outside the DOM even though they remain in Code.
-    await page.getByText('Read into all languages — 1 unsupported diagnostic(s) retained in Code.',{exact:true}).waitFor({state:'visible',timeout:30000});
+    // Terrain physics is measured against the original, so no diagnostic is retained.
+    await page.getByText('Read the current project into all languages. Edit any of them, then “To blocks”.',{exact:true}).waitFor({state:'visible',timeout:30000});
     const decompiled=await editor.evaluate(el=>el.cmTile?.root?.view?.state?.doc?.toString());
     assert.equal(typeof decompiled,'string');
     assert.match(decompiled,/arcade center camera x/);assert.match(decompiled,/arcade camera follow sprite/);assert.match(decompiled,/arcade camera property/);
