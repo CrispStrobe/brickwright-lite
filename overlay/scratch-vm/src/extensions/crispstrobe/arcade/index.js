@@ -1553,7 +1553,8 @@ module.exports = makeExt(`// Name: Arcade
           entry.animated, foreground, background, false, owner, this._globalElapsedMs));
         const work = this._speechEngine.createNative(text,
           Number.isFinite(duration) ? duration : -1, foreground, background, owner,
-          {time:()=>this._globalElapsedMs,camera:()=>this._camera(),hitbox:()=>this._wallHitbox(owner)},
+          {time:()=>this._globalElapsedMs,camera:()=>this._camera(),hitbox:()=>this._wallHitbox(owner),
+            deltaTime:()=>this._state().frameDeltaTime || 0},
           image=>this._createSpeechBubble(image, entry, util));
         return work && typeof work.then === 'function' ? work.then(finish) : finish(work);
       });
@@ -3351,6 +3352,7 @@ module.exports = makeExt(`// Name: Arcade
     *_advanceFrameSteps(dt) {
       const epoch=this._terrainEpoch;
       const state = this._state();
+      state.frameDeltaTime=dt;
       this._globalElapsedMs+=dt*1000;
       state.elapsedMs = (state.elapsedMs || 0) + dt * 1000;
       yield* this._sceneButtons(dt);if(this._state()!==state)return;

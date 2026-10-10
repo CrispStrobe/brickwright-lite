@@ -142,7 +142,8 @@ module.exports = function createSpeechEngine(initialize, fonts, initializeNative
     return {
         pixelImage,
         createNative(text, duration, foreground, background, sprite, context, allocate) {
-            now = context.time(); setCamera(context.camera()); deltaTime = 0;
+            now = context.time(); setCamera(context.camera());
+            deltaTime = context.deltaTime ? context.deltaTime() : 0;
             const owner = ownerFor(sprite);
             // Native hitbox offsets are already floored pixels. Capture the
             // PXT scaled/rotated box before creation handlers can change it.
@@ -150,6 +151,7 @@ module.exports = function createSpeechEngine(initialize, fonts, initializeNative
             if (hitbox) owner._hitbox = {oy: hitbox.top};
             const resume = bubble => {
                 now = context.time(); setCamera(context.camera());
+                deltaTime = context.deltaTime ? context.deltaTime() : 0;
                 Object.assign(owner, ownerFor(sprite));
                 return bubble;
             };
