@@ -109,6 +109,16 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
     },
     {
+        // The Arcade background scroller, vendored and also transpiled into
+        // the native runtime (scripts/generate-arcade-scroller.mjs).
+        name: 'arcade-background-scroll',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/scroller-pxt.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
+    },
+    {
         name: 'pxt-kitronik-motor-driver',
         licence: 'MIT',
         holder: 'Kitronik Ltd',

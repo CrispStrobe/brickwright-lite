@@ -1019,6 +1019,11 @@ class ArcadeTranslator extends BaseTranslator {
             let values='"[]"';for(let i=node.items.length-1;i>=0;i--)values=`array value (${this.arrayElementValue(node.items[i])}) rest (${values})`;
             return `new array reference from (${values})`;
         }
+        if(this.handleTemplates && node?.type==='Call' && /^scroller\.getBackground[XY]Offset$/.test(this.path(node.callee)||'') && !this.bindsName('scroller')) {
+            const a=node.args||[],layer=this.scrollerLayer(a[0]);
+            if(a.length>1 || layer===null){this.unsupported.push(`${this.path(node.callee)}() takes an optional layer`);return '0';}
+            return `arcade background scroll offset ${/X/.test(this.path(node.callee))?'x':'y'} layer (${layer})`;
+        }
         if(this.handleTemplates && node?.type==='Member' && this.spriteExtensionOf(node.object)) {
             const kind=this.spriteExtensionOf(node.object);
             if(node.name==='sprite')return this.expr(node.object);
@@ -1289,6 +1294,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return;
         }
+        if(this.scrollerStatement(name,a,push))return;
         if(this.spriteExtensionStatement(node,a,push))return;
         if(this.sevensegStatement(node,a,push))return;
         if(this.musicStatement(name,a,push))return;
@@ -1765,6 +1771,51 @@ class ArcadeTranslator extends BaseTranslator {
             ['game.eventContext', 'control.eventContext'].includes(this.path(node.object.callee)) && !this.bindsName(this.path(node.object.callee).split('.')[0]))
             return 'arcade frame delta time';
         return null;
+    }
+    /** A scroller layer argument (number, BackgroundLayer member or _backgroundLayer call); '0' if omitted. */
+    scrollerLayer (node) {
+        if (!node) return '0';
+        const path = this.path(node) || '', member = /^scroller\.BackgroundLayer\.Layer([0-4])$/.exec(path);
+        if (member) return member[1];
+        if (node.type === 'Call' && this.path(node.callee) === 'scroller._backgroundLayer' && node.args?.length === 1) return this.scrollerLayer(node.args[0]);
+        return /^scroller\./.test(path) ? null : this.expr(node);
+    }
+    /** arcade-background-scroll calls. */
+    scrollerStatement (name, a, push) {
+        if (!this.handleTemplates || !/^scroller\./.test(name || '') || this.bindsName('scroller')) return false;
+        // Numeric literals (with a leading minus) stay literal numbers.
+        const value = i => {
+            const node = a[i], negative = node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number';
+            return node?.type === 'Number' ? String(Number(node.value)) : negative ? String(-Number(node.argument.value)) : this.expr(node);
+        }, method = name.slice(9);
+        const layer = i => this.scrollerLayer(a[i]);
+        const fail = message => { push(this.note(`scroller.${method}() ${message}`)); return true; };
+        switch (method) {
+        case 'scrollBackgroundWithCamera': {
+            const mode = /^scroller\.CameraScrollMode\.(OnlyHorizontal|OnlyVertical|BothDirections)$/.exec(this.path(a[0]) || '');
+            if (!mode || a.length > 2 || layer(1) === null) return fail('needs a CameraScrollMode member and an optional layer');
+            push(`arcade scroll background with camera ${mode[1]} layer (${layer(1)})`); return true;
+        }
+        case 'scrollBackgroundWithSpeed':
+            if (a.length < 2 || a.length > 3 || layer(2) === null) return fail('takes vx, vy and an optional layer');
+            push(`arcade scroll background vx (${value(0)}) vy (${value(1)}) layer (${layer(2)})`); return true;
+        case 'setCameraScrollingMultipliers':
+            if (a.length > 3 || layer(2) === null) return fail('takes x and y multipliers and an optional layer');
+            push(`arcade set background scroll multipliers x (${a.length > 0 ? value(0) : '1'}) y (${a.length > 1 ? value(1) : '1'}) layer (${layer(2)})`); return true;
+        case 'setBackgroundScrollOffset':
+            if (a.length < 2 || a.length > 3 || layer(2) === null) return fail('takes x, y and an optional layer');
+            push(`arcade set background scroll offset x (${value(0)}) y (${value(1)}) layer (${layer(2)})`); return true;
+        case 'setLayerImage': {
+            const image = a.length === 2 && layer(0) !== null && this.imageRef(a[1]);
+            if (!image) return fail('takes a layer and an image');
+            push(`arcade set background layer (${layer(0)}) image (${image})`); return true;
+        }
+        case 'setLayerZIndex':
+            if (a.length !== 2 || layer(0) === null) return fail('takes a layer and a z index');
+            push(`arcade set background layer (${layer(0)}) z (${value(1)})`); return true;
+        default:
+            return fail('is not supported');
+        }
     }
     /** 'dart' or 'corgio' for a tracked extension sprite, else null. */
     spriteExtensionOf (node) {
@@ -3236,6 +3287,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Call' && node.callee?.type === 'Member' && t.imageReferences.has(node.callee.object)) return true;
         if (node.type === 'Call' && /^sevenseg\.(createDigit|createCounter)$/.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && /^(darts|corgio)\.create$/.test(t.path(node.callee) || '')) return true;
+        if (node.type === 'Call' && /^scroller\./.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
             (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||

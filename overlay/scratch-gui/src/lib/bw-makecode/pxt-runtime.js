@@ -45,14 +45,15 @@ import {VENDORED_EXTENSIONS} from './extensions-vendored.js';
  * by scripts/sync-makecode-extensions.mjs at exact commits), as the glue reads
  * them: the source files pxt compiles, and what a pxt.json may call each one —
  * `github:<owner>/<repo>#<tag>` or `#<commit>`, owner/repo in any case, the way
- * MakeCode's editor writes it. For the micro:bit only: they were published for
- * pxt-microbit, and are not proved on another target.
+ * MakeCode's editor writes it. Each serves the one target it was published for
+ * (micro:bit unless the pin names another); `untagged` pins also answer the
+ * unversioned spelling some tutorials use.
  */
 export const EXTENSION_TABLE = Object.freeze(VENDORED_EXTENSIONS.map(e => ({
     id: e.id,
     repo: e.repo.toLowerCase(),
-    refs: [e.tag, e.commit],
-    targets: ['microbit'],
+    refs: [e.tag, e.commit, ...(e.untagged ? [''] : [])],
+    targets: [e.target || 'microbit'],
     files: Object.fromEntries(Object.entries(e.files).map(([name, f]) => [name, f.text]))
 })));
 

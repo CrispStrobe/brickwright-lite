@@ -6,6 +6,30 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Arcade extensions: background scroller — 2026-10-10
+
+The first converted extension that is not bundled with Arcade:
+`arcade-background-scroll` (`scroller`), MIT, Microsoft.
+
+- `scripts/sync-makecode-extensions.mjs` now vendors Arcade extensions too
+  (pin v0.1.2 at `941e0a3a`, licence verified, image files skipped); the
+  compiler resolves both the tagged and the untagged spelling the tutorials use.
+- `scripts/generate-arcade-scroller.mjs` transpiles the pinned `main.ts`
+  unchanged into `scroller-pxt.js`. The host gives it a scene with PXT's
+  pre-render frame handlers (run after the camera update, as priority 55 does),
+  native renderables for the layers, the background image (a blank screen-sized
+  one until set) and scene push/pop handlers.
+- Seven words (sb3-creator `6e548a69`, 268 ops): scroll with speed or with the
+  camera, camera multipliers, offset set/get, layer image and layer z. Export adds
+  the `arcade-background-scroll` dependency.
+
+Evidence (`test/makecode-arcade-scroller.test.mjs`): speed, camera (with
+multipliers and a z-ordered layer), a camera that nothing else refreshes, and
+offset scenarios follow the original frame by frame and draw its screen; a
+program using every word round-trips through Code/Blocks, SB3 and an executed
+original export. Running the scroller's frame handlers before the camera update,
+or a constant frame time, fails these. Corpus: 141 of 184 inputs translate.
+
 ## Arcade extensions: darts and corgio — 2026-10-10
 
 The bundled `darts` (a dart with path prediction) and `corgio` (a corgi
