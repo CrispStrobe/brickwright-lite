@@ -1711,6 +1711,11 @@ compiler when a project's pxt.json names them. Unmodified:
   `fec2d45d8b514aff2c9c398a3e41711ecdca4e21`. MIT, Copyright (c) Microsoft Corporation.
 - **pxt-kitronik-motor-driver** v0.0.3 — `KitronikLtd/pxt-kitronik-motor-driver` at
   `be38482e6a7a97dae80ef51b8b7e98767900dc00`. MIT, Copyright (c) 2017 Kitronik Ltd.
+- **arcade-background-scroll** (scroller) v0.1.2 — `microsoft/arcade-background-scroll` at
+  `941e0a3afee4cd4097c1f9853a9ee7299622c7e5`, for Arcade projects. MIT, Copyright (c)
+  Microsoft Corporation. Its `main.ts` is also transpiled unchanged into
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/scroller-pxt.js`
+  (`scripts/generate-arcade-scroller.mjs`) for converted Arcade projects.
 
 Full texts: `overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt`,
 shipped with the app and reachable from the About dialog offline.

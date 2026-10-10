@@ -105,6 +105,7 @@ class ArcadeEmitter {
         this.requiresSevensegPackage = false;
         this.requiresDartsPackage = false;
         this.requiresCorgioPackage = false;
+        this.requiresScrollerPackage = false;
         this.warnings = [];
         this.sprites = project.targets.filter(t => !t.isStage);
         // Each sprite is a global `<name>Sprite`, kept clear of the program's variable names.
@@ -1035,6 +1036,9 @@ class ArcadeEmitter {
         }
         case 'arcade_frameDeltaTime': return 'game.eventContext().deltaTime';
         case 'arcade_musicTempo': return 'music.tempo()';
+        case 'arcade_backgroundScrollOffset':
+            this.requiresScrollerPackage = true;
+            return `scroller.getBackground${this.field(b, 'AXIS') === 'y' ? 'Y' : 'X'}Offset(${v('LAYER')})`;
         case 'arcade_createDart':
             this.requiresDartsPackage = true;
             return `darts.create(${v('IMAGE')}, ${this.kindExpr(b, 'KIND')}, ${v('X')}, ${v('Y')})`;
@@ -1570,6 +1574,17 @@ class ArcadeEmitter {
         case 'arcade_setTempo': push(`music.setTempo(${v('TEMPO')})`); return;
         case 'arcade_changeTempo': push(`music.changeTempoBy(${v('TEMPO')})`); return;
         case 'arcade_stopAllSounds': push('music.stopAllSounds()'); return;
+        case 'arcade_scrollBackgroundWithCamera': {
+            const mode = this.field(b, 'MODE');
+            if (!['OnlyHorizontal', 'OnlyVertical', 'BothDirections'].includes(mode)) { push(`// ${this.note(`Unsupported camera scroll mode ${mode}`)}`); return; }
+            this.requiresScrollerPackage = true;
+            push(`scroller.scrollBackgroundWithCamera(scroller.CameraScrollMode.${mode}, ${v('LAYER')})`); return;
+        }
+        case 'arcade_scrollBackgroundWithSpeed': this.requiresScrollerPackage = true; push(`scroller.scrollBackgroundWithSpeed(${v('VX')}, ${v('VY')}, ${v('LAYER')})`); return;
+        case 'arcade_setBackgroundScrollMultipliers': this.requiresScrollerPackage = true; push(`scroller.setCameraScrollingMultipliers(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
+        case 'arcade_setBackgroundScrollOffset': this.requiresScrollerPackage = true; push(`scroller.setBackgroundScrollOffset(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
+        case 'arcade_setBackgroundLayerImage': this.requiresScrollerPackage = true; push(`scroller.setLayerImage(${v('LAYER')}, ${v('IMAGE')})`); return;
+        case 'arcade_setBackgroundLayerZ': this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
         case 'arcade_dartAction': {
             const action = this.field(b, 'ACTION');
             if (!['throwDart', 'stopDart'].includes(action)) { push(`// ${this.note(`Unsupported dart action ${action}`)}`); return; }
@@ -2347,7 +2362,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_sevensegProperty'){const id=Symbol('seven segment property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createDart'){const id=Symbol('dart');graphDartValues.add(id);sprites.add(id);return id;}
                 if(value.opcode==='arcade_createCorgi'){const id=Symbol('corgi');graphCorgiValues.add(id);sprites.add(id);return id;}
-                if(['arcade_dartProperty','arcade_corgiProperty'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
+                if(['arcade_dartProperty','arcade_corgiProperty','arcade_backgroundScrollOffset'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_animationProperty'){const id=Symbol('animation property');(literal(blocks,value,'PROPERTY')==='image'?images:numbers).add(id);return id;}
                 if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(value.opcode)) {
                     const id=Symbol('authored animation array'), item=Symbol('authored animation image');
@@ -3090,7 +3105,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': ts,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`

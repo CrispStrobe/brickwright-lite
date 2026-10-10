@@ -84,6 +84,21 @@ export const EXTENSIONS = [
         licence: 'MIT',
         holder: 'Kitronik Ltd',
         usedBy: ['projects/rc-car/connect']
+    },
+    {
+        // Arcade (target set below): scroller, the background scroll extension
+        // pxt-arcade's tutorials name, some without a tag. The untagged spelling
+        // ('' ref) resolves to this pin; it is what those tutorials ran when taken.
+        id: 'arcade-background-scroll',
+        spec: 'github:microsoft/arcade-background-scroll#v0.1.2',
+        repo: 'microsoft/arcade-background-scroll',
+        tag: 'v0.1.2',
+        commit: '941e0a3afee4cd4097c1f9853a9ee7299622c7e5',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        untagged: true,
+        usedBy: ['arcade tutorials alien, hundred, hawk, dunk, harlem-globetrotters']
     }
 ];
 
@@ -124,7 +139,8 @@ async function get (url, as = 'buffer') {
 export async function fetchExtension (pin) {
     if (!FULL_SHA.test(pin.commit)) throw new Error(`${pin.repo}: commit ${pin.commit} is not a full 40-hex sha`);
     const {commit, repo} = pin;
-    const tree = await get(`https://api.github.com/repos/${repo}/git/trees/${commit}`, 'json');
+    // Recursive: a pxt.json may list files in subdirectories (docs/...).
+    const tree = await get(`https://api.github.com/repos/${repo}/git/trees/${commit}?recursive=1`, 'json');
     const blobs = new Map(tree.tree.filter(e => e.type === 'blob').map(e => [e.path, e.sha]));
     const raw = async file => {
         const bytes = await get(`https://raw.githubusercontent.com/${repo}/${commit}/${file}`);
@@ -140,8 +156,10 @@ export async function fetchExtension (pin) {
     const pxtJson = await raw('pxt.json');
     const cfg = JSON.parse(pxtJson.text);
     const files = {'pxt.json': pxtJson};
-    for (const f of cfg.files || []) files[f] = await raw(f);
+    // Binary images (an icon) are not source and do not survive as text: not taken.
+    for (const f of cfg.files || []) if (!/\.(png|jpe?g|gif)$/i.test(f)) files[f] = await raw(f);
     return {id: pin.id, spec: pin.spec, repo, tag: pin.tag, commit, licence: pin.licence, holder: pin.holder,
+        ...(pin.target ? {target: pin.target} : {}), ...(pin.untagged ? {untagged: true} : {}),
         licenceFile, licenceText: licence, usedBy: pin.usedBy, files};
 }
 

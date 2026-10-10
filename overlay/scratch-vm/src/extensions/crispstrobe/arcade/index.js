@@ -34,7 +34,7 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneStack = [];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
-      this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._extensionCreationWaits=[];
+      this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
       this._buttonStates = {};
@@ -118,7 +118,7 @@ module.exports = makeExt(`// Name: Arcade
           this._renderables=new WeakMap();this._screen=null;
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
           this._sevensegIds=new Map();this._sevensegValues=new Map();
-          this._extensionSprites=new Map();
+          this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;
           this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
@@ -207,6 +207,12 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
+          {opcode:'scrollBackgroundWithCamera',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background with camera [MODE] layer [LAYER]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'cameraScrollModes',defaultValue:'OnlyHorizontal'},...n('LAYER',0)}},
+          {opcode:'scrollBackgroundWithSpeed',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background vx [VX] vy [VY] layer [LAYER]',arguments:{...n('VX',-50),...n('VY',-50),...n('LAYER',0)}},
+          {opcode:'setBackgroundScrollMultipliers',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background scroll multipliers x [X] y [Y] layer [LAYER]',arguments:{...n('X',1),...n('Y',1),...n('LAYER',0)}},
+          {opcode:'setBackgroundScrollOffset',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background scroll offset x [X] y [Y] layer [LAYER]',arguments:{...n('X',0),...n('Y',0),...n('LAYER',0)}},
+          {opcode:'setBackgroundLayerImage',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background layer [LAYER] image [IMAGE]',arguments:{...n('LAYER',0),...str('IMAGE','')}},
+          {opcode:'setBackgroundLayerZ',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background layer [LAYER] z [Z]',arguments:{...n('LAYER',0),...n('Z',-1000)}},
           {opcode:'dartAction',blockType:Scratch.BlockType.COMMAND,text:'Arcade dart [SPRITE] [ACTION]',arguments:{...str('SPRITE',''),ACTION:{type:Scratch.ArgumentType.STRING,menu:'dartActions',defaultValue:'throwDart'}}},
           {opcode:'dartSwitch',blockType:Scratch.BlockType.COMMAND,text:'Arcade dart [SPRITE] [SETTING] [ON]',arguments:{...str('SPRITE',''),SETTING:{type:Scratch.ArgumentType.STRING,menu:'dartSettings',defaultValue:'setTrace'},ON:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setDartProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade set dart [SPRITE] property [PROPERTY] to [VALUE]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'dartProperties',defaultValue:'angle'},...n('VALUE',0)}},
@@ -231,6 +237,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade set tempo to [TEMPO] bpm',arguments:n('TEMPO',120)},
           {opcode:'changeTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade change tempo by [TEMPO] bpm',arguments:n('TEMPO',20)},
           {opcode:'stopAllSounds',blockType:Scratch.BlockType.COMMAND,text:'Arcade stop all sounds'},
+          {opcode:'backgroundScrollOffset',blockType:Scratch.BlockType.REPORTER,text:'Arcade background scroll offset [AXIS] layer [LAYER]',arguments:{AXIS:{type:Scratch.ArgumentType.STRING,menu:'scrollAxes',defaultValue:'x'},...n('LAYER',0)}},
           {opcode:'createDart',blockType:Scratch.BlockType.REPORTER,text:'Arcade create dart image [IMAGE] kind [KIND] x [X] y [Y]',arguments:{...str('IMAGE',''),...str('KIND','Player'),...n('X',10),...n('Y',110)}},
           {opcode:'createCorgi',blockType:Scratch.BlockType.REPORTER,text:'Arcade create corgi kind [KIND] x [X] y [Y]',arguments:{...str('KIND','Player'),...n('X',10),...n('Y',70)}},
           {opcode:'dartProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade dart [SPRITE] property [PROPERTY]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'dartProperties',defaultValue:'angle'}}},
@@ -711,6 +718,8 @@ module.exports = makeExt(`// Name: Arcade
           ,backgroundEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,legacyGameOverEffects: {acceptReporters: false, items: ['unset', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,imageEffects: {acceptReporters: false, items: ['dissolve', 'melt', 'slash', 'splatter']}
+          ,cameraScrollModes: {acceptReporters: false, items: ['OnlyHorizontal', 'OnlyVertical', 'BothDirections']}
+          ,scrollAxes: {acceptReporters: false, items: ['x', 'y']}
           ,dartActions: {acceptReporters: false, items: ['throwDart', 'stopDart']}
           ,dartSettings: {acceptReporters: false, items: ['setTrace', 'controlWithArrowKeys']}
           ,dartProperties: {acceptReporters: false, items: ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate']}
@@ -906,12 +915,19 @@ module.exports = makeExt(`// Name: Arcade
     pushScene(args,util) {
       const old=this._sceneBundle();this._sceneBundles.add(old);this._sceneStack.push(old);this._sceneVisible(old,false);
       this._activateScene(this._freshScene(old.state));
-      return this._runTerrainGenerator(this._registeredCallbackSteps(this._scenePushHandlers.slice(),'arcade_whenRegisteredScenePush',{},util));
+      return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePushHandlers.slice(),'arcade_whenRegisteredScenePush',util));
     }
     popScene(args,util) {
       const old=this._sceneBundle();this._sceneBundles.add(old);this._sceneVisible(old,false);
       const restored=this._sceneStack.pop() || this._freshScene(old.state);this._sceneBundles.delete(restored);this._activateScene(restored);
-      return this._runTerrainGenerator(this._registeredCallbackSteps(this._scenePopHandlers.slice(),'arcade_whenRegisteredScenePop',{},util));
+      return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePopHandlers.slice(),'arcade_whenRegisteredScenePop',util));
+    }
+    // Program and extension scene handlers, in registration order.
+    *_sceneHandlerSteps(handlers,opcode,util) {
+      for(const handler of handlers){
+        if(handler.host)handler.host();
+        else yield* this._registeredCallbackSteps([handler],opcode,{},util);
+      }
     }
     _handlerRegistration(args,util) {return this._terrainRegistration(args,util);}
     registerUpdateHandler(args,util) {this._updateHandlers.push(this._handlerRegistration(args,util));}
@@ -3274,6 +3290,75 @@ module.exports = makeExt(`// Name: Arcade
       if(this._runtime)this._runtime.bwArcadeMusicLog=this._musicHost.log;
       return this._musicHost;
     }
+    // The scroller extension (arcade-background-scroll) runs its original source
+    // (scroller-pxt.js). Its frame handler runs after the camera update and
+    // before rendering, as PXT's pre-render priority places it; each layer is a
+    // renderable of its scene.
+    _scroller() {
+      if (this._scrollerModule) return this._scrollerModule;
+      const ext=this;
+      const wrap=raw=>raw?{raw,get width(){return raw.width;},get height(){return raw.height;}}:null;
+      this._scrollerModule=dependencies.initializeScroller({
+        game:{
+          currentScene:()=>{
+            const state=ext._state();
+            return {
+              eventContext:{
+                registerFrameHandler:(order,handler)=>{const list=ext._frameHandlersOf(state);let i=list.length;while(i>0 && list[i-1].order>order)i--;list.splice(i,0,{order,handler});},
+                get deltaTime(){return state.frameDeltaTime || 0;}
+              },
+              camera:ext._camera()
+            };
+          },
+          addScenePushHandler:handler=>{if(handler)ext._scenePushHandlers.push({host:handler});},
+          addScenePopHandler:handler=>{if(handler)ext._scenePopHandlers.push({host:handler});}
+        },
+        scene:{
+          PRE_RENDER_UPDATE_PRIORITY:55,
+          createRenderable:(z,draw)=>{
+            const state=ext._state(),renderable={z,id:state.nextSpriteId++,draw:screen=>draw({
+              drawTransparentImage:(image,x,y)=>{if(image?.raw)imageEngine.blit(screen,image.raw,'drawTransparentImage',x,y);}})};
+            ext._renderablesOf(state).push(renderable);
+            return renderable;
+          },
+          // PXT's background always has an image: a blank screen-sized one until set.
+          backgroundImage:()=>{
+            const state=ext._state();
+            if(!state.backgroundImage)state.backgroundImage={width:160,height:120,pixels:new Uint8Array(160*120)};
+            return wrap(state.backgroundImage);
+          }
+        }
+      });
+      return this._scrollerModule;
+    }
+    _frameHandlersOf(state=this._state()) {
+      let list=this._frameHandlers.get(state);
+      if(!list){list=[];this._frameHandlers.set(state,list);}
+      return list;
+    }
+    _runFrameHandlers(state) {
+      const list=this._frameHandlers.get(state);
+      if(list)for(let i=0;i<list.length;i++)list[i].handler();
+    }
+    _scrollerLayer(value) {return Math.floor(Scratch.Cast.toNumber(value));}
+    scrollBackgroundWithCamera(args) {
+      const modes={OnlyHorizontal:0,OnlyVertical:1,BothDirections:2},mode=modes[String(args.MODE)];
+      if(mode===undefined){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no camera scroll mode "'+String(args.MODE)+'".');return;}
+      this._scroller().scroller.scrollBackgroundWithCamera(mode,this._scrollerLayer(args.LAYER));
+    }
+    scrollBackgroundWithSpeed(args) {this._scroller().scroller.scrollBackgroundWithSpeed(Scratch.Cast.toNumber(args.VX),Scratch.Cast.toNumber(args.VY),this._scrollerLayer(args.LAYER));}
+    setBackgroundScrollMultipliers(args) {this._scroller().scroller.setCameraScrollingMultipliers(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),this._scrollerLayer(args.LAYER));}
+    setBackgroundScrollOffset(args) {this._scroller().scroller.setBackgroundScrollOffset(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),this._scrollerLayer(args.LAYER));}
+    setBackgroundLayerImage(args) {
+      const image=this._image(args.IMAGE);
+      if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Arcade background layers need an image.');return;}
+      this._scroller().scroller.setLayerImage(this._scrollerLayer(args.LAYER),{raw:image,get width(){return image.width;},get height(){return image.height;}});
+    }
+    setBackgroundLayerZ(args) {this._scroller().scroller.setLayerZIndex(this._scrollerLayer(args.LAYER),Scratch.Cast.toNumber(args.Z));}
+    backgroundScrollOffset(args) {
+      const scroller=this._scroller().scroller,layer=this._scrollerLayer(args.LAYER);
+      return String(args.AXIS)==='y' ? scroller.getBackgroundYOffset(layer) : scroller.getBackgroundXOffset(layer);
+    }
     // The sprite extensions (darts, corgio) run their original classes
     // (sprite-extensions-pxt.js). Their sprites.ExtendableSprite base is a real
     // native sprite; game.onUpdate and button events join the scene's
@@ -4267,13 +4352,15 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
       yield* this._sceneUpdates();if(this._state()!==state)return;
       this._advanceAnimations(dt);
       this._updateCamera();
+      // Extension frame handlers at PXT's pre-render priority (after the camera).
+      this._runFrameHandlers(state);
       if(state.tilemap?.legacy)this._renderTilemap(true);
       for(const sprite of Object.values(state.sprites)){
         const camera=this._camera(),relative=!!(sprite.flags & spriteFlags.RelativeToCamera),ox=relative?0:camera.drawOffsetX,oy=relative?0:camera.drawOffsetY;
@@ -4333,6 +4420,7 @@ module.exports = makeExt(`// Name: Arcade
   initializeParticles: require('./particles-pxt'),
   initializeSevenseg: require('./sevenseg-pxt'),
   initializeSpriteExtensions: require('./sprite-extensions-pxt'),
+  initializeScroller: require('./scroller-pxt'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   initializeMusic: require('./music-pxt'),
