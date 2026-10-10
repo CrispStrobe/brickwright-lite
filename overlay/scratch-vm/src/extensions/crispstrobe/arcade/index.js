@@ -69,7 +69,7 @@ module.exports = makeExt(`// Name: Arcade
       this._terrainFrame = null;
       this._terrainStopped = false;
       if (runtime && runtime.on) {
-        runtime.on('ARCADE_FRAME', elapsedMs => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._pumpQuestion(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs : 1000 / 30); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); });
+        runtime.on('ARCADE_FRAME', elapsedMs => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._pumpQuestion(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs : 1000 / 30); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); this._musicHost?.pump(); });
         runtime.on('ARCADE_FRAME_END', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); });
         runtime.on('ARCADE_BUTTON_DOWN', button => { if(this._dialogs?.[0]?.type!=='ask')this._dialogs?.[0]?.dismiss(); });
         runtime.on('ARCADE_DIALOG_BUTTON_EDGE',(button,held)=>this._questionButtonEdge(button,held));
@@ -88,6 +88,7 @@ module.exports = makeExt(`// Name: Arcade
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
+        runtime.on('PROJECT_STOP_ALL', () => this._musicHost?.stopAll());
         runtime.on('RUNTIME_DISPOSED', () => {cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
           cancelCreations();
@@ -115,6 +116,7 @@ module.exports = makeExt(`// Name: Arcade
           for (const id of this._speech.keys()) this._clearSpeech(id, undefined, true);
           this._clearParticleOverlays();this._particleScenes=new WeakMap();this._particleAnchors=new WeakMap();
           this._renderables=new WeakMap();this._screen=null;
+          this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
           this._images.clear();
@@ -195,6 +197,28 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
           {opcode:'printImageText',blockType:Scratch.BlockType.COMMAND,text:'Arcade print [TEXT] on image [IMAGE] x [X] y [Y] color [COLOR] font [FONT]',
             arguments:{...str('TEXT','Hello'),...str('IMAGE',''),...n('X',0),...n('Y',0),...n('COLOR',1),FONT:{type:Scratch.ArgumentType.STRING,menu:'imageFonts',defaultValue:'auto'}}},
+          {opcode:'playMusic',blockType:Scratch.BlockType.COMMAND,text:'Arcade play music [PLAYABLE] mode [MODE]',arguments:{...str('PLAYABLE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'playbackModes',defaultValue:'UntilDone'}}},
+          {opcode:'playMelody',blockType:Scratch.BlockType.COMMAND,text:'Arcade play melody [MELODY] mode [MODE]',arguments:{...str('MELODY',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'melodyModes',defaultValue:'play'}}},
+          {opcode:'playSoundEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound effect [EFFECT] mode [MODE]',arguments:{...str('EFFECT',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'soundPlayModes',defaultValue:'UntilDone'}}},
+          {opcode:'playSound',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound [SOUND] until done [UNTIL_DONE]',arguments:{...str('SOUND','c d e'),UNTIL_DONE:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'playTone',blockType:Scratch.BlockType.COMMAND,text:'Arcade play tone [FREQUENCY] Hz for [DURATION] ms',arguments:{...n('FREQUENCY',262),...n('DURATION',500)}},
+          {opcode:'ringTone',blockType:Scratch.BlockType.COMMAND,text:'Arcade ring tone [FREQUENCY] Hz',arguments:n('FREQUENCY',262)},
+          {opcode:'rest',blockType:Scratch.BlockType.COMMAND,text:'Arcade rest for [DURATION] ms',arguments:n('DURATION',500)},
+          {opcode:'setMusicVolume',blockType:Scratch.BlockType.COMMAND,text:'Arcade set music volume to [VOLUME]',arguments:n('VOLUME',128)},
+          {opcode:'setTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade set tempo to [TEMPO] bpm',arguments:n('TEMPO',120)},
+          {opcode:'changeTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade change tempo by [TEMPO] bpm',arguments:n('TEMPO',20)},
+          {opcode:'stopAllSounds',blockType:Scratch.BlockType.COMMAND,text:'Arcade stop all sounds'},
+          {opcode:'melodyPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade melody playable [MELODY]',arguments:str('MELODY','')},
+          {opcode:'stringPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade string playable [MELODY] at [TEMPO] bpm',arguments:{...str('MELODY','C D E F'),...n('TEMPO',120)}},
+          {opcode:'tonePlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade tone playable [FREQUENCY] Hz for [DURATION] ms',arguments:{...n('FREQUENCY',262),...n('DURATION',500)}},
+          {opcode:'soundEffect',blockType:Scratch.BlockType.REPORTER,text:'Arcade sound effect wave [WAVE] from [START_FREQUENCY] Hz to [END_FREQUENCY] Hz volume [START_VOLUME] to [END_VOLUME] for [DURATION] ms effect [EFFECT] curve [CURVE]',
+            arguments:{WAVE:{type:Scratch.ArgumentType.STRING,menu:'waveShapes',defaultValue:'Square'},...n('START_FREQUENCY',400),...n('END_FREQUENCY',600),...n('START_VOLUME',255),...n('END_VOLUME',0),...n('DURATION',500),
+              EFFECT:{type:Scratch.ArgumentType.STRING,menu:'soundEffects',defaultValue:'None'},CURVE:{type:Scratch.ArgumentType.STRING,menu:'soundCurves',defaultValue:'Linear'}}},
+          {opcode:'namedMelody',blockType:Scratch.BlockType.REPORTER,text:'Arcade melody [NAME]',arguments:{NAME:{type:Scratch.ArgumentType.STRING,menu:'melodies',defaultValue:'baDing'}}},
+          {opcode:'soundMelody',blockType:Scratch.BlockType.REPORTER,text:'Arcade sound [SOUND]',arguments:{SOUND:{type:Scratch.ArgumentType.STRING,menu:'sounds',defaultValue:'BaDing'}}},
+          {opcode:'beat',blockType:Scratch.BlockType.REPORTER,text:'Arcade beat [FRACTION]',arguments:{FRACTION:{type:Scratch.ArgumentType.STRING,menu:'beats',defaultValue:'Whole'}}},
+          {opcode:'musicVolume',blockType:Scratch.BlockType.REPORTER,text:'Arcade music volume'},
+          {opcode:'musicTempo',blockType:Scratch.BlockType.REPORTER,text:'Arcade music tempo'},
           {opcode:'registerIntervalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register interval [INTERVAL] ms as [TOKEN] capturing [CAPTURES]',arguments:{...n('INTERVAL',1000),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredInterval',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade interval handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerMultiplayerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register multiplayer button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{...n('BUTTON',0),EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -651,6 +675,16 @@ module.exports = makeExt(`// Name: Arcade
           ,particleEffects: {acceptReporters: false, items: ['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo',
             'ashes', 'disintegrate', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']}
           ,imageFonts: {acceptReporters: false, items: ['auto', 'normal', 'small', 'large']}
+          ,playbackModes: {acceptReporters: false, items: ['UntilDone', 'InBackground', 'LoopingInBackground']}
+          ,melodyModes: {acceptReporters: false, items: ['play', 'playUntilDone', 'loop']}
+          ,soundPlayModes: {acceptReporters: false, items: ['UntilDone', 'InBackground']}
+          ,waveShapes: {acceptReporters: false, items: ['Sine', 'Sawtooth', 'Triangle', 'Square', 'Noise']}
+          ,soundEffects: {acceptReporters: false, items: ['None', 'Vibrato', 'Tremolo', 'Warble']}
+          ,soundCurves: {acceptReporters: false, items: ['Linear', 'Curve', 'Logarithmic']}
+          ,melodies: {acceptReporters: false, items: ['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'powerUp', 'powerDown', 'magicWand', 'siren',
+            'pewPew', 'knock', 'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']}
+          ,sounds: {acceptReporters: false, items: ['PowerUp', 'PowerDown', 'JumpUp', 'JumpDown', 'BaDing', 'Wawawawaa', 'MagicWand', 'Siren']}
+          ,beats: {acceptReporters: false, items: ['Whole', 'Half', 'Quarter', 'Eighth', 'Sixteenth', 'Double', 'Breve', 'Triplet']}
           ,screenEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']}
           ,dialogLayouts: {acceptReporters: false, items: ['Left', 'Right', 'Top', 'Bottom', 'Center', 'Full']}
           ,legacyTileProperties: {acceptReporters:false,items:['x','y','tileSet']}
@@ -3036,6 +3070,93 @@ module.exports = makeExt(`// Name: Arcade
       return this._screen;
     }
     screenImage() {return this._imageHandle(this._screenRaw());}
+    // ---- music: PXT's mixer runs as fibers on the Arcade clock (music.js) ----
+    _music() {
+      if(!this._musicHost)this._musicHost=dependencies.createMusic({initializePxtMusic:dependencies.initializeMusic,
+        clock:()=>this._globalElapsedMs,audioContext:()=>this._runtime?.audioEngine?.audioContext || null,
+        onError:error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error))});
+      // The queued play instructions, for observation (newest last, bounded).
+      if(this._runtime)this._runtime.bwArcadeMusicLog=this._musicHost.log;
+      return this._musicHost;
+    }
+    _musicHandle(value) {
+      if(!value)return '';
+      if(!this._musicIds)this._musicIds=new Map(),this._musicValues=new Map();
+      if(!this._musicIds.has(value)){const id='arcade-music:'+(this._musicIds.size+1);this._musicIds.set(value,id);this._musicValues.set(id,value);}
+      return Scratch.BWValues.reference(this._runtime,'music',this._musicIds.get(value));
+    }
+    // A music value of the given PXT class, or an explicit error.
+    _musicValue(value,kind) {
+      const id=Scratch.BWValues.referenceId(this._runtime,value,'music'),object=id===null?null:this._musicValues?.get(id);
+      const music=this._music().pxt.music;
+      if(object instanceof music[kind])return object;
+      this._runtime?.emit?.('BLOCKS_ERROR','Arcade expected a '+(kind==='Melody'?'melody':'playable sound')+'.');
+      return null;
+    }
+    _musicMenu(enumeration,name) {
+      if(Object.prototype.hasOwnProperty.call(enumeration,name) && typeof enumeration[name]==='number')return enumeration[name];
+      this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no music option "'+String(name)+'".');
+      return null;
+    }
+    playMusic(args) {
+      const music=this._music(),playable=this._musicValue(args.PLAYABLE,'Playable'),mode=this._musicMenu(music.pxt.music.PlaybackMode,String(args.MODE));
+      if(!playable || mode===null)return;
+      return music.run(music.pxt.music.play(playable,mode));
+    }
+    playMelody(args) {
+      const music=this._music(),melody=this._musicValue(args.MELODY,'Melody'),mode=String(args.MODE);
+      if(!melody)return;
+      if(mode==='loop'){melody.loop();return;}
+      if(mode!=='play' && mode!=='playUntilDone'){this._musicMenu({},mode);return;}
+      return music.run(melody[mode]());
+    }
+    playSoundEffect(args) {
+      const music=this._music(),effect=this._musicValue(args.EFFECT,'Playable'),mode=this._musicMenu(music.pxt.SoundExpressionPlayMode,String(args.MODE));
+      if(!effect || mode===null)return;
+      return music.run(music.pxt.music.playSoundEffect(effect,mode));
+    }
+    playSound(args) {
+      const music=this._music().pxt.music,text=String(Scratch.BWValues.decode(args.SOUND) ?? '');
+      return this._music().run(Scratch.Cast.toBoolean(args.UNTIL_DONE)?music.playSoundUntilDone(text):music.playSound(text));
+    }
+    playTone(args) {return this._music().run(this._music().pxt.music.playTone(Scratch.Cast.toNumber(args.FREQUENCY),Scratch.Cast.toNumber(args.DURATION)));}
+    ringTone(args) {return this._music().run(this._music().pxt.music.ringTone(Scratch.Cast.toNumber(args.FREQUENCY)));}
+    rest(args) {return this._music().run(this._music().pxt.music.rest(Scratch.Cast.toNumber(args.DURATION)));}
+    setMusicVolume(args) {this._music().pxt.music.setVolume(Scratch.Cast.toNumber(args.VOLUME));}
+    setTempo(args) {this._music().pxt.music.setTempo(Scratch.Cast.toNumber(args.TEMPO));}
+    changeTempo(args) {this._music().pxt.music.changeTempoBy(Scratch.Cast.toNumber(args.TEMPO));}
+    stopAllSounds() {this._music().pxt.music.stopAllSounds();}
+    melodyPlayable(args) {
+      const melody=this._musicValue(args.MELODY,'Melody');
+      return melody?this._musicHandle(this._music().pxt.music.melodyPlayable(melody)):'';
+    }
+    stringPlayable(args) {
+      return this._musicHandle(this._music().pxt.music.stringPlayable(String(Scratch.BWValues.decode(args.MELODY) ?? ''),Scratch.Cast.toNumber(args.TEMPO)));
+    }
+    tonePlayable(args) {return this._musicHandle(this._music().pxt.music.tonePlayable(Scratch.Cast.toNumber(args.FREQUENCY),Scratch.Cast.toNumber(args.DURATION)));}
+    soundEffect(args) {
+      const pxt=this._music().pxt,wave=this._musicMenu(pxt.WaveShape,String(args.WAVE)),effect=this._musicMenu(pxt.SoundExpressionEffect,String(args.EFFECT)),
+        curve=this._musicMenu(pxt.InterpolationCurve,String(args.CURVE));
+      if(wave===null || effect===null || curve===null)return '';
+      const number=name=>Scratch.Cast.toNumber(args[name]);
+      return this._musicHandle(pxt.music.createSoundEffect(wave,number('START_FREQUENCY'),number('END_FREQUENCY'),number('START_VOLUME'),
+        number('END_VOLUME'),number('DURATION'),effect,curve));
+    }
+    namedMelody(args) {
+      const music=this._music().pxt.music,name=String(args.NAME),melody=Object.prototype.hasOwnProperty.call(music,name)?music[name]:null;
+      if(!(melody instanceof music.Melody)){this._musicMenu({},name);return '';}
+      return this._musicHandle(melody);
+    }
+    soundMelody(args) {
+      const pxt=this._music().pxt,sound=this._musicMenu(pxt.Sounds,String(args.SOUND));
+      return sound===null?'':pxt.music.sounds(sound);
+    }
+    beat(args) {
+      const pxt=this._music().pxt,fraction=this._musicMenu(pxt.BeatFraction,String(args.FRACTION));
+      return fraction===null?0:pxt.music.beat(fraction);
+    }
+    musicVolume() {return this._music().pxt.music.volume();}
+    musicTempo() {return this._music().pxt.music.tempo();}
     _pxtText() {
       if(this._textModule)return this._textModule;
       class PxtBuffer extends Uint8Array {
@@ -3763,5 +3884,7 @@ module.exports = makeExt(`// Name: Arcade
   animationResourceMenuItems: require('../../../util/bw-animation-resource-menu'),
   initializeRotation: require('./rotation-pxt'),
   initializeParticles: require('./particles-pxt'),
-  initializeText: require('./text-pxt')
+  initializeText: require('./text-pxt'),
+  createMusic: require('./music'),
+  initializeMusic: require('./music-pxt')
 });

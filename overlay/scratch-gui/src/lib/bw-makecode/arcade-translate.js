@@ -3,6 +3,23 @@ import {applyDeclaredValueType} from './declared-value-types.js';
 const SCREEN_PARTICLE_EFFECTS = new Set(['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']);
 const PARTICLE_EFFECTS = new Set(['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo', 'ashes',
     'disintegrate', ...SCREEN_PARTICLE_EFFECTS]);
+// PXT mixer music (pxt-common-packages mixer, MIT): named Melody instances,
+// enum members and the Note frequencies of the pinned enum.
+const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'powerUp', 'powerDown', 'magicWand', 'siren',
+    'pewPew', 'knock', 'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']);
+const MUSIC_ENUMS = {
+    'music.PlaybackMode': ['UntilDone', 'InBackground', 'LoopingInBackground'],
+    SoundExpressionPlayMode: ['UntilDone', 'InBackground'],
+    WaveShape: ['Sine', 'Sawtooth', 'Triangle', 'Square', 'Noise'],
+    SoundExpressionEffect: ['None', 'Vibrato', 'Tremolo', 'Warble'],
+    InterpolationCurve: ['Linear', 'Curve', 'Logarithmic'],
+    Sounds: ['PowerUp', 'PowerDown', 'JumpUp', 'JumpDown', 'BaDing', 'Wawawawaa', 'MagicWand', 'Siren'],
+    BeatFraction: ['Whole', 'Half', 'Quarter', 'Eighth', 'Sixteenth', 'Double', 'Breve', 'Triplet']
+};
+const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, FSharp: 370, G: 392, GSharp: 415, A: 440, Bb: 466, B: 494,
+    C3: 131, CSharp3: 139, D3: 147, Eb3: 156, E3: 165, F3: 175, FSharp3: 185, G3: 196, GSharp3: 208, A3: 220, Bb3: 233, B3: 247,
+    C4: 262, CSharp4: 277, D4: 294, Eb4: 311, E4: 330, F4: 349, FSharp4: 370, G4: 392, GSharp4: 415, A4: 440, Bb4: 466, B4: 494,
+    C5: 523, CSharp5: 555, D5: 587, Eb5: 622, E5: 659, F5: 698, FSharp5: 740, G5: 784, GSharp5: 831, A5: 880, Bb5: 932, B5: 988};
 /**
  * MakeCode Arcade → a Scratch project.
  *
@@ -862,6 +879,8 @@ class ArcadeTranslator extends BaseTranslator {
      * though writing it is not.
      */
     valueExpr (node) {
+        const music=this.musicValue(node);
+        if(music!==null)return music;
         if(['MultiplayerState.score','MultiplayerState.life'].includes(this.path(node))) {
             if(this.boundSourceGlobals?.has('MultiplayerState') || this.sourceFunctions?.has('MultiplayerState') || this.localVars?.has('MultiplayerState') || this.currentParameters?.has('MultiplayerState') || this.capturedBindings.has('MultiplayerState')){this.unsupported.push('MultiplayerState constant refers to a shadowed binding');return 'undefined value';}
             return this.path(node).endsWith('.score')?'0':'1';
@@ -1218,6 +1237,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return;
         }
+        if(this.musicStatement(name,a,push))return;
         const screenEffect=/^effects\.(\w+)\.(startScreenEffect|endScreenEffect)$/.exec(name||'');
         if(this.handleTemplates && screenEffect) {
             if(!SCREEN_PARTICLE_EFFECTS.has(screenEffect[1])){push(this.note(`effects.${screenEffect[1]}.${screenEffect[2]}() — not a screen effect`));return;}
@@ -1660,6 +1680,111 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     // effects.<name> as one of PXT's ParticleEffect instances.
+    /** A program binding (global, function, local, parameter or capture) named `name`. */
+    bindsName (name) {
+        return Boolean(this.boundSourceGlobals?.has(name) || this.sourceFunctions?.has(name) || this.localVars?.has(name) ||
+            this.currentParameters?.has(name) || this.capturedBindings?.has(name));
+    }
+    /** A fixed member of a PXT music enum, or null. */
+    musicEnum (node, enumeration) {
+        const path = this.path(node) || '';
+        const prefix = enumeration + '.';
+        if (!path.startsWith(prefix) || this.bindsName(enumeration.split('.')[0])) return null;
+        const member = path.slice(prefix.length);
+        return MUSIC_ENUMS[enumeration].includes(member) ? member : null;
+    }
+    /** PXT mixer values: reporter text, or null when the node is not music. */
+    musicValue (node) {
+        if (!this.handleTemplates) return null;
+        const path = this.path(node) || '';
+        if (/^Note\.\w+$/.test(path) && Object.prototype.hasOwnProperty.call(NOTE_FREQUENCIES, path.slice(5)) && !this.bindsName('Note'))
+            return String(NOTE_FREQUENCIES[path.slice(5)]);
+        if (node?.type === 'Member' && path === 'music.' + node.name && MUSIC_MELODIES.has(node.name) && !this.bindsName('music'))
+            return `arcade melody ${node.name}`;
+        if (node?.type !== 'Call') return null;
+        const api = this.path(node.callee) || '';
+        if (!api.startsWith('music.') || this.bindsName('music')) return null;
+        const a = node.args || [], value = i => `(${this.expr(a[i])})`;
+        switch (api) {
+        case 'music.melodyPlayable':
+            if (a.length === 1) return `arcade melody playable ${value(0)}`;
+            break;
+        case 'music.stringPlayable':
+            if (a.length === 2) return `arcade string playable ${value(0)} at ${value(1)} bpm`;
+            break;
+        case 'music.tonePlayable':
+            if (a.length === 2) return `arcade tone playable ${value(0)} Hz for ${value(1)} ms`;
+            break;
+        case 'music.createSoundEffect': {
+            const wave = a.length === 8 && this.musicEnum(a[0], 'WaveShape');
+            const effect = wave && this.musicEnum(a[6], 'SoundExpressionEffect'), curve = effect && this.musicEnum(a[7], 'InterpolationCurve');
+            if (curve) return `arcade sound effect wave ${wave} from ${value(1)} Hz to ${value(2)} Hz volume ${value(3)} to ${value(4)} ` +
+                `for ${value(5)} ms effect ${effect} curve ${curve}`;
+            break;
+        }
+        case 'music.sounds': {
+            const sound = a.length === 1 && this.musicEnum(a[0], 'Sounds');
+            if (sound) return `arcade sound ${sound}`;
+            break;
+        }
+        case 'music.beat': {
+            if (!a.length) return 'arcade beat Whole';
+            const fraction = a.length === 1 && this.musicEnum(a[0], 'BeatFraction');
+            if (fraction) return `arcade beat ${fraction}`;
+            break;
+        }
+        case 'music.volume':
+            if (!a.length) return 'arcade music volume';
+            break;
+        case 'music.tempo':
+            if (!a.length) return 'arcade music tempo';
+            break;
+        default:
+            return null;
+        }
+        this.unsupported.push(`${api}() — needs fixed enum members and its declared arguments`);
+        return 'undefined value';
+    }
+    /** PXT mixer statements; returns whether `name` was music. */
+    musicStatement (name, a, push) {
+        if (!this.handleTemplates || !/^music\./.test(name || '') || this.bindsName('music')) return false;
+        const value = i => `(${this.expr(a[i])})`;
+        const melody = /^music\.(\w+)\.(play|playUntilDone|loop)$/.exec(name);
+        if (melody && MUSIC_MELODIES.has(melody[1])) {
+            if (a.length) push(this.note(`music.${melody[1]}.${melody[2]}() volume — not represented`));
+            else push(`arcade play melody (arcade melody ${melody[1]}) mode ${melody[2]}`);
+            return true;
+        }
+        const fixed = (count, line) => {
+            if (a.length === count) push(line());
+            else push(this.note(`${name}() takes ${count} argument${count === 1 ? '' : 's'}`));
+            return true;
+        };
+        switch (name) {
+        case 'music.play': {
+            const mode = a.length === 2 && this.musicEnum(a[1], 'music.PlaybackMode');
+            if (mode) push(`arcade play music ${value(0)} mode ${mode}`);
+            else push(this.note('music.play() requires a playable and a fixed music.PlaybackMode'));
+            return true;
+        }
+        case 'music.playSoundEffect': {
+            const mode = a.length === 2 && this.musicEnum(a[1], 'SoundExpressionPlayMode');
+            if (mode) push(`arcade play sound effect ${value(0)} mode ${mode}`);
+            else push(this.note('music.playSoundEffect() requires a sound effect and a fixed SoundExpressionPlayMode'));
+            return true;
+        }
+        case 'music.playSound': return fixed(1, () => `arcade play sound ${value(0)} until done 0`);
+        case 'music.playSoundUntilDone': return fixed(1, () => `arcade play sound ${value(0)} until done 1`);
+        case 'music.playTone': return fixed(2, () => `arcade play tone ${value(0)} Hz for ${value(1)} ms`);
+        case 'music.ringTone': return fixed(1, () => `arcade ring tone ${value(0)} Hz`);
+        case 'music.rest': return fixed(1, () => `arcade rest for ${value(0)} ms`);
+        case 'music.setVolume': return fixed(1, () => `arcade set music volume to ${value(0)}`);
+        case 'music.setTempo': return fixed(1, () => `arcade set tempo to ${value(0)} bpm`);
+        case 'music.changeTempoBy': return fixed(1, () => `arcade change tempo by ${value(0)} bpm`);
+        case 'music.stopAllSounds': return fixed(0, () => 'arcade stop all sounds');
+        default: return false;
+        }
+    }
     particleEffect (node) {
         const match = /^effects\.(\w+)$/.exec(this.path(node) || '');
         return match && PARTICLE_EFFECTS.has(match[1]) ? match[1] : null;
@@ -2763,6 +2888,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^effects\.(?:\w+\.(?:startScreenEffect|endScreenEffect)|clearParticles)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^music\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;

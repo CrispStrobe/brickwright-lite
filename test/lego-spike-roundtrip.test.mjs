@@ -266,8 +266,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 5a6782d9: native Arcade numeric sign word; SPIKE words unchanged.
     // -> 2b93a53d (2026-10-10): five Arcade particle effect words; runtime words unchanged.
     // -> 0e3c1348 (2026-10-10): screen image, image text and paint/shade words; runtime words unchanged.
+    // -> e10b1bfa (2026-10-10): Arcade music words; runtime words unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '0e3c13488c0b2fa8868dc6bb88032f43d1086989');
+        'e10b1bfa04274b94664e9ce18e029c56d08685c3');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

@@ -1654,7 +1654,11 @@ committed file differs from the pinned bundle:
   (`scripts/generate-arcade-particles.mjs`); and image text printing with `font5`
   (`screen/text.ts`, transpiled) and the simulator's `drawIcon` in
   `overlay/scratch-vm/src/extensions/crispstrobe/arcade/text-pxt.js`
-  (`scripts/generate-arcade-text.mjs`).
+  (`scripts/generate-arcade-text.mjs`); and the mixer music (`mixer/music.ts`,
+  `mixer/melody.ts`, `mixer/playable.ts`, `mixer/legacy.ts`, `mixer/soundEffect.ts`,
+  transpiled with pausing calls lowered to generators) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music-pxt.js`
+  (`scripts/generate-arcade-music.mjs`).
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
   Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`

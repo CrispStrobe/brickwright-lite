@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null, recordSound = false} = {}) {
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
@@ -26,13 +26,21 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         const errors=[],messages=[];page.on('pageerror',error=>errors.push(error.message));
         page.on('console',message=>{if(['error','warning'].includes(message.type()))messages.push(message.text().slice(0,1000));});
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
-        await page.evaluate(async code=>{
+        await page.evaluate(async ({code,recordSound})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
             pxsim.AudioContextManager.mute(true);
+            if(recordSound){
+                // Record every queued play-instruction buffer with the simulator clock.
+                const queue=pxsim.AudioContextManager.queuePlayInstructions;window.__bwSound=[];
+                pxsim.AudioContextManager.queuePlayInstructions=(when,buffer)=>{
+                    window.__bwSound.push({time:pxsim.runtime?.runningTime?.() ?? null,delay:when,bytes:Array.from(buffer.data)});
+                    return queue(when,buffer);
+                };
+            }
             const runtime=new pxsim.Runtime(msg);window.__bwPxtRuntime=runtime;
             await runtime.board.initAsync(msg);
             runtime.run(()=>{window.__bwPxtDone=true;});
-        },built.outfiles['binary.js']);
+        },{code:built.outfiles['binary.js'],recordSound});
         if(buttonActions){
             if(buttonActions.afterGlobals)await page.waitForFunction(expected=>{
                 const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
@@ -62,13 +70,14 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             const state=await page.evaluate(()=>{const r=window.__bwPxtRuntime;return {dead:r?.dead,running:r?.running,globals:Object.fromEntries(Object.entries(r?.globals || {}).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v))) };});
             throw new Error('Original Arcade simulator did not complete: '+JSON.stringify({errors,messages,state}),{cause:error});
         }
-        const values=await page.evaluate(inspectDisplay=>{
+        const values=await page.evaluate(({inspectDisplay,recordSound})=>{
             const runtime=window.__bwPxtRuntime;
             const result=Object.fromEntries(Object.entries(runtime.globals).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v)).map(([k,v])=>[k.replace(/___\d+$/,''),v]));
             if(inspectDisplay)result.$display={palette:Array.from(runtime.board.screenState.palette),
                 screen:Array.from(runtime.board.screenState.screen)};
+            if(recordSound)result.$sound=window.__bwSound;
             runtime.kill();runtime.board.kill();return result;
-        },inspectDisplay);
+        },{inspectDisplay,recordSound});
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}

@@ -336,7 +336,9 @@ test('supported animation calls execute while remaining platformer gaps stay vis
     assert.equal((out.code.match(/arcade set animation action/g) || []).length, 11);
     assert.ok(!out.unsupported.some(u => /isHittingTile/.test(u)));
     assert.match(out.code, /arcade sprite \(hero\) hitting wall \(3\)/);
-    assert.ok(out.unsupported.some(u => /music\.powerUp\.play/.test(u)));
+    // Named melodies now play natively (makecode-arcade-music.test.mjs).
+    assert.ok(!out.unsupported.some(u => /music\.powerUp\.play/.test(u)));
+    assert.match(out.code, /arcade play melody \(arcade melody powerUp\) mode play/);
     assert.ok(!out.unsupported.some(u => /scene\.cameraFollowSprite/.test(u)));
     assert.match(out.code,/arcade camera follow sprite \(player2\)/);
 });

@@ -8,7 +8,9 @@ Microsoft MakeCode code and data compiled into Lite's Arcade runtime (task E1):
   generator, image effects and particle sources, factories and effects
   (base/fixed.ts, game/mathUtil.ts, game/effects.ts, game/particles.ts,
   game/particlefactories.ts, game/particleeffects.ts) in particles-pxt.js, and image
-  text printing and font5 (screen/text.ts) with the simulator's drawIcon in text-pxt.js;
+  text printing and font5 (screen/text.ts) with the simulator's drawIcon in text-pxt.js,
+  and the mixer music (mixer/music.ts, mixer/melody.ts, mixer/playable.ts,
+  mixer/legacy.ts, mixer/soundEffect.ts) in music-pxt.js;
 - pxt-arcade (https://github.com/microsoft/pxt-arcade) 4.2.1: the built-in image table
   (device/*.jres) in overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js.
 

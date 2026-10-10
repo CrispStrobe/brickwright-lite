@@ -783,6 +783,22 @@ class ArcadeEmitter {
             this.booleanVariableIds.has(variable.fields?.VARIABLE?.[1] || variable.fields?.VARIABLE?.[0]);
     }
 
+    // A fixed PXT music enum member (or named melody) from a menu field, or null.
+    musicField(b, field, enumeration) {
+        const members = {
+            'music.PlaybackMode': ['UntilDone', 'InBackground', 'LoopingInBackground'],
+            SoundExpressionPlayMode: ['UntilDone', 'InBackground'],
+            WaveShape: ['Sine', 'Sawtooth', 'Triangle', 'Square', 'Noise'],
+            SoundExpressionEffect: ['None', 'Vibrato', 'Tremolo', 'Warble'],
+            InterpolationCurve: ['Linear', 'Curve', 'Logarithmic'],
+            Sounds: ['PowerUp', 'PowerDown', 'JumpUp', 'JumpDown', 'BaDing', 'Wawawawaa', 'MagicWand', 'Siren'],
+            BeatFraction: ['Whole', 'Half', 'Quarter', 'Eighth', 'Sixteenth', 'Double', 'Breve', 'Triplet'],
+            music: ['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'powerUp', 'powerDown', 'magicWand', 'siren', 'pewPew', 'knock',
+                'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']
+        }[enumeration];
+        const value = this.field(b, field);
+        return members.includes(value) ? `${enumeration}.${value}` : null;
+    }
     particleEffect(b, screenOnly) {
         const screen = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none'];
         const all = ['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo', 'ashes', 'disintegrate', ...screen];
@@ -969,6 +985,32 @@ class ArcadeEmitter {
         case 'arcade_createImage': return `image.create(${v('WIDTH')}, ${v('HEIGHT')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
         case 'arcade_screenImage': return 'screen';
+        case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
+        case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
+        case 'arcade_tonePlayable': return `music.tonePlayable(${v('FREQUENCY')}, ${v('DURATION')})`;
+        case 'arcade_soundEffect': {
+            const wave = this.musicField(b, 'WAVE', 'WaveShape'), effect = this.musicField(b, 'EFFECT', 'SoundExpressionEffect');
+            const curve = this.musicField(b, 'CURVE', 'InterpolationCurve');
+            if (!wave || !effect || !curve) { this.note('Unsupported Arcade sound effect option'); return 'undefined'; }
+            return `music.createSoundEffect(${wave}, ${['START_FREQUENCY', 'END_FREQUENCY', 'START_VOLUME', 'END_VOLUME', 'DURATION'].map(v).join(', ')}, ${effect}, ${curve})`;
+        }
+        case 'arcade_namedMelody': {
+            const name = this.musicField(b, 'NAME', 'music');
+            if (!name) { this.note(`Unsupported Arcade melody ${this.field(b, 'NAME')}`); return 'undefined'; }
+            return name;
+        }
+        case 'arcade_soundMelody': {
+            const sound = this.musicField(b, 'SOUND', 'Sounds');
+            if (!sound) { this.note(`Unsupported Arcade sound ${this.field(b, 'SOUND')}`); return 'undefined'; }
+            return `music.sounds(${sound})`;
+        }
+        case 'arcade_beat': {
+            const fraction = this.musicField(b, 'FRACTION', 'BeatFraction');
+            if (!fraction) { this.note(`Unsupported Arcade beat ${this.field(b, 'FRACTION')}`); return 'undefined'; }
+            return `music.beat(${fraction})`;
+        }
+        case 'arcade_musicVolume': return 'music.volume()';
+        case 'arcade_musicTempo': return 'music.tempo()';
         case 'arcade_imageProperty': return `${v('IMAGE')}.${this.field(b,'PROPERTY')}`;
         case 'arcade_imagePixel': return `${v('IMAGE')}.getPixel(${v('X')}, ${v('Y')})`;
         case 'arcade_createImageSprite':
@@ -1414,6 +1456,35 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
+        case 'arcade_playMusic': case 'arcade_playSoundEffect': {
+            const music = b.opcode === 'arcade_playMusic';
+            const mode = this.musicField(b, 'MODE', music ? 'music.PlaybackMode' : 'SoundExpressionPlayMode');
+            if (!mode) { push(`// ${this.note(`Unsupported Arcade play mode ${this.field(b, 'MODE')}`)}`); return; }
+            push(music ? `music.play(${v('PLAYABLE')}, ${mode})` : `music.playSoundEffect(${v('EFFECT')}, ${mode})`);
+            return;
+        }
+        case 'arcade_playMelody': {
+            const mode = this.field(b, 'MODE');
+            if (!['play', 'playUntilDone', 'loop'].includes(mode)) { push(`// ${this.note(`Unsupported Arcade melody mode ${mode}`)}`); return; }
+            push(`${v('MELODY')}.${mode}()`);
+            return;
+        }
+        case 'arcade_playSound': {
+            // The bool slot holds a constant comparison when the source had a literal.
+            const untilDone = this.literalNumber(b, 'UNTIL_DONE'), condition = this.condition(b, 'UNTIL_DONE');
+            const call = untilDone !== null ? (untilDone ? 'playSoundUntilDone' : 'playSound') :
+                condition === 'true' ? 'playSoundUntilDone' : condition === 'false' ? 'playSound' : null;
+            if (call) push(`music.${call}(${v('SOUND')})`);
+            else push(`if (${condition}) music.playSoundUntilDone(${v('SOUND')}); else music.playSound(${v('SOUND')})`);
+            return;
+        }
+        case 'arcade_playTone': push(`music.playTone(${v('FREQUENCY')}, ${v('DURATION')})`); return;
+        case 'arcade_ringTone': push(`music.ringTone(${v('FREQUENCY')})`); return;
+        case 'arcade_rest': push(`music.rest(${v('DURATION')})`); return;
+        case 'arcade_setMusicVolume': push(`music.setVolume(${v('VOLUME')})`); return;
+        case 'arcade_setTempo': push(`music.setTempo(${v('TEMPO')})`); return;
+        case 'arcade_changeTempo': push(`music.changeTempoBy(${v('TEMPO')})`); return;
+        case 'arcade_stopAllSounds': push('music.stopAllSounds()'); return;
         case 'arcade_printImageText': {
             const font = {small: 'image.font5', normal: 'image.font8', large: 'image.font12', auto: null}[this.field(b, 'FONT')];
             if (font === undefined) { push(`// ${this.note(`Unsupported Arcade font ${this.field(b, 'FONT')}`)}`); return; }

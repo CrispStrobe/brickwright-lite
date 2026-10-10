@@ -120,7 +120,7 @@ const VENDORED = [
         // Task E1: the Arcade import runtime compiles MakeCode's own code and
         // data into the bundle — pxt-common-packages' simulator image
         // algorithms and speech/text rendering, generated from the pinned
-        // pxt-arcade bundle (scripts/generate-arcade-{image-operations,speech,particles,text}.mjs).
+        // pxt-arcade bundle (scripts/generate-arcade-{image-operations,speech,particles,text,music}.mjs).
         name: 'pxt-common-packages',
         licence: 'MIT',
         holder: 'Microsoft Corporation',
