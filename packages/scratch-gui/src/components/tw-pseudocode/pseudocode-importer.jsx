@@ -128,6 +128,8 @@ const L10N = {
         mcRunCompiling: n => `Compiling ${n} with MakeCode…`,
         moreLanguages: 'More languages',
         mcRunStarted: (n, t) => `${n} is running in MakeCode's ${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'} simulator.`,
+        mcFetched: list => ` Extensions fetched from GitHub for this build: ${list}.`,
+        mcLicenceUnknown: 'licence not recognised',
         mcFirmware: '⤓ Firmware for the board',
         mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3, Circuit Playground or the chosen Arcade board .uf2), with the project inside so MakeCode can reopen it',
         mcFirmwareBuilding: n => `Building firmware for ${n}…`,
@@ -442,6 +444,8 @@ const L10N = {
         mcRunCompiling: n => `${n} wird mit MakeCode übersetzt…`,
         moreLanguages: 'Weitere Sprachen',
         mcRunStarted: (n, t) => `${n} läuft im MakeCode-Simulator (${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'}).`,
+        mcFetched: list => ` Für diesen Build von GitHub geladene Erweiterungen: ${list}.`,
+        mcLicenceUnknown: 'Lizenz nicht erkannt',
         mcFirmware: '⤓ Firmware für das Board',
         mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3, Circuit Playground oder das gewählte Arcade-Board .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
         mcFirmwareBuilding: n => `Firmware für ${n} wird gebaut…`,
@@ -1975,6 +1979,12 @@ class PseudocodeImporter extends React.Component {
      * be mounted yet, so the program is parked on the window as well as
      * announced — the Arduboy console's contract.
      */
+    /** Name the extensions a compile fetched on demand (pxt-runtime.js fetchedExtensions), with their licences. */
+    fetchedNote (out) {
+        const list = (out && out.fetchedExtensions) || [];
+        if (!list.length) return '';
+        return this.L.mcFetched(list.map(e => `${e.id} (${e.repo}${e.ref ? '#' + e.ref : ''}, ${e.licence || this.L.mcLicenceUnknown})`).join(', '));
+    }
     async runInMakeCode () {
         const subject = await this.makeCodeSubject().catch(() => null);
         if (!subject) { this.setState({status: this.L.mcNothingToRun}); return; }
@@ -1997,7 +2007,7 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'makecode'}}));
             window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
-            this.setState({busy: false, status: this.L.mcRunStarted(subject.name, target)});
+            this.setState({busy: false, status: this.L.mcRunStarted(subject.name, target) + this.fetchedNote(out)});
         } catch (err) {
             this.setState({busy: false, status: err && err.code === 'UNSUPPORTED_TARGET' ?
                 this.L.mcUnsupportedTarget(target) : this.makeCodeFailure(err, target)});
@@ -2055,7 +2065,7 @@ class PseudocodeImporter extends React.Component {
             const slug = t => String(t).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
             const filename = `${[subject.target, slug(subject.name) || 'program', board && slug(board.name)].filter(Boolean).join('-')}.${ext}`;
             await downloadBlob(filename, new Blob([fw.bytes], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: board ? this.L.mcBoardFirmwareDone(filename, board.name) : this.L.mcFirmwareDone(filename)});
+            this.setState({busy: false, status: (board ? this.L.mcBoardFirmwareDone(filename, board.name) : this.L.mcFirmwareDone(filename)) + this.fetchedNote(out)});
         } catch (err) {
             this.setState({busy: false, status: this.makeCodeFailure(err, subject.target)});
         }
