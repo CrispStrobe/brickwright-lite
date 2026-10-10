@@ -1010,6 +1010,13 @@ class ArcadeEmitter {
             return `music.beat(${fraction})`;
         }
         case 'arcade_musicVolume': return 'music.volume()';
+        case 'arcade_parseInteger': case 'arcade_parseIntegerRadix': {
+            // PXT's parseInt takes a string; a literal field like 7 is written "7".
+            const literal = this.literalInput(b, 'TEXT');
+            const text = literal !== null ? JSON.stringify(String(literal)) : v('TEXT');
+            return b.opcode === 'arcade_parseInteger' ? `parseInt(${text})` : `parseInt(${text}, ${v('RADIX')})`;
+        }
+        case 'arcade_frameDeltaTime': return 'game.eventContext().deltaTime';
         case 'arcade_musicTempo': return 'music.tempo()';
         case 'arcade_imageProperty': return `${v('IMAGE')}.${this.field(b,'PROPERTY')}`;
         case 'arcade_imagePixel': return `${v('IMAGE')}.getPixel(${v('X')}, ${v('Y')})`;

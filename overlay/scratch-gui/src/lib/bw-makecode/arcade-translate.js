@@ -881,6 +881,8 @@ class ArcadeTranslator extends BaseTranslator {
     valueExpr (node) {
         const music=this.musicValue(node);
         if(music!==null)return music;
+        const core=this.coreValue(node);
+        if(core!==null)return core;
         if(['MultiplayerState.score','MultiplayerState.life'].includes(this.path(node))) {
             if(this.boundSourceGlobals?.has('MultiplayerState') || this.sourceFunctions?.has('MultiplayerState') || this.localVars?.has('MultiplayerState') || this.currentParameters?.has('MultiplayerState') || this.capturedBindings.has('MultiplayerState')){this.unsupported.push('MultiplayerState constant refers to a shadowed binding');return 'undefined value';}
             return this.path(node).endsWith('.score')?'0':'1';
@@ -1692,6 +1694,20 @@ class ArcadeTranslator extends BaseTranslator {
         if (!path.startsWith(prefix) || this.bindsName(enumeration.split('.')[0])) return null;
         const member = path.slice(prefix.length);
         return MUSIC_ENUMS[enumeration].includes(member) ? member : null;
+    }
+    /** PXT's parseInt and the event context's deltaTime, or null. */
+    coreValue (node) {
+        if (node?.type === 'Call' && node.callee?.type === 'Identifier' && node.callee.name === 'parseInt' && !this.bindsName('parseInt')) {
+            const a = node.args || [];
+            if (a.length === 1) return `arcade parse integer (${this.expr(a[0])})`;
+            if (a.length === 2) return `arcade parse integer (${this.expr(a[0])}) radix (${this.expr(a[1])})`;
+            this.unsupported.push('parseInt() takes a text and an optional radix');
+            return 'undefined value';
+        }
+        if (node?.type === 'Member' && node.name === 'deltaTime' && node.object?.type === 'Call' && !node.object.args?.length &&
+            ['game.eventContext', 'control.eventContext'].includes(this.path(node.object.callee)) && !this.bindsName(this.path(node.object.callee).split('.')[0]))
+            return 'arcade frame delta time';
+        return null;
     }
     /** PXT mixer values: reporter text, or null when the node is not music. */
     musicValue (node) {
