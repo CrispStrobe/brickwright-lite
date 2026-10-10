@@ -118,6 +118,7 @@ module.exports = makeExt(`// Name: Arcade
           this._renderables=new WeakMap();this._screen=null;
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
           this._sevensegIds=new Map();this._sevensegValues=new Map();
+          this._extensionSprites=new Map();
           this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
@@ -206,6 +207,13 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
+          {opcode:'dartAction',blockType:Scratch.BlockType.COMMAND,text:'Arcade dart [SPRITE] [ACTION]',arguments:{...str('SPRITE',''),ACTION:{type:Scratch.ArgumentType.STRING,menu:'dartActions',defaultValue:'throwDart'}}},
+          {opcode:'dartSwitch',blockType:Scratch.BlockType.COMMAND,text:'Arcade dart [SPRITE] [SETTING] [ON]',arguments:{...str('SPRITE',''),SETTING:{type:Scratch.ArgumentType.STRING,menu:'dartSettings',defaultValue:'setTrace'},ON:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'setDartProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade set dart [SPRITE] property [PROPERTY] to [VALUE]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'dartProperties',defaultValue:'angle'},...n('VALUE',0)}},
+          {opcode:'corgiControl',blockType:Scratch.BlockType.COMMAND,text:'Arcade corgi [SPRITE] [MODE] [ON]',arguments:{...str('SPRITE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'corgiModes',defaultValue:'horizontalMovement'},ON:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'corgiBark',blockType:Scratch.BlockType.COMMAND,text:'Arcade corgi [SPRITE] bark',arguments:str('SPRITE','')},
+          {opcode:'corgiAddPhrase',blockType:Scratch.BlockType.COMMAND,text:'Arcade corgi [SPRITE] add phrase [TEXT]',arguments:{...str('SPRITE',''),...str('TEXT','bark')}},
+          {opcode:'setCorgiProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade set corgi [SPRITE] property [PROPERTY] to [VALUE]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'corgiProperties',defaultValue:'gravity'},...n('VALUE',0)}},
           {opcode:'sevensegSetCharacter',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] character [CHARACTER]',arguments:{...str('DISPLAY',''),CHARACTER:{type:Scratch.ArgumentType.STRING,menu:'segmentCharacters',defaultValue:'ZERO'}}},
           {opcode:'sevensegSetColor',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] color [COLOR]',arguments:{...str('DISPLAY',''),...n('COLOR',2)}},
           {opcode:'sevensegSetRadix',blockType:Scratch.BlockType.COMMAND,text:'Arcade set seven segment [DISPLAY] radix [RADIX]',arguments:{...str('DISPLAY',''),RADIX:{type:Scratch.ArgumentType.STRING,menu:'digitRadixes',defaultValue:'Decimal'}}},
@@ -223,6 +231,10 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade set tempo to [TEMPO] bpm',arguments:n('TEMPO',120)},
           {opcode:'changeTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade change tempo by [TEMPO] bpm',arguments:n('TEMPO',20)},
           {opcode:'stopAllSounds',blockType:Scratch.BlockType.COMMAND,text:'Arcade stop all sounds'},
+          {opcode:'createDart',blockType:Scratch.BlockType.REPORTER,text:'Arcade create dart image [IMAGE] kind [KIND] x [X] y [Y]',arguments:{...str('IMAGE',''),...str('KIND','Player'),...n('X',10),...n('Y',110)}},
+          {opcode:'createCorgi',blockType:Scratch.BlockType.REPORTER,text:'Arcade create corgi kind [KIND] x [X] y [Y]',arguments:{...str('KIND','Player'),...n('X',10),...n('Y',70)}},
+          {opcode:'dartProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade dart [SPRITE] property [PROPERTY]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'dartProperties',defaultValue:'angle'}}},
+          {opcode:'corgiProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade corgi [SPRITE] property [PROPERTY]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'corgiProperties',defaultValue:'gravity'}}},
           {opcode:'sevensegDigit',blockType:Scratch.BlockType.REPORTER,text:'Arcade seven segment digit style [STYLE] value [VALUE]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'segmentStyles',defaultValue:'Thick'},...n('VALUE',0)}},
           {opcode:'sevensegCounter',blockType:Scratch.BlockType.REPORTER,text:'Arcade seven segment counter style [STYLE] scale [SCALE] digits [DIGITS]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'segmentStyles',defaultValue:'Thick'},SCALE:{type:Scratch.ArgumentType.STRING,menu:'segmentScales',defaultValue:'Full'},...n('DIGITS',1)}},
           {opcode:'sevensegProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade seven segment [DISPLAY] property [PROPERTY]',arguments:{...str('DISPLAY',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'sevensegReadable',defaultValue:'value'}}},
@@ -699,6 +711,11 @@ module.exports = makeExt(`// Name: Arcade
           ,backgroundEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,legacyGameOverEffects: {acceptReporters: false, items: ['unset', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,imageEffects: {acceptReporters: false, items: ['dissolve', 'melt', 'slash', 'splatter']}
+          ,dartActions: {acceptReporters: false, items: ['throwDart', 'stopDart']}
+          ,dartSettings: {acceptReporters: false, items: ['setTrace', 'controlWithArrowKeys']}
+          ,dartProperties: {acceptReporters: false, items: ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate']}
+          ,corgiModes: {acceptReporters: false, items: ['horizontalMovement', 'verticalMovement', 'updateSprite', 'cameraFollow']}
+          ,corgiProperties: {acceptReporters: false, items: ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate']}
           ,segmentStyles: {acceptReporters: false, items: ['Blank', 'Thin', 'Narrow', 'Medium', 'Thick']}
           ,segmentScales: {acceptReporters: false, items: ['Full', 'Half']}
           ,digitRadixes: {acceptReporters: false, items: ['Decimal', 'Hex', 'Octal', 'Alpha']}
@@ -936,6 +953,7 @@ module.exports = makeExt(`// Name: Arcade
     *_controllerButtonCallbacks(number,button,event,deferred=false) {
       const handlers=this._buttonHandlers.filter(h=>h.player===number && h.button===button && h.event===event);
       for(const handler of handlers){
+        if(handler.host){handler.host();continue;}
         yield* this._registeredCallbackSteps([handler.mp?handler.mp.registration:handler],handler.mp?'arcade_whenRegisteredMultiplayerButton':'arcade_whenRegisteredButton',handler.mp?{player:handler.playerValue}:{},undefined,deferred);
       }
     }
@@ -1064,8 +1082,12 @@ module.exports = makeExt(`// Name: Arcade
       for(const h of this._intervalHandlers.slice())if(h.timer<=(state.elapsedMs || 0)){
         h.timer=(state.elapsedMs || 0)+h.interval;yield* this._registeredCallbackSteps([h],'arcade_whenRegisteredInterval',{});if(this._state()!==state)return;
       }
-      yield* this._registeredCallbackSteps(this._updateHandlers.slice(),'arcade_whenRegisteredUpdate',{});
-      if(this._state()!==state)return;
+      // Extension game.onUpdate callbacks keep their registration order.
+      for(const handler of this._updateHandlers.slice()){
+        if(handler.host)handler.host();
+        else yield* this._registeredCallbackSteps([handler],'arcade_whenRegisteredUpdate',{});
+        if(this._state()!==state)return;
+      }
       // PXT particles.init registers game.onUpdate and onUpdateInterval(250)
       // when the first source of a scene is created: after earlier handlers.
       const particles=this._particleScenes.get(state);
@@ -3249,6 +3271,154 @@ module.exports = makeExt(`// Name: Arcade
       if(this._runtime)this._runtime.bwArcadeMusicLog=this._musicHost.log;
       return this._musicHost;
     }
+    // The sprite extensions (darts, corgio) run their original classes
+    // (sprite-extensions-pxt.js). Their sprites.ExtendableSprite base is a real
+    // native sprite; game.onUpdate and button events join the scene's
+    // registration lists in order, beside the program's own handlers.
+    _spriteExtensions() {
+      if (this._spriteExtensionModule) return this._spriteExtensionModule;
+      const ext=this;
+      class ExtensionImage {
+        constructor(raw){this.raw=raw;}
+        get width(){return this.raw.width;}
+        get height(){return this.raw.height;}
+        clone(){return new ExtensionImage({width:this.raw.width,height:this.raw.height,pixels:this.raw.pixels.slice()});}
+        flipX(){imageEngine.mutate(this.raw,'flipX',0,0);ext._refreshImage(this.raw);}
+        flipY(){imageEngine.mutate(this.raw,'flipY',0,0);ext._refreshImage(this.raw);}
+        setPixel(x,y,c){imageEngine.draw(this.raw,'setPixel',x,y,c);ext._refreshImage(this.raw);}
+        getPixel(x,y){return imageEngine.getPixel(this.raw,x,y);}
+      }
+      // PXT image literals: '.' is transparent, each other character one hex color.
+      const img=strings=>{
+        const rows=String(strings.raw?strings.raw[0]:strings[0]).split('\\n').map(line=>line.replace(/[^0-9a-fA-F.]/g,'')).filter(Boolean);
+        const width=Math.max(0,...rows.map(row=>row.length)),pixels=new Uint8Array(width*rows.length);
+        rows.forEach((row,y)=>[...row].forEach((c,x)=>{pixels[y*width+x]=c==='.'?0:parseInt(c,16);}));
+        return new ExtensionImage({width,height:rows.length,pixels});
+      };
+      const flagNames=Object.fromEntries(Object.entries(spriteFlags).map(([name,mask])=>[mask,name]));
+      class ExtendableSprite {
+        constructor(image,kind){
+          const raw=image?.raw || {width:16,height:16,pixels:new Uint8Array(256)},width=raw.width,height=raw.height;
+          const id=ext._createSprite({KIND:String(kind),TEMPLATE:'',WIDTH:width,HEIGHT:height,X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2});
+          Object.defineProperty(this,'__bwId',{value:id});
+          ext._assignSpriteRaster(ext._state().sprites[id],raw);
+          ext._extensionSprites.set(id,this);
+          // PXT runs created handlers inside the constructor; a handler that
+          // pauses makes the creating block wait for it.
+          const created=ext._finishSpriteCreation(id,ext._extensionUtil);
+          if(created?.then)ext._extensionCreationWaits.push(created);
+          this.hasCustomDimensions=false;
+        }
+        update(){}
+        setImage(image){const sprite=ext._sprite(this.__bwId);if(image?.raw && sprite && sprite.image!==image.raw)ext._assignSpriteRaster(sprite,image.raw);}
+        get image(){const sprite=ext._sprite(this.__bwId);return sprite?.image?new ExtensionImage(sprite.image):null;}
+        setFlag(flag,on){const name=flagNames[flag];if(name)ext.setSpriteFlag({ID:this.__bwId,FLAG:name,ON:!!on});}
+        say(text,timeOnScreen){ext.spriteSay({ID:this.__bwId,TEXT:text,DURATION:timeOnScreen===undefined?-1:timeOnScreen,ANIMATED:0,FOREGROUND:15,BACKGROUND:1,MODE:'legacy'},ext._extensionUtil);}
+        isHittingTile(direction){return ext.isHittingTile({ID:this.__bwId,DIRECTION:direction});}
+        destroy(){ext.destroySprite({ID:this.__bwId},ext._extensionUtil);}
+      }
+      for(const property of ['x','y','vx','vy','ax','ay','fx','fy','left','right','top','bottom','z','lifespan'])
+        Object.defineProperty(ExtendableSprite.prototype,property,{configurable:true,
+          get(){return ext.spriteProperty({ID:this.__bwId,PROPERTY:property});},
+          set(value){ext.setSpriteProperty({ID:this.__bwId,PROPERTY:property,VALUE:value});}});
+      for(const property of ['width','height'])
+        Object.defineProperty(ExtendableSprite.prototype,property,{configurable:true,get(){return ext.spriteProperty({ID:this.__bwId,PROPERTY:property});}});
+      const button=name=>({
+        isPressed:()=>ext._heldButton(1,name),
+        onEvent:(event,handler)=>{if(handler)ext._buttonHandlers.push({player:1,button:name,event:Number(event),host:handler});}
+      });
+      // PXT controller._dxInternal: step times the frame's delta time.
+      const axis=(negative,positive)=>(step=100)=>{
+        const dt=ext._state().frameDeltaTime || 0,low=ext._heldButton(1,negative),high=ext._heldButton(1,positive);
+        return low ? (high ? 0 : -step*dt) : high ? step*dt : 0;
+      };
+      const module=dependencies.initializeSpriteExtensions({
+        sprites:{ExtendableSprite},img,
+        screen:{width:160,height:120},
+        SpriteFlag:spriteFlags,
+        CollisionDirection:{Left:0,Top:1,Right:2,Bottom:3},
+        ControllerButtonEvent:{Pressed:2049,Released:2048,Repeated:2054},
+        game:{
+          onUpdate:handler=>{if(handler)ext._updateHandlers.push({host:handler});},
+          currentScene:()=>({camera:ext._camera()})
+        },
+        controller:{dx:axis('left','right'),dy:axis('up','down'),up:button('up'),down:button('down'),left:button('left'),right:button('right'),A:button('a'),B:button('b')},
+        scene:{
+          centerCameraAt:(x,y)=>ext.centerCameraAt({X:x,Y:y}),
+          setBackgroundImage:image=>{if(image?.raw)ext.setBackgroundImage({IMAGE:ext._imageHandle(image.raw)});},
+          // PXT scene.createRenderable: draw into the screen image with the
+          // camera; shouldBeVisible gates each frame's drawing.
+          createRenderable:(z,draw,shouldBeVisible)=>{
+            const state=ext._state(),renderable={z,id:state.nextSpriteId++,draw:screen=>{
+              if(shouldBeVisible && !shouldBeVisible())return;
+              const camera=ext._camera(),target={setPixel:(x,y,c)=>imageEngine.draw(screen,'setPixel',x,y,c)};
+              draw(target,{offsetX:camera.drawOffsetX ?? camera.offsetX,offsetY:camera.drawOffsetY ?? camera.offsetY});
+            }};
+            ext._renderablesOf(state).push(renderable);
+            return {destroy:()=>{const list=ext._renderablesOf(state),index=list.indexOf(renderable);if(index>=0)list.splice(index,1);}};
+          }
+        },
+        // pxsim Math_.pickRandom over Math.randomRange
+        pickRandom:list=>list && list.length ? list[Math.floor(Math.random()*list.length)] : undefined
+      });
+      this._spriteExtensionModule=module;
+      return module;
+    }
+    // Run an extension call as the creating block, then wait for any created
+    // handler that paused, as PXT's constructor would.
+    _withExtension(util,call) {
+      this._extensionUtil=util;this._extensionCreationWaits=[];
+      let result;
+      try {result=call(this._spriteExtensions());} finally {this._extensionUtil=undefined;}
+      const waits=this._extensionCreationWaits;this._extensionCreationWaits=[];
+      return waits.length ? Promise.all(waits).then(()=>result) : result;
+    }
+    _extensionSprite(value,kind) {
+      const sprite=this._extensionSprites?.get(String(value));
+      if(sprite && sprite instanceof this._spriteExtensions()[kind] && this._sprite(sprite.__bwId))return sprite;
+      this._runtime?.emit?.('BLOCKS_ERROR','Arcade expected a '+(kind==='Dart'?'dart':'corgi')+'.');
+      return null;
+    }
+    createDart(args,util) {
+      const image=this._image(args.IMAGE);
+      if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Arcade darts need an image.');return '';}
+      return this._withExtension(util,module=>module.darts.create(new (this._spriteExtensionImage())(image),String(args.KIND),
+        Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y)).__bwId);
+    }
+    _spriteExtensionImage() {return Object.getPrototypeOf(this._spriteExtensions().corgio._corgi_still[0]).constructor;}
+    createCorgi(args,util) {
+      return this._withExtension(util,module=>module.corgio.create(String(args.KIND),Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y)).__bwId);
+    }
+    dartAction(args,util) {
+      const dart=this._extensionSprite(args.SPRITE,'Dart'),action=String(args.ACTION);
+      if(dart && ['throwDart','stopDart'].includes(action))this._withExtension(util,()=>dart[action]());
+    }
+    dartSwitch(args,util) {
+      const dart=this._extensionSprite(args.SPRITE,'Dart'),setting=String(args.SETTING);
+      if(dart && ['setTrace','controlWithArrowKeys'].includes(setting))this._withExtension(util,()=>dart[setting](Scratch.Cast.toBoolean(args.ON)));
+    }
+    setDartProperty(args) {
+      const dart=this._extensionSprite(args.SPRITE,'Dart'),property=String(args.PROPERTY);
+      if(dart && ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'].includes(property))dart[property]=Scratch.Cast.toNumber(args.VALUE);
+    }
+    dartProperty(args) {
+      const dart=this._extensionSprite(args.SPRITE,'Dart'),property=String(args.PROPERTY);
+      return dart && ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'].includes(property) ? dart[property] : 0;
+    }
+    corgiControl(args,util) {
+      const corgi=this._extensionSprite(args.SPRITE,'Corgio'),mode=String(args.MODE);
+      if(corgi && ['horizontalMovement','verticalMovement','updateSprite','cameraFollow'].includes(mode))this._withExtension(util,()=>corgi[mode](Scratch.Cast.toBoolean(args.ON)));
+    }
+    corgiBark(args,util) {const corgi=this._extensionSprite(args.SPRITE,'Corgio');if(corgi)this._withExtension(util,()=>corgi.bark());}
+    corgiAddPhrase(args) {const corgi=this._extensionSprite(args.SPRITE,'Corgio');if(corgi)corgi.addToScript(String(Scratch.BWValues.decode(args.TEXT)));}
+    setCorgiProperty(args) {
+      const corgi=this._extensionSprite(args.SPRITE,'Corgio'),property=String(args.PROPERTY);
+      if(corgi && ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate'].includes(property))corgi[property]=Scratch.Cast.toNumber(args.VALUE);
+    }
+    corgiProperty(args) {
+      const corgi=this._extensionSprite(args.SPRITE,'Corgio'),property=String(args.PROPERTY);
+      return corgi && ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate'].includes(property) ? corgi[property] : 0;
+    }
     // The seven segment extension runs its original classes (sevenseg-pxt.js).
     // The host gives them images drawn with the native image engine and real
     // native sprites; images a call drew are re-rendered once it returns.
@@ -4159,6 +4329,7 @@ module.exports = makeExt(`// Name: Arcade
   initializeRotation: require('./rotation-pxt'),
   initializeParticles: require('./particles-pxt'),
   initializeSevenseg: require('./sevenseg-pxt'),
+  initializeSpriteExtensions: require('./sprite-extensions-pxt'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   initializeMusic: require('./music-pxt'),

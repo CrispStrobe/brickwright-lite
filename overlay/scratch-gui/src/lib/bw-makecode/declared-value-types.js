@@ -17,6 +17,8 @@ export function applyDeclaredValueType(graph, key, annotation) {
     }
     const type = {'mp.Player': 'Player', Image: 'Image', Sprite: 'Sprite', 'tiles.Location': 'TileLocation', 'tiles.Tile':'LegacyTile',
         'animation.Animation': 'Animation', 'scene.Scene': 'Scene', ArcadePhysicsEngine: 'PhysicsEngine',
+        // Extension classes: the sprite extensions' classes are sprites.
+        SevenSegDigit: 'SevenSegDigit', DigitCounter: 'DigitCounter', Dart: ['Sprite', 'Dart'], Corgio: ['Sprite', 'Corgio'],
         number: 'number', string: 'string', boolean: 'boolean'}[text];
-    if (type) graph.add(key, type);
+    for (const name of [].concat(type || [])) graph.add(key, name);
 }
