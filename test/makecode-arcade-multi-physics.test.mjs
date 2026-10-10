@@ -46,7 +46,7 @@ test('pixel masks reject disjoint pixels inside identical full hitboxes and dete
 
 test('a wall callback stops another pre-snapshotted mover before its first round-robin substep across all paths',async()=>{
     const expected=await verify(WALL_PEER_MUTATION_SOURCE,['peerAtWall','wallColumn','stoppedPeer','firstX','peerX','firstVx','peerVx','wallPeerDone'],'wallPeerDone',{
-        remaining:['full terrain collision physics and scene lifecycle are not yet supported']
+        remaining:[]
     });
     assert.equal(expected.peerAtWall,10);assert.equal(expected.peerX,10);assert.equal(expected.firstX,31);assert.equal(expected.wallColumn,4);
 });

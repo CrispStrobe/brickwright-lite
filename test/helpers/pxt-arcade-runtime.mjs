@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null, recordSound = false, waitForMain = true} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null, recordSound = false, waitForMain = true, fakeClock = false} = {}) {
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
@@ -25,6 +25,9 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         browser=await chromium.launch();const page=await browser.newPage();
         const errors=[],messages=[];page.on('pageerror',error=>errors.push(error.message));
         page.on('console',message=>{if(['error','warning'].includes(message.type()))messages.push(message.text().slice(0,1000));});
+        // A fake clock makes the original's frame times deterministic: its
+        // frame loop pauses max(1, 20 - callback time) ms, so frames are 20 ms.
+        if(fakeClock)await page.clock.install({time:0});
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
         await page.evaluate(async ({code,recordSound})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
@@ -55,7 +58,18 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                 },action);
             }
         }
-        try {
+        if(fakeClock){
+            // Faked timers also stop waitForFunction polling: advance and check.
+            const ready=()=>page.evaluate(({waitForMain,expected})=>{
+                const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
+                return (!waitForMain || window.__bwPxtDone) && Object.entries(expected || {}).every(([key,value])=>values[key]===value);
+            },{waitForMain,expected:waitForGlobals});
+            let elapsed=0;
+            while(!await ready()){
+                if(elapsed>=120000||errors.length)throw new Error('Original Arcade simulator did not complete under the fake clock: '+JSON.stringify({errors,messages,elapsed}));
+                await page.clock.runFor(100);elapsed+=100;
+            }
+        } else try {
             // Main may never return (game over waits for a button); then only the globals mark completion.
             if (waitForMain) await page.waitForFunction(()=>window.__bwPxtDone,null,{timeout:20000});
             // Exported Scratch hats can continue in real PXT fibers after main

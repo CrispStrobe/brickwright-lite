@@ -6,6 +6,45 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Arcade core translator gaps — 2026-10-10
+
+Gaps closed without any third-party extension:
+
+- **Terrain physics.** Every tile-map program carried the qualification "full
+  terrain collision physics and scene lifecycle are not yet supported". It is
+  removed on measured evidence: `test/makecode-arcade-terrain-trajectories.test.mjs`
+  runs eleven authored scenarios (gravity landing on a floor and a ledge, a
+  diagonal into a corner, a 400 px/s mover, slow and fast `BounceOnWall`, 16 px
+  tiles, a wall removed at run time, a sprite larger than a tile, `DestroyOnWall`
+  and a tile map replaced mid-run) in the pinned original and natively, and
+  compares x, y, vx, vy and the live sprite count on every frame. The original runs
+  under a fake clock (`fakeClock` in `test/helpers/pxt-arcade-runtime.mjs`); its frame
+  times still vary, so the native run replays each recorded frame's delta time.
+  All entries are identical. Removing velocity zeroing on contact fails eight
+  scenarios; dropping the bounce remainder fails the fast bounce. The existing
+  contact, terrain event, scene and camera tests keep their oracle comparisons.
+- **Namespace tile constants.** `namespace myTiles { export const tile0 = img... }`
+  referenced from `tiles.createTilemap(...)` now resolves in the tile map.
+- **Immediately invoked functions** lower to a generated top-level function unless
+  they capture enclosing locals or `this`.
+- **Statement-level `forEach`, `filter(...).forEach` and `map`** (a discarded
+  `map` runs its callback for its side effects) lower to loops; `filter` evaluates
+  every predicate before the loop body runs, as in the original.
+- **Ragged image literals** pad short rows to the widest row, as the original does.
+- **Numeric `for` counters.** A counter the loop body reads used to start as the
+  text `"0"`, so `x + i` joined text on the first iteration; it now starts as a
+  number.
+
+Translation-only census of the private corpus: 136 of 184 inputs translate with no
+gap (was 130), 47 partial, 1 parse error. Of the partials, most use extensions
+(corgio, darts, bundles, carnival, scroller, characterAnimations, sevenseg, story
+sprites, settings blocks and project-specific ones), and several reference art,
+tile maps or functions from companion files that a single-file input does not
+contain. Others are invalid in the original too: `sprite.onOverlap(...)` does not
+exist in the pinned target, one input reads an undeclared variable and one is
+truncated. The remaining core gap in the corpus is `music.createSong` (the song
+sequencer); its three inputs also use extensions.
+
 ## Native Arcade game over — 2026-10-10
 
 `game.gameOver(win)` and the legacy `game.over(win, effect?)` used to import as

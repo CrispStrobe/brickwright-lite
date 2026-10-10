@@ -61,7 +61,8 @@ test('an img literal is read with MakeCode\'s own character set', () => {
     assert.equal(image.width, 4);
     assert.equal(image.height, 2);
     assert.deepEqual([...image.pixels], [0, 1, 2, 0, 0, 2, 1, 0], 'T is 2 and # is 1');
-    assert.equal(parseImageLiteral('. .\n. . .'), null, 'a ragged literal is refused, not guessed');
+    // PXT pads shorter rows with transparency to the longest row.
+    assert.deepEqual(parseImageLiteral('. 2\n3 . 4'), {width: 3, height: 2, pixels: Uint8Array.from([0, 2, 0, 3, 0, 4])});
     assert.equal(parseImageLiteral(''), null);
 });
 
@@ -263,7 +264,7 @@ test('a platformer imports all eight editable tile maps and retains terrain diag
         assert.equal(map.walls.length, map.columns * map.rows);
         assert.ok(map.images.length > 1, 'the actual tile images are embedded');
     }
-    assert.ok(out.unsupported.some(u => /terrain collision physics and scene lifecycle/.test(u)));
+    assert.ok(!out.unsupported.some(u => /terrain collision physics/.test(u)));
     assert.match(out.code,/arcade register tile kind/);
     assert.ok(!out.unsupported.some(u => /synchronous handler mutation ordering/.test(u)));
     assert.ok(!out.unsupported.some(u => /first 4 backdrops/.test(u)), 'native maps are not capped artwork backdrops');

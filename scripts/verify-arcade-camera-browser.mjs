@@ -9,7 +9,7 @@ import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {CAMERA_CONTROLLER_SOURCE} from '../test/fixtures/arcade-camera.mjs';
 const source=CAMERA_CONTROLLER_SOURCE;
-const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,['full terrain collision physics and scene lifecycle are not yet supported']);
+const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
 const build=path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
 const server=createServer(async(req,res)=>{
     try{
