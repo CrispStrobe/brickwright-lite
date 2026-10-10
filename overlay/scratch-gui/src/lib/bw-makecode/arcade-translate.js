@@ -3508,6 +3508,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         const name = names[index];
         if (allowedCalls.has(name) || functionNames.has(name) ||
             /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '') || /^info\.player[1-4]\.onLifeZero$/.test(name || '') ||
+            // The runtime path keeps score and lives in native player state, which the HUD draws.
+            /^info(?:\.player[1-4])?\.(setScore|changeScoreBy|setLife|changeLifeBy)$/.test(name || '') ||
             (name && /^[A-Za-z_]\w*\.onDestroyed$/.test(name)) ||
             (name && /\.(destroy|say|sayText|setStayInScreen|setBounceOnWall|setFlag|setPosition|setVelocity|setImage)$/.test(name))) continue;
         if (!(requiresSpriteRuntime && callOf(st))) return null;
