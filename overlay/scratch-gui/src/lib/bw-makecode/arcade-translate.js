@@ -9,6 +9,14 @@ const PARTICLE_EFFECTS = new Set(['spray', 'trail', 'fountain', 'rings', 'fire',
 const IMAGE_EFFECTS = new Set(['dissolve', 'melt', 'slash', 'splatter']);
 const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'powerUp', 'powerDown', 'magicWand', 'siren',
     'pewPew', 'knock', 'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']);
+// The seven segment extension's enums by member name (sevenseg.ts).
+const SEVENSEG_ENUMS = {
+    SegmentStyle: ['Blank', 'Thin', 'Narrow', 'Medium', 'Thick'],
+    SegmentScale: ['Full', 'Half'],
+    DigitRadix: ['Decimal', 'Hex', 'Octal', 'Alpha'],
+    SegmentCharacter: ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE',
+        'A', 'B', 'C', 'D', 'E', 'F', 'H', 'J', 'L', 'o', 'P', 'r', 'U', 'Y', 'Hyphen', 'Degree']
+};
 const MUSIC_ENUMS = {
     'music.PlaybackMode': ['UntilDone', 'InBackground', 'LoopingInBackground'],
     SoundExpressionPlayMode: ['UntilDone', 'InBackground'],
@@ -251,7 +259,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
         this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.spriteResultFunctions = references.spriteFunctions;
         this.spriteResultBindings = new Set();
@@ -504,6 +512,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.op==='=' && st.expr.left?.type==='Identifier' && this.isArrayReference(st.expr.left)) {
             const name=st.expr.left.name,value=this.expr(st.expr.right),pad='  '.repeat(indent);
             out.push((st.expr.left.temporary || this.localVars?.has(name))?`${pad}arcade set local ${name} to (${value})`:`${pad}set ${this.varName(name)} to ${value}`);return;
+        }
+        if(this.handleTemplates && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && this.isSevensegDisplay(st.expr.left.object)) {
+            const n=st.expr,l=n.left,counter=this.sevensegCounterReferences?.has(l.object),pad='  '.repeat(indent);
+            if(!(counter?['x','y','count']:['x','y','value']).includes(l.name)){out.push(`${pad}${this.note(`${counter?'DigitCounter':'SevenSegDigit'}.${l.name} cannot be assigned`)}`);return;}
+            const value=n.op==='='?this.expr(n.right):this.expr({type:'Binary',op:n.op.slice(0,-1),left:l,right:n.right});
+            out.push(`${pad}arcade set seven segment (${this.expr(l.object)}) property ${l.name} to (${value})`);return;
         }
         if(this.handleTemplates && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.type==='Member' && this.animationReferences?.has(st.expr.left.object)) {
             const n=st.expr,l=n.left;
@@ -994,6 +1008,13 @@ class ArcadeTranslator extends BaseTranslator {
             let values='"[]"';for(let i=node.items.length-1;i>=0;i--)values=`array value (${this.arrayElementValue(node.items[i])}) rest (${values})`;
             return `new array reference from (${values})`;
         }
+        if(this.handleTemplates && node?.type==='Member' && this.isSevensegDisplay(node.object)) {
+            const counter=this.sevensegCounterReferences?.has(node.object);
+            if((counter?['x','y','count']:['x','y','width','height','value']).includes(node.name))return `arcade seven segment (${this.expr(node.object)}) property ${node.name}`;
+            this.unsupported.push(`${counter?'DigitCounter':'SevenSegDigit'}.${node.name} is not a seven segment property`);return '0';
+        }
+        if(this.handleTemplates && node?.type==='Call' && /^sevenseg\.(createDigit|createCounter)$/.test(this.path(node.callee)||'') && !this.bindsName('sevenseg'))
+            return this.sevensegCreate(node);
         if(this.handleTemplates && node?.type==='Member' && this.animationReferences?.has(node.object)) {
             if(['image','action','interval'].includes(node.name))return `arcade animation ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`animation.Animation.${node.name} requires animation property support`);return '0';
@@ -1250,6 +1271,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return;
         }
+        if(this.sevensegStatement(node,a,push))return;
         if(this.musicStatement(name,a,push))return;
         if(this.gameOverStatement(name,a,push))return;
         const screenEffect=/^effects\.(\w+)\.(startScreenEffect|endScreenEffect)$/.exec(name||'');
@@ -1724,6 +1746,42 @@ class ArcadeTranslator extends BaseTranslator {
             ['game.eventContext', 'control.eventContext'].includes(this.path(node.object.callee)) && !this.bindsName(this.path(node.object.callee).split('.')[0]))
             return 'arcade frame delta time';
         return null;
+    }
+    isSevensegDisplay (node) {
+        return !!node && (this.sevensegDigitReferences?.has(node) || this.sevensegCounterReferences?.has(node));
+    }
+    /** A seven segment enum member as its name, or null. */
+    sevensegEnum (node, enumeration) {
+        const path = this.path(node) || '', [owner, name] = path.split('.');
+        return owner === enumeration && SEVENSEG_ENUMS[enumeration].includes(name) && !this.bindsName(enumeration) ? name : null;
+    }
+    sevensegCreate (node) {
+        const counter = this.path(node.callee) === 'sevenseg.createCounter', a = node.args || [];
+        const enumeration = (i, kind, fallback) => i < a.length ? this.sevensegEnum(a[i], kind) : fallback;
+        if (a.length > (counter ? 3 : 2)) { this.unsupported.push(`sevenseg.${counter ? 'createCounter' : 'createDigit'}() takes at most ${counter ? 3 : 2} arguments`); return 'undefined value'; }
+        const style = enumeration(0, 'SegmentStyle', 'Thick');
+        const scale = counter ? enumeration(1, 'SegmentScale', 'Full') : 'Full';
+        if (!style || !scale) { this.unsupported.push(`sevenseg.${counter ? 'createCounter' : 'createDigit'}() style and scale must be SegmentStyle and SegmentScale members`); return 'undefined value'; }
+        if (counter) return `arcade seven segment counter style ${style} scale ${scale} digits (${a.length > 2 ? this.expr(a[2]) : '1'})`;
+        return `arcade seven segment digit style ${style} value (${a.length > 1 ? this.expr(a[1]) : '0'})`;
+    }
+    /** Seven segment method calls on a tracked digit or counter. */
+    sevensegStatement (node, a, push) {
+        const callee = node?.callee;
+        if (!this.handleTemplates || callee?.type !== 'Member' || !this.isSevensegDisplay(callee.object)) return false;
+        const counter = this.sevensegCounterReferences?.has(callee.object), display = this.expr(callee.object), method = callee.name;
+        const enumCall = (kind, word) => {
+            const name = a.length === 1 && this.sevensegEnum(a[0], kind);
+            if (name) push(`arcade set seven segment (${display}) ${word} ${name}`);
+            else push(this.note(`${method}() needs a ${kind} member`));
+        };
+        if (method === 'setDigitColor' && a.length === 1) push(`arcade set seven segment (${display}) color (${this.expr(a[0])})`);
+        else if (!counter && method === 'setDigitAlpha') enumCall('SegmentCharacter', 'character');
+        else if (!counter && method === 'setRadix') enumCall('DigitRadix', 'radix');
+        else if (!counter && method === 'setScale') enumCall('SegmentScale', 'scale');
+        else if (counter && method === 'addDigit' && !a.length) push(`arcade add seven segment digit to (${display})`);
+        else push(this.note(`${counter ? 'DigitCounter' : 'SevenSegDigit'}.${method}() is not supported`));
+        return true;
     }
     /** PXT mixer values: reporter text, or null when the node is not music. */
     musicValue (node) {
@@ -2527,7 +2585,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
 const inferImageReferences = (ast, pathOf, imageOf) => {
-    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -2601,6 +2659,8 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(node?.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
         if (node?.type === 'Member' && node.name === 'image' && (typeOf(node.object, owner).has('sprite') || typeOf(node.object, owner).has('animation'))) return new Set(['image']);
         if (node?.type === 'Member' && ['action','interval'].includes(node.name) && typeOf(node.object,owner).has('animation')) return new Set(['number']);
+        if (node?.type === 'Member' && ['x','y','width','height','value','count'].includes(node.name) &&
+            (typeOf(node.object,owner).has('sevenseg-digit') || typeOf(node.object,owner).has('sevenseg-counter'))) return new Set(['number']);
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
@@ -2614,6 +2674,8 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
             if(/^info(?:\.player[1-4])?\.(hasLife|hasScore)$/.test(api||'') && !node.args.length)return new Set(['boolean']);
             if(api==='animation.createAnimation')return new Set(['animation']);
+            if(api==='sevenseg.createDigit')return new Set(['sevenseg-digit']);
+            if(api==='sevenseg.createCounter')return new Set(['sevenseg-counter']);
             if(node.callee?.type==='Member' && typeOf(node.callee.object,owner).has('animation') && node.args.length===0){
                 if(node.callee.name==='getImage')return new Set(['image']);
                 if(['getAction','getInterval'].includes(node.callee.name))return new Set(['number']);
@@ -2693,7 +2755,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
     for (const {node,owner} of entries) {
         const value=cell(node,owner);
         for (const type of typeOf(node,owner)) {
-            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
+            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
             if(name)graph.add(value,name);
         }
         if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
@@ -2747,12 +2809,14 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (graph.has(value,'TileLocation')) tiles.add(node);
         if (graph.has(value,'LegacyTile')) legacyTiles.add(node);
         if (graph.has(value,'Animation')) animations.add(node);
+        if (graph.has(value,'SevenSegDigit')) sevensegDigits.add(node);
+        if (graph.has(value,'DigitCounter')) sevensegCounters.add(node);
         const types=typeOf(node,owner);
         if(types.has('scene') || graph.has(value,'Scene') && !['number','string','boolean','Image','Sprite','PhysicsEngine'].some(type=>graph.has(value,type)))scenes.add(node);
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {players, images: references, tiles, legacyTiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -3118,6 +3182,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
         if (node.type === 'Assignment' && t.imageOf(node.right)) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' && t.imageReferences.has(node.callee.object)) return true;
+        if (node.type === 'Call' && /^sevenseg\.(createDigit|createCounter)$/.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
             (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||

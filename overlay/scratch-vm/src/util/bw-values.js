@@ -81,6 +81,7 @@ const makeValues = () => {
     "physics-engine",
     "player",
     "music",
+    "sevenseg",
   ];
   const scopes = new WeakMap();
   const session =

@@ -1669,7 +1669,10 @@ committed file differs from the pinned bundle:
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
   Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`
-  (`scripts/generate-arcade-builtin-images.mjs`).
+  (`scripts/generate-arcade-builtin-images.mjs`), and the seven segment extension
+  (`libs/sevenseg/sevenseg.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/sevenseg-pxt.js`
+  (`scripts/generate-arcade-sevenseg.mjs`).
 - **font12** of pxt-common-packages (`screen/font12.jres`), a 12x12 pixel font based on
   **Adobe Source Han Sans** v2.001R (https://github.com/adobe-fonts/source-han-sans),
   in `speech-fonts.json` and `text-pxt.js`: SIL Open Font License 1.1, Copyright 2014-2019 Adobe

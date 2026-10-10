@@ -44,6 +44,14 @@ with a capacitor, and observe real advanceToLive receipts. The100kHz sample
 grid must bound each16-step callback to160us and produce partial continuation.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
+## Arcade seven segment extension — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-sevenseg-20261010` (stacked on the
+core gaps lane): the first bundled extension, `sevenseg`, generated from the
+pinned target and run on native images and sprites. Producer sb3-creator adds
+nine words. Next: the other bundled extensions (darts, corgio, storyboard),
+then third-party extensions.
+
 ## Arcade core gaps — 2026-10-10
 
 Continues the Arcade lane on `lane/arcade-core-gaps-20261010` from main after
