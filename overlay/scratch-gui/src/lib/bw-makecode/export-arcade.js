@@ -46,6 +46,9 @@ import {validateDocument} from '../bw-artwork-bundle.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
+// arcade-character-animations Predicate members.
+const CHARACTER_PREDICATE_NAMES = ['NotMoving', 'Moving', 'FacingUp', 'FacingRight', 'FacingDown', 'FacingLeft', 'MovingUp', 'MovingRight',
+    'MovingDown', 'MovingLeft', 'HittingWallUp', 'HittingWallRight', 'HittingWallDown', 'HittingWallLeft'];
 // Background effects game over takes: particle screen effects and image effects.
 const BACKGROUND_EFFECTS = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter'];
 import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
@@ -106,6 +109,7 @@ class ArcadeEmitter {
         this.requiresDartsPackage = false;
         this.requiresCorgioPackage = false;
         this.requiresScrollerPackage = false;
+        this.requiresCharacterAnimationsPackage = false;
         this.warnings = [];
         this.sprites = project.targets.filter(t => !t.isStage);
         // Each sprite is a global `<name>Sprite`, kept clear of the program's variable names.
@@ -843,7 +847,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore'].includes(b.opcode);
+            'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -1036,6 +1040,14 @@ class ArcadeEmitter {
         }
         case 'arcade_frameDeltaTime': return 'game.eventContext().deltaTime';
         case 'arcade_musicTempo': return 'music.tempo()';
+        case 'arcade_characterRule': {
+            // The rule word holds the original's Predicate names.
+            const names = String(this.literal(b, 'PREDICATES') ?? '').trim().split(/\s+/).filter(Boolean);
+            if (!names.length || names.length > 5 || names.some(name => !CHARACTER_PREDICATE_NAMES.includes(name))) { this.note('character rule with predicates other than literal Predicate names'); return this.na(); }
+            this.requiresCharacterAnimationsPackage = true;
+            return `characterAnimations.rule(${names.map(name => `Predicate.${name}`).join(', ')})`;
+        }
+        case 'arcade_characterMatchesRule': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.matchesRule(${v('SPRITE')}, ${v('RULE')})`;
         case 'arcade_backgroundScrollOffset':
             this.requiresScrollerPackage = true;
             return `scroller.getBackground${this.field(b, 'AXIS') === 'y' ? 'Y' : 'X'}Offset(${v('LAYER')})`;
@@ -1584,6 +1596,23 @@ class ArcadeEmitter {
         case 'arcade_setBackgroundScrollMultipliers': this.requiresScrollerPackage = true; push(`scroller.setCameraScrollingMultipliers(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
         case 'arcade_setBackgroundScrollOffset': this.requiresScrollerPackage = true; push(`scroller.setBackgroundScrollOffset(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
         case 'arcade_setBackgroundLayerImage': this.requiresScrollerPackage = true; push(`scroller.setLayerImage(${v('LAYER')}, ${v('IMAGE')})`); return;
+        case 'arcade_characterFrames': {
+            const mode = this.field(b, 'MODE');
+            if (!['loop', 'run'].includes(mode)) { push(`// ${this.note(`Unsupported character frames mode ${mode}`)}`); return; }
+            this.requiresCharacterAnimationsPackage = true;
+            push(`characterAnimations.${mode}Frames(${v('SPRITE')}, ${v('FRAMES')}, ${v('INTERVAL')}, ${v('RULE')})`); return;
+        }
+        case 'arcade_setCharacterAnimationsEnabled': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterAnimationsEnabled(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
+        case 'arcade_setCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterState(${v('SPRITE')}, ${v('RULE')})`); return;
+        case 'arcade_clearCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.clearCharacterState(${v('SPRITE')})`); return;
+        case 'arcade_setCharacterController': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
+        case 'arcade_lockCharacterFacing': {
+            const direction = this.field(b, 'DIRECTION');
+            if (!['Up', 'Right', 'Down', 'Left'].includes(direction)) { push(`// ${this.note(`Unsupported character facing ${direction}`)}`); return; }
+            this.requiresCharacterAnimationsPackage = true;
+            push(`characterAnimations.lockFacingDirection(${v('SPRITE')}, characterAnimations.FacingDirection.${direction})`); return;
+        }
+        case 'arcade_unlockCharacterFacing': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
         case 'arcade_setBackgroundLayerZ': this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
         case 'arcade_dartAction': {
             const action = this.field(b, 'ACTION');
@@ -2362,7 +2391,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_sevensegProperty'){const id=Symbol('seven segment property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createDart'){const id=Symbol('dart');graphDartValues.add(id);sprites.add(id);return id;}
                 if(value.opcode==='arcade_createCorgi'){const id=Symbol('corgi');graphCorgiValues.add(id);sprites.add(id);return id;}
-                if(['arcade_dartProperty','arcade_corgiProperty','arcade_backgroundScrollOffset'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
+                if(['arcade_dartProperty','arcade_corgiProperty','arcade_backgroundScrollOffset','arcade_characterRule'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_animationProperty'){const id=Symbol('animation property');(literal(blocks,value,'PROPERTY')==='image'?images:numbers).add(id);return id;}
                 if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(value.opcode)) {
                     const id=Symbol('authored animation array'), item=Symbol('authored animation image');
@@ -3105,7 +3134,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': ts,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`

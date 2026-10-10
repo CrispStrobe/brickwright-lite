@@ -11,6 +11,11 @@ const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'po
     'pewPew', 'knock', 'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']);
 // The seven segment extension's enums by member name (sevenseg.ts).
 // The sprite extensions' calls and adjustable fields (darts.ts, corgio.ts).
+// arcade-character-animations: Predicate bits and FacingDirection (= the facing predicates).
+const CHARACTER_PREDICATES = Object.freeze({NotMoving: 1, Moving: 2, FacingUp: 4, FacingRight: 8, FacingDown: 16, FacingLeft: 32,
+    MovingUp: 64, MovingRight: 128, MovingDown: 256, MovingLeft: 512, HittingWallUp: 1024, HittingWallRight: 2048,
+    HittingWallDown: 4096, HittingWallLeft: 8192});
+const CHARACTER_FACINGS = Object.freeze({Up: 4, Right: 8, Down: 16, Left: 32});
 const DART_SWITCHES = ['setTrace', 'controlWithArrowKeys'], DART_ACTIONS = ['throwDart', 'stopDart'];
 const DART_PROPERTIES = ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'];
 const CORGI_MODES = ['horizontalMovement', 'verticalMovement', 'updateSprite', 'cameraFollow'];
@@ -703,6 +708,20 @@ class ArcadeTranslator extends BaseTranslator {
             const code = [fn.name, ...fn.params.map(()=>'%s')].join(' ');
             return `(arcade call function ${JSON.stringify(code)} arguments (${args}))`;
         }
+        if (this.handleTemplates && /^characterAnimations\.(rule|matchesRule|_predicate|_direction)$/.test(this.path(node.callee)||'') && !this.bindsName('characterAnimations')) {
+            const method=this.path(node.callee).slice(20);
+            if(method==='matchesRule'){
+                const sprite=a.length===2 && this.handleRef(a[0]);
+                if(!sprite){this.unsupported.push('characterAnimations.matchesRule() takes a typed sprite and a rule');return ARCADE_FALSE;}
+                return `arcade character (${sprite}) matches rule (${this.characterRule(a[1])})`;
+            }
+            if(method==='_direction'){
+                const direction=a.length===1 && this.characterFacing(a[0]);
+                if(direction===null || direction===false){this.unsupported.push('characterAnimations._direction() takes a FacingDirection member');return '0';}
+                return String(CHARACTER_FACINGS[direction]);
+            }
+            return this.characterRule(node);
+        }
         if (node.callee?.type==='Member' && node.callee.name==='isHittingTile') {
             const handle=this.handleTemplates && this.handleRef(node.callee.object);
             if (!handle || a.length!==1) {
@@ -1295,6 +1314,7 @@ class ArcadeTranslator extends BaseTranslator {
             return;
         }
         if(this.scrollerStatement(name,a,push))return;
+        if(this.characterStatement(name,a,push))return;
         if(this.spriteExtensionStatement(node,a,push))return;
         if(this.sevensegStatement(node,a,push))return;
         if(this.musicStatement(name,a,push))return;
@@ -1771,6 +1791,75 @@ class ArcadeTranslator extends BaseTranslator {
             ['game.eventContext', 'control.eventContext'].includes(this.path(node.object.callee)) && !this.bindsName(this.path(node.object.callee).split('.')[0]))
             return 'arcade frame delta time';
         return null;
+    }
+    /** A character rule: a rule() call of Predicate members as the rule word, else the number's expression. */
+    characterRule (node) {
+        const predicates = [], read = n => {
+            const path = this.path(n) || '', member = /^Predicate\.([A-Za-z]+)$/.exec(path);
+            if (member && Object.prototype.hasOwnProperty.call(CHARACTER_PREDICATES, member[1]) && !this.bindsName('Predicate')) return member[1];
+            if (n?.type === 'Call' && this.path(n.callee) === 'characterAnimations._predicate' && n.args?.length === 1) return read(n.args[0]);
+            return null;
+        };
+        const single = read(node);
+        if (single) return `arcade character rule ${JSON.stringify(single)}`;
+        if (node?.type === 'Call' && this.path(node.callee) === 'characterAnimations.rule') {
+            const args = node.args || [];
+            for (const arg of args) predicates.push(read(arg));
+            if (!args.length || args.length > 5 || predicates.includes(null)) {
+                this.unsupported.push('characterAnimations.rule() takes one to five Predicate members');
+                return '0';
+            }
+            return `arcade character rule ${JSON.stringify(predicates.join(' '))}`;
+        }
+        if (/^(Predicate|characterAnimations)\./.test(this.path(node) || '') || (node?.type === 'Call' && /^characterAnimations\./.test(this.path(node.callee) || ''))) {
+            this.unsupported.push(`${this.path(node) || this.path(node.callee)} is not a character animation rule`);
+            return '0';
+        }
+        return this.expr(node);
+    }
+    /** A FacingDirection member name, false if not one. */
+    characterFacing (node) {
+        const member = /^characterAnimations\.FacingDirection\.(Up|Right|Down|Left)$/.exec(this.path(node) || '');
+        if (member) return member[1];
+        if (node?.type === 'Call' && this.path(node.callee) === 'characterAnimations._direction' && node.args?.length === 1) return this.characterFacing(node.args[0]);
+        return false;
+    }
+    /** arcade-character-animations calls. */
+    characterStatement (name, a, push) {
+        if (!this.handleTemplates || !/^characterAnimations\./.test(name || '') || this.bindsName('characterAnimations')) return false;
+        const method = name.slice(20), fail = message => { push(this.note(`characterAnimations.${method}() ${message}`)); return true; };
+        const sprite = this.handleRef(a[0]);
+        if (!sprite) return fail('needs a typed sprite');
+        const frames = node => node?.type === 'Call' && this.path(node.callee) === 'characterAnimations._animationFrames' && node.args?.length === 1 ? node.args[0] : node;
+        const bool = node => this.boolSlot(node);
+        switch (method) {
+        case 'loopFrames': case 'runFrames':
+            if (a.length !== 4) return fail('takes a sprite, frames, an interval and a rule');
+            push(`arcade character ${method === 'loopFrames' ? 'loop' : 'run'} frames of (${sprite}) images (${this.expr(frames(a[1]))}) interval (${this.expr(a[2])}) rule (${this.characterRule(a[3])})`); return true;
+        case 'setCharacterAnimationsEnabled':
+            if (a.length !== 2) return fail('takes a sprite and a boolean');
+            push(`arcade set character animations of (${sprite}) enabled ${bool(a[1])}`); return true;
+        case 'setCharacterState':
+            if (a.length !== 2) return fail('takes a sprite and a rule');
+            push(`arcade set character state of (${sprite}) to (${this.characterRule(a[1])})`); return true;
+        case 'clearCharacterState':
+            if (a.length !== 1) return fail('takes a sprite');
+            push(`arcade clear character state of (${sprite})`); return true;
+        case 'setController':
+            // A third operand names another player's controller.
+            if (a.length !== 2) return fail('takes a sprite and a boolean (player 1)');
+            push(`arcade set character controller of (${sprite}) enabled ${bool(a[1])}`); return true;
+        case 'lockFacingDirection': {
+            const direction = a.length === 2 && this.characterFacing(a[1]);
+            if (!direction) return fail('takes a sprite and a FacingDirection member');
+            push(`arcade lock character facing of (${sprite}) to ${direction}`); return true;
+        }
+        case 'unlockFacingDirection':
+            if (a.length !== 1) return fail('takes a sprite');
+            push(`arcade unlock character facing of (${sprite})`); return true;
+        default:
+            return fail('is not supported');
+        }
     }
     /** A scroller layer argument (number, BackgroundLayer member or _backgroundLayer call); '0' if omitted. */
     scrollerLayer (node) {
@@ -3288,6 +3377,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Call' && /^sevenseg\.(createDigit|createCounter)$/.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && /^(darts|corgio)\.create$/.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && /^scroller\./.test(t.path(node.callee) || '')) return true;
+        if (node.type === 'Call' && /^characterAnimations\./.test(t.path(node.callee) || '')) return true;
         if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
             (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||

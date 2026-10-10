@@ -29,7 +29,7 @@ const BUNDLED_LICENCES = [
     ['Scrub (BSD-3-Clause)', 'static/licenses/scrub.BSD-3-Clause.txt'],
     ['labwired-core (MIT)', 'static/licenses/labwired-core.MIT.txt'],
     ['8086 example programs (MIT)', 'static/licenses/amey-thakur-8086.MIT.txt'],
-    ['MakeCode extensions: pxt-microturtle, pxt-radio-blockchain, pxt-kitronik-motor-driver, arcade-background-scroll (MIT)',
+    ['MakeCode extensions: pxt-microturtle, pxt-radio-blockchain, pxt-kitronik-motor-driver, arcade-background-scroll, arcade-character-animations (MIT)',
         'static/licenses/makecode-extensions.MIT.txt'],
     ['MakeCode Arcade runtime: pxt-common-packages image, text and speech code, pxt-arcade built-in images (MIT)',
         'static/licenses/pxt-common-packages.MIT.txt'],

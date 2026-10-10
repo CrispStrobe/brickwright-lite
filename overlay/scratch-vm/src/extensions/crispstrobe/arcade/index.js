@@ -118,7 +118,7 @@ module.exports = makeExt(`// Name: Arcade
           this._renderables=new WeakMap();this._screen=null;
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
           this._sevensegIds=new Map();this._sevensegValues=new Map();
-          this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;
+          this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
           this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
@@ -213,6 +213,13 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setBackgroundScrollOffset',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background scroll offset x [X] y [Y] layer [LAYER]',arguments:{...n('X',0),...n('Y',0),...n('LAYER',0)}},
           {opcode:'setBackgroundLayerImage',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background layer [LAYER] image [IMAGE]',arguments:{...n('LAYER',0),...str('IMAGE','')}},
           {opcode:'setBackgroundLayerZ',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background layer [LAYER] z [Z]',arguments:{...n('LAYER',0),...n('Z',-1000)}},
+          {opcode:'characterFrames',blockType:Scratch.BlockType.COMMAND,text:'Arcade character [MODE] frames of [SPRITE] images [FRAMES] interval [INTERVAL] rule [RULE]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'characterFrameModes',defaultValue:'loop'},...str('SPRITE',''),...str('FRAMES',''),...n('INTERVAL',500),...n('RULE',0)}},
+          {opcode:'setCharacterAnimationsEnabled',blockType:Scratch.BlockType.COMMAND,text:'Arcade set character animations of [SPRITE] enabled [ENABLED]',arguments:{...str('SPRITE',''),ENABLED:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'setCharacterState',blockType:Scratch.BlockType.COMMAND,text:'Arcade set character state of [SPRITE] to [RULE]',arguments:{...str('SPRITE',''),...n('RULE',0)}},
+          {opcode:'clearCharacterState',blockType:Scratch.BlockType.COMMAND,text:'Arcade clear character state of [SPRITE]',arguments:str('SPRITE','')},
+          {opcode:'setCharacterController',blockType:Scratch.BlockType.COMMAND,text:'Arcade set character controller of [SPRITE] enabled [ENABLED]',arguments:{...str('SPRITE',''),ENABLED:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'lockCharacterFacing',blockType:Scratch.BlockType.COMMAND,text:'Arcade lock character facing of [SPRITE] to [DIRECTION]',arguments:{...str('SPRITE',''),DIRECTION:{type:Scratch.ArgumentType.STRING,menu:'characterFacings',defaultValue:'Right'}}},
+          {opcode:'unlockCharacterFacing',blockType:Scratch.BlockType.COMMAND,text:'Arcade unlock character facing of [SPRITE]',arguments:str('SPRITE','')},
           {opcode:'dartAction',blockType:Scratch.BlockType.COMMAND,text:'Arcade dart [SPRITE] [ACTION]',arguments:{...str('SPRITE',''),ACTION:{type:Scratch.ArgumentType.STRING,menu:'dartActions',defaultValue:'throwDart'}}},
           {opcode:'dartSwitch',blockType:Scratch.BlockType.COMMAND,text:'Arcade dart [SPRITE] [SETTING] [ON]',arguments:{...str('SPRITE',''),SETTING:{type:Scratch.ArgumentType.STRING,menu:'dartSettings',defaultValue:'setTrace'},ON:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setDartProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade set dart [SPRITE] property [PROPERTY] to [VALUE]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'dartProperties',defaultValue:'angle'},...n('VALUE',0)}},
@@ -238,6 +245,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'changeTempo',blockType:Scratch.BlockType.COMMAND,text:'Arcade change tempo by [TEMPO] bpm',arguments:n('TEMPO',20)},
           {opcode:'stopAllSounds',blockType:Scratch.BlockType.COMMAND,text:'Arcade stop all sounds'},
           {opcode:'backgroundScrollOffset',blockType:Scratch.BlockType.REPORTER,text:'Arcade background scroll offset [AXIS] layer [LAYER]',arguments:{AXIS:{type:Scratch.ArgumentType.STRING,menu:'scrollAxes',defaultValue:'x'},...n('LAYER',0)}},
+          {opcode:'characterRule',blockType:Scratch.BlockType.REPORTER,text:'Arcade character rule [PREDICATES]',arguments:str('PREDICATES','Moving')},
+          {opcode:'characterMatchesRule',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade character [SPRITE] matches rule [RULE]',arguments:{...str('SPRITE',''),...n('RULE',0)}},
           {opcode:'createDart',blockType:Scratch.BlockType.REPORTER,text:'Arcade create dart image [IMAGE] kind [KIND] x [X] y [Y]',arguments:{...str('IMAGE',''),...str('KIND','Player'),...n('X',10),...n('Y',110)}},
           {opcode:'createCorgi',blockType:Scratch.BlockType.REPORTER,text:'Arcade create corgi kind [KIND] x [X] y [Y]',arguments:{...str('KIND','Player'),...n('X',10),...n('Y',70)}},
           {opcode:'dartProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade dart [SPRITE] property [PROPERTY]',arguments:{...str('SPRITE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'dartProperties',defaultValue:'angle'}}},
@@ -720,6 +729,8 @@ module.exports = makeExt(`// Name: Arcade
           ,imageEffects: {acceptReporters: false, items: ['dissolve', 'melt', 'slash', 'splatter']}
           ,cameraScrollModes: {acceptReporters: false, items: ['OnlyHorizontal', 'OnlyVertical', 'BothDirections']}
           ,scrollAxes: {acceptReporters: false, items: ['x', 'y']}
+          ,characterFrameModes: {acceptReporters: false, items: ['loop', 'run']}
+          ,characterFacings: {acceptReporters: false, items: ['Up', 'Right', 'Down', 'Left']}
           ,dartActions: {acceptReporters: false, items: ['throwDart', 'stopDart']}
           ,dartSettings: {acceptReporters: false, items: ['setTrace', 'controlWithArrowKeys']}
           ,dartProperties: {acceptReporters: false, items: ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate']}
@@ -3331,14 +3342,89 @@ module.exports = makeExt(`// Name: Arcade
       });
       return this._scrollerModule;
     }
+    // The character animations extension runs its original main.ts
+    // (character-animations-pxt.js) on native sprites. Its frame handler
+    // follows physics at PXT's ANIMATION_UPDATE_PRIORITY.
+    _characterAnimations() {
+      if (this._characterAnimationModule) return this._characterAnimationModule;
+      const ext=this,wrappers=new WeakMap();
+      const button=name=>({isPressed:()=>ext._heldButton(1,name)});
+      this._characterAnimationModule=dependencies.initializeCharacterAnimations({
+        game:{
+          currentScene:()=>{
+            const state=ext._state();
+            return {eventContext:{
+              registerFrameHandler:(order,handler)=>{const list=ext._frameHandlersOf(state);let i=list.length;while(i>0 && list[i-1].order>order)i--;list.splice(i,0,{order,handler});},
+              get deltaTimeMillis(){return Math.round((state.frameDeltaTime || 0)*1000);}
+            }};
+          },
+          addScenePushHandler:handler=>{if(handler)ext._scenePushHandlers.push({host:handler});},
+          addScenePopHandler:handler=>{if(handler)ext._scenePopHandlers.push({host:handler});}
+        },
+        scene:{ANIMATION_UPDATE_PRIORITY:15},
+        // PXT sprites.Flag.Destroyed (1 << 1).
+        sprites:{Flag:{Destroyed:2}},
+        controller:{player1:{up:button('up'),down:button('down'),left:button('left'),right:button('right')}},
+        CollisionDirection:{Left:0,Top:1,Right:2,Bottom:3}
+      });
+      const module=this._characterAnimationModule;
+      // One wrapper per native sprite, so the module's identity checks hold.
+      module.sprite=sprite=>{
+        if(!sprite)return null;
+        let wrapper=wrappers.get(sprite);
+        if(wrapper)return wrapper;
+        wrapper={
+          get x(){return ext.spriteProperty({ID:sprite.id,PROPERTY:'x'});},
+          get y(){return ext.spriteProperty({ID:sprite.id,PROPERTY:'y'});},
+          get vx(){return ext.spriteProperty({ID:sprite.id,PROPERTY:'vx'});},
+          get vy(){return ext.spriteProperty({ID:sprite.id,PROPERTY:'vy'});},
+          get flags(){return ext._state().sprites[sprite.id]===sprite ? 0 : (2);},
+          isHittingTile:direction=>ext.isHittingTile({ID:sprite.id,DIRECTION:direction}),
+          // PXT setImage ignores the current image; frames are image values.
+          setImage:value=>{const image=ext._image(value);if(image && sprite.image!==image && ext._state().sprites[sprite.id]===sprite)ext.setSpriteImage({ID:sprite.id,IMAGE:ext._imageHandle(image)});}
+        };
+        wrappers.set(sprite,wrapper);
+        return wrapper;
+      };
+      return module;
+    }
+    _characterSprite(value) {return this._characterAnimations().sprite(this._spriteValues.get(String(value)));}
+    _characterRuleValue(value) {return Math.floor(Scratch.Cast.toNumber(Scratch.BWValues.decode(value)));}
+    characterFrames(args) {
+      const module=this._characterAnimations(),sprite=this._characterSprite(args.SPRITE),frames=Scratch.BWValues.arrayValue(this._runtime,args.FRAMES);
+      const call=String(args.MODE)==='run'?'runFrames':'loopFrames';
+      module.characterAnimations[call](sprite,frames,Scratch.Cast.toNumber(Scratch.BWValues.decode(args.INTERVAL)),this._characterRuleValue(args.RULE));
+    }
+    setCharacterAnimationsEnabled(args) {this._characterAnimations().characterAnimations.setCharacterAnimationsEnabled(this._characterSprite(args.SPRITE),Scratch.BWValues.truth(args.ENABLED));}
+    setCharacterState(args) {this._characterAnimations().characterAnimations.setCharacterState(this._characterSprite(args.SPRITE),this._characterRuleValue(args.RULE));}
+    clearCharacterState(args) {this._characterAnimations().characterAnimations.clearCharacterState(this._characterSprite(args.SPRITE));}
+    setCharacterController(args) {this._characterAnimations().characterAnimations.setController(this._characterSprite(args.SPRITE),Scratch.BWValues.truth(args.ENABLED));}
+    lockCharacterFacing(args) {
+      const module=this._characterAnimations(),direction=module.characterAnimations.FacingDirection[String(args.DIRECTION)];
+      if(direction===undefined){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no character facing direction "'+String(args.DIRECTION)+'".');return;}
+      module.characterAnimations.lockFacingDirection(this._characterSprite(args.SPRITE),direction);
+    }
+    unlockCharacterFacing(args) {this._characterAnimations().characterAnimations.unlockFacingDirection(this._characterSprite(args.SPRITE));}
+    characterRule(args) {
+      const module=this._characterAnimations(),names=String(args.PREDICATES).trim().split(/\\s+/).filter(Boolean);
+      const values=names.map(name=>Object.prototype.hasOwnProperty.call(module.Predicate,name) && typeof module.Predicate[name]==='number' ? module.Predicate[name] : undefined);
+      if(!names.length || names.length>5 || values.includes(undefined)){this._runtime?.emit?.('BLOCKS_ERROR','Arcade character rule needs one to five predicates, not "'+String(args.PREDICATES)+'".');return 0;}
+      return module.characterAnimations.rule(...values);
+    }
+    characterMatchesRule(args) {
+      const sprite=this._characterSprite(args.SPRITE);
+      return sprite ? !!this._characterAnimations().characterAnimations.matchesRule(sprite,this._characterRuleValue(args.RULE)) : false;
+    }
     _frameHandlersOf(state=this._state()) {
       let list=this._frameHandlers.get(state);
       if(!list){list=[];this._frameHandlers.set(state,list);}
       return list;
     }
-    _runFrameHandlers(state) {
+    // PXT frame handlers by priority: below UPDATE_INTERVAL_PRIORITY (19) they
+    // run after physics and before the update handlers, the rest after the camera.
+    _runFrameHandlers(state,low=19,high=Infinity) {
       const list=this._frameHandlers.get(state);
-      if(list)for(let i=0;i<list.length;i++)list[i].handler();
+      if(list)for(let i=0;i<list.length;i++)if(list[i].order>=low && list[i].order<high)list[i].handler();
     }
     _scrollerLayer(value) {return Math.floor(Scratch.Cast.toNumber(value));}
     scrollBackgroundWithCamera(args) {
@@ -4352,10 +4438,12 @@ module.exports = makeExt(`// Name: Arcade
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
+      // Extension handlers at ANIMATION_UPDATE_PRIORITY (15) follow physics.
+      this._runFrameHandlers(state,0,19);
       yield* this._sceneUpdates();if(this._state()!==state)return;
       this._advanceAnimations(dt);
       this._updateCamera();
@@ -4421,6 +4509,7 @@ module.exports = makeExt(`// Name: Arcade
   initializeSevenseg: require('./sevenseg-pxt'),
   initializeSpriteExtensions: require('./sprite-extensions-pxt'),
   initializeScroller: require('./scroller-pxt'),
+  initializeCharacterAnimations: require('./character-animations-pxt'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   initializeMusic: require('./music-pxt'),

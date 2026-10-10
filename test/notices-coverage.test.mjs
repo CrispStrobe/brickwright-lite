@@ -119,6 +119,16 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
     },
     {
+        // Rule-driven sprite animation, vendored and also transpiled into the
+        // native runtime (scripts/generate-arcade-character-animations.mjs).
+        name: 'arcade-character-animations',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/character-animations-pxt.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
+    },
+    {
         name: 'pxt-kitronik-motor-driver',
         licence: 'MIT',
         holder: 'Kitronik Ltd',
