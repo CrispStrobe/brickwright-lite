@@ -23,7 +23,7 @@
  * project names that extension (pxt-runtime.js, pkgOverrideAsync).
  *
  * LICENCES. An extension is vendored only when its LICENSE is one that allows
- * redistribution (REDISTRIBUTABLE below) AND says the licence the pin declares;
+ * redistribution (REDISTRIBUTABLE, in extension-licence.js) AND says the licence the pin declares;
  * anything else is REFUSED by name and nothing is written. The holders are
  * carried into THIRD-PARTY-NOTICES.md and the About dialog's licence texts.
  *
@@ -38,6 +38,8 @@ export const NOTICE = {"name":"MakeCode extensions","licence":"MIT","holder":"Mi
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {REDISTRIBUTABLE, licenceOf} from '../overlay/scratch-gui/src/lib/bw-makecode/extension-licence.js';
+export {REDISTRIBUTABLE, licenceOf};
 import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,7 +47,6 @@ export const OUT = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/exte
 const FULL_SHA = /^[0-9a-f]{40}$/;
 
 /** Licences whose terms allow us to redistribute the source in the app. */
-export const REDISTRIBUTABLE = ['MIT', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', 'ISC', '0BSD'];
 
 /**
  * The pins. `spec` is how MakeCode's documentation names the extension (the
@@ -119,19 +120,6 @@ export const EXTENSIONS = [
 /** git's object id for a blob: sha1("blob <len>\0" + bytes). What GitHub's tree lists. */
 export const gitBlobSha = bytes => crypto.createHash('sha1')
     .update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), Buffer.from(bytes)])).digest('hex');
-
-/**
- * The licence a LICENSE text states, by its own wording, or null. Deliberately
- * narrow: a text this does not recognise is refused, not guessed at.
- */
-export function licenceOf (text) {
-    const t = String(text).replace(/\s+/g, ' ');
-    if (/^\s*MIT License\b/.test(t) && /Permission is hereby granted, free of charge/.test(t)) return 'MIT';
-    if (/Apache License,? Version 2\.0/.test(t)) return 'Apache-2.0';
-    if (/Redistribution and use in source and binary forms/.test(t)) return /Neither the name/.test(t) ? 'BSD-3-Clause' : 'BSD-2-Clause';
-    if (/Permission to use, copy, modify, and\/or distribute this software for any purpose/.test(t)) return 'ISC';
-    return null;
-}
 
 /** The vendoring verdict for one pin and its fetched LICENSE text: {ok} or {ok: false, reason}. */
 export function licenceVerdict (pin, licenseText) {

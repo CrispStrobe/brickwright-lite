@@ -6,6 +6,41 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## MakeCode extensions fetched on demand — 2026-10-10
+
+Running a MakeCode project (micro:bit, Calliope, EV3, Circuit Playground or
+Arcade) in MakeCode's own compiler and simulator no longer stops at a GitHub
+extension this build does not vendor.
+
+- `lib/bw-makecode/extension-fetch.js` reads the project's `github:`
+  dependencies, takes the ones the vendored table does not answer, and fetches
+  the files each extension's `pxt.json` lists from raw.githubusercontent.com
+  at the named ref (tag, branch or commit; none = the default branch),
+  following their own `github:` dependencies. Bounds: 8 extensions, 64 files
+  and 1 MB per extension; unsafe paths and other-target extensions are refused
+  by name.
+- `compileMakeCode` / `compileMakeCodeForEmulator` hand the fetched sources to
+  the worker for that compile only; nothing is stored or shipped. Vendored pins
+  are still preferred. The result lists each fetched extension with its ref,
+  SHA-256 per file and the licence its LICENSE states (or "not recognised"),
+  and the importer's status line names them. A missing extension's error says
+  why it could not be fetched. Builds with `BW_REMOTE_EXTENSIONS_POLICY=deny`
+  do not fetch.
+- The licence classifier is shared with the vendoring sync
+  (`extension-licence.js`); an MIT heading after a copyright line, as in
+  `microsoft/pxt-neopixel`, is now recognised (both MIT sentences still required).
+
+Evidence (`test/makecode-extensions-on-demand.test.mjs`): against a fake GitHub
+serving real extension sources under names the build does not vendor, an
+extension and its own dependency are fetched with licences and hashes; refusals
+are named; a denying build does not fetch; and MakeCode's worker compiles the
+fetched extension offline, while without it the compile reports NO_EXTENSION.
+Dropping the fetched entries from the worker's table fails the compile test.
+A manual live run fetched `microsoft/pxt-neopixel#v0.7.6` with its dependency
+`microsoft/pxt-ws2812b` and compiled a neopixel program with no network inside
+the worker. This runs the original program; it does not turn an extension into
+editable blocks.
+
 ## Arcade extensions: character animations — 2026-10-10
 
 `arcade-character-animations` (`characterAnimations`), MIT, Microsoft, pinned
