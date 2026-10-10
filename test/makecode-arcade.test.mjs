@@ -165,12 +165,13 @@ test('constant and changing background colors use the Arcade runtime command', (
     assert.match(changed.code, /arcade set background color to 2\n  arcade set background color to 3/);
 });
 
-test('one native update can move multiple sprites while unsupported effects stay diagnosed', () => {
+test('one native update can move multiple sprites and start effects, while unsupported effect operands stay diagnosed', () => {
     const {code,unsupported}=arcadeToPseudocode(`let hero=sprites.create(img\`1\`,SpriteKind.Player)
 let coin=sprites.create(img\`2\`,SpriteKind.Food)
-game.onUpdate(function(){coin.x=10;hero.x=20;coin.startEffect(effects.confetti)})`);
+game.onUpdate(function(){coin.x=10;hero.x=20;coin.startEffect(effects.confetti);hero.startEffect(effects.fire,100,5)})`);
     assert.match(code,/arcade set x of coin to/);assert.match(code,/arcade set x of hero to/);
     assert.ok(!unsupported.some(u=>/hero\.x|coin\.x/.test(u)));
+    assert.match(code,/arcade start effect confetti on coin for \(0\) ms/);
     assert.ok(unsupported.some(u=>/startEffect/.test(u)));
     assert.match(code,/# unsupported:.*startEffect/);
 });

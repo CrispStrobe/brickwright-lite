@@ -1646,7 +1646,12 @@ committed file differs from the pinned bundle:
   rotated sprite geometry (`game/rotation.ts`, transpiled) in
   `overlay/scratch-vm/src/extensions/crispstrobe/arcade/rotation-pxt.js`, and the
   6x8 `font8` (`screen/text.ts`) in `speech-fonts.json`
-  (`scripts/generate-arcade-speech.mjs`).
+  (`scripts/generate-arcade-speech.mjs`); and the fixed-point helpers, random
+  generator, image effects and particle sources, factories and effects
+  (`base/fixed.ts`, `game/mathUtil.ts`, `game/effects.ts`, `game/particles.ts`,
+  `game/particlefactories.ts`, `game/particleeffects.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/particles-pxt.js`
+  (`scripts/generate-arcade-particles.mjs`).
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
   Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`

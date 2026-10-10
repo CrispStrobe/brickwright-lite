@@ -42,7 +42,7 @@ for(const [name,source] of fixtures)test('indexed scene frame matches entire ori
  assert.deepEqual(pixels(run),expectedPixels(original.raster));
  const identity=frame(run),buffer=identity.pixels;await stepFrames(run.vm,2);
  assert.strictEqual(frame(run),identity);assert.strictEqual(frame(run).pixels,buffer);
- assert.deepEqual(identity.coverage,['background','tilemap','sprites','modernSpeech']);assert.ok(identity.remaining.includes('hud'));
+ assert.deepEqual(identity.coverage,['background','tilemap','sprites','modernSpeech','particles']);assert.ok(identity.remaining.includes('hud'));
 });
 
 test('indexed compositor clips layers, preserves duplicate colour indices and destination identity',()=>{

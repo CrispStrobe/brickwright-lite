@@ -782,6 +782,13 @@ class ArcadeEmitter {
             this.booleanVariableIds.has(variable.fields?.VARIABLE?.[1] || variable.fields?.VARIABLE?.[0]);
     }
 
+    particleEffect(b, screenOnly) {
+        const screen = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none'];
+        const all = ['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo', 'ashes', 'disintegrate', ...screen];
+        const effect = this.field(b, 'EFFECT');
+        return (screenOnly ? screen : all).includes(effect) ? effect : null;
+    }
+
     spriteFlagCondition (b, name = 'ON') {
         const slot = b.inputs?.[name]?.[1];
         if (Array.isArray(slot) && [12, 13].includes(slot[0])) {
@@ -1388,6 +1395,23 @@ class ArcadeEmitter {
             push(b.opcode==='arcade_stopControllingSprite'?`${receiver}.stopControllingSprite(${v('ID')})`:`${receiver}.moveSprite(${v('ID')}, ${v('VX')}, ${v('VY')})`);return;
         }
         case 'arcade_destroySprite': push(`${v('ID')}.destroy()`); return;
+        case 'arcade_destroySpriteWithEffect': case 'arcade_startSpriteEffect': {
+            // A zero or omitted duration selects the effect's own default in PXT.
+            const effect = this.particleEffect(b, false), duration = this.arrayValue(b, 'DURATION');
+            if (!effect) { push(`// ${this.note(`Unsupported Arcade particle effect ${this.field(b, 'EFFECT')}`)}`); return; }
+            const method = b.opcode === 'arcade_destroySpriteWithEffect' ? 'destroy' : 'startEffect';
+            push(`${v('ID')}.${method}(effects.${effect}${duration === '0' ? '' : `, ${duration}`})`);
+            return;
+        }
+        case 'arcade_startScreenEffect': case 'arcade_endScreenEffect': {
+            const effect = this.particleEffect(b, true);
+            if (!effect) { push(`// ${this.note(`Unsupported Arcade screen effect ${this.field(b, 'EFFECT')}`)}`); return; }
+            if (b.opcode === 'arcade_endScreenEffect') { push(`effects.${effect}.endScreenEffect()`); return; }
+            const duration = this.arrayValue(b, 'DURATION');
+            push(`effects.${effect}.startScreenEffect(${duration === '0' ? '' : duration})`);
+            return;
+        }
+        case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
         case 'arcade_spriteSay': {
             const self = this.literalInput(b, 'ID') === 'self';
             const owner = self ? me : v('ID');
