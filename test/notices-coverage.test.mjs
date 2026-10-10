@@ -130,8 +130,8 @@ const VENDORED = [
     },
     {
         // ... and pxt-arcade's built-in image table (device/*.jres) and its
-        // seven segment extension (sevenseg.ts), generated from the same pinned
-        // bundle (scripts/generate-arcade-{builtin-images,sevenseg}.mjs).
+        // seven segment, darts and corgio extensions, generated from the same
+        // pinned bundle (scripts/generate-arcade-{builtin-images,sevenseg,sprite-extensions}.mjs).
         name: 'pxt-arcade',
         licence: 'MIT',
         holder: 'Microsoft Corporation',

@@ -6,6 +6,40 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Arcade extensions: darts and corgio — 2026-10-10
+
+The bundled `darts` (a dart with path prediction) and `corgio` (a corgi
+platformer) extensions now convert.
+
+- `scripts/generate-arcade-sprite-extensions.mjs` transpiles the pinned
+  `darts.ts` and `corgio.ts` unchanged into `sprite-extensions-pxt.js`. Both
+  classes subclass `sprites.ExtendableSprite`; the host's `ExtendableSprite` is a
+  real native sprite (position, velocity, acceleration, flags, image, speech and
+  wall contact go to the native sprite), created with the program's created
+  handlers as PXT's constructor runs them. The extensions' `game.onUpdate`
+  callbacks and button events join the scene's handler lists in registration
+  order; `controller.dx/dy` use the frame's delta time as PXT does; the dart's
+  trace is a native renderable.
+- The value of `darts.create` / `corgio.create` is the sprite itself, so every
+  sprite word works on it; eleven words (sb3-creator `50721b3b`, 261 ops) cover the
+  extension calls and fields: dart throw/stop, trace and arrow-key control and its
+  eight fields; corgi movement, sprite animation and camera switches, bark and
+  phrases, and its five fields. Variables declare as `Dart` / `Corgio` on export
+  with the `darts` / `corgio` dependencies.
+
+Evidence (`test/makecode-arcade-sprite-extensions.test.mjs`): throws with and
+without wind, arrow-key aiming, a running corgi with its animation frames and
+camera, and a jumping corgi follow the original frame by frame (the original
+under a fake clock, the native run replaying its frame times); the dart trace and
+a barking corgi draw the original's screen; a program using every word
+round-trips through Code/Blocks, SB3 and an executed original export. A no-op
+`setImage` fails the running corgi. Corpus: 140 of 184 inputs translate (the
+remaining corgio input needs a tile map from a companion file).
+
+While measuring this, the native runtime turned out to start an update handler
+registered during an update one frame late; PXT runs it in the same frame. Fixed
+with an oracle test in the core lane.
+
 ## Arcade extensions: seven segment displays — 2026-10-10
 
 The first MakeCode extension now converts: `sevenseg` (seven segment digits and

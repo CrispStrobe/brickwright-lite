@@ -103,6 +103,8 @@ class ArcadeEmitter {
         this.unsupported = [];
         this.requiresAnimationPackage = false;
         this.requiresSevensegPackage = false;
+        this.requiresDartsPackage = false;
+        this.requiresCorgioPackage = false;
         this.warnings = [];
         this.sprites = project.targets.filter(t => !t.isStage);
         // Each sprite is a global `<name>Sprite`, kept clear of the program's variable names.
@@ -1033,6 +1035,19 @@ class ArcadeEmitter {
         }
         case 'arcade_frameDeltaTime': return 'game.eventContext().deltaTime';
         case 'arcade_musicTempo': return 'music.tempo()';
+        case 'arcade_createDart':
+            this.requiresDartsPackage = true;
+            return `darts.create(${v('IMAGE')}, ${this.kindExpr(b, 'KIND')}, ${v('X')}, ${v('Y')})`;
+        case 'arcade_createCorgi':
+            this.requiresCorgioPackage = true;
+            return `corgio.create(${this.kindExpr(b, 'KIND')}, ${v('X')}, ${v('Y')})`;
+        case 'arcade_dartProperty': case 'arcade_corgiProperty': {
+            const property = this.field(b, 'PROPERTY');
+            const fields = b.opcode === 'arcade_dartProperty' ? ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'] :
+                ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate'];
+            if (!fields.includes(property)) { this.note(`Unsupported extension property ${property}`); return this.na(); }
+            return `${v('SPRITE')}.${property}`;
+        }
         case 'arcade_sevensegDigit': {
             const style = this.musicField(b, 'STYLE', 'SegmentStyle');
             if (!style) { this.note(`Unsupported seven segment style in ${b.opcode}`); return this.na(); }
@@ -1555,6 +1570,26 @@ class ArcadeEmitter {
         case 'arcade_setTempo': push(`music.setTempo(${v('TEMPO')})`); return;
         case 'arcade_changeTempo': push(`music.changeTempoBy(${v('TEMPO')})`); return;
         case 'arcade_stopAllSounds': push('music.stopAllSounds()'); return;
+        case 'arcade_dartAction': {
+            const action = this.field(b, 'ACTION');
+            if (!['throwDart', 'stopDart'].includes(action)) { push(`// ${this.note(`Unsupported dart action ${action}`)}`); return; }
+            push(`${v('SPRITE')}.${action}()`); return;
+        }
+        case 'arcade_dartSwitch': case 'arcade_corgiControl': {
+            const method = this.field(b, b.opcode === 'arcade_dartSwitch' ? 'SETTING' : 'MODE');
+            const methods = b.opcode === 'arcade_dartSwitch' ? ['setTrace', 'controlWithArrowKeys'] : ['horizontalMovement', 'verticalMovement', 'updateSprite', 'cameraFollow'];
+            if (!methods.includes(method)) { push(`// ${this.note(`Unsupported extension call ${method}`)}`); return; }
+            push(`${v('SPRITE')}.${method}(${this.boolValue(b, 'ON')})`); return;
+        }
+        case 'arcade_corgiBark': push(`${v('SPRITE')}.bark()`); return;
+        case 'arcade_corgiAddPhrase': push(`${v('SPRITE')}.addToScript(${v('TEXT')})`); return;
+        case 'arcade_setDartProperty': case 'arcade_setCorgiProperty': {
+            const property = this.field(b, 'PROPERTY');
+            const fields = b.opcode === 'arcade_setDartProperty' ? ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'] :
+                ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate'];
+            if (!fields.includes(property)) { push(`// ${this.note(`Unsupported extension property ${property}`)}`); return; }
+            push(`${v('SPRITE')}.${property} = ${v('VALUE')}`); return;
+        }
         case 'arcade_sevensegSetCharacter': case 'arcade_sevensegSetRadix': case 'arcade_sevensegSetScale': {
             const [field, enumeration, method] = {arcade_sevensegSetCharacter: ['CHARACTER', 'SegmentCharacter', 'setDigitAlpha'],
                 arcade_sevensegSetRadix: ['RADIX', 'DigitRadix', 'setRadix'], arcade_sevensegSetScale: ['SCALE', 'SegmentScale', 'setScale']}[b.opcode];
@@ -2169,7 +2204,7 @@ class ArcadeEmitter {
 
     localDeclaration (name, key) {
         const type=this.localValueTypes.get(key)?.get(name) || 'any';
-        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -2206,7 +2241,7 @@ class ArcadeEmitter {
     /** Infer Image argument annotations from native image operations and
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
-        const graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
+        const graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
@@ -2310,6 +2345,9 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegCounter'){const id=Symbol('seven segment counter');graphSevensegCounterValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegProperty'){const id=Symbol('seven segment property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_createDart'){const id=Symbol('dart');graphDartValues.add(id);sprites.add(id);return id;}
+                if(value.opcode==='arcade_createCorgi'){const id=Symbol('corgi');graphCorgiValues.add(id);sprites.add(id);return id;}
+                if(['arcade_dartProperty','arcade_corgiProperty'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_animationProperty'){const id=Symbol('animation property');(literal(blocks,value,'PROPERTY')==='image'?images:numbers).add(id);return id;}
                 if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(value.opcode)) {
                     const id=Symbol('authored animation array'), item=Symbol('authored animation image');
@@ -2408,7 +2446,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
@@ -2438,12 +2476,12 @@ class ArcadeEmitter {
         // to its elements (which would incorrectly change the argument type).
         for(const [array,value] of lookupTypes)if(array && value){
             const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
+            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
             if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
         }
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -2452,7 +2490,7 @@ class ArcadeEmitter {
         const arrayType=value=>graph.arrayType(value);
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -2860,7 +2898,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
@@ -3052,7 +3090,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': ts,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`

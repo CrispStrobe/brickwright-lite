@@ -34,7 +34,7 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneStack = [];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
-      this._renderables=new WeakMap();this._screen=null;
+      this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
       this._buttonStates = {};

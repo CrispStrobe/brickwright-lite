@@ -13,7 +13,7 @@ const require = createRequire(join(INTEGRATED,'package.json'));
 for (const mode of ['development','production']) test(`the GUI ${mode} bundle preserves Arcade engine dependencies`, async () => {
     // A stale installed extension cannot qualify current overlay source.
     for(const relative of ['extensions/crispstrobe/adapter.js',
-        ...['index.js','speech.js','speech-pxt.js','speech-fonts.json','image.js','image-pxt.js','rotation-pxt.js','particles-pxt.js','text-pxt.js','music.js','music-pxt.js','helpers-pxt.js','gameover-pxt.js','sevenseg-pxt.js'].map(file=>'extensions/crispstrobe/arcade/'+file),
+        ...['index.js','speech.js','speech-pxt.js','speech-fonts.json','image.js','image-pxt.js','rotation-pxt.js','particles-pxt.js','text-pxt.js','music.js','music-pxt.js','helpers-pxt.js','gameover-pxt.js','sevenseg-pxt.js','sprite-extensions-pxt.js'].map(file=>'extensions/crispstrobe/arcade/'+file),
         'util/bw-animation-resource-menu.js','util/bw-values.js']) {
         assert.equal(readFileSync(join(INTEGRATED,'node_modules/scratch-vm/src',relative),'utf8'),
             readFileSync(join(REPO,'overlay/scratch-vm/src',relative),'utf8'),relative+' must be fresh');
@@ -65,6 +65,9 @@ for (const mode of ['development','production']) test(`the GUI ${mode} bundle pr
         const counter=extension.sevensegCounter({STYLE:'Thick',SCALE:'Half',DIGITS:2});
         extension.sevensegSetProperty({DISPLAY:counter,PROPERTY:'count',VALUE:42});
         assert.equal(extension.sevensegProperty({DISPLAY:counter,PROPERTY:'count'}),42,'generated sevenseg runtime retains its dependencies');
+        // ... and the generated darts and corgio extensions.
+        const corgi=extension.createCorgi({KIND:'Player',X:30,Y:40});
+        assert.equal(extension.corgiProperty({SPRITE:corgi,PROPERTY:'jumpVelocity'}),125,'generated sprite extensions retain their dependencies');
         assert.ok(blocks.some(b=>b.opcode==='copyImageFrom'));
         const copiedImage=extension.createImage({WIDTH:3,HEIGHT:1});
         const copiedSource=extension.createImage({WIDTH:3,HEIGHT:1});
