@@ -51,11 +51,9 @@ test('the game-over screen matches the original outside the score HUD', async ()
         await stepFrames(run.vm, 21);
         assert.deepEqual(run.errors, []);
         const actual = frameColors(run);
-        // The native HUD is drawn by the device pane, outside the raster, so the
-        // background snapshot lacks the score box the original captures.
+        // The score box is part of the last frame, which game over keeps as background.
         const differing = actual.map((color, i) => color !== expected[i] ? i : -1).filter(i => i >= 0);
-        const outside = differing.filter(i => i % 160 < 140 || Math.floor(i / 160) > 11);
-        assert.deepEqual(outside, [], `${outside.length} pixels differ outside the HUD box`);
+        assert.deepEqual(differing.slice(0, 12), [], `${differing.length} pixels differ`);
         // The dialog: frame, GAME OVER and the score line.
         assert.ok(actual.slice(36 * 160, 84 * 160).includes('#fff609'));
     } finally { clearStrayTimers(); }

@@ -40,6 +40,32 @@ A manual live run fetched `microsoft/pxt-neopixel#v0.7.6` with its dependency
 `microsoft/pxt-ws2812b` and compiled a neopixel program with no network inside
 the worker. This runs the original program; it does not turn an extension into
 editable blocks.
+## Arcade scoreboard (HUD) — 2026-10-10
+
+Score, lives and the countdown were tracked natively but never drawn. They now
+are, with MakeCode's own code.
+
+- `scripts/generate-arcade-hud.mjs` cuts `PlayerState`, `InfoState`,
+  `PlayerInfoImpl`, `PlayerInfo`, `initMultiHUD`, the heart images, `drawTimer`
+  and `formatDecimal` from the pinned `game/info.ts` and transpiles them
+  unchanged into `hud-pxt.js`. The native player state objects are PXT's
+  `playerStates`, so PXT's `drawScore`, `drawLives`, `drawPlayer` and
+  `drawTimer` read them directly.
+- The HUD is a renderable at PXT's HUD z (100) with the id the info state
+  already reserves, drawn under initHUD's conditions; life-zero and countdown-end
+  events stay native. Setting a score or life shows it, reading one does not, as
+  in PXT; a second player switches to the multiplayer corner boxes.
+- Sprite-creating programs that change score or lives (`changeScoreBy`,
+  `changeLifeBy`, `info.playerN.*`) now stay on the native runtime path instead
+  of falling back to plain variables. Sprite-free programs still keep lives in a
+  plain variable, so their lives are not drawn (their score is).
+
+Evidence (`test/makecode-arcade-hud.test.mjs`): score, an eight-digit score,
+three hearts, seven lives with a negative score, a two-minute countdown,
+read-only score/life and four-player boxes all match the original's screen
+pixel for pixel. The game-over test now compares the whole screen, score box
+included. Removing the Score flag, the multiplayer switch, the life box flag or
+the timer value each fails these.
 
 ## Arcade extensions: character animations — 2026-10-10
 
