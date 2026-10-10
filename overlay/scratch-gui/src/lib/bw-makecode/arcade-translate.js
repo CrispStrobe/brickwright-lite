@@ -1043,7 +1043,8 @@ class ArcadeTranslator extends BaseTranslator {
             return this.handleAliases.get(node.name);
         }
         const image = node?.type === 'Member' && this.imageRef(node.object);
-        if (image && ['width', 'height'].includes(node.name)) return `arcade image ${node.name} of (${image})`;
+        // PXT's screen is always 160x120: its size folds to constants below.
+        if (image && image !== 'arcade screen image' && ['width', 'height'].includes(node.name)) return `arcade image ${node.name} of (${image})`;
         const handle = node?.type === 'Member' && this.handleRef(node.object);
         if (handle) {
             if (['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
