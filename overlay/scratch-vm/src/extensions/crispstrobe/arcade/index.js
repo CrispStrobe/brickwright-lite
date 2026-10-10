@@ -1010,22 +1010,73 @@ module.exports = makeExt(`// Name: Arcade
       const state=this._state();
       // PXT initHUD installs one scene renderable, which shares sprite IDs
       // even though it is not included in sprites.allOfKind().
-      if(!state.infoRenderable)state.infoRenderable={pxtId:state.nextSpriteId++,z:100};
+      if(!state.infoRenderable){
+        state.infoRenderable={pxtId:state.nextSpriteId++,z:100};
+        if(!state.players)state.players=[];
+        // PXT's InfoState; the native player state objects are its playerStates.
+        state.hudInfo=this._hud().info._newInfoState();
+        state.hudInfo.playerStates=state.players;
+        this._renderablesOf(state).push({z:100,id:state.infoRenderable.pxtId,draw:screen=>this._drawHud(state,screen)});
+      }
       return state;
+    }
+    // PXT's head-up display (hud-pxt.js): the drawing code of game/info.ts on
+    // the native player state. The renderable's conditions follow initHUD; the
+    // life-zero and countdown-end events stay native.
+    _hud() {
+      if(this._hudModule)return this._hudModule;
+      const text=this._pxtText(),ext=this;
+      class HudImage {
+        constructor(raw){this.raw=raw;}
+        get width(){return this.raw.width;}
+        get height(){return this.raw.height;}
+        clone(){return new HudImage({width:this.raw.width,height:this.raw.height,pixels:this.raw.pixels.slice()});}
+        replace(from,to){imageEngine.mutate(this.raw,'replace',from,to);}
+        fillRect(x,y,w,h,c){imageEngine.draw(this.raw,'fillRect',x,y,w,h,c);}
+        drawTransparentImage(source,x,y){imageEngine.blit(this.raw,source.raw,'drawTransparentImage',x,y);}
+        drawIcon(icon,x,y,color){text.drawIcon({_width:this.raw.width,_height:this.raw.height,data:this.raw.pixels,makeWritable(){},color:c=>Number(c)&15},{data:icon},x,y,color);}
+        print(value,x,y,color,font){text.helpers.imagePrint(this,String(value),x,y,color,font);}
+      }
+      const img=strings=>{
+        const rows=String(strings.raw?strings.raw[0]:strings[0]).split(String.fromCharCode(10)).map(line=>line.replace(/[^0-9a-fA-F.]/g,'')).filter(Boolean);
+        const width=Math.max(0,...rows.map(row=>row.length)),pixels=new Uint8Array(width*rows.length);
+        rows.forEach((row,y)=>[...row].forEach((c,x)=>{pixels[y*width+x]=c==='.'?0:parseInt(c,16);}));
+        return new HudImage({width,height:rows.length,pixels});
+      };
+      // The screen PXT draws into: the frame being composed.
+      const screen=new HudImage({width:160,height:120,pixels:new Uint8Array(160*120)});
+      Object.defineProperty(screen,'isMono',{value:false});
+      Object.defineProperty(screen,'raw',{get:()=>ext._hudScreen || {width:160,height:120,pixels:new Uint8Array(160*120)}});
+      const module=dependencies.initializeHud({image:{font5:text.image.font5,font8:text.image.font8},img,screen});
+      this._hudModule={info:module.info,players:[1,2,3,4].map(n=>new module.info.PlayerInfo(n))};
+      return this._hudModule;
+    }
+    _drawHud(state,screen) {
+      const {info,players}=this._hud(),hud=state.hudInfo,V=info.Visibility;
+      info._setInfoState(hud);this._hudScreen=screen;
+      try {
+        if(hud.visibilityFlag & V.Multi)for(const player of players)player.drawPlayer();
+        else {
+          const player=players[0];
+          if(player.impl.hasScore() && (hud.visibilityFlag & V.Score))player.drawScore();
+          if(player.impl.hasLife() && (hud.visibilityFlag & V.Life))player.drawLives();
+        }
+        if(state.countdownActive && (hud.visibilityFlag & V.Countdown))info._drawTimer(Math.round((Number(state.countdown) || 0)*1000));
+      } finally {this._hudScreen=null;}
     }
     _lifeState(player) {
       const state=this._infoState(),index=(Number(player)||1)-1;if(index<0 || index>3)return null;
-      if(index>0)state.multiplayerInfo=true;
+      if(index>0){state.multiplayerInfo=true;this._hud().info._setInfoState(state.hudInfo);this._hud().info._initMultiHUD();}
       if(!state.players)state.players=[];
       return state.players[index] || (state.players[index]={});
     }
     hasLife(args) {const state=this._lifeState(args.PLAYER);return !!state && state.life!==undefined && state.life!==null;}
-    getPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.score==null)state.score=0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;return state.score;}
+    getPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.showScore===undefined)state.showScore=true;if(state.showPlayer===undefined)state.showPlayer=true;if(state.score==null)state.score=0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;return state.score;}
     hasPlayerScore(args) {const state=this._lifeState(args.PLAYER);return !!state && state.score!==undefined;}
-    setPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(state){state.score=Number(args.VALUE)|0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;this._changed();}}
+    setPlayerScore(args) {const state=this._lifeState(args.PLAYER);if(state){const hud=this._state().hudInfo,V=this._hud().info.Visibility;if(!(hud.visibilityFlag & V._ExplicitlySetScore))hud.visibilityFlag|=V.Score;if(state.showScore===undefined)state.showScore=true;if(state.showPlayer===undefined)state.showPlayer=true;state.score=Number(args.VALUE)|0;if((Number(args.PLAYER)||1)===1)this._state().score=state.score;this._changed();}}
     changePlayerScore(args) {this.setPlayerScore({PLAYER:args.PLAYER,VALUE:this.getPlayerScore(args)+Number(args.VALUE)});}
-    getLife(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.life===undefined)state.life=3;return state.life || 0;}
-    setLife(args) {const state=this._lifeState(args.PLAYER);if(state){state.life=Number(args.VALUE)|0;this._changed();}}
+    getLife(args) {const state=this._lifeState(args.PLAYER);if(!state)return 0;if(state.showLife===undefined)state.showLife=true;if(state.showPlayer===undefined)state.showPlayer=true;if(state.life===undefined)state.life=3;return state.life || 0;}
+    setLife(args) {const state=this._lifeState(args.PLAYER);if(state){const hud=this._state().hudInfo,V=this._hud().info.Visibility;if(!(hud.visibilityFlag & V._ExplicitlySetLife))hud.visibilityFlag|=V.Life;if(state.showLife===undefined)state.showLife=true;if(state.showPlayer===undefined)state.showPlayer=true;state.life=Number(args.VALUE)|0;this._changed();}}
     changeLife(args) {this.setLife({PLAYER:args.PLAYER,VALUE:this.getLife(args)+Number(args.VALUE)});}
     registerLifeZeroHandler(args,util) {const state=this._lifeState(args.PLAYER);if(state)state.lifeZero=this._handlerRegistration(args,util);}
     whenRegisteredLifeZero(args,util) {return this.whenRegisteredWall(args,util);}
@@ -4484,10 +4535,12 @@ module.exports = makeExt(`// Name: Arcade
       const state = this._infoState();
       state.countdown = Math.max(0, Number(args.N) || 0);
       state.countdownActive = true;
+      state.hudInfo.visibilityFlag |= this._hud().info.Visibility.Countdown;
       this._changed();
     }
     stopCountdown() {
-      const state = this._state();
+      const state = this._infoState();
+      state.hudInfo.visibilityFlag = ~(~state.hudInfo.visibilityFlag | this._hud().info.Visibility.Countdown);
       state.countdownActive = false;
       state.countdown = 0;
       this._changed();
@@ -4514,5 +4567,6 @@ module.exports = makeExt(`// Name: Arcade
   createMusic: require('./music'),
   initializeMusic: require('./music-pxt'),
   helpers: require('./helpers-pxt'),
-  initializeGameOver: require('./gameover-pxt')
+  initializeGameOver: require('./gameover-pxt'),
+  initializeHud: require('./hud-pxt')
 });
