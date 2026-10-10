@@ -1064,8 +1064,13 @@ module.exports = makeExt(`// Name: Arcade
       for(const h of this._intervalHandlers.slice())if(h.timer<=(state.elapsedMs || 0)){
         h.timer=(state.elapsedMs || 0)+h.interval;yield* this._registeredCallbackSteps([h],'arcade_whenRegisteredInterval',{});if(this._state()!==state)return;
       }
-      yield* this._registeredCallbackSteps(this._updateHandlers.slice(),'arcade_whenRegisteredUpdate',{});
-      if(this._state()!==state)return;
+      // PXT iterates its frame callbacks live: a handler registered during
+      // this frame's updates runs later in the same frame.
+      const updates=this._updateHandlers;
+      for(let i=0;i<updates.length;i++){
+        yield* this._registeredCallbackSteps([updates[i]],'arcade_whenRegisteredUpdate',{});
+        if(this._state()!==state)return;
+      }
       // PXT particles.init registers game.onUpdate and onUpdateInterval(250)
       // when the first source of a scene is created: after earlier handlers.
       const particles=this._particleScenes.get(state);
