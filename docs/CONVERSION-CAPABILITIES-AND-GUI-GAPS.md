@@ -26,8 +26,8 @@ The final three traces replay921 frames, comparing915 native/original bubble
 images (1303328 indexed pixels) and41 complete stage planes (787200 pixels).
 Persistent Latin and international text reach scrolling and return to their
 initial image; timed text uses original duration-dependent speed. The replay
-covers both8x8/12x12 font families as selected by PXT's retained fonts (Latin
-character width6 in the small font). Camera, native callback/ownership, global
+covers the6x8 small font and12x12 international font selected by PXT's
+retained fonts. Camera, native callback/ownership, global
 scene-clock, hitbox authoring and fresh development/production extension bundle
 regressions pass. Original failed image assertions and harness namespace
 collisions are retained privately alongside final original traces.
