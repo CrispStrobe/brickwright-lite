@@ -72,14 +72,16 @@ export class ValueTypeGraph {
     arrayType (key, visiting = new Set()) {
         const node = this.node(key);
         if (visiting.has(node) || node.types.has('any')) return 'any';
-        if (node.types.has('array') && [...node.types].some(type=>['Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Scene','PhysicsEngine','Player','number','string','boolean'].includes(type)))return 'any';
+        if (node.types.has('array') && [...node.types].some(type=>['Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','number','string','boolean'].includes(type)))return 'any';
         if (node.types.has('array')) {
             visiting.add(node);
             const value = node.element ? this.arrayType(node.element, visiting) : 'any';
             visiting.delete(node);
             return `${value}[]`;
         }
-        const types = [...node.types].filter(t => ['Image', 'Sprite', 'TileLocation','LegacyTile', 'Animation','SevenSegDigit','DigitCounter','Scene','PhysicsEngine','Player', 'number', 'string', 'boolean'].includes(t));
+        let types = [...node.types].filter(t => ['Image', 'Sprite', 'TileLocation','LegacyTile', 'Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player', 'number', 'string', 'boolean'].includes(t));
+        // A sprite extension's class is a Sprite subclass: it names the type.
+        for (const subclass of ['Dart', 'Corgio']) if (types.includes(subclass) && types.every(t => t === subclass || t === 'Sprite')) types = [subclass];
         return types.length === 1 ? types[0] === 'Player' ? 'mp.Player' : types[0] === 'TileLocation' ? 'tiles.Location' : types[0] === 'LegacyTile' ? 'tiles.Tile' : types[0] === 'Animation' ? 'animation.Animation' : types[0] === 'Scene' ? 'scene.Scene' : types[0] === 'PhysicsEngine' ? 'ArcadePhysicsEngine' : types[0] : 'any';
     }
 }
