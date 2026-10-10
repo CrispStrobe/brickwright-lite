@@ -7,7 +7,7 @@ import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {TERRAIN_CONTACT_SOURCE} from './fixtures/arcade-terrain.mjs';
 const names=['before','blockedX','blockedVx','contactRight','contactLeft','contactTop','contactBottom','throughProcedure','terrainDone'];
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
-const remaining=['full terrain collision physics and scene lifecycle are not yet supported'];
+const remaining=[];
 
 test('wall contact is actual physics state across Code/SB3 and executed original/exported PXT',async()=>{
     const expected=await runPxtArcade(TERRAIN_CONTACT_SOURCE,{waitForGlobals:{terrainDone:true}});

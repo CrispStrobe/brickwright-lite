@@ -56,8 +56,9 @@ const CHAR_TO_INDEX = (() => {
  *
  * @param {string} text the characters between the backticks
  * @returns {{width: number, height: number, pixels: Uint8Array}|null}
- *   null when the rows are ragged or empty — an image we would have to
- *   guess at is not an image we should invent.
+ *   null when empty. Ragged rows follow the PXT compiler: the image is as
+ *   wide as its longest row and shorter rows end in transparent pixels
+ *   (observed in the original runtime, makecode-arcade.test.mjs).
  */
 export function parseImageLiteral (text) {
     // Spaces separate the pixel characters and carry nothing; every
@@ -66,8 +67,7 @@ export function parseImageLiteral (text) {
         .map(row => [...row].filter(c => CHAR_TO_INDEX.has(c)))
         .filter(row => row.length);
     if (!rows.length) return null;
-    const width = rows[0].length;
-    if (rows.some(row => row.length !== width)) return null;
+    const width = Math.max(...rows.map(row => row.length));
     const height = rows.length;
     const pixels = new Uint8Array(width * height);
     rows.forEach((row, y) => row.forEach((c, x) => {

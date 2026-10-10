@@ -16,7 +16,7 @@ controller.right.onEvent(ControllerButtonEvent.Pressed,function(){tiles.placeOnT
 controller.A.onEvent(ControllerButtonEvent.Pressed,function(){tiles.setTileAt(tiles.getTileLocation(2,1),red)})
 controller.B.onEvent(ControllerButtonEvent.Pressed,function(){tiles.setTilemap(null)})`;
 const imported=arcadeToPseudocode(source);
-const expectedUnsupported=['full terrain collision physics and scene lifecycle are not yet supported'];
+const expectedUnsupported=[];
 assert.deepEqual(imported.unsupported,expectedUnsupported);
 const creator=new SB3Creator();creator.parse(imported.code);assert.deepEqual(creator.warnings,[]);
 for(const costume of imported.costumes){

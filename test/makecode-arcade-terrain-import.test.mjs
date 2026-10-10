@@ -77,7 +77,7 @@ test('the shipped platformer wall queries lower while pending terrain and event 
     const result=arcadeToPseudocode(files);
     assert.ok(result.code.includes('hitting wall (3)'));
     assert.ok(!result.unsupported.some(gap=>gap.includes('isHittingTile')));
-    assert.ok(result.unsupported.some(gap=>gap.includes('terrain collision physics and scene lifecycle')));
+    assert.ok(!result.unsupported.some(gap=>gap.includes('terrain collision physics')));
     assert.match(result.code,/arcade register tile kind/);
     assert.ok(!result.unsupported.some(gap=>gap.includes('synchronous handler mutation ordering')));
     const events=arcadeToPseudocode(setup+`scene.onHitWall(SpriteKind.Player,function(sprite,location){sprite.x=10});scene.onOverlapTile(SpriteKind.Player,img\`2\`,function(sprite,location){sprite.y=20})`);

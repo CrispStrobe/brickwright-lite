@@ -48,7 +48,7 @@ const cases=[
 for(const [name,source,isLegacy] of cases)test('indexed tile plane agrees with original PXT: '+name,async()=>{
  const original=await runPxtArcade('scene.setBackgroundColor(9)\n'+source+capture,{dependencies:isLegacy?{device:'*','color-coded-tilemap':'*'}:{device:'*'}});
  const imported=arcadeToPseudocode('scene.setBackgroundColor(9)\n'+source);
- assert.deepEqual([...new Set(imported.unsupported)],isLegacy?[]:['full terrain collision physics and scene lifecycle are not yet supported']);
+ assert.deepEqual([...new Set(imported.unsupported)],[]);
  const run=await runProgram(imported.code,{frames:8,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);
  const state=run.vm.runtime.bwArcadeDeviceState;
  assert.equal(original.raster.length,160*120);

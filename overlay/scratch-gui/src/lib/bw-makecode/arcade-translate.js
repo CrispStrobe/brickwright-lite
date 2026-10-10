@@ -375,6 +375,7 @@ class ArcadeTranslator extends BaseTranslator {
     imageOf (node) {
         const tileAsset = node?.type === 'Member' && ['myTiles','assets','tiles'].includes(this.path(node.object)) && this.assets[node.name];
         if(tileAsset)return tileAsset;
+        if(node?.type === 'Identifier' && /^__bwNamespace_/.test(node.name) && Object.prototype.hasOwnProperty.call(this.assets,node.name))return this.assets[node.name];
         const builtIn = node?.type === 'Member' && BUILTIN_IMAGES[this.path(node)];
         if (builtIn) return decodeMkcdImage(builtIn);
         if (!node || node.type !== 'Template' || !(node.tag === 'img' || /^assets\./.test(node.tag || ''))) return null;
@@ -532,6 +533,14 @@ class ArcadeTranslator extends BaseTranslator {
             this.block(st.body,indent+1,out);
             if(st.update)this.expressionStatement(st.update,indent+1,out);
             return;
+        }
+        // A counter the body reads must start as a number value: the shared
+        // loop writes \`set i to 0\`, a text "0" that \`x + i\` would join.
+        if (this.handleTemplates && st.type === 'For' && st.init?.type === 'Declaration' && st.init.decls.length === 1 &&
+            JSON.stringify(st.body).includes(`"name":${JSON.stringify(st.init.decls[0].name)}`)) {
+            this.declared?.add(st.init.decls[0].name);
+            this.statement(st.init,indent,out);
+            return this.statement({...st,init:null},indent,out);
         }
         if (st.type === 'Return') {out.push(`${'  '.repeat(indent)}arcade return value (${st.value ? this.arrayElementValue(st.value) : 'undefined value'})`);return;}
         return DELEGATE;
@@ -1337,9 +1346,9 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length===1 && value?.type==='Null'){push('arcade set tilemap data \"null\"');return;}
             const data=value?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(value.tag||'') ? this.tilemaps[value.value.trim()] : decodeTilemap(value,node=>this.imageOf(node),node=>this.path(node));
             if(!data){this.unsupported.push(`${name}() requires a readable literal tile map with wall layer and tile scale`);return;}
+            // Terrain physics is measured frame by frame against the original
+            // (test/makecode-arcade-terrain-trajectories.test.mjs).
             push(`arcade set tilemap data ${JSON.stringify(JSON.stringify(data))}`);
-            const gap='full terrain collision physics and scene lifecycle are not yet supported';
-            if(!this.unsupported.includes(gap))this.unsupported.push(gap);
             return;
         }
         if(this.handleTemplates && name==='tiles.setTileAt' && a.length===2){push(`arcade set tile (${this.expr(a[0])}) image (${this.expr(a[1])})`);return;}
@@ -2107,6 +2116,130 @@ const lowerDestroyAllSprites = (program, source) => {
 // lowers it to that index loop, so a reference array (sprites, rows) keeps
 // its identity and an element reads through the array-reference words.
 // The two helper names are unique within the program's own identifiers.
+// Names a function body declares: its parameters, declarations and nested function names.
+const declaredNames = fn => {
+    const names = new Set(fn.params || []);
+    const visit = node => {
+        if (Array.isArray(node)) { node.forEach(visit); return; }
+        if (!node || typeof node !== 'object') return;
+        if (node.type === 'Declaration') for (const decl of node.decls) names.add(decl.name);
+        if (node.type === 'FunctionDeclaration') { names.add(node.name); return; }
+        if (['ForOf'].includes(node.type)) names.add(node.name);
+        if (node.type === 'FunctionExpression') return;
+        for (const value of Object.values(node)) visit(value);
+    };
+    visit(fn.body);
+    return names;
+};
+const referencedNames = node => {
+    const names = new Set();
+    const visit = value => {
+        if (Array.isArray(value)) { value.forEach(visit); return; }
+        if (!value || typeof value !== 'object') return;
+        if (value.type === 'Identifier') names.add(value.name);
+        if (value.type === 'This') names.add('this');
+        for (const child of Object.values(value)) visit(child);
+    };
+    visit(node);
+    return names;
+};
+// An immediately invoked function expression, \`(function () { ... })()\`, becomes a
+// generated top-level function and its call, when its body uses no parameter or
+// local of an enclosing function (a top-level function cannot reach those).
+const lowerIifes = (program, source) => {
+    let suffix = 0;
+    const fresh = () => { do suffix++; while (source.includes(`__bwIife${suffix}`)); return `__bwIife${suffix}`; };
+    const lifted = [];
+    const visit = (node, enclosing) => {
+        if (Array.isArray(node)) return node.map(child => visit(child, enclosing));
+        if (!node || typeof node !== 'object') return node;
+        const inner = ['FunctionDeclaration', 'FunctionExpression'].includes(node.type) ?
+            new Set([...enclosing, ...declaredNames(node)]) : enclosing;
+        for (const key of Object.keys(node)) node[key] = visit(node[key], inner);
+        if (node.type !== 'Call' || node.callee?.type !== 'FunctionExpression' || node.args.length || node.callee.params.length) return node;
+        const fn = node.callee, own = declaredNames(fn);
+        const captured = [...referencedNames(fn.body)].filter(name => name === 'this' || enclosing.has(name) && !own.has(name));
+        if (captured.length) return node;
+        const name = fresh();
+        lifted.push({type: 'FunctionDeclaration', name, params: [], paramTypes: {}, returnType: fn.returnType || '', optionalParams: [], body: fn.body});
+        return {type: 'Call', callee: {type: 'Identifier', name}, args: []};
+    };
+    const body = visit(program.body, new Set());
+    return {...program, body: [...lifted, ...body]};
+};
+// Statement-level \`array.forEach(fn)\` and \`array.filter(pred).forEach(fn)\` become loops.
+// filter runs every predicate before any callback, as in PXT, so it fills a fresh
+// array first. Callbacks with other returns than a single expression stay calls.
+const lowerArrayCallbacks = (program, source) => {
+    let suffix = 0;
+    const fresh = base => { do suffix++; while (source.includes(`${base}${suffix}`)); return `${base}${suffix}`; };
+    const id = name => ({type: 'Identifier', name});
+    const hasReturn = body => {
+        let found = false;
+        const visit = node => {
+            if (found || !node || typeof node !== 'object') return;
+            if (Array.isArray(node)) { node.forEach(visit); return; }
+            if (node.type === 'Return') { found = true; return; }
+            if (['FunctionExpression', 'FunctionDeclaration'].includes(node.type)) return;
+            Object.values(node).forEach(visit);
+        };
+        visit(body);
+        return found;
+    };
+    // A callback body as statements: an expression arrow's value is discarded.
+    const callbackStatements = fn => {
+        const body = fn.body;
+        if (body.length === 1 && body[0].type === 'Return' && body[0].value) return [{type: 'ExpressionStatement', expr: body[0].value}];
+        return hasReturn(body) ? null : body;
+    };
+    const predicate = fn => fn?.type === 'FunctionExpression' && fn.params.length === 1 && fn.body.length === 1 &&
+        fn.body[0].type === 'Return' && fn.body[0].value ? fn.body[0].value : null;
+    const loop = (array, fn, statements) => {
+        if (fn.params.length === 1) return [{type: 'ForOf', name: fn.params[0], kind: 'const', iterable: array, body: statements}];
+        // A named array is indexed directly (keeping its element type); any
+        // other expression is evaluated once into a fresh alias first.
+        const named = array?.type === 'Identifier', items = named ? array.name : fresh('__bwEachArray'), [element, index] = fn.params;
+        return [...(named ? [] : [{type: 'Declaration', kind: 'let', decls: [{name: items, init: array, isArray: true}]}]),
+            {type: 'For', init: {type: 'Declaration', kind: 'let', decls: [{name: index, init: {type: 'Number', value: '0'}}]},
+                test: {type: 'Binary', op: '<', left: id(index), right: {type: 'Member', object: id(items), name: 'length'}},
+                update: {type: 'Update', op: '++', argument: id(index), prefix: false},
+                body: [{type: 'Declaration', kind: 'const', decls: [{name: element, init: {type: 'Index', object: id(items), index: id(index)}}]}, ...statements]}];
+    };
+    const lowerStatement = statement => {
+        const call = statement.type === 'ExpressionStatement' && statement.expr;
+        // A statement-level map discards its result array, so it visits like forEach.
+        if (call?.type !== 'Call' || call.callee?.type !== 'Member' || !['forEach', 'map'].includes(call.callee.name) || call.args.length !== 1) return null;
+        const fn = call.args[0];
+        if (fn?.type !== 'FunctionExpression' || !fn.params.length || fn.params.length > 2) return null;
+        const statements = callbackStatements(fn);
+        if (!statements) return null;
+        const source = call.callee.object;
+        const filter = source?.type === 'Call' && source.callee?.type === 'Member' && source.callee.name === 'filter' && source.args.length === 1 ?
+            predicate(source.args[0]) : null;
+        if (!filter) return loop(source, fn, statements);
+        const kept = fresh('__bwFiltered'), item = source.args[0].params[0];
+        return [{type: 'Declaration', kind: 'let', decls: [{name: kept, init: {type: 'Array', items: []}, isArray: true}]},
+            {type: 'ForOf', name: item, kind: 'const', iterable: source.callee.object, body: [{type: 'If', test: filter,
+                consequent: [{type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Member', object: id(kept), name: 'push'}, args: [id(item)]}}],
+                alternate: null}]},
+            ...loop(id(kept), fn, statements)];
+    };
+    const visit = node => {
+        if (Array.isArray(node)) {
+            const out = [];
+            for (const child of node) {
+                const visited = visit(child);
+                const lowered = visited && typeof visited === 'object' && !Array.isArray(visited) ? lowerStatement(visited) : null;
+                if (lowered) out.push(...lowered); else out.push(visited);
+            }
+            return out;
+        }
+        if (!node || typeof node !== 'object') return node;
+        for (const key of Object.keys(node)) node[key] = visit(node[key]);
+        return node;
+    };
+    return visit(program);
+};
 const desugarForOf = (program, source) => {
     let suffix = 0;
     const fresh = () => {
@@ -3648,8 +3781,8 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source)));
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source), source), source)));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
@@ -3688,6 +3821,16 @@ export function arcadeToPseudocode (files, opts = {}) {
             unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };
     const namespaceBindings = lowerNamespaceBindings(parsed);
+    // Namespace image constants (\`namespace myTiles { export const tile0 = img\`...\` }\`)
+    // become generated top-level consts; they are immutable, so read them as images.
+    for (const statement of namespaceBindings.program?.body || []) {
+        if (statement.type !== 'Declaration' || statement.kind !== 'const') continue;
+        for (const decl of statement.decls) {
+            if (!/^__bwNamespace_/.test(decl.name) || decl.init?.type !== 'Template' || decl.init.tag !== 'img') continue;
+            const image = parseImageLiteral(decl.init.value);
+            if (image && !Object.prototype.hasOwnProperty.call(assets, decl.name)) assets[decl.name] = image;
+        }
+    }
     const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed);
     projectInputDiagnostics.push(...callbacks.unsupported);
     const ast = lowerLazyValues(callbacks.program);
