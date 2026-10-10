@@ -126,6 +126,7 @@ const L10N = {
         mcRun: '▶ Run in MakeCode simulator',
         mcRunTitle: 'Compile this MakeCode project with MakeCode\'s own compiler and run it in MakeCode\'s simulator — nothing is translated, so nothing is lost',
         mcRunCompiling: n => `Compiling ${n} with MakeCode…`,
+        moreLanguages: 'More languages',
         mcRunStarted: (n, t) => `${n} is running in MakeCode's ${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'} simulator.`,
         mcFirmware: '⤓ Firmware for the board',
         mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3, Circuit Playground or the chosen Arcade board .uf2), with the project inside so MakeCode can reopen it',
@@ -439,6 +440,7 @@ const L10N = {
         mcRun: '▶ Im MakeCode-Simulator ausführen',
         mcRunTitle: 'Dieses MakeCode-Projekt mit dem MakeCode-eigenen Compiler übersetzen und im MakeCode-Simulator ausführen — es wird nichts umgewandelt, also geht nichts verloren',
         mcRunCompiling: n => `${n} wird mit MakeCode übersetzt…`,
+        moreLanguages: 'Weitere Sprachen',
         mcRunStarted: (n, t) => `${n} läuft im MakeCode-Simulator (${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'}).`,
         mcFirmware: '⤓ Firmware für das Board',
         mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3, Circuit Playground oder das gewählte Arcade-Board .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
@@ -1114,7 +1116,7 @@ class PseudocodeImporter extends React.Component {
             extraLangs: readExtraLangs(), langMenuOpen: false,
             // The Arcade board picker: the boards (null until loaded) and the one chosen.
             arcadeBoards: null, arcadeBoard: '',
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: ''},
+            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: '', fe: '', tcl: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
@@ -2266,7 +2268,9 @@ class PseudocodeImporter extends React.Component {
 
     activeCode () {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return this.state.asmListing;
-        return this.state.buffers[this.state.lang];
+        // A tab with no buffer yet (fe and Tcl were missing from the initial set and
+        // crashed the editor when opened on an empty project) reads as empty.
+        return this.state.buffers[this.state.lang] ?? '';
     }
     setActiveCode (text) {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
@@ -5201,7 +5205,7 @@ class PseudocodeImporter extends React.Component {
                         return (
                             <span style={{position: 'relative'}}>
                                 <button type="button" data-testid="bw-lang-more" aria-haspopup="menu"
-                                    aria-expanded={this.state.langMenuOpen} aria-label="More languages" title="More languages"
+                                    aria-expanded={this.state.langMenuOpen} aria-label={this.L.moreLanguages} title={this.L.moreLanguages}
                                     disabled={this.state.busy}
                                     onClick={() => this.setState(s => ({langMenuOpen: !s.langMenuOpen}))}
                                     style={{padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '8px 8px 0 0', cursor: 'pointer',
