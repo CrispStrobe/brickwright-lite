@@ -1082,10 +1082,13 @@ module.exports = makeExt(`// Name: Arcade
       for(const h of this._intervalHandlers.slice())if(h.timer<=(state.elapsedMs || 0)){
         h.timer=(state.elapsedMs || 0)+h.interval;yield* this._registeredCallbackSteps([h],'arcade_whenRegisteredInterval',{});if(this._state()!==state)return;
       }
-      // Extension game.onUpdate callbacks keep their registration order.
-      for(const handler of this._updateHandlers.slice()){
-        if(handler.host)handler.host();
-        else yield* this._registeredCallbackSteps([handler],'arcade_whenRegisteredUpdate',{});
+      // PXT iterates its frame callbacks live: a handler registered during
+      // this frame's updates runs later in the same frame. Extension
+      // game.onUpdate callbacks keep their registration order among them.
+      const updates=this._updateHandlers;
+      for(let i=0;i<updates.length;i++){
+        if(updates[i].host)updates[i].host();
+        else yield* this._registeredCallbackSteps([updates[i]],'arcade_whenRegisteredUpdate',{});
         if(this._state()!==state)return;
       }
       // PXT particles.init registers game.onUpdate and onUpdateInterval(250)
