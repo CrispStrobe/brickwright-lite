@@ -570,10 +570,11 @@ try {
         const fixture = {parts: [
             {id: 'scope-v', kind: 'vsource', params: {volts: 1}, x: 100, y: 100},
             {id: 'scope-r', kind: 'resistor', params: {ohms: 1000}, x: 250, y: 100},
-            {id: 'scope-g', kind: 'gnd', params: {}, x: 100, y: 230}
+            {id: 'scope-g', kind: 'gnd', params: {}, x: 100, y: 230},
+            {id: 'scope-c', kind: 'capacitor', params: {farads: 1e-6}, x: 250, y: 230}
         ], nets: [
-            {id: 'signal', terminals: [{part: 'scope-v', terminal: 'pos'}, {part: 'scope-r', terminal: 'a'}]},
-            {id: 'ground', terminals: [{part: 'scope-v', terminal: 'neg'}, {part: 'scope-r', terminal: 'b'}, {part: 'scope-g', terminal: 'gnd'}]}
+            {id: 'signal', terminals: [{part: 'scope-v', terminal: 'pos'}, {part: 'scope-r', terminal: 'a'}, {part: 'scope-c', terminal: 'a'}]},
+            {id: 'ground', terminals: [{part: 'scope-v', terminal: 'neg'}, {part: 'scope-r', terminal: 'b'}, {part: 'scope-g', terminal: 'gnd'}, {part: 'scope-c', terminal: 'b'}]}
         ]};
         await designer.getByRole('button', {name: 'More circuit controls', exact: true}).click();
         const choosing = scopePage.waitForEvent('filechooser');
@@ -604,8 +605,25 @@ try {
         });
         await scopePage.evaluate(() => {
             const b = window.__board, handle = b.getScopeChannels()[0];
-            const receipt = {resets: [], firstCapture: null, errors: []};
+            const receipt = {resets: [], firstCapture: null, errors: [],
+                partialReceipts: 0, maxSpanNs: '0', receiptMismatches: []};
             window.__bwScopeResetReceipt = receipt;
+            // Observe the installed method; do not replace its scheduling or
+            // numerical implementation. Scope mode supplies a10us sample grid.
+            const nativeAdvance = b.advanceToLive;
+            b.advanceToLive = function (...args) {
+                const before = this.getTime();
+                const result = nativeAdvance.apply(this, args);
+                const after = this.getTime(), span = after - before;
+                if (span > BigInt(receipt.maxSpanNs)) receipt.maxSpanNs = String(span);
+                if (!result.completed) receipt.partialReceipts++;
+                if (result.processedTimeNs !== String(after)
+                    || result.requestedTimeNs !== String(args[0])
+                    || result.completed !== (after === args[0])) {
+                    receipt.receiptMismatches.push({before: String(before), after: String(after)});
+                }
+                return result;
+            };
             const observe = event => {
                 try {
                     if (event.type === 'reset') {
@@ -639,6 +657,10 @@ try {
             && receipt.resets.every(r => r.zero && r.retained && r.empty)
             && receipt.firstCapture?.time === '50000000' && receipt.firstCapture.count === 5000
             && receipt.firstCapture.start === '0' && receipt.firstCapture.oneVolt,
+            JSON.stringify(receipt));
+        check('installed reactive scope clock yields within sixteen10us sample quanta',
+            receipt.partialReceipts > 0 && BigInt(receipt.maxSpanNs) > 0n
+            && BigInt(receipt.maxSpanNs) <= 160000n && receipt.receiptMismatches.length === 0,
             JSON.stringify(receipt));
     } finally {await scopePage.close();}
 } finally {
