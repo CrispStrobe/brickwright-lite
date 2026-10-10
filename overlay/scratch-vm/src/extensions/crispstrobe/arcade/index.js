@@ -1987,6 +1987,8 @@ module.exports = makeExt(`// Name: Arcade
             sprite.mask = this._costumePixelMask(costume, size);
           }
           this._positionSprite(id);
+          // A new clone enters Scratch's front layer; restore z order.
+          this._orderSpriteDrawables();
         }
       }
       if (args.IMAGE) this.setSpriteImage({ID: id, IMAGE: args.IMAGE});
@@ -2868,12 +2870,14 @@ module.exports = makeExt(`// Name: Arcade
       if(!renderer?.setDrawableOrder)return;
       const state=this._state();
       // Arcade's z then creation order applies equally to native drawables and
-      // template clones. Leave ordinary Scratch layering alone without a native sprite.
-      if(!Object.keys(state.sprites).some(id=>this._imageSkins.get(id)?.drawableId!==undefined))return;
+      // template clones. Leave ordinary Scratch layering alone only when no
+      // Arcade sprite owns a drawable; a clone-only game still needs z order.
+      const drawableOf=sprite=>this._imageSkins.get(sprite.id)?.drawableId ?? state.spriteTargets[sprite.id]?.drawableID;
+      if(!Object.values(state.sprites).some(sprite=>drawableOf(sprite)!=null))return;
       const ordered=Object.values(state.sprites).sort((a,b)=>a.z-b.z || a.pxtId-b.pxtId);
       for(const sprite of ordered) {
-        const drawable=this._imageSkins.get(sprite.id)?.drawableId ?? state.spriteTargets[sprite.id]?.drawableID;
-        if(drawable!==undefined)renderer.setDrawableOrder(drawable,Infinity,'sprite');
+        const drawable=drawableOf(sprite);
+        if(drawable!=null)renderer.setDrawableOrder(drawable,Infinity,'sprite');
       }
     }
     _renderSpriteImage(id,window) {
