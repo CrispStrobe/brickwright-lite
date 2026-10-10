@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-08",
+  "scriptSource": "b42374d30",
+  "consumerBuildSource": "13b8911bba85f2136ffe4d3edb9a90789f992d86",
+  "consumerBundle": "gui.4530654c.js",
+  "change": "Observe uploaded PNG pixels before opening More; asynchronous load commits close panels",
+  "productChanges": false,
+  "localBefore": "passed; CI race did not reproduce locally",
+  "localAfter": {
+    "status": "passed",
+    "journeys": 7,
+    "pageErrors": [],
+    "originalPxt": {
+      "compiled": true,
+      "pixelsCompared": 19200,
+      "screenSha256": "19ae74106d382756fe7d951bd627cdbe807a5f8c60cfdb8d2b7b20dd6ac8902e",
+      "compilerNetworkAttempts": []
+    },
+    "renderDifferences": 0
+  },
+  "gateContractTests": {
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0
+  },
+  "retainedFailure": {
+    "run": 37736945319,
+    "job": 113205416368,
+    "boundary": "PNG dimension wait after premature panel opening"
+  },
+  "boundary": "Hosted exact-head verification pending; no claim that the older PR merge blocker is cleared"
+}

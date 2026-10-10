@@ -15,6 +15,7 @@
  */
 import PropTypes from 'prop-types';
 import React from 'react';
+import ProjectPaletteEditor from './project-palette-editor.jsx';
 import styles from './pixel-art-editor.css';
 import downloadBlob from '../../lib/download-blob.js';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
@@ -254,7 +255,7 @@ class PixelArtEditor extends React.Component {
         super(props);
         const colourSlots = readColourSlots();
         this.state = {image: null, layers: [], activeLayerId: null, original: null,
-            palette: [...ARCADE_PALETTE],
+            palette: [...ARCADE_PALETTE], previewPalette: null,
             scale: 4, zoom: 1, ...colourSlots, choosingSecondary: false,
             replaceFrom: 0, brushSize: 1, tool: 'pencil',
             mirror: false, converted: false, selection: null, tolerance: 0,
@@ -307,12 +308,13 @@ class PixelArtEditor extends React.Component {
     componentWillUnmount () { this.loadToken = null; clearTimeout(this.playTimer); }
 
     componentDidUpdate (prev, prevState) {
+        if (this.state.panel !== 'palette' && this.state.previewPalette) this.setState({previewPalette: null});
         if (prevState.colour !== this.state.colour || prevState.secondaryColour !== this.state.secondaryColour) {
             writeColourSlots(this.state.colour, this.state.secondaryColour);
         }
         if (prev.costumeIndex !== this.props.costumeIndex || this.loadedCostume !== this.costume()) this.load();
         else if (prevState.image !== this.state.image || prevState.selection !== this.state.selection ||
-            prevState.palette !== this.state.palette || prevState.onionSkin !== this.state.onionSkin) this.paint();
+            prevState.palette !== this.state.palette || prevState.previewPalette !== this.state.previewPalette || prevState.onionSkin !== this.state.onionSkin) this.paint();
         if (prevState.palette !== this.state.palette && this.sheetRgba && this.state.sheetMode) this.previewSheet();
     }
 
@@ -333,7 +335,7 @@ class PixelArtEditor extends React.Component {
         let layers = null;
         let scale = size ? this.state.scale : 4;
         const document = getCostumeDocument(costume);
-        const palette = document?.palette || [...ARCADE_PALETTE];
+        let palette = document?.palette || [...ARCADE_PALETTE];
         const first = document?.layers?.[0];
         if (!size && first?.type === 'pixel' && first.content.kind === 'pixels') {
             const {width, height} = first.content.value;
@@ -350,6 +352,7 @@ class PixelArtEditor extends React.Component {
             if (px && editablePixelSize(px.width, px.height) && Number.isInteger(px.scale) && px.scale >= 1 && px.scale <= 64) {
                 image = {width: px.width, height: px.height, pixels: px.pixels};
                 scale = px.scale;
+                if (px.palette) palette = px.palette;
             }
         }
         let converted = false;
@@ -378,7 +381,7 @@ class PixelArtEditor extends React.Component {
         this.pixelClipboard = null;
         this.setState({image, layers, activeLayerId, frames, activeFrameId, animationResource, animationName,
             animationError: '', animationWarnings: [], playing: false,
-            panel: null, framesOpen: false,
+            panel: null, framesOpen: false, previewPalette: null,
             sheetMode: false, sheetPreview: [], sheetError: '',
             selection: null, renamingLayerId: null, renameValue: '',
             literalMode: null, literalText: '', literalError: '', paletteError: '',
@@ -451,8 +454,8 @@ class PixelArtEditor extends React.Component {
         }
     }
 
-    paintLayers (ctx, c, shownLayers = this.state.layers, alpha = 1) {
-        const {image, palette} = this.state;
+    paintLayers (ctx, c, shownLayers = this.state.layers, alpha = 1, palette = this.state.previewPalette || this.state.palette) {
+        const {image} = this.state;
         for (const layer of shownLayers) {
             if (!layer.visible || layer.opacity <= 0) continue;
             ctx.globalAlpha = layer.opacity * alpha;
@@ -1353,7 +1356,7 @@ class PixelArtEditor extends React.Component {
         const canvas = document.createElement('canvas');
         canvas.width = image.width * scale;
         canvas.height = image.height * scale;
-        this.paintLayers(canvas.getContext('2d'), scale);
+        this.paintLayers(canvas.getContext('2d'), scale, this.state.layers, 1, this.state.palette);
         const name = (this.costume()?.name || 'costume').replace(/[\\/:*?"<>|]/g, '_');
         canvas.toBlob(blob => {
             if (blob) downloadBlob(`${name}.png`, blob);
@@ -1371,7 +1374,7 @@ class PixelArtEditor extends React.Component {
         frames.forEach((frame, index) => {
             ctx.save();
             ctx.translate(index * image.width * scale, 0);
-            this.paintLayers(ctx, scale, frame.layers);
+            this.paintLayers(ctx, scale, frame.layers, 1, this.state.palette);
             ctx.restore();
         });
         const name = (this.costume()?.name || 'costume').replace(/[\\/:*?"<>|]/g, '_');
@@ -1681,7 +1684,7 @@ class PixelArtEditor extends React.Component {
                     minWidth: 0}}>
                     <div style={{display: 'flex', gap: 2, flexWrap: 'nowrap', flex: '1 1 auto', minWidth: 0,
                         overflowX: 'auto', overflowY: 'hidden', overscrollBehaviorX: 'contain'}} role="radiogroup">
-                        {palette.map((c, i) => (
+                        {(this.state.previewPalette || palette).map((c, i) => (
                             <button key={i} type="button" role="radio" aria-checked={colour === i}
                                 title={c || t(locale, 'px.transparent')} data-testid={`bw-pixel-colour-${i}`}
                                 onClick={() => this.setState(state => ({
@@ -1699,13 +1702,13 @@ class PixelArtEditor extends React.Component {
                         ))}
                     </div>
                     <button type="button" style={{...iconBtn(choosingSecondary), flexShrink: 0,
-                        background: palette[secondaryColour] ||
+                        background: (this.state.previewPalette || palette)[secondaryColour] ||
                             'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}}
                         data-testid="bw-pixel-secondary-colour" aria-label={t(locale, 'px.secondaryColour')}
                         title={t(locale, 'px.secondaryColour')} aria-pressed={choosingSecondary}
                         onClick={() => this.setState({choosingSecondary: !choosingSecondary})}>
                         <span aria-hidden="true" style={{width: 20, height: 20, border: '2px solid #0f172a',
-                            borderRadius: 3, background: palette[colour] ||
+                            borderRadius: 3, background: (this.state.previewPalette || palette)[colour] ||
                                 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 8px 8px'}} />
                     </button>
                     <button type="button" style={{...iconBtn(false), flexShrink: 0}}
@@ -1734,7 +1737,7 @@ class PixelArtEditor extends React.Component {
                         {toolIcon('palette')}
                         <span aria-hidden="true" style={{position: 'absolute', right: 3, bottom: 3,
                             width: 12, height: 12, border: '1px solid #64748b', borderRadius: 3,
-                            background: palette[colour] ||
+                            background: (this.state.previewPalette || palette)[colour] ||
                                 'repeating-conic-gradient(#e2e8f0 0 25%, #fff 0 50%) 50% / 6px 6px'}} />
                     </button>
                 </div>
@@ -1761,6 +1764,7 @@ class PixelArtEditor extends React.Component {
                         <select value={palettePreset} data-testid="bw-pixel-palette-preset"
                             aria-label={t(locale, 'px.palettePreset')}
                             style={{maxWidth: 170, minHeight: 44}}
+                            disabled={Boolean(this.state.previewPalette)}
                             onChange={event => this.applyPalettePreset(event.target.value)}>
                             <option value="" disabled>{t(locale, 'px.paletteCustom')}</option>
                             {PALETTE_PRESETS.map(preset => <option key={preset.id} value={preset.id}>
@@ -1771,20 +1775,23 @@ class PixelArtEditor extends React.Component {
                     <label style={{display: 'inline-flex', gap: 6, alignItems: 'center', minHeight: 44,
                         fontSize: 12}} title={t(locale, 'px.paletteHint')}>
                         {t(locale, 'px.paletteColour')} {colour}
-                        <input type="color" value={palette[colour] || '#000000'} disabled={colour === 0}
+                        <input type="color" value={palette[colour] || '#000000'} disabled={colour === 0 || Boolean(this.state.previewPalette)}
                             data-testid="bw-pixel-palette-edit" aria-label={t(locale, 'px.paletteColour')}
                             onPointerDown={() => { this.paletteGesture = false; }}
                             onPointerUp={() => { this.paletteGesture = false; }}
                             onBlur={() => { this.paletteGesture = false; }}
                             onChange={event => this.setPaletteColour(colour, event.target.value)} />
                     </label>
-                    <button type="button" style={btn(false)} data-testid="bw-pixel-palette-reset"
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-palette-reset" disabled={Boolean(this.state.previewPalette)}
                         onClick={() => this.resetPalette()}>{t(locale, 'px.resetPalette')}</button>
-                    <button type="button" style={btn(false)} data-testid="bw-pixel-palette-import"
+                    <button type="button" style={btn(false)} data-testid="bw-pixel-palette-import" disabled={Boolean(this.state.previewPalette)}
                         onClick={() => this.paletteFile.current?.click()}>{t(locale, 'px.importPalette')}</button>
                     <input ref={this.paletteFile} type="file" accept=".hex,.txt,.gpl" style={{display: 'none'}}
                         data-testid="bw-pixel-palette-file" onChange={event => this.importPalette(event)} />
                     {paletteError ? <span role="alert" style={{color: '#b91c1c', fontSize: 12}}>{paletteError}</span> : null}
+                    <ProjectPaletteEditor vm={this.props.vm} locale={locale} image={image} artworkPalette={palette}
+                        previewing={Boolean(this.state.previewPalette)}
+                        onPreview={previewPalette => this.setState({previewPalette})} />
                 </div> : null}
                 {panel === 'layers' ? <div data-testid="bw-pixel-layers" style={{...popover,
                     width: 'min(420px, calc(100% - 24px))', display: 'flex', flexDirection: 'column',

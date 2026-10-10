@@ -1,14 +1,17 @@
 # Native Arcade animation interchange
 
-Status: native gallery export and behavioural import implemented and locally
-tested against original PXT. Validated rich-source companion transport is
-implemented; persistent GUI resource reconstruction and original-editor
-qualification remain open. This extends U04 in the
-[GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding).
-The uniform-resource production-browser journey is locally qualified as recorded
-in the ledger. Original native animation asset editing and editable GUI resource recovery
-remain open. No locked corpus partial result is closed by these
-format or synthetic authoring tests alone.
+Status: native gallery export/import, validated rich-source companion transport,
+persistent hidden artwork libraries and uniform-animation authoring are
+implemented. The finite live-original-Assets editor journey now passes: native
+project import, unedited PNG save with exact rich source/UUIDs, actual asset
+edits, download and Brickwright return with visible edited playback. See the
+[latest original-editor boundary](#original-makecode-assets-editor-and-native-project-files)
+and [GUI closure ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding).
+Earlier sections preserve chronological qualification boundaries; later
+receipts supersede their open items only where explicitly tested. Unequal
+frame timing, action binding, sheets, custom palettes and corpus-wide closure
+remain open. No locked corpus partial result is closed by these synthetic
+fixtures alone.
 
 ## Reached format boundary
 
@@ -627,3 +630,63 @@ zero errors and4,360,502 initial bytes; all18 browser journeys still pass with
 zero page errors. Refreshed focused tests pass23/23; mirror and embedded-factory
 checks pass2/2. The original failing hosted log is retained privately. Exact-head
 hosted requalification remains required before merge.
+
+### Original MakeCode Assets editor and native project files
+
+The GUI's **To MakeCode** downloads and CLI `to-project` now write native
+`.mkcd` project envelopes containing `{meta, source}` and every generated file.
+Both Arcade and micro:bit exports use this container. File import accepts
+`.mkcd`, `.pxt`, compressed native projects and current MakeCode PNG envelopes,
+while retaining historical flat file-map PNG support. No firmware, cloud
+account or compression service is needed to export the JSON project.
+
+This corrects two observed integration defects: the live Arcade editor rejected
+our previous uncompressed source-only HEX, and its downloaded PNG contains a
+compressed project envelope rather than the bare file map our reader expected.
+Self-import of the old HEX did not establish acceptance by the original editor.
+The legacy `to-hex --source` API remains for Brickwright readers; use
+`to-project` for editor exchange. Original-editor reopening of source embedded
+in compiled firmware remains a separate unqualified path.
+
+The opt-in `scripts/verify-makecode-assets-roundtrip.mjs` imports a genuine GUI
+export through the original editor's Import File controls, opens both animations
+in Assets, saves an unedited PNG, changes the used animation through actual
+name/timing/fill controls, downloads again and imports that PNG through
+Brickwright Code and To Blocks. The unedited return preserves both exact rich
+source documents and UUIDs. A native edit invalidates only its stale companion:
+import generates a new UUID and source document for that animation and retains
+the untouched animation exactly. Its changed first frame appears in the running
+Brickwright stage. Stale companion diagnostics remain visible.
+
+Asset timing metadata is preserved as250ms. The existing game's exported
+numeric playback argument remains100ms: changing native asset metadata does
+not rewrite that independent code argument. This qualification does not claim
+that MakeCode's Assets editor preserves Brickwright layers on modified art;
+modified art is reconstructed from its native flattened frames. Arbitrary
+projects, custom palettes, firmware reimport and the93 partial corpus cases
+remain open. The live editor test is opt-in because it depends on the external
+editor and records its exact version and any exceptions.
+
+Protocol references: Microsoft PXT's
+[project serialization](https://github.com/microsoft/pxt/blob/master/pxtlib/package.ts)
+and [editor project import](https://github.com/microsoft/pxt/blob/master/webapp/src/app.tsx).
+See the [qualification receipt](receipts/2026-10-07-original-makecode-assets-roundtrip.json).
+
+
+The first PR711 hosted run exposed stale background/rotation download checks
+expecting `.hex`, an outdated file-dialog format list and missing explicit
+opt-in registration for the networked live-editor harness. These are corrected
+without changing product export behaviour. The affected unit/registration
+batch passes30/30; background authoring passes7 browser journeys, and rotation
+passes12 observed phases, including `.mkcd` file reimport. These local reruns use
+the previously qualified `gui.b3d98153.js` Arcade surface. Main's subsequently
+merged Circuit dependency changes require the hosted final-candidate build;
+they are not credited to that older local bundle.
+
+PR710 merged at `0441d5b6247e3b3c6a41fac68fba36f0c7387927` after all9
+enabled checks passed on `814e72192f96fb5a875aac753907d4ab2af5275d`.
+Four conditional jobs skipped. Main had advanced through PR707/PR712: the
+merge tree differs from the reviewed head and exactly matches the independently
+computed merge of that head and main `948e02fdc07cbd625d4a0bb82e8099ea1dfc9c25`.
+PR711 is retargeted to main and includes this integration. Its repaired final
+head still requires hosted qualification.

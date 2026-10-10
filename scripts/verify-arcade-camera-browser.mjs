@@ -87,8 +87,12 @@ try{
     const reset=await state(),resetPixels=await pixels();assert.equal(reset.worldX,200);assert.deepEqual(resetPixels,initialPixels);
     await page.getByRole('tab',{name:'Code',exact:true}).click();
     await page.getByRole('button',{name:'From blocks ⇨',exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.textContent.includes('arcade set tilemap data'),null,{timeout:30000});
-    assert.match(await editor.innerText(),/arcade center camera x/);assert.match(await editor.innerText(),/arcade camera follow sprite/);assert.match(await editor.innerText(),/arcade camera property/);
+    // CodeMirror renders only the visible viewport. The large tilemap line can
+    // leave callback bodies outside the DOM even though they remain in Code.
+    await page.getByText('Read into all languages — 1 unsupported diagnostic(s) retained in Code.',{exact:true}).waitFor({state:'visible',timeout:30000});
+    const decompiled=await editor.evaluate(el=>el.cmTile?.root?.view?.state?.doc?.toString());
+    assert.equal(typeof decompiled,'string');
+    assert.match(decompiled,/arcade center camera x/);assert.match(decompiled,/arcade camera follow sprite/);assert.match(decompiled,/arcade camera property/);
     assert.deepEqual((await state()).errors,[]);assert.deepEqual(errors,[]);
     const report={generatedAt:new Date().toISOString(),authoring:'visible Code editor → To blocks → green flag → controller follow/center/reset → From blocks',unsupported:imported.unsupported,initial,initialPixels,followed,followedPixels,centered,centeredPixels,reset,resetPixels,errors};
     const out=process.argv.includes('--out')?process.argv[process.argv.indexOf('--out')+1]:'test-results/arcade-camera-browser-current.json';fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));

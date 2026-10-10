@@ -665,21 +665,16 @@ jobs:
           path: .stc-compiler-flasher
 
       - name: Install Playwright Chromium for the PXT Arcade oracle in the unit tests
-        # The Arcade import tests (task E1) take their expected values from
-        # MakeCode's own pinned Arcade simulator (test/helpers/pxt-arcade-runtime.mjs),
-        # which needs a browser; the root `playwright` package is installed above
-        # with its scripts off, so its Chromium is not. Bounded and retried as in the
-        # browser job; a failure is a failure, never a silent skip of those tests.
-        run: |
-          ok=0
-          for i in 1 2 3; do
-            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
-            echo "playwright chromium install attempt $i failed/timed out; retrying"
-            sleep 5
-          done
-          [ "$ok" = 1 ] || { echo "::error::playwright chromium install failed after 3 attempts"; exit 1; }
+        id: unit_playwright
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 10
+        # Run even if another independent guard failed. Unit tests below require
+        # this actual installation; they must not run against a missing browser.
+        # Bound one installation step; do not start nested retries that may
+        # contend with APT children left behind by a timed-out attempt.
+        run: npx playwright install --with-deps chromium
       - name: Run unit tests
-        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
         run: |
@@ -1048,9 +1043,12 @@ jobs:
           # timeout a stalled download froze the whole deploy for ~90 min. Bound
           # each attempt and retry so it fails fast and recovers.
           npm install --no-save playwright
+          # Install apt dependencies once under a root-owned timeout group. A
+          # timed-out sudo child otherwise retains the dpkg lock across retries.
+          sudo env "PATH=$PATH" timeout --kill-after=15s 300 npx playwright install-deps chromium
           ok=0
           for i in 1 2 3; do
-            if timeout 300 npx playwright install --with-deps chromium; then ok=1; break; fi
+            if timeout --kill-after=15s 300 npx playwright install chromium; then ok=1; break; fi
             echo "playwright chromium install attempt $i failed/timed out; retrying"
             sleep 5
           done
@@ -1438,7 +1436,10 @@ jobs:
       - name: Browser gate — pixel colour slots
         timeout-minutes: 3  # PROVISIONAL — 1 reading(s), fewer than 5; derived once 5 green runs exist; max 5 s in run 36823340082 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-colour-slots.mjs
+        run: |
+          PROOF_URL=http://localhost:8617/ node scripts/verify-pixel-colour-slots.mjs
+          node scripts/verify-project-palette-editor.mjs
+          node scripts/verify-arcade-device-frame.mjs
       - name: Browser gate — circuit UX
         timeout-minutes: 3  # derived: p95 21 s × 3 → 3 min over 20 green runs to 36823340082; max 22 s in run 34050397009 (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
@@ -2053,6 +2054,38 @@ jobs:
       # docs/OPEN-TASKS-2026-09-29.md). Each serves packages/scratch-gui/build
       # itself and drives the visible editor and controller. On the heavy shard:
       # light ran 21 of its 30 minutes on 2026-10-07, heavy 16.
+      - name: Browser gate — Arcade callback completion and elapsed frame clock
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-callback-completion-browser.mjs
+      - name: Browser gate — Arcade nested frame registration and live captures
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-update-registration-browser.mjs
+      - name: Browser gate — Arcade controller registration, replacement and repeats
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-button-registration-browser.mjs
+      - name: Browser gate — Arcade life-zero and countdown registration with revival
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-info-registration-browser.mjs
+      - name: Browser gate — Arcade forever registration with live captures and yielding
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-forever-registration-browser.mjs
+      - name: Browser gate — Arcade sprite registrations, live captures and yielding destruction
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-sprite-registration-browser.mjs
+      - name: Browser gate — Arcade instance destruction live captures and yielding order
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-instance-registration-browser.mjs
+      - name: Browser gate — Arcade parallel launches with nested live captures
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-parallel-registration-browser.mjs
       - name: Browser gate — Arcade animation frames through Code, Blocks and the controller
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}

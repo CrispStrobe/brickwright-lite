@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-08",
+  "source": "2d6fff58b74eeaab7735214431994624d1d65dc4",
+  "scope": "One-argument static-kind bulk destruction lowered to snapshot iteration and native destruction Blocks",
+  "tests": {
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0,
+    "originalPxtDifferential": true,
+    "codeBlocksRoundtrip": true,
+    "nativeExportReimport": true,
+    "sb3SaveReload": true
+  },
+  "browser": {
+    "bundle": "gui.ba65a0dd.js",
+    "status": "passed",
+    "rotationPhases": 12,
+    "destroyKind": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "controllerCycles": 2,
+      "otherKindSurvives": true,
+      "callbacks": 2
+    },
+    "pageErrors": [],
+    "reportSha256": "62cb428045fe1c47d7a5f43711cc627f8ca2ab722c745bad0b6bbc04e849da51",
+    "earlierFailures": [
+      "Transient absent Stage during replacement (harness wait corrected)",
+      "Pasted replacement code retained previous import artwork; tracked separately; final journey uses native project import"
+    ]
+  },
+  "build": {
+    "errors": 0,
+    "initialBytes": 4360502,
+    "unchangedBudgetBytes": 4467136,
+    "statsSha256": "f502a942d8628a58a36341c8307c2b2be60e133251f3254f3dc8e4bba64bd19c"
+  },
+  "corpus": {
+    "inputs": 184,
+    "inputRepository": "CrispStrobe/brickwright-firmware-private",
+    "inputCommit": "cc15caf31b2519f2a3daa003eec9c30b24e7dc3b",
+    "importOnly": {
+      "translated": 93,
+      "partial": 90,
+      "malformed": 1
+    },
+    "removedRefusalFrom": [
+      "arcade-a63932786084c167.ts",
+      "arcade-f7486e7e2dc7d78a.ts"
+    ],
+    "wholeAppCountReduction": 0,
+    "originalCompilerRuntimeAuditRerun": false
+  },
+  "remaining": [
+    "Effects and duration arguments",
+    "Dynamic kind queries",
+    "Stale pending artwork after manually replacing imported source",
+    "Full gameplay equivalence of corpus apps"
+  ],
+  "privateEvidence": "compat-corpora/reports/2026-10-08/destroy-kind/"
+}

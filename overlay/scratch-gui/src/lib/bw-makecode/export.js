@@ -9,17 +9,13 @@
  * next to each other: a mapping added on one side and forgotten on the
  * other is a round trip that quietly loses a block.
  *
- * **TypeScript → a .hex MakeCode will import.** MakeCode's own importer
- * (`pxt.cpp.unpackSourceFromHexAsync`) does not care about the machine
- * code in a .hex — it scans for the source-embedding header, reads the
- * JSON meta and the project text, and opens THAT. The `compression`
- * field is optional. So a hex carrying nothing but the embed is a
- * perfectly good MakeCode project file: a few hundred bytes that
- * makecode.microbit.org opens as the project it describes.
- *
- * That is the same container embedded-source.js reads, written from the
- * other end, which is exactly how the test proves it: the export is fed
- * back through the importer.
+ * **Legacy source HEX.** This module retains the historical uncompressed
+ * source-only container for Brickwright readers and callers. A successful
+ * self-roundtrip does not establish original MakeCode editor acceptance:
+ * the live Arcade editor rejected this container during qualification.
+ * GUI downloads and the to-project CLI use project-file.js to write native
+ * .mkcd project envelopes. Firmware/source embedding needs separate original
+ * editor qualification.
  *
  * @module
  */

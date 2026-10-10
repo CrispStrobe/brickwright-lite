@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "18abd6c75b719f2aa239cd1cc8ae80165da988ea",
+  "auditSourceDirty": false,
+  "tests": {
+    "affected": 15,
+    "namespaceAndFileRegressions": 5,
+    "gateCoverage": 14,
+    "failed": 0,
+    "skipped": 0
+  },
+  "differential": {
+    "originalRuntime": "pxt-arcade@4.2.1 / pxt-core@13.2.1",
+    "fileOrder": 1243,
+    "counterValues": [
+      6,
+      39,
+      8
+    ],
+    "routes": [
+      "Code\u2192Blocks",
+      "native export\u2192original PXT runtime",
+      "native export\u2192BW reimport",
+      "SB3 save/reload"
+    ]
+  },
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.01abe779.js",
+    "initialBytes": 4360502,
+    "unchangedInitialLimit": 4467136
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "multifile": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "initial": {
+        "observed": 1243,
+        "finalOrder": 1243,
+        "first": 6,
+        "second": 39,
+        "third": 8,
+        "actorX": 23,
+        "callbackValue": 0
+      },
+      "controllerValue": 43,
+      "controllerMovesSprite": true,
+      "unlistedSourceIgnored": true
+    },
+    "priorJourneys": [
+      "projectiles",
+      "destroy-kind",
+      "Code artwork ownership"
+    ]
+  },
+  "baseline184ImportOnly": {
+    "translated": 93,
+    "partial": 90,
+    "malformed": 1
+  },
+  "recoveredTutorialAudit": {
+    "count": 10,
+    "partial": 10,
+    "originalCompilerUnavailable": 10,
+    "partialFragmentsStepped": 8,
+    "partialFragmentsWithBlockErrors": 2,
+    "frames": 24,
+    "diagnosticOccurrences": 73,
+    "previousDiagnosticOccurrences": 42,
+    "behavioralEquivalence": "not-measured"
+  },
+  "failedCases": [
+    {
+      "case": "arcade-67958b6a5a875e41",
+      "execution": {
+        "status": "block-error",
+        "threadsStarted": 1,
+        "extensionCalls": 25,
+        "variablesChanged": 1,
+        "errors": [
+          "Array reference is null or expired",
+          "Array reference is null or expired"
+        ]
+      }
+    },
+    {
+      "case": "arcade-e4b668bd7d79aed0",
+      "execution": {
+        "status": "block-error",
+        "threadsStarted": 1,
+        "extensionCalls": 25,
+        "variablesChanged": 1,
+        "errors": [
+          "Array reference is null or expired"
+        ]
+      }
+    }
+  ],
+  "boundary": [
+    "Full original tutorial games still unavailable for named offline packages",
+    "Conditional sources, ambient declarations, assembly/Python remain named gaps",
+    "Multi-file navigator and namespace-preserving source editing remain GUI gaps",
+    "Newly exposed helper array/callback/package/dynamic-sprite gaps remain open"
+  ],
+  "privateEvidence": "compat-corpora/reports/2026-10-08/arcade-multifile-source/"
+}

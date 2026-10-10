@@ -155,3 +155,87 @@ let afterPopOpaque=parent.overlapsWith(child)`);
  const {a}=game(),parent=actor(a,{x:20,y:20}),shared=a.spriteImage({ID:parent});a.pushScene();const child=actor(a,{x:20,y:20});const overlap=()=>a.spriteOverlaps({A:parent,B:child});assert.equal(overlap(),expected.initiallyOpaque);a.mutateImage({IMAGE:shared,OP:'fill',COLOR:0});assert.equal(overlap(),expected.hiddenBlank,'1px hitbox tolerance must not retain stale opacity');a.mutateImage({IMAGE:shared,OP:'fill',COLOR:2});assert.equal(overlap(),expected.hiddenRestored);
  const blank=a.createImage({WIDTH:1,HEIGHT:1});a.setSpriteImage({ID:parent,IMAGE:blank});assert.equal(overlap(),expected.hiddenReplacedBlank);const opaque=a.createImage({WIDTH:1,HEIGHT:1});a.drawImage({IMAGE:opaque,OP:'fillRect',X:0,Y:0,W:1,H:1,COLOR:2});a.setSpriteImage({ID:parent,IMAGE:opaque});assert.equal(overlap(),expected.hiddenReplacedOpaque);a.popScene();assert.equal(overlap(),expected.afterPopOpaque);
 });
+
+
+test('queued overlap queries retain cadence-dependent frame-end geometry in original PXT and native physics',async t=>{
+ const cadences=[{ms:4,frames:4},{ms:8,frames:2},{ms:16,frames:1},{ms:33,frames:1},{ms:50,frames:1},{ms:100,frames:1}];
+ const cases=[2,8].flatMap(width=>cadences.map(c=>({...c,width})));
+ const source=cases.map(({ms,frames,width},i)=>`game.pushScene()
+let mover${i}=sprites.create(img\`2 2
+2 2\`,SpriteKind.Player)
+let target${i}=sprites.create(img\`${Array(width).fill(2).join(" ")}
+${Array(width).fill(2).join(" ")}\`,SpriteKind.Enemy)
+mover${i}.setPosition(60,60)
+target${i}.setPosition(68,60)
+let seen${i}=false
+let touch${i}=false
+sprites.onOverlap(SpriteKind.Player,SpriteKind.Enemy,function(first,second){
+ if(!seen${i}){touch${i}=first.overlapsWith(second);seen${i}=true;first.vx=0}
+})
+mover${i}.vx=500
+for(let frame${i}=0;frame${i}<${frames};frame${i}++){game.currentScene().physicsEngine.move(${ms/1000})}
+mover${i}.vx=0
+pause(20)
+let x${i}=mover${i}.x
+let finalTouch${i}=mover${i}.overlapsWith(target${i})
+game.popScene()`).join('\n');
+ const expected=await runPxtArcade(source);
+ const observations=[];
+ for(const [i,{ms,frames,width}] of cases.entries()){
+  const {runtime,a}=game(),first=actor(a,{x:60,y:60,width:2,height:2}),second=actor(a,{x:68,y:60,width,height:2,kind:'Enemy'});
+  a.registerOverlapHandler({KIND:'Player',OTHER_KIND:'Enemy',TOKEN:'handler',CAPTURES:''});
+  let seen=false,touch=false;
+  scripts(runtime,['arcade_whenRegisteredOverlap'],()=>{seen=true;touch=a.spriteOverlaps({A:first,B:second});set(a,first,'vx',0);});
+  set(a,first,'vx',500);
+  for(let frame=0;frame<frames;frame++)a._advance(ms/1000);
+  assert.equal(runtime.threads.length,Number(expected['seen'+i]),'pending callback count at '+ms+'ms cadence');
+  if(runtime.threads.length)runtime.sequencer.stepThread(runtime.threads[0]);
+  const x=get(a,first,'x'),finalTouch=a.spriteOverlaps({A:first,B:second});
+  assert.equal(seen,expected['seen'+i],'event seen at '+ms+'ms');
+  assert.equal(touch,expected['touch'+i],'callback query at '+ms+'ms');
+  assert.equal(x,expected['x'+i],'frame-end x at '+ms+'ms');
+  assert.equal(finalTouch,expected['finalTouch'+i],'final query at '+ms+'ms');
+  observations.push({ms,frames,width,x,seen,touch});
+ }
+ t.diagnostic(JSON.stringify({overlapCadences:observations}));
+ assert.ok(observations.some(o=>o.touch),'a shorter frame can finish in contact');
+ assert.ok(observations.some(o=>!o.touch),'a longer frame can finish after crossing');
+ assert.ok(observations.filter(o=>o.width===8).every(o=>o.seen),'the controller target admits the crossing at every tested cadence');
+});
+
+
+test('queued overlap callbacks survive a position reset in original PXT; an authored arm guard suppresses the stale effect',async()=>{
+ const source=[false,true].map((guarded,i)=>`game.pushScene()
+let mover${i}=sprites.create(img\`2 2
+2 2\`,SpriteKind.Player)
+let target${i}=sprites.create(img\`2 2 2 2 2 2 2 2
+2 2 2 2 2 2 2 2\`,SpriteKind.Enemy)
+mover${i}.setPosition(60,60)
+target${i}.setPosition(68,60)
+let armed${i}=true
+let hits${i}=0
+sprites.onOverlap(SpriteKind.Player,SpriteKind.Enemy,function(){${guarded?'if(armed'+i+')':''}{hits${i}++}})
+mover${i}.vx=500
+game.currentScene().physicsEngine.move(.016)
+armed${i}=false
+mover${i}.vx=0
+mover${i}.setPosition(60,60)
+pause(20)
+let finalX${i}=mover${i}.x
+game.popScene()`).join('\n');
+ const expected=await runPxtArcade(source);
+ assert.equal(expected.hits0,1,'original queued callback can arrive after reset');
+ assert.equal(expected.hits1,0,'original authored guard rejects its stale effect');
+ for(const [i,guarded] of [false,true].entries()){
+  const {runtime,a}=game(),first=actor(a,{x:60,y:60,width:2,height:2}),second=actor(a,{x:68,y:60,width:8,height:2,kind:'Enemy'});
+  let armed=true,hits=0;
+  a.registerOverlapHandler({KIND:'Player',OTHER_KIND:'Enemy',TOKEN:'handler',CAPTURES:''});
+  scripts(runtime,['arcade_whenRegisteredOverlap'],()=>{if(!guarded || armed)hits++;});
+  set(a,first,'vx',500);a._advance(.016);
+  assert.equal(runtime.threads.length,1);
+  armed=false;set(a,first,'vx',0);a.setSpritePosition({ID:first,X:60,Y:60});
+  runtime.sequencer.stepThread(runtime.threads[0]);
+  assert.equal(hits,expected['hits'+i]);assert.equal(get(a,first,'x'),expected['finalX'+i]);
+  assert.equal(a.spriteOverlaps({A:first,B:second}),false);
+ }
+});

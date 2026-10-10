@@ -1,0 +1,124 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "3c4493c1eb8f68343234e86141ebd9c9e8a277f8",
+  "producerPin": "e41906fe20198853690bcb532ad0f43e7856dd04",
+  "implemented": [
+    "Native follow/unfollow Blocks and pseudocode commands",
+    "MakeCode import/export with optional100 speed /400 turn-rate defaults",
+    "Follow after controllers before physics, original elapsed timing, Fx8 velocity storage",
+    "Momentum/snapping/replacement/cancellation/destruction/scene ownership",
+    "Collision-aware near-target snap using original x/y setter order and cooperative terrain callbacks"
+  ],
+  "local": {
+    "followSceneInterchange": {
+      "passed": 13,
+      "failed": 0,
+      "skipped": 0
+    },
+    "freshBundlePinDialect": {
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
+    "producerDialectBoolean": {
+      "passed": 325,
+      "failed": 0,
+      "skipped": 0,
+      "eslint": "PASS"
+    }
+  },
+  "corpus": {
+    "before": {
+      "translated": 108,
+      "partial": 75,
+      "malformed": 1
+    },
+    "after": {
+      "translated": 109,
+      "partial": 74,
+      "malformed": 1
+    },
+    "changedRows": [
+      {
+        "file": "arcade-e0e62faf01b3a6c3.ts",
+        "before": [
+          "enemySprite.follow() \u2014 unsupported Arcade handle method"
+        ],
+        "after": []
+      }
+    ],
+    "unchangedOriginalInputHashes": 184
+  },
+  "realApp": {
+    "file": "arcade-e0e62faf01b3a6c3.ts",
+    "sha256": "e12e4650dff8bb2424d9287b0d4818b66a4d6973c68ce5278b77dc57cf7695ae",
+    "importDiagnostics": [],
+    "runtimeErrors": [],
+    "liveSprites": 4,
+    "followBindings": 1,
+    "target": {
+      "x": 40,
+      "y": 30
+    },
+    "follower": {
+      "x": 111.08203125,
+      "y": 83.16796875,
+      "vx": -20.015625,
+      "vy": -14.97265625
+    },
+    "foodMoves": true,
+    "exportCompiled": true,
+    "reimportDiagnostics": [],
+    "boundary": "Unchanged tutorial, headless native VM steering/physics and original export compilation; no rendered full-app or dialog timing qualification."
+  },
+  "failureRetention": [
+    "initial harness syntax error",
+    "export harness initially omitted actual costume asset resolver",
+    "bundle harness initially called nonexistent velocity shortcut; corrected to existing property primitives"
+  ],
+  "pending": [
+    "fresh shipped native-file/controller-pane browser journey",
+    "complete rendered recovered game and modal/wall-time timing qualification"
+  ],
+  "implementationSource": "f1230bd8e6dd83e6808f375b391d0052cb325f20",
+  "wallSnap": {
+    "originalPxtCompared": true,
+    "expectedSolidFollowerX": 15,
+    "ghostTargetX": 16,
+    "boundary": "Finite tile-wall snapping fixture; no complete recovered-game modal timing claim"
+  },
+  "producerEvidenceCorrection": {
+    "pullRequest": "https://github.com/CrispStrobe/sb3-creator/pull/79",
+    "testedHead": "4df2b00fd18838ca709cbbe680efa5ddfc147844",
+    "run": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37944827934",
+    "enabledChecks": "SUCCESS",
+    "disabledPublishing": "SKIPPED",
+    "mergedAt": "2026-10-09T14:58:09Z",
+    "reviewedAndMergeTree": "7ab491f920b83d6297c19331b3cf6abbb8599075",
+    "baseBranch": "feat/arcade-camera-shake-20261009",
+    "boundary": "Model provenance correction merged into feature parent only; sprite-follow PR80 hosted checks remain pending.",
+    "mergeHistory": "Recorded in the narrative capability ledger; this receipt records tested producer pins."
+  },
+  "hostedFollowStatus": {
+    "head": "874616967ab2cf701baa43042aaaeeb3ed019eb5",
+    "requiredChecks": "PENDING",
+    "cancelledRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37947436224",
+    "cancelledConclusion": "cancelled",
+    "boundary": "No failed step log exists for the cancelled run; retain its actual conclusion."
+  },
+  "gallerySync": {
+    "producerPinUnchanged": "e41906fe20198853690bcb532ad0f43e7856dd04",
+    "changedFiles": 31,
+    "scope": "EXPECTED.md provenance stamps only; every other byte unchanged",
+    "localCheck": "PASS: all3750 files across337 directories match the pinned producer",
+    "originalFailedRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37948286207",
+    "originalFailure": "31 stale vendored EXPECTED.md copies",
+    "failureLogRetained": true
+  },
+  "producerFollowHosted": {
+    "testedHead": "e41906fe20198853690bcb532ad0f43e7856dd04",
+    "run": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37946563913",
+    "enabledChecks": "SUCCESS",
+    "disabledPublishing": "SKIPPED"
+  }
+}

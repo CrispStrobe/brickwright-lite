@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "f6efa058b4d72bca72df784dbd0882dde3d4efa6",
+  "producerPin": "5a6782d9c43805fbbc7f8b51bf2fab55e446efea",
+  "implemented": [
+    "Native sign reporter in Blocks and pseudocode",
+    "Math.sign import/export with one operand evaluation",
+    "Actual bundled PXT semantics: negative zero becomes positive zero; NaN returns negative one"
+  ],
+  "local": {
+    "affectedChecks": 16,
+    "producerChecks": 326,
+    "failed": 0,
+    "skipped": 0,
+    "freshGuiBundles": [
+      "development",
+      "production"
+    ]
+  },
+  "interchange": [
+    "Code/Blocks",
+    "saved SB3 restart",
+    "executed original PXT export",
+    "MakeCode reimport"
+  ],
+  "corpus": {
+    "translated": 109,
+    "partial": 74,
+    "malformed": 1,
+    "unchangedInputHashes": 184,
+    "changedRows": [
+      {
+        "file": "arcade-318e958c14146483.ts",
+        "before": [
+          "car: sprite image \u2014 sprite artwork is unavailable in this project",
+          "road: roadImg \u2014 sprite artwork is unavailable in this project",
+          "screen.clone() as a value",
+          "sprite.onOverlap()",
+          "sprite.z = \u2026",
+          "__bwValue11.x \u2014 a sprite held in a variable, which the stage cannot follow",
+          "__bwValue11.x = \u2026 \u2014 a sprite held in a variable, which the stage cannot follow",
+          "roadImg.scroll()",
+          "Math.sign() as a value",
+          "roadImg.fillRect()",
+          "__bwValue4.fillRect()"
+        ],
+        "after": [
+          "car: sprite image \u2014 sprite artwork is unavailable in this project",
+          "road: roadImg \u2014 sprite artwork is unavailable in this project",
+          "screen.clone() as a value",
+          "sprite.onOverlap()",
+          "sprite.z = \u2026",
+          "__bwValue11.x \u2014 a sprite held in a variable, which the stage cannot follow",
+          "__bwValue11.x = \u2026 \u2014 a sprite held in a variable, which the stage cannot follow",
+          "roadImg.scroll()",
+          "roadImg.fillRect()",
+          "__bwValue4.fillRect()"
+        ]
+      }
+    ]
+  },
+  "retainedFailures": [
+    "Initial producer opcode count197 became198",
+    "Initial JavaScript Math.sign semantics mismatch with original PXT",
+    "Original arithmetic signed-zero fixture still exposed original PXT positive-zero rule"
+  ],
+  "pending": [
+    "Full shipped native-file/Blocks/controller browser journey",
+    "Full exact-head hosted checks"
+  ]
+}

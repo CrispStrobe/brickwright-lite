@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "0e3af06a1ef32ef242c06e70081f262cab81a718",
+  "auditSourceDirty": false,
+  "implementation": {
+    "method": "Typed Array._pickRandom() with zero arguments",
+    "lowering": "Existing native reference-array random reporter",
+    "typePropagation": "Selected element retains its reference/value type through inference",
+    "declarationFix": "Native global declaration values are parenthesized consistently with assignments"
+  },
+  "tests": {
+    "affected": 31,
+    "regressionsAndGateContracts": 38,
+    "failed": 0,
+    "skipped": 0
+  },
+  "differentialCoverage": [
+    "single receiver evaluation",
+    "image reference identity and mutation",
+    "sprite reference identity and movement",
+    "nested-array reference identity and mutation",
+    "empty-array undefined value",
+    "primitive values",
+    "multiple-choice membership"
+  ],
+  "differentialRoutes": [
+    "original PXT runtime",
+    "Code to Blocks",
+    "native export to original PXT runtime",
+    "BW reimport",
+    "SB3 save/reload"
+  ],
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.57b25cc9.js",
+    "initialBytes": 4360502,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "arrayPickRandom": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "calls": 1,
+      "pixel": 5,
+      "nestedArrayLength": 2,
+      "membershipChecks": 40,
+      "initialSpriteX": 41,
+      "controllerSpriteX": 45
+    },
+    "priorJourneys": "All existing rotation/projectile/destruction/artwork/multifile/typed-reference/callback/namespace journeys pass"
+  },
+  "baseline184ImportOnly": {
+    "translated": 96,
+    "partial": 87,
+    "malformed": 1
+  },
+  "recoveredTutorialAudit": {
+    "count": 10,
+    "partial": 10,
+    "originalCompilerUnavailable": 10,
+    "partialFragmentsStepped": 10,
+    "blockErrors": 0,
+    "frames": 24,
+    "diagnosticOccurrences": 51,
+    "previousDiagnosticOccurrences": 53,
+    "behavioralEquivalence": "not-measured"
+  },
+  "guiBoundary": "Existing Arrays & Vectors reporter and pseudocode authoring; no new graphics tools",
+  "boundaries": [
+    "Not an identical random sequence or statistical distribution qualification",
+    "Non-array and wrong-arity calls remain unsupported",
+    "Missing multiplayer and extension packages remain gaps",
+    "Earlier background readiness correction still needs hosted qualification"
+  ]
+}

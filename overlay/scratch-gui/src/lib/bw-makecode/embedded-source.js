@@ -53,6 +53,8 @@ const u16le = (b, i) => b[i] | (b[i + 1] << 8);
 
 const startsWith = (buf, sig, at = 0) => sig.every((v, i) => buf[at + i] === v);
 
+import {readMakeCodeProjectText} from './project-file.js';
+
 const utf8 = bytes => new TextDecoder('utf-8').decode(
     bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
 
@@ -64,8 +66,12 @@ const utf8 = bytes => new TextDecoder('utf-8').decode(
  * @param {Uint8Array} bytes
  * @returns {'hex'|'uf2'|'png'|'elf'|'bin'}
  */
-export function sniffFormat (bytes) {
+export function sniffFormat (bytes, opts = {}) {
     if (!bytes || !bytes.length) return 'bin';
+    if (/\.(mkcd(?:-\w+)?|pxt)$/i.test(opts.name || '')) return 'mkcd';
+    if (bytes[0] === 0x7B) {
+        try { const project = JSON.parse(utf8(bytes)); if (project?.meta && project?.source) return 'mkcd'; } catch { /* other binary/text */ }
+    }
     if (startsWith(bytes, PNG_SIGNATURE)) return 'png';
     if (u32le(bytes, 0) === UF2_MAGIC_START0 && u32le(bytes, 4) === UF2_MAGIC_START1) return 'uf2';
     if (bytes[0] === 0x7F && bytes[1] === 0x45 && bytes[2] === 0x4C && bytes[3] === 0x46) return 'elf';
@@ -291,7 +297,11 @@ function unwrap (embed) {
  * @returns {Promise<{format: string, meta: object, source: string, files: object|null}>}
  */
 export async function unpackMakeCodeSource (bytes, opts = {}) {
-    const format = sniffFormat(bytes);
+    const format = sniffFormat(bytes, opts);
+    if (format === 'mkcd') {
+        const plain = utf8(bytes.subarray(0, 32)).trimStart().startsWith('{');
+        return readMakeCodeProjectText(utf8(plain ? bytes : lzmaDecode(bytes)), format);
+    }
     let embed = null;
 
     if (format === 'hex') {
@@ -303,10 +313,10 @@ export async function unpackMakeCodeSource (bytes, opts = {}) {
         if (!opts.decodePng) throw new Error('MakeCode: a PNG needs a pixel decoder');
         const image = await opts.decodePng(bytes);
         const blob = decodePngBlob(image);
-        // The cartridge blob is bare LZMA over the project text — no
-        // magic-header envelope, because the PNG header did that job.
-        const source = utf8(lzmaDecode(blob));
-        return {format, meta: {}, source, files: parseFiles(source)};
+        // Original editor downloads contain a native project envelope; older
+        // cartridges can carry a bare file map. Both can be uncompressed.
+        const source = utf8(blob[0] === 0x7B ? blob : lzmaDecode(blob));
+        return readMakeCodeProjectText(source, format);
     } else {
         embed = extractFromBin(bytes);
     }
@@ -350,8 +360,8 @@ export function parseFiles (source) {
  * @returns {{target: string, editorUrl: string, name: string, version: string}}
  */
 export function describeProject (meta = {}) {
-    const editorUrl = meta.eURL || meta.editor || '';
-    let target = meta.pxtTarget || '';
+    const editorUrl = meta.eURL || (/^https?:/.test(meta.editor || '') ? meta.editor : '') || '';
+    let target = meta.pxtTarget || (/^(?:pxt|ks)\//.test(meta.cloudId || '') ? meta.cloudId.slice(meta.cloudId.lastIndexOf('/') + 1) : '');
     if (!target && /arcade/.test(editorUrl)) target = 'arcade';
     if (!target && /microbit/.test(editorUrl)) target = 'microbit';
     if (!target && /calliope/.test(editorUrl)) target = 'calliopemini';
@@ -359,6 +369,6 @@ export function describeProject (meta = {}) {
         target: target || 'unknown',
         editorUrl,
         name: meta.name || '',
-        version: meta.eVER || ''
+        version: meta.eVER || meta.targetVersions?.target || ''
     };
 }

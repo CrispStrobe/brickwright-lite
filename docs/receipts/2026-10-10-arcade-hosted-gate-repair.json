@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-10",
+  "testedSource": "5c7b0435f7c3bf4175d4fb62c09f3bcb31c03c88",
+  "failedHostedRun": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37991150295",
+  "failedHead": "1186bdc937b9ced6efa4a41fb4a1fea64da7467f",
+  "changes": [
+    "Assert spawned image original pixels and independent ownership",
+    "Assert exact Boolean values in multiplayer and legacy tile GUI journeys"
+  ],
+  "runtimeChanged": false,
+  "local": {
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "log": "native-bubble-hosted-gate-repair.log",
+    "checks": [
+      "image mutation and export",
+      "player identities",
+      "multiplayer buttons",
+      "legacy tilemap",
+      "legacy tile values",
+      "legacy tile collisions",
+      "browser script syntax",
+      "git diff --check"
+    ]
+  },
+  "hosted": "Fresh exact-head results pending; prior heavy browser success does not qualify the failing Arcade journey.",
+  "corpusRemeasured": false,
+  "remaining": [
+    "native legacy speech scrolling and hitbox placement",
+    "complex callback reentry",
+    "full Arcade browser/controller success",
+    "HUD/effects/renderables and global screen"
+  ]
+}

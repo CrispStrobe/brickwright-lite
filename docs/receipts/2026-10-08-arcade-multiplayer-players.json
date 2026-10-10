@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "de2c15909a5bdf20c1a129ba248dc9fd53cb3611",
+  "auditSourceDirty": false,
+  "producer": {
+    "repo": "CrispStrobe/sb3-creator",
+    "source": "da69beb1f894f63b259dfe728084dfe3327e7eb0",
+    "pr": 64,
+    "words": 6,
+    "testsPassed": 1
+  },
+  "implementation": {
+    "APIs": [
+      "mp.playerSelector",
+      "mp.getPlayerByNumber",
+      "mp.getPlayerByIndex",
+      "mp.allPlayers",
+      "mp.setPlayerSprite",
+      "mp.getPlayerSprite",
+      "mp.getPlayerBySprite",
+      "mp.getPlayerProperty"
+    ],
+    "members": [
+      "mp.Player.index",
+      "mp.Player.number"
+    ],
+    "referenceType": "mp.Player; four stable identities per scene; copied arrays preserve element identity",
+    "export": "Typed Player references/arrays and bundled multiplayer dependency",
+    "boundariesPreserved": [
+      "missing versus null sprites",
+      "first matching player owner",
+      "old scene references after push/pop",
+      "invalid/fractional/null/NaN/infinite indexes",
+      "runtime/kind/project generation isolation",
+      "shadowed mp bindings",
+      "safe query versus direct member missing-value behavior"
+    ]
+  },
+  "tests": {
+    "affectedAndRegressionsIncludingBrowserGateContracts": 106,
+    "failed": 0,
+    "skipped": 0
+  },
+  "differentialRoutes": [
+    "original PXT runtime",
+    "Code to Blocks",
+    "native export to original PXT runtime",
+    "BW reimport",
+    "SB3 save/reload"
+  ],
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.db7109fe.js",
+    "initialBytes": 4360511,
+    "previousInitialBytes": 4360502,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "multiplayerPlayers": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "count": 4,
+      "number": 3,
+      "index": 1,
+      "copiedArrayLength": 4,
+      "initialSpriteX": 60.5,
+      "controllerSpriteX": 65.5,
+      "boundary": "Controller B runs a callback using player sprite lookup; mp.moveWithButtons is not implemented by this journey"
+    },
+    "priorJourneys": "All existing rotation/projectile/destruction/artwork/multifile/typed-reference/callback/namespace/array-random journeys pass"
+  },
+  "baseline184ImportOnly": {
+    "translated": 96,
+    "partial": 87,
+    "malformed": 1
+  },
+  "recoveredTutorialAudit": {
+    "count": 10,
+    "partial": 10,
+    "originalCompilerUnavailable": 10,
+    "partialFragmentsStepped": 10,
+    "blockErrors": 0,
+    "frames": 24,
+    "diagnosticOccurrences": 31,
+    "previousDiagnosticOccurrences": 51,
+    "behavioralEquivalence": "not-measured"
+  },
+  "gui": {
+    "authoring": "Six native Arcade palette operations and bidirectional pseudocode",
+    "gaps": [
+      "Friendlier property enum labels; numeric index1/number2 currently used",
+      "Dynamic direct-member property selection cannot export; safe queries accept dynamic selectors",
+      "No new graphics tools"
+    ]
+  },
+  "remaining": [
+    "mp.moveWithButtons and controller rebinding",
+    "Multiplayer button/connection/score/life events",
+    "Player state/data",
+    "Presence icons, indicators and network notifications",
+    "Missing external extension packages and artwork",
+    "Custom palette runtime support"
+  ],
+  "qualificationBoundary": "Player identity and sprite association, not movement/network/presence or complete game compatibility"
+}

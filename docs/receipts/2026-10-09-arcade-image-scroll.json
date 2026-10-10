@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "d490487dea0308a05aea1fe209ee55883401317d",
+  "base": "45a596024e09384795acc2d9553fa1b1281d9fed",
+  "producerPin": "bacacdbed51fa5fa98fbca77550dbc71041f24f9",
+  "implemented": [
+    "Native mutable Image.scroll with signed32 offsets, clipping, zero fill and preserved pixel-buffer identity",
+    "Dedicated arcade_scrollImage Blocks command and canonical pseudocode",
+    "Typed image/sprite aliases and typed procedure parameters in MakeCode import/export",
+    "Existing renderer refresh and scene ownership retained"
+  ],
+  "local": {
+    "finalScroll": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "log": "arcade-scroll-final-qualified.log",
+      "originalPxtPixelCases": 198
+    },
+    "earlierRegressionBatch": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "initialScrollChecks": 4,
+      "unchangedRegressionChecks": 15,
+      "log": "arcade-scroll-qualified.log"
+    },
+    "producer": {
+      "passed": 327,
+      "failed": 0,
+      "skipped": 0,
+      "boundary": "Dialect and Boolean value-position checks; full enabled hosted checks remain required"
+    },
+    "boundary": "Original PXT execution, native runtime/controller keys, editable Code/Blocks/SB3 and fresh extension bundles. Full rendered app browser journey prepared, not yet qualified."
+  },
+  "corpus": {
+    "hashVerifiedInputs": 184,
+    "inputChanges": 0,
+    "translated": 109,
+    "partial": 74,
+    "malformed": 1,
+    "changedDiagnosticRows": 0
+  },
+  "remaining": [
+    "Full native file/controller-pane browser journey including rendered pixel assertion",
+    "All enabled exact-head consumer and producer hosted checks before merge",
+    "Screen.clone, render-phase screen drawing and remaining racing dependencies",
+    "74 partial imports and one malformed input; translated is an import classification"
+  ],
+  "retainedFailures": [
+    "Original internal function lacked an export assignment; corrected harness registration with original bodies unchanged",
+    "Controller fixture omitted actual project storage; corrected real asset loading",
+    "Controller B was incorrectly mapped to Enter; corrected actual z mapping"
+  ]
+}

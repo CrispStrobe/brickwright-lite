@@ -1,3 +1,4 @@
+import {applyDeclaredValueType} from './declared-value-types.js';
 /**
  * MakeCode Arcade → a Scratch project.
  *
@@ -36,6 +37,8 @@ import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
+import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
 import {
@@ -47,6 +50,7 @@ import {
     imageToSvg,
     ARCADE_PALETTE
 } from './arcade-assets.js';
+import {svgToPixels} from './pixel-image.js';
 import {parseAnimationJres} from './arcade-animation-assets.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
 import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from './animation-companion.js';
@@ -224,7 +228,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
         this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
-        this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.spriteResultFunctions = references.spriteFunctions;
         this.spriteResultBindings = new Set();
@@ -248,11 +252,12 @@ class ArcadeTranslator extends BaseTranslator {
                 this.spriteResultBindings.add(name);added = true;
             }
         } while (added);
-        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler)$/.test(this.path(value.callee)||''));
+        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
+        this.nativeInfoProgram=this.sceneStackProgram || containsAst(node,value=>value.type==='Call' && isInfoRegistration(this.path(value.callee)));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
-        this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile'].includes(record.kind)));
-        this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile'].includes(record.kind)));
+        this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
+        this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile','legacyWall'].includes(record.kind)));
         this.returnFunctions = new Map();
         const hasReturn = value => value && typeof value === 'object' &&
             (value.type === 'Return' || (!['FunctionDeclaration', 'FunctionExpression'].includes(value.type) &&
@@ -461,11 +466,11 @@ class ArcadeTranslator extends BaseTranslator {
                 const gaps=this.unsupported.length;
                 let value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
                 // An array we could not translate (already named as a gap) stands in as an
-                // EMPTY array, so \`for (const t of scene.getTilesByType(4))\` runs no times
+                // EMPTY array, so \`for (const t of unknownArrayFactory())\` runs no times
                 // instead of failing at run time on "Array reference is null or expired".
                 if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
-                else out.push(`${pad}set ${this.varName(d.name)} to ${value}`);
+                else out.push(`${pad}set ${this.varName(d.name)} to (${value})`);
             }
             return;
         }
@@ -496,7 +501,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
         }
         if (st.type === 'For' && st.init?.type === 'Declaration' && this.localVars?.has(st.init.decls[0]?.name)) {
-            this.statementInner(st.init,indent,out);
+            this.statement(st.init,indent,out);
             out.push(`${'  '.repeat(indent)}REPEAT UNTIL not (${this.repeatedCondition(st.test)}):`);
             this.block(st.body,indent+1,out);
             if(st.update)this.expressionStatement(st.update,indent+1,out);
@@ -573,6 +578,26 @@ class ArcadeTranslator extends BaseTranslator {
 
     callExpression (node) {
         const engineApi=this.path(node.callee),engineArgs=node.args||[];
+        if(engineApi?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {
+            this.unsupported.push(`${engineApi} refers to a shadowed mp binding`);return 'undefined value';
+        }
+        if(engineApi==='MultiplayerState.create') {
+            if(this.boundSourceGlobals?.has('MultiplayerState') || this.sourceFunctions?.has('MultiplayerState') || this.localVars?.has('MultiplayerState') || this.currentParameters?.has('MultiplayerState') || this.capturedBindings.has('MultiplayerState')){this.unsupported.push('MultiplayerState.create refers to a shadowed binding');return 'undefined value';}
+            if(!engineArgs.length)return 'arcade create player state key';
+            this.unsupported.push('MultiplayerState.create requires no arguments');return 'undefined value';
+        }
+        if(engineApi==='mp.getPlayerState' && engineArgs.length===2)return `arcade state (${this.expr(engineArgs[1])}) of player (${this.expr(engineArgs[0])})`;
+        const mpSpecs={'mp.playerSelector':['arcade player by number',1], 'mp.getPlayerByNumber':['arcade player by number',1],
+            'mp.getPlayerByIndex':['arcade player by index',1], 'mp.getPlayerSprite':['arcade sprite of player',1],
+            'mp.getPlayerBySprite':['arcade player of sprite',1]};
+        if(mpSpecs[engineApi]) {
+            const [word,arity]=mpSpecs[engineApi];
+            if(engineArgs.length===arity)return `${word} (${this.expr(engineArgs[0])})`;
+            this.unsupported.push(`${engineApi} requires ${arity} argument`);return 'undefined value';
+        }
+        if(engineApi==='mp.allPlayers' && !engineArgs.length)return 'arcade all players';
+        if(engineApi==='mp.isButtonPressed' && engineArgs.length===2)return `arcade player (${this.expr(engineArgs[0])}) button (${this.expr(engineArgs[1])}) pressed`;
+        if(engineApi==='mp.getPlayerProperty' && engineArgs.length===2)return `arcade player safe property (${this.expr(engineArgs[1])}) of (${this.expr(engineArgs[0])})`;
         if(engineApi==='game.currentScene') {
             if(!engineArgs.length)return 'arcade current scene';
             this.unsupported.push('game.currentScene requires zero arguments');return 'undefined value';
@@ -597,6 +622,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (owner && this.isArrayReference(owner)) {
             const ref=this.expr(owner),op=node.callee.name,a=node.args||[];
             if (['pop','shift','removeAt'].includes(op)) return `${op} from array reference (${ref}) index (${a[0]?this.expr(a[0]):0})`;
+            if (op==='_pickRandom' && !a.length) return `random item of array reference (${ref})`;
             if (op==='get') return `item (${this.expr(a[0])}) of array reference (${ref})`;
             // The pinned PXT Array_.removeElement reports 1 or 0 (measured); the
             // arrays block reports true or false, and true + 0 is 1.
@@ -661,11 +687,11 @@ class ArcadeTranslator extends BaseTranslator {
             return `arcade create template "${template.name}" kind "${template.kind}" ` +
                 `width ${template.width} height ${template.height}`;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
             if(a.length){this.unsupported.push(`${name} requires no arguments`);return 'undefined value';}
             return `arcade life player (${playerOf(name)})`;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.(hasLife|score|hasScore)$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.(hasLife|score|hasScore)$/.test(name||'')) {
             if(a.length){this.unsupported.push(`${name} requires no arguments`);return 'undefined value';}
             const method=name.split('.').pop(),property=method==='hasLife'?'has life':method==='hasScore'?'has score':'score';
             return `arcade player (${playerOf(name)}) ${property}`;
@@ -676,6 +702,9 @@ class ArcadeTranslator extends BaseTranslator {
         // `score`, which the export could not tell from a user's, so the HUD was lost.)
         case 'info.score': return 'arcade score';
         case 'info.life': return 'lives';
+        case 'game.ask':
+            if(a.length>=1 && a.length<=2)return `arcade ask yes ${this.expr(a[0])} subtitle ${a[1]?this.expr(a[1]):'""'}`;
+            this.unsupported.push('game.ask() requires a title and optional subtitle');return '0';
         case 'game.askForNumber':
             if (a.length === 1) return `arcade ask number ${this.expr(a[0])}`;
             this.unsupported.push('game.askForNumber() with digit limit or other options');
@@ -695,6 +724,13 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push('scene.cameraProperty requires one property selector and native camera support');return 'undefined value';
         case 'scene.screenWidth': return String(HALF_WIDTH * 2);
         case 'scene.screenHeight': return String(HALF_HEIGHT * 2);
+        case 'Math.sign':
+        case 'Math.trunc':
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push(`${name} refers to a shadowed Math binding`);return 'undefined value';
+            }
+            if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
+            return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
         case 'randint': return `pick random ${this.mathOperand(a[0])} to ${this.mathOperand(a[1])}`;
         case 'game.runtime': return 'timer * 1000';
         case 'controller.dx': return `arcade controller x step ${this.expr(a[0] || {type: 'Number', value: 100})}`;
@@ -819,6 +855,27 @@ class ArcadeTranslator extends BaseTranslator {
      * though writing it is not.
      */
     valueExpr (node) {
+        if(['MultiplayerState.score','MultiplayerState.life'].includes(this.path(node))) {
+            if(this.boundSourceGlobals?.has('MultiplayerState') || this.sourceFunctions?.has('MultiplayerState') || this.localVars?.has('MultiplayerState') || this.currentParameters?.has('MultiplayerState') || this.capturedBindings.has('MultiplayerState')){this.unsupported.push('MultiplayerState constant refers to a shadowed binding');return 'undefined value';}
+            return this.path(node).endsWith('.score')?'0':'1';
+        }
+        const mpEnum = this.path(node);
+        const mpConstants={'mp.PlayerNumber.One':1,'mp.PlayerNumber.Two':2,'mp.PlayerNumber.Three':3,'mp.PlayerNumber.Four':4,
+            'mp.PlayerProperty.Index':1,'mp.PlayerProperty.Number':2,
+            'mp.MultiplayerButton.A':0,'mp.MultiplayerButton.B':1,'mp.MultiplayerButton.Up':2,'mp.MultiplayerButton.Right':3,'mp.MultiplayerButton.Down':4,'mp.MultiplayerButton.Left':5};
+        if(Object.prototype.hasOwnProperty.call(mpConstants,mpEnum)) {
+            if(this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp')) {
+                this.unsupported.push(`${mpEnum} refers to a shadowed mp binding`);return 'undefined value';
+            }
+            return String(mpConstants[mpEnum]);
+        }
+        if(/^mp\.(PlayerNumber|PlayerProperty|MultiplayerButton)\./.test(mpEnum||'')) {
+            this.unsupported.push(`${mpEnum} is not a declared multiplayer enum member`);return 'undefined value';
+        }
+        if(node?.type==='Member' && this.playerReferences?.has(node.object)) {
+            if(['index','number'].includes(node.name))return `arcade player member property (${node.name==='index'?1:2}) of (${this.expr(node.object)})`;
+            this.unsupported.push(`mp.Player.${node.name} requires native player member support`);return 'undefined value';
+        }
         if(node?.type==='Member' && this.sceneReferences?.has(node.object)) {
             if(node.name==='physicsEngine')return `arcade physics engine of scene (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade Scene.${node.name} requires native Scene member support`);return 'undefined value';
@@ -827,7 +884,7 @@ class ArcadeTranslator extends BaseTranslator {
             if(['maxSpeed','minStep','maxStep'].includes(node.name))return `arcade physics engine property ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade PhysicsEngine.${node.name} requires native physics-engine member support`);return 'undefined value';
         }
-        if(this.sceneStackProgram && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerButtonEvent') {
+        if(this.handleTemplates && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerButtonEvent') {
             if(this.boundSourceGlobals?.has('ControllerButtonEvent') || this.localVars?.has('ControllerButtonEvent') || this.currentParameters?.has('ControllerButtonEvent') || this.capturedBindings.has('ControllerButtonEvent')) {
                 this.unsupported.push(`${this.path(node)} refers to a shadowed ControllerButtonEvent binding`);return 'undefined value';
             }
@@ -862,6 +919,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(node?.type==='LegacyJsonValue'){this.usesArrays=true;return `JSON text of value (${this.arrayElementValue(node.value)})`;}
         if(this.handleTemplates && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
         if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='TileScale') {
+            if(this.boundSourceGlobals?.has('TileScale') || this.sourceFunctions?.has('TileScale') || this.localVars?.has('TileScale') || this.currentParameters?.has('TileScale') || this.capturedBindings.has('TileScale')){this.unsupported.push('TileScale refers to a shadowed binding');return 'undefined value';}
+            const values={Four:2,Eight:3,Sixteen:4,ThirtyTwo:5};
+            if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
+            this.unsupported.push(`TileScale.${node.name} is not a declared tile scale`);return '4';
+        }
         if(this.handleTemplates && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
         if(this.handleTemplates && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
         if (this.handleTemplates && ['Null','Undefined'].includes(node?.type)) {
@@ -873,6 +936,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node?.type==='Binary' && ['+','-','*','/','%'].includes(node.op)) {
             if([node.left,node.right].some(value=>this.spriteReferences?.has(value)))this.unsupported.push('sprite arithmetic conversion requires ToPrimitive support');
+            if([node.left,node.right].some(value=>this.playerReferences?.has(value)))this.unsupported.push('player arithmetic conversion requires ToPrimitive support');
             this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
         // `!x` as a value. The value words have no unary `!` (BWValues.unary
@@ -895,14 +959,27 @@ class ArcadeTranslator extends BaseTranslator {
             if(['image','action','interval'].includes(node.name))return `arcade animation ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`animation.Animation.${node.name} requires animation property support`);return '0';
         }
+        if(this.handleTemplates && node?.type==='Member' && this.legacyTileReferences?.has(node.object)) {
+            if(['x','y','tileSet'].includes(node.name))return `arcade color tile ${node.name} of (${this.expr(node.object)})`;
+            this.unsupported.push(`tiles.Tile.${node.name} is not a supported legacy Tile property`);return '0';
+        }
         if(this.handleTemplates && node?.type==='Member' && this.tileReferences?.has(node.object)) {
             const property=node.name==='col'?'column':node.name;
-            if(['column','row','x','y','left','right','top','bottom'].includes(property))return `arcade tile ${property} of (${this.expr(node.object)})`;
+            if(['column','row','x','y','left','right','top','bottom','tileSet'].includes(property))return `arcade tile ${property} of (${this.expr(node.object)})`;
             this.unsupported.push(`tiles.Location.${node.name} requires tile location property support`);return '0';
         }
         if(this.handleTemplates && node?.type==='Call') {
             const api=this.path(node.callee),args=node.args||[];
             if(node.callee?.type==='Member' && this.animationReferences?.has(node.callee.object) && args.length===0 && ['getImage','getAction','getInterval'].includes(node.callee.name))return `arcade animation ${node.callee.name.slice(3).toLowerCase()} of (${this.expr(node.callee.object)})`;
+            if(['scene.getTile','scene.getTilesByType'].includes(api)) {
+                if(this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene')){this.unsupported.push(`${api} refers to a shadowed scene binding`);return '0';}
+                if(api==='scene.getTile' && args.length===2)return `arcade color tile column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
+                if(api==='scene.getTilesByType' && args.length===1)return `arcade color tile array index (${this.expr(args[0])})`;
+                this.unsupported.push(`${api} has invalid arity`);return '0';
+            }
+            if(api==='scene.tileHitFrom' && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))){this.unsupported.push('scene.tileHitFrom refers to a shadowed scene binding');return '0';}
+            if(api==='scene.tileHitFrom' && args.length===2)return `arcade sprite (${this.expr(args[0])}) wall hit index (${this.expr(args[1])})`;
+            if(node.callee?.type==='Member' && node.callee.name==='tileHitFrom' && this.spriteReferences?.has(node.callee.object) && args.length===1)return `arcade sprite (${this.expr(node.callee.object)}) wall hit index (${this.expr(args[0])})`;
             if(api==='tiles.getTileLocation' && args.length===2)return `arcade tile location column (${this.expr(args[0])}) row (${this.expr(args[1])})`;
             if(api==='tiles.getTilesByType' && args.length===1){this.usesArrays=true;return `arcade tile array image (${this.expr(args[0])})`;}
             if(api==='tiles.tileAtLocationEquals' && args.length===2)return `arcade tile (${this.expr(args[0])}) equals image (${this.expr(args[1])})`;
@@ -911,10 +988,10 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type==='Call' && this.handleTemplates && this.path(node.callee)==='sprites.allOfKind') {
             this.usesArrays=true;
             const kind=node.args?.[0];
-            if(node.args.length!==1 || kind?.type!=='Member' || this.path(kind.object)!=='SpriteKind') {
-                this.unsupported.push('sprites.allOfKind requires a supported SpriteKind member');return '0';
+            if(node.args.length!==1 || !fixedKind(kind)) {
+                this.unsupported.push('sprites.allOfKind requires a supported SpriteKind member or fixed negative numeric kind');return '0';
             }
-            return `arcade sprite array kind ${JSON.stringify(kind.name)}`;
+            return `arcade sprite array kind ${JSON.stringify(kindOf(kind))}`;
         }
         if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
@@ -1023,6 +1100,10 @@ class ArcadeTranslator extends BaseTranslator {
         const push = line => out.push(pad + line);
         const name = this.path(node.callee);
         const a = node.args || [];
+        if(name?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {push(this.note(`${name} refers to a shadowed mp binding`));return;}
+        if(['mp.setPlayerState','mp.changePlayerStateBy'].includes(name) && a.length===3){push(name==='mp.setPlayerState'?`arcade set state (${this.expr(a[1])}) of player (${this.expr(a[0])}) to (${this.expr(a[2])})`:`arcade change state (${this.expr(a[1])}) of player (${this.expr(a[0])}) by (${this.expr(a[2])})`);return;}
+        if(name==='mp.moveWithButtons' && a.length>=1 && a.length<=3){push(`arcade move player (${this.expr(a[0])}) with buttons vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);return;}
+        if(name==='mp.setPlayerSprite' && a.length===2){push(`arcade set sprite of player (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
         // Lite's own export's stop machinery, lifted back by liftExporterStops.
         if (name === '__bwStopAll') { push('stop all'); return; }
         if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
@@ -1051,13 +1132,22 @@ class ArcadeTranslator extends BaseTranslator {
             else push(this.note('scene.setBackgroundImage() with art we could not read'));
             return;
         }
-        if (name === 'controller.moveSprite' && this.handleRef(a[0])) {
-            if (a.length > 3) {push(this.note('controller.moveSprite() accepts a sprite and two speeds'));return;}
-            push(`arcade control sprite (${this.handleRef(a[0])}) vx (${a[1] ? this.expr(a[1]) : 100}) vy (${a[2] ? this.expr(a[2]) : 100})`);
+        const directController = /^controller(?:\.player([1-4]))?\.(moveSprite|stopControllingSprite)$/.exec(name || '');
+        if (directController && (directController[1] || directController[2]==='moveSprite')) {
+            if (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller')) {
+                push(this.note(`${name} refers to a shadowed controller binding`));return;
+            }
+            const stopping=directController[2]==='stopControllingSprite';
+            if (!a.length || a.length>(stopping?1:3)) {push(this.note(`${name}() requires a sprite${stopping?'':' and at most two speeds'}`));return;}
+            const sprite=this.handleRef(a[0]) || (a[0]?.type==='Null'?'null':null);
+            if (!sprite) {push(this.note(`${name}() requires a supported sprite handle`));return;}
+            if (stopping) push(`arcade controller ${directController[1] || 1} stop controlling sprite (${sprite})`);
+            else if (directController[1]) push(`arcade controller ${directController[1]} move sprite (${sprite}) vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);
+            else push(`arcade control sprite (${sprite}) vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);
             return;
         }
         if (name === 'sprites.onCreated') {
-            if (a[0]?.type !== 'Member' || this.path(a[0].object) !== 'SpriteKind') {
+            if (!fixedKind(a[0])) {
                 push(this.note('sprites.onCreated() runtime kind expressions need support'));return;
             }
             const registration = this.createdRegistrations.get(node);
@@ -1065,11 +1155,13 @@ class ArcadeTranslator extends BaseTranslator {
             else push(this.note('sprites.onCreated() needs a supported callback'));
             return;
         }
-        if(this.handleTemplates && ['scene.onHitWall','scene.onOverlapTile'].includes(name)) {
+        if(this.handleTemplates && name==='scene.onHitTile' && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))){push(this.note('scene.onHitTile refers to a shadowed scene binding'));return;}
+        if(this.handleTemplates && ['scene.onHitWall','scene.onOverlapTile','scene.onHitTile'].includes(name)) {
             const registration=this.terrainRegistrations.get(node);
             if(!registration){push(this.note(`${name} requires a fixed SpriteKind, exact arguments and an inline callback with at most two parameters`));return;}
             const captures=JSON.stringify([...registration.ownCaptures].join(' '));
-            if(registration.kind==='wall')push(`arcade register wall kind "${kindOf(a[0])}" as "${registration.token}" capturing ${captures}`);
+            if(registration.kind==='legacyWall')push(`arcade register color wall kind "${kindOf(a[0])}" index (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
+            else if(registration.kind==='wall')push(`arcade register wall kind "${kindOf(a[0])}" as "${registration.token}" capturing ${captures}`);
             else push(`arcade register tile kind "${kindOf(a[0])}" image (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
             return;
         }
@@ -1077,25 +1169,37 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
             push(name==='game.pushScene'?'arcade push scene':'arcade pop scene');return;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one life value`));return;}
             push(name.endsWith('.setLife')?`arcade set life player (${playerOf(name)}) to (${this.expr(a[0])})`:`arcade change life player (${playerOf(name)}) by (${this.expr(a[0])})`);return;
         }
-        if(this.handleTemplates && this.sceneStackProgram && /^info(?:\.player[1-4])?\.(setScore|changeScoreBy)$/.test(name||'')) {
+        if(this.handleTemplates && /^info(?:\.player[1-4])?\.(setScore|changeScoreBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one score value`));return;}
             push(name.endsWith('.setScore')?`arcade set score player (${playerOf(name)}) to (${this.expr(a[0])})`:`arcade change score player (${playerOf(name)}) by (${this.expr(a[0])})`);return;
         }
-        const sceneSpec=this.sceneStackProgram && sceneRegistrationSpec(name);
+        if(isFrameRegistration(name) && (this.boundSourceGlobals?.has('game') || this.sourceFunctions?.has('game') || this.localVars?.has('game') || this.currentParameters?.has('game') || this.capturedBindings.has('game'))){push(this.note(`${name} refers to a shadowed game binding`));return;}
+        if(isButtonRegistration(name) && (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller'))){push(this.note(`${name} refers to a shadowed controller binding`));return;}
+        if(isInfoRegistration(name) && (this.boundSourceGlobals?.has('info') || this.sourceFunctions?.has('info') || this.localVars?.has('info') || this.currentParameters?.has('info') || this.capturedBindings.has('info'))){push(this.note(`${name} refers to a shadowed info binding`));return;}
+        if(isForeverRegistration(name) || isParallelLaunch(name)){
+            const binding=name.split('.')[0];
+            if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
+        }
+        if(isSpriteRegistration(name)){
+            for(const binding of ['sprites','SpriteKind'])if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
+        }
+        const sceneSpec=(this.sceneStackProgram || isIndependentRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
-            if(!registration){push(this.note(`${name} requires exact arguments, fixed sprite kinds and a supported inline callback; lifecycle oldScene access is not yet supported`));return;}
+            if(!registration){push(this.note(isParallelLaunch(name)?'control.runInParallel requires one inline callback without parameters':`${name} requires exact arguments, fixed sprite kinds and a supported inline callback; lifecycle oldScene access is not yet supported`));return;}
             const suffix=`as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`;
             switch(registration.kind) {
             case 'update':push(`arcade register update ${suffix}`);break;
             case 'forever':push(`arcade register forever ${suffix}`);break;
+            case 'parallel':push(`arcade run parallel ${suffix}`);break;
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
             case 'countdown':push(`arcade register countdown ${suffix}`);break;
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
+            case 'multiplayerButton':push(`arcade register multiplayer button (${this.expr(a[0])}) event (${this.expr(a[1])}) ${suffix}`);break;
             case 'button':push(`arcade register button "${/^controller\.(\w+)\./.exec(name)[1]}" event (${this.expr(a[0])}) ${suffix}`);break;
             case 'destroyed':push(`arcade register destroyed kind "${kindOf(a[0])}" ${suffix}`);break;
             case 'overlap':push(`arcade register overlap kind "${kindOf(a[0])}" with kind "${kindOf(a[1])}" ${suffix}`);break;
@@ -1103,6 +1207,10 @@ class ArcadeTranslator extends BaseTranslator {
             case 'scenePop':push(`arcade register scene pop ${suffix}`);break;
             }
             return;
+        }
+        if(this.handleTemplates && name==='scene.cameraShake') {
+            if(a.length>2){push(this.note('scene.cameraShake accepts amplitude and duration only'));return;}
+            push(`arcade shake camera by (${a[0]?this.expr(a[0]):4}) pixels for (${a[1]?this.expr(a[1]):500}) ms`);return;
         }
         if(this.handleTemplates && name==='scene.centerCameraAt') {
             if(a.length!==2){push(this.note('scene.centerCameraAt requires x and y coordinates'));return;}
@@ -1113,6 +1221,22 @@ class ArcadeTranslator extends BaseTranslator {
             const sprite=a[0],handle=this.handleRef(sprite);
             if(!handle && sprite.type!=='Null' && !this.nullReferences?.has(sprite)){push(this.note('scene.cameraFollowSprite requires a typed sprite reference or null'));return;}
             push(`arcade camera follow sprite (${handle || this.expr(sprite)})`);return;
+        }
+        if (name === 'image.setPalette' && a.length === 1) {
+            const buffer=a[0];
+            if(buffer.type==='Template' && buffer.tag==='hex') {
+                const hex=buffer.value.replace(/\s/g,'');
+                if(!/^[0-9a-f]{96}$/i.test(hex)){push(this.note('image.setPalette requires exactly 48 RGB bytes'));return;}
+                push(`arcade set palette hex "${hex.toLowerCase()}"`);return;
+            }
+            if(buffer.type==='Call' && this.path(buffer.callee)==='Buffer.fromHex' && buffer.args.length===1) {
+                const data=buffer.args[0];
+                if(data.type==='String' && !/^[0-9a-f]{96}$/i.test(data.value)) {
+                    push(this.note('image.setPalette Buffer.fromHex requires exactly 96 hex digits without whitespace'));return;
+                }
+                push(`arcade set palette hex (${this.expr(data)})`);return;
+            }
+            push(this.note('image.setPalette requires a hex literal or Buffer.fromHex expression'));return;
         }
         if (name === 'scene.setBackgroundColor' && a.length === 1) {
             push(`arcade set background color to ${this.expr(a[0])}`);
@@ -1135,6 +1259,24 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='addAnimationFrame' && this.animationReferences?.has(node.callee.object) && a.length===1){push(`arcade add animation frame (${this.expr(node.callee.object)}) image (${this.expr(a[0])})`);return;}
         if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='setInterval' && this.animationReferences?.has(node.callee.object) && a.length===1){push(`arcade set animation interval (${this.expr(node.callee.object)}) to (${this.expr(a[0])})`);return;}
+        if(this.handleTemplates && ['scene.setTileMap','scene.setTile','scene.setTileAt','scene.place','scene.placeOnRandomTile'].includes(name) && (this.boundSourceGlobals?.has('scene') || this.sourceFunctions?.has('scene') || this.localVars?.has('scene') || this.currentParameters?.has('scene') || this.capturedBindings.has('scene'))) {push(this.note(`${name} refers to a shadowed scene binding`));return;}
+        if(this.handleTemplates && ['scene.setTileAt','scene.place','scene.placeOnRandomTile'].includes(name)) {
+            if(a.length!==2){push(this.note(`${name} requires two arguments`));return;}
+            if(name==='scene.setTileAt')push(`arcade set color tile (${this.expr(a[0])}) index (${this.expr(a[1])})`);
+            else if(name==='scene.place')push(`arcade on color tile (${this.expr(a[0])}) place sprite (${this.expr(a[1])})`);
+            else push(`arcade place sprite (${this.expr(a[0])}) on random color tile (${this.expr(a[1])})`);
+            return;
+        }
+        if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='place' && this.legacyTileReferences?.has(node.callee.object) && a.length===1){push(`arcade on color tile (${this.expr(node.callee.object)}) place sprite (${this.expr(a[0])})`);return;}
+        if(this.handleTemplates && name==='scene.setTileMap') {
+            if(a.length<1 || a.length>2){push(this.note('scene.setTileMap requires an image and optional tile scale'));return;}
+            const scale=a[1]?this.expr(a[1]):'4';
+            push(`arcade set color-coded map image (${this.expr(a[0])}) scale (${scale})`);return;
+        }
+        if(this.handleTemplates && name==='scene.setTile') {
+            if(a.length<2 || a.length>3){push(this.note('scene.setTile requires an index, image and optional wall flag'));return;}
+            push(`arcade set color tile (${this.expr(a[0])}) image (${this.expr(a[1])}) wall (${a[2]?this.expr(a[2]):'false'})`);return;
+        }
         if(this.handleTemplates && ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel'].includes(name)) {
             const value=a[0];
             if(a.length===1 && value?.type==='Null'){push('arcade set tilemap data \"null\"');return;}
@@ -1149,6 +1291,24 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && name==='tiles.setWallAt' && a.length===2){push(`arcade set tile wall (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.placeOnTile' && a.length===2){push(`arcade place sprite (${this.expr(a[0])}) on tile (${this.expr(a[1])})`);return;}
         if(this.handleTemplates && name==='tiles.placeOnRandomTile' && a.length===2){push(`arcade place sprite (${this.expr(a[0])}) on random tile image (${this.expr(a[1])})`);return;}
+        if(name==='game.ask') {
+            if(!this.discardedQuestionName){let n=0,name;do{name=`__bwDiscardedQuestion${++n}`;}while(this.taken.has(name));
+                this.taken.add(name);this.discardedQuestionName=name;}
+            push(`set ${this.discardedQuestionName} to ${this.callExpression(node)}`);return;
+        }
+        if (this.projectileTemplates.has(node)) {
+            // Creation is a side effect even when the caller discards its handle.
+            // Scratch reporters need a consuming command to execute. Use a
+            // private target variable, with a name outside every source binding.
+            if (!this.discardedProjectileName) {
+                let suffix = 0, name;
+                do { name = `__bwDiscardedProjectile${++suffix}`; } while (this.taken.has(name));
+                this.taken.add(name);
+                this.discardedProjectileName = name;
+            }
+            push(`set ${this.discardedProjectileName} to ${this.callExpression(node)}`);
+            return;
+        }
         if (this.handleTemplates && name === 'sprites.create') {
             push(`set __arcadeCreated to ${this.callExpression(node)}`);
             return;
@@ -1166,7 +1326,16 @@ class ArcadeTranslator extends BaseTranslator {
             if (a.length !== 3 || !source) { push(this.note(`${name}() needs an image source and x/y offsets`));return; }
             push(`arcade blit image ${node.callee.name} (${resource}) source (${source}) x (${this.expr(a[1])}) y (${this.expr(a[2])})`);return;
         }
-        if (resource && !imageHandle && ['fill', 'replace', 'flipX', 'flipY', 'setPixel', 'fillRect', 'drawLine'].includes(node.callee.name)) {
+        if(resource && node.callee.name==='copyFrom') {
+            const source=this.imageRef(a[0]);
+            if(a.length!==1 || !source){push(this.note(`${name}() requires one image source`));return;}
+            push(`arcade copy pixels into image (${resource}) from (${source})`);return;
+        }
+        if(resource && node.callee.name==='scroll') {
+            if(a.length!==2){push(this.note(`${name}() requires two scrolling offsets`));return;}
+            push(`arcade scroll image (${resource}) x (${this.expr(a[0])}) y (${this.expr(a[1])})`);return;
+        }
+        if (resource && !imageHandle && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'fillRect', 'drawLine'].includes(node.callee.name)) {
             const operation = node.callee.name;
             const expected = {fill:1, replace:2, flipX:0, flipY:0, setPixel:3, fillRect:5, drawLine:5}[operation];
             if (a.length !== expected) { push(this.note(`${name}() requires ${expected} arguments`)); return; }
@@ -1175,7 +1344,7 @@ class ArcadeTranslator extends BaseTranslator {
             else push(`arcade mutate image ${operation} (${resource}) color ${a[0] ? this.expr(a[0]) : 0} replacement ${a[1] ? this.expr(a[1]) : 0}`);
             return;
         }
-        if (imageHandle && ['fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
+        if (imageHandle && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
             const operation = node.callee.name;
             if (operation === 'setPixel' && a.length === 3) {
                 push(`arcade set pixel of ${imageHandle} x ${this.expr(a[0])} y ${this.expr(a[1])} color ${this.expr(a[2])}`);
@@ -1203,14 +1372,26 @@ class ArcadeTranslator extends BaseTranslator {
                 if(a.length<1 || a.length>2)push(this.note(`sprite.${node.callee.name}() requires one scale and optional anchor`));
                 else push(`arcade ${node.callee.name==='setScale'?'set':'change'} scale of (${handle}) ${node.callee.name==='setScale'?'to':'by'} (${this.expr(a[0])}) anchor (${a[1]?this.expr(a[1]):'0'})`);
             }
+            else if (node.callee.name === 'follow') {
+                if(a.length<1 || a.length>3){push(this.note('sprite.follow() requires a target and optional speed/turn rate'));return;}
+                const target=a[0],reference=this.handleRef(target);
+                if(!reference && !['Null','Undefined'].includes(target.type) && !this.nullReferences?.has(target)){
+                    push(this.note('sprite.follow() requires a typed sprite target or null'));return;
+                }
+                push(`arcade sprite (${handle}) follow (${reference || this.expr(target)}) speed (${a[1]?this.expr(a[1]):100}) turn rate (${a[2]?this.expr(a[2]):400})`);
+            }
+            else if (node.callee.name === 'unfollow') {
+                if(a.length)push(this.note('sprite.unfollow() takes no arguments'));
+                else push(`arcade sprite (${handle}) stop following`);
+            }
             else if (node.callee.name === 'destroy') push(`arcade destroy ${handle}`);
             else if (node.callee.name === 'say' || node.callee.name === 'sayText') {
                 this.spriteSpeech(handle, node.callee.name, a, push);
             }
             else if (node.callee.name === 'onDestroyed') {
-                const token = this.destroyedInstanceHandlers.get(node);
-                if (token) push(`arcade register destruction of ${handle} as "${token}"`);
-                else push(this.note(`${name}() — callback registration needs a sprite handle`));
+                const registration = this.sceneRegistrations.get(node);
+                if (registration) push(`arcade register instance destruction of (${handle}) as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
+                else push(this.note('sprite.onDestroyed() requires one inline callback without parameters and a typed sprite reference'));
             }
             else if (node.callee.name === 'setKind') push(`arcade set kind of ${handle} to "${kindOf(a[0])}"`);
             else if (node.callee.name === 'setFlag' && this.path(a[0]) === 'SpriteFlag.AutoDestroy') {
@@ -1457,6 +1638,7 @@ class ArcadeTranslator extends BaseTranslator {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
         const dataTarget=expr.type==='Assignment'?expr.left:expr.type==='Update'?expr.argument:null;
+        if(dataTarget?.type==='Member' && this.playerReferences?.has(dataTarget.object)){push(this.note(`mp.Player.${dataTarget.name} assignment requires native player member support`));return;}
         if(dataTarget?.type==='Member' && this.dataReferences?.has(dataTarget.object) && !this.spriteReferences?.has(dataTarget.object)) {
             push(this.note(`Sprite.data.${dataTarget.name} assignment requires arbitrary object member support`));return;
         }
@@ -1616,8 +1798,21 @@ class ArcadeTranslator extends BaseTranslator {
     }
 }
 
-/** `SpriteKind.Player` → "Player"; a user kind resolves the same way. */
+// PXT negative kinds retain their numeric identity for callbacks, but do not
+// join spritesByKind. Only fixed literals are admitted here; runtime kind
+// expressions and unsupported positive numeric identities remain diagnosed.
+const negativeKind = node => {
+    const value = node?.type === 'Number' ? Number(node.value) :
+        node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number' ?
+            -Number(node.argument.value) : NaN;
+    return Number.isFinite(value) && value < 0 ? value : null;
+};
+const fixedKind = node => negativeKind(node) !== null ||
+    node?.type === 'Member' && node.object?.type === 'Identifier' && node.object.name === 'SpriteKind';
+
+/** SpriteKind member or fixed negative numeric kind → native kind identity. */
 const kindOf = node => {
+    if (negativeKind(node) !== null) return String(negativeKind(node));
     if (node && node.type === 'Member') return node.name;
     if (node && node.type === 'Identifier') return node.name;
     return 'Player';
@@ -1628,6 +1823,31 @@ const kindOf = node => {
  * intrinsic semantics. Evaluating the operands preserves call argument order.
  */
 let legacyArrayHelperTemplates;
+// Arcade destroys the current kind collection, not a live query on each
+// iteration. Lower through the same snapshot-array and handle destruction
+// primitives exposed in Blocks. Newly created callback sprites survive.
+const lowerDestroyAllSprites = (program, source) => {
+    let suffix = 0;
+    const visit = node => {
+        if (Array.isArray(node)) return node.map(visit);
+        if (!node || typeof node !== 'object') return node;
+        for (const key of Object.keys(node)) node[key] = visit(node[key]);
+        const call = node.type === 'ExpressionStatement' && node.expr;
+        const callee = call?.type === 'Call' && call.callee;
+        const kind = call?.args?.[0];
+        if (callee?.type !== 'Member' || callee.object?.type !== 'Identifier' ||
+            callee.object.name !== 'sprites' || callee.name !== 'destroyAllSpritesOfKind' ||
+            call.args.length !== 1 || !fixedKind(kind)) return node;
+        do suffix++; while (source.includes(`__bwDestroyKindSprite${suffix}`));
+        const name = `__bwDestroyKindSprite${suffix}`;
+        return {type: 'ForOf', kind: 'let', name,
+            iterable: {type: 'Call', callee: {...callee, name: 'allOfKind'}, args: [kind]},
+            body: [{type: 'ExpressionStatement', expr: {type: 'Call',
+                callee: {type: 'Member', object: {type: 'Identifier', name}, name: 'destroy'}, args: []}}]};
+    };
+    return visit(program);
+};
+
 // `for (const x of list)` in MakeCode iterates a SNAPSHOT of the array value
 // by index. The parser gives every translator a ForOf node; this importer
 // lowers it to that index loop, so a reference array (sprites, rows) keeps
@@ -1841,7 +2061,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
             if (!node || typeof node !== 'object' || node.type === 'FunctionExpression') return;
             const owner = node.type === 'Call' && node.callee?.object;
             if (owner?.type === 'Member' && owner.name === 'image' && owner.object?.type === 'Identifier' &&
-                fn.params.includes(owner.object.name) && ['fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
+                fn.params.includes(owner.object.name) && ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)) {
                 handles.get(fn.name).add(owner.object.name);
             }
             for (const value of Object.values(node)) {
@@ -1892,7 +2112,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
             });
             const event = pathOf(node.callee);
             const eventArgs = event === 'sprites.onOverlap' ? 2 :
-                ['sprites.onCreated', 'sprites.onDestroyed','scene.onHitWall','scene.onOverlapTile'].includes(event) ? 1 : 0;
+                ['sprites.onCreated', 'sprites.onDestroyed','scene.onHitTile','scene.onHitWall','scene.onOverlapTile'].includes(event) ? 1 : 0;
             for (const arg of node.args || []) {
                 if (arg?.type === 'FunctionExpression' && eventArgs) {
                     const eventScope = new Set([...scope, ...arg.params.slice(0, eventArgs)]);
@@ -1920,7 +2140,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
 const inferImageReferences = (ast, pathOf, imageOf) => {
-    const references = new WeakSet(), tiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
+    const players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
@@ -1949,8 +2169,8 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node.type === 'Declaration') for (const decl of node.decls) {const value=binding(owner,decl.name,true);if(decl.isArray)value.add('array');}
         if (node.type === 'Call') {
             const api = pathOf(node.callee);
-            const types = api==='sprites.onOverlap'?['sprite','sprite']:
-                ['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
+            const types = api==='mp.onButtonEvent'?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
+                api==='scene.onHitTile'?['sprite']:['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
                 ['sprites.onCreated','sprites.onDestroyed'].includes(api)?['sprite']:[];
             visit(node.callee, owner);
             for (const arg of node.args || []) visit(arg, owner, types);
@@ -1981,8 +2201,9 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
         if(node?.type==='LegacyParsedValue')return new Set(['any']);
         if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
-        if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+        if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
         if (node?.type === 'Identifier') return binding(owner, node.name);
+        if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
         if(node?.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
@@ -1990,6 +2211,12 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node?.type === 'Member' && ['action','interval'].includes(node.name) && typeOf(node.object,owner).has('animation')) return new Set(['number']);
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
+            if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
+            if(api==='mp.getPlayerSprite')return new Set(['sprite']);
+            if(api==='mp.allPlayers')return new Set(['array']);
+            if(api==='mp.getPlayerState' || api==='MultiplayerState.create')return new Set(['number']);
+            if(api==='mp.getPlayerProperty')return new Set(['number']);
+            if(api==='mp.isButtonPressed' || api==='game.ask')return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
             if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
@@ -2002,12 +2229,14 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(api==='sprites.allOfKind')return new Set(['array','sprite-array']);
             if(api==='tiles.getTilesByType')return new Set(['array','tile-array']);
             if(api==='tiles.getTileLocation')return new Set(['tile']);
+            if(api==='scene.getTile')return new Set(['legacy-tile']);
+            if(api==='scene.getTilesByType')return new Set(['array','legacy-tile-array']);
             if(['tiles.tileAtLocationEquals','tiles.tileAtLocationIsWall'].includes(api))return new Set(['boolean']);
             if(node.callee?.type==='Member' && node.callee.name==='isHittingTile' && node.args.length===1 && typeOf(node.callee.object,owner).has('sprite'))return new Set(['boolean']);
             if(node.callee?.type==='Member' && node.callee.name==='toString' && !node.args.length && typeOf(node.callee.object,owner).has('sprite'))return new Set(['string']);
             if (api === 'image.create' && node.args.length === 2 || api === 'scene.backgroundImage' && !node.args.length) return new Set(['image']);
-            if (node.callee?.type === 'Member' && ['pop','shift','removeAt','get'].includes(node.callee.name) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
-            if (api==='Math.pickRandom' && node.args.length===1) return new Set([...typeOf(node.args[0],owner)].filter(t=>['image-array','sprite-array','tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+            if (node.callee?.type === 'Member' && (['pop','shift','removeAt','get'].includes(node.callee.name) || node.callee.name==='_pickRandom' && !node.args.length) && typeOf(node.callee.object,owner).has('array')) return new Set([...typeOf(node.callee.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
+            if (api==='Math.pickRandom' && node.args.length===1) return new Set([...typeOf(node.args[0],owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
             if (node.callee?.type === 'Identifier' && functions.has(node.callee.name)) return functions.get(node.callee.name).returns || new Set();
             if (['sprites.create', 'sprites.createProjectile', 'sprites.createProjectileFromSide',
                 'sprites.createProjectileFromSprite'].includes(api)) return new Set(['sprite']);
@@ -2054,14 +2283,29 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         return node;
     };
     const connect = (left,right) => {if(left && right)graph.merge(left,right);};
-    for (const fn of functions.values()) fn.resultCell = Symbol('procedure result');
+    for (const fn of functions.values()) {
+        fn.resultCell = Symbol('procedure result');
+        applyDeclaredValueType(graph, fn.resultCell, fn.node.returnType);
+    }
+    for (const {node, owner} of entries) {
+        if (['FunctionDeclaration', 'FunctionExpression'].includes(node.type)) {
+            for (const name of node.params || []) {
+                applyDeclaredValueType(graph, binding(owner, name), node.paramTypes?.[name]?.text);
+            }
+        }
+        if (node.type === 'Declaration') for (const decl of node.decls) {
+            applyDeclaredValueType(graph, binding(owner, decl.name), decl.typeName);
+        }
+    }
     for (const {node,owner} of entries) {
         const value=cell(node,owner);
         for (const type of typeOf(node,owner)) {
-            const name={image:'Image',sprite:'Sprite',tile:'TileLocation',animation:'Animation',scene:'Scene','physics-engine':'PhysicsEngine',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
+            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
             if(name)graph.add(value,name);
         }
+        if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
         if(node.type==='Call' && pathOf(node.callee)==='sprites.allOfKind'){graph.add(value,'array');graph.add(graph.element(value),'Sprite');}
+        if(node.type==='Call' && pathOf(node.callee)==='scene.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'LegacyTile');}
         if(node.type==='Call' && pathOf(node.callee)==='tiles.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'TileLocation');}
         if(node.type==='Array') for(const item of node.items)connect(graph.element(value),cell(item,owner));
         if(node.type==='Declaration')for(const decl of node.decls){
@@ -2090,7 +2334,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             const receiver=node.callee?.type==='Member' && cell(node.callee.object,owner),op=node.callee?.name;
             if(receiver && graph.has(receiver,'array')){
                 if(['push','unshift','insertAt','set'].includes(op))connect(graph.element(receiver),cell(node.args[['insertAt','set'].includes(op)?1:0],owner));
-                if(['pop','shift','removeAt','get'].includes(op))connect(value,graph.element(receiver));
+                if(['pop','shift','removeAt','get'].includes(op) || op==='_pickRandom' && !node.args.length)connect(value,graph.element(receiver));
             }
             if(pathOf(node.callee)==='Math.pickRandom' && node.args.length===1 && graph.has(cell(node.args[0],owner),'array'))connect(value,graph.element(cell(node.args[0],owner)));
             if(receiver && op==='clone' && !node.args.length && graph.has(receiver,'Image'))graph.add(value,'Image');
@@ -2106,30 +2350,41 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node.type==='Number' || graph.has(value,'number') && !['array','Image','Sprite','string','boolean'].some(type=>graph.has(value,type))) numbers.add(node);
         if (graph.has(value,'Image')) references.add(node);
         if (graph.has(value,'Sprite')) sprites.add(node);
+        if (graph.has(value,'Player')) players.add(node);
         if (graph.has(value,'TileLocation')) tiles.add(node);
+        if (graph.has(value,'LegacyTile')) legacyTiles.add(node);
         if (graph.has(value,'Animation')) animations.add(node);
         const types=typeOf(node,owner);
         if(types.has('scene') || graph.has(value,'Scene') && !['number','string','boolean','Image','Sprite','PhysicsEngine'].some(type=>graph.has(value,type)))scenes.add(node);
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {images: references, tiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {players, images: references, tiles, legacyTiles, sprites, animations, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
 
 const containsAst = (node,predicate) => node && typeof node==='object' &&
     (predicate(node) || Object.values(node).some(value=>Array.isArray(value)?value.some(child=>containsAst(child,predicate)):containsAst(value,predicate)));
+const isFrameRegistration = name => ['game.onUpdate','game.onUpdateInterval'].includes(name);
+const isButtonRegistration = name => /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(name || '');
+const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(name || '') || name==='info.onCountdownEnd';
+const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
+const isSpriteRegistration = name => ['sprites.onDestroyed','sprites.onOverlap'].includes(name);
+const isParallelLaunch = name => name==='control.runInParallel';
+const isIndependentRegistration = name => isParallelLaunch(name) || isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
 const sceneRegistrationSpec = name => {
     const specs={
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
         'game.addScenePopHandler':{kind:'scenePop',handlerIndex:0,arity:1,prefix:'__bwScenePop',maxParams:1},
         'forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
+        'control.runInParallel':{kind:'parallel',handlerIndex:0,arity:1,prefix:'__bwParallel',maxParams:0},
         'game.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
         'basic.forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
         'info.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.player1.onLifeZero':{kind:'lifeZero',handlerIndex:0,arity:1,prefix:'__bwLifeZero',maxParams:0},
         'info.onCountdownEnd':{kind:'countdown',handlerIndex:0,arity:1,prefix:'__bwCountdown',maxParams:0},
+        'mp.onButtonEvent':{kind:'multiplayerButton',handlerIndex:2,arity:3,prefix:'__bwMPButton',maxParams:1},
         'game.onUpdate':{kind:'update',handlerIndex:0,arity:1,prefix:'__bwUpdate',maxParams:0},
         'game.onUpdateInterval':{kind:'interval',handlerIndex:1,arity:2,prefix:'__bwInterval',maxParams:0},
         'sprites.onDestroyed':{kind:'destroyed',handlerIndex:1,arity:2,prefix:'__bwKindDestroyed',maxParams:1,kinds:[0]},
@@ -2141,6 +2396,7 @@ const sceneRegistrationSpec = name => {
 const discoverRuntimeRegistrations = (ast, translator) => {
     const specs={
         'sprites.onCreated':{kind:'creation',handlerIndex:1,arity:2,prefix:'__bwCreated'},
+        'scene.onHitTile':{kind:'legacyWall',handlerIndex:2,arity:3,prefix:'__bwColorWall',maxParams:1,kinds:[0]},
         'scene.onHitWall':{kind:'wall',handlerIndex:1,arity:2,prefix:'__bwWall'},
         'scene.onOverlapTile':{kind:'tile',handlerIndex:2,arity:3,prefix:'__bwTile'}
     };
@@ -2162,16 +2418,17 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             for (const param of node.params || []) bindings.set(param, {key:translator.varName(param),owner});
             for (const local of localNames(node.body)) bindings.set(local, {key:local,owner});
         }
-        const spec=node.type==='Call' && (specs[translator.path(node.callee)] || translator.sceneStackProgram && sceneRegistrationSpec(translator.path(node.callee)));
+        const instance=node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='onDestroyed' && translator.spriteReferences.has(node.callee.object);
+        const spec=instance?{kind:'instanceDestroyed',handlerIndex:0,arity:1,prefix:'__bwInstanceDestroyed',maxParams:0}:node.type==='Call' && (specs[translator.path(node.callee)] || (translator.sceneStackProgram || isIndependentRegistration(translator.path(node.callee))) && sceneRegistrationSpec(translator.path(node.callee)));
         if (spec) {
             const handler=node.args?.[spec.handlerIndex];
             const kind=node.args?.[0];
             const nativeScene=spec.maxParams!==undefined;
             const validScene=nativeScene && handler?.params?.length<=spec.maxParams &&
-                (spec.kinds||[]).every(index=>node.args[index]?.type==='Member' && translator.path(node.args[index].object)==='SpriteKind') &&
+                (spec.kinds||[]).every(index=>fixedKind(node.args[index])) &&
                 (!['scenePush','scenePop'].includes(spec.kind) || !handler.params.length || !containsAst(handler.body,value=>value.type==='Identifier' && value.name===handler.params[0]));
             if (handler?.type==='FunctionExpression' && node.args.length===spec.arity &&
-                (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && kind?.type==='Member' && translator.path(kind.object)==='SpriteKind')) {
+                (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && fixedKind(kind))) {
                 const captures = new Map(bindings);
                 for (const name of [...(handler.params || []), ...localNames(handler.body)]) captures.delete(name);
                 const index=(counts.get(spec.kind)||0)+1;counts.set(spec.kind,index);
@@ -2215,7 +2472,7 @@ const emitTerrainRegistrations = (translator,out,localHandles=new Map(),callback
         translator.currentParameters=new Set(handler.params);
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...(handler.params[0]?[handler.params[0]]:[])]);
         translator.handleAliases=new Map();
-        out.push(`WHEN arcade ${kind} handler "${token}" runs:`);
+        out.push(`WHEN arcade ${kind==='legacyWall'?'color wall':kind} handler "${token}" runs:`);
         for(const [index,param] of handler.params.entries())out.push(`  arcade set local ${translator.varName(param)} to ${index===0?'arcade event first':'arcade event location'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
@@ -2231,8 +2488,9 @@ const emitSceneRegistrations = (translator,out,localHandles=new Map(),callbackLo
         const spriteParams=kind==='destroyed'?handler.params.slice(0,1):kind==='overlap'?handler.params.slice(0,2):[];
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...spriteParams]);
         translator.handleAliases=new Map();
-        const label=kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
+        const label=kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
         out.push(`WHEN arcade ${label} handler "${token}" runs:`);
+        if(kind==='multiplayerButton' && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
         for(const [index,param] of spriteParams.entries())out.push(`  arcade set local ${translator.varName(param)} to arcade event ${index===0?'first':'second'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
@@ -2389,11 +2647,14 @@ const translateCreationEvents = (ast, assets) => {
 
 /** Handle-valued globals plus onCreated/onOverlap callbacks. Kept separate
  * from the fixed-target path until its other sprite APIs can use handles. */
-const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
+const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false) => {
     const t = new ArcadeTranslator(assets, tilemaps);
     const needsProjectileHandles = node => {
         if (!node || typeof node !== 'object') return false;
         if (node.type === 'Call' && ['sprites.onCreated', 'image.create'].includes(t.path(node.callee))) return true;
+        if (node.type === 'ExpressionStatement' && node.expr?.type === 'Call' &&
+            ['sprites.createProjectile', 'sprites.createProjectileFromSide',
+                'sprites.createProjectileFromSprite'].includes(t.path(node.expr.callee))) return true;
         if (node.type === 'Call' && ['sprites.createProjectile', 'sprites.createProjectileFromSide',
             'sprites.createProjectileFromSprite'].includes(t.path(node.callee)) &&
             ['Identifier', 'Call', 'Index'].includes(node.args?.[0]?.type)) return true;
@@ -2430,36 +2691,53 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     t.claimNames(ast);
     const usesRuntimeSpriteMethods = node => {
         if (!node || typeof node !== 'object') return false;
-        if(node.optionalParams?.length || node.loweredLazyValues || node.type==='Undefined' || node.type==='Null' && !node.spritePlaceholder || t.hasLazyCondition(node))return true;
+        if(node.loweredStaticCallbacks || node.optionalParams?.length || node.loweredLazyValues || node.type==='Undefined' || node.type==='Null' && !node.spritePlaceholder || t.hasLazyCondition(node))return true;
         if(['LegacyParsedValue','LegacyJsonValue','NativeArrayAccess'].includes(node.type) || node.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !t.boundSourceGlobals.has(node.name))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
-        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || t.path(node.callee)==='game.ask'))return true;
+        if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
+        if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
         const mixedValue=value=>['String','Boolean','Null','Undefined','Array'].includes(value?.type) || t.stringReferences.has(value) || t.booleanReferences.has(value) || t.arrayReferences.has(value) || t.imageReferences.has(value);
         if(node.type==='Binary' && (node.op==='%' || ['+','-','*','/','==','!=','===','!==','<','>','<=','>='].includes(node.op) && (mixedValue(node.left) || mixedValue(node.right))) || node.type==='Unary' && ['+','-'].includes(node.op) && mixedValue(node.argument))return true;
-        if(node.type==='Array' && node.items.some(item=>item?.type==='Array' || t.arrayReferences.has(item)))return true;
+        // Array literals are values with reference identity, including unused
+        // function arguments/returns. Always select the existing native array
+        // route so their elements are evaluated and their aliases are retained.
+        if(node.type==='Array')return true;
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
-        if(node.type==='Call' && ['Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
+        if(node.type==='Call' && ['Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && t.arrayReferences.has(node.callee.object))return true;
         if (node.type === 'Declaration' && node.decls.some(d => t.imageOf(d.init))) return true;
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
         if (node.type === 'Assignment' && t.imageOf(node.right)) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' && t.imageReferences.has(node.callee.object)) return true;
-        if (node.type === 'Call' && ['image.create','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
+        if (node.type === 'Call' && ['image.setPalette','image.create','scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile','scene.setBackgroundImage','scene.backgroundImage', 'animation.createAnimation','animation.attachAnimation','animation.setAction','animation.runImageAnimation','animation.stopAnimation'].includes(t.path(node.callee))) return true;
         if (node.type === 'Call' && node.callee?.type === 'Member' &&
-            (['setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
+            (['follow', 'unfollow', 'setScaleCore', 'setScale', 'changeScale', 'setStayInScreen', 'setBounceOnWall', 'setFlag', 'setVelocity', 'setImage', 'isHittingTile'].includes(node.callee.name) ||
                 (node.callee.object?.type === 'Member' && node.callee.object.name === 'image' &&
-                    ['fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
+                    ['copyFrom', 'scroll', 'fill', 'replace', 'flipX', 'flipY', 'setPixel', 'getPixel', 'fillRect', 'drawLine', 'drawImage', 'drawTransparentImage', 'overlapsWith'].includes(node.callee.name)))) return true;
         return Object.values(node).some(value => Array.isArray(value) ?
             value.some(usesRuntimeSpriteMethods) : usesRuntimeSpriteMethods(value));
     };
-    const requiresSpriteRuntime = usesRuntimeSpriteMethods(ast);
+    const mapCalls=new Set();
+    const collectMapCalls=node=>{
+        if(!node || typeof node!=='object')return;
+        if(node.type==='Call')mapCalls.add(t.path(node.callee));
+        for(const value of Object.values(node))if(Array.isArray(value))value.forEach(collectMapCalls);else collectMapCalls(value);
+    };
+    collectMapCalls(ast);
+    if(['scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile'].some(name=>mapCalls.has(name)) &&
+        ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel','tiles.getTilesByType','tiles.tileAtLocationEquals','tiles.setTileAt','tiles.setWallAt','tiles.placeOnRandomTile'].some(name=>mapCalls.has(name)))
+        t.unsupported.push('Mixing legacy color-coded maps with modern map replacement, image lookup or per-location mutation is not yet supported');
+    const requiresSpriteRuntime = forceSpriteRuntime || usesRuntimeSpriteMethods(ast);
     const callbackLocals = new Map();
     const createAssignments = [];
     const localCreateAssignments = [];
@@ -2544,41 +2822,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     const frameDeclaration = st => st.type === 'Declaration' && st.decls.every(d => frameArrays.has(d.name));
     const plainDeclaration = st => st.type === 'Declaration' && st.decls.every(d =>
         !frameArrays.has(d.name) && !(d.init?.type === 'Call' && nameOf(d.init) === 'sprites.create'));
-    const intervals = t.sceneStackProgram?[]:calls.filter(call => nameOf(call) === 'game.onUpdateInterval');
-    const updates = t.sceneStackProgram?[]:calls.filter(call => nameOf(call) === 'game.onUpdate');
-    if (intervals.some(call => call.args?.[1]?.type !== 'FunctionExpression')) return null;
-    if (updates.some(call => call.args?.length !== 1 || call.args[0]?.type !== 'FunctionExpression')) return null;
-    // The older fixed-target path is useful for updates that only touch one
-    // sprite. Use runtime handles when a condition compares different sprite
-    // instances; that relationship cannot be represented by script ownership.
-    if (updates.length && !hasCreationCallbacks && !names.includes('sprites.onOverlap')) {
-        const createdNames = new Set(createAssignments.map(st => st.expr.left.name));
-        const referencedHandles = node => {
-            const found = new Set();
-            const visit = value => {
-                if (!value || typeof value !== 'object') return;
-                if (value.type === 'Member' && value.object?.type === 'Identifier' &&
-                    createdNames.has(value.object.name)) found.add(value.object.name);
-                for (const child of Object.values(value)) {
-                    if (Array.isArray(child)) child.forEach(visit);
-                    else if (child && typeof child === 'object') visit(child);
-                }
-            };
-            visit(node);
-            return found;
-        };
-        const needsCrossSpriteHandles = updates.some(call => {
-            const visit = body => (body || []).some(st => {
-                if (st.type === 'If' && referencedHandles(st.test).size > 1) return true;
-                return st.type === 'If' ? visit(st.consequent) || visit(st.alternate) :
-                    ['For', 'While', 'Block'].includes(st.type) && visit(st.body);
-            });
-            return visit(call.args[0].body);
-        });
-        const customKindSprite = createdNames.size === 1 && ast.body.some(st =>
-            st.type === 'Namespace' && st.name === 'SpriteKind');
-        if (!needsCrossSpriteHandles && !customKindSprite && !requiresSpriteRuntime) return null;
-    }
     const creates = [...createAssignments.map(st => st.expr.right),
         ...localCreateAssignments.map(st => st.expr.right), ...standaloneCreates,
         ...localCreates.map(item => item.call), ...returnedCreates];
@@ -2592,10 +2835,10 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     const functions = ast.body.filter(st => st.type === 'FunctionDeclaration');
     const functionNames = new Set(functions.map(fn => fn.name));
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
-        ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever',
+        ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
         'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
-        'pause', 'game.splash', 'game.showLongText', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
+        'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;
         if (st.type === 'FunctionDeclaration') continue;
@@ -2610,10 +2853,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
             (name && /\.(destroy|say|sayText|setStayInScreen|setBounceOnWall|setFlag|setPosition|setVelocity|setImage)$/.test(name))) continue;
         if (!(requiresSpriteRuntime && callOf(st))) return null;
     }
-    if (calls.some(call => ['control.runInParallel','forever'].includes(nameOf(call)) &&
-        (call.args?.length !== 1 || call.args[0]?.type !== 'FunctionExpression'))) return null;
-    for (const call of calls) if (!t.sceneStackProgram && (['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'info.onCountdownEnd'].includes(nameOf(call)) ||
-        /^controller\.(A|B|up|down|left|right)\.onEvent$/.test(nameOf(call) || '')) &&
+    for (const call of calls) if (!t.sceneStackProgram && nameOf(call)==='sprites.onCreated' &&
         !call.args?.some(arg => arg.type === 'FunctionExpression')) return null;
 
     for (const st of ast.body) if (st.type === 'Declaration') for (const d of st.decls) {
@@ -2663,30 +2903,6 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
     } while (aliasesChanged);
     t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body})));
     const parameterHandles = inferProcedureHandleParameters(ast, functions, t.handleVars, node => t.path(node));
-    let nextDestroyedHandler = 0;
-    const scanDestroyedRegistrations = (node, outerLocals = new Set()) => {
-        if (!node || typeof node !== 'object') return;
-        if (['FunctionDeclaration','FunctionExpression'].includes(node.type)) {
-            outerLocals = new Set([...outerLocals, ...(node.params || []), ...declaredWithin(node.body)]);
-        }
-        if (node.type === 'Call' && node.callee?.type === 'Member' && node.callee.name === 'onDestroyed' && nameOf(node) !== 'sprites.onDestroyed') {
-            const handler = node.args?.[0];
-            if (node.args?.length === 1 && handler?.type === 'FunctionExpression' &&
-                (t.handleRef(node.callee.object) || t.spriteReferences.has(node.callee.object))) {
-                const localNames = new Set([...(handler.params || []), ...declaredWithin(handler.body)]);
-                const capturesOuter = value => value && typeof value === 'object' &&
-                    (value.type === 'Identifier' && outerLocals.has(value.name) && !localNames.has(value.name) ||
-                        Object.values(value).some(child=>Array.isArray(child)?child.some(capturesOuter):capturesOuter(child)));
-                if (handler.body.some(capturesOuter)) t.unsupported.push('sprite.onDestroyed() callback captures a function local');
-                t.destroyedInstanceHandlers.set(node, `__bwDestroyed${++nextDestroyedHandler}`);
-            }
-        }
-        for (const value of Object.values(node)) {
-            if (Array.isArray(value)) value.forEach(child=>scanDestroyedRegistrations(child,outerLocals));
-            else if (value && typeof value === 'object') scanDestroyedRegistrations(value,outerLocals);
-        }
-    };
-    scanDestroyedRegistrations(ast);
     t.handleTemplates = new Map();
     t.handleImageArrays = new Map();
     t.handleImageLiterals = new Map();
@@ -2750,7 +2966,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         if (!image) return null;
         const kindArgument = projectile ? api === 'sprites.createProjectile' ? call.args[3] : null : call.args[1];
         let kind = projectile ? 'Projectile' : 'Player';
-        if (kindArgument?.type === 'Number') {
+        if (negativeKind(kindArgument) !== null) kind = kindOf(kindArgument);
+        else if (kindArgument?.type === 'Number') {
             const builtinKind = ['Player','Projectile','Food','Enemy'][Number(kindArgument.value)];
             if (builtinKind) kind = builtinKind;
             else t.unsupported.push(`${api}() numeric sprite kind ${kindArgument.value} needs kind identity support`);
@@ -2931,84 +3148,10 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}) => {
         st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type) ||
         plainDeclaration(st) ||
         ['If', 'For', 'While','Block'].includes(st.type) ||
-        (callOf(st) && ![
-            ...(t.sceneStackProgram?[]:['sprites.onDestroyed','sprites.onOverlap','game.onUpdateInterval','game.onUpdate']),
-            'control.runInParallel',
-            ...(t.sceneStackProgram?[]:['forever','info.onCountdownEnd','info.onLifeZero',...Array.from({length:4},(_,i)=>`info.player${i+1}.onLifeZero`)])].includes(nameOf(callOf(st))) &&
-            (t.sceneStackProgram || !/^controller\.(A|B|up|down|left|right)\.onEvent$/.test(nameOf(callOf(st)) || ''))));
+        callOf(st));
     {
         out.push('WHEN flag clicked:', '  hide');
         for (const st of setup) t.statement(st, 1, out);
-        out.push('');
-    }
-    const emitCallbackBody = (handler, indent = 1) => {
-        t.localVars = declaredWithin(handler.body);
-        t.localHandleVars = localHandles.get(callbackLocals.get(handler)) || new Set();
-        t.block(handler.body, indent, out);
-        t.localVars = null;
-        t.localHandleVars = new Set();
-    };
-    for (const call of calls.filter(call => nameOf(call) === 'control.runInParallel')) {
-        out.push('WHEN flag clicked:');
-        emitCallbackBody(call.args[0]);
-        out.push('');
-    }
-    for (const call of calls.filter(call => !t.sceneStackProgram && nameOf(call) === 'forever')) {
-        out.push('WHEN flag clicked:', '  FOREVER:');
-        emitCallbackBody(call.args[0],2);out.push('');
-    }
-    for (const call of intervals) {
-        const ms = Number(call.args[0]?.value);
-        if (!Number.isFinite(ms) || ms <= 0) return null;
-        out.push(`WHEN arcade every ${num(ms)} ms:`);
-        emitCallbackBody(call.args[1]);
-        out.push('');
-    }
-    for (const call of updates) {
-        out.push('WHEN arcade updates:');
-        emitCallbackBody(call.args[0]);
-        out.push('');
-    }
-    for (const call of calls) {
-        if(t.sceneStackProgram && (sceneRegistrationSpec(nameOf(call)) || nameOf(call)==='info.onCountdownEnd' || /^info(?:\.player[1-4])?\.onLifeZero$/.test(nameOf(call)||'')))continue;
-        if (nameOf(call) === 'sprites.onDestroyed') {
-            const handler = call.args.find(arg => arg.type === 'FunctionExpression');
-            t.handleAliases = new Map(handler.params?.[0] ? [[handler.params[0], 'arcade event first']] : []);
-            out.push(`WHEN arcade kind "${kindOf(call.args[0])}" destroyed:`);
-            emitCallbackBody(handler);
-            t.handleAliases = new Map();
-            out.push('');
-        } else if (nameOf(call) === 'sprites.onOverlap') {
-            const handler = call.args.find(arg => arg.type === 'FunctionExpression');
-            t.handleAliases = new Map();
-            if (handler.params?.[0]) t.handleAliases.set(handler.params[0], 'arcade event first');
-            if (handler.params?.[1]) t.handleAliases.set(handler.params[1], 'arcade event second');
-            out.push(`WHEN arcade kinds "${kindOf(call.args[0])}" and "${kindOf(call.args[1])}" overlap:`);
-            emitCallbackBody(handler);
-            t.handleAliases = new Map();
-            out.push('');
-        } else if (/^info(?:\.player[1-4])?\.onLifeZero$/.test(nameOf(call) || '')) {
-            const handler=call.args.find(arg=>arg.type==='FunctionExpression');
-            if(!handler){t.unsupported.push(`${nameOf(call)}() requires a callback`);continue;}
-            const variable=playerVar('lives',playerOf(nameOf(call)));
-            out.push('WHEN flag clicked:','  FOREVER:',`    wait until ${variable} > 0`,`    wait until ${variable} < 1`);
-            emitCallbackBody(handler,2);out.push('');
-        } else if (nameOf(call) === 'info.onCountdownEnd') {
-            const handler = call.args.find(arg => arg.type === 'FunctionExpression');
-            out.push('WHEN arcade countdown ends:');
-            emitCallbackBody(handler);
-            out.push('');
-        } else if (/^controller\.(A|B|up|down|left|right)\.onEvent$/.test(nameOf(call) || '')) {
-            const handler = call.args.find(arg => arg.type === 'FunctionExpression');
-            const button = /^controller\.(A|B|up|down|left|right)\./.exec(nameOf(call))[1];
-            out.push(`WHEN ${CONTROLLER_KEYS[button]} key pressed:`);
-            emitCallbackBody(handler);
-            out.push('');
-        }
-    }
-    for (const [call, token] of t.destroyedInstanceHandlers) {
-        out.push(`WHEN arcade destruction handler "${token}" runs:`);
-        emitCallbackBody(call.args[0]);
         out.push('');
     }
     emitCreatedRegistrations(t, out, localHandles, callbackLocals);
@@ -3146,7 +3289,36 @@ const translateOverlapOnly = (ast, assets) => {
  */
 export function arcadeToPseudocode (files, opts = {}) {
     const map = typeof files === 'string' ? {'main.ts': files} : (files || {});
-    const source = map['main.ts'] || '';
+    const selectedSource = arcadeProjectSource(map);
+    const source = selectedSource.source;
+    const projectInputDiagnostics = [...selectedSource.diagnostics];
+    // Parse each boundary independently before the combined parse. This keeps
+    // syntax errors in one file from consuming the following file's tokens,
+    // while the combined parser allocates its generated temporary names once.
+    if (selectedSource.entries.length > 1) {
+        for (const entry of selectedSource.entries) {
+            try { parseMakeCodeTs(entry.source, {parameterDefaults: true}); }
+            catch (error) { throw new Error(`${entry.name}: ${error.message}`, {cause: error}); }
+        }
+    }
+    let projectPalette = ARCADE_PALETTE;
+    let projectPaletteHex = null;
+    if (map['pxt.json']) {
+        try {
+            const palette = JSON.parse(map['pxt.json']).palette;
+            if (palette !== undefined) {
+                if (!Array.isArray(palette) || palette.length !== 16 ||
+                    !palette.every(color => typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color))) {
+                    projectInputDiagnostics.push('Invalid project palette: expected 16 RGB colors');
+                } else {
+                    projectPalette = [null, ...palette.slice(1).map(color => color.toLowerCase())];
+                    if (palette.some((color, index) => color.toLowerCase() !== (ARCADE_PALETTE[index] || '#000000'))) {
+                        projectPaletteHex = palette.map(color => color.slice(1).toLowerCase()).join('');
+                    }
+                }
+            }
+        } catch (error) { projectInputDiagnostics.push(`Project pxt.json could not be read: ${error.message}`); }
+    }
 
     const assets = {};
     const tilemaps = {};
@@ -3177,11 +3349,6 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (/\.g\.ts$/.test(filename)) Object.assign(tilemaps, parseTilemaps(text));
     }
 
-    let projectPalette = ARCADE_PALETTE;
-    if (nativeAnimations.length || map[ANIMATION_COMPANION_PATH] !== undefined) {
-        const config = JSON.parse(map['pxt.json'] || '{}');
-        if (config.palette !== undefined) projectPalette = [null, ...config.palette.slice(1)];
-    }
     // Recover rich source only when it matches native pixels. Resource import
     // optionally binds fresh factories to an explicitly installed artwork library.
     const recovered = duplicateAnimationId && map[ANIMATION_COMPANION_PATH] === undefined ? {resources: [], warnings: []} :
@@ -3215,17 +3382,54 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
-    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source)));
-    const withAnimationDiagnostics = result => ({...result, animationResources, warnings: recovered.warnings,
-        unsupported: [...new Set([...animationDiagnostics, ...result.unsupported])]});
+    const parsed = inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source)));
+    const containsPaletteCall = node => {
+        if(!node || typeof node!=='object')return false;
+        if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
+            node.callee.object?.type==='Identifier' && node.callee.object.name==='image')return true;
+        return Object.values(node).some(value=>Array.isArray(value)?value.some(containsPaletteCall):containsPaletteCall(value));
+    };
+    const runtimePaletteRequested=containsPaletteCall(parsed);
+    const withAnimationDiagnostics = result => {
+        let code = result.code;
+        let costumes = result.costumes;
+        if (projectPaletteHex) {
+            const command = `  arcade set palette hex "${projectPaletteHex}"`;
+            code = /^WHEN flag clicked:$/m.test(code) ?
+                code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n${command}`) :
+                `${code.trimEnd()}\nWHEN flag clicked:\n${command}\n`;
+            costumes = (costumes || []).map(costume => {
+                const pixels = /shape-rendering="crispEdges"/.test(costume.svg || '') && svgToPixels(costume.svg);
+                const svg = pixels ? imageToSvg(pixels, {scale:pixels.scale,palette:projectPalette}) :
+                    String(costume.svg || '').replace(/fill="(#[0-9a-f]{6})"/gi, (fill,color) => {
+                        const index=ARCADE_PALETTE.findIndex(entry=>entry?.toLowerCase()===color.toLowerCase());
+                        return index>0 ? `fill="${projectPalette[index]}"` : fill;
+                    });
+                return {...costume,svg};
+            });
+        }
+        const paletteDiagnostics=[];
+        const nativeImages=/arcade (?:create (?:sprite|image|template)|spawn (?:template|image)|frame image|projectile image)/.test(code);
+        if(runtimePaletteRequested && (costumes || []).length && !nativeImages) {
+            paletteDiagnostics.push('Runtime palette changes require native Arcade image rendering; fixed Scratch costume rendering is not supported');
+        }
+        if(projectPaletteHex && projectPaletteHex.slice(0,6)!=='000000' &&
+            (result.costumes || []).some(costume=>costume.sprite==='background' && !/shape-rendering="crispEdges"/.test(costume.svg || ''))) {
+            paletteDiagnostics.push('Project palette index zero on a fixed Scratch background requires native Arcade background rendering');
+        }
+        return {...result,code,costumes,animationResources,warnings:recovered.warnings,
+            unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
+    };
     const namespaceBindings = lowerNamespaceBindings(parsed);
-    const ast = lowerLazyValues(namespaceBindings.program || parsed);
+    const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed);
+    projectInputDiagnostics.push(...callbacks.unsupported);
+    const ast = lowerLazyValues(callbacks.program);
     const flattened = namespaceBindings.program ? ast : null;
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[node.name] : null;
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
-    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps);
+    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
     const creationEvents = flattened && translateCreationEvents(flattened, assets);
     if (creationEvents) return withAnimationDiagnostics(creationEvents);
@@ -3449,7 +3653,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
         const name = `__arcadeProjectileTemplate${t.projectileTemplates.size + 1}`;
         const kindArg = api === 'sprites.createProjectile' ? call.args[3] : null;
-        if (kindArg?.type === 'Number' && ![0, 1].includes(Number(kindArg.value))) {
+        if (kindArg?.type === 'Number' && negativeKind(kindArg) === null && ![0, 1].includes(Number(kindArg.value))) {
             t.unsupported.push(`${api}() numeric kind ${kindArg.value} in ${scope}`);
         }
         const kind = api === 'sprites.createProjectileFromSide' || !kindArg ||
@@ -3731,7 +3935,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
 
         if (name === 'scene.setBackgroundImage') continue;    // handled in pass 1
-        if (name === 'scene.setBackgroundColor') {
+        if (name === 'scene.setBackgroundColor' || name === 'image.setPalette') {
             t.statement(st, 1, setup);
             continue;
         }

@@ -21,7 +21,7 @@ test('all six properties and stored or computed numeric selectors become native 
     const result=arcadeToPseudocode(members.map((name,index)=>`let edge${index}=scene.cameraProperty(CameraProperty.${name})`).join(';')+';let selector=CameraProperty.Bottom;let stored=scene.cameraProperty(selector);let unknown=scene.cameraProperty(99)');
     assert.deepEqual(result.unsupported,[]);
     for(let index=0;index<6;index++)assert.ok(result.code.includes(`arcade camera property (${index})`));
-    assert.match(result.code,/set selector to 5/);
+    assert.match(result.code,/set selector to \(?5\)?/);
     assert.match(result.code,/arcade camera property \(selector\)/);
     assert.match(result.code,/arcade camera property \(99\)/);
 });
@@ -72,9 +72,10 @@ test('null inference respects procedure scopes and does not authorize unrelated 
     assert.match(result.code,/arcade camera follow sprite \(arcade local target\)/);
 });
 
-test('shake remains explicit while verified camera-relative positioning emits native flags',()=>{
+test('shake uses the native camera while camera-relative positioning emits native flags',()=>{
     const shake=arcadeToPseudocode('scene.cameraShake(4,500);scene.centerCameraAt(80,60)');
-    assert.ok(shake.unsupported.some(note=>note.includes('cameraShake')));
+    assert.deepEqual(shake.unsupported,[]);
+    assert.match(shake.code,/arcade shake camera by \(4\) pixels for \(500\) ms/);
     const relative=arcadeToPseudocode(setup+'actor.setFlag(SpriteFlag.RelativeToCamera,true);scene.cameraFollowSprite(actor)');
     assert.ok(!relative.unsupported.some(note=>note.includes('RelativeToCamera')));
     assert.match(relative.code,/arcade set flag RelativeToCamera/);

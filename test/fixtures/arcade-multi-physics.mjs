@@ -96,16 +96,19 @@ let wallPeerDone=stoppedPeer && firstX===31 && peerX===10 && firstVx===0 && peer
 
 // A launches a fast pass through a stationary target; B resets it. Up and Down
 // switch the sparse images between pixel overlap and disjoint pixel masks.
-export const MULTI_PHYSICS_CONTROLLER_SOURCE=`
+export const multiPhysicsControllerSource=(targetWidth=8)=>`
 scene.setBackgroundColor(1)
 let art=image.create(2,2)
 art.fill(5)
-let targetArt=image.create(2,2)
+// The controller defaults to a wide target for variable desktop frame rates.
+let targetArt=image.create(${targetWidth},2)
 targetArt.fill(9)
 let mover=sprites.create(art,SpriteKind.Player)
 let target=sprites.create(targetArt,SpriteKind.Food)
 mover.setPosition(60,40)
 target.setPosition(68,40)
+let crossingArmed=false
+let resets=0
 let fastOverlapSeen=false
 let endFrameTouching=false
 let passes=0
@@ -121,7 +124,8 @@ sparseFirst.setPosition(110,80)
 sparseSecond.setPosition(110,80)
 let pixelMaskTouch=sparseFirst.overlapsWith(sparseSecond)
 sprites.onOverlap(SpriteKind.Player,SpriteKind.Food,function(first,second){
-    if(!fastOverlapSeen){
+    if(crossingArmed && !fastOverlapSeen){
+        crossingArmed=false
         first.vx=0
         fastOverlapSeen=true
         endFrameTouching=first.overlapsWith(second)
@@ -129,18 +133,22 @@ sprites.onOverlap(SpriteKind.Player,SpriteKind.Food,function(first,second){
     }
 })
 controller.A.onEvent(ControllerButtonEvent.Pressed,function(){
+    crossingArmed=false
     mover.vx=0
     mover.setPosition(60,40)
     target.setPosition(68,40)
     fastOverlapSeen=false
     endFrameTouching=false
+    crossingArmed=true
     mover.vx=500
 })
 controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
+    crossingArmed=false
     mover.vx=0
     mover.setPosition(60,40)
     fastOverlapSeen=false
     endFrameTouching=false
+    resets++
 })
 controller.up.onEvent(ControllerButtonEvent.Pressed,function(){
     sparseSecond.x=sparseFirst.x-3
@@ -151,6 +159,8 @@ controller.down.onEvent(ControllerButtonEvent.Pressed,function(){
     pixelMaskTouch=sparseFirst.overlapsWith(sparseSecond)
 })
 `;
+
+export const MULTI_PHYSICS_CONTROLLER_SOURCE=multiPhysicsControllerSource();
 
 // Explicit overlap queries retain Sprite and live Image references across
 // scene transitions even when the queried sprite is outside the active world.

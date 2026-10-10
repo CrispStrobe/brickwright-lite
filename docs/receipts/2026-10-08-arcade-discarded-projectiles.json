@@ -1,0 +1,89 @@
+{
+  "source": "bffd43641903dc037010aac1dcfeb5c9830a469e",
+  "arcadeBuildProductSource": "20b3bbada6734cf5e9ae939c9c63d713b4bd59be",
+  "producerPin": "983aa61f2fa44901074763b7347588b4e210fc77",
+  "bundle": "gui.4e0654c7.js",
+  "initialBytes": 4360502,
+  "limit": 4467136,
+  "buildErrors": 0,
+  "statsSha256": "654654718d2a90ce53c5f5ab5b43518755ac1199c864318e46e35238a18ce3c2",
+  "browserHarnessSha256": "19f0bab782c950d2f5cd52edf21658c5123b3db900c662d88fd880b769305a28",
+  "tests": {
+    "projectileBatch": 10,
+    "creationCallbackBatch": 17,
+    "sharedCasesBetweenBatches": 4,
+    "browserContracts": 21,
+    "skips": 0
+  },
+  "browser": {
+    "rotationPhases": 12,
+    "ignoredProjectileNativeFileImport": true,
+    "executableBlocks": true,
+    "allThreeApis": true,
+    "realControllerCreatesOnce": true,
+    "visibleCenterRgb": [
+      120,
+      220,
+      82
+    ],
+    "pageErrors": 0,
+    "sourceNameCollisionsPreserved": true
+  },
+  "nativeReference": {
+    "target": "pxt-arcade@4.2.1",
+    "core": "pxt-core@13.2.1",
+    "syntheticCallbacksAndRoundtrips": true,
+    "sb3SaveReopen": true
+  },
+  "corpus": {
+    "count": 184,
+    "contentMultisetSha256": "a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03",
+    "privatePin": "cc15caf31b2519f2a3daa003eec9c30b24e7dc3b",
+    "separatePinnedGitBlobVerification": 184,
+    "cliCommitVerifiedFlag": false,
+    "rawAuditSha256": "a2bb9d71cb060ec859ec4bf7a856ed3f3b657ef4b6a8a384a95aaf7a1d4fdb10",
+    "sourceChanged": false,
+    "vendorPinsChanged": false,
+    "makecodeVersionsChanged": false,
+    "importOnlyBefore": {
+      "translated": 91,
+      "partial": 92,
+      "malformed": 1
+    },
+    "importOnlyAfter": {
+      "translated": 93,
+      "partial": 90,
+      "malformed": 1
+    },
+    "withOriginalCompile": {
+      "translated": 86,
+      "partial": 44,
+      "pxt-compile-failed": 53,
+      "parse-failed": 1
+    },
+    "runtimeSmoke": {
+      "stepped": 127,
+      "notRun": 54,
+      "no-green-flag-thread": 3
+    },
+    "newlyTranslatedCases": [
+      "arcade-6c6460580e12ea9d.ts",
+      "arcade-e3f69fceb7864087.ts"
+    ],
+    "newCasesCompileAndStepWithoutBlockErrors": true,
+    "smokeFrames": 24,
+    "fullGameBehavioralEquivalence": false
+  },
+  "preservedFailures": [
+    "four initial regression failures reject ignored projectile calls",
+    "initial collision oracle requested compiler-elided globals; observation now reads explicit user-source copies",
+    "single-pixel browser colour sample was filtered; three-by-two owned artwork gives exact visible pixels",
+    "first post-change corpus run spanned harness edits; clean committed-source rerun supersedes it"
+  ],
+  "boundaries": [
+    "This closes ignored-result creation, not other missing projectile APIs or assets.",
+    "90 import-only partials, original-compiler failures, graphics/audio/extension gaps and complete game journeys remain.",
+    "Local qualification covers emitted Arcade/import surfaces; newly merged Circuit dependency adoption requires hosted candidate checks."
+  ],
+  "hostedFinalHead": "pending"
+}

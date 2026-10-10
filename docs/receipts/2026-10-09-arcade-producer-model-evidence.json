@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-09",
+  "testedConsumerSource": "ffeb88c80d76726b72168866cde463027d192228",
+  "producerPin": "4df2b00fd18838ca709cbbe680efa5ddfc147844",
+  "measurementInputs": {
+    "bw-board": "a1126312288867127343c2f9bbdfcd2856a18508",
+    "bw-circuit-ui": "557c4716236536829456818789c50772d0e65fa8"
+  },
+  "previousHostedFailure": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37942017622/job/113858532220",
+  "changes": {
+    "expectedProvenancePages": 31,
+    "numericalClaimsChanged": 0,
+    "tolerancesChanged": 0,
+    "compilerRuntimeSourcesChanged": 0
+  },
+  "local": {
+    "quantityProvenanceTests": {
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "stampFreshness": "PASS",
+    "consumerPinDialectTests": {
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "claimCensus": {
+    "total": 2861,
+    "checked": 1313,
+    "disagreed": 0,
+    "declined": 1548,
+    "boundary": "Existing stated decline reasons retained;45.9% compared, not full numerical qualification."
+  },
+  "arcadeCorpus": {
+    "translated": 108,
+    "partial": 75,
+    "malformed": 1,
+    "boundary": "Importer/runtime unchanged; retains preceding hash-verified import-only measurement."
+  },
+  "pending": [
+    "fresh full hosted producer suite",
+    "all enabled exact-head consumer checks before merge"
+  ]
+}

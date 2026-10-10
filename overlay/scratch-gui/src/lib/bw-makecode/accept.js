@@ -14,7 +14,7 @@
  */
 
 /** The `accept` attribute for a file input that should offer these. */
-export const IMPORT_ACCEPT = '.hex,.uf2,.elf,.png';
+export const IMPORT_ACCEPT = '.hex,.uf2,.elf,.png,.mkcd,.pxt';
 
 /**
  * Should this filename go to the artefact importer rather than be read
@@ -23,4 +23,4 @@ export const IMPORT_ACCEPT = '.hex,.uf2,.elf,.png';
  * @param {string} name
  * @returns {boolean}
  */
-export const isImportableArtefact = name => /\.(hex|ihx|uf2|elf|png)$/i.test(String(name || ''));
+export const isImportableArtefact = name => /\.(hex|ihx|uf2|elf|png|mkcd(?:-\w+)?|pxt)$/i.test(String(name || ''));

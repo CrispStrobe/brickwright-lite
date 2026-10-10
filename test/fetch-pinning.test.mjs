@@ -225,6 +225,12 @@ const describeSkips = ({unreadable, nul}) => {
 //                 excused — and not `sha-const`, because the URL carries a tag.
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
+    {
+        file: 'docs/receipts/2026-10-08-tutorial-project-inputs.json', kind: 'raw',
+        text: 'raw.githubusercontent.com/microsoft/pxt-arcade/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/LICENSE',
+        class: 'source-link',
+        why: 'License provenance URL at the immutable tutorial source commit; receipt only, not an executable fetch.'
+    },
     ...['bw-board', 'bw-circuit-ui'].map(name => ({
         file: 'overlay/scratch-gui/static/licenses/bw-packages.sources.json',
         kind: 'archive',

@@ -118,7 +118,7 @@ const L10N = {
         mcSharePrompt: 'Paste a MakeCode share link:',
         mcShareLoading: 'Fetching the shared project…',
         mcExport: '⬆ To MakeCode',
-        mcExportTitle: 'Save this project as a .hex that makecode.microbit.org can import',
+        mcExportTitle: 'Save this project as a native MakeCode project (.mkcd)',
         mcExportDone: (f, u) => (u ?
             `Saved ${f} — drop it on makecode.microbit.org to open it there. ${u} block(s) had no MakeCode equivalent.` :
             `Saved ${f} — drop it on makecode.microbit.org to open it there.`),
@@ -431,7 +431,7 @@ const L10N = {
         mcSharePrompt: 'MakeCode-Freigabelink einfügen:',
         mcShareLoading: 'Geteiltes Projekt wird geladen…',
         mcExport: '⬆ Zu MakeCode',
-        mcExportTitle: 'Dieses Projekt als .hex speichern, die makecode.microbit.org importieren kann',
+        mcExportTitle: 'Dieses Projekt als natives MakeCode-Projekt (.mkcd) speichern',
         mcExportDone: (f, u) => (u ?
             `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen. Für ${u} Block/Blöcke gibt es in MakeCode keine Entsprechung.` :
             `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen.`),
@@ -1886,12 +1886,13 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             const project = creator.parse(source);
-            const {exportToMakeCode} = await import(
+            const {exportToMakeCode, makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = (source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright';
             const out = exportToMakeCode(project, {name: name.trim().slice(0, 40)});
-            await downloadBlob(out.filename, new Blob([out.hex], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: this.L.mcExportDone(out.filename, out.unsupported.length)});
+            const filename = out.filename.replace(/\.hex$/i, '.mkcd');
+            await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: name.trim().slice(0, 40), target: 'microbit'})], {type: 'application/octet-stream'}));
+            this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode export', (err && err.message) || String(err))});
         }
@@ -2144,12 +2145,12 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true});
         try {
             const out = await this.arcadeFromStage();
-            const {makeCodeSourceHex} = await import(
+            const {makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = JSON.parse(out.files['pxt.json']).name;
-            const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.hex`;
-            const hex = makeCodeSourceHex(out.files, {name, target: 'arcade', editorUrl: 'https://arcade.makecode.com/'});
-            await downloadBlob(filename, new Blob([hex], {type: 'application/octet-stream'}));
+            const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.mkcd`;
+            const projectFile = makeCodeProjectFile(out.files, {name, target: 'arcade'});
+            await downloadBlob(filename, new Blob([projectFile], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.arcDone(filename, out.unsupported.length, out.warnings.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode Arcade', (err && err.message) || String(err))});
@@ -4555,6 +4556,8 @@ class PseudocodeImporter extends React.Component {
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         const pending = this._animationImport;
+        const uploads = this.state.uploads;
+        const appliedUploads = new Set();
         const stage = this.props.vm.runtime.getTargetForStage();
         const activeAtStart = this.activeCode();
         try {
@@ -4597,17 +4600,18 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             creator.parse(source);
+            const sourceDeclarations = JSON.parse(JSON.stringify(creator.project));
             const missing = [];
-            this.state.uploads.forEach(u => {
+            uploads.forEach(u => {
                 const name = (u.sprite || '').trim();
                 if (!name || !u.svg) return;
                 const ok = u.mode === 'add' ?
                     creator.addCustomSVGCostume(name, u.svg, u.filename.replace(/\.svg$/i, '')) :
                     creator.applyCustomSVG(name, u.svg);
                 if (!ok) missing.push(name);
+                else appliedUploads.add(u);
             });
             if (strict && (parseWarnings.length || creator.warnings.length)) throw new Error([...parseWarnings, ...creator.warnings].join(' · '));
-            const declarations = JSON.parse(JSON.stringify(creator.project));
             const context = codeArtworkMatches(this.props.vm, this._codeArtwork) ? this._codeArtwork : null;
             const blob = await creator.generateSB3();
             let projectBytes = await blob.arrayBuffer();
@@ -4616,7 +4620,7 @@ class PseudocodeImporter extends React.Component {
                 const module = await import('jszip');
                 const ZIP = module.default || module;
                 const zip = await ZIP.loadAsync(projectBytes);
-                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, uploads);
                 const revision = context && captureCodeArtworkRevision(this.props.vm, context);
                 if (pending) {
                     if (pending.stage !== stage) throw new Error('The loaded project changed since this animation import. Import it again.');
@@ -4632,15 +4636,16 @@ class PseudocodeImporter extends React.Component {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
-            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending ||
+            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending || this.state.uploads !== uploads ||
                 this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
             await this.props.vm.loadProject(projectBytes);
             this._animationImport = null;
             this._makeCodeRequest = null;
-            if (artwork) {
-                applyArtwork(artwork, this.props.vm);
-                this._codeArtwork = captureCodeArtwork(this.props.vm, declarations);
-            }
+            if (artwork) applyArtwork(artwork, this.props.vm);
+            // The loaded project owns applied uploads, including ordinary SVG
+            // imports with no animation bundle. Later conversions read its live
+            // artwork instead of replaying stale imports or append operations.
+            this._codeArtwork = captureCodeArtwork(this.props.vm, creator.project, sourceDeclarations);
             // Auto-select the first sprite with scripts so the Blocks palette
             // shows meaningful blocks, not "Stage selected — no motion blocks".
             const vm = this.props.vm;
@@ -4729,12 +4734,13 @@ class PseudocodeImporter extends React.Component {
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             const classified = classifyConversionWarnings(warns);
-            this.setState({
+            this.setState(state => ({
                 buffers: nb,
+                uploads: state.uploads.filter(upload => !appliedUploads.has(upload)),
                 status: warns.length ? this.L.stWarn(warns.slice(0, 4).join(' · ')) : this.L.stLoaded,
                 conversionReport: {direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: true,
                     changed: classified.changed, unsupported: classified.unsupported}
-            });
+            }));
         } catch (e) {
             const failure = conversionFailure(e);
             this.setState({status: this.L.stError(failure.message), conversionReport: {

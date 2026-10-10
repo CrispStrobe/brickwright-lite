@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "261f82e4c",
+  "baselineSource": "b67b3f329",
+  "scope": "Existing native property and editable live-project export qualification; no new conversion capability",
+  "local": {
+    "passed": 7,
+    "failed": 0,
+    "skipped": 0
+  },
+  "qualified": [
+    "Independent typed z/lifespan/ax/ay imports compared with actual original PXT",
+    "Layer operand evaluation once; positive/negative layering values",
+    "Code/Blocks decompile, saved SB3, actual live VM project export and decoded SVG assets",
+    "Export executed by original PXT and reimported in native VM",
+    "Existing native renderer order, ownership, scenes, palette and template checks"
+  ],
+  "corpus": {
+    "translated": 109,
+    "partial": 74,
+    "malformed": 1,
+    "unchangedInputHashes": 184,
+    "changedDiagnosticRows": 0
+  },
+  "removedRedundantChange": "Baseline native selection already covers the qualified fixtures; extra route condition removed",
+  "failureRetention": [
+    "Serialized project passed where exporter needs object",
+    "Raw SVG bytes passed where exporter needs decoded text"
+  ],
+  "pending": [
+    "Full shipped native-file/Blocks/controller pixel-layer browser journey",
+    "Exact-head hosted checks"
+  ]
+}

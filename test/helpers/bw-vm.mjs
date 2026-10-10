@@ -184,15 +184,18 @@ function variableSnapshot (vm) {
     return snapshot;
 }
 
-/** Advance controlled VM frames with the normal Promise continuation queue. */
-export async function stepFrames(vm, frames) {
+/** Advance explicit physics frames with the normal Promise continuation queue.
+ * This does not fast-forward wait timers; controlled-clock tests inject the
+ * runtime clock too, while ordinary fixtures retain their real wait clock.
+ */
+export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     for (let i = 0; i < frames; i++) {
-        vm.runtime._step();
+        vm.runtime._step(frameMs);
         await new Promise(resolve => setImmediate(resolve));
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false} = {}) {
     const creator = new SB3Creator();
     creator.parse(source);
     for (const upload of uploads) {
@@ -233,7 +236,8 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     await stepFrames(vm, frames);
     const after = variableSnapshot(vm);
     vm.quit();
-    clearStrayTimers();
+    // Fiber-driven extension fixtures keep timers until their explicit cleanup.
+    if (!retainExtensionTimers) clearStrayTimers();
     let variablesChanged = 0;
     for (const [name, value] of after) if (before.get(name) !== value) variablesChanged++;
     let extensionCalls = 0;

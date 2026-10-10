@@ -89,13 +89,13 @@ test('native value programs retain life-zero callbacks and their rearming behavi
 let hits=0
 info.setLife(2)
 info.onLifeZero(function(){hits+=1;info.setLife(1)})`,async run=>{
-        const life=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name.replace(/^Game_/,'')==='lives');
+        const life=run.vm.runtime.bwArcadeDeviceState.players[0];
         assert.ok(life);assert.equal(Number(vars(run).hits),0);
         for(let count=1;count<=2;count++){
-            life.value=0;
+            run.vm.runtime._primitives.arcade_setLife({PLAYER:1,VALUE:0},{});
             const deadline=Date.now()+3000;
             while(Number(vars(run).hits)!==count && Date.now()<deadline){await stepFrames(run.vm,4);await new Promise(done=>setTimeout(done,10));}
-            assert.equal(Number(vars(run).hits),count);assert.equal(Number(life.value),1);
+            assert.equal(Number(vars(run).hits),count);assert.equal(Number(life.life),1);
             await stepFrames(run.vm,5);
         }
         assert.deepEqual(run.errors,[]);

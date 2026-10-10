@@ -23,7 +23,7 @@ import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 import {IMPORT_ACCEPT} from '../overlay/scratch-gui/src/lib/bw-makecode/accept.js';
-import {balancedAfter, scopeAfter} from './helpers/js-scope.mjs';
+import {balancedFrom, balancedAfter, scopeAfter} from './helpers/js-scope.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const IMPORTER = resolve(here, '../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx');
@@ -96,7 +96,10 @@ test('costumes are handed over under the names compile() reads', () => {
     for (const field of ['sprite:', 'filename:', 'svg:', 'mode:']) {
         assert.ok(uploads.includes(field), `uploads entries must carry ${field}`);
     }
-    const compile = scopeAfter(source, 'this.state.uploads.forEach');
+    const signature = 'async compile ({strict = false, pseudocode = null} = {}) {';
+    const method = balancedFrom(source, source.indexOf(signature) + signature.length - 1, '{', '}');
+    assert.match(method, /const uploads = this\.state\.uploads/);
+    const compile = scopeAfter(method, 'uploads.forEach');
     assert.match(compile, /u\.sprite/);
     assert.match(compile, /u\.svg/);
     assert.match(compile, /u\.mode === 'add'/);
@@ -183,7 +186,7 @@ test('the extensions offered and the extensions handled are the same list', () =
     // IMPORT_ACCEPT is what the file dialog shows; isImportableArtefact is
     // what decides where a dropped file goes. A file offered but not
     // routed lands in the text path and reports "unknown file type".
-    assert.equal(IMPORT_ACCEPT, '.hex,.uf2,.elf,.png');
+    assert.equal(IMPORT_ACCEPT, '.hex,.uf2,.elf,.png,.mkcd,.pxt');
     const accept = readFileSync(
         resolve(here, '../overlay/scratch-gui/src/lib/bw-makecode/accept.js'), 'utf8');
     for (const ext of IMPORT_ACCEPT.split(',')) {

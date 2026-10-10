@@ -36,6 +36,7 @@ const ROOT = path.resolve(import.meta.dirname, '..');
  * UI rather than tweaking a selector.
  */
 const KNOWN_UNWIRED = {
+    'verify-makecode-assets-roundtrip.mjs': 'opt-in live external editor qualification: imports the GUI-exported duplicate-animation .mkcd into arcade.makecode.com, edits Assets through native controls and returns its PNG to Brickwright. Routine CI must not depend on a mutable external editor/network. Passed four journeys against Arcade4.1.25/PXT13.1.23, zero final page errors, on2026-10-07. Run the wired verify-arcade-animation-resource-browser.mjs first, then node scripts/verify-makecode-assets-roundtrip.mjs --input test-results/arcade-animation-resource-browser/animation-duplicate-libraries.mkcd --out test-results/makecode-assets-roundtrip/current.json --bw-url http://localhost:8617/. The offline native-envelope tests and existing Arcade GUI export/reimport gates remain mandatory.',
     'verify-arcade-background-corpus.mjs': 'manual/local: reads programs from the private MakeCode corpus (CrispStrobe/brickwright-firmware-private compat-corpora/makecode/arcade, set BW_ARCADE_CORPUS or check it out beside this repo); the corpus is test data that is never committed here, so CI cannot reach it. Ported from the parked WIP (open task F3); passed against that corpus on main 2026-10-07.',
     'verify-arcade-lazy-value-corpus.mjs': 'manual/local: reads programs from the private MakeCode corpus (CrispStrobe/brickwright-firmware-private compat-corpora/makecode/arcade, set BW_ARCADE_CORPUS or check it out beside this repo); the corpus is test data that is never committed here, so CI cannot reach it. Ported from the parked WIP (open task F3); passed against that corpus on main 2026-10-07.',
     'verify-arcade-literal-image-corpus.mjs': 'manual/local: reads programs from the private MakeCode corpus (CrispStrobe/brickwright-firmware-private compat-corpora/makecode/arcade, set BW_ARCADE_CORPUS or check it out beside this repo); the corpus is test data that is never committed here, so CI cannot reach it. Ported from the parked WIP (open task F3); passed against that corpus on main 2026-10-07.',
@@ -167,10 +168,12 @@ const shellQuote = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // the strictness exists so a gate named in an `echo` cannot look protected, and `echo` is not a
 // wrapper. Each token must be a wrapper name, a flag, `--`, or a timeout duration.
 const WRAPPERS = '(?:xvfb-run|dbus-run-session|timeout|env|nice|stdbuf|setsid|--|-{1,2}[A-Za-z0-9-]+|\\d+[smh]?)';
+// Node's module preload precedes the entry script; it does not replace it.
+const NODE_IMPORTS = `(?:--import(?:=|\\s+)(?:"[^"]+"|'[^']+'|[^\\s]+)\\s+)*`;
 const runInvokesGate = (run, gate) => new RegExp(
     `(?:^|[;&|]\\s*)\\s*(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|[^\\s]+)\\s+)*` +
     `(?:${WRAPPERS}\\s+)*` +
-    `node\\s+(?:\\./)?scripts/${shellQuote(gate)}(?=\\s|$)`,
+    `node\\s+${NODE_IMPORTS}(?:\\./)?scripts/${shellQuote(gate)}(?=\\s|$)`,
     'm'
 ).test(run);
 const workflowRuns = workflowTexts.flatMap(workflowRunScalars);
@@ -327,6 +330,8 @@ test('a wrapper runs a gate; a mention of one does not', () => {
     const gate = 'verify-example.mjs';
     for (const run of [
         `node scripts/${gate}`,
+        `node --import ./scripts/lib/register-gui-scope.mjs scripts/${gate}`,
+        `node --import=./scripts/lib/register-gui-scope.mjs scripts/${gate}`,
         `xvfb-run -a dbus-run-session -- node scripts/${gate}`,
         `PROOF_URL=http://localhost:8617/ node scripts/${gate}`,
         `timeout 600 node scripts/${gate}`,
@@ -336,6 +341,8 @@ test('a wrapper runs a gate; a mention of one does not', () => {
     }
     for (const run of [
         `echo node scripts/${gate}`,
+        `echo node --import ./scripts/lib/register-gui-scope.mjs scripts/${gate}`,
+        `node --import scripts/${gate}`,
         `echo "remember to run node scripts/${gate}"`,
         `# node scripts/${gate}`
     ]) {

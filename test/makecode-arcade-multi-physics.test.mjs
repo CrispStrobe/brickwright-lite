@@ -4,7 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-import {MULTI_MOVER_SOURCE,TRANSPARENT_PIXEL_SOURCE,WALL_PEER_MUTATION_SOURCE,RETAINED_SPRITE_QUERY_SOURCE} from './fixtures/arcade-multi-physics.mjs';
+import {multiPhysicsControllerSource,MULTI_MOVER_SOURCE,TRANSPARENT_PIXEL_SOURCE,WALL_PEER_MUTATION_SOURCE,RETAINED_SPRITE_QUERY_SOURCE} from './fixtures/arcade-multi-physics.mjs';
 
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name.replace(/^Game_/,''),variable.value]));
 
@@ -56,4 +56,19 @@ test('retained Sprite/Image aliases support explicit overlap queries across susp
     assert.equal(expected.hiddenParentTouch,true);assert.equal(expected.hiddenParentEmpty,false);assert.equal(expected.hiddenParentRestored,true);
     assert.equal(expected.poppedChildTouch,true);assert.equal(expected.poppedChildEmpty,false);assert.equal(expected.poppedChildRestored,true);
     assert.equal(expected.activeFoodCount,0);
+});
+
+
+test('a fast crossing delivers one event, stops its mover and preserves callback geometry across all paths',async()=>{
+    const source='game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource()+`
+crossingArmed=true
+mover.vx=500
+pause(300)
+let stopped=mover.vx===0
+let geometryConsistent=endFrameTouching===mover.overlapsWith(target)
+let crossingDone=passes===1`;
+    const expected=await verify(source,['fastOverlapSeen','passes','stopped','geometryConsistent','crossingDone'],'crossingDone');
+    assert.equal(expected.stopped,true);
+    assert.equal(expected.geometryConsistent,true);
+    assert.equal(expected.passes,1);
 });

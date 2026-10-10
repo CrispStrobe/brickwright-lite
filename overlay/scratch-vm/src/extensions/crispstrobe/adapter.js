@@ -50,7 +50,7 @@ const esmToCjs = source => source
 // extension CLASS (the scratch-vm ExtensionManager instantiates it with `new Cls(runtime)`).
 // TurboWarp modules self-register via Scratch.extensions.register; Xcratch modules export
 // { blockClass, entry }. Both converge on an object with getInfo() + opcode methods.
-module.exports = function makeCrispExtension (source) {
+module.exports = function makeCrispExtension (source, dependencies = null) {
     return class CrispStrobeExtension {
         constructor (runtime) {
             this.runtime = runtime;
@@ -61,6 +61,8 @@ module.exports = function makeCrispExtension (source) {
                 extensions: { register: inst => { captured = inst; }, unsandboxed: true, isPenguinMod: false },
                 vm: runtime && runtime.emit ? { runtime } : {}, runtime
             };
+            // Trusted built-ins opt into modules with their compiled closures intact.
+            if (dependencies !== null) Scratch.BWExtensionDependencies = dependencies;
             // Yes/no questions an extension can wait for (task E7). In the desktop/iOS app
             // `window.confirm` returns a Promise (tauri-plugin-dialog), always truthy, so the
             // CrispStrobe extensions ask through `Scratch.BWConfirm(message) -> Promise<boolean>`

@@ -18,7 +18,8 @@ test('a pinned PXT overlap callback destroys the event sprite it names', async (
     const source = readFileSync(join(import.meta.dirname, 'fixtures/makecode/arcade-overlap-destroy.ts'), 'utf8');
     const translated = arcadeToPseudocode(source);
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /arcade destroy arcade event second/);
+    assert.match(translated.code, /arcade set local otherSprite to arcade event second/);
+    assert.match(translated.code, /arcade destroy arcade local otherSprite/);
     const code = translated.code + `WHEN flag clicked:
   set hero to arcade spawn template "Art" kind "Player" x 80 y 60 width 16 height 16
   set food to arcade spawn template "Art" kind "Food" x 80 y 60 width 16 height 16
@@ -29,7 +30,7 @@ WHEN flag clicked:
 `;
     const run = await runProgram(code, {frames: 8, uploads: [...translated.costumes, pixelCostume('Art')], storage: true});
     assert.deepEqual(run.errors, []);
-    assert.ok((run.calls.get('arcade_whenSpritesOverlap') || 0) > 0);
+    assert.ok((run.calls.get('arcade_whenRegisteredOverlap') || 0) > 0);
     const live = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {}).filter(sprite => sprite.id);
     assert.deepEqual(live.map(sprite => sprite.kind), ['Player']);
     const foodCount = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
@@ -41,6 +42,7 @@ test('PXT overlap destroy effects remain an explicit gap', () => {
     const translated = arcadeToPseudocode(`sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (hero, enemy) {
         sprites.destroy(enemy, effects.fire, 500)
     })`);
-    assert.match(translated.code, /arcade destroy arcade event second/);
+    assert.match(translated.code, /arcade set local enemy to arcade event second/);
+    assert.match(translated.code, /arcade destroy arcade local enemy/);
     assert.ok(translated.unsupported.some(gap => gap.includes('effect and duration')));
 });

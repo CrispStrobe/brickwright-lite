@@ -1,0 +1,196 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "c737253b8621af79c404d5972a2085352aa8db93",
+  "base": "4a210ea61855007775126d5dae1c3ed6e476b534",
+  "scope": "Authored controller fixture lifecycle and browser/meta-gate qualification; no importer, runtime, producer or engine pin changes.",
+  "hostedParents": {
+    "pr740": {
+      "head": "5f92f44174b5df0dda3b2f6af652aa88d07ce329",
+      "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37851310198",
+      "heavyBrowser": "SUCCESS",
+      "heavyJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37851310198/job/113580725332",
+      "overallBuild": "FAILURE"
+    },
+    "pr741": {
+      "head": "4a210ea61855007775126d5dae1c3ed6e476b534",
+      "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37852453546",
+      "unitSuite": {
+        "passed": 6474,
+        "failed": 1,
+        "skipped": 21,
+        "failure": "EVENT-AS-STATE camera audit suspect"
+      },
+      "heavyBrowser": "FAILURE",
+      "failure": "Controller reset wait timed out",
+      "buildJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37852453546/job/113568513617",
+      "heavyJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37852453546/job/113586218193"
+    }
+  },
+  "originalLifecycleControl": {
+    "unguardedLateEffectsAfterPositionReset": 1,
+    "guardedLateEffectsAfterPositionReset": 0,
+    "nativeMatchesOriginal": true,
+    "qualification": "Complete original PXT simulator and native runtime at explicit16ms physics cadence; queued callback consumed after reset. This establishes the lifecycle mechanism, not the exact timing of the hosted failure."
+  },
+  "local": {
+    "distinctChecks": 25,
+    "failed": 0,
+    "skipped": 0,
+    "groups": {
+      "gateShapeAudit": 11,
+      "nativePhysicsAndOriginalControls": 9,
+      "CodeExportAndSB3PhysicsRoundtrips": 5
+    },
+    "sourceChanges": [
+      "Camera completion wait is adjacent to the existing whole-document editor assertion; audit baseline and behavior assertions unchanged.",
+      "Authored crossing arm guard disarms on event and reset, with a reset counter.",
+      "Visible controller waits for the reset counter and verifies stable cleared state/pass count after three actual frames.",
+      "Controller wait failures retain expected and observed native state in their error."
+    ],
+    "referenceGui": {
+      "status": "PASS",
+      "bundle": "gui.3c9f1746.js",
+      "buildSource": "d606023f2455a0e0a213da65a34d76a31ed91445",
+      "sha256": "55d84625d43336d7a39bd893968863ce7c824ac91d3ded33f94ed7fe0afde558",
+      "qualification": "Existing production reference bundle, not a fresh build of testedSource; current authored fixture and browser script used.",
+      "result": {
+        "generatedAt": "2026-10-09T05:28:14.082Z",
+        "authoring": "visible Code editor \u2192 To blocks \u2192 green flag \u2192 controller fast crossings/reset/pixel masks \u2192 From blocks",
+        "unsupported": [],
+        "initial": {
+          "moverX": 60,
+          "moverVx": 0,
+          "targetX": 68,
+          "fastOverlapSeen": false,
+          "endFrameTouching": false,
+          "finalOverlap": false,
+          "passes": 0,
+          "crossingArmed": false,
+          "resets": 0,
+          "pixelMaskTouch": false,
+          "errors": []
+        },
+        "initialPixels": {
+          "mover": 36,
+          "target": 144,
+          "diagonal": 18,
+          "antiDiagonal": 18
+        },
+        "passes": [
+          {
+            "passed": {
+              "moverX": 73,
+              "moverVx": 0,
+              "targetX": 68,
+              "fastOverlapSeen": true,
+              "endFrameTouching": false,
+              "finalOverlap": false,
+              "passes": 1,
+              "crossingArmed": false,
+              "resets": 0,
+              "pixelMaskTouch": false,
+              "errors": []
+            },
+            "passedPixels": {
+              "mover": 36,
+              "target": 144,
+              "diagonal": 18,
+              "antiDiagonal": 18
+            },
+            "reset": {
+              "moverX": 60,
+              "moverVx": 0,
+              "targetX": 68,
+              "fastOverlapSeen": false,
+              "endFrameTouching": false,
+              "finalOverlap": false,
+              "passes": 1,
+              "crossingArmed": false,
+              "resets": 1,
+              "pixelMaskTouch": false,
+              "errors": []
+            }
+          },
+          {
+            "passed": {
+              "moverX": 73,
+              "moverVx": 0,
+              "targetX": 68,
+              "fastOverlapSeen": true,
+              "endFrameTouching": false,
+              "finalOverlap": false,
+              "passes": 2,
+              "crossingArmed": false,
+              "resets": 1,
+              "pixelMaskTouch": false,
+              "errors": []
+            },
+            "passedPixels": {
+              "mover": 36,
+              "target": 144,
+              "diagonal": 18,
+              "antiDiagonal": 18
+            },
+            "reset": {
+              "moverX": 60,
+              "moverVx": 0,
+              "targetX": 68,
+              "fastOverlapSeen": false,
+              "endFrameTouching": false,
+              "finalOverlap": false,
+              "passes": 2,
+              "crossingArmed": false,
+              "resets": 2,
+              "pixelMaskTouch": false,
+              "errors": []
+            }
+          }
+        ],
+        "touching": {
+          "moverX": 60,
+          "moverVx": 0,
+          "targetX": 68,
+          "fastOverlapSeen": false,
+          "endFrameTouching": false,
+          "finalOverlap": false,
+          "passes": 2,
+          "crossingArmed": false,
+          "resets": 2,
+          "pixelMaskTouch": true,
+          "errors": []
+        },
+        "touchingPixels": {
+          "mover": 36,
+          "target": 144,
+          "diagonal": 9,
+          "antiDiagonal": 18
+        },
+        "disjoint": {
+          "moverX": 60,
+          "moverVx": 0,
+          "targetX": 68,
+          "fastOverlapSeen": false,
+          "endFrameTouching": false,
+          "finalOverlap": false,
+          "passes": 2,
+          "crossingArmed": false,
+          "resets": 2,
+          "pixelMaskTouch": false,
+          "errors": []
+        },
+        "disjointPixels": {
+          "mover": 36,
+          "target": 144,
+          "diagonal": 18,
+          "antiDiagonal": 18
+        },
+        "errors": []
+      }
+    }
+  },
+  "limits": [
+    "Fresh exact-head hosted checks required; no overall green CI claim.",
+    "Finite queue/cadence controls do not qualify all collisions or full game equivalence.",
+    "Last original184 census102 translated/81 partial/1 malformed unchanged; not rerun for this test-only batch."
+  ]
+}

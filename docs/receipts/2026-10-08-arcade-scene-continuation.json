@@ -1,0 +1,112 @@
+{
+  "date": "2026-10-08",
+  "buildSource": "94882c6a57d9f32462ec2579efc56fe2d9e35e45",
+  "producer": "0de6ae91758353af89ce64b06717a4294cd6bb05",
+  "producerChanged": false,
+  "changes": [
+    "forever/game.forever/basic.forever register at authored call sites without scene-stack selection",
+    "Nested closures retain shared captured cells and deferred initial execution",
+    "Exact inline callback arity and shadowed bindings stay diagnosed",
+    "Scene continuation test requires retained elapsed time and independent child clock",
+    "Fiber test harness optionally retains extension timers until explicit cleanup; no production runtime change",
+    "New authoring/controller/decompile browser journey wired to CI"
+  ],
+  "tests": {
+    "qualifiedDistinct": 61,
+    "failedAfterReruns": 0,
+    "skipped": 0,
+    "arcade": 34,
+    "gatesAndProjectLoading": 27,
+    "originalAndExportedPxtTrace": "S12E13S14E15",
+    "nativeFirstTrace": "S12E13",
+    "nativeRepeatedTrace": "S12E13S14E15",
+    "roundtrips": [
+      "Native execution",
+      "Blocks decompile to Code",
+      "MakeCode export and reimport",
+      "SB3 reload"
+    ],
+    "sceneChecks": [
+      "Suspended scenes do not start new forever iterations",
+      "Pending callback remains on original scene",
+      "Restored scene consumes retained30ms plus new10ms; child stays at20ms"
+    ],
+    "retainedFailures": [
+      "Original baseline scene clock failure and unrelated array/F5 assertions",
+      "Initial27-test run had4 failures: timer cleanup, invalid arity fallback and adapter-field assertion",
+      "Focused3-test and final34-test passes retained"
+    ]
+  },
+  "build": {
+    "bundle": "gui.4e20cd56.js",
+    "errors": 0,
+    "warnings": 2,
+    "initialBytes": 4360790,
+    "initialLimit": 4467136,
+    "bootPayload": "passed",
+    "previousInitialBytes": 4360790
+  },
+  "browser": {
+    "status": "passed",
+    "samples": [
+      {
+        "trace": "S12E13",
+        "runs": 1
+      },
+      {
+        "trace": "S12E13S14E15",
+        "runs": 2
+      }
+    ],
+    "errors": [],
+    "blockErrors": [],
+    "flow": "Native file import \u2192 Code \u2192 Blocks \u2192 Run \u2192 visible A \u2192 From blocks",
+    "previousJourneysOnSameBundle": {
+      "callback-completion": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "update-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "button-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "info-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      }
+    }
+  },
+  "corpus": {
+    "previous": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "current": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "changedDiagnosticRows": 0,
+    "changed": [],
+    "immutableInputs": 184,
+    "measurement": "Import diagnostics only; no complete-game equivalence claim"
+  },
+  "remaining": [
+    "Sprite overlap/destruction registration consistency without scene-stack selection",
+    "Initial scene phase, whole-loop pause and obstacle timing; common-clock differential qualification",
+    "Untranslated-array/F5 export/value diagnostic/module-reachability hosted failures",
+    "Camera/pixel-bounds/multi-physics/speech browser integration failures",
+    "Dedicated tilemap painter, callback creation guidance and tracked artwork/palette/effect/music GUI gaps",
+    "Fresh exact-head hosted checks and stacked integration"
+  ],
+  "publication": "Draft stacked on PR735; exact-head hosted checks required before merge"
+}

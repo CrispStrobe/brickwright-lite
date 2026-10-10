@@ -1658,6 +1658,13 @@ committed file differs from the pinned bundle:
   pxt-common-packages' ThirdPartyNotice records for that version. "Source" is a
   trademark of Adobe in the United States and/or other countries.
 
+Sprite following in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`
+manually adapts the `follow`/`unfollow` steering and lifecycle logic from
+`pxt-common-packages`' bundled `game/sprite.ts` (MIT, Copyright (c) Microsoft
+Corporation). Tests execute the original method against controlled times and
+compare collision-aware snapping with the original Arcade simulator. The
+existing MIT notice below covers this adapted runtime code as well.
+
 Full texts: `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt` (both MIT
 sources) and `overlay/scratch-gui/static/licenses/pxt-speech-font12.OFL.txt`, shipped
 with the app and reachable from the About dialog offline.
@@ -1983,3 +1990,84 @@ program readers retain their BSD-3-Clause/MPL-2.0 licences and source
 availability obligations. The virtual simulator ships without an external firmware runtime. Evidence for retained component
 licences is recorded in the private SPIKE audit archive; this addition does
 not relicense any retained component.
+
+### Arcade numeric sign
+
+The native numeric sign reporter adapts `Math.sign` from the bundled MIT-licensed
+Microsoft PXT `base/pxt-helpers.ts`. The retained PXT notices cover this adaptation.
+Original source and simulator comparisons verify its positive-zero and NaN rules.
+
+### Arcade image scrolling
+
+Native mutable image scrolling adapts the signed32 offsets, clipping and
+zero-filled pixel semantics of Microsoft PXT ImageMethods.scroll, retained
+under the existing pxt-common-packages MIT notice. The implementation uses
+row copies over native mutable buffers; comparisons execute the original
+simulator RefImage, clone, transparent drawing and scrolling methods unchanged.
+
+### Arcade in-place image copying
+
+The native Image.copyFrom operation follows Microsoft PXT ImageMethods.copyFrom:
+same image dimensions, transparent pixel copying and preserved destination pixel
+buffer. The native implementation adapts these semantics for Brickwright's
+4-bit indexed images under the Microsoft PXT MIT notice above. Original PXT
+simulator source remains unchanged for comparisons.
+
+### Arcade indexed scene composition
+
+The internal compositor follows the Microsoft PXT Scene.render and
+Background.draw ordering for background colour/image and Sprite pixel drawing,
+using the already credited original PXT image raster operations. Original
+source remains unchanged for full indexed pixel-plane comparisons. The initial
+compositor covers background and sprites; tilemaps, callback renderables, HUD,
+speech and effects remain separate integration work.
+
+### Arcade indexed tile composition
+
+The tile raster iteration and tile renderable identity follow Microsoft PXT
+TileMap.draw and LegacyTilemap.draw: inclusive tile bounds, original camera
+bit shifts, transparent blits and z/creation-ID order. These semantics adapt
+the credited MIT PXT implementation; original source remains unchanged for
+full indexed-frame comparisons.
+
+### Indexed modern speech composition
+
+Modern speech composition reuses the retained original Microsoft PXT
+SpriteSayRenderer and font data, with a native write-mask bridge. The mask
+preserves explicit colour-zero writes and owner-local draw ordering; original
+PXT source stays unchanged for full pixel comparisons. Legacy speech's separate
+bubble sprite remains an integration gap in this frame pipeline.
+
+### Speech clock across scenes
+
+Speech creation, raster animation and expiry use the existing global simulated
+clock, following original PXT control.millis/game.runtime speech semantics.
+Scene-local frame and physics clocks remain separate. Original PXT speech
+sources and simulator remain unchanged for suspended-scene comparisons.
+
+### Legacy speech camera bridge
+
+The speech adapter follows the credited Microsoft PXT MIT Sprite.isOutOfScreen
+and legacy speech camera/flag semantics. Native world coordinates and camera
+draw offsets are passed through to the retained original renderer; generated
+PXT sources and font data are unchanged. This does not integrate native bubble
+identity, yielding callbacks or complete frame presentation.
+
+### Negative sprite kind membership
+
+The native kind collection queries and interchange follow the credited MIT
+Microsoft PXT sprites.allOfKind and Sprite.setKind semantics: negative numeric
+kinds retain their sprite/callback identity but do not join kind collections.
+The existing scene, physics and callback implementations remain in use; original
+PXT simulator/source comparisons exercise the behaviour without changing them.
+
+### Native legacy speech constructor continuation
+
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech-native-legacy.js`
+adapts the credited Microsoft PXT Arcade4.2.1 game/spritesay.ts legacy renderer
+(MIT, Copyright Microsoft Corporation). The constructor is a resumable factory
+so native creation callbacks can pause before flags and text are installed.
+Original geometry, glyph drawing and scrolling logic are retained with a native
+sprite/image facade. The original generated speech-pxt.js and credited fonts
+remain unchanged for comparisons. This is attributed PXT adaptation and
+integration, not a clean-room implementation.

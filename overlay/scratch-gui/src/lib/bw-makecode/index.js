@@ -47,6 +47,7 @@ export {parseImageLiteral, parseJres, imageToSvg, ARCADE_PALETTE} from './arcade
 export {exportToMakeCode, projectToMakeCodeTs, makeCodeSourceHex} from './export.js';
 export {parseMakeCodeTs} from './ts-import.js';
 
+export {makeCodeProjectFile} from './project-file.js';
 export {IMPORT_ACCEPT, isImportableArtefact} from './accept.js';
 
 /**
@@ -201,7 +202,7 @@ export async function importShareLink (input, opts = {}) {
  * }>}
  */
 export async function importArtefact (bytes, opts = {}) {
-    const format = sniffFormat(bytes);
+    const format = sniffFormat(bytes, opts);
     const name = opts.name || '';
 
     // MicroPython first, and only for hexes: it is a cheap fixed-address
@@ -231,7 +232,7 @@ export async function importArtefact (bytes, opts = {}) {
     // only ever answers the case where the unpack found nothing.
     let res;
     try {
-        res = await unpackMakeCodeSource(bytes, {decodePng});
+        res = await unpackMakeCodeSource(bytes, {decodePng, name});
     } catch (noMakeCodeSource) {
         if (format === 'hex') {
             const text = new TextDecoder().decode(bytes);

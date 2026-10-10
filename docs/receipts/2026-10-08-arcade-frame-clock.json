@@ -1,0 +1,113 @@
+{
+  "date": "2026-10-08",
+  "buildSource": "24c53595285b9d46cd3c134fbc82aa295aae2756",
+  "change": [
+    "Elapsed VM millisecond clock drives Arcade rather than fixed33ms",
+    "Initial VM tick0ms; green flag and scheduler start reset the baseline",
+    "Explicit frame durations for offline/manual stepping",
+    "Pending scene callbacks retain elapsed time for their next frame"
+  ],
+  "tests": {
+    "qualified": 60,
+    "failed": 0,
+    "skipped": 0,
+    "clockSchedules": [
+      {
+        "schedule": "30Hz",
+        "elapsedMs": 1000,
+        "originalX": 109.3359375,
+        "nativeX": 109.3359375
+      },
+      {
+        "schedule": "60Hz",
+        "elapsedMs": 1000,
+        "originalX": 108.59375,
+        "nativeX": 108.59375
+      },
+      {
+        "schedule": "irregular",
+        "elapsedMs": 1000,
+        "originalX": 109.80859375,
+        "nativeX": 109.80859375
+      }
+    ],
+    "comparison": "Explicit timestamp schedules against original PXT physics calls, not whole original event-loop equivalence",
+    "controlledWait": "Registered child-scene callback pause70 stays pending at80ms, completes100ms; scene elapsed120ms after next frame",
+    "manualFrames": "Test helper explicitly supplies durations; ordinary helper frames do not fast-forward wait clock",
+    "promptTestRepair": "Existing assertion expected unparenthesized ask reporter; observer now checks actual parenthesized syntax, answer-wait semantics pass"
+  },
+  "build": {
+    "bundle": "gui.0f84bfdb.js",
+    "errors": 0,
+    "warnings": 2,
+    "initialBytes": 4360790,
+    "previousInitialBytes": 4360555,
+    "initialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "samples": [
+      {
+        "completed": 1,
+        "before": 15,
+        "after": 11.8828125,
+        "inB": 11.8828125,
+        "inC": 11.8828125,
+        "finalX": 11.8828125
+      },
+      {
+        "completed": 2,
+        "before": 15,
+        "after": 11.8828125,
+        "inB": 11.8828125,
+        "inC": 11.8828125,
+        "finalX": 11.8828125
+      }
+    ],
+    "frameClock": {
+      "before": {
+        "wall": 1791473205164,
+        "elapsed": 134,
+        "x": 40
+      },
+      "after": {
+        "wall": 1791473205686,
+        "elapsed": 655,
+        "x": 55.19921875
+      },
+      "elapsed": 521,
+      "wall": 522,
+      "dx": 15.19921875
+    },
+    "errors": [],
+    "blockErrors": [],
+    "flow": "Native file import, Code, Blocks, flag, visible A repeat; separate visible right hold verifies elapsed time and motion"
+  },
+  "corpus": {
+    "lastQualifiedImportOnly": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "rerun": false,
+    "newPromotions": 0
+  },
+  "retainedFailures": [
+    "Idealized motion range rejected matching PXT60Hz fixed-point result; exact per-schedule equality retained",
+    "Controlled observer initially treated Scratch numeric text as JS numeric values; explicit numeric observation added",
+    "Legacy update hats begin on a different phase and do not exercise registered frame suspension",
+    "Nested onUpdate without scene-stack selector still diagnoses game.onUpdate(); exact reproducer retained",
+    "Stale prompt syntax assertion repaired; prompt semantics rerun successfully"
+  ],
+  "remaining": [
+    "Initial scene-worker phase versus VM tick, including push/pop",
+    "Legacy WHEN arcade updates hats versus sequential registered scene callbacks",
+    "Nested game.onUpdate and other callback registration outside scene-stack-selected conversion",
+    "Whole original event-loop ordering for pause0/20/70 and obstacle lifetime",
+    "System wall-clock adjustments and background scheduling beyond bounded timestamp controls",
+    "U03 map painter/resource lifecycle; ranked artwork/maps, palettes, effects/music",
+    "Exact-head hosted CI and stacked integration"
+  ],
+  "publication": "Draft stacked on Lite730; unmerged"
+}

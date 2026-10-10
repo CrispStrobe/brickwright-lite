@@ -9,7 +9,7 @@ test('a pinned Arcade prompt waits for the answer before using it', async () => 
     const source = readFileSync(join(import.meta.dirname, 'fixtures/makecode/arcade-ask-name.ts'), 'utf8');
     const translated = arcadeToPseudocode(source);
     assert.deepEqual(translated.unsupported, []);
-    assert.match(translated.code, /set name to arcade ask text "What is your name\?"/);
+    assert.match(translated.code, /set name to \(arcade ask text "What is your name\?"\)/);
     const creator = new SB3Creator();
     creator.parse(translated.code);
     assert.deepEqual(creator.warnings, []);
@@ -20,7 +20,7 @@ test('a pinned Arcade prompt waits for the answer before using it', async () => 
     assert.notEqual(getName(), 'Ada');
     run.vm.runtime.emit('ANSWER', 'Ada');
     await new Promise(setImmediate);
-    for (let i = 0; i < 8; i++) run.vm.runtime._step();
+    for (let i = 0; i < 8; i++) run.vm.runtime._step(1000 / 30);
     assert.equal(getName(), 'Ada');
 });
 
@@ -49,7 +49,7 @@ test('Arcade number prompt waits and stores a numeric answer', async () => {
     assert.notEqual(value(), 13.5);
     run.vm.runtime.emit('ANSWER', '13.5');
     await new Promise(setImmediate);
-    for (let i = 0; i < 8; i++) run.vm.runtime._step();
+    for (let i = 0; i < 8; i++) run.vm.runtime._step(1000 / 30);
     assert.equal(value(), 13.5);
 });
 
