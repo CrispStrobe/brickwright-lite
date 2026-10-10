@@ -6,6 +6,7 @@ import {readFileSync, writeFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
+import {lowerFibers} from './lib/pxt-fiber-lowering.mjs';
 
 const root = resolve(import.meta.dirname, '..');
 const require = createRequire(resolve(root, 'packages/scratch-gui/package.json'));
@@ -32,7 +33,8 @@ const transpile = code => ts.transpileModule(code, {compilerOptions: {
 const group = names => files.filter(file => names.includes(file[1])).map(text).join('\n');
 let compiled = transpile(group(['fixed.ts'])) +
     transpile(group(['mathUtil.ts']).replace(/\bnamespace Math\b/, 'namespace PxtMath')) + 'Object.assign(Math, PxtMath);\n' +
-    transpile(group(['effects.ts', 'particlefactories.ts', 'particles.ts', 'particleeffects.ts']));
+    // ImageEffect.startScreenEffect pauses inside control.runInParallel: lowered to generators.
+    transpile(lowerFibers(ts, group(['effects.ts', 'particlefactories.ts', 'particles.ts', 'particleeffects.ts']), 'effects.ts').printed);
 // PXT arrays carry removeElement; plain JavaScript arrays do not.
 const removals = compiled.match(/[\w.]+\.removeElement\(/g) || [];
 compiled = compiled.replace(/([\w.]+)\.removeElement\(/g, '__removeElement($1, ');
@@ -42,7 +44,7 @@ const header = `// Generated from PXT Arcade ${bundle.versions.target}, pxt-comm
     `// ${hashes.join('\n// ')}\n// Regenerate: node scripts/generate-arcade-particles.mjs\n`;
 const content = header +
     `module.exports = function initializePxtParticles(host) {\n` +
-    `const {game, control, screen, img, scene, SpriteFlag} = host;\n` +
+    `const {game, control, screen, img, scene, SpriteFlag, pause} = host;\n` +
     `const Math = Object.create(globalThis.Math);\n` +
     `Math.idiv = (a, b) => (a / b) | 0;\n` +
     `Math.randomRange = host.randomRange;\n` +

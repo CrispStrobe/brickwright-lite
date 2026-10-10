@@ -117,6 +117,7 @@ module.exports = makeExt(`// Name: Arcade
           this._clearParticleOverlays();this._particleScenes=new WeakMap();this._particleAnchors=new WeakMap();
           this._renderables=new WeakMap();this._screen=null;
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
+          this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
           this._images.clear();
@@ -197,6 +198,13 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
           {opcode:'printImageText',blockType:Scratch.BlockType.COMMAND,text:'Arcade print [TEXT] on image [IMAGE] x [X] y [Y] color [COLOR] font [FONT]',
             arguments:{...str('TEXT','Hello'),...str('IMAGE',''),...n('X',0),...n('Y',0),...n('COLOR',1),FONT:{type:Scratch.ArgumentType.STRING,menu:'imageFonts',defaultValue:'auto'}}},
+          {opcode:'legacyGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade legacy game over win [WIN] effect [EFFECT]',arguments:{WIN:{type:Scratch.ArgumentType.BOOLEAN},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'legacyGameOverEffects',defaultValue:'unset'}}},
+          {opcode:'gameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade game over win [WIN]',arguments:{WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'setGameOverEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over effect [EFFECT] for win [WIN]',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'backgroundEffects',defaultValue:'confetti'},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'setGameOverMessage',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over message [MESSAGE] for win [WIN]',arguments:{...str('MESSAGE','GAME OVER!'),WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
+          {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
+          {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
           {opcode:'playMusic',blockType:Scratch.BlockType.COMMAND,text:'Arcade play music [PLAYABLE] mode [MODE]',arguments:{...str('PLAYABLE',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'playbackModes',defaultValue:'UntilDone'}}},
           {opcode:'playMelody',blockType:Scratch.BlockType.COMMAND,text:'Arcade play melody [MELODY] mode [MODE]',arguments:{...str('MELODY',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'melodyModes',defaultValue:'play'}}},
           {opcode:'playSoundEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade play sound effect [EFFECT] mode [MODE]',arguments:{...str('EFFECT',''),MODE:{type:Scratch.ArgumentType.STRING,menu:'soundPlayModes',defaultValue:'UntilDone'}}},
@@ -678,6 +686,10 @@ module.exports = makeExt(`// Name: Arcade
           ,particleEffects: {acceptReporters: false, items: ['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo',
             'ashes', 'disintegrate', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']}
           ,imageFonts: {acceptReporters: false, items: ['auto', 'normal', 'small', 'large']}
+          ,backgroundEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
+          ,legacyGameOverEffects: {acceptReporters: false, items: ['unset', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
+          ,imageEffects: {acceptReporters: false, items: ['dissolve', 'melt', 'slash', 'splatter']}
+          ,scoringTypes: {acceptReporters: false, items: ['HighScore', 'LowScore', 'None']}
           ,playbackModes: {acceptReporters: false, items: ['UntilDone', 'InBackground', 'LoopingInBackground']}
           ,melodyModes: {acceptReporters: false, items: ['play', 'playUntilDone', 'loop']}
           ,soundPlayModes: {acceptReporters: false, items: ['UntilDone', 'InBackground']}
@@ -1012,6 +1024,7 @@ module.exports = makeExt(`// Name: Arcade
       const key=number+':'+button,current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
       const held=!!isDown;if(current.held===held)return;
       current.held=held;current.elapsed=0;current.count=0;
+      if(held)this._buttonPressed();
       if(this._dialogs?.[0]?.type==='ask'){if(number===1)this._questionButtonEdge(button,held);return;}
       if(this._terrainStopped)return;
       const pending=this._runTerrainGenerator(this._controllerButtonCallbacks(number,button,held?2049:2048,true));
@@ -1023,7 +1036,7 @@ module.exports = makeExt(`// Name: Arcade
         const held=this._heldButton(number,button),key=number+':'+button;
         const current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
         let event;
-        if(held!==current.held){current.held=held;current.elapsed=0;current.count=0;event=held?2049:2048;}
+        if(held!==current.held){current.held=held;current.elapsed=0;current.count=0;event=held?2049:2048;if(held)this._buttonPressed();}
         else if(held){current.elapsed+=(dt*1000)|0;if(current.elapsed>=500){const count=Math.floor((current.elapsed-530)/30);if(count!==current.count){current.count=count;event=2054;}}}
         if(event!==undefined)yield* this._controllerButtonCallbacks(number,button,event);
         if(this._state()!==state)return;
@@ -2926,8 +2939,16 @@ module.exports = makeExt(`// Name: Arcade
         game:{currentScene:()=>ext._particleScene(),
           onUpdate:fn=>{if(fn)ext._particleScene().update=fn;},
           onUpdateInterval:(period,fn)=>{if(fn && period>=0)ext._particleScene().intervals.push({period,fn,timer:0});}},
+        // Image screen effects pause in control.runInParallel: their lowered
+        // generators run as fibers beside music, redrawing the background
+        // image after each step changes it.
         control:{millis:()=>ext._globalElapsedMs,ramSize:()=>32*1024*1024,
-          runInParallel:()=>{throw new Error('Arcade image screen effects are not available');}},
+          runInParallel:fiber=>ext._music().spawn((function*(){
+            const inner=fiber(),refresh=()=>{const image=ext._state().backgroundImage;if(image)ext._refreshImage(image);};
+            for(let step=inner.next();!step.done;step=inner.next()){refresh();yield step.value;}
+            refresh();
+          })())},
+        *pause(ms){yield ms;},
         screen,img,SpriteFlag:{Ghost:spriteFlags.Ghost},BaseSprite,
         scene:{SPRITE_Z:0,backgroundImage:()=>ext._pxtImage(ext._state().backgroundImage)},
         // pxsim Math_.randomRange
@@ -3071,6 +3092,135 @@ module.exports = makeExt(`// Name: Arcade
     _screenRaw() {
       if(!this._screen)this._screen={width:160,height:120,pixels:new Uint8Array(160*120)};
       return this._screen;
+    }
+    // ---- game over: PXT's GameOverConfig and GameOverDialog (gameover-pxt.js),
+    // run the way game.ts _gameOverImpl does ----
+    _gameOverModule() {
+      if(this._gameOverPxt)return this._gameOverPxt;
+      const ext=this,text=this._pxtText();
+      class DialogImage {
+        constructor(raw){this.raw=raw;}
+        get width(){return this.raw.width;}
+        get height(){return this.raw.height;}
+        getPixel(x,y){return imageEngine.getPixel(this.raw,x,y);}
+        setPixel(x,y,c){imageEngine.draw(this.raw,'setPixel',x,y,c);}
+        fillRect(x,y,w,h,c){imageEngine.draw(this.raw,'fillRect',x,y,w,h,c);}
+        drawTransparentImage(source,x,y){imageEngine.blit(this.raw,source.raw,'drawTransparentImage',x,y);}
+        // The simulator image helpers address a buffer through this shape.
+        drawIcon(icon,x,y,color){text.drawIcon({_width:this.raw.width,_height:this.raw.height,data:this.raw.pixels,makeWritable(){},color:c=>Number(c)&15},{data:icon},x,y,color);}
+        print(value,x,y,color,font){text.helpers.imagePrint(this,String(value),x,y,color,font);}
+        printCenter(value,y,color,font){text.helpers.imagePrintCenter(this,String(value),y,color,font);}
+      }
+      // PXT image literals: '.' is transparent, each other character one hex color.
+      const img=strings=>{
+        const rows=String(strings.raw?strings.raw[0]:strings[0]).split(String.fromCharCode(10)).map(line=>line.replace(/[^0-9a-fA-F.]/g,'')).filter(Boolean);
+        const width=Math.max(0,...rows.map(row=>row.length)),pixels=new Uint8Array(width*rows.length);
+        rows.forEach((row,y)=>[...row].forEach((c,x)=>{pixels[y*width+x]=c==='.'?0:parseInt(c,16);}));
+        return new DialogImage({width,height:rows.length,pixels});
+      };
+      const effects={};
+      for(const name of ['confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none'])effects[name]={kind:'particle',name};
+      for(const name of ['dissolve','melt','slash','splatter'])effects[name]={kind:'image',name};
+      this._gameOverEffects=effects;
+      const music=this._music().pxt.music;
+      this._gameOverPxt=dependencies.initializeGameOver({
+        image:{create:(width,height)=>new DialogImage({width,height,pixels:new Uint8Array(Math.max(0,width*height))}),
+          font5:text.image.font5,font8:text.image.font8,font12:text.image.font12},
+        img,screen:{width:160,height:120,isMono:false},effects,music,
+        info:{isBetterScore:(next,previous)=>ext._isBetterScore(next,previous)},
+        control:{},controller:{},scene:{}
+      });
+      return this._gameOverPxt;
+    }
+    _gameOverState() {
+      if(!this._gameOver){const {game}=this._gameOverModule();this._gameOver={config:new game.GameOverConfig(),over:false};}
+      return this._gameOver;
+    }
+    // info.isBetterScore
+    _isBetterScore(next,previous) {
+      const {game}=this._gameOverModule(),type=this._gameOverState().config.scoringType;
+      if(type===game.ScoringType.HighScore)return previous==null || next>previous;
+      if(type===game.ScoringType.LowScore)return previous==null || next<previous;
+      return false;
+    }
+    _gameOverEffect(name,optional) {
+      this._gameOverModule();
+      const key=String(name);
+      if(optional && key==='unset')return undefined;
+      if(Object.prototype.hasOwnProperty.call(this._gameOverEffects,key))return this._gameOverEffects[key];
+      this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no background effect "'+key+'".');
+      return null;
+    }
+    setGameOverEffect(args) {
+      const effect=this._gameOverEffect(args.EFFECT,false);
+      if(effect)this._gameOverState().config.setEffect(Scratch.Cast.toBoolean(args.WIN),effect,true);
+    }
+    setGameOverMessage(args) {this._gameOverState().config.setMessage(Scratch.Cast.toBoolean(args.WIN),String(Scratch.BWValues.decode(args.MESSAGE) ?? ''),true);}
+    setGameOverPlayable(args) {
+      const playable=this._musicValue(args.PLAYABLE,'Playable');
+      if(playable)this._gameOverState().config.setSound(Scratch.Cast.toBoolean(args.WIN),playable,Scratch.Cast.toBoolean(args.LOOPING),true);
+    }
+    setGameOverScoringType(args) {
+      const {game}=this._gameOverModule(),type=game.ScoringType[String(args.TYPE)];
+      if(typeof type!=='number'){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no scoring type "'+String(args.TYPE)+'".');return;}
+      this._gameOverState().config.setScoringType(type,true);
+    }
+    startImageEffect(args) {
+      const name=String(args.EFFECT),effect=['dissolve','melt','slash','splatter'].includes(name)?this._particles().effects[name]:null;
+      if(!effect){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no image effect "'+name+'".');return;}
+      effect.startScreenEffect(Scratch.Cast.toNumber(args.TIMES) || undefined,Scratch.Cast.toNumber(args.DELAY) || undefined);
+    }
+    gameOver(args,util) {return this._runGameOver(Scratch.Cast.toBoolean(args.WIN),util);}
+    // game.over(win, effect?): the effect applies unless the program chose one.
+    legacyGameOver(args,util) {
+      const win=Scratch.Cast.toBoolean(args.WIN),effect=this._gameOverEffect(args.EFFECT,true);
+      if(effect===null)return;
+      this._gameOverState().config.setEffect(win,effect,false);
+      return this._runGameOver(win,util);
+    }
+    // Resolves after ms of Arcade time (PXT pause).
+    _arcadePause(ms) {return new Promise(resolve=>this._music().spawn((function*(){yield ms;resolve();})()));}
+    // controller.pauseUntilAnyButtonIsPressed: the next button press.
+    _nextButtonPress() {return new Promise(resolve=>{(this._buttonPressWaiters || (this._buttonPressWaiters=[])).push(resolve);});}
+    _buttonPressed() {const waiters=this._buttonPressWaiters;this._buttonPressWaiters=[];if(waiters)for(const resolve of waiters)resolve();}
+    async _runGameOver(win,util) {
+      const go=this._gameOverState();
+      if(go.over)return;
+      go.over=true;
+      const {game}=this._gameOverModule(),goc=go.config,state=this._infoState();
+      const judged=goc.scoringType!==game.ScoringType.None;
+      const players=(state.players || []).map((player,index)=>({number:index+1,score:player?.score})).filter(player=>player.score!==undefined);
+      const best=this._highScore===undefined?null:this._highScore;
+      // info.highScore() reads 0 when nothing was saved.
+      const previousBest=judged && (best || 0);
+      let winner=null,winningScore=null;
+      if(judged && win)for(const player of players)if(this._isBetterScore(player.score,winningScore)){winningScore=player.score;winner=player;}
+      const scores=players.map(player=>new game.GameOverPlayerScore(player.number,player.score,player===winner));
+      if(judged && winner && this._isBetterScore(winner.score,best))this._highScore=winner.score;
+      const message=goc.getMessage(win,false),effect=goc.getEffect(win),sound=goc.getSound(win);
+      const mode=goc.getSoundLooping(win)?this._music().pxt.music.PlaybackMode.LoopingInBackground:this._music().pxt.music.PlaybackMode.InBackground;
+      // The last displayed frame becomes the background of a fresh scene.
+      const shown=state.sceneFrame?.pixels?.slice() || new Uint8Array(160*120);
+      while(this._sceneStack.length){const pending=this.popScene({},util);if(pending?.then)await pending;}
+      const pushed=this.pushScene({},util);if(pushed?.then)await pushed;
+      const scene=this._state();
+      scene.backgroundImage={width:160,height:120,pixels:shown};this._renderBackgroundImage();
+      if(sound)this._music().spawn(this._music().pxt.music.play(sound,mode));
+      if(effect?.kind==='particle')this.startScreenEffect({EFFECT:effect.name,DURATION:0});
+      else if(effect?.kind==='image')this._particles().effects[effect.name].startScreenEffect();
+      await this._arcadePause(400);
+      if(this._state()!==scene)return;
+      const dialog=new game.GameOverDialog(win,message,judged,scores,previousBest,undefined);
+      this._renderablesOf(scene).push({z:100,id:scene.nextSpriteId++,draw:screen=>{
+        dialog.update();
+        imageEngine.blit(screen,dialog.image.raw,'drawTransparentImage',0,(120-dialog.image.height)>>1);
+      }});
+      await this._arcadePause(500);
+      dialog.displayCursor();
+      await this._nextButtonPress();
+      // control.reset restarts the program.
+      this._runtime?.stopAll?.();
+      this._runtime?.greenFlag?.();
     }
     screenImage() {return this._imageHandle(this._screenRaw());}
     // ---- music: PXT's mixer runs as fibers on the Arcade clock (music.js) ----
@@ -3231,7 +3381,8 @@ module.exports = makeExt(`// Name: Arcade
       for(const item of items){
         if(!item.renderable){imageEngine.drawLayer(screen,item);continue;}
         const before=screen.pixels.slice();
-        yield* this._registeredCallbackSteps([item.renderable],item.renderable.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
+        if(item.renderable.draw)item.renderable.draw(screen);
+        else yield* this._registeredCallbackSteps([item.renderable],item.renderable.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
         if(this._state()!==state)return;
         const writes=new Uint8Array(screen.pixels.length);
         for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
@@ -3895,5 +4046,6 @@ module.exports = makeExt(`// Name: Arcade
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   initializeMusic: require('./music-pxt'),
-  helpers: require('./helpers-pxt')
+  helpers: require('./helpers-pxt'),
+  initializeGameOver: require('./gameover-pxt')
 });
