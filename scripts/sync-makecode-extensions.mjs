@@ -99,6 +99,20 @@ export const EXTENSIONS = [
         target: 'arcade',
         untagged: true,
         usedBy: ['arcade tutorials alien, hundred, hawk, dunk, harlem-globetrotters']
+    },
+    {
+        // Rule-driven sprite animation. Its default branch is the v0.1.0 commit,
+        // so an untagged reference resolves to the same source.
+        id: 'arcade-character-animations',
+        spec: 'github:microsoft/arcade-character-animations#v0.1.0',
+        repo: 'microsoft/arcade-character-animations',
+        tag: 'v0.1.0',
+        commit: '7b40150c721eef4e11ef0aff247deedc266d292e',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        untagged: true,
+        usedBy: ['arcade character animation tutorials']
     }
 ];
 

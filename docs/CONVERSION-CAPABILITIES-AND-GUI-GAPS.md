@@ -6,6 +6,29 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Arcade extensions: character animations — 2026-10-10
+
+`arcade-character-animations` (`characterAnimations`), MIT, Microsoft, pinned
+v0.1.0 at `7b40150c`.
+
+- `scripts/generate-arcade-character-animations.mjs` transpiles the pinned
+  `main.ts` unchanged. The host gives it one wrapper per native sprite (position,
+  velocity, destroyed flag, wall contact, image), player 1's buttons and scene
+  push/pop. Its frame handler runs at PXT's ANIMATION_UPDATE_PRIORITY: after
+  physics, before the update handlers (a new pre-update slot for extension frame
+  handlers below priority 19; the rest still run after the camera).
+- Nine words (sb3-creator `44d11124`, 277 ops): loop/run frames, enable, manual
+  state, clear, controller, facing lock and unlock, rules built from `Predicate`
+  names and rule matching. Export adds the dependency.
+
+Evidence (`test/makecode-arcade-character-animations.test.mjs`): walking with
+facing, start frames followed by loop frames, and manual state/enable/facing lock
+/controller scenarios follow the original frame by frame (shown frame and two
+rule checks per frame); a program using every word round-trips through Code/
+Blocks, SB3 and an executed original export. Running the frame handler after the
+update handlers fails all three; a fixed frame time fails the start-frames
+scenario. Corpus: 142 of 184 inputs translate.
+
 ## Arcade extensions: background scroller — 2026-10-10
 
 The first converted extension that is not bundled with Arcade:

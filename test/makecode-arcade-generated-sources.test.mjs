@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
-for (const script of ['generate-arcade-builtin-images.mjs', 'generate-arcade-image-operations.mjs', 'generate-arcade-speech.mjs', 'generate-arcade-particles.mjs', 'generate-arcade-text.mjs', 'generate-arcade-music.mjs', 'generate-arcade-helpers.mjs', 'generate-arcade-gameover.mjs', 'generate-arcade-sevenseg.mjs', 'generate-arcade-sprite-extensions.mjs', 'generate-arcade-scroller.mjs']) {
+for (const script of ['generate-arcade-builtin-images.mjs', 'generate-arcade-image-operations.mjs', 'generate-arcade-speech.mjs', 'generate-arcade-particles.mjs', 'generate-arcade-text.mjs', 'generate-arcade-music.mjs', 'generate-arcade-helpers.mjs', 'generate-arcade-gameover.mjs', 'generate-arcade-sevenseg.mjs', 'generate-arcade-sprite-extensions.mjs', 'generate-arcade-scroller.mjs', 'generate-arcade-character-animations.mjs']) {
     test(`${script} --check: the committed file is the pinned bundle's`, () => {
         const run = spawnSync(process.execPath, [path.join(ROOT, 'scripts', script), '--check'], {cwd: ROOT, encoding: 'utf8'});
         assert.equal(run.status, 0, run.stderr || run.stdout);
