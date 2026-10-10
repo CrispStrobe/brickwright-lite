@@ -6,15 +6,51 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native particle effects — 2026-10-10
+
+Tested source `1396e85031fd8de68f7f5efd0de1a1b0cc5c38a2`. The PXT particle
+system now runs natively:
+
+- `scripts/generate-arcade-particles.mjs` transpiles the pinned `particles.ts`,
+  `particlefactories.ts`, `particleeffects.ts`, `effects.ts`, `mathUtil.ts` and
+  `fixed.ts` into `particles-pxt.js`. The native host supplies the scene, the
+  shared sprite ID counter, the global clock, the `onUpdate` and 250 ms prune
+  handlers (registered after earlier handlers), one transparent indexed layer
+  per source, and visible overlays ordered with sprites by z then ID.
+- `Sprite.destroy(effect, duration)` ghosts and dissolves the sprite and starts
+  the effect. The sprite stays drawn until its lifespan ends in `_destroyCore`,
+  but it leaves `allOfKind`, controllers, following and animations immediately.
+  The original simulator shows the same behaviour: handler order `rd`, Ghost
+  set, not counted by kind at 0 ms, in the scene at 250 ms and gone at 750 ms.
+- `startEffect`, start/end screen effects and `clearParticles` import, run,
+  decompile and export, using sb3-creator `2b93a53d` (five words; 205 ops).
+
+Evidence:
+
+- Seven focused particle tests, including a Code → Blocks → SB3 → original
+  MakeCode export run.
+- Real development and production bundles.
+- The indexed frame and tile planes still match original PXT.
+
+Translation-only, 9 unchanged corpus inputs move from partial to translated
+(109 → 118) and 5 more lose one gap. The compile-and-run audit before this change
+measured 101 translated, 29 partial, 53 where original PXT fails to compile, and
+1 parse failure.
+
+Limits:
+
+- Particle pixels are not compared frame for frame with the original. The
+  browser oracle is real-time, and the native random sequence differs.
+- `game.setGameOverEffect` and image screen effects (`dissolve.startScreenEffect`)
+  remain gaps.
+- Speech on a sprite being destroyed with an effect is not yet special-cased.
+
 ## Fresh-agent entry and refreshed hosted state — 2026-10-10
 
-Read [the complete methodology and handoff](ARCADE-AGENT-HANDOFF.md) for source
-ownership, original-frame replay, commands, evidence boundaries and next lanes.
-Observed PR773 head86a6335: build/corpus/heavy browser passed; light browser
-failed initial layer red-centre pixel at waitLayerPixel, not the earlier numeric
-Boolean assertion. Original report has layerReady true/phase0 and no reported
-page/block/diagnostic errors. Root cause remains unestablished. Fix that real
-browser gate before advancing a full-GUI claim or merging the stack.
+The sprite-layer light-browser failure is fixed (template clones now follow z)
+and the whole stack landed on main through PR775. See
+[the methodology and handoff](ARCADE-AGENT-HANDOFF.md) for ownership, commands,
+evidence rules and next lanes.
 
 ## Native legacy scrolling frame clock — 2026-10-10
 
@@ -1644,7 +1680,7 @@ control or proof remains an open native authoring gate.
 | N03 `animation.runImageAnimation`, `animation.createAnimation`, `animation.runMovementAnimation` | Frame/action animations implemented; movement path engine explicitly missing despite the stop-animation movement menu | Existing frame/action/interval words. Add actual movement/path words and matching blocks when the engine exists | Bind existing Pixel timeline frames to native Image arrays/actions; keep frame durations. Add path editing/presets, stop-type behaviour and original export/playback; the existing movement menu does not establish support. |
 | N04 `Image.drawRect/drawCircle/fillCircle/fillTriangle`, `image.imageBlit` and screen drawing | Image pixels, fills, lines, flips, replacement and two blit forms exist; these do not cover every Image/screen operation | Extend the existing image operation family for each missing overload rather than hide it inside text/JSON | Validate clipping, transparency, source/destination aliasing and palette index; provide native shape choices and resource pickers. Export each shape through a valid public PXT call. |
 | N05 `game.onPaint/onShade`, `scene.createRenderable`, `scene.addBackgroundLayer`, `scene.cameraShake` | Paint and shake appear as named corpus gaps; camera follow/centering is implemented | No corresponding dedicated paint/shade/renderable/layer/shake words in the reviewed dialect | Editable draw callbacks, z/priority and layer images; scheduling relative to physics/HUD, camera and scenes; rendered pixels and original export. Do not reinterpret “zero smoke errors” as paint support. |
-| N06 `effects.starField`, `ParticleEffect.start`, Sprite destruction effects/duration | Screen particles and destruction effects remain named gaps | No native effect/particle authoring words in the reviewed dialect | Effect choice, duration and source-sprite controls; scene push/pop, destruction and restart lifecycle; compare seeded/measurable behaviour without substituting an empty implementation. |
+| N06 `effects.starField`, `ParticleEffect.start`, Sprite destruction effects/duration | Implemented 2026-10-10: generated PXT particle runtime; destroy/start/screen/clear effects through Code, Blocks and export (see the section above) | `game.setGameOverEffect`, image screen effects and particle pixel equivalence remain | Effect choice, duration and source-sprite controls; scene push/pop, destruction and restart lifecycle; compare seeded/measurable behaviour without substituting an empty implementation. |
 | N07 `music.play`, `playTone`, `createSong`, `createSoundEffect`, `PlaybackMode` | Import explicitly refuses both `music.playTone` and `music.play`; exporter can emit tones/notes/rests from Scratch constructs. This is a directional coverage gap | No native Arcade music resource/playback words; generic Scratch sound blocks do not expose all PXT song/envelope/playback options | Song/track/note and sound-envelope authoring, volume/tempo/playback mode, stop/pause/scene lifecycle. Original compilation plus audible/timing observations; a tone export is not full music support. |
 | N08 `game.ask`, `askForNumber`, `askForString`, `setDialogFrame/Cursor/TextColor/Font` | Splash/long text and one-argument number/text prompts exist; prompt options and `game.ask` value forms remain gaps | Existing text/question words; digit/length limits and dialog appearance need native operands/blocks | Prompt interaction, cancellation/focus, blocking order and selected font/frame assets; export options exactly. Avoid declaring all dialogs absent or complete. |
 | N09 `info.onScore`, `highScore`, `changeCountdownBy`, `showScore/showLife/showCountdown`, HUD colours and life image | Score/life players1–4 and start/stop/countdown callbacks exist; broader Info surface is not covered by these words | Add missing predicates/reporters/events/HUD setters with player and value types; audit existing numeric player fields for valid range/feedback | Life icon and HUD colour editing, scene-local vs persistent scores, threshold callbacks and original export; persistent high score needs an explicit persistence contract. |

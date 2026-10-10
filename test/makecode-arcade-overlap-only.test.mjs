@@ -38,11 +38,16 @@ WHEN flag clicked:
     assert.equal(foodCount?.value, -1);
 });
 
-test('PXT overlap destroy effects remain an explicit gap', () => {
+test('PXT overlap destroy effects keep their effect and duration', () => {
     const translated = arcadeToPseudocode(`sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (hero, enemy) {
         sprites.destroy(enemy, effects.fire, 500)
     })`);
     assert.match(translated.code, /arcade set local enemy to arcade event second/);
-    assert.match(translated.code, /arcade destroy arcade local enemy/);
-    assert.ok(translated.unsupported.some(gap => gap.includes('effect and duration')));
+    assert.match(translated.code, /arcade destroy arcade local enemy with effect fire for \(500\) ms/);
+    assert.deepEqual(translated.unsupported, []);
+    // An effect that is not one of PXT's effects.* instances stays diagnosed.
+    const unknown = arcadeToPseudocode(`sprites.onOverlap(SpriteKind.Player, SpriteKind.Enemy, function (hero, enemy) {
+        sprites.destroy(enemy, 3, 500)
+    })`);
+    assert.ok(unknown.unsupported.some(gap => gap.includes('named effects.* particle effect')));
 });

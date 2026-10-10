@@ -1,4 +1,8 @@
 import {applyDeclaredValueType} from './declared-value-types.js';
+// PXT effects.ParticleEffect instances; the screen ones are ScreenEffects.
+const SCREEN_PARTICLE_EFFECTS = new Set(['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none']);
+const PARTICLE_EFFECTS = new Set(['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo', 'ashes',
+    'disintegrate', ...SCREEN_PARTICLE_EFFECTS]);
 /**
  * MakeCode Arcade → a Scratch project.
  *
@@ -1208,6 +1212,22 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return;
         }
+        const screenEffect=/^effects\.(\w+)\.(startScreenEffect|endScreenEffect)$/.exec(name||'');
+        if(this.handleTemplates && screenEffect) {
+            if(!SCREEN_PARTICLE_EFFECTS.has(screenEffect[1])){push(this.note(`effects.${screenEffect[1]}.${screenEffect[2]}() — not a screen effect`));return;}
+            if(screenEffect[2]==='endScreenEffect'){
+                if(a.length)push(this.note('ScreenEffect.endScreenEffect() takes no arguments'));
+                else push(`arcade end screen effect ${screenEffect[1]}`);
+                return;
+            }
+            if(a.length>1){push(this.note('ScreenEffect.startScreenEffect() particles per second — not represented'));return;}
+            push(`arcade start screen effect ${screenEffect[1]} for (${a[0]?this.expr(a[0]):0}) ms`);return;
+        }
+        if(this.handleTemplates && name==='effects.clearParticles') {
+            const target=a.length===1 && this.handleRef(a[0]);
+            if(!target){push(this.note('effects.clearParticles() requires one sprite'));return;}
+            push(`arcade clear effects on ${target}`);return;
+        }
         if(this.handleTemplates && name==='scene.cameraShake') {
             if(a.length>2){push(this.note('scene.cameraShake accepts amplitude and duration only'));return;}
             push(`arcade shake camera by (${a[0]?this.expr(a[0]):4}) pixels for (${a[1]?this.expr(a[1]):500}) ms`);return;
@@ -1314,8 +1334,7 @@ class ArcadeTranslator extends BaseTranslator {
             return;
         }
         if (name === 'sprites.destroy' && this.handleRef(a[0])) {
-            push(`arcade destroy ${this.handleRef(a[0])}`);
-            if (a.length > 1) push(this.note('sprites.destroy() effect and duration — not rendered'));
+            this.destroyWithEffect(this.handleRef(a[0]), a.slice(1), 'sprites.destroy()', push);
             return;
         }
         const imageOwner = node.callee?.object;
@@ -1384,7 +1403,12 @@ class ArcadeTranslator extends BaseTranslator {
                 if(a.length)push(this.note('sprite.unfollow() takes no arguments'));
                 else push(`arcade sprite (${handle}) stop following`);
             }
-            else if (node.callee.name === 'destroy') push(`arcade destroy ${handle}`);
+            else if (node.callee.name === 'destroy') this.destroyWithEffect(handle, a, 'sprite.destroy()', push);
+            else if (node.callee.name === 'startEffect') {
+                const effect=a.length && a.length<=2 && this.particleEffect(a[0]);
+                if(!effect)push(this.note('sprite.startEffect() requires a named effects.* particle effect and an optional duration'));
+                else push(`arcade start effect ${effect} on ${handle} for (${a[1]?this.expr(a[1]):0}) ms`);
+            }
             else if (node.callee.name === 'say' || node.callee.name === 'sayText') {
                 this.spriteSpeech(handle, node.callee.name, a, push);
             }
@@ -1619,6 +1643,21 @@ class ArcadeTranslator extends BaseTranslator {
         default:
             push(this.note(`sprite.${method}()`));
         }
+    }
+
+    // effects.<name> as one of PXT's ParticleEffect instances.
+    particleEffect (node) {
+        const match = /^effects\.(\w+)$/.exec(this.path(node) || '');
+        return match && PARTICLE_EFFECTS.has(match[1]) ? match[1] : null;
+    }
+
+    // PXT Sprite.destroy(effect?, duration?): a duration of 0 or none means
+    // the effect's default, so an omitted duration is written as 0.
+    destroyWithEffect (handle, args, label, push) {
+        if (!args.length) { push(`arcade destroy ${handle}`); return; }
+        const effect = args.length <= 2 && this.particleEffect(args[0]);
+        if (!effect) { push(this.note(`${label} requires a named effects.* particle effect and an optional duration`)); return; }
+        push(`arcade destroy ${handle} with effect ${effect} for (${args[1] ? this.expr(args[1]) : 0}) ms`);
     }
 
     statementInner (st, indent, out) {
@@ -2701,6 +2740,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^effects\.(?:\w+\.(?:startScreenEffect|endScreenEffect)|clearParticles)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;

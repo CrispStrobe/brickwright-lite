@@ -54,7 +54,7 @@ for(const [name,source,isLegacy] of cases)test('indexed tile plane agrees with o
  assert.equal(original.raster.length,160*120);
  assert.deepEqual([...state.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));
  assert.equal(state.tilemapRenderable.pxtId,original.mapId);assert.equal(Object.values(state.sprites)[0].pxtId,original.actorId);
- assert.deepEqual(state.sceneFrame.coverage,['background','tilemap','sprites','modernSpeech']);assert.ok(!state.sceneFrame.remaining.includes('tilemap'));
+ assert.deepEqual(state.sceneFrame.coverage,['background','tilemap','sprites','modernSpeech','particles']);assert.ok(!state.sceneFrame.remaining.includes('tilemap'));
 });
 
 test('legacy cached art and live map aliases remain exact across tile raster composition',async()=>{
