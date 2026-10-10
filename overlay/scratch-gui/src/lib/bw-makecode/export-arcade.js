@@ -69,12 +69,13 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredMultiplayerButton:'multiplayerButton',
     arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile',
     arcade_whenRegisteredUpdate:'update', arcade_whenRegisteredInterval:'interval', arcade_whenRegisteredButton:'button',
+    arcade_whenRegisteredPaint:'paint', arcade_whenRegisteredShade:'shade',
     arcade_whenRegisteredKindDestroyed:'destroyed', arcade_whenRegisteredOverlap:'overlap',
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
     arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
 };
 const REGISTERED_COMMANDS = new Set(['arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
-    'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler',
+    'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
 
@@ -967,6 +968,7 @@ class ArcadeEmitter {
         case 'arcade_animationAssetInterval': return this.authoredAnimation(b);
         case 'arcade_createImage': return `image.create(${v('WIDTH')}, ${v('HEIGHT')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
+        case 'arcade_screenImage': return 'screen';
         case 'arcade_imageProperty': return `${v('IMAGE')}.${this.field(b,'PROPERTY')}`;
         case 'arcade_imagePixel': return `${v('IMAGE')}.getPixel(${v('X')}, ${v('Y')})`;
         case 'arcade_createImageSprite':
@@ -1412,6 +1414,16 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
+        case 'arcade_printImageText': {
+            const font = {small: 'image.font5', normal: 'image.font8', large: 'image.font12', auto: null}[this.field(b, 'FONT')];
+            if (font === undefined) { push(`// ${this.note(`Unsupported Arcade font ${this.field(b, 'FONT')}`)}`); return; }
+            const color = this.arrayValue(b, 'COLOR');
+            const args = [this.arrayValue(b, 'TEXT'), this.arrayValue(b, 'X'), this.arrayValue(b, 'Y')];
+            if (font || color !== '0') args.push(color);
+            if (font) args.push(font);
+            push(`${this.arrayValue(b, 'IMAGE')}.print(${args.join(', ')})`);
+            return;
+        }
         case 'arcade_spriteSay': {
             const self = this.literalInput(b, 'ID') === 'self';
             const owner = self ? me : v('ID');
@@ -1486,6 +1498,8 @@ class ArcadeEmitter {
         case 'arcade_popScene': push('game.popScene()');return;
         case 'arcade_registerMultiplayerButtonHandler':
         case 'arcade_registerUpdateHandler':
+        case 'arcade_registerPaintHandler':
+        case 'arcade_registerShadeHandler':
         case 'arcade_registerIntervalHandler':
         case 'arcade_registerButtonHandler':
         case 'arcade_registerInstanceDestroyedHandler':
@@ -1497,7 +1511,7 @@ class ArcadeEmitter {
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
         case 'arcade_registerCountdownHandler': {
-            const kinds={arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerIntervalHandler:'interval',
+            const kinds={arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
                 arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
@@ -1505,7 +1519,7 @@ class ArcadeEmitter {
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
             const signatures={multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
             const body=`function (${signatures[kind]||''}) {\n${callback.script.join('\n')}\n}`;
-            const apis={parallel:'control.runInParallel',update:'game.onUpdate',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
+            const apis={parallel:'control.runInParallel',update:'game.onUpdate',paint:'game.onPaint',shade:'game.onShade',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
                 lifeZero:'info.onLifeZero',countdown:'info.onCountdownEnd'};
             const args=[];let api=apis[kind];

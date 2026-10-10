@@ -60,6 +60,7 @@ test('scene frame state is suspended and restored without exposing incomplete sc
  await invoke('pushScene');invoke('setBackgroundColor',{COLOR:7});await stepFrames(run.vm,2);const child=frame(run);
  assert.notStrictEqual(child,old);assert.ok(child.pixels.every(x=>x===7));
  await invoke('popScene');assert.strictEqual(frame(run),old);assert.strictEqual(old.pixels,buffer);
- assert.ok(arcadeToPseudocode('let snapshot=screen.clone()').unsupported.length);
- assert.ok(arcadeToPseudocode('game.onPaint(function(){screen.fill(2)})').unsupported.length);
+ // screen reads are the composed frame; see makecode-arcade-screen-paint.test.mjs
+ assert.deepEqual(arcadeToPseudocode('let snapshot=screen.clone()').unsupported,[]);
+ assert.deepEqual(arcadeToPseudocode('game.onPaint(function(){screen.fill(2)})').unsupported,[]);
 });

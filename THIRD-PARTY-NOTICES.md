@@ -1651,14 +1651,17 @@ committed file differs from the pinned bundle:
   (`base/fixed.ts`, `game/mathUtil.ts`, `game/effects.ts`, `game/particles.ts`,
   `game/particlefactories.ts`, `game/particleeffects.ts`, transpiled) in
   `overlay/scratch-vm/src/extensions/crispstrobe/arcade/particles-pxt.js`
-  (`scripts/generate-arcade-particles.mjs`).
+  (`scripts/generate-arcade-particles.mjs`); and image text printing with `font5`
+  (`screen/text.ts`, transpiled) and the simulator's `drawIcon` in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/text-pxt.js`
+  (`scripts/generate-arcade-text.mjs`).
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
   Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`
   (`scripts/generate-arcade-builtin-images.mjs`).
 - **font12** of pxt-common-packages (`screen/font12.jres`), a 12x12 pixel font based on
   **Adobe Source Han Sans** v2.001R (https://github.com/adobe-fonts/source-han-sans),
-  in `speech-fonts.json`: SIL Open Font License 1.1, Copyright 2014-2019 Adobe
+  in `speech-fonts.json` and `text-pxt.js`: SIL Open Font License 1.1, Copyright 2014-2019 Adobe
   (http://www.adobe.com/), with Reserved Font Name 'Source' — the notice
   pxt-common-packages' ThirdPartyNotice records for that version. "Source" is a
   trademark of Adobe in the United States and/or other countries.
