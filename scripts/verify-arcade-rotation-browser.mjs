@@ -477,7 +477,7 @@ let discardedReady=true`;
     await applyArtworkCode();
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await flag.click();
-    await waitMultifile({count: 4, number: 3, index: 1, fourth: 4, copied: 4, restored: 1});
+    await waitMultifile({count: 4, number: 3, index: 1, fourth: 4, copied: 4, restored: true});
     const playerBefore = await page.evaluate(() => {
         const vars=window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables));
         return vars.find(v=>v.name.replace(/^Game_/,'')==='observedX').value;
@@ -756,7 +756,7 @@ let discardedReady=true`;
     await flag.click();await waitMultifile({pressed: 0, released: 0, quick: 0});
     await playerSelect.selectOption('2');
     await page.getByTestId('bw-arcade-a').hover();await page.mouse.down();
-    await waitMultifile({pressed: 4, observed: 2, identity: 1, held: 1});
+    await waitMultifile({pressed: 4, observed: 2, identity: true, held: true});
     await page.mouse.up();await waitMultifile({released: 2});
     await playerSelect.selectOption('1');await page.getByTestId('bw-arcade-a').click();
     await waitMultifile({legacy: 1, pressed: 4, released: 3});
@@ -797,7 +797,7 @@ let discardedReady=true`;
     await page.getByText(/Imported the Arcade game.*legacy-tilemap/).first().waitFor({state:'visible'});
     assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
     await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
-    await waitMultifile({initialIndex:2,aliasIndex:1,replacementCenter:12,childUndefined:1,restoredWall:1,restoredIndex:2});
+    await waitMultifile({initialIndex:2,aliasIndex:1,replacementCenter:12,childUndefined:true,restoredWall:true,restoredIndex:2});
     const legacyPixels=()=>page.evaluate(()=>{
         const map=window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.tilemap;
         return {tileSize:map.tileSize,exact:map.image?.pixels[0],padded:map.image?.pixels[4]};
@@ -824,7 +824,7 @@ let discardedReady=true`;
     await page.getByText(/Imported the Arcade game.*legacy-tile-values/).first().waitFor({state:'visible'});
     assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()), /# unsupported/i);
     await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
-    await waitMultifile({count:4,fourthX:20,fourthY:4,fresh:1,freshElement:1,childPixel:6,
+    await waitMultifile({count:4,fourthX:20,fourthY:4,fresh:true,freshElement:true,childPixel:6,
         originalRetainedIndex:4,restoredIndex:4,rescaledX:10,disabledX:20,placementBefore:10});
     await page.getByTestId('bw-arcade-a').click();
     await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.tilemap?.indices[2]===9);
@@ -841,7 +841,7 @@ let discardedReady=true`;
     await page.getByText(/Imported the Arcade game.*legacy-tile-collisions/).first().waitFor({state:'visible'});
     assert.doesNotMatch(await editor.evaluate(element=>element.cmTile.root.view.state.doc.toString()),/# unsupported/i);
     await applyArtworkCode();await page.getByRole('tab',{name:'Blocks',exact:true}).click();await flag.click();
-    await waitMultifile({count:12,hitDuring:2,hitAfterEdit:2,childHits:1,parentBeforeController:0,returned:1});
+    await waitMultifile({count:12,hitDuring:2,hitAfterEdit:2,childHits:1,parentBeforeController:0,returned:true});
     await page.getByTestId('bw-arcade-a').click();await waitMultifile({count:25,parentSceneHits:1});
     const collisionValues=await page.evaluate(()=>Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value])));
     assert.equal(collisionValues.order,'ABCABC');assert.equal(collisionValues.firstFilter,'ABF');assert.equal(collisionValues.secondFilter,'ABFABLF');
