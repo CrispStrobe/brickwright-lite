@@ -38,6 +38,11 @@ gates, qualify the installed package and actual browser via hosted Build.
 Local old dependencies are not adoption evidence. No waveform expectation,
 failure-latch, tolerance, runtime/GUI, compiler, firmware or browser timeout
 change. Deployment follows qualified landing; no deployment claim in advance.
+Selected browser evidence path: scripts/verify-circuit-ux.mjs only. Keep its
+strict5000 one-volt/reset assertions; explicitly load the ideal one-volt source
+with a capacitor, and observe real advanceToLive receipts. The100kHz sample
+grid must bound each16-step callback to160us and produce partial continuation.
+This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
 ## Arcade resource picker follow-up — 2026-10-07
 
