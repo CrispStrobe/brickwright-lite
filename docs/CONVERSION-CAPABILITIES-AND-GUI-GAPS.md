@@ -16,7 +16,7 @@ counters), which the pinned Arcade target bundles.
   draw with the native image engine onto real native sprites (the host supplies
   `image.create`, `sprites.create` and buffer literals), so digits collide, layer
   and render like any sprite.
-- Nine words (sb3-creator `2f9a8985`, 250 ops): create a digit or counter, set the
+- Nine words (sb3-creator `96a6da7a`, 250 ops): create a digit or counter, set the
   character, color, radix and scale, add a digit, and read or write `x`, `y`,
   `value`, `count` (plus `width`, `height`). Digits and counters are references of
   a new value kind; the translator tracks them through its type graph, and the
