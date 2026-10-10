@@ -16,13 +16,13 @@ function fixture(){
   return {drawableID,currentCostume:0,getCostumes:()=>[],setXY(){},setVisible(){},setSize(){},setCostume(){}};}});
  runtime.addTarget=()=>{};
  const arcade=new Arcade(runtime);
- const spawn=kind=>arcade.createSprite({TEMPLATE:'t',KIND:kind,WIDTH:3,HEIGHT:3});
+ const addSprite=kind=>arcade.createSprite({TEMPLATE:'t',KIND:kind,WIDTH:3,HEIGHT:3});
  const front=id=>{const state=arcade._state(),ids=Object.keys(state.sprites);
   return ids.reduce((a,b)=>order.get(state.spriteTargets[a].drawableID)>order.get(state.spriteTargets[b].drawableID)?a:b);};
- return {arcade,spawn,front};
+ return {arcade,addSprite,front};
 }
 test('template clones follow z across creation and later z changes',()=>{
- const f=fixture(),red=f.spawn('Player'),yellow=f.spawn('Enemy');
+ const f=fixture(),red=f.addSprite('Player'),yellow=f.addSprite('Enemy');
  assert.equal(f.front(),yellow,'equal z keeps creation order');
  f.arcade.setSpriteProperty({ID:red,PROPERTY:'z',VALUE:1});f.arcade.setSpriteProperty({ID:yellow,PROPERTY:'z',VALUE:0});
  assert.equal(f.front(),red);
@@ -30,6 +30,6 @@ test('template clones follow z across creation and later z changes',()=>{
  f.arcade.setSpriteProperty({ID:red,PROPERTY:'z',VALUE:2});assert.equal(f.front(),red);
 });
 test('a clone created after a raised sprite stays behind it',()=>{
- const f=fixture(),red=f.spawn('Player');f.arcade.setSpriteProperty({ID:red,PROPERTY:'z',VALUE:5});
- f.spawn('Enemy');assert.equal(f.front(),red);
+ const f=fixture(),red=f.addSprite('Player');f.arcade.setSpriteProperty({ID:red,PROPERTY:'z',VALUE:5});
+ f.addSprite('Enemy');assert.equal(f.front(),red);
 });
