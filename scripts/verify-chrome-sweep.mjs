@@ -47,6 +47,24 @@ try {
     check(await langRow.getByTestId('bw-device-select').count() === 1,
         'merged row contains the device selector');
 
+    // fe and Tcl stay out of the row until chosen from its "+" menu.
+    const tabNamed = name => langRow.locator('button[aria-pressed]').filter({hasText: name});
+    check(await tabNamed('λ fe').count() === 0 && await tabNamed('○ Tcl').count() === 0,
+        'fe and Tcl are not in the language row by default');
+    const more = langRow.getByTestId('bw-lang-more');
+    check(await more.count() === 1, 'the language row has a "+" control');
+    await more.click();
+    const menu = page.getByTestId('bw-lang-more-menu');
+    check(await menu.getByRole('menuitem').count() === 2, '"+" offers fe and Tcl',
+        (await menu.innerText().catch(() => '')).replace(/\s+/g, ' '));
+    await menu.getByRole('menuitem', {name: /Tcl/}).click();
+    check(await tabNamed('○ Tcl').getAttribute('aria-pressed') === 'true', 'choosing Tcl opens its tab');
+    check(await tabNamed('λ fe').count() === 0, 'fe stays hidden after choosing Tcl');
+    await langRow.getByRole('button', {name: /Pseudo/}).click();
+    check(await tabNamed('○ Tcl').count() === 1, 'an added language stays in the row after leaving it');
+    check(await page.evaluate(() => localStorage.getItem('bw-code-extra-languages')) === '["tcl"]',
+        'the added language is remembered per browser');
+
     await langRow.getByRole('button', {name: /BAS/}).click();
     const profile = page.getByRole('combobox', {name: /Profile/i});
     await profile.waitFor({timeout: 10000});

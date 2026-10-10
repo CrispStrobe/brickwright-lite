@@ -126,6 +126,7 @@ const L10N = {
         mcRun: '▶ Run in MakeCode simulator',
         mcRunTitle: 'Compile this MakeCode project with MakeCode\'s own compiler and run it in MakeCode\'s simulator — nothing is translated, so nothing is lost',
         mcRunCompiling: n => `Compiling ${n} with MakeCode…`,
+        moreLanguages: 'More languages',
         mcRunStarted: (n, t) => `${n} is running in MakeCode's ${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'} simulator.`,
         mcFirmware: '⤓ Firmware for the board',
         mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3, Circuit Playground or the chosen Arcade board .uf2), with the project inside so MakeCode can reopen it',
@@ -439,6 +440,7 @@ const L10N = {
         mcRun: '▶ Im MakeCode-Simulator ausführen',
         mcRunTitle: 'Dieses MakeCode-Projekt mit dem MakeCode-eigenen Compiler übersetzen und im MakeCode-Simulator ausführen — es wird nichts umgewandelt, also geht nichts verloren',
         mcRunCompiling: n => `${n} wird mit MakeCode übersetzt…`,
+        moreLanguages: 'Weitere Sprachen',
         mcRunStarted: (n, t) => `${n} läuft im MakeCode-Simulator (${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'}).`,
         mcFirmware: '⤓ Firmware für das Board',
         mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3, Circuit Playground oder das gewählte Arcade-Board .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
@@ -863,6 +865,16 @@ const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`))
 // '' and wiped the save. Track the ACTIVE buffer instead — that is the one the
 // user is actually working in, and it is never emptied by that rule.
 const BW_AUTOSAVE_KEY = 'bw-code-autosave';
+// Code-tab languages most people never need: they stay out of the language row
+// until chosen from its "+" menu (remembered per browser), opened, or written in.
+const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe on DOS)'], ['tcl', '○ Tcl', 'Tcl (partcl on DOS)']];
+const BW_EXTRA_LANGS_KEY = 'bw-code-extra-languages';
+const readExtraLangs = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem(BW_EXTRA_LANGS_KEY) || '[]');
+        return Array.isArray(saved) ? saved.filter(l => BW_OPTIONAL_LANGS.some(([id]) => id === l)) : [];
+    } catch { return []; }
+};
 const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog it
 
 const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit', nqc: 'NQC'};
@@ -1101,9 +1113,10 @@ class PseudocodeImporter extends React.Component {
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
         this.state = {revealed: props.isVisible !== false, lang: 'pseudocode', importedPython: false,
+            extraLangs: readExtraLangs(), langMenuOpen: false,
             // The Arcade board picker: the boards (null until loaded) and the one chosen.
             arcadeBoards: null, arcadeBoard: '',
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: ''},
+            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: '', fe: '', tcl: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
@@ -2255,7 +2268,9 @@ class PseudocodeImporter extends React.Component {
 
     activeCode () {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return this.state.asmListing;
-        return this.state.buffers[this.state.lang];
+        // A tab with no buffer yet (fe and Tcl were missing from the initial set and
+        // crashed the editor when opened on an empty project) reads as empty.
+        return this.state.buffers[this.state.lang] ?? '';
     }
     setActiveCode (text) {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
@@ -2335,6 +2350,17 @@ class PseudocodeImporter extends React.Component {
 
     // Switch language tab. If the target buffer is empty, derive it from the active
     // buffer so the tab shows the same project in the new language.
+    /** The optional languages the row shows: active, written in, or added from "+". */
+    visibleOptionalLangs () {
+        return BW_OPTIONAL_LANGS.filter(([l]) => this.state.lang === l ||
+            (this.state.buffers[l] || '').trim() || this.state.extraLangs.includes(l));
+    }
+    /** Add an optional language to the row (remembered per browser) and open it. */
+    addOptionalLang (l) {
+        const extraLangs = this.state.extraLangs.includes(l) ? this.state.extraLangs : [...this.state.extraLangs, l];
+        try { localStorage.setItem(BW_EXTRA_LANGS_KEY, JSON.stringify(extraLangs)); } catch { /* per-browser convenience only */ }
+        this.setState({extraLangs, langMenuOpen: false}, () => this.switchTab(l));
+    }
     switchTab (to) {
         const from = this.state.lang;
         if (to === from || this.state.busy) return;
@@ -5143,7 +5169,8 @@ class PseudocodeImporter extends React.Component {
                     missed each other. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0, paddingRight: 40}}
                     data-testid="bw-lang-row">
-                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'], ['fe', 'λ fe'], ['tcl', '○ Tcl'],
+                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
+                        ...this.visibleOptionalLangs().map(([l, label]) => [l, label]),
                         // The tab follows the DEVICE line, except when a
                         // MicroPython program was imported from a .hex: there
                         // is no pseudocode then, and hiding the tab would hide
@@ -5171,6 +5198,36 @@ class PseudocodeImporter extends React.Component {
                             </button>
                         );
                     })}
+                    {(() => {
+                        const shown = this.visibleOptionalLangs().map(([l]) => l);
+                        const hidden = BW_OPTIONAL_LANGS.filter(([l]) => !shown.includes(l));
+                        if (!hidden.length) return null;
+                        return (
+                            <span style={{position: 'relative'}}>
+                                <button type="button" data-testid="bw-lang-more" aria-haspopup="menu"
+                                    aria-expanded={this.state.langMenuOpen} aria-label={this.L.moreLanguages} title={this.L.moreLanguages}
+                                    disabled={this.state.busy}
+                                    onClick={() => this.setState(s => ({langMenuOpen: !s.langMenuOpen}))}
+                                    style={{padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '8px 8px 0 0', cursor: 'pointer',
+                                        fontWeight: 700, fontSize: 13, background: '#eef2f7', color: '#64748b', position: 'relative', top: 1}}>
+                                    +
+                                </button>
+                                {this.state.langMenuOpen ? (
+                                    <span role="menu" data-testid="bw-lang-more-menu"
+                                        style={{position: 'absolute', top: '100%', left: 0, zIndex: 20, display: 'flex', flexDirection: 'column',
+                                            background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, boxShadow: '0 4px 12px rgba(15,23,42,.15)', minWidth: 170}}>
+                                        {hidden.map(([l, label, name]) => (
+                                            <button key={l} type="button" role="menuitem" onClick={() => this.addOptionalLang(l)}
+                                                style={{padding: '7px 10px', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer',
+                                                    fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap'}}>
+                                                {label} — {name}
+                                            </button>
+                                        ))}
+                                    </span>
+                                ) : null}
+                            </span>
+                        );
+                    })()}
                     <span style={{flex: 1, minWidth: 4}} />
                     {/* Compact controls */}
                     <React.Fragment>
