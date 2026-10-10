@@ -8,7 +8,7 @@
 // particleeffects.ts: 6c014f6dc67be1e900b7779d3cbce8841a7584dad34424459aefb3ad8967b607
 // Regenerate: node scripts/generate-arcade-particles.mjs
 module.exports = function initializePxtParticles(host) {
-const {game, control, screen, img, scene, SpriteFlag} = host;
+const {game, control, screen, img, scene, SpriteFlag, pause} = host;
 const Math = Object.create(globalThis.Math);
 Math.idiv = (a, b) => (a / b) | 0;
 Math.randomRange = host.randomRange;
@@ -241,14 +241,14 @@ var effects;
             const wasRunning = this.times != undefined;
             this.times = times ? times : 15;
             if (!wasRunning) {
-                control.runInParallel(() => {
+                control.runInParallel((function* () {
                     while (this.times > 0) {
                         this.change(scene.backgroundImage());
-                        pause(delay ? delay : this.preferredDelay);
+                        (yield* pause(delay ? delay : this.preferredDelay));
                         --this.times;
                     }
                     this.times = undefined;
-                });
+                }).bind(this));
             }
         }
     }

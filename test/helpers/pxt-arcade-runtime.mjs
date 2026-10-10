@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null, recordSound = false} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null, recordSound = false, waitForMain = true} = {}) {
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
@@ -56,7 +56,8 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             }
         }
         try {
-            await page.waitForFunction(()=>window.__bwPxtDone,null,{timeout:20000});
+            // Main may never return (game over waits for a button); then only the globals mark completion.
+            if (waitForMain) await page.waitForFunction(()=>window.__bwPxtDone,null,{timeout:20000});
             // Exported Scratch hats can continue in real PXT fibers after main
             // returns. Authored fixtures may name an explicit completion marker;
             // do not read unfinished state or change the scheduler to force it.

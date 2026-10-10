@@ -179,6 +179,10 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
         },
         log,
         decodeInstructions,
+        // Start a background fiber (control.runInParallel in other generated code).
+        spawn (generator) {
+            start(generator);
+        },
         // Run a lowered PXT call as a fiber. Returns a promise while it is paused.
         run (generator) {
             const fiber = start(generator);

@@ -46,6 +46,8 @@ import {validateDocument} from '../bw-artwork-bundle.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
+// Background effects game over takes: particle screen effects and image effects.
+const BACKGROUND_EFFECTS = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter'];
 import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
 import {helperSource, analyseTone} from './arcade-runtime.js';
 
@@ -783,6 +785,12 @@ class ArcadeEmitter {
             this.booleanVariableIds.has(variable.fields?.VARIABLE?.[1] || variable.fields?.VARIABLE?.[0]);
     }
 
+    // A boolean slot: a constant comparison or literal folds to true/false.
+    boolValue(b, field) {
+        const literal = this.literalNumber(b, field), condition = this.condition(b, field);
+        if (literal !== null) return literal ? 'true' : 'false';
+        return condition;
+    }
     // A fixed PXT music enum member (or named melody) from a menu field, or null.
     musicField(b, field, enumeration) {
         const members = {
@@ -1463,6 +1471,37 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
+        case 'arcade_gameOver': push(`game.gameOver(${this.boolValue(b, 'WIN')})`); return;
+        case 'arcade_legacyGameOver': {
+            const effect = this.field(b, 'EFFECT');
+            if (effect !== 'unset' && !BACKGROUND_EFFECTS.includes(effect)) { push(`// ${this.note(`Unsupported Arcade effect ${effect}`)}`); return; }
+            push(`game.over(${this.boolValue(b, 'WIN')}${effect === 'unset' ? '' : `, effects.${effect}`})`);
+            return;
+        }
+        case 'arcade_setGameOverEffect': {
+            const effect = this.field(b, 'EFFECT');
+            if (!BACKGROUND_EFFECTS.includes(effect)) { push(`// ${this.note(`Unsupported Arcade effect ${effect}`)}`); return; }
+            push(`game.setGameOverEffect(${this.boolValue(b, 'WIN')}, effects.${effect})`);
+            return;
+        }
+        case 'arcade_setGameOverMessage': push(`game.setGameOverMessage(${this.boolValue(b, 'WIN')}, ${v('MESSAGE')})`); return;
+        case 'arcade_setGameOverPlayable':
+            push(`game.setGameOverPlayable(${this.boolValue(b, 'WIN')}, ${v('PLAYABLE')}, ${this.boolValue(b, 'LOOPING')})`);
+            return;
+        case 'arcade_setGameOverScoringType': {
+            const type = this.field(b, 'TYPE');
+            if (!['HighScore', 'LowScore', 'None'].includes(type)) { push(`// ${this.note(`Unsupported Arcade scoring ${type}`)}`); return; }
+            push(`game.setGameOverScoringType(game.ScoringType.${type})`);
+            return;
+        }
+        case 'arcade_startImageEffect': {
+            const effect = this.field(b, 'EFFECT');
+            if (!['dissolve', 'melt', 'slash', 'splatter'].includes(effect)) { push(`// ${this.note(`Unsupported Arcade image effect ${effect}`)}`); return; }
+            const times = this.arrayValue(b, 'TIMES'), delay = this.arrayValue(b, 'DELAY');
+            const args = delay !== '0' ? [times, delay] : times !== '0' ? [times] : [];
+            push(`effects.${effect}.startScreenEffect(${args.join(', ')})`);
+            return;
+        }
         case 'arcade_playMusic': case 'arcade_playSoundEffect': {
             const music = b.opcode === 'arcade_playMusic';
             const mode = this.musicField(b, 'MODE', music ? 'music.PlaybackMode' : 'SoundExpressionPlayMode');

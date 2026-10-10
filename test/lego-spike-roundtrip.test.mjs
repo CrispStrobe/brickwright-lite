@@ -268,8 +268,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 0e3c1348 (2026-10-10): screen image, image text and paint/shade words; runtime words unchanged.
     // -> e10b1bfa (2026-10-10): Arcade music words; runtime words unchanged.
     // -> fa1bbec9 (2026-10-10): parseInt and frame delta time words, with producer main merged; runtime words unchanged.
+    // -> 4ce65254 (2026-10-10): game over and image screen effect words; runtime words unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'fa1bbec9f97c85712af677f66248fd2eff4c4212');
+        '4ce65254db3ba318d8231bd30b06172c5bc28cee');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

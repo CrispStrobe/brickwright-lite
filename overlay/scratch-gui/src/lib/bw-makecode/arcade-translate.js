@@ -5,6 +5,8 @@ const PARTICLE_EFFECTS = new Set(['spray', 'trail', 'fountain', 'rings', 'fire',
     'disintegrate', ...SCREEN_PARTICLE_EFFECTS]);
 // PXT mixer music (pxt-common-packages mixer, MIT): named Melody instances,
 // enum members and the Note frequencies of the pinned enum.
+// PXT effects.ImageEffect instances, also background effects for game over.
+const IMAGE_EFFECTS = new Set(['dissolve', 'melt', 'slash', 'splatter']);
 const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'powerUp', 'powerDown', 'magicWand', 'siren',
     'pewPew', 'knock', 'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']);
 const MUSIC_ENUMS = {
@@ -1240,7 +1242,12 @@ class ArcadeTranslator extends BaseTranslator {
             return;
         }
         if(this.musicStatement(name,a,push))return;
+        if(this.gameOverStatement(name,a,push))return;
         const screenEffect=/^effects\.(\w+)\.(startScreenEffect|endScreenEffect)$/.exec(name||'');
+        if(this.handleTemplates && screenEffect && IMAGE_EFFECTS.has(screenEffect[1]) && screenEffect[2]==='startScreenEffect') {
+            if(a.length>2){push(this.note('ImageEffect.startScreenEffect() takes times and delay'));return;}
+            push(`arcade start image effect ${screenEffect[1]} times (${a[0]?this.expr(a[0]):0}) delay (${a[1]?this.expr(a[1]):0}) ms`);return;
+        }
         if(this.handleTemplates && screenEffect) {
             if(!SCREEN_PARTICLE_EFFECTS.has(screenEffect[1])){push(this.note(`effects.${screenEffect[1]}.${screenEffect[2]}() — not a screen effect`));return;}
             if(screenEffect[2]==='endScreenEffect'){
@@ -1760,6 +1767,59 @@ class ArcadeTranslator extends BaseTranslator {
         }
         this.unsupported.push(`${api}() — needs fixed enum members and its declared arguments`);
         return 'undefined value';
+    }
+    /** A boolean slot: literals as 1/0, anything else as its condition; absent is `fallback`. */
+    boolSlot (node, fallback = '0') {
+        if (!node) return fallback;
+        if (node.type === 'Boolean') return node.value === true || node.value === 'true' ? '1' : '0';
+        return `(${this.condition(node)})`;
+    }
+    /** A fixed effects.* background effect name, or null. */
+    backgroundEffect (node) {
+        const match = /^effects\.(\w+)$/.exec(this.path(node) || '');
+        return match && !this.bindsName('effects') && (SCREEN_PARTICLE_EFFECTS.has(match[1]) || IMAGE_EFFECTS.has(match[1])) ? match[1] : null;
+    }
+    /** PXT game over and its configuration; returns whether `name` was one. */
+    gameOverStatement (name, a, push) {
+        if (!this.handleTemplates || !/^game\./.test(name || '') || this.bindsName('game')) return false;
+        const value = i => `(${this.expr(a[i])})`;
+        switch (name) {
+        case 'game.gameOver':
+            if (a.length !== 1) push(this.note('game.gameOver() takes whether the player won'));
+            else push(`arcade game over win ${this.boolSlot(a[0])}`);
+            return true;
+        case 'game.over': {
+            const effect = a.length === 2 ? this.backgroundEffect(a[1]) : 'unset';
+            if (a.length > 2 || !effect) push(this.note('game.over() takes whether the player won and an optional fixed effects.* effect'));
+            else push(`arcade legacy game over win ${this.boolSlot(a[0])} effect ${effect}`);
+            return true;
+        }
+        case 'game.setGameOverEffect': {
+            const effect = a.length === 2 && this.backgroundEffect(a[1]);
+            if (!effect) push(this.note('game.setGameOverEffect() requires a fixed effects.* effect'));
+            else push(`arcade set game over effect ${effect} for win ${this.boolSlot(a[0])}`);
+            return true;
+        }
+        case 'game.setGameOverMessage':
+            if (a.length !== 2) push(this.note('game.setGameOverMessage() takes win and a message'));
+            else push(`arcade set game over message ${value(1)} for win ${this.boolSlot(a[0])}`);
+            return true;
+        case 'game.setGameOverPlayable':
+            if (a.length !== 3) push(this.note('game.setGameOverPlayable() takes win, a sound and looping'));
+            else push(`arcade set game over sound ${value(1)} looping ${this.boolSlot(a[2])} for win ${this.boolSlot(a[0])}`);
+            return true;
+        case 'game.setGameOverSound':
+            if (a.length !== 2) push(this.note('game.setGameOverSound() takes win and a melody'));
+            else push(`arcade set game over sound (arcade melody playable ${value(1)}) looping 0 for win ${this.boolSlot(a[0])}`);
+            return true;
+        case 'game.setGameOverScoringType': {
+            const match = a.length === 1 && /^game\.ScoringType\.(HighScore|LowScore|None)$/.exec(this.path(a[0]) || '');
+            if (!match) push(this.note('game.setGameOverScoringType() requires a fixed game.ScoringType'));
+            else push(`arcade set game over scoring ${match[1]}`);
+            return true;
+        }
+        default: return false;
+        }
     }
     /** PXT mixer statements; returns whether `name` was music. */
     musicStatement (name, a, push) {
@@ -2905,6 +2965,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^effects\.(?:\w+\.(?:startScreenEffect|endScreenEffect)|clearParticles)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^music\./.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name))return true;

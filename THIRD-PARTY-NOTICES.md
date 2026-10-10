@@ -1661,7 +1661,11 @@ committed file differs from the pinned bundle:
   (`scripts/generate-arcade-music.mjs`); and `parseInt` with `helpers.isWhitespace`
   (`base/pxt-helpers.ts`, transpiled) in
   `overlay/scratch-vm/src/extensions/crispstrobe/arcade/helpers-pxt.js`
-  (`scripts/generate-arcade-helpers.mjs`).
+  (`scripts/generate-arcade-helpers.mjs`); and the dialogs with the game-over
+  dialog (`game/textDialogs.ts`) and game-over configuration (`game/game.ts`,
+  `GameOverConfig`), transpiled, in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/gameover-pxt.js`
+  (`scripts/generate-arcade-gameover.mjs`).
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
   Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`

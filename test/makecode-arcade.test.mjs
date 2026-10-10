@@ -397,7 +397,8 @@ test('onLifeZero retains a player registration without a positive-life polling p
     assert.deepEqual(unsupported, []);
     assert.match(code, /arcade register life zero player \(2\)/);
     assert.doesNotMatch(code, /wait until lives/);
-    assert.match(code, /stop all/);
+    // game.over() runs PXT's game over (makecode-arcade-game-over.test.mjs).
+    assert.match(code, /arcade legacy game over win 0 effect unset/);
 });
 
 test('native sprite geometry uses decoded width and half-width edges', async () => {

@@ -6,6 +6,43 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native Arcade game over — 2026-10-10
+
+`game.gameOver(win)` and the legacy `game.over(win, effect?)` used to import as
+Scratch's `stop all`: the game simply stopped. They now run PXT's game over:
+
+- `scripts/generate-arcade-gameover.mjs` transpiles the pinned `game/textDialogs.ts`
+  (`BaseDialog`, `GameOverDialog`, frame, cursor and trophy images) and the
+  `GameOverConfig` class of `game/game.ts` into `gameover-pxt.js`. Messages,
+  default effects (`confetti` on a win, `melt` on a loss), default sounds
+  (`powerUp`, `wawawawaa`) and the configuration rules are PXT's own.
+- The native sequence follows `game.ts`: scores and the session best are judged,
+  every scene is popped, a fresh scene shows the last displayed frame as its
+  background, the sound and effect start, after 400 ms the dialog is drawn as a
+  HUD renderable, after 500 ms its cursor appears, and the next button press
+  restarts the program. Waits use the Arcade clock.
+- Image screen effects (`dissolve`, `melt`, `slash`, `splatter`) now run: the
+  particles generator lowers their `runInParallel` loop with the same fiber
+  lowering as music (`scripts/lib/pxt-fiber-lowering.mjs`), and they share music's
+  fiber scheduler, redrawing the background image after each step.
+- Seven words (sb3-creator `4ce65254`, 241 ops): game over, legacy game over,
+  `setGameOverEffect`, `setGameOverMessage`, `setGameOverPlayable` (and
+  `setGameOverSound`), `setGameOverScoringType`, `ImageEffect.startScreenEffect`.
+
+Evidence: a lost game's screen equals the original's outside the score HUD; a won
+game's dialog rows equal the original's and its win sound queues the original's
+instruction bytes; a press before the cursor is ignored and one after it restarts
+the program; editing through Code and Blocks, SB3 and original export round-trip
+(the original runs the export).
+
+Limits:
+
+- The background snapshot comes from the native raster, which does not contain the
+  score/life HUD (the device pane draws it), so the HUD is missing from the
+  game-over background.
+- The best score is kept for the session only; PXT stores it in settings.
+- `game.onGameOver` handlers and multiplayer winner messages are not imported.
+
 ## PXT parseInt and frame delta time — 2026-10-10
 
 - `parseInt(text, radix?)` runs PXT's own implementation from the pinned
