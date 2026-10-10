@@ -15,6 +15,18 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Native speech owner hitboxes — 2026-10-10
+
+Codex owns `lane/arcade-speech-hitbox-20261010`, stacked on PR771.
+Use the native PXT-compatible scaled/rotated hitbox for legacy constructor
+placement rather than guessing a mask row from display width. Qualify original
+full frames, transparent artwork, scale/rotation and yielding callbacks.
+Checkpoint `f6b48a499`:38 checks pass without skips: nine new hitbox/authoring
+checks and29 native ownership/camera/fresh-bundle regressions. Eight initial
+full-frame cases, an authored roundtrip plane and the original exported plane
+match PXT. Preserve the initial seven placement failures. Scrolling, broader
+live-image hitbox cache timing and complete GUI/screen support remain separate.
+
 ## Native legacy speech hosted gates — 2026-10-10
 
 Codex owns the PR771 gate repair in the existing isolated branch. Original

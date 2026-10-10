@@ -12,6 +12,15 @@ No screen snapshot or paint/shade support claim.
 Prerequisite implementation: native Image.scroll and Image.copyFrom, with
 original-PXT pixel comparisons and dedicated editable Blocks/Code words.
 
+## Native legacy owner hitbox checkpoint — 2026-10-10
+
+Source `f6b48a499` uses native scaled/rotated collision bounds for the legacy
+constructor's captured owner offset. Eight new placement planes plus a ninth
+scaled/rotated authoring plane match original PXT; exported original execution
+also matches. Thirty-eight local checks pass without skips. Native scrolling,
+complex callback reentry, broader live-image hitbox cache timing and shipped
+GUI qualification remain separate; the legacy coverage marker stays gated.
+
 ## Source observations
 
 Reviewed the bundled original PXT Arcade target's `game/game.ts`,

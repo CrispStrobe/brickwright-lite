@@ -6,6 +6,34 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native legacy speech hitbox placement — 2026-10-10
+
+Implementation `f6b48a499dce678c91cef052fcde424c90a6413a` passes38 checks:
+nine new hitbox/authoring checks and29 native ownership, camera and fresh
+GUI extension bundle regressions; zero failures/skips. The first eight-case
+comparison passed only the unscaled owner and failed seven placements. Those
+original failed logs are retained privately.
+
+The native constructor now receives the existing native collision hitbox top
+in floored pixels. It accounts for transparent artwork rows, fractional and
+anisotropic scale, rotated bounding boxes and blank artwork's degenerate box.
+Capture the offset before creation callbacks yield or alter the owner's scale,
+as original PXT does. This replaces the mask-row guess based on display width;
+it does not change the credited renderer algorithm or conversion vocabulary.
+
+Eight initial full19200-pixel planes match original execution: unscaled,
+double scale, anisotropic fractional scale, fractional downscale, quarter-turn,
+oblique rotation, blank artwork and a yielding scale-changing creation handler.
+An additional scaled/rotated authored game preserves a ninth original plane
+through Code regeneration, saved SB3 reload and MakeCode export/reimport.
+The actual original exported application also matches all19200 pixels.
+
+GUI graphics/Blocks/Code words reuse existing sprite scaling, rotation and
+legacy say support. Full shipped GUI/controller qualification, native scrolling,
+broader live-image hitbox cache timing and complex callback reentry remain open.
+Legacy speech coverage remains gated. No producer change or corpus reranking;
+latest measured corpus remains109 translated /74 partial /1 malformed.
+
 ## Hosted Arcade gate repair — 2026-10-10
 
 Run37991150295 at `1186bdc937b9ced6efa4a41fb4a1fea64da7467f`
