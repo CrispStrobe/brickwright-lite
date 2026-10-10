@@ -6,6 +6,49 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Native Arcade music — 2026-10-10
+
+PXT's own mixer code now plays Arcade music:
+
+- `scripts/generate-arcade-music.mjs` transpiles the pinned `mixer/music.ts`,
+  `melody.ts`, `playable.ts`, `legacy.ts` and `soundEffect.ts` into
+  `music-pxt.js`. PXT runs these on fibers, so generation turns every function that
+  pauses (or calls one that does) into a generator, its calls into `yield*`, and
+  each `control.runInParallel` callback into a generator. A pausing call anywhere
+  else stops generation. Functions marked `shim=music::…` call the host.
+- `music.js` runs those generators as fibers on the Arcade clock (`control.millis`).
+  An until-done block waits for its fiber; background modes return at once. Stopping
+  the project ends paused calls. Queued 12-byte play instructions go to a WebAudio
+  synthesizer (triangle, sawtooth, sine, square and noise voices with linear
+  frequency and volume ramps) and to an observation log.
+- Twenty words (sb3-creator `e10b1bfa`, 231 ops) cover `music.play` with each
+  playback mode, `Melody.play/playUntilDone/loop`, `playSound(UntilDone)`,
+  `playSoundEffect`, `playTone`, `ringTone`, `rest`, volume, tempo and
+  `stopAllSounds`, and reporters for named melodies, `music.sounds`, the melody,
+  string and tone playables, `createSoundEffect` and `beat`. `Note.*` imports as
+  its frequency.
+- On the Arcade runtime path `music.stopAllSounds` now stops the mixer instead of
+  Scratch's sounds.
+
+Evidence: every play-instruction buffer queued by a melody, tone, sound effect,
+volume change and string melody equals the original mixer's byte for byte; string
+melody notes start 248 ms apart in both. Until-done blocking, background play,
+stop, editing through Code and Blocks, SB3 and original export (the exported
+program queues the same buffers as the source) are tested.
+
+Translation-only, the corpus now has 128 fully translated inputs (118 after
+particles; screen painting and music together). Of the 17 inputs using music,
+only `music.createSong` (3 inputs) remains a music gap.
+
+Limits:
+
+- Note start times follow 30 fps frames, and a script waiting on an until-done
+  call resumes on the next frame, so a sequence drifts by up to one frame per
+  blocking call. The original simulator schedules continuously.
+- The synthesizer approximates PXT's voices; instruction bytes, not audio samples,
+  are compared with the original.
+- `music.createSong` needs PXT's native song sequencer and is not imported.
+
 ## Native screen painting — 2026-10-10
 
 Tested source `f4d0dd718`. Screen drawing follows PXT's render order:

@@ -44,6 +44,14 @@ with a capacitor, and observe real advanceToLive receipts. The100kHz sample
 grid must bound each16-step callback to160us and produce partial continuation.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
+## Arcade music — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-music-20261010` (stacked on the screen
+painting lane). Gap family 3: PXT mixer music generated from the pinned target with
+pausing calls lowered to generators, run as fibers on the Arcade clock. Producer
+sb3-creator PR86 adds twenty words. Next in this lane: `setTilemap` readable
+literals, `setGameOverEffect`, then the native song sequencer for `createSong`.
+
 ## Arcade screen painting — 2026-10-10
 
 Continues the Arcade lane on `lane/arcade-screen-paint-20261010` (stacked on the
