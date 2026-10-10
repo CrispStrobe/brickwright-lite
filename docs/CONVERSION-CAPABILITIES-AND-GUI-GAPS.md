@@ -6,6 +6,27 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Hosted Arcade gate repair — 2026-10-10
+
+Run37991150295 at `1186bdc937b9ced6efa4a41fb4a1fea64da7467f`
+passed corpus, heavy browser and FPGA surface checks, but build and light
+browser failed. The build failure expected an Enemy image to remain undefined
+until mutation; decoded artwork has been owned from spawn since earlier frame
+work. The browser stopped at multiplayer `restored`, expecting numeric1 while
+the actual value was Boolean true. Correct that and the same obsolete Boolean
+expectations in later player/button/tile/collision steps using exact true values.
+The image check now verifies original pixels and independent Player/Enemy image
+objects before the controller mutation.
+
+Repair `5c7b0435f7c3bf4175d4fb62c09f3bcb31c03c88`:19 affected checks pass,
+zero failures/skips, including original PXT comparisons and Code, saved SB3,
+MakeCode export/reimport, identity, scenes and controller paths. Browser script
+syntax and whitespace checks pass. This changes assertions only. The full
+hosted GUI journey remains unqualified until its fresh check succeeds; the
+failed report and original logs are preserved privately. Native legacy speech
+scrolling/hitbox/reentry and screen composition gaps remain open. No corpus
+reranking or runtime/producer change is claimed.
+
 ## Native legacy speech bubbles — 2026-10-09
 
 Implementation `d51cf93c7bcfd0bc62b9c9035d686651208939d8` replaces runtime lightweight bubbles with

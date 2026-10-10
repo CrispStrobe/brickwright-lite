@@ -15,6 +15,16 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Native legacy speech hosted gates — 2026-10-10
+
+Codex owns the PR771 gate repair in the existing isolated branch. Original
+run37991150295 exposed obsolete lazy-image and numeric-Boolean expectations.
+Restore exact typed assertions, retain original failed logs privately, and
+rerun the affected artwork/identity/scene/controller checks. Full hosted
+browser success remains required; no runtime behaviour is changed by this repair.
+Checkpoint `5c7b0435f`:19 affected original/native/Code/SB3/MakeCode checks
+pass without skips. The hosted GUI journey still needs its fresh result.
+
 ## Native legacy speech bubble ownership — 2026-10-09
 
 Codex owns `lane/arcade-native-legacy-bubble-20261009`, stacked on PR770.
