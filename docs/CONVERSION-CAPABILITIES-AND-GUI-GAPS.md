@@ -31,7 +31,8 @@ running game and exported to MakeCode with the new cell). Browser:
 `scripts/verify-arcade-tilemap-painter.mjs` imports the pinned platformer
 fixture, opens the painter with real pointer input, paints a cell, adds a wall,
 undoes/redoes, draws a tile pixel, saves, then checks the block and the running
-game (14/14 against a local production build). Not yet in a CI browser shard.
+game (14/14 against a local production build); it runs in the light browser
+shard (provisional budget until five readings exist).
 
 Still open for U03: tile names and the MakeCode `myTiles` asset identity, a new
 level from scratch (needs a block), legacy color-coded maps, placing sprites on
