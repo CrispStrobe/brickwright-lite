@@ -193,8 +193,11 @@ try {
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
     const dialog = page.locator('[role="dialog"][aria-label^="Arcade"]');
     for (let i = 0; i < 10 && await dialog.count(); i++) {
+        const before = await dialog.innerText().catch(() => '');
         await dialog.locator('button').first().click({timeout: 5000}).catch(() => {});
-        await page.waitForTimeout(300);
+        // Answered when it closes or the next message replaces it.
+        await waitFor(async () => (await dialog.count()) ? await dialog.innerText().catch(() => '') : null,
+            text => text !== before, 5000);
     }
     check('the game\'s dialogs can be dismissed', await dialog.count() === 0);
     // A new level from scratch: a real green-flag script, painted and saved.
