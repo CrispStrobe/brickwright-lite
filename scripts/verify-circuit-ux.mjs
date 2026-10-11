@@ -684,10 +684,24 @@ try {
         });
         console.log('scope acquisition before spectrum:', JSON.stringify(await acquisitionState()));
         await scope.getByTestId('bw-scope-view-spectrum').click();
-        await scope.getByTestId('bw-scope-fft-rate').selectOption('100000');
+        // Let the spectrum effect open its default tap before changing rate.
+        // Exercise a native keyboard interaction, not a synthetic select event;
+        // both the displayed selection and engine acquisition must agree.
+        await scopePage.waitForFunction(() => {
+            const b = window.__board;
+            return b.getScopeChannels().some(h => {
+                const d = b.getScopeData(h);
+                return d.capture === 'sample' && d.sampleIntervalNs === 100000n && d.count === 0;
+            });
+        });
+        const fftRate = scope.getByTestId('bw-scope-fft-rate');
+        await fftRate.focus();
+        await fftRate.press('Home');
+        await fftRate.press('Enter');
         try { await scopePage.waitForFunction(() => {
             const b = window.__board, hs = b.getScopeChannels();
-            return hs.length === 2 && hs.some(h => {
+            return document.querySelector('[data-testid="bw-scope-fft-rate"]')?.value === '100000'
+                && hs.length === 2 && hs.some(h => {
                 const d = b.getScopeData(h);
                 return d.capture === 'sample' && d.sampleIntervalNs === 10000n && d.count === 0;
             });

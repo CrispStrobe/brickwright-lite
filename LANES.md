@@ -145,6 +145,14 @@ capture. The next forward evidence change logs actual channel kinds, intervals,
 counts, clock and UI-channel presence before selection and on refusal. No
 timeout, readiness predicate, sample expectation or production behavior changes.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
+Build38145655589 preserved the envelope proof again, but its acquisition
+diagnostic showed a real point tap still at the default10kHz/100us, not the
+requested100kHz/10us. The forward browser repair waits for the default tap,
+uses native keyboard selection, and requires displayed rate and engine interval
+to agree before acquisition. No production defect or successful point capture
+is inferred from that failed synthetic selection. The same run also failed
+the separately owned Arcade wall-contact unit case and countdown-registration
+browser case; those failures remain blocking and are not waived here.
 Canonical claims c686fd704 and8ebaded2d preceded their edits. Both locks change
 only the board spec/resolution/integrity; other dependency pins stay unchanged.
 All seven generator checks pass: notices,8086 report,matrix,part profiles,
