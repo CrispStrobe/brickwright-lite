@@ -23,6 +23,12 @@ exceptions and restoration; prove wrong/missing installed maps are rejected.
 No engine, painter UI, project, dependency, workflow, timeout or tolerance edits.
 The prior persistence lane is DONE; active identity/legacy/placement lanes
 exclude this persistence proof. Hosted browser qualification remains required.
+Local candidate records only the saved block's real changed-map installation,
+not a previously matching state or another script's write; snapshot arrays are
+copied before later replacement/mutation. Six focused tests cover attribution,
+immutable snapshots, refusal, original call semantics, browser serialization
+and four executable mutants with genuine assertion failures. Runtime/browser
+success remains pending; no timeout or exact-map comparison was weakened.
 
 The vendor of `sb3-creator eac7a1a` made two OPEN DEFECT sentinels fire — the
 shift-register bit test and the four faceplates with dead controls. Both are
