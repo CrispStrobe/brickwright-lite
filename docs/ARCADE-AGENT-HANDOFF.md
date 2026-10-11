@@ -1,11 +1,62 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-10, with GitHub state observed at 10:17 UTC. This is the public
+Updated 2026-10-11. The current-state refresh below supersedes the older
+2026-10-10 checkpoints retained later in this guide. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
 operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
+
+## Current-state refresh — 2026-10-11
+
+The earlier runtime and documentation stack through scrolling is integrated into
+main. PR773/774 were closed rather than individually merged; their commits are
+ancestors of main through subsequent stack integration. The old template-clone
+layer failure was repaired in [PR775](https://github.com/CrispStrobe/brickwright-lite/pull/775),
+with successful light/heavy browser checks in
+https://github.com/CrispStrobe/brickwright-lite/actions/runs/38051987912 .
+Do not repeat that already completed lane based on section6's historical state.
+
+Subsequent merged work includes particles, screen painting, music, core values,
+game over, terrain/translator gaps, sevenseg, darts/corgio, scroller, character
+animations, the original HUD and original-compiler extension fetching (PR776–788).
+Original-compiler fetching does **not** implement editable native extension blocks.
+The producer pin at the refreshed baseline is
+`44d11124a725d209387ec524c6871d0356add3f3`; read current pins before any adoption.
+[PR785](https://github.com/CrispStrobe/brickwright-lite/pull/785) reports142 of184
+translating. [PR789](https://github.com/CrispStrobe/brickwright-lite/pull/789)
+reports the unchanged, hash-verified **142 translated /41 partial /1 error**
+census. These reports supersede109/74/1; a fresh exact-source audit remains needed.
+
+The following authoring lanes are now merged, with enabled latest-head checks
+successful and DONE claims in LANES:
+
+- https://github.com/CrispStrobe/brickwright-lite/pull/789 : readable art names,
+  multi-costume animation holders and paint-editor edits reaching native games.
+- https://github.com/CrispStrobe/brickwright-lite/pull/790 : tilemap painter,
+  new-level creation and its real-pointer browser journey in the CI light shard.
+- https://github.com/CrispStrobe/brickwright-lite/pull/791 : two-way fe/Tcl rescue
+  and lazy-converter race repair preserving typed Code and debugger state.
+
+The active Arcade lane is `lane/arcade-painted-project-roundtrip-20261011`,
+claimed on main at `11529ce16d597d0d78d57731f1ce4fbddfb194cf`.
+Its existing CI browser journey now additionally checks actual downloaded SB3
+contents, fresh-context GUI reopening, every map/wall/tile pixel and block ID,
+restored painter editing/undo, exact native startup map state, original MakeCode
+compilation/rendering and actual downloaded MakeCode file reimport. Reported
+hashes identify the fixture, probe, SB3 and MakeCode downloads; served script URLs
+identify the consumer bundle. A prepared-build local pass is not exact-source
+hosted qualification. Archive originals and inspect the latest-head light-shard
+result before closing the lane. The original rendering check establishes that
+export compiled and drew a frame; it does not prove whole-game frame equality.
+
+Remaining tilemap authoring work: exported `myTiles` names/asset identity,
+legacy colour-coded maps and painter sprite placement. Native editable support
+for remaining third-party extensions and exact-source ranking of41 partials
+remain separate lanes. The circuit green-flag first-write failure is owned by
+another session; preserve that lane's assertions/bounds and diagnose failures
+without treating unrelated browser retries as a feature fix.
 
 ## 1. Two-line starter prompt
 

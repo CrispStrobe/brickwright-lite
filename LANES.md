@@ -15,6 +15,22 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade sprite placement from the tile map painter — 2026-10-11
+
+CLAIMED — Claude (opus), owner request ("fix it all"), branch
+`lane/arcade-tilemap-placement-20261011`, stacked on Codex's painter stack
+(PR793 → PR794) and agreed with Codex, who is not taking it. In the painter,
+show where sprites are placed on the map and let the user place or move a
+sprite on a cell: read and write the existing `arcade_placeOnTile` blocks with
+an `arcade_tileLocation` (column, row) in the map's script, so the runtime,
+MakeCode export and import already understand the result. Envelope: new
+bw-makecode tilemap-placements.js, a placement section in tilemap-editor.jsx
+(and its tracked twin, if any), focused tests, a dedicated
+scripts/verify-arcade-tilemap-placement.mjs with its additive light-shard step
+and budget registration in build.yml, Arcade docs and this ledger. No change to
+Codex's tile identity, legacy layout or persistence code paths, circuit source
+or pins; legacy colour-tile placement (`placeOnLegacyTile`) stays out of scope.
+
 ## Arcade tile names and MakeCode asset identity — 2026-10-11
 
 CLAIMED — Codex, separate worktree and branch
@@ -33,7 +49,7 @@ explicitly; never silently alias distinct edited tiles to one exported asset.
 
 ## Arcade painted tilemap project save/reopen — 2026-10-11
 
-CLAIMED — Codex, coordinated with the session owning the circuit green-flag
+DONE — Codex, coordinated with the session owning the circuit green-flag
 repair. Branch `lane/arcade-painted-project-roundtrip-20261011`.
 Extend the existing real-pointer tilemap painter browser journey to save an SB3,
 reopen it through the GUI, verify every painted map/wall/tile pixel and editable
@@ -2497,3 +2513,28 @@ Compiled factory source `e4aa00d77ca2ae3af3551d980953566a581ce423` reproduces an
 Tile asset identity lane qualification update (2026-10-11): named tiles retain qualified IDs and display labels through map editing and SB3, and export real `tilemap.g.jres`/`tilemap.g.ts` resources. Original PXT reads edited pixels. The image codec now respects 32-bit column padding. A dedicated real-control browser journey covers rename/edit/save/reopen/export/reimport; its exact-source hosted result is pending. The additive browser gate also owns its generated `docs/generated/browser-gate-readings.json` registration. No circuit, persistence-journey or dependency-pin changes.
 
 Tile identity followup remains in PR793 and the same claimed files: synchronize edited named assets across matching map uses; preserve divergent copies; refuse stale/ambiguous saves before writes. Dedicated browser fixture now checks two shared uses. No legacy or circuit implementation is claimed.
+
+
+## Arcade legacy colour-index layout authoring — 2026-10-11
+
+CLAIMED — Codex, branch `lane/arcade-legacy-layout-authoring-20261011`, stacked on PR793. First scope: list stable artwork-backed `arcade_setLegacyTilemap` sources in the tile painter; paint/fill/erase/resize their colour-index layout and save to actual template artwork, preserving legacy API calls, image aliases and colour-index wall definitions. Computed images, mutable frame declarations and layered artwork need explicit editability reasons. Definition art/walls and sprite placement remain separate; Claude owns planned sprite placement. Envelope: new bw-makecode legacy layout helper, tilemap-editor model/JSX integration, focused legacy authoring tests, Arcade handoff/ledger. No engine, circuit, dependency-pin, PR792 browser or peer branches changed. Coordinate overlapping painter files before implementation.
+
+Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy-layout.mjs`, its additive light-shard workflow step and generated browser budget registration. Preserve existing modern/persistence/placement gates and bounds. Single-layer source documents must remain bound to the new rendered asset; multi-layer/animated sources stay explicitly listed for the Pixel path.
+
+Legacy authoring followup in PR794 also owns definition artwork/wall editing: new `legacy-tile-definition-editor.jsx`, definition operations in `legacy-layout-editor.js`, and focused tests/browser coverage. Each definition retains its own block/index/timing; only static artwork sources and literal wall predicates are editable. Computed inputs get explicit reasons. No sprite-placement implementation or circuit pin changes.
+
+
+Painted project persistence PR792 merged at `18b2929a8479bcec880660b94c13bbb6c991741a`, reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`. All seven enabled checks succeeded; conditional deployment checks skipped on the PR. Hosted painter artifact observes34 successful checks, including actual SB3 fresh-context reopen, native edited state, original compiler/render and downloaded MakeCode reimport. Expected and actual merge tree `4470f89493e6c944ef62359888a9053df514c325` match. [Hosted source qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544). No corpus promotion or whole-game equivalence claim.
+
+Legacy source followup claim: Codex owns `lane/arcade-legacy-image-aliases-20261011`, stacked on PR794. Same helper/test/browser/docs envelope; trace single authored image assignments and aliases on the preceding command chain without reading live handles or flattening image mutation code. Reassignments and ambiguous sources stay explicitly computed. No painter JSX/model overlap, sprite placement, circuit or pin changes.
+
+The alias followup also owns `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js`: original-PXT roundtrip exposed image-reference SB3 sidecars being treated as string initializers. Honor validated matching image sidecars while preserving external field changes; qualify native/SB3/original execution. No VM serialization/schema or pin changes.
+
+
+Static legacy frame-selection followup: Codex owns
+`lane/arcade-legacy-frame-selection-20261011`, stacked on PR795. Envelope is
+`legacy-layout-editor.js`, the focused legacy authoring test and Arcade docs.
+Resolve literal valid costume ranges with the native rounded/wrapped index;
+refuse shared keys with conflicting or computed source descriptors rather than
+editing an unrelated costume. Qualify native/SB3/original MakeCode behavior.
+No painter JSX/model, peer sprite placement, circuit or dependency-pin changes.

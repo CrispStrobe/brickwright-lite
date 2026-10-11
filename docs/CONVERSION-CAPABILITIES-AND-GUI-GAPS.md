@@ -3124,3 +3124,29 @@ Shared-asset followup: the real browser fixture now uses one tile in two differe
 Inspect the real imported block graph first: a literal colour-coded map currently becomes `arcade_setLegacyTilemap` fed by `arcade_cloneImage`/`arcade_frameImage` referencing editable template artwork, rather than a JSON modern map. Tile definitions use `arcade_setLegacyTile`, and wall flags belong to a colour index. Image variables can remain live aliases and can change during the game; scene-local definitions can change independently. Do not replace these operations with a static modern map merely to make the painter work.
 
 Add a colour-index layout view bound to the actual source artwork, with actual save/reopen/export evidence. Qualify direct literals and stable artwork-backed expressions first, while listing computed/dynamic sources with an explicit editability reason. Definition pixel/wall editing must preserve index-wide wall semantics, scene scope, definition timing and aliases. Native legacy execution already exists and is tested; this lane concerns authoring. Use the existing `test/fixtures/arcade-legacy-tilemap.mjs`, `arcade-legacy-tile-values.mjs` and `arcade-legacy-tile-collisions.mjs` as adversarial behavior boundaries before adding GUI support. Sprite placement is a separate subsequent task and must use real live sprite handles with deliberate script timing.
+
+
+
+## Painted tilemap project persistence browser lane — 2026-10-11
+
+The CI tilemap painter journey now saves the actual GUI project as SB3 and
+reopens it in a fresh browser context. It compares every level's dimensions,
+tile size, indices, walls and image pixels both in the archive and in restored
+blocks; checks stable target/block identity; drives restored tile editing and
+undo through pointer controls; and runs the saved new level with its specific
+painted cell, wall and tile pixel. It then downloads MakeCode export, compiles
+and renders the reopened blocks with the original simulator, and reimports the
+downloaded file to compare all levels as a multiset. IDs intentionally regenerate
+on MakeCode reimport. This is the existing light-shard browser gate, not a new
+unconnected helper.
+
+Qualification is pending exact-head hosted CI. Local prepared-build observations
+are recorded separately from source qualification. A rendered original frame
+is compile/render evidence, not whole-game behavioral equivalence; native wall
+state is preserved, not a new reopened collision-trajectory qualification.
+No opcode, schema, producer pin or native runtime change is introduced here.
+Corpus counts are not reranked by this browser-only lane.
+
+Tile names/myTiles identity, legacy colour-coded maps and painter sprite placement
+remain open. The 2026-10-11 merged painter already supports new-level creation;
+do not retain that as an unimplemented feature based on older checkpoints.
