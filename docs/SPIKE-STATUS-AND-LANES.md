@@ -496,3 +496,26 @@ head above.
 ```sh
 node --test test/tauri-broker-topology.test.mjs test/spike-proof-transport.test.mjs test/gate-shapes.test.mjs
 ```
+
+### Desktop profile relocation follow-up
+
+Installed qualification reached successful input staging and protected firmware
+build/resource gates, then stopped before native desktop compilation. The
+resource freezer accepted the source-model scenario only, while explicit
+`--compiled-models` staging correctly omitted the model-source include. The
+freezer now accepts both exact authored templates and preserves that distinction
+when relocating resources. Compiled Runtime profiles retain `models.cs` as
+provenance without loading its types again. Arbitrary monitor commands, damaged
+digests, linked files and incomplete profiles remain refused.
+
+Thirteen focused packaging controls pass, including compiled profiles with and
+without the flash seed, repeated portable relocation and rejection of an added
+model include. This is package preparation evidence. No new installed Code,
+arena, cancellation or ACL result is established by these controls. Qualification
+must use the corrected source and its exact frontend/native closure; earlier
+guest observations do not qualify the refreshed consumer. Public binary
+redistribution review remains open, and installers/raw records remain private.
+
+```sh
+node --test test/spike-resource-profile.test.mjs test/spike-linux-package.test.mjs test/spike-package-model-loading.test.mjs test/spike-initial-flash.test.mjs
+```
