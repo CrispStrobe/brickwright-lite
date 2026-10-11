@@ -7340,6 +7340,12 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — Arcade sprites placed on a tile map in the painter start there": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }
