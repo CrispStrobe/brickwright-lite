@@ -1,0 +1,86 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {findTilemapBlocks, writeTilemapBlock, paintCell, resizeTilemap} from '../overlay/scratch-gui/src/lib/bw-makecode/tilemap-editor.js';
+import {runProgram, stepFrames} from './helpers/bw-vm.mjs';
+import {getCostumeDocument, setCostumeDocument} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+
+const SOURCE = 'scene.setTile(1,img`7`,true)\nscene.setTileMap(img`1 0\n0 1`,TileScale.Four)\n';
+test('legacy layout save edits actual artwork without replacing API calls or tile definitions', async () => {
+    const imported = arcadeToPseudocode(SOURCE);
+    assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        assert.equal(ref.kind, 'legacyLayout');
+        assert.equal(ref.editable, true, ref.reason);
+        assert.deepEqual(ref.data.indices, [1, 0, 0, 1]);
+        const blocksBefore = JSON.stringify(run.vm.runtime.getTargetById(ref.targetId).blocks._blocks);
+        const invalidWallEdit = {...ref.data, walls: [1, 0, 0, 0]};
+        assert.equal(writeTilemapBlock(run.vm, ref, invalidWallEdit), false, 'layout save cannot silently discard wall edits');
+        const edited = paintCell(ref.data, 1, 0, 2);
+        const editingTarget = run.vm.editingTarget;
+        assert.equal(writeTilemapBlock(run.vm, ref, edited), true);
+        assert.equal(run.vm.editingTarget, editingTarget, 'artwork save does not change the user selection');
+        assert.equal(JSON.stringify(run.vm.runtime.getTargetById(ref.targetId).blocks._blocks), blocksBefore);
+        assert.deepEqual(findTilemapBlocks(run.vm)[0].data.indices, [1, 2, 0, 1]);
+        assert.equal(writeTilemapBlock(run.vm, ref, ref.data), false, 'stale artwork refuses a later overwrite');
+        run.vm.greenFlag();
+        await stepFrames(run.vm, 3);
+        assert.deepEqual(Array.from(run.vm.runtime.bwArcadeDeviceState.tilemap.indices), [1, 2, 0, 1]);
+        const sb3 = await run.vm.saveProjectSb3();
+        await run.vm.loadProject(Buffer.from(await sb3.arrayBuffer()));
+        assert.deepEqual(findTilemapBlocks(run.vm)[0].data.indices, [1, 2, 0, 1]);
+        const out = projectToArcade(JSON.parse(run.vm.toJSON()), {costumeSvg: (target, costume) =>
+            run.vm.runtime.getSpriteTargetByName(target.name)?.getCostumes().find(candidate => candidate.name === costume.name)?.asset?.decodeText()});
+        assert.deepEqual(out.unsupported, []);
+        assert.match(out.ts, /scene\.setTileMap/);
+        assert.match(out.ts, /scene\.setTile\(1,/);
+        assert.equal(JSON.parse(out.files['pxt.json']).dependencies['color-coded-tilemap'], '*');
+        const original = await runPxtArcade({...out.files, 'main.ts': out.files['main.ts'] +
+            '\nlet paintedIndex = scene.getTile(1,0).tileSet\nlet originalWall = tiles.tileAtLocationIsWall(tiles.getTileLocation(0,0))\n'},
+        {waitForGlobals: {paintedIndex: 2, originalWall: true}});
+        assert.equal(original.paintedIndex, 2);
+        assert.equal(original.originalWall, true, 'editing the layout preserves index-wide wall definitions');
+        const reopened = findTilemapBlocks(run.vm)[0];
+        assert.equal(writeTilemapBlock(run.vm, reopened, resizeTilemap(reopened.data, 3, 2)), true);
+        assert.equal(findTilemapBlocks(run.vm)[0].data.columns, 3);
+        run.vm.greenFlag();
+        await stepFrames(run.vm, 3);
+        assert.equal(run.vm.runtime.bwArcadeDeviceState.tilemap.columns, 3, 'native execution uses resized artwork');
+    } finally { run.vm.quit?.(); }
+});
+
+test('computed legacy map sources are listed with a reason and never rewritten', async () => {
+    const imported = arcadeToPseudocode('let layout = image.create(2,2)\nscene.setTileMap(layout,TileScale.Four)');
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        assert.equal(ref.kind, 'legacyLayout');
+        assert.equal(ref.editable, false);
+        assert.equal(ref.reason, 'computedImage');
+        assert.equal(writeTilemapBlock(run.vm, ref, {}), false);
+    } finally { run.vm.quit?.(); }
+});
+
+
+test('multi-layer legacy artwork is preserved and explicitly delegated to Pixel', async () => {
+    const imported = arcadeToPseudocode(SOURCE);
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        const target = run.vm.runtime.getTargetById(ref.artworkTargetId);
+        const costume = target.getCostumes()[0];
+        const document = getCostumeDocument(costume);
+        document.layers.push({...document.layers[0], id: 'second', name: 'Second layer'});
+        setCostumeDocument(costume, document);
+        const blocked = findTilemapBlocks(run.vm)[0];
+        assert.equal(blocked.reason, 'layeredArtwork');
+        assert.equal(blocked.editable, false);
+        assert.equal(writeTilemapBlock(run.vm, ref, ref.data), false);
+        assert.equal(getCostumeDocument(costume).layers.length, 2);
+        assert.equal(costume.assetId, ref.artworkAssetId);
+    } finally { run.vm.quit?.(); }
+});

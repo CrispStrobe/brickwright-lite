@@ -1203,6 +1203,18 @@ jobs:
           path: test-results/arcade-tile-identity/
           if-no-files-found: error
 
+      - name: Browser gate — Arcade legacy colour layouts through artwork SB3 and export
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-legacy-layout.mjs
+      - name: Upload arcade-legacy-layout observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arcade-legacy-layout
+          path: test-results/arcade-legacy-layout/
+          if-no-files-found: error
+
       - name: Browser gate — Arcade animation resources across Pixel Code Blocks and original export
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}

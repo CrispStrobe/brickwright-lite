@@ -20,7 +20,7 @@ import {
 const L10N = {
     en: {
         'tm.title': 'Tile maps', 'tm.map': 'Tile map', 'tm.none': 'This project has no tile map. A level is set by an Arcade "set tilemap" block, which an imported MakeCode Arcade game brings with it.',
-        'tm.notEditable': 'not editable', 'tm.paint': 'Paint', 'tm.erase': 'Erase', 'tm.fill': 'Fill',
+        'tm.noneEditable': 'These layouts need a different editing path:', 'tm.notEditable': 'not editable', 'tm.paint': 'Paint', 'tm.erase': 'Erase', 'tm.fill': 'Fill',
         'tm.wall': 'Walls', 'tm.showWalls': 'Show walls', 'tm.undo': 'Undo', 'tm.redo': 'Redo',
         'tm.columns': 'Columns', 'tm.rows': 'Rows', 'tm.tileSize': 'Tile size', 'tm.resize': 'Resize',
         'tm.tiles': 'Tiles', 'tm.tile': 'Tile {n}', 'tm.emptyTile': 'Tile 0 (empty)', 'tm.addTile': 'Add tile',
@@ -29,11 +29,14 @@ const L10N = {
         'tm.unsaved': 'Unsaved changes', 'tm.wallHint': 'Click cells to add walls; click a wall to remove it.',
         'tm.zoom': 'Zoom', 'tm.new': 'New tile map', 'tm.created': 'New tile map added to {target}: a "when green flag clicked" script sets it.',
         'tm.createFailed': 'Could not add a tile map: {error}',
+        'tm.legacyLayout': 'Colour-index layout. Tile artwork and walls remain in the colour-tile blocks.',
+        'tm.computedScale': 'computed tile size', 'tm.computedImage': 'computed layout image', 'tm.mutableFrames': 'runtime frame definitions',
+        'tm.missingArtwork': 'missing or ambiguous artwork', 'tm.layeredArtwork': 'edit this layered image in Pixel', 'tm.unsupportedArtwork': 'unsupported layout artwork',
         'tm.tileName': 'Tile name', 'tm.invalidTileName': 'Use a unique tile name with 1–128 characters.'
     },
     de: {
         'tm.title': 'Kachelkarten', 'tm.map': 'Kachelkarte', 'tm.none': 'Dieses Projekt hat keine Kachelkarte. Ein Level wird mit dem Arcade-Block „setze Kachelkarte“ gesetzt, den ein importiertes MakeCode-Arcade-Spiel mitbringt.',
-        'tm.notEditable': 'nicht bearbeitbar', 'tm.paint': 'Malen', 'tm.erase': 'Radieren', 'tm.fill': 'Füllen',
+        'tm.noneEditable': 'Diese Grundrisse benötigen einen anderen Bearbeitungsweg:', 'tm.notEditable': 'nicht bearbeitbar', 'tm.paint': 'Malen', 'tm.erase': 'Radieren', 'tm.fill': 'Füllen',
         'tm.wall': 'Wände', 'tm.showWalls': 'Wände zeigen', 'tm.undo': 'Rückgängig', 'tm.redo': 'Wiederholen',
         'tm.columns': 'Spalten', 'tm.rows': 'Zeilen', 'tm.tileSize': 'Kachelgröße', 'tm.resize': 'Größe ändern',
         'tm.tiles': 'Kacheln', 'tm.tile': 'Kachel {n}', 'tm.emptyTile': 'Kachel 0 (leer)', 'tm.addTile': 'Kachel hinzufügen',
@@ -42,6 +45,9 @@ const L10N = {
         'tm.unsaved': 'Ungespeicherte Änderungen', 'tm.wallHint': 'Klicke Zellen an, um Wände zu setzen; ein Klick auf eine Wand entfernt sie.',
         'tm.zoom': 'Zoom', 'tm.new': 'Neue Kachelkarte', 'tm.created': 'Neue Kachelkarte zu {target} hinzugefügt: Ein Skript „Wenn die grüne Flagge angeklickt“ setzt sie.',
         'tm.createFailed': 'Kachelkarte konnte nicht hinzugefügt werden: {error}',
+        'tm.legacyLayout': 'Farbindizierter Grundriss. Kachelgrafiken und Wände bleiben in den Farbkachel-Blöcken.',
+        'tm.computedScale': 'berechnete Kachelgröße', 'tm.computedImage': 'berechnetes Grundrissbild', 'tm.mutableFrames': 'Bilddefinitionen zur Laufzeit',
+        'tm.missingArtwork': 'fehlende oder mehrdeutige Grafik', 'tm.layeredArtwork': 'dieses Ebenenbild in Pixel bearbeiten', 'tm.unsupportedArtwork': 'nicht unterstützte Grundrissgrafik',
         'tm.tileName': 'Kachelname', 'tm.invalidTileName': 'Verwende einen eindeutigen Kachelnamen mit 1–128 Zeichen.'
     }
 };
@@ -97,7 +103,7 @@ class TilemapEditor extends React.Component {
         const map = this.state.maps[index];
         if (!map || !map.editable) return;
         this.setState({selected: index, history: createHistory(map.data), saved: map.data, status: '',
-            tileNameDraft: null, tile: map.data.images.length > 1 ? 1 : 0, columns: map.data.columns, rows: map.data.rows});
+            tileNameDraft: null, tool: 'paint', tile: map.data.images.length > 1 ? 1 : 0, columns: map.data.columns, rows: map.data.rows});
     }
 
     commitTileName () {
@@ -269,7 +275,8 @@ class TilemapEditor extends React.Component {
             return (
                 <div data-testid="bw-tilemap-editor" style={{padding: 24, color: '#64748b'}}>
                     {this.props.editorTools}
-                    <p data-testid="bw-tilemap-none">{t(locale, 'tm.none')}</p>
+                    <p data-testid="bw-tilemap-none">{t(locale, maps.length ? 'tm.noneEditable' : 'tm.none')}</p>
+                    <ul>{maps.filter(map => map.reason).map(map => <li key={map.blockId}>{map.targetName}: {t(locale, `tm.${map.reason}`)}</li>)}</ul>
                     <button type="button" data-testid="bw-tilemap-new" style={btn(true)} onClick={() => this.newMap()}>
                         {t(locale, 'tm.new')}</button>
                     <div data-testid="bw-tilemap-status" role="status" style={{fontSize: 12, marginTop: 8}}>{status}</div>
@@ -277,8 +284,9 @@ class TilemapEditor extends React.Component {
             );
         }
         const data = history.present;
+        const legacy = maps[selected]?.kind === 'legacyLayout';
         const mapName = (map, i) => `${map.targetName} · ${t(locale, 'tm.map')} ${i + 1}` +
-            (map.editable ? ` (${map.data.columns}×${map.data.rows})` : ` — ${t(locale, 'tm.notEditable')}`);
+            (map.editable ? ` (${map.data.columns}×${map.data.rows})` : ` — ${t(locale, map.reason ? `tm.${map.reason}` : 'tm.notEditable')}`);
         return (
             <div data-testid="bw-tilemap-editor" tabIndex={0} onKeyDown={this.handleKeyDown}
                 style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 12, height: '100%',
@@ -289,13 +297,13 @@ class TilemapEditor extends React.Component {
                         onChange={event => this.selectMap(Number(event.target.value))}>
                         {maps.map((map, i) => <option key={map.blockId} value={i} disabled={!map.editable}>{mapName(map, i)}</option>)}
                     </select>
-                    {['paint', 'erase', 'fill', 'wall'].map(name => (
+                    {(legacy ? ['paint', 'erase', 'fill'] : ['paint', 'erase', 'fill', 'wall']).map(name => (
                         <button key={name} type="button" data-testid={`bw-tilemap-tool-${name}`} aria-pressed={tool === name}
                             style={btn(tool === name)} onClick={() => this.setState({tool: name})}>
                             {t(locale, `tm.${name}`)}</button>
                     ))}
-                    <label style={label}><input type="checkbox" data-testid="bw-tilemap-show-walls" checked={showWalls}
-                        onChange={event => this.setState({showWalls: event.target.checked})} />{t(locale, 'tm.showWalls')}</label>
+                    {!legacy ? <label style={label}><input type="checkbox" data-testid="bw-tilemap-show-walls" checked={showWalls}
+                        onChange={event => this.setState({showWalls: event.target.checked})} />{t(locale, 'tm.showWalls')}</label> : null}
                     <button type="button" data-testid="bw-tilemap-undo" style={btn(false)} disabled={!history.past.length}
                         onClick={() => this.setState(state => ({history: undo(state.history)}))}>{t(locale, 'tm.undo')}</button>
                     <button type="button" data-testid="bw-tilemap-redo" style={btn(false)} disabled={!history.future.length}
@@ -306,13 +314,13 @@ class TilemapEditor extends React.Component {
                         {[1, 2, 3, 4].map(z => <option key={z} value={z}>{z}×</option>)}</select></label>
                 </div>
                 <div style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
-                    <label style={label}>{t(locale, 'tm.columns')}<input type="number" min={1} max={255} style={{width: 56}}
+                    <label style={label}>{t(locale, 'tm.columns')}<input type="number" min={1} max={legacy ? 160 : 255} style={{width: 56}}
                         data-testid="bw-tilemap-columns" value={columns} onChange={event => this.setState({columns: Number(event.target.value)})} /></label>
-                    <label style={label}>{t(locale, 'tm.rows')}<input type="number" min={1} max={255} style={{width: 56}}
+                    <label style={label}>{t(locale, 'tm.rows')}<input type="number" min={1} max={legacy ? 160 : 255} style={{width: 56}}
                         data-testid="bw-tilemap-rows" value={rows} onChange={event => this.setState({rows: Number(event.target.value)})} /></label>
                     <button type="button" data-testid="bw-tilemap-resize" style={btn(false)}
                         onClick={() => this.apply(resizeTilemap(data, columns, rows))}>{t(locale, 'tm.resize')}</button>
-                    <label style={label}>{t(locale, 'tm.tileSize')}<select data-testid="bw-tilemap-tile-size" value={data.tileSize}
+                    <label style={label}>{t(locale, 'tm.tileSize')}<select data-testid="bw-tilemap-tile-size" disabled={legacy} value={data.tileSize}
                         onChange={event => this.apply(setTileSize(data, Number(event.target.value)))}>
                         {TILE_SIZES.map(size => <option key={size} value={size}>{size}×{size}</option>)}</select></label>
                     <span style={{flex: 1}} />
@@ -340,6 +348,7 @@ class TilemapEditor extends React.Component {
                                 </button>
                             ))}
                         </div>
+                        {legacy ? <p data-testid="bw-tilemap-legacy-hint" style={{fontSize: 12}}>{t(locale, 'tm.legacyLayout')}</p> : <>
                         <div style={{display: 'flex', gap: 4}}>
                             <button type="button" data-testid="bw-tilemap-add-tile" style={btn(false)} onClick={() => {
                                 const added = addTile(data);
@@ -373,6 +382,7 @@ class TilemapEditor extends React.Component {
                                 </div>
                             </>
                         ) : null}
+                        </>}
                         {tool === 'wall' ? <p style={{fontSize: 12, color: '#64748b', margin: 0}}>{t(locale, 'tm.wallHint')}</p> : null}
                     </div>
                 </div>
