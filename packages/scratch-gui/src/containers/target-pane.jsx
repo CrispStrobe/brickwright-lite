@@ -18,7 +18,6 @@ import {BLOCKS_DEFAULT_SCALE} from '../lib/layout-constants';
 import {handleFileUpload, spriteUpload} from '../lib/file-uploader.js';
 import sharedMessages from '../lib/shared-messages';
 import {emptySprite} from '../lib/empty-assets';
-import {copyCostumeDocument} from '../lib/bw-artwork-bundle';
 import {highlightTarget} from '../reducers/targets';
 import {fetchSprite, fetchCode} from '../lib/backpack-api';
 import randomizeSpritePosition from '../lib/randomize-sprite-position';
@@ -69,7 +68,7 @@ class TargetPane extends React.Component {
         this.props.vm.postSpriteInfo({size});
     }
     handleChangeSpriteVisibility (visible) {
-        this.props.vm.postSpriteInfo({visible});
+        if (!this.props.vm.editingTarget?.bwAssetLibrary) this.props.vm.postSpriteInfo({visible});
     }
     handleChangeSpriteX (x) {
         this.props.vm.postSpriteInfo({x});
@@ -78,22 +77,15 @@ class TargetPane extends React.Component {
         this.props.vm.postSpriteInfo({y});
     }
     handleDeleteSprite (id) {
-        const restoreSprite = this.props.vm.deleteSprite(id);
-        const restoreFun = () => restoreSprite().then(this.handleActivateBlocksTab);
-
-        this.props.dispatchUpdateRestore({
-            restoreFun: restoreFun,
-            deletedItem: 'Sprite'
+        const vm = this.props.vm, target = vm.runtime.getTargetById(id), stage = vm.runtime.getTargetForStage();
+        return import('../lib/bw-target-artwork-operations').then(module => {
+            const restoreFun = module.deleteTargetArtwork(vm, target, stage, () => this.handleActivateBlocksTab());
+            if (restoreFun) this.props.dispatchUpdateRestore({restoreFun, deletedItem: 'Sprite'});
         });
-
     }
     handleDuplicateSprite (id) {
-        const vm = this.props.vm;
-        const originals = vm.runtime.getTargetById(id)?.sprite?.costumes || [];
-        return vm.duplicateSprite(id).then(() => {
-            const copies = vm.editingTarget?.sprite?.costumes || [];
-            originals.forEach((costume, index) => copyCostumeDocument(costume, copies[index]));
-        });
+        const vm = this.props.vm, target = vm.runtime.getTargetById(id), stage = vm.runtime.getTargetForStage();
+        return import('../lib/bw-target-artwork-operations').then(module => module.duplicateTargetArtwork(vm, target, stage));
     }
     handleExportSprite (id) {
         const spriteName = this.props.vm.runtime.getTargetById(id).getName();
@@ -106,6 +98,7 @@ class TargetPane extends React.Component {
     }
     handleSelectSprite (id) {
         this.props.vm.setEditingTarget(id);
+        if (this.props.vm.editingTarget?.bwAssetLibrary) this.props.onActivateTab(COSTUMES_TAB_INDEX);
         if (this.props.stage && id !== this.props.stage.id) {
             this.props.onHighlightTarget(id);
         }
@@ -170,6 +163,7 @@ class TargetPane extends React.Component {
         }
     }
     shareBlocks (blocks, targetId, optFromTargetId) {
+        if (this.props.vm.runtime.getTargetById(targetId)?.bwAssetLibrary) return Promise.resolve();
         // Position the top-level block based on the scroll position.
         const topBlock = blocks.find(block => block.topLevel);
         if (topBlock) {
@@ -203,6 +197,8 @@ class TargetPane extends React.Component {
     }
     handleDrop (dragInfo) {
         const {sprite: targetId} = this.props.hoveredTarget;
+        if (this.props.vm.runtime.getTargetById(targetId)?.bwAssetLibrary &&
+            [DragConstants.SOUND, DragConstants.BACKPACK_SOUND, DragConstants.BACKPACK_CODE].includes(dragInfo.dragType)) return;
         if (dragInfo.dragType === DragConstants.SPRITE) {
             // Add one to both new and target index because we are not counting/moving the stage
             this.props.vm.reorderTarget(dragInfo.index + 1, dragInfo.newIndex + 1);
@@ -258,6 +254,7 @@ class TargetPane extends React.Component {
         return (
             <TargetPaneComponent
                 {...componentProps}
+                artworkOnly={Boolean(this.props.vm.editingTarget?.bwAssetLibrary)}
                 fileInputRef={this.setFileInput}
                 onActivateBlocksTab={this.handleActivateBlocksTab}
                 onChangeSpriteDirection={this.handleChangeSpriteDirection}

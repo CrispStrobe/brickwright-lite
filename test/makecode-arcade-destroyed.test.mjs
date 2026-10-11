@@ -13,20 +13,21 @@ victim = sprites.create(img\`1\`, SpriteKind.Enemy)`;
 test('kind destruction callbacks retain their sprite handle and roundtrip to PXT', async () => {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
-    assert.match(imported.code, /WHEN arcade kind "Enemy" destroyed:/);
-    assert.match(imported.code, /arcade property x of arcade event first/);
+    assert.match(imported.code, /arcade register destroyed kind "Enemy" as/);
+    assert.match(imported.code, /arcade set local s to arcade event first/);
+    assert.match(imported.code, /arcade property x of arcade local s/);
     const creator = new SB3Creator();
     creator.parse(imported.code);
     for (const costume of imported.costumes) creator.applyCustomSVG(costume.sprite, costume.svg);
     assert.deepEqual(creator.warnings, []);
-    assert.ok(projectOpcodes(creator.project).has('arcade_whenSpriteDestroyed'));
-    assert.match(creator.decompile(), /WHEN arcade kind "Enemy" destroyed:/);
+    assert.ok(projectOpcodes(creator.project).has('arcade_whenRegisteredKindDestroyed'));
+    assert.match(creator.decompile(), /arcade register destroyed kind "Enemy" as/);
     const exported = projectToArcade(creator.project, {costumeSvg: (target, costume) => {
         const asset = creator.assets.get(costume.assetId);
         return asset?.type === 'svg' ? asset.data : null;
     }});
     assert.deepEqual(exported.unsupported, []);
-    assert.match(exported.ts, /sprites\.onDestroyed\(SpriteKind\.Enemy, function \(sprite: Sprite\)/);
+    assert.match(exported.ts, /sprites\.onDestroyed\(SpriteKind\.Enemy, function \([A-Za-z_]\w*: Sprite\)/);
     if (hasRuntime('arcade')) {
         const compiled = await compile('arcade', exported.files);
         assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
@@ -43,7 +44,7 @@ test('lifespan destruction invokes one callback with the removed sprite snapshot
     // A 1x1 sprite is created at x 79.5 and Arcade's score is an integer: the
     // pinned PXT simulator reports 79 for this program (measured).
     assert.equal(Number(run.vm.runtime.bwArcadeDeviceState?.score), 79);
-    assert.ok((run.calls.get('arcade_whenSpriteDestroyed') || 0) >= 1);
+    assert.ok((run.calls.get('arcade_whenRegisteredKindDestroyed') || 0) >= 1);
     assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {}).filter(sprite => sprite.id).length, 0);
 });
 
@@ -72,15 +73,15 @@ first = sprites.create(img\`2\`, SpriteKind.Enemy)
 alias.destroy()`;
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
-    assert.match(imported.code, /arcade register destruction of first as "__bwDestroyed1"/);
-    assert.match(imported.code, /WHEN arcade destruction handler "__bwDestroyed1" runs:/);
+    assert.match(imported.code, /arcade register instance destruction of \(first\) as "__bwInstanceDestroyed1"/);
+    assert.match(imported.code, /WHEN arcade instance destruction handler "__bwInstanceDestroyed1" runs:/);
     const creator = new SB3Creator();
     creator.parse(imported.code);
     for (const costume of imported.costumes) creator.applyCustomSVG(costume.sprite, costume.svg);
     assert.deepEqual(creator.warnings, []);
-    assert.ok(projectOpcodes(creator.project).has('arcade_registerSpriteDestroyed'));
-    assert.ok(projectOpcodes(creator.project).has('arcade_whenRegisteredDestroyed'));
-    assert.match(creator.decompile(), /arcade register destruction of first as "__bwDestroyed1"/);
+    assert.ok(projectOpcodes(creator.project).has('arcade_registerInstanceDestroyedHandler'));
+    assert.ok(projectOpcodes(creator.project).has('arcade_whenRegisteredInstanceDestroyed'));
+    assert.match(creator.decompile(), /arcade register instance destruction of first as "__bwInstanceDestroyed1"/);
     const run = await runProgram(imported.code, {frames: 5, uploads: imported.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     const vars = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}));

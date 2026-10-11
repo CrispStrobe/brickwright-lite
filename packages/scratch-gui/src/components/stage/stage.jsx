@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
+import ArcadeDialog from './arcade-dialog.jsx';
 import classNames from 'classnames';
 
 import Box from '../box/box.jsx';
@@ -22,12 +23,14 @@ const StageComponent = props => {
         isFullScreen,
         isStarted,
         colorInfo,
+        arcadeDialog,
         micIndicator,
         question,
         stageSize,
         useEditorDragStyle,
         onDeactivateColorPicker,
         onDoubleClick,
+        onArcadeDialogDismiss,
         onQuestionAnswered,
         ...boxProps
     } = props;
@@ -60,6 +63,7 @@ const StageComponent = props => {
                         }}
                         {...boxProps}
                     />
+                    {arcadeDialog ? <ArcadeDialog dialog={arcadeDialog} onDismiss={onArcadeDialogDismiss} /> : null}
                     <Box className={styles.monitorWrapper}>
                         <MonitorList
                             draggable={useEditorDragStyle}
@@ -134,6 +138,8 @@ const StageComponent = props => {
     );
 };
 StageComponent.propTypes = {
+    arcadeDialog: PropTypes.shape({title: PropTypes.string, subtitle: PropTypes.string,
+        type: PropTypes.string, layout: PropTypes.string}),
     canvas: PropTypes.instanceOf(Element).isRequired,
     colorInfo: Loupe.propTypes.colorInfo,
     dragRef: PropTypes.func,
@@ -142,6 +148,7 @@ StageComponent.propTypes = {
     isStarted: PropTypes.bool,
     micIndicator: PropTypes.bool,
     onDeactivateColorPicker: PropTypes.func,
+    onArcadeDialogDismiss: PropTypes.func,
     onDoubleClick: PropTypes.func,
     onQuestionAnswered: PropTypes.func,
     question: PropTypes.string,

@@ -17,6 +17,7 @@ import styles from './target-pane.css';
  * @returns {React.Component} rendered component
  */
 const TargetPane = ({
+    artworkOnly,
     editingTarget,
     fileInputRef,
     hoveredTarget,
@@ -53,6 +54,7 @@ const TargetPane = ({
     >
 
         <SpriteSelectorComponent
+            artworkOnly={artworkOnly}
             editingTarget={editingTarget}
             hoveredTarget={hoveredTarget}
             raised={raiseSprites}
@@ -126,6 +128,7 @@ const spriteShape = PropTypes.shape({
 });
 
 TargetPane.propTypes = {
+    artworkOnly: PropTypes.bool,
     editingTarget: PropTypes.string,
     extensionLibraryVisible: PropTypes.bool,
     fileInputRef: PropTypes.func,

@@ -96,7 +96,7 @@ function rankGaps (rows, elements) {
             b.occurrences - a.occurrences || a.family.localeCompare(b.family));
 }
 
-const supported = new Set(['.ts', '.hex', '.uf2', '.elf', '.sb3']);
+const supported = new Set(['.ts', '.hex', '.uf2', '.elf', '.sb3', '.mkcd', '.pxt']);
 const scratchBuiltins = new Set(['ev3', 'microbit', 'text2speech', 'videoSensing', 'wedo2',
     'music', 'pen', 'makeymakey']);
 const corePrefix = /^(motion|looks|sound|event|control|sensing|operator|data|procedures|argument)_/;
@@ -148,6 +148,12 @@ const rows = [];
 const tally = {};
 const normalize = e => String(e?.message || e).slice(0, 350);
 
+// Missing offline package inputs are an unavailable original-compiler gate,
+// not a TypeScript diagnostic. Preserve the compiler's typed dependency list.
+const compileFailure = error => error?.code === 'NO_EXTENSION' ?
+    {status: 'unavailable', reason: normalize(error), code: error.code, extensions: Array.from(error.extensions || [], String)} :
+    {status: 'fail', reason: normalize(error)};
+
 async function makecode (file) {
     const ext = path.extname(file).toLowerCase();
     let imported;
@@ -164,7 +170,7 @@ async function makecode (file) {
                 preCompile = {status: result.success ? 'pass' : 'fail',
                     diagnostics: (result.diagnostics || []).slice(0, 10).map(d =>
                         `${d.file}:${d.line + 1}: ${d.message}`)};
-            } catch (error) { preCompile = {status: 'fail', reason: normalize(error)}; }
+            } catch (error) { preCompile = compileFailure(error); }
         }
         try { imported = importProjectFiles(projectFiles, {target, name: path.basename(file, ext)}); }
         catch (error) {
@@ -204,7 +210,7 @@ async function makecode (file) {
                 const result = await compile(row.target, imported.files);
                 row.compile = {status: result.success ? 'pass' : 'fail',
                     diagnostics: (result.diagnostics || []).slice(0, 10).map(d => `${d.file}:${d.line + 1}: ${d.message}`)};
-            } catch (error) { row.compile = {status: 'fail', reason: normalize(error)}; }
+            } catch (error) { row.compile = compileFailure(error); }
         }
     }
     // A source rejected by the pinned PXT compiler cannot be counted as a

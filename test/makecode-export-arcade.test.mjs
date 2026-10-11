@@ -185,8 +185,8 @@ test('the F5 shapes export without a bare return, a free self, or a list read as
     assert.match(interval, /game\.onUpdateInterval\(1000, function \(\) \{\n {4}const w = new _Wait\(\)\n {4}for \(const s of _all_iceSprite\(\)\) _spawnFor\(w, /);
     assert.match(exported['interval hat of a cloned sprite'].code, /\(pick random 8 to 152\) - 80/);
     const named = exported['named array read by length'];
-    assert.match(named.code, /length of array "frameList"/);
-    assert.doesNotMatch(named.code, /array reference \(frameList\)/);
+    assert.match(named.code, /length of array reference \(frameList\)/);
+    assert.doesNotMatch(named.code, /length of array "frameList"/);
 });
 
 // ── MakeCode's own compiler, over the whole corpus ─────────────────────────

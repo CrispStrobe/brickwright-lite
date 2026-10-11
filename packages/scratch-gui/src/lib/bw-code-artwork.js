@@ -2,6 +2,7 @@
  * Declarations choose slots; the current VM supplies their actual artwork.
  * Never carry a source snapshot across a different loaded project.
  */
+import {getAssetLibraryRole, validateAssetLibraryTarget} from './bw-asset-library.js';
 import {ARTWORK_PATH, ARTWORK_FORMAT, artworkBundleVersion, getCostumeDocument} from './bw-artwork-bundle.js';
 
 const copy = value => JSON.parse(JSON.stringify(value));
@@ -19,10 +20,12 @@ const unique = (items, key, label) => {
     return result;
 };
 
-const captureCodeArtwork = (vm, declarations) => {
+const captureCodeArtwork = (vm, declarations, sourceDeclarations = declarations) => {
     const targets = originals(vm);
     const byTarget = unique(targets, targetKey, 'target');
     const slots = new Map();
+    const implicitCostumes = new Map();
+    const sourceTargets = new Map((sourceDeclarations.targets || []).map(target => [targetKey(target), target]));
     for (const target of declarations.targets || []) {
         const key = targetKey(target);
         const live = byTarget.get(key);
@@ -34,8 +37,18 @@ const captureCodeArtwork = (vm, declarations) => {
             key: slotKey(costume, index), costume: live.sprite.costumes[index]
         }));
         slots.set(key, unique(rows, row => row.key, 'costume declaration'));
+        const sourceSlots = (sourceTargets.get(key)?.costumes || []).map(slotKey);
+        const generatedSlots = (target.costumes || []).map(slotKey);
+        // SVG uploads can append costumes without a COSTUME declaration. Keep
+        // those owned attachments while the authored declaration slots match;
+        // From blocks makes them ordinary explicit declarations instead.
+        if (sourceSlots.length && generatedSlots.length > sourceSlots.length &&
+            sourceSlots.every((slot, index) => slot === generatedSlots[index])) {
+            implicitCostumes.set(key, {sourceSlots,
+                costumes: copy(target.costumes.slice(sourceSlots.length))});
+        }
     }
-    return {targets, slots, byTarget};
+    return {targets, slots, byTarget, implicitCostumes, libraries: targets.filter(getAssetLibraryRole)};
 };
 
 const codeArtworkMatches = (vm, context) => {
@@ -51,12 +64,36 @@ const codeArtworkMatches = (vm, context) => {
  */
 const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
     if (!codeArtworkMatches(vm, context)) return false;
-    const records = [];
+    const records = [], libraries = [];
+    const preservedLibraries = new Map();
+    if (context.libraries?.length) {
+        const serialized = JSON.parse(vm.toJSON());
+        for (const live of context.libraries) {
+            const role = getAssetLibraryRole(live);
+            validateAssetLibraryTarget(live, role);
+            const saved = copy(serialized.targets[context.targets.indexOf(live)]);
+            validateAssetLibraryTarget(saved, role);
+            while (project.targets.some(target => target.name === saved.name)) saved.name += '_';
+            const targetIndex = project.targets.length;
+            project.targets.push(saved);
+            preservedLibraries.set(saved, live);
+            libraries.push({targetIndex, role: copy(role)});
+        }
+    }
     for (const [targetIndex, generated] of (project.targets || []).entries()) {
         const key = targetKey(generated);
-        const live = context.byTarget.get(key);
-        const prior = context.slots.get(key);
+        const library = preservedLibraries.get(generated);
+        const live = library || context.byTarget.get(key);
+        const prior = library ? new Map((generated.costumes || []).map((costume, index) =>
+            [slotKey(costume, index), {costume: library.sprite.costumes[index]}])) : context.slots.get(key);
         if (!live || !prior) continue;
+        const implicit = context.implicitCostumes?.get(key);
+        const currentSlots = (generated.costumes || []).map(slotKey);
+        const hasNewAppend = uploads.some(upload => upload.sprite === generated.name && upload.mode === 'add');
+        if (implicit && (currentSlots.length === implicit.sourceSlots.length || hasNewAppend) &&
+            implicit.sourceSlots.every((slot, index) => slot === currentSlots[index])) {
+            generated.costumes.splice(implicit.sourceSlots.length, 0, ...copy(implicit.costumes));
+        }
         const liveCostumes = live.sprite?.costumes || [];
         const liveCurrent = liveCostumes[live.currentCostume];
         let retainedCurrent = -1;
@@ -103,7 +140,8 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
             Math.max(0, (generated.costumes || []).length - 1));
     }
     if (records.length) zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT,
-        version: artworkBundleVersion(records), costumes: records}));
+        version: libraries.length ? 7 : artworkBundleVersion(records), costumes: records,
+        ...(libraries.length ? {libraries} : {})}));
     zip.file('project.json', JSON.stringify(project));
     return true;
 };
@@ -112,9 +150,11 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
 // in Costumes while Code is busy; do not replace that newer edit with this ZIP.
 const revisionDescriptor = costume => JSON.stringify(['name', 'rotationCenterX', 'rotationCenterY',
     'bitmapResolution'].map(key => costume[key]));
+const libraryState = target => getAssetLibraryRole(target) ?
+    JSON.stringify([getAssetLibraryRole(target), target.visible, target.name || target.getName?.()]) : null;
 const captureCodeArtworkRevision = (vm, context) => {
     if (!codeArtworkMatches(vm, context)) throw new Error('The loaded project changed while preparing artwork.');
-    return originals(vm).map(target => ({target, currentCostume: target.currentCostume,
+    return originals(vm).map(target => ({target, currentCostume: target.currentCostume, libraryState: libraryState(target),
         costumes: (target.sprite?.costumes || []).map(costume => ({costume, asset: costume.asset,
             id: costume.asset?.assetId, format: costume.asset?.dataFormat,
             bytes: costume.asset?.data ? new Uint8Array(costume.asset.data).slice() : null,
@@ -125,7 +165,7 @@ const codeArtworkRevisionMatches = (vm, revision) => {
     return current.length === revision.length && revision.every((row, targetIndex) => {
         const target = current[targetIndex];
         const costumes = target.sprite?.costumes || [];
-        return target === row.target && target.currentCostume === row.currentCostume &&
+        return target === row.target && target.currentCostume === row.currentCostume && libraryState(target) === row.libraryState &&
             costumes.length === row.costumes.length && row.costumes.every((saved, index) => {
                 const costume = costumes[index]; const asset = costume?.asset;
                 return costume === saved.costume && asset === saved.asset && asset?.assetId === saved.id &&

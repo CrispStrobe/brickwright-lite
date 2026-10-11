@@ -1,0 +1,31 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {LEGACY_TILEMAP_SOURCE as source} from './fixtures/arcade-legacy-tilemap.mjs';
+const dependencies={device:'*','color-coded-tilemap':'*'};
+const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+test('legacy map image aliases, definitions, scale and scenes agree with original PXT across roundtrips',async()=>{
+ const expected=await runPxtArcade(source,{dependencies});
+ const names=['initialWall','initialIndex','aliasWall','aliasIndex','changedWall','invalidIndexCalls','afterInvalid','replacementWall','replacementCenter','detachedIndex','clearedWall','retainedDefinition','childUndefined','childWall','childChangedWall','restoredWall','restoredIndex'];
+ assert.equal(expected.initialWall,true);assert.equal(expected.aliasWall,false);assert.equal(expected.changedWall,true);assert.equal(expected.initialIndex,2);assert.equal(expected.aliasIndex,1);assert.equal(expected.invalidIndexCalls,1);assert.equal(expected.replacementCenter,12);assert.equal(expected.detachedIndex,2);assert.equal(expected.clearedWall,false);assert.equal(expected.childUndefined,true);assert.equal(expected.childWall,false);assert.equal(expected.childChangedWall,true);assert.equal(expected.restoredWall,true);
+ const check=run=>{for(const name of names)assert.equal(values(run)[name],expected[name],name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+ const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:5,uploads:imported.costumes,storage:true});check(run);return run;};
+ const imported=arcadeToPseudocode(source),run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
+ const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+ assert.equal(JSON.parse(exported.files['pxt.json']).dependencies['color-coded-tilemap'],'*');
+ const native=await runPxtArcade(exported.files);for(const name of names)assert.equal(native[name],expected[name],name);
+ await execute(arcadeToPseudocode(exported.ts));
+ await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,5);check(run);
+ const state=run.vm.runtime.bwArcadeDeviceState,map=state.tilemap;
+ assert.equal(map.tileSize,4);assert.equal(map.image.pixels[0],7);assert.equal(map.image.pixels[4],5);
+ state.buttons.a=true;run.vm.runtime.emit('ARCADE_BUTTON_EDGE','a',true);await stepFrames(run.vm,3);
+ assert.equal(map.image.pixels[0],8,'exact-size tile image remains live');
+ assert.equal(map.image.pixels[4],5,'padded tile image retains its cached copy');
+ assert.equal(Object.values(state.sprites)[0].x,3);
+});
+test('legacy location methods, collision callbacks, invalid arity and shadowed namespaces remain diagnosed',()=>{
+ for(const source of ['scene.setTileMap()','scene.setTile(1)','scene.setTile(1,img`1`,true,2)','scene.setTileMap(img`1`,TileScale.NoSuchScale)','let scene=1;scene.setTileMap(img`1`)','let TileScale=1;scene.setTileMap(img`1`,TileScale.Four)','scene.setTileMap(img`1`);tiles.setTilemap(null)','scene.getTile(0)','scene.getTilesByType()','scene.onHitTile(SpriteKind.Player,1,function(sprite:Sprite,location){})'])assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
+});

@@ -85,6 +85,21 @@ test('exposure: an adapter-built extension sees Scratch.BWValues, the VM\'s own 
         ['ArgumentType', 'BWConfirm', 'BWValues', 'BlockType', 'Cast', 'TargetType', 'extensions', 'runtime', 'translate', 'vm']);
 });
 
+test('explicit adapter dependencies retain closures and the VM value identity', () => {
+    let count = 0;
+    const dependencies = {next: () => ++count};
+    const Extension = makeCrispExtension(PROBE_SOURCE, dependencies);
+    const one = new Extension(fakeRuntime());
+    const first = globalThis.__bwValuesProbeShim;
+    assert.equal(first.BWExtensionDependencies, dependencies);
+    assert.equal(first.BWValues, BW);
+    assert.equal(first.BWExtensionDependencies.next(), 1);
+    const two = new Extension(fakeRuntime());
+    assert.equal(globalThis.__bwValuesProbeShim.BWExtensionDependencies.next(), 2);
+    assert.equal(globalThis.__bwValuesProbeShim.BWValues, BW);
+    assert.equal(one.getInfo().id, two.getInfo().id);
+});
+
 test('exposure: the API surface the Arcade extension calls is present', () => {
     // Every BWValues member E1's arcade/index.js calls (lane/e1-arcade-import d33d97c1b), plus the
     // ones its arrays/ tests call. A rename here breaks E1 at its first block, not at load.

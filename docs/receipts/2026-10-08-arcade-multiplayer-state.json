@@ -1,0 +1,107 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "ccfedda255b873fd11e4c43fcbc9e4997a135110",
+  "auditSourceDirty": false,
+  "producer": {
+    "repo": "CrispStrobe/sb3-creator",
+    "source": "107af3ba50dc41646d055306f9cbf3955b41911f",
+    "pr": 67,
+    "wordsAdded": 4,
+    "testsPassed": 1
+  },
+  "implementation": {
+    "APIs": [
+      "mp.getPlayerState",
+      "mp.setPlayerState",
+      "mp.changePlayerStateBy",
+      "MultiplayerState.create"
+    ],
+    "constants": [
+      "MultiplayerState.score",
+      "MultiplayerState.life"
+    ],
+    "boundariesCovered": [
+      "score/life share native Info backing and integer conversion",
+      "custom fractional state values and strict key equality",
+      "null/undefined/NaN/Infinity keys and missing players",
+      "global runtime key allocation across scenes and restart reset",
+      "custom namespace state declarations",
+      "old Player custom state and current scene Info semantics",
+      "native numeric graph inference and multiplayer export dependency"
+    ]
+  },
+  "tests": {
+    "affectedAndRegressionsIncludingBrowserGateContracts": 66,
+    "failed": 0,
+    "skipped": 0
+  },
+  "differentialRoutes": [
+    "original PXT runtime",
+    "Code to Blocks",
+    "native export to original PXT runtime",
+    "BW reimport",
+    "SB3 save/reload"
+  ],
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.b198440b.js",
+    "initialBytes": 4360511,
+    "previousInitialBytes": 4360511,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "priorJourneys": "All previous production browser journeys pass",
+    "multiplayerState": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "customKeys": [
+        2,
+        3
+      ],
+      "allocatedKeys": [
+        4,
+        5
+      ],
+      "initialCustom": 7.75,
+      "controllerCustom": 9.75,
+      "sharedScore": 16,
+      "sharedLife": 8,
+      "childSceneScore": 41,
+      "restoredScore": 15,
+      "spriteX": 49.75
+    }
+  },
+  "corpus": {
+    "original184ImportOnly": {
+      "translated": 96,
+      "partial": 87,
+      "malformed": 1
+    },
+    "recoveredTutorials": {
+      "partial": 10,
+      "originalCompileUnavailable": 10,
+      "partialFragmentsSteppedWithoutErrors": 10,
+      "diagnosticOccurrences": 27
+    },
+    "qualificationBoundary": "Original extension packages unavailable; stepping partial fragments is not complete-game equivalence"
+  },
+  "retainedIntermediateFailures": [
+    "Fixture score name was renamed by importer to avoid reserved name",
+    "Fixture life name was renamed by exporter; oracle helper read unrelated library global"
+  ],
+  "remaining": [
+    "named state-key management and friendly enum authoring",
+    "per-player Info HUD rendering and visual comparison",
+    "arbitrary player.data shared object semantics",
+    "direct Player state methods",
+    "connection/score/life callbacks and direct controller-instance conversion",
+    "presence/network effects",
+    "queued replacement races and long-handler timing qualification",
+    "graphics/palette and package artwork"
+  ],
+  "publication": "Draft stacked PR; exact-head hosted CI and merge still required"
+}

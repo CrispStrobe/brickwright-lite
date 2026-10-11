@@ -18,7 +18,7 @@ import DragConstants from '../lib/drag-constants';
 import {emptyCostume} from '../lib/empty-assets';
 import sharedMessages from '../lib/shared-messages';
 import downloadBlob from '../lib/download-blob';
-import {copyCostumeDocument} from '../lib/bw-artwork-bundle';
+import {copyCostumeDocument, syncAnimationResources} from '../lib/bw-artwork-bundle';
 import {makeT} from '../lib/bw-i18n';
 import styles from './costume-tab.css';
 
@@ -147,14 +147,24 @@ class CostumeTab extends React.Component {
             this.setState({selectedCostumeIndex: target.currentCostume});
         }
     }
+    savePixelBeforeSwitch () {
+        const editor = this.pixelEditor.current;
+        return !this.state.pixelMode || !editor?.hasUnsavedChanges() || editor.save() !== false;
+    }
     handleSelectCostume (costumeIndex) {
+        if (!this.savePixelBeforeSwitch()) return;
         this.props.vm.editingTarget.setCostume(costumeIndex);
         this.setState({selectedCostumeIndex: costumeIndex});
     }
     handleDeleteCostume (costumeIndex) {
+        if (!this.savePixelBeforeSwitch()) return;
         const restoreCostumeFun = this.props.vm.deleteCostume(costumeIndex);
+        syncAnimationResources(this.props.vm);
         this.props.dispatchUpdateRestore({
-            restoreFun: restoreCostumeFun,
+            restoreFun: (...args) => {
+                const result = restoreCostumeFun(...args);
+                return Promise.resolve(result).then(value => { syncAnimationResources(this.props.vm); return value; });
+            },
             deletedItem: 'Costume'
         });
     }
@@ -163,7 +173,7 @@ class CostumeTab extends React.Component {
         const target = vm.editingTarget;
         const original = target.sprite.costumes[costumeIndex];
         return vm.duplicateCostume(costumeIndex).then(() => {
-            copyCostumeDocument(original, target.sprite.costumes[costumeIndex + 1]);
+            copyCostumeDocument(original, target.sprite.costumes[costumeIndex + 1], this.props.vm);
         });
     }
     handleExportCostume (costumeIndex) {
@@ -336,13 +346,18 @@ class CostumeTab extends React.Component {
                     aria-label={intl.locale.startsWith('de') ? 'Bildziel wählen' : 'Choose image target'}
                     value={vm.editingTarget.id}
                     onChange={event => {
-                        if (pixel && this.pixelEditor.current?.hasUnsavedChanges()) this.pixelEditor.current.save();
+                        if (pixel && !this.savePixelBeforeSwitch()) return;
                         vm.setEditingTarget(event.target.value);
                     }}
                     className={styles.targetSelect}
                 >
                     <optgroup label={intl.locale.startsWith('de') ? 'Kostüme' : 'Costumes'}>
-                        {Object.values(this.props.sprites).map(sprite => (
+                        {Object.values(this.props.sprites).filter(sprite => !vm.runtime.getTargetById(sprite.id)?.bwAssetLibrary).map(sprite => (
+                            <option key={sprite.id} value={sprite.id}>{sprite.name}</option>
+                        ))}
+                    </optgroup>
+                    <optgroup label={intl.locale.startsWith('de') ? 'Bildbibliotheken' : 'Artwork libraries'}>
+                        {Object.values(this.props.sprites).filter(sprite => vm.runtime.getTargetById(sprite.id)?.bwAssetLibrary).map(sprite => (
                             <option key={sprite.id} value={sprite.id}>{sprite.name}</option>
                         ))}
                     </optgroup>

@@ -70,8 +70,8 @@ const canvasCorners=()=>page.getByTestId('bw-pixel-canvas').evaluate((canvas,cor
 },BACKGROUND_CORNERS);
 const expectedColours=corners=>corners.map(([, ,colour])=>[...ARCADE_PALETTE[colour].slice(1).match(/../g).map(value=>parseInt(value,16)),255]);
 const waitForCanvasCorners=async (expected,label)=>{
-    // VM costume selection precedes React's asynchronous PNG rasterization.
-    // The old SVG canvas can still be visible with the same160×120 dimensions.
+    // VM costume selection precedes React's asynchronous image rasterization.
+    // The old canvas can still be visible with the same160×120 dimensions.
     // Wait on the actual new pixels, not selected costume name/dimensions alone.
     try {
         await page.waitForFunction(({corners,expected})=>{
@@ -142,7 +142,14 @@ try {
         const stage=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();
         return stage.getCostumes()[stage.currentCostume]?.name.includes('uniform-background');
     });
-    await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});await panel('more');
+    await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});
+    // Unmarked SVGs also rasterize asynchronously. load() closes panels when
+    // it commits the decoded image; opening More on the previous canvas can
+    // leave a detached preset button. Observe the uploaded SVG's actual pixels
+    // before opening its controls, just as for the PNG import below.
+    await waitForCanvasCorners(expectedColours(BACKGROUND_CORNERS.map(([x,y])=>[x,y,2])),
+        'unmarked Stage SVG import');
+    await panel('more');
     await page.waitForFunction(()=>document.querySelector('[data-testid="bw-pixel-w"]')?.value==='160'&&
         document.querySelector('[data-testid="bw-pixel-h"]')?.value==='120');
     await page.getByTestId('bw-pixel-arcade-background').click();
@@ -167,11 +174,16 @@ try {
         return stage.getCostumes()[stage.currentCostume]?.name.includes('arcade-background');
     });
     await page.getByTestId('bw-pixel-canvas').waitFor({state:'visible'});
+    // Selecting the costume can precede Pixel's asynchronous PNG decode. Its
+    // load commit closes panels, so controls opened on the previous canvas can
+    // disappear before dimension checks. Observe this upload's distinct pixels
+    // before opening More, as for the preceding SVG upload. No decode result or
+    // dimension is replaced, and an actual load failure still times out.
+    await waitForCanvasCorners(expectedColours(BACKGROUND_CORNERS),'native PNG import');
     await panel('more');
     await page.waitForFunction(()=>document.querySelector('[data-testid="bw-pixel-w"]')?.value==='160'&&
         document.querySelector('[data-testid="bw-pixel-h"]')?.value==='120');
     assert.equal((await stageState()).format,'png','actual upload remains native PNG before Pixel save');
-    await waitForCanvasCorners(expectedColours(BACKGROUND_CORNERS),'native PNG import');
     assert.deepEqual(await canvasCorners(),expectedColours(BACKGROUND_CORNERS),'browser PNG decode and initial Pixel display preserve corners');
     report.journey.push('native160×120 PNG uploaded through visible Stage file chooser and decoded at full logical size');
     await panel('more'); // the newly decoded PNG resets editor panels after selection
@@ -256,8 +268,8 @@ try {
     if(!(await actions.getAttribute('open')))await actions.locator('summary').click();
     const downloaded=page.waitForEvent('download');
     await page.getByTestId('bw-makecode-arcade-export').click();
-    const download=await downloaded;assert.match(download.suggestedFilename(),/\.hex$/);
-    const filename=path.join(path.dirname(out),'arcade-background-export.hex');await download.saveAs(filename);
+    const download=await downloaded;assert.match(download.suggestedFilename(),/\.mkcd$/);
+    const filename=path.join(path.dirname(out),'arcade-background-export.mkcd');await download.saveAs(filename);
     const embedded=await unpackMakeCodeSource(await fs.readFile(filename));assert.ok(embedded.files?.['main.ts']);
     await fs.writeFile(path.join(path.dirname(out),'arcade-background-export.ts'),embedded.files['main.ts']);
     const compiled=await compile('arcade',embedded.files);assert.equal(compiled.success,true,JSON.stringify(compiled.diagnostics));

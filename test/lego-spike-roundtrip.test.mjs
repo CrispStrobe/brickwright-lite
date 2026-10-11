@@ -243,8 +243,38 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // PIN MOVED 98748eea -> 8ba3508e (2026-10-07, sb3-creator#59):
     // Arcade rotation/rotationDegrees/data property words only; the shared
     // parser includes #58's comment and empty-body repairs.
+    // PIN MOVED 2d2a5628 -> 33ce7380 (2026-10-07, sb3-creator#62):
+    // two Arcade animation resource reporters, native literal menu shadows and
+    // quoted stable IDs; no SPIKE word changed. Exact-head producer checks
+    // passed, merged tree equals reviewed fd1d93fa, and this fixture is rerun.
+    // PIN MOVED 33ce7380 -> 983aa61f (2026-10-07, sb3-creator#63):
+    // fresh Arcade resource lookup and reversible resource bridge metadata only.
+    // Reviewed producer merge tree matches c7b74f1b; all enabled checks passed.
+    // SPIKE declarations, extension URL, motor fields, distance and decompile
+    // assertions below are unchanged and rerun at this exact consumer pin.
+    // -> 0de6ae91: Arcade player/state, legacy maps and Tile dialect adoption.
+    // Re-run every canonical SPIKE artifact assertion below at this exact pin;
+    // this is finite artifact qualification, not an emitter-wide equivalence claim.
+    // -> 49903b5d: Arcade instance destruction and parallel capture words only.
+    // Re-run the unchanged canonical SPIKE artifact behavior at this pin.
+    // -> de2ac6ce: one reversible Arcade palette hex command; SPIKE words unchanged.
+    // -> 56f6307e (2026-10-09): boolean Arcade question reporter; SPIKE words unchanged.
+    // -> e3d0e890 (2026-10-09): direct controller 1–4 movement/stopping; SPIKE words unchanged.
+    // -> 0f401fc9 (2026-10-09): native Arcade truncation reporter; SPIKE words unchanged.
+    // -> 887045e0 (2026-10-09): Boolean census correction and sibling fixture adoption; runtime words unchanged.
+    // -> ef312b0a (2026-10-09): correct multiplayer Boolean census identity; runtime words unchanged.
+    // -> 5a6782d9: native Arcade numeric sign word; SPIKE words unchanged.
+    // -> 2b93a53d (2026-10-10): five Arcade particle effect words; runtime words unchanged.
+    // -> 0e3c1348 (2026-10-10): screen image, image text and paint/shade words; runtime words unchanged.
+    // -> e10b1bfa (2026-10-10): Arcade music words; runtime words unchanged.
+    // -> fa1bbec9 (2026-10-10): parseInt and frame delta time words, with producer main merged; runtime words unchanged.
+    // -> 4ce65254 (2026-10-10): game over and image screen effect words; runtime words unchanged.
+    // -> 96a6da7a (2026-10-10): seven segment display words; runtime words unchanged.
+    // -> 50721b3b (2026-10-10): darts and corgio words; runtime words unchanged.
+    // -> 6e548a69 (2026-10-10): background scroller words; runtime words unchanged.
+    // -> 44d11124 (2026-10-10): character animation words, with producer main merged; runtime words unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '2d2a562812c6e34525021ccacd421b1d20151c15');
+        '44d11124a725d209387ec524c6871d0356add3f3');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

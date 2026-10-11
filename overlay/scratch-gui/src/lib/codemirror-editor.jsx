@@ -274,6 +274,14 @@ class CodeMirrorEditor extends React.Component {
         }
     }
 
+    /** Insert an authoring resource at the user's selection as one undoable edit. */
+    insertText (text) {
+        if (!this._view || this.props.readOnly) return false;
+        this._view.dispatch(this._view.state.replaceSelection(text));
+        this._view.focus();
+        return true;
+    }
+
     /** Imperative API: focus the editor. */
     focus () {
         if (this._view) this._view.focus();

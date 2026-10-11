@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-05T14:31:48.764Z",
+ "generatedAt": "2026-10-07T20:07:49.943Z",
  "repo": "CrispStrobe/brickwright-lite",
  "headSha": "a87a7b447",
  "newestMainRun": 36409366028,
@@ -1743,6 +1743,60 @@
    "workflow": "basic-oracle.yml",
    "branch": "feat/basic-oracle-ci-20261005",
    "sha": "d428b52cc"
+  },
+  {
+   "run": 37660250589,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "428c00934"
+  },
+  {
+   "run": 37653831331,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "c766b2c2e"
+  },
+  {
+   "run": 37650021025,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "a5e63608d"
+  },
+  {
+   "run": 37647337533,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "780b7a7ff"
+  },
+  {
+   "run": 37643740464,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "50f12bdf2"
+  },
+  {
+   "run": 37640159639,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "2befc3bd5"
+  },
+  {
+   "run": 37632115411,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "df4a5528b"
+  },
+  {
+   "run": 37629972190,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "a99cca704"
+  },
+  {
+   "run": 37627418944,
+   "workflow": "i80386-freedos-circuits-direct-actual.yml",
+   "branch": "lane/x86-direct-circuits-20261007",
+   "sha": "93dd86bd2"
   }
  ],
  "workflowsInTree": [
@@ -1756,6 +1810,7 @@
   "debugger.yml",
   "deploy-daily.yml",
   "deploy-watchdog.yml",
+  "i80386-freedos-circuits-direct-actual.yml",
   "i8086-execution.yml",
   "makecode-arcade-bases.yml",
   "mobile.yml",
@@ -6367,11 +6422,130 @@
     }
    },
    "sourceSha": "d428b52cc"
+  },
+  "i80386-freedos-circuits-direct-actual.yml": {
+   "runs": 9,
+   "stepsInFile": [
+    "Authenticate source and materialize the exact probe",
+    "Install and build the same-head app",
+    "Obtain and authenticate official free guest media",
+    "Bind app build, pins, probe and media before guest",
+    "Install bounded Chromium and execute actual Circuit guest input",
+    "Inventory bounded original evidence",
+    "Retain first result or failure without media/build binaries"
+   ],
+   "inFileInNoRun": [],
+   "steps": {
+    "Authenticate source and materialize the exact probe": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Install and build the same-head app": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "always"
+    },
+    "Obtain and authenticate official free guest media": {
+     "existed": 9,
+     "ran": 7,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 2,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "sometimes",
+     "why": "upstream failure — skipped only in runs where an earlier job failed"
+    },
+    "Bind app build, pins, probe and media before guest": {
+     "existed": 9,
+     "ran": 7,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 2,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "sometimes",
+     "why": "upstream failure — skipped only in runs where an earlier job failed"
+    },
+    "Install bounded Chromium and execute actual Circuit guest input": {
+     "existed": 9,
+     "ran": 6,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 3,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": null,
+     "class": "sometimes",
+     "why": "upstream failure — skipped only in runs where an earlier job failed"
+    },
+    "Inventory bounded original evidence": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "always()",
+     "class": "always"
+    },
+    "Retain first result or failure without media/build binaries": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "skippedInFailedRuns": 0,
+     "skippedInGreenRuns": 0,
+     "jobs": [
+      "browser"
+     ],
+     "clause": "always()",
+     "class": "always"
+    }
+   },
+   "jobs": {
+    "browser": {
+     "existed": 9,
+     "ran": 9,
+     "existedMain": 0,
+     "ranMain": 0,
+     "class": "always"
+    }
+   },
+   "sourceSha": "428c00934"
   }
  },
  "lastRefresh": {
-  "workflow": "basic-oracle.yml",
-  "at": "2026-10-05T14:31:48.764Z",
-  "sourceSha": "d428b52cc"
+  "workflow": "i80386-freedos-circuits-direct-actual.yml",
+  "at": "2026-10-07T20:07:49.943Z",
+  "sourceSha": "428c00934"
  }
 }

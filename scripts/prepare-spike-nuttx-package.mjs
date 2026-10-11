@@ -7,6 +7,7 @@ import {mkdir, copyFile, readFile, writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {firmwareMotorPorts} from './lib/spike-nuttx-topology.mjs';
+import {programAddressedSensorCapability} from './lib/spike-addressed-sensor-marker.mjs';
 import {programStorageAbiAddress} from './lib/spike-program-storage-marker.mjs';
 import {firmwareExtraNotices} from './lib/spike-firmware-notices.mjs';
 import {prepareInitialFlash, initialFlashScenario, INITIAL_FLASH_FILE} from './lib/spike-initial-flash.mjs';
@@ -49,6 +50,7 @@ const outputSymbol = nm.stdout.match(/^([a-fA-F0-9]+)\s+\w\s+g_bw_python_output$
 const outputMailbox = outputSymbol && parseInt(outputSymbol[1], 16);
 if (!outputMailbox || outputMailbox % 4 || outputMailbox < 0x20020000 || outputMailbox > 0x20040000 - 1036) throw new Error('Python output buffer exceeds userspace RAM');
 const storageAddress = programStorageAbiAddress(user, nm.stdout);
+const addressedSensorCapability = programAddressedSensorCapability(user, nm.stdout);
 // This host adapter ABI is declared by our authored state service, independent
 // of the embedded firmware's storage ABI. Older service packages stay usable.
 const stateService = await readFile(join(models, 'scripts/spike-state-server.py'), 'utf8');
@@ -69,12 +71,18 @@ const copies = [['nuttx/nuttx', 'nuttx-kernel.elf', firmware], ['nuttx/nuttx_use
 if (stateService.includes('from spike_program_uart import')) {
     copies.push(['tools/spike_program_uart.py', 'tools/spike_program_uart.py', models]);
 }
-for (const [source, destination, root] of copies) await copyFile(join(root, source), join(output, destination));
+for (const [source, destination, root] of copies) {
+    // Stage the same captured bytes used for vectors and feature discovery.
+    if (root === firmware && source === 'nuttx/nuttx_user.elf') await writeFile(join(output, destination), user);
+    else if (root === firmware && source === 'nuttx/nuttx') await writeFile(join(output, destination), kernel);
+    else await copyFile(join(root, source), join(output, destination));
+}
 const hash = async file => createHash('sha256').update(await readFile(file)).digest('hex');
 await writeFile(join(output, 'nuttx.resc'), `include @${join(output, 'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(output, 'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${seeded ? initialFlashScenario(output) : ''}`);
 await writeFile(join(output, 'state-config.json'), JSON.stringify({identity: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none',
     imageSha256: await hash(join(output, 'nuttx-user.elf'))}, programMailbox: mailbox, pythonOutputMailbox: outputMailbox, boot,
     ...(storageAddress === null ? {} : {programStorageAbiAddress: storageAddress}),
+    ...(addressedSensorCapability === null ? {} : {addressedSensorCapability}),
     ...(motorPorts === null ? {} : {motorPorts}),
     ...(hostFlashCheckpointAbi === null ? {} : {hostFlashCheckpointAbi}),
 paths: {...Object.fromEntries('ABCDEF'.split('').map(p => [`port${p}`, `external:port${p}`])), display: 'sysbus.display', power: 'sysbus.power'}}, null, 2)+'\n');

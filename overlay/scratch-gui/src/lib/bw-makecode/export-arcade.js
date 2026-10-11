@@ -39,9 +39,18 @@
  * @module
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
+import {animationResourceFromDocument} from '../bw-animation-resources.js';
+import {encodeAnimationJres, nativeAnimationNameBase} from './animation-jres.js';
+import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
+import {validateDocument} from '../bw-artwork-bundle.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
+// arcade-character-animations Predicate members.
+const CHARACTER_PREDICATE_NAMES = ['NotMoving', 'Moving', 'FacingUp', 'FacingRight', 'FacingDown', 'FacingLeft', 'MovingUp', 'MovingRight',
+    'MovingDown', 'MovingLeft', 'HittingWallUp', 'HittingWallRight', 'HittingWallDown', 'HittingWallLeft'];
+// Background effects game over takes: particle screen effects and image effects.
+const BACKGROUND_EFFECTS = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter'];
 import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
 import {helperSource, analyseTone} from './arcade-runtime.js';
 
@@ -59,15 +68,20 @@ const samePalette = (left, right) => left.every((colour, index) =>
     String(colour).toLowerCase() === String(right[index]).toLowerCase());
 
 const REGISTERED_HAT_KINDS = {
+    arcade_whenParallelHandler:'parallel',
+    arcade_whenRegisteredInstanceDestroyed:'instanceDestroyed',
+    arcade_whenRegisteredLegacyWall:'legacyWall',
+    arcade_whenRegisteredMultiplayerButton:'multiplayerButton',
     arcade_whenRegisteredCreated:'created', arcade_whenRegisteredWall:'wall', arcade_whenRegisteredTile:'tile',
     arcade_whenRegisteredUpdate:'update', arcade_whenRegisteredInterval:'interval', arcade_whenRegisteredButton:'button',
+    arcade_whenRegisteredPaint:'paint', arcade_whenRegisteredShade:'shade',
     arcade_whenRegisteredKindDestroyed:'destroyed', arcade_whenRegisteredOverlap:'overlap',
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
     arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
 };
-const REGISTERED_COMMANDS = new Set(['arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
-    'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler',
-    'arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
+const REGISTERED_COMMANDS = new Set(['arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
+    'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
+    'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
 
 const KEY_BUTTON = {
@@ -91,6 +105,11 @@ class ArcadeEmitter {
         this.opts = opts;
         this.unsupported = [];
         this.requiresAnimationPackage = false;
+        this.requiresSevensegPackage = false;
+        this.requiresDartsPackage = false;
+        this.requiresCorgioPackage = false;
+        this.requiresScrollerPackage = false;
+        this.requiresCharacterAnimationsPackage = false;
         this.warnings = [];
         this.sprites = project.targets.filter(t => !t.isStage);
         // Each sprite is a global `<name>Sprite`, kept clear of the program's variable names.
@@ -115,6 +134,7 @@ class ArcadeEmitter {
         // stays a Boolean. A Scratch-only project keeps Scratch's numbers.
         this.arcadeValues = project.targets.some(t => Object.values(t.blocks || {})
             .some(b => b && /^(arcade|arrays)_/.test(b.opcode || '')));
+        this.initialGlobals = new Map();
         this.globals = new Map();       // Scratch variable id|name -> TS name
         this.fnNames = new Map();       // `${target}:${proccode}` -> TS name
         this.target = null;
@@ -141,6 +161,8 @@ class ArcadeEmitter {
         this.artPixels = new Map();
         this.handleTemplateVars = new Map();
         this.frameArrays = new Map();
+        this.authoredAnimationArrays = new Map();
+        this.usesAnimationResources = false;
         this.sharedImageArrays = new Map();
         this.imageVars = new Set();
         this.handleVars = new Set();
@@ -157,12 +179,17 @@ class ArcadeEmitter {
         this.usedDestroyedCallbacks = new Set();
         this.currentLocalNames = null;
         this.emittedSprites = new Set();    // the targets that became an Arcade sprite
+        this.hasProjectPalette = this.project.targets.some(target =>
+            Object.values(target.blocks || {}).some(block => block.opcode === 'arcade_setPalette'));
         this.analyse();
-        const palettes = this.sprites.map(target => {
+        const palettes = this.project.targets.map(target => {
             const costume = target.costumes[target.currentCostume || 0];
             const palette = costume && opts.costumePalette?.(target, costume);
-            return isPalette(palette) ? palette : ARCADE_PALETTE;
+            const svg = costume && opts.costumeSvg?.(target, costume);
+            const indexed = svg && svgToPixels(svg, isPalette(palette) ? palette : ARCADE_PALETTE);
+            return indexed?.palette || (isPalette(palette) ? palette : ARCADE_PALETTE);
         });
+        palettes.push(...(opts.animationDocuments || []).map(document => document.palette).filter(isPalette));
         this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
     }
 
@@ -173,6 +200,86 @@ class ArcadeEmitter {
             this.warn('Stage white matte quantized to the nearest opaque project palette colour');
         }
         return `scene.setBackgroundColor(${index})`;
+    }
+
+    prepareAuthoredAnimations () {
+        if (this.authoredAnimationsPrepared) return;
+        this.authoredAnimationsPrepared = true;
+        if (!this.animationFunctionNames) {
+            const declaredVariables = this.project.targets.flatMap(target => Object.values(target.variables || {}).map(variable => {
+                let name = ident(target.isStage || this.isGlobalVar(variable[0]) ? variable[0] : `${target.name}_${variable[0]}`);
+                if (RESERVED.has(name)) name += '_';
+                return name;
+            }));
+            const occupied = new Set([...declaredVariables, ...this.globals.values(), ...this.fnNames.values(), ...this.spriteVar.values(),
+                ...[...this.sharedImageArrays.values(), ...this.frameArrays.values()].map(array => array.name)]);
+            this.animationSymbol = base => {
+                let name = base;
+                while (occupied.has(name)) name += '_';
+                occupied.add(name);
+                return name;
+            };
+            this.animationFactoryNamespace = this.animationSymbol('__bwAnimationAssets');
+            this.animationFunctionNames = {frames: this.animationSymbol('__bwAnimationFrames'),
+                fresh: this.animationSymbol('__bwAnimationFreshFrames'),
+                interval: this.animationSymbol('__bwAnimationInterval')};
+        }
+        // Reserve projections before suffix allocation, so a duplicate cannot
+        // take another resource's existing display name or generated ID alias.
+        const assetNames = new Set((this.opts.animationDocuments || [])
+            .map(document => document?.animation?.resource?.name)
+            .filter(name => typeof name === 'string').map(nativeAnimationNameBase));
+        const usedNames = new Set();
+        if (!this.authoredAnimationArrays.size) {
+            for (const document of this.opts.animationDocuments || []) {
+                if (!document?.animation?.resource) continue;
+                try {
+                    const resource = animationResourceFromDocument(document);
+                    if (this.authoredAnimationArrays.has(resource.id)) {
+                        this.note(`Duplicate animation resource ID: ${resource.id}`);
+                        continue;
+                    }
+                    for (const warning of resource.warnings) this.warn(warning);
+                    const baseName = nativeAnimationNameBase(resource.name);
+                    let nativeName = baseName, suffix = 2;
+                    while (usedNames.has(nativeName) || (nativeName !== baseName && assetNames.has(nativeName))) {
+                        const ending = ` ${suffix++}`;
+                        nativeName = baseName.slice(0, 80 - ending.length) + ending;
+                    }
+                    const images = resource.frames.map(frame => {
+                        const image = {width: resource.width, height: resource.height, pixels: frame.pixels};
+                        if (samePalette(resource.palette, this.palette)) return image;
+                        if (resource.palette.some((colour, index) => index && !this.palette.some(target =>
+                            String(target).toLowerCase() === String(colour).toLowerCase()))) {
+                            this.warn(`Animation "${resource.name}" colours quantized to the exported project palette`);
+                        }
+                        return remapPalette(image, resource.palette, this.palette);
+                    });
+                    let nativeId = `animation${this.authoredAnimationArrays.size}`;
+                    while (assetNames.has(nativeId) || usedNames.has(nativeId) || nativeId === nativeName) nativeId += '_';
+                    const nativeEntry = encodeAnimationJres({id: nativeId, namespace: 'myAnimations',
+                        name: nativeName, width: resource.width, height: resource.height,
+                        intervalMs: resource.frames[0].durationMs, frames: images});
+                    usedNames.add(nativeName);
+                    if (nativeName !== resource.name) this.warn(`Animation name ${JSON.stringify(resource.name)} mapped to ${JSON.stringify(nativeName)} for native export`);
+                    this.authoredAnimationArrays.set(resource.id, {...resource, nativeId, nativeEntry, document,
+                        variable: this.animationSymbol(`__bwAnimationFrames${this.authoredAnimationArrays.size}`),
+                        literals: images.map(image => toImgLiteral(image))});
+                } catch (error) { this.note(error.message); }
+            }
+        }
+    }
+
+    authoredAnimation (b) {
+        this.usesAnimationResources = true;
+        this.prepareAuthoredAnimations();
+        let id = this.literalInput(b, 'RESOURCE');
+        const menu = this.block(b.inputs?.RESOURCE?.[1]);
+        if (menu?.opcode === 'arcade_menu_animationAssets') id = menu.fields?.animationAssets?.[0];
+        if (id !== null && !this.authoredAnimationArrays.has(id)) this.note(`Animation resource unavailable: ${id}`);
+        const method = b.opcode === 'arcade_animationAssetFrames' ? this.animationFunctionNames.frames :
+            b.opcode === 'arcade_animationAssetFreshFrames' ? this.animationFunctionNames.fresh : this.animationFunctionNames.interval;
+        return `${method}("" + ${this.arrayValue(b, 'RESOURCE')})`;
     }
 
     /** Record what kind of value a variable is given, for its declaration. */
@@ -433,6 +540,13 @@ class ArcadeEmitter {
         let ts = ident(target.isStage || this.isGlobalVar(name) ? name : `${target.name}_${name}`);
         if (RESERVED.has(ts)) ts = `${ts}_`;
         this.globals.set(key, ts);
+        const owner = this.isGlobalVar(name) ? this.project.targets.find(candidate => candidate.isStage) : target;
+        const initial = Object.values(owner.variables || {}).find(variable => variable[0] === name)?.[1];
+        if (['string', 'number', 'boolean'].includes(typeof initial) &&
+            (typeof initial !== 'number' || Number.isFinite(initial))) {
+            this.initialGlobals.set(ts, initial);
+            if (typeof initial !== 'number' || initial !== 0) this.assign(ts, '', typeof initial);
+        }
         return ts;
     }
 
@@ -614,6 +728,8 @@ class ArcadeEmitter {
 
     kindExpr (b, name) {
         const kind = this.literalInput(b, name);
+        // Negative PXT kinds are uncollected numeric identities, not custom names.
+        if (kind !== null && Number.isFinite(Number(kind)) && Number(kind) < 0) return String(Number(kind));
         if (!kind || !/^[A-Za-z_]\w*$/.test(kind)) {
             this.note(`Arcade kind in ${name} must be a fixed name`);
             return 'SpriteKind.Player';
@@ -631,7 +747,7 @@ class ArcadeEmitter {
         const input = b.inputs && b.inputs[name];
         if (!input) return fallback;
         const slot = input[1];
-        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
+        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 12 || type === 13) {
@@ -677,6 +793,41 @@ class ArcadeEmitter {
             this.booleanVariableIds.has(variable.fields?.VARIABLE?.[1] || variable.fields?.VARIABLE?.[0]);
     }
 
+    // A boolean slot: a constant comparison or literal folds to true/false.
+    boolValue(b, field) {
+        const literal = this.literalNumber(b, field), condition = this.condition(b, field);
+        if (literal !== null) return literal ? 'true' : 'false';
+        return condition;
+    }
+    // A fixed PXT music enum member (or named melody) from a menu field, or null.
+    musicField(b, field, enumeration) {
+        const members = {
+            'music.PlaybackMode': ['UntilDone', 'InBackground', 'LoopingInBackground'],
+            SoundExpressionPlayMode: ['UntilDone', 'InBackground'],
+            WaveShape: ['Sine', 'Sawtooth', 'Triangle', 'Square', 'Noise'],
+            SoundExpressionEffect: ['None', 'Vibrato', 'Tremolo', 'Warble'],
+            InterpolationCurve: ['Linear', 'Curve', 'Logarithmic'],
+            Sounds: ['PowerUp', 'PowerDown', 'JumpUp', 'JumpDown', 'BaDing', 'Wawawawaa', 'MagicWand', 'Siren'],
+            BeatFraction: ['Whole', 'Half', 'Quarter', 'Eighth', 'Sixteenth', 'Double', 'Breve', 'Triplet'],
+            // The seven segment extension's enums.
+            SegmentStyle: ['Blank', 'Thin', 'Narrow', 'Medium', 'Thick'],
+            SegmentScale: ['Full', 'Half'],
+            DigitRadix: ['Decimal', 'Hex', 'Octal', 'Alpha'],
+            SegmentCharacter: ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE',
+                'A', 'B', 'C', 'D', 'E', 'F', 'H', 'J', 'L', 'o', 'P', 'r', 'U', 'Y', 'Hyphen', 'Degree'],
+            music: ['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'powerUp', 'powerDown', 'magicWand', 'siren', 'pewPew', 'knock',
+                'footstep', 'thump', 'smallCrash', 'bigCrash', 'zapped', 'buzzer', 'sonar', 'spooky', 'beamUp']
+        }[enumeration];
+        const value = this.field(b, field);
+        return members.includes(value) ? `${enumeration}.${value}` : null;
+    }
+    particleEffect(b, screenOnly) {
+        const screen = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none'];
+        const all = ['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo', 'ashes', 'disintegrate', ...screen];
+        const effect = this.field(b, 'EFFECT');
+        return (screenOnly ? screen : all).includes(effect) ? effect : null;
+    }
+
     spriteFlagCondition (b, name = 'ON') {
         const slot = b.inputs?.[name]?.[1];
         if (Array.isArray(slot) && [12, 13].includes(slot[0])) {
@@ -696,7 +847,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore'].includes(b.opcode);
+            'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -850,8 +1001,86 @@ class ArcadeEmitter {
             if(op==='removeAt')return `${this.referenceArrayValue(b)}.removeAt(${v('INDEX')})`;
             this.note('Array reference take operation must be pop, shift or removeAt');return this.na();
         }
+        case 'arcade_animationAssetFreshFrames':
+        case 'arcade_animationAssetFrames':
+        case 'arcade_animationAssetInterval': return this.authoredAnimation(b);
         case 'arcade_createImage': return `image.create(${v('WIDTH')}, ${v('HEIGHT')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
+        case 'arcade_screenImage': return 'screen';
+        case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
+        case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
+        case 'arcade_tonePlayable': return `music.tonePlayable(${v('FREQUENCY')}, ${v('DURATION')})`;
+        case 'arcade_soundEffect': {
+            const wave = this.musicField(b, 'WAVE', 'WaveShape'), effect = this.musicField(b, 'EFFECT', 'SoundExpressionEffect');
+            const curve = this.musicField(b, 'CURVE', 'InterpolationCurve');
+            if (!wave || !effect || !curve) { this.note('Unsupported Arcade sound effect option'); return 'undefined'; }
+            return `music.createSoundEffect(${wave}, ${['START_FREQUENCY', 'END_FREQUENCY', 'START_VOLUME', 'END_VOLUME', 'DURATION'].map(v).join(', ')}, ${effect}, ${curve})`;
+        }
+        case 'arcade_namedMelody': {
+            const name = this.musicField(b, 'NAME', 'music');
+            if (!name) { this.note(`Unsupported Arcade melody ${this.field(b, 'NAME')}`); return 'undefined'; }
+            return name;
+        }
+        case 'arcade_soundMelody': {
+            const sound = this.musicField(b, 'SOUND', 'Sounds');
+            if (!sound) { this.note(`Unsupported Arcade sound ${this.field(b, 'SOUND')}`); return 'undefined'; }
+            return `music.sounds(${sound})`;
+        }
+        case 'arcade_beat': {
+            const fraction = this.musicField(b, 'FRACTION', 'BeatFraction');
+            if (!fraction) { this.note(`Unsupported Arcade beat ${this.field(b, 'FRACTION')}`); return 'undefined'; }
+            return `music.beat(${fraction})`;
+        }
+        case 'arcade_musicVolume': return 'music.volume()';
+        case 'arcade_parseInteger': case 'arcade_parseIntegerRadix': {
+            // PXT's parseInt takes a string; a literal field like 7 is written "7".
+            const literal = this.literalInput(b, 'TEXT');
+            const text = literal !== null ? JSON.stringify(String(literal)) : v('TEXT');
+            return b.opcode === 'arcade_parseInteger' ? `parseInt(${text})` : `parseInt(${text}, ${v('RADIX')})`;
+        }
+        case 'arcade_frameDeltaTime': return 'game.eventContext().deltaTime';
+        case 'arcade_musicTempo': return 'music.tempo()';
+        case 'arcade_characterRule': {
+            // The rule word holds the original's Predicate names.
+            const names = String(this.literal(b, 'PREDICATES') ?? '').trim().split(/\s+/).filter(Boolean);
+            if (!names.length || names.length > 5 || names.some(name => !CHARACTER_PREDICATE_NAMES.includes(name))) { this.note('character rule with predicates other than literal Predicate names'); return this.na(); }
+            this.requiresCharacterAnimationsPackage = true;
+            return `characterAnimations.rule(${names.map(name => `Predicate.${name}`).join(', ')})`;
+        }
+        case 'arcade_characterMatchesRule': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.matchesRule(${v('SPRITE')}, ${v('RULE')})`;
+        case 'arcade_backgroundScrollOffset':
+            this.requiresScrollerPackage = true;
+            return `scroller.getBackground${this.field(b, 'AXIS') === 'y' ? 'Y' : 'X'}Offset(${v('LAYER')})`;
+        case 'arcade_createDart':
+            this.requiresDartsPackage = true;
+            return `darts.create(${v('IMAGE')}, ${this.kindExpr(b, 'KIND')}, ${v('X')}, ${v('Y')})`;
+        case 'arcade_createCorgi':
+            this.requiresCorgioPackage = true;
+            return `corgio.create(${this.kindExpr(b, 'KIND')}, ${v('X')}, ${v('Y')})`;
+        case 'arcade_dartProperty': case 'arcade_corgiProperty': {
+            const property = this.field(b, 'PROPERTY');
+            const fields = b.opcode === 'arcade_dartProperty' ? ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'] :
+                ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate'];
+            if (!fields.includes(property)) { this.note(`Unsupported extension property ${property}`); return this.na(); }
+            return `${v('SPRITE')}.${property}`;
+        }
+        case 'arcade_sevensegDigit': {
+            const style = this.musicField(b, 'STYLE', 'SegmentStyle');
+            if (!style) { this.note(`Unsupported seven segment style in ${b.opcode}`); return this.na(); }
+            this.requiresSevensegPackage = true;
+            return `sevenseg.createDigit(${style}, ${v('VALUE')})`;
+        }
+        case 'arcade_sevensegCounter': {
+            const style = this.musicField(b, 'STYLE', 'SegmentStyle'), scale = this.musicField(b, 'SCALE', 'SegmentScale');
+            if (!style || !scale) { this.note(`Unsupported seven segment style or scale in ${b.opcode}`); return this.na(); }
+            this.requiresSevensegPackage = true;
+            return `sevenseg.createCounter(${style}, ${scale}, ${v('DIGITS')})`;
+        }
+        case 'arcade_sevensegProperty': {
+            const property = this.field(b, 'PROPERTY');
+            if (!['x', 'y', 'width', 'height', 'value', 'count'].includes(property)) { this.note(`Unsupported seven segment property in ${b.opcode}`); return this.na(); }
+            return `${v('DISPLAY')}.${property}`;
+        }
         case 'arcade_imageProperty': return `${v('IMAGE')}.${this.field(b,'PROPERTY')}`;
         case 'arcade_imagePixel': return `${v('IMAGE')}.getPixel(${v('X')}, ${v('Y')})`;
         case 'arcade_createImageSprite':
@@ -891,6 +1120,22 @@ class ArcadeEmitter {
         case 'arcade_hasLife': {const api=this.infoPlayerApi(b);return api?`${api}.hasLife()`:this.na();}
         case 'arcade_hasPlayerScore': {const api=this.infoPlayerApi(b);return api?`${api}.hasScore()`:this.na();}
         case 'arcade_getLife': {const api=this.infoPlayerApi(b);return api?`${api}.life()`:this.na();}
+        case 'arcade_playerLookup': {
+            this.requiresMultiplayerPackage=true;const mode=this.field(b,'MODE');
+            if(!['index','number'].includes(mode)){this.note('Arcade player lookup mode must be index or number');return this.na();}
+            return `mp.${mode==='index'?'getPlayerByIndex':'getPlayerByNumber'}(${v('VALUE')})`;
+        }
+        case 'arcade_createPlayerState':this.requiresMultiplayerPackage=true;return 'MultiplayerState.create()';
+        case 'arcade_getPlayerState':this.requiresMultiplayerPackage=true;return `mp.getPlayerState(${v('PLAYER')}, ${v('KEY')})`;
+        case 'arcade_allPlayers': this.requiresMultiplayerPackage=true;return 'mp.allPlayers()';
+        case 'arcade_playerSprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerSprite(${v('PLAYER')})`;
+        case 'arcade_playerBySprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerBySprite(${v('ID')})`;
+        case 'arcade_playerProperty': {
+            this.requiresMultiplayerPackage=true;const read=this.field(b,'READ'),property=this.literalNumber(b,'PROPERTY');
+            if(read==='safe')return `mp.getPlayerProperty(${v('PLAYER')}, ${v('PROPERTY')})`;
+            if(read==='member' && [1,2].includes(property))return `(${v('PLAYER')}).${property===1?'index':'number'}`;
+            this.note('Arcade player member reads require fixed index/number properties; safe reads permit dynamic selectors');return this.na();
+        }
         case 'arcade_currentScene': return 'game.currentScene()';
         case 'arcade_scenePhysicsEngine': return `(${v('SCENE')}.physicsEngine as ArcadePhysicsEngine)`;
         case 'arcade_createPhysicsEngine': return `new ArcadePhysicsEngine(${this.arrayValue(b,'MAX_SPEED')}, ${this.arrayValue(b,'MIN_STEP')}, ${this.arrayValue(b,'MAX_STEP')})`;
@@ -902,6 +1147,8 @@ class ArcadeEmitter {
         case 'arcade_cameraProperty': return `scene.cameraProperty(${this.arrayValue(b,'PROPERTY')})`;
         case 'arcade_backgroundImage': return 'scene.backgroundImage()';
         case 'arcade_backgroundColor': return 'scene.backgroundColor()';
+        case 'arcade_truncateNumber': return `Math.trunc(${v('NUM')})`;
+        case 'arcade_signNumber': return `Math.sign(${v('NUM')})`;
         case 'arcade_createAnimation': this.requiresAnimationPackage=true;return `animation.createAnimation(${this.arrayValue(b,'ACTION')}, ${this.arrayValue(b,'INTERVAL')})`;
         case 'arcade_animationProperty': {
             this.requiresAnimationPackage=true;
@@ -912,6 +1159,10 @@ class ArcadeEmitter {
         case 'arcade_eventLocation':
             if(this.eventLocationName)return this.eventLocationName;
             this.note('Arcade event location outside a wall or tile callback');return this.na();
+        case 'arcade_legacyTileLocation':this.requiresLegacyTilemapPackage=true;return `scene.getTile(${v('COLUMN')}, ${v('ROW')})`;
+        case 'arcade_legacyTilesOfType':this.requiresLegacyTilemapPackage=true;return `scene.getTilesByType(${v('INDEX')})`;
+        case 'arcade_legacyTileProperty':this.requiresLegacyTilemapPackage=true;return `${v('TILE')}.${this.field(b,'PROPERTY')}`;
+        case 'arcade_tileHitFrom':this.requiresLegacyTilemapPackage=true;return `scene.tileHitFrom(${v('ID')}, ${v('DIRECTION')})`;
         case 'arcade_tileLocation': return `tiles.getTileLocation(${v('COLUMN')}, ${v('ROW')})`;
         case 'arcade_tilesOfType': return `tiles.getTilesByType(${v('IMAGE')})`;
         case 'arcade_tileLocationProperty': return `${v('LOCATION')}.${this.field(b,'PROPERTY')}`;
@@ -920,6 +1171,7 @@ class ArcadeEmitter {
         case 'arcade_tileIsWall': return `tiles.tileAtLocationIsWall(${v('LOCATION')})`;
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
         case 'arcade_spriteCount': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')}).length`;
+        case 'arcade_ask': return `game.ask(${this.arrayValue(b,'TITLE')}, ${this.arrayValue(b,'SUBTITLE')})`;
         case 'arcade_askForNumber': return `game.askForNumber(${v('QUESTION')})`;
         case 'arcade_controllerStep': {
             const literal=this.literal(b,'AXIS') ?? (this.field(b,'AXIS') || null);
@@ -951,6 +1203,10 @@ class ArcadeEmitter {
             return name;
         }
         case 'arcade_askForString': return `game.askForString(${v('QUESTION')})`;
+        case 'arcade_eventPlayer':
+            if(this.eventPlayerName)return this.eventPlayerName;
+            this.note('Arcade event player outside a multiplayer callback');return this.na();
+        case 'arcade_playerButtonPressed':this.requiresMultiplayerPackage=true;return `mp.isButtonPressed(${v('PLAYER')}, ${v('BUTTON')})`;
         case 'arcade_eventSprite': {
             const which = this.field(b, 'WHICH') === 'second' ? 1 : 0;
             if (this.eventHandles?.[which]) return this.eventHandles[which];
@@ -1086,6 +1342,10 @@ class ArcadeEmitter {
         case 'arcade_addAnimationFrame':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.addAnimationFrame(${v('IMAGE')})`);return;
         case 'arcade_attachAnimation':this.requiresAnimationPackage=true;push(`animation.attachAnimation(${v('ID')}, ${v('ANIMATION')})`);return;
         case 'arcade_setAnimationAction':this.requiresAnimationPackage=true;push(`animation.setAction(${v('ID')}, ${this.arrayValue(b,'ACTION')})`);return;
+        case 'arcade_setPlayerState':this.requiresMultiplayerPackage=true;push(`mp.setPlayerState(${v('PLAYER')}, ${v('KEY')}, ${v('VALUE')})`);return;
+        case 'arcade_changePlayerState':this.requiresMultiplayerPackage=true;push(`mp.changePlayerStateBy(${v('PLAYER')}, ${v('KEY')}, ${v('VALUE')})`);return;
+        case 'arcade_movePlayerWithButtons': this.requiresMultiplayerPackage=true;push(`mp.moveWithButtons(${v('PLAYER')}, ${v('VX')}, ${v('VY')})`);return;
+        case 'arcade_setPlayerSprite': this.requiresMultiplayerPackage=true;push(`mp.setPlayerSprite(${v('PLAYER')}, ${v('ID')})`);return;
         case 'arcade_setScenePhysicsEngine': push(`${v('SCENE')}.physicsEngine = ${v('ENGINE')}`);return;
         case 'arcade_setPhysicsEngineProperty': {
             const property=b.fields?.PROPERTY?.[0];
@@ -1095,6 +1355,11 @@ class ArcadeEmitter {
         case 'arcade_setAnimationInterval':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.setInterval(${this.arrayValue(b,'INTERVAL')})`);return;
         case 'arcade_runImageAnimation':push(`animation.runImageAnimation(${v('ID')}, ${this.arrayValue(b,'FRAMES')}, ${this.arrayValue(b,'INTERVAL')}, ${this.arrayValue(b,'LOOP')})`);return;
         case 'arcade_stopAnimation':push(`animation.stopAnimation(${this.arrayValue(b,'TYPE')}, ${v('ID')})`);return;
+        case 'arcade_setLegacyTilemap':this.requiresLegacyTilemapPackage=true;push(`scene.setTileMap(${v('IMAGE')}, ${v('SCALE')})`);return;
+        case 'arcade_setLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.setTile(${v('INDEX')}, ${v('IMAGE')}, ${this.condition(b,'WALL')})`);return;
+        case 'arcade_setLegacyTileAt':this.requiresLegacyTilemapPackage=true;push(`scene.setTileAt(${v('TILE')}, ${v('INDEX')})`);return;
+        case 'arcade_placeOnLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.place(${v('TILE')}, ${v('ID')})`);return;
+        case 'arcade_placeOnRandomLegacyTile':this.requiresLegacyTilemapPackage=true;push(`scene.placeOnRandomTile(${v('ID')}, ${v('INDEX')})`);return;
         case 'arcade_setTilemap': {
             const raw=this.literalInput(b,'DATA');let data=null;
             if(raw==='null' || raw===''){push('tiles.setTilemap(null)');return;}
@@ -1233,9 +1498,166 @@ class ArcadeEmitter {
         case 'looks_sayforsecs': if (me) push(`${me}.sayText(${v('MESSAGE', '""')}, ${v('SECS')} * 1000, true)`); return;
         case 'looks_say': if (me) push(`${me}.sayText(${v('MESSAGE', '""')})`); return;
         case 'arcade_setBackgroundImage': push(`scene.setBackgroundImage(${this.literalInput(b,'IMAGE') === '' ? 'null' : v('IMAGE')})`); return;
+        case 'arcade_setPalette': push(`image.setPalette(Buffer.fromHex(${v('DATA', '""')}))`); return;
         case 'arcade_setBackgroundColor': push(`scene.setBackgroundColor(${v('COLOR')})`); return;
         case 'arcade_controlSprite': push(`controller.moveSprite(${v('ID')}, ${v('VX')}, ${v('VY')})`); return;
+        case 'arcade_controlSpriteByController':
+        case 'arcade_stopControllingSprite': {
+            const number=b.fields?.CONTROLLER?.[0];
+            if (!['1','2','3','4'].includes(String(number))) {push(`// ${this.note('Arcade controller must be 1, 2, 3 or 4')}`);return;}
+            const receiver=`controller.player${number}`;
+            push(b.opcode==='arcade_stopControllingSprite'?`${receiver}.stopControllingSprite(${v('ID')})`:`${receiver}.moveSprite(${v('ID')}, ${v('VX')}, ${v('VY')})`);return;
+        }
         case 'arcade_destroySprite': push(`${v('ID')}.destroy()`); return;
+        case 'arcade_destroySpriteWithEffect': case 'arcade_startSpriteEffect': {
+            // A zero or omitted duration selects the effect's own default in PXT.
+            const effect = this.particleEffect(b, false), duration = this.arrayValue(b, 'DURATION');
+            if (!effect) { push(`// ${this.note(`Unsupported Arcade particle effect ${this.field(b, 'EFFECT')}`)}`); return; }
+            const method = b.opcode === 'arcade_destroySpriteWithEffect' ? 'destroy' : 'startEffect';
+            push(`${v('ID')}.${method}(effects.${effect}${duration === '0' ? '' : `, ${duration}`})`);
+            return;
+        }
+        case 'arcade_startScreenEffect': case 'arcade_endScreenEffect': {
+            const effect = this.particleEffect(b, true);
+            if (!effect) { push(`// ${this.note(`Unsupported Arcade screen effect ${this.field(b, 'EFFECT')}`)}`); return; }
+            if (b.opcode === 'arcade_endScreenEffect') { push(`effects.${effect}.endScreenEffect()`); return; }
+            const duration = this.arrayValue(b, 'DURATION');
+            push(`effects.${effect}.startScreenEffect(${duration === '0' ? '' : duration})`);
+            return;
+        }
+        case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
+        case 'arcade_gameOver': push(`game.gameOver(${this.boolValue(b, 'WIN')})`); return;
+        case 'arcade_legacyGameOver': {
+            const effect = this.field(b, 'EFFECT');
+            if (effect !== 'unset' && !BACKGROUND_EFFECTS.includes(effect)) { push(`// ${this.note(`Unsupported Arcade effect ${effect}`)}`); return; }
+            push(`game.over(${this.boolValue(b, 'WIN')}${effect === 'unset' ? '' : `, effects.${effect}`})`);
+            return;
+        }
+        case 'arcade_setGameOverEffect': {
+            const effect = this.field(b, 'EFFECT');
+            if (!BACKGROUND_EFFECTS.includes(effect)) { push(`// ${this.note(`Unsupported Arcade effect ${effect}`)}`); return; }
+            push(`game.setGameOverEffect(${this.boolValue(b, 'WIN')}, effects.${effect})`);
+            return;
+        }
+        case 'arcade_setGameOverMessage': push(`game.setGameOverMessage(${this.boolValue(b, 'WIN')}, ${v('MESSAGE')})`); return;
+        case 'arcade_setGameOverPlayable':
+            push(`game.setGameOverPlayable(${this.boolValue(b, 'WIN')}, ${v('PLAYABLE')}, ${this.boolValue(b, 'LOOPING')})`);
+            return;
+        case 'arcade_setGameOverScoringType': {
+            const type = this.field(b, 'TYPE');
+            if (!['HighScore', 'LowScore', 'None'].includes(type)) { push(`// ${this.note(`Unsupported Arcade scoring ${type}`)}`); return; }
+            push(`game.setGameOverScoringType(game.ScoringType.${type})`);
+            return;
+        }
+        case 'arcade_startImageEffect': {
+            const effect = this.field(b, 'EFFECT');
+            if (!['dissolve', 'melt', 'slash', 'splatter'].includes(effect)) { push(`// ${this.note(`Unsupported Arcade image effect ${effect}`)}`); return; }
+            const times = this.arrayValue(b, 'TIMES'), delay = this.arrayValue(b, 'DELAY');
+            const args = delay !== '0' ? [times, delay] : times !== '0' ? [times] : [];
+            push(`effects.${effect}.startScreenEffect(${args.join(', ')})`);
+            return;
+        }
+        case 'arcade_playMusic': case 'arcade_playSoundEffect': {
+            const music = b.opcode === 'arcade_playMusic';
+            const mode = this.musicField(b, 'MODE', music ? 'music.PlaybackMode' : 'SoundExpressionPlayMode');
+            if (!mode) { push(`// ${this.note(`Unsupported Arcade play mode ${this.field(b, 'MODE')}`)}`); return; }
+            push(music ? `music.play(${v('PLAYABLE')}, ${mode})` : `music.playSoundEffect(${v('EFFECT')}, ${mode})`);
+            return;
+        }
+        case 'arcade_playMelody': {
+            const mode = this.field(b, 'MODE');
+            if (!['play', 'playUntilDone', 'loop'].includes(mode)) { push(`// ${this.note(`Unsupported Arcade melody mode ${mode}`)}`); return; }
+            push(`${v('MELODY')}.${mode}()`);
+            return;
+        }
+        case 'arcade_playSound': {
+            // The bool slot holds a constant comparison when the source had a literal.
+            const untilDone = this.literalNumber(b, 'UNTIL_DONE'), condition = this.condition(b, 'UNTIL_DONE');
+            const call = untilDone !== null ? (untilDone ? 'playSoundUntilDone' : 'playSound') :
+                condition === 'true' ? 'playSoundUntilDone' : condition === 'false' ? 'playSound' : null;
+            if (call) push(`music.${call}(${v('SOUND')})`);
+            else push(`if (${condition}) music.playSoundUntilDone(${v('SOUND')}); else music.playSound(${v('SOUND')})`);
+            return;
+        }
+        case 'arcade_playTone': push(`music.playTone(${v('FREQUENCY')}, ${v('DURATION')})`); return;
+        case 'arcade_ringTone': push(`music.ringTone(${v('FREQUENCY')})`); return;
+        case 'arcade_rest': push(`music.rest(${v('DURATION')})`); return;
+        case 'arcade_setMusicVolume': push(`music.setVolume(${v('VOLUME')})`); return;
+        case 'arcade_setTempo': push(`music.setTempo(${v('TEMPO')})`); return;
+        case 'arcade_changeTempo': push(`music.changeTempoBy(${v('TEMPO')})`); return;
+        case 'arcade_stopAllSounds': push('music.stopAllSounds()'); return;
+        case 'arcade_scrollBackgroundWithCamera': {
+            const mode = this.field(b, 'MODE');
+            if (!['OnlyHorizontal', 'OnlyVertical', 'BothDirections'].includes(mode)) { push(`// ${this.note(`Unsupported camera scroll mode ${mode}`)}`); return; }
+            this.requiresScrollerPackage = true;
+            push(`scroller.scrollBackgroundWithCamera(scroller.CameraScrollMode.${mode}, ${v('LAYER')})`); return;
+        }
+        case 'arcade_scrollBackgroundWithSpeed': this.requiresScrollerPackage = true; push(`scroller.scrollBackgroundWithSpeed(${v('VX')}, ${v('VY')}, ${v('LAYER')})`); return;
+        case 'arcade_setBackgroundScrollMultipliers': this.requiresScrollerPackage = true; push(`scroller.setCameraScrollingMultipliers(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
+        case 'arcade_setBackgroundScrollOffset': this.requiresScrollerPackage = true; push(`scroller.setBackgroundScrollOffset(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
+        case 'arcade_setBackgroundLayerImage': this.requiresScrollerPackage = true; push(`scroller.setLayerImage(${v('LAYER')}, ${v('IMAGE')})`); return;
+        case 'arcade_characterFrames': {
+            const mode = this.field(b, 'MODE');
+            if (!['loop', 'run'].includes(mode)) { push(`// ${this.note(`Unsupported character frames mode ${mode}`)}`); return; }
+            this.requiresCharacterAnimationsPackage = true;
+            push(`characterAnimations.${mode}Frames(${v('SPRITE')}, ${v('FRAMES')}, ${v('INTERVAL')}, ${v('RULE')})`); return;
+        }
+        case 'arcade_setCharacterAnimationsEnabled': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterAnimationsEnabled(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
+        case 'arcade_setCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterState(${v('SPRITE')}, ${v('RULE')})`); return;
+        case 'arcade_clearCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.clearCharacterState(${v('SPRITE')})`); return;
+        case 'arcade_setCharacterController': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
+        case 'arcade_lockCharacterFacing': {
+            const direction = this.field(b, 'DIRECTION');
+            if (!['Up', 'Right', 'Down', 'Left'].includes(direction)) { push(`// ${this.note(`Unsupported character facing ${direction}`)}`); return; }
+            this.requiresCharacterAnimationsPackage = true;
+            push(`characterAnimations.lockFacingDirection(${v('SPRITE')}, characterAnimations.FacingDirection.${direction})`); return;
+        }
+        case 'arcade_unlockCharacterFacing': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
+        case 'arcade_setBackgroundLayerZ': this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
+        case 'arcade_dartAction': {
+            const action = this.field(b, 'ACTION');
+            if (!['throwDart', 'stopDart'].includes(action)) { push(`// ${this.note(`Unsupported dart action ${action}`)}`); return; }
+            push(`${v('SPRITE')}.${action}()`); return;
+        }
+        case 'arcade_dartSwitch': case 'arcade_corgiControl': {
+            const method = this.field(b, b.opcode === 'arcade_dartSwitch' ? 'SETTING' : 'MODE');
+            const methods = b.opcode === 'arcade_dartSwitch' ? ['setTrace', 'controlWithArrowKeys'] : ['horizontalMovement', 'verticalMovement', 'updateSprite', 'cameraFollow'];
+            if (!methods.includes(method)) { push(`// ${this.note(`Unsupported extension call ${method}`)}`); return; }
+            push(`${v('SPRITE')}.${method}(${this.boolValue(b, 'ON')})`); return;
+        }
+        case 'arcade_corgiBark': push(`${v('SPRITE')}.bark()`); return;
+        case 'arcade_corgiAddPhrase': push(`${v('SPRITE')}.addToScript(${v('TEXT')})`); return;
+        case 'arcade_setDartProperty': case 'arcade_setCorgiProperty': {
+            const property = this.field(b, 'PROPERTY');
+            const fields = b.opcode === 'arcade_setDartProperty' ? ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate'] :
+                ['maxMoveVelocity', 'gravity', 'jumpVelocity', 'maxJump', 'decelerationRate'];
+            if (!fields.includes(property)) { push(`// ${this.note(`Unsupported extension property ${property}`)}`); return; }
+            push(`${v('SPRITE')}.${property} = ${v('VALUE')}`); return;
+        }
+        case 'arcade_sevensegSetCharacter': case 'arcade_sevensegSetRadix': case 'arcade_sevensegSetScale': {
+            const [field, enumeration, method] = {arcade_sevensegSetCharacter: ['CHARACTER', 'SegmentCharacter', 'setDigitAlpha'],
+                arcade_sevensegSetRadix: ['RADIX', 'DigitRadix', 'setRadix'], arcade_sevensegSetScale: ['SCALE', 'SegmentScale', 'setScale']}[b.opcode];
+            const member = this.musicField(b, field, enumeration);
+            if (!member) { push(`// ${this.note(`Unsupported seven segment ${field.toLowerCase()} ${this.field(b, field)}`)}`); return; }
+            push(`${v('DISPLAY')}.${method}(${member})`); return;
+        }
+        case 'arcade_sevensegSetColor': push(`${v('DISPLAY')}.setDigitColor(${v('COLOR')})`); return;
+        case 'arcade_sevensegAddDigit': push(`${v('DISPLAY')}.addDigit()`); return;
+        case 'arcade_sevensegSetProperty': {
+            const property = this.field(b, 'PROPERTY');
+            if (!['x', 'y', 'value', 'count'].includes(property)) { push(`// ${this.note(`Unsupported seven segment property ${property}`)}`); return; }
+            push(`${v('DISPLAY')}.${property} = ${v('VALUE')}`); return;
+        }
+        case 'arcade_printImageText': {
+            const font = {small: 'image.font5', normal: 'image.font8', large: 'image.font12', auto: null}[this.field(b, 'FONT')];
+            if (font === undefined) { push(`// ${this.note(`Unsupported Arcade font ${this.field(b, 'FONT')}`)}`); return; }
+            const color = this.arrayValue(b, 'COLOR');
+            const args = [this.arrayValue(b, 'TEXT'), this.arrayValue(b, 'X'), this.arrayValue(b, 'Y')];
+            if (font || color !== '0') args.push(color);
+            if (font) args.push(font);
+            push(`${this.arrayValue(b, 'IMAGE')}.print(${args.join(', ')})`);
+            return;
+        }
         case 'arcade_spriteSay': {
             const self = this.literalInput(b, 'ID') === 'self';
             const owner = self ? me : v('ID');
@@ -1308,32 +1730,39 @@ class ArcadeEmitter {
         case 'arcade_changeLife': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setLife'?'setLife':'changeLifeBy'}(${this.arrayValue(b,'VALUE')})`);return;}
         case 'arcade_pushScene': push('game.pushScene()');return;
         case 'arcade_popScene': push('game.popScene()');return;
+        case 'arcade_registerMultiplayerButtonHandler':
         case 'arcade_registerUpdateHandler':
+        case 'arcade_registerPaintHandler':
+        case 'arcade_registerShadeHandler':
         case 'arcade_registerIntervalHandler':
         case 'arcade_registerButtonHandler':
+        case 'arcade_registerInstanceDestroyedHandler':
         case 'arcade_registerDestroyedHandler':
         case 'arcade_registerOverlapHandler':
         case 'arcade_registerScenePushHandler':
         case 'arcade_registerScenePopHandler':
+        case 'arcade_startParallelHandler':
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
         case 'arcade_registerCountdownHandler': {
-            const kinds={arcade_registerUpdateHandler:'update',arcade_registerIntervalHandler:'interval',
-                arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
+            const kinds={arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
+                arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
-            const signatures={destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
+            const signatures={multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
             const body=`function (${signatures[kind]||''}) {\n${callback.script.join('\n')}\n}`;
-            const apis={update:'game.onUpdate',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
+            const apis={parallel:'control.runInParallel',update:'game.onUpdate',paint:'game.onPaint',shade:'game.onShade',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
                 lifeZero:'info.onLifeZero',countdown:'info.onCountdownEnd'};
             const args=[];let api=apis[kind];
+            if(kind==='instanceDestroyed')api=`${this.arrayValue(b,'ID')}.onDestroyed`;
             if(kind==='lifeZero'){const playerApi=this.infoPlayerApi(b);if(!playerApi)return;api=playerApi+'.onLifeZero';}
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));
             if(kind==='overlap')args.push(this.kindExpr(b,'OTHER_KIND'));
+            if(kind==='multiplayerButton'){this.requiresMultiplayerPackage=true;api='mp.onButtonEvent';args.push(this.arrayValue(b,'BUTTON'),this.arrayValue(b,'EVENT'));}
             if(kind==='button'){
                 const button=this.literalInput(b,'BUTTON');
                 if(!['A','B','up','down','left','right'].includes(button)){push(`// ${this.note('Arcade button registration requires a fixed supported button')}`);return;}
@@ -1341,8 +1770,16 @@ class ArcadeEmitter {
             }
             this.usedRegisteredCallbacks.add(token);push(`${api}(${[...args,body].join(', ')})`);return;
         }
+        case 'arcade_cameraShake': push(`scene.cameraShake(${this.arrayValue(b,'AMPLITUDE')}, ${this.arrayValue(b,'DURATION')})`);return;
         case 'arcade_centerCameraAt': push(`scene.centerCameraAt(${this.arrayValue(b,'X')}, ${this.arrayValue(b,'Y')})`);return;
         case 'arcade_cameraFollowSprite': push(`scene.cameraFollowSprite(${this.arrayValue(b,'ID')})`);return;
+        case 'arcade_registerLegacyWallHandler': {
+            this.requiresLegacyTilemapPackage=true;
+            const token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
+            if(!callback || callback.kind!=='legacyWall'){push(`// ${this.note('Color wall registration has no matching callback')}`);return;}
+            this.usedRegisteredCallbacks.add(token);
+            push(`scene.onHitTile(${this.kindExpr(b,'KIND')}, ${v('INDEX')}, function (${callback.parameter}: Sprite) {\n${callback.script.join('\n')}\n})`);return;
+        }
         case 'arcade_registerWallHandler':
         case 'arcade_registerTileHandler': {
             const token=this.literalInput(b,'TOKEN'),kind=b.opcode==='arcade_registerWallHandler'?'wall':'tile';
@@ -1367,7 +1804,8 @@ class ArcadeEmitter {
         case 'arcade_setCaptured': {
             const name = this.literalInput(b,'NAME');
             if (!name || !this.compilingRegisteredCallbacks.size) push(`// ${this.note('Arcade captured assignment needs a registered callback and fixed name')}`);
-            else push(`${ident(name)} = ${v('VALUE')}`);
+            // Captured cells retain their Arcade value type, including boolean.
+            else push(`${ident(name)} = ${this.arrayValue(b,'VALUE')}`);
             return;
         }
         case 'arcade_registerSpriteDestroyed': {
@@ -1380,6 +1818,8 @@ class ArcadeEmitter {
             }
             return;
         }
+        case 'arcade_copyImageFrom': push(`${v('IMAGE')}.copyFrom(${v('SOURCE')})`);return;
+        case 'arcade_scrollImage': push(`${v('IMAGE')}.scroll(${v('X')}, ${v('Y')})`);return;
         case 'arcade_mutateImage': {
             const op=this.field(b,'OP'); if(!['fill','replace','flipX','flipY'].includes(op)){this.note(`Unsupported Arcade image operation ${op}`);return;}
             const args=op==='fill'?v('COLOR'):op==='replace'?`${v('COLOR')}, ${v('TO')}`:'';
@@ -1482,6 +1922,8 @@ class ArcadeEmitter {
         case 'arcade_setSpriteScaleCore': push(`${v('ID')}.setScaleCore(${this.arrayValue(b,'SX')}, ${this.arrayValue(b,'SY')}, ${v('ANCHOR')}, ${this.spriteFlagCondition(b,'PROPORTIONAL')})`);return;
         case 'arcade_setSpriteScale': push(`${v('ID')}.setScale(${v('VALUE')}, ${v('ANCHOR')})`);return;
         case 'arcade_changeSpriteScale': push(`${v('ID')}.changeScale(${v('VALUE')}, ${v('ANCHOR')})`);return;
+        case 'arcade_followSprite': push(`${v('ID')}.follow(${v('TARGET')}, ${v('SPEED')}, ${v('TURN')})`);return;
+        case 'arcade_unfollowSprite': push(`${v('ID')}.unfollow()`);return;
         case 'arcade_setSpritePosition': push(`${v('ID')}.setPosition(${v('X')}, ${v('Y')})`); return;
         case 'arcade_setSpriteProperty': {
             const property = this.field(b, 'PROPERTY');
@@ -1522,7 +1964,7 @@ class ArcadeEmitter {
             push(`game.showLongText(${v('TEXT', '""')}, DialogLayout.${layout})`);
             return;
         }
-        case 'arcade_log': push(`console.log(${v('TEXT', '""')})`); return;
+        case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
         case 'arcade_gameover': push('game.over(false)'); return;
         case 'procedures_call': {
             const code = b.mutation && b.mutation.proccode;
@@ -1806,7 +2248,7 @@ class ArcadeEmitter {
 
     localDeclaration (name, key) {
         const type=this.localValueTypes.get(key)?.get(name) || 'any';
-        const initial=type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='animation.Animation' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -1820,7 +2262,7 @@ class ArcadeEmitter {
         if (this.registeredCallbacks.has(token)) return this.registeredCallbacks.get(token);
         const entry = this.registeredCallbackBlocks.get(token);
         if (!entry || this.compilingRegisteredCallbacks.has(token)) return null;
-        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,currentLocalNames:this.currentLocalNames};
+        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames};
         this.compilingRegisteredCallbacks.add(token);
         this.target = entry.target;this.blocks = entry.target.blocks;
         let parameter = `${entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
@@ -1828,8 +2270,9 @@ class ArcadeEmitter {
         while (text.includes(parameter)) parameter += '_';
         let location=`__bwEventLocation_${ident(token)}`;while(text.includes(location))location+='_';
         let second=`__bwOtherSprite_${ident(token)}`;while(text.includes(second))second+='_';
+        this.eventPlayerName=entry.kind==='multiplayerButton'?parameter:null;
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
-        this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
+        this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','legacyWall','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();
         const script = [];this.stmts(entry.block.next,1,script);
         const scope=`${entry.target.name}:script:${Object.keys(this.blocks).find(id=>this.blocks[id]===entry.block)}`;
@@ -1842,8 +2285,8 @@ class ArcadeEmitter {
     /** Infer Image argument annotations from native image operations and
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
-        const graphAnimationValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
-        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
+        const graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
+        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
@@ -1922,6 +2365,8 @@ class ArcadeEmitter {
                 if (value.opcode === 'arcade_callFunction') return `${target.isStage ? '' : target.name}:${literal(blocks,value,'NAME')}:result`;
                 if (value.opcode === 'data_variable') return `variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;
                 if(value.opcode==='arcade_eventLocation'){const id=Symbol('event tile location');tiles.add(id);return id;}
+                if(value.opcode==='arcade_legacyTileLocation'){const id=Symbol('legacy tile');legacyTiles.add(id);return id;}
+                if(value.opcode==='arcade_legacyTilesOfType'){const id=Symbol('legacy tiles');arrays.add(id);return id;}
                 if(value.opcode==='arcade_tileLocation'){const id=`${key}:tile:${Object.keys(blocks).find(id=>blocks[id]===value)}`;tiles.add(id);return id;}
                 if(value.opcode==='arcade_tilesOfType'){const id=`${key}:tile-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_getLife','arcade_getPlayerScore'].includes(value.opcode)){const id=Symbol('player life');numbers.add(id);return id;}
@@ -1929,19 +2374,36 @@ class ArcadeEmitter {
                     const id=Symbol('sprite data');dataProperties.push([ref(inputBlock(blocks,value,'ID')),id]);return id;
                 }
                 if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
                 if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
-                if(value.opcode==='arcade_tileLocationProperty'){const id=Symbol('tile numeric property');numbers.add(id);return id;}
+                if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
+                if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
+                if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
+                if(['arcade_playerButtonPressed','arcade_ask'].includes(value.opcode)){const id=Symbol('player button pressed');booleans.add(id);return id;}
+                if(['arcade_createPlayerState','arcade_getPlayerState'].includes(value.opcode)){const id=Symbol('player state number');numbers.add(id);return id;}
+                if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
                 if(value.opcode==='arcade_physicsEngineProperty'){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
+                if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
+                if(value.opcode==='arcade_sevensegCounter'){const id=Symbol('seven segment counter');graphSevensegCounterValues.add(id);return id;}
+                if(value.opcode==='arcade_sevensegProperty'){const id=Symbol('seven segment property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_createDart'){const id=Symbol('dart');graphDartValues.add(id);sprites.add(id);return id;}
+                if(value.opcode==='arcade_createCorgi'){const id=Symbol('corgi');graphCorgiValues.add(id);sprites.add(id);return id;}
+                if(['arcade_dartProperty','arcade_corgiProperty','arcade_backgroundScrollOffset','arcade_characterRule'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_animationProperty'){const id=Symbol('animation property');(literal(blocks,value,'PROPERTY')==='image'?images:numbers).add(id);return id;}
+                if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(value.opcode)) {
+                    const id=Symbol('authored animation array'), item=Symbol('authored animation image');
+                    arrays.add(id); images.add(item); elements.push([id,item]); return id;
+                }
+                if(value.opcode==='arcade_animationAssetInterval'){const id=Symbol('animation interval');numbers.add(id);return id;}
                 if(value.opcode==='arcade_spritesOfKind'){const id=`${key}:sprite-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if (['arrays_createReference','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(value.opcode)) {
                     const id=`${key}:array-value:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
                     if(value.opcode==='arrays_createReference')arrays.add(id);return id;
                 }
-                if (['arcade_spawnSprite','arcade_spawnProjectile','arcade_spawnImageSprite','arcade_spawnImageProjectile','arcade_eventSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(value.opcode)) {
+                if (['arcade_playerSprite','arcade_spawnSprite','arcade_spawnProjectile','arcade_spawnImageSprite','arcade_spawnImageProjectile','arcade_eventSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(value.opcode)) {
                     const id = `${key}:sprite:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     sprites.add(id);return id;
                 }
@@ -1956,9 +2418,14 @@ class ArcadeEmitter {
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
                 seen.add(id);const block = blocks[id];
-                for (const input of block.opcode === 'arcade_blitImage' || block.opcode === 'arcade_imagesOverlap' ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
+                for (const input of ['arcade_blitImage','arcade_imagesOverlap','arcade_copyImageFrom'].includes(block.opcode) ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
+                if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
+                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
+                    const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
+                }
+                if(block.opcode==='arcade_allPlayers'){const array=ref(block),item=Symbol('player collection element');graphPlayerValues.add(item);elements.push([array,item]);}
                 if(block.inputs?.SCENE){const value=ref(inputBlock(blocks,block,'SCENE'));if(value)graphSceneValues.add(value);}
                 if(block.inputs?.ENGINE){const value=ref(inputBlock(blocks,block,'ENGINE'));if(value)graphPhysicsEngineValues.add(value);}
                 if(block.inputs?.ANIMATION){const animation=ref(inputBlock(blocks,block,'ANIMATION'));if(animation)graphAnimationValues.add(animation);}
@@ -1967,8 +2434,10 @@ class ArcadeEmitter {
                     const sprite = ref(inputBlock(blocks,block,input));if(sprite)sprites.add(sprite);
                 }
                 if(block.opcode.startsWith('arrays_') && block.inputs?.NAME){const id='named-array:'+literal(blocks,block,'NAME');arrays.add(id);const value=Symbol('named array element');anys.add(value);elements.push([id,value]);}
+                if(block.inputs?.TILE){const tile=ref(inputBlock(blocks,block,'TILE'));if(tile)legacyTiles.add(tile);}
                 if(block.inputs?.LOCATION){const location=ref(inputBlock(blocks,block,'LOCATION'));if(location)tiles.add(location);}
-                if(block.opcode==='arcade_tileLocation')for(const name of ['COLUMN','ROW']){const number=ref(inputBlock(blocks,block,name));if(number)numbers.add(number);}
+                if(['arcade_tileLocation','arcade_legacyTileLocation'].includes(block.opcode))for(const name of ['COLUMN','ROW']){const number=ref(inputBlock(blocks,block,name));if(number)numbers.add(number);}
+                if(block.opcode==='arcade_legacyTilesOfType'){const array=ref(block),item=Symbol('legacy tile element');legacyTiles.add(item);elements.push([array,item]);}
                 if(block.opcode==='arcade_tilesOfType'){const array=ref(block),item=Symbol('tile collection element');tiles.add(item);elements.push([array,item]);}
                 if(block.opcode==='arcade_spritesOfKind'){const array=ref(block),item=Symbol('sprite collection element');sprites.add(item);elements.push([array,item]);}
                 if(block.opcode==='arrays_createReference'){
@@ -2021,7 +2490,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
@@ -2051,12 +2520,12 @@ class ArcadeEmitter {
         // to its elements (which would incorrectly change the argument type).
         for(const [array,value] of lookupTypes)if(array && value){
             const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','Animation','Scene','PhysicsEngine','array','number','string','boolean'].includes(type));
+            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
             if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
         }
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -2065,7 +2534,7 @@ class ArcadeEmitter {
         const arrayType=value=>graph.arrayType(value);
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['string','tiles.Location','animation.Animation','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -2088,9 +2557,10 @@ class ArcadeEmitter {
         if (svg) {
             const px = svgToPixels(svg, sourcePalette);
             if (px) {
-                if (samePalette(sourcePalette, this.palette)) return px;
+                const indexedPalette = px.palette || sourcePalette;
+                if (this.hasProjectPalette || samePalette(indexedPalette, this.palette)) return px;
                 this.warnings.push(`${target.name}: costume palette mapped to the Arcade project palette`);
-                return remapPalette(px, sourcePalette, this.palette);
+                return remapPalette(px, indexedPalette, this.palette);
             }
         }
         const raster = costume && this.opts.costumeRgba ? this.opts.costumeRgba(target, costume) : null;
@@ -2465,8 +2935,24 @@ class ArcadeEmitter {
             // A variable given both text and numbers is `any` — Scratch's own
             // variables are untyped, and that is the honest translation.
             const arrayKind=[...kinds].find(kind=>kind.endsWith('[]'));
+            const initial = this.initialGlobals.has(n) ? JSON.stringify(this.initialGlobals.get(n)) : '0';
+            // Scratch's saved zero is a real initial value, even when the
+            // script later assigns text or Boolean values. Keep both types.
+            const initialScalarType = typeof this.initialGlobals.get(n);
+            const mixedInitialScalar = this.initialGlobals.has(n) &&
+                ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') ? `let ${n}: any = 0` : kinds.has('string') ? `let ${n} = ""` : kinds.has('boolean') ? `let ${n} = false` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = 0`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+        }
+        if (this.usesAnimationResources) {
+            const resources = [...this.authoredAnimationArrays.values()];
+            for (const resource of resources) out.push(`let ${resource.variable}: Image[] = assets.animation\`${resource.nativeId}\``);
+            out.push(`function ${this.animationFunctionNames.frames} (id: string): Image[] {\n${resources.map(resource =>
+                `    if (id == ${JSON.stringify(resource.id)}) return ${resource.variable}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
+            out.push(`function ${this.animationFunctionNames.fresh} (id: string): Image[] {\n${resources.map(resource =>
+                `    if (id == ${JSON.stringify(resource.id)}) return assets.animation\`${resource.nativeId}\``).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
+            out.push(`function ${this.animationFunctionNames.interval} (id: string): number {\n${resources.map(resource =>
+                `    if (id == ${JSON.stringify(resource.id)}) return ${resource.frames[0].durationMs}`).join('\n')}\n    console.log("Animation resource unavailable: " + id)\n    return undefined\n}`);
         }
         for (const {name, frames} of [...this.frameArrays.values(), ...this.sharedImageArrays.values()]) {
             out.push(`let ${name}: Image[] = [${frames.map(frame => toImgLiteral(frame)).join(', ')}]`);
@@ -2612,18 +3098,44 @@ class ArcadeEmitter {
  * @param {(target, costume) => string|null} [opts.costumeSvg] the costume's SVG text, if it is an SVG
  * @param {(target, costume) => {rgba, width, height}|null} [opts.costumeRgba] its pixels, for anything else
  * @param {(target, costume) => Array<string|null>|null} [opts.costumePalette] editable palette, if any
+ * @param {Array<object>} [opts.animationDocuments] full published Pixel timeline source documents
  * @param {(stage) => object|null} [opts.stageBackground] a 160x120 palette image for the backdrop
  * @returns {{ts: string, files: object, unsupported: string[], warnings: string[]}}
  */
 export function projectToArcade (project, opts = {}) {
     const e = new ArcadeEmitter(project, opts);
     const ts = e.emit();
+    // Publish unused assets as well, without introducing unused main-code helpers.
+    e.prepareAuthoredAnimations();
+    const resources = [...e.authoredAnimationArrays.values()];
+    const assetFiles = resources.length ? {
+        'images.g.jres': `${JSON.stringify(Object.fromEntries(resources.map(resource =>
+            [`myAnimations.${resource.nativeId}`, resource.nativeEntry])), null, 4)}\n`,
+        'images.g.ts': `namespace ${e.animationFactoryNamespace} {\n    helpers._registerFactory("animation", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${resources.map(resource => [...new Set([resource.nativeEntry.displayName, resource.nativeId])].map(alias =>
+            `            case ${JSON.stringify(alias)}:`).join('\n') +
+            `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
+    } : {};
+    const sourceEntries = [];
+    for (const resource of resources) {
+        try { validateDocument(resource.document); }
+        catch (error) {
+            // The public behaviour exporter also accepts normalized frame-only
+            // inputs. They are not complete, editable artwork documents.
+            e.warn(`Animation "${resource.name}" rich source not exported: ${error.message}`);
+            continue;
+        }
+        sourceEntries.push({nativeId: resource.nativeEntry.namespace ?
+            `${resource.nativeEntry.namespace}.${resource.nativeEntry.id}` : resource.nativeEntry.id,
+        document: resource.document, nativeEntry: resource.nativeEntry});
+    }
+    if (sourceEntries.length) assetFiles[ANIMATION_COMPANION_PATH] = encodeAnimationCompanion(sourceEntries, e.palette);
     const name = opts.name || 'brickwright-game';
     const files = {
         'main.ts': ts,
+        ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresAnimationPackage ? {animation: '*'} : {})},
-            files: ['main.ts'], preferredEditor: 'tsprj',
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };

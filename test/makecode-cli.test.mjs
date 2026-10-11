@@ -57,7 +57,7 @@ test('a bare MakeCode TypeScript file converts for the --target it names', async
     // its artwork is a template sprite's costume.
     const stage = project.targets.find(t => t.isStage);
     assert.ok(Object.values(stage.variables).some(([name]) => name === 'hero'), 'no hero variable');
-    assert.ok(project.targets.some(t => /^__arcadeTemplate/.test(t.name)), project.targets.map(t => t.name).join(', '));
+    assert.ok(project.targets.some(t => !t.isStage && t.name === 'hero'), project.targets.map(t => t.name).join(', '));
     // The same file read as micro:bit is not an Arcade game: its sprite calls are named, not invented.
     const mb = run('to-sb3', source, '-o', path.join(tmp, 'direct-mb.sb3'));
     assert.equal(mb.status, 0, mb.stderr);

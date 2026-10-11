@@ -14,7 +14,7 @@ const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.valu
 // Tile data is implemented independently of terrain simulation. Keep that
 // remaining terrain limitation visible, and reject every unrelated gap.
 const checkDiagnostics=imported=>{
-    assert.deepEqual([...new Set(imported.unsupported)], ['full terrain collision physics and scene lifecycle are not yet supported']);
+    assert.deepEqual([...new Set(imported.unsupported)], []);
 };
 
 test('tile collections, walls and placement match PXT across Code, SB3 and executed export roundtrips',async()=>{

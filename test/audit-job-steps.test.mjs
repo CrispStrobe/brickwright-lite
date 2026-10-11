@@ -7,7 +7,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {judge, run} from '../scripts/audit-job-steps.mjs';
+import {judge, run, fetchJobs} from '../scripts/audit-job-steps.mjs';
 
 const step = (name, conclusion) => ({name, status: 'completed', conclusion});
 const AUDIT = 'Audit — every browser gate ran';
@@ -16,6 +16,60 @@ const base = [
     step('Browser gate — circuit UX', 'success'), step('Browser gate — editor', 'success'),
     step('Browser benchmark — 8086 desktop and mobile', 'success'), step(AUDIT, null)
 ];
+
+const apiEnv = {GITHUB_REPOSITORY: 'owner/repo', GITHUB_RUN_ID: '42', GH_TOKEN: 'test-only',
+    BW_JOB_NAME: 'browser (heavy)', GITHUB_RUN_ATTEMPT: '2'};
+const apiJob = {id: 123, name: apiEnv.BW_JOB_NAME, run_id: 42, run_attempt: 2};
+const jsonResponse = body => ({ok: true, json: async () => body});
+
+test('API listing identifies the job, direct endpoint supplies its step conclusions', async () => {
+    const calls = [];
+    const detail = {...apiJob, steps: base};
+    const jobs = await fetchJobs(async (url, options) => {
+        calls.push({url, options});
+        return jsonResponse(url.includes('/actions/jobs/') ? detail :
+            {total_count: 1, jobs: [{...apiJob, steps: [{name: 'Install', status: 'in_progress'}]}]});
+    }, {env: apiEnv, sleep: async () => assert.fail('no retry expected')});
+    assert.deepEqual(jobs, [detail]);
+    assert.equal(calls.length, 2);
+    assert.ok(new URL(calls[1].url).pathname.endsWith('/actions/jobs/123'));
+    assert.equal(calls[1].options.headers['Cache-Control'], 'no-cache');
+});
+
+test('repeated API polls bypass cached incomplete snapshots even in the same clock millisecond', async () => {
+    const cache = new Map(), calls = [];
+    let completed = false;
+    const fetchCached = async (url, options) => {
+        calls.push(url);assert.equal(options.cache, 'no-store');
+        if (!cache.has(url)) cache.set(url, url.includes('/actions/jobs/') ?
+            {...apiJob, steps: [{name: 'Browser gate — fixture', status: completed ? 'completed' : 'in_progress', conclusion: completed ? 'success' : null}]} :
+            {total_count: 1, jobs: [apiJob]});
+        return jsonResponse(cache.get(url));
+    };
+    const options = {env: apiEnv, now: () => 123, sleep: async () => assert.fail('no retry expected')};
+    const first = await fetchJobs(fetchCached, options);completed = true;
+    const second = await fetchJobs(fetchCached, options);
+    assert.equal(first[0].steps[0].status, 'in_progress');
+    assert.equal(second[0].steps[0].status, 'completed');
+    assert.equal(new Set(calls).size, 4, 'both listing and detail receive a new cache key');
+});
+
+test('direct endpoint cannot substitute another run, attempt, matrix leg or job', async () => {
+    for (const mutation of [{run_id: 43}, {run_attempt: 1}, {name: 'browser (light)'}, {id: 124}]) {
+        let sleeps = 0;
+        await assert.rejects(fetchJobs(async url => jsonResponse(url.includes('/actions/jobs/') ?
+            {...apiJob, ...mutation, steps: base} : {total_count: 1, jobs: [apiJob]}),
+        {env: apiEnv, sleep: async ms => {assert.equal(ms, 15000); sleeps++;}}), /identity does not match/);
+        assert.equal(sleeps, 1);
+    }
+});
+
+test('unreadable direct endpoint fails closed rather than falling back to listing steps', async () => {
+    await assert.rejects(fetchJobs(async url => url.includes('/actions/jobs/') ?
+        {ok: false, status: 503, text: async () => 'unavailable'} :
+        jsonResponse({total_count: 1, jobs: [{...apiJob, steps: base}]}),
+    {env: apiEnv, sleep: async () => {}}), /GitHub job HTTP 503/);
+});
 
 test('all browser gates ran: ok, and the count is the count', () => {
     const v = judge(base);

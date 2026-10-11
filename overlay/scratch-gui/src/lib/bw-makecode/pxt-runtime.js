@@ -39,20 +39,23 @@
 
 import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
 import {VENDORED_EXTENSIONS} from './extensions-vendored.js';
+import {fetchMakeCodeExtensions, unresolvedGithubDependencies} from './extension-fetch.js';
+import {remoteExtensionsAllowed} from '../distribution-policy.js';
 
 /**
  * The third-party extensions this build carries (extensions-vendored.js, written
  * by scripts/sync-makecode-extensions.mjs at exact commits), as the glue reads
  * them: the source files pxt compiles, and what a pxt.json may call each one —
  * `github:<owner>/<repo>#<tag>` or `#<commit>`, owner/repo in any case, the way
- * MakeCode's editor writes it. For the micro:bit only: they were published for
- * pxt-microbit, and are not proved on another target.
+ * MakeCode's editor writes it. Each serves the one target it was published for
+ * (micro:bit unless the pin names another); `untagged` pins also answer the
+ * unversioned spelling some tutorials use.
  */
 export const EXTENSION_TABLE = Object.freeze(VENDORED_EXTENSIONS.map(e => ({
     id: e.id,
     repo: e.repo.toLowerCase(),
-    refs: [e.tag, e.commit],
-    targets: ['microbit'],
+    refs: [e.tag, e.commit, ...(e.untagged ? [''] : [])],
+    targets: [e.target || 'microbit'],
     files: Object.fromEntries(Object.entries(e.files).map(([name, f]) => [name, f.text]))
 })));
 
@@ -95,7 +98,9 @@ var bwMakeCode = {
     // github: dependency is either served from the vendored source (its own
     // github: dependencies too) or listed as unresolved — pxt then asks the
     // network for it, is refused and counted, and compile() names it.
-    resolveExtensions: function (deps, target) {
+    // \`extra\`: extensions fetched on demand for this compile (extension-fetch.js).
+    resolveExtensions: function (deps, target, extra) {
+        var table = bwMakeCode.extensions.concat(extra || []);
         var overrides = {}, unresolved = [], queue = [];
         var push = function (d) { for (var k in d) queue.push([k, String(d[k])]); };
         push(deps || {});
@@ -105,8 +110,8 @@ var bwMakeCode = {
             if (!m || overrides[id]) continue;
             var repo = m[1].toLowerCase().replace(/\\.git$/, ''), ref = m[2] || '';
             var hit = null;
-            for (var i = 0; i < bwMakeCode.extensions.length; i++) {
-                var e = bwMakeCode.extensions[i];
+            for (var i = 0; i < table.length; i++) {
+                var e = table[i];
                 if (e.repo === repo && e.refs.indexOf(ref) >= 0 && e.targets.indexOf(target) >= 0) { hit = e; break; }
             }
             if (!hit) { unresolved.push(id + ' (' + spec + ')'); continue; }
@@ -157,7 +162,7 @@ var bwMakeCode = {
         cfg.binaryonly = true;
         files = Object.assign({}, files, {'pxt.json': JSON.stringify(cfg, null, 4)});
         if (files['main.ts'] === undefined) files['main.ts'] = '';
-        var ext = bwMakeCode.resolveExtensions(cfg.dependencies, pxt.appTarget && pxt.appTarget.id);
+        var ext = bwMakeCode.resolveExtensions(cfg.dependencies, pxt.appTarget && pxt.appTarget.id, opts.extensions);
         bwMakeCode.overrides = ext.overrides;
         var copts;
         try {
@@ -249,6 +254,7 @@ var bwOnMessage = async function (e) {
                 embedSource: m.embedSource,
                 hwVariant: m.hwVariant,
                 appVariant: m.appVariant,
+                extensions: m.extensions,
                 getBaseHex: async function (sha) {
                     // The emulator links onto its own bases (hexcache-emu/), and
                     // only onto bytes proven clean; a download, onto the official ones.
@@ -319,19 +325,54 @@ function workerFor (target, base) {
  *   project in the .hex, as MakeCode's editor does, so MakeCode opens it as a project
  * @param {string} [args.hwVariant] Arcade hardware for a native build (ARCADE_HARDWARE)
  * @param {string} [args.baseUrl] where static/ is served from (default: the page's base)
- * @returns {Promise<{success: boolean, outfiles: object, diagnostics: object[], netAttempts: string[]}>}
+ * @param {boolean} [args.fetchExtensions] fetch github: extensions this build does not vendor
+ *   (extension-fetch.js); default: allowed unless the build denies remote extensions
+ * @returns {Promise<{success: boolean, outfiles: object, diagnostics: object[], netAttempts: string[],
+ *   fetchedExtensions: object[]}>} `fetchedExtensions`: what was fetched, with its licence
  */
-export async function compileMakeCode ({target, files, native = false, embedSource = null, hwVariant = '', baseUrl} = {}) {
+export async function compileMakeCode ({target, files, native = false, embedSource = null, hwVariant = '', baseUrl,
+    fetchExtensions = remoteExtensionsAllowed(), fetch} = {}) {
     if (!MAKECODE_TARGETS.includes(target)) {
         throw new MakeCodeError(`MakeCode ${target || 'unknown'} is not a target this build carries ` +
             `(${MAKECODE_TARGETS.join(', ')})`, 'UNSUPPORTED_TARGET');
     }
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
+    const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
     const w = workerFor(target, base);
     await w.ready;
-    return w.call({op: 'compile', files, native, embedSource, hwVariant});
+    return withFetched(await callWithExtensions(w, {op: 'compile', files, native, embedSource, hwVariant}, extensions), extensions);
 }
+
+/**
+ * The github: extensions a project needs that this build does not vendor,
+ * fetched (extension-fetch.js) unless fetching is off. Refusals are kept so a
+ * missing extension's error can say why it could not be fetched.
+ */
+export async function onDemandExtensions (target, files, enabled, fetch) {
+    let deps;
+    try { deps = JSON.parse(files['pxt.json']).dependencies || {}; } catch { return {extensions: [], refused: []}; }
+    if (!unresolvedGithubDependencies(deps, target, EXTENSION_TABLE).length) return {extensions: [], refused: []};
+    if (!enabled) return {extensions: [], refused: [], disabled: true};
+    return fetchMakeCodeExtensions({dependencies: deps, target, table: EXTENSION_TABLE, ...(fetch ? {fetch} : {})});
+}
+
+async function callWithExtensions (w, msg, onDemand) {
+    try {
+        return await w.call({...msg, extensions: onDemand.extensions.map(({id, repo, refs, targets, files}) => ({id, repo, refs, targets, files}))});
+    } catch (e) {
+        if (e && e.code === 'NO_EXTENSION') {
+            const why = onDemand.disabled ? ' (this build does not fetch extensions)' :
+                onDemand.refused.length ? ' — could not fetch: ' + onDemand.refused.map(r => `${r.id} (${r.reason})`).join('; ') : '';
+            e.message += why;
+            e.refused = onDemand.refused;
+        }
+        throw e;
+    }
+}
+
+const withFetched = (result, onDemand) => ({...result, fetchedExtensions: onDemand.extensions.map(e =>
+    ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}))});
 
 /**
  * Refuse, by name, a firmware base the emulator must not run. The one check
@@ -358,16 +399,17 @@ export const EMULATOR_CLEAN_BASES = Object.freeze(Object.keys(BASE_LICENCES).fil
  * NO_BASE_HEX, as for a download. The result's outfiles['binary.hex'] is a plain
  * (not universal) V2 image with its vector table at 0.
  */
-export async function compileMakeCodeForEmulator ({target = 'microbit', files, baseUrl} = {}) {
+export async function compileMakeCodeForEmulator ({target = 'microbit', files, baseUrl, fetchExtensions = remoteExtensionsAllowed(), fetch} = {}) {
     if (target !== 'microbit') {
         throw new MakeCodeError(`MakeCode ${target} has no emulator firmware bases (only the micro:bit V2 does)`, 'UNSUPPORTED_TARGET');
     }
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
+    const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
     const w = workerFor(target, base);
     await w.ready;
     try {
-        return await w.call({op: 'compile', files, native: true, appVariant: 'mbcodal', emulator: true, cleanBases: EMULATOR_CLEAN_BASES});
+        return withFetched(await callWithExtensions(w, {op: 'compile', files, native: true, appVariant: 'mbcodal', emulator: true, cleanBases: EMULATOR_CLEAN_BASES}, extensions), extensions);
     } catch (e) {
         if (e && e.code === 'BASE_REFUSED') assertEmulatorBase(e.baseSha256);
         throw e;

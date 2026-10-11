@@ -3,7 +3,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {codeArtworkMatches} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
+import {conversionFailure} from '../overlay/scratch-gui/src/lib/bw-conversion-error.js';
+import {captureCodeArtwork, codeArtworkMatches} from '../overlay/scratch-gui/src/lib/bw-code-artwork.js';
 import {balancedFrom, scopeAfter} from './helpers/js-scope.mjs';
 const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
 const signature = 'async compile ({strict = false, pseudocode = null} = {}) {';
@@ -45,10 +46,10 @@ const setup = ({program = 'DEVICE ARCADE', lang = 'pseudocode', parseError, load
         `return function (stc) ${publishBody}`)(devices, window, Event);
     // DOS_LANG / generateDosLangs: the fe and Tcl tabs, which compile() also
     // regenerates; none here (stubs keep the sandbox to the names it gives).
-    component.compile = new Function('TWO_WAY', 'classifyConversionWarnings', 'LANG_LABEL', 'window', 'codeArtworkMatches',
+    component.compile = new Function('TWO_WAY', 'classifyConversionWarnings', 'LANG_LABEL', 'window', 'codeArtworkMatches', 'captureCodeArtwork', 'conversionFailure',
         'DOS_LANG', 'generateDosLangs',
         `return async function ({strict = false, pseudocode = null} = {}) ${compileBody}`)(new Set(['pseudocode']),
-        () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window, codeArtworkMatches,
+        () => ({changed: [], unsupported: []}), {pseudocode: 'Pseudocode'}, window, codeArtworkMatches, captureCodeArtwork, conversionFailure,
         {}, async () => ({}));
     Creator.RETARGET_POOLS = {calliopemini: {}};
     Creator.retargetPseudocode = (text, device) => ({ok: true, warnings: [],
@@ -137,5 +138,9 @@ test('failed native block refresh is reported and never announces loaded', async
     assert.equal(component.state.busy, false);
     assert.notEqual(component.state.status, 'loaded');
     assert.match(component.state.status, /arrays schema registration failed/);
-    await assert.rejects(component.compile({strict: true}), /arrays schema registration failed/);
+    // Each probe starts from a fresh VM; the fake archive has no artwork ZIP.
+    const strict = setup({refreshError: 'arrays schema registration failed'}).component;
+    await assert.rejects(strict.compile({strict: true}), /arrays schema registration failed/);
+    assert.equal(strict.state.busy, false);
+    assert.notEqual(strict.state.status, 'loaded');
 });

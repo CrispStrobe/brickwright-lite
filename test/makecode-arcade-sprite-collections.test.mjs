@@ -65,3 +65,66 @@ test('unsupported dynamic sprite-kind queries remain named diagnostics',()=>{
 let actors=sprites.allOfKind(kind)`);
     assert.ok(imported.unsupported.some(reason=>reason.includes('sprites.allOfKind')));
 });
+
+
+test('destroyAllSpritesOfKind removes a snapshot, preserving callbacks, other kinds and retained handles across roundtrips',async()=>{
+    const source=`namespace SpriteKind { export const Custom=SpriteKind.create() }
+let callbacks=0
+let positions=0
+let __bwDestroyKindSprite1=73
+sprites.onDestroyed(SpriteKind.Custom,function(sprite){
+    callbacks+=1
+    positions+=sprite.x
+    let replacement=sprites.create(img\`7\`,SpriteKind.Custom)
+    replacement.setPosition(90,60)
+})
+let first=sprites.create(img\`2\`,SpriteKind.Custom)
+first.setPosition(10,60)
+let second=sprites.create(img\`3\`,SpriteKind.Custom)
+second.setPosition(20,60)
+let player=sprites.create(img\`5\`,SpriteKind.Player)
+let retained=sprites.allOfKind(SpriteKind.Custom)
+sprites.destroyAllSpritesOfKind(SpriteKind.Custom)
+pause(100)
+let survivors=sprites.allOfKind(SpriteKind.Custom).length
+let players=sprites.allOfKind(SpriteKind.Player).length
+let retainedCount=retained.length
+let retainedIdentity=retained[0]===first
+let retainedX=first.x
+first.destroy()
+second.destroy()
+sprites.destroyAllSpritesOfKind(SpriteKind.Food)
+let protectedValue=__bwDestroyKindSprite1
+let finished=1`;
+    const expected=await runPxtArcade(source,{waitForGlobals:{protectedValue:73}});
+    assert.equal(expected.callbacks,2);assert.equal(expected.positions,30);
+    assert.equal(expected.survivors,2);assert.equal(expected.players,1);
+    const names=['callbacks','positions','survivors','players','retainedCount','retainedIdentity','retainedX','protectedValue'];
+    const check=run=>{const actual=vars(run);for(const name of names)assert.equal(actual[name],expected[name],name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+    const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:100,uploads:imported.costumes,storage:true});check(run);return run;};
+    const imported=arcadeToPseudocode(source),run=await execute(imported);
+    const opcodes=new Set(run.creator.project.targets.flatMap(t=>Object.values(t.blocks).map(b=>b.opcode)));
+    assert.ok(opcodes.has('arcade_spritesOfKind'));assert.ok(opcodes.has('arcade_destroySprite'));
+    await execute({...imported,code:run.creator.decompile()});
+    const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+    assert.deepEqual(exported.unsupported,[]);
+    const original=await runPxtArcade(exported.ts,{waitForGlobals:{protectedValue:73}});
+    for(const name of names)assert.equal(original[name],expected[name],name+' in exported PXT');
+    await execute(arcadeToPseudocode(exported.ts));
+    await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));
+    run.vm.greenFlag();await stepFrames(run.vm,100);check(run);
+});
+
+test('destroyAllSpritesOfKind rejects dynamic kinds, effects and duration explicitly',()=>{
+    for(const call of ['sprites.destroyAllSpritesOfKind(kind)','sprites.destroyAllSpritesOfKind(SpriteKind.Enemy,effects.fire)','sprites.destroyAllSpritesOfKind(SpriteKind.Enemy,effects.fire,100)']){
+        const imported=arcadeToPseudocode('let kind=0\n'+call);
+        assert.ok(imported.unsupported.some(reason=>reason.includes('sprites.destroyAllSpritesOfKind')),call);
+    }
+});
+
+test('destroyAllSpritesOfKind on an empty scene is an executable no-op',async()=>{
+    const imported=arcadeToPseudocode('sprites.destroyAllSpritesOfKind(SpriteKind.Enemy)\nlet finished=1');
+    assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:10,uploads:imported.costumes,storage:true});
+    assert.equal(vars(run).finished,1);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+});

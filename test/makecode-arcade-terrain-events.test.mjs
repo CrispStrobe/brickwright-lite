@@ -13,7 +13,7 @@ test('terrain callbacks preserve synchronous mutation, yielded order, captured c
     assert.equal(expected.wallOrder,'AB');assert.equal(expected.wallCount,12);assert.equal(expected.entryX,31);assert.equal(expected.sawContact,true);assert.equal(expected.afterPause,true);assert.equal(expected.secondSawVelocity,true);assert.equal(expected.tileOrder,'CD');assert.equal(expected.sameLocation,true);
     const check=run=>{const actual=values(run);for(const name of names)assert.equal(actual[name],expected[name],name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
     const execute=async imported=>{
-        assert.deepEqual([...imported.unsupported].sort(),['full terrain collision physics and scene lifecycle are not yet supported'].sort());
+        assert.deepEqual([...imported.unsupported].sort(),[]);
         const run=await runProgram(imported.code,{frames:200,uploads:imported.costumes,storage:true});check(run);return run;
     };
     const imported=arcadeToPseudocode(TERRAIN_EVENTS_SOURCE),run=await execute(imported);
@@ -61,7 +61,7 @@ hero.x-=1
 let nestedDone=tiles.tileAtLocationIsWall(tiles.getTileLocation(1,1))`;
     const expected=await runPxtArcade(source,{waitForGlobals:{nestedDone:true}});
     const imported=arcadeToPseudocode(source);
-    assert.deepEqual(imported.unsupported,['full terrain collision physics and scene lifecycle are not yet supported']);
+    assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:100,uploads:imported.costumes,storage:true});
     for(const name of ['inheritedColumn','touchedRow','nestedDone'])assert.equal(values(run)[name],expected[name],name);
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);

@@ -1646,17 +1646,49 @@ committed file differs from the pinned bundle:
   rotated sprite geometry (`game/rotation.ts`, transpiled) in
   `overlay/scratch-vm/src/extensions/crispstrobe/arcade/rotation-pxt.js`, and the
   6x8 `font8` (`screen/text.ts`) in `speech-fonts.json`
-  (`scripts/generate-arcade-speech.mjs`).
+  (`scripts/generate-arcade-speech.mjs`); and the fixed-point helpers, random
+  generator, image effects and particle sources, factories and effects
+  (`base/fixed.ts`, `game/mathUtil.ts`, `game/effects.ts`, `game/particles.ts`,
+  `game/particlefactories.ts`, `game/particleeffects.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/particles-pxt.js`
+  (`scripts/generate-arcade-particles.mjs`); and image text printing with `font5`
+  (`screen/text.ts`, transpiled) and the simulator's `drawIcon` in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/text-pxt.js`
+  (`scripts/generate-arcade-text.mjs`); and the mixer music (`mixer/music.ts`,
+  `mixer/melody.ts`, `mixer/playable.ts`, `mixer/legacy.ts`, `mixer/soundEffect.ts`,
+  transpiled with pausing calls lowered to generators) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music-pxt.js`
+  (`scripts/generate-arcade-music.mjs`); and `parseInt` with `helpers.isWhitespace`
+  (`base/pxt-helpers.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/helpers-pxt.js`
+  (`scripts/generate-arcade-helpers.mjs`); and the dialogs with the game-over
+  dialog (`game/textDialogs.ts`) and game-over configuration (`game/game.ts`,
+  `GameOverConfig`), transpiled, in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/gameover-pxt.js`
+  (`scripts/generate-arcade-gameover.mjs`).
 - **pxt-arcade** (https://github.com/microsoft/pxt-arcade) 4.2.1, MIT, Copyright (c)
   Microsoft Corporation: the 763 built-in images (`sprites.castle.tileGrass1`, ...;
   `device/*.jres`) in `overlay/scratch-gui/src/lib/bw-makecode/arcade-builtin-images.js`
-  (`scripts/generate-arcade-builtin-images.mjs`).
+  (`scripts/generate-arcade-builtin-images.mjs`), and the seven segment extension
+  (`libs/sevenseg/sevenseg.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/sevenseg-pxt.js`
+  (`scripts/generate-arcade-sevenseg.mjs`), and the darts and corgio extensions
+  (`libs/darts/darts.ts`, `libs/corgio/corgio.ts`, transpiled) in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/sprite-extensions-pxt.js`
+  (`scripts/generate-arcade-sprite-extensions.mjs`).
 - **font12** of pxt-common-packages (`screen/font12.jres`), a 12x12 pixel font based on
   **Adobe Source Han Sans** v2.001R (https://github.com/adobe-fonts/source-han-sans),
-  in `speech-fonts.json`: SIL Open Font License 1.1, Copyright 2014-2019 Adobe
+  in `speech-fonts.json` and `text-pxt.js`: SIL Open Font License 1.1, Copyright 2014-2019 Adobe
   (http://www.adobe.com/), with Reserved Font Name 'Source' — the notice
   pxt-common-packages' ThirdPartyNotice records for that version. "Source" is a
   trademark of Adobe in the United States and/or other countries.
+
+Sprite following in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`
+manually adapts the `follow`/`unfollow` steering and lifecycle logic from
+`pxt-common-packages`' bundled `game/sprite.ts` (MIT, Copyright (c) Microsoft
+Corporation). Tests execute the original method against controlled times and
+compare collision-aware snapping with the original Arcade simulator. The
+existing MIT notice below covers this adapted runtime code as well.
 
 Full texts: `overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt` (both MIT
 sources) and `overlay/scratch-gui/static/licenses/pxt-speech-font12.OFL.txt`, shipped
@@ -1679,6 +1711,16 @@ compiler when a project's pxt.json names them. Unmodified:
   `fec2d45d8b514aff2c9c398a3e41711ecdca4e21`. MIT, Copyright (c) Microsoft Corporation.
 - **pxt-kitronik-motor-driver** v0.0.3 — `KitronikLtd/pxt-kitronik-motor-driver` at
   `be38482e6a7a97dae80ef51b8b7e98767900dc00`. MIT, Copyright (c) 2017 Kitronik Ltd.
+- **arcade-background-scroll** (scroller) v0.1.2 — `microsoft/arcade-background-scroll` at
+  `941e0a3afee4cd4097c1f9853a9ee7299622c7e5`, for Arcade projects. MIT, Copyright (c)
+  Microsoft Corporation. Its `main.ts` is also transpiled unchanged into
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/scroller-pxt.js`
+  (`scripts/generate-arcade-scroller.mjs`) for converted Arcade projects.
+- **arcade-character-animations** (characterAnimations) v0.1.0 — `microsoft/arcade-character-animations` at
+  `7b40150c721eef4e11ef0aff247deedc266d292e`, for Arcade projects. MIT, Copyright (c)
+  Microsoft Corporation. Its `main.ts` is also transpiled unchanged into
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/character-animations-pxt.js`
+  (`scripts/generate-arcade-character-animations.mjs`) for converted Arcade projects.
 
 Full texts: `overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt`,
 shipped with the app and reachable from the About dialog offline.
@@ -2014,3 +2056,84 @@ program readers retain their BSD-3-Clause/MPL-2.0 licences and source
 availability obligations. The virtual simulator ships without an external firmware runtime. Evidence for retained component
 licences is recorded in the private SPIKE audit archive; this addition does
 not relicense any retained component.
+
+### Arcade numeric sign
+
+The native numeric sign reporter adapts `Math.sign` from the bundled MIT-licensed
+Microsoft PXT `base/pxt-helpers.ts`. The retained PXT notices cover this adaptation.
+Original source and simulator comparisons verify its positive-zero and NaN rules.
+
+### Arcade image scrolling
+
+Native mutable image scrolling adapts the signed32 offsets, clipping and
+zero-filled pixel semantics of Microsoft PXT ImageMethods.scroll, retained
+under the existing pxt-common-packages MIT notice. The implementation uses
+row copies over native mutable buffers; comparisons execute the original
+simulator RefImage, clone, transparent drawing and scrolling methods unchanged.
+
+### Arcade in-place image copying
+
+The native Image.copyFrom operation follows Microsoft PXT ImageMethods.copyFrom:
+same image dimensions, transparent pixel copying and preserved destination pixel
+buffer. The native implementation adapts these semantics for Brickwright's
+4-bit indexed images under the Microsoft PXT MIT notice above. Original PXT
+simulator source remains unchanged for comparisons.
+
+### Arcade indexed scene composition
+
+The internal compositor follows the Microsoft PXT Scene.render and
+Background.draw ordering for background colour/image and Sprite pixel drawing,
+using the already credited original PXT image raster operations. Original
+source remains unchanged for full indexed pixel-plane comparisons. The initial
+compositor covers background and sprites; tilemaps, callback renderables, HUD,
+speech and effects remain separate integration work.
+
+### Arcade indexed tile composition
+
+The tile raster iteration and tile renderable identity follow Microsoft PXT
+TileMap.draw and LegacyTilemap.draw: inclusive tile bounds, original camera
+bit shifts, transparent blits and z/creation-ID order. These semantics adapt
+the credited MIT PXT implementation; original source remains unchanged for
+full indexed-frame comparisons.
+
+### Indexed modern speech composition
+
+Modern speech composition reuses the retained original Microsoft PXT
+SpriteSayRenderer and font data, with a native write-mask bridge. The mask
+preserves explicit colour-zero writes and owner-local draw ordering; original
+PXT source stays unchanged for full pixel comparisons. Legacy speech's separate
+bubble sprite remains an integration gap in this frame pipeline.
+
+### Speech clock across scenes
+
+Speech creation, raster animation and expiry use the existing global simulated
+clock, following original PXT control.millis/game.runtime speech semantics.
+Scene-local frame and physics clocks remain separate. Original PXT speech
+sources and simulator remain unchanged for suspended-scene comparisons.
+
+### Legacy speech camera bridge
+
+The speech adapter follows the credited Microsoft PXT MIT Sprite.isOutOfScreen
+and legacy speech camera/flag semantics. Native world coordinates and camera
+draw offsets are passed through to the retained original renderer; generated
+PXT sources and font data are unchanged. This does not integrate native bubble
+identity, yielding callbacks or complete frame presentation.
+
+### Negative sprite kind membership
+
+The native kind collection queries and interchange follow the credited MIT
+Microsoft PXT sprites.allOfKind and Sprite.setKind semantics: negative numeric
+kinds retain their sprite/callback identity but do not join kind collections.
+The existing scene, physics and callback implementations remain in use; original
+PXT simulator/source comparisons exercise the behaviour without changing them.
+
+### Native legacy speech constructor continuation
+
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/speech-native-legacy.js`
+adapts the credited Microsoft PXT Arcade4.2.1 game/spritesay.ts legacy renderer
+(MIT, Copyright Microsoft Corporation). The constructor is a resumable factory
+so native creation callbacks can pause before flags and text are installed.
+Original geometry, glyph drawing and scrolling logic are retained with a native
+sprite/image facade. The original generated speech-pxt.js and credited fonts
+remain unchanged for comparisons. This is attributed PXT adaptation and
+integration, not a clean-room implementation.

@@ -15,6 +15,589 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Code tab blocks ⇄ fe and blocks ⇄ Tcl: rescue of PR #708 — 2026-10-11
+
+CLAIMED — Claude (opus), owner request (fe/Tcl "+" change thought lost; asked to
+pick it up), branch `lane/fe-tcl-two-way-rescue-20261011` from #708's head
+`6ac91b6cf`. #708 (no claim, idle since 2026-10-07) carries two-way fe and Tcl
+conversion, a Jim Tcl DOS runtime and its build tooling; its only red check was
+a since-repaired Arcade rotation gate. This lane merges current main (resolving
+the overlap with #786's optional-language "+" control), requalifies, and lands
+it as a new PR; #708's branch is left untouched. Envelope: #708's files plus
+the three conflicted ones, this ledger.
+
+## Arcade tile map painter — 2026-10-11
+
+CLAIMED — Claude (opus), owner request (imported Arcade levels must be editable
+in our graphics editors), branch `lane/arcade-tilemap-painter-20261011`. Ledger
+U03 first slice: a painter in the Costumes tab for every `set Arcade tilemap`
+block (tile palette, paint/erase/fill, separate wall layer, map size, tile size,
+add/remove/edit tiles as pixels, undo/redo), written back into that block.
+Envelope: new lib/bw-makecode/tilemap-editor.js, new tilemap-editor.jsx (+css),
+costume-tab.jsx (overlay + tracked twins), their tests, conversion docs, this
+ledger. Not in scope: legacy color-coded maps, tile names, Stage backdrops.
+
+## Arcade art editable in the paint editor — 2026-10-11
+
+DONE — Claude (opus), owner request ("sprites/backgrounds must be editable in
+our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`,
+merged #789 (`074edb8d5`, tree equals the reviewed merge prediction; all
+enabled checks green on attempt 3 after two light-shard failures in the
+unrelated green-flag first-write journey and one PXT palette timing flake).
+Imported MakeCode Arcade art already lands as costumes and edits reach the game;
+this lane makes it legible and organised: helper art sprites get readable names
+from the code (`hero`, `background`, `coinAnimation`) instead of `__arcadeTemplateN`,
+costumes are named instead of all `costume1`, and an inline image array becomes
+one sprite with one costume per frame. Envelope: arcade-translate.js,
+pseudocode-importer.jsx (overlay + tracked twin), the arcade/makecode tests that
+name helper sprites, scripts/verify-makecode.mjs, conversion docs, this ledger.
+Not in scope: a tilemap painter (separate later lane), runtime/extension changes.
+
+## Code-tab optional languages, Arcade scoreboard, on-demand MakeCode extensions — 2026-10-10
+
+DONE — Claude (opus), owner request, three sequential lanes from the Arcade
+integration session (merged: #786, #787, #788):
+1. `lane/code-tab-optional-languages-20261010`: the fe and Tcl code-tab languages
+   move behind a "+" control in the language row (shown once chosen or when their
+   buffer has text). Envelope: pseudocode-importer.jsx (overlay + tracked twin),
+   its tests, this ledger. No change to the DOS toolchains themselves.
+2. Arcade scoreboard: draw score, lives and countdown with PXT's own info HUD code
+   transpiled from the pinned bundle; pixel comparison against the original.
+   Envelope: arcade VM extension, a new generator, its test, generated-sources and
+   bundle lists.
+3. On-demand MakeCode extensions: fetch a project's GitHub extension at compile
+   time for the original simulator, with the existing licence verdict; vendored
+   pins stay preferred. Envelope: pxt-runtime.js, a fetch helper, tests, docs.
+
+## Reactive live-clock package adoption — 2026-10-10
+
+CLAIM — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
+exact base `9ac32a75562577c945baff383fbfb5dcddd02804`. Adopt bw-board
+`74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42` only; keep CUI, sb3 and flasher pins
+unchanged. Upstream CI37985452352 and Harris37985452331 are exact-head green;
+the source range from the old pin changes only14 lines in board.js live span
+selection. No copied engine source, solver policy change or SPIKE source work.
+
+Envelope: this ledger; vendor-pins.json; root and scratch-gui package manifests
+and lockfiles; pin-derived I8086 report, language matrix, board census and its
+two census-snapshot mirrors; paired bw-packages.sources.json notices; ROM/DOS
+provenance records only (binary bytes unchanged); bundled-upstream-pins.json;
+board-pin assertions in existing ADP7118/CLI-KCL/LM324/LM741/LT1001/LT1763/scope
+adoption tests; scope-reset-package-adoption.test.mjs continuation evidence;
+new test/reactive-live-package-adoption.test.mjs; the existing FreeDOS-circuits
+workflow's three exact board-pin references only; existing browser proof for
+motor/scope continuation if stronger assertions are required. Regenerate with
+the established scripts, run every-generator checks and pin/mirror/provenance
+gates, qualify the installed package and actual browser via hosted Build.
+Local old dependencies are not adoption evidence. No waveform expectation,
+failure-latch, tolerance, runtime/GUI, compiler, firmware or browser timeout
+change. Deployment follows qualified landing; no deployment claim in advance.
+Selected browser evidence path: scripts/verify-circuit-ux.mjs only. Keep its
+strict5000 one-volt/reset assertions; explicitly load the ideal one-volt source
+with a capacitor, and observe real advanceToLive receipts. Corrected after
+Build38024305644: the time-view100kHz recording is an envelope, not a point
+sample. Its solver bound remains the interactive100us profile ceiling, so a
+16-step callback is bounded by1.6ms; that run preserved all5000 exact one-volt
+envelopes and published31 partial receipts, with no receipt mismatch.
+The replacement must additionally select the actual spectrum point-sample
+tap at100kHz through the UI, verify its capture kind and10us interval, and
+prove16-step callbacks bounded by160us with real partial continuation.
+No engine, profile, accuracy, timeout or existing waveform assertion change.
+Continue on `lane/reactive-live-package-replay-20261011`, retaining main's
+newer sb3 pin. The prior branch/run stays rejected, not rerun unchanged.
+This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
+
+## Arcade sprite extensions (darts, corgio) — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-sprite-extensions-20261010` (stacked
+on the seven segment lane): the bundled `darts` and `corgio` extensions,
+generated from the pinned target, run on a native `ExtendableSprite` host.
+Producer sb3-creator adds eleven words. Next: storyboard, then third-party
+extensions.
+
+## Arcade seven segment extension — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-sevenseg-20261010` (stacked on the
+core gaps lane): the first bundled extension, `sevenseg`, generated from the
+pinned target and run on native images and sprites. Producer sb3-creator adds
+nine words. Next: the other bundled extensions (darts, corgio, storyboard),
+then third-party extensions.
+
+## Arcade core gaps — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-core-gaps-20261010` from main after
+PR780: remaining translator gaps that need no third-party extension. Terrain
+physics measured frame by frame against the original (blanket terrain
+qualification removed), namespace tile constants in tile maps, immediately
+invoked functions, statement-level `forEach`/`filter().forEach`/`map`, ragged
+image literals, numeric `for` counters. No producer change. Next: bundled
+extensions from the pinned target, then third-party extensions.
+
+## Arcade game over — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-game-over-20261010` (stacked on the core
+values lane): PXT's game over with its dialog, configuration, effects, sound,
+wait for a button and restart, plus image screen effects on a shared fiber
+scheduler. Producer sb3-creator PR88 adds seven words.
+
+## Arcade core values — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-core-values-20261010` (stacked on the
+music lane): PXT's own `parseInt` (generated from `base/pxt-helpers.ts`) and
+`game.eventContext().deltaTime`. Producer sb3-creator PR87 adds three words.
+
+## Arcade music — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-music-20261010` (stacked on the screen
+painting lane). Gap family 3: PXT mixer music generated from the pinned target with
+pausing calls lowered to generators, run as fibers on the Arcade clock. Producer
+sb3-creator PR86 adds twenty words. Next in this lane: `setTilemap` readable
+literals, `setGameOverEffect`, then the native song sequencer for `createSong`.
+
+## Arcade screen painting — 2026-10-10
+
+Continues the Arcade lane on `lane/arcade-screen-paint-20261010` (stacked on the
+particle lane). Gap family 2: `game.onPaint`/`onShade`, `Image.print` with PXT's
+fonts, and screen reads. Producer sb3-creator PR85 adds six words. Tested source
+`f4d0dd71`. Next in this lane: Arcade music.
+
+## Arcade particle effects — 2026-10-10
+
+Continues the documented Arcade lane on `lane/arcade-gap-closure-20261010` (from
+main 14934fb2). Corpus closure, family 1 of the ranked runnable gaps: native
+particle effects. Producer sb3-creator PR84 adds five words. Tested source
+`1396e850`. Next in this lane: Arcade music (about 6 runnable games), then
+screen painting (`onPaint`/`fillRect`/`print`, 4 games).
+
+## Arcade template-clone layer order — 2026-10-10
+
+Continues the documented Arcade lane on `lane/arcade-main-sync-20261010`
+(origin/main merged into the PR773 stack top). Hosted light-browser run
+38025509301 timed out waiting for the red front sprite: its screenshot shows
+the z=0 yellow sprite drawn over the z=1 red one. Cause: native drawable
+ordering returned early unless a sprite owned a native drawable, so games whose
+Arcade sprites are all template clones kept Scratch clone order and ignored z.
+Fix orders clones by z then creation, including on clone creation; new
+`test/arcade-template-clone-layers.test.mjs` fails before and passes after.
+Full Arcade test files: 757/759 under concurrency 2; the two failures pass
+serially with and without the fix. Hosted browser qualification pending.
+
+## Fresh-agent Arcade handoff — 2026-10-10
+
+Codex owns documentation-only `docs/arcade-agent-handoff-20261010`, stacked on
+PR773. Start with [methodology and task order](docs/ARCADE-AGENT-HANDOFF.md) and
+the optional ignored local companion. Latest refreshed PR773 hosted build,
+corpus and heavy browser pass; light browser fails the initial layer centre
+pixel in run38025509301. The first next implementation lane is that failure,
+not a claim that the full GUI or stack is already qualified. Runtime and pins
+are unchanged by this handoff publication.
+
+## Native speech scrolling clock — 2026-10-10
+
+Codex owns `lane/arcade-native-speech-scroll-20261010`, stacked on PR772.
+Record original frame deltas and completed render planes, then replay those
+frames through native VM events. Qualify beginning/end holds, scrolling and
+loop restart, including speech created in update callbacks. Keep timed expiry,
+scene/modal changes and shipped GUI qualification separate until exercised.
+Checkpoint `7b158d559`:45 distinct checks pass, zero failures/skips. Final
+three-case replay compares915 bubble images and41 complete original stage
+planes, including persistent restart, duration-dependent speed and both fonts.
+The initial coarse pass missed a current-frame constructor delta bug; the
+strengthened replay failed both cases before the fix. Preserve those failures.
+
+## Native speech owner hitboxes — 2026-10-10
+
+Codex owns `lane/arcade-speech-hitbox-20261010`, stacked on PR771.
+Use the native PXT-compatible scaled/rotated hitbox for legacy constructor
+placement rather than guessing a mask row from display width. Qualify original
+full frames, transparent artwork, scale/rotation and yielding callbacks.
+Checkpoint `f6b48a499`:38 checks pass without skips: nine new hitbox/authoring
+checks and29 native ownership/camera/fresh-bundle regressions. Eight initial
+full-frame cases, an authored roundtrip plane and the original exported plane
+match PXT. Preserve the initial seven placement failures. Scrolling, broader
+live-image hitbox cache timing and complete GUI/screen support remain separate.
+
+## Native legacy speech hosted gates — 2026-10-10
+
+Codex owns the PR771 gate repair in the existing isolated branch. Original
+run37991150295 exposed obsolete lazy-image and numeric-Boolean expectations.
+Restore exact typed assertions, retain original failed logs privately, and
+rerun the affected artwork/identity/scene/controller checks. Full hosted
+browser success remains required; no runtime behaviour is changed by this repair.
+Checkpoint `5c7b0435f`:19 affected original/native/Code/SB3/MakeCode checks
+pass without skips. The hosted GUI journey still needs its fresh result.
+
+## Native legacy speech bubble ownership — 2026-10-09
+
+Codex owns `lane/arcade-native-legacy-bubble-20261009`, stacked on PR770.
+Allocate native image/sprite handles and IDs, preserve blank-image callback
+ordering including pauses, Ghost/camera flags and original text updates.
+Adapt the credited PXT constructor into a resumable continuation; retain the
+original generated source for comparisons. Qualify replacement/clear/expiry,
+scene suspension and owner destruction against original execution. Original
+PXT owner destruction leaves the independent bubble alive; correct the earlier
+handoff assumption. Full GUI, complex callback reentry and screen completion
+remain separate gates until exercised.
+Checkpoint `d51cf93c7`:47 checks pass without skips, including18 new complete
+original pixel planes and existing native camera/clock/authoring/fresh-bundle
+regressions. Real IDs, shared image aliases, yielding creation/destruction,
+replacement/clear/expiry, independent invisible/destroyed-owner bubbles and
+scene restoration match originals. Initial namespace, duplicate-persistence
+and stale caller-context failures are retained. Native scroll/complex callback
+reentry and shipped GUI qualification remain open; legacy coverage stays gated.
+
+
+## Arcade negative sprite kinds — 2026-10-09
+
+Codex owns `lane/arcade-negative-kind-20261009`, stacked on PR769. Preserve
+fixed negative numeric kinds across creation, callbacks, kind changes, queries,
+Code/Blocks and MakeCode/SB3 interchange. PXT negative kinds retain sprite and
+callback identity but are excluded from kind collections. Keep dynamic and
+unsupported positive numeric kind diagnostics. This is a prerequisite for
+native legacy bubble ownership; native bubble allocation is still separate.
+Checkpoint `183f5376d`:38 distinct checks pass without skips;32-check shared
+batch plus15-check final batch with nine repeated/strengthened new checks.
+Original PXT and exports preserve negative/fractional identities, yielding
+callbacks, closures, overlaps, local projectiles and three full pixel planes.
+Code/SB3 replay and both fresh extension bundles pass. Native bubbles, runtime
+kind expressions and numeric kind reporters remain separate work.
+
+## Arcade legacy speech camera bridge — 2026-10-09
+
+Codex owns `lane/arcade-legacy-speech-camera-20261009`, stacked on PR768.
+Preserve world coordinates, original camera offsets and RelativeToCamera in
+legacy speech. Compare original indexed frames at viewport edges, offscreen
+owners and camera flag changes. Keep native bubble identity, callbacks, frame
+composition and GUI presentation gaps explicit; no corpus reranking.
+Checkpoint `b89ab3279`:41 checks pass without skips, including eight complete
+original bubble pixel planes and an executed original export comparison.
+Negative kinds are excluded from original kind collections; the contract now
+requires that empty result while preserving negative-kind creation callbacks.
+Native ownership/callback integration and full GUI qualification remain open.
+
+## Arcade speech across scene suspension — 2026-10-09
+
+Codex owns `lane/arcade-speech-global-clock-20261009`, stacked on PR767.
+Use the existing global simulated clock for speech creation, rendering and
+expiry; original control.millis/game.runtime continues across scene pushes.
+Compare long suspended parent expiry and later child creation against original
+PXT. Preserve scene-local physics/update clocks and the explicit legacy bubble
+identity gap; no modal/wall-clock or completed screen API claim.
+Checkpoint `e85bc17e9`:32 checks pass, including four clock checks and three
+complete original19200-pixel expiry/retention planes. Later child deadlines use
+global time while parent frame clocks remain suspended. Active native legacy
+bubbles and animated/modal clock qualification remain open.
+
+## Arcade indexed modern speech — 2026-10-09
+
+Codex owns `lane/arcade-frame-modern-speech-20261009`, stacked on PR766.
+Compose original modern sayText at the owner draw position, before its sprite,
+with explicit write masks so colour-zero boxes overwrite pixels. Reuse original
+speech/font engines and compare complete original PXT frames. Legacy say creates
+a separate sprite and remains a gap until its native identity is integrated.
+No new vocabulary; preserve screen/callback diagnostics and pending GUI gates.
+Checkpoint `c84f811cb`:12 new checks (11 full original frames),34 regression
+checks and two fresh bundle checks pass. Initial installed-copy freshness
+failure retained and resolved by actual overlay refresh. Legacy bubble identity,
+HUD/effects/render callbacks and speech presentation/clock gaps remain open.
+
+## Arcade indexed tile layers — 2026-10-09
+
+Codex owns `lane/arcade-frame-tiles-20261009`, stacked on PR765. Add modern
+and legacy tile rasters to the internal indexed frame, track tile renderable
+creation identity and compare original full pixel planes at z=-1 ties, map
+replacement/clear, camera offsets and cached legacy art. Keep screen and render
+callback diagnostics until the remaining layers are complete. No producer change.
+Checkpoint `79ee6b89f`:13 tile full-frame/original-ID checks and19 regression
+checks pass without skips. Coverage now background/tilemap/sprites; renderables,
+HUD, speech and effects remain open. Exact existing terrain diagnostic retained.
+Hosted controller-pane indexed tile check is prepared and pending.
+
+## Arcade indexed frame compositor — 2026-10-09
+
+Codex owns `lane/arcade-indexed-frame-20261009`, stacked on PR764. Implement
+an internal indexed compositor for background and qualified sprite rasters,
+with clipping, transparency, z/id ordering, camera and scaling. Compare full
+pixel planes with original PXT. Preserve existing presentation and do not expose
+screen snapshots until tile/renderable/HUD/speech/effect completeness passes.
+Keep all screen and paint/shade import diagnostics. No producer change planned.
+Checkpoint `3f6ad084c`:19 affected checks pass, including five complete original
+PXT19200-pixel planes and two fresh extension bundles. Frame identity and scene
+restoration pass. Initial S01 covers background/sprites only; tilemaps,
+renderables, HUD, speech and effects remain explicit gaps. Hosted GUI pending.
+
+## Arcade image copying and screen frame contract — 2026-10-09
+
+Codex owns `lane/arcade-image-copyfrom-20261009`, stacked on PR763, and producer
+`feat/arcade-image-copyfrom-20261009`, stacked on PR82. Implement dedicated
+Image.copyFrom with original same-dimensions semantics, alias/buffer identity,
+Code/Blocks and MakeCode interchange. Screen snapshots and paint/shade need a
+shared indexed frame model with ordered background, tiles, sprites and HUD;
+background-only snapshots must not be substituted. Keep their diagnostics until
+that render contract and original-PXT pixel checks pass.
+Checkpoint `9523aa4c6` /producer `eca752b7`: five final copying checks and20
+unchanged regression checks pass, including16 original pixel comparisons;
+producer328 passes. Corpus109/74/1 with184 unchanged hashes. Rendered GUI
+journey remains pending. See docs/ARCADE-SCREEN-RENDER-CONTRACT.md for the
+ordered S01-S05 screen/authoring acceptance plan.
+
+## Arcade image scrolling — 2026-10-09
+
+Codex owns `lane/arcade-image-scroll-20261009`, stacked on PR762, and producer
+`feat/arcade-image-scroll-20261009`, stacked on PR81. Implement native mutable
+Image.scroll with dedicated x/y Blocks inputs, pseudocode and MakeCode
+interchange. Compare original PXT pixels, coercion/clipping, aliases and scenes;
+retain original input hashes and partial diagnostics. Full shipped browser
+checks remain required.
+Checkpoint `d490487de` /producer `bacacdbed`: five final scrolling checks,
+15 unchanged regression checks and327 producer checks pass without skips;
+198 original PXT pixel/coercion cases agree. Real keyboard steering passes;
+full rendered controller-pane journey is prepared and pending. Corpus109/74/1
+and184 hashes remain unchanged. Screen cloning/drawing dependencies remain open.
+
+## Arcade info/browser qualification repair — 2026-10-09
+
+Codex owns `lane/arcade-info-browser-qualification-20261009`, stacked on PR761.
+Repair hosted typed-state observations and stale life/score representation
+assertions against the native info API; preserve original PXT behaviour checks.
+Move merge-history identity to narrative docs rather than pin-only receipt
+fields. Retain all original hosted failures; full hosted browser checks remain
+required. No runtime semantic or corpus classification changes are claimed.
+Checkpoint `616937a47`:44 affected truth-value, overlap and real-game tests
+pass without skips. Original hosted artifact confirms arraysReady=true, no
+block errors and no diagnostics; the old observation coerced it to1. Full pin
+scan cannot run in this sparse tree and remains a hosted gate.
+
+## Arcade numeric sign — 2026-10-09
+
+Codex owns `lane/arcade-sign-number-20261009`, stacked on PR760, and producer
+`feat/arcade-sign-number-20261009`, stacked on PR80. Implement native Math.sign
+reporter, shared vocabulary, Blocks schema and direct MakeCode interchange.
+Compare original PXT values and once-only evaluation through saved-project
+permutations. Keep partial diagnostics and original input hashes unchanged.
+Checkpoint `f6efa058b` /producer `5a6782d9`:16 affected checks and326 producer
+checks pass. PXT zero/NaN rules verified; initial JavaScript-semantic mismatch
+retained. One corpus diagnostic closes;184 hashes and109/74/1 counts unchanged.
+Full shipped browser and exact-head hosted checks remain required.
+
+## Arcade sprite property and layer qualification — 2026-10-09
+
+Codex owns `lane/arcade-sprite-layer-routing-20261009`, stacked on PR759.
+Baseline inspection confirmed existing native selection for typed sprite
+z/lifespan/acceleration properties; remove the redundant route condition.
+Qualify original PXT values, live-VM export, editable Code/Blocks/SB3 and executed
+original exports. Add real controller-driven layering pixel checks to the hosted
+browser journey. Preserve baseline evidence and unchanged corpus inputs.
+
+## Arcade sprite following — 2026-10-09
+
+Codex owns `lane/arcade-sprite-follow-20261009`, stacked on PR758, and producer
+`feat/arcade-sprite-follow-20261009`, stacked on PR79. Implement original PXT
+steering before physics, frame timing, momentum, snapping, replacement,
+cancellation, destruction and scene ownership. Expose follow/unfollow in Blocks,
+Code and MakeCode interchange. Verify exact original source and unchanged
+corpus inputs; full shipped controller/browser checks remain required.
+Checkpoint `3c4493c1e` /producer `e41906fe`:13 follow/scene/interchange and
+8 fresh bundle/pin/dialect checks pass; producer325 pass. Corpus109/74/1 across
+184 unchanged inputs. Original source steering and recovered tutorial movement
+pass locally. Producer CI37946563913 passes every enabled exact-head check.
+Lite gallery CI found31 stale vendored provenance stamps; synchronized them
+from the unchanged producer pin, with every other byte unchanged and the
+whole gallery freshness check passing. Full shipped browser checks remain pending.
+
+## Arcade producer model evidence — 2026-10-09
+
+Codex owns `lane/arcade-producer-model-evidence-20261009`, stacked on PR757,
+and producer `fix/arcade-producer-model-evidence-20261009`, stacked on PR78.
+The full producer run passed measured quantities but rejected stale model
+provenance stamps. Re-derive stamps against exact pinned engine/model sources,
+keep numerical tolerances/claims unchanged, and run the actual quantity and
+stamp gates before adopting the corrected producer. Preserve the original CI
+failure. Full producer CI remains required; no new Arcade capability is claimed.
+Checkpoint producer `4df2b00f` /Lite `ffeb88c80`:31 remeasured stamps, ten
+quantity/provenance checks, stamp freshness and six Lite pin/dialect checks pass.
+Claim census1313 checked /1548 declined /0 disagreements. Full hosted producer
+CI37944827934 passed every enabled check at `4df2b00f`; publishing was disabled
+for this feature branch. PR79 merged into its camera-shake feature parent at
+`4757ab8a`; the merge and reviewed trees both equal
+`7ab491f920b83d6297c19331b3cf6abbb8599075`. This is not a main merge.
+Arcade corpus at this checkpoint stays108/75/1.
+
+## Arcade literal array values — 2026-10-09
+
+Codex owns `lane/arcade-array-values-20261009`, stacked on PR756.
+Use the existing reference-array runtime for literal array values, including
+function arguments and returns. Verify scalar aliases, mutation, typed empty
+arrays, original PXT execution, Code/Blocks/SB3 and MakeCode interchange.
+Remeasure all unchanged corpus inputs and keep malformed/unsupported cases.
+No new producer vocabulary or dependency adoption is planned for this lane.
+Checkpoint `38cf4623d`:25 array checks plus one native controller fixture pass;
+corpus108/75/1 across184 unchanged hashes. Recovered empty-body tutorial passes
+original/export execution and Code/SB3 restart. Fresh shipped browser remains
+required. Prior display repair now passes full build and both browser shards.
+
+## Arcade camera shake — 2026-10-09
+
+Codex owns `lane/arcade-camera-shake-20261009`, stacked on PR754, and
+producer `feat/arcade-camera-shake-20261009`, stacked on PR77.
+Implement the PXT camera shake lifecycle, damping and draw offsets through the
+native camera, with authorable Blocks/Code and MakeCode interchange. Compare
+original PXT at controlled times/random inputs; keep logical camera/world
+coordinates and camera-relative HUD stable. Preserve unsupported diagnostics
+and remeasure unchanged corpus inputs. Hosted GUI qualification remains a gate.
+Checkpoint `a2a096f78` /producer `88aa7123`: native shake, Info routing,
+original camera/roundtrip, fresh extension bundles and affected scene/Info
+checks pass. Corpus107/76/1 with184 unchanged hashes. Shipped browser journey
+is prepared; fresh hosted GUI and producer full-suite gates remain pending.
+
+## Arcade device frame lifecycle — 2026-10-09
+
+Codex owns `lane/arcade-pane-frame-lifecycle-20261009`, stacked on PR752.
+Repair zero-size stage canvas transitions without suppressing browser errors;
+clear the device display while the source is unavailable and resume drawing
+when its backing dimensions return. Preserve controller and dialog assertions.
+Use visible panel navigation for narrow-screen graphics editing and stage Run.
+Producer checkout correction is isolated on `fix/arcade-producer-checkout-20261009`.
+Checkpoint source `c0c707f7f`: real Chromium unavailable/restored canvas pixels
+and five contract/pin checks pass. PR752 build/heavy shard pass; light failures
+are preserved. Fresh full-app checks and producer sibling gates remain required.
+
+## Arcade number truncation — 2026-10-09
+
+Codex owns `lane/arcade-truncate-number-20261009`, stacked on PR750, and
+sb3-creator `feat/arcade-truncate-number-20261009`, stacked on PR75.
+Implement Math.trunc as a native authorable reporter in Blocks/pseudocode and
+MakeCode import/export. Qualify original PXT numbers, signed zero/non-finite
+values, argument evaluation and saved-project roundtrips. Remeasure unchanged
+inputs and preserve diagnostics; full browser qualification remains required.
+
+Checkpoint implementation `6f312b838`, final producer `ef312b0a`, pin source
+`fbc9c5265`: 20 implementation/adoption checks, seven final pin checks and322
+producer dialect/Boolean-census checks pass. Corpus106 translated /77 partial /
+1 malformed across184 unchanged inputs. Fresh browser/controller journey and
+producer circuit-model fixture adoption are pending hosted qualification.
+See `docs/receipts/2026-10-09-arcade-truncate-number.json`.
+
+## Arcade dialog / browser readiness — 2026-10-09
+
+Codex owns `lane/arcade-dialog-browser-readiness-20261009`, stacked on PR749.
+Fix the actual question guard publication defect observed in PR748: publish
+new dialog identity at readiness so the pure stage container enables Yes/No.
+Qualify the regression against a preserved failing baseline. Repair stage
+reload waits to tolerate the real absent-stage interval, and navigate visibly
+back from graphics authoring before running the palette startup block. Keep
+semantic assertions and original hosted failures; no unrelated pins change.
+
+Checkpoint `7c05309b9`: preserved baseline 7 pass /1 expected failure; fixed
+source 23 pass /0 fail/skip. Native immutable dialog notifications address the
+pure-container guard defect; reload and graphics-navigation harness repairs
+retain their semantic checks. Parent build succeeded, both browser jobs failed.
+Fresh exact-head hosted qualification remains pending; see the readiness receipt.
+
+## Direct Arcade controller bindings — 2026-10-09
+
+Codex owns `lane/arcade-direct-controllers-20261009`, stacked on PR748, and
+sb3-creator `feat/arcade-direct-controllers-20261009`, stacked on PR74.
+Scope: fixed controllers 1–4 move/stop sprite bindings, native dropdown blocks,
+pseudocode, import/export and existing controller-pane qualification. Keep
+multiplayer player state independent; preserve original PXT movement semantics
+and explicit diagnostics. Other lanes and shared worktrees stay separately owned.
+
+Checkpoint source `173e4a645`, producer `e3d0e890`: 21 Lite /236 producer checks
+pass, including original PXT and development/production bundles. Import-only
+census 105 translated /78 partial /1 malformed across184 unchanged inputs.
+Fresh four-controller browser journey is prepared, pending hosted results.
+Parent PR748 rotation/pixel-color failures remain open until raw logs are read.
+See `docs/receipts/2026-10-09-arcade-direct-controllers.json`.
+
+## Arcade reset qualification — 2026-10-09
+
+Codex continues on `lane/arcade-reset-qualification-20261009`, stacked on PR741.
+Own the hosted camera gate audit and multi-physics authored fixture reset race,
+including original/native callback lifecycle controls and visible controller
+qualification. Preserve every hosted failure. No pins or unrelated lanes change.
+
+## Arcade overlap cadence qualification — 2026-10-08
+
+Codex continues the integration lane on `lane/arcade-overlap-cadence-20261008`,
+stacked on PR740. Own original-PXT versus native overlap frame-cadence controls,
+the multi-physics controller browser journey and corresponding evidence. Keep
+pixel geometry, asynchronous callback ordering and pair locks intact; establish
+original behavior before changing a browser expectation. No unrelated pins or
+lanes are adopted. Twelve original/native cadence controls and13 distinct
+physics checks are qualified. The revised visible controller journey passes
+in the existing reference bundle; fresh hosted exact-head checks remain open.
+See [the receipt](docs/receipts/2026-10-08-arcade-overlap-cadence.json).
+
+## Hosted Arcade integration repair — 2026-10-08
+
+Codex continues the existing integration claim on
+`lane/arcade-hosted-integration-20261008`, stacked on PR739. Own stale Arcade
+test contracts, CLI module reachability, and investigation of the hosted
+camera, pixel bounds, multi-physics and speech failures. Preserve original
+failed evidence and behavior assertions. Record the instance-destruction and
+parallel GUI passes independently from the failing overall build. No engine
+pin or unrelated lane adoption is planned.
+
+## Discarded projectile results — 2026-10-08
+
+Codex continues the existing Arcade integration claim on
+`lane/arcade-discarded-projectiles-20261008`, stacked on PR711. Own the Lite
+Arcade importer's statement-form projectile creation, corresponding regression,
+native roundtrip and actual Code/Blocks/controller evidence, refreshed finite
+corpus ranking and GUI gap documentation. Runtime and shared compiler already
+implement assigned projectile creation; no compiler or engine pin change is
+planned. Preserve returned-handle semantics and callbacks when callers ignore
+the result, avoid generated-variable collisions, and keep unrelated missing
+art/packages named. Current clean184-input audit is complete at
+`3e12cb6fed4f4b69126715ec564c24afd640e8ba`. Implemented at
+`ebd3b2850b1b15f2642fad5005c550b3cde49ef3`; clean final audit source
+`bffd43641903dc037010aac1dcfeb5c9830a469e` measures93 translated /90 partial /
+1 malformed in import-only mode, down from91/92/1. The two closed cases compile
+and step. Projectile tests10/10, callback tests17/17 (four shared), browser
+contracts21/21 and actual native file/Blocks/controller/visible projectile plus
+12 rotation phases pass. Build has zero errors,4,360,502 initial bytes under the
+unchanged limit. [Receipt](docs/receipts/2026-10-08-arcade-discarded-projectiles.json).
+Final candidate hosted checks and complete real-game equivalence remain open.
+
+## Original MakeCode Assets roundtrip — 2026-10-07
+
+Codex continues the claimed Arcade integration lane on
+`lane/arcade-original-assets-20261007`, stacked on PR710. Own native `.mkcd`
+project envelope export/import, current PNG envelope decoding, corresponding
+Code controls and CLI, live-original-editor qualification and capability ledger.
+The live editor rejected the prior uncompressed source HEX. The original PNG
+contains `{meta, source}`, which the earlier flat-map-only reader missed.
+The first original editor unedited return retained both animation companions;
+actual rename/timing/pixel edits invalidate only the changed resource companion.
+Product source `86935c2d7d5fe4f6fae378c847d17ba2819fd18e` passes123 focused
+tests,18 existing browser journeys and4 live-original-editor journeys. Final
+live editor and Brickwright return have zero page errors; visible edited
+playback passes. Build has zero errors and4,360,502 initial bytes. See
+[the receipt](docs/receipts/2026-10-07-original-makecode-assets-roundtrip.json).
+PR710 merged after all9 enabled checks passed; PR711 now targets refreshed
+main. Hosted repair covers stale HEX browser/file-dialog assertions and explicit
+opt-in live-editor registration:30 affected tests,7 background journeys and12
+rotation phases pass locally. Final candidate CI remains pending; the corpus
+still has93 partial inputs.
+
+## Arcade resource picker follow-up — 2026-10-07
+
+The existing Arcade compatibility lane remains owned by Codex. PR704 merged
+at `9e869b97e7bfe8680dd43f8b51568edb5199b7dd`; all11 enabled checks passed
+on reviewed head `24480d493dd89925461b488c1858f659a33739be`, and merge tree
+matched the reviewed tree. Follow-up branch
+`lane/arcade-resource-picker-errors-20261007` owns duplicate resource labels in
+Code/Blocks, runtime owner metadata and conversion validation presentation,
+with associated tests and this capability ledger. No compiler pin changes.
+Product source `1c0749b0d9c8dfd72dd8d70a912e30936d3fb742` passes27 focused
+checks and11 packaging/diagnostic checks, zero skips. Production builds with
+zero errors and4,357,698 initial bytes under4,467,136. All18 browser journeys
+pass with zero page errors, including both visible duplicate-UUID selections.
+The [receipt](docs/receipts/2026-10-07-arcade-resource-picker-errors.json) records
+exact boundaries. Hosted follow-up checks remain pending; corpus93 partial
+and original Assets-editor qualification remain open.
+
 ## SPIKE handover
 
 The [SPIKE state and next lanes](docs/SPIKE-STATUS-AND-LANES.md) record the
@@ -504,10 +1087,19 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 ## CLAIMS — work in progress
 
 
-| Arcade compatibility integration and GUI gap closure | Codex, 2026-10-07; isolated branch `lane/arcade-integration-20261007` | Base `fffe90bcb35c9ea0085a9d04331728291c0e41db`; integrate paused `claude/charming-hamilton-jfhfle` at `9fba4739d3549780e01cd9dc111b73fc9d826f54`; adopt qualified sb3-creator parser/dialect changes; Arcade/MakeCode importer, exporter, runtime, associated tests and audit scripts, generated compatibility reports, conversion-to-GUI capability ledger and affected editor controls, explicit vendor pin/mirror surfaces; `.github/workflows/build.yml` and browser gate registration/budget/census tests for PR700 repair; native Arcade/arrays block schemas and asset-aware pseudocode/Blocks/Pixel editor handoff, followed by tilemap/animation authoring in the existing editors. Base refreshed to `3f3b135e9` before continued work. Excludes SPIKE G01 and other hardware/CPU lanes. | **CLAIMED / RESUMED 2026-10-07.** PR700 test-contract repairs are pushed at `e642defea`; refreshed exact-head CI is pending. Stacked [PR703](https://github.com/CrispStrobe/brickwright-lite/pull/703) adds full-screen Pixel backgrounds, logical PNG sizing, versioned source preservation and Stage export composition; seven local browser journeys match all19,200 actual Brickwright/original-PXT pixels. Hosted qualification and merge remain pending. Next slices are tilemap authoring with distinct legacy semantics and stable animation asset/action bindings. The owner renewed all MakeCode authoring closure work across pseudocode, Blocks and graphics; require visible authoring, persistence, conversion and original-runtime evidence per feature. Owner explicitly paused the prior agent and transferred the remaining F1–F11/browser/GUI compatibility work to this lane. Preserve its history and failures; qualify upstream dialect before adoption; refresh corpus measurements and close feature families with runtime, roundtrip and GUI proof. Parallel reviewers own disjoint files/tasks under this lane. |
 
+| Arcade compatibility integration and GUI gap closure | Codex, 2026-10-07; isolated branch `lane/arcade-integration-20261007` | Base `fffe90bcb35c9ea0085a9d04331728291c0e41db`; integrate paused `claude/charming-hamilton-jfhfle` at `9fba4739d3549780e01cd9dc111b73fc9d826f54`; adopt qualified sb3-creator parser/dialect changes; Arcade/MakeCode importer, exporter, runtime, associated tests and audit scripts, generated compatibility reports, conversion-to-GUI capability ledger and affected editor controls, explicit vendor pin/mirror surfaces; `.github/workflows/build.yml` and browser gate registration/budget/census tests for PR700 repair; native Arcade/arrays block schemas and asset-aware pseudocode/Blocks/Pixel editor handoff, followed by tilemap/animation authoring in the existing editors. Base refreshed to `3f3b135e9` before continued work. Excludes SPIKE G01 and other hardware/CPU lanes. | **CLAIMED / RESUMED 2026-10-07.** PR700 merged at `21a1fd94a` after all12 enabled exact-head checks passed at `047994c8b`. Its source paths match the tested head; the merge also includes five intervening unrelated documentation/receipt files from main, so the complete trees differ. Stacked [PR703](https://github.com/CrispStrobe/brickwright-lite/pull/703) adds full-screen Pixel backgrounds, logical PNG sizing, versioned source preservation and Stage export composition; seven local browser journeys match all19,200 actual Brickwright/original-PXT pixels. A hosted old-canvas readiness failure is preserved and script-only repairs are pushed at `718e5b29c`; the corrected local seven-journey gate passes. PR703 subsequently passed all7 enabled checks at `c1c40479a` and merged at `15fd1f3b0`; merge source paths match the tested head, with five intervening main documentation/receipt files. Uniform animation resources are pushed in [draft PR704](https://github.com/CrispStrobe/brickwright-lite/pull/704) on `lane/arcade-animation-resources-20261007` (qualified production source `abce50921`): publication/SB3 browser evidence and actual-VM Undo/loading tests pass. Shared compiler PR62 passed its enabled hosted checks, merged at `33ce738` with the reviewed tree unchanged, and is officially adopted in the candidate. Native animation JRES codec tests8/8, visual highlight lifecycle tests2/2, explicit shared-provider identity4/4 without skips, and actual native Blocks resource pickers are qualified. The full production Code/Blocks/controller/export/reimport browser journey passes six journeys at source `897002047`, including exact19,200 original-PXT pixels and zero page errors. It exposed and repaired missing template-free drawables and template animation blank flashes. Native renderer/resource/scaling/scene tests24/24 and affected final retention tests10/10 pass. The full animation gate passed hosted browser qualification on the earlier candidate; build failures exposed saved-zero scalar inference and unused-code/wait-policy issues. Scalar inference now preserves initial zero while allowing later Boolean/string values; observable flyout readiness replaces fixed sleeps. Native gallery export and behavioural import are implemented at `8bca7037c`, with actual original emitter/compiler/simulator alias and exact-pixel checks. The affected export/census rerun passes119 tests; its two remaining stale integrated-copy failures are resolved by synchronization, and the final focused export/import/overlay batch passes21/21 without skips. The current explicit production build passes; the full six-journey browser gate also verifies downloaded native gallery files, exact3×2 frame order/timing and19,200 original-PXT pixels. Browser contract tests25/25 pass. Hosted exact-head checks remain required; U04 and the93 partial corpus results stay open. Validated rich animation companions and current-bundle CLI export are implemented at `55da1b20e`. File/project API recovery retains exact UUID/layers after native projection validation; GUI library installation and fresh-copy live binding remain open. Focused companion/project/overlay policy tests17/17 pass with no skips. Production build and seven browser journeys pass, including exact downloaded companion recovery and preservation of VM/Code/resources on malformed file import; all seven CLI tests pass. Old hosted run37615622567 exposed a stale unclaimed-animation assertion, eager native-codec bytes and an SVG controls readiness race. Exact diagnostics, deferred module loading and decoded-pixel readiness repair these boundaries. At product source `9f6ace3da`, both production builds pass; profiling initial JS4,466,111 meets the unchanged4,467,136 limit and native parser/codec/companion modules are noninitial. Final animation and background gates each pass seven journeys; translation/companion tests140/140 and post-split native/project/overlay16/16 pass. Fresh final-head hosted qualification remains required. The next GUI prerequisite extends Pixel publication to one frame and1–65,535ms with document5/bundle6, legacy validation and opaque future-source preservation. Focused tests50/50 include original-PXT endpoint compilation/execution and exact companion/native recovery; policy and authoring31/31 pass. Runtime endpoint tests6/6, CLI/project3/3 and artwork/import/wait17/17 pass. At product source `f945e7feb`, profiling production passes the unchanged ownership gate at4,466,357 initial bytes; nine actual browser journeys include endpoint Code-to-Blocks/visible playback and19,200 matching original-PXT pixels, with zero page errors. Two stale-served-build failures and two stopped preparation builds are preserved. Final-head hosted qualification remains required. Fresh-copy runtime/Code/Blocks lookup is now implemented at product source `fbac95e16b`: qualified producer PR63 merge `983aa61f` adopted through official sync, provider identity4/4, consumer29/29, literal/computed original-PXT conversion permutations and missing-ID/name-collision execution pass. Profiling production retains4,466,357 initial bytes and passes ten full browser journeys, fresh mutation isolation and19,200 matching original-PXT pixels with zero page errors. Final-head hosted checks remain required. Explicit hidden library-role persistence/Code retention is qualified at `6f29dc3e3`: bundle7 and prior-reader opaque preservation, actual VM/project ownership checks46/46, profiling startup4,467,115 ≤4,467,136, thirteen full browser journeys including Pixel edit/save/reopen/Code retention, and actual GUI/CLI edited-resource export executing in original PXT. The first budget failure and Frames-panel harness failure remain preserved. SPIKE exact-pin fixture was reviewed/rerun at983aa61f; earlier hosted stale-pin failure remains retained. Automatic native carrier installation, fresh factory-to-library binding and library editor affordances remain open. Tilemap authoring, variable timing and action binding are subsequent slices. The owner renewed all MakeCode authoring closure work across pseudocode, Blocks and graphics; require visible authoring, persistence, conversion and original-runtime evidence per feature. Owner explicitly paused the prior agent and transferred the remaining F1–F11/browser/GUI compatibility work to this lane. Preserve its history and failures; qualify upstream dialect before adoption; refresh corpus measurements and close feature families with runtime, roundtrip and GUI proof. Parallel reviewers own disjoint files/tasks under this lane.  Automatic native import at `7a4101798` installs validated used/unused animations into hidden libraries with fresh UUID reporter bindings; regression51/51, transaction/CLI original-PXT semantics4/4 and policy6/6 pass. All14 production browser journeys pass, including automatic import/Pixel edit/save/reopen/Code/Blocks/controller playback; initial4,467,115 bytes remains under unchanged4,467,136. Library navigation/script/visibility safeguards and original Assets editing/download remain open.  At product source `0a187a8c6`, explicit library navigation, disabled gameplay controls, Blocks/Sounds notices and queued-edit/Show guards are implemented. Selection-safe duplicate renews UUIDs and delete/Undo restores source/identity. Production initial JS4,357,538 meets the unchanged4,467,136 limit with a deferred sprite pane. All16 actual browser journeys pass with zero page errors and19,200 matching original-PXT pixels, including rename/duplicate/delete/Restore Sprite/save/reopen/playback. Regression83pass/1namedskip, adopted contracts27pass/1unrelatedskip, audit/shard/timeout/pinning52/52 and final mirror/handoff22/22. First budget/Blockly/selector failures are preserved. Direct-job CI audit reads preserve fail-closed identity and completion checks. Hosted final-head qualification, original Assets editor, costume/sprite-file source transport and duplicate native-name export remain open; corpus93 partial unchanged.  At product source `6f78b0151`, native animation name allocation handles duplicates, punctuation, whitespace and alias/suffix collisions without changing authored names or UUIDs. Companion2 preserves that projection and reads legacy1. Import gives identical rendered resources distinct Scratch carrier costumes. Focused39/39, codec/library/handoff40/40, audit/shard/timeout/pinning53/53 and final mirror1/1 pass without skips. Production startup4,357,538 meets the unchanged4,467,136 limit; all17 actual browser journeys pass, including duplicate-library GUI/CLI original-PXT export and native-file reimport/To Blocks/playback with zero page errors and19,200 matching original pixels. Failed fixtures, menu/chooser attempts, actual Scratch duplicate-costume rejection and predecessor hosted audit failure are preserved privately. API polls now use unique read keys after observed60-second cache headers, with strict completion and identity checks unchanged. Hosted final-head qualification, original Assets editing/retention, duplicate picker labels and VM validation error presentation remain open;93 corpus partial unchanged. |
+
+
+
+| SPIKE qualification: cold unit-test browser prerequisite | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | Base `f36341cca8f9128b5aa391deed7849883d83d24b`; `.github/workflows/build.yml` build job only: install the lock-resolved Chromium browser before browser-backed unit tests. | **CLAIMED.** Repair the observed missing `chromium_headless_shell` prerequisite in SPIKE PR755 qualification. Preserve unit assertions, independent downstream checks and existing browser gate registration/budget/census owned by the Arcade lane; its PR700 workflow repair is already merged. No Arcade source, dependency pin, guest profile or browser-job changes. |
+| SPIKE dual ultrasonic E/F topology and callers | Codex SPIKE integration, 2026-10-09; isolated branch/worktree `lane/spike-dual-ultrasonic-topology-20261009` | Exact base `287b91c43dbb34b59e425c5a6cd4ff24ac67d7e2`; overlay/packages mirrors of scratch-gui lib/spike-nuttx/{motor-topology,upload-protocol}.js, lib/spike-arena/{firmware-program,renode-arena-session}.js, components/tw-pseudocode/spike-arena-pane.jsx; scratch-vm extension-support/capability-broker.js; apps/tauri/src-tauri/src/{arena_inputs,native_capability,renode_supervisor}.rs; focused dual-topology/compiler/protocol/GUI tests, existing Rust proof registration; scripts/verify-spike-renode-arena-browser.mjs, scripts/lib/spike-nuttx-browser-proof.mjs, test/spike-nuttx-browser-proof.test.mjs and tools/renode-arena-proof/README.md for bounded real-guest E/F preparation; scripts/prepare-spike-nuttx-package.mjs, scripts/lib/spike-package-model-loading.mjs and test/spike-package-model-loading.test.mjs for explicit compiled-model Runtime packaging after observed duplicate-type startup failure; docs/SPIKE-STATUS-AND-LANES.md and this row only. | **CLAIMED.** Add an explicit sandbox-only own-NuttX E/F ultrasonic profile with A/B motors and retained C color sensor; D detached. Require image-bound live addressed API and exact first-frame port/type observations before any native/Python upload. Preserve default D-distance/E-force and six-motor contracts. No stock image, physical firmware, device-model change or package-pin adoption. Actual installed consumer qualification remains mandatory before release claims. |
+| SPIKE PR755 qualification test repair | Codex SPIKE integration, 2026-10-09; isolated branch `lane/spike-dual-ultrasonic-topology-20261009` | `test/tauri-broker-topology.test.mjs`, `test/spike-proof-transport.test.mjs`, this row and bounded qualification status in docs/SPIKE-STATUS-AND-LANES.md only. | **CLAIMED.** Update the exact broker source audit for the supported SixMotors/DualUltrasonic match arm and retain rejection mutations for both; document the host CPython synthetic fixture prerequisite without raising audit baselines. Preserve live guest assertions, firmware pins, ACL checks and actual installed acceptance. |
+
+| SPIKE addressed-reader package discovery | Codex SPIKE integration, 2026-10-09; isolated branch/worktree `lane/spike-addressed-capability-package-20261009` | Exact base `59dddb13ed53d941141c2476bec312047032e660`; `scripts/lib/spike-addressed-sensor-marker.mjs`, `scripts/prepare-spike-nuttx-package.mjs`, `test/spike-addressed-sensor-marker.test.mjs`, affected package contract tests, `docs/SPIKE-STATUS-AND-LANES.md` and this row only. | **DONE candidate 2026-10-09 for package metadata only.** Eight focused new/legacy controls pass, including three assertion-detected source mutants; hosted consumer qualification pending. Discover optional version1 from the exact own ELF and bind address/version to its SHA256; old images keep their legacy package behavior. Require allocated nonwritable OBJECT metadata, exact file/load mapping and virtual/physical overlap refusal. Firmware PR52 qualification remains pending; this preparation does not adopt firmware/model pins or advertise GUI/compiler E/F support. Runtime live capability and declared E/F topology are subsequent qualified lanes. |
 
 | SPIKE G01: adopt qualified firmware in the desktop package | Codex SPIKE integration, 2026-10-07; branch `lane/spike-desktop-adoption-20261007` | Base `6351f8ee42ecd39719c27f80af2ff4e816791f23`; `scripts/build-spike-linux-desktop.mjs`, `scripts/prepare-spike-nuttx-package.mjs`, `scripts/lib/spike-resource-profile.mjs`, associated package/storage/session/Code-feedback tests and `tools/renode-arena-proof/src/main.rs` production-module declarations needed to compile the closed native test transport; `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js` and `components/tw-pseudocode/spike-arena-pane.jsx` with their tracked package mirrors for retained-program restart; `docs/SPIKE-LINUX-DESKTOP.md`, `docs/SPIKE-STATUS-AND-LANES.md`, and this row. Owns package-input provenance and actual Code-tab adoption qualification; no browser actuator/gallery pin changes. | **DONE 2026-10-07 for the bounded desktop candidate.** [PR695](https://github.com/CrispStrobe/brickwright-lite/pull/695) merged `0faacb84211a5d6df8b4d3ed8ed9127c14b76fc5`; reviewed source `2b36862fb39f34a990eb296c734e9e800ed884c8`, seven enabled [checks passed](https://github.com/CrispStrobe/brickwright-lite/actions/runs/37579912369). Actual extracted GUI covered native Code/pseudocode-to-blocks and Python, A–F motion, completion, restart, repeated Stop, startup Stop, faults, Save/Load and fresh-process recovery. 81 JS tests, 129 Rust tests/10 ignored, three mutations, clean firmware input/resource gates, default guest and comprehensive six-motor guest passed; earlier wall-bound failures remain private. Merge tree matched the reviewed plan. [Boundaries and remaining G03/G05 work](docs/SPIKE-STATUS-AND-LANES.md#2026-10-07-desktop-adoption-candidate): private installer, 120-second desktop bound, empty Pseudocode conversion issue and open distribution review; no physical/reference-boot claim. |
+| DONE — Arcade browser checks: port the WIP's Arcade Playwright and corpus verifiers to main's GUI and wire them into CI (task F3 of docs/OPEN-TASKS-2026-09-29.md, browser half) | Compatibility agent; branch `claude/charming-hamilton-jfhfle` | base `58f17c88f`; paths `scripts/verify-arcade-*.mjs` (22 new), `package.json` scripts, `.github/workflows/build.yml` (heavy shard), `docs/generated/browser-gate-readings.json`, `test/gate-coverage.test.mjs` (`KNOWN_UNWIRED`: the 7 corpus checks), `test/arcade-browser-bundle.test.mjs`, `overlay/scratch-gui/src/components/stage/` (new, owned), `overlay/scratch-gui/src/containers/stage.jsx`, `tw-pseudocode/{arcade-device-pane,pseudocode-importer}.jsx` + packages twins; the F3 row | **DONE 2026-10-07.** 15 checks wired, 7 corpus checks listed with their reason, `verify-makecode-controls` superseded. Closed four GUI gaps on main (Arcade dialogs never shown, physics diagnostic and serial never shown, button map replaced on press, Blocks → Code "✓ OK" with retained diagnostics). Details in the F3 row. |
 | DONE — Arcade compatibility on main: port the measuring tools + CLI additions (F1), re-measure the PXT corpus on main (F2), port the 7 unported tests (F3, tests half), MakeCode sim D-pad/A/B controls (G, first item) (tasks F1–F3, G of docs/OPEN-TASKS-2026-09-29.md) | Prior compatibility agent; branch `claude/charming-hamilton-jfhfle` | base `31a505c30`; paths `scripts/compat-audit.mjs`, `scripts/{conversion-roundtrips,report-roundtrips,sb3-native-roundtrips,collect-makecode-corpus,package-compat-corpus}.mjs`, `scripts/makecode.mjs` (CLI additions only), `package.json` scripts, `test/compat-audit*`, `test/makecode-cli*`, the 7 F3 test files + fixtures, `docs/COMPATIBILITY-AUDIT.md`, `docs/generated/{ARCADE,MICROBIT}-COMPAT-AUDIT.md`, the MakeCode sim pane's controls (overlay + packages twin of `tw-pseudocode/makecode-sim-pane.jsx`, `docs/MAKECODE-CONTROLS.md`); this row and the task file. Not: the 18 Playwright scripts (F3 browser half), F4 rotation, the G01–G27 backlog, anything TurboWarp-sourced. | **PAUSED / TRANSFERRED 2026-10-07** to the Codex Arcade integration lane by explicit owner instruction. Historical checkpoint: DONE 2026-10-06 on branch `claude/charming-hamilton-jfhfle` (no PR yet; the claim was never merged to main — the owner chose to skip the claim PR). F1, F2 and F3 (tests half) done; G (sim controls) superseded by main's PXT-native Arcade controls, not ported. Also touched, outside the claimed paths: `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js` (quiet optional image probes, found by F3) and `scripts/lib/pxt-node.mjs` (`hwVariant`, `atob`). Receipts and every number: docs/OPEN-TASKS-2026-09-29.md rows F1–F3/G and docs/COMPATIBILITY-AUDIT.md. **Continued 2026-10-06, the same preserved branch, at the owner's "close all gaps":** F5, F7, F8, F9 DONE; F11 in progress; F6 fixed on CrispStrobe/sb3-creator branch `fix/trailing-comments-empty-bodies` (no PR), Lite's vendored copy untouched pending a pin move. Paths added: `overlay/scratch-gui/src/lib/bw-makecode/{ts-import,translate-base,arcade-translate,export-arcade,arcade-builtin-images}.js`, `scripts/generate-arcade-builtin-images.mjs`, `test/makecode-{translate,export-arcade,arcade-untranslated-arrays}.test.mjs`, `test/dialect-arcade-import-lines.test.mjs` (one NOT_FIXED_POINT entry, F6). |
 
 | DONE — Main red: vendor-freshness — pin (or exactly defer) the new CircuitCubes gallery entry (task C7 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c7-circuitcubes-pin` | base `455430fb8`; the fix itself landed on main as owner PR #692 (`0a2a6f28b`); #691 carries only `test/fixtures/{gallery-served,gallery-worker-sources}/README.md` (commit labels) plus this row and the task file. | **DONE 2026-10-06 — fixed on main by owner PR #692 (`0a2a6f28b`), merged while Lite PR #691 (same fix, independently) was qualifying; #691 converged onto it and lands only the residue.** **Cause:** `scripts/sync-gallery-pins.mjs --check` builds the census from live extensions main (`:736` `validateGalleryContract(next, slugs)`); circuitcubes measures `dom, runtime, web-bluetooth`, so `applyMigrationPolicy` (`:346`) makes it restricted-worker `deferred`, and with no entry in `gallery-deferred-reasons.json` `:424` threw. "Deferred" is the worker-migration status, not unpinned; a reason alone would still fail (`prev` lacks the slug). **Decision: PIN** + exact worker-deferral reason (both #691 and #692): served == repo (`030826d4…`), `extensionId` `circuitcubes` from getInfo(), no bundled/pinned id collision; headless probe (#691) loaded it from the pinned URL and by bare id. **Gallery pin `4fb33f88` -> `a1dd6cbc`** (= E7's bundle pin `6bda206e` + circuitcubes only, so arrays/ev3dev now equal their bundled hashes): re-hashed, declarations unchanged — arrays (#30), devices (#31, `e66b4b02`), ev3dev_py_transpile (#33), legospike_turbowarp_transpile (#24, #27, #33; transpiler fixture follows), microbitplus (#25, #26); added circuitcubes; 128->129 pins, 103->104 deferred. #691's tree was byte-identical to #692's in pins/hashes/fixtures; it differed only in the reason wording and test comments, and took main's for all of those. **Residue in #691:** #692 moved `gallery-worker-compat.json` to `a1dd6cbc` but left both fixture READMEs at `4fb33f88` (the worker-sources README states the two are equal); all 24 worker + 3 served fixtures re-checked against the `a1dd6cbc` hashes, all match, so only the labels move. **Receipts:** #691 heads `2c5a06a75` and `e2ed26a9e` qualified green — vendor-freshness 37511950044 / 37516509787 (`up to date at a1dd6cbc3da4 (129 pinned)`), Build 37511950092 / 37516509759 (build, browser light+heavy, corpus, fpga); locally 10 gallery/pin/transpiler/bundle files 169 pass / 0 fail / 5 skip, pre-push gates 45/45. Main vendor-freshness green again at `0a2a6f28b`: run 37546104255 (red before: 37495527425, 37501752863, 37514556157). |
@@ -1031,6 +1623,92 @@ the old red is not a landing or deployment receipt.
 
 ## DONE — recently, so nobody redoes it
 
+Scope-reset and cooperative circuit-clock package adoption — **DONE candidate
+2026-10-08**, Codex bwcx, branch `lane/scope-reset-adoption-20261008`; canonical
+claim `59dddb13ed53d941141c2476bec312047032e660` from exact main
+`0441d5b6247e3b3c6a41fac68fba36f0c7387927`. Adopt bw-board
+`ac7595b609daa75717c696830982f59940c97e8b` and bw-circuit-ui
+`5f336b24447351ce80742c0e71078cdd23e7912b` only; sb3/flasher unchanged.
+Upstream Board CI37805382935/Harris37805382883 and CUI CI37816453619
+passed, including the real scope-reset browser scenario. This descendant
+range also includes cooperative live clocks, finite-analysis refusal and
+wrapped-envelope labels; it is not a reset-only source patch. Root/GUI
+manifests and locks, notices, census/mirrored module, matrix, 8086 report and
+overlay ROM provenance were regenerated. All eight ROM binaries and BIOS
+source bytes remain unchanged; these ROM provenance files have no tracked
+packages mirror. GUI lock also reconciles the already-selected Board's pinned
+avr8js dependency. No engine/UI source copy, model tuning, other pin, workflow,
+Arcade/SPIKE change or deployment claim.
+
+Installed-package affected checks pass29/29, including CLI independent waveform,
+current/KCL and refusal controls, retained scope identity, an empty reset ring,
+all5000 first50ms envelopes, and failure-latch preservation. Package/provenance
+checks pass26 with one history-dependent skip; the affected census/BIOS history
+checks subsequently ran with the actual pinned checkout. Generator checks:
+Rust notices, 8086 report, matrix, part profiles, reader coverage, hosted targets
+against its own recorded stc snapshot, Board census, and package notices pass;
+unchanged generated outputs were not rewritten. Global pin-history check remains
+for the full hosted checkout: local sparse-checkout missing-file refusals are
+not passes. Installed payload identity and the new actual Build/Sim restart
+browser journey remain mandatory in one exact-head hosted Build before landing.
+The browser proof imports an owned passive fixture, uses real controls and
+observes Board events without changing its clock or simulation implementation.
+
+Forward repair envelope after Build37826679610: the full unit suite reported
+four failures (6410 tests,6385 pass,4 fail,21 skips). Pin-chain coverage also
+requires `static/roms/cpm-roms.provenance.json` (overlay and tracked mirror),
+overlay `static/roms/free-386-bios.provenance.json`,
+`static/dos/msdos200-base.provenance.json` (overlay and tracked mirror), and the controller entry in
+`overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json`.
+Each is updated only after pinned-source byte equality; historical receipts
+retain their original pins. The explicit checkout/assertion refs in
+`.github/workflows/i80386-freedos-circuits-direct-actual.yml` must follow this
+same package pair, without changing its label-only execution or claiming a new
+guest run. `test/native-prompt.test.mjs` needs lexical binding detection and
+positive/negative controls: the added DOS grading modules' locally defined or
+imported `prompt` predicates are not calls to the browser's global dialog.
+No package paths are waived and no remaining browser dialog may be hidden.
+Repaired prompt/bundle checks pass36/36; disabling lexical resolution or hiding
+every bare call independently makes the new control fail. Source binary hashes
+remain unchanged. The new `scripts/verify-circuit-ux.mjs` reset journey now uses
+the real Step control after Build/Sim, which preserves the existing pause choice.
+The separate existing green-flag first-write journey reports a real stalled
+clock and wrong pin level in this candidate. Diagnostic-only additions to
+`scripts/verify-green-flag-first-write.mjs` expose the visible simulation error
+and pause-control state; all its original assertions and time bounds remain.
+Build37826679610 is rejected (unit and browser failures); heavy browser installation
+also failed before its journeys ran. No unchanged rerun or landing is authorized
+by the corrected unit tests. A forward hosted qualification must diagnose the
+green-flag failure before this package pair can be adopted.
+
+2026-10-09 forward adoption — DONE candidate, Codex bwcx, branch
+`lane/scope-reset-stiff-adoption-20261009`. Reconciled current main
+`287b91c43` into the held candidate without changing other owners' SPIKE work.
+The upstream winding repair is now landed at
+`09c0f027eb906310f0f09dc524d6fdf17058439b`; CI37918681671 passes8456 tests,
+zero failures,302 unchanged skips, and Harris37918681729 succeeds.
+Advance only the Board pin to that exact head; retain CUI5f336b244 and all
+other pins. Envelope: existing package manifests/locks, generated notices,
+census/mirrors, matrix/report, byte-unchanged ROM/controller provenance,
+the existing direct-actual workflow's exact checkout/assertion references,
+existing package-adoption pin assertions, and this ledger. Add an installed
+motor startup/off/restart proof to scope-reset-package-adoption.test.mjs.
+Retain all actual browser assertions and require the previously failing
+green-flag journey plus scope-reset journey to pass in the hosted Build.
+No engine/UI source copy, model adjustment, SPIKE/Arcade change, other pin,
+new guest run or deployment claim. Existing rejected receipts remain rejected.
+Both locks were regenerated by npm in lock-only mode; each changes only its
+Board specification, resolved SHA and generated integrity. The source range
+has no ROM/controller changes, so provenance advances without binary changes.
+Local verification: pin metadata and9 package-identity/negative controls pass;
+census8/8 includes exact pinned-source freshness; native-prompt24/24 passes.
+Rust notices, 8086 report, matrix, part profiles, reader coverage, Board census
+and package-notices checks pass. Hosted-targets requires its recorded compiler
+checkout and was not verified in this worktree. Existing installed packages
+remain untouched and are not evidence for the new pin. The final hosted Build
+must install and verify the new exact payload, run the new motor test, and pass
+both real scope-reset and green-flag browser journeys before landing.
+
 Vercel docs-only validation inheritance — **DONE candidate 2026-10-04**, Codex
 bwcx `/root`, `/tmp/wt-bwcx-vercel-doc-inheritance-20261004`, branch
 `lane/vercel-doc-validation-20261004`; canonical claim `8732d8802` from exact
@@ -1553,3 +2231,213 @@ Virtual SPIKE runtime retirement (2026-10-01): historical firmware-runtime
 experiments and provenance records are preserved in the private audit repository.
 The public application now uses only the independent virtual hub backend for
 Scratch/native and supported LEGO Python imports. See docs/independent-spike/.
+
+## Arcade destroy-kind collection slice — 2026-10-08
+
+Root agent claims `lane/arcade-destroy-kind-20261008`, stacked on the ignored-projectile slice. Scope: importer lowering for one-argument `sprites.destroyAllSpritesOfKind`, differential snapshot/callback tests, and capability documentation. Existing collection and destruction Blocks/runtime are reused. Effects and duration remain explicit unsupported diagnostics pending their own implementation. No compiler or dependency adoption is planned.
+
+Destroy-kind slice result: source `2d6fff58b`, 25 regression tests pass with zero skips; rebuilt production GUI `gui.ba65a0dd.js` passes native import, Blocks and two controller destruction cycles. Same184 inputs remain93/90/1; two named bulk-destruction refusals retire without closing their other gaps. Receipt: [destroy-kind qualification](docs/receipts/2026-10-08-arcade-destroy-kind.json). Effects/duration and dynamic kinds remain explicit; stale artwork after manual source replacement is tracked in the GUI ledger.
+
+## Code artwork ownership slice — 2026-10-08
+
+Root claims `lane/arcade-code-artwork-ownership-20261008`, stacked on the destroy-kind slice. Scope: successful upload handoff to live Code artwork context, repeat conversion and fresh-source browser journeys, and GUI ledger/evidence. Unapplied uploads remain available; no shared compiler/runtime change or dependency adoption.
+
+Code artwork ownership result: implementation `70e7e0b46`, harness `f2d92ffd5`; 36 artwork/gate tests and one mirror check pass without skips. Rebuilt GUI `gui.8962b5b1.js` passes native import, repeat conversion with exact appended-costume bytes, fresh code paste, and the prior controller journeys. Build errors0, initial4,360,502 bytes within unchanged budget. Receipt: [Code artwork ownership](docs/receipts/2026-10-08-code-artwork-ownership.json). No corpus classification change claimed.
+
+## Tutorial project input recovery — 2026-10-08
+
+Root claims `lane/arcade-tutorial-project-inputs-20261008`, stacked on Code artwork ownership. Scope: offline tutorial asset/package/custom-code project assembly through the conversion CLI, exact pinned tutorial input recovery in the private corpus, tests and missing-input ledger. Keep the184 standalone input baseline unchanged; no invented assets or blanket full-compatibility claim.
+
+Tutorial input recovery result: clean tested source `e1a2528e2`; ten immutable tutorial documents and assembled native projects recovered separately from the184-source baseline. Six gallery background refusals resolve; four package-image refusals remain. All ten original compilation gates unavailable for named offline packages; ten partial fragments step24 frames without block errors.15 affected tests and14 gate checks pass. Supplemental code and custom palette rendering are now explicit gaps. Receipt: [tutorial inputs](docs/receipts/2026-10-08-tutorial-project-inputs.json). No full-game, new GUI build or baseline count reduction claimed.
+
+## Supplemental Arcade source lane — 2026-10-08
+
+Root claims `lane/arcade-multifile-source-20261008`, stacked on tutorial inputs. Scope: translate declared local TypeScript project files with original-PXT ordering evidence, cross-file namespaces/functions and explicit unsupported boundaries; differential Code/Blocks/native export/SB3 tests and updated corpus/GUI handoff. Do not fetch extension code or merge distinct namespace-private scopes.
+
+Supplemental source result: clean source `18abd6c75`,15 affected +5 regression +14 gate tests pass without skips. Production `gui.01abe779.js` builds with0 errors and4,360,502 initial bytes; native file→Code→Blocks→controller passes (order1243, counters6/39/8, B moves sprite to43). Same184 remains93/90/1. Ten recovered projects remain partial/package-unavailable; imported helper code exposes two array-reference block errors. Next owner should address these retained helper failures, callbacks and package namespace augmentation before claiming those games. Multi-file GUI navigation and namespace-preserving editing remain open. [Receipt](docs/receipts/2026-10-08-arcade-multifile-source.json).
+
+## Typed Arcade helper references — 2026-10-08
+
+Root claims `lane/arcade-typed-helper-references-20261008`, stacked on supplemental source. Trace the two retained tutorial array-reference failures; implement declared resource/array type constraints in lexical inference, qualify original-runtime and conversion routes, and retain missing package/API diagnostics. No fabricated artwork or empty-array substitution as a feature fix. Preserve separate GUI/navigation gaps.
+
+Typed helper result: source `1fa9a3f34`;44 resource/function/roundtrip +35 parser/gate tests pass with zero skips. Rebuilt `gui.b14a3b9a.js` passes native file→Code→Blocks→controller array removal and typed sprite creation/movement, plus prior journeys;0 page/build errors. Same184 importer now96 translated /87 partial /1 malformed. Three promoted snippets compile in original PXT and step24 frames; no complete-game claim. Both retained tutorial array-reference failures clear; all ten partial fragments step without errors, but original packages remain unavailable. Next: passed/stored callback values, package namespace augmentation and multiplayer APIs; keep palette and GUI navigation gaps explicit. [Receipt](docs/receipts/2026-10-08-arcade-typed-helper-references.json).
+
+## Static callback helper lane — 2026-10-08
+
+Root claims `lane/arcade-static-callback-helpers-20261008`, stacked on declared helper types. Implement general specialization of synchronous higher-order helpers with statically known, nonescaping callbacks using native procedures; preserve helper control flow, callback arguments/results/yields and global captures. Name escaping callable values and caller-local closure captures explicitly. Qualify original PXT, Code/Blocks/export/SB3 and controller journeys; do not call this full first-class closure support.
+
+Static callback result: source `7c1a3859c`;30 affected +14 gate tests pass without skips. Production `gui.2f8fb86b.js` passes native import→Code→Blocks→controller callback result50/sprite x27 plus prior journeys; build/page errors0. Three recovered projects lose handler refusals; all ten partial fragments step24 frames without errors, but original packages remain unavailable. Same184 remains96/87/1. Preserve first failed numeric-loop comparisons and their initializer fix. Next: package namespace augmentation and escaping/caller-local closure values, with callable Blocks/editor authoring and rename-reference qualification explicitly open. [Receipt](docs/receipts/2026-10-08-arcade-static-callback-helpers.json).
+
+### Arcade namespace augmentation — 2026-10-08
+
+Root claims `lane/arcade-namespace-augmentation-20261008`, stacked on static callback helpers. Scope: preserve official built-in exports when source reopens a PXT namespace, with exact-member lookup, private/shadow boundaries and differential regression tests. Package implementation, dynamic namespace objects and general function values remain separate gaps.
+
+Namespace augmentation result: source `13b8911bb`;16 focused +39 regression/gate tests pass without skips. Production `gui.4530654c.js` passes native file→Code→Blocks→controller (observed192→197, score7→9, sprite x31→36), plus prior journeys,0 build/page errors and unchanged4,360,502 initial bytes. Same184 remains96/87/1; recovered tutorial diagnostics63→53 with all10 partial fragments stepping and no block errors. Missing packages still prevent original compilation and full-game claims. Next: dynamic sprite references, multiplayer and callable values; namespace/source navigation and graphics gaps remain tracked. PR711 exact-head light retry failed on PNG background dimensions (run37736945319/job113205416368), a retained merge blocker. [Receipt](docs/receipts/2026-10-08-arcade-namespace-augmentation.json).
+
+### Background import readiness — 2026-10-08
+
+Root claims `lane/arcade-background-readiness-20261008`, stacked on namespace augmentation. Reproduce the retained original-assets light-browser PNG import failure, identify whether product decoding or test readiness is wrong, preserve failures, and qualify the complete visible background-authoring/native-export journey without loosening pixel assertions.
+
+Background readiness result: test-only source `b42374d30` waits for uploaded PNG pixels before opening More. The unmodified local journey already passed (CI race not locally reproduced); corrected journey passes all7 phases,19,200 original-PXT pixel comparisons,0 differences/page errors.21 gate contracts pass. Consumer remains namespace build `gui.4530654c.js`; no product build change. Hosted exact-head qualification is still required before clearing PR711. [Receipt](docs/receipts/2026-10-08-arcade-background-readiness.json).
+
+### PXT array random selection — 2026-10-08
+
+Root claims `lane/arcade-array-pick-random-20261008`, stacked on background readiness. Implement typed PXT `Array._pickRandom()` using the native reference-array reporter, with receiver single evaluation, element type propagation, reference identity, empty-array behavior and native/Blocks/SB3 roundtrip qualification. Unknown/non-array receivers remain diagnostics.
+
+Array random result: source `0e3af06a1`;31 affected +38 regression/gate tests pass without skips. Production `gui.57b25cc9.js` passes native file→Code→Blocks→controller, single evaluation1, image pixel5, nested array length2,40 membership checks, sprite x41→45; all prior journeys pass,0 page/build errors. Initial4,360,502 bytes unchanged. Same184 remains96/87/1; recovered diagnostics53→51, all10 partial fragments step without errors, original packages unavailable. Native declarations now emit unambiguous parenthesized values; retained initial parser failure motivated this fix. Next: multiplayer player selection/state/sprite association and type propagation, followed by its dependent dynamic sprite properties. GUI authoring uses the existing array reporter. [Receipt](docs/receipts/2026-10-08-arcade-array-pick-random.json).
+
+### Multiplayer player values — 2026-10-08
+
+Root claims `lane/arcade-multiplayer-players-20261008`, stacked on array random selection. Implement real scene-local mp.Player identities, selector/index/number lookup, sprite association/reverse lookup, properties and typed player arrays; native producer dialect, Blocks/pseudocode/runtime/export differential coverage. Controller movement/events, player state/data and presence indicators are subsequent explicit gaps, not emulated by assigning all players to controller one.
+
+Multiplayer player foundation result: clean source `de2c15909`;producer `da69beb1` ([PR64](https://github.com/CrispStrobe/sb3-creator/pull/64)) supplies6 dialect words.106 affected/regression/gate tests +1 producer roundtrip pass,0 skips. Production `gui.db7109fe.js` passes native file→Code→Blocks→controller B using player-three sprite lookup, x60.5→65.5, all prior journeys,0 page/build errors. Initial4,360,511 bytes (9-byte increase) remains under unchanged4,467,136 limit. Same184 remains96/87/1; recovered diagnostics51→31, all10 partial fragments step without errors, original packages unavailable. Retain exporter index-field and null-index failures. Next: mp.moveWithButtons with independent player controllers and rebinding, then multiplayer events/state/data and presence effects; graphics/palette gaps remain explicit. Property enum labels and dynamic member selector export are tracked GUI gaps. [Receipt](docs/receipts/2026-10-08-arcade-multiplayer-players.json).
+
+### Multiplayer controller movement — 2026-10-08
+
+Root claims `lane/arcade-multiplayer-movement-20261008`, stacked on player values. Scope: scene-local controller bindings, independent player inputs, mp.moveWithButtons defaults and sprite rebinding, native Blocks/pseudocode/export and visible controller selection. Preserve explicit multiplayer event/data/presence gaps.
+
+Movement result: clean source `522013dce`;producer `0b621e2a` ([PR65](https://github.com/CrispStrobe/sb3-creator/pull/65)).55 affected/regression/gate tests +1 producer roundtrip pass without skips. Production `gui.461cd4e1.js` passes native file→Code→Blocks→visible player-two controls, independent speed60, held-input release on selection change, replacement sprite rebinding and pointer release; all prior journeys pass,0 page/build errors. Initial4,360,511 bytes unchanged and within existing budget; boot checks pass. Same184 remains96/87/1; tutorial diagnostics31→27 with all10 partial fragments stepping without errors and original packages unavailable. Next: per-player controller/button/connection APIs and state/data, with missing package artwork and custom palette rendering still explicit. [Receipt](docs/receipts/2026-10-08-arcade-multiplayer-movement.json).
+
+### Multiplayer button callbacks — 2026-10-08
+
+Root claims `lane/arcade-multiplayer-buttons-20261008`, stacked on movement. Implement mp.onButtonEvent and mp.isButtonPressed, typed Player event arguments, per-controller edge/repeat state and scene-local slot replacement. Cover native Blocks/pseudocode/export and visible pane taps. Preserve connection/state/data/network gaps.
+
+Button callback result: clean source `d0786eff9`;producer `638851ab` ([PR66](https://github.com/CrispStrobe/sb3-creator/pull/66)) adds4 words.59 affected/regression/gate tests +1 producer roundtrip pass without skips. Production `gui.a24a77c4.js` passes native import→Code→Blocks→visible player-two identity/query/capture and player-one override, plus both player-four tap edges (44) and sprite x45; all prior journeys pass,0 page/build errors. Initial4,360,511 bytes unchanged; boot checks pass. Same184 stays96/87/1; recovered tutorials stay10 partial/27 diagnostics, original packages unavailable, fragments step without errors. Intermediate input typing and missing-hat failures retained. Next: connection/state/data APIs and package/graphics gaps; friendly callback/enum authoring and queued replacement/long-handler timing qualification remain explicit. [Receipt](docs/receipts/2026-10-08-arcade-multiplayer-buttons.json).
+
+### Multiplayer numeric player state — 2026-10-08
+
+Root claims `lane/arcade-multiplayer-state-20261008`, stacked on button callbacks. Implement numeric player get/set/change, global state-key allocation, custom namespace declarations, score/life backing and scene/reference behavior; native Blocks/pseudocode/export and visible controller qualification. Arbitrary player.data object semantics remain a separate explicit gap.
+
+Numeric state result: clean source `ccfedda255`;producer `107af3ba` ([PR67](https://github.com/CrispStrobe/sb3-creator/pull/67)) adds4 words.66 affected/regression/gate tests +1 producer roundtrip pass without skips. Production `gui.b198440b.js` passes native import→Code→Blocks→visible player-two A tap: custom7.75→9.75, shared score16/life8, scene restore15 and sprite x49.75; all prior journeys pass,0 page/build errors. Initial4,360,511 bytes unchanged; boot checks pass. Same184 stays96/87/1; tutorials stay10 partial/27 diagnostics, original packages unavailable, fragments step without errors. Retain fixture reserved-name oracle failures. Next: player data and callbacks, then corpus-ranked graphics/tilemap/music families; named state-key GUI and per-player Info HUD rendering remain explicit gaps. [Receipt](docs/receipts/2026-10-08-arcade-multiplayer-state.json).
+
+### Legacy color-coded tilemap foundations — 2026-10-08
+
+Root claims `lane/arcade-legacy-tilemap-20261008`, stacked on numeric multiplayer state. Implement scene.setTileMap and scene.setTile as live scene-owned image/definition state using the existing renderer and collision engine. Qualify aliases, replacement, scale, original PXT and native export/Blocks/SB3. Legacy Tile objects, numeric tile placement/lookup and collision callbacks remain explicit subsequent gaps.
+
+Legacy map result: implementation `ab1022ee0`;final GUI/build source `a88274719`;producer `952d7019` ([PR68](https://github.com/CrispStrobe/sb3-creator/pull/68)).71 regressions,8 affected reruns after the dropdown fix,1 producer and1 canonical SPIKE artifact test pass without skips. Production `gui.d9e1420e.js` passes native import→Code→Blocks→visible A: live pixel7→8, padded cached pixel5, sprite x3 and preserved index/center properties; prior journeys pass,0 page/build errors and unchanged4,360,511 initial bytes. Same184 advances98 translated/85 partial/1 malformed; two promoted sources match original/exported map observables and step24 native frames without errors, not complete-game equivalence. Retain first GUI field/input failure and predecessor CI failures. Next: legacy Tile values/placement/events and namespace/factory artwork, with dedicated map painter and mixed-map semantics still explicit. [Receipt](docs/receipts/2026-10-08-arcade-legacy-tilemap.json).
+
+### Legacy Tile values — 2026-10-08
+
+Root claims `lane/arcade-legacy-tile-values-20261008`, stacked on legacy map foundations. Implement original-map-owned Tile references, lookup/list order, numeric mutation and sprite placement through native Blocks, pseudocode and export, with original PXT differential qualification. Collision callbacks, mixed modern/legacy replacement and dedicated map painter remain separate gaps.
+
+Legacy Tile result: implementation `c7663e730`;build/gate source `ed1618bac`;producer `a8609c0f` ([PR69](https://github.com/CrispStrobe/sb3-creator/pull/69)).39 regressions,18 CI contracts and1 producer test pass without skips. Production `gui.8dc99749.js` passes native import→Code→Blocks→visible A editing index9/sprite x11, all prior journeys, and two original corpus apps; right controller steers the flower game's player.0 build/page errors; initial4,360,525 bytes (+14) under unchanged budget. Same184 advances100 translated/83 partial/1 malformed; both promotions match original/exported finite sprite observables and step240 native frames without errors/warnings. Retain original disabled-map error, serialization allowlist, early loop observation and browser observer failures. Predecessor hosted build failed; dialect/fetch/browser prerequisites repaired, independent GUI test failures and hosted integration remain open. Next: legacy collision callbacks, then ranked missing artwork/tilemap families; U03 map painter and mixed map semantics remain explicit. [Receipt](docs/receipts/2026-10-08-arcade-legacy-tile-values.json).
+
+### Legacy color-index collision callbacks — 2026-10-08
+
+Root claims `lane/arcade-legacy-tile-collisions-20261008`, stacked on legacy Tile values. Implement scene-owned onHitTile registrations before modern wall callbacks and stable tileHitFrom obstacle snapshots across native Blocks, pseudocode and export. Qualify callback captures, yielding, scenes, filtering and controller input against original PXT.
+
+Legacy color collision result: implementation `a46ecc753`; build/gate source `054b0ee62`; producer `0de6ae91` ([PR70](https://github.com/CrispStrobe/sb3-creator/pull/70)). Three native words cover registration, callback hats and a named-direction hit-index reporter. Scene/capture/filter/snapshot behavior passes22 regressions,2 final affected reruns and1 producer test. Production `gui.6891b0d9.js` passes all previous journeys, new visible-A collision checks and both promoted originals using visible left/right controls. Build/page errors0; initial bytes unchanged4,360,525. Same184 import-only:102 translated/81 partial/1 malformed. Finite original/exported collision observations agree; full-game equivalence is unqualified. Nonzero-velocity yielding timing remains OPEN: original x15/native11.16796875 under different clocks; the trial ownership lock changed obstacle clearing and was removed. Next compare common clocks/shared scheduling before a semantic fix, then ranked artwork/map families. U03 painter and mixed map semantics remain open; stacked integration requires exact-head hosted CI. [Receipt](docs/receipts/2026-10-08-arcade-legacy-tile-collisions.json).
+
+### Callback scheduling qualification — 2026-10-08
+
+Root claims `lane/arcade-callback-scheduling-20261008`, stacked on legacy color collisions. Trace yielding explicit movement against original PXT under wall-clock and paced execution, including callback observations before/after pause and physics updates. Investigate fixed33ms Arcade delta versus the VM frame interval and continuation ordering. Preserve failed probes; do not adopt movement locks or close timing from import-only counts.
+
+Callback completion result: build source `787025531`. Thirty regressions plus1 final fixture rerun pass,0 skips; suppressing frame-end notification makes the position-continuity regression fail. Production `gui.cf6a1da8.js` passes native Code→Blocks→flag→visible A repeat;0 page/block/build errors; initial4,360,555 bytes below unchanged limit. No importer/count change claimed: last184 import-only102/81/1. Fixed33ms/default60Hz mismatch, first near-zero PXT scene frame and frame-polled wait timing remain open. Preserve wall-clock and pause0/20/70 traces, including the remaining absolute-position/obstacle discrepancies. Next common-clock scheduler qualification, then ranked artwork/map/editor gaps. [Receipt](docs/receipts/2026-10-08-arcade-callback-scheduling.json).
+
+### Elapsed Arcade frame clock — 2026-10-08
+
+Root claims `lane/arcade-frame-clock-20261008`, stacked on callback completion. Replace fixed33ms Arcade advancement with elapsed VM-clock time; qualify30Hz/60Hz/irregular schedules against pinned original physics, zero/negative deltas, restart and explicit controlled frames. Preserve startup/wait scheduling discrepancies until separately qualified.
+
+Elapsed-clock result: source `24c535952`,60 affected tests pass without skips.30Hz/60Hz/irregular1000ms schedules match pinned original PXT physics exactly; registered child-scene waits retain pending elapsed time. Production `gui.0f84bfdb.js` passes file→Code→Blocks→flag→visible A and visible-right motion/wall-time checks,0 build/page/block errors; initial4,360,790 bytes under unchanged limit. No import-count change: last102/81/1. Retain fixed-point-bound, numeric-observer, legacy-hat phase, nested-update and stale-prompt failures. Next unify nested/top-level registrations independently of scene-stack selection, then qualify startup/push/pop/wait/obstacle traces. U03/editor and ranked artwork gaps remain open. [Receipt](docs/receipts/2026-10-08-arcade-frame-clock.json).
+
+### Unified frame callback registration — 2026-10-08
+
+Root claims `lane/arcade-update-registration-20261008`, stacked on elapsed frame clock. Route game.onUpdate/onUpdateInterval through existing scene-owned native registrations independently of scene-stack selection. Qualify nested/live captures, dynamic intervals, sequential yielding, registration order and export/decompile/SB3 roundtrips. Preserve legacy authored hats; record startup and other callback-family gaps separately.
+
+Unified frame registration result: source `7626e6c0d`, 22 affected tests pass without skips. Nested/live captures, dynamic intervals, sequential yielding and Code/export/reimport/SB3 observations pass original PXT comparisons. Production `gui.13e19d9b.js` passes native file→Code→Blocks→flag→visible A repeat with0 page/block/build errors; initial 4,360,790 bytes below unchanged budget. Same184 import-only102/81/1 with0 changed diagnostic rows. Boolean capture export and namespace-shadow diagnostics fixed; initial failures retained. Next other callback families and startup/push/pop/wait/obstacle timing; U03/editor/artwork gaps remain explicit. Draft requires hosted CI and stacked integration. [Receipt](docs/receipts/2026-10-08-arcade-update-registration.json).
+
+### Unified controller callback registration — 2026-10-08
+
+Root claims `lane/arcade-button-registration-20261008`, stacked on unified frame registration. Preserve controller callback sites, replacement, Pressed/Released/Repeated event values and live captures without scene-stack selection. Qualify real input edges, export/decompile/SB3 and production controller pane. Other families and startup/scene timing remain separate gaps.
+
+Unified controller result: source `9ede54df0`;27 distinct affected tests pass after10 focused reruns,0 skips. Original/exported PXT, native/decompile/reimport/SB3 retain replacement, dynamic events, live captures and repeated-event delivery. Production `gui.0cc1f4bb.js` passes native file→Code→Blocks→flag→A/B/A and held right,0 page/block/build errors; initial 4,360,790 bytes within unchanged budget. Same184 import-only102/81/1,0 changed rows. Firework pre-registration-input test failure preserved and corrected to post-setup input. Next forever/life/countdown and sprite callback registration, then scene/startup timing and explicit GUI gaps. Draft hosted CI/stack integration pending. [Receipt](docs/receipts/2026-10-08-arcade-button-registration.json).
+
+### Unified life and countdown registration — 2026-10-08
+
+Root claims `lane/arcade-info-registration-20261008`, stacked on controller registration. Retain life-zero/countdown callback sites, replacement, player life state and live captures without scene-stack selection. Qualify assigned zero life, revival, repeated countdown, native/pseudocode/Blocks/export/SB3 and visible controls. Forever/sprite callbacks and broader scene timing remain separate gaps.
+
+Life/countdown result: source `5ad83632c`;88 distinct affected tests pass after focused reruns,0 skips (61 Arcade,14 gate inventory,13 source/Tile). Original/exported PXT and native/decompile/reimport/SB3 agree on assigned-zero/negative life, replacement, shared captures, revival and countdown repeat. Production `gui.b9f5aa3d.js` passes native file→Code→Blocks→flag→A plus three preceding callback journeys,0 page/block/build errors; initial 4,360,790 bytes within unchanged budget. Four journeys now wired to hosted CI. Same184 import-only102/81/1,0 changed rows. Old fixed-target/hat failures retained and migrated to native observations. Parent hosted44 unit failures and heavy browser failures remain an integration blocker until fresh qualification; next gate cleanup, forever/sprite registration and scene/startup timing. GUI gaps remain explicit. [Receipt](docs/receipts/2026-10-08-arcade-info-registration.json).
+
+### Hosted callback integration repair — 2026-10-08
+
+Root claims `lane/arcade-ci-repair-20261008`, stacked on life/countdown registration. Scope: deferred Code project-load/refresh harness, native interval and button execution tests, truth-value matrix representation, and remaining hosted browser failures. Preserve baseline failures, test actual runtime observables and keep unresolved gates explicit. No compatibility promotion is inferred from test migration.
+
+Repair result: test source `7aef65c5f12761a946eb7c11e672aa292351538b`,54 distinct checks pass after reruns,0 skips. Runtime/converter/pins unchanged; no rebuild or corpus promotion. Preserve original/intermediate failures. Next: scene callback ownership, array/export diagnostics, module reachability and remaining hosted browser failures; exact-head CI/stack integration remain required. [Receipt](docs/receipts/2026-10-08-arcade-ci-repair.json).
+
+### Scene-owned forever conversion — 2026-10-08
+
+Root claims `lane/arcade-scene-continuation-20261008`, stacked on callback CI repair. Scope: forever/game.forever/basic.forever registration at authored call sites without scene-stack selection, lexical captures, deferred startup, scene suspension and native/export/SB3 qualification. Also repair the pending-scene clock assertion to require retained elapsed time. Keep unrelated array/export/browser gates explicit.
+
+Forever result: source `94882c6a57d9f32462ec2579efc56fe2d9e35e45`,61 affected checks pass after reruns,0 skips. Deferred closures and repeat input agree across original/exported PXT and native/decompile/reimport/SB3. Production `gui.4e20cd56.js` passes visible file→Code→Blocks→Run→A→From blocks and four preceding journeys,0 page/block/build errors; initial4,360,790 bytes unchanged. Same184 import-only102/81/1,0 changed diagnostic rows. Scene tests retain pending elapsed time and independent child clock. Initial failures retained; next sprite callback registration, timing and unrelated hosted export/browser cleanup. [Receipt](docs/receipts/2026-10-08-arcade-scene-continuation.json).
+
+### Scene-owned sprite callback conversion — 2026-10-08
+
+Root claims `lane/arcade-sprite-registration-20261008`, stacked on forever registration. Scope: sprite kind overlap/destruction registration at authored sites without scene-stack selection, nested live captures, event sprite identity, handler ordering/yielding, native/export/SB3 and visible controller qualification. Instance destruction remains separate; preserve effects, startup/timing and remaining GUI gaps.
+
+Sprite registration result: source `d606023f2455a0e0a213da65a34d76a31ed91445`,57 distinct affected checks pass after reruns,0 skips. Nested live captures, event sprite identity, temporal registration and yielding handler order qualify against original/exported PXT and native/decompile/reimport/SB3. Production `gui.3c9f1746.js` passes visible file→Code→Blocks→Run→A→From blocks plus five prior journeys,0 page/block/build errors; initial4,360,790 bytes unchanged. Same184 import-only102/81/1; one effect/duration diagnostic clarified, no promotion. Failures retained. Next instance/parallel registration, ranked missing artwork/effects and remaining timing/export/browser/GUI gaps. [Receipt](docs/receipts/2026-10-08-arcade-sprite-registration.json).
+
+
+Instance destruction closure lane — 2026-10-08: owned sequentially on `lane/arcade-instance-closure-20261008`, source `a0500049b29809f2a2f69b41e47ed7eb9a78ccb0`, producer PR71 at `02c4b37a`. Imports/Code/Blocks/export/runtime and finite original/exported PXT roundtrips are implemented. Fresh production/visible browser and exact-head CI remain pending in draft PR738; do not merge before all enabled checks pass. Same184 import-only102/81/1 with0 diagnostic row changes. Next owned scope is nested parallel call timing/captures; dedicated callback authoring guidance and scene/startup timing remain GUI/runtime gaps. [Receipt](docs/receipts/2026-10-08-arcade-instance-registration.json).
+
+
+Active sequential Arcade lane — 2026-10-08: `lane/arcade-parallel-captures-20261008` owns converter/exporter/runtime support for `control.runInParallel`, its producer vocabulary, finite original-PXT roundtrips, GUI browser fixture, evidence and the pin-specific SPIKE artifact gate. Producer branch `feat/arcade-parallel-captures-20261008`. No other lane files are claimed. Acceptance: calls launch when executed, skip unexecuted branches, retain live lexical cells and return without awaiting the child; nested/repeated launches, pauses, stop/restart and scene changes require bounded qualification. Fresh production/visible GUI and exact-head hosted checks remain required.
+
+Parallel lane source qualification reached at `9697810a2529b1b6aaaa31e7dc9699d5dad828ee` (draft PR739; producer PR72, `49903b5d`). All38 affected checks and232 producer dialect checks pass,0 skips. Original/export/native/decompile/reimport/SB3 traces agree; concurrent scene and native stop/restart controls pass. Same184102/81/1,0 changed rows. Local cold production build interrupted for shared-host resource pressure; fresh production/visible GUI and all enabled exact-head CI remain pending. No merge or full compatibility claim. Next sequential scope: audit complete-project resources behind10 background-image refusals, then tilemaps/effects; preserve missing data and GUI callback-construction gaps. [Receipt](docs/receipts/2026-10-08-arcade-parallel-registration.json).
+
+
+### Indexed custom palette lane — 2026-10-09
+
+Root owns `lane/arcade-palette-indices-20261009`, stacked on reset qualification. First slice: preserve indexed custom artwork through SVG, graphics decoding, native image decoding and export, including duplicate colors and opaque black versus transparency. Keep legacy default SVG compatible. Project-wide runtime palette commands, import wiring, palette UI and fresh hosted GUI qualification remain separate acceptance work; do not remove their diagnostics on the strength of this slice.
+
+
+Indexed palette slice reached at source `05daecc59716e66c6c892fea8f450f5769c04bc2`: 54 affected local checks pass, no skips. Native template mutation, actual graphics load and saved-SB3/original-compiler export retain custom indices; duplicate RGB colors and opaque black are covered. No new vocabulary/pin or corpus promotion. Project-wide palette runtime/import/Code/Blocks/GUI work and fresh browser/exact-head hosted qualification remain open. [Receipt](docs/receipts/2026-10-09-arcade-palette-indices.json).
+
+
+### Project-wide palette lane — 2026-10-09
+
+Root owns `lane/arcade-project-palette-20261009`, stacked on indexed artwork support. Producer branch `feat/arcade-project-palette-20261009`. Scope: global indexed palette state, background/sprite/tile/speech rerendering, scene/restart lifecycle, Code/Blocks hex command, MakeCode static palette/import and faithful runtime export. Qualify original PXT, native rendering and SB3/decompile roundtrips. Retain unsupported malformed inputs and any unqualified legacy paths. Fresh production/browser and exact-head hosted checks remain required; no census promotion without remeasurement.
+
+
+Global palette source `7f40190489bd5ef8c974f7399666dc46c7a3e5d5` qualifies 62 affected checks at that immutable source, no skips, and 233 producer dialect checks at `de2ac6ce` (producer draft PR73). Original/exported PXT screen colors and native image indices agree; Code/Blocks/SB3, rendered layers and scene/restart controls pass. Fresh184 hash-verified import-only census remains102/81/1, zero changed diagnostic rows. Project picker, graphics project-palette mode, additional Buffer/palette APIs and fresh production/browser/exact-head hosted checks remain open. [Receipt](docs/receipts/2026-10-09-arcade-project-palette.json).
+
+
+### Project palette graphics controls — 2026-10-09
+
+Root owns `lane/arcade-project-palette-gui-20261009`, stacked on global palettes. Scope: startup palette picker, separate project/asset previews in the graphics editor, normal saved Blocks/Code/export persistence, conflicts and timed palette overrides. Repair the inherited tracked pixel-editor mirror and authored projectile completion barrier. Preserve hosted failures; fresh integrated GUI and all enabled exact-head checks remain required.
+
+Project palette GUI source `304f9616b6e742107bda4dcd9073e64fa7355c22` has real-VM authoring/Code/SB3/original-PXT export controls and fresh isolated EN/DE component proof. The prior reference controller journey passes twelve samples with unchanged sprite counts and pixel assertions. Fresh production graphics authoring/restart assertions are added to the existing hosted gate; that result and every enabled exact-head check remain required. Fixed Scratch rendering/export and broader palette APIs remain open. [Receipt](docs/receipts/2026-10-09-arcade-project-palette-gui.json).
+
+
+### Arcade template palette lifecycle — 2026-10-09
+
+Root owns `lane/arcade-template-palette-20261009`, stacked on PR745.
+Scope: apply global palettes to readable indexed Arcade template clones before
+and after creation, preserve clone geometry/assets and resource lifecycle, and
+correct the prior headless export finding with actual asset-boundary evidence.
+Ordinary Scratch/vector artwork stays outside indexed Arcade palette semantics.
+No producer pins or unrelated lanes change. Fresh hosted checks remain required.
+
+Template palette source `cdb3a75d7777bf96f514e9ba6b407618aa6ff938` qualifies 52 affected checks with no failures/skips. Simple-template GUI/Code/SB3/current-asset export and original PXT comparisons pass. Fresh184 hash-verified import-only census remains102/81/1, zero changed rows. The prior headless export interpretation is corrected; original failures remain private. New visible controller assertions and all enabled exact-head hosted checks remain pending. [Receipt](docs/receipts/2026-10-09-arcade-template-palette.json).
+
+
+### Arcade boolean questions — 2026-10-09
+
+Root owns `lane/arcade-boolean-question-20261009`, stacked on PR746.
+Scope: game.ask title/subtitle, native asynchronous boolean reporter and modal
+input lifecycle, matching Code/Blocks/export vocabulary, localized UI choices,
+original PXT comparison and unchanged original-corpus remeasurement. Preserve
+500 ms input guard and release-before-press rules. Full native dialog pixel
+rendering and fresh production execution remain separate qualification gates.
+
+Question source `09f2422103afc92a6e0275b1fa0d78209c7f1bb1` qualifies 49 affected checks,234 producer dialect checks and fresh EN/DE component browser checks. Both original PXT answers, Code and saved SB3 pass. The184 hash-verified import-only inputs now measure104/79/1; two sole-gap inputs close. Production browser execution and bundled decoder failures remain open; no merge. [Receipt](docs/receipts/2026-10-09-arcade-boolean-question.json).
+
+### Arcade bundled factory qualification — 2026-10-09
+
+Root owns `lane/arcade-bundle-factories-20261009`, stacked on PR747.
+Scope: reproduce hosted image-decoder failure under actual GUI Babel and
+production minification; preserve dependency closures across the extension
+adapter, qualify indexed SVG reads and engine operations, and repair affected
+browser report/setup barriers. Preserve parent failures and fresh production
+qualification boundaries. No corpus input or consumer pin changes.
+
+Compiled factory source `e4aa00d77ca2ae3af3551d980953566a581ce423` reproduces and fixes the Babel-created helper loss with explicit module dependencies.67 affected checks pass, zero skips; production-minified indexed reads, generated engines and legacy/shared-value controls pass. Source-injected speech/controller proof in the older reference GUI passes; full fresh production remains pending. Fresh184 hash-verified import-only census stays104/79/1, zero changed diagnostics. [Receipt](docs/receipts/2026-10-09-arcade-bundle-factories.json).

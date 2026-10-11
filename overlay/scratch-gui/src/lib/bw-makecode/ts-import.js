@@ -925,9 +925,11 @@ class Parser {
         if (t.type === 'function') {
             this.next();
             const params = this.parseParams();
+            const paramTypes = this.lastParamTypes;
             this.skipTypeAnnotation();
+            const returnType = this.lastType;
             const body = this.parseBlock();
-            return {type: 'FunctionExpression', params, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
+            return {type: 'FunctionExpression', params, paramTypes, returnType, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
         }
         if (t.type === 'new') {
             // `new Player()`: a call, marked, so the translator knows it
@@ -958,11 +960,12 @@ class Parser {
             const save = this.pos;
             try {
                 const params = this.parseParams();
+                const paramTypes = this.lastParamTypes;
                 if (this.at('punct', '=>')) {
                     this.next();
                     const body = this.at('punct', '{') ? this.parseBlock() :
                         [{type: 'Return', value: this.parseExpression()}];
-                    return {type: 'FunctionExpression', params, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
+                    return {type: 'FunctionExpression', params, paramTypes, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
                 }
             } catch (e) { /* not a parameter list after all */ }
             this.pos = save;

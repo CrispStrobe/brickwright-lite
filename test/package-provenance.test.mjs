@@ -9,6 +9,15 @@ import {githubIdentityMatches, verifyInstalledPackage, verifySingleEngineResolut
 test('Git identity accepts only exact supported host/owner/package/commit forms', () => {
     const sha = 'a'.repeat(40), url = `git+ssh://git@github.com/CrispStrobe/bw-board.git#${sha}`;
     assert.equal(githubIdentityMatches(url, 'CrispStrobe', 'bw-board', sha), true);
+    const checkoutOrigin = 'https://github.com/CrispStrobe/bw-board';
+    assert.equal(githubIdentityMatches(checkoutOrigin, 'CrispStrobe', 'bw-board'), true);
+    assert.equal(githubIdentityMatches(`${checkoutOrigin}#${sha}`, 'CrispStrobe', 'bw-board', sha), true);
+    for (const bad of [`${checkoutOrigin}/`, `${checkoutOrigin}.evil`, `${checkoutOrigin}-fork`,
+        checkoutOrigin.replace('github.com', 'github.com.evil'),
+        checkoutOrigin.replace('CrispStrobe', 'Other'),
+        checkoutOrigin.replace('bw-board', 'bw-circuit-ui')]) {
+        assert.equal(githubIdentityMatches(bad, 'CrispStrobe', 'bw-board'), false);
+    }
     for (const bad of [url.replace('github.com', 'github.com.evil'), url.replace('bw-board', 'bw-circuit-ui'), url + '?x', url.replace('CrispStrobe', 'Other')]) {
         assert.equal(githubIdentityMatches(bad, 'CrispStrobe', 'bw-board', sha), false);
     }
@@ -65,6 +74,9 @@ test('offline pinned pack rejects modified installed source even when metadata s
         writeFileSync(path.join(repoDir, 'src', 'index.js'), 'dirty checkout ignored\n');
         const result = verifyInstalledPackage(options);
         assert.equal(result.files, 2); assert.ok(Object.isFrozen(result));
+        git(['remote', 'set-url', 'origin', 'https://github.com/CrispStrobe/bw-board']);
+        assert.equal(verifyInstalledPackage(options).files, 2,
+            'Actions checkout origin without .git still checks the pinned pack bytes');
         writeFileSync(path.join(installedDir, 'src', 'index.js'), 'export const actual = 2;\n');
         assert.equal(JSON.parse(readFileSync(path.join(installedDir, 'package.json'))).version, '0.0.1');
         assert.throws(() => verifyInstalledPackage(options), /modified src\/index.js/);

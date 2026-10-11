@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "4f6b22b0e174fcef6848a35f1a6f1875fd210017",
+  "parentSource": "ec2747905274da4bc74dd94cc58321268e60b642",
+  "producerPin": "49903b5d38d967b64da34a3ca1dd1e228d06b98f",
+  "scope": "Integration gate repair; no new importer or runtime feature and no pin adoption.",
+  "parentHosted": {
+    "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37831089850",
+    "heavyJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37831089850/job/113496880846",
+    "result": "FAILURE",
+    "unitFailures": 10,
+    "heavyBrowserFailures": [
+      "camera From Blocks",
+      "image bounds bounce",
+      "multi-physics crossing",
+      "speech expiry"
+    ],
+    "callbackGuiJourneysPassed": [
+      "callback completion",
+      "update registration",
+      "button registration",
+      "info registration",
+      "forever registration",
+      "sprite registration",
+      "instance destruction registration",
+      "parallel registration"
+    ],
+    "instanceTrace": "I12i13KXI14i15KY",
+    "parallelTrace": "L12SP12Q13E13N13L14P14Q15E15N15"
+  },
+  "local": {
+    "uniqueChecksPassed": 208,
+    "skipped": 0,
+    "groups": [
+      {
+        "name": "dialect, background images, local projectiles, legacy tile arrays, value arithmetic, Arcade translation",
+        "passed": 51
+      },
+      {
+        "name": "MakeCode translation, module reachability, tutorial project CLI",
+        "passed": 143
+      },
+      {
+        "name": "Arcade export, including complete corpus compilation gate",
+        "passed": 9
+      },
+      {
+        "name": "multi-physics original PXT differential roundtrips",
+        "passed": 5,
+        "qualification": "Four existing checks passed together; the additional crossing check passed separately after adding yielding update cadence."
+      }
+    ],
+    "strengthenedChecks": [
+      "189 exact native dialect words with instance/parallel opcodes named",
+      "typed Sprite[] mutations affect actual native sprites",
+      "forever timers retained through all roundtrip paths and cleaned after verification",
+      "native info life-zero rearming uses actual life command and state"
+    ],
+    "intermediateFailuresPreserved": [
+      "initial crossing assertion assumed contact geometry but original PXT reported separated frame-end geometry",
+      "unpaced headless original simulator could integrate zero motion; final fixture uses public yielding update already used by neighboring fixtures"
+    ],
+    "browserScriptsSyntax": "PASS",
+    "freshProductionBuild": "not run locally",
+    "freshGui": "hosted rerun required"
+  },
+  "remaining": [
+    "multi-physics controller crossing cadence discrepancy",
+    "fresh hosted camera, bounce and speech GUI reruns",
+    "overall exact-head CI",
+    "external package image resources, custom palettes, tilemap resources, destruction effects/durations, scene/startup timing and function-valued callbacks",
+    "GUI callback pair and capture guidance"
+  ],
+  "corpus": {
+    "lastOriginalInputCount": 184,
+    "lastImportOnly": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "freshCensus": false,
+    "originalInputsChanged": false,
+    "note": "No converter/runtime source changed in this batch. Six backgrounds were previously recovered on separately preserved complete tutorial projects; four external namespaces remain."
+  }
+}

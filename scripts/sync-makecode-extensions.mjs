@@ -23,7 +23,7 @@
  * project names that extension (pxt-runtime.js, pkgOverrideAsync).
  *
  * LICENCES. An extension is vendored only when its LICENSE is one that allows
- * redistribution (REDISTRIBUTABLE below) AND says the licence the pin declares;
+ * redistribution (REDISTRIBUTABLE, in extension-licence.js) AND says the licence the pin declares;
  * anything else is REFUSED by name and nothing is written. The holders are
  * carried into THIRD-PARTY-NOTICES.md and the About dialog's licence texts.
  *
@@ -38,6 +38,8 @@ export const NOTICE = {"name":"MakeCode extensions","licence":"MIT","holder":"Mi
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import {REDISTRIBUTABLE, licenceOf} from '../overlay/scratch-gui/src/lib/bw-makecode/extension-licence.js';
+export {REDISTRIBUTABLE, licenceOf};
 import {fileURLToPath} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,7 +47,6 @@ export const OUT = path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/exte
 const FULL_SHA = /^[0-9a-f]{40}$/;
 
 /** Licences whose terms allow us to redistribute the source in the app. */
-export const REDISTRIBUTABLE = ['MIT', 'BSD-2-Clause', 'BSD-3-Clause', 'Apache-2.0', 'ISC', '0BSD'];
 
 /**
  * The pins. `spec` is how MakeCode's documentation names the extension (the
@@ -84,25 +85,41 @@ export const EXTENSIONS = [
         licence: 'MIT',
         holder: 'Kitronik Ltd',
         usedBy: ['projects/rc-car/connect']
+    },
+    {
+        // Arcade (target set below): scroller, the background scroll extension
+        // pxt-arcade's tutorials name, some without a tag. The untagged spelling
+        // ('' ref) resolves to this pin; it is what those tutorials ran when taken.
+        id: 'arcade-background-scroll',
+        spec: 'github:microsoft/arcade-background-scroll#v0.1.2',
+        repo: 'microsoft/arcade-background-scroll',
+        tag: 'v0.1.2',
+        commit: '941e0a3afee4cd4097c1f9853a9ee7299622c7e5',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        untagged: true,
+        usedBy: ['arcade tutorials alien, hundred, hawk, dunk, harlem-globetrotters']
+    },
+    {
+        // Rule-driven sprite animation. Its default branch is the v0.1.0 commit,
+        // so an untagged reference resolves to the same source.
+        id: 'arcade-character-animations',
+        spec: 'github:microsoft/arcade-character-animations#v0.1.0',
+        repo: 'microsoft/arcade-character-animations',
+        tag: 'v0.1.0',
+        commit: '7b40150c721eef4e11ef0aff247deedc266d292e',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        target: 'arcade',
+        untagged: true,
+        usedBy: ['arcade character animation tutorials']
     }
 ];
 
 /** git's object id for a blob: sha1("blob <len>\0" + bytes). What GitHub's tree lists. */
 export const gitBlobSha = bytes => crypto.createHash('sha1')
     .update(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), Buffer.from(bytes)])).digest('hex');
-
-/**
- * The licence a LICENSE text states, by its own wording, or null. Deliberately
- * narrow: a text this does not recognise is refused, not guessed at.
- */
-export function licenceOf (text) {
-    const t = String(text).replace(/\s+/g, ' ');
-    if (/^\s*MIT License\b/.test(t) && /Permission is hereby granted, free of charge/.test(t)) return 'MIT';
-    if (/Apache License,? Version 2\.0/.test(t)) return 'Apache-2.0';
-    if (/Redistribution and use in source and binary forms/.test(t)) return /Neither the name/.test(t) ? 'BSD-3-Clause' : 'BSD-2-Clause';
-    if (/Permission to use, copy, modify, and\/or distribute this software for any purpose/.test(t)) return 'ISC';
-    return null;
-}
 
 /** The vendoring verdict for one pin and its fetched LICENSE text: {ok} or {ok: false, reason}. */
 export function licenceVerdict (pin, licenseText) {
@@ -124,7 +141,8 @@ async function get (url, as = 'buffer') {
 export async function fetchExtension (pin) {
     if (!FULL_SHA.test(pin.commit)) throw new Error(`${pin.repo}: commit ${pin.commit} is not a full 40-hex sha`);
     const {commit, repo} = pin;
-    const tree = await get(`https://api.github.com/repos/${repo}/git/trees/${commit}`, 'json');
+    // Recursive: a pxt.json may list files in subdirectories (docs/...).
+    const tree = await get(`https://api.github.com/repos/${repo}/git/trees/${commit}?recursive=1`, 'json');
     const blobs = new Map(tree.tree.filter(e => e.type === 'blob').map(e => [e.path, e.sha]));
     const raw = async file => {
         const bytes = await get(`https://raw.githubusercontent.com/${repo}/${commit}/${file}`);
@@ -140,8 +158,10 @@ export async function fetchExtension (pin) {
     const pxtJson = await raw('pxt.json');
     const cfg = JSON.parse(pxtJson.text);
     const files = {'pxt.json': pxtJson};
-    for (const f of cfg.files || []) files[f] = await raw(f);
+    // Binary images (an icon) are not source and do not survive as text: not taken.
+    for (const f of cfg.files || []) if (!/\.(png|jpe?g|gif)$/i.test(f)) files[f] = await raw(f);
     return {id: pin.id, spec: pin.spec, repo, tag: pin.tag, commit, licence: pin.licence, holder: pin.holder,
+        ...(pin.target ? {target: pin.target} : {}), ...(pin.untagged ? {untagged: true} : {}),
         licenceFile, licenceText: licence, usedBy: pin.usedBy, files};
 }
 

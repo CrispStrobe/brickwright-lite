@@ -29,7 +29,7 @@ test('timed sayText uses a nonblocking Arcade speech command', async () => {
     const run = await runProgram(result.code, {frames: 2, uploads: result.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState.speech)[0].text, 'Hi');
-    for (let i = 0; i < 16; i++) run.vm.runtime._step();
+    for (let i = 0; i < 16; i++) run.vm.runtime._step(1000 / 30);
     assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.speech, {});
 });
 
@@ -138,7 +138,7 @@ test('the pinned hat overlap game speaks from the colliding handle while its scr
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'x', VALUE: 80}, {});
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'y', VALUE: 60}, {});
     }
-    run.vm.runtime._step();
+    run.vm.runtime._step(1000 / 30);
     const player = Object.values(state.sprites).find(sprite => sprite.kind === 'Player');
     assert.equal(state.speech[player.id].text, 'Excuse Me!');
     assert.equal(state.speech[player.id].duration, 500);
@@ -162,10 +162,10 @@ let hero = sprites.create(sprites.castle.heroWalkFront1, SpriteKind.Player)`;
     // Each built-in image arrives once as an image resource (its own costume,
     // the artwork) that the sprite is created from; the template's costume is
     // a placeholder.
-    const art = result.costumes.filter(costume => /^__arcadeBackground/.test(costume.sprite));
+    const art = result.costumes.filter(costume => result.code.includes(`frame image array "${costume.sprite}Image"`));
     assert.equal(art.length, 2);
     assert.ok(result.costumes.every(costume => costume.svg.includes('<svg')));
     assert.ok(art.every(costume => costume.svg.length > 1000), 'the built-in artwork, not a placeholder');
-    assert.match(result.code, /set snack to \(arcade create image \(arcade frame image array "__arcadeBackground1Image"/);
-    assert.match(result.code, /set hero to \(arcade create image \(arcade frame image array "__arcadeBackground2Image"/);
+    assert.match(result.code, /set snack to \(arcade create image \(arcade frame image array "snackImage" index \(0\) template "snack" start 0 count 1\) template "snackSprite"/);
+    assert.match(result.code, /set hero to \(arcade create image \(arcade frame image array "heroImage" index \(0\) template "hero" start 0 count 1\) template "heroSprite"/);
 });

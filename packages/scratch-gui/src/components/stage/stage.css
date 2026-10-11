@@ -26,6 +26,41 @@
     position: relative;
 }
 
+.arcade-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    box-sizing: border-box;
+    background: rgba(12, 17, 40, .94);
+    color: white;
+    text-align: center;
+}
+
+.arcade-dialog-text {
+    max-width: min(42rem, 95vw);
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    overflow-wrap: anywhere;
+    overflow: auto;
+}
+
+.arcade-dialog-button {
+    border: 2px solid white;
+    border-radius: .35rem;
+    padding: .4rem .9rem;
+    background: #2456a6;
+    color: white;
+    cursor: pointer;
+}
+
 .stage.full-screen {
     border: $stage-full-screen-border-width solid rgb(126, 133, 151);
 }

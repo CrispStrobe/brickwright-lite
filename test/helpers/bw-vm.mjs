@@ -184,20 +184,33 @@ function variableSnapshot (vm) {
     return snapshot;
 }
 
-/** Advance controlled VM frames with the normal Promise continuation queue. */
-export async function stepFrames(vm, frames) {
+/** Advance explicit physics frames with the normal Promise continuation queue.
+ * This does not fast-forward wait timers; controlled-clock tests inject the
+ * runtime clock too, while ordinary fixtures retain their real wait clock.
+ */
+export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     for (let i = 0; i < frames; i++) {
-        vm.runtime._step();
+        vm.runtime._step(frameMs);
         await new Promise(resolve => setImmediate(resolve));
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false} = {}) {
     const creator = new SB3Creator();
     creator.parse(source);
     for (const upload of uploads) {
-        if (upload.mode === 'add') creator.addCustomSVGCostume(upload.sprite, upload.svg, upload.name);
-        else creator.applyCustomSVG(upload.sprite, upload.svg);
+        if (upload.mode === 'add') {
+            // Code read back from blocks already declares the frame (COSTUME name);
+            // fill that slot, as the app's live-artwork transaction does, rather
+            // than appending a second costume after it.
+            const target = creator.project.targets.find(t => !t.isStage && t.name === upload.sprite);
+            const slot = target ? target.costumes.findIndex((c, i) => i > 0 && c.name === upload.name) : -1;
+            if (creator.addCustomSVGCostume(upload.sprite, upload.svg, upload.name) && slot > 0) {
+                const filled = target.costumes.pop();
+                const [declared] = target.costumes.splice(slot, 1, filled);
+                if (declared?.assetId && !target.costumes.some(c => c.assetId === declared.assetId)) creator.assets.delete(declared.assetId);
+            }
+        } else creator.applyCustomSVG(upload.sprite, upload.svg);
     }
     const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
     const vm = new VM();
@@ -233,7 +246,8 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     await stepFrames(vm, frames);
     const after = variableSnapshot(vm);
     vm.quit();
-    clearStrayTimers();
+    // Fiber-driven extension fixtures keep timers until their explicit cleanup.
+    if (!retainExtensionTimers) clearStrayTimers();
     let variablesChanged = 0;
     for (const [name, value] of after) if (before.get(name) !== value) variablesChanged++;
     let extensionCalls = 0;

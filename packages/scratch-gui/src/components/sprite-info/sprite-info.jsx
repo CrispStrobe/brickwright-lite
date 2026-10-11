@@ -46,6 +46,7 @@ class SpriteInfo extends React.Component {
         return (
             this.props.rotationStyle !== nextProps.rotationStyle ||
             this.props.disabled !== nextProps.disabled ||
+            this.props.artworkOnly !== nextProps.artworkOnly ||
             this.props.name !== nextProps.name ||
             this.props.stageSize !== nextProps.stageSize ||
             this.props.visible !== nextProps.visible ||
@@ -118,7 +119,7 @@ class SpriteInfo extends React.Component {
                 <Label text="x">
                     <BufferedInput
                         small
-                        disabled={this.props.disabled}
+                        disabled={this.props.disabled || this.props.artworkOnly}
                         placeholder="x"
                         tabIndex="0"
                         type="text"
@@ -145,7 +146,7 @@ class SpriteInfo extends React.Component {
                 <Label text="y">
                     <BufferedInput
                         small
-                        disabled={this.props.disabled}
+                        disabled={this.props.disabled || this.props.artworkOnly}
                         placeholder="y"
                         tabIndex="0"
                         type="text"
@@ -158,7 +159,10 @@ class SpriteInfo extends React.Component {
 
         if (stageSize === STAGE_DISPLAY_SIZES.small) {
             return (
-                <Box className={styles.spriteInfo}>
+                <Box className={styles.spriteInfo} data-testid="bw-sprite-info">
+                {this.props.artworkOnly && <small data-testid="bw-library-sprite-label">
+                    {this.props.intl.locale.startsWith('de') ? 'Bildbibliothek · unsichtbar' : 'Artwork library · hidden'}
+                </small>}
                     <div className={classNames(styles.row, styles.rowPrimary)}>
                         <div className={styles.group}>
                             {spriteNameInput}
@@ -173,7 +177,10 @@ class SpriteInfo extends React.Component {
         }
 
         return (
-            <Box className={styles.spriteInfo}>
+            <Box className={styles.spriteInfo} data-testid="bw-sprite-info">
+                {this.props.artworkOnly && <small data-testid="bw-library-sprite-label">
+                    {this.props.intl.locale.startsWith('de') ? 'Bildbibliothek · unsichtbar' : 'Artwork library · hidden'}
+                </small>}
                 <div className={classNames(styles.row, styles.rowPrimary)}>
                     <div className={styles.group}>
                         <Label
@@ -211,7 +218,7 @@ class SpriteInfo extends React.Component {
                                     title: this.props.intl.formatMessage(messages.hideSpriteAction)
                                 }
                             ]}
-                            disabled={this.props.disabled}
+                            disabled={this.props.disabled || this.props.artworkOnly}
                         />
                     </div>
                     <div className={classNames(styles.group, styles.largerInput)}>
@@ -222,7 +229,7 @@ class SpriteInfo extends React.Component {
                         >
                             <BufferedInput
                                 small
-                                disabled={this.props.disabled}
+                                disabled={this.props.disabled || this.props.artworkOnly}
                                 label={sizeLabel}
                                 tabIndex="0"
                                 type="text"
@@ -234,7 +241,7 @@ class SpriteInfo extends React.Component {
                     <div className={classNames(styles.group, styles.largerInput)}>
                         <DirectionPicker
                             direction={Math.round(this.props.direction)}
-                            disabled={this.props.disabled}
+                            disabled={this.props.disabled || this.props.artworkOnly}
                             labelAbove={labelAbove}
                             rotationStyle={this.props.rotationStyle}
                             onChangeDirection={this.props.onChangeDirection}
@@ -248,6 +255,7 @@ class SpriteInfo extends React.Component {
 }
 
 SpriteInfo.propTypes = {
+    artworkOnly: PropTypes.bool,
     direction: PropTypes.oneOfType([
         PropTypes.string,
         PropTypes.number

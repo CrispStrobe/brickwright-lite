@@ -9,7 +9,7 @@ import {ARCADE_PALETTE, editablePixelSize, MAX_PIXEL_DIMENSION, rasterEditorSize
 import {parseExactImgLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {blankLayer, resizeLayers, composeLayers, layersDocument, layersToSvg, sourceLayers, sourceFrames} from '../overlay/scratch-gui/src/lib/bw-pixel-layers.js';
 import * as historicalReader from './fixtures/artwork-reader-v3.mjs';
-import {artworkBundleVersion, setCostumeDocument, getCostumeDocument, attachArtwork, inspectArtwork, applyArtwork} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
+import {artworkBundleVersion, setCostumeDocument, getCostumeDocument, attachArtwork, inspectArtwork, applyArtwork, syncAnimationResources} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 const source=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pixel-art-editor.jsx',import.meta.url),'utf8');
 const image={width:160,height:120,pixels:new Uint8Array(160*120)};
 for(const [offset,color] of [[0,2],[159,7],[119*160,5],[19199,9]])image.pixels[offset]=color;
@@ -56,7 +56,7 @@ test('sprite sheets permit complete full-screen frames and reject invalid/oversi
 
 const bind=(signature,parameters,bindings)=>new Function(...Object.keys(bindings),`return function(${parameters}) ${scopeAfter(source,signature)}`)(...Object.values(bindings));
 const resize=bind('resize (w, h, scale = this.state.scale) {','w,h,scale=this.state.scale',{MAX_PIXEL_DIMENSION,resizeLayers,composeLayers});
-const save=bind('save () {','',{layersToSvg,layersDocument,setCostumeDocument});
+const save=bind('save (resourceOverride) {','resourceOverride',{layersToSvg,layersDocument,setCostumeDocument,syncAnimationResources});
 const dirty=bind('hasUnsavedChanges () {','',{});
 
 test('actual editor preset resize/save retains layers, frames, logical pixels and scale undo',()=>{

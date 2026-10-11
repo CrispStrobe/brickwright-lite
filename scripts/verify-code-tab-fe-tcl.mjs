@@ -99,7 +99,7 @@ try {
     await page.addInitScript(() => {
         localStorage.setItem('bw-starter-v1-complete', '1');
         localStorage.removeItem('bw-code-autosave');
-        localStorage.removeItem('bw-code-extra-langs');
+        localStorage.removeItem('bw-code-extra-languages');
         sessionStorage.clear();
     });
     console.log(`Opening ${URL} ...`);
@@ -112,8 +112,15 @@ try {
     // fe and Tcl are offered on request: hidden until the ＋ is pressed.
     check(await tab('○ Tcl').count() === 0 && await tab('λ fe').count() === 0,
         'fe and Tcl tabs are hidden until asked for');
-    await page.getByTestId('bw-more-langs').click();
+    // The "+" menu adds one language at a time and opens it; add both, then
+    // go back to Pseudo for the first step.
+    for (const name of [/Tcl/, /fe/]) {
+        await page.getByTestId('bw-lang-more').click();
+        await page.getByTestId('bw-lang-more-menu').getByRole('menuitem', {name}).click();
+    }
     await tab('○ Tcl').waitFor({timeout: 10000});
+    await tab('λ fe').waitFor({timeout: 10000});
+    await tab('🧩 Pseudo').click();
 
     // 1. Pseudocode → Tcl → run.
     await typeInto(PSEUDO);

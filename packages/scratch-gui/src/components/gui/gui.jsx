@@ -43,7 +43,7 @@ import Renderer from 'scratch-render';
 
 import Blocks from '../../containers/blocks.jsx';
 import CostumeTab from '../../containers/costume-tab.jsx';
-import TargetPane from '../../containers/target-pane.jsx';
+const TargetPane = React.lazy(() => import(/* webpackChunkName: "sprite-target-pane" */ '../../containers/target-pane.jsx'));
 import LazySoundTab, {preloadSoundTab} from '../../containers/lazy-sound-tab.jsx';
 import LazyPseudocodeImporter, {
     preloadPseudocodeImporter
@@ -1211,10 +1211,9 @@ const GUIComponent = props => {
                                 </React.Suspense>
                             ) : (
                                 <Box className={styles.targetWrapper}>
-                                    <TargetPane
-                                        stageSize={stageSize}
-                                        vm={vm}
-                                    />
+                                    <React.Suspense fallback={<div role="status">Loading sprites and artwork…</div>}>
+                                        <TargetPane stageSize={stageSize} vm={vm} />
+                                    </React.Suspense>
                                 </Box>
                             )}
                         </Box>

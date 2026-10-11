@@ -42,6 +42,7 @@ const messages = defineMessages({
 
 const SpriteSelectorComponent = function (props) {
     const {
+        artworkOnly,
         editingTarget,
         hoveredTarget,
         intl,
@@ -82,6 +83,7 @@ const SpriteSelectorComponent = function (props) {
         >
 
             <SpriteInfo
+                artworkOnly={artworkOnly}
                 direction={selectedSprite.direction}
                 disabled={spriteInfoDisabled}
                 name={selectedSprite.name}
@@ -147,6 +149,7 @@ const SpriteSelectorComponent = function (props) {
 };
 
 SpriteSelectorComponent.propTypes = {
+    artworkOnly: PropTypes.bool,
     editingTarget: PropTypes.string,
     hoveredTarget: PropTypes.shape({
         hoveredSprite: PropTypes.string,

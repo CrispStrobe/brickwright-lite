@@ -1,10 +1,14 @@
 # Conversion compatibility audit
 
-Generated 2026-10-07T06:31:33.615Z; 184 files. A parsed project has not necessarily run correctly.
+Public case paths are normalized; original reports remain private. Import-only
+results are93 translated /90 partial /1 malformed. The table below additionally
+classifies53 original-PXT compile failures separately. These are distinct gates.
 
-Source commit: 293cf62a81d7e02d2b2a71f91e61f11c1c1e559e; dirty: false. Corpus declared commit: 19a52f6d65ab9e8adc90bb19a6e3ea04544a1339 (not independently verified).
+Generated 2026-10-08T06:42:12.661Z; 184 files. A parsed project has not necessarily run correctly.
 
-Endpoint source changed during run: true; vendor pins changed: false; MakeCode versions changed: false.
+Source commit: bffd43641903dc037010aac1dcfeb5c9830a469e; dirty: false. Corpus declared commit: cc15caf31b2519f2a3daa003eec9c30b24e7dc3b (not independently verified).
+
+Endpoint source changed during run: false; vendor pins changed: false; MakeCode versions changed: false.
 
 Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 
@@ -17,7 +21,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 7 | 7 | arcade: tiles.setTilemap() requires a readable literal tile map with wall layer and tile scale |
 | 6 | 6 | arcade: sprites.destroy() effect and duration — not rendered |
 | 5 | 5 | arcade: music.play() — Arcade's music has no stage equivalent |
-| 5 | 5 | arcade: sprites.createProjectile() |
 | 4 | 4 | arcade: effects.starField.startScreenEffect() |
 | 4 | 4 | arcade: game.ask() as a value |
 | 4 | 4 | arcade: music.playSound() |
@@ -35,10 +38,10 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 3 | 3 | arcade: sprite.z = … |
 | 3 | 3 | arcade: sprites.createProjectileFromSide() as a value |
 | 2 | 2 | arcade: carnival.startCountdownGame() |
-| 2 | 2 | arcade: Code to Blocks: Line 54: Empty body: "IF compare value (pick random 0 to 99) op "<" with ((0 + (4))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 2 | 2 | arcade: flamethrower: lab2imgs.flamethrower — sprite artwork is unavailable in this project |
 | 2 | 2 | arcade: game.setGameOverEffect() |
 | 2 | 2 | arcade: img`…` — image or asset literal not translated here |
+| 2 | 2 | arcade: Missing animation asset reference: "Animated Alien" |
 | 2 | 2 | arcade: myCorg.horizontalMovement() |
 | 2 | 2 | arcade: myCorg.updateSprite() |
 | 2 | 2 | arcade: myCorg.verticalMovement() |
@@ -61,7 +64,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | 1 | arcade: __bwValue4.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | 1 | arcade: animatedSprite.setImage() |
 | 1 | 1 | arcade: Array as a value |
-| 1 | 1 | arcade: assets.animation`…` — image or asset literal not translated here |
 | 1 | 1 | arcade: assets.image`…` — image or asset literal not translated here |
 | 1 | 1 | arcade: athlete: throw_imgs.dunk — sprite artwork is unavailable in this project |
 | 1 | 1 | arcade: ball.ay — a sprite held in a variable, which the stage cannot follow |
@@ -84,7 +86,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | 1 | arcade: characterAnimations.loopFrames() |
 | 1 | 1 | arcade: Code to Blocks: Line 12: Empty body: "FOREVER:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | 1 | arcade: Code to Blocks: Line 13: Empty body: "IF not (0 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 1 | 1 | arcade: Code to Blocks: Line 39: Empty body: "IF compare value (pick random 0 to 99) op "<" with ((0 + (10))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | 1 | arcade: Code to Blocks: Line 40: Empty body: "IF truthiness of value (celsius) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | 1 | arcade: Code to Blocks: Line 42: Empty body: "IF not (__bwValue1 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | 1 | arcade: Code to Blocks: Line 46: Empty body: "IF compare value (temp) op ">" with ((0 + (0))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
@@ -144,6 +145,7 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | 1 | arcade: minus.setDigitColor() |
 | 1 | 1 | arcade: minus.setRadix() |
 | 1 | 1 | arcade: minus.x = … — a sprite held in a variable, which the stage cannot follow |
+| 1 | 1 | arcade: Missing animation asset reference: "DunkFrame" |
 | 1 | 1 | arcade: music.baDing.play() |
 | 1 | 1 | arcade: music.pewPew.play() |
 | 1 | 1 | arcade: music.playSoundUntilDone() |
@@ -212,9 +214,9 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 
 | count | stage |
 |---:|---|
-| 84 | translated |
+| 86 | translated |
 | 53 | pxt-compile-failed |
-| 46 | partial |
+| 44 | partial |
 | 1 | parse-failed |
 
 ## Unsupported MakeCode elements
@@ -226,7 +228,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 7 | arcade: tiles.setTilemap() requires a readable literal tile map with wall layer and tile scale |
 | 6 | arcade: sprites.destroy() effect and duration — not rendered |
 | 5 | arcade: music.play() — Arcade's music has no stage equivalent |
-| 5 | arcade: sprites.createProjectile() |
 | 4 | arcade: effects.starField.startScreenEffect() |
 | 4 | arcade: game.ask() as a value |
 | 4 | arcade: music.playSound() |
@@ -244,10 +245,10 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 3 | arcade: sprite.z = … |
 | 3 | arcade: sprites.createProjectileFromSide() as a value |
 | 2 | arcade: carnival.startCountdownGame() |
-| 2 | arcade: Code to Blocks: Line 54: Empty body: "IF compare value (pick random 0 to 99) op "<" with ((0 + (4))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 2 | arcade: flamethrower: lab2imgs.flamethrower — sprite artwork is unavailable in this project |
 | 2 | arcade: game.setGameOverEffect() |
 | 2 | arcade: img`…` — image or asset literal not translated here |
+| 2 | arcade: Missing animation asset reference: "Animated Alien" |
 | 2 | arcade: myCorg.horizontalMovement() |
 | 2 | arcade: myCorg.updateSprite() |
 | 2 | arcade: myCorg.verticalMovement() |
@@ -270,7 +271,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | arcade: __bwValue4.x = … — a sprite held in a variable, which the stage cannot follow |
 | 1 | arcade: animatedSprite.setImage() |
 | 1 | arcade: Array as a value |
-| 1 | arcade: assets.animation`…` — image or asset literal not translated here |
 | 1 | arcade: assets.image`…` — image or asset literal not translated here |
 | 1 | arcade: athlete: throw_imgs.dunk — sprite artwork is unavailable in this project |
 | 1 | arcade: ball.ay — a sprite held in a variable, which the stage cannot follow |
@@ -293,7 +293,6 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | arcade: characterAnimations.loopFrames() |
 | 1 | arcade: Code to Blocks: Line 12: Empty body: "FOREVER:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 13: Empty body: "IF not (0 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
-| 1 | arcade: Code to Blocks: Line 39: Empty body: "IF compare value (pick random 0 to 99) op "<" with ((0 + (10))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 40: Empty body: "IF truthiness of value (celsius) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 42: Empty body: "IF not (__bwValue1 = 0) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
 | 1 | arcade: Code to Blocks: Line 46: Empty body: "IF compare value (temp) op ">" with ((0 + (0))) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. |
@@ -353,6 +352,7 @@ Runtime smoke only steps 24 frames. Behavioral equivalence is not measured.
 | 1 | arcade: minus.setDigitColor() |
 | 1 | arcade: minus.setRadix() |
 | 1 | arcade: minus.x = … — a sprite held in a variable, which the stage cannot follow |
+| 1 | arcade: Missing animation asset reference: "DunkFrame" |
 | 1 | arcade: music.baDing.play() |
 | 1 | arcade: music.pewPew.play() |
 | 1 | arcade: music.playSoundUntilDone() |

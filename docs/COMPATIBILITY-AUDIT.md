@@ -17,6 +17,8 @@ ported: TurboWarp is clean-room only for this project.
 npm run makecode -- to-sb3 game.ts --target arcade -o game.sb3 --bw game.bw
 npm run makecode -- to-sb3 microbit.hex -o microbit.sb3
 npm run makecode -- to-ts game.sb3 --target arcade -o main.ts
+npm run makecode -- to-project game.sb3 --target arcade -o game.mkcd
+npm run makecode -- to-sb3 game.mkcd -o returned.sb3
 npm run makecode -- to-hex game.sb3 --target arcade --board rp2040 -o game.uf2
 npm run makecode -- to-hex robot.bw --target microbit -o robot.hex
 ```
@@ -59,6 +61,22 @@ Gap rankings count affected projects separately from diagnostic occurrences.
   instead of the game.
 - **`--limit N`:** gives a repeatable smoke run in sorted path order.
 - **Exit code:** nonzero for read, parse, missing-asset or missing-opcode rows.
+
+## Browser checks
+
+The Arcade behaviour the audit cannot see (drawing, the controller, dialogs, scenes) has its
+own checks in `scripts/verify-arcade-*.mjs`, ported from the parked WIP as task F3. Each one
+serves `packages/scratch-gui/build`, so build the GUI first:
+
+```sh
+npm run verify:arcade-camera          # one journey; see package.json for the rest
+BW_ARCADE_CORPUS=…/compat-corpora/makecode/arcade npm run verify:arcade-projectile-corpus
+```
+
+The 15 checks that need no corpus run on the heavy browser shard of `build.yml`. The 7
+`*-corpus` checks read programs from the private corpus, so CI cannot run them; they are listed
+in `KNOWN_UNWIRED` in `test/gate-coverage.test.mjs`. Each writes a JSON report under
+`test-results/`.
 
 ## Where the corpus lives
 

@@ -1,9 +1,14 @@
 // Pixel-image and clock bridge for PXT's speech renderers. This function is
-// injected into the bundled extension along with the generated PXT classes.
-module.exports = function createSpeechEngine(initialize, fonts) {
+// passed to the extension adapter with the generated PXT classes.
+module.exports = function createSpeechEngine(initialize, fonts, initializeNativeLegacy) {
     let now = 0;
     let deltaTime = 0;
     const camera = {offsetX: 0, offsetY: 0, drawOffsetX: 0, drawOffsetY: 0};
+    function setCamera(value) {
+        for (const key of ['offsetX', 'offsetY', 'drawOffsetX', 'drawOffsetY']) {
+            camera[key] = value ? Number(value[key]) || 0 : 0;
+        }
+    }
     const decoded = {};
     for (const key of ['font8', 'font12']) {
         const font = fonts[key];
@@ -13,8 +18,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         for (let offset = 0; offset + stride <= data.length; offset += stride) {
             glyphs.set(data[offset] | data[offset + 1] << 8, data.slice(offset + 2, offset + stride));
         }
-        // This factory crosses the adapter boundary through Function.toString().
-        // Object spread makes Babel hoist a helper outside that serialized body.
+        // The adapter retains this factory and its compiled dependency closure.
         decoded[key] = Object.assign({}, font, {glyphs});
     }
     class PixelImage {
@@ -26,6 +30,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         setPixel(x, y, color) {
             x |= 0; y |= 0;
             if (x >= 0 && x < this.width && y >= 0 && y < this.height) this.pixels[y * this.width + x] = color & 15;
+            if (this.writes && x >= 0 && x < this.width && y >= 0 && y < this.height) this.writes[y * this.width + x] = 1;
         }
         fill(color) { this.pixels.fill(color & 15); }
         fillRect(x, y, width, height, color) {
@@ -33,6 +38,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             for (let row = Math.max(0, y); row < Math.min(this.height, y + height); row++) {
                 for (let col = Math.max(0, x); col < Math.min(this.width, x + width); col++) {
                     this.pixels[row * this.width + col] = color & 15;
+                    if (this.writes) this.writes[row * this.width + col] = 1;
                 }
             }
         }
@@ -80,6 +86,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
         getFontForText: text => /[\u2001-\uffff]/.test(text) ? decoded.font12 : decoded.font8
     };
     const screen = new PixelImage(160, 120);
+    screen.writes = new Uint8Array(160 * 120);
     const game = {
         runtime: () => now,
         currentScene: () => ({camera, eventContext: {deltaTimeMillis: deltaTime * 1000}}),
@@ -91,7 +98,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
     pxt.Flag = {Destroyed: 1, RelativeToCamera: 2};
     pxt.create = img => new BubbleSprite(img);
     function ownerFor(sprite) {
-        const owner = Object.assign({}, sprite, {flags: 0});
+        const owner = Object.assign({}, sprite, {flags: (sprite.flags & 512 ? 2 : 0) | (sprite._destroyed ? 1 : 0)});
         owner.left = owner.x - owner.width / 2;
         owner.top = owner.y - owner.height / 2;
         owner._hitbox = {oy: 0};
@@ -99,12 +106,69 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             const first = sprite.mask.findIndex(pixel => pixel !== 0);
             if (first >= 0) owner._hitbox.oy = Math.floor(first / sprite.width);
         }
-        owner.isOutOfScreen = () => owner.left + owner.width < 0 || owner.top + owner.height < 0 ||
-            owner.left > 160 || owner.top > 120;
+        owner.isOutOfScreen = view => {
+            const ox = owner.flags & 2 ? 0 : view.drawOffsetX;
+            const oy = owner.flags & 2 ? 0 : view.drawOffsetY;
+            return owner.left + owner.width - ox < 0 || owner.top + owner.height - oy < 0 ||
+                owner.left - ox > 160 || owner.top - oy > 120;
+        };
         return owner;
     }
+    function renderRaster(renderer, sprite, time, dt, viewCamera) {
+        setCamera(viewCamera);
+        now = time; deltaTime = dt;
+        screen.fill(0);
+        screen.writes.fill(0);
+        const owner = renderer._bwOwner;
+        Object.assign(owner, ownerFor(sprite));
+        renderer.update(dt, camera, owner);
+        renderer.draw(screen, camera, owner);
+        const bubble = renderer.sayBubbleSprite;
+        if (bubble && !bubble.destroyed) {
+            const ox = bubble.flags & 2 ? 0 : camera.drawOffsetX;
+            const oy = bubble.flags & 2 ? 0 : camera.drawOffsetY;
+            screen.drawTransparentImage(bubble.image, Math.floor(bubble.left - ox), Math.floor(bubble.top - oy));
+        }
+        return {width:160,height:120,pixels:screen.pixels.slice(),writes:screen.writes.slice()};
+    }
+    const imageViews = new WeakMap();
+    function pixelImage(source) {
+        if (source instanceof PixelImage) return source;
+        let view = imageViews.get(source);
+        if (!view) {view = new PixelImage(source.width, source.height); imageViews.set(source, view);}
+        view.width = source.width; view.height = source.height; view.pixels = source.pixels;
+        return view;
+    }
     return {
-        create(text, duration, animated, foreground, background, legacy, sprite, time) {
+        pixelImage,
+        createNative(text, duration, foreground, background, sprite, context, allocate) {
+            now = context.time(); setCamera(context.camera());
+            deltaTime = context.deltaTime ? context.deltaTime() : 0;
+            const owner = ownerFor(sprite);
+            // Native hitbox offsets are already floored pixels. Capture the
+            // PXT scaled/rotated box before creation handlers can change it.
+            const hitbox = context.hitbox && context.hitbox();
+            if (hitbox) owner._hitbox = {oy: hitbox.top};
+            const resume = bubble => {
+                now = context.time(); setCamera(context.camera());
+                deltaTime = context.deltaTime ? context.deltaTime() : 0;
+                Object.assign(owner, ownerFor(sprite));
+                return bubble;
+            };
+            const create = initializeNativeLegacy(pxt, image, game, screen, inspect, value => value | 0,
+                (img, kind) => {
+                    const bubble = allocate(img, kind);
+                    return bubble && typeof bubble.then === 'function' ? bubble.then(resume) : resume(bubble);
+                });
+            const finish = renderer => {
+                if(renderer)renderer._bwOwner = owner;
+                return renderer;
+            };
+            const renderer = create(text, duration < 0 ? undefined : duration, owner, foreground, background);
+            return renderer && typeof renderer.then === 'function' ? renderer.then(finish) : finish(renderer);
+        },
+        create(text, duration, animated, foreground, background, legacy, sprite, time, viewCamera) {
+            setCamera(viewCamera);
             now = time;
             const owner = ownerFor(sprite);
             const renderer = legacy ? new pxt.LegacySpriteSayRenderer(text, duration < 0 ? undefined : duration,
@@ -113,18 +177,7 @@ module.exports = function createSpeechEngine(initialize, fonts) {
             renderer._bwOwner = owner;
             return renderer;
         },
-        render(renderer, sprite, time, dt) {
-            now = time; deltaTime = dt;
-            screen.fill(0);
-            const owner = renderer._bwOwner;
-            Object.assign(owner, ownerFor(sprite));
-            renderer.update(dt, camera, owner);
-            renderer.draw(screen, camera, owner);
-            const bubble = renderer.sayBubbleSprite;
-            if (bubble && !bubble.destroyed) {
-                screen.drawTransparentImage(bubble.image, Math.floor(bubble.left), Math.floor(bubble.top));
-            }
-            return screen.pixels.slice();
-        }
+        renderRaster,
+        render: (renderer, sprite, time, dt, viewCamera) => renderRaster(renderer, sprite, time, dt, viewCamera).pixels
     };
 };

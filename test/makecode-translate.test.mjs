@@ -950,10 +950,24 @@ test('Arcade built-in art stored as {data} entries (sprites.dungeon tiles) is ca
     assert.doesNotMatch(unknown.code, /\(noSuchTile\)/);
 });
 
-test('a tagged asset literal no translator claims is named, not silently a text placeholder', async () => {
+test('a genuinely unclaimed asset tag remains an exact named generic refusal', async () => {
+    const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.futureResource`missing`, 75, false)');
+    assert.deepEqual(out.unsupported, ['assets.futureResource`…` — image or asset literal not translated here']);
+    assert.match(out.code, /# unsupported: assets\.futureResource`…` — image or asset literal not translated here/);
+    // The generic lowerer retains its explicitly refused diagnostic placeholder;
+    // it must never silently substitute the tag's source text as image frames.
+    assert.doesNotMatch(out.code, /frames \("missing"\)/);
+});
+
+test('a claimed native animation with no resource has a precise missing-reference diagnostic and undefined frames', async () => {
     const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     const out = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nanimation.runImageAnimation(hero, assets.animation`missing`, 75, false)');
-    assert.ok(out.unsupported.some(u => /assets\.animation`…` — image or asset literal not translated here/.test(u)), out.unsupported.join('; '));
+    assert.deepEqual(out.unsupported, ['Missing animation asset reference: "missing"']);
+    assert.match(out.code, /arcade animate sprite \(hero\) frames \(undefined value\) interval \(75\)/);
+    assert.doesNotMatch(out.code, /frames \("(?:missing|\(image\))"\)/);
+    assert.doesNotMatch(out.code, /arcade animation frames resource|arcade frame image array/);
+    assert.deepEqual(out.animationResources || [], [], 'no animation resource is fabricated for the missing gallery');
 });
 
 test('Arcade Math.percentChance, Math.clamp and control.millis translate as their PXT definitions (F11)', async () => {
@@ -973,7 +987,7 @@ test('Arcade Math.percentChance, Math.clamp and control.millis translate as thei
     assert.match(out.code, /set t to timer \* 1000/);
 });
 
-test('a sprite property written through a value the stage cannot follow is named, not `set 0 to`', async () => {
+test('typed sprite arrays compile property writes without a placeholder destination', async () => {
     const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     // A loop variable over sprites on the fixed-sprite path (corpus arcade-013bd6d9…).
     const loop = arcadeToPseudocode([
@@ -986,7 +1000,20 @@ test('a sprite property written through a value the stage cannot follow is named
         '})'
     ].join('\n'));
     assert.doesNotMatch(loop.code, /^\s*(set|change) 0 (to|by)/m, loop.code);
-    assert.ok(loop.unsupported.some(u => /paddle\.x = … — a sprite held in a variable/.test(u)), loop.unsupported.join('; '));
+    assert.deepEqual(loop.unsupported, []);
+    assert.match(loop.code, /arcade set x of/);
+    assert.match(loop.code, /arcade set y of/);
+    const populated=arcadeToPseudocode('let first=sprites.create(img`1`,SpriteKind.Player)\n'+
+        'first.setPosition(30,40)\n'+
+        'let paddles:Sprite[]=[first]\n'+
+        'game.onUpdate(function(){for(const paddle of paddles){paddle.x=10;paddle.y+=2}})');
+    assert.deepEqual(populated.unsupported,[]);
+    const {runProgram}=await import('./helpers/bw-vm.mjs');
+    const run=await runProgram(populated.code,{frames:5,uploads:populated.costumes,storage:true});
+    assert.deepEqual(run.errors,[]);
+    const sprite=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0];
+    assert.equal(sprite.x,10);
+    assert.ok(sprite.y>40 && (sprite.y-40)%2===0,'typed loop mutates the actual sprite');
     // A text sprite on the value-sprite path (corpus arcade-0f16f8a1…).
     const text = arcadeToPseudocode([
         'let hero = sprites.create(img`1`, SpriteKind.Player)',

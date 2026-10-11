@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-08",
+  "implementationSource": "70e7e0b46ce8d4737d3295ce5b6322ad3202a35a",
+  "harnessSource": "f2d92ffd5242eb78af2cf0cd55b360d7e853191c",
+  "scope": "Applied Code uploads transfer to live artwork context; implicit append costumes retain ownership across repeat conversion",
+  "tests": {
+    "artworkAndGateBatch": {
+      "passed": 36,
+      "failed": 0,
+      "skipped": 0
+    },
+    "overlayPackageMirrors": {
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "browser": {
+    "status": "passed",
+    "bundle": "gui.8962b5b1.js",
+    "rotationPhases": 12,
+    "ownership": {
+      "implicitAppendedCostume": true,
+      "repeatExactCostumeBytes": true,
+      "freshPastedProgramLoadsWithoutStaleUploadWarnings": true
+    },
+    "destruction": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "controllerCycles": 2,
+      "otherKindSurvives": true,
+      "callbacks": 2
+    },
+    "pageErrors": [],
+    "reportSha256": "14e09a640dae539ef61881647fe95ac03692b9ddf4cf352dabcd503dd2646a32",
+    "priorAttempts": [
+      "Previous production bundle reproduces missing-template warnings after fresh code paste",
+      "First and second corrected-bundle attempts reached fresh program but assertion expected number rather than valid Scratch numeric text; preserved and corrected"
+    ]
+  },
+  "build": {
+    "errors": 0,
+    "initialBytes": 4360502,
+    "unchangedBudgetBytes": 4467136,
+    "statsSha256": "aba8b98457dbfe4cf65d7a553cf2d47ebcc17a488c1e5c5181fcaa6919834455"
+  },
+  "behavior": [
+    "Applied replacement and append SVGs no longer replay after successful conversion",
+    "Unassigned or failed uploads remain available",
+    "Live edits to attached artwork are retained",
+    "New append preserves prior attached costume order",
+    "Unchanged authored declaration slots preserve implicit attachments; From Blocks makes them explicit",
+    "Changed upload state during preparation rejects stale conversion"
+  ],
+  "boundary": [
+    "No new MakeCode API or compiler/runtime opcode",
+    "No corpus compilation/execution rerun or classification change",
+    "Hosted exact-head checks remain separate from local evidence"
+  ],
+  "privateEvidence": "compat-corpora/reports/2026-10-08/code-artwork-ownership/"
+}

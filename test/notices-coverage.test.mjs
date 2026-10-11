@@ -109,6 +109,26 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
     },
     {
+        // The Arcade background scroller, vendored and also transpiled into
+        // the native runtime (scripts/generate-arcade-scroller.mjs).
+        name: 'arcade-background-scroll',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/scroller-pxt.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
+    },
+    {
+        // Rule-driven sprite animation, vendored and also transpiled into the
+        // native runtime (scripts/generate-arcade-character-animations.mjs).
+        name: 'arcade-character-animations',
+        licence: 'MIT',
+        holder: 'Microsoft Corporation',
+        evidence: 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/character-animations-pxt.js',
+        inBinary: true,
+        text: 'overlay/scratch-gui/static/licenses/makecode-extensions.MIT.txt',
+    },
+    {
         name: 'pxt-kitronik-motor-driver',
         licence: 'MIT',
         holder: 'Kitronik Ltd',
@@ -120,7 +140,7 @@ const VENDORED = [
         // Task E1: the Arcade import runtime compiles MakeCode's own code and
         // data into the bundle — pxt-common-packages' simulator image
         // algorithms and speech/text rendering, generated from the pinned
-        // pxt-arcade bundle (scripts/generate-arcade-{image-operations,speech}.mjs).
+        // pxt-arcade bundle (scripts/generate-arcade-{image-operations,speech,particles,text,music,helpers,gameover,hud}.mjs).
         name: 'pxt-common-packages',
         licence: 'MIT',
         holder: 'Microsoft Corporation',
@@ -129,8 +149,9 @@ const VENDORED = [
         text: 'overlay/scratch-gui/static/licenses/pxt-common-packages.MIT.txt',
     },
     {
-        // ... and pxt-arcade's built-in image table (device/*.jres), generated
-        // from the same pinned bundle (scripts/generate-arcade-builtin-images.mjs).
+        // ... and pxt-arcade's built-in image table (device/*.jres) and its
+        // seven segment, darts and corgio extensions, generated from the same
+        // pinned bundle (scripts/generate-arcade-{builtin-images,sevenseg,sprite-extensions}.mjs).
         name: 'pxt-arcade',
         licence: 'MIT',
         holder: 'Microsoft Corporation',

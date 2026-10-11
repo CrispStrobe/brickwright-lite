@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "e4aa00d77ca2ae3af3551d980953566a581ce423",
+  "base": "d04d385b65a8fdd22268af8796b32e2a8b0eb786",
+  "producerPin": "56f6307e1b71f752c2f2005903877d97b2112e52",
+  "pinChanged": false,
+  "defect": {
+    "observed": "ReferenceError: e is not defined while decoding an indexed SVG in a compiled Arcade engine",
+    "reproduced": "Real GUI Babel rules reproduce the failure in both development and production-minified extension bundles",
+    "cause": "Function.toString copies a compiled factory body without the compiler-created helpers in its enclosing module",
+    "fix": "Pass actual engine modules through an explicit trusted built-in dependency parameter on the adapter; calls retain compiled closures. Existing extensions without dependencies keep their original Scratch shim.",
+    "originalHostedJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37899575377/job/113724420097",
+    "parentHostedJob": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37905667997/job/113741440321"
+  },
+  "implemented": [
+    "Native speech, image, generated PXT operations, rotation and resource-menu functions use real dependency closures",
+    "Adapter dependency injection is explicit; legacy Scratch shim and VM BWValues identity stay intact",
+    "Development/production bundle gate now decodes real indexed metadata and executes image, rotation, speech and menu operations",
+    "Bundle gate rejects stale installed engine sources and contradictory color-index metadata",
+    "Callback and sprite browser gates create report directories before running and wait for newly loaded project targets",
+    "Manual speech source diagnostic loads original CommonJS module bodies and engine dependencies"
+  ],
+  "local": {
+    "passed": 67,
+    "failed": 0,
+    "skipped": 0,
+    "log": "arcade-bundle-factories-qualified-source.log",
+    "files": [
+      "test/arcade-browser-bundle.test.mjs",
+      "test/makecode-indexed-palette.test.mjs",
+      "test/arcade-speech-render.test.mjs",
+      "test/arcade-boolean-question.test.mjs",
+      "test/arcade-callback-completion.test.mjs",
+      "test/makecode-arcade-sprite-registration.test.mjs",
+      "test/makecode-arcade-tile-data.test.mjs",
+      "test/extension-confirm-seam.test.mjs",
+      "test/crispstrobe-menu-i18n.test.mjs",
+      "test/makecode-arcade-rotation.test.mjs",
+      "test/bw-values.test.mjs",
+      "test/overlay-packages-pairs.test.mjs"
+    ],
+    "controls": [
+      "Custom palette duplicate RGB indices stay distinct",
+      "Contradictory indexed metadata stays rejected",
+      "Generated image operation writes correct pixel",
+      "90-degree rotation yields correct dimensions",
+      "Speech bridge executes generated PXT renderer",
+      "Duplicate animation names retain distinct menu values",
+      "Adapter dependencies retain closures across instances and share native BWValues",
+      "Original PXT rotation, pixel raster, overlaps and question answers retain equivalence within the fixtures"
+    ]
+  },
+  "browser": {
+    "boundary": "Current source extension injected into an older reference production GUI; original CommonJS bodies loaded for diagnostics, independent value heap. This is not fresh full-app or cross-extension shared-heap qualification.",
+    "referenceGuiCommit": "9e6630b",
+    "referenceGuiBundleSha256": "4f88b74c78aa359117bffb3068703bdf945417d9d6dcdcc205d560d916c282ab",
+    "sourceExtension": true,
+    "controllerMovesPlayer": true,
+    "speechPixels": 2223,
+    "speechExpires": true,
+    "pageErrors": 0,
+    "log": "arcade-bundle-factories-source-browser.log",
+    "freshIntegratedProduction": "Pending enabled hosted jobs on this exact branch"
+  },
+  "corpus": {
+    "hashVerifiedOriginalInputs": 184,
+    "inputsChanged": false,
+    "freshImportOnly": true,
+    "translated": 104,
+    "partial": 79,
+    "malformed": 1,
+    "changedImportDiagnosticRows": 0,
+    "fullCompatibilityClaim": false
+  },
+  "preservedFailures": [
+    "First bundle fixture omitted its SVG format; corrected fixture reproduces the actual compiler helper failure in both modes",
+    "Initial adapter injection added a key to legacy Scratch shims; explicit opt-in correction preserves the existing API exposure test",
+    "Original and parent hosted decoder failures, browser timeouts and missing-report-directory failure are preserved privately"
+  ],
+  "remaining": [
+    "Fresh integrated image bounds, speech, callback, sprite, tile, palette and question browser journeys",
+    "Every enabled exact-head hosted check before integration or merge",
+    "Any remaining browser timeout must be diagnosed after the compiler defect is removed",
+    "79 import-only partial inputs and one malformed input",
+    "Larger original-app artwork still needs a real-renderer qualification",
+    "Broader dialog pixels/scheduler, effects, paint callbacks, source assets and music gaps"
+  ],
+  "publication": "Own repository draft; not merged"
+}

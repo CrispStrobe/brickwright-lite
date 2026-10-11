@@ -36,7 +36,7 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
     assert.deepEqual(run.errors, []);
     assert.equal(run.vm.runtime.bwArcadeDeviceState.backgroundColor, 2);
     run.vm.postIOData('keyboard', {key: ' ', isDown: true});
-    for (let i = 0; i < 5; i++) run.vm.runtime._step();
+    for (let i = 0; i < 5; i++) run.vm.runtime._step(1000 / 30);
     assert.equal(run.vm.runtime.bwArcadeDeviceState.backgroundColor, 3);
     const recreated = new SB3Creator(); recreated.parse(run.creator.decompile());
     assert.deepEqual(recreated.warnings, []);

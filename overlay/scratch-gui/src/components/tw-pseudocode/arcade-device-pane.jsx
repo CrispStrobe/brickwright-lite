@@ -1,21 +1,28 @@
 import PropTypes from 'prop-types';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import React from 'react';
+import {paintArcadeDeviceFrame} from '../../lib/bw-arcade-device-frame.js';
 import VM from 'scratch-vm';
 
 // Our component, so a local table rather than react-intl — see lib/bw-i18n.js.
 const A11Y_L10N = {
     en: {
+        'a11y.player': 'Player',
         'a11y.neopixels': 'NeoPixels',
         'a11y.lightSensor': 'Light sensor',
         'a11y.tiltX': 'Tilt X',
-        'a11y.tiltY': 'Tilt Y'
+        'a11y.tiltY': 'Tilt Y',
+        'a11y.serial': 'Arcade serial',
+        'runtime.physicsStepNoProgress': 'Physics could not advance with minimum step {minStep} and maximum step {maxStep}. Use positive step sizes and a maximum step at least as large as the minimum step.'
     },
     de: {
+        'a11y.player': 'Spieler',
         'a11y.neopixels': 'NeoPixel-LEDs',
         'a11y.lightSensor': 'Lichtsensor',
         'a11y.tiltX': 'Neigung X',
-        'a11y.tiltY': 'Neigung Y'
+        'a11y.tiltY': 'Neigung Y',
+        'a11y.serial': 'Arcade-Seriell',
+        'runtime.physicsStepNoProgress': 'Die Physik konnte mit minimaler Schrittweite {minStep} und maximaler Schrittweite {maxStep} nicht fortfahren. Verwende positive Schrittweiten und eine maximale Schrittweite, die mindestens so groß wie die minimale ist.'
     }
 };
 const at = makeT(A11Y_L10N);
@@ -72,6 +79,8 @@ ControlButton.propTypes = {
 const ArcadeDevicePane = ({vm}) => {
     const canvasRef = React.useRef(null);
     const heldRef = React.useRef(new Set());
+    const playerRef = React.useRef(1);
+    const [player, setPlayer] = React.useState(1);
     const [held, setHeld] = React.useState({});
     const device = String(vm.runtime.bwDeviceId || vm.runtime.stc?.device || 'arcade').toLowerCase();
     const compact = device === 'pybadge-lc';
@@ -79,14 +88,20 @@ const ArcadeDevicePane = ({vm}) => {
     const [tiltX, setTiltX] = React.useState(0);
     const [tiltY, setTiltY] = React.useState(0);
     const [, setRevision] = React.useState(0);
+    const [runtimeDiagnostic, setRuntimeDiagnostic] = React.useState(null);
 
     const publishState = React.useCallback(next => {
-        const previous = vm.runtime.bwArcadeDeviceState || {};
-        vm.runtime.bwArcadeDeviceState = {
+        // Runtime frames and suspended scenes retain this world's identity.
+        // Buttons are physical input shared by those scenes, so update their
+        // existing map rather than replacing either object on pointer events.
+        const state = vm.runtime.bwArcadeDeviceState || (vm.runtime.bwArcadeDeviceState = {
             buttons: {}, neopixels: Array(compact ? 1 : 5).fill('#111827'),
-            battery: 100, light: 50, tiltX: 0, tiltY: 0,
-            ...previous, ...next
-        };
+            battery: 100, light: 50, tiltX: 0, tiltY: 0
+        });
+        for (const [key, value] of Object.entries(next)) {
+            if (key === 'buttons') Object.assign(state.buttons || (state.buttons = {}), value);
+            else state[key] = value;
+        }
     }, [compact, vm]);
 
     const setButton = React.useCallback((name, isDown) => {
@@ -94,10 +109,38 @@ const ArcadeDevicePane = ({vm}) => {
         const buttons = {};
         Object.keys(BUTTONS).forEach(key => { buttons[key] = heldRef.current.has(key); });
         setHeld(buttons);
-        publishState({buttons});
+        if (playerRef.current === 1) publishState({buttons});
+        else {
+            const state = vm.runtime.bwArcadeDeviceState || (vm.runtime.bwArcadeDeviceState = {});
+            const controllers = state.controllerButtons || (state.controllerButtons = {});
+            Object.assign(controllers[playerRef.current] || (controllers[playerRef.current] = {}), buttons);
+        }
+        // Legacy keyboard blocks, dialog controls and button hats belong to player one.
+        if (playerRef.current !== 1) {
+            vm.runtime.emit('ARCADE_PLAYER_BUTTON_EDGE', playerRef.current, name, isDown);
+            return;
+        }
+        if (vm.runtime.bwArcadeDialogOpen && vm.runtime.bwArcadeDialogType === 'ask') {
+            vm.runtime.emit('ARCADE_DIALOG_BUTTON_EDGE', name, isDown);
+            return;
+        }
+        if (isDown && vm.runtime.bwArcadeDialogOpen) {
+            vm.runtime.emit('ARCADE_BUTTON_DOWN', name);
+            return;
+        }
         vm.postIOData('keyboard', {key: BUTTONS[name].key, isDown});
         if (isDown && vm.runtime.startHats) vm.runtime.startHats('arcade_whenButton', {BUTTON: name});
     }, [publishState, vm]);
+
+    const selectPlayer = event => {
+        [...heldRef.current].forEach(name => setButton(name, false));
+        playerRef.current = Number(event.target.value);
+        setPlayer(playerRef.current);
+    };
+
+    React.useEffect(() => () => {
+        [...heldRef.current].forEach(name => setButton(name, false));
+    }, [setButton]);
 
     React.useEffect(() => {
         publishState({light, tiltX, tiltY});
@@ -114,23 +157,35 @@ const ArcadeDevicePane = ({vm}) => {
         const paint = () => {
             const destination = canvasRef.current;
             const source = vm.runtime.renderer && vm.runtime.renderer.canvas;
-            if (destination && source) {
-                const context = destination.getContext('2d');
-                context.imageSmoothingEnabled = false;
-                context.fillStyle = '#020617';
-                context.fillRect(0, 0, 160, 128);
-                context.drawImage(source, 0, 0, source.width, source.height, 0, 4, 160, 120);
-            }
+            paintArcadeDeviceFrame(destination, source);
             frame = requestAnimationFrame(paint);
         };
         frame = requestAnimationFrame(paint);
         return () => {
             cancelAnimationFrame(frame);
-            heldRef.current.forEach(name => vm.postIOData('keyboard', {key: BUTTONS[name].key, isDown: false}));
+
+        };
+    }, [vm]);
+
+    React.useEffect(() => {
+        const diagnosed = issue => {
+            if (issue?.code !== 'physics-step-no-progress') return;
+            setRuntimeDiagnostic(previous => previous &&
+                ['code', 'engine', 'maxSpeed', 'minStep', 'maxStep'].every(key => previous[key] === issue[key]) ? previous : issue);
+        };
+        const reset = () => setRuntimeDiagnostic(null);
+        vm.runtime.on('ARCADE_RUNTIME_DIAGNOSTIC', diagnosed);
+        vm.runtime.on('PROJECT_START', reset);
+        vm.runtime.on('PROJECT_LOADED', reset);
+        return () => {
+            vm.runtime.removeListener('ARCADE_RUNTIME_DIAGNOSTIC', diagnosed);
+            vm.runtime.removeListener('PROJECT_START', reset);
+            vm.runtime.removeListener('PROJECT_LOADED', reset);
         };
     }, [vm]);
 
     const pixels = vm.runtime.bwArcadeDeviceState?.neopixels || [];
+    const serial = vm.runtime.bwArcadeDeviceState?.serial || '';
     const round = {width: 62, height: 62, borderRadius: '50%', fontSize: 24};
     const dpad = {position: 'absolute', width: 52, height: 52, borderRadius: 8, fontSize: 20};
     return (
@@ -138,6 +193,11 @@ const ArcadeDevicePane = ({vm}) => {
             <div style={{maxWidth: 660, margin: '0 auto'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8}}>
                     <strong>{compact ? 'PyBadge LC' : device === 'microbit' ? 'micro:bit Arcade' : 'MakeCode Arcade · PyBadge'}</strong>
+                    <label>{at(browserLocale(), 'a11y.player')} <select
+                        aria-label={at(browserLocale(), 'a11y.player')} data-testid="bw-arcade-player"
+                        value={player} onChange={selectPlayer}>
+                        {[1, 2, 3, 4].map(number => <option key={number} value={number}>{number}</option>)}
+                    </select></label>
                     <small>160 × 120 game · 160 × 128 TFT</small>
                 </div>
                 <div style={{position: 'relative', borderRadius: 38, padding: '35px 42px 28px', background: 'linear-gradient(145deg,#5b21b6,#312e81)', border: '4px solid #8b5cf6', boxShadow: '0 14px 32px rgba(0,0,0,.5),inset 0 0 0 2px rgba(255,255,255,.13)'}}>
@@ -165,6 +225,13 @@ const ArcadeDevicePane = ({vm}) => {
                     {!compact && <label>Tilt X: {tiltX}<input aria-label={at(browserLocale(), 'a11y.tiltX')} type="range" min="-1024" max="1024" value={tiltX} onChange={e => setTiltX(Number(e.target.value))} style={{width: '100%'}} /></label>}
                     {!compact && <label>Tilt Y: {tiltY}<input aria-label={at(browserLocale(), 'a11y.tiltY')} type="range" min="-1024" max="1024" value={tiltY} onChange={e => setTiltY(Number(e.target.value))} style={{width: '100%'}} /></label>}
                 </div>
+                {runtimeDiagnostic && <div role="alert" data-testid="bw-arcade-runtime-diagnostic"
+                    style={{marginTop: 12, padding: 12, borderRadius: 8, background: '#451a03', color: '#fef3c7'}}>
+                    {at(browserLocale(), 'runtime.physicsStepNoProgress', runtimeDiagnostic)}
+                </div>}
+                {serial && <pre data-testid="bw-arcade-serial" aria-label={at(browserLocale(), 'a11y.serial')}
+                    style={{maxHeight: 180, overflow: 'auto', marginTop: 12, padding: 12,
+                        borderRadius: 8, background: '#0f172a', color: '#e2e8f0', whiteSpace: 'pre-wrap'}}>{serial}</pre>}
             </div>
         </div>
     );

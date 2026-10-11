@@ -203,3 +203,31 @@ test('Code handoff marks full-screen editable artwork as future-safe bundle4', (
     assert.equal(saved.version, 4);
     assert.equal(saved.costumes.find(record => record.targetIndex === 0 && record.costumeIndex === 1).document.version, 3);
 });
+
+
+test('applied append uploads become live attachments without replaying SVGs or duplicating costumes', () => {
+    const s = setup();
+    const source = clone(s.declarations);
+    s.actor.sprite.costumes.push(costume('imported', 'Imported'));
+    s.declarations.targets[1].costumes.push({name: 'Imported'});
+    const context = captureCodeArtwork(s.vm, s.declarations, source);
+    const fresh = costume('edited', 'Imported');
+    Object.assign(s.actor.sprite.costumes[2], fresh);
+    const project = clone(source);
+    retainCodeArtwork(s.zip, project, s.vm, context);
+    assert.equal(project.targets[1].costumes.length, 3);
+    assert.equal(project.targets[1].costumes[2].assetId, 'edited');
+    const nextContext = captureCodeArtwork(s.vm, project, source);
+    const again = clone(source);
+    retainCodeArtwork(s.zip, again, s.vm, nextContext);
+    assert.equal(again.targets[1].costumes.length, 3);
+    assert.equal(again.targets[1].costumes[2].assetId, 'edited');
+    const withNewUpload = clone(source);
+    withNewUpload.targets[1].costumes.push({name: 'New upload'});
+    retainCodeArtwork(s.zip, withNewUpload, s.vm, context, [{sprite: 'Actor', mode: 'add'}]);
+    assert.deepEqual(withNewUpload.targets[1].costumes.map(c => c.name), ['painted', 'Walk', 'Imported', 'New upload']);
+    const replaced = clone(source);
+    replaced.targets[1].name = 'Other';
+    retainCodeArtwork(s.zip, replaced, s.vm, context);
+    assert.equal(replaced.targets[1].costumes.length, 2, 'fresh target does not inherit imported attachments');
+});
