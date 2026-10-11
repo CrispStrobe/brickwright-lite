@@ -23,6 +23,7 @@ Preserve named tile identity through import, JSON Blocks/SB3, painter edits and
 MakeCode project export/reimport. Emit real MakeCode tile resource/declaration
 files so named tiles appear in its asset list, rather than merely inlining art.
 Envelope: bw-makecode tilemap-values/editor/assets/translate/export modules,
+new tile resource helper, namespace-bindings.js source-path metadata,
 tilemap-editor.jsx and tracked twin when present, focused tile asset/editor/
 original-compiler tests, Arcade docs and this ledger. No persistence browser
 script, circuit source/pins or legacy-map/sprite-placement implementation.
