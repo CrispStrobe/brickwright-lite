@@ -15,6 +15,22 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade sprite placement from the tile map painter — 2026-10-11
+
+CLAIMED — Claude (opus), owner request ("fix it all"), branch
+`lane/arcade-tilemap-placement-20261011`, stacked on Codex's painter stack
+(PR793 → PR794) and agreed with Codex, who is not taking it. In the painter,
+show where sprites are placed on the map and let the user place or move a
+sprite on a cell: read and write the existing `arcade_placeOnTile` blocks with
+an `arcade_tileLocation` (column, row) in the map's script, so the runtime,
+MakeCode export and import already understand the result. Envelope: new
+bw-makecode tilemap-placements.js, a placement section in tilemap-editor.jsx
+(and its tracked twin, if any), focused tests, a dedicated
+scripts/verify-arcade-tilemap-placement.mjs with its additive light-shard step
+and budget registration in build.yml, Arcade docs and this ledger. No change to
+Codex's tile identity, legacy layout or persistence code paths, circuit source
+or pins; legacy colour-tile placement (`placeOnLegacyTile`) stays out of scope.
+
 ## Arcade tile names and MakeCode asset identity — 2026-10-11
 
 CLAIMED — Codex, separate worktree and branch
