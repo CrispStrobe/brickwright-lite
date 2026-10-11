@@ -6,7 +6,7 @@
  * arcade-tilemap.hex) through the Code tab's Open, builds blocks, opens
  * Costumes → Tile maps and, with real pointer input on the painter's canvases:
  * paints a cell with a tile, adds a wall, undoes and redoes, draws a pixel into
- * the tile, saves. Then it reads the `set Arcade tilemap` block the level came
+ * the tile, saves, and starts a new level. Then it reads the `set Arcade tilemap` block the level came
  * from and runs the game, checking the running tile map has the painted cell,
  * the wall and the edited tile pixel.
  *
@@ -135,9 +135,9 @@ try {
     check('the painter lists every level', options === levels.length, `${options} listed, ${levels.length} blocks`);
 
     const canvas = page.locator('[data-testid="bw-tilemap-canvas"]');
-    const cellPoint = async (column, row) => {
+    const cellPoint = async (column, row, columns = firstData.columns) => {
         const box = await canvas.boundingBox();
-        const size = await canvas.evaluate((c, cols) => c.width / cols, firstData.columns);
+        const size = await canvas.evaluate((c, cols) => c.width / cols, columns);
         const scale = box.width / (await canvas.evaluate(c => c.width));
         return {x: box.x + (column + 0.5) * size * scale, y: box.y + (row + 0.5) * size * scale};
     };
@@ -187,6 +187,41 @@ try {
     check('the running game draws the painted cell', running?.indices[cell] === 1);
     check('and collides with the new wall', running?.walls[cell + 1] === 1);
     check('and draws the edited tile', running?.pixel === 2, `pixel ${running?.pixel}`);
+
+    // Stop the game and answer any dialog it opened (the platformer greets the
+    // player), so the tab bar is reachable again.
+    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
+    const dialog = page.locator('[role="dialog"][aria-label^="Arcade"]');
+    for (let i = 0; i < 10 && await dialog.count(); i++) {
+        await dialog.locator('button').first().click({timeout: 5000}).catch(() => {});
+        await page.waitForTimeout(300);
+    }
+    check('the game\'s dialogs can be dismissed', await dialog.count() === 0);
+    // A new level from scratch: a real green-flag script, painted and saved.
+    await page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first().click();
+    await page.locator('[data-testid="bw-tilemap-new"]').click();
+    const created = await page.locator('[data-testid="bw-tilemap-status"]').innerText();
+    check('a new tile map can be started', /New tile map added|Neue Kachelkarte/.test(created), created);
+    const listed = await page.locator('[data-testid="bw-tilemap-select"] option').count();
+    check('it is listed with the game\'s levels', listed === levels.length + 1, `${listed} listed`);
+    p = await cellPoint(0, 0, 10);
+    await page.mouse.click(p.x, p.y);
+    await page.locator('[data-testid="bw-tilemap-save"]').click();
+    const fresh = await page.evaluate(() => {
+        const vm = window.__brickwrightStore.getState().scratchGui.vm;
+        for (const target of vm.runtime.targets) {
+            if (!target.isOriginal) continue;
+            const blocks = target.blocks._blocks;
+            for (const block of Object.values(blocks)) {
+                if (block.opcode !== 'arcade_setTilemap') continue;
+                const data = JSON.parse(blocks[block.inputs.DATA.shadow].fields.TEXT.value);
+                if (data.columns === 10 && data.rows === 8) return {hat: blocks[block.parent]?.opcode, cell: data.indices[0]};
+            }
+        }
+        return null;
+    });
+    check('the new level is set when the green flag is clicked', fresh?.hat === 'event_whenflagclicked', JSON.stringify(fresh));
+    check('and holds what was painted', fresh?.cell === 1);
     const crashes = browserErrors.filter(e => /Costume Tab|TypeError|ReferenceError/.test(e));
     check('no errors from the painter', crashes.length === 0, crashes[0]?.slice(0, 160) || '');
 } finally {

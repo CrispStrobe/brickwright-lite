@@ -361,8 +361,9 @@ class CostumeTab extends React.Component {
             </svg>);
         };
         // A level lives in a `set Arcade tilemap` block; the painter is offered
-        // when the project has one.
-        const hasTilemaps = this.state.tilemapMode || findTilemapBlocks(vm).length > 0;
+        // when the project has one or uses the Arcade extension.
+        const hasTilemaps = this.state.tilemapMode || findTilemapBlocks(vm).length > 0 ||
+            Boolean(vm.extensionManager?.isExtensionLoaded?.('arcade'));
         const tilemapLabel = intl.locale.startsWith('de') ? 'Kachelkarten' : 'Tile maps';
         const toggleTilemap = () => {
             const painter = this.tilemapEditor.current;

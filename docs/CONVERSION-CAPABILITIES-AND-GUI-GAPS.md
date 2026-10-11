@@ -21,22 +21,25 @@ Costumes → **Tile maps** now opens a painter on it.
 - `components/tw-pseudocode/tilemap-editor.jsx`: map picker for all levels, tile
   palette drawn from the level's tiles, a 16-colour pixel editor for the selected
   tile, tools, map/tile size, zoom, undo/redo (also Ctrl+Z / Ctrl+Shift+Z),
-  Revert and Save. Nothing changes before Save. Offered in the costume tab when
-  the project has a tile map block.
+  Revert and Save. Nothing changes before Save. **New tile map** adds a real
+  `when green flag clicked → set Arcade tilemap` script (loading the Arcade
+  extension if needed). Offered in the costume tab when the project has a tile
+  map block or uses the Arcade extension.
 
-Evidence: `test/makecode-arcade-tilemap-editor.test.mjs` (7 cases: each edit,
+Evidence: `test/makecode-arcade-tilemap-editor.test.mjs` (8 cases: each edit,
 undo/redo, text round trip and refusal of junk, and in the VM a level found in
 an imported game, painted, written back, then drawn and collided with by the
-running game and exported to MakeCode with the new cell). Browser:
+running game and exported to MakeCode with the new cell; a new level that the
+game sets on the green flag and that survives SB3 save/reload). Browser:
 `scripts/verify-arcade-tilemap-painter.mjs` imports the pinned platformer
 fixture, opens the painter with real pointer input, paints a cell, adds a wall,
-undoes/redoes, draws a tile pixel, saves, then checks the block and the running
-game (14/14 against a local production build); it runs in the light browser
+undoes/redoes, draws a tile pixel, saves, checks the block and the running game,
+then starts and paints a new level (19/19 against a local production build); it runs in the light browser
 shard (provisional budget until five readings exist).
 
-Still open for U03: tile names and the MakeCode `myTiles` asset identity, a new
-level from scratch (needs a block), legacy color-coded maps, placing sprites on
-tiles from the painter, and an SB3 save/reopen browser journey.
+Still open for U03: tile names and the MakeCode `myTiles` asset identity, legacy
+color-coded maps, placing sprites on tiles from the painter, and an SB3
+save/reopen browser journey.
 
 ## MakeCode extensions fetched on demand — 2026-10-10
 

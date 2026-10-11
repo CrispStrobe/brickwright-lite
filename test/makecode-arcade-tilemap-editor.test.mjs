@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import {
     createTilemap, paintCell, eraseCell, fillCells, setWall, resizeTilemap, setTileSize, addTile, removeTile,
     paintTilePixel, setTileImage, createHistory, commit, undo, redo, parseTilemapText, tilemapText,
-    findTilemapBlocks, writeTilemapBlock
+    findTilemapBlocks, writeTilemapBlock, addTilemapBlock
 } from '../overlay/scratch-gui/src/lib/bw-makecode/tilemap-editor.js';
 import {tilemapSource} from '../overlay/scratch-gui/src/lib/bw-makecode/tilemap-values.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -138,6 +138,34 @@ test('a level that is not literal data is listed but not editable, and writing t
         assert.equal(ref.editable, false);
         assert.equal(writeTilemapBlock(run.vm, {...ref, shadowId: 'missing'}, createTilemap()), false);
         assert.equal(writeTilemapBlock(run.vm, ref, {columns: 0}), false, 'invalid data is never written');
+    } finally {
+        run.vm.quit?.();
+    }
+});
+
+test('a new level is a real green-flag script the game runs', async () => {
+    const r = arcadeToPseudocode('let hero = sprites.create(img`2`, SpriteKind.Player)\n');
+    const run = await runProgram(r.code, {frames: 1, uploads: r.costumes, storage: true});
+    try {
+        assert.equal(findTilemapBlocks(run.vm).length, 0);
+        const game = run.vm.runtime.targets.find(t => t.isOriginal && t.getName() === 'Game');
+        let map = addTile(createTilemap({columns: 5, rows: 4, tileSize: 8})).data;
+        map = setWall(paintCell(map, 2, 3, 1), 2, 3, true);
+        const ref = await addTilemapBlock(run.vm, map, {targetId: game.id});
+        assert.equal(ref.targetName, 'Game');
+        assert.deepEqual(ref.data, map);
+        const hat = game.blocks.getBlock(game.blocks.getBlock(ref.blockId).parent);
+        assert.equal(hat.opcode, 'event_whenflagclicked', 'the level is set when the game starts');
+        run.vm.greenFlag();
+        await stepFrames(run.vm, 3);
+        const state = run.vm.runtime.bwArcadeDeviceState.tilemap;
+        assert.equal(state.columns, 5);
+        assert.equal(state.indices[3 * 5 + 2], 1);
+        assert.equal(state.walls[3 * 5 + 2], 1);
+        const saved = await run.vm.saveProjectSb3();
+        await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
+        assert.deepEqual(findTilemapBlocks(run.vm)[0].data, map, 'it survives SB3 save and reload');
+        await assert.rejects(addTilemapBlock(run.vm, {columns: 0}), /Invalid/);
     } finally {
         run.vm.quit?.();
     }

@@ -14,7 +14,7 @@ import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {ARCADE_PALETTE} from '../../lib/bw-makecode/pixel-image.js';
 import {
     TILE_SIZES, findTilemapBlocks, writeTilemapBlock, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
-    setTileSize, addTile, removeTile, paintTilePixel, createHistory, commit, undo, redo
+    setTileSize, addTile, removeTile, paintTilePixel, createHistory, commit, undo, redo, createTilemap, addTilemapBlock
 } from '../../lib/bw-makecode/tilemap-editor.js';
 
 const L10N = {
@@ -27,7 +27,8 @@ const L10N = {
         'tm.removeTile': 'Remove tile', 'tm.colour': 'Colour {n}', 'tm.save': 'Save', 'tm.revert': 'Revert',
         'tm.saved': 'Saved into the block of {target}.', 'tm.saveFailed': 'Could not save: the block is gone or the level is invalid.',
         'tm.unsaved': 'Unsaved changes', 'tm.wallHint': 'Click cells to add walls; click a wall to remove it.',
-        'tm.zoom': 'Zoom'
+        'tm.zoom': 'Zoom', 'tm.new': 'New tile map', 'tm.created': 'New tile map added to {target}: a "when green flag clicked" script sets it.',
+        'tm.createFailed': 'Could not add a tile map: {error}'
     },
     de: {
         'tm.title': 'Kachelkarten', 'tm.map': 'Kachelkarte', 'tm.none': 'Dieses Projekt hat keine Kachelkarte. Ein Level wird mit dem Arcade-Block „setze Kachelkarte“ gesetzt, den ein importiertes MakeCode-Arcade-Spiel mitbringt.',
@@ -38,7 +39,8 @@ const L10N = {
         'tm.removeTile': 'Kachel entfernen', 'tm.colour': 'Farbe {n}', 'tm.save': 'Speichern', 'tm.revert': 'Verwerfen',
         'tm.saved': 'In den Block von {target} gespeichert.', 'tm.saveFailed': 'Speichern nicht möglich: Der Block fehlt oder das Level ist ungültig.',
         'tm.unsaved': 'Ungespeicherte Änderungen', 'tm.wallHint': 'Klicke Zellen an, um Wände zu setzen; ein Klick auf eine Wand entfernt sie.',
-        'tm.zoom': 'Zoom'
+        'tm.zoom': 'Zoom', 'tm.new': 'Neue Kachelkarte', 'tm.created': 'Neue Kachelkarte zu {target} hinzugefügt: Ein Skript „Wenn die grüne Flagge angeklickt“ setzt sie.',
+        'tm.createFailed': 'Kachelkarte konnte nicht hinzugefügt werden: {error}'
     }
 };
 const t = makeT(L10N);
@@ -99,6 +101,22 @@ class TilemapEditor extends React.Component {
     apply (next) {
         this.setState(state => ({history: commit(state.history, next), status: '',
             columns: next.columns, rows: next.rows, tile: Math.min(state.tile, next.images.length - 1)}));
+    }
+
+    /** Add a new level (an empty 10×8 map with one tile to paint) and open it. */
+    async newMap () {
+        const locale = this.props.locale || browserLocale();
+        try {
+            const data = addTile(createTilemap({columns: 10, rows: 8, tileSize: 16})).data;
+            const ref = await addTilemapBlock(this.props.vm, data, {targetId: this.props.vm.editingTarget?.id});
+            const maps = findTilemapBlocks(this.props.vm);
+            const selected = maps.findIndex(map => map.blockId === ref?.blockId);
+            this.setState({maps, selected, history: createHistory(maps[selected].data), saved: maps[selected].data,
+                tile: 1, tool: 'paint', columns: data.columns, rows: data.rows,
+                status: t(locale, 'tm.created', {target: maps[selected].targetName})});
+        } catch (error) {
+            this.setState({status: t(locale, 'tm.createFailed', {error: error.message})});
+        }
     }
 
     cellAt (event) {
@@ -236,6 +254,9 @@ class TilemapEditor extends React.Component {
                 <div data-testid="bw-tilemap-editor" style={{padding: 24, color: '#64748b'}}>
                     {this.props.editorTools}
                     <p data-testid="bw-tilemap-none">{t(locale, 'tm.none')}</p>
+                    <button type="button" data-testid="bw-tilemap-new" style={btn(true)} onClick={() => this.newMap()}>
+                        {t(locale, 'tm.new')}</button>
+                    <div data-testid="bw-tilemap-status" role="status" style={{fontSize: 12, marginTop: 8}}>{status}</div>
                 </div>
             );
         }
@@ -263,6 +284,8 @@ class TilemapEditor extends React.Component {
                         onClick={() => this.setState(state => ({history: undo(state.history)}))}>{t(locale, 'tm.undo')}</button>
                     <button type="button" data-testid="bw-tilemap-redo" style={btn(false)} disabled={!history.future.length}
                         onClick={() => this.setState(state => ({history: redo(state.history)}))}>{t(locale, 'tm.redo')}</button>
+                    <button type="button" data-testid="bw-tilemap-new" style={btn(false)} onClick={() => this.newMap()}>
+                        {t(locale, 'tm.new')}</button>
                     <label style={label}>{t(locale, 'tm.zoom')}<select value={zoom} onChange={event => this.setState({zoom: Number(event.target.value)})}>
                         {[1, 2, 3, 4].map(z => <option key={z} value={z}>{z}×</option>)}</select></label>
                 </div>

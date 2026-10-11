@@ -210,3 +210,41 @@ export function writeTilemapBlock (vm, ref, data) {
     vm.runtime.emitProjectChanged?.();
     return true;
 }
+
+const newBlockId = blocks => {
+    let id;
+    do { id = `bwTilemap${Math.random().toString(36).slice(2, 12)}`; } while (blocks.getBlock(id));
+    return id;
+};
+
+/**
+ * Start a new level: a `when flag clicked → set Arcade tilemap` script in the
+ * given sprite (else the Stage), holding `data`. Loads the Arcade extension if
+ * the project does not use it yet. Returns the new block's reference, as
+ * findTilemapBlocks lists it.
+ */
+export async function addTilemapBlock (vm, data, {targetId = null} = {}) {
+    const text = normalizeTilemap(data) && tilemapText(data);
+    if (!text) throw new Error('Invalid tile map');
+    if (typeof vm?.runtime?._primitives?.arcade_setTilemap !== 'function') {
+        if (!vm?.extensionManager?.loadExtensionURL) throw new Error('Arcade extension is unavailable');
+        await vm.extensionManager.loadExtensionURL('arcade');
+        if (typeof vm.runtime._primitives?.arcade_setTilemap !== 'function') throw new Error('Arcade tile map command is unavailable');
+    }
+    const chosen = targetId && vm.runtime.getTargetById(targetId);
+    const target = chosen && !chosen.isStage ? chosen : vm.runtime.getTargetForStage();
+    const blocks = target?.blocks;
+    if (!blocks?.createBlock || !blocks.moveBlock) throw new Error('No target for the tile map');
+    const hatId = newBlockId(blocks), commandId = newBlockId(blocks), textId = newBlockId(blocks);
+    const y = 32 + 96 * blocks.getScripts().length;
+    blocks.createBlock({id: hatId, opcode: 'event_whenflagclicked', inputs: {}, fields: {}, next: null, parent: null,
+        shadow: false, topLevel: true, x: 32, y});
+    blocks.createBlock({id: textId, opcode: 'text', inputs: {}, fields: {TEXT: {name: 'TEXT', value: text}}, next: null,
+        parent: commandId, shadow: true, topLevel: false});
+    blocks.createBlock({id: commandId, opcode: 'arcade_setTilemap', inputs: {DATA: {name: 'DATA', block: textId, shadow: textId}},
+        fields: {}, next: null, parent: null, shadow: false, topLevel: false});
+    blocks.moveBlock({id: commandId, newParent: hatId});
+    vm.runtime.emitProjectChanged?.();
+    if (vm.editingTarget && vm.editingTarget.id === target.id) vm.emitWorkspaceUpdate?.();
+    return findTilemapBlocks(vm).find(ref => ref.blockId === commandId) || null;
+}
