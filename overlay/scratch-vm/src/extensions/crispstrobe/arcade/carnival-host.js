@@ -28,6 +28,7 @@ module.exports = function createCarnivalHost (ext) {
     const {game} = ext._gameOverModule();
     const {image, img, wrap} = ext._dialogHost;
     const music = ext._music();
+    const melodySound = melody => ({melody, play: () => wait(() => music.run(melody.play()))});
     const effectNames = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none',
         'dissolve', 'melt', 'slash', 'splatter'];
     const effects = Object.fromEntries(effectNames.map(name => [name, {startScreenEffect: () => {
@@ -60,7 +61,11 @@ module.exports = function createCarnivalHost (ext) {
                 const name = effectNames.find(name => effects[name] === effect);
                 return ext.legacyGameOver({WIN: win, EFFECT: name || 'unset'});
             }),
-            waitAnyButton: () => wait(() => ext._nextButtonPress())},
+            waitAnyButton: () => wait(() => ext._nextButtonPress()),
+            setGameOverSound: (win, sound) => {
+                guard();
+                ext._gameOverState().config.setSound(win, music.pxt.music.melodyPlayable(sound.melody), false, true);
+            }},
         info, effects, settings: {readNumber: name => { guard(); return storage.readNumber(name); },
             writeNumber: (name, value) => { guard(); storage.writeNumber(name, value); }},
         control: {timer1: {millis: () => { guard(); return ext._globalElapsedMs; }},
@@ -71,7 +76,7 @@ module.exports = function createCarnivalHost (ext) {
                 guard(); const state = ext._state();
                 ext._renderablesOf(state).push({z, id: state.nextSpriteId++, draw: screen => draw(wrap(screen))});
             }},
-        music: {powerUp: {play: () => wait(() => music.run(music.pxt.music.powerUp.play()))}},
+        music: {powerUp: melodySound(music.pxt.music.powerUp)},
         screen: {width: 160, height: 120, isMono: false,
             clone: () => { guard(); const raw = ext._screenRaw();
                 return wrap({width: raw.width, height: raw.height, pixels: raw.pixels.slice()}); }},
@@ -92,6 +97,22 @@ module.exports = function createCarnivalHost (ext) {
     return {
         countdown: args => { guard(); carnival.startCountdownGame(Number(args.SECONDS), style(String(args.STYLE)), effect(String(args.EFFECT))); },
         gameOver: args => { guard(); return carnival.onGameOverExpanded(style(String(args.STYLE)), effect(String(args.EFFECT))); },
+        customGameOver: args => {
+            guard();
+            let sound;
+            if (args.HAS_SOUND) {
+                const melody = ext._musicValue(args.SOUND, 'Melody');
+                if (!melody) throw new Error('Carnival custom game-over needs a melody sound');
+                sound = melodySound(melody);
+            }
+            let scoring;
+            if (args.SCORING !== 'unset') {
+                scoring = carnival.ScoreTypes[args.SCORING];
+                if (typeof scoring !== 'number') throw new Error('Unknown carnival scoring type ' + args.SCORING);
+            }
+            return carnival.customGameOverExpanded(args.MESSAGE, effect(String(args.EFFECT)), sound,
+                scoring, args.HAS_SCORE ? args.SCORE : undefined);
+        },
         cancel: () => { cancelled = true; for (const cancel of waits) cancel(); waits.clear(); },
         storage
     };

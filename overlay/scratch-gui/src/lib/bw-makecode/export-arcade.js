@@ -1541,6 +1541,25 @@ class ArcadeEmitter {
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
         case 'arcade_gameOver': push(`game.gameOver(${this.boolValue(b, 'WIN')})`); return;
+        case 'arcade_carnivalCustomGameOver': {
+            const effect=this.field(b,'EFFECT'),scoring=this.field(b,'SCORING');
+            if(!['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter'].includes(effect) ||
+                !['unset','None','HScore','LScore','HTime','LTime'].includes(scoring)) {
+                push(`// ${this.note('Carnival custom game-over needs a supported effect and scoring type')}`);return;
+            }
+            this.requiresCarnivalPackage=true;
+            // Flags describe presence, not score truthiness. Export branches
+            // for editable flag expressions so ordinary MakeCode conditionals
+            // preserve absence and import back through existing control blocks.
+            const option = (field, emit) => {
+                const flag=this.boolValue(b,field);
+                if(flag==='true' || flag==='false')emit(flag==='true');
+                else {push(`if (${flag}) {`);emit(true);push('} else {');emit(false);push('}');}
+            };
+            option('HAS_SOUND', hasSound => option('HAS_SCORE', hasScore => {
+                push(`carnival.customGameOverExpanded(${v('MESSAGE')}, ${effect==='unset'?'undefined':`effects.${effect}`}, ${hasSound?v('SOUND'):'undefined'}, ${scoring==='unset'?'undefined':`carnival.ScoreTypes.${scoring}`}, ${hasScore?v('SCORE'):'undefined'})`);
+            }));return;
+        }
         case 'arcade_carnivalCountdown':
         case 'arcade_carnivalGameOver': {
             this.requiresCarnivalPackage=true;

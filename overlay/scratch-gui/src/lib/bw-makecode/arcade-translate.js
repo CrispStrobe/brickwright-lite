@@ -2035,7 +2035,18 @@ class ArcadeTranslator extends BaseTranslator {
         return match && !this.bindsName('effects') && (SCREEN_PARTICLE_EFFECTS.has(match[1]) || IMAGE_EFFECTS.has(match[1])) ? match[1] : null;
     }
     carnivalStatement(name,a,push) {
-        if(!this.handleTemplates || this.bindsName('carnival') || !['carnival.startCountdownGame','carnival.onGameOverExpanded'].includes(name))return false;
+        if(this.handleTemplates && !this.bindsName('carnival') && name==='carnival.customGameOverExpanded') {
+            const missing = node => !node || node.type==='Undefined';
+            const effect = missing(a[1]) ? 'unset' : this.backgroundEffect(a[1]);
+            const scoring = missing(a[3]) ? 'unset' :
+                /^carnival\.ScoreTypes\.(None|HScore|LScore|HTime|LTime)$/.exec(this.path(a[3]) || '')?.[1];
+            if(a.length<1 || a.length>5 || !effect || !scoring) {
+                push(this.note(name+'() needs a message, optional fixed effect and optional fixed carnival.ScoreTypes scoring'));return true;
+            }
+            push(`arcade carnival custom game over message (${this.expr(a[0])}) effect ${effect} sound (${missing(a[2])?'""':this.expr(a[2])}) use sound ${missing(a[2])?'0':'1'} scoring ${scoring} score (${missing(a[4])?'0':this.expr(a[4])}) use score ${missing(a[4])?'0':'1'}`);
+            return true;
+        }
+        if(!this.handleTemplates || this.bindsName('carnival') || !['carnival.startCountdownGame','carnival.onGameOverExpanded','carnival.customGameOverExpanded'].includes(name))return false;
         const countdown=name==='carnival.startCountdownGame',offset=countdown?1:0;
         const match=/^carnival\.WinTypes\.(Win|Lose|Score|Timed|Multi|Custom)$/.exec(this.path(a[offset]) || '');
         const effect=a.length===offset+2?this.backgroundEffect(a[offset+1]):'unset';
@@ -3369,7 +3380,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^effects\.(?:\w+\.(?:startScreenEffect|endScreenEffect)|clearParticles)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^music\./.test(t.path(node.callee)||''))return true;
-        if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
@@ -3512,7 +3523,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
         ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
-        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
+        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;

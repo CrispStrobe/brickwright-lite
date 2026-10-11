@@ -845,3 +845,51 @@ receipts. Syntax checks pass. The production journey has **not yet executed**;
 hosted build/browser qualification is pending, not inferred from these checks.
 No app build or dependency mutation was performed locally. Palette/body controls
 and corpus counts retain the previously documented boundaries.
+
+
+## Carnival custom game-over authoring — 2026-10-11
+
+The `lane/arcade-carnival-custom-gameover-20261011` candidate stacks on PR803
+without changing its qualification head. `carnival.customGameOverExpanded` now
+uses the retained original module, actual native Melody handles, game-over sound
+configuration, scene/dialog renderer and program record store. An ordinary block
+and pseudocode command expose message, fixed effect, melody reporter, fixed
+scoring type and optional score. General playable objects are not Melody values;
+invalid supplied sounds raise runtime errors instead of falling back silently.
+
+Example, authored directly in Code and convertible to blocks:
+
+```text
+arcade set score to (7)
+arcade carnival custom game over message ("Well done!") effect hearts sound (arcade melody baDing) use sound 1 scoring LScore score (3) use score 1
+```
+
+`use sound` and `use score` are boolean inputs, separate from the values. A false
+flag represents an omitted MakeCode argument; a true score flag preserves zero.
+Scoring menu: unset, None, HScore, LScore, HTime, LTime. The retained original
+source owns defaulting, elapsed-time scoring and record comparison. The exporter
+folds fixed flags and emits ordinary conditional statements for editable flags;
+these reimport through the existing native control blocks. No helper shim or
+replacement generic dialog is exported. Dynamic scoring types remain diagnosed;
+remaining timer/HUD and ball helpers remain unsupported.
+
+Qualification: 31 core/host/custom checks pass, plus one focused invalid-sound
+check. Controls include omission, zero, low/high/unjudged score, timed zero and
+editable presence flags. Six original and exported-original controls compile
+and execute with the real PXT SDK and captured public package responses. After
+aligning the native test's Scratch wait clock and Arcade frame clock, all six
+native dialog rectangles (all x, rows40–76) match displayed original colours at
+4000ms; exported-original rectangles match their original baselines. Original
+RGB readback aliases palette indices0/15 to black as previously documented.
+Unchanged original/reference frames are reused for the corrected clock pass;
+actual initial failures and raw frames remain private. This does not qualify
+whole-game behavior, general cursor timing or audible sound output.
+
+Tests: `test/makecode-arcade-carnival-custom.test.mjs`; production paths are
+`arcade/carnival-host.js`, native `arcade/index.js`, `arcadeDialect.js`,
+`bw-makecode/arcade-translate.js` and `bw-makecode/export-arcade.js` under overlay.
+The selected pinned source/generator is unchanged. The production custom-block
+GUI journey and final hosted checks remain pending. Parent PR803's independent
+browser journey is queued; do not label it passed. Corpus counts remain unchanged
+until an actual immutable-input audit. Private paths, source receipts and commands
+remain in the private handoff and ignored local Markdown.

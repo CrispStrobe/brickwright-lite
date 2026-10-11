@@ -3344,3 +3344,21 @@ retained as CI artifacts. Native button-restart and all 12 host checks pass;
 13 workflow budget/timeout checks pass. **The production browser journey is
 pending execution**, so its GUI gap remains open. See
 [the journey contract](ARCADE-AGENT-HANDOFF.md#carnival-production-browser-journey--2026-10-11).
+
+
+### Carnival custom game-over implementation — 2026-10-11
+
+The next candidate closes the custom message/scoring/melody/optional-score API
+across native execution, ordinary extension blocks, pseudocode and MakeCode
+export/reimport. Sound/score presence flags preserve omitted arguments separately
+from zero; dynamic boolean flags export with normal conditional blocks. Actual
+native Melody objects supply playback and the original game-over sound setting.
+Invalid supplied sounds report errors. The retained pinned original owns scoring
+and defaults; no generic dialog substitution is used.
+
+31 affected core/host/custom checks and one invalid-sound check pass. Six actual
+original/exported-original controls compile/run and match native dialog rectangles
+with controlled clocks. Production GUI custom-block qualification, dynamic
+scoring/effect types, arbitrary sound objects, timer HUD and ball helpers remain
+open. Parent browser tests are queued. Neither whole-game equivalence nor corpus
+promotion is claimed. See [the custom API contract](ARCADE-AGENT-HANDOFF.md#carnival-custom-game-over-authoring--2026-10-11).

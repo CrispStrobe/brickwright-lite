@@ -92,7 +92,7 @@ test('button input restarts a finished carnival dialog while retaining program r
 });
 
 test('unsupported carnival calls, dynamic styles and shadowed namespaces remain diagnosed',()=>{
-    for(const source of ['carnival.startCountdownGame(1, 4)','carnival.customGameOverExpanded("Hi")',
+    for(const source of ['carnival.startCountdownGame(1, 4)','carnival.showTimer(true)',
         'let carnival=1; carnival.startCountdownGame(1, carnival.WinTypes.Multi)']) {
         assert.ok(arcadeToPseudocode(source).unsupported.length,source);
     }
