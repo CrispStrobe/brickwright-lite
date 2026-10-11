@@ -2544,3 +2544,10 @@ focused collector/project tests and Arcade docs. Reject conflicting/malformed
 context explicitly; do not synthesize missing art or silently implement unknown
 APIs. Compare original fragment and complete-project diagnostics separately.
 No painter, producer, circuit, runtime or dependency-pin changes.
+
+Tutorial collection reuses the already integrated
+`overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js`; no second parser
+is retained. The lane additionally owns its optional target-dependent default
+core dependency and propagation through `scripts/makecode.mjs`, plus the new
+`test/makecode-tutorial-collector.test.mjs`. Existing assembly tests stay intact.
+Selected main source is explicit; ghost programs are not automatically chosen.
