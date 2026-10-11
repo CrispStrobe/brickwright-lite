@@ -6,7 +6,7 @@
 // function, becomes a generator and those calls become yield*; a callback given
 // to control.runInParallel becomes a generator function. Every other line is the
 // original source. A pausing call anywhere else throws.
-export function lowerFibers(ts, source, fileName) {
+export function lowerFibers(ts, source, fileName, {asyncPrimitives = ['pause']} = {}) {
     const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.ES2018, true);
 
     const nameOf = node => node.name && ts.isIdentifier(node.name) ? node.name.text : null;
@@ -39,7 +39,7 @@ export function lowerFibers(ts, source, fileName) {
         ts.forEachChild(fn, walk);
         return calls;
     };
-    const asyncKeys = new Set(['pause']);
+    const asyncKeys = new Set(asyncPrimitives);
     let changed = true;
     while (changed) {
         changed = false;

@@ -999,3 +999,70 @@ All 18 mapped source files were compared at producer
 `06341e3dd0f5ddfbed6764ec5afe03b04b65e265`; the 3750-file gallery matches.
 Fresh hosted build/browser checks remain queued, so do not merge or claim
 production GUI qualification from these local results.
+
+## Native song sequencing implementation slice — 2026-10-11
+
+### Implemented source and host behavior
+
+Branch `lane/arcade-song-runtime-20261011` is stacked on PR804. The generated
+music module now retains the pinned mixer `instrument.ts` and `sequencer.ts`
+in addition to the five existing files. Input hashes and MIT attribution are
+in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music-pxt.js`.
+`scripts/generate-arcade-music.mjs --check` reproduces that source. The explicit
+`createSong` refusal and empty stop-songs placeholder are removed.
+
+The host uses the original TypeScript sequencer through its non-simulator
+branch; it does not call absent simulator-native song shims. `pauseUntil` is
+lowered as an explicit primitive and polls on the Arcade clock. Positive music
+pauses keep absolute deadlines, with bounded catch-up after a clock jump and
+zero-duration polls deferred to the next pump. Existing melody/tone/effect
+control tests cover the shared scheduler change.
+
+One declared generation adaptation skips empty note streams before reading a
+current event; otherwise the retained decoder can read into the following track.
+`arcade/song-buffer.js` checks version-zero structure, positive timing, complete
+instruments/drum steps/events, tick ordering/extents and drum references. It
+refuses malformed data without changing song bytes. Mutable buffers are checked
+again at each scheduled tick; failure ends sequencing and releases waiting
+callers with the host error still visible.
+
+### Evidence and limits
+
+The focused tests cover melodic polyphony, drum and mixed tracks, envelope/LFO
+modulation, volume/tempo, until-done/background/looping behavior, replacement,
+global stop/reset, empty tracks, truncated streams and invalid edits. Four real
+MakeCode programs compile and run in the complete original simulator; every
+active instruction byte matches. The simulator's melodic buffers have an extra
+zero record after the terminator. The comparison requires the entire unused
+tail to be zero and compares all active bytes exactly; it does not normalize
+frequencies, envelopes, waveform, duration, volume or order.
+
+The oracle now has an opt-in `recordSongSound` observer on the original
+`AudioContextManager.playInstructionsAsync` sink, because songs bypass the
+existing melody queue observer. It calls the original sink unchanged. Initial
+empty-capture failures and the subsequent padding-only comparison failures are
+preserved privately. This is headless instruction/control-flow evidence, not
+audible speaker output or a production GUI song journey.
+
+The native backend uses the pinned hardware-path single-current-song behavior.
+The simulator has a distinct sequencer backend; simultaneous-song semantics and
+other binary format versions are not qualified by this slice. Version-zero
+validation must not be labelled support for every song format.
+
+### Required continuation
+
+`music.createSong` still needs importer value lowering, a normal Arcade reporter
+block, the shared producer pseudocode word, MakeCode export/reimport and SB3
+roundtrips. Keep diagnostics until these are implemented. Then add editable song
+assets and a real production GUI journey as specified in the song lane above.
+The locked corpus census remains 142/41/1; runtime primitives alone do not change
+its classification.
+
+### Separate parent integration repair
+
+The next hosted failure in PR804 was an old exact producer-pin assertion in
+`test/lego-spike-roundtrip.test.mjs`. The canonical executable artifact test was
+rerun against `06341e3dd0f5ddfbed6764ec5afe03b04b65e265` and passed. The assertion
+was updated without weakening artifact checks. Repair is on PR803 at
+`4e7fcfff80e8a4966e42ce41a19a85c6f7376dd9`, normally merged into PR804 at
+`9e0456303180e7d93901e84b635228210ac9a404`. Fresh hosted checks remain required.

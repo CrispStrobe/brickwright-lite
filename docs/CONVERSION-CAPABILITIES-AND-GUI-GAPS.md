@@ -3402,3 +3402,17 @@ editable note/track/instrument/tempo asset view. Current `createSong` explicitly
 refuses execution. The ordered source and acceptance contract is in
 [the song handoff](ARCADE-AGENT-HANDOFF.md#song-implementation-next-lane--2026-10-11).
 Do not count a song editor or accepted hex value as completed playback.
+
+### Native song sequencing candidate — 2026-10-11
+
+The song runtime lane implements genuine version-zero PXT song playback with
+melodic/polyphonic/drum tracks, original instrument rendering, frame-clock
+sequencing, playback modes and cancellation. Four real original controls match
+active instruction bytes, with zero terminal padding explicitly accounted for.
+This is a candidate runtime slice, not completed song authoring.
+
+Open: createSong import/export and normal Blocks/pseudocode reporter; exact SB3
+roundtrips; named editable song assets, note/track/instrument/tempo UI; production
+GUI playback journey; other binary versions and simultaneous-song behavior.
+Source, methods and qualification boundaries are in
+[the runtime handoff](ARCADE-AGENT-HANDOFF.md#native-song-sequencing-implementation-slice--2026-10-11).
