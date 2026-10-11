@@ -15,6 +15,20 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Intermittent green-flag first-write failure on main — 2026-10-11
+
+CLAIMED — Claude (opus), owner request ("take it on, fix it all"), branch
+`lane/green-flag-transient-20261011`. Since the bw-board pin `09c0f027`
+(winding repair adoption), `scripts/verify-green-flag-first-write.mjs` runs 5
+and 6 fail in about 3 of 5 hosted light-shard runs: the designer reports
+"Simulation stopped: advanceToLive refuses failed transient history", its clock
+does not run and the first write is lost. No lane owned it. This lane
+reproduces it, finds the cause in the pinned engine/UI pair or in Lite's
+wiring, and fixes it at its origin (own forks bw-board / bw-circuit-ui with a
+pin move, or Lite), without weakening the journey's assertions or bounds.
+Envelope: the files the diagnosis implicates, the pin and its ripple surfaces,
+this ledger.
+
 ## Code tab blocks ⇄ fe and blocks ⇄ Tcl: rescue of PR #708 — 2026-10-11
 
 DONE — Claude (opus), owner request (fe/Tcl "+" change thought lost; asked to
