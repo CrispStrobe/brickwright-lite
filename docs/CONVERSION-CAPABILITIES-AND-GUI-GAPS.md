@@ -3393,3 +3393,12 @@ exception or new normalization is introduced. Hosted consumer build/browser
 qualification remains pending at this checkpoint. The immutable corpus result
 remains 142 translated, 41 partial, and one parse failure; this synchronization
 repair does not close a corpus gap.
+
+### Song authoring and native sequencing: open
+
+The song lane must cover real melodic/drum/polyphonic execution, playable
+reporters in Blocks and pseudocode, exact byte-preserving export/SB3, and an
+editable note/track/instrument/tempo asset view. Current `createSong` explicitly
+refuses execution. The ordered source and acceptance contract is in
+[the song handoff](ARCADE-AGENT-HANDOFF.md#song-implementation-next-lane--2026-10-11).
+Do not count a song editor or accepted hex value as completed playback.

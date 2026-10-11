@@ -941,3 +941,61 @@ exception or new normalization is introduced. Hosted consumer build/browser
 qualification remains pending at this checkpoint. The immutable corpus result
 remains 142 translated, 41 partial, and one parse failure; this synchronization
 repair does not close a corpus gap.
+
+## Song implementation next lane — 2026-10-11
+
+### Source and present gap
+
+The consumed target is Arcade 4.2.1 / PXT 13.2.1, built from
+[Arcade commit 2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea](https://github.com/microsoft/pxt-arcade/commit/2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea).
+Use the exact bundled strings in
+`packages/scratch-gui/static/makecode/arcade/target.json`, package `mixer`,
+not a moving copy of common-packages main. The upstream source repository is
+[Microsoft pxt-common-packages](https://github.com/microsoft/pxt-common-packages);
+retain its MIT notice and record hashes of every consumed bundled source.
+
+`scripts/generate-arcade-music.mjs` currently replaces `createSong` with an
+explicit refusal and installs an empty `_stopAllSongs` function. The runtime
+host is `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music.js`; the
+generated module is `arcade/music-pxt.js`. Do not erase these limits by accepting
+a buffer without implementing scheduling and sound instructions.
+
+The bundled `instrument.ts` already contains the song/track/note/instrument
+encoding and instrument rendering. `sequencer.ts` contains a real TypeScript
+sequencer and a distinct simulator-shim wrapper. `Song.play` selects the latter
+when `control.deviceDalVersion()` equals `sim`; the other path uses the
+TypeScript sequencer. Choose and document a real host path, with faithful
+clock/fiber suspension, rather than routing to absent native shims.
+
+### Ordered acceptance
+
+1. Generate retained song/instrument/sequencer logic using the existing fiber
+   lowering and explicit host adapters. Add the needed buffer, clock and
+   pause-until contracts. Verify playback completion, replacement, looping,
+   global stop, restart and disposal.
+2. Compare actual scheduled mixer instruction buffers against the original
+   target for melodic, drum and polyphonic songs, tempo changes, empty tracks,
+   and loop boundaries. Preserve failures; headless instruction equality is
+   not audible output qualification. Check malformed input bounds explicitly.
+3. Add `music.createSong(hex...)` as a genuine playable value, normal Blocks
+   reporter and shared pseudocode word. Preserve exact song bytes through
+   MakeCode export/reimport and SB3 save/reopen; inspect existing playable
+   dispatch before adding a separate execution mechanism.
+4. Provide editable song assets with note grid, tracks/instruments, tempo,
+   measures, preview and undo/redo. Preserve naming and edits in both SB3 and
+   MakeCode projects. Record unfinished editor capability in the GUI ledger.
+5. Run the real production editor journey: import, edit, play with controller
+   widgets, save/reopen, export, compile and run the resulting MakeCode
+   project. Re-audit the locked 184 inputs independently; three original
+   projects mention `createSong`, and unrelated missing assets/extensions
+   may keep each partial. Report the actual census, not an assumed reduction.
+
+### Vendor repair qualification checkpoint
+
+At Lite parent `065a86dbd6da751709f7779874a55567a52c0996`, all 11 focused
+parser/vendor checks and the separate HEAD mirror check pass. At custom
+`1cbac9ad44ce957794d3eb2491b8150fc1320bd7`, all 12 checks pass without skips.
+All 18 mapped source files were compared at producer
+`06341e3dd0f5ddfbed6764ec5afe03b04b65e265`; the 3750-file gallery matches.
+Fresh hosted build/browser checks remain queued, so do not merge or claim
+production GUI qualification from these local results.
