@@ -70,3 +70,11 @@ The five import-rewrite differences are not listed. They are not divergence —
 they are the transform, they are re-derived on every sync, and listing them
 would be an inventory of the tool's own output that goes stale whenever the
 naming scheme changes. The sync's `--check` is what proves those, and it does.
+
+## Carnival producer adoption — 2026-10-11
+
+The empty delta set also applies at `06341e3dd0f5ddfbed6764ec5afe03b04b65e265`.
+The countdown and two game-over dialect words belong to the shared producer,
+not to an intentional Lite divergence. See
+[sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93).
+The historical `9173ca75` measurement above remains a historical receipt.
