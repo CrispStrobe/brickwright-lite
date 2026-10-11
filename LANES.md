@@ -80,8 +80,17 @@ failure-latch, tolerance, runtime/GUI, compiler, firmware or browser timeout
 change. Deployment follows qualified landing; no deployment claim in advance.
 Selected browser evidence path: scripts/verify-circuit-ux.mjs only. Keep its
 strict5000 one-volt/reset assertions; explicitly load the ideal one-volt source
-with a capacitor, and observe real advanceToLive receipts. The100kHz sample
-grid must bound each16-step callback to160us and produce partial continuation.
+with a capacitor, and observe real advanceToLive receipts. Corrected after
+Build38024305644: the time-view100kHz recording is an envelope, not a point
+sample. Its solver bound remains the interactive100us profile ceiling, so a
+16-step callback is bounded by1.6ms; that run preserved all5000 exact one-volt
+envelopes and published31 partial receipts, with no receipt mismatch.
+The replacement must additionally select the actual spectrum point-sample
+tap at100kHz through the UI, verify its capture kind and10us interval, and
+prove16-step callbacks bounded by160us with real partial continuation.
+No engine, profile, accuracy, timeout or existing waveform assertion change.
+Continue on `lane/reactive-live-package-replay-20261011`, retaining main's
+newer sb3 pin. The prior branch/run stays rejected, not rerun unchanged.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
 ## Arcade sprite extensions (darts, corgio) — 2026-10-10
