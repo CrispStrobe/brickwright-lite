@@ -44,9 +44,16 @@ describe('mounted project consumers obey replacement outcomes', () => {
 
     test('Code explicitly clears every authored buffer on loaded empty or legacy state', () => {
         assert.match(code, /outcome === 'legacy'.*outcome === 'loaded'/s);
+        // The reset is built from LANG_LABEL (one entry per Code tab), so the
+        // invariant is: the bundle branch builds it that way, and LANG_LABEL
+        // names every authored language.
+        assert.match(code, /outcome === 'loaded'[\s\S]*?buffers: Object\.fromEntries\(Object\.keys\(LANG_LABEL\)\.map\(l => \[l, ''\]\)\)/,
+            'the loaded/legacy branch does not reset every buffer');
+        const labels = /const LANG_LABEL = \{([^}]*)\}/.exec(code);
+        assert.ok(labels, 'LANG_LABEL not found');
         for (const language of ['pseudocode', 'python', 'javascript', 'c', 'basic', 'asm',
             'micropython']) {
-            assert.match(code, new RegExp(`${language}: ''`), `${language} is not cleared`);
+            assert.match(labels[1], new RegExp(`\\b${language}:`), `${language} is not cleared`);
         }
         assert.match(code, /publishGameControls\(null\)/);
         assert.match(code, /preserved-not-applied|report\?\.action/,

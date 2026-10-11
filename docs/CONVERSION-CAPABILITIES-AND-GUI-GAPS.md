@@ -6,6 +6,76 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Arcade tile map painter — 2026-10-11 (U03, first slice)
+
+A MakeCode Arcade level arrives as a `set Arcade tilemap` block whose input is
+the level as JSON text — runnable and exportable, but only editable by hand.
+Costumes → **Tile maps** now opens a painter on it.
+
+- `lib/bw-makecode/tilemap-editor.js`: finds every `set Arcade tilemap` block in
+  the project (a reporter or non-map text is listed as not editable), edits the
+  existing `tilemap-values.js` representation without mutating it (paint, erase,
+  flood fill, separate wall layer, resize keeping the top-left, tile size with
+  top-left crop/pad, add/remove tiles with renumbering, per-pixel tile edits),
+  keeps an undo/redo history, and writes the level back into its block.
+- `components/tw-pseudocode/tilemap-editor.jsx`: map picker for all levels, tile
+  palette drawn from the level's tiles, a 16-colour pixel editor for the selected
+  tile, tools, map/tile size, zoom, undo/redo (also Ctrl+Z / Ctrl+Shift+Z),
+  Revert and Save. Nothing changes before Save. **New tile map** adds a real
+  `when green flag clicked → set Arcade tilemap` script (loading the Arcade
+  extension if needed). Offered in the costume tab when the project has a tile
+  map block or uses the Arcade extension.
+
+Evidence: `test/makecode-arcade-tilemap-editor.test.mjs` (8 cases: each edit,
+undo/redo, text round trip and refusal of junk, and in the VM a level found in
+an imported game, painted, written back, then drawn and collided with by the
+running game and exported to MakeCode with the new cell; a new level that the
+game sets on the green flag and that survives SB3 save/reload). Browser:
+`scripts/verify-arcade-tilemap-painter.mjs` imports the pinned platformer
+fixture, opens the painter with real pointer input, paints a cell, adds a wall,
+undoes/redoes, draws a tile pixel, saves, checks the block and the running game,
+then starts and paints a new level (19/19 against a local production build); it runs in the light browser
+shard (provisional budget until five readings exist).
+
+Still open for U03: tile names and the MakeCode `myTiles` asset identity, legacy
+color-coded maps, placing sprites on tiles from the painter, and an SB3
+save/reopen browser journey.
+
+## Imported Arcade art in the paint editor — 2026-10-11
+
+A MakeCode Arcade game's images already arrived as Scratch costumes, and a
+costume edited in the paint editor already reached the running game. What the
+user saw in the sprite list was internal: `__arcadeTemplate1`, `__arcadeBackground2`,
+every costume called `costume1`, and an inline animation spread over one sprite
+per frame.
+
+- `nameArtworkSprites` (arcade-translate.js) renames each art holder after what
+  the generated code does with it: the variable a sprite is created into
+  (`hero`), a namespace constant's own name (`spritesheet.player` → `player`),
+  the kind when the variable is the translator's own (`asteroid`), `background`,
+  `<sprite>Animation` for animation frames, `<name>Sprite` for the plain sprite
+  an image-created sprite is built on, tile kinds and colour tiles. Names never
+  collide with the game's own sprites (`background2`). Code and costume records
+  change together, since the runtime finds a template sprite by name.
+- Costumes are named after their holder (`hero`, `coinAnimation-1`,
+  `coinAnimation-2`); Code's `COSTUME` lines end a name at a space, so names
+  have none. The importer gives the first, replaced costume its name instead
+  of `costume1`.
+- An inline image array (`animation.runImageAnimation(coin, [img`…`, img`…`])`)
+  is one sprite with one costume per frame. Frames are read by position, so
+  reordering or editing costumes in the paint editor changes the animation.
+
+Evidence: `test/makecode-arcade-editable-art.test.mjs` (names and costume
+records; both frames of the one animation sprite are shown in turn; a frame
+edited through the VM's paint-editor path is what the game draws, failing when
+the edit is dropped; name collisions; MakeCode export of the renamed art).
+Corpus census of the 184 hash-verified inputs is unchanged (142/41/1, zero rows
+changed); across the 183 that translate, no internal name, duplicate sprite,
+space in a costume name or costume without its sprite remains, and about a
+dozen holders still fall back to `image` (art first used inside an array
+mutation). Not done: a tilemap painter (tile maps import as code data), and
+the background stays an image resource sprite rather than a Stage backdrop.
+
 ## MakeCode extensions fetched on demand — 2026-10-10
 
 Running a MakeCode project (micro:bit, Calliope, EV3, Circuit Playground or

@@ -10,6 +10,11 @@ import PaintEditorWrapper from './paint-editor-wrapper.jsx';
 // The palette pixel editor (Arcade-style sprites): loaded on first use only.
 const PixelArtEditor = React.lazy(() =>
     import(/* webpackChunkName: "bw-pixel-editor" */ '../components/tw-pseudocode/pixel-art-editor.jsx'));
+// The Arcade tile map painter: also loaded on first use.
+const TilemapEditor = React.lazy(() =>
+    import(/* webpackChunkName: "bw-tilemap-editor" */ '../components/tw-pseudocode/tilemap-editor.jsx'));
+import {findTilemapBlocks} from '../lib/bw-makecode/tilemap-editor.js';
+import {confirmAsync} from '../lib/native-dialog.js';
 import getFonts from '../lib/lazy-render-fonts.js';
 import {connect} from 'react-redux';
 import {handleFileUpload, costumeUpload} from '../lib/file-uploader.js';
@@ -87,6 +92,7 @@ class CostumeTab extends React.Component {
     constructor (props) {
         super(props);
         this.pixelEditor = React.createRef();
+        this.tilemapEditor = React.createRef();
         bindAll(this, [
             'handleSelectCostume',
             'handleDeleteCostume',
@@ -108,9 +114,9 @@ class CostumeTab extends React.Component {
         } = props;
         const target = editingTarget && sprites[editingTarget] ? sprites[editingTarget] : stage;
         if (target && target.currentCostume) {
-            this.state = {selectedCostumeIndex: target.currentCostume, pixelMode: false};
+            this.state = {selectedCostumeIndex: target.currentCostume, pixelMode: false, tilemapMode: false};
         } else {
-            this.state = {selectedCostumeIndex: 0, pixelMode: false};
+            this.state = {selectedCostumeIndex: 0, pixelMode: false, tilemapMode: false};
         }
     }
     componentDidMount () {
@@ -324,7 +330,23 @@ class CostumeTab extends React.Component {
                     height="18"
                     rx="1"
                 /><path d="M9 3v18M15 3v18M3 9h18M3 15h18" /></>,
-                paint: <><path d="M4 20l4.5-1 10-10-3.5-3.5-10 10L4 20z" /><path d="M13.5 7l3.5 3.5" /></>
+                paint: <><path d="M4 20l4.5-1 10-10-3.5-3.5-10 10L4 20z" /><path d="M13.5 7l3.5 3.5" /></>,
+                tilemap: <><rect
+                    x="3"
+                    y="3"
+                    width="7"
+                    height="7"
+                /><rect
+                    x="14"
+                    y="3"
+                    width="7"
+                    height="7"
+                /><rect
+                    x="3"
+                    y="14"
+                    width="7"
+                    height="7"
+                /><path d="M14 17.5h7M17.5 14v7" /></>
             };
             return (<svg
                 aria-hidden="true"
@@ -339,10 +361,28 @@ class CostumeTab extends React.Component {
                 {paths[name]}
             </svg>);
         };
-        const editorTools = pixel => (
+        // A level lives in a `set Arcade tilemap` block; the painter is offered
+        // when the project has one or uses the Arcade extension.
+        const hasTilemaps = this.state.tilemapMode || findTilemapBlocks(vm).length > 0 ||
+            Boolean(vm.extensionManager?.isExtensionLoaded?.('arcade'));
+        const tilemapLabel = intl.locale.startsWith('de') ? 'Kachelkarten' : 'Tile maps';
+        const toggleTilemap = async () => {
+            const painter = this.tilemapEditor.current;
+            // confirmAsync, not confirm(): the app's dialog plugin answers confirm() with a
+            // Promise, which is always truthy (test/native-confirm.test.mjs).
+            if (this.state.tilemapMode && painter?.hasUnsavedChanges() &&
+                !(await confirmAsync(intl.locale.startsWith('de') ? 'Ungespeicherte Änderungen an der Kachelkarte verwerfen?' :
+                    'Discard unsaved tile map changes?'))) return;
+            if (!this.state.tilemapMode && !this.savePixelBeforeSwitch()) return;
+            this.setState(state => ({tilemapMode: !state.tilemapMode}));
+        };
+        const editorTools = (pixel, mode = pixel ? 'pixel' : 'paint') => {
+            // Each editor's tool row has its own ids (all rows stay mounted).
+            const testId = base => (mode === 'paint' ? base : `${base}-${mode}`);
+            return (
             <div className={styles.editorTools}>
                 <select
-                    data-testid={pixel ? 'bw-image-target-pixel' : 'bw-image-target'}
+                    data-testid={testId('bw-image-target')}
                     aria-label={intl.locale.startsWith('de') ? 'Bildziel wählen' : 'Choose image target'}
                     value={vm.editingTarget.id}
                     onChange={event => {
@@ -369,7 +409,7 @@ class CostumeTab extends React.Component {
                 </select>
                 <button
                     type="button"
-                    data-testid={pixel ? 'bw-costume-import-pixel' : 'bw-costume-import'}
+                    data-testid={testId('bw-costume-import')}
                     onClick={this.handleFileUploadClick}
                     className={styles.editorToolButton}
                     aria-label={openFileLabel}
@@ -379,7 +419,7 @@ class CostumeTab extends React.Component {
                         {openFileLabel}</span></button>
                 <button
                     type="button"
-                    data-testid={pixel ? 'bw-costume-export-pixel' : 'bw-costume-export'}
+                    data-testid={testId('bw-costume-export')}
                     onClick={() => this.handleExportCostume(this.state.selectedCostumeIndex)}
                     className={styles.editorToolButton}
                     aria-label={saveFileLabel}
@@ -389,8 +429,8 @@ class CostumeTab extends React.Component {
                         {saveFileLabel}</span></button>
                 <button
                     type="button"
-                    data-testid={pixel ? 'bw-pixel-toggle-pixel' : 'bw-pixel-toggle'}
-                    onClick={() => this.setState(state => ({pixelMode: !state.pixelMode}))}
+                    data-testid={testId('bw-pixel-toggle')}
+                    onClick={() => this.setState(state => (state.tilemapMode ? {pixelMode: true, tilemapMode: false} : {pixelMode: !state.pixelMode}))}
                     className={styles.editorToolButton}
                     aria-label={editorLabel}
                     title={editorLabel}
@@ -398,8 +438,23 @@ class CostumeTab extends React.Component {
                     {toolIcon(this.state.pixelMode ? 'paint' : 'pixel')}
                     <span className={styles.editorToolLabel}>{editorLabel}</span>
                 </button>
+                {hasTilemaps ? (
+                    <button
+                        type="button"
+                        data-testid={testId('bw-tilemap-toggle')}
+                        aria-pressed={this.state.tilemapMode}
+                        onClick={toggleTilemap}
+                        className={styles.editorToolButton}
+                        aria-label={tilemapLabel}
+                        title={tilemapLabel}
+                    >
+                        {toolIcon('tilemap')}
+                        <span className={styles.editorToolLabel}>{tilemapLabel}</span>
+                    </button>
+                ) : null}
             </div>
-        );
+            );
+        };
         return (
             <AssetPanel
                 buttons={[
@@ -461,13 +516,22 @@ class CostumeTab extends React.Component {
                                 it while scratch-paint is still importing a costume leaves a
                                 pending paper.js callback reading a destroyed project
                                 ("reading 'layers'"), which crashes the whole tab. */}
-                            <div style={{display: this.state.pixelMode ? 'none' : 'contents'}}>
+                            <div style={{display: this.state.pixelMode || this.state.tilemapMode ? 'none' : 'contents'}}>
                                 <PaintEditorWrapper
                                     selectedCostumeIndex={this.state.selectedCostumeIndex}
                                     editorTools={editorTools(false)}
                                 />
                             </div>
-                            {this.state.pixelMode ? (
+                            {this.state.tilemapMode ? (
+                                <React.Suspense fallback={null}>
+                                    <TilemapEditor
+                                        ref={this.tilemapEditor}
+                                        vm={vm}
+                                        locale={intl.locale}
+                                        editorTools={editorTools(false, 'tilemap')}
+                                    />
+                                </React.Suspense>
+                            ) : this.state.pixelMode ? (
                                 <React.Suspense fallback={null}>
                                     <PixelArtEditor
                                         ref={this.pixelEditor}

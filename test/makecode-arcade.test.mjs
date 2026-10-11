@@ -114,13 +114,13 @@ test('a real Arcade game becomes sprites, costumes and scripts', async () => {
 
     assert.match(out.code, /^DEVICE ARCADE/, 'an imported game selects the playable console');
     assert.deepEqual(out.unsupported, []);
-    assert.deepEqual(out.sprites, ['Game', '__arcadeTemplate1', '__arcadeTemplate2',
-        '__arcadeTemplate3', '__arcadeBackground1']);
+    // Each art holder is named after what the game does with it, not __arcadeTemplateN.
+    assert.deepEqual(out.sprites, ['Game', 'mySprite', 'gegner', 'einfangen', 'background']);
     assert.equal(out.costumes.length, 4, 'three instance templates and the background retain artwork');
     assert.match(out.code, /arcade register button "up" event \(2049\)/);
     assert.match(out.code, /arcade register overlap kind "Enemy" with kind "Player"/);
     assert.match(out.code, /arcade change score player \(1\) by/);
-    assert.match(out.code, /arcade create template "__arcadeTemplate2" kind "Enemy"/);
+    assert.match(out.code, /arcade create template "gegner" kind "Enemy"/);
     assert.match(out.code, /arcade set vx of gegner to/);
     assert.match(out.code, /arcade set background image/);
 });
@@ -325,7 +325,7 @@ test('action animations preserve their real objects, frame images and attachment
     assert.equal((out.code.match(/arcade add animation frame/g) || []).length, 29);
     assert.equal((out.code.match(/arcade attach animation/g) || []).length, 11);
     assert.match(out.code, /arcade attach animation \(coinAnimation\) to sprite \(coin\)/, 'instances created inside functions receive the shared animation');
-    const imageResources = out.costumes.filter(c => /^__arcadeBackground/.test(c.sprite));
+    const imageResources = out.costumes.filter(c => out.code.includes(`frame image array "${c.sprite}Image"`));
     assert.ok(imageResources.length >= 29, 'every animation image remains editable artwork');
     assert.ok(imageResources.every(c => c.svg.includes('data-bw-pixel-scale')));
 });

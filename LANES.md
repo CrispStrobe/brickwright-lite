@@ -15,10 +15,73 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade tile names and MakeCode asset identity — 2026-10-11
+
+CLAIMED — Codex, separate worktree and branch
+`lane/arcade-tile-asset-identity-20261011`, while PR792 persistence CI queues.
+Preserve named tile identity through import, JSON Blocks/SB3, painter edits and
+MakeCode project export/reimport. Emit real MakeCode tile resource/declaration
+files so named tiles appear in its asset list, rather than merely inlining art.
+Envelope: bw-makecode tilemap-values/editor/assets/translate/export modules,
+new tile resource helper, namespace-bindings.js source-path metadata,
+tilemap-editor.jsx and tracked twin when present, focused tile asset/editor/
+original-compiler tests, dedicated scripts/verify-arcade-tile-identity.mjs and
+its additive light-shard step in build.yml, Arcade docs and this ledger. No persistence browser
+script, circuit source/pins or legacy-map/sprite-placement implementation.
+Review the original pinned resource format and resolve duplicate names/images
+explicitly; never silently alias distinct edited tiles to one exported asset.
+
+## Arcade painted tilemap project save/reopen — 2026-10-11
+
+CLAIMED — Codex, coordinated with the session owning the circuit green-flag
+repair. Branch `lane/arcade-painted-project-roundtrip-20261011`.
+Extend the existing real-pointer tilemap painter browser journey to save an SB3,
+reopen it through the GUI, verify every painted map/wall/tile pixel and editable
+level, run the reopened project, and verify MakeCode export preservation.
+Envelope: scripts/verify-arcade-tilemap-painter.mjs, focused browser helpers/tests
+if needed, Arcade handoff/capability docs and this ledger. Preserve original
+failures and exact bundle/source identity. No circuit engine/pin changes, tile
+name/myTiles schema, legacy map implementation or sprite-placement UI changes.
+The circuit lane owns green-flag diagnosis; do not weaken its assertions or
+retry whole unrelated successful shards to mask that failure.
+
+## Intermittent green-flag first-write failure on main — 2026-10-11
+
+CLAIMED — Claude (opus), owner request ("take it on, fix it all"), branch
+`lane/green-flag-transient-20261011`. Since the bw-board pin `09c0f027`
+(winding repair adoption), `scripts/verify-green-flag-first-write.mjs` runs 5
+and 6 fail in about 3 of 5 hosted light-shard runs: the designer reports
+"Simulation stopped: advanceToLive refuses failed transient history", its clock
+does not run and the first write is lost. No lane owned it. This lane
+reproduces it, finds the cause in the pinned engine/UI pair or in Lite's
+wiring, and fixes it at its origin (own forks bw-board / bw-circuit-ui with a
+pin move, or Lite), without weakening the journey's assertions or bounds.
+Envelope: the files the diagnosis implicates, the pin and its ripple surfaces,
+this ledger.
+
+## Code tab blocks ⇄ fe and blocks ⇄ Tcl: rescue of PR #708 — 2026-10-11
+
+DONE — Claude (opus), owner request (fe/Tcl "+" change thought lost; asked to
+pick it up), branch `lane/fe-tcl-two-way-rescue-20261011` from #708's head
+`6ac91b6cf`, merged #791 (`98a5468a1`, tree equals the reviewed merge
+prediction; all enabled checks green, light shard on rerun after the unrelated
+green-flag first-write journey). Beyond the merge: #786's "+" menu kept, and
+To blocks no longer awaits the lazily loaded fe/Tcl generators (that race lost
+typed edits and stopped debugger machines on slow runners); fe/Tcl buffers are
+cleared and re-derived when opened. #708 (no claim, idle since 2026-10-07) carries two-way fe and Tcl
+conversion, a Jim Tcl DOS runtime and its build tooling; its only red check was
+a since-repaired Arcade rotation gate. This lane merges current main (resolving
+the overlap with #786's optional-language "+" control), requalifies, and lands
+it as a new PR; #708's branch is left untouched. Envelope: #708's files plus
+the three conflicted ones, this ledger.
+
 ## Arcade tile map painter — 2026-10-11
 
-CLAIMED — Claude (opus), owner request (imported Arcade levels must be editable
-in our graphics editors), branch `lane/arcade-tilemap-painter-20261011`. Ledger
+DONE — Claude (opus), owner request (imported Arcade levels must be editable
+in our graphics editors), branch `lane/arcade-tilemap-painter-20261011`, merged
+#790 (`513b0caac`, tree equals the reviewed merge prediction; all enabled
+checks green; also gained New tile map and the CI light-shard browser check,
+which touched build.yml and browser-gate-readings.json). Ledger
 U03 first slice: a painter in the Costumes tab for every `set Arcade tilemap`
 block (tile palette, paint/erase/fill, separate wall layer, map size, tile size,
 add/remove/edit tiles as pixels, undo/redo), written back into that block.
@@ -28,8 +91,11 @@ ledger. Not in scope: legacy color-coded maps, tile names, Stage backdrops.
 
 ## Arcade art editable in the paint editor — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("sprites/backgrounds must be editable in
-our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`.
+DONE — Claude (opus), owner request ("sprites/backgrounds must be editable in
+our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`,
+merged #789 (`074edb8d5`, tree equals the reviewed merge prediction; all
+enabled checks green on attempt 3 after two light-shard failures in the
+unrelated green-flag first-write journey and one PXT palette timing flake).
 Imported MakeCode Arcade art already lands as costumes and edits reach the game;
 this lane makes it legible and organised: helper art sprites get readable names
 from the code (`hero`, `background`, `coinAnimation`) instead of `__arcadeTemplateN`,
@@ -80,8 +146,17 @@ failure-latch, tolerance, runtime/GUI, compiler, firmware or browser timeout
 change. Deployment follows qualified landing; no deployment claim in advance.
 Selected browser evidence path: scripts/verify-circuit-ux.mjs only. Keep its
 strict5000 one-volt/reset assertions; explicitly load the ideal one-volt source
-with a capacitor, and observe real advanceToLive receipts. The100kHz sample
-grid must bound each16-step callback to160us and produce partial continuation.
+with a capacitor, and observe real advanceToLive receipts. Corrected after
+Build38024305644: the time-view100kHz recording is an envelope, not a point
+sample. Its solver bound remains the interactive100us profile ceiling, so a
+16-step callback is bounded by1.6ms; that run preserved all5000 exact one-volt
+envelopes and published31 partial receipts, with no receipt mismatch.
+The replacement must additionally select the actual spectrum point-sample
+tap at100kHz through the UI, verify its capture kind and10us interval, and
+prove16-step callbacks bounded by160us with real partial continuation.
+No engine, profile, accuracy, timeout or existing waveform assertion change.
+Continue on `lane/reactive-live-package-replay-20261011`, retaining main's
+newer sb3 pin. The prior branch/run stays rejected, not rerun unchanged.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
 ## Arcade sprite extensions (darts, corgio) — 2026-10-10
@@ -2418,3 +2493,9 @@ browser report/setup barriers. Preserve parent failures and fresh production
 qualification boundaries. No corpus input or consumer pin changes.
 
 Compiled factory source `e4aa00d77ca2ae3af3551d980953566a581ce423` reproduces and fixes the Babel-created helper loss with explicit module dependencies.67 affected checks pass, zero skips; production-minified indexed reads, generated engines and legacy/shared-value controls pass. Source-injected speech/controller proof in the older reference GUI passes; full fresh production remains pending. Fresh184 hash-verified import-only census stays104/79/1, zero changed diagnostics. [Receipt](docs/receipts/2026-10-09-arcade-bundle-factories.json).
+
+## Arcade legacy colour-index layout authoring — 2026-10-11
+
+CLAIMED — Codex, branch `lane/arcade-legacy-layout-authoring-20261011`, stacked on PR793. First scope: list stable artwork-backed `arcade_setLegacyTilemap` sources in the tile painter; paint/fill/erase/resize their colour-index layout and save to actual template artwork, preserving legacy API calls, image aliases and colour-index wall definitions. Computed images, mutable frame declarations and layered artwork need explicit editability reasons. Definition art/walls and sprite placement remain separate; Claude owns planned sprite placement. Envelope: new bw-makecode legacy layout helper, tilemap-editor model/JSX integration, focused legacy authoring tests, Arcade handoff/ledger. No engine, circuit, dependency-pin, PR792 browser or peer branches changed. Coordinate overlapping painter files before implementation.
+
+Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy-layout.mjs`, its additive light-shard workflow step and generated browser budget registration. Preserve existing modern/persistence/placement gates and bounds. Single-layer source documents must remain bound to the new rendered asset; multi-layer/animated sources stay explicitly listed for the Pixel path.
