@@ -105,6 +105,12 @@ timestamped from50.01ms, not the envelope's50ms bucket boundary. Metadata and
 committed-mirror checks pass7/7 locally. Source-selected controller preflight
 passes2/2; changing its point tap back to envelope causes a genuine failed
 span assertion. No installed replacement or browser success is claimed yet.
+Build38121752970 also passed build/corpus/FPGA/heavy browser and the corrected
+envelope assertions, but twice timed out waiting for the UI-selected point tap
+to be ready. That is an unresolved qualification failure, not a passed sample
+capture. The next forward evidence change logs actual channel kinds, intervals,
+counts, clock and UI-channel presence before selection and on refusal. No
+timeout, readiness predicate, sample expectation or production behavior changes.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 Canonical claims c686fd704 and8ebaded2d preceded their edits. Both locks change
 only the board spec/resolution/integrity; other dependency pins stay unchanged.

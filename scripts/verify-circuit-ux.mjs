@@ -672,15 +672,30 @@ try {
         // Open a REAL point-sample tap through the learner's spectrum controls.
         // Do not synthesize a channel, alter the profile, or reuse the envelope
         // rate as sample authority. The original reset/one-volt proof above stays.
+        const acquisitionState = () => scopePage.evaluate(() => {
+            const b = window.__board;
+            return {clock: String(b.getTime()), circuitBoardMatches: b === window.__circuit?.board,
+                uiChannelRows: document.querySelectorAll('[data-testid="bw-scope-scale-0"]').length,
+                channels: b.getScopeChannels().map(handle => {
+                    const d = b.getScopeData(handle);
+                    return {handle, capture: d.capture, interval: String(d.sampleIntervalNs),
+                        count: d.count, start: String(d.startTNs)};
+                })};
+        });
+        console.log('scope acquisition before spectrum:', JSON.stringify(await acquisitionState()));
         await scope.getByTestId('bw-scope-view-spectrum').click();
         await scope.getByTestId('bw-scope-fft-rate').selectOption('100000');
-        await scopePage.waitForFunction(() => {
+        try { await scopePage.waitForFunction(() => {
             const b = window.__board, hs = b.getScopeChannels();
             return hs.length === 2 && hs.some(h => {
                 const d = b.getScopeData(h);
                 return d.capture === 'sample' && d.sampleIntervalNs === 10000n && d.count === 0;
             });
-        });
+        }); } catch (error) {
+            console.log('scope acquisition refused spectrum readiness:',
+                JSON.stringify(await acquisitionState()));
+            throw error;
+        }
         await scopePage.evaluate(() => {
             const r = window.__bwScopeResetReceipt;
             r.partialReceipts = 0; r.maxSpanNs = '0'; r.receiptMismatches = [];
