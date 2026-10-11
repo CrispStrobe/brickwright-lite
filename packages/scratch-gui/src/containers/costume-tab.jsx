@@ -14,6 +14,7 @@ const PixelArtEditor = React.lazy(() =>
 const TilemapEditor = React.lazy(() =>
     import(/* webpackChunkName: "bw-tilemap-editor" */ '../components/tw-pseudocode/tilemap-editor.jsx'));
 import {findTilemapBlocks} from '../lib/bw-makecode/tilemap-editor.js';
+import {confirmAsync} from '../lib/native-dialog.js';
 import getFonts from '../lib/lazy-render-fonts.js';
 import {connect} from 'react-redux';
 import {handleFileUpload, costumeUpload} from '../lib/file-uploader.js';
@@ -365,11 +366,13 @@ class CostumeTab extends React.Component {
         const hasTilemaps = this.state.tilemapMode || findTilemapBlocks(vm).length > 0 ||
             Boolean(vm.extensionManager?.isExtensionLoaded?.('arcade'));
         const tilemapLabel = intl.locale.startsWith('de') ? 'Kachelkarten' : 'Tile maps';
-        const toggleTilemap = () => {
+        const toggleTilemap = async () => {
             const painter = this.tilemapEditor.current;
+            // confirmAsync, not confirm(): the app's dialog plugin answers confirm() with a
+            // Promise, which is always truthy (test/native-confirm.test.mjs).
             if (this.state.tilemapMode && painter?.hasUnsavedChanges() &&
-                !window.confirm(intl.locale.startsWith('de') ? 'Ungespeicherte Änderungen an der Kachelkarte verwerfen?' :
-                    'Discard unsaved tile map changes?')) return;
+                !(await confirmAsync(intl.locale.startsWith('de') ? 'Ungespeicherte Änderungen an der Kachelkarte verwerfen?' :
+                    'Discard unsaved tile map changes?'))) return;
             if (!this.state.tilemapMode && !this.savePixelBeforeSwitch()) return;
             this.setState(state => ({tilemapMode: !state.tilemapMode}));
         };
