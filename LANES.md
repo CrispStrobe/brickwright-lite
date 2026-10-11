@@ -6,7 +6,7 @@ Created 2026-08-24, after two sessions independently did the same repair.
 
 ### Painted-level installation proof repair — 2026-10-11
 
-CLAIMED — Codex bwcx, branch `fix/painter-installation-proof-20261011`.
+DONE candidate — Codex bwcx, branch `fix/painter-installation-proof-20261011`.
 Build38155522851 and the independent PR797/800 Builds38155089351 and
 38157758738 all failed the same saved-level runtime-after-reopen check.
 The saved maps compare exactly; the final runtime receipt instead contains
@@ -29,6 +29,13 @@ copied before later replacement/mutation. Six focused tests cover attribution,
 immutable snapshots, refusal, original call semantics, browser serialization
 and four executable mutants with genuine assertion failures. Runtime/browser
 success remains pending; no timeout or exact-map comparison was weakened.
+Combined qualification includes the exact published PR797 package descendant
+and PR800 Arcade ordering fix, preserving their commits and attribution.
+The two reactive proof files are unchanged from Build38155522851, where both
+installed-package cases and both circuit browser journeys passed; that overall
+run remains rejected because its inherited painter step failed. This candidate
+must pass every enabled hosted check before landing. No standalone older Board
+pin adoption is permitted and no deployment is claimed.
 
 The vendor of `sb3-creator eac7a1a` made two OPEN DEFECT sentinels fire — the
 shift-register bit test and the four faceplates with dead controls. Both are
@@ -202,7 +209,7 @@ integration session (merged: #786, #787, #788):
 
 ## Reactive live-clock package adoption — 2026-10-10
 
-CLAIM — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
+SUPERSEDED candidate — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
 exact base `9ac32a75562577c945baff383fbfb5dcddd02804`. Adopt bw-board
 `74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42` only; keep CUI, sb3 and flasher pins
 unchanged. Upstream CI37985452352 and Harris37985452331 are exact-head green;
@@ -237,6 +244,12 @@ No engine, profile, accuracy, timeout or existing waveform assertion change.
 Continue on `lane/reactive-live-package-replay-20261011`, retaining main's
 newer sb3 pin. The prior branch/run stays rejected, not rerun unchanged.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
+Continuation: `fix/painter-installation-proof-20261011` integrates PR797's
+Board9c8777d5 descendant rather than the obsolete74b-only pin move, PR800's
+published Arcade ordering repair, and the exact qualified circuit proof files.
+Build38155522851 passed both installed reactive cases and the envelope/point
+browser receipts, but failed the inherited painter check. The combined exact
+candidate remains subject to all enabled hosted gates; pending is not landed.
 
 ## Arcade sprite extensions (darts, corgio) — 2026-10-10
 
