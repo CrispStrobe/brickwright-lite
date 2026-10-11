@@ -15,6 +15,17 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Code tab blocks ⇄ fe and blocks ⇄ Tcl: rescue of PR #708 — 2026-10-11
+
+CLAIMED — Claude (opus), owner request (fe/Tcl "+" change thought lost; asked to
+pick it up), branch `lane/fe-tcl-two-way-rescue-20261011` from #708's head
+`6ac91b6cf`. #708 (no claim, idle since 2026-10-07) carries two-way fe and Tcl
+conversion, a Jim Tcl DOS runtime and its build tooling; its only red check was
+a since-repaired Arcade rotation gate. This lane merges current main (resolving
+the overlap with #786's optional-language "+" control), requalifies, and lands
+it as a new PR; #708's branch is left untouched. Envelope: #708's files plus
+the three conflicted ones, this ledger.
+
 ## Arcade tile map painter — 2026-10-11
 
 CLAIMED — Claude (opus), owner request (imported Arcade levels must be editable
