@@ -1066,3 +1066,12 @@ rerun against `06341e3dd0f5ddfbed6764ec5afe03b04b65e265` and passed. The asserti
 was updated without weakening artifact checks. Repair is on PR803 at
 `4e7fcfff80e8a4966e42ce41a19a85c6f7376dd9`, normally merged into PR804 at
 `9e0456303180e7d93901e84b635228210ac9a404`. Fresh hosted checks remain required.
+
+### Native song source qualification checkpoint
+
+[PR806](https://github.com/CrispStrobe/brickwright-lite/pull/806) tested code
+`117a5b31230ae282aa4adee89bed2ab627fc0a6d`: 29 affected checks pass with no
+skips (12 song, six existing music, 11 Carnival source/control checks). The
+separate HEAD overlay/packages mirror check passes. Production build/browser
+qualification remains pending; the runtime source tree and hosted app result
+are separate evidence. No importer classification was promoted.
