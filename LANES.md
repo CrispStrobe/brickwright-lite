@@ -2533,3 +2533,14 @@ Resolve literal valid costume ranges with the native rounded/wrapped index;
 refuse shared keys with conflicting or computed source descriptors rather than
 editing an unrelated costume. Qualify native/SB3/original MakeCode behavior.
 No painter JSX/model, peer sprite placement, circuit or dependency-pin changes.
+
+
+Tutorial project-input lane: Codex owns
+`lane/arcade-tutorial-project-inputs-20261011`, stacked on PR796. Preserve
+original fragment files/hashes and add separate native MakeCode project
+fixtures retaining tutorial custom TypeScript, asset JSON and package fences.
+Envelope: collect-makecode-corpus.mjs, a new scripts/lib tutorial-project helper,
+focused collector/project tests and Arcade docs. Reject conflicting/malformed
+context explicitly; do not synthesize missing art or silently implement unknown
+APIs. Compare original fragment and complete-project diagnostics separately.
+No painter, producer, circuit, runtime or dependency-pin changes.
