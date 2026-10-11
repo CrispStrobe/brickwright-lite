@@ -15,6 +15,17 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade tile map painter — 2026-10-11
+
+CLAIMED — Claude (opus), owner request (imported Arcade levels must be editable
+in our graphics editors), branch `lane/arcade-tilemap-painter-20261011`. Ledger
+U03 first slice: a painter in the Costumes tab for every `set Arcade tilemap`
+block (tile palette, paint/erase/fill, separate wall layer, map size, tile size,
+add/remove/edit tiles as pixels, undo/redo), written back into that block.
+Envelope: new lib/bw-makecode/tilemap-editor.js, new tilemap-editor.jsx (+css),
+costume-tab.jsx (overlay + tracked twins), their tests, conversion docs, this
+ledger. Not in scope: legacy color-coded maps, tile names, Stage backdrops.
+
 ## Arcade art editable in the paint editor — 2026-10-11
 
 CLAIMED — Claude (opus), owner request ("sprites/backgrounds must be editable in
