@@ -13,7 +13,7 @@ await mkdir(out, {recursive: true});
 const report = {source: process.env.GITHUB_SHA || null, checks: [], errors: []};
 const check = (name, ok) => { report.checks.push({name, ok: Boolean(ok)}); assert.ok(ok, name); console.log(`ok ${name}`); };
 const fixture = join(out, 'legacy-layout.mkcd');
-await writeFile(fixture, makeCodeProjectFile({'main.ts': 'scene.setTile(1,img`7`,true)\nscene.setTileMap(img`1 0\n0 1`,TileScale.Four)\n',
+await writeFile(fixture, makeCodeProjectFile({'main.ts': 'let tileArt = img`7`\nlet layout = img`1 0\n0 1`\nlet alias = layout\nscene.setTile(1,tileArt,true)\nscene.setTileMap(alias,TileScale.Four)\n',
     'pxt.json': JSON.stringify({name: 'Legacy layout', dependencies: {device: '*', 'color-coded-tilemap': '*'}, files: ['main.ts']})}, {target: 'arcade'}));
 const browser = await chromium.launch(process.env.BW_BROWSER ? {executablePath: process.env.BW_BROWSER} : {});
 let page;

@@ -472,3 +472,47 @@ The same PR794 lane now includes `legacy-tile-definition-editor.jsx`. It lists e
 Definition operations are `findLegacyTileDefinitions` and `writeLegacyTileDefinition` in `legacy-layout-editor.js`. Artwork editing and wall editability are separate: a computed wall remains in its own block while static artwork can be edited. A computed index or image is listed with its reason. Save checks source identity, current index and wall fingerprint before mutation. Native tests verify that the wall change affects every matching colour cell, source/SB3 persistence, original MakeCode tile pixel3 and wall false, stale-save refusal and saved undo back to the initial definition. The existing browser gate now exercises the actual definition pixel/wall controls before fresh File load and downloaded MakeCode reimport. Fresh GUI and enabled hosted results remain pending.
 
 Definition followup qualification: all38 affected tests passed,0 skips; a final5-test focused rerun passed after validation guards. JSX/script syntax and unchanged workflow budget registration passed. Actual fresh-build browser controls remain queued and are not qualified by those unit/runtime results. Remaining authoring gaps include computed definition indices/images, computed wall expressions, richer layer/animation sources and broader source-alias resolution.
+
+
+## Legacy authored image aliases — 2026-10-11
+
+The image-source editor follows a single authored variable assignment and alias
+chains when each initializer precedes its use on the same command chain. It
+edits the original artwork, preserving assignment blocks and later pixel
+mutations. The painter previews authored pixels rather than a live image
+snapshot. Reassignment, computed creation and sources outside the preceding
+chain remain explicitly unavailable in this editor; Code/Blocks execution is
+unchanged. Definition artwork follows the same rules.
+
+A native/SB3/original-MakeCode regression exposed saved image-reference text
+being treated as a string during export. Export now honors version1 image
+reference sidecars only when the standard field still matches their placeholder.
+Per-run resources initialize as null and authored assignments recreate them;
+external edits to the standard field remain intact. No runtime handle or resource
+is copied into a MakeCode project. The real GUI legacy journey now uses variable
+and alias sources, retaining pointer edits, SB3 reopening and MakeCode reimport.
+Exact-source browser qualification is pending; no original-corpus promotion or
+whole-game equivalence is claimed.
+
+Persistence PR792 is merged at `18b2929a8479bcec880660b94c13bbb6c991741a`.
+Its seven enabled checks and all34 hosted painter observations passed:
+https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544 .
+Reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`; expected and actual
+merge tree `4470f89493e6c944ef62359888a9053df514c325` match. Conditional PR
+deployment jobs skipped as configured. Original compilation/rendering is
+qualified for this fixture; full-game equivalence is not established.
+
+Alias lane continuation: branch `lane/arcade-legacy-image-aliases-20261011`,
+stacked on [PR794](https://github.com/CrispStrobe/brickwright-lite/pull/794).
+Source ownership is `legacy-layout-editor.js` and `export-arcade.js` under
+`overlay/scratch-gui/src/lib/bw-makecode/`; regression coverage is
+`test/makecode-arcade-legacy-layout-editor.test.mjs` and
+`test/makecode-export-arcade.test.mjs`. Run with the existing GUI scope hook and
+Node22 as described above. The existing light-shard gate
+`scripts/verify-arcade-legacy-layout.mjs` covers alias-based painter controls.
+Sixteen affected checks passed, plus seven final focused checks with sidecar
+external-edit protection. Preserve the initial original-simulator crash receipt;
+do not replace it with the successful result. Before merging, collect every
+enabled exact-head check, inspect actual browser artifacts, integrate parent
+PRs normally, then compare the reviewed and merged trees. Do not merge a child
+PR into its feature parent.

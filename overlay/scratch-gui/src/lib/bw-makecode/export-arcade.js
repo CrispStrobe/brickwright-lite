@@ -543,7 +543,19 @@ class ArcadeEmitter {
         if (RESERVED.has(ts)) ts = `${ts}_`;
         this.globals.set(key, ts);
         const owner = this.isGlobalVar(name) ? this.project.targets.find(candidate => candidate.isStage) : target;
-        const initial = Object.values(owner.variables || {}).find(variable => variable[0] === name)?.[1];
+        const entry = Object.entries(owner.variables || {}).find(([, variable]) => variable[0] === name);
+        const initial = entry?.[1]?.[1];
+        const tag = owner.bwValues?.version === 1 && entry ? owner.bwValues.variables?.[entry[0]] : null;
+        const reference = tag && Object.keys(tag).length === 1 && tag.bwReference;
+        // SB3's readable placeholder is not the value of an image variable.
+        // Saved image resources are per-run and do not resolve after loading;
+        // source assignments recreate them. Honor the sidecar only while its
+        // standard field still matches, just as the VM's SB3 loader does.
+        if (reference?.kind === 'image' && typeof reference.id === 'string' &&
+            initial === `[image reference ${reference.id}]`) {
+            this.initialGlobals.set(ts, null);
+            return ts;
+        }
         if (['string', 'number', 'boolean'].includes(typeof initial) &&
             (typeof initial !== 'number' || Number.isFinite(initial))) {
             this.initialGlobals.set(ts, initial);
