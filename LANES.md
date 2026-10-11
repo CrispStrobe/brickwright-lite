@@ -2567,3 +2567,7 @@ is retained. The lane additionally owns its optional target-dependent default
 core dependency and propagation through `scripts/makecode.mjs`, plus the new
 `test/makecode-tutorial-collector.test.mjs`. Existing assembly tests stay intact.
 Selected main source is explicit; ghost programs are not automatically chosen.
+
+## Arcade extension project qualification — 2026-10-11
+
+CLAIMED — Codex, branch `lane/arcade-extension-project-qualification-20261011`, stacked on PR798. Recover real original-compiler coverage before implementing carnival countdown semantics: support MakeCode GitHub packages in repository subfolders, preserve exact package/ref identities, add explicit opt-in extension fetching to the Node compiler and compatibility audit with license/content-hash evidence and named refusals. Envelope: `extension-fetch.js`, `scripts/lib/pxt-node.mjs`, `scripts/compat-audit.mjs`, focused on-demand/CLI tests, Arcade handoff and capability ledger. Existing offline defaults, diagnostic classifications and original corpus inputs remain intact. Carnival native gameplay, producer blocks and custom dialogs are subsequent work; no generic countdown substitution or compatibility promotion. No tile painter, peer sprite placement, circuit or dependency-pin changes.
