@@ -2524,3 +2524,12 @@ Painted project persistence PR792 merged at `18b2929a8479bcec880660b94c13bbb6c99
 Legacy source followup claim: Codex owns `lane/arcade-legacy-image-aliases-20261011`, stacked on PR794. Same helper/test/browser/docs envelope; trace single authored image assignments and aliases on the preceding command chain without reading live handles or flattening image mutation code. Reassignments and ambiguous sources stay explicitly computed. No painter JSX/model overlap, sprite placement, circuit or pin changes.
 
 The alias followup also owns `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js`: original-PXT roundtrip exposed image-reference SB3 sidecars being treated as string initializers. Honor validated matching image sidecars while preserving external field changes; qualify native/SB3/original execution. No VM serialization/schema or pin changes.
+
+
+Static legacy frame-selection followup: Codex owns
+`lane/arcade-legacy-frame-selection-20261011`, stacked on PR795. Envelope is
+`legacy-layout-editor.js`, the focused legacy authoring test and Arcade docs.
+Resolve literal valid costume ranges with the native rounded/wrapped index;
+refuse shared keys with conflicting or computed source descriptors rather than
+editing an unrelated costume. Qualify native/SB3/original MakeCode behavior.
+No painter JSX/model, peer sprite placement, circuit or dependency-pin changes.
