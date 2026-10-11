@@ -3362,3 +3362,11 @@ with controlled clocks. Production GUI custom-block qualification, dynamic
 scoring/effect types, arbitrary sound objects, timer HUD and ball helpers remain
 open. Parent browser tests are queued. Neither whole-game equivalence nor corpus
 promotion is claimed. See [the custom API contract](ARCADE-AGENT-HANDOFF.md#carnival-custom-game-over-authoring--2026-10-11).
+
+
+Custom-source census was actually rerun against all 184 unchanged original
+blobs: still142 translated /41 partial /1 parse failure. Recovered Arrow Battle
+with its real project context separately imports with zero diagnostics; it is
+not a replacement census input or full-game execution result. Next priority is
+missing project artwork/maps plus song values/wrapper APIs and native-mode
+selection. See the refreshed census section in the handoff.

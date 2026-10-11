@@ -893,3 +893,28 @@ GUI journey and final hosted checks remain pending. Parent PR803's independent
 browser journey is queued; do not label it passed. Corpus counts remain unchanged
 until an actual immutable-input audit. Private paths, source receipts and commands
 remain in the private handoff and ignored local Markdown.
+
+
+### Refreshed immutable import census and recovered Arrow Battle — 2026-10-11
+
+At custom-runtime source `bb95f4dfb6a94f0ddd6d36f0864553842a6137e3`, a fresh
+184-input import audit still reports 142 translated / 41 partial / 1 parse
+failure. Every input blob matches the immutable original corpus commit, and the
+content-multiset hash matches the preceding census. The audit is static import
+only; compilation/execution gates are separate. Its expected nonzero exit due
+to partial inputs is preserved, not treated as a passing all-apps result.
+
+The previously recovered Arrow Battle **project**, with its real assets and
+declared dependencies, now imports with zero unsupported diagnostics. Its raw
+tutorial fragment remains in the original 184-input denominator. This is not
+full Arrow Battle gameplay qualification; the original compiler result was
+recorded in the earlier package lane. Do not replace a fragment with the richer
+project or count this separate one-project audit as a corpus promotion.
+
+The leading census gaps are unreadable background artwork (10 inputs), literal
+map data (4), bundles wrapper APIs (3 each), song values (3) and several sprite
+operations in the older translation path (3 each). Next: recover explicit
+project context/assets without rewriting original fragments, classify each
+remaining input's real dependencies, then implement the remaining song/wrapper
+and native-mode gaps with original controls. Keep census and context-project
+results separate, and qualify runtime/Blocks/GUI/export for each accepted API.
