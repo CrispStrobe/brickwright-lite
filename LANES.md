@@ -2647,3 +2647,13 @@ normally at1cbac9ad4 and passes12 checks without skips. All18 mapped files and
 Fresh hosted checks queued; corpus unchanged142/41/1. Next song execution and
 authoring contract is in PR804 ARCADE-AGENT-HANDOFF.md; no song implementation
 is claimed yet. Preserve peer painter/placement history and engine pin lane.
+
+## Arcade native song sequencing — 2026-10-11
+
+CLAIMED — Codex, `lane/arcade-song-runtime-20261011`, stacked on PR804.
+Envelope: generated pinned mixer instrument/song/sequencer source and music host
+adapters, focused scheduling/instruction/lifecycle checks, reproducible source
+generation and handoff/GUI ledger. This slice establishes actual native song
+playback before importer/dialect/song-editor support. No engine pins, painter
+placement, PR794 history or peer-owned files. Preserve explicit song diagnostics
+until authoring/conversion support is implemented and qualified.
