@@ -38,8 +38,9 @@ test('pinned PXT built-in sprite art imports as a real costume', () => {
     // Each built-in image arrives once as an image resource (its own costume,
     // the artwork) that the sprite is created from; the template's costume is
     // a placeholder.
-    const art = translated.costumes.filter(costume => /^__arcadeBackground/.test(costume.sprite));
+    const art = translated.costumes.filter(costume => translated.code.includes(`frame image array "${costume.sprite}Image"`));
     assert.equal(art.length, 1);
+    assert.equal(art[0].sprite, 'skelly', 'the art is named after the sprite it draws');
     assert.match(art[0].svg, /<svg/);
     assert.ok(art[0].svg.length > 1000, 'the built-in artwork, not a placeholder');
 });

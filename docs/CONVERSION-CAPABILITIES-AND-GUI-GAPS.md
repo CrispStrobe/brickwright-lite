@@ -6,6 +6,41 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Imported Arcade art in the paint editor — 2026-10-11
+
+A MakeCode Arcade game's images already arrived as Scratch costumes, and a
+costume edited in the paint editor already reached the running game. What the
+user saw in the sprite list was internal: `__arcadeTemplate1`, `__arcadeBackground2`,
+every costume called `costume1`, and an inline animation spread over one sprite
+per frame.
+
+- `nameArtworkSprites` (arcade-translate.js) renames each art holder after what
+  the generated code does with it: the variable a sprite is created into
+  (`hero`), a namespace constant's own name (`spritesheet.player` → `player`),
+  the kind when the variable is the translator's own (`asteroid`), `background`,
+  `<sprite>Animation` for animation frames, `<name>Sprite` for the plain sprite
+  an image-created sprite is built on, tile kinds and colour tiles. Names never
+  collide with the game's own sprites (`background2`). Code and costume records
+  change together, since the runtime finds a template sprite by name.
+- Costumes are named after their holder (`hero`, `coinAnimation-1`,
+  `coinAnimation-2`); Code's `COSTUME` lines end a name at a space, so names
+  have none. The importer gives the first, replaced costume its name instead
+  of `costume1`.
+- An inline image array (`animation.runImageAnimation(coin, [img`…`, img`…`])`)
+  is one sprite with one costume per frame. Frames are read by position, so
+  reordering or editing costumes in the paint editor changes the animation.
+
+Evidence: `test/makecode-arcade-editable-art.test.mjs` (names and costume
+records; both frames of the one animation sprite are shown in turn; a frame
+edited through the VM's paint-editor path is what the game draws, failing when
+the edit is dropped; name collisions; MakeCode export of the renamed art).
+Corpus census of the 184 hash-verified inputs is unchanged (142/41/1, zero rows
+changed); across the 183 that translate, no internal name, duplicate sprite,
+space in a costume name or costume without its sprite remains, and about a
+dozen holders still fall back to `image` (art first used inside an array
+mutation). Not done: a tilemap painter (tile maps import as code data), and
+the background stays an image resource sprite rather than a Stage backdrop.
+
 ## MakeCode extensions fetched on demand — 2026-10-10
 
 Running a MakeCode project (micro:bit, Calliope, EV3, Circuit Playground or
