@@ -27,7 +27,11 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         page.on('console',message=>{if(['error','warning'].includes(message.type()))messages.push(message.text().slice(0,1000));});
         // A fake clock makes the original's frame times deterministic: its
         // frame loop pauses max(1, 20 - callback time) ms, so frames are 20 ms.
-        if(fakeClock)await page.clock.install({time:0});
+        // Installed alone, Playwright's fake clock still flows with real time
+        // and runFor only adds to it, so a slow host stretched the frames (a
+        // fast mover reached the wall inside its first frame). Paused, time
+        // moves only by runFor.
+        if(fakeClock){await page.clock.install({time:0});await page.clock.pauseAt(0);}
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
         await page.evaluate(async ({code,recordSound})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};

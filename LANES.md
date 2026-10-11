@@ -15,6 +15,46 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade countdown order and a deterministic original clock — 2026-10-11
+
+DONE candidate — Claude (opus), on a hosted-red report from Codex (reactive package
+lane, which leaves Arcade code to us), branch
+`lane/arcade-countdown-order-20261011`. Two Arcade checks fail on slow runners.
+(1) The native runtime fires `on countdown end` at the START of a frame and
+then skips the rest of that frame; the original raises it in the HUD pass,
+after the frame's updates and physics and after life-zero events, so when both
+fall due in one frame the order is wrong (hosted trace T9L9M10, original
+L9M10T10). (2) The original-simulator oracle installs Playwright's fake clock,
+which still flows with real time, so its frame times stretch on a slow host and
+the fast-mover trajectory can reach the wall inside its first frame. Envelope:
+the countdown handling in the Arcade extension (index.js), the fake-clock setup
+in test/helpers/pxt-arcade-runtime.mjs, focused tests, this ledger. No change to
+assertions' expectations, the painter, circuit source or pins.
+Fixed: the countdown now ends after the life-zero events and the frame runs on;
+the oracle pauses Playwright's clock after installing it. New test makes both
+events due in one frame (zero countdown checked against the original; one
+100 ms native frame): unpatched runtime 'T9', patched 'L9M10T10' as the
+original. Injecting 60 ms real delay before each runFor stretched the old
+clock's first fastMover frame to 0.027 s; paused, every frame is 0.02 s. All 14
+fake-clock/countdown test files pass (310 tests); the info-registration browser
+journey passes 5 of 5 against a production build with the fix.
+
+## Arcade sprite placement from the tile map painter — 2026-10-11
+
+CLAIMED — Claude (opus), owner request ("fix it all"), branch
+`lane/arcade-tilemap-placement-20261011`, stacked on Codex's painter stack
+(PR793 → PR794) and agreed with Codex, who is not taking it. In the painter,
+show where sprites are placed on the map and let the user place or move a
+sprite on a cell: read and write the existing `arcade_placeOnTile` blocks with
+an `arcade_tileLocation` (column, row) in the map's script, so the runtime,
+MakeCode export and import already understand the result. Envelope: new
+bw-makecode tilemap-placements.js, a placement section in tilemap-editor.jsx
+(and its tracked twin, if any), focused tests, a dedicated
+scripts/verify-arcade-tilemap-placement.mjs with its additive light-shard step
+and budget registration in build.yml, Arcade docs and this ledger. No change to
+Codex's tile identity, legacy layout or persistence code paths, circuit source
+or pins; legacy colour-tile placement (`placeOnLegacyTile`) stays out of scope.
+
 ## Arcade tile names and MakeCode asset identity — 2026-10-11
 
 CLAIMED — Codex, separate worktree and branch
@@ -33,7 +73,7 @@ explicitly; never silently alias distinct edited tiles to one exported asset.
 
 ## Arcade painted tilemap project save/reopen — 2026-10-11
 
-CLAIMED — Codex, coordinated with the session owning the circuit green-flag
+DONE — Codex, coordinated with the session owning the circuit green-flag
 repair. Branch `lane/arcade-painted-project-roundtrip-20261011`.
 Extend the existing real-pointer tilemap painter browser journey to save an SB3,
 reopen it through the GUI, verify every painted map/wall/tile pixel and editable
@@ -2504,3 +2544,37 @@ CLAIMED — Codex, branch `lane/arcade-legacy-layout-authoring-20261011`, stacke
 Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy-layout.mjs`, its additive light-shard workflow step and generated browser budget registration. Preserve existing modern/persistence/placement gates and bounds. Single-layer source documents must remain bound to the new rendered asset; multi-layer/animated sources stay explicitly listed for the Pixel path.
 
 Legacy authoring followup in PR794 also owns definition artwork/wall editing: new `legacy-tile-definition-editor.jsx`, definition operations in `legacy-layout-editor.js`, and focused tests/browser coverage. Each definition retains its own block/index/timing; only static artwork sources and literal wall predicates are editable. Computed inputs get explicit reasons. No sprite-placement implementation or circuit pin changes.
+
+
+Painted project persistence PR792 merged at `18b2929a8479bcec880660b94c13bbb6c991741a`, reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`. All seven enabled checks succeeded; conditional deployment checks skipped on the PR. Hosted painter artifact observes34 successful checks, including actual SB3 fresh-context reopen, native edited state, original compiler/render and downloaded MakeCode reimport. Expected and actual merge tree `4470f89493e6c944ef62359888a9053df514c325` match. [Hosted source qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544). No corpus promotion or whole-game equivalence claim.
+
+Legacy source followup claim: Codex owns `lane/arcade-legacy-image-aliases-20261011`, stacked on PR794. Same helper/test/browser/docs envelope; trace single authored image assignments and aliases on the preceding command chain without reading live handles or flattening image mutation code. Reassignments and ambiguous sources stay explicitly computed. No painter JSX/model overlap, sprite placement, circuit or pin changes.
+
+The alias followup also owns `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js`: original-PXT roundtrip exposed image-reference SB3 sidecars being treated as string initializers. Honor validated matching image sidecars while preserving external field changes; qualify native/SB3/original execution. No VM serialization/schema or pin changes.
+
+
+Static legacy frame-selection followup: Codex owns
+`lane/arcade-legacy-frame-selection-20261011`, stacked on PR795. Envelope is
+`legacy-layout-editor.js`, the focused legacy authoring test and Arcade docs.
+Resolve literal valid costume ranges with the native rounded/wrapped index;
+refuse shared keys with conflicting or computed source descriptors rather than
+editing an unrelated costume. Qualify native/SB3/original MakeCode behavior.
+No painter JSX/model, peer sprite placement, circuit or dependency-pin changes.
+
+
+Tutorial project-input lane: Codex owns
+`lane/arcade-tutorial-project-inputs-20261011`, stacked on PR796. Preserve
+original fragment files/hashes and add separate native MakeCode project
+fixtures retaining tutorial custom TypeScript, asset JSON and package fences.
+Envelope: collect-makecode-corpus.mjs, a new scripts/lib tutorial-project helper,
+focused collector/project tests and Arcade docs. Reject conflicting/malformed
+context explicitly; do not synthesize missing art or silently implement unknown
+APIs. Compare original fragment and complete-project diagnostics separately.
+No painter, producer, circuit, runtime or dependency-pin changes.
+
+Tutorial collection reuses the already integrated
+`overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js`; no second parser
+is retained. The lane additionally owns its optional target-dependent default
+core dependency and propagation through `scripts/makecode.mjs`, plus the new
+`test/makecode-tutorial-collector.test.mjs`. Existing assembly tests stay intact.
+Selected main source is explicit; ghost programs are not automatically chosen.
