@@ -4742,6 +4742,11 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             creator.parse(source);
+            // The fe and Tcl texts load their generators lazily. Await them NOW,
+            // before the project loads and the device is published: awaiting after
+            // the buffer snapshot below would let an edit typed meanwhile be
+            // overwritten (a slow runner typed after the device switch and lost it).
+            const dosLangBuffers = await generateDosLangs(creator.project);
             const sourceDeclarations = JSON.parse(JSON.stringify(creator.project));
             const missing = [];
             uploads.forEach(u => {
@@ -4874,7 +4879,7 @@ class PseudocodeImporter extends React.Component {
                 nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
             }
             nb.asm = ''; // cleared — re-fetched on next ASM tab switch
-            for (const [l, code] of Object.entries(await generateDosLangs(proj))) if (l !== lang) nb[l] = code;
+            for (const [l, code] of Object.entries(dosLangBuffers)) if (l !== lang) nb[l] = code;
             {
                 const mp = new SB3Creator().generateMicroPython(proj);
                 nb.micropython = mp.ok ? mp.py : `# === Cannot generate MicroPython ===\n${mp.reasons.map(s => '# ' + s).join('\n')}`;

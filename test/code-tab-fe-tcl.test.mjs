@@ -414,7 +414,13 @@ test('the importer treats fe and Tcl as two-way languages everywhere one must be
     assert.match(importer, /data-testid="bw-lang-more"/);
     // compile() reads them, and both regenerate paths write them.
     assert.match(importer, /\} else if \(DOS_LANG\[lang\]\) \{\n\s+const res = \(await DOS_LANG\[lang\]\.load\(\)\)\.default\(source\);/);
-    assert.match(importer, /for \(const \[l, code\] of Object\.entries\(await generateDosLangs\(proj\)\)\) if \(l !== lang\) nb\[l\] = code;/);
+    assert.match(importer, /for \(const \[l, code\] of Object\.entries\(dosLangBuffers\)\) if \(l !== lang\) nb\[l\] = code;/);
+    // ... generated BEFORE the project loads: awaiting the lazily loaded
+    // generators after the buffer snapshot let an edit typed meanwhile be lost.
+    const compileStart = importer.indexOf('async compile ({strict = false, pseudocode = null} = {})');
+    const generated = importer.indexOf('const dosLangBuffers = await generateDosLangs(creator.project);', compileStart);
+    assert.ok(generated > compileStart && generated < importer.indexOf('await this.props.vm.loadProject(projectBytes);', compileStart),
+        'fe/Tcl text is generated before loadProject publishes the project');
     assert.match(importer, /\.\.\.\(await generateDosLangs\(project\)\)/);
     // A tab switch derives through them in both directions — before this,
     // switching INTO fe or Tcl fell through to generateJavaScript.
