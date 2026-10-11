@@ -15,6 +15,19 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Arcade art editable in the paint editor — 2026-10-11
+
+CLAIMED — Claude (opus), owner request ("sprites/backgrounds must be editable in
+our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`.
+Imported MakeCode Arcade art already lands as costumes and edits reach the game;
+this lane makes it legible and organised: helper art sprites get readable names
+from the code (`hero`, `background`, `coinAnimation`) instead of `__arcadeTemplateN`,
+costumes are named instead of all `costume1`, and an inline image array becomes
+one sprite with one costume per frame. Envelope: arcade-translate.js,
+pseudocode-importer.jsx (overlay + tracked twin), the arcade/makecode tests that
+name helper sprites, scripts/verify-makecode.mjs, conversion docs, this ledger.
+Not in scope: a tilemap painter (separate later lane), runtime/extension changes.
+
 ## Code-tab optional languages, Arcade scoreboard, on-demand MakeCode extensions — 2026-10-10
 
 DONE — Claude (opus), owner request, three sequential lanes from the Arcade
