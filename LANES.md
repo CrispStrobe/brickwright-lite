@@ -28,8 +28,11 @@ ledger. Not in scope: legacy color-coded maps, tile names, Stage backdrops.
 
 ## Arcade art editable in the paint editor — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("sprites/backgrounds must be editable in
-our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`.
+DONE — Claude (opus), owner request ("sprites/backgrounds must be editable in
+our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`,
+merged #789 (`074edb8d5`, tree equals the reviewed merge prediction; all
+enabled checks green on attempt 3 after two light-shard failures in the
+unrelated green-flag first-write journey and one PXT palette timing flake).
 Imported MakeCode Arcade art already lands as costumes and edits reach the game;
 this lane makes it legible and organised: helper art sprites get readable names
 from the code (`hero`, `background`, `coinAnimation`) instead of `__arcadeTemplateN`,
