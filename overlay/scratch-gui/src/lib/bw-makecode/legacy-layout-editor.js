@@ -52,17 +52,28 @@ const artworkOf = (vm, target, command) => {
     const index = Number(literal(blocks, image, 'INDEX'));
     const start = Number(literal(blocks, image, 'START'));
     const count = Number(literal(blocks, image, 'COUNT'));
-    if (!name || !key || count !== 1 || index !== 0 || !Number.isInteger(start) || start < 0) return {reason: 'computedImage'};
+    if (!name || !key || !Number.isFinite(index) || !Number.isInteger(count) || count < 1 ||
+        !Number.isInteger(start) || start < 0) return {reason: 'computedImage'};
     // Runtime frame definitions override the reporter's template; do not edit
     // an unrelated costume when an authored definition can change this key.
     if (originals(vm).some(candidate => Object.values(candidate.blocks?._blocks || {}).some(block =>
-        /[Ff]rame/.test(block.opcode) && block.opcode !== 'arcade_frameImage' && block.opcode !== 'arcade_frameDeltaTime' &&
-        block.inputs?.KEY && (literal(candidate.blocks._blocks, block, 'KEY') === key || literal(candidate.blocks._blocks, block, 'KEY') === null)))) {
+        block.inputs?.KEY && (literal(candidate.blocks._blocks, block, 'KEY') === key || literal(candidate.blocks._blocks, block, 'KEY') === null) &&
+        (block.opcode === 'arcade_frameImage' ?
+            literal(candidate.blocks._blocks, block, 'KEY') === null ||
+            literal(candidate.blocks._blocks, block, 'TEMPLATE') !== name ||
+            literal(candidate.blocks._blocks, block, 'START') === null ||
+            Number(literal(candidate.blocks._blocks, block, 'START')) !== start ||
+            literal(candidate.blocks._blocks, block, 'COUNT') === null ||
+            Number(literal(candidate.blocks._blocks, block, 'COUNT')) !== count :
+            /[Ff]rame/.test(block.opcode) && block.opcode !== 'arcade_frameDeltaTime')))) {
         return {reason: 'mutableFrames'};
     }
     const matches = originals(vm).filter(candidate => candidate.getName?.() === name);
     if (matches.length !== 1) return {reason: 'missingArtwork'};
-    const artworkTarget = matches[0], costume = artworkTarget.getCostumes?.()[start];
+    const artworkTarget = matches[0], costumes = artworkTarget.getCostumes?.();
+    if (!costumes || start + count > costumes.length) return {reason: 'missingArtwork'};
+    const selected = ((Math.round(index) % count) + count) % count;
+    const costumeIndex = start + selected, costume = costumes[costumeIndex];
     if (!costume) return {reason: 'missingArtwork'};
     const document = getCostumeDocument(costume);
     const layer = document?.layers?.[0];
@@ -71,7 +82,7 @@ const artworkOf = (vm, target, command) => {
           (layer.type === 'vector' && layer.content?.kind === 'asset' && layer.content.value === `${costume.assetId}.svg`)) || !layer.visible || layer.locked || layer.opacity !== 1)) return {reason: 'layeredArtwork'};
     const svg = svgText(costume), pixels = svg && svgToPixels(svg);
     if (!pixels || !editablePixelSize(pixels.width, pixels.height)) return {reason: 'unsupportedArtwork'};
-    return {artworkTarget, costume, svg, pixels, document};
+    return {artworkTarget, costume, costumeIndex, svg, pixels, document};
 };
 
 const sourceOf = (vm, target, command) => {
@@ -92,6 +103,7 @@ export function findLegacyLayoutBlocks (vm) {
         refs.push({targetId: target.id, targetName: target.getName(), blockId: command.id,
             kind: 'legacyLayout', data, editable: Boolean(data), reason: source.reason || null,
             artworkTargetId: source.artworkTarget?.id, artworkAssetId: source.costume?.assetId,
+            artworkCostumeIndex: source.costumeIndex,
             originalSvg: source.svg});
     }
     return refs;
@@ -104,7 +116,7 @@ export function writeLegacyLayout (vm, ref, data) {
     if (command?.opcode !== 'arcade_setLegacyTilemap') return false;
     const source = sourceOf(vm, target, command);
     if (!source.pixels || source.svg !== ref.originalSvg || source.artworkTarget.id !== ref.artworkTargetId ||
-        source.costume.assetId !== ref.artworkAssetId || data.tileSize !== 1 << source.scale ||
+        source.costume.assetId !== ref.artworkAssetId || source.costumeIndex !== ref.artworkCostumeIndex || data.tileSize !== 1 << source.scale ||
         !editablePixelSize(data.columns, data.rows) || !Array.isArray(data.indices) || data.indices.length !== data.columns * data.rows ||
         data.indices.some(value => !Number.isInteger(value) || value < 0 || value > 15)) return false;
     const storage = vm.runtime.storage;
@@ -173,6 +185,7 @@ export function findLegacyTileDefinitions (vm) {
         refs.push({targetId: target.id, targetName: target.getName(), blockId: command.id, index,
             reason: reason || null, editable: !reason, wallEditable: Boolean(wall), wallFingerprint: wall?.fingerprint,
             originalSvg: source.svg, artworkAssetId: source.costume?.assetId, artworkTargetId: source.artworkTarget?.id,
+            artworkCostumeIndex: source.costumeIndex,
             data: source.pixels ? {width: source.pixels.width, height: source.pixels.height,
                 pixels: Array.from(source.pixels.pixels), wall: wall?.value ?? null} : null});
     }
@@ -184,6 +197,7 @@ export function writeLegacyTileDefinition (vm, ref, data) {
     const current = findLegacyTileDefinitions(vm).find(candidate => candidate.targetId === ref.targetId && candidate.blockId === ref.blockId);
     if (!current?.editable || current.index !== ref.index || current.originalSvg !== ref.originalSvg ||
         current.artworkAssetId !== ref.artworkAssetId || current.artworkTargetId !== ref.artworkTargetId ||
+        current.artworkCostumeIndex !== ref.artworkCostumeIndex ||
         current.wallFingerprint !== ref.wallFingerprint || (current.wallEditable ? typeof data.wall !== 'boolean' : data.wall !== null)) return false;
     const target = vm.runtime.getTargetById(ref.targetId), command = target.blocks.getBlock(ref.blockId);
     const wall = wallOf(target.blocks._blocks, command);

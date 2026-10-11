@@ -516,3 +516,40 @@ do not replace it with the successful result. Before merging, collect every
 enabled exact-head check, inspect actual browser artifacts, integrate parent
 PRs normally, then compare the reviewed and merged trees. Do not merge a child
 PR into its feature parent.
+
+
+## Static legacy frame selection — 2026-10-11
+
+The legacy artwork editor supports literal valid multi-costume ranges, selecting
+the same frame as native execution: round the index, wrap it into the range,
+and add the starting costume offset. Other costumes remain unchanged. Layout
+and tile-definition saves retain the selected costume slot as well as its asset
+identity; an old save cannot redirect to another identical frame after the
+selection changes.
+
+Frame keys are shared runtime bindings. If another reporter uses the same key
+with a conflicting or computed template/range, the painter reports
+`mutableFrames` rather than assuming that the later reporter owns its template.
+Computed selections remain explicit refusals. No runtime expression, frame key,
+image alias or animation sequence is rewritten.
+
+Ten focused checks passed with zero failures/skips, including native state,
+SB3 reload, original MakeCode execution, positive fractional/negative wrapped
+indexes and identical-frame stale-save protection. A final conflicting-template
+fixture check also passed. Source ownership is
+`overlay/scratch-gui/src/lib/bw-makecode/legacy-layout-editor.js`; regression
+coverage is `test/makecode-arcade-legacy-layout-editor.test.mjs`.
+The lane `lane/arcade-legacy-frame-selection-20261011` is stacked on
+[PR795](https://github.com/CrispStrobe/brickwright-lite/pull/795). Fresh
+exact-source browser checks and normal parent integration remain required;
+these headless observations do not qualify a new frame-range GUI journey or
+rerank the original corpus. No painter JSX/model or peer-owned placement changes.
+
+Named-tile PR793 now includes main through a normal merge at
+`aa6b54ae9d7416977d8953b0d73f41d34af692ff`. The preceding source
+`4fb23b92b59b7b875d0cb1a690765ded4d778660` passed its light shard and all11
+named-tile browser observations in
+https://github.com/CrispStrobe/brickwright-lite/actions/runs/38150051112 .
+Actual downloads and failed/predecessor observations are archived privately.
+The refreshed merge still needs every enabled exact-head check; the older
+light-shard result is not a full-workflow or merged-main claim.
