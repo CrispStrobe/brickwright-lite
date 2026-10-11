@@ -3344,3 +3344,26 @@ retained as CI artifacts. Native button-restart and all 12 host checks pass;
 13 workflow budget/timeout checks pass. **The production browser journey is
 pending execution**, so its GUI gap remains open. See
 [the journey contract](ARCADE-AGENT-HANDOFF.md#carnival-production-browser-journey--2026-10-11).
+
+## Carnival shared-parser integration repair — 2026-10-11
+
+Lite PR #803's first hosted build failed before browser execution: its two new
+Carnival words differed from the pinned producer, the tracked packages mirror
+was stale, and the dialect census still expected 277 operations. These failures
+are integration defects, not evidence that the browser journey passed.
+
+The repair adds the three Carnival words (including the custom game-over word
+used by stacked PR #804) to the shared producer in
+[sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93). Lite
+explicitly adopts producer commit `06341e3dd0f5ddfbed6764ec5afe03b04b65e265`,
+refreshes its tracked mirror and generated authoring inventory, and expects 280
+dialect operations. The producer's Arcade dialect suite passed 323 tests.
+The extra custom word in this parent is grammar support; its runtime and GUI
+implementation remains in PR #804.
+
+Vendor identity and exact-delta gates remain intact: the adopted producer and
+Lite copies must match after the existing import rewrites. No downstream
+exception or new normalization is introduced. Hosted consumer build/browser
+qualification remains pending at this checkpoint. The immutable corpus result
+remains 142 translated, 41 partial, and one parse failure; this synchronization
+repair does not close a corpus gap.
