@@ -9,6 +9,7 @@
  * tilemap-editor.js); nothing changes before Save.
  */
 import PropTypes from 'prop-types';
+import LegacyTileDefinitionEditor from './legacy-tile-definition-editor.jsx';
 import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {ARCADE_PALETTE} from '../../lib/bw-makecode/pixel-image.js';
@@ -275,6 +276,7 @@ class TilemapEditor extends React.Component {
             return (
                 <div data-testid="bw-tilemap-editor" style={{padding: 24, color: '#64748b'}}>
                     {this.props.editorTools}
+                <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} />
                     <p data-testid="bw-tilemap-none">{t(locale, maps.length ? 'tm.noneEditable' : 'tm.none')}</p>
                     <ul>{maps.filter(map => map.reason).map(map => <li key={map.blockId}>{map.targetName}: {t(locale, `tm.${map.reason}`)}</li>)}</ul>
                     <button type="button" data-testid="bw-tilemap-new" style={btn(true)} onClick={() => this.newMap()}>
@@ -292,6 +294,7 @@ class TilemapEditor extends React.Component {
                 style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 12, height: '100%',
                     boxSizing: 'border-box', overflow: 'hidden'}}>
                 {this.props.editorTools}
+                <LegacyTileDefinitionEditor vm={this.props.vm} locale={locale} />
                 <div role="toolbar" style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap'}}>
                     <select data-testid="bw-tilemap-select" aria-label={t(locale, 'tm.map')} value={selected}
                         onChange={event => this.selectMap(Number(event.target.value))}>

@@ -15,10 +15,8 @@ const originals = vm => (vm?.runtime?.targets || []).filter(target => target.isO
 const svgText = costume => costume?.asset?.decodeText?.() ||
     (costume?.asset?.data ? new TextDecoder().decode(costume.asset.data) : null);
 
-const sourceOf = (vm, target, command) => {
+const artworkOf = (vm, target, command) => {
     const blocks = target.blocks._blocks;
-    const scale = Number(literal(blocks, command, 'SCALE'));
-    if (![2, 3, 4, 5].includes(scale)) return {reason: 'computedScale'};
     let image = blocks[command.inputs?.IMAGE?.block];
     const seen = new Set();
     while (image?.opcode === 'arcade_cloneImage' && !seen.has(image.id)) {
@@ -50,7 +48,12 @@ const sourceOf = (vm, target, command) => {
           (layer.type === 'vector' && layer.content?.kind === 'asset' && layer.content.value === `${costume.assetId}.svg`)) || !layer.visible || layer.locked || layer.opacity !== 1)) return {reason: 'layeredArtwork'};
     const svg = svgText(costume), pixels = svg && svgToPixels(svg);
     if (!pixels || !editablePixelSize(pixels.width, pixels.height)) return {reason: 'unsupportedArtwork'};
-    return {artworkTarget, costume, svg, pixels, scale, document};
+    return {artworkTarget, costume, svg, pixels, document};
+};
+
+const sourceOf = (vm, target, command) => {
+    const scale = Number(literal(target.blocks._blocks, command, 'SCALE'));
+    return [2, 3, 4, 5].includes(scale) ? {...artworkOf(vm, target, command), scale} : {reason: 'computedScale'};
 };
 
 export function findLegacyLayoutBlocks (vm) {
@@ -85,18 +88,29 @@ export function writeLegacyLayout (vm, ref, data) {
     if (!storage?.createAsset) return false;
     if (!Array.isArray(data.walls) || data.walls.length !== data.indices.length || data.walls.some(value => value !== 0) ||
         !Array.isArray(data.images) || data.images.length !== 16 || data.images.some((image, colour) =>
-            image.width !== data.tileSize || image.height !== data.tileSize || image.pixels.length !== data.tileSize ** 2 ||
+            !image || !Array.isArray(image.pixels) || image.width !== data.tileSize || image.height !== data.tileSize || image.pixels.length !== data.tileSize ** 2 ||
             image.pixels.some(pixel => pixel !== colour))) return false;
+    if (!writeArtwork(vm, source, {width: data.columns, height: data.rows, pixels: data.indices})) return false;
+    vm.emitTargetsUpdate?.();
+    vm.runtime.emitProjectChanged?.();
+    return true;
+}
+
+const writeArtwork = (vm, source, image) => {
+    const storage = vm.runtime.storage;
+    if (!storage?.createAsset || !editablePixelSize(image.width, image.height) ||
+        !Array.isArray(image.pixels) || image.pixels.length !== image.width * image.height ||
+        image.pixels.some(pixel => !Number.isInteger(pixel) || pixel < 0 || pixel > 15)) return false;
     const document = source.document && JSON.parse(JSON.stringify(source.document));
     if (document?.layers[0].content.kind === 'pixels') document.layers[0].content.value =
-        {width: data.columns, height: data.rows, pixels: data.indices.slice()};
+        {width: image.width, height: image.height, pixels: image.pixels.slice()};
     const pixelScale = document?.pixelScale || 4;
-    const svg = imageToSvg({width: data.columns, height: data.rows, pixels: data.indices}, {scale: pixelScale, palette: source.pixels.palette});
+    const svg = imageToSvg({width: image.width, height: image.height, pixels: image.pixels}, {scale: pixelScale, palette: source.pixels.palette});
     const asset = storage.createAsset(storage.AssetType.ImageVector, storage.DataFormat.SVG,
         new TextEncoder().encode(svg), null, true);
     if (document?.layers[0].content.kind === 'asset') document.layers[0].content.value = `${asset.assetId}.svg`;
     const costume = source.costume;
-    const center = [data.columns * pixelScale / 2, data.rows * pixelScale / 2];
+    const center = [image.width * pixelScale / 2, image.height * pixelScale / 2];
     if (vm.runtime.renderer) {
         vm.runtime.renderer.updateSVGSkin(costume.skinId, svg, center);
         costume.size = vm.runtime.renderer.getSkinSize(costume.skinId);
@@ -104,6 +118,63 @@ export function writeLegacyLayout (vm, ref, data) {
     Object.assign(costume, {asset, assetId: asset.assetId, md5: `${asset.assetId}.svg`, dataFormat: 'svg',
         bitmapResolution: 1, rotationCenterX: center[0], rotationCenterY: center[1]});
     if (document) setCostumeDocument(costume, document);
+    return true;
+};
+
+const WALL_PAIRS = {'<': [[0, 1], [1, 0]], '>': [[1, 0], [0, 1]],
+    '<=': [[0, 0], [1, 0]], '>=': [[0, 0], [0, 1]],
+    '==': [[0, 0], [0, 1]], '===': [[0, 0], [0, 1]],
+    '!=': [[0, 1], [0, 0]], '!==': [[0, 1], [0, 0]]};
+const wallOf = (blocks, command) => {
+    const block = blocks[command.inputs?.WALL?.block];
+    const names = block?.opcode === 'arrays_valueCompare' ? ['LEFT', 'RIGHT'] : ['OPERAND1', 'OPERAND2'];
+    const op = block?.opcode === 'arrays_valueCompare' ? block.fields?.OP?.value || literal(blocks, block, 'OP') :
+        {operator_lt: '<', operator_gt: '>', operator_equals: '=='}[block?.opcode];
+    if (!Object.prototype.hasOwnProperty.call(WALL_PAIRS, op)) return null;
+    const left = literal(blocks, block, names[0]), right = literal(blocks, block, names[1]);
+    if (left === null || right === null || !Number.isFinite(Number(left)) || !Number.isFinite(Number(right))) return null;
+    const a = Number(left), b = Number(right);
+    const value = {'<': a < b, '>': a > b, '<=': a <= b, '>=': a >= b,
+        '==': a === b, '===': a === b, '!=': a !== b, '!==': a !== b}[op];
+    return {block, names, op, value, fingerprint: JSON.stringify([block.id, block.opcode, op, block.inputs, left, right])};
+};
+
+export function findLegacyTileDefinitions (vm) {
+    const refs = [];
+    for (const target of originals(vm)) for (const command of Object.values(target.blocks?._blocks || {})) {
+        if (command.opcode !== 'arcade_setLegacyTile') continue;
+        const source = artworkOf(vm, target, command), rawIndex = literal(target.blocks._blocks, command, 'INDEX');
+        const index = rawIndex === null ? null : Number(rawIndex);
+        const wall = wallOf(target.blocks._blocks, command);
+        const reason = !Number.isInteger(index) || index < 0 || index > 15 ? 'computedIndex' : source.reason;
+        refs.push({targetId: target.id, targetName: target.getName(), blockId: command.id, index,
+            reason: reason || null, editable: !reason, wallEditable: Boolean(wall), wallFingerprint: wall?.fingerprint,
+            originalSvg: source.svg, artworkAssetId: source.costume?.assetId, artworkTargetId: source.artworkTarget?.id,
+            data: source.pixels ? {width: source.pixels.width, height: source.pixels.height,
+                pixels: Array.from(source.pixels.pixels), wall: wall?.value ?? null} : null});
+    }
+    return refs;
+}
+
+export function writeLegacyTileDefinition (vm, ref, data) {
+    if (!ref || !data) return false;
+    const current = findLegacyTileDefinitions(vm).find(candidate => candidate.targetId === ref.targetId && candidate.blockId === ref.blockId);
+    if (!current?.editable || current.index !== ref.index || current.originalSvg !== ref.originalSvg ||
+        current.artworkAssetId !== ref.artworkAssetId || current.artworkTargetId !== ref.artworkTargetId ||
+        current.wallFingerprint !== ref.wallFingerprint || (current.wallEditable ? typeof data.wall !== 'boolean' : data.wall !== null)) return false;
+    const target = vm.runtime.getTargetById(ref.targetId), command = target.blocks.getBlock(ref.blockId);
+    const wall = wallOf(target.blocks._blocks, command);
+    const source = artworkOf(vm, target, command);
+    if (!writeArtwork(vm, source, data)) return false;
+    if (wall && data.wall !== wall.value) {
+        const values = WALL_PAIRS[wall.op][data.wall ? 0 : 1];
+        for (let index = 0; index < 2; index++) {
+            const shadow = target.blocks.getBlock(wall.block.inputs[wall.names[index]].shadow);
+            const name = shadow.fields.NUM ? 'NUM' : 'TEXT';
+            target.blocks.changeBlock({id: shadow.id, element: 'field', name, value: String(values[index])}, vm.runtime);
+        }
+        if (vm.editingTarget?.id === target.id) vm.emitWorkspaceUpdate?.();
+    }
     vm.emitTargetsUpdate?.();
     vm.runtime.emitProjectChanged?.();
     return true;

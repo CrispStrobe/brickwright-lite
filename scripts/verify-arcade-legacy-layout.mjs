@@ -41,12 +41,13 @@ const painter = async () => {
     await page.getByTestId('bw-tilemap-toggle').click();
     await page.getByTestId('bw-tilemap-legacy-hint').waitFor();
 };
-const runEdited = async () => {
+const runEdited = async (wall = true, pixel = null) => {
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
-    await page.waitForFunction(() => {
+    await page.waitForFunction(([wall, pixel]) => {
         const map = window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.tilemap;
-        return map && map.columns === 2 && map.rows === 2 && map.indices[1] === 2 && map.walls[0];
-    }, null, {timeout: 30000});
+        return map && map.columns === 2 && map.rows === 2 && map.indices[1] === 2 && Boolean(map.walls[0]) === wall && Boolean(map.walls[3]) === wall &&
+            (pixel === null || map.images[1]?.pixels[0] === pixel);
+    }, [wall, pixel], {timeout: 30000});
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
 };
 try {
@@ -62,6 +63,13 @@ try {
     await page.getByTestId('bw-tilemap-save').click();
     await runEdited();
     check('native game uses the painted layout and original walls', true);
+    await page.getByTestId('bw-legacy-definition-colour-3').click();
+    const definitionBox = await page.getByTestId('bw-legacy-definition-canvas').boundingBox();
+    await page.mouse.click(definitionBox.x + definitionBox.width / 2, definitionBox.y + definitionBox.height / 2);
+    await page.getByTestId('bw-legacy-definition-wall').uncheck();
+    await page.getByTestId('bw-legacy-definition-save').click();
+    await runEdited(false, 3);
+    check('real definition controls edit artwork and all colour-matched walls', true);
     await page.screenshot({path: join(out, 'legacy-painter.png')});
     await page.getByText('File', {exact: true}).first().click();
     const save = page.waitForEvent('download');
@@ -73,7 +81,7 @@ try {
     await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(sb3);
     await page.waitForFunction(() => window.__brickwrightStore?.getState().scratchGui.vm.runtime.targets.some(target =>
         target.isOriginal && Object.values(target.blocks._blocks).some(block => block.opcode === 'arcade_setLegacyTilemap')), null, {timeout: 60000});
-    await runEdited(); check('fresh File reload preserves layout and walls', true);
+    await runEdited(false, 3); check('fresh File reload preserves layout, definition pixels and wall flag', true);
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
     await page.getByRole('button', {name: /From blocks|Von Blöcken/i}).first().click();
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile?.root?.view?.state?.doc?.toString()?.includes('color-coded map'), null, {timeout: 30000});
@@ -85,7 +93,7 @@ try {
     check('export keeps legacy API and package', files['main.ts'].includes('scene.setTileMap(') &&
         JSON.parse(files['pxt.json']).dependencies['color-coded-tilemap'] === '*');
     await page.context().close(); page = await fresh(); await importFile(mkcd);
-    await runEdited(); check('downloaded MakeCode reimport preserves painted layout and walls', true);
+    await runEdited(false, 3); check('downloaded MakeCode reimport preserves layout and edited definitions', true);
     check('no browser exceptions', report.errors.length === 0);
 } catch (error) { report.fatal = String(error.stack || error); throw error; }
 finally { await writeFile(join(out, 'current.json'), JSON.stringify(report, null, 2)); await browser.close(); }

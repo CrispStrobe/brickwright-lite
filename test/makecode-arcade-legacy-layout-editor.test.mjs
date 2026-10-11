@@ -5,9 +5,61 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {findTilemapBlocks, writeTilemapBlock, paintCell, resizeTilemap} from '../overlay/scratch-gui/src/lib/bw-makecode/tilemap-editor.js';
 import {runProgram, stepFrames} from './helpers/bw-vm.mjs';
 import {getCostumeDocument, setCostumeDocument} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
+import {findLegacyTileDefinitions, writeLegacyTileDefinition} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-layout-editor.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 
 const SOURCE = 'scene.setTile(1,img`7`,true)\nscene.setTileMap(img`1 0\n0 1`,TileScale.Four)\n';
+test('definition pixel and colour-wide wall edits survive native execution, SB3 and original MakeCode', async () => {
+    const imported = arcadeToPseudocode(SOURCE);
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findLegacyTileDefinitions(run.vm);
+        assert.equal(ref.editable, true, ref.reason);
+        assert.equal(ref.index, 1);
+        assert.equal(ref.wallEditable, true);
+        assert.equal(ref.data.wall, true);
+        const edited = {...ref.data, pixels: ref.data.pixels.map(() => 3), wall: false};
+        assert.equal(writeLegacyTileDefinition(run.vm, ref, edited), true);
+        assert.equal(writeLegacyTileDefinition(run.vm, ref, ref.data), false, 'old snapshots cannot overwrite later edits');
+        run.vm.greenFlag(); await stepFrames(run.vm, 3);
+        const map = run.vm.runtime.bwArcadeDeviceState.tilemap;
+        assert.equal(map.images[1].pixels[0], 3);
+        assert.equal(Boolean(map.walls[0]), false);
+        assert.equal(Boolean(map.walls[3]), false, 'the wall belongs to every cell with this colour index');
+        const saved = await run.vm.saveProjectSb3(); await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
+        assert.equal(findLegacyTileDefinitions(run.vm)[0].data.wall, false);
+        assert.equal(findLegacyTileDefinitions(run.vm)[0].data.pixels[0], 3);
+        const out = projectToArcade(JSON.parse(run.vm.toJSON()), {costumeSvg: (target, costume) =>
+            run.vm.runtime.getSpriteTargetByName(target.name)?.getCostumes().find(candidate => candidate.name === costume.name)?.asset?.decodeText()});
+        assert.deepEqual(out.unsupported, []);
+        const original = await runPxtArcade({...out.files, 'main.ts': out.files['main.ts'] +
+            '\nlet definitionPixel = tiles.getTileImage(tiles.getTileLocation(0,0)).getPixel(0,0)\n' +
+            'let definitionWall = tiles.tileAtLocationIsWall(tiles.getTileLocation(1,1))\n'},
+        {waitForGlobals: {definitionPixel: 3, definitionWall: false}});
+        assert.equal(original.definitionPixel, 3); assert.equal(original.definitionWall, false);
+        const current = findLegacyTileDefinitions(run.vm)[0];
+        assert.equal(writeLegacyTileDefinition(run.vm, current, ref.data), true, 'saving undo restores the original definition');
+        assert.equal(findLegacyTileDefinitions(run.vm)[0].data.wall, true);
+    } finally { run.vm.quit?.(); }
+});
+
+test('computed wall expressions remain intact while their static artwork can be edited', async () => {
+    const imported = arcadeToPseudocode('let solid = true\nscene.setTile(1,img`7`,solid)\nscene.setTileMap(img`1`,TileScale.Four)');
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findLegacyTileDefinitions(run.vm);
+        assert.equal(ref.editable, true);
+        assert.equal(ref.wallEditable, false);
+        assert.equal(ref.data.wall, null);
+        const target = run.vm.runtime.getTargetById(ref.targetId), command = target.blocks.getBlock(ref.blockId);
+        const before = JSON.stringify(command);
+        assert.equal(writeLegacyTileDefinition(run.vm, ref, {...ref.data, wall: false}), false);
+        assert.equal(writeLegacyTileDefinition(run.vm, ref, {...ref.data, pixels: ref.data.pixels.map(() => 8)}), true);
+        assert.equal(JSON.stringify(command), before, 'artwork edits never replace a computed wall predicate');
+        run.vm.greenFlag(); await stepFrames(run.vm, 3);
+        assert.equal(Boolean(run.vm.runtime.bwArcadeDeviceState.tilemap.walls[0]), true);
+    } finally { run.vm.quit?.(); }
+});
 test('legacy layout save edits actual artwork without replacing API calls or tile definitions', async () => {
     const imported = arcadeToPseudocode(SOURCE);
     assert.deepEqual(imported.unsupported, []);
