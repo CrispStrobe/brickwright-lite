@@ -162,10 +162,10 @@ let hero = sprites.create(sprites.castle.heroWalkFront1, SpriteKind.Player)`;
     // Each built-in image arrives once as an image resource (its own costume,
     // the artwork) that the sprite is created from; the template's costume is
     // a placeholder.
-    const art = result.costumes.filter(costume => /^__arcadeBackground/.test(costume.sprite));
+    const art = result.costumes.filter(costume => result.code.includes(`frame image array "${costume.sprite}Image"`));
     assert.equal(art.length, 2);
     assert.ok(result.costumes.every(costume => costume.svg.includes('<svg')));
     assert.ok(art.every(costume => costume.svg.length > 1000), 'the built-in artwork, not a placeholder');
-    assert.match(result.code, /set snack to \(arcade create image \(arcade frame image array "__arcadeBackground1Image"/);
-    assert.match(result.code, /set hero to \(arcade create image \(arcade frame image array "__arcadeBackground2Image"/);
+    assert.match(result.code, /set snack to \(arcade create image \(arcade frame image array "snackImage" index \(0\) template "snack" start 0 count 1\) template "snackSprite"/);
+    assert.match(result.code, /set hero to \(arcade create image \(arcade frame image array "heroImage" index \(0\) template "hero" start 0 count 1\) template "heroSprite"/);
 });

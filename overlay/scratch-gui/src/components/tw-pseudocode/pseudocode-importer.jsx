@@ -1857,7 +1857,8 @@ class PseudocodeImporter extends React.Component {
                 sprite: costume.sprite,
                 filename: `${costume.name}.svg`,
                 svg: costume.svg,
-                mode: costume.mode || 'replace'
+                mode: costume.mode || 'replace',
+                costumeName: costume.name
             })),
             output: null,
             status
@@ -4644,6 +4645,13 @@ class PseudocodeImporter extends React.Component {
                 const ok = u.mode === 'add' ?
                     creator.addCustomSVGCostume(name, u.svg, u.filename.replace(/\.svg$/i, '')) :
                     creator.applyCustomSVG(name, u.svg);
+                // A game's art keeps the name the translation gave it (hero,
+                // coinAnimation 2) instead of the creator's default costume1,
+                // so the costume list in the paint editor says what each is.
+                if (ok && u.mode !== 'add' && u.costumeName) {
+                    const target = creator.project.targets.find(t => !t.isStage && t.name === name);
+                    if (target?.costumes?.[0]) target.costumes[0].name = String(u.costumeName);
+                }
                 if (!ok) missing.push(name);
                 else appliedUploads.add(u);
             });

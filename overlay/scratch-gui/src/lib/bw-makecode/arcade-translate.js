@@ -3585,6 +3585,18 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type==='Declaration' && node.decls.every(d=>frameArrays.has(d.name))) return;
         // Map resources are embedded in tile data; they are not sprite image values.
         if(node.type==='Call' && nameOf(node)==='tiles.createTilemap')return;
+        // An inline array of image literals (animation frames) is one resource
+        // with a costume per frame, so the frames stay together in the costume
+        // editor's timeline. Each element is still a fresh copy of its frame.
+        if (node.type === 'Array' && node.items?.length >= 2 && node.items.every(item => item?.type === 'Template' && item.tag === 'img' && t.imageOf(item))) {
+            const name = `__arcadeBackground${imageValueCostumes.length+1}`;
+            const resource = {name, key:`${name}Image`, count:node.items.length, fresh:true};
+            node.items.forEach((item, i) => {
+                imageValueCostumes.push({sprite:name, name:`${name}-frame-${i}`, svg:imageToSvg(t.imageOf(item)), mode:i ? 'add' : 'replace'});
+                t.imageValueResources.set(item, {...resource, value:{type:'Number', value:i}});
+            });
+            return;
+        }
         const image = t.imageOf(node);
         const directArt = parent?.type === 'Call' && parent.args?.[0] === node &&
             (creationApis.has(nameOf(parent)) || parent.callee?.name === 'setImage' && directImageOwners.has(parent.callee.object?.name) || nameOf(parent) === 'scene.setBackgroundImage');
@@ -3650,7 +3662,11 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (node.type === 'Call' && nameOf(node) === 'scene.setBackgroundImage' && node.args?.length === 1) {
             const image = t.imageOf(node.args[0]);
             if (image && !t.imageValueResources.has(node.args[0])) {
-                const name = `__arcadeBackground${imageTemplates.length+1}`, key = `${name}Image`;
+                // A resource holding several frames takes one name for all of them,
+                // so count names in use rather than resources.
+                let n = imageTemplates.length + 1;
+                while (imageTemplates.includes(`__arcadeBackground${n}`)) n++;
+                const name = `__arcadeBackground${n}`, key = `${name}Image`;
                 t.imageValueResources.set(node.args[0],{name,key,fresh:true});imageTemplates.push(name);
                 costumes.push({sprite:name,name:`${name}-art`,svg:imageToSvg(image),mode:'replace'});
             }
@@ -3935,6 +3951,91 @@ const translateOverlapOnly = (ast, assets) => {
 };
 
 /**
+ * Give the art holders of an imported game readable names. The runtime path
+ * keeps each image in a helper sprite (`__arcadeTemplate1`, `__arcadeBackground2`)
+ * that the code refers to by name; in the sprite list and costume editor those
+ * names say nothing. Each is renamed after what the generated code does with it
+ * — the variable a sprite is assigned to (`hero`), `background`, `<sprite>Animation`
+ * — and its costumes after it (`hero`, `coinAnimation-1`, …; Code's COSTUME
+ * lines end a name at a space). Costumes are read by
+ * position, so only the sprite name has to change in step with the code.
+ */
+export function nameArtworkSprites (result) {
+    const INTERNAL = /__arcade(?:Template|Background)\d+(?![\w])/g;
+    const code = String(result.code || '');
+    const internal = [...new Set([...(code.match(INTERNAL) || []),
+        ...(result.costumes || []).map(c => c.sprite).filter(n => /^__arcade(?:Template|Background)\d+$/.test(n || ''))])];
+    if (!internal.length) return result;
+    const lines = code.split('\n');
+    const taken = new Set(['Game', 'Stage', ...(code.match(/^SPRITE ([^:\n]+):/gm) || []).map(h => h.slice(7, -1))
+        .filter(n => !/^__arcade(?:Template|Background)\d+$/.test(n))]);
+    const quote = name => `template "${name}"`;
+    const lowerFirst = text => text.charAt(0).toLowerCase() + text.slice(1);
+    // A user-facing variable name: namespace constants keep their own name
+    // (`spritesheet.player` → player); the translator's own temporaries have none.
+    const userName = variable => {
+        const namespaced = /^__bwNamespace_[A-Za-z0-9]+_([A-Za-z_]\w*)$/.exec(variable);
+        if (namespaced) return namespaced[1];
+        return /^__/.test(variable) ? null : variable;
+    };
+    const labelOf = name => {
+        for (const line of lines) {
+            const at = line.indexOf(quote(name));
+            if (at < 0) continue;
+            const head = line.slice(0, at);
+            const kind = /kind "([A-Za-z_]\w*)"/.exec(line.slice(at)) || /kind "([A-Za-z_]\w*)"/.exec(head);
+            if (/^\s*arcade set background image /.test(head)) return 'background';
+            const animated = /arcade (?:animate sprite|character (?:loop|run) frames of) \(?([A-Za-z_]\w*)\)? /.exec(head);
+            if (animated && userName(animated[1])) return `${userName(animated[1])}Animation`;
+            // `set hero to (arcade create template "…" kind "Player" …)` and the
+            // namespace/local forms: named after the variable, else after the kind.
+            const assigned = /^\s*(?:set|arcade set local) ([A-Za-z_]\w*) to /.exec(head);
+            if (assigned) {
+                const base = userName(assigned[1]) ||
+                    (kind ? lowerFirst(kind[1]) : /arcade projectile /.test(head) ? 'projectile' : null);
+                if (base) {
+                    // `create image (… template "A" …) template "B"`: A, still inside the
+                    // image argument, holds the art (hero); B is the plain sprite (heroSprite).
+                    const fromImage = head.indexOf('arcade create image (');
+                    if (fromImage < 0) return base;
+                    const depth = (head.match(/\(/g) || []).length - (head.match(/\)/g) || []).length;
+                    const outer = (head.slice(0, fromImage).match(/\(/g) || []).length -
+                        (head.slice(0, fromImage).match(/\)/g) || []).length;
+                    return depth <= outer ? `${base}Sprite` : base;
+                }
+            }
+            const imageOf = /arcade set image of ([A-Za-z_]\w*) to /.exec(head);
+            if (imageOf && userName(imageOf[1])) return userName(imageOf[1]);
+            const tileKind = /arcade register tile kind "([A-Za-z_]\w*)"/.exec(head);
+            if (tileKind) return lowerFirst(tileKind[1]);
+            const colourTile = /arcade set color tile \((\d+)\) image /.exec(head);
+            if (colourTile) return `tile${colourTile[1]}`;
+            if (/arcade set color-coded map image /.test(head)) return 'tilemap';
+        }
+        return /Template/.test(name) ? 'spriteArt' : 'image';
+    };
+    const names = new Map();
+    for (const name of internal) {
+        const base = labelOf(name).replace(/[^\w]/g, '') || 'image';
+        let label = base, n = 2;
+        while (taken.has(label)) label = `${base}${n++}`;
+        taken.add(label);
+        names.set(name, label);
+    }
+    const rename = text => String(text).replace(/__arcade(?:Template|Background)\d+(?=Image(?![\w]))|__arcade(?:Template|Background)\d+(?![\w])/g, m => names.get(m) || m);
+    const costumes = (result.costumes || []).map(costume => {
+        const label = names.get(costume.sprite);
+        if (!label) return costume;
+        const frame = new RegExp(`^${costume.sprite}-frame-(\\d+)$`).exec(costume.name || '');
+        return {...costume, sprite: label, name: frame ? `${label}-${Number(frame[1]) + 1}` : label};
+    });
+    return {...result, code: rename(code), costumes,
+        ...(Array.isArray(result.sprites) ? {sprites: result.sprites.map(rename)} : {})};
+}
+
+/**
+ * Translate a MakeCode Arcade project.
+/**
  * Translate a MakeCode Arcade project.
  *
  * @param {Object<string, string>|string} files the project's file map
@@ -4053,6 +4154,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
     const runtimePaletteRequested=containsPaletteCall(parsed);
     const withAnimationDiagnostics = result => {
+        result = nameArtworkSprites(result);
         let code = result.code;
         let costumes = result.costumes;
         if (projectPaletteHex) {

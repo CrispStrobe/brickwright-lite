@@ -10,13 +10,13 @@ test('a pinned PXT side projectile retains image, incoming edge, velocity and ha
     const result = arcadeToPseudocode(source);
     assert.deepEqual(result.unsupported, []);
     assert.equal(result.costumes.length, 1);
-    assert.match(result.code, /arcade projectile template "__arcadeTemplate1" kind "Projectile" vx 40 vy 0 width 16 height 16 mode side/);
+    assert.match(result.code, /arcade projectile template "projectile" kind "Projectile" vx 40 vy 0 width 16 height 16 mode side/);
     // The velocity is part of the creation word (vx 40 above).
     // createProjectileFromSide sets AutoDestroy itself (no separate word); the run checks it.
     const creator = new SB3Creator();
     creator.parse(result.code);
     assert.deepEqual(creator.warnings, []);
-    assert.match(creator.decompile(), /arcade projectile template "__arcadeTemplate1" kind "Projectile" vx 40 vy 0 width 16 height 16 mode side/);
+    assert.match(creator.decompile(), /arcade projectile template "projectile" kind "Projectile" vx 40 vy 0 width 16 height 16 mode side/);
     const run = await runProgram(result.code, {frames: 8, uploads: result.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     const sprite = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {})
