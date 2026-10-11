@@ -14,7 +14,7 @@ import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {ARCADE_PALETTE} from '../../lib/bw-makecode/pixel-image.js';
 import {
     TILE_SIZES, findTilemapBlocks, writeTilemapBlock, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
-    setTileSize, addTile, removeTile, paintTilePixel, createHistory, commit, undo, redo, createTilemap, addTilemapBlock
+    setTileSize, addTile, removeTile, paintTilePixel, renameTile, createHistory, commit, undo, redo, createTilemap, addTilemapBlock
 } from '../../lib/bw-makecode/tilemap-editor.js';
 
 const L10N = {
@@ -28,7 +28,8 @@ const L10N = {
         'tm.saved': 'Saved into the block of {target}.', 'tm.saveFailed': 'Could not save: the block is gone or the level is invalid.',
         'tm.unsaved': 'Unsaved changes', 'tm.wallHint': 'Click cells to add walls; click a wall to remove it.',
         'tm.zoom': 'Zoom', 'tm.new': 'New tile map', 'tm.created': 'New tile map added to {target}: a "when green flag clicked" script sets it.',
-        'tm.createFailed': 'Could not add a tile map: {error}'
+        'tm.createFailed': 'Could not add a tile map: {error}',
+        'tm.tileName': 'Tile name', 'tm.invalidTileName': 'Use a unique tile name with 1–128 characters.'
     },
     de: {
         'tm.title': 'Kachelkarten', 'tm.map': 'Kachelkarte', 'tm.none': 'Dieses Projekt hat keine Kachelkarte. Ein Level wird mit dem Arcade-Block „setze Kachelkarte“ gesetzt, den ein importiertes MakeCode-Arcade-Spiel mitbringt.',
@@ -40,7 +41,8 @@ const L10N = {
         'tm.saved': 'In den Block von {target} gespeichert.', 'tm.saveFailed': 'Speichern nicht möglich: Der Block fehlt oder das Level ist ungültig.',
         'tm.unsaved': 'Ungespeicherte Änderungen', 'tm.wallHint': 'Klicke Zellen an, um Wände zu setzen; ein Klick auf eine Wand entfernt sie.',
         'tm.zoom': 'Zoom', 'tm.new': 'Neue Kachelkarte', 'tm.created': 'Neue Kachelkarte zu {target} hinzugefügt: Ein Skript „Wenn die grüne Flagge angeklickt“ setzt sie.',
-        'tm.createFailed': 'Kachelkarte konnte nicht hinzugefügt werden: {error}'
+        'tm.createFailed': 'Kachelkarte konnte nicht hinzugefügt werden: {error}',
+        'tm.tileName': 'Kachelname', 'tm.invalidTileName': 'Verwende einen eindeutigen Kachelnamen mit 1–128 Zeichen.'
     }
 };
 const t = makeT(L10N);
@@ -74,7 +76,7 @@ class TilemapEditor extends React.Component {
         const first = maps.findIndex(map => map.editable);
         this.state = {maps, selected: first, history: first >= 0 ? createHistory(maps[first].data) : null,
             saved: first >= 0 ? maps[first].data : null, tool: 'paint', tile: maps[first]?.data?.images.length > 1 ? 1 : 0,
-            colour: 2, showWalls: true, zoom: 2, status: '', columns: maps[first]?.data?.columns || 10,
+            tileNameDraft: null, colour: 2, showWalls: true, zoom: 2, status: '', columns: maps[first]?.data?.columns || 10,
             rows: maps[first]?.data?.rows || 8};
         this.handleMapPointerDown = this.handleMapPointerDown.bind(this);
         this.handleMapPointerMove = this.handleMapPointerMove.bind(this);
@@ -95,11 +97,22 @@ class TilemapEditor extends React.Component {
         const map = this.state.maps[index];
         if (!map || !map.editable) return;
         this.setState({selected: index, history: createHistory(map.data), saved: map.data, status: '',
-            tile: map.data.images.length > 1 ? 1 : 0, columns: map.data.columns, rows: map.data.rows});
+            tileNameDraft: null, tile: map.data.images.length > 1 ? 1 : 0, columns: map.data.columns, rows: map.data.rows});
+    }
+
+    commitTileName () {
+        if (this.state.tileNameDraft === null) return;
+        const name = this.state.tileNameDraft;
+        const next = renameTile(this.data, this.state.tile, name);
+        if (next === this.data && name.trim() !== (this.data.images[this.state.tile]?.displayName || '')) {
+            this.setState({status: t(this.props.locale || browserLocale(), 'tm.invalidTileName')});
+            return;
+        }
+        this.apply(next);
     }
 
     apply (next) {
-        this.setState(state => ({history: commit(state.history, next), status: '',
+        this.setState(state => ({history: commit(state.history, next), tileNameDraft: null, status: '',
             columns: next.columns, rows: next.rows, tile: Math.min(state.tile, next.images.length - 1)}));
     }
 
@@ -317,8 +330,8 @@ class TilemapEditor extends React.Component {
                         <div style={{display: 'flex', flexWrap: 'wrap', gap: 4}}>
                             {data.images.map((image, i) => (
                                 <button key={i} type="button" data-testid={`bw-tilemap-tile-${i}`} aria-pressed={tile === i}
-                                    title={i ? t(locale, 'tm.tile', {n: i}) : t(locale, 'tm.emptyTile')}
-                                    onClick={() => this.setState({tile: i, tool: tool === 'wall' ? 'paint' : tool})}
+                                    title={image.displayName || image.tileId || (i ? t(locale, 'tm.tile', {n: i}) : t(locale, 'tm.emptyTile'))}
+                                    onClick={() => this.setState({tile: i, tileNameDraft: null, tool: tool === 'wall' ? 'paint' : tool})}
                                     style={{...btn(tile === i), width: 40, height: 40, padding: 2}}>
                                     <TileSwatch image={image} />
                                 </button>
@@ -333,6 +346,14 @@ class TilemapEditor extends React.Component {
                             <button type="button" data-testid="bw-tilemap-remove-tile" style={btn(false)} disabled={tile < 1}
                                 onClick={() => this.apply(removeTile(data, tile))}>{t(locale, 'tm.removeTile')}</button>
                         </div>
+                        <label style={label}>{t(locale, 'tm.tileName')}
+                            <input data-testid="bw-tilemap-tile-name" maxLength={128}
+                                value={this.state.tileNameDraft === null ? (data.images[tile]?.displayName || '') : this.state.tileNameDraft}
+                                onChange={event => this.setState({tileNameDraft: event.target.value})}
+                                onBlur={() => this.commitTileName()}
+                                onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                                style={{width: '100%', minWidth: 0, boxSizing: 'border-box'}} />
+                        </label>
                         {tile > 0 ? (
                             <>
                                 <canvas ref={this.tileCanvas} data-testid="bw-tilemap-tile-canvas"

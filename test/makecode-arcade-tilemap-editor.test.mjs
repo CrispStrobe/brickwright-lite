@@ -170,3 +170,85 @@ test('a new level is a real green-flag script the game runs', async () => {
         run.vm.quit?.();
     }
 });
+
+// Named resource identity must survive the data editor and real MakeCode files,
+// rather than being reconstructed later from identical-looking inline pixels.
+import {encodeTileImage, parseTileAssets, TileAssetExporter} from '../overlay/scratch-gui/src/lib/bw-makecode/tile-assets.js';
+import {decodeMkcdImage} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
+import {normalizeTilemap, renameTile} from '../overlay/scratch-gui/src/lib/bw-makecode/tilemap-editor.js';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+
+const NAMED_LEVEL = `namespace myTiles {
+    export const empty = img\`0 0\n0 0\`
+    export const floor = img\`7 7\n7 7\`
+}
+tiles.setTilemap(tiles.createTilemap(hex\`020001000100\`, img\`2 .\`,
+    [myTiles.empty, myTiles.floor], TileScale.Four))
+`;
+const mapData = result => result.code.split('\n').filter(line => line.trim().startsWith('arcade set tilemap data '))
+    .map(line => JSON.parse(JSON.parse(line.trim().slice('arcade set tilemap data '.length))));
+
+test('named namespace tile identities survive normalization, resizing, editing and undo', () => {
+    const imported = arcadeToPseudocode(NAMED_LEVEL);
+    assert.deepEqual(imported.unsupported, []);
+    const [map] = mapData(imported);
+    assert.equal(map.images[1].tileId, 'myTiles.floor');
+    assert.equal(map.images[1].displayName, 'floor');
+    assert.equal(normalizeTilemap(map).images[1].tileId, 'myTiles.floor');
+    const resized = setTileSize(map, 8);
+    assert.equal(resized.images[1].tileId, 'myTiles.floor');
+    const edited = paintTilePixel(resized, 1, 0, 0, 3);
+    const renamed = renameTile(edited, 1, 'Cracked floor');
+    assert.equal(renamed.images[1].tileId, 'myTiles.floor');
+    assert.equal(renamed.images[1].displayName, 'Cracked floor');
+    assert.equal(renamed.images[1].pixels[0], 3);
+    assert.equal(undo(commit(createHistory(map), renamed)).present, map);
+    assert.deepEqual(parseTilemapText(tilemapText(renamed)), renamed);
+});
+
+test('tile resource encoding preserves odd-height column padding and all palette indexes', () => {
+    const image = {width: 3, height: 3, pixels: [0, 1, 2, 3, 4, 5, 6, 7, 15]};
+    const decoded = decodeMkcdImage(encodeTileImage(image));
+    assert.equal(decoded.width, 3);
+    assert.equal(decoded.height, 3);
+    assert.deepEqual(Array.from(decoded.pixels), image.pixels);
+});
+
+test('distinct names with identical art remain distinct; conflicting edits cannot silently alias', () => {
+    const warnings = [], tiles = new TileAssetExporter(warnings);
+    const image = {width: 1, height: 1, pixels: [2]};
+    assert.equal(tiles.register({...image, tileId: 'myTiles.floor', displayName: 'Floor'}, 1), 'myTiles.floor');
+    assert.equal(tiles.register({...image, tileId: 'myTiles.other', displayName: 'Other'}, 1), 'myTiles.other');
+    assert.equal(tiles.register({...image, tileId: 'myTiles.floor', displayName: 'Floor'}, 1), 'myTiles.floor');
+    assert.equal(tiles.register({...image, pixels: [3], tileId: 'myTiles.floor', displayName: 'Floor'}, 1), 'myTiles.floor_2');
+    assert.match(warnings[0], /conflicting edits/);
+    const parsed = parseTileAssets(tiles.files()['tilemap.g.jres']);
+    assert.equal(parsed['myTiles.floor'].pixels[0], 2);
+    assert.equal(parsed['myTiles.floor_2'].pixels[0], 3);
+    assert.equal(parsed.Floor, null, 'an ambiguous display alias cannot select arbitrary art');
+});
+
+test('edited named tiles export as actual original-compiler resources and reimport with identity', async () => {
+    const imported = arcadeToPseudocode(NAMED_LEVEL);
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        const edited = renameTile(paintTilePixel(ref.data, 1, 0, 0, 3), 1, 'Cracked floor');
+        assert.equal(writeTilemapBlock(run.vm, ref, edited), true);
+        const exported = projectToArcade(JSON.parse(run.vm.toJSON()));
+        assert.deepEqual(exported.unsupported, []);
+        const resources = JSON.parse(exported.files['tilemap.g.jres']);
+        assert.equal(resources['myTiles.floor'].tilemapTile, true);
+        assert.equal(resources['myTiles.floor'].displayName, 'Cracked floor');
+        assert.equal(decodeMkcdImage(resources['myTiles.floor'].data).pixels[0], 3);
+        assert.match(exported.files['tilemap.g.ts'], /blockIdentity=images\._tile/);
+        assert.match(exported.ts, /myTiles\.floor/);
+        assert.ok(JSON.parse(exported.files['pxt.json']).files.includes('tilemap.g.jres'));
+        const original = await runPxtArcade({...exported.files,
+            'main.ts': `${exported.files['main.ts']}\nlet exportedTilePixel = myTiles.floor.getPixel(0, 0)\n`}, {waitForGlobals: {exportedTilePixel: 3}});
+        assert.equal(original.exportedTilePixel, 3, 'PXT actually consumes the edited JRES resource');
+        const roundtrip = arcadeToPseudocode(exported.files);
+        assert.deepEqual(roundtrip.unsupported, []);
+        assert.deepEqual(mapData(roundtrip)[0], edited, 'stable IDs, display names, pixels and walls return unchanged');
+    } finally { run.vm.quit?.(); }
+});

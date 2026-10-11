@@ -58,6 +58,7 @@ export const lowerNamespaceBindings = program => {
         if (external && !(external.kind === 'namespace' && symbol.kind === 'namespace')) fail(`namespace binding ${[...scope.path, name].join('.')} conflicts with a built-in export`);
         if (scope.symbols.has(name)) fail(`namespace binding ${[...scope.path, name].join('.')} is declared more than once`);
         else {
+            if (symbol.kind === 'value') symbol.sourcePath = [...scope.path, name].join('.');
             scope.symbols.set(name, symbol);
             if (scope.shared) {
                 if (symbol.exported) declare(scope.shared, name, symbol);
@@ -231,7 +232,7 @@ export const lowerNamespaceBindings = program => {
             if (symbol?.kind === 'invalid') return node;
             if (symbol?.kind === 'value') {
                 if (symbol.procedure && context !== 'callee') fail(`namespace procedure ${symbol.name} used as a runtime function value`);
-                return {type: 'Identifier', name: symbol.name};
+                return {type: 'Identifier', name: symbol.name, assetPath: symbol.sourcePath};
             }
             if (symbol?.kind === 'enumMember' && symbol.value !== undefined) return {type: 'Number', value: symbol.value};
             if (symbol && ['namespace', 'enum'].includes(symbol.kind)) fail(`${symbol.kind} ${symbol.scope.path.join('.')} used as a runtime object`);
@@ -247,7 +248,7 @@ export const lowerNamespaceBindings = program => {
             return {...node, init: rewrite(node.init, scope, loop), test:rewrite(node.test, scope, loop), update:rewrite(node.update, scope, loop), body:rewriteBody(node.body, scope, loop)};
         }
         if (node.type === 'While') return {...node, test:rewrite(node.test, scope, shadows), body:rewriteBody(node.body, scope, shadows)};
-        if (node.type === 'Declaration') return {...node, decls:node.decls.map(decl => ({...decl, name:namespaceBody ? scope.symbols.get(decl.name)?.name || decl.name : decl.name, init:rewrite(decl.init, scope, shadows)}))};
+        if (node.type === 'Declaration') return {...node, decls:node.decls.map(decl => ({...decl, ...(namespaceBody ? {assetPath: scope.symbols.get(decl.name)?.sourcePath} : {}), name:namespaceBody ? scope.symbols.get(decl.name)?.name || decl.name : decl.name, init:rewrite(decl.init, scope, shadows)}))};
         if (node.type === 'Assignment' || node.type === 'Update') {
             const target = node.type === 'Assignment' ? node.left : node.argument;
             if (access(target, scope, shadows)?.kind === 'enumMember') fail('assignment to an enum member');

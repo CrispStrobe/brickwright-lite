@@ -3102,3 +3102,17 @@ under the active palette are added to the production browser gate. Fresh hosted
 execution is pending; prior reference bundle results cannot qualify this source.
 Broader Buffer/palette-extension/effect/dialog support and the original partials
 remain open. See [the receipt](receipts/2026-10-09-arcade-template-palette.json).
+
+## Named tile resources — 2026-10-11
+
+The tile identity lane adds `tileId` and `displayName` to native map images. Namespace source paths and JRES resource IDs survive conversion; the painter exposes a tile-name input, and its rename operation is undoable. Pixel edits, tile-size changes and SB3 map literals preserve this metadata. Different named assets with identical pixels stay distinct. Conflicting edits to one ID export separate suffixed resources with a warning.
+
+Full MakeCode project exports now include `tilemap.g.jres` and `tilemap.g.ts`, listed in `pxt.json`; map expressions refer to those named resources. Standalone TypeScript instead contains inline namespace declarations so it runs without companion files. Custom display labels are retained in full project exports; standalone TypeScript retains the qualified ID and pixels but currently derives its label from the identifier on reimport. Shared tile edits across multiple maps are not synchronized automatically.
+
+The image resource codec follows the original PXT 4bpp format: each column is padded to a 32-bit boundary. Original-runtime qualification reads an edited pixel from the emitted JRES, rather than checking generated text alone. Format reference: https://github.com/microsoft/pxt/blob/v13.2.1/pxtlib/tilemap.ts .
+
+Verification: 80 distinct conversion, namespace, native-runtime, original-PXT and CLI tests passed across the affected batch and CLI followup. Two original batch failures were absent example files in the sparse checkout; the full seven-test CLI followup passed after restoring tracked examples. Failed attempts are preserved in private evidence. The additional null-image guard is covered by a subsequent focused rerun.
+
+Run `node --test --test-concurrency=1 --import ./scripts/lib/register-gui-scope.mjs test/makecode-arcade-tilemap-editor.test.mjs test/makecode-arcade-tile-data.test.mjs` with prepared dependencies and pinned MakeCode SDKs. Run `PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-tile-identity.mjs` against a fresh source build. This browser gate uses actual Code import, painter rename/pixel controls, File save/load in a fresh context, and downloaded MakeCode export/reimport; observations and artifacts go to `test-results/arcade-tile-identity/`. CI registers it on the light browser shard. Its exact-source browser and remaining hosted checks are pending; this is not a full-compatibility or merge claim.
+
+Remaining painter lanes include legacy colour-coded map authoring and sprite placement. Existing native legacy-map execution is already supported. Continue with the refreshed `LANES.md` ownership contracts and retain all refusals until behavior is qualified.

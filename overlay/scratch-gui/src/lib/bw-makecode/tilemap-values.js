@@ -14,7 +14,8 @@ export const decodeTilemap = (node, imageOf, pathOf) => {
         (scaleNode?.type === 'Number' && [2,3,4,5].includes(Number(scaleNode.value)) ? 1 << Number(scaleNode.value) : 0);
     if (!scale || !walls || walls.width !== columns || walls.height !== rows || !images.length || images.some(image => !image) || bytes.slice(4).some(index => index >= images.length)) return null;
     return {columns, rows, tileSize:scale, indices:bytes.slice(4), walls:Array.from(walls.pixels, pixel => pixel === 2 ? 1 : 0),
-        images:images.map(image=>({width:image.width,height:image.height,pixels:Array.from(image.pixels)}))};
+        images:images.map(image=>({width:image.width,height:image.height,pixels:Array.from(image.pixels),
+            ...(image.tileId ? {tileId: image.tileId, displayName: image.displayName || image.tileId.split('.').pop()} : {})}))};
 };
 
 export const parseNativeTilemaps = (generated, imageOf) => {
@@ -34,13 +35,13 @@ export const parseNativeTilemaps = (generated, imageOf) => {
     return out;
 };
 
-export const tilemapSource = data => {
+export const tilemapSource = (data, tileReference = null) => {
     if (!data || !Number.isInteger(data.columns) || !Number.isInteger(data.rows) || data.columns < 1 || data.rows < 1 || data.columns > 65535 || data.rows > 65535 || data.columns * data.rows > 65536 || ![4,8,16,32].includes(data.tileSize) || !Array.isArray(data.indices) || data.indices.length !== data.columns * data.rows || !Array.isArray(data.walls) || data.walls.length !== data.indices.length || !Array.isArray(data.images) || !data.images.length || data.images.length > 256 || data.indices.some(value=>!Number.isInteger(value)||value<0||value>=data.images.length)) return null;
     const imageSource = image => {
         if (!image || !Number.isInteger(image.width) || !Number.isInteger(image.height) || image.width < 1 || image.height < 1 || !Array.isArray(image.pixels) || image.pixels.length !== image.width * image.height || image.pixels.some(value=>!Number.isInteger(value)||value<0||value>15)) return null;
         return 'img`\n' + Array.from({length:image.height},(_,row)=>image.pixels.slice(row*image.width,(row+1)*image.width).map(value=>value?value.toString(16):'.').join(' ')).join('\n')+'\n`';
     };
-    const images = data.images.map(imageSource);
+    const images = data.images.map((image, index) => imageSource(image) && (tileReference ? tileReference(image, index) : imageSource(image)));
     if (images.some(image=>!image)) return null;
     const bytes = [data.columns & 255,data.columns >> 8,data.rows & 255,data.rows >> 8,...data.indices];
     const walls = imageSource({width:data.columns,height:data.rows,pixels:data.walls.map(value=>value?2:0)});

@@ -9,6 +9,7 @@
  * block the level came from. The painter UI (tilemap-editor.jsx) is a view
  * over them.
  */
+import {validTileId} from './tile-assets.js';
 import {tilemapSource} from './tilemap-values.js';
 
 export const TILE_SIZES = Object.freeze([4, 8, 16, 32]);
@@ -17,7 +18,9 @@ export const MAX_CELLS = 65536;
 const HISTORY_LIMIT = 100;
 
 const blankImage = size => ({width: size, height: size, pixels: new Array(size * size).fill(0)});
-const copyImage = image => ({width: image.width, height: image.height, pixels: Array.from(image.pixels)});
+const copyImage = image => ({width: image.width, height: image.height, pixels: Array.from(image.pixels),
+    ...(validTileId(image.tileId) ? {tileId: image.tileId} : {}),
+    ...(typeof image.displayName === 'string' ? {displayName: image.displayName} : {})});
 
 /** A plain-array copy of tile map data, or null when it is not editable data. */
 export function normalizeTilemap (data) {
@@ -119,7 +122,7 @@ const fitImage = (image, size) => {
 /** Change the tile size; every tile image is cropped or padded to it. */
 export function setTileSize (data, tileSize) {
     if (!TILE_SIZES.includes(tileSize) || tileSize === data.tileSize) return data;
-    return {...data, tileSize, images: data.images.map(image => fitImage(image, tileSize))};
+    return {...data, tileSize, images: data.images.map(image => ({...copyImage(image), ...fitImage(image, tileSize)}))};
 }
 
 /** Add a tile (blank, or a copy of `image` fitted to the tile size); returns {data, index}. */
@@ -141,7 +144,16 @@ export function removeTile (data, index) {
 export function setTileImage (data, index, image) {
     if (!Number.isInteger(index) || index < 0 || index >= data.images.length || !image) return data;
     const images = data.images.slice();
-    images[index] = fitImage(image, data.tileSize);
+    images[index] = {...copyImage(data.images[index]), ...fitImage(image, data.tileSize)};
+    return {...data, images};
+}
+
+/** Rename a tile's editable label; its stable resource ID survives the edit. */
+export function renameTile (data, index, displayName) {
+    if (!data.images[index] || typeof displayName !== 'string' || !displayName.trim() || displayName.length > 128 ||
+        data.images.some((image, i) => i !== index && image.displayName === displayName.trim())) return data;
+    const images = data.images.slice();
+    images[index] = {...images[index], displayName: displayName.trim()};
     return {...data, images};
 }
 
